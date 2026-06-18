@@ -20,7 +20,7 @@ export default function Layout() {
     }
   }, []);
 
-  const isSuperAdmin = true;//user?.role === 'SUPERADMIN';
+  const isSuperAdmin = user?.role == 'SUPERADMIN';
 
   const isActive = (path: string) => location.pathname.startsWith(path);
 
