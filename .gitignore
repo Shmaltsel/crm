@@ -1,0 +1,20 @@
+# Залежності
+node_modules/
+dist/
+.pnp
+.pnp.js
+
+# Змінні оточення
+.env
+.env.local
+
+# База даних SQLite
+apps/backend/prisma/*.db
+apps/backend/prisma/*.db-journal
+
+# Системні файли та логи
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.DS_Store

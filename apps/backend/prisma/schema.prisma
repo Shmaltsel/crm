@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Ролі та статуси будемо зберігати як звичайні рядки:
+// Role: "SUPERADMIN", "ADMIN", "MANAGER", "HOST", "ACCOUNTANT"
+// EventStatus: "BASE", "FIRST_CONTACT", "INTERESTED", "PRE_APPROVAL", "DATE_CONFIRMED", "PREPARATION", "IN_PROGRESS", "DONE", "CANCELLED"
+
+model Employee {
+  id           String   @id @default(uuid())
+  fullName     String
+  phone        String
+  email        String
+  city         String
+  role         String 
+  createdAt    DateTime @default(now())
+  
+  // ДОДАЄМО ЗВ'ЯЗКИ З ЕКІПАЖЕМ СЮДИ
+  crewAsHost   Crew[]   @relation("HostCrew")
+  crewAsDriver Crew[]   @relation("DriverCrew")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  name          String
+  email         String   @unique
+  phone         String?
+  password      String
+  role          String   @default("MANAGER") 
+  cityId        String?
+  city          City?    @relation(fields: [cityId], references: [id])
+  
+  // ВИДАЛЯЄМО ЗВ'ЯЗКИ З ЕКІПАЖЕМ ЗВІДСИ
+  managedCities City[]   @relation("CityManager")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model City {
+  id        String   @id @default(uuid())
+  name      String
+  managerId String?
+  manager   User?    @relation("CityManager", fields: [managerId], references: [id])
+  users     User[]
+  schools   School[]
+  crews     Crew[]
+  events    Event[]
+  createdAt DateTime @default(now())
+}
+
+model School {
+  id            String   @id @default(uuid())
+  name          String
+  type          String   // "Школа" або "Садочок"
+  cityId        String
+  city          City     @relation(fields: [cityId], references: [id])
+  address       String?
+  director      String?
+  phone         String?
+  email         String?
+  notes         String?
+  childrenCount Int?
+  events        Event[]
+  isHotClient   Boolean  @default(false)
+  rating        Float?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Crew {
+  id        String   @id @default(uuid())
+  name      String   
+  cityId    String
+  city      City     @relation(fields: [cityId], references: [id])
+  hostId    String?
+  // ЗМІНЮЄМО User НА Employee
+  host      Employee? @relation("HostCrew", fields: [hostId], references: [id])
+  driverId  String?
+  // ЗМІНЮЄМО User НА Employee
+  driver    Employee? @relation("DriverCrew", fields: [driverId], references: [id])
+  car       String?
+  carPlate  String?
+  phone     String?
+  isActive  Boolean  @default(true)
+  events    Event[]
+  createdAt DateTime @default(now())
+}
+
+model Event {
+  id              String      @id @default(uuid())
+  cityId          String
+  city            City        @relation(fields: [cityId], references: [id])
+  schoolId        String
+  school          School      @relation(fields: [schoolId], references: [id])
+  crewId          String?
+  crew            Crew?       @relation(fields: [crewId], references: [id])
+  project         String      // "Голограма для школи", "360° шоу"
+  date            DateTime
+  time            String?
+  status          String      @default("BASE")
+  childrenPlanned Int?
+  childrenActual  Int?
+  price           Float?      
+  received        Float?
+  paymentMethod   String?
+  address         String?
+  contactPerson   String?
+  contactPhone    String?
+  equipment       String?     // Зберігатимемо масив обладнання як JSON-рядок
+  report          EventReport?
+  files           File[]
+  history         EventHistory[]
+  nextContact     DateTime?
+  nextProject     String?
+  responsibleId   String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  preparation  EventPreparation?
+}
+
+model EventReport {
+  id                String   @id @default(uuid())
+  eventId           String   @unique
+  event             Event    @relation(fields: [eventId], references: [id])
+  directorSatisfied Boolean?
+  teachersSatisfied Boolean?
+  hadIssues         Boolean  @default(false)
+  comment           String?
+  rating            Float?
+  photos            File[]
+  createdAt         DateTime @default(now())
+}
+
+model File {
+  id         String       @id @default(uuid())
+  name       String
+  url        String
+  size       Int
+  eventId    String?
+  event      Event?       @relation(fields: [eventId], references: [id])
+  reportId   String?
+  report     EventReport? @relation(fields: [reportId], references: [id])
+  createdAt  DateTime     @default(now())
+}
+
+model EventHistory {
+  id        String   @id @default(uuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id])
+  action    String
+  comment   String?  // <--- ДОДАЙ ЦЕЙ РЯДОК
+  userId    String
+  userName  String
+  role      String
+  createdAt DateTime @default(now())
+}
+
+model EventPreparation {
+  id        String  @id @default(uuid())
+  eventId   String  @unique
+  event     Event   @relation(fields: [eventId], references: [id])
+  
+  assignCrew      String @default("Заплановано") // "Заплановано", "В процесі", "Виконано"
+  bookEquipment   String @default("Заплановано")
+  prepareDocs     String @default("Заплановано")
+  prepareMaterials String @default("Заплановано")
+  remindSchool    String @default("Заплановано")
+}

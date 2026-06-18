@@ -1,0 +1,10 @@
+{
+  "name": "CRM",
+  "private": true,
+  "scripts": {
+  "dev": "concurrently \"pnpm --filter backend start:dev\" \"pnpm --filter frontend dev\""
+},
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
