@@ -17,7 +17,7 @@ export default function Cities() {
   const fetchCities = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:3000/cities', {
+      const response = await axios.get('https://crm-57qd.onrender.com/cities', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCities(response.data);
@@ -40,7 +40,7 @@ export default function Cities() {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:3000/cities', 
+      await axios.post('https://crm-57qd.onrender.com/cities', 
         { name: newCityName },
         { headers: { Authorization: `Bearer ${token}` } }
       );

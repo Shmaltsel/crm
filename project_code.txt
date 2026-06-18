@@ -1167,7 +1167,7 @@ export class UsersController {
     return this.usersService.getAllUsers();
   }
 
-  // Шлях для генерації адміна: http://localhost:3000/users/seed
+  // Шлях для генерації адміна: https://crm-57qd.onrender.com/users/seed
   @Get('seed')
   seedAdmin() {
     return this.usersService.seedAdmin();
@@ -1762,7 +1762,7 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
     if (!window.confirm('Видалити цю подію?')) return;
     
     try {
-      await axios.delete(`http://localhost:3000/events/${id}`, {
+      await axios.delete(`https://crm-57qd.onrender.com/events/${id}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       onDeleteSuccess();
@@ -2119,7 +2119,7 @@ export default function Cities() {
   const fetchCities = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:3000/cities', {
+      const response = await axios.get('https://crm-57qd.onrender.com/cities', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCities(response.data);
@@ -2142,7 +2142,7 @@ export default function Cities() {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:3000/cities', 
+      await axios.post('https://crm-57qd.onrender.com/cities', 
         { name: newCityName },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -2295,7 +2295,7 @@ export default function Employees() {
 
   const fetchEmployees = async () => {
     try {
-      const res = await axios.get('http://localhost:3000/employees', { headers });
+      const res = await axios.get('https://crm-57qd.onrender.com/employees', { headers });
       setEmployees(res.data);
     } catch (e) {
       console.error(e);
@@ -2330,9 +2330,9 @@ export default function Employees() {
     setIsSubmitting(true);
     try {
       if (editingEmployee) {
-        await axios.patch(`http://localhost:3000/employees/${editingEmployee.id}`, form, { headers });
+        await axios.patch(`https://crm-57qd.onrender.com/employees/${editingEmployee.id}`, form, { headers });
       } else {
-        await axios.post('http://localhost:3000/employees', form, { headers });
+        await axios.post('https://crm-57qd.onrender.com/employees', form, { headers });
       }
       setIsModalOpen(false);
       fetchEmployees();
@@ -2347,7 +2347,7 @@ export default function Employees() {
   const handleDelete = async (id: string, name: string) => {
     if (!window.confirm(`Видалити працівника "${name}"?`)) return;
     try {
-      await axios.delete(`http://localhost:3000/employees/${id}`, { headers });
+      await axios.delete(`https://crm-57qd.onrender.com/employees/${id}`, { headers });
       setEmployees(employees.filter((e) => e.id !== id));
     } catch (e) {
       console.error(e);
@@ -2597,7 +2597,7 @@ export default function Login() {
     setError('');
 
     try {
-      const response = await axios.post('http://localhost:3000/auth/login', {
+      const response = await axios.post('https://crm-57qd.onrender.com/auth/login', {
         email,
         password,
       });
@@ -2722,7 +2722,7 @@ export default function SchoolProfile() {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
-      const schoolRes = await axios.get(`http://localhost:3000/schools/${id}`, { headers });
+      const schoolRes = await axios.get(`https://crm-57qd.onrender.com/schools/${id}`, { headers });
       if (schoolRes.data) {
         setSchoolData({
           id: schoolRes.data.id, cityId: schoolRes.data.cityId, name: schoolRes.data.name || '',
@@ -2734,7 +2734,7 @@ export default function SchoolProfile() {
         setEditForm({ ...schoolRes.data, city: schoolRes.data.city?.name || '' });
       }
 
-      const eventsRes = await axios.get(`http://localhost:3000/events/school/${id}`, { headers });
+      const eventsRes = await axios.get(`https://crm-57qd.onrender.com/events/school/${id}`, { headers });
       setEvents(eventsRes.data);
       if (eventsRes.data.length > 0 && !selectedEventId) {
         setSelectedEventId(eventsRes.data[0].id);
@@ -2774,12 +2774,12 @@ export default function SchoolProfile() {
       if (commentModal.mode === 'pipeline' && commentModal.stepId) {
         const activeStage = PIPELINE_STAGES[currentStageIndex];
         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-        const res = await axios.patch(`http://localhost:3000/events/${currentEvent.id}/status`, {
+        const res = await axios.patch(`https://crm-57qd.onrender.com/events/${currentEvent.id}/status`, {
           status: nextStage.key, actionName: `Етап пройдено: ${activeStage.name}`, comment: commentModal.text
         }, { headers });
         setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? res.data : ev));
       } else if (commentModal.mode === 'history' && commentModal.historyId) {
-        await axios.patch(`http://localhost:3000/events/history/${commentModal.historyId}`, { comment: commentModal.text }, { headers });
+        await axios.patch(`https://crm-57qd.onrender.com/events/history/${commentModal.historyId}`, { comment: commentModal.text }, { headers });
         setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? { ...ev, history: ev.history.map((h: any) => h.id === commentModal.historyId ? { ...h, comment: commentModal.text } : h) } : ev));
       }
       setCommentModal({ isOpen: false, mode: 'pipeline', stepId: null, historyId: null, text: '' });
@@ -2790,7 +2790,7 @@ export default function SchoolProfile() {
     e.preventDefault();
     try {
       const payload = { ...eventForm, schoolId: schoolData.id, cityId: schoolData.cityId, childrenPlanned: Number(eventForm.childrenPlanned), price: Number(eventForm.price) };
-      const res = await axios.post('http://localhost:3000/events', payload, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      const res = await axios.post('https://crm-57qd.onrender.com/events', payload, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
       setIsEventModalOpen(false);
       setEvents(prev => [res.data, ...prev]);
       setSelectedEventId(res.data.id);
@@ -2800,7 +2800,7 @@ export default function SchoolProfile() {
   const handleSaveSchoolInfo = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.patch(`http://localhost:3000/schools/${id}`, editForm, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      await axios.patch(`https://crm-57qd.onrender.com/schools/${id}`, editForm, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
       setSchoolData(editForm);
       setIsEditModalOpen(false);
     } catch (e) { console.error(e); }
@@ -2909,7 +2909,7 @@ export default function Schools() {
   const fetchSchools = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3000/schools', {
+      const res = await axios.get('https://crm-57qd.onrender.com/schools', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setSchools(res.data);
@@ -2919,7 +2919,7 @@ export default function Schools() {
   const fetchCities = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3000/cities', {
+      const res = await axios.get('https://crm-57qd.onrender.com/cities', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setCities(res.data);
@@ -2942,7 +2942,7 @@ export default function Schools() {
     setIsSubmitting(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:3000/schools', form, {
+      await axios.post('https://crm-57qd.onrender.com/schools', form, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setIsModalOpen(false);
@@ -2959,7 +2959,7 @@ export default function Schools() {
     e.stopPropagation();
     if (!window.confirm(`Видалити заклад "${schoolName}"? Це видалить також усі його події.`)) return;
     try {
-      await axios.delete(`http://localhost:3000/schools/${schoolId}`, {
+      await axios.delete(`https://crm-57qd.onrender.com/schools/${schoolId}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
       setSchools(schools.filter(s => s.id !== schoolId));

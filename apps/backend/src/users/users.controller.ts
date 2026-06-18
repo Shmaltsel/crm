@@ -10,7 +10,7 @@ export class UsersController {
     return this.usersService.getAllUsers();
   }
 
-  // Шлях для генерації адміна: http://localhost:3000/users/seed
+  // Шлях для генерації адміна: https://crm-57qd.onrender.com/users/seed
   @Get('seed')
   seedAdmin() {
     return this.usersService.seedAdmin();

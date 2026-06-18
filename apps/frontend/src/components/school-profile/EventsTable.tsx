@@ -14,7 +14,7 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
     if (!window.confirm('Видалити цю подію?')) return;
     
     try {
-      await axios.delete(`http://localhost:3000/events/${id}`, {
+      await axios.delete(`https://crm-57qd.onrender.com/events/${id}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       onDeleteSuccess();

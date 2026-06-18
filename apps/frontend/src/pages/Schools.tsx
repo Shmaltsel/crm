@@ -31,7 +31,7 @@ export default function Schools() {
   const fetchSchools = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3000/schools', {
+      const res = await axios.get('https://crm-57qd.onrender.com/schools', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setSchools(res.data);
@@ -41,7 +41,7 @@ export default function Schools() {
   const fetchCities = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3000/cities', {
+      const res = await axios.get('https://crm-57qd.onrender.com/cities', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setCities(res.data);
@@ -64,7 +64,7 @@ export default function Schools() {
     setIsSubmitting(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:3000/schools', form, {
+      await axios.post('https://crm-57qd.onrender.com/schools', form, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setIsModalOpen(false);
@@ -81,7 +81,7 @@ export default function Schools() {
     e.stopPropagation();
     if (!window.confirm(`Видалити заклад "${schoolName}"? Це видалить також усі його події.`)) return;
     try {
-      await axios.delete(`http://localhost:3000/schools/${schoolId}`, {
+      await axios.delete(`https://crm-57qd.onrender.com/schools/${schoolId}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
       setSchools(schools.filter(s => s.id !== schoolId));

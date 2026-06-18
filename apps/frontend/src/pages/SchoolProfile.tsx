@@ -64,7 +64,7 @@ export default function SchoolProfile() {
       const headers = { Authorization: `Bearer ${token}` };
 
       // Завантажуємо школу
-      const schoolRes = await axios.get(`http://localhost:3000/schools/${id}`, { headers });
+      const schoolRes = await axios.get(`https://crm-57qd.onrender.com/schools/${id}`, { headers });
       if (schoolRes.data) {
         setSchoolData({
           id: schoolRes.data.id, cityId: schoolRes.data.cityId, name: schoolRes.data.name || '',
@@ -77,14 +77,14 @@ export default function SchoolProfile() {
       }
 
       // Завантажуємо події
-      const eventsRes = await axios.get(`http://localhost:3000/events/school/${id}`, { headers });
+      const eventsRes = await axios.get(`https://crm-57qd.onrender.com/events/school/${id}`, { headers });
       setEvents(eventsRes.data);
       if (eventsRes.data.length > 0 && !selectedEventId) {
         setSelectedEventId(eventsRes.data[0].id);
       }
 
       // Завантажуємо працівників для екіпажів
-      const empRes = await axios.get('http://localhost:3000/employees', { headers });
+      const empRes = await axios.get('https://crm-57qd.onrender.com/employees', { headers });
       setEmployees(empRes.data);
 
     } catch (error) {
@@ -122,12 +122,12 @@ export default function SchoolProfile() {
       if (commentModal.mode === 'pipeline' && commentModal.stepId) {
         const activeStage = PIPELINE_STAGES[currentStageIndex];
         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-        const res = await axios.patch(`http://localhost:3000/events/${currentEvent.id}/status`, {
+        const res = await axios.patch(`https://crm-57qd.onrender.com/events/${currentEvent.id}/status`, {
           status: nextStage.key, actionName: `Етап пройдено: ${activeStage.name}`, comment: commentModal.text
         }, { headers });
         setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? res.data : ev));
       } else if (commentModal.mode === 'history' && commentModal.historyId) {
-        await axios.patch(`http://localhost:3000/events/history/${commentModal.historyId}`, { comment: commentModal.text }, { headers });
+        await axios.patch(`https://crm-57qd.onrender.com/events/history/${commentModal.historyId}`, { comment: commentModal.text }, { headers });
         setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? { ...ev, history: ev.history.map((h: any) => h.id === commentModal.historyId ? { ...h, comment: commentModal.text } : h) } : ev));
       }
       setCommentModal({ isOpen: false, mode: 'pipeline', stepId: null, historyId: null, text: '' });
@@ -138,7 +138,7 @@ export default function SchoolProfile() {
     e.preventDefault();
     try {
       const payload = { ...eventForm, schoolId: schoolData.id, cityId: schoolData.cityId, childrenPlanned: Number(eventForm.childrenPlanned), price: Number(eventForm.price) };
-      const res = await axios.post('http://localhost:3000/events', payload, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      const res = await axios.post('https://crm-57qd.onrender.com/events', payload, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
       setIsEventModalOpen(false);
       setEvents(prev => [res.data, ...prev]);
       setSelectedEventId(res.data.id);
@@ -148,7 +148,7 @@ export default function SchoolProfile() {
   const handleSaveSchoolInfo = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.patch(`http://localhost:3000/schools/${id}`, editForm, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      await axios.patch(`https://crm-57qd.onrender.com/schools/${id}`, editForm, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
       setSchoolData(editForm);
       setIsEditModalOpen(false);
     } catch (e) { console.error(e); }
@@ -158,7 +158,7 @@ export default function SchoolProfile() {
     if (!currentEvent) return;
     try {
       const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
-      await axios.patch(`http://localhost:3000/events/${currentEvent.id}/preparation`, { field, status }, { headers });
+      await axios.patch(`https://crm-57qd.onrender.com/events/${currentEvent.id}/preparation`, { field, status }, { headers });
       
       // Оновлюємо стан миттєво для плавного UI
       setEvents(prev => prev.map(ev => {
@@ -177,7 +177,7 @@ export default function SchoolProfile() {
       const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
       
       // 1. Відправляємо запит на створення/прив'язку екіпажу до події
-      const res = await axios.post(`http://localhost:3000/events/${currentEvent.id}/assign-crew`, {
+      const res = await axios.post(`https://crm-57qd.onrender.com/events/${currentEvent.id}/assign-crew`, {
         hostId, 
         driverId, 
         cityId: schoolData.cityId

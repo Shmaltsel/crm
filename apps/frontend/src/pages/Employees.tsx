@@ -44,7 +44,7 @@ export default function Employees() {
 
   const fetchEmployees = async () => {
     try {
-      const res = await axios.get('http://localhost:3000/employees', { headers });
+      const res = await axios.get('https://crm-57qd.onrender.com/employees', { headers });
       setEmployees(res.data);
     } catch (e) {
       console.error(e);
@@ -79,9 +79,9 @@ export default function Employees() {
     setIsSubmitting(true);
     try {
       if (editingEmployee) {
-        await axios.patch(`http://localhost:3000/employees/${editingEmployee.id}`, form, { headers });
+        await axios.patch(`https://crm-57qd.onrender.com/employees/${editingEmployee.id}`, form, { headers });
       } else {
-        await axios.post('http://localhost:3000/employees', form, { headers });
+        await axios.post('https://crm-57qd.onrender.com/employees', form, { headers });
       }
       setIsModalOpen(false);
       fetchEmployees();
@@ -96,7 +96,7 @@ export default function Employees() {
   const handleDelete = async (id: string, name: string) => {
     if (!window.confirm(`Видалити працівника "${name}"?`)) return;
     try {
-      await axios.delete(`http://localhost:3000/employees/${id}`, { headers });
+      await axios.delete(`https://crm-57qd.onrender.com/employees/${id}`, { headers });
       setEmployees(employees.filter((e) => e.id !== id));
     } catch (e) {
       console.error(e);
