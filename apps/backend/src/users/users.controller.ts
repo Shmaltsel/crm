@@ -10,9 +10,15 @@ export class UsersController {
     return this.usersService.getAllUsers();
   }
 
-  // Шлях для генерації адміна: https://crm-57qd.onrender.com/users/seed
+  // Шлях для генерації адміна
   @Get('seed')
   seedAdmin() {
     return this.usersService.seedAdmin();
+  }
+
+  // Новий шлях для генерації Васі
+  @Get('seed-vasya')
+  seedVasya() {
+    return this.usersService.seedVasya();
   }
 }
