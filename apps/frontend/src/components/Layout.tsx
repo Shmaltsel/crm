@@ -1,5 +1,6 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { jwtDecode } from "jwt-decode";
 
 interface UserInfo {
   name: string;
@@ -20,7 +21,21 @@ export default function Layout() {
     }
   }, []);
 
-  const isSuperAdmin = user?.role === 'SUPERADMIN';
+
+// Отримуємо токен
+const token = localStorage.getItem('token');
+let isSuperAdmin = false;
+
+    if (token) {
+      try {
+        const decoded: any = jwtDecode(token);
+        // Переконайся, що назва поля 'role' збігається з тим, що лежить у токені
+        isSuperAdmin = decoded.role === 'SUPERADMIN';
+      } catch (error) {
+        console.error("Не вдалося розкодувати токен:", error);
+      }
+    }
+  
 
   const isActive = (path: string) => location.pathname.startsWith(path);
 
