@@ -2,10 +2,15 @@ const fs = require('fs');
 const path = require('path');
 
 const outputFile = 'project_code.txt';
-// Список папок, які ігноруємо
-const ignoreDirs = ['node_modules', '.git', 'dist', '.next', '.prisma'];
-// Розширення файлів, які збираємо
-const extensions = ['.ts', '.tsx', '.js', '.jsx', '.css', '.html', '.prisma'];
+
+// Додали 'build' для фронтенду
+const ignoreDirs = ['node_modules', '.git', 'dist', 'build', '.next', '.prisma'];
+
+// Додали '.json' для package.json та tsconfig.json
+const extensions = ['.ts', '.tsx', '.js', '.jsx', '.css', '.html', '.prisma', '.json'];
+
+// Ігноруємо лок-файли та сам файл результату
+const ignoreFiles = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', outputFile];
 
 function bundle(dir) {
   let content = '';
@@ -19,9 +24,12 @@ function bundle(dir) {
       if (!ignoreDirs.includes(file)) {
         content += bundle(fullPath);
       }
-    } else if (extensions.includes(path.extname(file))) {
-      content += `\n\n--- FILE: ${fullPath} ---\n\n`;
-      content += fs.readFileSync(fullPath, 'utf8');
+    } else {
+      // Перевіряємо розширення І переконуємося, що файлу немає в списку ігнору
+      if (extensions.includes(path.extname(file)) && !ignoreFiles.includes(file)) {
+        content += `\n\n--- FILE: ${fullPath} ---\n\n`;
+        content += fs.readFileSync(fullPath, 'utf8');
+      }
     }
   }
   return content;

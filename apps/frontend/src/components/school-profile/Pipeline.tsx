@@ -16,7 +16,7 @@ export default function Pipeline({ currentStageIndex, currentEvent, onPipelineCl
 
           return (
             <div key={step.id} className="flex flex-col items-center flex-1 z-10">
-              <button onClick={() => onPipelineClick(step.id)} disabled={!isActive || !currentEvent}
+              <button onClick={() => onPipelineClick(step.id)} disabled={!currentEvent || (!isActive && index !== currentStageIndex + 1)}
                 className={`w-8 h-8 rounded-full text-xs font-bold border-2 mb-2 transition-all 
                   ${isCompleted ? 'border-blue-600 text-blue-600 bg-white' : 
                     isActive ? 'border-blue-600 bg-blue-600 text-white shadow-md cursor-pointer hover:scale-110' : 

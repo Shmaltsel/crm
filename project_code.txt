@@ -1,5 +1,104 @@
 
 
+--- FILE: apps\backend\nest-cli.json ---
+
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "src",
+  "compilerOptions": {
+    "deleteOutDir": true
+  }
+}
+
+
+--- FILE: apps\backend\package.json ---
+
+{
+  "name": "backend",
+  "version": "0.0.1",
+  "description": "",
+  "author": "",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "nest build",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:debug": "nest start --debug --watch",
+    "start:prod": "node dist/main",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+    "test:e2e": "jest --config ./test/jest-e2e.json"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.1",
+    "@nestjs/core": "^11.0.1",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/passport": "^11.0.5",
+    "@nestjs/platform-express": "^11.0.1",
+    "@prisma/client": "6.19.0",
+    "axios": "^1.18.0",
+    "bcrypt": "^6.0.0",
+    "cheerio": "^1.2.0",
+    "dotenv": "^17.4.2",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.2.0",
+    "@eslint/js": "^9.18.0",
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.0.1",
+    "@types/bcrypt": "^6.0.0",
+    "@types/express": "^5.0.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.0.0",
+    "@types/passport-jwt": "^4.0.1",
+    "@types/supertest": "^7.0.0",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-prettier": "^5.2.2",
+    "globals": "^17.0.0",
+    "jest": "^30.0.0",
+    "prettier": "^3.4.2",
+    "prisma": "6.19.0",
+    "source-map-support": "^0.5.21",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.5",
+    "ts-loader": "^9.5.2",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
+    "coverageDirectory": "../coverage",
+    "testEnvironment": "node"
+  }
+}
+
+
 --- FILE: apps\backend\prisma\schema.prisma ---
 
 generator client {
@@ -15,19 +114,7 @@ datasource db {
 // Role: "SUPERADMIN", "ADMIN", "MANAGER", "HOST", "ACCOUNTANT"
 // EventStatus: "BASE", "FIRST_CONTACT", "INTERESTED", "PRE_APPROVAL", "DATE_CONFIRMED", "PREPARATION", "IN_PROGRESS", "DONE", "CANCELLED"
 
-model Employee {
-  id           String   @id @default(uuid())
-  fullName     String
-  phone        String
-  email        String
-  city         String
-  role         String 
-  createdAt    DateTime @default(now())
-  
-  // ДОДАЄМО ЗВ'ЯЗКИ З ЕКІПАЖЕМ СЮДИ
-  crewAsHost   Crew[]   @relation("HostCrew")
-  crewAsDriver Crew[]   @relation("DriverCrew")
-}
+
 
 model User {
   id            String   @id @default(uuid())
@@ -38,8 +125,11 @@ model User {
   role          String   @default("MANAGER") 
   cityId        String?
   city          City?    @relation(fields: [cityId], references: [id])
-  
-  // ВИДАЛЯЄМО ЗВ'ЯЗКИ З ЕКІПАЖЕМ ЗВІДСИ
+
+  // Додаємо зв'язки для екіпажів
+  crewAsHost   Crew[]   @relation("HostCrew")
+  crewAsDriver Crew[]   @relation("DriverCrew")
+
   managedCities City[]   @relation("CityManager")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -82,17 +172,17 @@ model Crew {
   cityId    String
   city      City     @relation(fields: [cityId], references: [id])
   hostId    String?
-  // ЗМІНЮЄМО User НА Employee
-  host      Employee? @relation("HostCrew", fields: [hostId], references: [id])
+  host      User?    @relation("HostCrew", fields: [hostId], references: [id])
   driverId  String?
-  // ЗМІНЮЄМО User НА Employee
-  driver    Employee? @relation("DriverCrew", fields: [driverId], references: [id])
+  driver    User?    @relation("DriverCrew", fields: [driverId], references: [id])
   car       String?
   carPlate  String?
   phone     String?
   isActive  Boolean  @default(true)
   events    Event[]
   createdAt DateTime @default(now())
+
+ 
 }
 
 model Event {
@@ -130,7 +220,9 @@ model Event {
 model EventReport {
   id                String   @id @default(uuid())
   eventId           String   @unique
-  event             Event    @relation(fields: [eventId], references: [id])
+  event             Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  // Твої існуючі поля
   directorSatisfied Boolean?
   teachersSatisfied Boolean?
   hadIssues         Boolean  @default(false)
@@ -138,6 +230,18 @@ model EventReport {
   rating            Float?
   photos            File[]
   createdAt         DateTime @default(now())
+
+  // Нові фінансові та статистичні поля
+  announcementDone  Boolean  @default(false)
+  materialShown     Boolean  @default(false)
+  childrenCount     Int      @default(0)
+  classesCount      Int      @default(0)
+  privilegedCount   Int      @default(0)
+  showingsCount     Int      @default(0)
+  totalSum          Float    @default(0)
+  schoolSum         Float    @default(0)
+  expenses          Json     @default("[]") // Список витрат
+  remainderSum      Float    @default(0)
 }
 
 model File {
@@ -175,6 +279,7 @@ model EventPreparation {
   prepareMaterials String @default("Заплановано")
   remindSchool    String @default("Заплановано")
 }
+
 
 --- FILE: apps\backend\src\app.controller.spec.ts ---
 
@@ -229,8 +334,7 @@ import { AuthModule } from './auth/auth.module';
 import { EventsModule } from './events/events.module';
 import { CitiesModule } from './cities/cities.module';
 import { SchoolsModule } from './schools/schools.module';
-import { EmployeesModule } from './employees/employees.module';
- 
+
 @Module({
   imports: [
     PrismaModule,
@@ -239,12 +343,12 @@ import { EmployeesModule } from './employees/employees.module';
     EventsModule,
     CitiesModule,
     SchoolsModule,
-    EmployeesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
+
 
 --- FILE: apps\backend\src\app.service.ts ---
 
@@ -296,6 +400,41 @@ export class AuthController {
   }
 }
 
+
+--- FILE: apps\backend\src\auth\auth.guard.ts ---
+
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { Request } from 'express';
+
+@Injectable()
+export class AuthGuard implements CanActivate {
+  constructor(private jwtService: JwtService) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest();
+    const token = this.extractTokenFromHeader(request);
+    
+    if (!token) throw new UnauthorizedException('Токен не знайдено');
+
+    try {
+      // Розшифровуємо токен
+      const payload = await this.jwtService.verifyAsync(token, {
+        secret: process.env.JWT_SECRET || 'super-secret-key-for-dev',
+      });
+      // Чіпляємо розшифровані дані до запиту
+      request['user'] = payload;
+    } catch {
+      throw new UnauthorizedException('Недійсний токен');
+    }
+    return true;
+  }
+
+  private extractTokenFromHeader(request: Request): string | undefined {
+    const [type, token] = request.headers.authorization?.split(' ') ?? [];
+    return type === 'Bearer' ? token : undefined;
+  }
+}
 
 --- FILE: apps\backend\src\auth\auth.module.ts ---
 
@@ -373,7 +512,11 @@ export class AuthService {
     }
 
     // Генеруємо "корисне навантаження" для токена
-    const payload = { sub: user.id, email: user.email, role: user.role };
+    // Було:
+// const payload = { sub: user.id, email: user.email, role: user.role };
+
+// Стало:
+    const payload = { sub: user.id, email: user.email, role: user.role, name: user.name };
 
     return {
       access_token: await this.jwtService.signAsync(payload),
@@ -492,80 +635,6 @@ export class CitiesService {
 }
 
 
---- FILE: apps\backend\src\employees\employees.controller.ts ---
-
-import { Controller, Get, Post, Body, Patch, Delete, Param } from '@nestjs/common';
-import { EmployeesService } from './employees.service';
-
-@Controller('employees')
-export class EmployeesController {
-  constructor(private readonly employeesService: EmployeesService) {}
-
-  @Post()
-  create(@Body() body: { fullName: string; phone: string; email: string; city: string; role: string }) {
-    return this.employeesService.create(body);
-  }
-
-  @Get()
-  findAll() {
-    return this.employeesService.findAll();
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() body: any) {
-    return this.employeesService.update(id, body);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.employeesService.remove(id);
-  }
-}
-
-
---- FILE: apps\backend\src\employees\employees.module.ts ---
-
-import { Module } from '@nestjs/common';
-import { EmployeesService } from './employees.service';
-import { EmployeesController } from './employees.controller';
-
-@Module({
-  providers: [EmployeesService],
-  controllers: [EmployeesController],
-})
-export class EmployeesModule {}
-
-
---- FILE: apps\backend\src\employees\employees.service.ts ---
-
-import { Injectable } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
-@Injectable()
-export class EmployeesService {
-  async create(data: { fullName: string; phone: string; email: string; city: string; role: string }) {
-  return prisma.employee.create({ data });
-  }
-
-  async findAll() {
-    return prisma.employee.findMany({
-      orderBy: [{ role: 'asc' }, { fullName: 'asc' }],
-    });
-  }
-
-  async update(id: string, data: any) {
-    const { id: _id, createdAt, ...updateData } = data;
-    return prisma.employee.update({ where: { id }, data: updateData });
-  }
-
-  async remove(id: string) {
-    return prisma.employee.delete({ where: { id } });
-  }
-}
-
-
 --- FILE: apps\backend\src\events\events.controller.spec.ts ---
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -591,16 +660,18 @@ describe('EventsController', () => {
 
 --- FILE: apps\backend\src\events\events.controller.ts ---
 
-import { Controller, Get, Post, Body, Param, Patch, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Delete, UseGuards, Request } from '@nestjs/common';
 import { EventsService } from './events.service';
+import { AuthGuard } from '../auth/auth.guard'; // Додаємо імпорт
 
 @Controller('events')
+@UseGuards(AuthGuard) // Захищаємо всі маршрути подій і читаємо токен
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
   @Post()
-  create(@Body() body: any) {
-    return this.eventsService.create(body);
+  create(@Body() body: any, @Request() req) {
+    return this.eventsService.create(body, req.user); // Передаємо req.user
   }
 
   @Get('school/:schoolId')
@@ -609,8 +680,8 @@ export class EventsController {
   }
 
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body() body: { status: string, actionName: string, comment?: string }) {
-    return this.eventsService.updateStatus(id, body.status, body.actionName, body.comment);
+  updateStatus(@Param('id') id: string, @Body() body: { status: string, actionName: string, comment?: string }, @Request() req) {
+    return this.eventsService.updateStatus(id, body.status, body.actionName, body.comment, req.user); // Передаємо req.user
   }
 
   @Patch(':id/preparation')
@@ -633,7 +704,13 @@ export class EventsController {
   remove(@Param('id') id: string) {
     return this.eventsService.remove(id);
   }
-  
+
+  @Post(':id/report')
+    @UseGuards(AuthGuard)
+    submitReport(@Param('id') id: string, @Body() body: any, @Request() req) {
+      return this.eventsService.submitReport(id, body, req.user);
+    }
+      
 
 }
 
@@ -679,12 +756,16 @@ describe('EventsService', () => {
 
 import { Injectable } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 
 const prisma = new PrismaClient();
 
 @Injectable()
 export class EventsService {
-  async create(data: any) {
+
+  constructor(private prisma: PrismaService) {}
+  // Оновлюємо метод create
+  async create(data: any, user: any) {
     return prisma.event.create({
       data: {
         ...data,
@@ -693,13 +774,33 @@ export class EventsService {
         history: {
           create: {
             action: 'Створено подію. Етап: База',
-            userId: 'superadmin-123',
-            userName: 'Андрій (Суперадмін)',
-            role: 'SUPERADMIN'
+            userId: user.sub,      // Беремо ID з токена
+            userName: user.name,   // Беремо ім'я з токена
+            role: user.role        // Беремо роль з токена
           }
         }
       },
       include: { history: true }
+    });
+  }
+
+  // Оновлюємо метод updateStatus
+  async updateStatus(eventId: string, newStatus: string, actionName: string, comment: string | undefined, user: any) {
+    return prisma.event.update({
+      where: { id: eventId },
+      data: {
+        status: newStatus,
+        history: {
+          create: {
+            action: actionName,
+            comment: comment || null,
+            userId: user.sub,      // Більше ніяких 'superadmin-123'!
+            userName: user.name,
+            role: user.role
+          }
+        }
+      },
+      include: { crew: true, history: { orderBy: { createdAt: 'desc' } } }
     });
   }
 
@@ -753,25 +854,6 @@ export class EventsService {
     });
   }
 
-  async updateStatus(eventId: string, newStatus: string, actionName: string, comment?: string) {
-    return prisma.event.update({
-      where: { id: eventId },
-      data: {
-        status: newStatus,
-        history: {
-          create: {
-            action: actionName,
-            comment: comment || null,
-            userId: 'superadmin-123',
-            userName: 'Андрій (Суперадмін)',
-            role: 'SUPERADMIN'
-          }
-        }
-      },
-      include: { crew: true, history: { orderBy: { createdAt: 'desc' } } }
-    });
-  }
-
   async updateHistoryComment(historyId: string, comment: string) {
     return prisma.eventHistory.update({
       where: { id: historyId },
@@ -796,7 +878,49 @@ export class EventsService {
       where: { id },
     });
   }
+
+ async submitReport(eventId: string, reportData: any, user: any) {
+  // Використовуємо this.prisma
+  const report = await this.prisma.eventReport.upsert({
+    where: { eventId },
+    update: {
+      announcementDone: reportData.announcementDone,
+      materialShown: reportData.materialShown,
+      childrenCount: reportData.childrenCount,
+      classesCount: reportData.classesCount,
+      privilegedCount: reportData.privilegedCount,
+      showingsCount: reportData.showingsCount,
+      totalSum: reportData.totalSum,
+      schoolSum: reportData.schoolSum,
+      expenses: reportData.expenses,
+      remainderSum: reportData.remainderSum,
+      rating: reportData.rating,
+    },
+    create: {
+      eventId,
+      ...reportData
+    }
+  });
+
+  // Оновлюємо статус події через this.prisma
+  return this.prisma.event.update({
+    where: { id: eventId },
+    data: {
+      status: 'DONE',
+      history: {
+        create: {
+          action: 'Сформовано звіт. Етап пройдено: Проведено',
+          userId: user.sub,
+          userName: user.name,
+          role: user.role
+        }
+      }
+    },
+   include: { report: true, history: { orderBy: { createdAt: 'desc' } } }
+  });
 }
+}
+
 
 --- FILE: apps\backend\src\main.ts ---
 
@@ -1242,7 +1366,7 @@ describe('UsersController', () => {
 
 --- FILE: apps\backend\src\users\users.controller.ts ---
 
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { UsersService } from './users.service';
 
 @Controller('users')
@@ -1254,18 +1378,32 @@ export class UsersController {
     return this.usersService.getAllUsers();
   }
 
-  // Шлях для генерації адміна
+  @Post()
+  create(@Body() body: any) {
+    return this.usersService.createUser(body);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() body: any) {
+    return this.usersService.updateUser(id, body);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.usersService.deleteUser(id);
+  }
+
   @Get('seed')
   seedAdmin() {
     return this.usersService.seedAdmin();
   }
 
-  // Новий шлях для генерації Васі
   @Get('seed-vasya')
   seedVasya() {
     return this.usersService.seedVasya();
   }
 }
+
 
 --- FILE: apps\backend\src\users\users.module.ts ---
 
@@ -1314,7 +1452,46 @@ export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   async getAllUsers() {
-    return this.prisma.user.findMany();
+    return this.prisma.user.findMany({
+      include: {
+        city: true, // <--- Ось цей магічний рядок підтягне назву міста!
+      },
+    });
+  }
+
+  async createUser(data: any) {
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+    return this.prisma.user.create({
+      data: {
+        name: data.fullName,
+        email: data.email,
+        phone: data.phone,
+        password: hashedPassword,
+        role: data.role,
+        cityId: data.cityId || null,
+      },
+    });
+  }
+
+  async updateUser(id: string, data: any) {
+    const updateData: any = {
+      name: data.fullName,
+      email: data.email,
+      phone: data.phone,
+      role: data.role,
+      cityId: data.cityId || null,
+    };
+    
+    // Якщо передано новий пароль, хешуємо його
+    if (data.password) {
+      updateData.password = await bcrypt.hash(data.password, 10);
+    }
+
+    return this.prisma.user.update({ where: { id }, data: updateData });
+  }
+
+  async deleteUser(id: string) {
+    return this.prisma.user.delete({ where: { id } });
   }
 
   // Створення адміністратора
@@ -1398,6 +1575,56 @@ describe('AppController (e2e)', () => {
 });
 
 
+--- FILE: apps\backend\test\jest-e2e.json ---
+
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  }
+}
+
+
+--- FILE: apps\backend\tsconfig.build.json ---
+
+{
+  "extends": "./tsconfig.json",
+  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
+}
+
+
+--- FILE: apps\backend\tsconfig.json ---
+
+{
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "resolvePackageJsonExports": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2023",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "noFallthroughCasesInSwitch": false
+  }
+}
+
+
 --- FILE: apps\frontend\eslint.config.js ---
 
 import js from '@eslint/js'
@@ -1439,6 +1666,53 @@ export default defineConfig([
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+
+--- FILE: apps\frontend\package.json ---
+
+{
+  "name": "frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.4.0",
+    "@tanstack/react-query": "^5.101.0",
+    "axios": "^1.18.0",
+    "jwt-decode": "^4.0.0",
+    "lucide-react": "^1.20.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-hook-form": "^7.79.0",
+    "react-router-dom": "^7.18.0",
+    "recharts": "^3.8.1",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.12.3",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "autoprefixer": "^10.5.0",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "postcss": "^8.5.15",
+    "tailwindcss": "^3.4.19",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.59.2",
+    "vite": "^8.0.12"
+  }
+}
+
 
 --- FILE: apps\frontend\postcss.config.js ---
 
@@ -2315,6 +2589,321 @@ export default function EventModal({ isOpen, onClose, eventForm, setEventForm, o
   );
 }
 
+--- FILE: apps\frontend\src\components\school-profile\modals\ReportModal.tsx ---
+
+import React, { useState } from 'react';
+
+interface Expense {
+  name: string;
+  amount: number;
+}
+
+interface ReportModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (data: any) => void;
+  schoolName: string;
+  eventType?: string;
+  eventDate?: string;
+  eventIndex?: number; // який це за рахунком захід у цьому закладі
+}
+
+const WEEKDAY_FMT = new Intl.DateTimeFormat('uk-UA', { weekday: 'long' });
+const DATE_FMT = new Intl.DateTimeFormat('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' });
+
+function formatDate(dateStr?: string) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return '—';
+  return `${DATE_FMT.format(d)} ${WEEKDAY_FMT.format(d)}`;
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat('uk-UA').format(Math.round(value || 0));
+}
+
+/* ---------- мінімальні inline-іконки, без зовнішніх залежностей ---------- */
+const Icon = {
+  Check: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    </svg>
+  ),
+  Users: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  ),
+  Wallet: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1" /><path d="M16 12h6v4h-6a2 2 0 1 1 0-4z" />
+    </svg>
+  ),
+  Star: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  ),
+};
+
+function IconBadge({ color, children }: { color: string; children: React.ReactNode }) {
+  return (
+    <span className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center ${color}`}>
+      {children}
+    </span>
+  );
+}
+
+function CardHeader({ icon, color, title }: { icon: React.ReactNode; color: string; title: string }) {
+  return (
+    <div className="flex items-center gap-2.5 mb-4">
+      <IconBadge color={color}>{icon}</IconBadge>
+      <h4 className="text-sm font-bold text-slate-800">{title}</h4>
+    </div>
+  );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+      <span className="text-sm text-slate-500">{label}</span>
+      <div className="text-sm font-medium text-slate-800">{children}</div>
+    </div>
+  );
+}
+
+function TogglePill({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div className="flex gap-1.5">
+      <button
+        type="button"
+        onClick={() => onChange(true)}
+        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${value ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+      >
+        Так
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange(false)}
+        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${!value ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+      >
+        Ні
+      </button>
+    </div>
+  );
+}
+
+function NumberField({ value, onChange, suffix }: { value: number; onChange: (v: number) => void; suffix?: string }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <input
+        type="number" min={0}
+        value={value || ''}
+        onChange={e => onChange(+e.target.value)}
+        className="w-16 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1 -mr-1"
+        placeholder="0"
+      />
+      {suffix && <span className="text-slate-400 text-xs">{suffix}</span>}
+    </span>
+  );
+}
+
+export default function ReportModal({
+  isOpen, onClose, onSave, schoolName, eventType, eventDate, eventIndex,
+}: ReportModalProps) {
+  const [form, setForm] = useState({
+    announcementDone: true,
+    materialShown: true,
+    childrenCount: 0,
+    classesCount: 0,
+    privilegedCount: 0,
+    showingsCount: 0,
+    totalSum: 0,
+    rating: 8,
+  });
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [newExp, setNewExp] = useState({ name: '', amount: '' });
+
+  if (!isOpen) return null;
+
+  const schoolSum = form.totalSum * 0.2;
+  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+  const remainder = form.totalSum - schoolSum - totalExpenses;
+
+  const addExpense = () => {
+    const amount = Number(newExp.amount);
+    if (!newExp.name.trim() || !amount) return;
+    setExpenses(prev => [...prev, { name: newExp.name.trim(), amount }]);
+    setNewExp({ name: '', amount: '' });
+  };
+
+  const removeExpense = (index: number) => {
+    setExpenses(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSave = () => {
+    onSave({ ...form, expenses, schoolSum, remainderSum: remainder });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden">
+
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 flex items-start justify-between shrink-0">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-xs font-semibold tracking-wide text-blue-600 uppercase">
+                {eventType || 'Подія'}
+              </span>
+              <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                {formatDate(eventDate)}
+              </span>
+            </div>
+            <h3 className="text-xl font-bold text-slate-800 leading-tight">Звіт по події</h3>
+            <p className="text-sm text-slate-500 mt-0.5">
+              {schoolName}{eventIndex ? <span className="text-slate-400"> · подія №{eventIndex}</span> : null}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 overflow-y-auto bg-slate-50/50">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            {/* Проведено */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+              <CardHeader icon={<Icon.Check />} color="bg-blue-50 text-blue-600" title="Проведено" />
+              <Row label="Оголошення про проєкт">
+                <TogglePill value={form.announcementDone} onChange={v => setForm({ ...form, announcementDone: v })} />
+              </Row>
+              <Row label="Показ матеріалу">
+                <TogglePill value={form.materialShown} onChange={v => setForm({ ...form, materialShown: v })} />
+              </Row>
+            </div>
+
+            {/* Охоплення */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+              <CardHeader icon={<Icon.Users />} color="bg-violet-50 text-violet-600" title="Охоплення" />
+              <Row label="Кількість дітей">
+                <NumberField value={form.childrenCount} onChange={v => setForm({ ...form, childrenCount: v })} suffix="дітей" />
+              </Row>
+              <Row label="Класів">
+                <NumberField value={form.classesCount} onChange={v => setForm({ ...form, classesCount: v })} suffix="кл." />
+              </Row>
+              <Row label="Пільгових дітей">
+                <NumberField value={form.privilegedCount} onChange={v => setForm({ ...form, privilegedCount: v })} />
+              </Row>
+              <Row label="Кількість показів">
+                <NumberField value={form.showingsCount} onChange={v => setForm({ ...form, showingsCount: v })} />
+              </Row>
+            </div>
+
+            {/* Фінансовий результат */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 md:col-span-2">
+              <CardHeader icon={<Icon.Wallet />} color="bg-amber-50 text-amber-600" title="Фінансовий результат" />
+
+              <div className="flex items-center justify-between py-2 border-b border-slate-50">
+                <span className="text-sm text-slate-500">Загальна сума</span>
+                <span className="inline-flex items-center gap-1">
+                  <input
+                    type="number" min={0}
+                    value={form.totalSum || ''}
+                    onChange={e => setForm({ ...form, totalSum: +e.target.value })}
+                    className="w-28 text-right bg-transparent outline-none font-bold text-lg text-slate-800 focus:bg-blue-50 rounded px-1"
+                    placeholder="0"
+                  />
+                  <span className="text-slate-400 text-sm">грн</span>
+                </span>
+              </div>
+
+              <Row label="На заклад (20%)">
+                <span>{formatMoney(schoolSum)} грн</span>
+              </Row>
+
+              <div className="py-2 border-b border-slate-50">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-slate-500">Додаткові витрати</span>
+                  <span className="text-sm font-medium text-rose-500">−{formatMoney(totalExpenses)} грн</span>
+                </div>
+
+                {expenses.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {expenses.map((exp, i) => (
+                      <span key={i} className="inline-flex items-center gap-1.5 bg-slate-100 rounded-full pl-3 pr-1.5 py-1 text-xs">
+                        <span className="text-slate-600">{exp.name}</span>
+                        <span className="font-semibold text-slate-700">{formatMoney(exp.amount)} грн</span>
+                        <button onClick={() => removeExpense(i)} className="text-slate-400 hover:text-rose-500 w-4 h-4 rounded-full flex items-center justify-center hover:bg-white">✕</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <input
+                    placeholder="Назва витрати"
+                    value={newExp.name}
+                    onChange={e => setNewExp({ ...newExp, name: e.target.value })}
+                    className="flex-1 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                  <input
+                    type="number" min={0}
+                    placeholder="грн"
+                    value={newExp.amount}
+                    onChange={e => setNewExp({ ...newExp, amount: e.target.value })}
+                    className="w-24 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                  <button
+                    onClick={addExpense}
+                    type="button"
+                    className="px-3 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium text-sm"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between bg-emerald-50 rounded-xl px-4 py-3 mt-3">
+                <span className="text-sm font-semibold text-emerald-700">Залишок (80%)</span>
+                <span className="text-lg font-bold text-emerald-700">{formatMoney(remainder)} грн</span>
+              </div>
+            </div>
+
+            {/* Оцінка */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 md:col-span-2">
+              <CardHeader icon={<Icon.Star />} color="bg-rose-50 text-rose-500" title="Оцінка по закладу" />
+              <div className="flex items-center gap-4">
+                <input
+                  type="range" min={1} max={10} step={1}
+                  value={form.rating}
+                  onChange={e => setForm({ ...form, rating: +e.target.value })}
+                  className="flex-1 accent-blue-600"
+                />
+                <span className="w-10 h-10 flex items-center justify-center rounded-full bg-blue-600 text-white font-bold text-sm shrink-0">
+                  {form.rating}
+                </span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-white shrink-0">
+          <button onClick={onClose} className="px-5 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium">
+            Скасувати
+          </button>
+          <button onClick={handleSave} className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-blue-700">
+            Зберегти звіт
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 --- FILE: apps\frontend\src\components\school-profile\Pipeline.tsx ---
 
 interface PipelineProps {
@@ -2335,7 +2924,7 @@ export default function Pipeline({ currentStageIndex, currentEvent, onPipelineCl
 
           return (
             <div key={step.id} className="flex flex-col items-center flex-1 z-10">
-              <button onClick={() => onPipelineClick(step.id)} disabled={!isActive || !currentEvent}
+              <button onClick={() => onPipelineClick(step.id)} disabled={!currentEvent || (!isActive && index !== currentStageIndex + 1)}
                 className={`w-8 h-8 rounded-full text-xs font-bold border-2 mb-2 transition-all 
                   ${isCompleted ? 'border-blue-600 text-blue-600 bg-white' : 
                     isActive ? 'border-blue-600 bg-blue-600 text-white shadow-md cursor-pointer hover:scale-110' : 
@@ -2545,12 +3134,18 @@ import axios from 'axios';
 
 type Role = 'MANAGER' | 'DRIVER' | 'HOST';
 
-interface Employee {
+interface City {
   id: string;
-  fullName: string;
-  phone: string;
+  name: string;
+}
+
+interface User {
+  id: string;
+  name: string;
+  phone: string | null;
   email: string;
-  city: string;
+  cityId: string | null;
+  city?: City; // Отримуємо з бекенду
   role: Role;
 }
 
@@ -2572,46 +3167,61 @@ const ROLE_HEADER_COLORS: Record<Role, string> = {
   HOST: 'bg-violet-600',
 };
 
-const EMPTY_FORM = { fullName: '', phone: '', email: '', city: '', role: 'MANAGER' as Role };
+const EMPTY_FORM = { fullName: '', phone: '', email: '', cityId: '', role: 'MANAGER' as Role, password: '' };
+
+// ТИМЧАСОВО ДЛЯ ЛОКАЛЬНИХ ТЕСТІВ. ПОТІМ ЗМІНИ НА 'https://crm-57qd.onrender.com'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export default function Employees() {
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const token = localStorage.getItem('token');
   const headers = { Authorization: `Bearer ${token}` };
 
-  const fetchEmployees = async () => {
+  const fetchData = async () => {
     try {
-      const res = await axios.get('https://crm-57qd.onrender.com/employees', { headers });
-      setEmployees(res.data);
+      const [usersRes, citiesRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/users`, { headers }),
+        axios.get(`${API_BASE_URL}/cities`, { headers })
+      ]);
+      setUsers(usersRes.data);
+      setCities(citiesRes.data);
     } catch (e) {
-      console.error(e);
+      console.error('Помилка завантаження даних:', e);
     }
   };
 
   useEffect(() => {
-    fetchEmployees();
+    fetchData();
   }, []);
 
   const grouped = (['MANAGER', 'DRIVER', 'HOST'] as Role[]).map((role) => ({
     role,
     label: ROLE_LABELS[role],
-    items: employees.filter((e) => e.role === role),
+    items: users.filter((u) => u.role === role),
   }));
 
   const handleOpenAdd = () => {
-    setEditingEmployee(null);
+    setEditingUser(null);
     setForm({ ...EMPTY_FORM });
     setIsModalOpen(true);
   };
 
-  const handleOpenEdit = (emp: Employee) => {
-    setEditingEmployee(emp);
-    setForm({ fullName: emp.fullName, phone: emp.phone, email: emp.email, city: emp.city, role: emp.role });
+  const handleOpenEdit = (user: User) => {
+    setEditingUser(user);
+    setForm({ 
+      fullName: user.name, // У формі ми залишили fullName для сумісності з бекендом
+      phone: user.phone || '', 
+      email: user.email, 
+      cityId: user.cityId || '', 
+      role: user.role,
+      password: '' // Пароль залишаємо порожнім при редагуванні
+    });
     setIsModalOpen(true);
   };
 
@@ -2620,28 +3230,29 @@ export default function Employees() {
     if (!form.fullName.trim()) return;
     setIsSubmitting(true);
     try {
-      if (editingEmployee) {
-        await axios.patch(`https://crm-57qd.onrender.com/employees/${editingEmployee.id}`, form, { headers });
+      if (editingUser) {
+        await axios.patch(`${API_BASE_URL}/users/${editingUser.id}`, form, { headers });
       } else {
-        await axios.post('https://crm-57qd.onrender.com/employees', form, { headers });
+        await axios.post(`${API_BASE_URL}/users`, form, { headers });
       }
       setIsModalOpen(false);
-      fetchEmployees();
+      fetchData();
     } catch (e) {
       console.error(e);
-      alert('Помилка збереження');
+      alert('Помилка збереження. Перевірте, чи не дублюється email.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Видалити працівника "${name}"?`)) return;
+    if (!window.confirm(`Видалити користувача "${name}"?`)) return;
     try {
-      await axios.delete(`https://crm-57qd.onrender.com/employees/${id}`, { headers });
-      setEmployees(employees.filter((e) => e.id !== id));
+      await axios.delete(`${API_BASE_URL}/users/${id}`, { headers });
+      setUsers(users.filter((u) => u.id !== id));
     } catch (e) {
       console.error(e);
+      alert('Помилка видалення');
     }
   };
 
@@ -2650,14 +3261,14 @@ export default function Employees() {
       {/* Заголовок */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Працівники</h1>
-          <p className="text-sm text-slate-400 mt-1">Менеджери, водії та ведучі компанії</p>
+          <h1 className="text-2xl font-bold text-slate-800">Акаунти та Працівники</h1>
+          <p className="text-sm text-slate-400 mt-1">Керування доступами, менеджерами, водіями та ведучими</p>
         </div>
         <button
           onClick={handleOpenAdd}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
         >
-          + Додати працівника
+          + Створити користувача
         </button>
       </div>
 
@@ -2665,7 +3276,6 @@ export default function Employees() {
       <div className="space-y-8">
         {grouped.map(({ role, label, items }) => (
           <div key={role}>
-            {/* Заголовок категорії */}
             <div className={`flex items-center gap-3 mb-4`}>
               <div className={`w-1 h-6 rounded-full ${ROLE_HEADER_COLORS[role]}`}></div>
               <h2 className="text-lg font-bold text-slate-700">{label}</h2>
@@ -2685,43 +3295,43 @@ export default function Employees() {
                     <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       <th className="px-5 py-3">ПІБ</th>
                       <th className="px-5 py-3">Телефон</th>
-                      <th className="px-5 py-3">Пошта</th>
+                      <th className="px-5 py-3">Пошта / Логін</th>
                       <th className="px-5 py-3">Місто</th>
                       <th className="px-5 py-3 text-center">Дії</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((emp) => (
+                    {items.map((u) => (
                       <tr
-                        key={emp.id}
+                        key={u.id}
                         className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
                       >
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}>
-                              {emp.fullName.charAt(0)}
+                              {u.name.charAt(0)}
                             </div>
-                            <span className="font-medium text-slate-800">{emp.fullName}</span>
+                            <span className="font-medium text-slate-800">{u.name}</span>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-slate-600 text-sm">{emp.phone || '—'}</td>
-                        <td className="px-5 py-4 text-slate-600 text-sm">{emp.email || '—'}</td>
+                        <td className="px-5 py-4 text-slate-600 text-sm">{u.phone || '—'}</td>
+                        <td className="px-5 py-4 text-slate-600 text-sm font-medium">{u.email}</td>
                         <td className="px-5 py-4">
                           <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
-                            📍 {emp.city || '—'}
+                            📍 {u.city?.name || 'Всі міста'}
                           </span>
                         </td>
                         <td className="px-5 py-4 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <button
-                              onClick={() => handleOpenEdit(emp)}
+                              onClick={() => handleOpenEdit(u)}
                               className="text-slate-400 hover:text-blue-500 transition-colors p-1.5 rounded-lg hover:bg-blue-50"
                               title="Редагувати"
                             >
                               ✏️
                             </button>
                             <button
-                              onClick={() => handleDelete(emp.id, emp.fullName)}
+                              onClick={() => handleDelete(u.id, u.name)}
                               className="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50"
                               title="Видалити"
                             >
@@ -2745,7 +3355,7 @@ export default function Employees() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h3 className="text-xl font-bold text-slate-800">
-                {editingEmployee ? 'Редагувати працівника' : 'Новий працівник'}
+                {editingUser ? 'Редагувати користувача' : 'Новий користувач'}
               </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
             </div>
@@ -2761,64 +3371,83 @@ export default function Employees() {
                   className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">Категорія *</label>
-                <select
-                  value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
-                  className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                >
-                  <option value="MANAGER">Менеджер</option>
-                  <option value="DRIVER">Водій</option>
-                  <option value="HOST">Ведучий</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Пошта (Логін) *</label>
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    required
+                    placeholder="ivan@example.com"
+                    className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">
+                    Пароль {editingUser ? '(необов\'язково)' : '*'}
+                  </label>
+                  <input
+                    type="password"
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    required={!editingUser} // Обов'язковий тільки при створенні
+                    placeholder="••••••••"
+                    className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Телефон</label>
-                  <input
-                    type="text"
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    placeholder="+380..."
-                    className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                  />
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Роль *</label>
+                  <select
+                    value={form.role}
+                    onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
+                    className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 bg-white"
+                  >
+                    <option value="MANAGER">Менеджер</option>
+                    <option value="DRIVER">Водій</option>
+                    <option value="HOST">Ведучий</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-1">Місто</label>
-                  <input
-                    type="text"
-                    value={form.city}
-                    onChange={(e) => setForm({ ...form, city: e.target.value })}
-                    placeholder="Львів"
-                    className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                  />
+                  <select
+                    value={form.cityId}
+                    onChange={(e) => setForm({ ...form, cityId: e.target.value })}
+                    className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 bg-white"
+                  >
+                    <option value="">— Без прив'язки до міста —</option>
+                    {cities.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">Пошта</label>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Телефон</label>
                 <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="ivan@example.com"
+                  type="text"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="+380..."
                   className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 />
               </div>
-              <div className="flex justify-end gap-3 mt-2">
+              <div className="flex justify-end gap-3 mt-4">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 bg-slate-100 rounded-lg text-sm font-medium hover:bg-slate-200"
+                  className="px-5 py-2.5 bg-slate-100 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"
                 >
                   Скасувати
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
-                  {isSubmitting ? 'Збереження...' : editingEmployee ? 'Зберегти' : 'Створити'}
+                  {isSubmitting ? 'Збереження...' : editingUser ? 'Зберегти зміни' : 'Створити акаунт'}
                 </button>
               </div>
             </form>
@@ -2828,7 +3457,6 @@ export default function Employees() {
     </div>
   );
 }
-
 
 --- FILE: apps\frontend\src\pages\Events.tsx ---
 
@@ -2888,6 +3516,7 @@ export default function Login() {
     setError('');
 
     try {
+      // ЗМІНЕНО: тепер стукаємо на локальний оновлений бекенд!
       const response = await axios.post('https://crm-57qd.onrender.com/auth/login', {
         email,
         password,
@@ -2965,6 +3594,7 @@ import EventDetails from '../components/school-profile/EventDetails';
 import EventsTable from '../components/school-profile/EventsTable';
 import EventPreparation from '../components/school-profile/EventPreparation';
 import AssignedCrew from '../components/school-profile/AssignedCrew';
+import ReportModal from '../components/school-profile/modals/ReportModal';
 
 // Імпортуємо модальні вікна
 import EditSchoolModal from '../components/school-profile/modals/EditSchoolModal';
@@ -2985,11 +3615,14 @@ const PIPELINE_STAGES = [
   { id: 10, key: 'RE_SALE', name: 'Повторний продаж' },
 ];
 
+// ДОДАНО: Єдина точка для зміни адреси сервера
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 export default function SchoolProfile() {
   const { id } = useParams();
   const [isLoading, setIsLoading] = useState(true);
 
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
 
   const [schoolData, setSchoolData] = useState<any>({
@@ -3007,6 +3640,8 @@ export default function SchoolProfile() {
     isOpen: false, mode: 'pipeline', stepId: null as number | null, historyId: null as string | null, text: ''
   });
 
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
   const [editForm, setEditForm] = useState(schoolData);
   const [eventForm, setEventForm] = useState({
     project: 'Голограма для школи', date: '', time: '11:00',
@@ -3018,8 +3653,8 @@ export default function SchoolProfile() {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
-      // Завантажуємо школу
-      const schoolRes = await axios.get(`https://crm-57qd.onrender.com/schools/${id}`, { headers });
+      // Завантажуємо школу з локального сервера
+      const schoolRes = await axios.get(`${API_BASE_URL}/schools/${id}`, { headers });
       if (schoolRes.data) {
         setSchoolData({
           id: schoolRes.data.id, cityId: schoolRes.data.cityId, name: schoolRes.data.name || '',
@@ -3031,16 +3666,16 @@ export default function SchoolProfile() {
         setEditForm({ ...schoolRes.data, city: schoolRes.data.city?.name || '' });
       }
 
-      // Завантажуємо події
-      const eventsRes = await axios.get(`https://crm-57qd.onrender.com/events/school/${id}`, { headers });
+      // Завантажуємо події з локального сервера
+      const eventsRes = await axios.get(`${API_BASE_URL}/events/school/${id}`, { headers });
       setEvents(eventsRes.data);
       if (eventsRes.data.length > 0 && !selectedEventId) {
         setSelectedEventId(eventsRes.data[0].id);
       }
 
-      // Завантажуємо працівників для екіпажів
-      const empRes = await axios.get('https://crm-57qd.onrender.com/employees', { headers });
-      setEmployees(empRes.data);
+      // Завантажуємо користувачів з локального сервера
+      const usersRes = await axios.get(`${API_BASE_URL}/users`, { headers });
+      setUsers(usersRes.data);
 
     } catch (error) {
       console.error('Помилка завантаження даних:', error);
@@ -3057,14 +3692,27 @@ export default function SchoolProfile() {
   
   const creatorName = currentEvent?.history?.length > 0 
     ? currentEvent.history[currentEvent.history.length - 1].userName 
-    : 'Андрій (Суперадмін)';
+    : 'Немає даних';
 
-  const handlePipelineClick = (stepId: number) => {
-    if (!currentEvent) return;
-    const activeStage = PIPELINE_STAGES[currentStageIndex];
-    if (!activeStage || stepId !== activeStage.id) return;
-    setCommentModal({ isOpen: true, mode: 'pipeline', stepId, historyId: null, text: '' });
-  };
+const handlePipelineClick = (stepId: number) => {
+  if (!currentEvent) return;
+  
+  // Дозволяємо клік, якщо це поточний етап АБО якщо це наступний крок
+  const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+  const isCurrentStage = stepId === PIPELINE_STAGES[currentStageIndex].id;
+  const isNextStage = nextStage?.id === stepId;
+
+  if (!isCurrentStage && !isNextStage) return;
+
+  // Якщо це перехід до DONE (8 етап)
+  if (nextStage?.key === 'DONE') {
+    setIsReportModalOpen(true);
+    return;
+  }
+
+  // Якщо це клік по поточному етапу - відкриваємо коментар
+  setCommentModal({ isOpen: true, mode: 'pipeline', stepId, historyId: null, text: '' });
+};
 
   const handleHistoryClick = (historyItem: any) => {
     setCommentModal({ isOpen: true, mode: 'history', stepId: null, historyId: historyItem.id, text: historyItem.comment || '' });
@@ -3077,12 +3725,12 @@ export default function SchoolProfile() {
       if (commentModal.mode === 'pipeline' && commentModal.stepId) {
         const activeStage = PIPELINE_STAGES[currentStageIndex];
         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-        const res = await axios.patch(`https://crm-57qd.onrender.com/events/${currentEvent.id}/status`, {
+        const res = await axios.patch(`${API_BASE_URL}/events/${currentEvent.id}/status`, {
           status: nextStage.key, actionName: `Етап пройдено: ${activeStage.name}`, comment: commentModal.text
         }, { headers });
         setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? res.data : ev));
       } else if (commentModal.mode === 'history' && commentModal.historyId) {
-        await axios.patch(`https://crm-57qd.onrender.com/events/history/${commentModal.historyId}`, { comment: commentModal.text }, { headers });
+        await axios.patch(`${API_BASE_URL}/events/history/${commentModal.historyId}`, { comment: commentModal.text }, { headers });
         setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? { ...ev, history: ev.history.map((h: any) => h.id === commentModal.historyId ? { ...h, comment: commentModal.text } : h) } : ev));
       }
       setCommentModal({ isOpen: false, mode: 'pipeline', stepId: null, historyId: null, text: '' });
@@ -3093,7 +3741,7 @@ export default function SchoolProfile() {
     e.preventDefault();
     try {
       const payload = { ...eventForm, schoolId: schoolData.id, cityId: schoolData.cityId, childrenPlanned: Number(eventForm.childrenPlanned), price: Number(eventForm.price) };
-      const res = await axios.post('https://crm-57qd.onrender.com/events', payload, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      const res = await axios.post(`${API_BASE_URL}/events`, payload, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
       setIsEventModalOpen(false);
       setEvents(prev => [res.data, ...prev]);
       setSelectedEventId(res.data.id);
@@ -3103,7 +3751,7 @@ export default function SchoolProfile() {
   const handleSaveSchoolInfo = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.patch(`https://crm-57qd.onrender.com/schools/${id}`, editForm, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      await axios.patch(`${API_BASE_URL}/schools/${id}`, editForm, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
       setSchoolData(editForm);
       setIsEditModalOpen(false);
     } catch (e) { console.error(e); }
@@ -3113,9 +3761,8 @@ export default function SchoolProfile() {
     if (!currentEvent) return;
     try {
       const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
-      await axios.patch(`https://crm-57qd.onrender.com/events/${currentEvent.id}/preparation`, { field, status }, { headers });
+      await axios.patch(`${API_BASE_URL}/events/${currentEvent.id}/preparation`, { field, status }, { headers });
       
-      // Оновлюємо стан миттєво для плавного UI
       setEvents(prev => prev.map(ev => {
         if (ev.id === currentEvent.id) {
           return { ...ev, preparation: { ...(ev.preparation || {}), [field]: status } };
@@ -3127,21 +3774,30 @@ export default function SchoolProfile() {
     }
   };
 
+  const handleSubmitReport = async (reportData: any) => {
+  if (!currentEvent) return;
+  try {
+    const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
+    const res = await axios.post(`${API_BASE_URL}/events/${currentEvent.id}/report`, reportData, { headers });
+    setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? res.data : ev));
+    setIsReportModalOpen(false);
+  } catch (e) {
+    console.error('Помилка при збереженні звіту', e);
+  }
+};
+
   const handleAssignCrew = async (hostId: string, driverId: string) => {
     try {
       const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
       
-      // 1. Відправляємо запит на створення/прив'язку екіпажу до події
-      const res = await axios.post(`https://crm-57qd.onrender.com/events/${currentEvent.id}/assign-crew`, {
+      const res = await axios.post(`${API_BASE_URL}/events/${currentEvent.id}/assign-crew`, {
         hostId, 
         driverId, 
         cityId: schoolData.cityId
       }, { headers });
 
-      // 2. Ставимо галочку "Виконано" для задачі
       await handleUpdatePreparation('assignCrew', 'Виконано');
       
-      // 3. Оновлюємо стейт подій, щоб відмалювався AssignedCrew компонент
       setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? res.data : ev));
       setIsCrewModalOpen(false);
     } catch (e) {
@@ -3152,7 +3808,6 @@ export default function SchoolProfile() {
   if (isLoading) return <div className="p-8 text-slate-500">Завантаження...</div>;
 
   return (
-    
     <div className="p-8 bg-slate-50 min-h-screen text-slate-800 font-sans">
       <div className="text-sm text-slate-500 mb-4">
         <Link to="/schools" className="hover:text-blue-600 transition-colors">Школи / Садочки</Link> 
@@ -3179,9 +3834,7 @@ export default function SchoolProfile() {
           </button>
         </div>
       </div>
-
-      
-
+          
       <div className="flex flex-col xl:flex-row gap-6">
         <div className="w-full xl:w-80 flex flex-col gap-6">
           <SchoolInfoCard schoolData={schoolData} />
@@ -3189,7 +3842,7 @@ export default function SchoolProfile() {
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 transition-all duration-500">
               <h3 className="font-bold text-slate-800 mb-4">Відповідальна особа</h3>
               <ul className="space-y-2 text-sm">
-                <li className="flex justify-between"><span className="text-slate-500">Менеджер:</span> <span className="font-medium text-blue-600">{creatorName}</span></li>
+                <li className="flex justify-between"><span className="text-slate-500">Остання дія:</span> <span className="font-medium text-blue-600">{creatorName}</span></li>
               </ul>
             </div>
           )}
@@ -3208,7 +3861,7 @@ export default function SchoolProfile() {
               />
               <AssignedCrew 
                 currentEvent={currentEvent} 
-                employees={employees} 
+                employees={users} 
               />
             </div>
           )}
@@ -3226,7 +3879,16 @@ export default function SchoolProfile() {
       <EditSchoolModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} editForm={editForm} setEditForm={setEditForm} onSave={handleSaveSchoolInfo} />
       <EventModal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} eventForm={eventForm} setEventForm={setEventForm} onSave={handleSaveEvent} />
       <CommentModal isOpen={commentModal.isOpen} onClose={() => setCommentModal({...commentModal, isOpen: false})} mode={commentModal.mode} text={commentModal.text} setText={(t) => setCommentModal({...commentModal, text: t})} onSave={handleSaveComment} />
-      <CrewModal isOpen={isCrewModalOpen} onClose={() => setIsCrewModalOpen(false)} city={schoolData.city} employees={employees} onSave={handleAssignCrew} />
+      <CrewModal isOpen={isCrewModalOpen} onClose={() => setIsCrewModalOpen(false)} city={schoolData.city} employees={users} onSave={handleAssignCrew} />
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        onSave={handleSubmitReport}
+        schoolName={schoolData.name}
+        eventType={currentEvent?.project}
+        eventDate={currentEvent?.date}
+        eventIndex={events.filter(e => e.schoolId === schoolData.id).indexOf(currentEvent!) + 1}
+      />
     </div>
 
   );
@@ -3531,6 +4193,85 @@ export default {
   plugins: [],
 }
 
+--- FILE: apps\frontend\tsconfig.app.json ---
+
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "esnext",
+    "types": ["vite/client"],
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"]
+}
+
+
+--- FILE: apps\frontend\tsconfig.json ---
+
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}
+
+
+--- FILE: apps\frontend\tsconfig.node.json ---
+
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023"],
+    "module": "esnext",
+    "types": ["node"],
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+
+    /* Linting */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["vite.config.ts"]
+}
+
+
+--- FILE: apps\frontend\vercel.json ---
+
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
+
 --- FILE: apps\frontend\vite.config.ts ---
 
 import { defineConfig } from 'vite'
@@ -3547,10 +4288,15 @@ const fs = require('fs');
 const path = require('path');
 
 const outputFile = 'project_code.txt';
-// Список папок, які ігноруємо
-const ignoreDirs = ['node_modules', '.git', 'dist', '.next', '.prisma'];
-// Розширення файлів, які збираємо
-const extensions = ['.ts', '.tsx', '.js', '.jsx', '.css', '.html', '.prisma'];
+
+// Додали 'build' для фронтенду
+const ignoreDirs = ['node_modules', '.git', 'dist', 'build', '.next', '.prisma'];
+
+// Додали '.json' для package.json та tsconfig.json
+const extensions = ['.ts', '.tsx', '.js', '.jsx', '.css', '.html', '.prisma', '.json'];
+
+// Ігноруємо лок-файли та сам файл результату
+const ignoreFiles = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', outputFile];
 
 function bundle(dir) {
   let content = '';
@@ -3564,9 +4310,12 @@ function bundle(dir) {
       if (!ignoreDirs.includes(file)) {
         content += bundle(fullPath);
       }
-    } else if (extensions.includes(path.extname(file))) {
-      content += `\n\n--- FILE: ${fullPath} ---\n\n`;
-      content += fs.readFileSync(fullPath, 'utf8');
+    } else {
+      // Перевіряємо розширення І переконуємося, що файлу немає в списку ігнору
+      if (extensions.includes(path.extname(file)) && !ignoreFiles.includes(file)) {
+        content += `\n\n--- FILE: ${fullPath} ---\n\n`;
+        content += fs.readFileSync(fullPath, 'utf8');
+      }
     }
   }
   return content;
@@ -3574,3 +4323,16 @@ function bundle(dir) {
 
 fs.writeFileSync(outputFile, bundle('.'));
 console.log(`Проєкт успішно зібрано у файл: ${outputFile}`);
+
+--- FILE: package.json ---
+
+{
+  "name": "CRM",
+  "private": true,
+  "scripts": {
+  "dev": "concurrently \"pnpm --filter backend start:dev\" \"pnpm --filter frontend dev\""
+},
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

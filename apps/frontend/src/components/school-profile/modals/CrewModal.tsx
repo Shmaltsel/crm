@@ -22,8 +22,8 @@ export default function CrewModal({ isOpen, onClose, city, employees, onSave }: 
   if (!isOpen) return null;
 
   // Фільтруємо працівників за роллю та назвою міста, яке передано в пропси
-  const hosts = employees.filter(e => e.role === 'HOST' && e.city === city);
-  const drivers = employees.filter(e => e.role === 'DRIVER' && e.city === city);
+  const hosts = employees.filter(e => e.role === 'HOST' && e.city?.name === city);
+  const drivers = employees.filter(e => e.role === 'DRIVER' && e.city?.name === city);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,8 +48,7 @@ export default function CrewModal({ isOpen, onClose, city, employees, onSave }: 
               required
             >
               <option value="">— Оберіть ведучого —</option>
-              {hosts.map(h => <option key={h.id} value={h.id}>{h.fullName}</option>)}
-            </select>
+            {hosts.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}            </select>
             {hosts.length === 0 && <p className="text-xs text-red-500 mt-1">У цьому місті немає доступних ведучих</p>}
           </div>
 
@@ -62,7 +61,7 @@ export default function CrewModal({ isOpen, onClose, city, employees, onSave }: 
               required
             >
               <option value="">— Оберіть водія —</option>
-              {drivers.map(d => <option key={d.id} value={d.id}>{d.fullName}</option>)}
+              {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
             {drivers.length === 0 && <p className="text-xs text-red-500 mt-1">У цьому місті немає доступних водіїв</p>}
           </div>

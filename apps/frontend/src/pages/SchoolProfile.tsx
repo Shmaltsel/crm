@@ -10,6 +10,7 @@ import EventDetails from '../components/school-profile/EventDetails';
 import EventsTable from '../components/school-profile/EventsTable';
 import EventPreparation from '../components/school-profile/EventPreparation';
 import AssignedCrew from '../components/school-profile/AssignedCrew';
+import ReportModal from '../components/school-profile/modals/ReportModal';
 
 // Імпортуємо модальні вікна
 import EditSchoolModal from '../components/school-profile/modals/EditSchoolModal';
@@ -31,7 +32,7 @@ const PIPELINE_STAGES = [
 ];
 
 // ДОДАНО: Єдина точка для зміни адреси сервера
-const API_BASE_URL = 'https://crm-57qd.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export default function SchoolProfile() {
   const { id } = useParams();
@@ -54,6 +55,8 @@ export default function SchoolProfile() {
   const [commentModal, setCommentModal] = useState({
     isOpen: false, mode: 'pipeline', stepId: null as number | null, historyId: null as string | null, text: ''
   });
+
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const [editForm, setEditForm] = useState(schoolData);
   const [eventForm, setEventForm] = useState({
@@ -107,12 +110,25 @@ export default function SchoolProfile() {
     ? currentEvent.history[currentEvent.history.length - 1].userName 
     : 'Немає даних';
 
-  const handlePipelineClick = (stepId: number) => {
-    if (!currentEvent) return;
-    const activeStage = PIPELINE_STAGES[currentStageIndex];
-    if (!activeStage || stepId !== activeStage.id) return;
-    setCommentModal({ isOpen: true, mode: 'pipeline', stepId, historyId: null, text: '' });
-  };
+const handlePipelineClick = (stepId: number) => {
+  if (!currentEvent) return;
+  
+  // Дозволяємо клік, якщо це поточний етап АБО якщо це наступний крок
+  const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+  const isCurrentStage = stepId === PIPELINE_STAGES[currentStageIndex].id;
+  const isNextStage = nextStage?.id === stepId;
+
+  if (!isCurrentStage && !isNextStage) return;
+
+  // Якщо це перехід до DONE (8 етап)
+  if (nextStage?.key === 'DONE') {
+    setIsReportModalOpen(true);
+    return;
+  }
+
+  // Якщо це клік по поточному етапу - відкриваємо коментар
+  setCommentModal({ isOpen: true, mode: 'pipeline', stepId, historyId: null, text: '' });
+};
 
   const handleHistoryClick = (historyItem: any) => {
     setCommentModal({ isOpen: true, mode: 'history', stepId: null, historyId: historyItem.id, text: historyItem.comment || '' });
@@ -174,6 +190,18 @@ export default function SchoolProfile() {
     }
   };
 
+  const handleSubmitReport = async (reportData: any) => {
+  if (!currentEvent) return;
+  try {
+    const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
+    const res = await axios.post(`${API_BASE_URL}/events/${currentEvent.id}/report`, reportData, { headers });
+    setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? res.data : ev));
+    setIsReportModalOpen(false);
+  } catch (e) {
+    console.error('Помилка при збереженні звіту', e);
+  }
+};
+
   const handleAssignCrew = async (hostId: string, driverId: string) => {
     try {
       const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
@@ -222,7 +250,7 @@ export default function SchoolProfile() {
           </button>
         </div>
       </div>
-
+          
       <div className="flex flex-col xl:flex-row gap-6">
         <div className="w-full xl:w-80 flex flex-col gap-6">
           <SchoolInfoCard schoolData={schoolData} />
@@ -268,6 +296,15 @@ export default function SchoolProfile() {
       <EventModal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} eventForm={eventForm} setEventForm={setEventForm} onSave={handleSaveEvent} />
       <CommentModal isOpen={commentModal.isOpen} onClose={() => setCommentModal({...commentModal, isOpen: false})} mode={commentModal.mode} text={commentModal.text} setText={(t) => setCommentModal({...commentModal, text: t})} onSave={handleSaveComment} />
       <CrewModal isOpen={isCrewModalOpen} onClose={() => setIsCrewModalOpen(false)} city={schoolData.city} employees={users} onSave={handleAssignCrew} />
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        onSave={handleSubmitReport}
+        schoolName={schoolData.name}
+        eventType={currentEvent?.project}
+        eventDate={currentEvent?.date}
+        eventIndex={events.filter(e => e.schoolId === schoolData.id).indexOf(currentEvent!) + 1}
+      />
     </div>
 
   );

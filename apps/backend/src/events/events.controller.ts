@@ -42,6 +42,12 @@ export class EventsController {
   remove(@Param('id') id: string) {
     return this.eventsService.remove(id);
   }
-  
+
+  @Post(':id/report')
+    @UseGuards(AuthGuard)
+    submitReport(@Param('id') id: string, @Body() body: any, @Request() req) {
+      return this.eventsService.submitReport(id, body, req.user);
+    }
+      
 
 }

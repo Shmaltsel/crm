@@ -117,7 +117,9 @@ model Event {
 model EventReport {
   id                String   @id @default(uuid())
   eventId           String   @unique
-  event             Event    @relation(fields: [eventId], references: [id])
+  event             Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  // Твої існуючі поля
   directorSatisfied Boolean?
   teachersSatisfied Boolean?
   hadIssues         Boolean  @default(false)
@@ -125,6 +127,18 @@ model EventReport {
   rating            Float?
   photos            File[]
   createdAt         DateTime @default(now())
+
+  // Нові фінансові та статистичні поля
+  announcementDone  Boolean  @default(false)
+  materialShown     Boolean  @default(false)
+  childrenCount     Int      @default(0)
+  classesCount      Int      @default(0)
+  privilegedCount   Int      @default(0)
+  showingsCount     Int      @default(0)
+  totalSum          Float    @default(0)
+  schoolSum         Float    @default(0)
+  expenses          Json     @default("[]") // Список витрат
+  remainderSum      Float    @default(0)
 }
 
 model File {

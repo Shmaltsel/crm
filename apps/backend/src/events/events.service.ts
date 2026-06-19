@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 
 const prisma = new PrismaClient();
 
 @Injectable()
 export class EventsService {
+
+  constructor(private prisma: PrismaService) {}
   // Оновлюємо метод create
   async create(data: any, user: any) {
     return prisma.event.create({
@@ -119,4 +122,45 @@ export class EventsService {
       where: { id },
     });
   }
+
+ async submitReport(eventId: string, reportData: any, user: any) {
+  // Використовуємо this.prisma
+  const report = await this.prisma.eventReport.upsert({
+    where: { eventId },
+    update: {
+      announcementDone: reportData.announcementDone,
+      materialShown: reportData.materialShown,
+      childrenCount: reportData.childrenCount,
+      classesCount: reportData.classesCount,
+      privilegedCount: reportData.privilegedCount,
+      showingsCount: reportData.showingsCount,
+      totalSum: reportData.totalSum,
+      schoolSum: reportData.schoolSum,
+      expenses: reportData.expenses,
+      remainderSum: reportData.remainderSum,
+      rating: reportData.rating,
+    },
+    create: {
+      eventId,
+      ...reportData
+    }
+  });
+
+  // Оновлюємо статус події через this.prisma
+  return this.prisma.event.update({
+    where: { id: eventId },
+    data: {
+      status: 'DONE',
+      history: {
+        create: {
+          action: 'Сформовано звіт. Етап пройдено: Проведено',
+          userId: user.sub,
+          userName: user.name,
+          role: user.role
+        }
+      }
+    },
+   include: { report: true, history: { orderBy: { createdAt: 'desc' } } }
+  });
+}
 }

@@ -34,14 +34,14 @@ export default function AssignedCrew({ currentEvent, employees }: AssignedCrewPr
           <span className="text-slate-500">Ведучий:</span>
           <span className="font-medium text-blue-600 flex items-center gap-2">
             <span className="bg-blue-100 text-blue-600 w-6 h-6 flex items-center justify-center rounded-full text-xs">🎙️</span>
-            {host?.fullName || '—'}
+            {host?.name || '—'} 
           </span>
         </div>
         <div className="flex justify-between items-center">
           <span className="text-slate-500">Водій:</span>
           <span className="font-medium text-emerald-600 flex items-center gap-2">
             <span className="bg-emerald-100 text-emerald-600 w-6 h-6 flex items-center justify-center rounded-full text-xs">🚗</span>
-            {driver?.fullName || '—'}
+            {driver?.name || '—'}
           </span>
         </div>
         <div className="flex justify-between items-center">
