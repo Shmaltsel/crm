@@ -15,6 +15,7 @@ export default function Login() {
     setError('');
 
     try {
+      // ЗМІНЕНО: тепер стукаємо на локальний оновлений бекенд!
       const response = await axios.post('https://crm-57qd.onrender.com/auth/login', {
         email,
         password,

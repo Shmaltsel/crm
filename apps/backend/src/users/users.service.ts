@@ -10,6 +10,41 @@ export class UsersService {
     return this.prisma.user.findMany();
   }
 
+  async createUser(data: any) {
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+    return this.prisma.user.create({
+      data: {
+        name: data.fullName,
+        email: data.email,
+        phone: data.phone,
+        password: hashedPassword,
+        role: data.role,
+        cityId: data.cityId || null,
+      },
+    });
+  }
+
+  async updateUser(id: string, data: any) {
+    const updateData: any = {
+      name: data.fullName,
+      email: data.email,
+      phone: data.phone,
+      role: data.role,
+      cityId: data.cityId || null,
+    };
+    
+    // Якщо передано новий пароль, хешуємо його
+    if (data.password) {
+      updateData.password = await bcrypt.hash(data.password, 10);
+    }
+
+    return this.prisma.user.update({ where: { id }, data: updateData });
+  }
+
+  async deleteUser(id: string) {
+    return this.prisma.user.delete({ where: { id } });
+  }
+
   // Створення адміністратора
   async seedAdmin() {
     const existingAdmin = await this.prisma.user.findUnique({

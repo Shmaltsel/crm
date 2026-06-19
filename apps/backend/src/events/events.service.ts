@@ -5,7 +5,8 @@ const prisma = new PrismaClient();
 
 @Injectable()
 export class EventsService {
-  async create(data: any) {
+  // Оновлюємо метод create
+  async create(data: any, user: any) {
     return prisma.event.create({
       data: {
         ...data,
@@ -14,13 +15,33 @@ export class EventsService {
         history: {
           create: {
             action: 'Створено подію. Етап: База',
-            userId: 'superadmin-123',
-            userName: 'Андрій (Суперадмін)',
-            role: 'SUPERADMIN'
+            userId: user.sub,      // Беремо ID з токена
+            userName: user.name,   // Беремо ім'я з токена
+            role: user.role        // Беремо роль з токена
           }
         }
       },
       include: { history: true }
+    });
+  }
+
+  // Оновлюємо метод updateStatus
+  async updateStatus(eventId: string, newStatus: string, actionName: string, comment: string | undefined, user: any) {
+    return prisma.event.update({
+      where: { id: eventId },
+      data: {
+        status: newStatus,
+        history: {
+          create: {
+            action: actionName,
+            comment: comment || null,
+            userId: user.sub,      // Більше ніяких 'superadmin-123'!
+            userName: user.name,
+            role: user.role
+          }
+        }
+      },
+      include: { crew: true, history: { orderBy: { createdAt: 'desc' } } }
     });
   }
 
@@ -71,25 +92,6 @@ export class EventsService {
         preparation: true // Включаємо підготовку, якщо вона є
       },
       orderBy: { date: 'desc' },
-    });
-  }
-
-  async updateStatus(eventId: string, newStatus: string, actionName: string, comment?: string) {
-    return prisma.event.update({
-      where: { id: eventId },
-      data: {
-        status: newStatus,
-        history: {
-          create: {
-            action: actionName,
-            comment: comment || null,
-            userId: 'superadmin-123',
-            userName: 'Андрій (Суперадмін)',
-            role: 'SUPERADMIN'
-          }
-        }
-      },
-      include: { crew: true, history: { orderBy: { createdAt: 'desc' } } }
     });
   }
 

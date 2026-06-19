@@ -867,47 +867,37 @@ import * as cheerio from 'cheerio';
 
 @Injectable()
 export class ParserService {
-  async parseSchoolData(schoolName: string) {
+  async parseSchoolData(schoolName: string, schoolUrl?: string) {
     try {
-      const listUrl =
-        'https://lv.isuo.org/authorities/schools-list/id/681';
+      let url = schoolUrl; // якщо url вже є — використовуємо одразу
 
-      const listResponse = await axios.get(listUrl);
+      if (!url) {
+        // старий код пошуку по списку — залишається як fallback
+        const listUrl = 'https://lv.isuo.org/authorities/schools-list/id/681';
+        const listResponse = await axios.get(listUrl);
+        const $list = cheerio.load(listResponse.data);
+        const normalizedSearch = schoolName.toLowerCase().replace(/\s+/g, ' ').trim();
 
-      const $list = cheerio.load(listResponse.data);
-
-      let schoolUrl = '';
-
-      const normalizedSearch = schoolName
-        .toLowerCase()
-        .replace(/\s+/g, ' ')
-        .trim();
-
-      $list('table.zebra-stripe.list tr').each((_, row) => {
-        const name = $list(row)
-          .find('td:nth-child(2) a')
-          .text()
-          .trim()
-          .toLowerCase();
-
-        if (name.includes(normalizedSearch)) {
-          const href = $list(row)
-            .find('td:nth-child(2) a')
-            .attr('href');
-
-          if (href) {
-            schoolUrl = `https://lv.isuo.org${href}`;
-            return false;
+        $list('table.zebra-stripe.list tr').each((_, row) => {
+          const name = $list(row).find('td:nth-child(2) a').text().replace(/\s+/g, ' ').trim().toLowerCase();
+          if (name.includes(normalizedSearch)) {
+            const href = $list(row).find('td:nth-child(2) a').attr('href');
+            if (href) {
+              url = `https://lv.isuo.org${href}`;
+              return false;
+            }
           }
-        }
-      });
+        });
+      }
 
-      if (!schoolUrl) {
+      if (!url) {
         console.log(`Школу не знайдено: ${schoolName}`);
         return null;
       }
 
-      const schoolResponse = await axios.get(schoolUrl);
+      // далі все як було — йдемо на сторінку школи
+      const schoolResponse = await axios.get(url);
+      // ... решта коду без змін
 
       const $school = cheerio.load(schoolResponse.data);
 
@@ -955,6 +945,38 @@ export class ParserService {
       return null;
     }
   }
+  async searchSchools(query: string): Promise<{ name: string; url: string }[]> {
+    try {
+      const urls = [
+        'https://lv.isuo.org/authorities/schools-list/id/681',
+        'https://lv.isuo.org/authorities/schools-list/id/681/page/2',
+      ];
+
+      const results: { name: string; url: string }[] = [];
+      const normalizedQuery = query.toLowerCase().replace(/\s+/g, ' ').trim();
+      console.log("шукаю")
+      for (const url of urls) {
+        const response = await axios.get(url);
+        const $ = cheerio.load(response.data);
+
+        $('table.zebra-stripe.list tr').each((_, row) => {
+          const rawName = $(row).find('td:nth-child(2) a').text();
+          console.log('RAW NAME:', JSON.stringify(rawName));
+          const name = rawName.replace(/\s+/g, ' ').trim(); // нормалізуємо всі пробіли
+          const href = $(row).find('td:nth-child(2) a').attr('href');
+
+          if (name && href && name.toLowerCase().includes(normalizedQuery)) {
+            results.push({ name, url: `https://lv.isuo.org${href}` });
+          }
+        });
+      }
+
+      return results.slice(0, 10);
+    } catch (error) {
+      console.error('Помилка пошуку шкіл:', error);
+      return [];
+    }
+  }
 }
 
 --- FILE: apps\backend\src\schools\schools.controller.spec.ts ---
@@ -981,21 +1003,31 @@ describe('SchoolsController', () => {
 
 --- FILE: apps\backend\src\schools\schools.controller.ts ---
 
-import { Controller, Get, Post, Body, Param, Patch, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Delete, Query } from '@nestjs/common';
 import { SchoolsService } from './schools.service';
+import { ParserService } from './parser.service';
 
 @Controller('schools')
 export class SchoolsController {
-  constructor(private readonly schoolsService: SchoolsService) {}
+  constructor(
+    private readonly schoolsService: SchoolsService,
+    private readonly parserService: ParserService,
+  ) {}
 
   @Post()
-  create(@Body() body: { name: string; type: string; cityId: string }) {
+  create(@Body() body: { name: string; type: string; cityId: string; sourceUrl?: string }) {
     return this.schoolsService.create(body);
   }
 
   @Get()
   findAll() {
     return this.schoolsService.findAll();
+  }
+
+  // ⚠️ ВАЖЛИВО: цей маршрут МАЄ стояти ДО @Get(':id')
+  @Get('search')
+  search(@Query('q') q: string) {
+    return this.parserService.searchSchools(q);
   }
 
   @Get(':id')
@@ -1008,7 +1040,6 @@ export class SchoolsController {
     return this.schoolsService.update(id, body);
   }
 
-  // Додаємо цей метод для видалення
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.schoolsService.remove(id);
@@ -1078,15 +1109,16 @@ export class SchoolsService {
     name: string;
     type: string;
     cityId: string;
+    sourceUrl?: string;
   }) {
-    // Створюємо школу
+    const { sourceUrl, ...schoolData } = data; // ← виокремлюємо sourceUrl
+
     const newSchool = await prisma.school.create({
-      data,
+      data: schoolData, // ← передаємо тільки те що є в схемі
     });
 
     // Запускаємо парсинг у фоні
-    this.parserService
-      .parseSchoolData(data.name)
+    this.parserService.parseSchoolData(data.name, sourceUrl)
       .then(async (parsed) => {
         if (!parsed) {
           console.log(
@@ -3202,7 +3234,7 @@ export default function SchoolProfile() {
 
 --- FILE: apps\frontend\src\pages\Schools.tsx ---
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -3230,7 +3262,10 @@ export default function Schools() {
   const [cities, setCities] = useState<City[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState({ name: '', type: 'Школа', cityId: '' });
+  const [form, setForm] = useState({ name: '', type: 'Школа', cityId: '', sourceUrl: '' });  const [suggestions, setSuggestions] = useState<{ name: string; url: string }[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchSchools = async () => {
     try {
@@ -3260,6 +3295,40 @@ export default function Schools() {
   const handleOpenModal = () => {
     setForm({ name: '', type: 'Школа', cityId: cities[0]?.id ?? '' });
     setIsModalOpen(true);
+  };
+  
+  const handleNameChange = (value: string) => {
+    setForm({ ...form, name: value });
+
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+
+    if (value.length < 2) {
+      setShowSuggestions(false);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);   // ← показуємо "пошук..." одразу
+    setShowSuggestions(true); // ← відкриваємо dropdown одразу
+
+    debounceTimer.current = setTimeout(async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`https://crm-57qd.onrender.com/schools/search?q=${value}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setSuggestions(res.data);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsSearching(false); // ← прибираємо "пошук..." коли прийшла відповідь
+      }
+    }, 400);
+};
+
+  const handleSelectSuggestion = (name: string, url: string) => {
+    setForm({ ...form, name, sourceUrl: url });
+    setShowSuggestions(false);
   };
 
   const handleAddSchool = async (e: React.FormEvent) => {
@@ -3367,16 +3436,36 @@ export default function Schools() {
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
             </div>
             <form onSubmit={handleAddSchool} className="p-6 flex flex-col gap-4">
-              <div>
+              <div className="relative">
                 <label className="block text-sm text-slate-600 mb-1">Назва закладу</label>
                 <input
                   type="text"
                   value={form.name}
-                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  onChange={e => handleNameChange(e.target.value)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                   required
                   placeholder="Школа №1"
                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 />
+                {showSuggestions && (
+                  <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                    {isSearching ? (
+                      <li className="px-3 py-2 text-sm text-slate-400 italic">Пошук за збігами...</li>
+                    ) : suggestions.length > 0 ? (
+                      suggestions.map((s, i) => (
+                        <li
+                          key={i}
+                          onMouseDown={() => handleSelectSuggestion(s.name, s.url)}
+                          className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer"
+                        >
+                          {s.name}
+                        </li>
+                      ))
+                    ) : (
+                      <li className="px-3 py-2 text-sm text-slate-400 italic">Нічого не знайдено</li>
+                    )}
+                  </ul>
+                )}
               </div>
               <div>
                 <label className="block text-sm text-slate-600 mb-1">Тип</label>

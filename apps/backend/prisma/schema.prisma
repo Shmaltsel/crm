@@ -11,19 +11,7 @@ datasource db {
 // Role: "SUPERADMIN", "ADMIN", "MANAGER", "HOST", "ACCOUNTANT"
 // EventStatus: "BASE", "FIRST_CONTACT", "INTERESTED", "PRE_APPROVAL", "DATE_CONFIRMED", "PREPARATION", "IN_PROGRESS", "DONE", "CANCELLED"
 
-model Employee {
-  id           String   @id @default(uuid())
-  fullName     String
-  phone        String
-  email        String
-  city         String
-  role         String 
-  createdAt    DateTime @default(now())
-  
-  // ДОДАЄМО ЗВ'ЯЗКИ З ЕКІПАЖЕМ СЮДИ
-  crewAsHost   Crew[]   @relation("HostCrew")
-  crewAsDriver Crew[]   @relation("DriverCrew")
-}
+
 
 model User {
   id            String   @id @default(uuid())
@@ -34,8 +22,11 @@ model User {
   role          String   @default("MANAGER") 
   cityId        String?
   city          City?    @relation(fields: [cityId], references: [id])
-  
-  // ВИДАЛЯЄМО ЗВ'ЯЗКИ З ЕКІПАЖЕМ ЗВІДСИ
+
+  // Додаємо зв'язки для екіпажів
+  crewAsHost   Crew[]   @relation("HostCrew")
+  crewAsDriver Crew[]   @relation("DriverCrew")
+
   managedCities City[]   @relation("CityManager")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -78,17 +69,17 @@ model Crew {
   cityId    String
   city      City     @relation(fields: [cityId], references: [id])
   hostId    String?
-  // ЗМІНЮЄМО User НА Employee
-  host      Employee? @relation("HostCrew", fields: [hostId], references: [id])
+  host      User?    @relation("HostCrew", fields: [hostId], references: [id])
   driverId  String?
-  // ЗМІНЮЄМО User НА Employee
-  driver    Employee? @relation("DriverCrew", fields: [driverId], references: [id])
+  driver    User?    @relation("DriverCrew", fields: [driverId], references: [id])
   car       String?
   carPlate  String?
   phone     String?
   isActive  Boolean  @default(true)
   events    Event[]
   createdAt DateTime @default(now())
+
+ 
 }
 
 model Event {

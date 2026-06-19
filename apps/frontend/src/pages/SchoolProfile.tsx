@@ -30,11 +30,14 @@ const PIPELINE_STAGES = [
   { id: 10, key: 'RE_SALE', name: 'Повторний продаж' },
 ];
 
+// ДОДАНО: Єдина точка для зміни адреси сервера
+const API_BASE_URL = 'https://crm-57qd.onrender.com';
+
 export default function SchoolProfile() {
   const { id } = useParams();
   const [isLoading, setIsLoading] = useState(true);
 
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
 
   const [schoolData, setSchoolData] = useState<any>({
@@ -63,8 +66,8 @@ export default function SchoolProfile() {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
-      // Завантажуємо школу
-      const schoolRes = await axios.get(`https://crm-57qd.onrender.com/schools/${id}`, { headers });
+      // Завантажуємо школу з локального сервера
+      const schoolRes = await axios.get(`${API_BASE_URL}/schools/${id}`, { headers });
       if (schoolRes.data) {
         setSchoolData({
           id: schoolRes.data.id, cityId: schoolRes.data.cityId, name: schoolRes.data.name || '',
@@ -76,16 +79,16 @@ export default function SchoolProfile() {
         setEditForm({ ...schoolRes.data, city: schoolRes.data.city?.name || '' });
       }
 
-      // Завантажуємо події
-      const eventsRes = await axios.get(`https://crm-57qd.onrender.com/events/school/${id}`, { headers });
+      // Завантажуємо події з локального сервера
+      const eventsRes = await axios.get(`${API_BASE_URL}/events/school/${id}`, { headers });
       setEvents(eventsRes.data);
       if (eventsRes.data.length > 0 && !selectedEventId) {
         setSelectedEventId(eventsRes.data[0].id);
       }
 
-      // Завантажуємо працівників для екіпажів
-      const empRes = await axios.get('https://crm-57qd.onrender.com/employees', { headers });
-      setEmployees(empRes.data);
+      // Завантажуємо користувачів з локального сервера
+      const usersRes = await axios.get(`${API_BASE_URL}/users`, { headers });
+      setUsers(usersRes.data);
 
     } catch (error) {
       console.error('Помилка завантаження даних:', error);
@@ -102,7 +105,7 @@ export default function SchoolProfile() {
   
   const creatorName = currentEvent?.history?.length > 0 
     ? currentEvent.history[currentEvent.history.length - 1].userName 
-    : 'Андрій (Суперадмін)';
+    : 'Немає даних';
 
   const handlePipelineClick = (stepId: number) => {
     if (!currentEvent) return;
@@ -122,12 +125,12 @@ export default function SchoolProfile() {
       if (commentModal.mode === 'pipeline' && commentModal.stepId) {
         const activeStage = PIPELINE_STAGES[currentStageIndex];
         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-        const res = await axios.patch(`https://crm-57qd.onrender.com/events/${currentEvent.id}/status`, {
+        const res = await axios.patch(`${API_BASE_URL}/events/${currentEvent.id}/status`, {
           status: nextStage.key, actionName: `Етап пройдено: ${activeStage.name}`, comment: commentModal.text
         }, { headers });
         setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? res.data : ev));
       } else if (commentModal.mode === 'history' && commentModal.historyId) {
-        await axios.patch(`https://crm-57qd.onrender.com/events/history/${commentModal.historyId}`, { comment: commentModal.text }, { headers });
+        await axios.patch(`${API_BASE_URL}/events/history/${commentModal.historyId}`, { comment: commentModal.text }, { headers });
         setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? { ...ev, history: ev.history.map((h: any) => h.id === commentModal.historyId ? { ...h, comment: commentModal.text } : h) } : ev));
       }
       setCommentModal({ isOpen: false, mode: 'pipeline', stepId: null, historyId: null, text: '' });
@@ -138,7 +141,7 @@ export default function SchoolProfile() {
     e.preventDefault();
     try {
       const payload = { ...eventForm, schoolId: schoolData.id, cityId: schoolData.cityId, childrenPlanned: Number(eventForm.childrenPlanned), price: Number(eventForm.price) };
-      const res = await axios.post('https://crm-57qd.onrender.com/events', payload, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      const res = await axios.post(`${API_BASE_URL}/events`, payload, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
       setIsEventModalOpen(false);
       setEvents(prev => [res.data, ...prev]);
       setSelectedEventId(res.data.id);
@@ -148,7 +151,7 @@ export default function SchoolProfile() {
   const handleSaveSchoolInfo = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.patch(`https://crm-57qd.onrender.com/schools/${id}`, editForm, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      await axios.patch(`${API_BASE_URL}/schools/${id}`, editForm, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
       setSchoolData(editForm);
       setIsEditModalOpen(false);
     } catch (e) { console.error(e); }
@@ -158,9 +161,8 @@ export default function SchoolProfile() {
     if (!currentEvent) return;
     try {
       const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
-      await axios.patch(`https://crm-57qd.onrender.com/events/${currentEvent.id}/preparation`, { field, status }, { headers });
+      await axios.patch(`${API_BASE_URL}/events/${currentEvent.id}/preparation`, { field, status }, { headers });
       
-      // Оновлюємо стан миттєво для плавного UI
       setEvents(prev => prev.map(ev => {
         if (ev.id === currentEvent.id) {
           return { ...ev, preparation: { ...(ev.preparation || {}), [field]: status } };
@@ -176,17 +178,14 @@ export default function SchoolProfile() {
     try {
       const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
       
-      // 1. Відправляємо запит на створення/прив'язку екіпажу до події
-      const res = await axios.post(`https://crm-57qd.onrender.com/events/${currentEvent.id}/assign-crew`, {
+      const res = await axios.post(`${API_BASE_URL}/events/${currentEvent.id}/assign-crew`, {
         hostId, 
         driverId, 
         cityId: schoolData.cityId
       }, { headers });
 
-      // 2. Ставимо галочку "Виконано" для задачі
       await handleUpdatePreparation('assignCrew', 'Виконано');
       
-      // 3. Оновлюємо стейт подій, щоб відмалювався AssignedCrew компонент
       setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? res.data : ev));
       setIsCrewModalOpen(false);
     } catch (e) {
@@ -197,7 +196,6 @@ export default function SchoolProfile() {
   if (isLoading) return <div className="p-8 text-slate-500">Завантаження...</div>;
 
   return (
-    
     <div className="p-8 bg-slate-50 min-h-screen text-slate-800 font-sans">
       <div className="text-sm text-slate-500 mb-4">
         <Link to="/schools" className="hover:text-blue-600 transition-colors">Школи / Садочки</Link> 
@@ -225,8 +223,6 @@ export default function SchoolProfile() {
         </div>
       </div>
 
-      
-
       <div className="flex flex-col xl:flex-row gap-6">
         <div className="w-full xl:w-80 flex flex-col gap-6">
           <SchoolInfoCard schoolData={schoolData} />
@@ -234,7 +230,7 @@ export default function SchoolProfile() {
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 transition-all duration-500">
               <h3 className="font-bold text-slate-800 mb-4">Відповідальна особа</h3>
               <ul className="space-y-2 text-sm">
-                <li className="flex justify-between"><span className="text-slate-500">Менеджер:</span> <span className="font-medium text-blue-600">{creatorName}</span></li>
+                <li className="flex justify-between"><span className="text-slate-500">Остання дія:</span> <span className="font-medium text-blue-600">{creatorName}</span></li>
               </ul>
             </div>
           )}
@@ -253,7 +249,7 @@ export default function SchoolProfile() {
               />
               <AssignedCrew 
                 currentEvent={currentEvent} 
-                employees={employees} 
+                employees={users} 
               />
             </div>
           )}
@@ -271,7 +267,7 @@ export default function SchoolProfile() {
       <EditSchoolModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} editForm={editForm} setEditForm={setEditForm} onSave={handleSaveSchoolInfo} />
       <EventModal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} eventForm={eventForm} setEventForm={setEventForm} onSave={handleSaveEvent} />
       <CommentModal isOpen={commentModal.isOpen} onClose={() => setCommentModal({...commentModal, isOpen: false})} mode={commentModal.mode} text={commentModal.text} setText={(t) => setCommentModal({...commentModal, text: t})} onSave={handleSaveComment} />
-      <CrewModal isOpen={isCrewModalOpen} onClose={() => setIsCrewModalOpen(false)} city={schoolData.city} employees={employees} onSave={handleAssignCrew} />
+      <CrewModal isOpen={isCrewModalOpen} onClose={() => setIsCrewModalOpen(false)} city={schoolData.city} employees={users} onSave={handleAssignCrew} />
     </div>
 
   );

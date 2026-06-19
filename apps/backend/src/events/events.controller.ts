@@ -1,13 +1,15 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Delete, UseGuards, Request } from '@nestjs/common';
 import { EventsService } from './events.service';
+import { AuthGuard } from '../auth/auth.guard'; // Додаємо імпорт
 
 @Controller('events')
+@UseGuards(AuthGuard) // Захищаємо всі маршрути подій і читаємо токен
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
   @Post()
-  create(@Body() body: any) {
-    return this.eventsService.create(body);
+  create(@Body() body: any, @Request() req) {
+    return this.eventsService.create(body, req.user); // Передаємо req.user
   }
 
   @Get('school/:schoolId')
@@ -16,8 +18,8 @@ export class EventsController {
   }
 
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body() body: { status: string, actionName: string, comment?: string }) {
-    return this.eventsService.updateStatus(id, body.status, body.actionName, body.comment);
+  updateStatus(@Param('id') id: string, @Body() body: { status: string, actionName: string, comment?: string }, @Request() req) {
+    return this.eventsService.updateStatus(id, body.status, body.actionName, body.comment, req.user); // Передаємо req.user
   }
 
   @Patch(':id/preparation')

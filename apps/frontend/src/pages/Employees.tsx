@@ -3,12 +3,18 @@ import axios from 'axios';
 
 type Role = 'MANAGER' | 'DRIVER' | 'HOST';
 
-interface Employee {
+interface City {
   id: string;
-  fullName: string;
-  phone: string;
+  name: string;
+}
+
+interface User {
+  id: string;
+  name: string;
+  phone: string | null;
   email: string;
-  city: string;
+  cityId: string | null;
+  city?: City; // Отримуємо з бекенду
   role: Role;
 }
 
@@ -30,46 +36,61 @@ const ROLE_HEADER_COLORS: Record<Role, string> = {
   HOST: 'bg-violet-600',
 };
 
-const EMPTY_FORM = { fullName: '', phone: '', email: '', city: '', role: 'MANAGER' as Role };
+const EMPTY_FORM = { fullName: '', phone: '', email: '', cityId: '', role: 'MANAGER' as Role, password: '' };
+
+// ТИМЧАСОВО ДЛЯ ЛОКАЛЬНИХ ТЕСТІВ. ПОТІМ ЗМІНИ НА 'https://crm-57qd.onrender.com'
+const API_BASE_URL = 'https://crm-57qd.onrender.com'; 
 
 export default function Employees() {
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const token = localStorage.getItem('token');
   const headers = { Authorization: `Bearer ${token}` };
 
-  const fetchEmployees = async () => {
+  const fetchData = async () => {
     try {
-      const res = await axios.get('https://crm-57qd.onrender.com/employees', { headers });
-      setEmployees(res.data);
+      const [usersRes, citiesRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/users`, { headers }),
+        axios.get(`${API_BASE_URL}/cities`, { headers })
+      ]);
+      setUsers(usersRes.data);
+      setCities(citiesRes.data);
     } catch (e) {
-      console.error(e);
+      console.error('Помилка завантаження даних:', e);
     }
   };
 
   useEffect(() => {
-    fetchEmployees();
+    fetchData();
   }, []);
 
   const grouped = (['MANAGER', 'DRIVER', 'HOST'] as Role[]).map((role) => ({
     role,
     label: ROLE_LABELS[role],
-    items: employees.filter((e) => e.role === role),
+    items: users.filter((u) => u.role === role),
   }));
 
   const handleOpenAdd = () => {
-    setEditingEmployee(null);
+    setEditingUser(null);
     setForm({ ...EMPTY_FORM });
     setIsModalOpen(true);
   };
 
-  const handleOpenEdit = (emp: Employee) => {
-    setEditingEmployee(emp);
-    setForm({ fullName: emp.fullName, phone: emp.phone, email: emp.email, city: emp.city, role: emp.role });
+  const handleOpenEdit = (user: User) => {
+    setEditingUser(user);
+    setForm({ 
+      fullName: user.name, // У формі ми залишили fullName для сумісності з бекендом
+      phone: user.phone || '', 
+      email: user.email, 
+      cityId: user.cityId || '', 
+      role: user.role,
+      password: '' // Пароль залишаємо порожнім при редагуванні
+    });
     setIsModalOpen(true);
   };
 
@@ -78,28 +99,29 @@ export default function Employees() {
     if (!form.fullName.trim()) return;
     setIsSubmitting(true);
     try {
-      if (editingEmployee) {
-        await axios.patch(`https://crm-57qd.onrender.com/employees/${editingEmployee.id}`, form, { headers });
+      if (editingUser) {
+        await axios.patch(`${API_BASE_URL}/users/${editingUser.id}`, form, { headers });
       } else {
-        await axios.post('https://crm-57qd.onrender.com/employees', form, { headers });
+        await axios.post(`${API_BASE_URL}/users`, form, { headers });
       }
       setIsModalOpen(false);
-      fetchEmployees();
+      fetchData();
     } catch (e) {
       console.error(e);
-      alert('Помилка збереження');
+      alert('Помилка збереження. Перевірте, чи не дублюється email.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Видалити працівника "${name}"?`)) return;
+    if (!window.confirm(`Видалити користувача "${name}"?`)) return;
     try {
-      await axios.delete(`https://crm-57qd.onrender.com/employees/${id}`, { headers });
-      setEmployees(employees.filter((e) => e.id !== id));
+      await axios.delete(`${API_BASE_URL}/users/${id}`, { headers });
+      setUsers(users.filter((u) => u.id !== id));
     } catch (e) {
       console.error(e);
+      alert('Помилка видалення');
     }
   };
 
@@ -108,14 +130,14 @@ export default function Employees() {
       {/* Заголовок */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Працівники</h1>
-          <p className="text-sm text-slate-400 mt-1">Менеджери, водії та ведучі компанії</p>
+          <h1 className="text-2xl font-bold text-slate-800">Акаунти та Працівники</h1>
+          <p className="text-sm text-slate-400 mt-1">Керування доступами, менеджерами, водіями та ведучими</p>
         </div>
         <button
           onClick={handleOpenAdd}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
         >
-          + Додати працівника
+          + Створити користувача
         </button>
       </div>
 
@@ -123,7 +145,6 @@ export default function Employees() {
       <div className="space-y-8">
         {grouped.map(({ role, label, items }) => (
           <div key={role}>
-            {/* Заголовок категорії */}
             <div className={`flex items-center gap-3 mb-4`}>
               <div className={`w-1 h-6 rounded-full ${ROLE_HEADER_COLORS[role]}`}></div>
               <h2 className="text-lg font-bold text-slate-700">{label}</h2>
@@ -143,43 +164,43 @@ export default function Employees() {
                     <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       <th className="px-5 py-3">ПІБ</th>
                       <th className="px-5 py-3">Телефон</th>
-                      <th className="px-5 py-3">Пошта</th>
+                      <th className="px-5 py-3">Пошта / Логін</th>
                       <th className="px-5 py-3">Місто</th>
                       <th className="px-5 py-3 text-center">Дії</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((emp) => (
+                    {items.map((u) => (
                       <tr
-                        key={emp.id}
+                        key={u.id}
                         className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
                       >
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}>
-                              {emp.fullName.charAt(0)}
+                              {u.name.charAt(0)}
                             </div>
-                            <span className="font-medium text-slate-800">{emp.fullName}</span>
+                            <span className="font-medium text-slate-800">{u.name}</span>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-slate-600 text-sm">{emp.phone || '—'}</td>
-                        <td className="px-5 py-4 text-slate-600 text-sm">{emp.email || '—'}</td>
+                        <td className="px-5 py-4 text-slate-600 text-sm">{u.phone || '—'}</td>
+                        <td className="px-5 py-4 text-slate-600 text-sm font-medium">{u.email}</td>
                         <td className="px-5 py-4">
                           <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
-                            📍 {emp.city || '—'}
+                            📍 {u.city?.name || 'Всі міста'}
                           </span>
                         </td>
                         <td className="px-5 py-4 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <button
-                              onClick={() => handleOpenEdit(emp)}
+                              onClick={() => handleOpenEdit(u)}
                               className="text-slate-400 hover:text-blue-500 transition-colors p-1.5 rounded-lg hover:bg-blue-50"
                               title="Редагувати"
                             >
                               ✏️
                             </button>
                             <button
-                              onClick={() => handleDelete(emp.id, emp.fullName)}
+                              onClick={() => handleDelete(u.id, u.name)}
                               className="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50"
                               title="Видалити"
                             >
@@ -203,7 +224,7 @@ export default function Employees() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h3 className="text-xl font-bold text-slate-800">
-                {editingEmployee ? 'Редагувати працівника' : 'Новий працівник'}
+                {editingUser ? 'Редагувати користувача' : 'Новий користувач'}
               </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
             </div>
@@ -219,64 +240,83 @@ export default function Employees() {
                   className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">Категорія *</label>
-                <select
-                  value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
-                  className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                >
-                  <option value="MANAGER">Менеджер</option>
-                  <option value="DRIVER">Водій</option>
-                  <option value="HOST">Ведучий</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Пошта (Логін) *</label>
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    required
+                    placeholder="ivan@example.com"
+                    className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">
+                    Пароль {editingUser ? '(необов\'язково)' : '*'}
+                  </label>
+                  <input
+                    type="password"
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    required={!editingUser} // Обов'язковий тільки при створенні
+                    placeholder="••••••••"
+                    className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Телефон</label>
-                  <input
-                    type="text"
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    placeholder="+380..."
-                    className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                  />
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Роль *</label>
+                  <select
+                    value={form.role}
+                    onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
+                    className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 bg-white"
+                  >
+                    <option value="MANAGER">Менеджер</option>
+                    <option value="DRIVER">Водій</option>
+                    <option value="HOST">Ведучий</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-1">Місто</label>
-                  <input
-                    type="text"
-                    value={form.city}
-                    onChange={(e) => setForm({ ...form, city: e.target.value })}
-                    placeholder="Львів"
-                    className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                  />
+                  <select
+                    value={form.cityId}
+                    onChange={(e) => setForm({ ...form, cityId: e.target.value })}
+                    className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 bg-white"
+                  >
+                    <option value="">— Без прив'язки до міста —</option>
+                    {cities.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">Пошта</label>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Телефон</label>
                 <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="ivan@example.com"
+                  type="text"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="+380..."
                   className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 />
               </div>
-              <div className="flex justify-end gap-3 mt-2">
+              <div className="flex justify-end gap-3 mt-4">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 bg-slate-100 rounded-lg text-sm font-medium hover:bg-slate-200"
+                  className="px-5 py-2.5 bg-slate-100 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"
                 >
                   Скасувати
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
-                  {isSubmitting ? 'Збереження...' : editingEmployee ? 'Зберегти' : 'Створити'}
+                  {isSubmitting ? 'Збереження...' : editingUser ? 'Зберегти зміни' : 'Створити акаунт'}
                 </button>
               </div>
             </form>

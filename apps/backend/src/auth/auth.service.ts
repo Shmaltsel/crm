@@ -27,7 +27,11 @@ export class AuthService {
     }
 
     // Генеруємо "корисне навантаження" для токена
-    const payload = { sub: user.id, email: user.email, role: user.role };
+    // Було:
+// const payload = { sub: user.id, email: user.email, role: user.role };
+
+// Стало:
+    const payload = { sub: user.id, email: user.email, role: user.role, name: user.name };
 
     return {
       access_token: await this.jwtService.signAsync(payload),

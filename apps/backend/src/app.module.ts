@@ -7,8 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { EventsModule } from './events/events.module';
 import { CitiesModule } from './cities/cities.module';
 import { SchoolsModule } from './schools/schools.module';
-import { EmployeesModule } from './employees/employees.module';
- 
+
 @Module({
   imports: [
     PrismaModule,
@@ -17,7 +16,6 @@ import { EmployeesModule } from './employees/employees.module';
     EventsModule,
     CitiesModule,
     SchoolsModule,
-    EmployeesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { UsersService } from './users.service';
 
 @Controller('users')
@@ -10,13 +10,26 @@ export class UsersController {
     return this.usersService.getAllUsers();
   }
 
-  // Шлях для генерації адміна
+  @Post()
+  create(@Body() body: any) {
+    return this.usersService.createUser(body);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() body: any) {
+    return this.usersService.updateUser(id, body);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.usersService.deleteUser(id);
+  }
+
   @Get('seed')
   seedAdmin() {
     return this.usersService.seedAdmin();
   }
 
-  // Новий шлях для генерації Васі
   @Get('seed-vasya')
   seedVasya() {
     return this.usersService.seedVasya();
