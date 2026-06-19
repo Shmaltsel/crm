@@ -7,7 +7,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql" // БУЛО "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -16,13 +16,17 @@ datasource db {
 // EventStatus: "BASE", "FIRST_CONTACT", "INTERESTED", "PRE_APPROVAL", "DATE_CONFIRMED", "PREPARATION", "IN_PROGRESS", "DONE", "CANCELLED"
 
 model Employee {
-  id        String @id @default(uuid())
-  fullName  String
-  phone     String
-  email     String
-  city      String
-  role      String // Змінили тип з Role на String
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid())
+  fullName     String
+  phone        String
+  email        String
+  city         String
+  role         String 
+  createdAt    DateTime @default(now())
+  
+  // ДОДАЄМО ЗВ'ЯЗКИ З ЕКІПАЖЕМ СЮДИ
+  crewAsHost   Crew[]   @relation("HostCrew")
+  crewAsDriver Crew[]   @relation("DriverCrew")
 }
 
 model User {
@@ -34,8 +38,8 @@ model User {
   role          String   @default("MANAGER") 
   cityId        String?
   city          City?    @relation(fields: [cityId], references: [id])
-  crewAsHost    Crew[]   @relation("HostCrew")
-  crewAsDriver  Crew[]   @relation("DriverCrew")
+  
+  // ВИДАЛЯЄМО ЗВ'ЯЗКИ З ЕКІПАЖЕМ ЗВІДСИ
   managedCities City[]   @relation("CityManager")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -74,13 +78,15 @@ model School {
 
 model Crew {
   id        String   @id @default(uuid())
-  name      String   // Наприклад: "Екіпаж №1"
+  name      String   
   cityId    String
   city      City     @relation(fields: [cityId], references: [id])
   hostId    String?
-  host      User?    @relation("HostCrew", fields: [hostId], references: [id])
+  // ЗМІНЮЄМО User НА Employee
+  host      Employee? @relation("HostCrew", fields: [hostId], references: [id])
   driverId  String?
-  driver    User?    @relation("DriverCrew", fields: [driverId], references: [id])
+  // ЗМІНЮЄМО User НА Employee
+  driver    Employee? @relation("DriverCrew", fields: [driverId], references: [id])
   car       String?
   carPlate  String?
   phone     String?
@@ -568,6 +574,7 @@ import { EventsController } from './events.controller';
 describe('EventsController', () => {
   let controller: EventsController;
 
+  
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [EventsController],
@@ -604,6 +611,16 @@ export class EventsController {
   @Patch(':id/status')
   updateStatus(@Param('id') id: string, @Body() body: { status: string, actionName: string, comment?: string }) {
     return this.eventsService.updateStatus(id, body.status, body.actionName, body.comment);
+  }
+
+  @Patch(':id/preparation')
+  updatePreparation(@Param('id') id: string, @Body() body: { field: string, status: string }) {
+    return this.eventsService.updatePreparationStatus(id, body.field, body.status);
+  }
+
+  @Post(':id/assign-crew')
+  assignCrew(@Param('id') id: string, @Body() body: { hostId: string, driverId: string, cityId: string }) {
+    return this.eventsService.assignCrewToEvent(id, body.cityId, body.hostId, body.driverId);
   }
 
   // Маршрут для оновлення коментаря
@@ -686,6 +703,44 @@ export class EventsService {
     });
   }
 
+  // Додайте цей метод до існуючих в EventsService
+  async updatePreparationStatus(eventId: string, field: string, status: string) {
+    const existing = await prisma.eventPreparation.findUnique({ where: { eventId } });
+    
+    if (existing) {
+      return prisma.eventPreparation.update({
+        where: { eventId },
+        data: { [field]: status }
+      });
+    } else {
+      return prisma.eventPreparation.create({
+        data: { eventId, [field]: status }
+      });
+    }
+  }
+  async assignCrewToEvent(eventId: string, cityId: string, hostId: string, driverId: string) {
+    // Створюємо екіпаж під цю подію
+    const crew = await prisma.crew.create({
+      data: {
+        name: 'Екіпаж події',
+        cityId: cityId,
+        hostId: hostId,
+        driverId: driverId
+      }
+    });
+
+    // Оновлюємо подію, додаючи ID створеного екіпажу
+    return prisma.event.update({
+      where: { id: eventId },
+      data: { crewId: crew.id },
+      include: { 
+        crew: true, 
+        preparation: true, 
+        history: { orderBy: { createdAt: 'desc' } } 
+      }
+    });
+  }
+  
   async findBySchool(schoolId: string) {
     return prisma.event.findMany({
       where: { schoolId },
@@ -1167,13 +1222,18 @@ export class UsersController {
     return this.usersService.getAllUsers();
   }
 
-  // Шлях для генерації адміна: https://crm-57qd.onrender.com/users/seed
+  // Шлях для генерації адміна
   @Get('seed')
   seedAdmin() {
     return this.usersService.seedAdmin();
   }
-}
 
+  // Новий шлях для генерації Васі
+  @Get('seed-vasya')
+  seedVasya() {
+    return this.usersService.seedVasya();
+  }
+}
 
 --- FILE: apps\backend\src\users\users.module.ts ---
 
@@ -1225,7 +1285,7 @@ export class UsersService {
     return this.prisma.user.findMany();
   }
 
-  // Тимчасовий метод для створення першого адміна
+  // Створення адміністратора
   async seedAdmin() {
     const existingAdmin = await this.prisma.user.findUnique({
       where: { email: 'admin@crm.com' },
@@ -1236,10 +1296,9 @@ export class UsersService {
     }
 
     const hashedPassword = await bcrypt.hash('admin123', 10);
-
     const admin = await this.prisma.user.create({
       data: {
-        name: 'Головний Адмін',
+        name: 'Артур Шмальцель',
         email: 'admin@crm.com',
         password: hashedPassword,
         role: 'SUPERADMIN',
@@ -1248,8 +1307,31 @@ export class UsersService {
 
     return { message: 'Суперадмін успішно створений!', user: admin };
   }
-}
 
+  // Новий метод для додавання Васі
+  async seedVasya() {
+    const existingVasya = await this.prisma.user.findUnique({
+      where: { email: 'vasya@charisma.com' },
+    });
+
+    if (existingVasya) {
+      return { message: 'Вася вже в базі!' };
+    }
+
+    const hashedPassword = await bcrypt.hash('vasya123', 10);
+
+    const vasya = await this.prisma.user.create({
+      data: {
+        name: 'Вася Харізма',
+        email: 'vasya@charisma.com',
+        password: hashedPassword,
+        role: 'MANAGER',
+      },
+    });
+
+    return { message: 'Вася Харізма успішно доданий!', user: vasya };
+  }
+}
 
 --- FILE: apps\backend\test\app.e2e-spec.ts ---
 
@@ -1563,6 +1645,7 @@ export default function App() {
 
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { jwtDecode } from "jwt-decode";
 
 interface UserInfo {
   name: string;
@@ -1583,7 +1666,21 @@ export default function Layout() {
     }
   }, []);
 
-  const isSuperAdmin = true;//user?.role === 'SUPERADMIN';
+
+// Отримуємо токен
+const token = localStorage.getItem('token');
+let isSuperAdmin = false;
+
+    if (token) {
+      try {
+        const decoded: any = jwtDecode(token);
+        // Переконайся, що назва поля 'role' збігається з тим, що лежить у токені
+        isSuperAdmin = decoded.role === 'SUPERADMIN';
+      } catch (error) {
+        console.error("Не вдалося розкодувати токен:", error);
+      }
+    }
+  
 
   const isActive = (path: string) => location.pathname.startsWith(path);
 
@@ -1671,6 +1768,67 @@ export default function Layout() {
   );
 }
 
+--- FILE: apps\frontend\src\components\school-profile\AssignedCrew.tsx ---
+
+import React from 'react';
+
+interface AssignedCrewProps {
+  currentEvent: any;
+  employees: any[];
+}
+
+export default function AssignedCrew({ currentEvent, employees }: AssignedCrewProps) {
+  const crew = currentEvent?.crew;
+
+  if (!crew) {
+    return (
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center items-center h-full text-slate-400 min-h-[250px]">
+        <span className="text-4xl mb-3 opacity-50">🚐</span>
+        <p className="font-medium">Екіпаж ще не призначено</p>
+        <p className="text-xs mt-1">Виконайте пункт "Призначити екіпаж" зліва</p>
+      </div>
+    );
+  }
+
+  // Знаходимо працівників по їхніх ID, збережених у екіпажі
+  const host = employees.find(e => e.id === crew.hostId);
+  const driver = employees.find(e => e.id === crew.driverId);
+
+  return (
+    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-full flex flex-col">
+      <h3 className="font-bold text-slate-800 mb-4 border-b pb-3 border-slate-100">Призначений екіпаж</h3>
+      <div className="space-y-4 text-sm flex-1">
+        <div className="flex justify-between items-center">
+          <span className="text-slate-500">Назва:</span>
+          <span className="font-bold text-slate-800 bg-slate-100 px-3 py-1 rounded-lg">{crew.name || 'Екіпаж'}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-slate-500">Ведучий:</span>
+          <span className="font-medium text-blue-600 flex items-center gap-2">
+            <span className="bg-blue-100 text-blue-600 w-6 h-6 flex items-center justify-center rounded-full text-xs">🎙️</span>
+            {host?.fullName || '—'}
+          </span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-slate-500">Водій:</span>
+          <span className="font-medium text-emerald-600 flex items-center gap-2">
+            <span className="bg-emerald-100 text-emerald-600 w-6 h-6 flex items-center justify-center rounded-full text-xs">🚗</span>
+            {driver?.fullName || '—'}
+          </span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-slate-500">Авто:</span>
+          <span className="font-medium">{crew.car || '—'}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-slate-500">Телефон:</span>
+          <span className="font-medium">{crew.phone || '—'}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 --- FILE: apps\frontend\src\components\school-profile\EventDetails.tsx ---
 
 export default function EventDetails({ currentEvent }: { currentEvent: any }) {
@@ -1703,12 +1861,22 @@ export default function EventDetails({ currentEvent }: { currentEvent: any }) {
 
 --- FILE: apps\frontend\src\components\school-profile\EventPreparation.tsx ---
 
+import React from 'react';
+
 interface PreparationProps {
-  data: any; // Дані з бази про підготовку
+  data: any; 
   onUpdate: (field: string, status: string) => void;
+  onOpenCrewModal: () => void;
 }
 
-export default function EventPreparation({ data, onUpdate }: PreparationProps) {
+const STATUSES = ['Заплановано', 'В процесі', 'Виконано'];
+
+const getNextStatus = (current: string) => {
+  const idx = STATUSES.indexOf(current || 'Заплановано');
+  return STATUSES[(idx + 1) % STATUSES.length];
+};
+
+export default function EventPreparation({ data, onUpdate, onOpenCrewModal }: PreparationProps) {
   const tasks = [
     { key: 'assignCrew', label: 'Призначити екіпаж' },
     { key: 'bookEquipment', label: 'Забронювати обладнання' },
@@ -1719,21 +1887,32 @@ export default function EventPreparation({ data, onUpdate }: PreparationProps) {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Виконано': return 'bg-emerald-50 text-emerald-600';
-      case 'В процесі': return 'bg-orange-50 text-orange-600';
-      default: return 'bg-blue-50 text-blue-600';
+      case 'Виконано': return 'bg-emerald-50 text-emerald-600 border border-emerald-200';
+      case 'В процесі': return 'bg-orange-50 text-orange-600 border border-orange-200';
+      default: return 'bg-blue-50 text-blue-600 border border-blue-200';
+    }
+  };
+
+  const handleTaskClick = (key: string) => {
+    if (key === 'assignCrew') {
+      onOpenCrewModal(); // Відкриваємо модалку замість простої зміни статусу
+    } else {
+      onUpdate(key, getNextStatus(data[key])); // Перемикаємо статус
     }
   };
 
   return (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
       <h3 className="font-bold text-slate-800 mb-4 border-b pb-3 border-slate-100">Підготовка до події</h3>
-      <div className="space-y-4 text-sm">
+      <div className="space-y-3 text-sm">
         {tasks.map((task) => (
-          <div key={task.key} className="flex justify-between items-center cursor-pointer group"
-               onClick={() => onUpdate(task.key, data[task.key] === 'Заплановано' ? 'В процесі' : 'Виконано')}>
-            <span className="text-slate-700">{task.label}</span>
-            <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(data[task.key] || 'Заплановано')}`}>
+          <div 
+            key={task.key} 
+            className="flex justify-between items-center cursor-pointer group hover:bg-slate-50 p-2 -mx-2 rounded-lg transition-colors"
+            onClick={() => handleTaskClick(task.key)}
+          >
+            <span className="text-slate-700 font-medium select-none">{task.label}</span>
+            <span className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all select-none ${getStatusColor(data[task.key] || 'Заплановано')}`}>
               {data[task.key] || 'Заплановано'}
             </span>
           </div>
@@ -1742,7 +1921,6 @@ export default function EventPreparation({ data, onUpdate }: PreparationProps) {
     </div>
   );
 }
-
 
 --- FILE: apps\frontend\src\components\school-profile\EventsTable.tsx ---
 
@@ -1910,6 +2088,87 @@ export default function CommentModal({ isOpen, onClose, mode, text, setText, onS
   );
 }
 
+
+--- FILE: apps\frontend\src\components\school-profile\modals\CrewModal.tsx ---
+
+import React, { useState } from 'react';
+
+interface Employee {
+  id: string;
+  fullName: string;
+  role: string;
+  city: string;
+}
+
+interface CrewModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  city: string;
+  employees: Employee[];
+  onSave: (hostId: string, driverId: string) => void;
+}
+
+export default function CrewModal({ isOpen, onClose, city, employees, onSave }: CrewModalProps) {
+  const [selectedHost, setSelectedHost] = useState('');
+  const [selectedDriver, setSelectedDriver] = useState('');
+
+  if (!isOpen) return null;
+
+  // Фільтруємо працівників за роллю та назвою міста, яке передано в пропси
+  const hosts = employees.filter(e => e.role === 'HOST' && e.city === city);
+  const drivers = employees.filter(e => e.role === 'DRIVER' && e.city === city);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(selectedHost, selectedDriver);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div className="p-6 border-b border-slate-100 flex justify-between bg-slate-50">
+          <h3 className="text-xl font-bold text-slate-800">Призначити екіпаж ({city})</h3>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">✕</button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Ведучий</label>
+            <select 
+              value={selectedHost} 
+              onChange={e => setSelectedHost(e.target.value)} 
+              className="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">— Оберіть ведучого —</option>
+              {hosts.map(h => <option key={h.id} value={h.id}>{h.fullName}</option>)}
+            </select>
+            {hosts.length === 0 && <p className="text-xs text-red-500 mt-1">У цьому місті немає доступних ведучих</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Водій</label>
+            <select 
+              value={selectedDriver} 
+              onChange={e => setSelectedDriver(e.target.value)} 
+              className="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">— Оберіть водія —</option>
+              {drivers.map(d => <option key={d.id} value={d.id}>{d.fullName}</option>)}
+            </select>
+            {drivers.length === 0 && <p className="text-xs text-red-500 mt-1">У цьому місті немає доступних водіїв</p>}
+          </div>
+
+          <div className="flex justify-end gap-3 mt-4">
+            <button type="button" onClick={onClose} className="px-5 py-2.5 bg-slate-100 rounded-xl text-sm font-medium">Скасувати</button>
+            <button type="submit" className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">Зберегти екіпаж</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 --- FILE: apps\frontend\src\components\school-profile\modals\EditSchoolModal.tsx ---
 
@@ -2673,11 +2932,13 @@ import Pipeline from '../components/school-profile/Pipeline';
 import EventDetails from '../components/school-profile/EventDetails';
 import EventsTable from '../components/school-profile/EventsTable';
 import EventPreparation from '../components/school-profile/EventPreparation';
+import AssignedCrew from '../components/school-profile/AssignedCrew';
 
 // Імпортуємо модальні вікна
 import EditSchoolModal from '../components/school-profile/modals/EditSchoolModal';
 import EventModal from '../components/school-profile/modals/EventModal';
 import CommentModal from '../components/school-profile/modals/CommentModal';
+import CrewModal from '../components/school-profile/modals/CrewModal';
 
 const PIPELINE_STAGES = [
   { id: 1, key: 'BASE', name: 'База' },
@@ -2695,6 +2956,9 @@ const PIPELINE_STAGES = [
 export default function SchoolProfile() {
   const { id } = useParams();
   const [isLoading, setIsLoading] = useState(true);
+
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
 
   const [schoolData, setSchoolData] = useState<any>({
     id: '', cityId: '', name: '', type: 'Школа', city: '', 
@@ -2722,6 +2986,7 @@ export default function SchoolProfile() {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
+      // Завантажуємо школу
       const schoolRes = await axios.get(`https://crm-57qd.onrender.com/schools/${id}`, { headers });
       if (schoolRes.data) {
         setSchoolData({
@@ -2734,11 +2999,17 @@ export default function SchoolProfile() {
         setEditForm({ ...schoolRes.data, city: schoolRes.data.city?.name || '' });
       }
 
+      // Завантажуємо події
       const eventsRes = await axios.get(`https://crm-57qd.onrender.com/events/school/${id}`, { headers });
       setEvents(eventsRes.data);
       if (eventsRes.data.length > 0 && !selectedEventId) {
         setSelectedEventId(eventsRes.data[0].id);
       }
+
+      // Завантажуємо працівників для екіпажів
+      const empRes = await axios.get('https://crm-57qd.onrender.com/employees', { headers });
+      setEmployees(empRes.data);
+
     } catch (error) {
       console.error('Помилка завантаження даних:', error);
     } finally {
@@ -2806,6 +3077,46 @@ export default function SchoolProfile() {
     } catch (e) { console.error(e); }
   };
 
+  const handleUpdatePreparation = async (field: string, status: string) => {
+    if (!currentEvent) return;
+    try {
+      const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
+      await axios.patch(`https://crm-57qd.onrender.com/events/${currentEvent.id}/preparation`, { field, status }, { headers });
+      
+      // Оновлюємо стан миттєво для плавного UI
+      setEvents(prev => prev.map(ev => {
+        if (ev.id === currentEvent.id) {
+          return { ...ev, preparation: { ...(ev.preparation || {}), [field]: status } };
+        }
+        return ev;
+      }));
+    } catch (e) {
+      console.error('Помилка оновлення підготовки', e);
+    }
+  };
+
+  const handleAssignCrew = async (hostId: string, driverId: string) => {
+    try {
+      const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
+      
+      // 1. Відправляємо запит на створення/прив'язку екіпажу до події
+      const res = await axios.post(`https://crm-57qd.onrender.com/events/${currentEvent.id}/assign-crew`, {
+        hostId, 
+        driverId, 
+        cityId: schoolData.cityId
+      }, { headers });
+
+      // 2. Ставимо галочку "Виконано" для задачі
+      await handleUpdatePreparation('assignCrew', 'Виконано');
+      
+      // 3. Оновлюємо стейт подій, щоб відмалювався AssignedCrew компонент
+      setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? res.data : ev));
+      setIsCrewModalOpen(false);
+    } catch (e) {
+      console.error('Помилка при призначенні екіпажу', e);
+    }
+  };
+
   if (isLoading) return <div className="p-8 text-slate-500">Завантаження...</div>;
 
   return (
@@ -2855,13 +3166,27 @@ export default function SchoolProfile() {
 
         <div className="flex-1 flex flex-col gap-6">
           <Pipeline currentStageIndex={currentStageIndex} currentEvent={currentEvent} onPipelineClick={handlePipelineClick} stages={PIPELINE_STAGES} />
-          {currentEvent && currentStageIndex >= 5 && <EventPreparation data={{}} onUpdate={(f, s) => console.log(f, s)} />}
+          
+          {currentEvent && currentStageIndex >= 5 && (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <EventPreparation 
+                data={currentEvent.preparation || {}} 
+                onUpdate={handleUpdatePreparation} 
+                onOpenCrewModal={() => setIsCrewModalOpen(true)} 
+              />
+              <AssignedCrew 
+                currentEvent={currentEvent} 
+                employees={employees} 
+              />
+            </div>
+          )}
+
           <EventDetails currentEvent={currentEvent} />
           <EventsTable 
               events={events} 
               selectedEventId={selectedEventId} 
               onEventSelect={setSelectedEventId}
-              onDeleteSuccess={fetchData} // Тепер таблиця оновиться сама після видалення
+              onDeleteSuccess={fetchData} 
             />
         </div>
       </div>
@@ -2869,6 +3194,7 @@ export default function SchoolProfile() {
       <EditSchoolModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} editForm={editForm} setEditForm={setEditForm} onSave={handleSaveSchoolInfo} />
       <EventModal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} eventForm={eventForm} setEventForm={setEventForm} onSave={handleSaveEvent} />
       <CommentModal isOpen={commentModal.isOpen} onClose={() => setCommentModal({...commentModal, isOpen: false})} mode={commentModal.mode} text={commentModal.text} setText={(t) => setCommentModal({...commentModal, text: t})} onSave={handleSaveComment} />
+      <CrewModal isOpen={isCrewModalOpen} onClose={() => setIsCrewModalOpen(false)} city={schoolData.city} employees={employees} onSave={handleAssignCrew} />
     </div>
 
   );

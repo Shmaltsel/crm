@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -27,6 +27,10 @@ export default function Schools() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({ name: '', type: 'Школа', cityId: '' });
+  const [suggestions, setSuggestions] = useState<{ name: string; url: string }[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchSchools = async () => {
     try {
@@ -56,6 +60,40 @@ export default function Schools() {
   const handleOpenModal = () => {
     setForm({ name: '', type: 'Школа', cityId: cities[0]?.id ?? '' });
     setIsModalOpen(true);
+  };
+  
+  const handleNameChange = (value: string) => {
+    setForm({ ...form, name: value });
+
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+
+    if (value.length < 2) {
+      setShowSuggestions(false);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);   // ← показуємо "пошук..." одразу
+    setShowSuggestions(true); // ← відкриваємо dropdown одразу
+
+    debounceTimer.current = setTimeout(async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`https://crm-57qd.onrender.com/schools/search?q=${value}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setSuggestions(res.data);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsSearching(false); // ← прибираємо "пошук..." коли прийшла відповідь
+      }
+    }, 400);
+};
+
+  const handleSelectSuggestion = (name: string) => {
+    setForm({ ...form, name });
+    setShowSuggestions(false);
   };
 
   const handleAddSchool = async (e: React.FormEvent) => {
@@ -163,16 +201,36 @@ export default function Schools() {
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
             </div>
             <form onSubmit={handleAddSchool} className="p-6 flex flex-col gap-4">
-              <div>
+              <div className="relative">
                 <label className="block text-sm text-slate-600 mb-1">Назва закладу</label>
                 <input
                   type="text"
                   value={form.name}
-                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  onChange={e => handleNameChange(e.target.value)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                   required
                   placeholder="Школа №1"
                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 />
+                {showSuggestions && (
+                  <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                    {isSearching ? (
+                      <li className="px-3 py-2 text-sm text-slate-400 italic">Пошук за збігами...</li>
+                    ) : suggestions.length > 0 ? (
+                      suggestions.map((s, i) => (
+                        <li
+                          key={i}
+                          onMouseDown={() => handleSelectSuggestion(s.name)}
+                          className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer"
+                        >
+                          {s.name}
+                        </li>
+                      ))
+                    ) : (
+                      <li className="px-3 py-2 text-sm text-slate-400 italic">Нічого не знайдено</li>
+                    )}
+                  </ul>
+                )}
               </div>
               <div>
                 <label className="block text-sm text-slate-600 mb-1">Тип</label>

@@ -24,6 +24,7 @@ export class ParserService {
         const name = $list(row)
           .find('td:nth-child(2) a')
           .text()
+          .replace(/\s+/g, ' ')
           .trim()
           .toLowerCase();
 
@@ -90,6 +91,38 @@ export class ParserService {
       );
 
       return null;
+    }
+  }
+  async searchSchools(query: string): Promise<{ name: string; url: string }[]> {
+    try {
+      const urls = [
+        'https://lv.isuo.org/authorities/schools-list/id/681',
+        'https://lv.isuo.org/authorities/schools-list/id/681/page/2',
+      ];
+
+      const results: { name: string; url: string }[] = [];
+      const normalizedQuery = query.toLowerCase().replace(/\s+/g, ' ').trim();
+      console.log("шукаю")
+      for (const url of urls) {
+        const response = await axios.get(url);
+        const $ = cheerio.load(response.data);
+
+        $('table.zebra-stripe.list tr').each((_, row) => {
+          const rawName = $(row).find('td:nth-child(2) a').text();
+          console.log('RAW NAME:', JSON.stringify(rawName));
+          const name = rawName.replace(/\s+/g, ' ').trim(); // нормалізуємо всі пробіли
+          const href = $(row).find('td:nth-child(2) a').attr('href');
+
+          if (name && href && name.toLowerCase().includes(normalizedQuery)) {
+            results.push({ name, url: `https://lv.isuo.org${href}` });
+          }
+        });
+      }
+
+      return results.slice(0, 10);
+    } catch (error) {
+      console.error('Помилка пошуку шкіл:', error);
+      return [];
     }
   }
 }

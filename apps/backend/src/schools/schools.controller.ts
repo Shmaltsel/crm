@@ -1,9 +1,13 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Delete, Query } from '@nestjs/common';
 import { SchoolsService } from './schools.service';
+import { ParserService } from './parser.service';
 
 @Controller('schools')
 export class SchoolsController {
-  constructor(private readonly schoolsService: SchoolsService) {}
+  constructor(
+    private readonly schoolsService: SchoolsService,
+    private readonly parserService: ParserService,
+  ) {}
 
   @Post()
   create(@Body() body: { name: string; type: string; cityId: string }) {
@@ -13,6 +17,12 @@ export class SchoolsController {
   @Get()
   findAll() {
     return this.schoolsService.findAll();
+  }
+
+  // ⚠️ ВАЖЛИВО: цей маршрут МАЄ стояти ДО @Get(':id')
+  @Get('search')
+  search(@Query('q') q: string) {
+    return this.parserService.searchSchools(q);
   }
 
   @Get(':id')
@@ -25,7 +35,6 @@ export class SchoolsController {
     return this.schoolsService.update(id, body);
   }
 
-  // Додаємо цей метод для видалення
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.schoolsService.remove(id);
