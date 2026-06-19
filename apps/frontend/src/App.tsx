@@ -7,6 +7,7 @@ import Layout from './components/Layout';
 import Schools from './pages/Schools';
 import SchoolProfile from './pages/SchoolProfile';
 import Employees from './pages/Employees';
+import EventReport from './pages/EventReport';
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/cities" element={<Cities />} />
           <Route path="/cities/:id" element={<CityProfile />} />
+          <Route path="/events/:eventId/report" element={<EventReport />} />
           <Route path="/events" element={<Events />} />
           <Route path="/schools/:id" element={<SchoolProfile />} />
           <Route path="/schools" element={<Schools />} />

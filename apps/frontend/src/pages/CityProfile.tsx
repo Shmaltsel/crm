@@ -132,13 +132,9 @@ export default function CityProfile() {
                   {completedEvents.map((ev: any) => (
                     <tr key={ev.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
                       <td className="p-4">
-                        <Link
-                          to={`/schools/${ev.school?.id}`}
-                          className="font-medium text-blue-600 hover:underline"
-                          onClick={e => e.stopPropagation()}
-                        >
-                          {ev.school?.name}
-                        </Link>
+                        <Link to={`/events/${ev.id}/report`} className="font-medium text-blue-600 hover:underline">
+                            {ev.school?.name}
+                            </Link>
                         <p className="text-xs text-slate-400">{ev.school?.type}</p>
                       </td>
                       <td className="p-4 text-slate-700">{ev.project}</td>

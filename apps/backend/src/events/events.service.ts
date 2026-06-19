@@ -163,4 +163,22 @@ export class EventsService {
    include: { report: true, history: { orderBy: { createdAt: 'desc' } } }
   });
 }
+
+
+  async findOne(id: string) {
+    return prisma.event.findUnique({
+      where: { id },
+      include: {
+        school: true,
+        city: true,
+        crew: {
+          include: {
+            host: { select: { id: true, name: true } },
+            driver: { select: { id: true, name: true } },
+          },
+        },
+        report: true,
+      },
+    });
+  }
 }
