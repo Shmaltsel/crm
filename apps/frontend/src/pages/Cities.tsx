@@ -75,8 +75,8 @@ export default function Cities() {
   };
 
   return (
-    <div className="p-8 relative h-full">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-4 md:p-8 relative h-full">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
         <h1 className="text-3xl font-bold text-slate-800">Міста</h1>
         <button
           onClick={() => setIsModalOpen(true)}

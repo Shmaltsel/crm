@@ -13,44 +13,50 @@ export default function EditSchoolModal({ isOpen, onClose, editForm, setEditForm
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden">
-        <div className="p-6 border-b flex justify-between items-center bg-slate-50">
+      {/* Додано max-h-[90vh] та flex flex-col */}
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        
+        {/* Шапка не зжимається (shrink-0) */}
+        <div className="p-4 md:p-6 border-b flex justify-between items-center bg-slate-50 shrink-0">
           <h3 className="text-xl font-bold">Редагування</h3>
-          <button onClick={onClose} className="text-slate-400">✕</button>
+          <button onClick={onClose} className="text-slate-400 p-2 -mr-2">✕</button>
         </div>
-        <form onSubmit={onSave} className="p-6">
+
+        {/* Форма скролиться (overflow-y-auto) */}
+        <form onSubmit={onSave} className="p-4 md:p-6 overflow-y-auto flex-1 flex flex-col gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm">Тип</label>
-              <select value={editForm.type} onChange={e => setEditForm({...editForm, type: e.target.value})} className="w-full p-2 border rounded">
+              <label className="block text-sm mb-1">Тип</label>
+              <select value={editForm.type} onChange={e => setEditForm({...editForm, type: e.target.value})} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
                 <option>Школа</option>
                 <option>Садочок</option>
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm">Адреса</label>
-              <input type="text" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className="w-full p-2 border rounded" />
+              <label className="block text-sm mb-1">Адреса</label>
+              <input type="text" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
-              <label className="block text-sm">Директор</label>
-              <input type="text" value={editForm.director} onChange={e => setEditForm({...editForm, director: e.target.value})} className="w-full p-2 border rounded" />
+              <label className="block text-sm mb-1">Директор</label>
+              <input type="text" value={editForm.director} onChange={e => setEditForm({...editForm, director: e.target.value})} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
-              <label className="block text-sm">Телефон</label>
-              <input type="text" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className="w-full p-2 border rounded" />
+              <label className="block text-sm mb-1">Телефон</label>
+              <input type="text" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
-              <label className="block text-sm">Email</label>
-              <input type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} className="w-full p-2 border rounded" />
+              <label className="block text-sm mb-1">Email</label>
+              <input type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
-              <label className="block text-sm">Дітей</label>
-              <input type="number" value={editForm.childrenCount || ''} onChange={e => setEditForm({...editForm, childrenCount: Number(e.target.value)})} className="w-full p-2 border rounded" />
+              <label className="block text-sm mb-1">Дітей</label>
+              <input type="number" value={editForm.childrenCount || ''} onChange={e => setEditForm({...editForm, childrenCount: Number(e.target.value)})} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
-          <div className="flex justify-end gap-3 mt-6">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 bg-slate-100 rounded">Скасувати</button>
-            <button type="submit" className="bg-blue-600 text-white px-5 py-2.5 rounded">Зберегти</button>
+          
+          <div className="flex justify-end gap-3 mt-6 shrink-0 pt-4 border-t border-slate-100">
+            <button type="button" onClick={onClose} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 font-medium rounded-xl transition-colors">Скасувати</button>
+            <button type="submit" className="bg-blue-600 text-white px-5 py-2.5 font-medium rounded-xl hover:bg-blue-700 transition-colors">Зберегти</button>
           </div>
         </form>
       </div>

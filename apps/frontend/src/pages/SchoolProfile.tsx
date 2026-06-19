@@ -232,32 +232,38 @@ const handlePipelineClick = (stepId: number) => {
   if (isLoading) return <div className="p-8 text-slate-500">Завантаження...</div>;
 
   return (
-    <div className="p-8 bg-slate-50 min-h-screen text-slate-800 font-sans">
-      <div className="text-sm text-slate-500 mb-4">
-        <Link to="/schools" className="hover:text-blue-600 transition-colors">Школи / Садочки</Link> 
-        <span className="mx-2">›</span> 
-        <span className="text-slate-800 font-medium">{schoolData.type} "{schoolData.name}"</span>
-      </div>
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden">
+  <div className="text-xs md:text-sm text-slate-500 mb-4 truncate">
+    <Link to="/schools" className="hover:text-blue-600 transition-colors">Школи / Садочки</Link> 
+    <span className="mx-2">›</span> 
+    <span className="text-slate-800 font-medium">{schoolData.type} "{schoolData.name}"</span>
+  </div>
 
-      <div className="flex justify-between items-start mb-6">
-        <h1 className="text-3xl font-bold text-slate-800">{schoolData.type} "{schoolData.name}"</h1>
-        <div className="flex gap-3">
-          <div className="relative">
-            <button onClick={() => setIsEditMenuOpen(!isEditMenuOpen)} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium">✏️ Редагувати</button>
-            {isEditMenuOpen && (
-              <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-20">
-                <button onClick={() => { setIsEditMenuOpen(false); setEditForm(schoolData); setIsEditModalOpen(true); }} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm font-medium text-slate-700">Інформація про заклад</button>
-              </div>
-            )}
+  {/* Адаптивна шапка */}
+  <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
+    <h1 className="text-2xl md:text-3xl font-bold text-slate-800 leading-tight">{schoolData.type} "{schoolData.name}"</h1>
+    
+    <div className="flex flex-wrap md:flex-nowrap gap-2 md:gap-3 w-full md:w-auto shrink-0">
+      <div className="relative flex-1 md:flex-none">
+        <button onClick={() => setIsEditMenuOpen(!isEditMenuOpen)} className="w-full md:w-auto px-4 py-2.5 md:py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium transition-colors">
+          ✏️ Редагувати
+        </button>
+        {isEditMenuOpen && (
+          <div className="absolute top-full right-0 left-0 md:left-auto mt-2 w-full md:w-56 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-20">
+            <button onClick={() => { setIsEditMenuOpen(false); setEditForm(schoolData); setIsEditModalOpen(true); }} className="w-full text-left px-4 py-3 md:py-2 hover:bg-slate-50 text-sm font-medium text-slate-700">
+              Інформація про заклад
+            </button>
           </div>
-          <button onClick={() => {
-            setEventForm(prev => ({...prev, address: schoolData.address, contactPerson: schoolData.director, contactPhone: schoolData.phone, childrenPlanned: String(schoolData.childrenCount)}));
-            setIsEventModalOpen(true);
-          }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
-            ⏱ Додати подію
-          </button>
-        </div>
+        )}
       </div>
+      <button onClick={() => {
+        setEventForm(prev => ({...prev, address: schoolData.address, contactPerson: schoolData.director, contactPhone: schoolData.phone, childrenPlanned: String(schoolData.childrenCount)}));
+        setIsEventModalOpen(true);
+      }} className="flex-1 md:flex-none w-full md:w-auto px-4 py-2.5 md:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors text-center">
+        ⏱ Додати подію
+      </button>
+    </div>
+  </div>
           
       <div className="flex flex-col xl:flex-row gap-6">
         <div className="w-full xl:w-80 flex flex-col gap-6">

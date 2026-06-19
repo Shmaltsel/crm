@@ -126,9 +126,9 @@ export default function Employees() {
   };
 
   return (
-    <div className="p-8 h-full">
+    <div className="p-4 md:p-8 h-full">
       {/* Заголовок */}
-      <div className="flex justify-between items-center mb-8">
+       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Акаунти та Працівники</h1>
           <p className="text-sm text-slate-400 mt-1">Керування доступами, менеджерами, водіями та ведучими</p>
@@ -154,7 +154,7 @@ export default function Employees() {
             </div>
 
             {items.length === 0 ? (
-              <div className="bg-white rounded-xl border border-slate-100 p-6 text-center text-slate-400 text-sm">
+              <div className="bg-white rounded-xl border border-slate-100 p-6 text-center text-slate-400 text-sm overflow-x-auto">
                 Немає {label.toLowerCase()}ів
               </div>
             ) : (

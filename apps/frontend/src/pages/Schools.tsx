@@ -126,8 +126,8 @@ export default function Schools() {
   };
 
   return (
-    <div className="p-8 h-full">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 md:p-8 h-full max-w-[100vw] overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Школи та Садочки</h1>
         <button
           onClick={handleOpenModal}
@@ -137,7 +137,7 @@ export default function Schools() {
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto w-full">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">

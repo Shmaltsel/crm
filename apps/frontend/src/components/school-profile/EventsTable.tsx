@@ -26,7 +26,7 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
   if (events.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mt-2">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto mt-2 w-full">
       <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
         <h3 className="font-bold text-slate-800">Всі події ({events.length})</h3>
       </div>

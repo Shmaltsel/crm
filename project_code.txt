@@ -630,26 +630,41 @@ export class CitiesService {
   }
 
   async findAll() {
-    return prisma.city.findMany({
+    const cities = await prisma.city.findMany({
       orderBy: { createdAt: 'desc' },
+      include: {
+        users: {
+          where: { role: 'MANAGER' },
+          select: { id: true, name: true, phone: true },
+          take: 1,
+        },
+        events: {
+          select: { id: true, status: true },
+        },
+      },
     });
+
+    return cities.map(city => ({
+      ...city,
+      manager: city.users[0] || null,
+      plannedEvents: city.events.filter(e => e.status !== 'RE_SALE').length,
+      completedEvents: city.events.filter(e => e.status === 'RE_SALE').length,
+    }));
   }
 
   async findOne(id: string) {
-    return prisma.city.findUnique({
+    const city = await prisma.city.findUnique({
       where: { id },
       include: {
-        manager: {
-          select: { id: true, name: true, phone: true, email: true },
-        },
         users: {
-          select: { id: true, name: true, role: true, phone: true },
+          where: { role: 'MANAGER' },
+          select: { id: true, name: true, phone: true },
+          take: 1,
         },
         events: {
-          where: { status: 'RE_SALE' }, // тільки завершені події
+          where: { status: 'RE_SALE' },
           include: {
             school: { select: { id: true, name: true, type: true } },
-            crew: true,
             report: true,
           },
           orderBy: { date: 'desc' },
@@ -662,6 +677,13 @@ export class CitiesService {
         },
       },
     });
+
+    if (!city) return null;
+
+    return {
+      ...city,
+      manager: city.users[0] || null,
+    };
   }
 }
 
@@ -743,6 +765,10 @@ export class EventsController {
     }
       
 
+    @Get(':id')
+      findOne(@Param('id') id: string) {
+        return this.eventsService.findOne(id);
+      }
 }
 
 
@@ -950,6 +976,24 @@ export class EventsService {
    include: { report: true, history: { orderBy: { createdAt: 'desc' } } }
   });
 }
+
+
+  async findOne(id: string) {
+    return prisma.event.findUnique({
+      where: { id },
+      include: {
+        school: true,
+        city: true,
+        crew: {
+          include: {
+            host: { select: { id: true, name: true } },
+            driver: { select: { id: true, name: true } },
+          },
+        },
+        report: true,
+      },
+    });
+  }
 }
 
 
@@ -1954,6 +1998,7 @@ import Layout from './components/Layout';
 import Schools from './pages/Schools';
 import SchoolProfile from './pages/SchoolProfile';
 import Employees from './pages/Employees';
+import EventReport from './pages/EventReport';
 
 export default function App() {
   return (
@@ -1964,6 +2009,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/cities" element={<Cities />} />
           <Route path="/cities/:id" element={<CityProfile />} />
+          <Route path="/events/:eventId/report" element={<EventReport />} />
           <Route path="/events" element={<Events />} />
           <Route path="/schools/:id" element={<SchoolProfile />} />
           <Route path="/schools" element={<Schools />} />
@@ -3016,9 +3062,32 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://crm-57qd.onrender.com';
 
+// Фото для міст за назвою (Unsplash)
+const CITY_PHOTOS: Record<string, string> = {
+  'Львів': 'https://images.unsplash.com/photo-1555990793-da11153b2473?w=600&q=80',
+  'Київ': 'https://images.unsplash.com/photo-1630651814316-fe71f3c30279?w=600&q=80',
+  'Харків': 'https://images.unsplash.com/photo-1584646098378-0f87b72cffe1?w=600&q=80',
+  'Одеса': 'https://images.unsplash.com/photo-1585168050053-a4ba02e3f0d2?w=600&q=80',
+  'Дніпро': 'https://images.unsplash.com/photo-1570587953042-a65fd17e2f73?w=600&q=80',
+  'Запоріжжя': 'https://images.unsplash.com/photo-1549887534-1541e9326642?w=600&q=80',
+  'Вінниця': 'https://images.unsplash.com/photo-1591389703635-e15a07b842d7?w=600&q=80',
+  'Івано-Франківськ': 'https://images.unsplash.com/photo-1605723517503-3cadb5818a0c?w=600&q=80',
+  'Тернопіль': 'https://images.unsplash.com/photo-1564760290292-23341e4df6ec?w=600&q=80',
+  'Луцьк': 'https://images.unsplash.com/photo-1587974928442-77dc3e0dba72?w=600&q=80',
+  'Рівне': 'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=600&q=80',
+  'Хмельницький': 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=600&q=80',
+  'Чернівці': 'https://images.unsplash.com/photo-1562619371-b67725b6fde2?w=600&q=80',
+  'Ужгород': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80',
+};
+
+const DEFAULT_PHOTO = 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80';
+
 interface City {
   id: string;
   name: string;
+  manager?: { name: string; phone: string } | null;
+  plannedEvents?: number;
+  completedEvents?: number;
 }
 
 export default function Cities() {
@@ -3045,7 +3114,6 @@ export default function Cities() {
   const handleAddCity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCityName.trim()) return;
-
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -3076,27 +3144,52 @@ export default function Cities() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {cities.map((city) => (
           <div
             key={city.id}
             onClick={() => navigate(`/cities/${city.id}`)}
-            className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
+            className="bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-lg hover:border-blue-200 transition-all cursor-pointer overflow-hidden group"
           >
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{city.name}</h2>
-              <span className="text-slate-300 group-hover:text-blue-400 transition-colors text-lg">›</span>
+            {/* Фото міста */}
+            <div className="h-44 overflow-hidden relative">
+              <img
+                src={CITY_PHOTOS[city.name] || DEFAULT_PHOTO}
+                alt={city.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PHOTO; }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
             </div>
-            <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">Активне місто</span>
 
-            <div className="mt-6 space-y-3 text-sm">
-              <div className="flex justify-between text-slate-500">
-                <span>Заплановано подій:</span>
-                <span className="font-medium text-slate-800">—</span>
+            {/* Контент картки */}
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{city.name}</h2>
+                <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-100">Активне місто</span>
               </div>
-              <div className="flex justify-between text-slate-500">
-                <span>Проведено подій:</span>
-                <span className="font-medium text-slate-800">—</span>
+
+              {/* Менеджер */}
+              <div className="flex items-center gap-2 mb-4 text-sm text-slate-600">
+                <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold shrink-0">
+                  {city.manager?.name?.charAt(0) ?? '?'}
+                </div>
+                <span>
+                  <span className="text-slate-400">Менеджер: </span>
+                  <span className="font-medium">{city.manager?.name ?? '—'}</span>
+                </span>
+              </div>
+
+              {/* Статистика */}
+              <div className="space-y-2 text-sm border-t border-slate-50 pt-3">
+                <div className="flex justify-between text-slate-500">
+                  <span>Заплановано подій:</span>
+                  <span className="font-semibold text-slate-800">{city.plannedEvents ?? 0}</span>
+                </div>
+                <div className="flex justify-between text-slate-500">
+                  <span>Проведено подій:</span>
+                  <span className="font-semibold text-slate-800">{city.completedEvents ?? 0}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -3281,13 +3374,9 @@ export default function CityProfile() {
                   {completedEvents.map((ev: any) => (
                     <tr key={ev.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
                       <td className="p-4">
-                        <Link
-                          to={`/schools/${ev.school?.id}`}
-                          className="font-medium text-blue-600 hover:underline"
-                          onClick={e => e.stopPropagation()}
-                        >
-                          {ev.school?.name}
-                        </Link>
+                        <Link to={`/events/${ev.id}/report`} className="font-medium text-blue-600 hover:underline">
+                            {ev.school?.name}
+                            </Link>
                         <p className="text-xs text-slate-400">{ev.school?.type}</p>
                       </td>
                       <td className="p-4 text-slate-700">{ev.project}</td>
@@ -3695,6 +3784,122 @@ export default function Employees() {
   );
 }
 
+--- FILE: apps\frontend\src\pages\EventReport.tsx ---
+
+import { useState, useEffect } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://crm-57qd.onrender.com';
+
+export default function EventReport() {
+  const { eventId } = useParams();
+  const [event, setEvent] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${API_BASE_URL}/events/${eventId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setEvent(res.data);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetch();
+  }, [eventId]);
+
+  if (isLoading) return <div className="p-8 text-slate-500">Завантаження...</div>;
+  if (!event) return <div className="p-8 text-slate-500">Подію не знайдено</div>;
+
+  const report = event.report;
+  const crew = event.crew;
+  const fmt = (n: number) => new Intl.NumberFormat('uk-UA').format(Math.round(n || 0));
+
+  return (
+    <div className="p-8 bg-slate-50 min-h-screen">
+      {/* Breadcrumb */}
+      <div className="text-sm text-slate-500 mb-4 flex items-center gap-1">
+        <Link to="/cities" className="hover:text-blue-600">Міста</Link>
+        <span>›</span>
+        <Link to={`/cities/${event.cityId}`} className="hover:text-blue-600">{event.city?.name}</Link>
+        <span>›</span>
+        <span>Події</span>
+        <span>›</span>
+        <span className="text-slate-800 font-medium">Звіт по події</span>
+      </div>
+
+      <button onClick={() => history.back()} className="mb-4 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2">
+        ← Назад
+      </button>
+
+      <div className="flex items-center gap-3 mb-6">
+        <h1 className="text-2xl font-bold text-slate-800">Звіт по події</h1>
+        <span className="bg-green-100 text-green-700 text-xs font-semibold px-3 py-1 rounded-full">Проведено</span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {/* Інформація */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <h3 className="font-bold text-slate-800 mb-4">Інформація</h3>
+          <div className="space-y-2 text-sm">
+            <Row label="Заклад" value={event.school?.name} />
+            <Row label="Адреса" value={event.address} />
+            <Row label="Дата" value={new Date(event.date).toLocaleDateString('uk-UA')} />
+            <Row label="Час" value={event.time} />
+            <Row label="Проєкт" value={event.project} />
+            <Row label="Екіпаж" value={crew?.name} />
+            <Row label="Ведучий" value={crew?.host?.name} />
+            <Row label="Водій" value={crew?.driver?.name} />
+          </div>
+        </div>
+
+        {/* Результат */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <h3 className="font-bold text-slate-800 mb-4">Результат</h3>
+          <div className="space-y-2 text-sm">
+            <Row label="Заплановано дітей" value={event.childrenPlanned} />
+            <Row label="Фактично дітей" value={report?.childrenCount} />
+            <Row label="Вартість" value={`${fmt(event.price)} грн`} />
+            <Row label="Отримано" value={`${fmt(report?.totalSum)} грн`} />
+            <Row label="Спосіб оплати" value={event.paymentMethod} />
+          </div>
+        </div>
+
+        {/* Оцінка */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <h3 className="font-bold text-slate-800 mb-4">Оцінка</h3>
+          <div className="space-y-2 text-sm">
+            <Row label="Директор задоволений" value={report?.directorSatisfied ? 'Так' : 'Ні'} />
+            <Row label="Вчителі задоволені" value={report?.teachersSatisfied ? 'Так' : 'Ні'} />
+            <Row label="Проблеми" value={report?.hadIssues ? 'Так' : 'Ні'} />
+            {report?.comment && (
+              <div className="pt-2">
+                <p className="text-slate-400 mb-1">Коментар:</p>
+                <p className="text-slate-700 italic">"{report.comment}"</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: any }) {
+  return (
+    <div className="flex justify-between">
+      <span className="text-slate-400">{label}:</span>
+      <span className="font-medium text-slate-800">{value || '—'}</span>
+    </div>
+  );
+}
+
 --- FILE: apps\frontend\src\pages\Events.tsx ---
 
 export default function Events() {
@@ -3740,12 +3945,12 @@ import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://crm-57qd.onrender.com';
+
 export default function Login() {
   const [email, setEmail] = useState('admin@crm.com');
   const [password, setPassword] = useState('admin123');
   const [error, setError] = useState('');
-  
-  // Ініціалізуємо хук для навігації
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -3753,18 +3958,13 @@ export default function Login() {
     setError('');
 
     try {
-      // ЗМІНЕНО: тепер стукаємо на локальний оновлений бекенд!
-      const response = await axios.post('https://crm-57qd.onrender.com/auth/login', {
-        email,
-        password,
-      });
-      
-      // Зберігаємо токен і одразу перекидаємо на сторінку подій
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, { email, password });
+
       localStorage.setItem('token', response.data.access_token);
-      navigate('/events');
-      
+      // Зберігаємо інфо про користувача для відображення в сайдбарі
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+      navigate('/cities');
     } catch {
-      // Блок catch тепер порожній (без змінної), помилки ESLint не буде
       setError('Невірний email або пароль');
     }
   };
@@ -3772,43 +3972,34 @@ export default function Login() {
   return (
     <div className="flex items-center justify-center h-screen bg-gray-100">
       <div className="p-8 bg-white rounded-2xl shadow-lg w-96">
-        <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
-          Вхід у CRM
-        </h1>
-        
+        <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">Вхід у CRM</h1>
+
         {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center">
-            {error}
-          </div>
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center">{error}</div>
         )}
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input 
-              type="email" 
+            <input
+              type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" 
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
               required
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Пароль</label>
-            <input 
-              type="password" 
+            <input
+              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" 
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
               required
             />
           </div>
-
-          <button 
-            type="submit" 
-            className="mt-2 bg-blue-600 text-white font-medium p-2.5 rounded-lg hover:bg-blue-700 transition"
-          >
+          <button type="submit" className="mt-2 bg-blue-600 text-white font-medium p-2.5 rounded-lg hover:bg-blue-700 transition">
             Увійти
           </button>
         </form>
@@ -3816,6 +4007,7 @@ export default function Login() {
     </div>
   );
 }
+
 
 --- FILE: apps\frontend\src\pages\SchoolProfile.tsx ---
 
@@ -3965,7 +4157,14 @@ const handlePipelineClick = (stepId: number) => {
         const res = await axios.patch(`${API_BASE_URL}/events/${currentEvent.id}/status`, {
           status: nextStage.key, actionName: `Етап пройдено: ${activeStage.name}`, comment: commentModal.text
         }, { headers });
-        setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? res.data : ev));
+        
+        if (nextStage.key === 'RE_SALE') {
+          // Подія завершена — прибираємо зі списку
+          setEvents(prev => prev.filter(ev => ev.id !== currentEvent.id));
+          setSelectedEventId(null);
+        } else {
+          setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? res.data : ev));
+        }
       } else if (commentModal.mode === 'history' && commentModal.historyId) {
         await axios.patch(`${API_BASE_URL}/events/history/${commentModal.historyId}`, { comment: commentModal.text }, { headers });
         setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? { ...ev, history: ev.history.map((h: any) => h.id === commentModal.historyId ? { ...h, comment: commentModal.text } : h) } : ev));
@@ -4015,9 +4214,10 @@ const handlePipelineClick = (stepId: number) => {
   if (!currentEvent) return;
   try {
     const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
-    const res = await axios.post(`${API_BASE_URL}/events/${currentEvent.id}/report`, reportData, { headers });
-    setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? res.data : ev));
+    await axios.post(`${API_BASE_URL}/events/${currentEvent.id}/report`, reportData, { headers });
     setIsReportModalOpen(false);
+    // Перезавантажуємо — подія зі статусом RE_SALE зникне зі списку
+    await fetchData();
   } catch (e) {
     console.error('Помилка при збереженні звіту', e);
   }
