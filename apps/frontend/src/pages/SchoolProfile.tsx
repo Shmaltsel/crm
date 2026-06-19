@@ -32,7 +32,7 @@ const PIPELINE_STAGES = [
 ];
 
 // ДОДАНО: Єдина точка для зміни адреси сервера
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://crm-57qd.onrender.com';
 
 export default function SchoolProfile() {
   const { id } = useParams();

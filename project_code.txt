@@ -2112,14 +2112,14 @@ export default function AssignedCrew({ currentEvent, employees }: AssignedCrewPr
           <span className="text-slate-500">Ведучий:</span>
           <span className="font-medium text-blue-600 flex items-center gap-2">
             <span className="bg-blue-100 text-blue-600 w-6 h-6 flex items-center justify-center rounded-full text-xs">🎙️</span>
-            {host?.fullName || '—'}
+            {host?.name || '—'} 
           </span>
         </div>
         <div className="flex justify-between items-center">
           <span className="text-slate-500">Водій:</span>
           <span className="font-medium text-emerald-600 flex items-center gap-2">
             <span className="bg-emerald-100 text-emerald-600 w-6 h-6 flex items-center justify-center rounded-full text-xs">🚗</span>
-            {driver?.fullName || '—'}
+            {driver?.name || '—'}
           </span>
         </div>
         <div className="flex justify-between items-center">
@@ -2421,8 +2421,8 @@ export default function CrewModal({ isOpen, onClose, city, employees, onSave }: 
   if (!isOpen) return null;
 
   // Фільтруємо працівників за роллю та назвою міста, яке передано в пропси
-  const hosts = employees.filter(e => e.role === 'HOST' && e.city === city);
-  const drivers = employees.filter(e => e.role === 'DRIVER' && e.city === city);
+  const hosts = employees.filter(e => e.role === 'HOST' && e.city?.name === city);
+  const drivers = employees.filter(e => e.role === 'DRIVER' && e.city?.name === city);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -2447,8 +2447,7 @@ export default function CrewModal({ isOpen, onClose, city, employees, onSave }: 
               required
             >
               <option value="">— Оберіть ведучого —</option>
-              {hosts.map(h => <option key={h.id} value={h.id}>{h.fullName}</option>)}
-            </select>
+            {hosts.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}            </select>
             {hosts.length === 0 && <p className="text-xs text-red-500 mt-1">У цьому місті немає доступних ведучих</p>}
           </div>
 
@@ -2461,7 +2460,7 @@ export default function CrewModal({ isOpen, onClose, city, employees, onSave }: 
               required
             >
               <option value="">— Оберіть водія —</option>
-              {drivers.map(d => <option key={d.id} value={d.id}>{d.fullName}</option>)}
+              {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
             {drivers.length === 0 && <p className="text-xs text-red-500 mt-1">У цьому місті немає доступних водіїв</p>}
           </div>
@@ -3170,7 +3169,7 @@ const ROLE_HEADER_COLORS: Record<Role, string> = {
 const EMPTY_FORM = { fullName: '', phone: '', email: '', cityId: '', role: 'MANAGER' as Role, password: '' };
 
 // ТИМЧАСОВО ДЛЯ ЛОКАЛЬНИХ ТЕСТІВ. ПОТІМ ЗМІНИ НА 'https://crm-57qd.onrender.com'
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://crm-57qd.onrender.com';
 
 export default function Employees() {
   const [users, setUsers] = useState<User[]>([]);
@@ -3616,7 +3615,7 @@ const PIPELINE_STAGES = [
 ];
 
 // ДОДАНО: Єдина точка для зміни адреси сервера
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 export default function SchoolProfile() {
   const { id } = useParams();
