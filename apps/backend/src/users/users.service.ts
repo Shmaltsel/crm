@@ -7,7 +7,11 @@ export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   async getAllUsers() {
-    return this.prisma.user.findMany();
+    return this.prisma.user.findMany({
+      include: {
+        city: true, // <--- Ось цей магічний рядок підтягне назву міста!
+      },
+    });
   }
 
   async createUser(data: any) {
