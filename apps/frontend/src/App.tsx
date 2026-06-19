@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Events from './pages/Events';
 import Cities from './pages/Cities';
+import CityProfile from './pages/CityProfile';
 import Layout from './components/Layout';
 import Schools from './pages/Schools';
 import SchoolProfile from './pages/SchoolProfile';
@@ -11,12 +12,11 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Сторінка логіну без сайдбару */}
         <Route path="/login" element={<Login />} />
 
-        {/* Усі інші сторінки будуть всередині Layout (з сайдбаром) */}
         <Route element={<Layout />}>
           <Route path="/cities" element={<Cities />} />
+          <Route path="/cities/:id" element={<CityProfile />} />
           <Route path="/events" element={<Events />} />
           <Route path="/schools/:id" element={<SchoolProfile />} />
           <Route path="/schools" element={<Schools />} />

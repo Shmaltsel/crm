@@ -84,7 +84,7 @@ export default function SchoolProfile() {
 
       // Завантажуємо події з локального сервера
       const eventsRes = await axios.get(`${API_BASE_URL}/events/school/${id}`, { headers });
-      setEvents(eventsRes.data);
+      setEvents(eventsRes.data.filter((ev: any) => ev.status !== 'RE_SALE'));
       if (eventsRes.data.length > 0 && !selectedEventId) {
         setSelectedEventId(eventsRes.data[0].id);
       }

@@ -1,23 +1,25 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-// Описуємо, як виглядає місто з бази
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://crm-57qd.onrender.com';
+
 interface City {
   id: string;
   name: string;
 }
 
 export default function Cities() {
+  const navigate = useNavigate();
   const [cities, setCities] = useState<City[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newCityName, setNewCityName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Функція для завантаження міст з бекенду
   const fetchCities = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('https://crm-57qd.onrender.com/cities', {
+      const response = await axios.get(`${API_BASE_URL}/cities`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCities(response.data);
@@ -26,13 +28,8 @@ export default function Cities() {
     }
   };
 
-  // Завантажуємо міста при першому відкритті сторінки
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchCities();
-  }, []);
+  useEffect(() => { fetchCities(); }, []);
 
-  // Функція для збереження нового міста
   const handleAddCity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCityName.trim()) return;
@@ -40,12 +37,10 @@ export default function Cities() {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.post('https://crm-57qd.onrender.com/cities', 
+      await axios.post(`${API_BASE_URL}/cities`,
         { name: newCityName },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
-      // Очищаємо форму, закриваємо модалку і оновлюємо список
       setNewCityName('');
       setIsModalOpen(false);
       fetchCities();
@@ -59,10 +54,9 @@ export default function Cities() {
 
   return (
     <div className="p-8 relative h-full">
-      {/* Шапка сторінки */}
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-slate-800">Міста</h1>
-        <button 
+        <button
           onClick={() => setIsModalOpen(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center"
         >
@@ -70,21 +64,27 @@ export default function Cities() {
         </button>
       </div>
 
-      {/* Сітка карток міст */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {cities.map((city) => (
-          <div key={city.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-            <h2 className="text-xl font-bold text-slate-800 mb-1">{city.name}</h2>
+          <div
+            key={city.id}
+            onClick={() => navigate(`/cities/${city.id}`)}
+            className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{city.name}</h2>
+              <span className="text-slate-300 group-hover:text-blue-400 transition-colors text-lg">›</span>
+            </div>
             <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">Активне місто</span>
-            
+
             <div className="mt-6 space-y-3 text-sm">
               <div className="flex justify-between text-slate-500">
                 <span>Заплановано подій:</span>
-                <span className="font-medium text-slate-800">0</span>
+                <span className="font-medium text-slate-800">—</span>
               </div>
               <div className="flex justify-between text-slate-500">
                 <span>Проведено подій:</span>
-                <span className="font-medium text-slate-800">0</span>
+                <span className="font-medium text-slate-800">—</span>
               </div>
             </div>
           </div>
@@ -97,21 +97,17 @@ export default function Cities() {
         )}
       </div>
 
-      {/* Модальне вікно (з'являється тільки коли isModalOpen === true) */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="p-6 border-b border-slate-100">
               <h3 className="text-xl font-bold text-slate-800">Нове місто</h3>
             </div>
-            
             <form onSubmit={handleAddCity} className="p-6">
               <div className="mb-6">
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Назва міста
-                </label>
-                <input 
-                  type="text" 
+                <label className="block text-sm font-medium text-slate-700 mb-2">Назва міста</label>
+                <input
+                  type="text"
                   value={newCityName}
                   onChange={(e) => setNewCityName(e.target.value)}
                   placeholder="Наприклад: Львів"
@@ -120,20 +116,11 @@ export default function Cities() {
                   required
                 />
               </div>
-
               <div className="flex justify-end gap-3">
-                <button 
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 text-slate-600 font-medium hover:bg-slate-50 rounded-xl transition-colors"
-                >
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-slate-600 font-medium hover:bg-slate-50 rounded-xl transition-colors">
                   Скасувати
                 </button>
-                <button 
-                  type="submit"
-                  disabled={isLoading}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50"
-                >
+                <button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50">
                   {isLoading ? 'Збереження...' : 'Зберегти'}
                 </button>
               </div>
