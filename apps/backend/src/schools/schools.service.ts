@@ -21,6 +21,7 @@ export class SchoolsService {
     name: string;
     type: string;
     cityId: string;
+    sourceUrl?: string;
   }) {
     // Створюємо школу
     const newSchool = await prisma.school.create({
@@ -28,8 +29,7 @@ export class SchoolsService {
     });
 
     // Запускаємо парсинг у фоні
-    this.parserService
-      .parseSchoolData(data.name)
+    this.parserService.parseSchoolData(data.name, data.sourceUrl)
       .then(async (parsed) => {
         if (!parsed) {
           console.log(

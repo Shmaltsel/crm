@@ -10,7 +10,7 @@ export class SchoolsController {
   ) {}
 
   @Post()
-  create(@Body() body: { name: string; type: string; cityId: string }) {
+  create(@Body() body: { name: string; type: string; cityId: string; sourceUrl?: string }) {
     return this.schoolsService.create(body);
   }
 

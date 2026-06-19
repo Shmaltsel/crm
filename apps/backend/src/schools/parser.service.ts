@@ -4,48 +4,37 @@ import * as cheerio from 'cheerio';
 
 @Injectable()
 export class ParserService {
-  async parseSchoolData(schoolName: string) {
+  async parseSchoolData(schoolName: string, schoolUrl?: string) {
     try {
-      const listUrl =
-        'https://lv.isuo.org/authorities/schools-list/id/681';
+      let url = schoolUrl; // якщо url вже є — використовуємо одразу
 
-      const listResponse = await axios.get(listUrl);
+      if (!url) {
+        // старий код пошуку по списку — залишається як fallback
+        const listUrl = 'https://lv.isuo.org/authorities/schools-list/id/681';
+        const listResponse = await axios.get(listUrl);
+        const $list = cheerio.load(listResponse.data);
+        const normalizedSearch = schoolName.toLowerCase().replace(/\s+/g, ' ').trim();
 
-      const $list = cheerio.load(listResponse.data);
-
-      let schoolUrl = '';
-
-      const normalizedSearch = schoolName
-        .toLowerCase()
-        .replace(/\s+/g, ' ')
-        .trim();
-
-      $list('table.zebra-stripe.list tr').each((_, row) => {
-        const name = $list(row)
-          .find('td:nth-child(2) a')
-          .text()
-          .replace(/\s+/g, ' ')
-          .trim()
-          .toLowerCase();
-
-        if (name.includes(normalizedSearch)) {
-          const href = $list(row)
-            .find('td:nth-child(2) a')
-            .attr('href');
-
-          if (href) {
-            schoolUrl = `https://lv.isuo.org${href}`;
-            return false;
+        $list('table.zebra-stripe.list tr').each((_, row) => {
+          const name = $list(row).find('td:nth-child(2) a').text().replace(/\s+/g, ' ').trim().toLowerCase();
+          if (name.includes(normalizedSearch)) {
+            const href = $list(row).find('td:nth-child(2) a').attr('href');
+            if (href) {
+              url = `https://lv.isuo.org${href}`;
+              return false;
+            }
           }
-        }
-      });
+        });
+      }
 
-      if (!schoolUrl) {
+      if (!url) {
         console.log(`Школу не знайдено: ${schoolName}`);
         return null;
       }
 
-      const schoolResponse = await axios.get(schoolUrl);
+      // далі все як було — йдемо на сторінку школи
+      const schoolResponse = await axios.get(url);
+      // ... решта коду без змін
 
       const $school = cheerio.load(schoolResponse.data);
 

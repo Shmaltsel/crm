@@ -26,8 +26,7 @@ export default function Schools() {
   const [cities, setCities] = useState<City[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState({ name: '', type: 'Школа', cityId: '' });
-  const [suggestions, setSuggestions] = useState<{ name: string; url: string }[]>([]);
+  const [form, setForm] = useState({ name: '', type: 'Школа', cityId: '', sourceUrl: '' });  const [suggestions, setSuggestions] = useState<{ name: string; url: string }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -91,8 +90,8 @@ export default function Schools() {
     }, 400);
 };
 
-  const handleSelectSuggestion = (name: string) => {
-    setForm({ ...form, name });
+  const handleSelectSuggestion = (name: string, url: string) => {
+    setForm({ ...form, name, sourceUrl: url });
     setShowSuggestions(false);
   };
 
@@ -220,7 +219,7 @@ export default function Schools() {
                       suggestions.map((s, i) => (
                         <li
                           key={i}
-                          onMouseDown={() => handleSelectSuggestion(s.name)}
+                          onMouseDown={() => handleSelectSuggestion(s.name, s.url)}
                           className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer"
                         >
                           {s.name}
