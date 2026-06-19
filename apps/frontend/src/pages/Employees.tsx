@@ -39,7 +39,7 @@ const ROLE_HEADER_COLORS: Record<Role, string> = {
 const EMPTY_FORM = { fullName: '', phone: '', email: '', cityId: '', role: 'MANAGER' as Role, password: '' };
 
 // ТИМЧАСОВО ДЛЯ ЛОКАЛЬНИХ ТЕСТІВ. ПОТІМ ЗМІНИ НА 'https://crm-57qd.onrender.com'
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://crm-57qd.onrender.com';
 
 export default function Employees() {
   const [users, setUsers] = useState<User[]>([]);
