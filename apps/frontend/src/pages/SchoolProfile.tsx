@@ -144,7 +144,14 @@ const handlePipelineClick = (stepId: number) => {
         const res = await axios.patch(`${API_BASE_URL}/events/${currentEvent.id}/status`, {
           status: nextStage.key, actionName: `Етап пройдено: ${activeStage.name}`, comment: commentModal.text
         }, { headers });
-        setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? res.data : ev));
+        
+        if (nextStage.key === 'RE_SALE') {
+          // Подія завершена — прибираємо зі списку
+          setEvents(prev => prev.filter(ev => ev.id !== currentEvent.id));
+          setSelectedEventId(null);
+        } else {
+          setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? res.data : ev));
+        }
       } else if (commentModal.mode === 'history' && commentModal.historyId) {
         await axios.patch(`${API_BASE_URL}/events/history/${commentModal.historyId}`, { comment: commentModal.text }, { headers });
         setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? { ...ev, history: ev.history.map((h: any) => h.id === commentModal.historyId ? { ...h, comment: commentModal.text } : h) } : ev));
@@ -194,9 +201,10 @@ const handlePipelineClick = (stepId: number) => {
   if (!currentEvent) return;
   try {
     const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
-    const res = await axios.post(`${API_BASE_URL}/events/${currentEvent.id}/report`, reportData, { headers });
-    setEvents(prev => prev.map(ev => ev.id === currentEvent.id ? res.data : ev));
+    await axios.post(`${API_BASE_URL}/events/${currentEvent.id}/report`, reportData, { headers });
     setIsReportModalOpen(false);
+    // Перезавантажуємо — подія зі статусом RE_SALE зникне зі списку
+    await fetchData();
   } catch (e) {
     console.error('Помилка при збереженні звіту', e);
   }

@@ -12,26 +12,41 @@ export class CitiesService {
   }
 
   async findAll() {
-    return prisma.city.findMany({
+    const cities = await prisma.city.findMany({
       orderBy: { createdAt: 'desc' },
+      include: {
+        users: {
+          where: { role: 'MANAGER' },
+          select: { id: true, name: true, phone: true },
+          take: 1,
+        },
+        events: {
+          select: { id: true, status: true },
+        },
+      },
     });
+
+    return cities.map(city => ({
+      ...city,
+      manager: city.users[0] || null,
+      plannedEvents: city.events.filter(e => e.status !== 'RE_SALE').length,
+      completedEvents: city.events.filter(e => e.status === 'RE_SALE').length,
+    }));
   }
 
   async findOne(id: string) {
-    return prisma.city.findUnique({
+    const city = await prisma.city.findUnique({
       where: { id },
       include: {
-        manager: {
-          select: { id: true, name: true, phone: true, email: true },
-        },
         users: {
-          select: { id: true, name: true, role: true, phone: true },
+          where: { role: 'MANAGER' },
+          select: { id: true, name: true, phone: true },
+          take: 1,
         },
         events: {
-          where: { status: 'RE_SALE' }, // тільки завершені події
+          where: { status: 'RE_SALE' },
           include: {
             school: { select: { id: true, name: true, type: true } },
-            crew: true,
             report: true,
           },
           orderBy: { date: 'desc' },
@@ -44,5 +59,12 @@ export class CitiesService {
         },
       },
     });
+
+    if (!city) return null;
+
+    return {
+      ...city,
+      manager: city.users[0] || null,
+    };
   }
 }

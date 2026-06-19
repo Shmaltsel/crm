@@ -4,9 +4,32 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://crm-57qd.onrender.com';
 
+// Фото для міст за назвою (Unsplash)
+const CITY_PHOTOS: Record<string, string> = {
+  'Львів': 'https://images.unsplash.com/photo-1555990793-da11153b2473?w=600&q=80',
+  'Київ': 'https://images.unsplash.com/photo-1630651814316-fe71f3c30279?w=600&q=80',
+  'Харків': 'https://images.unsplash.com/photo-1584646098378-0f87b72cffe1?w=600&q=80',
+  'Одеса': 'https://images.unsplash.com/photo-1585168050053-a4ba02e3f0d2?w=600&q=80',
+  'Дніпро': 'https://images.unsplash.com/photo-1570587953042-a65fd17e2f73?w=600&q=80',
+  'Запоріжжя': 'https://images.unsplash.com/photo-1549887534-1541e9326642?w=600&q=80',
+  'Вінниця': 'https://images.unsplash.com/photo-1591389703635-e15a07b842d7?w=600&q=80',
+  'Івано-Франківськ': 'https://images.unsplash.com/photo-1605723517503-3cadb5818a0c?w=600&q=80',
+  'Тернопіль': 'https://images.unsplash.com/photo-1564760290292-23341e4df6ec?w=600&q=80',
+  'Луцьк': 'https://images.unsplash.com/photo-1587974928442-77dc3e0dba72?w=600&q=80',
+  'Рівне': 'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=600&q=80',
+  'Хмельницький': 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=600&q=80',
+  'Чернівці': 'https://images.unsplash.com/photo-1562619371-b67725b6fde2?w=600&q=80',
+  'Ужгород': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80',
+};
+
+const DEFAULT_PHOTO = 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80';
+
 interface City {
   id: string;
   name: string;
+  manager?: { name: string; phone: string } | null;
+  plannedEvents?: number;
+  completedEvents?: number;
 }
 
 export default function Cities() {
@@ -33,7 +56,6 @@ export default function Cities() {
   const handleAddCity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCityName.trim()) return;
-
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -64,27 +86,52 @@ export default function Cities() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {cities.map((city) => (
           <div
             key={city.id}
             onClick={() => navigate(`/cities/${city.id}`)}
-            className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
+            className="bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-lg hover:border-blue-200 transition-all cursor-pointer overflow-hidden group"
           >
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{city.name}</h2>
-              <span className="text-slate-300 group-hover:text-blue-400 transition-colors text-lg">›</span>
+            {/* Фото міста */}
+            <div className="h-44 overflow-hidden relative">
+              <img
+                src={CITY_PHOTOS[city.name] || DEFAULT_PHOTO}
+                alt={city.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PHOTO; }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
             </div>
-            <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">Активне місто</span>
 
-            <div className="mt-6 space-y-3 text-sm">
-              <div className="flex justify-between text-slate-500">
-                <span>Заплановано подій:</span>
-                <span className="font-medium text-slate-800">—</span>
+            {/* Контент картки */}
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{city.name}</h2>
+                <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-100">Активне місто</span>
               </div>
-              <div className="flex justify-between text-slate-500">
-                <span>Проведено подій:</span>
-                <span className="font-medium text-slate-800">—</span>
+
+              {/* Менеджер */}
+              <div className="flex items-center gap-2 mb-4 text-sm text-slate-600">
+                <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold shrink-0">
+                  {city.manager?.name?.charAt(0) ?? '?'}
+                </div>
+                <span>
+                  <span className="text-slate-400">Менеджер: </span>
+                  <span className="font-medium">{city.manager?.name ?? '—'}</span>
+                </span>
+              </div>
+
+              {/* Статистика */}
+              <div className="space-y-2 text-sm border-t border-slate-50 pt-3">
+                <div className="flex justify-between text-slate-500">
+                  <span>Заплановано подій:</span>
+                  <span className="font-semibold text-slate-800">{city.plannedEvents ?? 0}</span>
+                </div>
+                <div className="flex justify-between text-slate-500">
+                  <span>Проведено подій:</span>
+                  <span className="font-semibold text-slate-800">{city.completedEvents ?? 0}</span>
+                </div>
               </div>
             </div>
           </div>
