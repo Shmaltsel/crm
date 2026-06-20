@@ -334,6 +334,7 @@ import { AuthModule } from './auth/auth.module';
 import { EventsModule } from './events/events.module';
 import { CitiesModule } from './cities/cities.module';
 import { SchoolsModule } from './schools/schools.module';
+import { FinanceModule } from './finance/finance.module';
 
 @Module({
   imports: [
@@ -343,6 +344,7 @@ import { SchoolsModule } from './schools/schools.module';
     EventsModule,
     CitiesModule,
     SchoolsModule,
+    FinanceModule,
   ],
   controllers: [AppController],
   providers: [AppService],
@@ -963,7 +965,7 @@ export class EventsService {
   return this.prisma.event.update({
     where: { id: eventId },
     data: {
-      status: 'DONE',
+      status: 'RE_SALE',
       history: {
         create: {
           action: 'Сформовано звіт. Етап пройдено: Проведено',
@@ -993,6 +995,192 @@ export class EventsService {
         report: true,
       },
     });
+  }
+}
+
+
+--- FILE: apps\backend\src\finance\finance.controller.ts ---
+
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { FinanceService } from './finance.service';
+import { AuthGuard } from '../auth/auth.guard';
+
+@Controller('finance')
+@UseGuards(AuthGuard)
+export class FinanceController {
+  constructor(private readonly financeService: FinanceService) {}
+
+  @Get('dashboard')
+  getDashboard(
+    @Query('period') period: string,
+    @Query('cityId') cityId: string,
+    @Query('project') project: string,
+  ) {
+    return this.financeService.getDashboard({ period, cityId, project });
+  }
+}
+
+
+--- FILE: apps\backend\src\finance\finance.module.ts ---
+
+import { Module } from '@nestjs/common';
+import { FinanceController } from './finance.controller';
+import { FinanceService } from './finance.service';
+
+@Module({
+  controllers: [FinanceController],
+  providers: [FinanceService],
+})
+export class FinanceModule {}
+
+
+--- FILE: apps\backend\src\finance\finance.service.ts ---
+
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class FinanceService {
+  constructor(private prisma: PrismaService) {}
+
+  async getDashboard({ period, cityId, project }: { period?: string; cityId?: string; project?: string }) {
+    const now = new Date();
+    let dateFrom: Date | undefined;
+
+    if (period === 'month') dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+    else if (period === 'quarter') dateFrom = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+    else if (period === 'year') dateFrom = new Date(now.getFullYear(), 0, 1);
+
+    const where: any = { status: 'RE_SALE' };
+    if (dateFrom) where.date = { gte: dateFrom };
+    if (cityId) where.cityId = cityId;
+    if (project) where.project = project;
+
+    const events = await this.prisma.event.findMany({
+      where,
+      include: {
+        report: true,
+        school: { select: { id: true, name: true } },
+        city: { select: { id: true, name: true } },
+        crew: {
+          include: {
+            host: { select: { id: true, name: true } },
+          },
+        },
+      },
+      orderBy: { date: 'asc' },
+    });
+
+    // KPI
+    const totalRevenue = events.reduce((s, e) => s + (e.report?.totalSum || 0), 0);
+    const totalExpenses = events.reduce((s, e) => {
+      const exp: any[] = Array.isArray(e.report?.expenses) ? (e.report.expenses as any[]) : [];
+      return s + exp.reduce((es: number, ex: any) => es + (ex.amount || 0), 0);
+    }, 0);
+    const totalProfit = events.reduce((s, e) => s + (e.report?.remainderSum || 0), 0);
+
+    // Графік по місяцях
+    const monthlyMap: Record<string, { month: string; revenue: number; profit: number }> = {};
+    events.forEach(e => {
+      const d = new Date(e.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = d.toLocaleString('uk-UA', { month: 'short', year: '2-digit' });
+      if (!monthlyMap[key]) monthlyMap[key] = { month: label, revenue: 0, profit: 0 };
+      monthlyMap[key].revenue += e.report?.totalSum || 0;
+      monthlyMap[key].profit += e.report?.remainderSum || 0;
+    });
+    const monthly = Object.values(monthlyMap);
+
+    // Структура доходів по проєктах
+    const projectMap: Record<string, number> = {};
+    events.forEach(e => {
+      const p = e.project || 'Інше';
+      projectMap[p] = (projectMap[p] || 0) + (e.report?.totalSum || 0);
+    });
+    const byProject = Object.entries(projectMap).map(([name, value]) => ({ name, value }));
+
+    // Топ міст
+    const cityMap: Record<string, { name: string; revenue: number; profit: number }> = {};
+    events.forEach(e => {
+      const cid = e.cityId;
+      if (!cityMap[cid]) cityMap[cid] = { name: e.city?.name || '—', revenue: 0, profit: 0 };
+      cityMap[cid].revenue += e.report?.totalSum || 0;
+      cityMap[cid].profit += e.report?.remainderSum || 0;
+    });
+    const topCities = Object.values(cityMap).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+
+    // Топ шкіл
+    const schoolMap: Record<string, { name: string; count: number; revenue: number }> = {};
+    events.forEach(e => {
+      const sid = e.schoolId;
+      if (!schoolMap[sid]) schoolMap[sid] = { name: e.school?.name || '—', count: 0, revenue: 0 };
+      schoolMap[sid].count++;
+      schoolMap[sid].revenue += e.report?.totalSum || 0;
+    });
+    const topSchools = Object.values(schoolMap).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+
+    // Витрати по категоріях
+    const expCatMap: Record<string, number> = {};
+    events.forEach(e => {
+      const exp: any[] = Array.isArray(e.report?.expenses) ? (e.report.expenses as any[]) : [];
+      exp.forEach((ex: any) => {
+        const cat = ex.category || ex.name || 'Інше';
+        expCatMap[cat] = (expCatMap[cat] || 0) + (ex.amount || 0);
+      });
+    });
+    const byExpenseCategory = Object.entries(expCatMap).map(([name, value]) => ({ name, value }));
+
+    // Найприбутковіші та найзбитковіші події
+    const sortedByProfit = [...events].sort((a, b) => (b.report?.remainderSum || 0) - (a.report?.remainderSum || 0));
+    const topEvents = sortedByProfit.slice(0, 5).map(e => ({
+      id: e.id,
+      date: e.date,
+      school: e.school?.name,
+      profit: e.report?.remainderSum || 0,
+      revenue: e.report?.totalSum || 0,
+    }));
+    const worstEvents = sortedByProfit.slice(-5).reverse().map(e => ({
+      id: e.id,
+      date: e.date,
+      school: e.school?.name,
+      profit: e.report?.remainderSum || 0,
+      revenue: e.report?.totalSum || 0,
+    }));
+
+    // Очікувана виручка (незавершені події)
+    const planned = await this.prisma.event.findMany({
+      where: {
+        status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
+        ...(cityId ? { cityId } : {}),
+      },
+      select: { price: true },
+    });
+    const expectedRevenue = planned.reduce((s, e) => s + (e.price || 0), 0);
+
+    // Список унікальних проєктів для фільтру
+    const projects = await this.prisma.event.findMany({
+      select: { project: true },
+      distinct: ['project'],
+    });
+
+    // Список міст для фільтру
+    const cities = await this.prisma.city.findMany({ select: { id: true, name: true } });
+
+    return {
+      kpi: { totalRevenue, totalExpenses, totalProfit, totalEvents: events.length },
+      monthly,
+      byProject,
+      byExpenseCategory,
+      topCities,
+      topSchools,
+      topEvents,
+      worstEvents,
+      expectedRevenue,
+      filters: {
+        projects: projects.map(p => p.project).filter(Boolean),
+        cities,
+      },
+    };
   }
 }
 
@@ -1702,6 +1890,8 @@ describe('AppController (e2e)', () => {
 
 --- FILE: apps\frontend\eslint.config.js ---
 
+
+
 import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
@@ -1726,7 +1916,11 @@ export default defineConfig([
 ])
 
 
+
+
 --- FILE: apps\frontend\index.html ---
+
+
 
 <!doctype html>
 <html lang="en">
@@ -1742,7 +1936,11 @@ export default defineConfig([
   </body>
 </html>
 
+
+
 --- FILE: apps\frontend\package.json ---
+
+
 
 {
   "name": "frontend",
@@ -1789,7 +1987,11 @@ export default defineConfig([
 }
 
 
+
+
 --- FILE: apps\frontend\postcss.config.js ---
+
+
 
 export default {
   plugins: {
@@ -1799,7 +2001,11 @@ export default {
 }
 
 
+
+
 --- FILE: apps\frontend\src\App.css ---
+
+
 
 .counter {
   font-size: 16px;
@@ -1987,7 +2193,11 @@ export default {
 }
 
 
+
+
 --- FILE: apps\frontend\src\App.tsx ---
+
+
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
@@ -2024,7 +2234,281 @@ export default function App() {
 }
 
 
+
+
+--- FILE: apps\frontend\src\components\city-profile\CityAnalytics.tsx ---
+
+import { useMemo, useState } from 'react';
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  PieChart, Pie, Cell,
+} from 'recharts';
+
+interface CityAnalyticsProps {
+  events: any[];
+}
+
+const PALETTE = ['#2563eb', '#10b981', '#06b6d4', '#f59e0b', '#8b5cf6', '#f43f5e', '#84cc16', '#6366f1', '#0ea5e9', '#ec4899', '#14b8a6', '#a855f7'];
+
+const UA_MONTHS = ['Січ', 'Лют', 'Бер', 'Квіт', 'Трав', 'Черв', 'Лип', 'Серп', 'Вер', 'Жовт', 'Лист', 'Груд'];
+const DATE_FMT = new Intl.DateTimeFormat('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+function toMonthKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthLabel(key: string) {
+  const [y, m] = key.split('-').map(Number);
+  return `${UA_MONTHS[m - 1]} ${String(y).slice(-2)}`;
+}
+
+function fmt(n: number) {
+  return new Intl.NumberFormat('uk-UA').format(Math.round(n || 0));
+}
+
+function toInputDate(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+export default function CityAnalytics({ events }: CityAnalyticsProps) {
+  const today = useMemo(() => new Date(), []);
+
+  const [from, setFrom] = useState(() => toInputDate(new Date(today.getFullYear(), today.getMonth() - 5, 1)));
+  const [to, setTo] = useState(() => toInputDate(today));
+  const [isOpen, setIsOpen] = useState(false);
+  const [draftFrom, setDraftFrom] = useState(from);
+  const [draftTo, setDraftTo] = useState(to);
+
+  const applyPreset = (months: number | null, mode?: 'year' | 'all') => {
+    const t = new Date();
+    let f: Date;
+    if (mode === 'year') f = new Date(t.getFullYear(), 0, 1);
+    else if (mode === 'all') f = new Date(2000, 0, 1);
+    else f = new Date(t.getFullYear(), t.getMonth() - (months! - 1), 1);
+    setDraftFrom(toInputDate(f));
+    setDraftTo(toInputDate(t));
+  };
+
+  const applyRange = () => {
+    setFrom(draftFrom);
+    setTo(draftTo);
+    setIsOpen(false);
+  };
+
+  const filtered = useMemo(() => {
+    const fromD = new Date(from);
+    const toD = new Date(to);
+    toD.setHours(23, 59, 59, 999);
+    return (events || []).filter(ev => {
+      const d = new Date(ev.date);
+      return d >= fromD && d <= toD;
+    });
+  }, [events, from, to]);
+
+  const monthly = useMemo(() => {
+    const map = new Map<string, { revenue: number; profit: number; children: number; count: number }>();
+    const fromD = new Date(from);
+    const toD = new Date(to);
+    const cursor = new Date(fromD.getFullYear(), fromD.getMonth(), 1);
+    const last = new Date(toD.getFullYear(), toD.getMonth(), 1);
+    let guard = 0;
+    while (cursor <= last && guard < 240) {
+      map.set(toMonthKey(cursor), { revenue: 0, profit: 0, children: 0, count: 0 });
+      cursor.setMonth(cursor.getMonth() + 1);
+      guard += 1;
+    }
+    filtered.forEach(ev => {
+      const key = toMonthKey(new Date(ev.date));
+      const bucket = map.get(key) || { revenue: 0, profit: 0, children: 0, count: 0 };
+      bucket.revenue += ev.report?.totalSum || ev.price || 0;
+      bucket.profit += ev.report?.remainderSum || 0;
+      bucket.children += ev.report?.childrenCount || ev.childrenPlanned || 0;
+      bucket.count += 1;
+      map.set(key, bucket);
+    });
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, v]) => ({ key, label: monthLabel(key), ...v }));
+  }, [filtered, from, to]);
+
+  const totalRevenue = filtered.reduce((s, ev) => s + (ev.report?.totalSum || ev.price || 0), 0);
+  const totalProfit = filtered.reduce((s, ev) => s + (ev.report?.remainderSum || 0), 0);
+  const totalChildren = filtered.reduce((s, ev) => s + (ev.report?.childrenCount || ev.childrenPlanned || 0), 0);
+  const totalCount = filtered.length;
+
+  const pieData = monthly.filter(m => m.count > 0);
+  const pieTotal = pieData.reduce((s, m) => s + m.count, 0);
+  const hasRevenue = monthly.some(m => m.revenue > 0);
+
+  const exportCsv = () => {
+    const header = 'Місяць;Виручка;Прибуток;Подій;Дітей\n';
+    const rows = monthly.map(m => `${m.label};${m.revenue};${m.profit};${m.count};${m.children}`).join('\n');
+    const blob = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `analytics_${from}_${to}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const rangeLabel = `${DATE_FMT.format(new Date(from))} – ${DATE_FMT.format(new Date(to))}`;
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Контроли */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h3 className="font-bold text-slate-800 text-lg">Аналітика по місяцях</h3>
+          <p className="text-sm text-slate-400 mt-0.5">На основі завершених подій закладу</p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 sm:flex-none">
+            <button
+              onClick={() => { setDraftFrom(from); setDraftTo(to); setIsOpen(v => !v); }}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              📅 <span className="truncate">{rangeLabel}</span> <span className="text-slate-400">⌄</span>
+            </button>
+
+            {isOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+                <div className="absolute right-0 top-full mt-2 z-20 bg-white rounded-xl shadow-lg border border-slate-100 p-4 w-72">
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <button onClick={() => applyPreset(3)} className="px-3 py-1.5 rounded-full text-xs bg-slate-100 hover:bg-slate-200 font-medium transition-colors">3 міс.</button>
+                    <button onClick={() => applyPreset(6)} className="px-3 py-1.5 rounded-full text-xs bg-slate-100 hover:bg-slate-200 font-medium transition-colors">6 міс.</button>
+                    <button onClick={() => applyPreset(12)} className="px-3 py-1.5 rounded-full text-xs bg-slate-100 hover:bg-slate-200 font-medium transition-colors">12 міс.</button>
+                    <button onClick={() => applyPreset(null, 'year')} className="px-3 py-1.5 rounded-full text-xs bg-slate-100 hover:bg-slate-200 font-medium transition-colors">Цей рік</button>
+                    <button onClick={() => applyPreset(null, 'all')} className="px-3 py-1.5 rounded-full text-xs bg-slate-100 hover:bg-slate-200 font-medium transition-colors">Весь час</button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1">Від</label>
+                      <input type="date" value={draftFrom} onChange={e => setDraftFrom(e.target.value)} className="w-full p-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-400" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1">До</label>
+                      <input type="date" value={draftTo} onChange={e => setDraftTo(e.target.value)} className="w-full p-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-400" />
+                    </div>
+                  </div>
+                  <button onClick={applyRange} className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                    Застосувати
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <button
+            onClick={exportCsv}
+            className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-100 transition-colors"
+          >
+            ⬇ <span className="hidden sm:inline">Експорт</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Загальна інформація */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 sm:p-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-5">
+          <Stat label="Загальна виручка" value={`${fmt(totalRevenue)} грн`} />
+          <Stat label="Загальний прибуток" value={`${fmt(totalProfit)} грн`} />
+          <Stat label="Проведено подій" value={totalCount} />
+          <Stat label="Охоплено дітей" value={fmt(totalChildren)} />
+        </div>
+      </div>
+
+      {/* Графіки */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Виручка по місяцях */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 sm:p-6">
+          <h4 className="font-bold text-slate-800 mb-4">Виручка по місяцях</h4>
+          {!hasRevenue ? (
+            <EmptyChart />
+          ) : (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={monthly} margin={{ top: 24, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={{ stroke: '#e2e8f0' }} tickLine={false} interval={monthly.length > 8 ? 1 : 0} />
+                <YAxis
+                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={46}
+                  tickFormatter={(v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)}
+                />
+                <Tooltip
+                  cursor={{ fill: '#f8fafc' }}
+                  formatter={(v: number) => [`${fmt(v)} грн`, 'Виручка']}
+                  contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }}
+                />
+                <Bar dataKey="revenue" fill="#2563eb" radius={[8, 8, 0, 0]} maxBarSize={48} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Проведено подій по місяцях */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 sm:p-6">
+          <h4 className="font-bold text-slate-800 mb-4">Проведено подій по місяцях</h4>
+          {pieData.length === 0 ? (
+            <EmptyChart />
+          ) : (
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div className="relative w-44 h-44 shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={pieData} dataKey="count" nameKey="label" innerRadius={52} outerRadius={78} paddingAngle={2} strokeWidth={0}>
+                      {pieData.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+                    </Pie>
+                    <Tooltip formatter={(v: number, n: string) => [`${v} подій`, n]} contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-xs text-slate-400">Всього</span>
+                  <span className="text-xl font-bold text-slate-800">{pieTotal}</span>
+                </div>
+              </div>
+              <ul className="flex-1 flex flex-col gap-2 text-sm w-full min-w-0">
+                {pieData.map((m, i) => (
+                  <li key={m.key} className="flex items-center gap-2 min-w-0">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} />
+                    <span className="text-slate-600 truncate flex-1">{m.label}</span>
+                    <span className="font-medium text-slate-800 shrink-0">{m.count} ({Math.round((m.count / pieTotal) * 100)}%)</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs text-slate-400 font-medium mb-1.5 truncate">{label}</p>
+      <p className="text-lg sm:text-2xl font-bold text-slate-800 truncate">{value}</p>
+    </div>
+  );
+}
+
+function EmptyChart() {
+  return (
+    <div className="h-[280px] flex flex-col items-center justify-center text-slate-300">
+      <span className="text-3xl mb-2">📊</span>
+      <span className="text-sm text-slate-400">Немає даних за цей період</span>
+    </div>
+  );
+}
+
 --- FILE: apps\frontend\src\components\Layout.tsx ---
+
+
 
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
@@ -2161,7 +2645,11 @@ export default function Layout() {
   );
 }
 
+
+
 --- FILE: apps\frontend\src\components\school-profile\AssignedCrew.tsx ---
+
+
 
 import React from 'react';
 
@@ -2222,7 +2710,11 @@ export default function AssignedCrew({ currentEvent, employees }: AssignedCrewPr
   );
 }
 
+
+
 --- FILE: apps\frontend\src\components\school-profile\EventDetails.tsx ---
+
+
 
 export default function EventDetails({ currentEvent }: { currentEvent: any }) {
   if (!currentEvent) {
@@ -2252,7 +2744,11 @@ export default function EventDetails({ currentEvent }: { currentEvent: any }) {
 }
 
 
+
+
 --- FILE: apps\frontend\src\components\school-profile\EventPreparation.tsx ---
+
+
 
 import React from 'react';
 
@@ -2315,7 +2811,11 @@ export default function EventPreparation({ data, onUpdate, onOpenCrewModal }: Pr
   );
 }
 
+
+
 --- FILE: apps\frontend\src\components\school-profile\EventsTable.tsx ---
+
+
 
 import axios from 'axios';
 
@@ -2345,11 +2845,38 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
   if (events.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto mt-2 w-full">
-      <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mt-2 w-full">
+      <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
         <h3 className="font-bold text-slate-800">Всі події ({events.length})</h3>
       </div>
-      <div className="overflow-x-auto">
+
+      {/* Картки — мобільний вигляд */}
+      <div className="md:hidden divide-y divide-slate-50">
+        {events.map(ev => (
+          <div
+            key={ev.id}
+            onClick={() => onEventSelect(ev.id)}
+            className={`flex items-center justify-between gap-3 p-4 transition-colors cursor-pointer ${selectedEventId === ev.id ? 'bg-blue-50/50' : 'active:bg-slate-50'}`}
+          >
+            <div className="min-w-0">
+              <p className="font-medium text-slate-800">{ev.project}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{new Date(ev.date).toLocaleDateString()}</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="font-medium text-sm text-slate-700">{ev.price} грн</span>
+              <button
+                onClick={(e) => handleDelete(e, ev.id)}
+                className="text-red-500 active:text-red-700 p-2"
+              >
+                🗑
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Таблиця — десктоп */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="bg-white border-b border-slate-100 text-slate-500">
@@ -2386,7 +2913,11 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
 }
 
 
+
+
 --- FILE: apps\frontend\src\components\school-profile\HistoryTimeline.tsx ---
+
+
 
 interface HistoryTimelineProps {
   currentEvent: any;
@@ -2429,7 +2960,11 @@ export default function HistoryTimeline({ currentEvent, onHistoryClick }: Histor
 }
 
 
+
+
 --- FILE: apps\frontend\src\components\school-profile\modals\CommentModal.tsx ---
+
+
 
 import React from 'react';
 
@@ -2446,16 +2981,17 @@ export default function CommentModal({ isOpen, onClose, mode, text, setText, onS
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+        <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
           <h3 className="text-xl font-bold text-slate-800">
             {mode === 'pipeline' ? 'Завершення етапу' : 'Редагувати'}
           </h3>
           <button onClick={onClose} className="text-slate-400 p-2 -mr-2">✕</button>
         </div>
         
-        <form onSubmit={onSave} className="p-4 md:p-6 flex-1 flex flex-col">
+        <form onSubmit={onSave} className="p-5 sm:p-6 flex-1 flex flex-col">
           <label className="block text-sm font-medium text-slate-700 mb-2">
             Коментар (необов'язково)
           </label>
@@ -2467,11 +3003,11 @@ export default function CommentModal({ isOpen, onClose, mode, text, setText, onS
             autoFocus
           />
           
-          <div className="flex justify-end gap-3 mt-6 shrink-0">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium transition-colors">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 shrink-0 pb-1 sm:pb-0">
+            <button type="button" onClick={onClose} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium transition-colors">
               Скасувати
             </button>
-            <button type="submit" className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-blue-700 transition-colors">
+            <button type="submit" className="w-full sm:w-auto bg-blue-600 text-white px-5 py-3 sm:py-2.5 rounded-xl font-medium hover:bg-blue-700 transition-colors">
               {mode === 'pipeline' ? 'Завершити' : 'Зберегти'}
             </button>
           </div>
@@ -2482,7 +3018,11 @@ export default function CommentModal({ isOpen, onClose, mode, text, setText, onS
 }
 
 
+
+
 --- FILE: apps\frontend\src\components\school-profile\modals\CrewModal.tsx ---
+
+
 
 import React, { useState } from 'react';
 
@@ -2516,14 +3056,15 @@ export default function CrewModal({ isOpen, onClose, city, employees, onSave }: 
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+        <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
           <h3 className="text-xl font-bold text-slate-800">Екіпаж ({city})</h3>
           <button type="button" onClick={onClose} className="text-slate-400 p-2 -mr-2">✕</button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-4 md:p-6 flex-1 overflow-y-auto flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 flex-1 overflow-y-auto flex flex-col gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Ведучий</label>
             <select value={selectedHost} onChange={e => setSelectedHost(e.target.value)} required className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white">
@@ -2542,9 +3083,9 @@ export default function CrewModal({ isOpen, onClose, city, employees, onSave }: 
             {drivers.length === 0 && <p className="text-xs text-red-500 mt-1">Немає водіїв у цьому місті</p>}
           </div>
 
-          <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100 shrink-0">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium transition-colors">Скасувати</button>
-            <button type="submit" className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors">Зберегти</button>
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-4 pt-4 border-t border-slate-100 shrink-0 pb-1 sm:pb-0">
+            <button type="button" onClick={onClose} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium transition-colors">Скасувати</button>
+            <button type="submit" className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors">Зберегти</button>
           </div>
         </form>
       </div>
@@ -2553,7 +3094,11 @@ export default function CrewModal({ isOpen, onClose, city, employees, onSave }: 
 }
 
 
+
+
 --- FILE: apps\frontend\src\components\school-profile\modals\EditSchoolModal.tsx ---
+
+
 
 import React from 'react';
 
@@ -2569,51 +3114,52 @@ export default function EditSchoolModal({ isOpen, onClose, editForm, setEditForm
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      {/* Додано max-h-[90vh] та flex flex-col */}
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+      {/* Bottom-sheet на мобільному, центрований діалог на десктопі */}
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl overflow-hidden max-h-[92vh] flex flex-col">
+        <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+
         {/* Шапка не зжимається (shrink-0) */}
-        <div className="p-4 md:p-6 border-b flex justify-between items-center bg-slate-50 shrink-0">
+        <div className="p-5 sm:p-6 border-b flex justify-between items-center bg-slate-50 shrink-0">
           <h3 className="text-xl font-bold">Редагування</h3>
           <button onClick={onClose} className="text-slate-400 p-2 -mr-2">✕</button>
         </div>
 
         {/* Форма скролиться (overflow-y-auto) */}
-        <form onSubmit={onSave} className="p-4 md:p-6 overflow-y-auto flex-1 flex flex-col gap-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={onSave} className="p-5 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm mb-1">Тип</label>
-              <select value={editForm.type} onChange={e => setEditForm({...editForm, type: e.target.value})} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+              <select value={editForm.type} onChange={e => setEditForm({...editForm, type: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500">
                 <option>Школа</option>
                 <option>Садочок</option>
               </select>
             </div>
-            <div className="md:col-span-2">
+            <div className="sm:col-span-2">
               <label className="block text-sm mb-1">Адреса</label>
-              <input type="text" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
+              <input type="text" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="block text-sm mb-1">Директор</label>
-              <input type="text" value={editForm.director} onChange={e => setEditForm({...editForm, director: e.target.value})} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
+              <input type="text" value={editForm.director} onChange={e => setEditForm({...editForm, director: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="block text-sm mb-1">Телефон</label>
-              <input type="text" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
+              <input type="text" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="block text-sm mb-1">Email</label>
-              <input type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
+              <input type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="block text-sm mb-1">Дітей</label>
-              <input type="number" value={editForm.childrenCount || ''} onChange={e => setEditForm({...editForm, childrenCount: Number(e.target.value)})} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
+              <input type="number" value={editForm.childrenCount || ''} onChange={e => setEditForm({...editForm, childrenCount: Number(e.target.value)})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
           
-          <div className="flex justify-end gap-3 mt-6 shrink-0 pt-4 border-t border-slate-100">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 font-medium rounded-xl transition-colors">Скасувати</button>
-            <button type="submit" className="bg-blue-600 text-white px-5 py-2.5 font-medium rounded-xl hover:bg-blue-700 transition-colors">Зберегти</button>
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 shrink-0 pt-4 border-t border-slate-100 pb-1 sm:pb-0">
+            <button type="button" onClick={onClose} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-slate-100 hover:bg-slate-200 font-medium rounded-xl transition-colors">Скасувати</button>
+            <button type="submit" className="w-full sm:w-auto bg-blue-600 text-white px-5 py-3 sm:py-2.5 font-medium rounded-xl hover:bg-blue-700 transition-colors">Зберегти</button>
           </div>
         </form>
       </div>
@@ -2622,7 +3168,11 @@ export default function EditSchoolModal({ isOpen, onClose, editForm, setEditForm
 }
 
 
+
+
 --- FILE: apps\frontend\src\components\school-profile\modals\EventModal.tsx ---
+
+
 
 import React from 'react';
 
@@ -2638,17 +3188,18 @@ export default function EventModal({ isOpen, onClose, eventForm, setEventForm, o
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        
-        <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl overflow-hidden max-h-[92vh] flex flex-col">
+        <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+
+        <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
           <h3 className="text-xl font-bold text-slate-800">Нова подія</h3>
           <button onClick={onClose} className="text-slate-400 p-2 -mr-2">✕</button>
         </div>
 
-        <form onSubmit={onSave} className="p-4 md:p-6 overflow-y-auto flex-1 flex flex-col gap-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
+        <form onSubmit={onSave} className="p-5 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
               <label className="block text-sm mb-1 text-slate-600">Проєкт</label>
               <select value={eventForm.project} onChange={e => setEventForm({...eventForm, project: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500">
                 <option>Голограма для школи</option>
@@ -2660,14 +3211,14 @@ export default function EventModal({ isOpen, onClose, eventForm, setEventForm, o
             <div><label className="block text-sm mb-1 text-slate-600">Час</label><input type="time" value={eventForm.time} onChange={e => setEventForm({...eventForm, time: e.target.value})} required className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
             <div><label className="block text-sm mb-1 text-slate-600">Дітей (план)</label><input type="number" value={eventForm.childrenPlanned} onChange={e => setEventForm({...eventForm, childrenPlanned: e.target.value})} required className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
             <div><label className="block text-sm mb-1 text-slate-600">Вартість</label><input type="number" value={eventForm.price} onChange={e => setEventForm({...eventForm, price: e.target.value})} required className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
-            <div className="md:col-span-2"><label className="block text-sm mb-1 text-slate-600">Адреса</label><input type="text" value={eventForm.address} onChange={e => setEventForm({...eventForm, address: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
+            <div className="sm:col-span-2"><label className="block text-sm mb-1 text-slate-600">Адреса</label><input type="text" value={eventForm.address} onChange={e => setEventForm({...eventForm, address: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
             <div><label className="block text-sm mb-1 text-slate-600">Контактна особа</label><input type="text" value={eventForm.contactPerson} onChange={e => setEventForm({...eventForm, contactPerson: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
             <div><label className="block text-sm mb-1 text-slate-600">Телефон</label><input type="text" value={eventForm.contactPhone} onChange={e => setEventForm({...eventForm, contactPhone: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
           </div>
           
-          <div className="flex justify-end gap-3 mt-4 shrink-0 pt-4 border-t border-slate-100">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 font-medium rounded-xl transition-colors">Скасувати</button>
-            <button type="submit" className="bg-blue-600 text-white px-5 py-2.5 font-medium rounded-xl hover:bg-blue-700 transition-colors">Створити</button>
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-4 shrink-0 pt-4 border-t border-slate-100 pb-1 sm:pb-0">
+            <button type="button" onClick={onClose} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-slate-100 hover:bg-slate-200 font-medium rounded-xl transition-colors">Скасувати</button>
+            <button type="submit" className="w-full sm:w-auto bg-blue-600 text-white px-5 py-3 sm:py-2.5 font-medium rounded-xl hover:bg-blue-700 transition-colors">Створити</button>
           </div>
         </form>
       </div>
@@ -2676,7 +3227,11 @@ export default function EventModal({ isOpen, onClose, eventForm, setEventForm, o
 }
 
 
+
+
 --- FILE: apps\frontend\src\components\school-profile\modals\ReportModal.tsx ---
+
+
 
 import React, { useState } from 'react';
 
@@ -2833,13 +3388,14 @@ export default function ReportModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden">
+        <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
 
         {/* Header */}
-        <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 flex items-start justify-between shrink-0">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
+        <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 bg-slate-50 flex items-start justify-between shrink-0">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
               <span className="text-xs font-semibold tracking-wide text-blue-600 uppercase">
                 {eventType || 'Подія'}
               </span>
@@ -2848,20 +3404,20 @@ export default function ReportModal({
                 {formatDate(eventDate)}
               </span>
             </div>
-            <h3 className="text-xl font-bold text-slate-800 leading-tight">Звіт по події</h3>
-            <p className="text-sm text-slate-500 mt-0.5">
+            <h3 className="text-lg sm:text-xl font-bold text-slate-800 leading-tight">Звіт по події</h3>
+            <p className="text-sm text-slate-500 mt-0.5 truncate">
               {schoolName}{eventIndex ? <span className="text-slate-400"> · подія №{eventIndex}</span> : null}
             </p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg leading-none p-2 -mr-2 -mt-1 shrink-0">✕</button>
         </div>
 
         {/* Body */}
-        <div className="p-6 overflow-y-auto bg-slate-50/50">
+        <div className="p-4 sm:p-6 overflow-y-auto bg-slate-50/50">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
             {/* Проведено */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5">
               <CardHeader icon={<Icon.Check />} color="bg-blue-50 text-blue-600" title="Проведено" />
               <Row label="Оголошення про проєкт">
                 <TogglePill value={form.announcementDone} onChange={v => setForm({ ...form, announcementDone: v })} />
@@ -2872,7 +3428,7 @@ export default function ReportModal({
             </div>
 
             {/* Охоплення */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5">
               <CardHeader icon={<Icon.Users />} color="bg-violet-50 text-violet-600" title="Охоплення" />
               <Row label="Кількість дітей">
                 <NumberField value={form.childrenCount} onChange={v => setForm({ ...form, childrenCount: v })} suffix="дітей" />
@@ -2889,7 +3445,7 @@ export default function ReportModal({
             </div>
 
             {/* Фінансовий результат */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 md:col-span-2">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
               <CardHeader icon={<Icon.Wallet />} color="bg-amber-50 text-amber-600" title="Фінансовий результат" />
 
               <div className="flex items-center justify-between py-2 border-b border-slate-50">
@@ -2933,19 +3489,19 @@ export default function ReportModal({
                     placeholder="Назва витрати"
                     value={newExp.name}
                     onChange={e => setNewExp({ ...newExp, name: e.target.value })}
-                    className="flex-1 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="flex-1 min-w-0 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                   <input
                     type="number" min={0}
                     placeholder="грн"
                     value={newExp.amount}
                     onChange={e => setNewExp({ ...newExp, amount: e.target.value })}
-                    className="w-24 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-20 sm:w-24 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                   <button
                     onClick={addExpense}
                     type="button"
-                    className="px-3 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium text-sm"
+                    className="px-3 shrink-0 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium text-sm"
                   >
                     +
                   </button>
@@ -2959,7 +3515,7 @@ export default function ReportModal({
             </div>
 
             {/* Оцінка */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 md:col-span-2">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
               <CardHeader icon={<Icon.Star />} color="bg-rose-50 text-rose-500" title="Оцінка по закладу" />
               <div className="flex items-center gap-4">
                 <input
@@ -2978,11 +3534,11 @@ export default function ReportModal({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-white shrink-0">
-          <button onClick={onClose} className="px-5 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-white shrink-0">
+          <button onClick={onClose} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium">
             Скасувати
           </button>
-          <button onClick={handleSave} className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-blue-700">
+          <button onClick={handleSave} className="w-full sm:w-auto bg-blue-600 text-white px-5 py-3 sm:py-2.5 rounded-xl font-medium hover:bg-blue-700">
             Зберегти звіт
           </button>
         </div>
@@ -2991,7 +3547,11 @@ export default function ReportModal({
   );
 }
 
+
+
 --- FILE: apps\frontend\src\components\school-profile\Pipeline.tsx ---
+
+
 
 interface PipelineProps {
   currentStageIndex: number;
@@ -3040,7 +3600,11 @@ export default function Pipeline({ currentStageIndex, currentEvent, onPipelineCl
   );
 }
 
+
+
 --- FILE: apps\frontend\src\components\school-profile\SchoolInfoCard.tsx ---
+
+
 
 export default function SchoolInfoCard({ schoolData }: { schoolData: any }) {
   return (
@@ -3057,13 +3621,21 @@ export default function SchoolInfoCard({ schoolData }: { schoolData: any }) {
   );
 }
 
+
+
 --- FILE: apps\frontend\src\index.css ---
+
+
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+
+
 --- FILE: apps\frontend\src\main.tsx ---
+
+
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -3076,7 +3648,11 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
+
+
 --- FILE: apps\frontend\src\pages\Cities.tsx ---
+
+
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -3160,7 +3736,7 @@ export default function Cities() {
         <h1 className="text-3xl font-bold text-slate-800">Міста</h1>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center w-full sm:w-auto"
         >
           <span className="mr-2">+</span> Додати місто
         </button>
@@ -3225,12 +3801,13 @@ export default function Cities() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="p-6 border-b border-slate-100">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden">
+            <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+            <div className="p-5 sm:p-6 border-b border-slate-100">
               <h3 className="text-xl font-bold text-slate-800">Нове місто</h3>
             </div>
-            <form onSubmit={handleAddCity} className="p-6">
+            <form onSubmit={handleAddCity} className="p-5 sm:p-6">
               <div className="mb-6">
                 <label className="block text-sm font-medium text-slate-700 mb-2">Назва міста</label>
                 <input
@@ -3243,11 +3820,11 @@ export default function Cities() {
                   required
                 />
               </div>
-              <div className="flex justify-end gap-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-slate-600 font-medium hover:bg-slate-50 rounded-xl transition-colors">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pb-1 sm:pb-0">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 font-medium hover:bg-slate-50 bg-slate-100 sm:bg-transparent rounded-xl transition-colors">
                   Скасувати
                 </button>
-                <button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50">
+                <button type="submit" disabled={isLoading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 sm:py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50">
                   {isLoading ? 'Збереження...' : 'Зберегти'}
                 </button>
               </div>
@@ -3260,11 +3837,14 @@ export default function Cities() {
 }
 
 
+
+
 --- FILE: apps\frontend\src\pages\CityProfile.tsx ---
 
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
+import CityAnalytics from '../components/city-profile/CityAnalytics.tsx';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://crm-57qd.onrender.com';
 
@@ -3313,7 +3893,7 @@ export default function CityProfile() {
   ];
 
   return (
-    <div className="p-8 bg-slate-50 min-h-screen">
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
       {/* Breadcrumb */}
       <div className="text-sm text-slate-500 mb-6">
         <Link to="/cities" className="hover:text-blue-600 transition-colors">Міста</Link>
@@ -3340,7 +3920,7 @@ export default function CityProfile() {
           <div className="hidden md:block w-px h-16 bg-slate-100" />
 
           {/* Статистика */}
-          <div className="flex flex-wrap gap-8 flex-1">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-6 gap-y-4 sm:gap-8 flex-1">
             <Stat label="Заплановано подій" value={city.schools?.length ?? 0} />
             <Stat label="Проведено подій" value={completedEvents.length} />
             <Stat label="Охоплено дітей" value={fmt(totalChildren)} />
@@ -3351,18 +3931,18 @@ export default function CityProfile() {
       </div>
 
       {/* Вкладки */}
-      <div className="flex gap-1 bg-white rounded-xl p-1 border border-slate-100 shadow-sm mb-6 w-fit">
+      <div className="grid grid-cols-3 sm:flex sm:w-fit gap-1 bg-white rounded-xl p-1 border border-slate-100 shadow-sm mb-6">
         {TABS.map(tab => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               activeTab === tab.key
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
             }`}
           >
-            <span>{tab.icon}</span> {tab.label}
+            <span>{tab.icon}</span> <span className="truncate">{tab.label}</span>
           </button>
         ))}
       </div>
@@ -3380,37 +3960,65 @@ export default function CityProfile() {
               <p className="text-sm mt-1">Вони з'являться тут після завершення пайплайну в профілі школи</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
-                    <th className="p-4">Заклад</th>
-                    <th className="p-4">Проєкт</th>
-                    <th className="p-4">Дата</th>
-                    <th className="p-4">Дітей</th>
-                    <th className="p-4">Виручка</th>
-                    <th className="p-4">Прибуток</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {completedEvents.map((ev: any) => (
-                    <tr key={ev.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                      <td className="p-4">
-                        <Link to={`/events/${ev.id}/report`} className="font-medium text-blue-600 hover:underline">
-                            {ev.school?.name}
-                            </Link>
-                        <p className="text-xs text-slate-400">{ev.school?.type}</p>
-                      </td>
-                      <td className="p-4 text-slate-700">{ev.project}</td>
-                      <td className="p-4 text-slate-600">{new Date(ev.date).toLocaleDateString('uk-UA')}</td>
-                      <td className="p-4 font-medium">{ev.report?.childrenCount || ev.childrenPlanned || '—'}</td>
-                      <td className="p-4 font-medium text-slate-800">{fmt(ev.report?.totalSum || ev.price || 0)} грн</td>
-                      <td className="p-4 font-medium text-emerald-600">{fmt(ev.report?.remainderSum || 0)} грн</td>
+            <>
+              {/* Картки — мобільний вигляд */}
+              <div className="md:hidden divide-y divide-slate-50">
+                {completedEvents.map((ev: any) => (
+                  <Link
+                    key={ev.id}
+                    to={`/events/${ev.id}/report`}
+                    className="flex items-center justify-between gap-3 p-4 active:bg-slate-50"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-blue-600 truncate">{ev.school?.name}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {ev.project} · {new Date(ev.date).toLocaleDateString('uk-UA')}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        👶 {ev.report?.childrenCount || ev.childrenPlanned || '—'} дітей
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-semibold text-slate-800 text-sm">{fmt(ev.report?.totalSum || ev.price || 0)} грн</p>
+                      <p className="text-xs font-medium text-emerald-600 mt-0.5">+{fmt(ev.report?.remainderSum || 0)} грн</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+
+              {/* Таблиця — десктоп */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+                      <th className="p-4">Заклад</th>
+                      <th className="p-4">Проєкт</th>
+                      <th className="p-4">Дата</th>
+                      <th className="p-4">Дітей</th>
+                      <th className="p-4">Виручка</th>
+                      <th className="p-4">Прибуток</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {completedEvents.map((ev: any) => (
+                      <tr key={ev.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                        <td className="p-4">
+                          <Link to={`/events/${ev.id}/report`} className="font-medium text-blue-600 hover:underline">
+                              {ev.school?.name}
+                              </Link>
+                          <p className="text-xs text-slate-400">{ev.school?.type}</p>
+                        </td>
+                        <td className="p-4 text-slate-700">{ev.project}</td>
+                        <td className="p-4 text-slate-600">{new Date(ev.date).toLocaleDateString('uk-UA')}</td>
+                        <td className="p-4 font-medium">{ev.report?.childrenCount || ev.childrenPlanned || '—'}</td>
+                        <td className="p-4 font-medium text-slate-800">{fmt(ev.report?.totalSum || ev.price || 0)} грн</td>
+                        <td className="p-4 font-medium text-emerald-600">{fmt(ev.report?.remainderSum || 0)} грн</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -3426,40 +4034,56 @@ export default function CityProfile() {
               <p className="font-medium">Екіпажів ще немає</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
-                    <th className="p-4">Назва</th>
-                    <th className="p-4">Ведучий</th>
-                    <th className="p-4">Водій</th>
-                    <th className="p-4">Авто</th>
-                    <th className="p-4">Телефон</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {crews.map((crew: any) => (
-                    <tr key={crew.id} className="border-b border-slate-50 hover:bg-slate-50">
-                      <td className="p-4 font-medium">{crew.name}</td>
-                      <td className="p-4 text-blue-600">{crew.host?.name || '—'}</td>
-                      <td className="p-4 text-emerald-600">{crew.driver?.name || '—'}</td>
-                      <td className="p-4 text-slate-600">{crew.car || '—'}</td>
-                      <td className="p-4 text-slate-600">{crew.phone || '—'}</td>
+            <>
+              {/* Картки — мобільний вигляд */}
+              <div className="md:hidden divide-y divide-slate-50">
+                {crews.map((crew: any) => (
+                  <div key={crew.id} className="p-4">
+                    <p className="font-semibold text-slate-800">{crew.name}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-slate-600">
+                      <span>🎙️ <span className="text-blue-600 font-medium">{crew.host?.name || '—'}</span></span>
+                      <span>🚗 <span className="text-emerald-600 font-medium">{crew.driver?.name || '—'}</span></span>
+                    </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-xs text-slate-500">
+                      <span>{crew.car || '—'}</span>
+                      <span>{crew.phone || '—'}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Таблиця — десктоп */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+                      <th className="p-4">Назва</th>
+                      <th className="p-4">Ведучий</th>
+                      <th className="p-4">Водій</th>
+                      <th className="p-4">Авто</th>
+                      <th className="p-4">Телефон</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {crews.map((crew: any) => (
+                      <tr key={crew.id} className="border-b border-slate-50 hover:bg-slate-50">
+                        <td className="p-4 font-medium">{crew.name}</td>
+                        <td className="p-4 text-blue-600">{crew.host?.name || '—'}</td>
+                        <td className="p-4 text-emerald-600">{crew.driver?.name || '—'}</td>
+                        <td className="p-4 text-slate-600">{crew.car || '—'}</td>
+                        <td className="p-4 text-slate-600">{crew.phone || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       )}
 
       {activeTab === 'analytics' && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center text-slate-400">
-          <p className="text-4xl mb-3">📊</p>
-          <p className="font-medium text-slate-500">Аналітика в розробці</p>
-          <p className="text-sm mt-1">Тут буде детальна статистика по місту</p>
-        </div>
+        <CityAnalytics events={completedEvents} />
       )}
     </div>
   );
@@ -3474,8 +4098,9 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-
 --- FILE: apps\frontend\src\pages\Employees.tsx ---
+
+
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
@@ -3614,7 +4239,7 @@ export default function Employees() {
         </div>
         <button
           onClick={handleOpenAdd}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors w-full sm:w-auto"
         >
           + Створити користувача
         </button>
@@ -3638,7 +4263,43 @@ export default function Employees() {
               </div>
             ) : (
               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <table className="w-full text-left">
+                {/* Картки — мобільний вигляд */}
+                <div className="md:hidden divide-y divide-slate-50">
+                  {items.map((u) => (
+                    <div key={u.id} className="p-4 flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 ${ROLE_HEADER_COLORS[role]}`}>
+                        {u.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-slate-800 truncate">{u.name}</p>
+                        <p className="text-xs text-slate-500 truncate mt-0.5">{u.email}</p>
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          {u.phone && <span className="text-xs text-slate-500">{u.phone}</span>}
+                          <span className="bg-slate-100 text-slate-600 text-[11px] px-2 py-0.5 rounded-full font-medium">
+                            📍 {u.city?.name || 'Всі міста'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => handleOpenEdit(u)}
+                          className="text-slate-400 active:text-blue-500 transition-colors p-2 rounded-lg active:bg-blue-50"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => handleDelete(u.id, u.name)}
+                          className="text-slate-400 active:text-red-500 transition-colors p-2 rounded-lg active:bg-red-50"
+                        >
+                          🗑
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Таблиця — десктоп */}
+                <table className="hidden md:table w-full text-left">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       <th className="px-5 py-3">ПІБ</th>
@@ -3699,15 +4360,16 @@ export default function Employees() {
 
       {/* Модальне вікно додавання/редагування */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg max-h-[92vh] overflow-hidden flex flex-col">
+            <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+            <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <h3 className="text-xl font-bold text-slate-800">
                 {editingUser ? 'Редагувати користувача' : 'Новий користувач'}
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-xl p-2 -mr-2">✕</button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
+            <form onSubmit={handleSubmit} className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">ПІБ *</label>
                 <input
@@ -3719,7 +4381,7 @@ export default function Employees() {
                   className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-1">Пошта (Логін) *</label>
                   <input
@@ -3745,7 +4407,7 @@ export default function Employees() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-1">Роль *</label>
                   <select
@@ -3782,18 +4444,18 @@ export default function Employees() {
                   className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 />
               </div>
-              <div className="flex justify-end gap-3 mt-4">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-4 pb-1 sm:pb-0">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 bg-slate-100 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"
+                  className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-slate-100 rounded-xl sm:rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"
                 >
                   Скасувати
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-blue-600 text-white rounded-xl sm:rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
                   {isSubmitting ? 'Збереження...' : editingUser ? 'Зберегти зміни' : 'Створити акаунт'}
                 </button>
@@ -3806,7 +4468,11 @@ export default function Employees() {
   );
 }
 
+
+
 --- FILE: apps\frontend\src\pages\EventReport.tsx ---
+
+
 
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -3844,9 +4510,9 @@ export default function EventReport() {
   const fmt = (n: number) => new Intl.NumberFormat('uk-UA').format(Math.round(n || 0));
 
   return (
-    <div className="p-8 bg-slate-50 min-h-screen">
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
       {/* Breadcrumb */}
-      <div className="text-sm text-slate-500 mb-4 flex items-center gap-1">
+      <div className="text-xs sm:text-sm text-slate-500 mb-4 flex items-center gap-1 flex-wrap">
         <Link to="/cities" className="hover:text-blue-600">Міста</Link>
         <span>›</span>
         <Link to={`/cities/${event.cityId}`} className="hover:text-blue-600">{event.city?.name}</Link>
@@ -3860,14 +4526,14 @@ export default function EventReport() {
         ← Назад
       </button>
 
-      <div className="flex items-center gap-3 mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Звіт по події</h1>
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Звіт по події</h1>
         <span className="bg-green-100 text-green-700 text-xs font-semibold px-3 py-1 rounded-full">Проведено</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Інформація */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-6">
           <h3 className="font-bold text-slate-800 mb-4">Інформація</h3>
           <div className="space-y-2 text-sm">
             <Row label="Заклад" value={event.school?.name} />
@@ -3882,7 +4548,7 @@ export default function EventReport() {
         </div>
 
         {/* Результат */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-6">
           <h3 className="font-bold text-slate-800 mb-4">Результат</h3>
           <div className="space-y-2 text-sm">
             <Row label="Заплановано дітей" value={event.childrenPlanned} />
@@ -3894,7 +4560,7 @@ export default function EventReport() {
         </div>
 
         {/* Оцінка */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-6">
           <h3 className="font-bold text-slate-800 mb-4">Оцінка</h3>
           <div className="space-y-2 text-sm">
             <Row label="Директор задоволений" value={report?.directorSatisfied ? 'Так' : 'Ні'} />
@@ -3922,19 +4588,41 @@ function Row({ label, value }: { label: string; value: any }) {
   );
 }
 
+
+
 --- FILE: apps\frontend\src\pages\Events.tsx ---
 
+
+
 export default function Events() {
+  const rows = [
+    { name: 'Стендап-вечір / Dzyga', date: '25 Червня 2026', location: 'Артцентр "Дзиґа"', status: 'Заплановано' },
+  ];
+
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Розклад подій</h1>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+    <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Розклад подій</h1>
+        <button className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg hover:bg-blue-700 transition w-full sm:w-auto">
           + Додати подію
         </button>
       </div>
-      
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+
+      {/* Картки — мобільний вигляд */}
+      <div className="md:hidden flex flex-col gap-3">
+        {rows.map((row, i) => (
+          <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <p className="font-semibold text-gray-800">{row.name}</p>
+            <p className="text-xs text-gray-500 mt-1">{row.date} · {row.location}</p>
+            <span className="inline-block mt-2 bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
+              {row.status}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Таблиця — десктоп */}
+      <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
@@ -3945,14 +4633,16 @@ export default function Events() {
             </tr>
           </thead>
           <tbody>
-            <tr className="border-b border-gray-50 hover:bg-gray-50/50 transition">
-              <td className="p-4 text-gray-800 font-medium">Стендап-вечір / Dzyga</td>
-              <td className="p-4 text-gray-600">25 Червня 2026</td>
-              <td className="p-4 text-gray-600">Артцентр "Дзиґа"</td>
-              <td className="p-4">
-                <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">Заплановано</span>
-              </td>
-            </tr>
+            {rows.map((row, i) => (
+              <tr key={i} className="border-b border-gray-50 hover:bg-gray-50/50 transition">
+                <td className="p-4 text-gray-800 font-medium">{row.name}</td>
+                <td className="p-4 text-gray-600">{row.date}</td>
+                <td className="p-4 text-gray-600">{row.location}</td>
+                <td className="p-4">
+                  <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">{row.status}</span>
+                </td>
+              </tr>
+            ))}
             {/* Тут згодом будуть рендеритися дані з нашої бази */}
           </tbody>
         </table>
@@ -3961,7 +4651,287 @@ export default function Events() {
   );
 }
 
+
+--- FILE: apps\frontend\src\pages\Finance.tsx ---
+
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  PieChart, Pie, Cell, Legend,
+} from 'recharts';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://crm-57qd.onrender.com';
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+
+const fmt = (n: number) =>
+  new Intl.NumberFormat('uk-UA').format(Math.round(n || 0));
+
+export default function Finance() {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [period, setPeriod] = useState('year');
+  const [cityId, setCityId] = useState('');
+  const [project, setProject] = useState('');
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams();
+      if (period) params.set('period', period);
+      if (cityId) params.set('cityId', cityId);
+      if (project) params.set('project', project);
+
+      const res = await axios.get(`${API_BASE_URL}/finance/dashboard?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setData(res.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchData(); }, [period, cityId, project]);
+
+  if (isLoading) return <div className="p-8 text-slate-500">Завантаження...</div>;
+  if (!data) return <div className="p-8 text-slate-500">Помилка завантаження</div>;
+
+  const { kpi, monthly, byProject, byExpenseCategory, topCities, topSchools, topEvents, worstEvents, expectedRevenue, filters } = data;
+
+  return (
+    <div className="p-6 bg-slate-50 min-h-screen">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <h1 className="text-2xl font-bold text-slate-800">💰 Фінанси</h1>
+
+        {/* Фільтри */}
+        <div className="flex flex-wrap gap-3">
+          <div className="flex rounded-lg overflow-hidden border border-slate-200 bg-white text-sm">
+            {[['month','Місяць'],['quarter','Квартал'],['year','Рік'],['','Весь час']].map(([val, label]) => (
+              <button
+                key={val}
+                onClick={() => setPeriod(val)}
+                className={`px-4 py-2 transition-colors ${period === val ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <select
+            value={cityId}
+            onChange={e => setCityId(e.target.value)}
+            className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Всі міста</option>
+            {filters?.cities?.map((c: any) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+
+          <select
+            value={project}
+            onChange={e => setProject(e.target.value)}
+            className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Всі проєкти</option>
+            {filters?.projects?.map((p: string) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* KPI картки */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <KpiCard label="Загальна виручка" value={`${fmt(kpi.totalRevenue)} грн`} color="blue" />
+        <KpiCard label="Витрати" value={`${fmt(kpi.totalExpenses)} грн`} color="red" />
+        <KpiCard label="Чистий прибуток" value={`${fmt(kpi.totalProfit)} грн`} color="green" />
+        <KpiCard label="Проведено подій" value={kpi.totalEvents} color="purple" />
+      </div>
+
+      {/* Очікувана виручка */}
+      <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6 flex items-center justify-between">
+        <div>
+          <p className="text-sm text-blue-600 font-medium">📅 Очікувана виручка (заплановані події)</p>
+          <p className="text-2xl font-bold text-blue-800 mt-1">{fmt(expectedRevenue)} грн</p>
+        </div>
+        <span className="text-4xl">🔮</span>
+      </div>
+
+      {/* Графік по місяцях */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6">
+        <h3 className="font-bold text-slate-800 mb-4">Динаміка по місяцях</h3>
+        {monthly.length === 0 ? (
+          <p className="text-slate-400 text-sm text-center py-8">Немає даних за обраний період</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={monthly}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#94a3b8' }} />
+              <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} tickFormatter={v => `${Math.round(v / 1000)}к`} />
+              <Tooltip formatter={(v: number) => `${fmt(v)} грн`} />
+              <Legend />
+              <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} name="Виручка" dot={false} />
+              <Line type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={2} name="Прибуток" dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* Pie charts row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+          <h3 className="font-bold text-slate-800 mb-4">Структура доходів</h3>
+          {byProject.length === 0 ? <EmptyPie /> : (
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={byProject} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                  {byProject.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Pie>
+                <Tooltip formatter={(v: number) => `${fmt(v)} грн`} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+          <h3 className="font-bold text-slate-800 mb-4">Структура витрат</h3>
+          {byExpenseCategory.length === 0 ? <EmptyPie /> : (
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={byExpenseCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                  {byExpenseCategory.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Pie>
+                <Tooltip formatter={(v: number) => `${fmt(v)} грн`} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      {/* Топ міст і шкіл */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+          <h3 className="font-bold text-slate-800 mb-4">🏙️ Топ міст</h3>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-slate-400 text-xs uppercase border-b border-slate-50">
+                <th className="text-left pb-2">Місто</th>
+                <th className="text-right pb-2">Виручка</th>
+                <th className="text-right pb-2">Прибуток</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topCities.length === 0 ? <tr><td colSpan={3} className="text-center py-4 text-slate-400">Немає даних</td></tr> :
+                topCities.map((c: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-50">
+                    <td className="py-2 font-medium">{c.name}</td>
+                    <td className="py-2 text-right text-slate-600">{fmt(c.revenue)} грн</td>
+                    <td className="py-2 text-right text-emerald-600 font-medium">{fmt(c.profit)} грн</td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+          <h3 className="font-bold text-slate-800 mb-4">🏫 Топ закладів</h3>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-slate-400 text-xs uppercase border-b border-slate-50">
+                <th className="text-left pb-2">Заклад</th>
+                <th className="text-right pb-2">Подій</th>
+                <th className="text-right pb-2">Виручка</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topSchools.length === 0 ? <tr><td colSpan={3} className="text-center py-4 text-slate-400">Немає даних</td></tr> :
+                topSchools.map((s: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-50">
+                    <td className="py-2 font-medium">{s.name}</td>
+                    <td className="py-2 text-right text-slate-600">{s.count}</td>
+                    <td className="py-2 text-right text-blue-600 font-medium">{fmt(s.revenue)} грн</td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Найкращі і найгірші події */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+          <h3 className="font-bold text-slate-800 mb-4">🏆 Найприбутковіші події</h3>
+          <EventTable events={topEvents} positive />
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+          <h3 className="font-bold text-slate-800 mb-4">⚠️ Найменш прибуткові події</h3>
+          <EventTable events={worstEvents} positive={false} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KpiCard({ label, value, color }: { label: string; value: any; color: string }) {
+  const colors: Record<string, string> = {
+    blue: 'bg-blue-50 border-blue-100',
+    green: 'bg-emerald-50 border-emerald-100',
+    red: 'bg-red-50 border-red-100',
+    purple: 'bg-violet-50 border-violet-100',
+  };
+  const textColors: Record<string, string> = {
+    blue: 'text-blue-700',
+    green: 'text-emerald-700',
+    red: 'text-red-700',
+    purple: 'text-violet-700',
+  };
+  return (
+    <div className={`rounded-2xl border p-5 ${colors[color]}`}>
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">{label}</p>
+      <p className={`text-2xl font-bold ${textColors[color]}`}>{value}</p>
+    </div>
+  );
+}
+
+function EventTable({ events, positive }: { events: any[]; positive: boolean }) {
+  if (!events.length) return <p className="text-slate-400 text-sm text-center py-4">Немає даних</p>;
+  return (
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="text-slate-400 text-xs uppercase border-b border-slate-50">
+          <th className="text-left pb-2">Дата</th>
+          <th className="text-left pb-2">Заклад</th>
+          <th className="text-right pb-2">Прибуток</th>
+        </tr>
+      </thead>
+      <tbody>
+        {events.map((e: any, i: number) => (
+          <tr key={i} className="border-b border-slate-50">
+            <td className="py-2 text-slate-500">{new Date(e.date).toLocaleDateString('uk-UA')}</td>
+            <td className="py-2 font-medium truncate max-w-[140px]">{e.school}</td>
+            <td className={`py-2 text-right font-semibold ${positive ? 'text-emerald-600' : 'text-red-500'}`}>
+              {new Intl.NumberFormat('uk-UA').format(Math.round(e.profit))} грн
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function EmptyPie() {
+  return <p className="text-slate-400 text-sm text-center py-8">Немає даних за обраний період</p>;
+}
+
 --- FILE: apps\frontend\src\pages\Login.tsx ---
+
+
 
 import { useState } from 'react';
 import axios from 'axios';
@@ -3992,8 +4962,8 @@ export default function Login() {
   };
 
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-100">
-      <div className="p-8 bg-white rounded-2xl shadow-lg w-96">
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+      <div className="p-6 sm:p-8 bg-white rounded-2xl shadow-lg w-full max-w-sm sm:max-w-md">
         <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">Вхід у CRM</h1>
 
         {error && (
@@ -4031,7 +5001,11 @@ export default function Login() {
 }
 
 
+
+
 --- FILE: apps\frontend\src\pages\SchoolProfile.tsx ---
+
+
 
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -4155,8 +5129,8 @@ const handlePipelineClick = (stepId: number) => {
 
   if (!isCurrentStage && !isNextStage) return;
 
-  // Якщо це перехід до DONE (8 етап)
-  if (nextStage?.key === 'DONE') {
+  // Якщо це перехід до REPORT (8 етап)
+  if (nextStage?.key === 'RE_SALE') {
     setIsReportModalOpen(true);
     return;
   }
@@ -4359,7 +5333,11 @@ const handlePipelineClick = (stepId: number) => {
   );
 }
 
+
+
 --- FILE: apps\frontend\src\pages\Schools.tsx ---
+
+
 
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -4494,13 +5472,59 @@ export default function Schools() {
         <h1 className="text-2xl font-bold text-slate-800">Школи та Садочки</h1>
         <button
           onClick={handleOpenModal}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700"
+          className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
         >
           + Додати заклад
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto w-full">
+      {/* Картки — мобільний вигляд */}
+      <div className="md:hidden flex flex-col gap-3">
+        {schools.map((school) => {
+          const latestEvent = school.events?.[0];
+          const stage = latestEvent ? PIPELINE_STAGES.find(s => s.key === latestEvent.status) : null;
+          return (
+            <div
+              key={school.id}
+              onClick={() => navigate(`/schools/${school.id}`)}
+              className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 active:scale-[0.99] transition-transform"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-slate-800 leading-snug">{school.name}</p>
+                  <p className="text-xs text-slate-500 mt-1">{school.type} · {school.city?.name}</p>
+                </div>
+                <button
+                  onClick={(e) => handleDeleteSchool(e, school.id, school.name)}
+                  className="text-slate-300 active:text-red-500 transition-colors p-2 -mr-2 -mt-1 shrink-0"
+                >
+                  🗑
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                <span className="bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full text-xs font-medium">
+                  Активний
+                </span>
+                {stage ? (
+                  <span className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium border border-blue-100">
+                    {stage.name}
+                  </span>
+                ) : (
+                  <span className="text-slate-400 text-xs italic">Етап не визначено</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {schools.length === 0 && (
+          <div className="bg-white rounded-2xl border border-slate-100 text-center py-10 text-slate-400 text-sm">
+            Закладів ще немає
+          </div>
+        )}
+      </div>
+
+      {/* Таблиця — десктоп */}
+      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto w-full">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">
@@ -4554,15 +5578,16 @@ export default function Schools() {
         </table>
       </div>
 
-      {/* Модалка додавання закладу */}
+      {/* Модалка додавання закладу — bottom-sheet на мобільному, діалог на десктопі */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex justify-between bg-slate-50">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md max-h-[92vh] overflow-hidden flex flex-col">
+            <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+            <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <h3 className="text-xl font-bold text-slate-800">Новий заклад</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-2 -mr-2">✕</button>
             </div>
-            <form onSubmit={handleAddSchool} className="p-6 flex flex-col gap-4">
+            <form onSubmit={handleAddSchool} className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto">
               <div className="relative">
                 <label className="block text-sm text-slate-600 mb-1">Назва закладу</label>
                 <input
@@ -4619,18 +5644,18 @@ export default function Schools() {
                   ))}
                 </select>
               </div>
-              <div className="flex justify-end gap-3 mt-2">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-2 pb-1 sm:pb-0">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 bg-slate-100 rounded-lg text-sm font-medium hover:bg-slate-200"
+                  className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-slate-100 rounded-xl sm:rounded-lg text-sm font-medium hover:bg-slate-200"
                 >
                   Скасувати
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                  className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-blue-600 text-white rounded-xl sm:rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
                 >
                   {isSubmitting ? 'Збереження...' : 'Створити'}
                 </button>
@@ -4644,7 +5669,11 @@ export default function Schools() {
 }
 
 
+
+
 --- FILE: apps\frontend\tailwind.config.js ---
+
+
 
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -4658,7 +5687,11 @@ export default {
   plugins: [],
 }
 
+
+
 --- FILE: apps\frontend\tsconfig.app.json ---
+
+
 
 {
   "compilerOptions": {
@@ -4687,7 +5720,11 @@ export default {
 }
 
 
+
+
 --- FILE: apps\frontend\tsconfig.json ---
+
+
 
 {
   "files": [],
@@ -4698,7 +5735,11 @@ export default {
 }
 
 
+
+
 --- FILE: apps\frontend\tsconfig.node.json ---
+
+
 
 {
   "compilerOptions": {
@@ -4726,7 +5767,11 @@ export default {
 }
 
 
+
+
 --- FILE: apps\frontend\vercel.json ---
+
+
 
 {
   "rewrites": [
@@ -4737,7 +5782,11 @@ export default {
   ]
 }
 
+
+
 --- FILE: apps\frontend\vite.config.ts ---
+
+
 
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -4746,6 +5795,8 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
 })
+
+
 
 --- FILE: bundle.js ---
 

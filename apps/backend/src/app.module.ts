@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { EventsModule } from './events/events.module';
 import { CitiesModule } from './cities/cities.module';
 import { SchoolsModule } from './schools/schools.module';
+import { FinanceModule } from './finance/finance.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { SchoolsModule } from './schools/schools.module';
     EventsModule,
     CitiesModule,
     SchoolsModule,
+    FinanceModule,
   ],
   controllers: [AppController],
   providers: [AppService],

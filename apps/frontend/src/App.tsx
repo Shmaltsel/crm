@@ -10,6 +10,8 @@ import Schools from './pages/Schools';
 import SchoolProfile from './pages/SchoolProfile';
 import Employees from './pages/Employees';
 import EventReport from './pages/EventReport';
+import Finance from './pages/Finance';
+
 
 export default function App() {
   return (
@@ -26,6 +28,7 @@ export default function App() {
           <Route path="/schools" element={<Schools />} />
           <Route path="/employees" element={<Employees />} />
           <Route path="/dashboard" element={<Navigate to="/cities" replace />} />
+          <Route path="/finance" element={<Finance />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />
