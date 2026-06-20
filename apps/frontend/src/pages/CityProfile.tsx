@@ -1,8 +1,7 @@
-
-
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
+import CityAnalytics from '../components/city-profile/CityAnalytics.tsx';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://crm-57qd.onrender.com';
 
@@ -241,11 +240,7 @@ export default function CityProfile() {
       )}
 
       {activeTab === 'analytics' && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center text-slate-400">
-          <p className="text-4xl mb-3">📊</p>
-          <p className="font-medium text-slate-500">Аналітика в розробці</p>
-          <p className="text-sm mt-1">Тут буде детальна статистика по місту</p>
-        </div>
+        <CityAnalytics events={completedEvents} />
       )}
     </div>
   );
@@ -259,5 +254,3 @@ function Stat({ label, value }: { label: string; value: string | number }) {
     </div>
   );
 }
-
-
