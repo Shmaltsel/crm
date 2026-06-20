@@ -1,3 +1,5 @@
+
+
 import React from 'react';
 
 interface PreparationProps {
@@ -58,3 +60,4 @@ export default function EventPreparation({ data, onUpdate, onOpenCrewModal }: Pr
     </div>
   );
 }
+

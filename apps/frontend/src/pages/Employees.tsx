@@ -1,3 +1,5 @@
+
+
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 
@@ -135,7 +137,7 @@ export default function Employees() {
         </div>
         <button
           onClick={handleOpenAdd}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors w-full sm:w-auto"
         >
           + Створити користувача
         </button>
@@ -159,7 +161,43 @@ export default function Employees() {
               </div>
             ) : (
               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <table className="w-full text-left">
+                {/* Картки — мобільний вигляд */}
+                <div className="md:hidden divide-y divide-slate-50">
+                  {items.map((u) => (
+                    <div key={u.id} className="p-4 flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 ${ROLE_HEADER_COLORS[role]}`}>
+                        {u.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-slate-800 truncate">{u.name}</p>
+                        <p className="text-xs text-slate-500 truncate mt-0.5">{u.email}</p>
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          {u.phone && <span className="text-xs text-slate-500">{u.phone}</span>}
+                          <span className="bg-slate-100 text-slate-600 text-[11px] px-2 py-0.5 rounded-full font-medium">
+                            📍 {u.city?.name || 'Всі міста'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => handleOpenEdit(u)}
+                          className="text-slate-400 active:text-blue-500 transition-colors p-2 rounded-lg active:bg-blue-50"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => handleDelete(u.id, u.name)}
+                          className="text-slate-400 active:text-red-500 transition-colors p-2 rounded-lg active:bg-red-50"
+                        >
+                          🗑
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Таблиця — десктоп */}
+                <table className="hidden md:table w-full text-left">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       <th className="px-5 py-3">ПІБ</th>
@@ -220,15 +258,16 @@ export default function Employees() {
 
       {/* Модальне вікно додавання/редагування */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg max-h-[92vh] overflow-hidden flex flex-col">
+            <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+            <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <h3 className="text-xl font-bold text-slate-800">
                 {editingUser ? 'Редагувати користувача' : 'Новий користувач'}
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-xl p-2 -mr-2">✕</button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
+            <form onSubmit={handleSubmit} className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">ПІБ *</label>
                 <input
@@ -240,7 +279,7 @@ export default function Employees() {
                   className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-1">Пошта (Логін) *</label>
                   <input
@@ -266,7 +305,7 @@ export default function Employees() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-1">Роль *</label>
                   <select
@@ -303,18 +342,18 @@ export default function Employees() {
                   className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 />
               </div>
-              <div className="flex justify-end gap-3 mt-4">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-4 pb-1 sm:pb-0">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 bg-slate-100 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"
+                  className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-slate-100 rounded-xl sm:rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"
                 >
                   Скасувати
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-blue-600 text-white rounded-xl sm:rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
                   {isSubmitting ? 'Збереження...' : editingUser ? 'Зберегти зміни' : 'Створити акаунт'}
                 </button>
@@ -326,3 +365,4 @@ export default function Employees() {
     </div>
   );
 }
+

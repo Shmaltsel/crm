@@ -1,3 +1,5 @@
+
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -80,7 +82,7 @@ export default function Cities() {
         <h1 className="text-3xl font-bold text-slate-800">Міста</h1>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center w-full sm:w-auto"
         >
           <span className="mr-2">+</span> Додати місто
         </button>
@@ -145,12 +147,13 @@ export default function Cities() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="p-6 border-b border-slate-100">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden">
+            <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+            <div className="p-5 sm:p-6 border-b border-slate-100">
               <h3 className="text-xl font-bold text-slate-800">Нове місто</h3>
             </div>
-            <form onSubmit={handleAddCity} className="p-6">
+            <form onSubmit={handleAddCity} className="p-5 sm:p-6">
               <div className="mb-6">
                 <label className="block text-sm font-medium text-slate-700 mb-2">Назва міста</label>
                 <input
@@ -163,11 +166,11 @@ export default function Cities() {
                   required
                 />
               </div>
-              <div className="flex justify-end gap-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-slate-600 font-medium hover:bg-slate-50 rounded-xl transition-colors">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pb-1 sm:pb-0">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 font-medium hover:bg-slate-50 bg-slate-100 sm:bg-transparent rounded-xl transition-colors">
                   Скасувати
                 </button>
-                <button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50">
+                <button type="submit" disabled={isLoading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 sm:py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50">
                   {isLoading ? 'Збереження...' : 'Зберегти'}
                 </button>
               </div>
@@ -178,3 +181,5 @@ export default function Cities() {
     </div>
   );
 }
+
+

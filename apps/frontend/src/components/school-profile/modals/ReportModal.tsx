@@ -1,3 +1,5 @@
+
+
 import React, { useState } from 'react';
 
 interface Expense {
@@ -153,13 +155,14 @@ export default function ReportModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden">
+        <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
 
         {/* Header */}
-        <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 flex items-start justify-between shrink-0">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
+        <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 bg-slate-50 flex items-start justify-between shrink-0">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
               <span className="text-xs font-semibold tracking-wide text-blue-600 uppercase">
                 {eventType || 'Подія'}
               </span>
@@ -168,20 +171,20 @@ export default function ReportModal({
                 {formatDate(eventDate)}
               </span>
             </div>
-            <h3 className="text-xl font-bold text-slate-800 leading-tight">Звіт по події</h3>
-            <p className="text-sm text-slate-500 mt-0.5">
+            <h3 className="text-lg sm:text-xl font-bold text-slate-800 leading-tight">Звіт по події</h3>
+            <p className="text-sm text-slate-500 mt-0.5 truncate">
               {schoolName}{eventIndex ? <span className="text-slate-400"> · подія №{eventIndex}</span> : null}
             </p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg leading-none p-2 -mr-2 -mt-1 shrink-0">✕</button>
         </div>
 
         {/* Body */}
-        <div className="p-6 overflow-y-auto bg-slate-50/50">
+        <div className="p-4 sm:p-6 overflow-y-auto bg-slate-50/50">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
             {/* Проведено */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5">
               <CardHeader icon={<Icon.Check />} color="bg-blue-50 text-blue-600" title="Проведено" />
               <Row label="Оголошення про проєкт">
                 <TogglePill value={form.announcementDone} onChange={v => setForm({ ...form, announcementDone: v })} />
@@ -192,7 +195,7 @@ export default function ReportModal({
             </div>
 
             {/* Охоплення */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5">
               <CardHeader icon={<Icon.Users />} color="bg-violet-50 text-violet-600" title="Охоплення" />
               <Row label="Кількість дітей">
                 <NumberField value={form.childrenCount} onChange={v => setForm({ ...form, childrenCount: v })} suffix="дітей" />
@@ -209,7 +212,7 @@ export default function ReportModal({
             </div>
 
             {/* Фінансовий результат */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 md:col-span-2">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
               <CardHeader icon={<Icon.Wallet />} color="bg-amber-50 text-amber-600" title="Фінансовий результат" />
 
               <div className="flex items-center justify-between py-2 border-b border-slate-50">
@@ -253,19 +256,19 @@ export default function ReportModal({
                     placeholder="Назва витрати"
                     value={newExp.name}
                     onChange={e => setNewExp({ ...newExp, name: e.target.value })}
-                    className="flex-1 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="flex-1 min-w-0 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                   <input
                     type="number" min={0}
                     placeholder="грн"
                     value={newExp.amount}
                     onChange={e => setNewExp({ ...newExp, amount: e.target.value })}
-                    className="w-24 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-20 sm:w-24 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                   <button
                     onClick={addExpense}
                     type="button"
-                    className="px-3 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium text-sm"
+                    className="px-3 shrink-0 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium text-sm"
                   >
                     +
                   </button>
@@ -279,7 +282,7 @@ export default function ReportModal({
             </div>
 
             {/* Оцінка */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 md:col-span-2">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
               <CardHeader icon={<Icon.Star />} color="bg-rose-50 text-rose-500" title="Оцінка по закладу" />
               <div className="flex items-center gap-4">
                 <input
@@ -298,11 +301,11 @@ export default function ReportModal({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-white shrink-0">
-          <button onClick={onClose} className="px-5 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-white shrink-0">
+          <button onClick={onClose} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium">
             Скасувати
           </button>
-          <button onClick={handleSave} className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-blue-700">
+          <button onClick={handleSave} className="w-full sm:w-auto bg-blue-600 text-white px-5 py-3 sm:py-2.5 rounded-xl font-medium hover:bg-blue-700">
             Зберегти звіт
           </button>
         </div>
@@ -310,3 +313,4 @@ export default function ReportModal({
     </div>
   );
 }
+

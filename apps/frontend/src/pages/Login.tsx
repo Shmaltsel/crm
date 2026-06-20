@@ -1,3 +1,5 @@
+
+
 import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -27,8 +29,8 @@ export default function Login() {
   };
 
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-100">
-      <div className="p-8 bg-white rounded-2xl shadow-lg w-96">
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+      <div className="p-6 sm:p-8 bg-white rounded-2xl shadow-lg w-full max-w-sm sm:max-w-md">
         <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">Вхід у CRM</h1>
 
         {error && (
@@ -64,3 +66,5 @@ export default function Login() {
     </div>
   );
 }
+
+

@@ -1,3 +1,5 @@
+
+
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Events from './pages/Events';
@@ -31,3 +33,5 @@ export default function App() {
     </BrowserRouter>
   );
 }
+
+

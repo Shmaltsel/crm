@@ -1,3 +1,5 @@
+
+
 import axios from 'axios';
 
 interface EventsTableProps {
@@ -26,11 +28,38 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
   if (events.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto mt-2 w-full">
-      <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mt-2 w-full">
+      <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
         <h3 className="font-bold text-slate-800">Всі події ({events.length})</h3>
       </div>
-      <div className="overflow-x-auto">
+
+      {/* Картки — мобільний вигляд */}
+      <div className="md:hidden divide-y divide-slate-50">
+        {events.map(ev => (
+          <div
+            key={ev.id}
+            onClick={() => onEventSelect(ev.id)}
+            className={`flex items-center justify-between gap-3 p-4 transition-colors cursor-pointer ${selectedEventId === ev.id ? 'bg-blue-50/50' : 'active:bg-slate-50'}`}
+          >
+            <div className="min-w-0">
+              <p className="font-medium text-slate-800">{ev.project}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{new Date(ev.date).toLocaleDateString()}</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="font-medium text-sm text-slate-700">{ev.price} грн</span>
+              <button
+                onClick={(e) => handleDelete(e, ev.id)}
+                className="text-red-500 active:text-red-700 p-2"
+              >
+                🗑
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Таблиця — десктоп */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="bg-white border-b border-slate-100 text-slate-500">
@@ -65,3 +94,5 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
     </div>
   );
 }
+
+

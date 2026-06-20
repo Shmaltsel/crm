@@ -1,3 +1,5 @@
+
+
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
@@ -34,9 +36,9 @@ export default function EventReport() {
   const fmt = (n: number) => new Intl.NumberFormat('uk-UA').format(Math.round(n || 0));
 
   return (
-    <div className="p-8 bg-slate-50 min-h-screen">
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
       {/* Breadcrumb */}
-      <div className="text-sm text-slate-500 mb-4 flex items-center gap-1">
+      <div className="text-xs sm:text-sm text-slate-500 mb-4 flex items-center gap-1 flex-wrap">
         <Link to="/cities" className="hover:text-blue-600">Міста</Link>
         <span>›</span>
         <Link to={`/cities/${event.cityId}`} className="hover:text-blue-600">{event.city?.name}</Link>
@@ -50,14 +52,14 @@ export default function EventReport() {
         ← Назад
       </button>
 
-      <div className="flex items-center gap-3 mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Звіт по події</h1>
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Звіт по події</h1>
         <span className="bg-green-100 text-green-700 text-xs font-semibold px-3 py-1 rounded-full">Проведено</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Інформація */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-6">
           <h3 className="font-bold text-slate-800 mb-4">Інформація</h3>
           <div className="space-y-2 text-sm">
             <Row label="Заклад" value={event.school?.name} />
@@ -72,7 +74,7 @@ export default function EventReport() {
         </div>
 
         {/* Результат */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-6">
           <h3 className="font-bold text-slate-800 mb-4">Результат</h3>
           <div className="space-y-2 text-sm">
             <Row label="Заплановано дітей" value={event.childrenPlanned} />
@@ -84,7 +86,7 @@ export default function EventReport() {
         </div>
 
         {/* Оцінка */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-6">
           <h3 className="font-bold text-slate-800 mb-4">Оцінка</h3>
           <div className="space-y-2 text-sm">
             <Row label="Директор задоволений" value={report?.directorSatisfied ? 'Так' : 'Ні'} />
@@ -111,3 +113,4 @@ function Row({ label, value }: { label: string; value: any }) {
     </div>
   );
 }
+

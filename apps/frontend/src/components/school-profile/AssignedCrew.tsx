@@ -1,3 +1,5 @@
+
+
 import React from 'react';
 
 interface AssignedCrewProps {
@@ -56,3 +58,4 @@ export default function AssignedCrew({ currentEvent, employees }: AssignedCrewPr
     </div>
   );
 }
+

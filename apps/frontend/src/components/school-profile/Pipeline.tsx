@@ -1,3 +1,5 @@
+
+
 interface PipelineProps {
   currentStageIndex: number;
   currentEvent: any;
@@ -44,3 +46,4 @@ export default function Pipeline({ currentStageIndex, currentEvent, onPipelineCl
     </div>
   );
 }
+

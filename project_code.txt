@@ -2039,6 +2039,7 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [user, setUser] = useState<UserInfo | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // Додано стан для мобільного меню
 
   useEffect(() => {
     try {
@@ -2049,21 +2050,17 @@ export default function Layout() {
     }
   }, []);
 
+  const token = localStorage.getItem('token');
+  let isSuperAdmin = false;
 
-// Отримуємо токен
-const token = localStorage.getItem('token');
-let isSuperAdmin = false;
-
-    if (token) {
-      try {
-        const decoded: any = jwtDecode(token);
-        // Переконайся, що назва поля 'role' збігається з тим, що лежить у токені
-        isSuperAdmin = decoded.role === 'SUPERADMIN';
-      } catch (error) {
-        console.error("Не вдалося розкодувати токен:", error);
-      }
+  if (token) {
+    try {
+      const decoded: any = jwtDecode(token);
+      isSuperAdmin = decoded.role === 'SUPERADMIN';
+    } catch (error) {
+      console.error("Не вдалося розкодувати токен:", error);
     }
-  
+  }
 
   const isActive = (path: string) => location.pathname.startsWith(path);
 
@@ -2073,70 +2070,83 @@ let isSuperAdmin = false;
     navigate('/login');
   };
 
+  // Функція для закриття меню при кліку на лінк (на мобільних)
+  const handleLinkClick = () => {
+    setIsMobileMenuOpen(false);
+  };
+
   return (
-    <div className="flex h-screen bg-slate-50 font-sans">
-      {/* Темний сайдбар */}
-      <aside className="w-64 bg-[#0B1527] text-white flex flex-col">
-        <div className="p-6 flex flex-col items-center border-b border-slate-700/50">
+    <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
+      
+      {/* Мобільний хедер (видно тільки на малих екранах) */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0B1527] text-white flex items-center justify-between px-4 z-40">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">🎓</span>
+          <span className="font-semibold tracking-wider text-sm">СВІТЛО ЗНАНЬ</span>
+        </div>
+        <button 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-2 focus:outline-none"
+        >
+          {/* Проста іконка гамбургера / хрестика */}
+          <span className="text-2xl">{isMobileMenuOpen ? '✕' : '☰'}</span>
+        </button>
+      </div>
+
+      {/* Оверлей для мобільного меню (затемнення фону) */}
+      {isMobileMenuOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-slate-900/50 z-40"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Сайдбар */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-[#0B1527] text-white flex flex-col transition-transform duration-300 ease-in-out
+        md:relative md:translate-x-0
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        <div className="p-6 flex flex-col items-center border-b border-slate-700/50 hidden md:flex">
           <div className="w-16 h-16 bg-blue-500 rounded-full mb-3 flex items-center justify-center text-2xl">
             🎓
           </div>
           <h2 className="text-sm font-semibold tracking-wider">СВІТЛО ЗНАНЬ</h2>
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-          <Link
-            to="/dashboard"
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/dashboard') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-          >
+        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto mt-16 md:mt-0">
+          <Link to="/dashboard" onClick={handleLinkClick} className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/dashboard') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <span className="mr-3">🏠</span> Дашборд
           </Link>
-          <Link
-            to="/cities"
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/cities') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-          >
+          <Link to="/cities" onClick={handleLinkClick} className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/cities') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <span className="mr-3">📍</span> Міста
           </Link>
-          <Link
-            to="/schools"
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/schools') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-          >
+          <Link to="/schools" onClick={handleLinkClick} className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/schools') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <span className="mr-3">🏫</span> Школи / Садочки
           </Link>
-          <Link
-            to="/events"
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/events') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-          >
+          <Link to="/events" onClick={handleLinkClick} className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/events') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <span className="mr-3">📅</span> Події
           </Link>
 
-          {/* Вкладка Працівники — тільки для суперадміна */}
           {isSuperAdmin && (
-            <Link
-              to="/employees"
-              className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/employees') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-            >
+            <Link to="/employees" onClick={handleLinkClick} className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/employees') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
               <span className="mr-3">👥</span> Працівники
             </Link>
           )}
         </nav>
 
-        <div className="p-4 border-t border-slate-700/50">
+        <div className="p-4 border-t border-slate-700/50 pb-8 md:pb-4">
           <div className="flex items-center px-4 py-2 text-slate-300 justify-between">
             <div className="flex items-center">
               <div className="w-8 h-8 bg-slate-600 rounded-full mr-3 flex items-center justify-center text-xs font-bold">
                 {user?.name?.charAt(0) ?? '?'}
               </div>
-              <div className="text-sm">
-                <p className="font-medium text-white">{user?.name ?? 'Користувач'}</p>
-                <p className="text-xs text-slate-400">{user?.role ?? ''}</p>
+              <div className="text-sm truncate max-w-[120px]">
+                <p className="font-medium text-white truncate">{user?.name ?? 'Користувач'}</p>
+                <p className="text-xs text-slate-400 truncate">{user?.role ?? ''}</p>
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="text-slate-500 hover:text-slate-300 transition-colors text-xs ml-2"
-              title="Вийти"
-            >
+            <button onClick={handleLogout} className="text-slate-500 hover:text-slate-300 transition-colors text-xs ml-2 shrink-0 p-2" title="Вийти">
               ⬅️
             </button>
           </div>
@@ -2144,7 +2154,7 @@ let isSuperAdmin = false;
       </aside>
 
       {/* Головна область */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto mt-16 md:mt-0 relative w-full">
         <Outlet />
       </main>
     </div>
@@ -2335,7 +2345,7 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
   if (events.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mt-2">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto mt-2 w-full">
       <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
         <h3 className="font-bold text-slate-800">Всі події ({events.length})</h3>
       </div>
@@ -2437,15 +2447,15 @@ export default function CommentModal({ isOpen, onClose, mode, text, setText, onS
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex justify-between bg-slate-50">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
           <h3 className="text-xl font-bold text-slate-800">
-            {mode === 'pipeline' ? 'Завершення етапу' : 'Редагувати коментар'}
+            {mode === 'pipeline' ? 'Завершення етапу' : 'Редагувати'}
           </h3>
-          <button onClick={onClose} className="text-slate-400">✕</button>
+          <button onClick={onClose} className="text-slate-400 p-2 -mr-2">✕</button>
         </div>
         
-        <form onSubmit={onSave} className="p-6">
+        <form onSubmit={onSave} className="p-4 md:p-6 flex-1 flex flex-col">
           <label className="block text-sm font-medium text-slate-700 mb-2">
             Коментар (необов'язково)
           </label>
@@ -2453,16 +2463,16 @@ export default function CommentModal({ isOpen, onClose, mode, text, setText, onS
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Результати дзвінка, домовленості, примітки..."
-            className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 resize-none h-32"
+            className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 resize-none h-32 flex-1 min-h-[120px]"
             autoFocus
           />
           
-          <div className="flex justify-end gap-3 mt-6">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium">
+          <div className="flex justify-end gap-3 mt-6 shrink-0">
+            <button type="button" onClick={onClose} className="px-5 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium transition-colors">
               Скасувати
             </button>
-            <button type="submit" className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-blue-700">
-              {mode === 'pipeline' ? 'Завершити етап' : 'Зберегти'}
+            <button type="submit" className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-blue-700 transition-colors">
+              {mode === 'pipeline' ? 'Завершити' : 'Зберегти'}
             </button>
           </div>
         </form>
@@ -2497,7 +2507,6 @@ export default function CrewModal({ isOpen, onClose, city, employees, onSave }: 
 
   if (!isOpen) return null;
 
-  // Фільтруємо працівників за роллю та назвою міста, яке передано в пропси
   const hosts = employees.filter(e => e.role === 'HOST' && e.city?.name === city);
   const drivers = employees.filter(e => e.role === 'DRIVER' && e.city?.name === city);
 
@@ -2508,49 +2517,41 @@ export default function CrewModal({ isOpen, onClose, city, employees, onSave }: 
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex justify-between bg-slate-50">
-          <h3 className="text-xl font-bold text-slate-800">Призначити екіпаж ({city})</h3>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">✕</button>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
+          <h3 className="text-xl font-bold text-slate-800">Екіпаж ({city})</h3>
+          <button type="button" onClick={onClose} className="text-slate-400 p-2 -mr-2">✕</button>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
-          
+        
+        <form onSubmit={handleSubmit} className="p-4 md:p-6 flex-1 overflow-y-auto flex flex-col gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Ведучий</label>
-            <select 
-              value={selectedHost} 
-              onChange={e => setSelectedHost(e.target.value)} 
-              className="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-              required
-            >
+            <select value={selectedHost} onChange={e => setSelectedHost(e.target.value)} required className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white">
               <option value="">— Оберіть ведучого —</option>
-            {hosts.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}            </select>
-            {hosts.length === 0 && <p className="text-xs text-red-500 mt-1">У цьому місті немає доступних ведучих</p>}
+              {hosts.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+            </select>
+            {hosts.length === 0 && <p className="text-xs text-red-500 mt-1">Немає ведучих у цьому місті</p>}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Водій</label>
-            <select 
-              value={selectedDriver} 
-              onChange={e => setSelectedDriver(e.target.value)} 
-              className="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-              required
-            >
+            <select value={selectedDriver} onChange={e => setSelectedDriver(e.target.value)} required className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white">
               <option value="">— Оберіть водія —</option>
               {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
-            {drivers.length === 0 && <p className="text-xs text-red-500 mt-1">У цьому місті немає доступних водіїв</p>}
+            {drivers.length === 0 && <p className="text-xs text-red-500 mt-1">Немає водіїв у цьому місті</p>}
           </div>
 
-          <div className="flex justify-end gap-3 mt-4">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 bg-slate-100 rounded-xl text-sm font-medium">Скасувати</button>
-            <button type="submit" className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">Зберегти екіпаж</button>
+          <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100 shrink-0">
+            <button type="button" onClick={onClose} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium transition-colors">Скасувати</button>
+            <button type="submit" className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors">Зберегти</button>
           </div>
         </form>
       </div>
     </div>
   );
 }
+
 
 --- FILE: apps\frontend\src\components\school-profile\modals\EditSchoolModal.tsx ---
 
@@ -2569,44 +2570,50 @@ export default function EditSchoolModal({ isOpen, onClose, editForm, setEditForm
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden">
-        <div className="p-6 border-b flex justify-between items-center bg-slate-50">
+      {/* Додано max-h-[90vh] та flex flex-col */}
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        
+        {/* Шапка не зжимається (shrink-0) */}
+        <div className="p-4 md:p-6 border-b flex justify-between items-center bg-slate-50 shrink-0">
           <h3 className="text-xl font-bold">Редагування</h3>
-          <button onClick={onClose} className="text-slate-400">✕</button>
+          <button onClick={onClose} className="text-slate-400 p-2 -mr-2">✕</button>
         </div>
-        <form onSubmit={onSave} className="p-6">
+
+        {/* Форма скролиться (overflow-y-auto) */}
+        <form onSubmit={onSave} className="p-4 md:p-6 overflow-y-auto flex-1 flex flex-col gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm">Тип</label>
-              <select value={editForm.type} onChange={e => setEditForm({...editForm, type: e.target.value})} className="w-full p-2 border rounded">
+              <label className="block text-sm mb-1">Тип</label>
+              <select value={editForm.type} onChange={e => setEditForm({...editForm, type: e.target.value})} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
                 <option>Школа</option>
                 <option>Садочок</option>
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm">Адреса</label>
-              <input type="text" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className="w-full p-2 border rounded" />
+              <label className="block text-sm mb-1">Адреса</label>
+              <input type="text" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
-              <label className="block text-sm">Директор</label>
-              <input type="text" value={editForm.director} onChange={e => setEditForm({...editForm, director: e.target.value})} className="w-full p-2 border rounded" />
+              <label className="block text-sm mb-1">Директор</label>
+              <input type="text" value={editForm.director} onChange={e => setEditForm({...editForm, director: e.target.value})} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
-              <label className="block text-sm">Телефон</label>
-              <input type="text" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className="w-full p-2 border rounded" />
+              <label className="block text-sm mb-1">Телефон</label>
+              <input type="text" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
-              <label className="block text-sm">Email</label>
-              <input type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} className="w-full p-2 border rounded" />
+              <label className="block text-sm mb-1">Email</label>
+              <input type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
-              <label className="block text-sm">Дітей</label>
-              <input type="number" value={editForm.childrenCount || ''} onChange={e => setEditForm({...editForm, childrenCount: Number(e.target.value)})} className="w-full p-2 border rounded" />
+              <label className="block text-sm mb-1">Дітей</label>
+              <input type="number" value={editForm.childrenCount || ''} onChange={e => setEditForm({...editForm, childrenCount: Number(e.target.value)})} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
-          <div className="flex justify-end gap-3 mt-6">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 bg-slate-100 rounded">Скасувати</button>
-            <button type="submit" className="bg-blue-600 text-white px-5 py-2.5 rounded">Зберегти</button>
+          
+          <div className="flex justify-end gap-3 mt-6 shrink-0 pt-4 border-t border-slate-100">
+            <button type="button" onClick={onClose} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 font-medium rounded-xl transition-colors">Скасувати</button>
+            <button type="submit" className="bg-blue-600 text-white px-5 py-2.5 font-medium rounded-xl hover:bg-blue-700 transition-colors">Зберегти</button>
           </div>
         </form>
       </div>
@@ -2632,38 +2639,42 @@ export default function EventModal({ isOpen, onClose, eventForm, setEventForm, o
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex justify-between bg-slate-50">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        
+        <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
           <h3 className="text-xl font-bold text-slate-800">Нова подія</h3>
-          <button onClick={onClose} className="text-slate-400">✕</button>
+          <button onClick={onClose} className="text-slate-400 p-2 -mr-2">✕</button>
         </div>
-        <form onSubmit={onSave} className="p-6">
+
+        <form onSubmit={onSave} className="p-4 md:p-6 overflow-y-auto flex-1 flex flex-col gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm mb-1">Проєкт</label>
-              <select value={eventForm.project} onChange={e => setEventForm({...eventForm, project: e.target.value})} className="w-full p-2 border rounded">
+              <label className="block text-sm mb-1 text-slate-600">Проєкт</label>
+              <select value={eventForm.project} onChange={e => setEventForm({...eventForm, project: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500">
                 <option>Голограма для школи</option>
                 <option>360° шоу</option>
                 <option>Проєкт для садочків</option>
               </select>
             </div>
-            <div><label className="block text-sm mb-1">Дата</label><input type="date" value={eventForm.date} onChange={e => setEventForm({...eventForm, date: e.target.value})} required className="w-full p-2 border rounded" /></div>
-            <div><label className="block text-sm mb-1">Час</label><input type="time" value={eventForm.time} onChange={e => setEventForm({...eventForm, time: e.target.value})} required className="w-full p-2 border rounded" /></div>
-            <div><label className="block text-sm mb-1">Дітей (план)</label><input type="number" value={eventForm.childrenPlanned} onChange={e => setEventForm({...eventForm, childrenPlanned: e.target.value})} required className="w-full p-2 border rounded" /></div>
-            <div><label className="block text-sm mb-1">Вартість</label><input type="number" value={eventForm.price} onChange={e => setEventForm({...eventForm, price: e.target.value})} required className="w-full p-2 border rounded" /></div>
-            <div className="md:col-span-2"><label className="block text-sm mb-1">Адреса</label><input type="text" value={eventForm.address} onChange={e => setEventForm({...eventForm, address: e.target.value})} className="w-full p-2 border rounded" /></div>
-            <div><label className="block text-sm mb-1">Контактна особа</label><input type="text" value={eventForm.contactPerson} onChange={e => setEventForm({...eventForm, contactPerson: e.target.value})} className="w-full p-2 border rounded" /></div>
-            <div><label className="block text-sm mb-1">Телефон</label><input type="text" value={eventForm.contactPhone} onChange={e => setEventForm({...eventForm, contactPhone: e.target.value})} className="w-full p-2 border rounded" /></div>
+            <div><label className="block text-sm mb-1 text-slate-600">Дата</label><input type="date" value={eventForm.date} onChange={e => setEventForm({...eventForm, date: e.target.value})} required className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
+            <div><label className="block text-sm mb-1 text-slate-600">Час</label><input type="time" value={eventForm.time} onChange={e => setEventForm({...eventForm, time: e.target.value})} required className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
+            <div><label className="block text-sm mb-1 text-slate-600">Дітей (план)</label><input type="number" value={eventForm.childrenPlanned} onChange={e => setEventForm({...eventForm, childrenPlanned: e.target.value})} required className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
+            <div><label className="block text-sm mb-1 text-slate-600">Вартість</label><input type="number" value={eventForm.price} onChange={e => setEventForm({...eventForm, price: e.target.value})} required className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
+            <div className="md:col-span-2"><label className="block text-sm mb-1 text-slate-600">Адреса</label><input type="text" value={eventForm.address} onChange={e => setEventForm({...eventForm, address: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
+            <div><label className="block text-sm mb-1 text-slate-600">Контактна особа</label><input type="text" value={eventForm.contactPerson} onChange={e => setEventForm({...eventForm, contactPerson: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
+            <div><label className="block text-sm mb-1 text-slate-600">Телефон</label><input type="text" value={eventForm.contactPhone} onChange={e => setEventForm({...eventForm, contactPhone: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
           </div>
-          <div className="flex justify-end gap-3 mt-6">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 bg-slate-100 rounded">Скасувати</button>
-            <button type="submit" className="bg-blue-600 text-white px-5 py-2.5 rounded">Створити</button>
+          
+          <div className="flex justify-end gap-3 mt-4 shrink-0 pt-4 border-t border-slate-100">
+            <button type="button" onClick={onClose} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 font-medium rounded-xl transition-colors">Скасувати</button>
+            <button type="submit" className="bg-blue-600 text-white px-5 py-2.5 font-medium rounded-xl hover:bg-blue-700 transition-colors">Створити</button>
           </div>
         </form>
       </div>
     </div>
   );
 }
+
 
 --- FILE: apps\frontend\src\components\school-profile\modals\ReportModal.tsx ---
 
@@ -2991,32 +3002,43 @@ interface PipelineProps {
 
 export default function Pipeline({ currentStageIndex, currentEvent, onPipelineClick, stages }: PipelineProps) {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 overflow-x-auto">
-      <div className="flex items-start min-w-[800px] justify-between relative">
-        <div className="absolute top-4 left-0 w-full h-[2px] bg-slate-100 -z-10"></div>
-        {stages.map((step, index) => {
-          const isCompleted = index < currentStageIndex;
-          const isActive = index === currentStageIndex;
+    // Зменшуємо внутрішні відступи на мобільному (p-4)
+    <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 overflow-hidden w-full">
+      <h3 className="font-bold text-slate-800 mb-4 md:hidden">Етап події</h3>
+      
+      {/* Обгортка зі скролом для телефонів */}
+      <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0">
+        <div className="flex items-start min-w-[750px] justify-between relative">
+          {/* Лінія пайплайну */}
+          <div className="absolute top-4 left-0 w-full h-[2px] bg-slate-100 -z-10"></div>
+          
+          {stages.map((step, index) => {
+            const isCompleted = index < currentStageIndex;
+            const isActive = index === currentStageIndex;
 
-          return (
-            <div key={step.id} className="flex flex-col items-center flex-1 z-10">
-              <button onClick={() => onPipelineClick(step.id)} disabled={!currentEvent || (!isActive && index !== currentStageIndex + 1)}
-                className={`w-8 h-8 rounded-full text-xs font-bold border-2 mb-2 transition-all 
-                  ${isCompleted ? 'border-blue-600 text-blue-600 bg-white' : 
-                    isActive ? 'border-blue-600 bg-blue-600 text-white shadow-md cursor-pointer hover:scale-110' : 
-                    'border-slate-200 text-slate-400 bg-white cursor-not-allowed'}`}
-              >
-                {isCompleted ? '✓' : step.id}
-              </button>
-              <span className={`text-[11px] font-medium text-center px-1 ${isActive ? 'text-blue-600 font-bold' : 'text-slate-500'}`}>{step.name}</span>
-            </div>
-          );
-        })}
+            return (
+              <div key={step.id} className="flex flex-col items-center flex-1 z-10 px-1">
+                <button 
+                  onClick={() => onPipelineClick(step.id)} 
+                  disabled={!currentEvent || (!isActive && index !== currentStageIndex + 1)}
+                  className={`w-8 h-8 md:w-9 md:h-9 shrink-0 rounded-full text-xs font-bold border-2 mb-2 transition-all 
+                    ${isCompleted ? 'border-blue-600 text-blue-600 bg-white' : 
+                      isActive ? 'border-blue-600 bg-blue-600 text-white shadow-md cursor-pointer md:hover:scale-110' : 
+                      'border-slate-200 text-slate-400 bg-white cursor-not-allowed'}`}
+                >
+                  {isCompleted ? '✓' : step.id}
+                </button>
+                <span className={`text-[10px] md:text-[11px] leading-tight font-medium text-center break-words max-w-[70px] ${isActive ? 'text-blue-600 font-bold' : 'text-slate-500'}`}>
+                  {step.name}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
 }
-
 
 --- FILE: apps\frontend\src\components\school-profile\SchoolInfoCard.tsx ---
 
@@ -3133,8 +3155,8 @@ export default function Cities() {
   };
 
   return (
-    <div className="p-8 relative h-full">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-4 md:p-8 relative h-full">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
         <h1 className="text-3xl font-bold text-slate-800">Міста</h1>
         <button
           onClick={() => setIsModalOpen(true)}
@@ -3583,9 +3605,9 @@ export default function Employees() {
   };
 
   return (
-    <div className="p-8 h-full">
+    <div className="p-4 md:p-8 h-full">
       {/* Заголовок */}
-      <div className="flex justify-between items-center mb-8">
+       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Акаунти та Працівники</h1>
           <p className="text-sm text-slate-400 mt-1">Керування доступами, менеджерами, водіями та ведучими</p>
@@ -3611,7 +3633,7 @@ export default function Employees() {
             </div>
 
             {items.length === 0 ? (
-              <div className="bg-white rounded-xl border border-slate-100 p-6 text-center text-slate-400 text-sm">
+              <div className="bg-white rounded-xl border border-slate-100 p-6 text-center text-slate-400 text-sm overflow-x-auto">
                 Немає {label.toLowerCase()}ів
               </div>
             ) : (
@@ -4245,32 +4267,38 @@ const handlePipelineClick = (stepId: number) => {
   if (isLoading) return <div className="p-8 text-slate-500">Завантаження...</div>;
 
   return (
-    <div className="p-8 bg-slate-50 min-h-screen text-slate-800 font-sans">
-      <div className="text-sm text-slate-500 mb-4">
-        <Link to="/schools" className="hover:text-blue-600 transition-colors">Школи / Садочки</Link> 
-        <span className="mx-2">›</span> 
-        <span className="text-slate-800 font-medium">{schoolData.type} "{schoolData.name}"</span>
-      </div>
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden">
+  <div className="text-xs md:text-sm text-slate-500 mb-4 truncate">
+    <Link to="/schools" className="hover:text-blue-600 transition-colors">Школи / Садочки</Link> 
+    <span className="mx-2">›</span> 
+    <span className="text-slate-800 font-medium">{schoolData.type} "{schoolData.name}"</span>
+  </div>
 
-      <div className="flex justify-between items-start mb-6">
-        <h1 className="text-3xl font-bold text-slate-800">{schoolData.type} "{schoolData.name}"</h1>
-        <div className="flex gap-3">
-          <div className="relative">
-            <button onClick={() => setIsEditMenuOpen(!isEditMenuOpen)} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium">✏️ Редагувати</button>
-            {isEditMenuOpen && (
-              <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-20">
-                <button onClick={() => { setIsEditMenuOpen(false); setEditForm(schoolData); setIsEditModalOpen(true); }} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm font-medium text-slate-700">Інформація про заклад</button>
-              </div>
-            )}
+  {/* Адаптивна шапка */}
+  <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
+    <h1 className="text-2xl md:text-3xl font-bold text-slate-800 leading-tight">{schoolData.type} "{schoolData.name}"</h1>
+    
+    <div className="flex flex-wrap md:flex-nowrap gap-2 md:gap-3 w-full md:w-auto shrink-0">
+      <div className="relative flex-1 md:flex-none">
+        <button onClick={() => setIsEditMenuOpen(!isEditMenuOpen)} className="w-full md:w-auto px-4 py-2.5 md:py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium transition-colors">
+          ✏️ Редагувати
+        </button>
+        {isEditMenuOpen && (
+          <div className="absolute top-full right-0 left-0 md:left-auto mt-2 w-full md:w-56 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-20">
+            <button onClick={() => { setIsEditMenuOpen(false); setEditForm(schoolData); setIsEditModalOpen(true); }} className="w-full text-left px-4 py-3 md:py-2 hover:bg-slate-50 text-sm font-medium text-slate-700">
+              Інформація про заклад
+            </button>
           </div>
-          <button onClick={() => {
-            setEventForm(prev => ({...prev, address: schoolData.address, contactPerson: schoolData.director, contactPhone: schoolData.phone, childrenPlanned: String(schoolData.childrenCount)}));
-            setIsEventModalOpen(true);
-          }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
-            ⏱ Додати подію
-          </button>
-        </div>
+        )}
       </div>
+      <button onClick={() => {
+        setEventForm(prev => ({...prev, address: schoolData.address, contactPerson: schoolData.director, contactPhone: schoolData.phone, childrenPlanned: String(schoolData.childrenCount)}));
+        setIsEventModalOpen(true);
+      }} className="flex-1 md:flex-none w-full md:w-auto px-4 py-2.5 md:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors text-center">
+        ⏱ Додати подію
+      </button>
+    </div>
+  </div>
           
       <div className="flex flex-col xl:flex-row gap-6">
         <div className="w-full xl:w-80 flex flex-col gap-6">
@@ -4461,8 +4489,8 @@ export default function Schools() {
   };
 
   return (
-    <div className="p-8 h-full">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 md:p-8 h-full max-w-[100vw] overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Школи та Садочки</h1>
         <button
           onClick={handleOpenModal}
@@ -4472,7 +4500,7 @@ export default function Schools() {
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto w-full">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">

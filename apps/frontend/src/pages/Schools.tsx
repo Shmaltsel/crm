@@ -1,3 +1,5 @@
+
+
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -131,13 +133,59 @@ export default function Schools() {
         <h1 className="text-2xl font-bold text-slate-800">Школи та Садочки</h1>
         <button
           onClick={handleOpenModal}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700"
+          className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
         >
           + Додати заклад
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto w-full">
+      {/* Картки — мобільний вигляд */}
+      <div className="md:hidden flex flex-col gap-3">
+        {schools.map((school) => {
+          const latestEvent = school.events?.[0];
+          const stage = latestEvent ? PIPELINE_STAGES.find(s => s.key === latestEvent.status) : null;
+          return (
+            <div
+              key={school.id}
+              onClick={() => navigate(`/schools/${school.id}`)}
+              className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 active:scale-[0.99] transition-transform"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-slate-800 leading-snug">{school.name}</p>
+                  <p className="text-xs text-slate-500 mt-1">{school.type} · {school.city?.name}</p>
+                </div>
+                <button
+                  onClick={(e) => handleDeleteSchool(e, school.id, school.name)}
+                  className="text-slate-300 active:text-red-500 transition-colors p-2 -mr-2 -mt-1 shrink-0"
+                >
+                  🗑
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                <span className="bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full text-xs font-medium">
+                  Активний
+                </span>
+                {stage ? (
+                  <span className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium border border-blue-100">
+                    {stage.name}
+                  </span>
+                ) : (
+                  <span className="text-slate-400 text-xs italic">Етап не визначено</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {schools.length === 0 && (
+          <div className="bg-white rounded-2xl border border-slate-100 text-center py-10 text-slate-400 text-sm">
+            Закладів ще немає
+          </div>
+        )}
+      </div>
+
+      {/* Таблиця — десктоп */}
+      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto w-full">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">
@@ -191,15 +239,16 @@ export default function Schools() {
         </table>
       </div>
 
-      {/* Модалка додавання закладу */}
+      {/* Модалка додавання закладу — bottom-sheet на мобільному, діалог на десктопі */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex justify-between bg-slate-50">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md max-h-[92vh] overflow-hidden flex flex-col">
+            <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+            <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <h3 className="text-xl font-bold text-slate-800">Новий заклад</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-2 -mr-2">✕</button>
             </div>
-            <form onSubmit={handleAddSchool} className="p-6 flex flex-col gap-4">
+            <form onSubmit={handleAddSchool} className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto">
               <div className="relative">
                 <label className="block text-sm text-slate-600 mb-1">Назва закладу</label>
                 <input
@@ -256,18 +305,18 @@ export default function Schools() {
                   ))}
                 </select>
               </div>
-              <div className="flex justify-end gap-3 mt-2">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-2 pb-1 sm:pb-0">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 bg-slate-100 rounded-lg text-sm font-medium hover:bg-slate-200"
+                  className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-slate-100 rounded-xl sm:rounded-lg text-sm font-medium hover:bg-slate-200"
                 >
                   Скасувати
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                  className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-blue-600 text-white rounded-xl sm:rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
                 >
                   {isSubmitting ? 'Збереження...' : 'Створити'}
                 </button>
@@ -279,3 +328,5 @@ export default function Schools() {
     </div>
   );
 }
+
+

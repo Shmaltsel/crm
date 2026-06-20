@@ -1,3 +1,5 @@
+
+
 export default function EventDetails({ currentEvent }: { currentEvent: any }) {
   if (!currentEvent) {
     return (
@@ -24,3 +26,5 @@ export default function EventDetails({ currentEvent }: { currentEvent: any }) {
     </div>
   );
 }
+
+

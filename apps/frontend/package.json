@@ -1,3 +1,5 @@
+
+
 {
   "name": "frontend",
   "private": true,
@@ -41,3 +43,5 @@
     "vite": "^8.0.12"
   }
 }
+
+

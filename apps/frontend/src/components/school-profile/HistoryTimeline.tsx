@@ -1,3 +1,5 @@
+
+
 interface HistoryTimelineProps {
   currentEvent: any;
   onHistoryClick: (item: any) => void;
@@ -37,3 +39,5 @@ export default function HistoryTimeline({ currentEvent, onHistoryClick }: Histor
     </div>
   );
 }
+
+
