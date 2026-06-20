@@ -123,7 +123,7 @@ const handlePipelineClick = (stepId: number) => {
   if (!isCurrentStage && !isNextStage) return;
 
   // Якщо це перехід до DONE (8 етап)
-  if (nextStage?.key === 'DONE') {
+  if (nextStage?.key === 'REPORT') {
     setIsReportModalOpen(true);
     return;
   }

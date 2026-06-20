@@ -150,7 +150,7 @@ export class EventsService {
   return this.prisma.event.update({
     where: { id: eventId },
     data: {
-      status: 'DONE',
+      status: 'REPORT',
       history: {
         create: {
           action: 'Сформовано звіт. Етап пройдено: Проведено',
