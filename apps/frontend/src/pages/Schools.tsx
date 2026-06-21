@@ -29,7 +29,6 @@ export default function Schools() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Виправлено: чиста ініціалізація стану форми
   const [form, setForm] = useState({
     name: "",
     type: "Школа",
@@ -39,9 +38,7 @@ export default function Schools() {
     phone: "",
   });
 
-  // Виправлено: чиста ініціалізація стану контактів
   const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
-
   const [suggestions, setSuggestions] = useState<{ name: string; url: string }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -80,7 +77,8 @@ export default function Schools() {
     setForm({
       name: "",
       type: "Школа",
-      cityId: cities[0]?.id ?? "",
+      // ВИПРАВЛЕНО: Автоматично підставляємо обране місто, або перше зі списку, якщо місто не обране
+      cityId: selectedCity.id || cities[0]?.id || "",
       sourceUrl: "",
       director: "",
       phone: "",
@@ -89,10 +87,6 @@ export default function Schools() {
     setIsModalOpen(true);
   };
 
-  // Окрема функція пошуку контактів у власній базі (SchoolContact).
-  // Раніше викликалась лише після кліку на підказку із зовнішнього сайту lv.isuo.org,
-  // через що автодоповнення директора/телефону "з бази" не працювало, якщо
-  // користувач просто вписував назву вручну або зовнішній парсер нічого не знаходив.
   const fetchContacts = async (schoolName: string) => {
     if (!schoolName || schoolName.trim().length < 1) {
       setMatchedContacts([]);
@@ -100,16 +94,17 @@ export default function Schools() {
     }
     try {
       const token = localStorage.getItem("token");
+      // ВИПРАВЛЕНО: Використовуємо поточне місто замість захардкодженого "Львів"
+      const cityName = selectedCity.name || "Львів";
       const res = await api.get(
-        `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=Львів`,
+        `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(cityName)}`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        },
+        }
       );
       setMatchedContacts(res.data);
       if (res.data.length > 0) {
-        const director =
-          res.data.find((c: any) => c.role === "Директор") || res.data[0];
+        const director = res.data.find((c: any) => c.role === "Директор") || res.data[0];
         setForm((f) => ({
           ...f,
           director: director.contactName,
@@ -139,10 +134,6 @@ export default function Schools() {
     debounceTimer.current = setTimeout(async () => {
       const token = localStorage.getItem("token");
       try {
-        // Запускаємо ОБИДВА пошуки паралельно й незалежно один від одного:
-        // - suggestions: підказки назв зі стороннього сайту lv.isuo.org
-        // - matchedContacts: автодоповнення директора/телефону з ВЛАСНОЇ бази (SchoolContact)
-        // Раніше другий запит виконувався лише після кліку на підказку з першого списку.
         const [externalRes] = await Promise.all([
           api.get(`/schools/search?q=${value}`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -161,8 +152,6 @@ export default function Schools() {
   const handleSelectSuggestion = (name: string, url: string) => {
     setForm({ ...form, name, sourceUrl: url });
     setShowSuggestions(false);
-    // Контакти вже мали підтягнутись через handleNameChange,
-    // але про всяк випадок оновлюємо ще раз під обрану (точну) назву.
     fetchContacts(name);
   };
 
@@ -188,12 +177,12 @@ export default function Schools() {
   const handleDeleteSchool = async (
     e: React.MouseEvent,
     schoolId: string,
-    schoolName: string,
+    schoolName: string
   ) => {
     e.stopPropagation();
     if (
       !window.confirm(
-        `Видалити заклад "${schoolName}"? Це видалить також усі його події.`,
+        `Видалити заклад "${schoolName}"? Це видалить також усі його події.`
       )
     )
       return;
@@ -206,6 +195,7 @@ export default function Schools() {
       console.error(e);
     }
   };
+
   const filteredSchools = selectedCity.id
     ? schools.filter((s) => s.cityId === selectedCity.id)
     : schools;
@@ -406,30 +396,35 @@ export default function Schools() {
                 <select
                   value={form.type}
                   onChange={(e) => setForm({ ...form, type: e.target.value })}
-                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 bg-white"
                 >
                   <option value="Школа">Школа</option>
                   <option value="Садочок">Садочок</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm text-slate-600 mb-1">
-                  Місто
-                </label>
-                <select
-                  value={form.cityId}
-                  onChange={(e) => setForm({ ...form, cityId: e.target.value })}
-                  required
-                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                >
-                  <option value="">— Оберіть місто —</option>
-                  {cities.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              
+              {/* ВИПРАВЛЕНО: Ховаємо вибір міста, якщо воно вже вибрано в глобальному контексті */}
+              {!selectedCity.id && (
+                <div>
+                  <label className="block text-sm text-slate-600 mb-1">
+                    Місто
+                  </label>
+                  <select
+                    value={form.cityId}
+                    onChange={(e) => setForm({ ...form, cityId: e.target.value })}
+                    required
+                    className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 bg-white"
+                  >
+                    <option value="">— Оберіть місто —</option>
+                    {cities.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm text-slate-600 mb-1">
                   Контакт
@@ -446,11 +441,11 @@ export default function Schools() {
                         }
                         className={`text-xs px-2 py-1 rounded-full border transition-colors ${
                           form.director === c.contactName
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
                         }`}
                       >
-                        {c.role ? `${c.role}: ` : ''}
+                        {c.role ? `${c.role}: ` : ""}
                         {c.contactName}
                       </button>
                     ))}

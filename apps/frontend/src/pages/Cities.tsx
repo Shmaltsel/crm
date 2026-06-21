@@ -6,7 +6,7 @@ import { api } from "../config/api";
 
 // Фото для міст за назвою (Unsplash)
 const CITY_PHOTOS: Record<string, string> = {
-  Львів: "https://images.unsplash.com/photo-1555990793-da11153b2473?w=600&q=80",
+  Львів: "https://gohotels.com.ua/images/stories/f08072159a443e07501f3df97987f8a3.jpg",
   Київ: "https://images.unsplash.com/photo-1630651814316-fe71f3c30279?w=600&q=80",
   Харків:
     "https://images.unsplash.com/photo-1584646098378-0f87b72cffe1?w=600&q=80",
