@@ -1,14 +1,10 @@
 import { Injectable, forwardRef, Inject } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
 import { EventsService } from '../events/events.service';
 import { ParserService } from './parser.service';
-import { PrismaService } from 'src/prisma/prisma.service';
-
-const prisma = new PrismaClient();
+import { PrismaService } from '../prisma/prisma.service'; // Використовуємо відносний шлях для надійності
 
 @Injectable()
 export class SchoolsService {
-  
   constructor(
     @Inject(forwardRef(() => EventsService))
     private readonly eventsService: EventsService,
@@ -22,10 +18,11 @@ export class SchoolsService {
     cityId: string;
     sourceUrl?: string;
   }) {
-    const { sourceUrl, ...schoolData } = data; // ← виокремлюємо sourceUrl
+    const { sourceUrl, ...schoolData } = data;
 
-    const newSchool = await prisma.school.create({
-      data: schoolData, // ← передаємо тільки те що є в схемі
+    // Використовуємо this.prisma замість prisma
+    const newSchool = await this.prisma.school.create({
+      data: schoolData, 
     });
 
     // Запускаємо парсинг у фоні
@@ -37,7 +34,8 @@ export class SchoolsService {
           return;
         }
 
-        await prisma.school.update({
+        // Використовуємо this.prisma замість prisma
+        await this.prisma.school.update({
           where: {
             id: newSchool.id,
           },
@@ -58,7 +56,8 @@ export class SchoolsService {
   }
 
   async findAll() {
-    return prisma.school.findMany({
+    // Використовуємо this.prisma
+    return this.prisma.school.findMany({
       include: {
         city: true,
         events: {
@@ -75,7 +74,8 @@ export class SchoolsService {
   }
 
   async findOne(id: string) {
-    return prisma.school.findUnique({
+    // Використовуємо this.prisma
+    return this.prisma.school.findUnique({
       where: {
         id,
       },
@@ -88,7 +88,8 @@ export class SchoolsService {
   async update(id: string, data: any) {
     const { city, id: _id, createdAt, updatedAt, ...updateData } = data;
 
-    return prisma.school.update({
+    // Використовуємо this.prisma
+    return this.prisma.school.update({
       where: {
         id,
       },
@@ -97,7 +98,8 @@ export class SchoolsService {
   }
 
   async remove(id: string) {
-    const events = await prisma.event.findMany({
+    // Використовуємо this.prisma
+    const events = await this.prisma.event.findMany({
       where: {
         schoolId: id,
       },
@@ -107,12 +109,14 @@ export class SchoolsService {
       await this.eventsService.remove(event.id);
     }
 
-    return prisma.school.delete({
+    // Використовуємо this.prisma
+    return this.prisma.school.delete({
       where: {
         id,
       },
     });
   }
+
   async searchContacts(q: string, city?: string) {
     if (!q || q.length < 1) return [];
 
