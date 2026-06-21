@@ -11,6 +11,7 @@ import Employees from "./pages/Employees";
 import EventReport from "./pages/EventReport";
 import Finance from "./pages/Finance";
 import { CityProvider } from "./context/CityContext";
+import Dashboard from "./pages/Dashboard";
 
 export default function App() {
   return (
@@ -28,10 +29,7 @@ export default function App() {
             <Route path="/schools" element={<Schools />} />
             <Route path="/kindergartens" element={<Kindergartens />} />
             <Route path="/employees" element={<Employees />} />
-            <Route
-              path="/dashboard"
-              element={<Navigate to="/cities" replace />}
-            />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/finance" element={<Finance />} />
           </Route>
 
