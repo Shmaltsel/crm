@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../config/api";
+import AddressLink from "../components/AddressLink";
 
 interface AuthUser {
   id: string;
@@ -173,7 +174,9 @@ export default function Events() {
                   🏫 {ev.school?.name ?? "—"}
                 </p>
                 {ev.address && (
-                  <p className="text-xs text-gray-500 mt-0.5">📍 {ev.address}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    📍 <AddressLink address={ev.address} />
+                  </p>
                 )}
                 {(ev.crew?.host || ev.crew?.driver) && (
                   <p className="text-xs text-gray-500 mt-1">
@@ -221,7 +224,11 @@ export default function Events() {
                     </td>
                     <td className="p-4 text-gray-600">
                       {ev.city?.name ?? "—"}
-                      {ev.address && <div className="text-xs text-gray-400">{ev.address}</div>}
+                      {ev.address && (
+                        <div className="text-xs text-gray-400">
+                          <AddressLink address={ev.address} />
+                        </div>
+                      )}
                     </td>
                     <td className="p-4 text-gray-600 text-sm">
                       <div>👤 {ev.crew?.host?.name ?? "—"}</div>
