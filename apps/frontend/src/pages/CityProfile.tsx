@@ -1,434 +1,506 @@
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import CityAnalytics from "../components/city-profile/CityAnalytics.tsx";
-import PhoneLink from "../components/PhoneLink";
-import type { Event, Crew, CityProfile } from "../types";
-import { api } from "../config/api";
+import { api } from '../config/api'
 
-type Tab = "events" | "crews" | "analytics";
+// Імпортуємо наші UI модулі
+import SchoolInfoCard from "../components/school-profile/SchoolInfoCard";
+import HistoryTimeline from "../components/school-profile/HistoryTimeline";
+import Pipeline from "../components/school-profile/Pipeline";
+import EventDetails from "../components/school-profile/EventDetails";
+import EventsTable from "../components/school-profile/EventsTable";
+import EventPreparation from "../components/school-profile/EventPreparation";
+import AssignedCrew from "../components/school-profile/AssignedCrew";
+import ReportModal from "../components/school-profile/modals/ReportModal";
 
-export default function CityProfile() {
+// Імпортуємо модальні вікна
+import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
+import EventModal from "../components/school-profile/modals/EventModal";
+import CommentModal from "../components/school-profile/modals/CommentModal";
+import CrewModal from "../components/school-profile/modals/CrewModal";
+
+const PIPELINE_STAGES = [
+  { id: 1, key: "BASE", name: "База" },
+  { id: 2, key: "FIRST_CONTACT", name: "Перший контакт" },
+  { id: 3, key: "INTERESTED", name: "Зацікавлений" },
+  { id: 4, key: "PRE_APPROVAL", name: "Попереднє погодження" },
+  { id: 5, key: "DATE_CONFIRMED", name: "Підтвердження дати" },
+  { id: 6, key: "PREPARATION", name: "Підготовка" },
+  { id: 7, key: "IN_PROGRESS", name: "Подія в роботі" },
+  { id: 8, key: "DONE", name: "Проведено" },
+  { id: 9, key: "REPORT", name: "Звіт" },
+  { id: 10, key: "RE_SALE", name: "Повторний продаж" },
+];
+
+export default function SchoolProfile() {
   const { id } = useParams();
-  const [city, setCity] = useState<CityProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<Tab>("events");
-  
-  // Додаємо стан для модального вікна зі звітом
-  const [selectedReportEvent, setSelectedReportEvent] = useState<any>(null);
 
-  const fetchCity = async () => {
+  const [users, setUsers] = useState<any[]>([]);
+  const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
+  const [schoolData, setSchoolData] = useState<any>({
+    id: "",
+    cityId: "",
+    name: "",
+    type: "Школа",
+    city: "",
+    address: "",
+    director: "",
+    phone: "",
+    email: "",
+    childrenCount: 0,
+    notes: "",
+  });
+  const [events, setEvents] = useState<any[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+
+  const [isEditMenuOpen, setIsEditMenuOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [commentModal, setCommentModal] = useState({
+    isOpen: false,
+    mode: "pipeline",
+    stepId: null as number | null,
+    historyId: null as string | null,
+    text: "",
+  });
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  const [editForm, setEditForm] = useState(schoolData);
+  const [eventForm, setEventForm] = useState({
+    project: "Голограма для школи",
+    date: "",
+    time: "11:00",
+    childrenPlanned: "",
+    price: "",
+    address: "",
+    contactPerson: "",
+    contactPhone: "",
+  });
+
+  const fetchData = async () => {
     try {
-      const res = await api.get(`/cities/${id}`);
-      setCity(res.data);
-    } catch (e) {
-      console.error(e);
+      const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const schoolRes = await api.get(`/schools/${id}`, { headers });
+      if (schoolRes.data) {
+        setSchoolData({
+          id: schoolRes.data.id,
+          cityId: schoolRes.data.cityId,
+          name: schoolRes.data.name || "",
+          type: schoolRes.data.type || "Школа",
+          city: schoolRes.data.city?.name || "",
+          address: schoolRes.data.address || "",
+          director: schoolRes.data.director || "",
+          phone: schoolRes.data.phone || "",
+          email: schoolRes.data.email || "",
+          childrenCount: schoolRes.data.childrenCount || 0,
+          notes: schoolRes.data.notes || "",
+        });
+        setEditForm({
+          ...schoolRes.data,
+          city: schoolRes.data.city?.name || "",
+        });
+      }
+
+      const eventsRes = await api.get(`/events/school/${id}`, { headers });
+      setEvents(eventsRes.data.filter((ev: any) => ev.status !== "RE_SALE"));
+      if (eventsRes.data.length > 0 && !selectedEventId) {
+        setSelectedEventId(eventsRes.data[0].id);
+      }
+
+      const usersRes = await api.get("/users", { headers });
+      setUsers(usersRes.data);
+    } catch (error) {
+      console.error("Помилка завантаження даних:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    const load = async () => {
-      await fetchCity();
-    };
-    void load();
+    fetchData();
   }, [id]);
+
+  const currentEvent = events.find((ev) => ev.id === selectedEventId) || events[0];
+  
+  const currentStageIndex =
+    PIPELINE_STAGES.findIndex((s) => s.key === currentEvent?.status) !== -1
+      ? PIPELINE_STAGES.findIndex((s) => s.key === currentEvent?.status)
+      : 0;
+      
+  const creatorName =
+    currentEvent?.history?.length > 0
+      ? currentEvent.history[currentEvent.history.length - 1].userName
+      : "Немає даних";
+
+  const handlePipelineClick = (stepId: number) => {
+    if (!currentEvent) return;
+
+    const activeStage = PIPELINE_STAGES[currentStageIndex];
+    const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+
+    const isCurrentStage = stepId === activeStage?.id;
+    const isNextStage = nextStage?.id === stepId;
+
+    if (!isCurrentStage && !isNextStage) return;
+
+    // Якщо це перехід до REPORT (Звіт) - тобто наступним кроком є Звіт
+    if (nextStage?.key === "REPORT") {
+      setIsReportModalOpen(true);
+      return;
+    }
+
+    setCommentModal({
+      isOpen: true,
+      mode: "pipeline",
+      stepId: nextStage?.id || stepId, // ЗАВЖДИ цілимось у наступний крок, щоб етап перемикався
+      historyId: null,
+      text: "",
+    });
+  };
+
+  const handleHistoryClick = (historyItem: any) => {
+    setCommentModal({
+      isOpen: true,
+      mode: "history",
+      stepId: null,
+      historyId: historyItem.id,
+      text: historyItem.comment || "",
+    });
+  };
+
+  const handleSaveComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const headers = {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      };
+      if (commentModal.mode === "pipeline") {
+        const activeStage = PIPELINE_STAGES[currentStageIndex];
+        const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+
+        if (!nextStage) return;
+
+        // Завжди переходимо на наступний етап
+        const res = await api.patch(
+          `/events/${currentEvent.id}/status`,
+          {
+            status: nextStage.key,
+            actionName: `Етап пройдено: ${activeStage.name}`,
+            comment: commentModal.text,
+          },
+          { headers },
+        );
+
+        if (nextStage.key === "RE_SALE") {
+          // Подія повністю завершена — прибираємо зі списку активних
+          setEvents((prev) => prev.filter((ev) => ev.id !== currentEvent.id));
+          setSelectedEventId(null);
+        } else {
+          // Оновлюємо тільки змінені поля, зберігаючи вкладені об'єкти
+          setEvents((prev) =>
+            prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
+          );
+        }
+      } else if (commentModal.mode === "history" && commentModal.historyId) {
+        await api.patch(
+          `/events/history/${commentModal.historyId}`,
+          { comment: commentModal.text },
+          { headers },
+        );
+        setEvents((prev) =>
+          prev.map((ev) =>
+            ev.id === currentEvent.id
+              ? {
+                  ...ev,
+                  history: ev.history.map((h: any) =>
+                    h.id === commentModal.historyId
+                      ? { ...h, comment: commentModal.text }
+                      : h,
+                  ),
+                }
+              : ev,
+          ),
+        );
+      }
+      setCommentModal({
+        isOpen: false,
+        mode: "pipeline",
+        stepId: null,
+        historyId: null,
+        text: "",
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSaveEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        ...eventForm,
+        schoolId: schoolData.id,
+        cityId: schoolData.cityId,
+        childrenPlanned: Number(eventForm.childrenPlanned),
+        price: Number(eventForm.price),
+      };
+      const res = await api.post("/events", payload, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      setIsEventModalOpen(false);
+      setEvents((prev) => [res.data, ...prev]);
+      setSelectedEventId(res.data.id);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSaveSchoolInfo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.patch(`/schools/${id}`, editForm, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      setSchoolData(editForm);
+      setIsEditModalOpen(false);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleUpdatePreparation = async (field: string, status: string) => {
+    if (!currentEvent) return;
+    try {
+      const headers = {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      };
+      await api.patch(
+        `/events/${currentEvent.id}/preparation`,
+        { field, status },
+        { headers },
+      );
+      setEvents((prev) =>
+        prev.map((ev) => {
+          if (ev.id === currentEvent.id) {
+            return {
+              ...ev,
+              preparation: { ...(ev.preparation || {}), [field]: status },
+            };
+          }
+          return ev;
+        }),
+      );
+    } catch (e) {
+      console.error("Помилка оновлення підготовки", e);
+    }
+  };
+
+  const handleSubmitReport = async (reportData: any) => {
+    if (!currentEvent) return;
+    try {
+      const headers = {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      };
+      const res = await api.post(
+        `/events/${currentEvent.id}/report`,
+        reportData,
+        { headers },
+      );
+      
+      setIsReportModalOpen(false);
+      
+      // Миттєво підтягуємо оновлений статус "Звіт" без перезавантаження
+      setEvents((prev) =>
+        prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
+      );
+    } catch (e) {
+      console.error("Помилка при збереженні звіту", e);
+    }
+  };
+
+  const handleAssignCrew = async (hostId: string, driverId: string) => {
+    try {
+      const headers = {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      };
+      const res = await api.post(
+        `/events/${currentEvent.id}/assign-crew`,
+        {
+          hostId,
+          driverId,
+          cityId: schoolData.cityId,
+        },
+        { headers },
+      );
+      await handleUpdatePreparation("assignCrew", "Виконано");
+
+      setEvents((prev) =>
+        prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
+      );
+      setIsCrewModalOpen(false);
+    } catch (e) {
+      console.error("Помилка при призначенні екіпажу", e);
+    }
+  };
 
   if (isLoading)
     return <div className="p-8 text-slate-500">Завантаження...</div>;
-  if (!city) return <div className="p-8 text-slate-500">Місто не знайдено</div>;
-
-  const completedEvents: Event[] = city.events || [];
-  const crews: Crew[] = city.crews || [];
-  const manager = city.manager;
-
-  // Статистика з завершених подій
-  const totalChildren = completedEvents.reduce(
-    (sum: number, ev: Event) =>
-      sum + (ev.report?.childrenCount || ev.childrenPlanned || 0),
-    0,
-  );
-  const totalRevenue = completedEvents.reduce(
-    (sum: number, ev: Event) => sum + (ev.report?.totalSum || ev.price || 0),
-    0,
-  );
-  const totalProfit = completedEvents.reduce(
-    (sum: number, ev: Event) => sum + (ev.report?.remainderSum || 0),
-    0,
-  );
-
-  const fmt = (n: number) => new Intl.NumberFormat("uk-UA").format(Math.round(n));
-
-  const TABS: { key: Tab; label: string; icon: string }[] = [
-    { key: "events", label: "Події", icon: "📅" },
-    { key: "crews", label: "Екіпажі", icon: "🚐" },
-    { key: "analytics", label: "Аналітика", icon: "📊" },
-  ];
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
-      {/* Breadcrumb */}
-      <div className="text-sm text-slate-500 mb-6">
-        <Link to="/cities" className="hover:text-blue-600 transition-colors">
-          Міста
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden">
+      <div className="text-xs md:text-sm text-slate-500 mb-4 truncate">
+        <Link to="/schools" className="hover:text-blue-600 transition-colors">
+          Школи / Садочки
         </Link>
         <span className="mx-2">›</span>
-        <span className="text-slate-800 font-medium">{city.name}</span>
+        <span className="text-slate-800 font-medium">
+          {schoolData.type} "{schoolData.name}"
+        </span>
       </div>
 
-      {/* Шапка — менеджер + статистика */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6">
-        <div className="flex flex-col md:flex-row md:items-center gap-6">
-          {/* Менеджер зліва */}
-          <div className="flex items-center gap-4 min-w-[220px]">
-            <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
-              {manager?.name?.charAt(0) ?? "?"}
-            </div>
-            <div>
-              <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-0.5">
-                Менеджер
-              </p>
-              <p className="font-bold text-slate-800">{manager?.name ?? "—"}</p>
-              <p className="text-sm text-slate-500"><PhoneLink phone={manager?.phone} /></p>
-            </div>
+      <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-800 leading-tight">
+          {schoolData.type} "{schoolData.name}"
+        </h1>
+
+        <div className="flex flex-wrap md:flex-nowrap gap-2 md:gap-3 w-full md:w-auto shrink-0">
+          <div className="relative flex-1 md:flex-none">
+            <button
+              onClick={() => setIsEditMenuOpen(!isEditMenuOpen)}
+              className="w-full md:w-auto px-4 py-2.5 md:py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium transition-colors"
+            >
+              ✏️ Редагувати
+            </button>
+            {isEditMenuOpen && (
+              <div className="absolute top-full right-0 left-0 md:left-auto mt-2 w-full md:w-56 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-20">
+                <button
+                  onClick={() => {
+                    setIsEditMenuOpen(false);
+                    setEditForm(schoolData);
+                    setIsEditModalOpen(true);
+                  }}
+                  className="w-full text-left px-4 py-3 md:py-2 hover:bg-slate-50 text-sm font-medium text-slate-700"
+                >
+                  Інформація про заклад
+                </button>
+              </div>
+            )}
           </div>
-
-          {/* Розділювач */}
-          <div className="hidden md:block w-px h-16 bg-slate-100" />
-
-          {/* Статистика */}
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-6 gap-y-4 sm:gap-8 flex-1">
-            <Stat
-              label="Заплановано подій"
-              value={city.schools?.length ?? 0}
-            />
-            <Stat label="Проведено подій" value={completedEvents.length} />
-            <Stat label="Охоплено дітей" value={fmt(totalChildren)} />
-            <Stat label="Виручка" value={`${fmt(totalRevenue)} грн`} />
-            <Stat label="Прибуток" value={`${fmt(totalProfit)} грн`} />
-          </div>
-        </div>
-      </div>
-
-      {/* Вкладки */}
-      <div className="grid grid-cols-3 sm:flex sm:w-fit gap-1 bg-white rounded-xl p-1 border border-slate-100 shadow-sm mb-6">
-        {TABS.map((tab) => (
           <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-              activeTab === tab.key
-                ? "bg-blue-600 text-white shadow-sm"
-                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-            }`}
+            onClick={() => {
+              setEventForm((prev) => ({
+                ...prev,
+                address: schoolData.address,
+                contactPerson: schoolData.director,
+                contactPhone: schoolData.phone,
+                childrenPlanned: String(schoolData.childrenCount),
+              }));
+              setIsEventModalOpen(true);
+            }}
+            className="flex-1 md:flex-none w-full md:w-auto px-4 py-2.5 md:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors text-center"
           >
-            <span>{tab.icon}</span>{" "}
-            <span className="truncate">{tab.label}</span>
+            ⏱ Додати подію
           </button>
-        ))}
+        </div>
       </div>
 
-      {/* Контент вкладок */}
-      {activeTab === "events" && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-            <h3 className="font-bold text-slate-800">
-              Завершені події ({completedEvents.length})
-            </h3>
-          </div>
-
-          {completedEvents.length === 0 ? (
-            <div className="p-12 text-center text-slate-400">
-              <p className="text-4xl mb-3">📭</p>
-              <p className="font-medium">Завершених подій ще немає</p>
-              <p className="text-sm mt-1">
-                Вони з'являться тут після завершення пайплайну в профілі закладу
-              </p>
+      <div className="flex flex-col xl:flex-row gap-6">
+        <div className="w-full xl:w-80 flex flex-col gap-6">
+          <SchoolInfoCard schoolData={schoolData} />
+          {currentEvent && currentStageIndex >= 1 && (
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 transition-all duration-500">
+              <h3 className="font-bold text-slate-800 mb-4">
+                Відповідальна особа
+              </h3>
+              <ul className="space-y-2 text-sm">
+                <li className="flex justify-between">
+                  <span className="text-slate-500">Остання дія:</span>{" "}
+                  <span className="font-medium text-blue-600">
+                    {creatorName}
+                  </span>
+                </li>
+              </ul>
             </div>
-          ) : (
-            <>
-              {/* Картки — мобільний вигляд */}
-              <div className="md:hidden divide-y divide-slate-50">
-                {completedEvents.map((ev: Event) => (
-                  <div
-                    key={ev.id}
-                    onClick={() => setSelectedReportEvent(ev)}
-                    className="flex items-center justify-between gap-3 p-4 active:bg-slate-50 cursor-pointer"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium text-blue-600 truncate">
-                        {ev.school?.name}
-                      </p>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {ev.project} ·{" "}
-                        {new Date(ev.date).toLocaleDateString("uk-UA")}
-                      </p>
-                      <p className="text-xs text-slate-500 mt-1">
-                        👶{" "}
-                        {ev.report?.childrenCount || ev.childrenPlanned || "—"}{" "}
-                        дітей
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="font-semibold text-slate-800 text-sm">
-                        {fmt(ev.report?.totalSum || ev.price || 0)} грн
-                      </p>
-                      <p className="text-xs font-medium text-emerald-600 mt-0.5">
-                        +{fmt(ev.report?.remainderSum || 0)} грн
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Таблиця — десктоп */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
-                      <th className="p-4">Заклад</th>
-                      <th className="p-4">Проєкт</th>
-                      <th className="p-4">Дата</th>
-                      <th className="p-4">Дітей</th>
-                      <th className="p-4">Виручка</th>
-                      <th className="p-4">Прибуток</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {completedEvents.map((ev: Event) => (
-                      <tr
-                        key={ev.id}
-                        onClick={() => setSelectedReportEvent(ev)}
-                        className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
-                      >
-                        <td className="p-4">
-                          <span className="font-medium text-blue-600 hover:underline">
-                            {ev.school?.name}
-                          </span>
-                          <p className="text-xs text-slate-400">
-                            {ev.school?.type}
-                          </p>
-                        </td>
-                        <td className="p-4 text-slate-700">{ev.project}</td>
-                        <td className="p-4 text-slate-600">
-                          {new Date(ev.date).toLocaleDateString("uk-UA")}
-                        </td>
-                        <td className="p-4 font-medium">
-                          {ev.report?.childrenCount || ev.childrenPlanned || "—"}
-                        </td>
-                        <td className="p-4 font-medium text-slate-800">
-                          {fmt(ev.report?.totalSum || ev.price || 0)} грн
-                        </td>
-                        <td className="p-4 font-medium text-emerald-600">
-                          {fmt(ev.report?.remainderSum || 0)} грн
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
           )}
+          <HistoryTimeline
+            currentEvent={currentEvent}
+            onHistoryClick={handleHistoryClick}
+          />
         </div>
-      )}
 
-      {activeTab === "crews" && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-            <h3 className="font-bold text-slate-800">
-              Екіпажі ({crews.length})
-            </h3>
-          </div>
+        <div className="flex-1 flex flex-col gap-6">
+          <Pipeline
+            currentStageIndex={currentStageIndex}
+            currentEvent={currentEvent}
+            onPipelineClick={handlePipelineClick}
+            stages={PIPELINE_STAGES}
+          />
 
-          {crews.length === 0 ? (
-            <div className="p-12 text-center text-slate-400">
-              <p className="text-4xl mb-3">🚐</p>
-              <p className="font-medium">Екіпажів ще немає</p>
+          {currentEvent && currentStageIndex >= 5 && (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <EventPreparation
+                data={currentEvent.preparation || {}}
+                onUpdate={handleUpdatePreparation}
+                onOpenCrewModal={() => setIsCrewModalOpen(true)}
+              />
+              <AssignedCrew currentEvent={currentEvent} employees={users} />
             </div>
-          ) : (
-            <>
-              {/* Картки — мобільний вигляд */}
-              <div className="md:hidden divide-y divide-slate-50">
-                {crews.map((crew: Crew) => (
-                  <div key={crew.id} className="p-4">
-                    <p className="font-semibold text-slate-800">{crew.name}</p>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-slate-600">
-                      <span>
-                        🎙️{" "}
-                        <span className="text-blue-600 font-medium">
-                          {crew.host?.name || "—"}
-                        </span>
-                      </span>
-                      <span>
-                        🚗{" "}
-                        <span className="text-emerald-600 font-medium">
-                          {crew.driver?.name || "—"}
-                        </span>
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-xs text-slate-500">
-                      <span>{crew.car || "—"}</span>
-                      <PhoneLink phone={crew.phone} className="text-xs" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Таблиця — десктоп */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
-                      <th className="p-4">Назва екіпажу</th>
-                      <th className="p-4">Ведучий</th>
-                      <th className="p-4">Водій</th>
-                      <th className="p-4">Авто</th>
-                      <th className="p-4">Телефон</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {crews.map((crew: Crew) => (
-                      <tr
-                        key={crew.id}
-                        className="border-b border-slate-50 hover:bg-slate-50 transition-colors"
-                      >
-                        <td className="p-4 font-medium text-slate-800">
-                          {crew.name}
-                        </td>
-                        <td className="p-4 text-blue-600 font-medium">
-                          {crew.host?.name || "—"}
-                        </td>
-                        <td className="p-4 text-emerald-600 font-medium">
-                          {crew.driver?.name || "—"}
-                        </td>
-                        <td className="p-4 text-slate-600">
-                          {crew.car || "—"}
-                        </td>
-                        <td className="p-4 text-slate-600">
-                          <PhoneLink phone={crew.phone} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
           )}
+
+          <EventDetails currentEvent={currentEvent} />
+          <EventsTable
+            events={events}
+            selectedEventId={selectedEventId}
+            onEventSelect={setSelectedEventId}
+            onDeleteSuccess={fetchData}
+          />
         </div>
-      )}
+      </div>
 
-      {activeTab === "analytics" && <CityAnalytics events={completedEvents} />}
-
-      {/* Модальне вікно Звіту та Історії */}
-      <CompletedEventModal 
-        isOpen={!!selectedReportEvent} 
-        onClose={() => setSelectedReportEvent(null)} 
-        event={selectedReportEvent} 
+      <EditSchoolModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        editForm={editForm}
+        setEditForm={setEditForm}
+        onSave={handleSaveSchoolInfo}
       />
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div>
-      <p className="text-xs text-slate-400 font-medium mb-1">{label}</p>
-      <p className="text-2xl font-bold text-slate-800">{value}</p>
-    </div>
-  );
-}
-
-// Компонент модального вікна для відображення деталей та історії пайплайну
-function CompletedEventModal({ isOpen, onClose, event }: { isOpen: boolean, onClose: () => void, event: any }) {
-  if (!isOpen || !event) return null;
-  const fmt = (n: number) => new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
-  const report = event.report;
-
-  return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
-        <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
-        
-        <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
-          <div>
-            <h3 className="text-xl font-bold text-slate-800">Звіт: {event.project}</h3>
-            <p className="text-sm text-slate-500 mt-1">{event.school?.name} · {new Date(event.date).toLocaleDateString("uk-UA")}</p>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg">✕</button>
-        </div>
-        
-        <div className="p-5 sm:p-6 flex-1 overflow-y-auto bg-slate-50/30">
-           {/* Деталі звіту */}
-           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-                <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">📊</span> 
-                  Результати
-                </h4>
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-500">Дітей (факт):</span><span className="font-bold text-slate-800">{report?.childrenCount || 0}</span></div>
-                  <div className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-500">Класів:</span><span className="font-medium">{report?.classesCount || 0}</span></div>
-                  <div className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-500">Пільговиків:</span><span className="font-medium">{report?.privilegedCount || 0}</span></div>
-                  <div className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-500">Сеансів:</span><span className="font-medium">{report?.showingsCount || 0}</span></div>
-                  <div className="flex justify-between pb-1"><span className="text-slate-500">Оцінка:</span><span className="font-bold text-amber-500">⭐ {report?.rating || 0}/10</span></div>
-                </div>
-              </div>
-
-              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-                <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">💰</span> 
-                  Фінанси
-                </h4>
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-500">Загальна виручка:</span><span className="font-bold text-slate-800">{fmt(report?.totalSum)} грн</span></div>
-                  <div className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-500">На заклад (20%):</span><span className="font-medium text-rose-500">− {fmt(report?.schoolSum)} грн</span></div>
-                  
-                  {Array.isArray(report?.expenses) && report.expenses.length > 0 && (
-                    <div className="py-2 border-b border-slate-50">
-                      <span className="text-slate-500 block mb-2">Додаткові витрати:</span>
-                      {report.expenses.map((exp: any, i: number) => (
-                        <div key={i} className="flex justify-between text-xs mb-1 pl-2">
-                          <span className="text-slate-400">— {exp.name || exp.category}</span>
-                          <span className="text-rose-500 font-medium">− {fmt(exp.amount)} грн</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="flex justify-between pt-1"><span className="text-slate-800 font-bold">Чистий прибуток:</span><span className="font-bold text-emerald-600 text-base">{fmt(report?.remainderSum)} грн</span></div>
-                </div>
-              </div>
-           </div>
-           
-           {/* Історія пайплайну */}
-           <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm">
-              <h4 className="font-bold text-slate-800 mb-5 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center">⏳</span> 
-                Історія пайплайну
-              </h4>
-              {!event.history || event.history.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-4">Історія порожня.</p>
-              ) : (
-                <div className="space-y-4 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-slate-100">
-                  {[...event.history].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((item: any, i: number) => (
-                    <div key={item.id} className="relative pl-8 text-sm group">
-                      <div className="absolute left-1.5 w-3 h-3 rounded-full top-1 bg-violet-500 ring-4 ring-white"></div>
-                      <p className="font-semibold text-slate-800">{item.action}</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        {new Date(item.createdAt).toLocaleString("uk-UA", { day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit' })} · 👤 {item.userName}
-                      </p>
-                      {item.comment && (
-                        <div className="mt-2 p-3 bg-slate-50/80 rounded-xl text-slate-600 italic border border-slate-100">
-                          {item.comment}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-           </div>
-        </div>
-      </div>
+      <EventModal
+        isOpen={isEventModalOpen}
+        onClose={() => setIsEventModalOpen(false)}
+        eventForm={eventForm}
+        setEventForm={setEventForm}
+        onSave={handleSaveEvent}
+      />
+      <CommentModal
+        isOpen={commentModal.isOpen}
+        onClose={() => setCommentModal({ ...commentModal, isOpen: false })}
+        mode={commentModal.mode}
+        text={commentModal.text}
+        setText={(t) => setCommentModal({ ...commentModal, text: t })}
+        onSave={handleSaveComment}
+      />
+      <CrewModal
+        isOpen={isCrewModalOpen}
+        onClose={() => setIsCrewModalOpen(false)}
+        city={schoolData.city}
+        employees={users}
+        onSave={handleAssignCrew}
+      />
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        onSave={handleSubmitReport}
+        schoolName={schoolData.name}
+        eventType={currentEvent?.project}
+        eventDate={currentEvent?.date}
+        eventIndex={
+          events
+            .filter((e) => e.schoolId === schoolData.id)
+            .indexOf(currentEvent!) + 1
+        }
+      />
     </div>
   );
 }
