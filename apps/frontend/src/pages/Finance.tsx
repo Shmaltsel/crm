@@ -42,8 +42,8 @@ export default function Finance() {
       if (cityId) params.set("cityId", cityId);
       if (project) params.set("project", project);
 
-      const res = await axios.get(
-        `${API_BASE_URL}/finance/dashboard?${params}`,
+      const res = await api.get(
+        `/finance/dashboard?${params}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -57,7 +57,10 @@ export default function Finance() {
   };
 
   useEffect(() => {
-    fetchData();
+    const load = async () => {
+      await fetchData();
+    };
+    void load();
   }, [period, cityId, project]);
 
   if (isLoading)

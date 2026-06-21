@@ -1,28 +1,38 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
-
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-
-import { api } from '../config/api';
+import { api } from "../config/api";
 // Фото для міст за назвою (Unsplash)
 const CITY_PHOTOS: Record<string, string> = {
-  'Львів': 'https://images.unsplash.com/photo-1555990793-da11153b2473?w=600&q=80',
-  'Київ': 'https://images.unsplash.com/photo-1630651814316-fe71f3c30279?w=600&q=80',
-  'Харків': 'https://images.unsplash.com/photo-1584646098378-0f87b72cffe1?w=600&q=80',
-  'Одеса': 'https://images.unsplash.com/photo-1585168050053-a4ba02e3f0d2?w=600&q=80',
-  'Дніпро': 'https://images.unsplash.com/photo-1570587953042-a65fd17e2f73?w=600&q=80',
-  'Запоріжжя': 'https://images.unsplash.com/photo-1549887534-1541e9326642?w=600&q=80',
-  'Вінниця': 'https://images.unsplash.com/photo-1591389703635-e15a07b842d7?w=600&q=80',
-  'Івано-Франківськ': 'https://images.unsplash.com/photo-1605723517503-3cadb5818a0c?w=600&q=80',
-  'Тернопіль': 'https://images.unsplash.com/photo-1564760290292-23341e4df6ec?w=600&q=80',
-  'Луцьк': 'https://images.unsplash.com/photo-1587974928442-77dc3e0dba72?w=600&q=80',
-  'Рівне': 'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=600&q=80',
-  'Хмельницький': 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=600&q=80',
-  'Чернівці': 'https://images.unsplash.com/photo-1562619371-b67725b6fde2?w=600&q=80',
-  'Ужгород': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80',
+  Львів: "https://images.unsplash.com/photo-1555990793-da11153b2473?w=600&q=80",
+  Київ: "https://images.unsplash.com/photo-1630651814316-fe71f3c30279?w=600&q=80",
+  Харків:
+    "https://images.unsplash.com/photo-1584646098378-0f87b72cffe1?w=600&q=80",
+  Одеса:
+    "https://images.unsplash.com/photo-1585168050053-a4ba02e3f0d2?w=600&q=80",
+  Дніпро:
+    "https://images.unsplash.com/photo-1570587953042-a65fd17e2f73?w=600&q=80",
+  Запоріжжя:
+    "https://images.unsplash.com/photo-1549887534-1541e9326642?w=600&q=80",
+  Вінниця:
+    "https://images.unsplash.com/photo-1591389703635-e15a07b842d7?w=600&q=80",
+  "Івано-Франківськ":
+    "https://images.unsplash.com/photo-1605723517503-3cadb5818a0c?w=600&q=80",
+  Тернопіль:
+    "https://images.unsplash.com/photo-1564760290292-23341e4df6ec?w=600&q=80",
+  Луцьк:
+    "https://images.unsplash.com/photo-1587974928442-77dc3e0dba72?w=600&q=80",
+  Рівне: "https://images.unsplash.com/photo-1518684079-3c830dcef090?w=600&q=80",
+  Хмельницький:
+    "https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=600&q=80",
+  Чернівці:
+    "https://images.unsplash.com/photo-1562619371-b67725b6fde2?w=600&q=80",
+  Ужгород:
+    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80",
 };
 
-const DEFAULT_PHOTO = 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80';
+const DEFAULT_PHOTO =
+  "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80";
 
 interface City {
   id: string;
@@ -36,32 +46,37 @@ export default function Cities() {
   const navigate = useNavigate();
   const [cities, setCities] = useState<City[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newCityName, setNewCityName] = useState('');
+  const [newCityName, setNewCityName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchCities = async () => {
     try {
-      const response = await api.get('/cities');
+      const response = await api.get("/cities");
       setCities(response.data);
     } catch (error) {
-      console.error('Помилка при завантаженні міст:', error);
+      console.error("Помилка при завантаженні міст:", error);
     }
   };
 
-  useEffect(() => { fetchCities(); }, []);
+  useEffect(() => {
+    const load = async () => {
+      await fetchCities();
+    };
+    void load();
+  }, []);
 
   const handleAddCity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCityName.trim()) return;
     setIsLoading(true);
     try {
-      await api.post('/cities', { name: newCityName });
-      setNewCityName('');
+      await api.post("/cities", { name: newCityName });
+      setNewCityName("");
       setIsModalOpen(false);
       fetchCities();
     } catch (error) {
-      console.error('Помилка при створенні міста:', error);
-      alert('Не вдалося створити місто');
+      console.error("Помилка при створенні міста:", error);
+      alert("Не вдалося створити місто");
     } finally {
       setIsLoading(false);
     }
@@ -92,7 +107,9 @@ export default function Cities() {
                 src={CITY_PHOTOS[city.name] || DEFAULT_PHOTO}
                 alt={city.name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PHOTO; }}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = DEFAULT_PHOTO;
+                }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
             </div>
@@ -100,18 +117,24 @@ export default function Cities() {
             {/* Контент картки */}
             <div className="p-5">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{city.name}</h2>
-                <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-100">Активне місто</span>
+                <h2 className="text-xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
+                  {city.name}
+                </h2>
+                <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-100">
+                  Активне місто
+                </span>
               </div>
 
               {/* Менеджер */}
               <div className="flex items-center gap-2 mb-4 text-sm text-slate-600">
                 <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold shrink-0">
-                  {city.manager?.name?.charAt(0) ?? '?'}
+                  {city.manager?.name?.charAt(0) ?? "?"}
                 </div>
                 <span>
                   <span className="text-slate-400">Менеджер: </span>
-                  <span className="font-medium">{city.manager?.name ?? '—'}</span>
+                  <span className="font-medium">
+                    {city.manager?.name ?? "—"}
+                  </span>
                 </span>
               </div>
 
@@ -119,11 +142,15 @@ export default function Cities() {
               <div className="space-y-2 text-sm border-t border-slate-50 pt-3">
                 <div className="flex justify-between text-slate-500">
                   <span>Заплановано подій:</span>
-                  <span className="font-semibold text-slate-800">{city.plannedEvents ?? 0}</span>
+                  <span className="font-semibold text-slate-800">
+                    {city.plannedEvents ?? 0}
+                  </span>
                 </div>
                 <div className="flex justify-between text-slate-500">
                   <span>Проведено подій:</span>
-                  <span className="font-semibold text-slate-800">{city.completedEvents ?? 0}</span>
+                  <span className="font-semibold text-slate-800">
+                    {city.completedEvents ?? 0}
+                  </span>
                 </div>
               </div>
             </div>
@@ -146,7 +173,9 @@ export default function Cities() {
             </div>
             <form onSubmit={handleAddCity} className="p-5 sm:p-6">
               <div className="mb-6">
-                <label className="block text-sm font-medium text-slate-700 mb-2">Назва міста</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Назва міста
+                </label>
                 <input
                   type="text"
                   value={newCityName}
@@ -158,11 +187,19 @@ export default function Cities() {
                 />
               </div>
               <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pb-1 sm:pb-0">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 font-medium hover:bg-slate-50 bg-slate-100 sm:bg-transparent rounded-xl transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 font-medium hover:bg-slate-50 bg-slate-100 sm:bg-transparent rounded-xl transition-colors"
+                >
                   Скасувати
                 </button>
-                <button type="submit" disabled={isLoading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 sm:py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50">
-                  {isLoading ? 'Збереження...' : 'Зберегти'}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 sm:py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50"
+                >
+                  {isLoading ? "Збереження..." : "Зберегти"}
                 </button>
               </div>
             </form>
@@ -172,5 +209,3 @@ export default function Cities() {
     </div>
   );
 }
-
-
