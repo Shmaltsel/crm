@@ -4,9 +4,7 @@ import { TelegramService } from '../telegram/telegram.service';
 
 import { CreateEventDto } from './dto/create-event.dto';
 import { SubmitReportDto } from './dto/submit-report.dto';
-
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
-
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
@@ -95,7 +93,7 @@ export class EventsService {
     });
   }
 
-  // Додайте цей метод до існуючих в EventsService
+  // Оновлюємо статус підготовки
   async updatePreparationStatus(
     eventId: string,
     field: string,
@@ -116,6 +114,7 @@ export class EventsService {
       });
     }
   }
+
   async assignCrewToEvent(
     eventId: string,
     cityId: string,
@@ -249,7 +248,7 @@ export class EventsService {
     reportData: SubmitReportDto,
     user: JwtUser,
   ) {
-    // 1. Розкоментовуємо та зберігаємо звіт у базу
+    // 1. Зберігаємо звіт у базу
     await this.prisma.eventReport.upsert({
       where: { eventId },
       update: {
@@ -281,7 +280,7 @@ export class EventsService {
       },
     });
 
-    // 2. Оновлюємо статус події на 'REPORT' (а не 'RE_SALE', щоб вона не зникала)
+    // 2. Оновлюємо статус події на 'REPORT' (щоб вона не зникала і давала можливість перейти до RE_SALE)
     return this.prisma.event.update({
       where: { id: eventId },
       data: {
@@ -289,23 +288,6 @@ export class EventsService {
         history: {
           create: {
             action: 'Сформовано звіт. Етап: Звіт',
-            userId: user.sub,
-            userName: user.name,
-            role: user.role,
-          },
-        },
-      },
-      include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
-    });
-  }
-    // Оновлюємо статус події через this.prisma
-    return this.prisma.event.update({
-      where: { id: eventId },
-      data: {
-        status: 'RE_SALE' as never,
-        history: {
-          create: {
-            action: 'Сформовано звіт. Етап пройдено: Проведено',
             userId: user.sub,
             userName: user.name,
             role: user.role,
