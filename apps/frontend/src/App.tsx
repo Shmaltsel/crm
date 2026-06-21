@@ -5,6 +5,7 @@ import Cities from "./pages/Cities";
 import CityProfile from "./pages/CityProfile";
 import Layout from "./components/Layout";
 import Schools from "./pages/Schools";
+import Kindergartens from './pages/Kindergartens';
 import SchoolProfile from "./pages/SchoolProfile";
 import Employees from "./pages/Employees";
 import EventReport from "./pages/EventReport";
@@ -25,6 +26,7 @@ export default function App() {
             <Route path="/events" element={<Events />} />
             <Route path="/schools/:id" element={<SchoolProfile />} />
             <Route path="/schools" element={<Schools />} />
+            <Route path="/kindergartens" element={<Kindergartens />} />
             <Route path="/employees" element={<Employees />} />
             <Route
               path="/dashboard"

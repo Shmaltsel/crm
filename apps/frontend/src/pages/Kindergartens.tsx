@@ -21,7 +21,7 @@ interface City {
   name: string;
 }
 
-export default function Schools() {
+export default function Kindergartens() {
   const navigate = useNavigate();
   const { selectedCity } = useSelectedCity();
   const [schools, setSchools] = useState<any[]>([]);
@@ -29,7 +29,6 @@ export default function Schools() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Прибрали поле type зі стану, бо воно тепер завжди "Школа"
   const [form, setForm] = useState({
     name: "",
     cityId: "",
@@ -100,9 +99,8 @@ export default function Schools() {
 
     try {
       const token = localStorage.getItem("token");
-      // Жорстко передаємо type=Школа
       const res = await api.get(
-        `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=${encodeURIComponent("Школа")}`,
+        `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=${encodeURIComponent("Садочок")}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -140,8 +138,7 @@ export default function Schools() {
       const token = localStorage.getItem("token");
       try {
         const [externalRes] = await Promise.all([
-          // Жорстко передаємо type=Школа
-          api.get(`/schools/search?q=${value}&type=${encodeURIComponent("Школа")}`, {
+          api.get(`/schools/search?q=${value}&type=${encodeURIComponent("Садочок")}`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
           fetchContacts(value),
@@ -167,15 +164,14 @@ export default function Schools() {
     setIsSubmitting(true);
     try {
       const token = localStorage.getItem("token");
-      // Додаємо type: "Школа" безпосередньо в тіло запиту
-      await api.post("/schools", { ...form, type: "Школа" }, {
+      await api.post("/schools", { ...form, type: "Садочок" }, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setIsModalOpen(false);
       fetchSchools();
     } catch (e) {
       console.error(e);
-      alert("Не вдалося створити заклад");
+      alert("Не вдалося створити садочок");
     } finally {
       setIsSubmitting(false);
     }
@@ -189,7 +185,7 @@ export default function Schools() {
     e.stopPropagation();
     if (
       !window.confirm(
-        `Видалити школу "${schoolName}"? Це видалить також усі її події.`
+        `Видалити садочок "${schoolName}"? Це видалить також усі його події.`
       )
     )
       return;
@@ -203,17 +199,17 @@ export default function Schools() {
     }
   };
 
-  // Фільтруємо ТІЛЬКИ школи і тільки для вибраного міста
-  const filteredSchools = schools.filter(s => {
+  // Фільтруємо ТІЛЬКИ садочки і тільки для вибраного міста
+  const filteredKindergartens = schools.filter(s => {
     const isCityMatch = selectedCity.id ? s.cityId === selectedCity.id : true;
-    return isCityMatch && s.type === "Школа";
+    return isCityMatch && s.type === "Садочок";
   });
 
   return (
     <div className="p-4 md:p-8 h-full max-w-[100vw] overflow-hidden">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold text-slate-800">
-          Школи
+          Садочки
           {selectedCity.id && (
             <span className="ml-2 text-base font-normal text-blue-500">
               · {selectedCity.name}
@@ -224,13 +220,12 @@ export default function Schools() {
           onClick={handleOpenModal}
           className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
         >
-          + Додати школу
+          + Додати садочок
         </button>
       </div>
 
-      {/* Мобільний вигляд */}
       <div className="md:hidden flex flex-col gap-3">
-        {filteredSchools.map((school) => {
+        {filteredKindergartens.map((school) => {
           const latestEvent = school.events?.[0];
           const stage = latestEvent
             ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
@@ -259,7 +254,7 @@ export default function Schools() {
               </div>
               <div className="flex flex-wrap items-center gap-2 mt-3">
                 <span className="bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full text-xs font-medium">
-                  Активна
+                  Активний
                 </span>
                 {stage ? (
                   <span className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium border border-blue-100">
@@ -274,19 +269,18 @@ export default function Schools() {
             </div>
           );
         })}
-        {filteredSchools.length === 0 && (
+        {filteredKindergartens.length === 0 && (
           <div className="bg-white rounded-2xl border border-slate-100 text-center py-10 text-slate-400 text-sm">
-            Шкіл ще немає
+            Садочків ще немає
           </div>
         )}
       </div>
 
-      {/* Десктоп таблиця */}
       <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto w-full">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">
-              <th className="p-4 font-medium text-slate-600">Назва школи</th>
+              <th className="p-4 font-medium text-slate-600">Назва садочку</th>
               <th className="p-4 font-medium text-slate-600">Місто</th>
               <th className="p-4 font-medium text-slate-600">Статус</th>
               <th className="p-4 font-medium text-slate-600">Поточний етап</th>
@@ -294,7 +288,7 @@ export default function Schools() {
             </tr>
           </thead>
           <tbody>
-            {filteredSchools.map((school) => {
+            {filteredKindergartens.map((school) => {
               const latestEvent = school.events?.[0];
               const stage = latestEvent
                 ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
@@ -311,7 +305,7 @@ export default function Schools() {
                   <td className="p-4 text-slate-600">{school.city?.name}</td>
                   <td className="p-4">
                     <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-medium">
-                      Активна
+                      Активний
                     </span>
                   </td>
                   <td className="p-4">
@@ -340,13 +334,12 @@ export default function Schools() {
         </table>
       </div>
 
-      {/* Модалка */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md max-h-[92vh] overflow-hidden flex flex-col">
             <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
             <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <h3 className="text-xl font-bold text-slate-800">Нова школа</h3>
+              <h3 className="text-xl font-bold text-slate-800">Новий садочок</h3>
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600 p-2 -mr-2"
@@ -360,7 +353,7 @@ export default function Schools() {
             >
               <div className="relative">
                 <label className="block text-sm text-slate-600 mb-1">
-                  Назва школи
+                  Назва садочку
                 </label>
                 <input
                   type="text"
@@ -370,7 +363,7 @@ export default function Schools() {
                     setTimeout(() => setShowSuggestions(false), 150)
                   }
                   required
-                  placeholder="Наприклад: Школа №1"
+                  placeholder="Наприклад: Садочок №1"
                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 />
                 {showSuggestions && (
