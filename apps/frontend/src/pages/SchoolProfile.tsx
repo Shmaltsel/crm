@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import axios from "axios";
+import { api } from '../config/api'
 
 // Імпортуємо наші UI модулі
 import SchoolInfoCard from "../components/school-profile/SchoolInfoCard";
@@ -17,8 +17,6 @@ import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal
 import EventModal from "../components/school-profile/modals/EventModal";
 import CommentModal from "../components/school-profile/modals/CommentModal";
 import CrewModal from "../components/school-profile/modals/CrewModal";
-
-import { API_BASE_URL } from "../config/api";
 
 const PIPELINE_STAGES = [
   { id: 1, key: "BASE", name: "База" },
@@ -87,7 +85,7 @@ export default function SchoolProfile() {
       const headers = { Authorization: `Bearer ${token}` };
 
       // Завантажуємо школу з локального сервера
-      const schoolRes = await axios.get(`${API_BASE_URL}/schools/${id}`, {
+      const schoolRes = await api.get(`/schools/${id}`, {
         headers,
       });
       if (schoolRes.data) {
@@ -111,7 +109,7 @@ export default function SchoolProfile() {
       }
 
       // Завантажуємо події з локального сервера
-      const eventsRes = await axios.get(`${API_BASE_URL}/events/school/${id}`, {
+      const eventsRes = await api.get(`/events/school/${id}`, {
         headers,
       });
       setEvents(eventsRes.data.filter((ev: any) => ev.status !== "RE_SALE"));
@@ -120,7 +118,7 @@ export default function SchoolProfile() {
       }
 
       // Завантажуємо користувачів з локального сервера
-      const usersRes = await axios.get(`${API_BASE_URL}/users`, { headers });
+      const usersRes = await api.get("/users", { headers });
       setUsers(usersRes.data);
     } catch (error) {
       console.error("Помилка завантаження даних:", error);
@@ -190,8 +188,8 @@ export default function SchoolProfile() {
       if (commentModal.mode === "pipeline" && commentModal.stepId) {
         const activeStage = PIPELINE_STAGES[currentStageIndex];
         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-        const res = await axios.patch(
-          `${API_BASE_URL}/events/${currentEvent.id}/status`,
+        const res = await api.patch(
+          `/events/${currentEvent.id}/status`,
           {
             status: nextStage.key,
             actionName: `Етап пройдено: ${activeStage.name}`,
@@ -210,8 +208,8 @@ export default function SchoolProfile() {
           );
         }
       } else if (commentModal.mode === "history" && commentModal.historyId) {
-        await axios.patch(
-          `${API_BASE_URL}/events/history/${commentModal.historyId}`,
+        await api.patch(
+          `/events/history/${commentModal.historyId}`,
           { comment: commentModal.text },
           { headers },
         );
@@ -252,7 +250,7 @@ export default function SchoolProfile() {
         childrenPlanned: Number(eventForm.childrenPlanned),
         price: Number(eventForm.price),
       };
-      const res = await axios.post(`${API_BASE_URL}/events`, payload, {
+      const res = await api.post("/events", payload, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       setIsEventModalOpen(false);
@@ -266,7 +264,7 @@ export default function SchoolProfile() {
   const handleSaveSchoolInfo = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.patch(`${API_BASE_URL}/schools/${id}`, editForm, {
+      await api.patch(`/schools/${id}`, editForm, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       setSchoolData(editForm);
@@ -282,8 +280,8 @@ export default function SchoolProfile() {
       const headers = {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       };
-      await axios.patch(
-        `${API_BASE_URL}/events/${currentEvent.id}/preparation`,
+      await api.patch(
+        `/events/${currentEvent.id}/preparation`,
         { field, status },
         { headers },
       );
@@ -310,8 +308,8 @@ export default function SchoolProfile() {
       const headers = {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       };
-      await axios.post(
-        `${API_BASE_URL}/events/${currentEvent.id}/report`,
+      await api.post(
+        `/events/${currentEvent.id}/report`,
         reportData,
         { headers },
       );
@@ -329,8 +327,8 @@ export default function SchoolProfile() {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       };
 
-      const res = await axios.post(
-        `${API_BASE_URL}/events/${currentEvent.id}/assign-crew`,
+      const res = await api.post(
+        `/events/${currentEvent.id}/assign-crew`,
         {
           hostId,
           driverId,

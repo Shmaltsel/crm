@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 
-import { API_BASE_URL } from '../config/api';
+import { api } from '../config/api';
 // Фото для міст за назвою (Unsplash)
 const CITY_PHOTOS: Record<string, string> = {
   'Львів': 'https://images.unsplash.com/photo-1555990793-da11153b2473?w=600&q=80',
@@ -42,10 +41,7 @@ export default function Cities() {
 
   const fetchCities = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/cities`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get('/cities');
       setCities(response.data);
     } catch (error) {
       console.error('Помилка при завантаженні міст:', error);
@@ -59,11 +55,7 @@ export default function Cities() {
     if (!newCityName.trim()) return;
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`${API_BASE_URL}/cities`,
-        { name: newCityName },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.post('/cities', { name: newCityName });
       setNewCityName('');
       setIsModalOpen(false);
       fetchCities();

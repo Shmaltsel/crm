@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import axios from 'axios';
 import CityAnalytics from '../components/city-profile/CityAnalytics.tsx';
 
-import { API_BASE_URL } from '../config/api';
+import { api } from '../config/api';
 
 type Tab = 'events' | 'crews' | 'analytics';
 
@@ -15,10 +14,7 @@ export default function CityProfile() {
 
   const fetchCity = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get(`${API_BASE_URL}/cities/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get(`/cities/${id}`);
       setCity(res.data);
     } catch (e) {
       console.error(e);

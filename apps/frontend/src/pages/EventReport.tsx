@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import axios from 'axios';
 
-import { API_BASE_URL } from '../config/api';
+import { api } from '../config/api'
 
 export default function EventReport() {
   const { eventId } = useParams();
@@ -14,10 +13,7 @@ export default function EventReport() {
   useEffect(() => {
     const fetch = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get(`${API_BASE_URL}/events/${eventId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await api.get(`/events/${eventId}`, { headers: { Authorization: `Bearer ${token}` } });
         setEvent(res.data);
       } catch (e) {
         console.error(e);

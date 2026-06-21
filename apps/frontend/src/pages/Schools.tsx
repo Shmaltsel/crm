@@ -1,20 +1,18 @@
-
-
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { api } from '../config/api'
 
 const PIPELINE_STAGES = [
-  { key: 'BASE', name: 'База' },
-  { key: 'FIRST_CONTACT', name: 'Перший контакт' },
-  { key: 'INTERESTED', name: 'Зацікавлений' },
-  { key: 'PRE_APPROVAL', name: 'Попереднє погодження' },
-  { key: 'DATE_CONFIRMED', name: 'Підтвердження дати' },
-  { key: 'PREPARATION', name: 'Підготовка' },
-  { key: 'IN_PROGRESS', name: 'Подія в роботі' },
-  { key: 'DONE', name: 'Проведено' },
-  { key: 'REPORT', name: 'Звіт' },
-  { key: 'RE_SALE', name: 'Повторний продаж' },
+  { key: "BASE", name: "База" },
+  { key: "FIRST_CONTACT", name: "Перший контакт" },
+  { key: "INTERESTED", name: "Зацікавлений" },
+  { key: "PRE_APPROVAL", name: "Попереднє погодження" },
+  { key: "DATE_CONFIRMED", name: "Підтвердження дати" },
+  { key: "PREPARATION", name: "Підготовка" },
+  { key: "IN_PROGRESS", name: "Подія в роботі" },
+  { key: "DONE", name: "Проведено" },
+  { key: "REPORT", name: "Звіт" },
+  { key: "RE_SALE", name: "Повторний продаж" },
 ];
 
 interface City {
@@ -28,29 +26,41 @@ export default function Schools() {
   const [cities, setCities] = useState<City[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState({ name: '', type: 'Школа', cityId: '', sourceUrl: '' });  const [suggestions, setSuggestions] = useState<{ name: string; url: string }[]>([]);
+  const [form, setForm] = useState({
+    name: "",
+    type: "Школа",
+    cityId: "",
+    sourceUrl: "",
+  });
+  const [suggestions, setSuggestions] = useState<
+    { name: string; url: string }[]
+  >([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchSchools = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('https://crm-57qd.onrender.com/schools', {
+      const token = localStorage.getItem("token");
+      const res = await api.get("/schools", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setSchools(res.data);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const fetchCities = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('https://crm-57qd.onrender.com/cities', {
+      const token = localStorage.getItem("token");
+      const res = await api.get("/cities", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setCities(res.data);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   useEffect(() => {
@@ -59,10 +69,10 @@ export default function Schools() {
   }, []);
 
   const handleOpenModal = () => {
-    setForm({ name: '', type: 'Школа', cityId: cities[0]?.id ?? '' });
+    setForm({ name: "", type: "Школа", cityId: cities[0]?.id ?? "" });
     setIsModalOpen(true);
   };
-  
+
   const handleNameChange = (value: string) => {
     setForm({ ...form, name: value });
 
@@ -74,13 +84,13 @@ export default function Schools() {
       return;
     }
 
-    setIsSearching(true);   // ← показуємо "пошук..." одразу
+    setIsSearching(true); // ← показуємо "пошук..." одразу
     setShowSuggestions(true); // ← відкриваємо dropdown одразу
 
     debounceTimer.current = setTimeout(async () => {
       try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get(`https://crm-57qd.onrender.com/schools/search?q=${value}`, {
+        const token = localStorage.getItem("token");
+        const res = await api.get(`/schools/search?q=${value}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setSuggestions(res.data);
@@ -90,7 +100,7 @@ export default function Schools() {
         setIsSearching(false); // ← прибираємо "пошук..." коли прийшла відповідь
       }
     }, 400);
-};
+  };
 
   const handleSelectSuggestion = (name: string, url: string) => {
     setForm({ ...form, name, sourceUrl: url });
@@ -102,29 +112,40 @@ export default function Schools() {
     if (!form.name.trim() || !form.cityId) return;
     setIsSubmitting(true);
     try {
-      const token = localStorage.getItem('token');
-      await axios.post('https://crm-57qd.onrender.com/schools', form, {
+      const token = localStorage.getItem("token");
+      await api.post("/schools", form, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setIsModalOpen(false);
       fetchSchools();
     } catch (e) {
       console.error(e);
-      alert('Не вдалося створити заклад');
+      alert("Не вдалося створити заклад");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDeleteSchool = async (e: React.MouseEvent, schoolId: string, schoolName: string) => {
+  const handleDeleteSchool = async (
+    e: React.MouseEvent,
+    schoolId: string,
+    schoolName: string,
+  ) => {
     e.stopPropagation();
-    if (!window.confirm(`Видалити заклад "${schoolName}"? Це видалить також усі його події.`)) return;
+    if (
+      !window.confirm(
+        `Видалити заклад "${schoolName}"? Це видалить також усі його події.`,
+      )
+    )
+      return;
     try {
-      await axios.delete(`https://crm-57qd.onrender.com/schools/${schoolId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      await api.delete(`/schools/${schoolId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-      setSchools(schools.filter(s => s.id !== schoolId));
-    } catch (e) { console.error(e); }
+      setSchools(schools.filter((s) => s.id !== schoolId));
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   return (
@@ -143,7 +164,9 @@ export default function Schools() {
       <div className="md:hidden flex flex-col gap-3">
         {schools.map((school) => {
           const latestEvent = school.events?.[0];
-          const stage = latestEvent ? PIPELINE_STAGES.find(s => s.key === latestEvent.status) : null;
+          const stage = latestEvent
+            ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
+            : null;
           return (
             <div
               key={school.id}
@@ -152,8 +175,12 @@ export default function Schools() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-semibold text-slate-800 leading-snug">{school.name}</p>
-                  <p className="text-xs text-slate-500 mt-1">{school.type} · {school.city?.name}</p>
+                  <p className="font-semibold text-slate-800 leading-snug">
+                    {school.name}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {school.type} · {school.city?.name}
+                  </p>
                 </div>
                 <button
                   onClick={(e) => handleDeleteSchool(e, school.id, school.name)}
@@ -171,7 +198,9 @@ export default function Schools() {
                     {stage.name}
                   </span>
                 ) : (
-                  <span className="text-slate-400 text-xs italic">Етап не визначено</span>
+                  <span className="text-slate-400 text-xs italic">
+                    Етап не визначено
+                  </span>
                 )}
               </div>
             </div>
@@ -194,20 +223,26 @@ export default function Schools() {
               <th className="p-4 font-medium text-slate-600">Місто</th>
               <th className="p-4 font-medium text-slate-600">Статус</th>
               <th className="p-4 font-medium text-slate-600">Поточний етап</th>
-              <th className="p-4 font-medium text-slate-600 text-center">Дія</th>
+              <th className="p-4 font-medium text-slate-600 text-center">
+                Дія
+              </th>
             </tr>
           </thead>
           <tbody>
             {schools.map((school) => {
               const latestEvent = school.events?.[0];
-              const stage = latestEvent ? PIPELINE_STAGES.find(s => s.key === latestEvent.status) : null;
+              const stage = latestEvent
+                ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
+                : null;
               return (
                 <tr
                   key={school.id}
                   onClick={() => navigate(`/schools/${school.id}`)}
                   className="cursor-pointer border-b border-slate-50 hover:bg-slate-50/50 transition"
                 >
-                  <td className="p-4 text-slate-800 font-medium">{school.name}</td>
+                  <td className="p-4 text-slate-800 font-medium">
+                    {school.name}
+                  </td>
                   <td className="p-4 text-slate-600">{school.type}</td>
                   <td className="p-4 text-slate-600">{school.city?.name}</td>
                   <td className="p-4">
@@ -226,7 +261,9 @@ export default function Schools() {
                   </td>
                   <td className="p-4 text-center">
                     <button
-                      onClick={(e) => handleDeleteSchool(e, school.id, school.name)}
+                      onClick={(e) =>
+                        handleDeleteSchool(e, school.id, school.name)
+                      }
                       className="text-slate-400 hover:text-red-500 transition-colors p-2"
                     >
                       🗑
@@ -246,16 +283,28 @@ export default function Schools() {
             <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
             <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <h3 className="text-xl font-bold text-slate-800">Новий заклад</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-2 -mr-2">✕</button>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-2 -mr-2"
+              >
+                ✕
+              </button>
             </div>
-            <form onSubmit={handleAddSchool} className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto">
+            <form
+              onSubmit={handleAddSchool}
+              className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto"
+            >
               <div className="relative">
-                <label className="block text-sm text-slate-600 mb-1">Назва закладу</label>
+                <label className="block text-sm text-slate-600 mb-1">
+                  Назва закладу
+                </label>
                 <input
                   type="text"
                   value={form.name}
-                  onChange={e => handleNameChange(e.target.value)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  onBlur={() =>
+                    setTimeout(() => setShowSuggestions(false), 150)
+                  }
                   required
                   placeholder="Школа №1"
                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
@@ -263,19 +312,25 @@ export default function Schools() {
                 {showSuggestions && (
                   <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                     {isSearching ? (
-                      <li className="px-3 py-2 text-sm text-slate-400 italic">Пошук за збігами...</li>
+                      <li className="px-3 py-2 text-sm text-slate-400 italic">
+                        Пошук за збігами...
+                      </li>
                     ) : suggestions.length > 0 ? (
                       suggestions.map((s, i) => (
                         <li
                           key={i}
-                          onMouseDown={() => handleSelectSuggestion(s.name, s.url)}
+                          onMouseDown={() =>
+                            handleSelectSuggestion(s.name, s.url)
+                          }
                           className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer"
                         >
                           {s.name}
                         </li>
                       ))
                     ) : (
-                      <li className="px-3 py-2 text-sm text-slate-400 italic">Нічого не знайдено</li>
+                      <li className="px-3 py-2 text-sm text-slate-400 italic">
+                        Нічого не знайдено
+                      </li>
                     )}
                   </ul>
                 )}
@@ -284,7 +339,7 @@ export default function Schools() {
                 <label className="block text-sm text-slate-600 mb-1">Тип</label>
                 <select
                   value={form.type}
-                  onChange={e => setForm({ ...form, type: e.target.value })}
+                  onChange={(e) => setForm({ ...form, type: e.target.value })}
                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 >
                   <option value="Школа">Школа</option>
@@ -292,16 +347,20 @@ export default function Schools() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-slate-600 mb-1">Місто</label>
+                <label className="block text-sm text-slate-600 mb-1">
+                  Місто
+                </label>
                 <select
                   value={form.cityId}
-                  onChange={e => setForm({ ...form, cityId: e.target.value })}
+                  onChange={(e) => setForm({ ...form, cityId: e.target.value })}
                   required
                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 >
                   <option value="">— Оберіть місто —</option>
-                  {cities.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
+                  {cities.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -318,7 +377,7 @@ export default function Schools() {
                   disabled={isSubmitting}
                   className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-blue-600 text-white rounded-xl sm:rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Збереження...' : 'Створити'}
+                  {isSubmitting ? "Збереження..." : "Створити"}
                 </button>
               </div>
             </form>
@@ -328,5 +387,3 @@ export default function Schools() {
     </div>
   );
 }
-
-

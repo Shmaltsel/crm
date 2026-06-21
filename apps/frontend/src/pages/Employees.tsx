@@ -1,11 +1,7 @@
+import { useEffect, useState } from "react";
+import { api } from "../config/api";
 
-
-import { useEffect, useState } from 'react';
-import axios from 'axios';
-
-import { API_BASE_URL } from '../config/api';
-
-type Role = 'MANAGER' | 'DRIVER' | 'HOST';
+type Role = "MANAGER" | "DRIVER" | "HOST";
 
 interface City {
   id: string;
@@ -23,24 +19,31 @@ interface User {
 }
 
 const ROLE_LABELS: Record<Role, string> = {
-  MANAGER: 'Менеджер',
-  DRIVER: 'Водій',
-  HOST: 'Ведучий',
+  MANAGER: "Менеджер",
+  DRIVER: "Водій",
+  HOST: "Ведучий",
 };
 
 const ROLE_COLORS: Record<Role, string> = {
-  MANAGER: 'bg-blue-50 text-blue-700 border-blue-200',
-  DRIVER: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  HOST: 'bg-violet-50 text-violet-700 border-violet-200',
+  MANAGER: "bg-blue-50 text-blue-700 border-blue-200",
+  DRIVER: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  HOST: "bg-violet-50 text-violet-700 border-violet-200",
 };
 
 const ROLE_HEADER_COLORS: Record<Role, string> = {
-  MANAGER: 'bg-blue-600',
-  DRIVER: 'bg-emerald-600',
-  HOST: 'bg-violet-600',
+  MANAGER: "bg-blue-600",
+  DRIVER: "bg-emerald-600",
+  HOST: "bg-violet-600",
 };
 
-const EMPTY_FORM = { fullName: '', phone: '', email: '', cityId: '', role: 'MANAGER' as Role, password: '' };
+const EMPTY_FORM = {
+  fullName: "",
+  phone: "",
+  email: "",
+  cityId: "",
+  role: "MANAGER" as Role,
+  password: "",
+};
 
 export default function Employees() {
   const [users, setUsers] = useState<User[]>([]);
@@ -50,27 +53,30 @@ export default function Employees() {
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
 
   const fetchData = async () => {
     try {
       const [usersRes, citiesRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/users`, { headers }),
-        axios.get(`${API_BASE_URL}/cities`, { headers })
+        api.get("/users", { headers }),
+        api.get("/cities", { headers }),
       ]);
       setUsers(usersRes.data);
       setCities(citiesRes.data);
     } catch (e) {
-      console.error('Помилка завантаження даних:', e);
+      console.error("Помилка завантаження даних:", e);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    const load = async () => {
+      await fetchData();
+    };
+    void load();
   }, []);
 
-  const grouped = (['MANAGER', 'DRIVER', 'HOST'] as Role[]).map((role) => ({
+  const grouped = (["MANAGER", "DRIVER", "HOST"] as Role[]).map((role) => ({
     role,
     label: ROLE_LABELS[role],
     items: users.filter((u) => u.role === role),
@@ -84,13 +90,13 @@ export default function Employees() {
 
   const handleOpenEdit = (user: User) => {
     setEditingUser(user);
-    setForm({ 
+    setForm({
       fullName: user.name, // У формі ми залишили fullName для сумісності з бекендом
-      phone: user.phone || '', 
-      email: user.email, 
-      cityId: user.cityId || '', 
+      phone: user.phone || "",
+      email: user.email,
+      cityId: user.cityId || "",
       role: user.role,
-      password: '' // Пароль залишаємо порожнім при редагуванні
+      password: "", // Пароль залишаємо порожнім при редагуванні
     });
     setIsModalOpen(true);
   };
@@ -101,15 +107,15 @@ export default function Employees() {
     setIsSubmitting(true);
     try {
       if (editingUser) {
-        await axios.patch(`${API_BASE_URL}/users/${editingUser.id}`, form, { headers });
+        await api.patch(`/users/${editingUser.id}`, form, { headers });
       } else {
-        await axios.post(`${API_BASE_URL}/users`, form, { headers });
+        await api.post("/users", form, { headers });
       }
       setIsModalOpen(false);
       fetchData();
     } catch (e) {
       console.error(e);
-      alert('Помилка збереження. Перевірте, чи не дублюється email.');
+      alert("Помилка збереження. Перевірте, чи не дублюється email.");
     } finally {
       setIsSubmitting(false);
     }
@@ -118,21 +124,25 @@ export default function Employees() {
   const handleDelete = async (id: string, name: string) => {
     if (!window.confirm(`Видалити користувача "${name}"?`)) return;
     try {
-      await axios.delete(`${API_BASE_URL}/users/${id}`, { headers });
+      await api.delete(`/users/${id}`, { headers });
       setUsers(users.filter((u) => u.id !== id));
     } catch (e) {
       console.error(e);
-      alert('Помилка видалення');
+      alert("Помилка видалення");
     }
   };
 
   return (
     <div className="p-4 md:p-8 h-full">
       {/* Заголовок */}
-       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Акаунти та Працівники</h1>
-          <p className="text-sm text-slate-400 mt-1">Керування доступами, менеджерами, водіями та ведучими</p>
+          <h1 className="text-2xl font-bold text-slate-800">
+            Акаунти та Працівники
+          </h1>
+          <p className="text-sm text-slate-400 mt-1">
+            Керування доступами, менеджерами, водіями та ведучими
+          </p>
         </div>
         <button
           onClick={handleOpenAdd}
@@ -147,9 +157,13 @@ export default function Employees() {
         {grouped.map(({ role, label, items }) => (
           <div key={role}>
             <div className={`flex items-center gap-3 mb-4`}>
-              <div className={`w-1 h-6 rounded-full ${ROLE_HEADER_COLORS[role]}`}></div>
+              <div
+                className={`w-1 h-6 rounded-full ${ROLE_HEADER_COLORS[role]}`}
+              ></div>
               <h2 className="text-lg font-bold text-slate-700">{label}</h2>
-              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_COLORS[role]}`}>
+              <span
+                className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_COLORS[role]}`}
+              >
                 {items.length}
               </span>
             </div>
@@ -164,16 +178,26 @@ export default function Employees() {
                 <div className="md:hidden divide-y divide-slate-50">
                   {items.map((u) => (
                     <div key={u.id} className="p-4 flex items-center gap-3">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 ${ROLE_HEADER_COLORS[role]}`}>
+                      <div
+                        className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 ${ROLE_HEADER_COLORS[role]}`}
+                      >
                         {u.name.charAt(0)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-slate-800 truncate">{u.name}</p>
-                        <p className="text-xs text-slate-500 truncate mt-0.5">{u.email}</p>
+                        <p className="font-medium text-slate-800 truncate">
+                          {u.name}
+                        </p>
+                        <p className="text-xs text-slate-500 truncate mt-0.5">
+                          {u.email}
+                        </p>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          {u.phone && <span className="text-xs text-slate-500">{u.phone}</span>}
+                          {u.phone && (
+                            <span className="text-xs text-slate-500">
+                              {u.phone}
+                            </span>
+                          )}
                           <span className="bg-slate-100 text-slate-600 text-[11px] px-2 py-0.5 rounded-full font-medium">
-                            📍 {u.city?.name || 'Всі міста'}
+                            📍 {u.city?.name || "Всі міста"}
                           </span>
                         </div>
                       </div>
@@ -214,17 +238,25 @@ export default function Employees() {
                       >
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}>
+                            <div
+                              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
+                            >
                               {u.name.charAt(0)}
                             </div>
-                            <span className="font-medium text-slate-800">{u.name}</span>
+                            <span className="font-medium text-slate-800">
+                              {u.name}
+                            </span>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-slate-600 text-sm">{u.phone || '—'}</td>
-                        <td className="px-5 py-4 text-slate-600 text-sm font-medium">{u.email}</td>
+                        <td className="px-5 py-4 text-slate-600 text-sm">
+                          {u.phone || "—"}
+                        </td>
+                        <td className="px-5 py-4 text-slate-600 text-sm font-medium">
+                          {u.email}
+                        </td>
                         <td className="px-5 py-4">
                           <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
-                            📍 {u.city?.name || 'Всі міста'}
+                            📍 {u.city?.name || "Всі міста"}
                           </span>
                         </td>
                         <td className="px-5 py-4 text-center">
@@ -262,17 +294,29 @@ export default function Employees() {
             <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
             <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <h3 className="text-xl font-bold text-slate-800">
-                {editingUser ? 'Редагувати користувача' : 'Новий користувач'}
+                {editingUser ? "Редагувати користувача" : "Новий користувач"}
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-xl p-2 -mr-2">✕</button>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 text-xl p-2 -mr-2"
+              >
+                ✕
+              </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto">
+            <form
+              onSubmit={handleSubmit}
+              className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto"
+            >
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">ПІБ *</label>
+                <label className="block text-sm font-medium text-slate-600 mb-1">
+                  ПІБ *
+                </label>
                 <input
                   type="text"
                   value={form.fullName}
-                  onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, fullName: e.target.value })
+                  }
                   required
                   placeholder="Іваненко Іван Іванович"
                   className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
@@ -280,11 +324,15 @@ export default function Employees() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Пошта (Логін) *</label>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">
+                    Пошта (Логін) *
+                  </label>
                   <input
                     type="email"
                     value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, email: e.target.value })
+                    }
                     required
                     placeholder="ivan@example.com"
                     className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
@@ -292,12 +340,14 @@ export default function Employees() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-1">
-                    Пароль {editingUser ? '(необов\'язково)' : '*'}
+                    Пароль {editingUser ? "(необов'язково)" : "*"}
                   </label>
                   <input
                     type="password"
                     value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, password: e.target.value })
+                    }
                     required={!editingUser} // Обов'язковий тільки при створенні
                     placeholder="••••••••"
                     className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
@@ -306,10 +356,14 @@ export default function Employees() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Роль *</label>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">
+                    Роль *
+                  </label>
                   <select
                     value={form.role}
-                    onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
+                    onChange={(e) =>
+                      setForm({ ...form, role: e.target.value as Role })
+                    }
                     className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 bg-white"
                   >
                     <option value="MANAGER">Менеджер</option>
@@ -318,21 +372,29 @@ export default function Employees() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Місто</label>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">
+                    Місто
+                  </label>
                   <select
                     value={form.cityId}
-                    onChange={(e) => setForm({ ...form, cityId: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, cityId: e.target.value })
+                    }
                     className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 bg-white"
                   >
                     <option value="">— Без прив'язки до міста —</option>
                     {cities.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
                     ))}
                   </select>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">Телефон</label>
+                <label className="block text-sm font-medium text-slate-600 mb-1">
+                  Телефон
+                </label>
                 <input
                   type="text"
                   value={form.phone}
@@ -354,7 +416,11 @@ export default function Employees() {
                   disabled={isSubmitting}
                   className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-blue-600 text-white rounded-xl sm:rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
-                  {isSubmitting ? 'Збереження...' : editingUser ? 'Зберегти зміни' : 'Створити акаунт'}
+                  {isSubmitting
+                    ? "Збереження..."
+                    : editingUser
+                      ? "Зберегти зміни"
+                      : "Створити акаунт"}
                 </button>
               </div>
             </form>
@@ -364,4 +430,3 @@ export default function Employees() {
     </div>
   );
 }
-
