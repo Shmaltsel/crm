@@ -12,6 +12,7 @@ import EventReport from "./pages/EventReport";
 import Finance from "./pages/Finance";
 import { CityProvider } from "./context/CityContext";
 import Dashboard from "./pages/Dashboard";
+import CalendarView from './pages/CalendarView';
 
 export default function App() {
   return (

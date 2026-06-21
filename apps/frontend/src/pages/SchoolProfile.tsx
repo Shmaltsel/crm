@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api } from "../config/api";
+import { api } from '../config/api'
 
 // Імпортуємо наші UI модулі
 import SchoolInfoCard from "../components/school-profile/SchoolInfoCard";
@@ -52,6 +52,9 @@ export default function SchoolProfile() {
   });
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  
+  // Стан для анімації зникнення події
+  const [exitingEventId, setExitingEventId] = useState<string | null>(null);
 
   const [isEditMenuOpen, setIsEditMenuOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -122,14 +125,13 @@ export default function SchoolProfile() {
     fetchData();
   }, [id]);
 
-  const currentEvent =
-    events.find((ev) => ev.id === selectedEventId) || events[0];
-
+  const currentEvent = events.find((ev) => ev.id === selectedEventId) || events[0];
+  
   const currentStageIndex =
     PIPELINE_STAGES.findIndex((s) => s.key === currentEvent?.status) !== -1
       ? PIPELINE_STAGES.findIndex((s) => s.key === currentEvent?.status)
       : 0;
-
+      
   const creatorName =
     currentEvent?.history?.length > 0
       ? currentEvent.history[currentEvent.history.length - 1].userName
@@ -137,18 +139,16 @@ export default function SchoolProfile() {
 
   const handlePipelineClick = (stepId: number) => {
     if (!currentEvent) return;
+
+    const activeStage = PIPELINE_STAGES[currentStageIndex];
     const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-    const isCurrentStage = stepId === PIPELINE_STAGES[currentStageIndex].id;
+
+    const isCurrentStage = stepId === activeStage?.id;
     const isNextStage = nextStage?.id === stepId;
 
     if (!isCurrentStage && !isNextStage) return;
 
-    // Якщо клікнули на поточний активний крок — просуваємо до НАСТУПНОГО
-    const targetStepId = isCurrentStage && nextStage ? nextStage.id : stepId;
-
-    // Якщо цільовий крок — REPORT, відкриваємо форму звіту
-    const targetStage = PIPELINE_STAGES.find((s) => s.id === targetStepId);
-    if (targetStage?.key === "REPORT") {
+    if (nextStage?.key === "REPORT") {
       setIsReportModalOpen(true);
       return;
     }
@@ -156,7 +156,7 @@ export default function SchoolProfile() {
     setCommentModal({
       isOpen: true,
       mode: "pipeline",
-      stepId: targetStepId, // ← завжди передаємо НАСТУПНИЙ крок
+      stepId: nextStage?.id || stepId,
       historyId: null,
       text: "",
     });
@@ -178,40 +178,35 @@ export default function SchoolProfile() {
       const headers = {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       };
-      if (commentModal.mode === "pipeline" && commentModal.stepId) {
-        // ВИПРАВЛЕНО: Беремо цільовий статус саме з того етапу, який підтверджуємо
-        const targetStage = PIPELINE_STAGES.find(
-          (s) => s.id === commentModal.stepId,
-        );
-        if (!targetStage) return;
+      if (commentModal.mode === "pipeline") {
+        const activeStage = PIPELINE_STAGES[currentStageIndex];
+        const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
 
-        const isAdvancing =
-          targetStage.id > PIPELINE_STAGES[currentStageIndex].id;
-
-        const actionName = isAdvancing
-          ? `Етап пройдено: ${PIPELINE_STAGES[currentStageIndex].name}`
-          : `Коментар до етапу: ${targetStage.name}`;
+        if (!nextStage) return;
 
         const res = await api.patch(
           `/events/${currentEvent.id}/status`,
           {
-            status: targetStage.key,
-            actionName,
+            status: nextStage.key,
+            actionName: `Етап пройдено: ${activeStage.name}`,
             comment: commentModal.text,
           },
           { headers },
         );
 
-        if (targetStage.key === "RE_SALE") {
-          // Подія повністю завершена — прибираємо зі списку активних
-          setEvents((prev) => prev.filter((ev) => ev.id !== currentEvent.id));
-          setSelectedEventId(null);
+        if (nextStage.key === "RE_SALE") {
+          // Запускаємо анімацію зникнення
+          setExitingEventId(currentEvent.id);
+          
+          // Чекаємо 500мс (поки програється анімація), а потім видаляємо з UI
+          setTimeout(() => {
+            setEvents((prev) => prev.filter((ev) => ev.id !== currentEvent.id));
+            setSelectedEventId(null);
+            setExitingEventId(null);
+          }, 500);
         } else {
-          // Оновлюємо тільки змінені поля, зберігаючи вкладені об'єкти
           setEvents((prev) =>
-            prev.map((ev) =>
-              ev.id === currentEvent.id ? { ...ev, ...res.data } : ev,
-            ),
+            prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
           );
         }
       } else if (commentModal.mode === "history" && commentModal.historyId) {
@@ -319,14 +314,11 @@ export default function SchoolProfile() {
         reportData,
         { headers },
       );
-
+      
       setIsReportModalOpen(false);
-
-      // ВИПРАВЛЕНО: Миттєво підтягуємо оновлений статус "Звіт" без перезавантаження
+      
       setEvents((prev) =>
-        prev.map((ev) =>
-          ev.id === currentEvent.id ? { ...ev, ...res.data } : ev,
-        ),
+        prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
       );
     } catch (e) {
       console.error("Помилка при збереженні звіту", e);
@@ -350,9 +342,7 @@ export default function SchoolProfile() {
       await handleUpdatePreparation("assignCrew", "Виконано");
 
       setEvents((prev) =>
-        prev.map((ev) =>
-          ev.id === currentEvent.id ? { ...ev, ...res.data } : ev,
-        ),
+        prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
       );
       setIsCrewModalOpen(false);
     } catch (e) {
@@ -445,7 +435,14 @@ export default function SchoolProfile() {
           />
         </div>
 
-        <div className="flex-1 flex flex-col gap-6">
+        {/* ОСЬ ТУТ ДОДАНО КЛАСИ ДЛЯ АНІМАЦІЇ */}
+        <div 
+          className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${
+            exitingEventId === currentEvent?.id 
+              ? "opacity-0 scale-95 -translate-y-4 pointer-events-none" 
+              : "opacity-100 scale-100 translate-y-0"
+          }`}
+        >
           <Pipeline
             currentStageIndex={currentStageIndex}
             currentEvent={currentEvent}
@@ -464,11 +461,7 @@ export default function SchoolProfile() {
             </div>
           )}
 
-          <EventDetails
-            currentEvent={currentEvent}
-            schoolName={schoolData?.name}
-            cityId={schoolData?.cityId}
-          />
+          <EventDetails currentEvent={currentEvent} />
           <EventsTable
             events={events}
             selectedEventId={selectedEventId}
