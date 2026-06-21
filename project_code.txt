@@ -3134,6 +3134,7 @@ import EventReport from "./pages/EventReport";
 import Finance from "./pages/Finance";
 import { CityProvider } from "./context/CityContext";
 import Dashboard from "./pages/Dashboard";
+import CalendarView from './pages/CalendarView';
 
 export default function App() {
   return (
@@ -3720,7 +3721,13 @@ export default function Layout() {
           >
             <span className="mr-3">💰</span> Фінанси
           </Link>
-
+          <Link
+            to="/calendar"
+            onClick={handleLinkClick}
+            className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/calendar") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+          >
+            <span className="mr-3">📆</span> Календар
+          </Link>
           {isSuperAdmin && (
             <Link
               to="/employees"
@@ -5018,6 +5025,212 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
+
+
+--- FILE: apps\frontend\src\pages\CalendarView.tsx ---
+
+import { useState, useEffect } from "react";
+import { api } from "../config/api";
+import { useSelectedCity } from "../context/CityContext";
+import { useNavigate } from "react-router-dom";
+
+interface CalendarEvent {
+  id: string;
+  project: string;
+  date: string;
+  time?: string;
+  status: string;
+  school?: { id: string; name: string };
+  city?: { id: string; name: string };
+}
+
+export default function CalendarView() {
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const { selectedCity } = useSelectedCity();
+  const navigate = useNavigate();
+
+  // Логіка ролей
+  const [userRole, setUserRole] = useState<string>("GUEST");
+  const [filterCityId, setFilterCityId] = useState<string>("ALL");
+
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem("token");
+      if (token) {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        setUserRole(payload.role);
+        // Якщо це менеджер, відразу фіксуємо його місто за замовчуванням
+        if (payload.role === "MANAGER" && selectedCity?.id) {
+          setFilterCityId(selectedCity.id);
+        }
+      }
+    } catch (e) {
+      console.error("Помилка парсингу токена", e);
+    }
+  }, [selectedCity]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const headers = { Authorization: `Bearer ${localStorage.getItem("token")}` };
+        // Бекенд вже сам фільтрує для водіїв/ведучих (повертає тільки їхні події)
+        const [eventsRes, citiesRes] = await Promise.all([
+          api.get("/events", { headers }),
+          api.get("/cities", { headers })
+        ]);
+        setEvents(eventsRes.data);
+        setCities(citiesRes.data);
+      } catch (error) {
+        console.error("Помилка завантаження календаря", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // Навігація по місяцях
+  const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+  const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+  const today = () => setCurrentDate(new Date());
+
+  // Генерація сітки
+  const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year: number, month: number) => {
+    let day = new Date(year, month, 1).getDay();
+    return day === 0 ? 6 : day - 1; // Робимо понеділок першим днем (0)
+  };
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const daysInMonth = getDaysInMonth(year, month);
+  const firstDay = getFirstDayOfMonth(year, month);
+
+  const days = [];
+  for (let i = 0; i < firstDay; i++) days.push(null);
+  for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
+
+  // Фільтрація подій
+  const filteredEvents = events.filter((ev) => {
+    // Не показуємо повністю закриті події
+    if (ev.status === "RE_SALE") return false;
+    
+    // Якщо вибрано конкретне місто (і це не ВСІ)
+    if (filterCityId !== "ALL" && ev.city?.id !== filterCityId) {
+      return false;
+    }
+    return true;
+  });
+
+  const getEventsForDay = (date: Date) => {
+    return filteredEvents.filter(ev => {
+      const evDate = new Date(ev.date);
+      return evDate.getFullYear() === date.getFullYear() &&
+             evDate.getMonth() === date.getMonth() &&
+             evDate.getDate() === date.getDate();
+    });
+  };
+
+  const monthNames = ["Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень", "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"];
+
+  const getStatusColor = (status: string) => {
+    switch(status) {
+      case "BASE": case "FIRST_CONTACT": return "bg-slate-100 text-slate-700 border-slate-200";
+      case "IN_PROGRESS": case "PREPARATION": return "bg-blue-50 text-blue-700 border-blue-200";
+      case "DONE": case "REPORT": return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      default: return "bg-purple-50 text-purple-700 border-purple-200";
+    }
+  };
+
+  if (isLoading) return <div className="p-8 text-slate-500">Завантаження календаря...</div>;
+
+  return (
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-800">Календар подій</h1>
+          <p className="text-slate-500 mt-1">Графік запланованих та активних заходів</p>
+        </div>
+
+        {/* Фільтр міст (тільки для SUPERADMIN) */}
+        {userRole === "SUPERADMIN" && (
+          <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 flex items-center gap-3">
+            <span className="text-sm text-slate-500 font-medium">Місто:</span>
+            <select
+              value={filterCityId}
+              onChange={(e) => setFilterCityId(e.target.value)}
+              className="text-sm font-semibold text-slate-800 outline-none cursor-pointer bg-transparent"
+            >
+              <option value="ALL">🌍 Всі міста</option>
+              {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        {/* Шапка календаря */}
+        <div className="flex items-center justify-between p-6 border-b border-slate-100">
+          <h2 className="text-2xl font-bold text-slate-800 capitalize">
+            {monthNames[month]} <span className="text-slate-400 font-medium">{year}</span>
+          </h2>
+          <div className="flex gap-2">
+            <button onClick={prevMonth} className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors">◀</button>
+            <button onClick={today} className="px-4 py-2.5 rounded-xl hover:bg-slate-100 text-slate-700 font-medium transition-colors">Сьогодні</button>
+            <button onClick={nextMonth} className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors">▶</button>
+          </div>
+        </div>
+
+        {/* Сітка */}
+        <div className="grid grid-cols-7 gap-px bg-slate-100">
+          {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'].map(dayName => (
+            <div key={dayName} className="bg-slate-50/80 py-3 text-center text-xs font-bold tracking-widest text-slate-400 uppercase">
+              {dayName}
+            </div>
+          ))}
+          
+          {days.map((day, idx) => {
+            const isToday = day && day.toDateString() === new Date().toDateString();
+            const dayEvents = day ? getEventsForDay(day) : [];
+
+            return (
+              <div 
+                key={idx} 
+                className={`min-h-[140px] bg-white p-2 transition-colors ${day ? 'hover:bg-blue-50/30 group' : ''}`}
+              >
+                {day && (
+                  <>
+                    <div className="flex justify-end mb-2">
+                      <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-semibold ${isToday ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 group-hover:text-blue-600'}`}>
+                        {day.getDate()}
+                      </span>
+                    </div>
+                    <div className="space-y-1.5 h-[100px] overflow-y-auto no-scrollbar pr-1">
+                      {dayEvents.map(ev => (
+                        <div 
+                          key={ev.id}
+                          onClick={() => ev.school && navigate(`/schools/${ev.school.id}`)}
+                          className={`text-xs p-2 rounded-lg border cursor-pointer hover:shadow-sm transition-all ${getStatusColor(ev.status)}`}
+                        >
+                          <div className="font-bold truncate">{ev.time ? `${ev.time} ` : ''}{ev.project}</div>
+                          <div className="truncate opacity-80 mt-0.5">{ev.school?.name}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 
 --- FILE: apps\frontend\src\pages\Cities.tsx ---
@@ -7546,7 +7759,7 @@ export default function Login() {
 
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api } from "../config/api";
+import { api } from '../config/api'
 
 // Імпортуємо наші UI модулі
 import SchoolInfoCard from "../components/school-profile/SchoolInfoCard";
@@ -7598,6 +7811,9 @@ export default function SchoolProfile() {
   });
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  
+  // Стан для анімації зникнення події
+  const [exitingEventId, setExitingEventId] = useState<string | null>(null);
 
   const [isEditMenuOpen, setIsEditMenuOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -7668,14 +7884,13 @@ export default function SchoolProfile() {
     fetchData();
   }, [id]);
 
-  const currentEvent =
-    events.find((ev) => ev.id === selectedEventId) || events[0];
-
+  const currentEvent = events.find((ev) => ev.id === selectedEventId) || events[0];
+  
   const currentStageIndex =
     PIPELINE_STAGES.findIndex((s) => s.key === currentEvent?.status) !== -1
       ? PIPELINE_STAGES.findIndex((s) => s.key === currentEvent?.status)
       : 0;
-
+      
   const creatorName =
     currentEvent?.history?.length > 0
       ? currentEvent.history[currentEvent.history.length - 1].userName
@@ -7683,18 +7898,16 @@ export default function SchoolProfile() {
 
   const handlePipelineClick = (stepId: number) => {
     if (!currentEvent) return;
+
+    const activeStage = PIPELINE_STAGES[currentStageIndex];
     const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-    const isCurrentStage = stepId === PIPELINE_STAGES[currentStageIndex].id;
+
+    const isCurrentStage = stepId === activeStage?.id;
     const isNextStage = nextStage?.id === stepId;
 
     if (!isCurrentStage && !isNextStage) return;
 
-    // Якщо клікнули на поточний активний крок — просуваємо до НАСТУПНОГО
-    const targetStepId = isCurrentStage && nextStage ? nextStage.id : stepId;
-
-    // Якщо цільовий крок — REPORT, відкриваємо форму звіту
-    const targetStage = PIPELINE_STAGES.find((s) => s.id === targetStepId);
-    if (targetStage?.key === "REPORT") {
+    if (nextStage?.key === "REPORT") {
       setIsReportModalOpen(true);
       return;
     }
@@ -7702,7 +7915,7 @@ export default function SchoolProfile() {
     setCommentModal({
       isOpen: true,
       mode: "pipeline",
-      stepId: targetStepId, // ← завжди передаємо НАСТУПНИЙ крок
+      stepId: nextStage?.id || stepId,
       historyId: null,
       text: "",
     });
@@ -7724,40 +7937,35 @@ export default function SchoolProfile() {
       const headers = {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       };
-      if (commentModal.mode === "pipeline" && commentModal.stepId) {
-        // ВИПРАВЛЕНО: Беремо цільовий статус саме з того етапу, який підтверджуємо
-        const targetStage = PIPELINE_STAGES.find(
-          (s) => s.id === commentModal.stepId,
-        );
-        if (!targetStage) return;
+      if (commentModal.mode === "pipeline") {
+        const activeStage = PIPELINE_STAGES[currentStageIndex];
+        const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
 
-        const isAdvancing =
-          targetStage.id > PIPELINE_STAGES[currentStageIndex].id;
-
-        const actionName = isAdvancing
-          ? `Етап пройдено: ${PIPELINE_STAGES[currentStageIndex].name}`
-          : `Коментар до етапу: ${targetStage.name}`;
+        if (!nextStage) return;
 
         const res = await api.patch(
           `/events/${currentEvent.id}/status`,
           {
-            status: targetStage.key,
-            actionName,
+            status: nextStage.key,
+            actionName: `Етап пройдено: ${activeStage.name}`,
             comment: commentModal.text,
           },
           { headers },
         );
 
-        if (targetStage.key === "RE_SALE") {
-          // Подія повністю завершена — прибираємо зі списку активних
-          setEvents((prev) => prev.filter((ev) => ev.id !== currentEvent.id));
-          setSelectedEventId(null);
+        if (nextStage.key === "RE_SALE") {
+          // Запускаємо анімацію зникнення
+          setExitingEventId(currentEvent.id);
+          
+          // Чекаємо 500мс (поки програється анімація), а потім видаляємо з UI
+          setTimeout(() => {
+            setEvents((prev) => prev.filter((ev) => ev.id !== currentEvent.id));
+            setSelectedEventId(null);
+            setExitingEventId(null);
+          }, 500);
         } else {
-          // Оновлюємо тільки змінені поля, зберігаючи вкладені об'єкти
           setEvents((prev) =>
-            prev.map((ev) =>
-              ev.id === currentEvent.id ? { ...ev, ...res.data } : ev,
-            ),
+            prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
           );
         }
       } else if (commentModal.mode === "history" && commentModal.historyId) {
@@ -7865,14 +8073,11 @@ export default function SchoolProfile() {
         reportData,
         { headers },
       );
-
+      
       setIsReportModalOpen(false);
-
-      // ВИПРАВЛЕНО: Миттєво підтягуємо оновлений статус "Звіт" без перезавантаження
+      
       setEvents((prev) =>
-        prev.map((ev) =>
-          ev.id === currentEvent.id ? { ...ev, ...res.data } : ev,
-        ),
+        prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
       );
     } catch (e) {
       console.error("Помилка при збереженні звіту", e);
@@ -7896,9 +8101,7 @@ export default function SchoolProfile() {
       await handleUpdatePreparation("assignCrew", "Виконано");
 
       setEvents((prev) =>
-        prev.map((ev) =>
-          ev.id === currentEvent.id ? { ...ev, ...res.data } : ev,
-        ),
+        prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
       );
       setIsCrewModalOpen(false);
     } catch (e) {
@@ -7991,7 +8194,14 @@ export default function SchoolProfile() {
           />
         </div>
 
-        <div className="flex-1 flex flex-col gap-6">
+        {/* ОСЬ ТУТ ДОДАНО КЛАСИ ДЛЯ АНІМАЦІЇ */}
+        <div 
+          className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${
+            exitingEventId === currentEvent?.id 
+              ? "opacity-0 scale-95 -translate-y-4 pointer-events-none" 
+              : "opacity-100 scale-100 translate-y-0"
+          }`}
+        >
           <Pipeline
             currentStageIndex={currentStageIndex}
             currentEvent={currentEvent}
@@ -8010,11 +8220,7 @@ export default function SchoolProfile() {
             </div>
           )}
 
-          <EventDetails
-            currentEvent={currentEvent}
-            schoolName={schoolData?.name}
-            cityId={schoolData?.cityId}
-          />
+          <EventDetails currentEvent={currentEvent} />
           <EventsTable
             events={events}
             selectedEventId={selectedEventId}
@@ -8069,7 +8275,6 @@ export default function SchoolProfile() {
     </div>
   );
 }
-
 
 --- FILE: apps\frontend\src\pages\Schools.tsx ---
 

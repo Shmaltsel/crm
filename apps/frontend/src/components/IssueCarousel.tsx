@@ -18,12 +18,15 @@ function getNextStatus(current: string) {
 export default function IssueCarousel() {
   const { selectedCity } = useSelectedCity();
   const [issues, setIssues] = useState<any[]>([]);
+  // Стан для анімації зникнення картки
+  const [exitingIssueId, setExitingIssueId] = useState<string | null>(null);
 
   const fetchIssues = async () => {
     if (!selectedCity?.id) return;
     try {
       const res = await api.get(`/issues?cityId=${selectedCity.id}`);
-      setIssues(res.data);
+      // Одразу відфільтровуємо виконані, щоб вони не завантажувались при оновленні сторінки
+      setIssues(res.data.filter((i: any) => i.status !== 'Виконано'));
     } catch (e) {
       console.error(e);
     }
@@ -35,9 +38,23 @@ export default function IssueCarousel() {
 
   const handleStatusToggle = async (issue: any) => {
     const nextStatus = getNextStatus(issue.status);
+
     try {
       await api.patch(`/issues/${issue.id}/status`, { status: nextStatus });
-      setIssues(prev => prev.map(i => i.id === issue.id ? { ...i, status: nextStatus } : i));
+      
+      if (nextStatus === 'Виконано') {
+        // Якщо статус "Виконано" — запускаємо анімацію зникнення
+        setExitingIssueId(issue.id);
+        
+        // Чекаємо 500мс (поки програється CSS анімація) і повністю видаляємо з масиву
+        setTimeout(() => {
+          setIssues(prev => prev.filter(i => i.id !== issue.id));
+          setExitingIssueId(null);
+        }, 500);
+      } else {
+        // Якщо інший статус — просто оновлюємо колір кнопки
+        setIssues(prev => prev.map(i => i.id === issue.id ? { ...i, status: nextStatus } : i));
+      }
     } catch (e) {
       console.error(e);
     }
@@ -53,29 +70,38 @@ export default function IssueCarousel() {
       </h2>
 
       <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1">
-        {issues.map(issue => (
-          <div
-            key={issue.id}
-            className="bg-white rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-red-500 p-5 min-w-[280px] max-w-[320px] flex flex-col gap-3 shrink-0"
-          >
-            <div>
-              <p className="text-xs text-slate-400 mb-1">{new Date(issue.createdAt).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-              <p className="font-bold text-slate-800 text-sm">{issue.schoolName}</p>
-              <p className="text-xs text-slate-500">{issue.eventName}</p>
-            </div>
-
-            <p className="text-sm text-slate-700 bg-slate-50 rounded-xl p-3 italic leading-relaxed">
-              "{issue.message}"
-            </p>
-
-            <button
-              onClick={() => handleStatusToggle(issue)}
-              className={`text-xs font-bold px-3 py-2 rounded-lg border transition-colors text-left ${STATUS_STYLES[issue.status] || STATUS_STYLES['Планується']}`}
+        {issues.map(issue => {
+          // Перевіряємо, чи саме ця картка зараз закривається
+          const isExiting = exitingIssueId === issue.id;
+          
+          return (
+            <div
+              key={issue.id}
+              className={`bg-white rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-red-500 flex flex-col gap-3 transition-all duration-500 ease-in-out transform ${
+                isExiting 
+                  ? 'opacity-0 scale-90 -translate-y-4 w-0 min-w-0 p-0 m-0 border-0 overflow-hidden pointer-events-none' 
+                  : 'min-w-[280px] max-w-[320px] p-5 shrink-0 opacity-100 scale-100 translate-y-0'
+              }`}
             >
-              ● {issue.status} → натисни щоб змінити
-            </button>
-          </div>
-        ))}
+              <div>
+                <p className="text-xs text-slate-400 mb-1">{new Date(issue.createdAt).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                <p className="font-bold text-slate-800 text-sm">{issue.schoolName}</p>
+                <p className="text-xs text-slate-500">{issue.eventName}</p>
+              </div>
+
+              <p className="text-sm text-slate-700 bg-slate-50 rounded-xl p-3 italic leading-relaxed">
+                "{issue.message}"
+              </p>
+
+              <button
+                onClick={() => handleStatusToggle(issue)}
+                className={`text-xs font-bold px-3 py-2 rounded-lg border transition-colors text-left ${STATUS_STYLES[issue.status] || STATUS_STYLES['Планується']}`}
+              >
+                ● {issue.status} → натисни щоб змінити
+              </button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

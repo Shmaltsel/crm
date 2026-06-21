@@ -32,8 +32,12 @@ export default function App() {
             <Route path="/employees" element={<Employees />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/finance" element={<Finance />} />
+            
+            {/* ДОДАЄМО КАЛЕНДАР САМЕ ТУТ! Тоді він буде всередині Layout */}
+            <Route path="/calendar" element={<CalendarView />} />
           </Route>
 
+          {/* Якщо маршрут не знайдено - перекидаємо на логін */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
