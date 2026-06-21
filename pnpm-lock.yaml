@@ -44,6 +44,9 @@ importers:
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
+      node-telegram-bot-api:
+        specifier: ^1.1.0
+        version: 1.1.0
       passport:
         specifier: ^0.7.0
         version: 0.7.0
@@ -3217,6 +3220,10 @@ packages:
 
   node-releases@2.0.47:
     resolution: {integrity: sha512-Uzmd6LXpouKo8EUK68IjH4+E01w/hXyV3R3g/geCJo+rXLNfh1xucB+LOzYEOQPSiUK3h/xZf0cQGcSsmyL2Og==}
+    engines: {node: '>=18'}
+
+  node-telegram-bot-api@1.1.0:
+    resolution: {integrity: sha512-kNBTBlYVP+OaBb8ffn3zsIC4CTJqpnRniNS9VQRURQrBwYSJE1Ip7yHM/JKw36qUcQtu0bxbXAs2yMNk8HXpdA==}
     engines: {node: '>=18'}
 
   normalize-path@3.0.0:
@@ -7705,6 +7712,8 @@ snapshots:
   node-int64@0.4.0: {}
 
   node-releases@2.0.47: {}
+
+  node-telegram-bot-api@1.1.0: {}
 
   normalize-path@3.0.0: {}
 
