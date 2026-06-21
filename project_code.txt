@@ -1906,12 +1906,16 @@ export class SchoolsService {
     type: string;
     cityId: string;
     sourceUrl?: string;
+    director?: string;
+    phone?: string;
+    address?: string;
+    childrenCount?: number;
   }) {
     const { sourceUrl, ...schoolData } = data;
 
     // Використовуємо this.prisma замість prisma
     const newSchool = await this.prisma.school.create({
-      data: schoolData, 
+      data: schoolData,
     });
 
     // Запускаємо парсинг у фоні
@@ -1923,16 +1927,35 @@ export class SchoolsService {
           return;
         }
 
+        // ВАЖЛИВО: оновлюємо лише ті поля, які користувач НЕ заповнив сам
+        // (наприклад, директора, обраного через автодоповнення з бази контактів).
+        // Раніше парсер безумовно перезаписував director/address/childrenCount,
+        // навіть якщо вони вже були коректно вказані вручну.
+        const updateData: Record<string, unknown> = {};
+
+        if (!schoolData.address && parsed.address) {
+          updateData.address = parsed.address;
+        }
+        if (!schoolData.director && parsed.director) {
+          updateData.director = parsed.director;
+        }
+        if (!schoolData.childrenCount && parsed.childrenCount) {
+          updateData.childrenCount = parsed.childrenCount;
+        }
+
+        if (Object.keys(updateData).length === 0) {
+          console.log(
+            `Дані школи "${data.name}" вже заповнені користувачем — пропускаємо оновлення з парсингу`,
+          );
+          return;
+        }
+
         // Використовуємо this.prisma замість prisma
         await this.prisma.school.update({
           where: {
             id: newSchool.id,
           },
-          data: {
-            address: parsed.address,
-            director: parsed.director,
-            childrenCount: parsed.childrenCount,
-          },
+          data: updateData,
         });
 
         console.log(`Дані школи "${data.name}" успішно оновлені`);
@@ -2007,23 +2030,66 @@ export class SchoolsService {
   }
 
   async searchContacts(q: string, city?: string) {
-    if (!q || q.length < 1) return [];
+    if (!q || q.trim().length < 1) return [];
 
-    const normalized = q.toLowerCase().trim();
+    const cityName = city || 'Львів';
+    const normalizedQuery = q.toLowerCase().trim();
 
-    return this.prisma.schoolContact.findMany({
-      where: {
-        city: city || 'Львів',
-        OR: [
-          { schoolNumber: { contains: normalized, mode: 'insensitive' } },
-          { contactName: { contains: normalized, mode: 'insensitive' } },
-        ],
-      },
+    // Дістаємо всі контакти цього міста одним запитом — їх мало, це дешево
+    const allContacts = await this.prisma.schoolContact.findMany({
+      where: { city: cityName },
       orderBy: [{ schoolNumber: 'asc' }, { role: 'asc' }],
-      take: 10,
     });
+
+    // Слова, які не несуть ідентифікаційного сенсу — відкидаємо їх із токенів
+    const STOP_WORDS = new Set([
+      'школа',
+      'школи',
+      'садочок',
+      'садок',
+      'дитсадок',
+      'днз',
+      'ліцей',
+      'гімназія',
+      'зош',
+      'центр',
+      'розвитку',
+      'комунальний',
+      'заклад',
+      'освіти',
+      'імені',
+      'ім',
+    ]);
+
+    const tokens = normalizedQuery
+      .replace(/№/g, ' ')
+      .split(/\s+/)
+      .map((t) => t.replace(/[^\wа-яіїєґ0-9]/gi, ''))
+      .filter((t) => t.length >= 2 && !STOP_WORDS.has(t));
+
+    const matches = allContacts.filter((c) => {
+      const num = c.schoolNumber.toLowerCase();
+
+      // 1. Введений текст містить ідентифікатор школи цілком
+      if (normalizedQuery.includes(num)) return true;
+
+      // 2. Ідентифікатор школи містить введений текст
+      if (num.includes(normalizedQuery)) return true;
+
+      // 3. Будь-який токен з введеного тексту збігається з ідентифікатором
+      if (tokens.some((t) => num === t || num.includes(t) || t.includes(num)))
+        return true;
+
+      // 4. Пошук за ім'ям контактної особи
+      if (c.contactName.toLowerCase().includes(normalizedQuery)) return true;
+
+      return false;
+    });
+
+    return matches.slice(0, 10);
   }
 }
+
 
 --- FILE: apps\backend\src\telegram\telegram.module.ts ---
 
@@ -3786,8 +3852,6 @@ export default function CrewModal({ isOpen, onClose, city, employees, onSave }: 
 
 --- FILE: apps\frontend\src\components\school-profile\modals\EditSchoolModal.tsx ---
 
-
-
 import React from 'react';
 
 interface EditSchoolModalProps {
@@ -3828,7 +3892,7 @@ export default function EditSchoolModal({ isOpen, onClose, editForm, setEditForm
               <input type="text" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
-              <label className="block text-sm mb-1">Директор</label>
+              <label className="block text-sm mb-1">Контакт</label>
               <input type="text" value={editForm.director} onChange={e => setEditForm({...editForm, director: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
@@ -3854,8 +3918,6 @@ export default function EditSchoolModal({ isOpen, onClose, editForm, setEditForm
     </div>
   );
 }
-
-
 
 
 --- FILE: apps\frontend\src\components\school-profile\modals\EventModal.tsx ---
@@ -4302,7 +4364,7 @@ export default function SchoolInfoCard({ schoolData }: { schoolData: any }) {
         <li className="flex gap-3"><span className="text-slate-400">🏛</span> <div><span className="text-slate-500">Тип:</span> <span className="font-medium">{schoolData.type || '—'}</span></div></li>
         <li className="flex gap-3"><span className="text-slate-400">📍</span> <div><span className="text-slate-500">Місто:</span> <span className="font-medium">{schoolData.city || '—'}</span></div></li>
         <li className="flex gap-3"><span className="text-slate-400">🗺</span> <div><span className="text-slate-500">Адреса:</span> <span className="font-medium"><AddressLink address={schoolData.address} /></span></div></li>
-        <li className="flex gap-3"><span className="text-slate-400">👤</span> <div><span className="text-slate-500">Директор:</span> <span className="font-medium">{schoolData.director || '—'}</span></div></li>
+        <li className="flex gap-3"><span className="text-slate-400">👤</span> <div><span className="text-slate-500">Контакт:</span> <span className="font-medium">{schoolData.director || '—'}</span></div></li>
         <li className="flex gap-3"><span className="text-slate-400">📞</span> <div><span className="text-slate-500">Телефон:</span> <span className="font-medium"><PhoneLink phone={schoolData.phone} /></span></div></li>
         <li className="flex gap-3"><span className="text-slate-400">👥</span> <div><span className="text-slate-500">Дітей:</span> <span className="font-medium">{schoolData.childrenCount || 0}</span></div></li>
       </ul>
@@ -6933,7 +6995,7 @@ export default function Schools() {
   const [cities, setCities] = useState<City[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Виправлено: чиста ініціалізація стану форми
   const [form, setForm] = useState({
     name: "",
@@ -6943,10 +7005,10 @@ export default function Schools() {
     director: "",
     phone: "",
   });
-  
+
   // Виправлено: чиста ініціалізація стану контактів
   const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
-  
+
   const [suggestions, setSuggestions] = useState<{ name: string; url: string }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -6982,16 +7044,48 @@ export default function Schools() {
   }, []);
 
   const handleOpenModal = () => {
-    setForm({ 
-      name: "", 
-      type: "Школа", 
-      cityId: cities[0]?.id ?? "", 
-      sourceUrl: "", 
-      director: "", 
-      phone: "" 
+    setForm({
+      name: "",
+      type: "Школа",
+      cityId: cities[0]?.id ?? "",
+      sourceUrl: "",
+      director: "",
+      phone: "",
     });
     setMatchedContacts([]);
     setIsModalOpen(true);
+  };
+
+  // Окрема функція пошуку контактів у власній базі (SchoolContact).
+  // Раніше викликалась лише після кліку на підказку із зовнішнього сайту lv.isuo.org,
+  // через що автодоповнення директора/телефону "з бази" не працювало, якщо
+  // користувач просто вписував назву вручну або зовнішній парсер нічого не знаходив.
+  const fetchContacts = async (schoolName: string) => {
+    if (!schoolName || schoolName.trim().length < 1) {
+      setMatchedContacts([]);
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      const res = await api.get(
+        `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=Львів`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      setMatchedContacts(res.data);
+      if (res.data.length > 0) {
+        const director =
+          res.data.find((c: any) => c.role === "Директор") || res.data[0];
+        setForm((f) => ({
+          ...f,
+          director: director.contactName,
+          phone: director.phone,
+        }));
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleNameChange = (value: string) => {
@@ -7002,6 +7096,7 @@ export default function Schools() {
     if (value.length < 2) {
       setShowSuggestions(false);
       setIsSearching(false);
+      setMatchedContacts([]);
       return;
     }
 
@@ -7009,12 +7104,19 @@ export default function Schools() {
     setShowSuggestions(true);
 
     debounceTimer.current = setTimeout(async () => {
+      const token = localStorage.getItem("token");
       try {
-        const token = localStorage.getItem("token");
-        const res = await api.get(`/schools/search?q=${value}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setSuggestions(res.data);
+        // Запускаємо ОБИДВА пошуки паралельно й незалежно один від одного:
+        // - suggestions: підказки назв зі стороннього сайту lv.isuo.org
+        // - matchedContacts: автодоповнення директора/телефону з ВЛАСНОЇ бази (SchoolContact)
+        // Раніше другий запит виконувався лише після кліку на підказку з першого списку.
+        const [externalRes] = await Promise.all([
+          api.get(`/schools/search?q=${value}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetchContacts(value),
+        ]);
+        setSuggestions(externalRes.data);
       } catch (e) {
         console.error(e);
       } finally {
@@ -7026,23 +7128,9 @@ export default function Schools() {
   const handleSelectSuggestion = (name: string, url: string) => {
     setForm({ ...form, name, sourceUrl: url });
     setShowSuggestions(false);
+    // Контакти вже мали підтягнутись через handleNameChange,
+    // але про всяк випадок оновлюємо ще раз під обрану (точну) назву.
     fetchContacts(name);
-  };
-
-  const fetchContacts = async (schoolName: string) => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await api.get(`/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=Львів`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setMatchedContacts(res.data);
-      if (res.data.length > 0) {
-        const director = res.data.find((c: any) => c.role === 'Директор') || res.data[0];
-        setForm(f => ({ ...f, director: director.contactName, phone: director.phone }));
-      }
-    } catch (e) {
-      console.error(e);
-    }
   };
 
   const handleAddSchool = async (e: React.FormEvent) => {
@@ -7311,19 +7399,26 @@ export default function Schools() {
               </div>
               <div>
                 <label className="block text-sm text-slate-600 mb-1">
-                  Контактна особа
+                  Контакт
                   <span className="ml-1 text-xs text-slate-400">(автозаповнення)</span>
                 </label>
-                {matchedContacts.length > 1 && (
+                {matchedContacts.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-2">
                     {matchedContacts.map((c, i) => (
                       <button
                         key={i}
                         type="button"
-                        onClick={() => setForm(f => ({ ...f, director: c.contactName, phone: c.phone }))}
-                        className={`text-xs px-2 py-1 rounded-full border transition-colors ${form.director === c.contactName ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'}`}
+                        onClick={() =>
+                          setForm((f) => ({ ...f, director: c.contactName, phone: c.phone }))
+                        }
+                        className={`text-xs px-2 py-1 rounded-full border transition-colors ${
+                          form.director === c.contactName
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                        }`}
                       >
-                        {c.role ? `${c.role}: ` : ''}{c.contactName}
+                        {c.role ? `${c.role}: ` : ''}
+                        {c.contactName}
                       </button>
                     ))}
                   </div>
@@ -7338,7 +7433,7 @@ export default function Schools() {
                   type="text"
                   value={form.director}
                   onChange={(e) => setForm({ ...form, director: e.target.value })}
-                  placeholder="Директор Іван Іванович"
+                  placeholder="Микола Петренко"
                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 />
               </div>

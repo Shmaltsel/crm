@@ -210,7 +210,7 @@ export default function Cities() {
               <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pb-1 sm:pb-0">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  
                   className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 font-medium hover:bg-slate-50 bg-slate-100 sm:bg-transparent rounded-xl transition-colors"
                 >
                   Скасувати
