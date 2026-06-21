@@ -249,27 +249,55 @@ export class EventsService {
     reportData: SubmitReportDto,
     user: JwtUser,
   ) {
-    // Використовуємо this.prisma
-    // const report = await this.prisma.eventReport.upsert({
-    //   where: { eventId },
-    //   update: {
-    //     announcementDone: reportData.announcementDone,
-    //     materialShown: reportData.materialShown,
-    //     childrenCount: reportData.childrenCount,
-    //     classesCount: reportData.classesCount,
-    //     privilegedCount: reportData.privilegedCount,
-    //     showingsCount: reportData.showingsCount,
-    //     totalSum: reportData.totalSum,
-    //     schoolSum: reportData.schoolSum,
-    //     expenses: reportData.expenses,
-    //     remainderSum: reportData.remainderSum,
-    //     rating: reportData.rating,
-    //   },
-    //   create: {
-    //     eventId,
-    //     ...reportData,
-    //   },
-    // });
+    // 1. Розкоментовуємо та зберігаємо звіт у базу
+    await this.prisma.eventReport.upsert({
+      where: { eventId },
+      update: {
+        announcementDone: reportData.announcementDone,
+        materialShown: reportData.materialShown,
+        childrenCount: reportData.childrenCount,
+        classesCount: reportData.classesCount,
+        privilegedCount: reportData.privilegedCount,
+        showingsCount: reportData.showingsCount,
+        totalSum: reportData.totalSum,
+        schoolSum: reportData.schoolSum,
+        expenses: reportData.expenses || [],
+        remainderSum: reportData.remainderSum,
+        rating: reportData.rating,
+      },
+      create: {
+        eventId,
+        announcementDone: reportData.announcementDone,
+        materialShown: reportData.materialShown,
+        childrenCount: reportData.childrenCount,
+        classesCount: reportData.classesCount,
+        privilegedCount: reportData.privilegedCount,
+        showingsCount: reportData.showingsCount,
+        totalSum: reportData.totalSum,
+        schoolSum: reportData.schoolSum,
+        expenses: reportData.expenses || [],
+        remainderSum: reportData.remainderSum,
+        rating: reportData.rating,
+      },
+    });
+
+    // 2. Оновлюємо статус події на 'REPORT' (а не 'RE_SALE', щоб вона не зникала)
+    return this.prisma.event.update({
+      where: { id: eventId },
+      data: {
+        status: 'REPORT' as never,
+        history: {
+          create: {
+            action: 'Сформовано звіт. Етап: Звіт',
+            userId: user.sub,
+            userName: user.name,
+            role: user.role,
+          },
+        },
+      },
+      include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
+    });
+  }
     // Оновлюємо статус події через this.prisma
     return this.prisma.event.update({
       where: { id: eventId },
