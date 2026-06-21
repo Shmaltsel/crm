@@ -2,15 +2,18 @@ import { Injectable, forwardRef, Inject } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { EventsService } from '../events/events.service';
 import { ParserService } from './parser.service';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 const prisma = new PrismaClient();
 
 @Injectable()
 export class SchoolsService {
+  
   constructor(
     @Inject(forwardRef(() => EventsService))
     private readonly eventsService: EventsService,
     private readonly parserService: ParserService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async create(data: {

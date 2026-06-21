@@ -28,10 +28,9 @@ export default function Schools() {
   const [cities, setCities] = useState<City[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Виправлено: чиста ініціалізація стану форми
   const [form, setForm] = useState({
-    name: "",
-    type: "Школа",
-    cityIconst [form, setForm] = useState({
     name: "",
     type: "Школа",
     cityId: "",
@@ -39,12 +38,11 @@ export default function Schools() {
     director: "",
     phone: "",
   });
-  const [matchedContacts, setMatchedContacts] = useState<any[]>([]);d: "",
-    sourceUrl: "",
-  });
-  const [suggestions, setSuggestions] = useState<
-    { name: string; url: string }[]
-  >([]);
+  
+  // Виправлено: чиста ініціалізація стану контактів
+  const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
+  
+  const [suggestions, setSuggestions] = useState<{ name: string; url: string }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -79,7 +77,14 @@ export default function Schools() {
   }, []);
 
   const handleOpenModal = () => {
-    setForm({ name: "", type: "Школа", cityId: cities[0]?.id ?? "", sourceUrl: "", director: "", phone: "" });
+    setForm({ 
+      name: "", 
+      type: "Школа", 
+      cityId: cities[0]?.id ?? "", 
+      sourceUrl: "", 
+      director: "", 
+      phone: "" 
+    });
     setMatchedContacts([]);
     setIsModalOpen(true);
   };
@@ -95,8 +100,8 @@ export default function Schools() {
       return;
     }
 
-    setIsSearching(true); // ← показуємо "пошук..." одразу
-    setShowSuggestions(true); // ← відкриваємо dropdown одразу
+    setIsSearching(true);
+    setShowSuggestions(true);
 
     debounceTimer.current = setTimeout(async () => {
       try {
@@ -108,7 +113,7 @@ export default function Schools() {
       } catch (e) {
         console.error(e);
       } finally {
-        setIsSearching(false); // ← прибираємо "пошук..." коли прийшла відповідь
+        setIsSearching(false);
       }
     }, 400);
   };
@@ -126,7 +131,6 @@ export default function Schools() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMatchedContacts(res.data);
-      // Автозаповнюємо першим знайденим директором або першим контактом
       if (res.data.length > 0) {
         const director = res.data.find((c: any) => c.role === 'Директор') || res.data[0];
         setForm(f => ({ ...f, director: director.contactName, phone: director.phone }));
@@ -199,7 +203,6 @@ export default function Schools() {
         </button>
       </div>
 
-      {/* Картки — мобільний вигляд */}
       <div className="md:hidden flex flex-col gap-3">
         {filteredSchools.map((school) => {
           const latestEvent = school.events?.[0];
@@ -252,7 +255,6 @@ export default function Schools() {
         )}
       </div>
 
-      {/* Таблиця — десктоп */}
       <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto w-full">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -268,7 +270,7 @@ export default function Schools() {
             </tr>
           </thead>
           <tbody>
-            {filteredSchools.map( (school) => {
+            {filteredSchools.map((school) => {
               const latestEvent = school.events?.[0];
               const stage = latestEvent
                 ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
@@ -315,7 +317,6 @@ export default function Schools() {
         </table>
       </div>
 
-      {/* Модалка додавання закладу — bottom-sheet на мобільному, діалог на десктопі */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md max-h-[92vh] overflow-hidden flex flex-col">
@@ -403,7 +404,6 @@ export default function Schools() {
                   ))}
                 </select>
               </div>
-              {/* Контакти — автозаповнення з БД */}
               <div>
                 <label className="block text-sm text-slate-600 mb-1">
                   Контактна особа
