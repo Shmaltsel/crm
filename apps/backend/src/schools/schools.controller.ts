@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Delete,
+  Query,
+} from '@nestjs/common';
 import { SchoolsService } from './schools.service';
 import { ParserService } from './parser.service';
 
@@ -10,7 +19,15 @@ export class SchoolsController {
   ) {}
 
   @Post()
-  create(@Body() body: { name: string; type: string; cityId: string; sourceUrl?: string }) {
+  create(
+    @Body()
+    body: {
+      name: string;
+      type: string;
+      cityId: string;
+      sourceUrl?: string;
+    },
+  ) {
     return this.schoolsService.create(body);
   }
 
@@ -38,5 +55,10 @@ export class SchoolsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.schoolsService.remove(id);
+  }
+
+  @Get('contacts/search')
+  searchContacts(@Query('q') q: string, @Query('city') city: string) {
+    return this.schoolsService.searchContacts(q, city);
   }
 }

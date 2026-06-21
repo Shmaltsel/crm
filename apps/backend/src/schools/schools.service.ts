@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  forwardRef,
-  Inject,
-} from '@nestjs/common';
+import { Injectable, forwardRef, Inject } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { EventsService } from '../events/events.service';
 import { ParserService } from './parser.service';
@@ -30,12 +26,11 @@ export class SchoolsService {
     });
 
     // Запускаємо парсинг у фоні
-    this.parserService.parseSchoolData(data.name, sourceUrl)
+    this.parserService
+      .parseSchoolData(data.name, sourceUrl)
       .then(async (parsed) => {
         if (!parsed) {
-          console.log(
-            `Не вдалося знайти дані для школи: ${data.name}`,
-          );
+          console.log(`Не вдалося знайти дані для школи: ${data.name}`);
           return;
         }
 
@@ -50,15 +45,10 @@ export class SchoolsService {
           },
         });
 
-        console.log(
-          `Дані школи "${data.name}" успішно оновлені`,
-        );
+        console.log(`Дані школи "${data.name}" успішно оновлені`);
       })
       .catch((error) => {
-        console.error(
-          'Помилка оновлення даних школи:',
-          error,
-        );
+        console.error('Помилка оновлення даних школи:', error);
       });
 
     return newSchool;
@@ -93,13 +83,7 @@ export class SchoolsService {
   }
 
   async update(id: string, data: any) {
-    const {
-      city,
-      id: _id,
-      createdAt,
-      updatedAt,
-      ...updateData
-    } = data;
+    const { city, id: _id, createdAt, updatedAt, ...updateData } = data;
 
     return prisma.school.update({
       where: {
@@ -117,15 +101,30 @@ export class SchoolsService {
     });
 
     for (const event of events) {
-      await this.eventsService.remove(
-        event.id,
-      );
+      await this.eventsService.remove(event.id);
     }
 
     return prisma.school.delete({
       where: {
         id,
       },
+    });
+  }
+  async searchContacts(q: string, city?: string) {
+    if (!q || q.length < 1) return [];
+
+    const normalized = q.toLowerCase().trim();
+
+    return this.prisma.schoolContact.findMany({
+      where: {
+        city: city || 'Львів',
+        OR: [
+          { schoolNumber: { contains: normalized, mode: 'insensitive' } },
+          { contactName: { contains: normalized, mode: 'insensitive' } },
+        ],
+      },
+      orderBy: [{ schoolNumber: 'asc' }, { role: 'asc' }],
+      take: 10,
     });
   }
 }

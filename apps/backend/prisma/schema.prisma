@@ -186,3 +186,13 @@ model EventPreparation {
   prepareMaterials String @default("Заплановано")
   remindSchool     String @default("Заплановано")
 }
+
+model SchoolContact {
+  id           String   @id @default(uuid())
+  city         String   @default("Львів")
+  schoolNumber String   // номер або назва: "13", "Сихівський ліцей"
+  contactName  String
+  phone        String
+  role         String?  // "Директор", "Завуч", "Педорг"
+  createdAt    DateTime @default(now())
+}

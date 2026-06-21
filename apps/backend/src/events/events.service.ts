@@ -162,7 +162,7 @@ export class EventsService {
         ? `👤 <b>Контакт:</b> ${event.contactPerson}\n`
         : '') +
       (event.contactPhone ? `📞 <b>Телефон:</b> ${event.contactPhone}\n` : '') +
-      `\n<i>Деталі у CRM: <a href="https://crm-tau-nine.vercel.app">crm-tau-nine.vercel.app</a></i>`;
+      `\n<i>Деталі у CRM: <a href="https://crm-frontend-nwexs60ek-shmaltsels-projects.vercel.app">crm-tau-nine.vercel.app</a></i>`;
 
     if (hostId) {
       const host = await this.prisma.user.findUnique({ where: { id: hostId } });
