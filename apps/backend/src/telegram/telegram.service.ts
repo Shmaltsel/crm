@@ -22,11 +22,21 @@ export class TelegramService implements OnModuleInit {
       const chatId = msg.chat.id;
       const username = msg.from?.username;
 
+      // Шукаємо по username в обох форматах: "shmaltsel" і "@shmaltsel"
       await this.prisma.user.updateMany({
-        where: { telegramId: username ? `@${username}` : String(chatId) },
+        where: {
+          OR: [
+            { telegramId: username ? `@${username}` : String(chatId) },
+            { telegramId: username ? username : String(chatId) },
+            { telegramId: String(chatId) },
+          ],
+        },
         data: { telegramChatId: String(chatId) },
       });
 
+      this.logger.log(
+        `[/start] chatId=${chatId} username=${username} — telegramChatId збережено`,
+      );
       await this.bot.sendMessage(
         chatId,
         `👋 Вітаємо у <b>Світло Знань CRM</b>!\n\nВаш акаунт підключено до сповіщень.`,
