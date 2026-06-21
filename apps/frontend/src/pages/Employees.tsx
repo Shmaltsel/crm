@@ -45,6 +45,7 @@ const EMPTY_FORM = {
   cityId: "",
   role: "MANAGER" as Role,
   password: "",
+  telegramId: "",
 };
 
 export default function Employees() {
@@ -104,7 +105,8 @@ export default function Employees() {
       email: user.email,
       cityId: user.cityId || "",
       role: user.role,
-      password: "", // Пароль залишаємо порожнім при редагуванні
+      password: "", 
+      telegramId: user.telegramId || "", 
     });
     setIsModalOpen(true);
   };
@@ -400,15 +402,22 @@ export default function Employees() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">
-                  Телефон
+                  Telegram ID
+                  <span className="ml-1 text-xs text-slate-400 font-normal">(для сповіщень)</span>
                 </label>
-                <input
-                  type="text"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="+380..."
-                  className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                />
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">@</span>
+                  <input
+                    type="text"
+                    value={form.telegramId}
+                    onChange={(e) => setForm({ ...form, telegramId: e.target.value })}
+                    placeholder="username або числовий ID"
+                    className="w-full pl-7 p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  Числовий ID можна дізнатись через <a href="https://t.me/userinfobot" target="_blank" className="text-blue-500 hover:underline">@userinfobot</a>
+                </p>
               </div>
               <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-4 pb-1 sm:pb-0">
                 <button
