@@ -3,7 +3,6 @@ import { Link, useParams } from "react-router-dom";
 import CityAnalytics from "../components/city-profile/CityAnalytics.tsx";
 import PhoneLink from "../components/PhoneLink";
 import type { Event, Crew, CityProfile } from "../types";
-
 import { api } from "../config/api";
 
 type Tab = "events" | "crews" | "analytics";
@@ -13,6 +12,9 @@ export default function CityProfile() {
   const [city, setCity] = useState<CityProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("events");
+  
+  // Додаємо стан для модального вікна зі звітом
+  const [selectedReportEvent, setSelectedReportEvent] = useState<any>(null);
 
   const fetchCity = async () => {
     try {
@@ -31,6 +33,7 @@ export default function CityProfile() {
     };
     void load();
   }, [id]);
+
   if (isLoading)
     return <div className="p-8 text-slate-500">Завантаження...</div>;
   if (!city) return <div className="p-8 text-slate-500">Місто не знайдено</div>;
@@ -54,8 +57,7 @@ export default function CityProfile() {
     0,
   );
 
-  const fmt = (n: number) =>
-    new Intl.NumberFormat("uk-UA").format(Math.round(n));
+  const fmt = (n: number) => new Intl.NumberFormat("uk-UA").format(Math.round(n));
 
   const TABS: { key: Tab; label: string; icon: string }[] = [
     { key: "events", label: "Події", icon: "📅" },
@@ -96,7 +98,10 @@ export default function CityProfile() {
 
           {/* Статистика */}
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-6 gap-y-4 sm:gap-8 flex-1">
-            <Stat label="Заплановано подій" value={city.schools?.length ?? 0} />
+            <Stat
+              label="Заплановано подій"
+              value={city.schools?.length ?? 0}
+            />
             <Stat label="Проведено подій" value={completedEvents.length} />
             <Stat label="Охоплено дітей" value={fmt(totalChildren)} />
             <Stat label="Виручка" value={`${fmt(totalRevenue)} грн`} />
@@ -131,12 +136,13 @@ export default function CityProfile() {
               Завершені події ({completedEvents.length})
             </h3>
           </div>
+
           {completedEvents.length === 0 ? (
             <div className="p-12 text-center text-slate-400">
               <p className="text-4xl mb-3">📭</p>
               <p className="font-medium">Завершених подій ще немає</p>
               <p className="text-sm mt-1">
-                Вони з'являться тут після завершення пайплайну в профілі школи
+                Вони з'являться тут після завершення пайплайну в профілі закладу
               </p>
             </div>
           ) : (
@@ -144,10 +150,10 @@ export default function CityProfile() {
               {/* Картки — мобільний вигляд */}
               <div className="md:hidden divide-y divide-slate-50">
                 {completedEvents.map((ev: Event) => (
-                  <Link
+                  <div
                     key={ev.id}
-                    to={`/events/${ev.id}/report`}
-                    className="flex items-center justify-between gap-3 p-4 active:bg-slate-50"
+                    onClick={() => setSelectedReportEvent(ev)}
+                    className="flex items-center justify-between gap-3 p-4 active:bg-slate-50 cursor-pointer"
                   >
                     <div className="min-w-0">
                       <p className="font-medium text-blue-600 truncate">
@@ -171,7 +177,7 @@ export default function CityProfile() {
                         +{fmt(ev.report?.remainderSum || 0)} грн
                       </p>
                     </div>
-                  </Link>
+                  </div>
                 ))}
               </div>
 
@@ -192,15 +198,13 @@ export default function CityProfile() {
                     {completedEvents.map((ev: Event) => (
                       <tr
                         key={ev.id}
-                        className="border-b border-slate-50 hover:bg-slate-50 transition-colors"
+                        onClick={() => setSelectedReportEvent(ev)}
+                        className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
                       >
                         <td className="p-4">
-                          <Link
-                            to={`/events/${ev.id}/report`}
-                            className="font-medium text-blue-600 hover:underline"
-                          >
+                          <span className="font-medium text-blue-600 hover:underline">
                             {ev.school?.name}
-                          </Link>
+                          </span>
                           <p className="text-xs text-slate-400">
                             {ev.school?.type}
                           </p>
@@ -210,9 +214,7 @@ export default function CityProfile() {
                           {new Date(ev.date).toLocaleDateString("uk-UA")}
                         </td>
                         <td className="p-4 font-medium">
-                          {ev.report?.childrenCount ||
-                            ev.childrenPlanned ||
-                            "—"}
+                          {ev.report?.childrenCount || ev.childrenPlanned || "—"}
                         </td>
                         <td className="p-4 font-medium text-slate-800">
                           {fmt(ev.report?.totalSum || ev.price || 0)} грн
@@ -237,6 +239,7 @@ export default function CityProfile() {
               Екіпажі ({crews.length})
             </h3>
           </div>
+
           {crews.length === 0 ? (
             <div className="p-12 text-center text-slate-400">
               <p className="text-4xl mb-3">🚐</p>
@@ -276,7 +279,7 @@ export default function CityProfile() {
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
-                      <th className="p-4">Назва</th>
+                      <th className="p-4">Назва екіпажу</th>
                       <th className="p-4">Ведучий</th>
                       <th className="p-4">Водій</th>
                       <th className="p-4">Авто</th>
@@ -287,13 +290,15 @@ export default function CityProfile() {
                     {crews.map((crew: Crew) => (
                       <tr
                         key={crew.id}
-                        className="border-b border-slate-50 hover:bg-slate-50"
+                        className="border-b border-slate-50 hover:bg-slate-50 transition-colors"
                       >
-                        <td className="p-4 font-medium">{crew.name}</td>
-                        <td className="p-4 text-blue-600">
+                        <td className="p-4 font-medium text-slate-800">
+                          {crew.name}
+                        </td>
+                        <td className="p-4 text-blue-600 font-medium">
                           {crew.host?.name || "—"}
                         </td>
-                        <td className="p-4 text-emerald-600">
+                        <td className="p-4 text-emerald-600 font-medium">
                           {crew.driver?.name || "—"}
                         </td>
                         <td className="p-4 text-slate-600">
@@ -313,6 +318,13 @@ export default function CityProfile() {
       )}
 
       {activeTab === "analytics" && <CityAnalytics events={completedEvents} />}
+
+      {/* Модальне вікно Звіту та Історії */}
+      <CompletedEventModal 
+        isOpen={!!selectedReportEvent} 
+        onClose={() => setSelectedReportEvent(null)} 
+        event={selectedReportEvent} 
+      />
     </div>
   );
 }
@@ -322,6 +334,101 @@ function Stat({ label, value }: { label: string; value: string | number }) {
     <div>
       <p className="text-xs text-slate-400 font-medium mb-1">{label}</p>
       <p className="text-2xl font-bold text-slate-800">{value}</p>
+    </div>
+  );
+}
+
+// Компонент модального вікна для відображення деталей та історії пайплайну
+function CompletedEventModal({ isOpen, onClose, event }: { isOpen: boolean, onClose: () => void, event: any }) {
+  if (!isOpen || !event) return null;
+  const fmt = (n: number) => new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+  const report = event.report;
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
+        <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+        
+        <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
+          <div>
+            <h3 className="text-xl font-bold text-slate-800">Звіт: {event.project}</h3>
+            <p className="text-sm text-slate-500 mt-1">{event.school?.name} · {new Date(event.date).toLocaleDateString("uk-UA")}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg">✕</button>
+        </div>
+        
+        <div className="p-5 sm:p-6 flex-1 overflow-y-auto bg-slate-50/30">
+           {/* Деталі звіту */}
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">📊</span> 
+                  Результати
+                </h4>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-500">Дітей (факт):</span><span className="font-bold text-slate-800">{report?.childrenCount || 0}</span></div>
+                  <div className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-500">Класів:</span><span className="font-medium">{report?.classesCount || 0}</span></div>
+                  <div className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-500">Пільговиків:</span><span className="font-medium">{report?.privilegedCount || 0}</span></div>
+                  <div className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-500">Сеансів:</span><span className="font-medium">{report?.showingsCount || 0}</span></div>
+                  <div className="flex justify-between pb-1"><span className="text-slate-500">Оцінка:</span><span className="font-bold text-amber-500">⭐ {report?.rating || 0}/10</span></div>
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">💰</span> 
+                  Фінанси
+                </h4>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-500">Загальна виручка:</span><span className="font-bold text-slate-800">{fmt(report?.totalSum)} грн</span></div>
+                  <div className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-500">На заклад (20%):</span><span className="font-medium text-rose-500">− {fmt(report?.schoolSum)} грн</span></div>
+                  
+                  {Array.isArray(report?.expenses) && report.expenses.length > 0 && (
+                    <div className="py-2 border-b border-slate-50">
+                      <span className="text-slate-500 block mb-2">Додаткові витрати:</span>
+                      {report.expenses.map((exp: any, i: number) => (
+                        <div key={i} className="flex justify-between text-xs mb-1 pl-2">
+                          <span className="text-slate-400">— {exp.name || exp.category}</span>
+                          <span className="text-rose-500 font-medium">− {fmt(exp.amount)} грн</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex justify-between pt-1"><span className="text-slate-800 font-bold">Чистий прибуток:</span><span className="font-bold text-emerald-600 text-base">{fmt(report?.remainderSum)} грн</span></div>
+                </div>
+              </div>
+           </div>
+           
+           {/* Історія пайплайну */}
+           <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm">
+              <h4 className="font-bold text-slate-800 mb-5 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center">⏳</span> 
+                Історія пайплайну
+              </h4>
+              {!event.history || event.history.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-4">Історія порожня.</p>
+              ) : (
+                <div className="space-y-4 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-slate-100">
+                  {[...event.history].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((item: any, i: number) => (
+                    <div key={item.id} className="relative pl-8 text-sm group">
+                      <div className="absolute left-1.5 w-3 h-3 rounded-full top-1 bg-violet-500 ring-4 ring-white"></div>
+                      <p className="font-semibold text-slate-800">{item.action}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {new Date(item.createdAt).toLocaleString("uk-UA", { day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit' })} · 👤 {item.userName}
+                      </p>
+                      {item.comment && (
+                        <div className="mt-2 p-3 bg-slate-50/80 rounded-xl text-slate-600 italic border border-slate-100">
+                          {item.comment}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+           </div>
+        </div>
+      </div>
     </div>
   );
 }
