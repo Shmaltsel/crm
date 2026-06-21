@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../config/api";
 import AddressLink from "../components/AddressLink";
 import PhoneLink from "../components/PhoneLink";
+import { useSelectedCity } from "../context/CityContext";
 
 interface AuthUser {
   id: string;
@@ -75,6 +76,7 @@ export default function Events() {
   const [events, setEvents] = useState<EventListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const { selectedCity } = useSelectedCity();
 
   useEffect(() => {
     try {
@@ -103,6 +105,9 @@ export default function Events() {
   }, []);
 
   const isFieldStaff = !!user && FIELD_ROLES.includes(user.role);
+  const filteredEvents = selectedCity.id
+    ? events.filter((ev) => ev.city?.id === selectedCity.id)
+    : events;
   const title = isFieldStaff ? "Мої події" : "Розклад подій";
   const subtitle = isFieldStaff
     ? "Події, на які вас призначив менеджер"
@@ -116,7 +121,14 @@ export default function Events() {
     <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">{title}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+            {title}
+            {selectedCity.id && !isFieldStaff && (
+              <span className="ml-2 text-base font-normal text-blue-500">
+                · {selectedCity.name}
+              </span>
+            )}
+          </h1>{" "}
           <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
         </div>
         {!isFieldStaff && (
@@ -139,7 +151,7 @@ export default function Events() {
         </div>
       )}
 
-      {!isLoading && !error && events.length === 0 && (
+      {!isLoading && !error && filteredEvents.length === 0 && (
         <div className="bg-white border border-slate-100 rounded-xl p-10 text-center text-slate-400">
           {isFieldStaff
             ? "Поки що немає подій, на які вас призначено."
@@ -147,11 +159,11 @@ export default function Events() {
         </div>
       )}
 
-      {!isLoading && !error && events.length > 0 && (
+      {!isLoading && !error && filteredEvents.length > 0 && (
         <>
           {/* Картки — мобільний вигляд */}
           <div className="md:hidden flex flex-col gap-3">
-            {events.map((ev) => (
+            {filteredEvents.map((ev) => (
               <div
                 key={ev.id}
                 onClick={() => goToEvent(ev)}
@@ -181,13 +193,19 @@ export default function Events() {
                 )}
                 {(ev.crew?.host || ev.crew?.driver) && (
                   <p className="text-xs text-gray-500 mt-1">
-                    👤 {ev.crew?.host?.name ?? "—"} · 🚐 {ev.crew?.driver?.name ?? "—"}
+                    👤 {ev.crew?.host?.name ?? "—"} · 🚐{" "}
+                    {ev.crew?.driver?.name ?? "—"}
                   </p>
                 )}
                 {isFieldStaff && (ev.contactPerson || ev.contactPhone) && (
                   <p className="text-xs text-gray-500 mt-0.5">
                     {ev.contactPerson ?? "—"}
-                    {ev.contactPhone ? <> · <PhoneLink phone={ev.contactPhone} /></> : null}
+                    {ev.contactPhone ? (
+                      <>
+                        {" "}
+                        · <PhoneLink phone={ev.contactPhone} />
+                      </>
+                    ) : null}
                   </p>
                 )}
               </div>
@@ -207,7 +225,7 @@ export default function Events() {
                 </tr>
               </thead>
               <tbody>
-                {events.map((ev) => (
+                {filteredEvents.map((ev) => (
                   <tr
                     key={ev.id}
                     onClick={() => goToEvent(ev)}
@@ -221,7 +239,9 @@ export default function Events() {
                     </td>
                     <td className="p-4 text-gray-600">
                       {formatDate(ev.date)}
-                      {ev.time && <div className="text-xs text-gray-400">{ev.time}</div>}
+                      {ev.time && (
+                        <div className="text-xs text-gray-400">{ev.time}</div>
+                      )}
                     </td>
                     <td className="p-4 text-gray-600">
                       {ev.city?.name ?? "—"}
@@ -238,7 +258,8 @@ export default function Events() {
                     <td className="p-4">
                       <span
                         className={`px-3 py-1 rounded-full text-sm ${
-                          STATUS_COLORS[ev.status] ?? "bg-slate-100 text-slate-600"
+                          STATUS_COLORS[ev.status] ??
+                          "bg-slate-100 text-slate-600"
                         }`}
                       >
                         {STATUS_LABELS[ev.status] ?? ev.status}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../config/api";
 import PhoneLink from "../components/PhoneLink";
+import { useSelectedCity } from '../context/CityContext';
 
 type Role = "MANAGER" | "DRIVER" | "HOST";
 
@@ -53,6 +54,8 @@ export default function Employees() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { selectedCity } = useSelectedCity();
+
 
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
@@ -77,10 +80,14 @@ export default function Employees() {
     void load();
   }, []);
 
+  const cityFilteredUsers = selectedCity.id
+    ? users.filter((u) => u.cityId === selectedCity.id)
+    : users;
+
   const grouped = (["MANAGER", "DRIVER", "HOST"] as Role[]).map((role) => ({
     role,
     label: ROLE_LABELS[role],
-    items: users.filter((u) => u.role === role),
+    items: cityFilteredUsers.filter((u) => u.role === role),
   }));
 
   const handleOpenAdd = () => {
@@ -140,6 +147,7 @@ export default function Employees() {
         <div>
           <h1 className="text-2xl font-bold text-slate-800">
             Акаунти та Працівники
+            {selectedCity.id && <span className="ml-2 text-base font-normal text-blue-500">· {selectedCity.name}</span>}
           </h1>
           <p className="text-sm text-slate-400 mt-1">
             Керування доступами, менеджерами, водіями та ведучими

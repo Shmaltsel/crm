@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from '../config/api'
+import { api } from "../config/api";
+import { useSelectedCity } from "../context/CityContext";
 
 const PIPELINE_STAGES = [
   { key: "BASE", name: "База" },
@@ -22,6 +23,7 @@ interface City {
 
 export default function Schools() {
   const navigate = useNavigate();
+  const { selectedCity } = useSelectedCity();
   const [schools, setSchools] = useState<any[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -147,11 +149,21 @@ export default function Schools() {
       console.error(e);
     }
   };
+  const filteredSchools = selectedCity.id
+    ? schools.filter((s) => s.cityId === selectedCity.id)
+    : schools;
 
   return (
     <div className="p-4 md:p-8 h-full max-w-[100vw] overflow-hidden">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Школи та Садочки</h1>
+        <h1 className="text-2xl font-bold text-slate-800">
+          Школи та Садочки
+          {selectedCity.id && (
+            <span className="ml-2 text-base font-normal text-blue-500">
+              · {selectedCity.name}
+            </span>
+          )}
+        </h1>{" "}
         <button
           onClick={handleOpenModal}
           className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
@@ -162,7 +174,7 @@ export default function Schools() {
 
       {/* Картки — мобільний вигляд */}
       <div className="md:hidden flex flex-col gap-3">
-        {schools.map((school) => {
+        {filteredSchools.map((school) => {
           const latestEvent = school.events?.[0];
           const stage = latestEvent
             ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
@@ -206,7 +218,7 @@ export default function Schools() {
             </div>
           );
         })}
-        {schools.length === 0 && (
+        {filteredSchools.length === 0 && (
           <div className="bg-white rounded-2xl border border-slate-100 text-center py-10 text-slate-400 text-sm">
             Закладів ще немає
           </div>
@@ -229,7 +241,7 @@ export default function Schools() {
             </tr>
           </thead>
           <tbody>
-            {schools.map((school) => {
+            {filteredSchools.map( (school) => {
               const latestEvent = school.events?.[0];
               const stage = latestEvent
                 ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from 'react-router-dom';  // вже є
+import { useSelectedCity } from '../context/CityContext';
 
 import { api } from "../config/api";
 // Фото для міст за назвою (Unsplash)
@@ -48,6 +49,7 @@ export default function Cities() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newCityName, setNewCityName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const { setSelectedCity } = useSelectedCity();
 
   const fetchCities = async () => {
     try {
@@ -99,7 +101,7 @@ export default function Cities() {
           <div
             key={city.id}
             onClick={() => navigate(`/cities/${city.id}`)}
-            className="bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-lg hover:border-blue-200 transition-all cursor-pointer overflow-hidden group"
+            className="bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-lg hover:border-blue-200 transition-all overflow-hidden group"
           >
             {/* Фото міста */}
             <div className="h-44 overflow-hidden relative">
@@ -152,6 +154,25 @@ export default function Cities() {
                     {city.completedEvents ?? 0}
                   </span>
                 </div>
+              </div>
+
+              {/* Кнопки дій */}
+              <div className="flex gap-2 mt-4 pt-3 border-t border-slate-50">
+                <button
+                  onClick={() => {
+                    setSelectedCity({ id: city.id, name: city.name });
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 rounded-lg transition-colors"
+                >
+                  ✓ Вибрати місто
+                </button>
+                <button
+                  onClick={() => navigate(`/cities/${city.id}`)}
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm rounded-lg transition-colors"
+                  title="Детальніше"
+                >
+                  →
+                </button>
               </div>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
+import { useSelectedCity } from '../context/CityContext';
 
 interface UserInfo {
   name: string;
@@ -12,6 +13,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const [user, setUser] = useState<UserInfo | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // Додано стан для мобільного меню
+  const { selectedCity } = useSelectedCity();
 
   useEffect(() => {
     try {
@@ -56,6 +58,7 @@ export default function Layout() {
           <span className="font-semibold tracking-wider text-sm">
             СВІТЛО ЗНАНЬ
           </span>
+          <span className="text-xs text-blue-300 ml-1">· {selectedCity.name}</span>
         </div>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -87,6 +90,7 @@ export default function Layout() {
             🎓
           </div>
           <h2 className="text-sm font-semibold tracking-wider">СВІТЛО ЗНАНЬ</h2>
+          <p className="text-xs text-blue-300 mt-1 tracking-wide">📍 {selectedCity.name}</p>
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto mt-16 md:mt-0">

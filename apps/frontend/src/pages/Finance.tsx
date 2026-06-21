@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from '../config/api'
+import { useSelectedCity } from '../context/CityContext';
 import {
   ResponsiveContainer,
   LineChart,
@@ -30,7 +31,8 @@ export default function Finance() {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState("year");
-  const [cityId, setCityId] = useState("");
+  const { selectedCity } = useSelectedCity();
+  const [cityId, setCityId] = useState(selectedCity.id);
   const [project, setProject] = useState("");
 
   const fetchData = async () => {
