@@ -46,6 +46,7 @@
     "bcrypt": "^6.0.0",
     "cheerio": "^1.2.0",
     "dotenv": "^17.4.2",
+    "node-telegram-bot-api": "0.64.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
@@ -61,6 +62,7 @@
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.0.0",
+    "@types/node-telegram-bot-api": "^0.64.15",
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^7.0.0",
     "eslint": "^9.18.0",
@@ -96,12 +98,10 @@
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
   },
-
   "prisma": {
     "schema": "prisma/schema.prisma"
   }
 }
-  
 
 
 --- FILE: apps\backend\prisma\schema.prisma ---
@@ -138,6 +138,8 @@ model User {
   phone    String?
   password String
   role     String  @default("MANAGER")
+  telegramId String?
+  telegramChatId String?
   cityId   String?
   city     City?   @relation(fields: [cityId], references: [id])
 
@@ -348,6 +350,7 @@ import { EventsModule } from './events/events.module';
 import { CitiesModule } from './cities/cities.module';
 import { SchoolsModule } from './schools/schools.module';
 import { FinanceModule } from './finance/finance.module';
+import { TelegramModule } from './telegram/telegram.module';
 
 @Module({
   imports: [
@@ -358,6 +361,8 @@ import { FinanceModule } from './finance/finance.module';
     CitiesModule,
     SchoolsModule,
     FinanceModule,
+    FinanceModule,
+    TelegramModule,
   ],
   controllers: [AppController],
   providers: [AppService],
@@ -1798,6 +1803,89 @@ export class SchoolsService {
   }
 }
 
+--- FILE: apps\backend\src\telegram\telegram.module.ts ---
+
+import { Module } from '@nestjs/common';
+import { TelegramService } from './telegram.service';
+import { PrismaModule } from '../prisma/prisma.module';
+
+@Module({
+  imports: [PrismaModule],
+  providers: [TelegramService],
+  exports: [TelegramService],
+})
+export class TelegramModule {}
+
+
+--- FILE: apps\backend\src\telegram\telegram.service.ts ---
+
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import TelegramBot from 'node-telegram-bot-api';
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class TelegramService implements OnModuleInit {
+  private bot: TelegramBot;
+  private readonly logger = new Logger(TelegramService.name);
+
+  constructor(private prisma: PrismaService) {}
+
+  onModuleInit() {
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    if (!token) {
+      this.logger.warn('TELEGRAM_BOT_TOKEN не задано — бот вимкнено');
+      return;
+    }
+    this.bot = new TelegramBot(token, { polling: true });
+    this.logger.log('Telegram бот ініціалізовано');
+
+    this.bot.onText(/\/start/, async (msg) => {
+      const chatId = msg.chat.id;
+      const username = msg.from?.username;
+
+      await this.prisma.user.updateMany({
+        where: { telegramId: username ? `@${username}` : String(chatId) },
+        data: { telegramChatId: String(chatId) },
+      });
+
+      await this.bot.sendMessage(
+        chatId,
+        `👋 Вітаємо у <b>Світло Знань CRM</b>!\n\nВаш акаунт підключено до сповіщень.`,
+        { parse_mode: 'HTML' },
+      );
+    });
+  }
+
+  async sendMessage(chatId: string, text: string): Promise<void> {
+    if (!this.bot) return;
+    try {
+      await this.bot.sendMessage(chatId, text, { parse_mode: 'HTML' });
+    } catch (e: any) {
+      this.logger.error(
+        `Не вдалося надіслати повідомлення ${chatId}: ${e.message}`,
+      );
+    }
+  }
+
+  async sendWelcome(
+    chatId: string,
+    name: string,
+    email: string,
+    password: string,
+  ): Promise<void> {
+    const text =
+      `👋 <b>Вітаємо у Світло Знань CRM!</b>\n\n` +
+      `Ваш акаунт створено.\n\n` +
+      `📧 <b>Логін:</b> <code>${email}</code>\n` +
+      `🔑 <b>Пароль:</b> <code>${password}</code>\n\n` +
+      `Увійдіть за посиланням: <a href="https://crm-tau-nine.vercel.app">crm-tau-nine.vercel.app</a>\n\n` +
+      `<i>Змініть пароль після першого входу.</i>`;
+
+    await this.sendMessage(chatId, text);
+  }
+}
+
+
 --- FILE: apps\backend\src\users\users.controller.spec.ts ---
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -1866,8 +1954,10 @@ export class UsersController {
 import { Module } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
+import { TelegramModule } from '../telegram/telegram.module';
 
 @Module({
+  imports: [TelegramModule],
   providers: [UsersService],
   controllers: [UsersController],
   exports: [UsersService],
@@ -1902,10 +1992,14 @@ describe('UsersService', () => {
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import { TelegramService } from '../telegram/telegram.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private telegramService: TelegramService,
+  ) {}
 
   async getAllUsers() {
     return this.prisma.user.findMany({
@@ -1917,7 +2011,7 @@ export class UsersService {
 
   async createUser(data: any) {
     const hashedPassword = await bcrypt.hash(data.password, 10);
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         name: data.fullName,
         email: data.email,
@@ -1925,8 +2019,31 @@ export class UsersService {
         password: hashedPassword,
         role: data.role,
         cityId: data.cityId || null,
+        telegramId: data.telegramId || null,
       },
     });
+
+    // Надсилаємо вітальне повідомлення якщо вказано telegramId
+    if (data.password) {
+      // Шукаємо chat_id: якщо є збережений після /start — використовуємо його
+      // інакше пробуємо telegramId напряму (якщо вже числовий)
+      const chatId =
+        user.telegramChatId ||
+        (data.telegramId && /^\d+$/.test(data.telegramId)
+          ? data.telegramId
+          : null);
+
+      if (chatId) {
+        await this.telegramService.sendWelcome(
+          chatId,
+          data.fullName,
+          data.email,
+          data.password,
+        );
+      }
+    }
+
+    return user;
   }
 
   async updateUser(id: string, data: any) {
@@ -1936,8 +2053,9 @@ export class UsersService {
       phone: data.phone,
       role: data.role,
       cityId: data.cityId || null,
+      telegramId: data.telegramId || null,
     };
-    
+
     // Якщо передано новий пароль, хешуємо його
     if (data.password) {
       updateData.password = await bcrypt.hash(data.password, 10);
@@ -1997,6 +2115,7 @@ export class UsersService {
     return { message: 'Вася Харізма успішно доданий!', user: vasya };
   }
 }
+
 
 --- FILE: apps\backend\test\app.e2e-spec.ts ---
 
@@ -4691,6 +4810,7 @@ const EMPTY_FORM = {
   cityId: "",
   role: "MANAGER" as Role,
   password: "",
+  telegramId: "",
 };
 
 export default function Employees() {
@@ -4750,7 +4870,8 @@ export default function Employees() {
       email: user.email,
       cityId: user.cityId || "",
       role: user.role,
-      password: "", // Пароль залишаємо порожнім при редагуванні
+      password: "", 
+      telegramId: user.telegramId || "", 
     });
     setIsModalOpen(true);
   };
@@ -5046,15 +5167,22 @@ export default function Employees() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">
-                  Телефон
+                  Telegram ID
+                  <span className="ml-1 text-xs text-slate-400 font-normal">(для сповіщень)</span>
                 </label>
-                <input
-                  type="text"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="+380..."
-                  className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                />
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">@</span>
+                  <input
+                    type="text"
+                    value={form.telegramId}
+                    onChange={(e) => setForm({ ...form, telegramId: e.target.value })}
+                    placeholder="username або числовий ID"
+                    className="w-full pl-7 p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  Числовий ID можна дізнатись через <a href="https://t.me/userinfobot" target="_blank" className="text-blue-500 hover:underline">@userinfobot</a>
+                </p>
               </div>
               <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-4 pb-1 sm:pb-0">
                 <button

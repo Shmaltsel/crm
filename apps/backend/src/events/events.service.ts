@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
 
 import { CreateEventDto } from './dto/create-event.dto';
 import { SubmitReportDto } from './dto/submit-report.dto';
@@ -8,12 +9,14 @@ import { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-// Ролі "польового" персоналу — бачать лише свої події (де вони в екіпажі)
 const FIELD_ROLES = ['DRIVER', 'HOST'];
 
 @Injectable()
 export class EventsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private telegramService: TelegramService,
+  ) {}
 
   // Список подій для сторінки "Події".
   // Водій/ведучий бачить тільки події, де він призначений в екіпаж.
@@ -116,7 +119,6 @@ export class EventsService {
     hostId: string,
     driverId: string,
   ) {
-    // Створюємо екіпаж під цю подію
     const crew = await this.prisma.crew.create({
       data: {
         name: 'Екіпаж події',
@@ -126,16 +128,54 @@ export class EventsService {
       },
     });
 
-    // Оновлюємо подію, додаючи ID створеного екіпажу
-    return this.prisma.event.update({
+    const event = await this.prisma.event.update({
       where: { id: eventId },
       data: { crewId: crew.id },
       include: {
-        crew: true,
+        crew: { include: { host: true, driver: true } },
+        school: true,
+        city: true,
         preparation: true,
         history: { orderBy: { createdAt: 'desc' } },
       },
     });
+
+    const dateStr = new Date(event.date).toLocaleDateString('uk-UA', {
+      day: '2-digit', month: 'long', year: 'numeric',
+    });
+    const timeStr = event.time ? `, ${event.time}` : '';
+
+    const buildMessage = (role: 'ведучий' | 'водій') =>
+      `🎯 <b>Вас призначено на подію!</b>\n\n` +
+      `👤 <b>Роль:</b> ${role === 'ведучий' ? '🎙️ Ведучий' : '🚗 Водій'}\n` +
+      `📅 <b>Дата:</b> ${dateStr}${timeStr}\n` +
+      `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
+      `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
+      `🎪 <b>Проєкт:</b> ${event.project}\n` +
+      (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
+      (event.contactPerson ? `👤 <b>Контакт:</b> ${event.contactPerson}\n` : '') +
+      (event.contactPhone ? `📞 <b>Телефон:</b> ${event.contactPhone}\n` : '') +
+      `\n<i>Деталі у CRM: <a href="https://crm-tau-nine.vercel.app">crm-tau-nine.vercel.app</a></i>`;
+
+    if (hostId) {
+      const host = await this.prisma.user.findUnique({ where: { id: hostId } });
+      const hostChatId = host?.telegramChatId ||
+        (host?.telegramId && /^\d+$/.test(host.telegramId) ? host.telegramId : null);
+      if (hostChatId) {
+        await this.telegramService.sendMessage(hostChatId, buildMessage('ведучий'));
+      }
+    }
+
+    if (driverId) {
+      const driver = await this.prisma.user.findUnique({ where: { id: driverId } });
+      const driverChatId = driver?.telegramChatId ||
+        (driver?.telegramId && /^\d+$/.test(driver.telegramId) ? driver.telegramId : null);
+      if (driverChatId) {
+        await this.telegramService.sendMessage(driverChatId, buildMessage('водій'));
+      }
+    }
+
+    return event;
   }
 
   async findBySchool(schoolId: string) {

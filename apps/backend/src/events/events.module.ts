@@ -1,12 +1,13 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { EventsController } from './events.controller';
-import { SchoolsModule } from '../schools/schools.module'; // Імпорт SchoolsModule
+import { SchoolsModule } from '../schools/schools.module';
+import { TelegramModule } from '../telegram/telegram.module';
 
 @Module({
-  imports: [forwardRef(() => SchoolsModule)], // Теж використовуємо forwardRef
+  imports: [forwardRef(() => SchoolsModule), TelegramModule],
   controllers: [EventsController],
   providers: [EventsService],
-  exports: [EventsService], // Експортуємо сервіс, щоб SchoolsService міг його бачити
+  exports: [EventsService],
 })
 export class EventsModule {}
