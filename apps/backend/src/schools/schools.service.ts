@@ -147,13 +147,12 @@ export class SchoolsService {
     const cityName = city || 'Львів';
     const normalizedQuery = q.toLowerCase().trim();
 
-    // Дістаємо всі контакти цього міста одним запитом — їх мало, це дешево
+    // Дістаємо всі контакти цього міста одним запитом
     const allContacts = await this.prisma.schoolContact.findMany({
       where: { city: cityName },
       orderBy: [{ schoolNumber: 'asc' }, { role: 'asc' }],
     });
 
-    // Слова, які не несуть ідентифікаційного сенсу — відкидаємо їх із токенів
     const STOP_WORDS = new Set([
       'школа',
       'школи',
@@ -173,24 +172,32 @@ export class SchoolsService {
       'ім',
     ]);
 
+    // Збираємо окремі слова-токени (дозволяємо довжину від 1 символу, щоб ловити школи №1, №2)
     const tokens = normalizedQuery
       .replace(/№/g, ' ')
       .split(/\s+/)
       .map((t) => t.replace(/[^\wа-яіїєґ0-9]/gi, ''))
-      .filter((t) => t.length >= 2 && !STOP_WORDS.has(t));
+      .filter((t) => t.length > 0 && !STOP_WORDS.has(t));
 
     const matches = allContacts.filter((c) => {
       const num = c.schoolNumber.toLowerCase();
 
-      // 1. Введений текст містить ідентифікатор школи цілком
-      if (normalizedQuery.includes(num)) return true;
+      // 1. Точний збіг всієї фрази
+      if (num === normalizedQuery) return true;
 
-      // 2. Ідентифікатор школи містить введений текст
-      if (num.includes(normalizedQuery)) return true;
+      const isNumeric = /^\d+$/.test(num);
 
-      // 3. Будь-який токен з введеного тексту збігається з ідентифікатором
-      if (tokens.some((t) => num === t || num.includes(t) || t.includes(num)))
-        return true;
+      if (isNumeric) {
+        // 2. Якщо номер школи в базі — це просто число (напр. "15")
+        // Шукаємо точний збіг серед введених слів, щоб пошук "1" не знаходив "15" чи "21"
+        if (tokens.includes(num)) return true;
+      } else {
+        // 3. Якщо це текстова назва (напр. "Арніка", "Сихівський ліцей", "156/162")
+        if (num.includes(normalizedQuery) || normalizedQuery.includes(num))
+          return true;
+        // Для довгих назв перевіряємо, чи введено хоча б одне слово з назви (мінімум 3 літери)
+        if (tokens.some((t) => t.length >= 3 && num.includes(t))) return true;
+      }
 
       // 4. Пошук за ім'ям контактної особи
       if (c.contactName.toLowerCase().includes(normalizedQuery)) return true;

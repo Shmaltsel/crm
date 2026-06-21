@@ -78,7 +78,7 @@ export class ParserService {
     }
   }
 
-  async searchSchools(query: string, type?: string): Promise<{ name: string; url: string }[]> {
+ async searchSchools(query: string, type?: string): Promise<{ name: string; url: string }[]> {
     try {
       const urls = type === 'Садочок'
         ? [
@@ -93,6 +93,11 @@ export class ParserService {
       const results: { name: string; url: string }[] = [];
       const normalizedQuery = query.toLowerCase().replace(/\s+/g, ' ').trim();
       
+      // Перевіряємо, чи користувач шукає чисто цифру
+      const isNumericQuery = /^\d+$/.test(normalizedQuery);
+      // Створюємо регулярку для пошуку числа як окремого слова (щоб "1" не чіпляло "10")
+      const numericRegex = isNumericQuery ? new RegExp(`(?<!\\d)${normalizedQuery}(?!\\d)`) : null;
+      
       for (const url of urls) {
         const response = await axios.get(url);
         const $ = cheerio.load(response.data);
@@ -102,8 +107,21 @@ export class ParserService {
           const name = rawName.replace(/\s+/g, ' ').trim();
           const href = $(row).find('td:nth-child(2) a').attr('href');
 
-          if (name && href && name.toLowerCase().includes(normalizedQuery)) {
-            results.push({ name, url: `https://lv.isuo.org${href}` });
+          if (name && href) {
+            const lowerName = name.toLowerCase();
+            let matches = false;
+
+            if (isNumericQuery && numericRegex) {
+              // Якщо введено чисто цифру, перевіряємо точний збіг по регулярці
+              matches = numericRegex.test(lowerName);
+            } else {
+              // Якщо введено текст, використовуємо звичайний пошук
+              matches = lowerName.includes(normalizedQuery);
+            }
+
+            if (matches) {
+              results.push({ name, url: `https://lv.isuo.org${href}` });
+            }
           }
         });
       }
