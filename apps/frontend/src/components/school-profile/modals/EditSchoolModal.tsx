@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 
 interface EditSchoolModalProps {
@@ -40,7 +38,7 @@ export default function EditSchoolModal({ isOpen, onClose, editForm, setEditForm
               <input type="text" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
-              <label className="block text-sm mb-1">Директор</label>
+              <label className="block text-sm mb-1">Контакт</label>
               <input type="text" value={editForm.director} onChange={e => setEditForm({...editForm, director: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
@@ -66,5 +64,3 @@ export default function EditSchoolModal({ isOpen, onClose, editForm, setEditForm
     </div>
   );
 }
-
-

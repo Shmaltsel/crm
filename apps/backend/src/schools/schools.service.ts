@@ -17,6 +17,10 @@ export class SchoolsService {
     type: string;
     cityId: string;
     sourceUrl?: string;
+    director?: string;
+    phone?: string;
+    address?: string;
+    childrenCount?: number;
   }) {
     const { sourceUrl, ...schoolData } = data;
 
@@ -34,16 +38,35 @@ export class SchoolsService {
           return;
         }
 
+        // ВАЖЛИВО: оновлюємо лише ті поля, які користувач НЕ заповнив сам
+        // (наприклад, директора, обраного через автодоповнення з бази контактів).
+        // Раніше парсер безумовно перезаписував director/address/childrenCount,
+        // навіть якщо вони вже були коректно вказані вручну.
+        const updateData: Record<string, unknown> = {};
+
+        if (!schoolData.address && parsed.address) {
+          updateData.address = parsed.address;
+        }
+        if (!schoolData.director && parsed.director) {
+          updateData.director = parsed.director;
+        }
+        if (!schoolData.childrenCount && parsed.childrenCount) {
+          updateData.childrenCount = parsed.childrenCount;
+        }
+
+        if (Object.keys(updateData).length === 0) {
+          console.log(
+            `Дані школи "${data.name}" вже заповнені користувачем — пропускаємо оновлення з парсингу`,
+          );
+          return;
+        }
+
         // Використовуємо this.prisma замість prisma
         await this.prisma.school.update({
           where: {
             id: newSchool.id,
           },
-          data: {
-            address: parsed.address,
-            director: parsed.director,
-            childrenCount: parsed.childrenCount,
-          },
+          data: updateData,
         });
 
         console.log(`Дані школи "${data.name}" успішно оновлені`);
@@ -159,15 +182,12 @@ export class SchoolsService {
       const num = c.schoolNumber.toLowerCase();
 
       // 1. Введений текст містить ідентифікатор школи цілком
-      //    ("ліцей львів" includes "ліцей львів")
       if (normalizedQuery.includes(num)) return true;
 
       // 2. Ідентифікатор школи містить введений текст
-      //    (ввели коротко — "13", а в базі "13")
       if (num.includes(normalizedQuery)) return true;
 
       // 3. Будь-який токен з введеного тексту збігається з ідентифікатором
-      //    ("школа №13 шевченка" -> токен "13" -> matches schoolNumber "13")
       if (tokens.some((t) => num === t || num.includes(t) || t.includes(num)))
         return true;
 

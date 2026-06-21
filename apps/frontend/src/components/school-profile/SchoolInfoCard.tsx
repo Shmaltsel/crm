@@ -8,7 +8,7 @@ export default function SchoolInfoCard({ schoolData }: { schoolData: any }) {
         <li className="flex gap-3"><span className="text-slate-400">🏛</span> <div><span className="text-slate-500">Тип:</span> <span className="font-medium">{schoolData.type || '—'}</span></div></li>
         <li className="flex gap-3"><span className="text-slate-400">📍</span> <div><span className="text-slate-500">Місто:</span> <span className="font-medium">{schoolData.city || '—'}</span></div></li>
         <li className="flex gap-3"><span className="text-slate-400">🗺</span> <div><span className="text-slate-500">Адреса:</span> <span className="font-medium"><AddressLink address={schoolData.address} /></span></div></li>
-        <li className="flex gap-3"><span className="text-slate-400">👤</span> <div><span className="text-slate-500">Директор:</span> <span className="font-medium">{schoolData.director || '—'}</span></div></li>
+        <li className="flex gap-3"><span className="text-slate-400">👤</span> <div><span className="text-slate-500">Контакт:</span> <span className="font-medium">{schoolData.director || '—'}</span></div></li>
         <li className="flex gap-3"><span className="text-slate-400">📞</span> <div><span className="text-slate-500">Телефон:</span> <span className="font-medium"><PhoneLink phone={schoolData.phone} /></span></div></li>
         <li className="flex gap-3"><span className="text-slate-400">👥</span> <div><span className="text-slate-500">Дітей:</span> <span className="font-medium">{schoolData.childrenCount || 0}</span></div></li>
       </ul>
