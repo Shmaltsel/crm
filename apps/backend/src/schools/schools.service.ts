@@ -22,7 +22,7 @@ export class SchoolsService {
 
     // Використовуємо this.prisma замість prisma
     const newSchool = await this.prisma.school.create({
-      data: schoolData, 
+      data: schoolData,
     });
 
     // Запускаємо парсинг у фоні
@@ -118,20 +118,65 @@ export class SchoolsService {
   }
 
   async searchContacts(q: string, city?: string) {
-    if (!q || q.length < 1) return [];
+    if (!q || q.trim().length < 1) return [];
 
-    const normalized = q.toLowerCase().trim();
+    const cityName = city || 'Львів';
+    const normalizedQuery = q.toLowerCase().trim();
 
-    return this.prisma.schoolContact.findMany({
-      where: {
-        city: city || 'Львів',
-        OR: [
-          { schoolNumber: { contains: normalized, mode: 'insensitive' } },
-          { contactName: { contains: normalized, mode: 'insensitive' } },
-        ],
-      },
+    // Дістаємо всі контакти цього міста одним запитом — їх мало, це дешево
+    const allContacts = await this.prisma.schoolContact.findMany({
+      where: { city: cityName },
       orderBy: [{ schoolNumber: 'asc' }, { role: 'asc' }],
-      take: 10,
     });
+
+    // Слова, які не несуть ідентифікаційного сенсу — відкидаємо їх із токенів
+    const STOP_WORDS = new Set([
+      'школа',
+      'школи',
+      'садочок',
+      'садок',
+      'дитсадок',
+      'днз',
+      'ліцей',
+      'гімназія',
+      'зош',
+      'центр',
+      'розвитку',
+      'комунальний',
+      'заклад',
+      'освіти',
+      'імені',
+      'ім',
+    ]);
+
+    const tokens = normalizedQuery
+      .replace(/№/g, ' ')
+      .split(/\s+/)
+      .map((t) => t.replace(/[^\wа-яіїєґ0-9]/gi, ''))
+      .filter((t) => t.length >= 2 && !STOP_WORDS.has(t));
+
+    const matches = allContacts.filter((c) => {
+      const num = c.schoolNumber.toLowerCase();
+
+      // 1. Введений текст містить ідентифікатор школи цілком
+      //    ("ліцей львів" includes "ліцей львів")
+      if (normalizedQuery.includes(num)) return true;
+
+      // 2. Ідентифікатор школи містить введений текст
+      //    (ввели коротко — "13", а в базі "13")
+      if (num.includes(normalizedQuery)) return true;
+
+      // 3. Будь-який токен з введеного тексту збігається з ідентифікатором
+      //    ("школа №13 шевченка" -> токен "13" -> matches schoolNumber "13")
+      if (tokens.some((t) => num === t || num.includes(t) || t.includes(num)))
+        return true;
+
+      // 4. Пошук за ім'ям контактної особи
+      if (c.contactName.toLowerCase().includes(normalizedQuery)) return true;
+
+      return false;
+    });
+
+    return matches.slice(0, 10);
   }
 }
