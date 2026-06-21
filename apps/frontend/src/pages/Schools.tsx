@@ -31,7 +31,15 @@ export default function Schools() {
   const [form, setForm] = useState({
     name: "",
     type: "Школа",
+    cityIconst [form, setForm] = useState({
+    name: "",
+    type: "Школа",
     cityId: "",
+    sourceUrl: "",
+    director: "",
+    phone: "",
+  });
+  const [matchedContacts, setMatchedContacts] = useState<any[]>([]);d: "",
     sourceUrl: "",
   });
   const [suggestions, setSuggestions] = useState<
@@ -71,7 +79,8 @@ export default function Schools() {
   }, []);
 
   const handleOpenModal = () => {
-    setForm({ name: "", type: "Школа", cityId: cities[0]?.id ?? "" });
+    setForm({ name: "", type: "Школа", cityId: cities[0]?.id ?? "", sourceUrl: "", director: "", phone: "" });
+    setMatchedContacts([]);
     setIsModalOpen(true);
   };
 
@@ -107,6 +116,24 @@ export default function Schools() {
   const handleSelectSuggestion = (name: string, url: string) => {
     setForm({ ...form, name, sourceUrl: url });
     setShowSuggestions(false);
+    fetchContacts(name);
+  };
+
+  const fetchContacts = async (schoolName: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await api.get(`/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=Львів`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMatchedContacts(res.data);
+      // Автозаповнюємо першим знайденим директором або першим контактом
+      if (res.data.length > 0) {
+        const director = res.data.find((c: any) => c.role === 'Директор') || res.data[0];
+        setForm(f => ({ ...f, director: director.contactName, phone: director.phone }));
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleAddSchool = async (e: React.FormEvent) => {
@@ -375,6 +402,53 @@ export default function Schools() {
                     </option>
                   ))}
                 </select>
+              </div>
+              {/* Контакти — автозаповнення з БД */}
+              <div>
+                <label className="block text-sm text-slate-600 mb-1">
+                  Контактна особа
+                  <span className="ml-1 text-xs text-slate-400">(автозаповнення)</span>
+                </label>
+                {matchedContacts.length > 1 && (
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {matchedContacts.map((c, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, director: c.contactName, phone: c.phone }))}
+                        className={`text-xs px-2 py-1 rounded-full border transition-colors ${form.director === c.contactName ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'}`}
+                      >
+                        {c.role ? `${c.role}: ` : ''}{c.contactName}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {matchedContacts.length > 0 && (
+                  <div className="flex items-center gap-1 text-xs text-green-600 mb-2">
+                    <span>✅</span>
+                    <span>Знайдено в базі контактів</span>
+                  </div>
+                )}
+                <input
+                  type="text"
+                  value={form.director}
+                  onChange={(e) => setForm({ ...form, director: e.target.value })}
+                  placeholder="Директор Іван Іванович"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-600 mb-1">
+                  Телефон
+                  <span className="ml-1 text-xs text-slate-400">(автозаповнення)</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="0671234567"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                />
               </div>
               <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-2 pb-1 sm:pb-0">
                 <button
