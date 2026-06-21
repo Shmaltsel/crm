@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api } from '../config/api'
+import { api } from "../config/api";
 
 // Імпортуємо наші UI модулі
 import SchoolInfoCard from "../components/school-profile/SchoolInfoCard";
@@ -122,13 +122,14 @@ export default function SchoolProfile() {
     fetchData();
   }, [id]);
 
-  const currentEvent = events.find((ev) => ev.id === selectedEventId) || events[0];
-  
+  const currentEvent =
+    events.find((ev) => ev.id === selectedEventId) || events[0];
+
   const currentStageIndex =
     PIPELINE_STAGES.findIndex((s) => s.key === currentEvent?.status) !== -1
       ? PIPELINE_STAGES.findIndex((s) => s.key === currentEvent?.status)
       : 0;
-      
+
   const creatorName =
     currentEvent?.history?.length > 0
       ? currentEvent.history[currentEvent.history.length - 1].userName
@@ -175,11 +176,14 @@ export default function SchoolProfile() {
       };
       if (commentModal.mode === "pipeline" && commentModal.stepId) {
         // ВИПРАВЛЕНО: Беремо цільовий статус саме з того етапу, який підтверджуємо
-        const targetStage = PIPELINE_STAGES.find(s => s.id === commentModal.stepId);
+        const targetStage = PIPELINE_STAGES.find(
+          (s) => s.id === commentModal.stepId,
+        );
         if (!targetStage) return;
 
-        const isAdvancing = targetStage.id > PIPELINE_STAGES[currentStageIndex].id;
-        
+        const isAdvancing =
+          targetStage.id > PIPELINE_STAGES[currentStageIndex].id;
+
         const actionName = isAdvancing
           ? `Етап пройдено: ${PIPELINE_STAGES[currentStageIndex].name}`
           : `Коментар до етапу: ${targetStage.name}`;
@@ -201,7 +205,9 @@ export default function SchoolProfile() {
         } else {
           // Оновлюємо тільки змінені поля, зберігаючи вкладені об'єкти
           setEvents((prev) =>
-            prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
+            prev.map((ev) =>
+              ev.id === currentEvent.id ? { ...ev, ...res.data } : ev,
+            ),
           );
         }
       } else if (commentModal.mode === "history" && commentModal.historyId) {
@@ -309,12 +315,14 @@ export default function SchoolProfile() {
         reportData,
         { headers },
       );
-      
+
       setIsReportModalOpen(false);
-      
+
       // ВИПРАВЛЕНО: Миттєво підтягуємо оновлений статус "Звіт" без перезавантаження
       setEvents((prev) =>
-        prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
+        prev.map((ev) =>
+          ev.id === currentEvent.id ? { ...ev, ...res.data } : ev,
+        ),
       );
     } catch (e) {
       console.error("Помилка при збереженні звіту", e);
@@ -338,7 +346,9 @@ export default function SchoolProfile() {
       await handleUpdatePreparation("assignCrew", "Виконано");
 
       setEvents((prev) =>
-        prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
+        prev.map((ev) =>
+          ev.id === currentEvent.id ? { ...ev, ...res.data } : ev,
+        ),
       );
       setIsCrewModalOpen(false);
     } catch (e) {
@@ -450,7 +460,11 @@ export default function SchoolProfile() {
             </div>
           )}
 
-          <EventDetails currentEvent={currentEvent} />
+          <EventDetails
+            currentEvent={currentEvent}
+            schoolName={schoolData?.name}
+            cityId={schoolData?.cityId}
+          />
           <EventsTable
             events={events}
             selectedEventId={selectedEventId}

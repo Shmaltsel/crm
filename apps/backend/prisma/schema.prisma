@@ -54,6 +54,7 @@ model City {
   crews     Crew[]
   events    Event[]
   createdAt DateTime @default(now())
+  issues    IssueReport[]
 }
 
 model School {
@@ -122,6 +123,7 @@ model Event {
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   preparation     EventPreparation?
+  issues    IssueReport[]
 }
 
 model EventReport {
@@ -185,6 +187,19 @@ model EventPreparation {
   prepareDocs      String @default("Заплановано")
   prepareMaterials String @default("Заплановано")
   remindSchool     String @default("Заплановано")
+}
+
+model IssueReport {
+  id        String   @id @default(uuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  schoolName String
+  eventName String
+  message   String
+  cityId    String
+  city      City     @relation(fields: [cityId], references: [id])
+  status    String   @default("Планується") // "Планується", "Виконується", "Виконано"
+  createdAt DateTime @default(now())
 }
 
 model SchoolContact {

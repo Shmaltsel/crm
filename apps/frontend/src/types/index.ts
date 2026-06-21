@@ -94,3 +94,14 @@ export interface CityProfile extends City {
   crews: Crew[];
   schools?: School[]; // ← додай це
 }
+
+export interface IssueReport {
+  id: string;
+  eventId: string;
+  schoolName: string;
+  eventName: string;
+  message: string;
+  cityId: string;
+  status: string;
+  createdAt: string;
+}

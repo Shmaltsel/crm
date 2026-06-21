@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelectedCity } from "../context/CityContext";
-
+import IssueCarousel from '../components/IssueCarousel';
 import { api } from "../config/api";
+
+
 
 // Фото для міст за назвою (Unsplash)
 const CITY_PHOTOS: Record<string, string> = {
@@ -98,7 +100,7 @@ export default function Cities() {
           <span className="mr-2">+</span> Додати місто
         </button>
       </div>
-
+      <IssueCarousel />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {cities.map((city) => {
           // Перевіряємо, чи є це місто обраним

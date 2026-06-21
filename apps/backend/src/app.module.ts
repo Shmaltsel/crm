@@ -9,6 +9,7 @@ import { CitiesModule } from './cities/cities.module';
 import { SchoolsModule } from './schools/schools.module';
 import { FinanceModule } from './finance/finance.module';
 import { TelegramModule } from './telegram/telegram.module';
+import { IssuesModule } from './issues/issues.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { TelegramModule } from './telegram/telegram.module';
     FinanceModule,
     FinanceModule,
     TelegramModule,
+    IssuesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
