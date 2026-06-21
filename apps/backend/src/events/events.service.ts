@@ -7,12 +7,16 @@ import { SubmitReportDto } from './dto/submit-report.dto';
 
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
+import { Injectable, Logger } from '@nestjs/common';
+
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 const FIELD_ROLES = ['DRIVER', 'HOST'];
 
 @Injectable()
 export class EventsService {
+  private readonly logger = new Logger(EventsService.name);
+
   constructor(
     private prisma: PrismaService,
     private telegramService: TelegramService,
@@ -141,7 +145,9 @@ export class EventsService {
     });
 
     const dateStr = new Date(event.date).toLocaleDateString('uk-UA', {
-      day: '2-digit', month: 'long', year: 'numeric',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
     });
     const timeStr = event.time ? `, ${event.time}` : '';
 
@@ -153,25 +159,49 @@ export class EventsService {
       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
       `🎪 <b>Проєкт:</b> ${event.project}\n` +
       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
-      (event.contactPerson ? `👤 <b>Контакт:</b> ${event.contactPerson}\n` : '') +
+      (event.contactPerson
+        ? `👤 <b>Контакт:</b> ${event.contactPerson}\n`
+        : '') +
       (event.contactPhone ? `📞 <b>Телефон:</b> ${event.contactPhone}\n` : '') +
       `\n<i>Деталі у CRM: <a href="https://crm-tau-nine.vercel.app">crm-tau-nine.vercel.app</a></i>`;
 
     if (hostId) {
       const host = await this.prisma.user.findUnique({ where: { id: hostId } });
-      const hostChatId = host?.telegramChatId ||
-        (host?.telegramId && /^\d+$/.test(host.telegramId) ? host.telegramId : null);
+      this.logger.log(
+        `[assignCrew] host=${JSON.stringify({ name: host?.name, telegramId: host?.telegramId, telegramChatId: host?.telegramChatId })}`,
+      );
+      const hostChatId =
+        host?.telegramChatId ||
+        (host?.telegramId && /^\d+$/.test(host.telegramId)
+          ? host.telegramId
+          : null);
+      this.logger.log(`[assignCrew] hostChatId resolved=${hostChatId}`);
       if (hostChatId) {
-        await this.telegramService.sendMessage(hostChatId, buildMessage('ведучий'));
+        await this.telegramService.sendMessage(
+          hostChatId,
+          buildMessage('ведучий'),
+        );
       }
     }
 
     if (driverId) {
-      const driver = await this.prisma.user.findUnique({ where: { id: driverId } });
-      const driverChatId = driver?.telegramChatId ||
-        (driver?.telegramId && /^\d+$/.test(driver.telegramId) ? driver.telegramId : null);
+      const driver = await this.prisma.user.findUnique({
+        where: { id: driverId },
+      });
+      this.logger.log(
+        `[assignCrew] driver=${JSON.stringify({ name: driver?.name, telegramId: driver?.telegramId, telegramChatId: driver?.telegramChatId })}`,
+      );
+      const driverChatId =
+        driver?.telegramChatId ||
+        (driver?.telegramId && /^\d+$/.test(driver.telegramId)
+          ? driver.telegramId
+          : null);
+      this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
       if (driverChatId) {
-        await this.telegramService.sendMessage(driverChatId, buildMessage('водій'));
+        await this.telegramService.sendMessage(
+          driverChatId,
+          buildMessage('водій'),
+        );
       }
     }
 
