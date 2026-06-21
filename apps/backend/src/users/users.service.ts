@@ -1,10 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import { TelegramService } from '../telegram/telegram.service';
+
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private telegramService: TelegramService,
+  ) {}
 
   async getAllUsers() {
     return this.prisma.user.findMany({
@@ -16,7 +21,7 @@ export class UsersService {
 
   async createUser(data: any) {
     const hashedPassword = await bcrypt.hash(data.password, 10);
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         name: data.fullName,
         email: data.email,
@@ -24,9 +29,23 @@ export class UsersService {
         password: hashedPassword,
         role: data.role,
         cityId: data.cityId || null,
+        telegramId: data.telegramId || null,
       },
     });
+
+    // Надсилаємо вітальне повідомлення якщо вказано telegramId
+    if (data.telegramId && data.password) {
+      await this.telegramService.sendWelcome(
+        data.telegramId,
+        data.fullName,
+        data.email,
+        data.password,
+      );
+    }
+
+    return user;
   }
+
 
   async updateUser(id: string, data: any) {
     const updateData: any = {
@@ -35,6 +54,7 @@ export class UsersService {
       phone: data.phone,
       role: data.role,
       cityId: data.cityId || null,
+      telegramId: data.telegramId || null, 
     };
     
     // Якщо передано новий пароль, хешуємо його

@@ -30,6 +30,7 @@ model User {
   phone    String?
   password String
   role     String  @default("MANAGER")
+  telegramId String?
   cityId   String?
   city     City?   @relation(fields: [cityId], references: [id])
 

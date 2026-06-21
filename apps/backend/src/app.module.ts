@@ -8,6 +8,7 @@ import { EventsModule } from './events/events.module';
 import { CitiesModule } from './cities/cities.module';
 import { SchoolsModule } from './schools/schools.module';
 import { FinanceModule } from './finance/finance.module';
+import { TelegramModule } from './telegram/telegram.module';
 
 @Module({
   imports: [
@@ -18,6 +19,8 @@ import { FinanceModule } from './finance/finance.module';
     CitiesModule,
     SchoolsModule,
     FinanceModule,
+    FinanceModule,
+    TelegramModule,
   ],
   controllers: [AppController],
   providers: [AppService],
