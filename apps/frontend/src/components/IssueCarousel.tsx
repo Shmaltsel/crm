@@ -25,7 +25,6 @@ export default function IssueCarousel() {
     if (!selectedCity?.id) return;
     try {
       const res = await api.get(`/issues?cityId=${selectedCity.id}`);
-      // Одразу відфільтровуємо виконані, щоб вони не завантажувались при оновленні сторінки
       setIssues(res.data.filter((i: any) => i.status !== 'Виконано'));
     } catch (e) {
       console.error(e);
@@ -43,16 +42,15 @@ export default function IssueCarousel() {
       await api.patch(`/issues/${issue.id}/status`, { status: nextStatus });
       
       if (nextStatus === 'Виконано') {
-        // Якщо статус "Виконано" — запускаємо анімацію зникнення
+        // Запускаємо анімацію горизонтального згортання
         setExitingIssueId(issue.id);
         
-        // Чекаємо 500мс (поки програється CSS анімація) і повністю видаляємо з масиву
+        // Чекаємо 500мс і видаляємо з масиву
         setTimeout(() => {
           setIssues(prev => prev.filter(i => i.id !== issue.id));
           setExitingIssueId(null);
         }, 500);
       } else {
-        // Якщо інший статус — просто оновлюємо колір кнопки
         setIssues(prev => prev.map(i => i.id === issue.id ? { ...i, status: nextStatus } : i));
       }
     } catch (e) {
@@ -69,36 +67,40 @@ export default function IssueCarousel() {
         <span className="text-sm font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">{issues.length}</span>
       </h2>
 
-      <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1">
+      {/* Зверни увагу: я прибрав gap-4 і додав відступи самим елементам, щоб анімація звуження працювала ідеально */}
+      <div className="flex overflow-x-auto pb-4 -mx-1 px-1">
         {issues.map(issue => {
-          // Перевіряємо, чи саме ця картка зараз закривається
           const isExiting = exitingIssueId === issue.id;
           
           return (
+            // Зовнішній контейнер керує шириною, прозорістю і відступом
             <div
               key={issue.id}
-              className={`bg-white rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-red-500 flex flex-col gap-3 transition-all duration-500 ease-in-out transform ${
+              className={`transition-all duration-500 ease-in-out overflow-hidden transform origin-left ${
                 isExiting 
-                  ? 'opacity-0 scale-90 -translate-y-4 w-0 min-w-0 p-0 m-0 border-0 overflow-hidden pointer-events-none' 
-                  : 'min-w-[280px] max-w-[320px] p-5 shrink-0 opacity-100 scale-100 translate-y-0'
+                  ? 'w-0 min-w-0 mr-0 opacity-0 scale-x-75 pointer-events-none' 
+                  : 'w-[300px] min-w-[300px] mr-4 opacity-100 scale-x-100 shrink-0'
               }`}
             >
-              <div>
-                <p className="text-xs text-slate-400 mb-1">{new Date(issue.createdAt).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                <p className="font-bold text-slate-800 text-sm">{issue.schoolName}</p>
-                <p className="text-xs text-slate-500">{issue.eventName}</p>
+              {/* Внутрішній контейнер має фіксовану ширину, щоб текст не ламався */}
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-red-500 p-5 flex flex-col gap-3 w-[300px]">
+                <div>
+                  <p className="text-xs text-slate-400 mb-1">{new Date(issue.createdAt).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                  <p className="font-bold text-slate-800 text-sm">{issue.schoolName}</p>
+                  <p className="text-xs text-slate-500">{issue.eventName}</p>
+                </div>
+
+                <p className="text-sm text-slate-700 bg-slate-50 rounded-xl p-3 italic leading-relaxed">
+                  "{issue.message}"
+                </p>
+
+                <button
+                  onClick={() => handleStatusToggle(issue)}
+                  className={`text-xs font-bold px-3 py-2 rounded-lg border transition-colors text-left ${STATUS_STYLES[issue.status] || STATUS_STYLES['Планується']}`}
+                >
+                  ● {issue.status} → натисни щоб змінити
+                </button>
               </div>
-
-              <p className="text-sm text-slate-700 bg-slate-50 rounded-xl p-3 italic leading-relaxed">
-                "{issue.message}"
-              </p>
-
-              <button
-                onClick={() => handleStatusToggle(issue)}
-                className={`text-xs font-bold px-3 py-2 rounded-lg border transition-colors text-left ${STATUS_STYLES[issue.status] || STATUS_STYLES['Планується']}`}
-              >
-                ● {issue.status} → натисни щоб змінити
-              </button>
             </div>
           );
         })}
