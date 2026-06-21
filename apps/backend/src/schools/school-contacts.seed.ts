@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 const contacts = [
+  // ================= ШКОЛИ =================
   // ── числові номери ──
   { schoolNumber: '1',   contactName: 'Надія Михайлівна',          phone: '0975695519', role: 'Завуч' },
   { schoolNumber: '2',   contactName: 'Наталя',                     phone: '0974064095', role: 'Завуч' },
@@ -26,7 +27,6 @@ const contacts = [
   { schoolNumber: '36',  contactName: 'Тетяна',                     phone: '0990407941', role: 'Завуч' },
   { schoolNumber: '40',  contactName: 'Юлія',                       phone: '0976015839', role: 'Педорг' },
   { schoolNumber: '40',  contactName: 'Ірина',                      phone: '0673021531', role: 'Педорг' },
-  { schoolNumber: '40',  contactName: 'Номер школи',                phone: '0322622002', role: null },
   { schoolNumber: '44',  contactName: 'Стефанович Людмила Олександрівна', phone: '0677838274', role: 'Директор' },
   { schoolNumber: '45',  contactName: 'Наталія Аркадіївна',         phone: '0677123961', role: 'Завуч' },
   { schoolNumber: '46',  contactName: 'Ірина Іларіонівна',          phone: '0676969337', role: 'Завуч' },
@@ -68,7 +68,7 @@ const contacts = [
   { schoolNumber: '123', contactName: 'Марія Андріївна',            phone: '0679334856', role: 'Директор' },
 
   // ── назви без номера ──
-  { schoolNumber: 'Арніка',              contactName: 'Світлана Михайлівна',  phone: '0979325399', role: 'Педорг' },
+  { schoolNumber: 'Арніка',             contactName: 'Світлана Михайлівна',  phone: '0979325399', role: 'Педорг' },
   { schoolNumber: 'Гроно',              contactName: 'Оксана Теодорівна',    phone: '0971147211', role: 'Завуч' },
   { schoolNumber: 'Джерельце',          contactName: 'Світлана Петрівна',    phone: '0673140267', role: 'Завуч' },
   { schoolNumber: 'Дивосвіт',           contactName: 'Наталя Миколаївна',    phone: '0932196651', role: 'Педорг' },
@@ -91,16 +91,114 @@ const contacts = [
   { schoolNumber: 'Початкова Школа Радості', contactName: 'Тетяна',          phone: '0967320197', role: 'Завуч' },
   { schoolNumber: 'Початкова Школа Радості', contactName: 'Наталя',          phone: '0674244920', role: 'Педорг' },
   { schoolNumber: 'Альфа',              contactName: 'Ірина',                phone: '0935122623', role: 'Завуч' },
+
+  // ================= САДОЧКИ =================
+  { schoolNumber: '52', contactName: 'Олена Віталіївна Добранюк', phone: '0964692943', role: 'Завідувачка' },
+  { schoolNumber: 'Веселка', contactName: 'Андриц Людмила Федорівна', phone: '0632836453', role: 'Завідувачка' },
+  { schoolNumber: '149', contactName: 'Василина Тарасівна', phone: '0987615106', role: 'Завідувачка' },
+  { schoolNumber: '132', contactName: 'Наталя', phone: '0971620805', role: 'Методист' },
+  { schoolNumber: 'Перші кроки', contactName: 'Мирослава Ярославівна', phone: '0963493423', role: 'Завідувач' },
+  { schoolNumber: '130', contactName: 'Ольга', phone: '0638694484', role: 'Методистка' },
+  { schoolNumber: '40', contactName: 'Світлана', phone: '0983365931', role: 'Заступник' },
+  { schoolNumber: '144', contactName: 'Наталя', phone: '0677670485', role: 'Методист' },
+  { schoolNumber: 'Барвінок', contactName: 'Наталя Витрикуш', phone: '0676809966', role: 'Завідувачка' },
+  { schoolNumber: '45', contactName: 'Наталя Шергіна', phone: '0675814381', role: 'Директор' },
+  { schoolNumber: '67', contactName: 'Тетяна Юріївна', phone: '0966063398', role: 'Директор' },
+  { schoolNumber: '118', contactName: 'Наталя Дмитрівна', phone: '0969847495', role: 'Директор' },
+  { schoolNumber: '118', contactName: 'Оксана Ярославівна', phone: '0677881629', role: 'Методист' },
+  { schoolNumber: '169', contactName: 'Галина Василівна', phone: '0962817175', role: null },
+  { schoolNumber: '175', contactName: 'Богдана', phone: '0687096641', role: 'Директор' },
+  { schoolNumber: '170', contactName: 'Ірина', phone: '0986373627', role: null },
+  { schoolNumber: '167', contactName: 'Юлія', phone: '0687096641', role: 'Директор' },
+  { schoolNumber: '42', contactName: 'Наталя Йосипівна', phone: '0677453052', role: null },
+  { schoolNumber: '33', contactName: 'Олександра Мирославівна', phone: '0505049049', role: null },
+  { schoolNumber: '134', contactName: 'Леся', phone: '0969740462', role: null },
+  { schoolNumber: '165', contactName: 'Марта Андріївна', phone: '0639377896', role: null },
+  { schoolNumber: '159', contactName: 'Ірина Олександрівна', phone: '0972430286', role: null },
+  { schoolNumber: '163', contactName: 'Оксана Ярославівна Сновидович', phone: '0963943974', role: null },
+  { schoolNumber: '153', contactName: 'Юля', phone: '0939907888', role: 'Методист' },
+  { schoolNumber: '39', contactName: 'Оксана Антонівна', phone: '0676820705', role: null },
+  { schoolNumber: '73', contactName: 'Ярослава', phone: '0679767575', role: null },
+  { schoolNumber: '134', contactName: 'Ольга', phone: '0679495251', role: 'Заступник' },
+  { schoolNumber: '69', contactName: 'Уляна', phone: '0673392742', role: 'Директор' },
+  { schoolNumber: '130', contactName: 'Зоряна', phone: '0677014722', role: null },
+  { schoolNumber: '52', contactName: 'Софія', phone: '0935428770', role: 'Діловод' },
+  { schoolNumber: '181', contactName: 'Марія Корпан', phone: '0673142095', role: 'Директор' },
+  { schoolNumber: '17', contactName: 'Світлана', phone: '0973047285', role: 'Директор' },
+  { schoolNumber: '44', contactName: 'Надія', phone: '0932342106', role: 'Методист' },
+  { schoolNumber: '170', contactName: 'Ірина', phone: '0986373627', role: 'Методист' },
+  { schoolNumber: '3', contactName: 'Наталя Ігорівна', phone: '0973436380', role: null },
+  { schoolNumber: '176', contactName: 'Юлія Андріївна', phone: '0665244245', role: 'Директор' },
+  { schoolNumber: '179', contactName: 'Віра Володимирівна', phone: '0672590052', role: 'Директор' },
+  { schoolNumber: 'Вільні', contactName: 'Іванна Михайлівна', phone: '0974788019', role: 'Директор' },
+  { schoolNumber: '105', contactName: 'Лідія Василівна', phone: '0679592370', role: 'Директор' },
+  { schoolNumber: '7', contactName: 'Уляна Богданівна', phone: '0674256644', role: 'Директор' },
+  { schoolNumber: '168', contactName: 'Ядельська Оксана Богданівна', phone: '0969105724', role: 'Директор' },
+  { schoolNumber: '139', contactName: 'Ірина', phone: '0970488672', role: 'Директор' },
+  { schoolNumber: '167', contactName: 'Зоряна Ярославівна', phone: '0672684699', role: 'Директор' },
+  { schoolNumber: '38', contactName: 'Ірина Олегівна', phone: '0679475122', role: null },
+  { schoolNumber: '132', contactName: 'Надія Леонівна', phone: '0974429599', role: 'Директор' },
+  { schoolNumber: '92', contactName: 'Ольга', phone: '0679492252', role: 'Директор' },
+  { schoolNumber: '33', contactName: 'Леся Породько', phone: '0505049049', role: 'Директор' },
+  { schoolNumber: '155', contactName: 'Ірина Михайлівна', phone: '0677301582', role: 'Директор' },
+  { schoolNumber: '183', contactName: 'Володимир Михайлович', phone: '0970256488', role: 'Директор' },
+  { schoolNumber: '70', contactName: 'Ольга Петрівна', phone: '0936992997', role: 'Директор' },
+  { schoolNumber: '18', contactName: 'Наталя Бондаренко', phone: '0505938826', role: 'Директор' },
+  { schoolNumber: '131', contactName: 'Любомира', phone: '0673657490', role: 'Директор' },
+  { schoolNumber: '9', contactName: 'Зоряна Семенівна', phone: '0677628687', role: 'Директор' },
+  { schoolNumber: '26', contactName: 'Ольга Іванівна', phone: '0977476237', role: 'Директор' },
+  { schoolNumber: '23', contactName: 'Соломія Ігорівна', phone: '0975616807', role: 'Директор' },
+  { schoolNumber: '1', contactName: 'Оксана', phone: '0675937156', role: 'Директор' },
+  { schoolNumber: '109', contactName: 'Катерина Петрівна', phone: '0975173313', role: 'Директор' },
+  { schoolNumber: '30', contactName: 'Олена Йосифівна', phone: '0974649258', role: 'Директор' },
+  { schoolNumber: '51', contactName: 'Вікторія Романівна', phone: '0974207708', role: 'Директор' },
+  { schoolNumber: '21', contactName: 'Анастасія Віталіївна', phone: '0671727948', role: 'Директор' },
+  { schoolNumber: '75', contactName: 'Наталія Володимирівна', phone: '0972431888', role: 'Директор' },
+  { schoolNumber: '166', contactName: 'Мар\'яна Михайлівна', phone: '0975300502', role: 'Директор' },
+  { schoolNumber: '127', contactName: 'Галина Йосифівна', phone: '0963460339', role: 'Директор' },
+  { schoolNumber: '86', contactName: 'Стефанія Миколаївна', phone: '0674936394', role: 'Директор' },
+  { schoolNumber: '114', contactName: 'Ольга Володимирівна', phone: '0983673279', role: 'Директор' },
+  { schoolNumber: '128', contactName: 'Лідія Михайлівна', phone: '0979790881', role: 'Директор' },
+  { schoolNumber: 'Золотий ключик', contactName: 'Галина', phone: '0663914517', role: 'Методист' },
+  { schoolNumber: 'Казка', contactName: 'Ірина Михайлівна', phone: '0677322435', role: 'Директор' },
+  { schoolNumber: 'Львівський 2 сад', contactName: 'Олена Юріївна', phone: '0677270402', role: 'Директор' },
+  { schoolNumber: '160', contactName: 'Віра Каролівна', phone: '0968009925', role: 'Директор' },
+  { schoolNumber: '129', contactName: 'Оксана Зенонівна', phone: '0678112120', role: 'Директор' },
+  { schoolNumber: '93', contactName: 'Марія Ярославівна', phone: '0676950870', role: 'Директор' },
+  { schoolNumber: '48', contactName: 'Наталія Остапівна', phone: '0974428307', role: 'Директор' },
+  { schoolNumber: '135', contactName: 'Галина Ярославівна', phone: '0673994741', role: 'Директор' },
+  { schoolNumber: '188', contactName: 'Ірина Вікторівна', phone: '0933054378', role: 'Директор' },
+  { schoolNumber: '25', contactName: 'Лілія Богданівна', phone: '0680215346', role: 'Директор' },
+  { schoolNumber: '32', contactName: 'Наталія Василівна', phone: '0678119933', role: 'Директор' },
+  { schoolNumber: '171', contactName: 'Ірина Корніївна', phone: '0972576026', role: 'Директор' },
+  { schoolNumber: '96', contactName: 'Світлана Петрівна', phone: '0676739477', role: 'Директор' },
+  { schoolNumber: '94', contactName: 'Оксана Ярославівна', phone: '0671447681', role: 'Директор' },
+  { schoolNumber: '156/162', contactName: 'Оксана Ісламівна', phone: '0985835819', role: 'Директор' },
+  { schoolNumber: '71', contactName: 'Валентина Гермогенівна', phone: '0976781981', role: 'Директор' },
+  { schoolNumber: '187', contactName: 'Ольга Олексіївна', phone: '0674599119', role: 'Директор' },
+  { schoolNumber: '14', contactName: 'Оксана Любомирівна', phone: '0677247619', role: 'Директор' },
+  { schoolNumber: 'Любисток', contactName: 'Марія', phone: '0685227373', role: 'Методист' },
+  { schoolNumber: '106', contactName: 'Галина Володимирівна', phone: '0675839839', role: 'Директор' },
+  { schoolNumber: '104', contactName: 'Тетяна Ярославівна', phone: '0678034951', role: 'Директор' },
+  { schoolNumber: '116', contactName: 'Ірина Іванівна', phone: '0968145853', role: 'Директор' },
+  { schoolNumber: '57', contactName: 'Руслана Володимирівна', phone: '0966507883', role: 'Директор' },
+  { schoolNumber: '184', contactName: 'Марія Іванівна', phone: '2546872', role: 'Директор' },
+  { schoolNumber: '43', contactName: 'Віра', phone: '0984284448', role: 'Методист' },
+  { schoolNumber: '29', contactName: 'Вікторія Олександрівна', phone: '0673041528', role: 'Директор' }
 ];
 
 async function main() {
   console.log('Seeding school contacts...');
+  
+  // Видаляємо старі контакти
   await prisma.schoolContact.deleteMany({});
+
   for (const c of contacts) {
     await prisma.schoolContact.create({
       data: { city: 'Львів', ...c },
     });
   }
+  
   console.log(`Done: ${contacts.length} contacts inserted`);
 }
 

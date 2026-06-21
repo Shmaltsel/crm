@@ -31,10 +31,11 @@ export class SchoolsService {
 
     // Запускаємо парсинг у фоні
     this.parserService
-      .parseSchoolData(data.name, sourceUrl)
+      // ДОДАЛИ data.type третім аргументом
+      .parseSchoolData(data.name, sourceUrl, data.type)
       .then(async (parsed) => {
         if (!parsed) {
-          console.log(`Не вдалося знайти дані для школи: ${data.name}`);
+          console.log(`Не вдалося знайти дані для закладу: ${data.name}`);
           return;
         }
 

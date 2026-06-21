@@ -38,8 +38,8 @@ export class SchoolsController {
 
   // ⚠️ ВАЖЛИВО: цей маршрут МАЄ стояти ДО @Get(':id')
   @Get('search')
-  search(@Query('q') q: string) {
-    return this.parserService.searchSchools(q);
+  search(@Query('q') q: string, @Query('type') type: string) {
+    return this.parserService.searchSchools(q, type);
   }
 
   @Get(':id')
