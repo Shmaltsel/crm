@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 export function useAuth() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<{ name: string; role: string } | null>(null);
+  const [user, setUser] = useState<{ id: string; name: string; role: string } | null>(null);
 
   useEffect(() => {
     const raw = localStorage.getItem('user');

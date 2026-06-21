@@ -21,6 +21,14 @@ import { SubmitReportDto } from './dto/submit-report.dto';
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
+  // Список подій для поточного користувача.
+  // Для водіїв/ведучих повертаються лише ті події, де вони у складі екіпажу.
+  // Для менеджерів/адмінів — усі події.
+  @Get()
+  findAll(@CurrentUser() user: JwtUser) {
+    return this.eventsService.findAllForUser(user);
+  }
+
   @Post()
   create(@Body() body: CreateEventDto, @CurrentUser() user: JwtUser) {
     return this.eventsService.create(body, user);

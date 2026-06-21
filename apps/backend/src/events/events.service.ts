@@ -8,9 +8,41 @@ import { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
+// Ролі "польового" персоналу — бачать лише свої події (де вони в екіпажі)
+const FIELD_ROLES = ['DRIVER', 'HOST'];
+
 @Injectable()
 export class EventsService {
   constructor(private prisma: PrismaService) {}
+
+  // Список подій для сторінки "Події".
+  // Водій/ведучий бачить тільки події, де він призначений в екіпаж.
+  // Решта ролей (менеджер, адмін тощо) бачать усі події.
+  async findAllForUser(user: JwtUser) {
+    const isFieldStaff = FIELD_ROLES.includes(user.role);
+
+    return this.prisma.event.findMany({
+      where: isFieldStaff
+        ? {
+            crew: {
+              OR: [{ hostId: user.sub }, { driverId: user.sub }],
+            },
+          }
+        : {},
+      include: {
+        school: { select: { id: true, name: true, type: true } },
+        city: { select: { id: true, name: true } },
+        crew: {
+          include: {
+            host: { select: { id: true, name: true } },
+            driver: { select: { id: true, name: true } },
+          },
+        },
+      },
+      orderBy: { date: 'asc' },
+    });
+  }
+
   // Оновлюємо метод create
   async create(data: CreateEventDto, user: JwtUser) {
     return this.prisma.event.create({
