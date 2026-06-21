@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 
+import { API_BASE_URL } from '../config/api';
+
 type Role = 'MANAGER' | 'DRIVER' | 'HOST';
 
 interface City {
@@ -39,9 +41,6 @@ const ROLE_HEADER_COLORS: Record<Role, string> = {
 };
 
 const EMPTY_FORM = { fullName: '', phone: '', email: '', cityId: '', role: 'MANAGER' as Role, password: '' };
-
-// ТИМЧАСОВО ДЛЯ ЛОКАЛЬНИХ ТЕСТІВ. ПОТІМ ЗМІНИ НА 'https://crm-57qd.onrender.com'
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://crm-57qd.onrender.com';
 
 export default function Employees() {
   const [users, setUsers] = useState<User[]>([]);

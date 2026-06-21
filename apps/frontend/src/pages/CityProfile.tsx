@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
 import CityAnalytics from '../components/city-profile/CityAnalytics.tsx';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://crm-57qd.onrender.com';
+import { API_BASE_URL } from '../config/api';
 
 type Tab = 'events' | 'crews' | 'analytics';
 

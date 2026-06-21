@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://crm-57qd.onrender.com';
+import { API_BASE_URL } from '../config/api';
 
 export default function EventReport() {
   const { eventId } = useParams();

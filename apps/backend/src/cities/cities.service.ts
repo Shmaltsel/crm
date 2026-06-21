@@ -1,18 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class CitiesService {
+  constructor(private prisma: PrismaService) {}
   async create(name: string) {
-    return prisma.city.create({
+    return this.prisma.city.create({
       data: { name },
     });
   }
 
   async findAll() {
-    const cities = await prisma.city.findMany({
+    const cities = await this.prisma.city.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
         users: {
@@ -26,16 +25,16 @@ export class CitiesService {
       },
     });
 
-    return cities.map(city => ({
+    return cities.map((city) => ({
       ...city,
       manager: city.users[0] || null,
-      plannedEvents: city.events.filter(e => e.status !== 'RE_SALE').length,
-      completedEvents: city.events.filter(e => e.status === 'RE_SALE').length,
+      plannedEvents: city.events.filter((e) => e.status !== 'RE_SALE').length,
+      completedEvents: city.events.filter((e) => e.status === 'RE_SALE').length,
     }));
   }
 
   async findOne(id: string) {
-    const city = await prisma.city.findUnique({
+    const city = await this.prisma.city.findUnique({
       where: { id },
       include: {
         users: {

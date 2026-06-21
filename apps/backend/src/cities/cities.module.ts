@@ -4,6 +4,6 @@ import { CitiesController } from './cities.controller';
 
 @Module({
   providers: [CitiesService],
-  controllers: [CitiesController]
+  controllers: [CitiesController],
 })
 export class CitiesModule {}

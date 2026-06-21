@@ -4,8 +4,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://crm-57qd.onrender.com';
-
+import { API_BASE_URL } from '../config/api';
 // Фото для міст за назвою (Unsplash)
 const CITY_PHOTOS: Record<string, string> = {
   'Львів': 'https://images.unsplash.com/photo-1555990793-da11153b2473?w=600&q=80',

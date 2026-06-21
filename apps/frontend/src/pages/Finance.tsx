@@ -5,7 +5,8 @@ import {
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://crm-57qd.onrender.com';
+import { API_BASE_URL } from '../config/api';
+
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 const fmt = (n: number) =>
