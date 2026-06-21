@@ -143,8 +143,12 @@ export default function SchoolProfile() {
 
     if (!isCurrentStage && !isNextStage) return;
 
-    // ВИПРАВЛЕНО: Якщо це перехід до REPORT (Звіт), відкриваємо форму звіту
-    if (isNextStage && nextStage?.key === "REPORT") {
+    // Якщо клікнули на поточний активний крок — просуваємо до НАСТУПНОГО
+    const targetStepId = isCurrentStage && nextStage ? nextStage.id : stepId;
+
+    // Якщо цільовий крок — REPORT, відкриваємо форму звіту
+    const targetStage = PIPELINE_STAGES.find((s) => s.id === targetStepId);
+    if (targetStage?.key === "REPORT") {
       setIsReportModalOpen(true);
       return;
     }
@@ -152,7 +156,7 @@ export default function SchoolProfile() {
     setCommentModal({
       isOpen: true,
       mode: "pipeline",
-      stepId, // Передаємо ID етапу, на який саме клікнули
+      stepId: targetStepId, // ← завжди передаємо НАСТУПНИЙ крок
       historyId: null,
       text: "",
     });
