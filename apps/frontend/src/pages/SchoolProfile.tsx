@@ -37,7 +37,6 @@ export default function SchoolProfile() {
 
   const [users, setUsers] = useState<any[]>([]);
   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
-
   const [schoolData, setSchoolData] = useState<any>({
     id: "",
     cityId: "",
@@ -64,7 +63,6 @@ export default function SchoolProfile() {
     historyId: null as string | null,
     text: "",
   });
-
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const [editForm, setEditForm] = useState(schoolData);
@@ -84,10 +82,7 @@ export default function SchoolProfile() {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
 
-      // Завантажуємо школу з локального сервера
-      const schoolRes = await api.get(`/schools/${id}`, {
-        headers,
-      });
+      const schoolRes = await api.get(`/schools/${id}`, { headers });
       if (schoolRes.data) {
         setSchoolData({
           id: schoolRes.data.id,
@@ -108,16 +103,12 @@ export default function SchoolProfile() {
         });
       }
 
-      // Завантажуємо події з локального сервера
-      const eventsRes = await api.get(`/events/school/${id}`, {
-        headers,
-      });
+      const eventsRes = await api.get(`/events/school/${id}`, { headers });
       setEvents(eventsRes.data.filter((ev: any) => ev.status !== "RE_SALE"));
       if (eventsRes.data.length > 0 && !selectedEventId) {
         setSelectedEventId(eventsRes.data[0].id);
       }
 
-      // Завантажуємо користувачів з локального сервера
       const usersRes = await api.get("/users", { headers });
       setUsers(usersRes.data);
     } catch (error) {
@@ -131,13 +122,13 @@ export default function SchoolProfile() {
     fetchData();
   }, [id]);
 
-  const currentEvent =
-    events.find((ev) => ev.id === selectedEventId) || events[0];
+  const currentEvent = events.find((ev) => ev.id === selectedEventId) || events[0];
+  
   const currentStageIndex =
     PIPELINE_STAGES.findIndex((s) => s.key === currentEvent?.status) !== -1
       ? PIPELINE_STAGES.findIndex((s) => s.key === currentEvent?.status)
       : 0;
-
+      
   const creatorName =
     currentEvent?.history?.length > 0
       ? currentEvent.history[currentEvent.history.length - 1].userName
@@ -145,25 +136,22 @@ export default function SchoolProfile() {
 
   const handlePipelineClick = (stepId: number) => {
     if (!currentEvent) return;
-
-    // Дозволяємо клік, якщо це поточний етап АБО якщо це наступний крок
     const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
     const isCurrentStage = stepId === PIPELINE_STAGES[currentStageIndex].id;
     const isNextStage = nextStage?.id === stepId;
 
     if (!isCurrentStage && !isNextStage) return;
 
-    // Якщо це перехід до REPORT (8 етап)
-    if (nextStage?.key === "RE_SALE") {
+    // ВИПРАВЛЕНО: Якщо це перехід до REPORT (Звіт), відкриваємо форму звіту
+    if (isNextStage && nextStage?.key === "REPORT") {
       setIsReportModalOpen(true);
       return;
     }
 
-    // Якщо це клік по поточному етапу - відкриваємо коментар
     setCommentModal({
       isOpen: true,
       mode: "pipeline",
-      stepId,
+      stepId, // Передаємо ID етапу, на який саме клікнули
       historyId: null,
       text: "",
     });
@@ -186,25 +174,34 @@ export default function SchoolProfile() {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       };
       if (commentModal.mode === "pipeline" && commentModal.stepId) {
-        const activeStage = PIPELINE_STAGES[currentStageIndex];
-        const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+        // ВИПРАВЛЕНО: Беремо цільовий статус саме з того етапу, який підтверджуємо
+        const targetStage = PIPELINE_STAGES.find(s => s.id === commentModal.stepId);
+        if (!targetStage) return;
+
+        const isAdvancing = targetStage.id > PIPELINE_STAGES[currentStageIndex].id;
+        
+        const actionName = isAdvancing
+          ? `Етап пройдено: ${PIPELINE_STAGES[currentStageIndex].name}`
+          : `Коментар до етапу: ${targetStage.name}`;
+
         const res = await api.patch(
           `/events/${currentEvent.id}/status`,
           {
-            status: nextStage.key,
-            actionName: `Етап пройдено: ${activeStage.name}`,
+            status: targetStage.key,
+            actionName,
             comment: commentModal.text,
           },
           { headers },
         );
 
-        if (nextStage.key === "RE_SALE") {
-          // Подія завершена — прибираємо зі списку
+        if (targetStage.key === "RE_SALE") {
+          // Подія повністю завершена — прибираємо зі списку активних
           setEvents((prev) => prev.filter((ev) => ev.id !== currentEvent.id));
           setSelectedEventId(null);
         } else {
+          // Оновлюємо тільки змінені поля, зберігаючи вкладені об'єкти
           setEvents((prev) =>
-            prev.map((ev) => (ev.id === currentEvent.id ? res.data : ev)),
+            prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
           );
         }
       } else if (commentModal.mode === "history" && commentModal.historyId) {
@@ -285,7 +282,6 @@ export default function SchoolProfile() {
         { field, status },
         { headers },
       );
-
       setEvents((prev) =>
         prev.map((ev) => {
           if (ev.id === currentEvent.id) {
@@ -308,14 +304,18 @@ export default function SchoolProfile() {
       const headers = {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       };
-      await api.post(
+      const res = await api.post(
         `/events/${currentEvent.id}/report`,
         reportData,
         { headers },
       );
+      
       setIsReportModalOpen(false);
-      // Перезавантажуємо — подія зі статусом RE_SALE зникне зі списку
-      await fetchData();
+      
+      // ВИПРАВЛЕНО: Миттєво підтягуємо оновлений статус "Звіт" без перезавантаження
+      setEvents((prev) =>
+        prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
+      );
     } catch (e) {
       console.error("Помилка при збереженні звіту", e);
     }
@@ -326,7 +326,6 @@ export default function SchoolProfile() {
       const headers = {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       };
-
       const res = await api.post(
         `/events/${currentEvent.id}/assign-crew`,
         {
@@ -336,11 +335,10 @@ export default function SchoolProfile() {
         },
         { headers },
       );
-
       await handleUpdatePreparation("assignCrew", "Виконано");
 
       setEvents((prev) =>
-        prev.map((ev) => (ev.id === currentEvent.id ? res.data : ev)),
+        prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
       );
       setIsCrewModalOpen(false);
     } catch (e) {
@@ -363,7 +361,6 @@ export default function SchoolProfile() {
         </span>
       </div>
 
-      {/* Адаптивна шапка */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-slate-800 leading-tight">
           {schoolData.type} "{schoolData.name}"
