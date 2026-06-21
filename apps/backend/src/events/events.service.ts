@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 
@@ -7,7 +7,6 @@ import { SubmitReportDto } from './dto/submit-report.dto';
 
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
-import { Injectable, Logger } from '@nestjs/common';
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
