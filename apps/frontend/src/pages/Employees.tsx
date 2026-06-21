@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../config/api";
+import PhoneLink from "../components/PhoneLink";
 
 type Role = "MANAGER" | "DRIVER" | "HOST";
 
@@ -192,9 +193,7 @@ export default function Employees() {
                         </p>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                           {u.phone && (
-                            <span className="text-xs text-slate-500">
-                              {u.phone}
-                            </span>
+                            <PhoneLink phone={u.phone} className="text-xs" />
                           )}
                           <span className="bg-slate-100 text-slate-600 text-[11px] px-2 py-0.5 rounded-full font-medium">
                             📍 {u.city?.name || "Всі міста"}
@@ -249,7 +248,7 @@ export default function Employees() {
                           </div>
                         </td>
                         <td className="px-5 py-4 text-slate-600 text-sm">
-                          {u.phone || "—"}
+                          <PhoneLink phone={u.phone} />
                         </td>
                         <td className="px-5 py-4 text-slate-600 text-sm font-medium">
                           {u.email}

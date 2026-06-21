@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../config/api";
 import AddressLink from "../components/AddressLink";
+import PhoneLink from "../components/PhoneLink";
 
 interface AuthUser {
   id: string;
@@ -185,8 +186,8 @@ export default function Events() {
                 )}
                 {isFieldStaff && (ev.contactPerson || ev.contactPhone) && (
                   <p className="text-xs text-gray-500 mt-0.5">
-                    📞 {ev.contactPerson ?? "—"}
-                    {ev.contactPhone ? `, ${ev.contactPhone}` : ""}
+                    {ev.contactPerson ?? "—"}
+                    {ev.contactPhone ? <> · <PhoneLink phone={ev.contactPhone} /></> : null}
                   </p>
                 )}
               </div>

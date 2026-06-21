@@ -1,6 +1,5 @@
-
-
 import React from 'react';
+import PhoneLink from '../PhoneLink';
 
 interface AssignedCrewProps {
   currentEvent: any;
@@ -52,10 +51,9 @@ export default function AssignedCrew({ currentEvent, employees }: AssignedCrewPr
         </div>
         <div className="flex justify-between items-center">
           <span className="text-slate-500">Телефон:</span>
-          <span className="font-medium">{crew.phone || '—'}</span>
+          <span className="font-medium"><PhoneLink phone={crew.phone} /></span>
         </div>
       </div>
     </div>
   );
 }
-

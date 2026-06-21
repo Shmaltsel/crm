@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import CityAnalytics from "../components/city-profile/CityAnalytics.tsx";
+import PhoneLink from "../components/PhoneLink";
 import type { Event, Crew, CityProfile } from "../types";
 
 import { api } from "../config/api";
@@ -86,7 +87,7 @@ export default function CityProfile() {
                 Менеджер
               </p>
               <p className="font-bold text-slate-800">{manager?.name ?? "—"}</p>
-              <p className="text-sm text-slate-500">{manager?.phone ?? "—"}</p>
+              <p className="text-sm text-slate-500"><PhoneLink phone={manager?.phone} /></p>
             </div>
           </div>
 
@@ -264,7 +265,7 @@ export default function CityProfile() {
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-xs text-slate-500">
                       <span>{crew.car || "—"}</span>
-                      <span>{crew.phone || "—"}</span>
+                      <PhoneLink phone={crew.phone} className="text-xs" />
                     </div>
                   </div>
                 ))}
@@ -299,7 +300,7 @@ export default function CityProfile() {
                           {crew.car || "—"}
                         </td>
                         <td className="p-4 text-slate-600">
-                          {crew.phone || "—"}
+                          <PhoneLink phone={crew.phone} />
                         </td>
                       </tr>
                     ))}
