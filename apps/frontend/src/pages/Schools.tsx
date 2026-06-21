@@ -432,19 +432,26 @@ export default function Schools() {
               </div>
               <div>
                 <label className="block text-sm text-slate-600 mb-1">
-                  Контактна особа
+                  Контакт
                   <span className="ml-1 text-xs text-slate-400">(автозаповнення)</span>
                 </label>
-                {matchedContacts.length > 1 && (
+                {matchedContacts.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-2">
                     {matchedContacts.map((c, i) => (
                       <button
                         key={i}
                         type="button"
-                        onClick={() => setForm(f => ({ ...f, director: c.contactName, phone: c.phone }))}
-                        className={`text-xs px-2 py-1 rounded-full border transition-colors ${form.director === c.contactName ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'}`}
+                        onClick={() =>
+                          setForm((f) => ({ ...f, director: c.contactName, phone: c.phone }))
+                        }
+                        className={`text-xs px-2 py-1 rounded-full border transition-colors ${
+                          form.director === c.contactName
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                        }`}
                       >
-                        {c.role ? `${c.role}: ` : ''}{c.contactName}
+                        {c.role ? `${c.role}: ` : ''}
+                        {c.contactName}
                       </button>
                     ))}
                   </div>
@@ -459,7 +466,7 @@ export default function Schools() {
                   type="text"
                   value={form.director}
                   onChange={(e) => setForm({ ...form, director: e.target.value })}
-                  placeholder="Директор Іван Іванович"
+                  placeholder="Микола Петренко"
                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 />
               </div>
