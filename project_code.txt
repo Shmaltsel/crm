@@ -295,6 +295,16 @@ model EventPreparation {
   remindSchool     String @default("Заплановано")
 }
 
+model SchoolContact {
+  id           String   @id @default(uuid())
+  city         String   @default("Львів")
+  schoolNumber String   // номер або назва: "13", "Сихівський ліцей"
+  contactName  String
+  phone        String
+  role         String?  // "Директор", "Завуч", "Педорг"
+  createdAt    DateTime @default(now())
+}
+
 
 --- FILE: apps\backend\src\app.controller.spec.ts ---
 
@@ -922,13 +932,14 @@ export class EventsController {
 import { Module, forwardRef } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { EventsController } from './events.controller';
-import { SchoolsModule } from '../schools/schools.module'; // Імпорт SchoolsModule
+import { SchoolsModule } from '../schools/schools.module';
+import { TelegramModule } from '../telegram/telegram.module';
 
 @Module({
-  imports: [forwardRef(() => SchoolsModule)], // Теж використовуємо forwardRef
+  imports: [forwardRef(() => SchoolsModule), TelegramModule],
   controllers: [EventsController],
   providers: [EventsService],
-  exports: [EventsService], // Експортуємо сервіс, щоб SchoolsService міг його бачити
+  exports: [EventsService],
 })
 export class EventsModule {}
 
@@ -957,22 +968,28 @@ describe('EventsService', () => {
 
 --- FILE: apps\backend\src\events\events.service.ts ---
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
 
 import { CreateEventDto } from './dto/create-event.dto';
 import { SubmitReportDto } from './dto/submit-report.dto';
 
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
+
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-// Ролі "польового" персоналу — бачать лише свої події (де вони в екіпажі)
 const FIELD_ROLES = ['DRIVER', 'HOST'];
 
 @Injectable()
 export class EventsService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(EventsService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private telegramService: TelegramService,
+  ) {}
 
   // Список подій для сторінки "Події".
   // Водій/ведучий бачить тільки події, де він призначений в екіпаж.
@@ -1075,7 +1092,6 @@ export class EventsService {
     hostId: string,
     driverId: string,
   ) {
-    // Створюємо екіпаж під цю подію
     const crew = await this.prisma.crew.create({
       data: {
         name: 'Екіпаж події',
@@ -1085,16 +1101,80 @@ export class EventsService {
       },
     });
 
-    // Оновлюємо подію, додаючи ID створеного екіпажу
-    return this.prisma.event.update({
+    const event = await this.prisma.event.update({
       where: { id: eventId },
       data: { crewId: crew.id },
       include: {
-        crew: true,
+        crew: { include: { host: true, driver: true } },
+        school: true,
+        city: true,
         preparation: true,
         history: { orderBy: { createdAt: 'desc' } },
       },
     });
+
+    const dateStr = new Date(event.date).toLocaleDateString('uk-UA', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+    const timeStr = event.time ? `, ${event.time}` : '';
+
+    const buildMessage = (role: 'ведучий' | 'водій') =>
+      `🎯 <b>Вас призначено на подію!</b>\n\n` +
+      `👤 <b>Роль:</b> ${role === 'ведучий' ? '🎙️ Ведучий' : '🚗 Водій'}\n` +
+      `📅 <b>Дата:</b> ${dateStr}${timeStr}\n` +
+      `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
+      `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
+      `🎪 <b>Проєкт:</b> ${event.project}\n` +
+      (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
+      (event.contactPerson
+        ? `👤 <b>Контакт:</b> ${event.contactPerson}\n`
+        : '') +
+      (event.contactPhone ? `📞 <b>Телефон:</b> ${event.contactPhone}\n` : '') +
+      `\n<i>Деталі у CRM: <a href="https://crm-frontend-nwexs60ek-shmaltsels-projects.vercel.app">crm-tau-nine.vercel.app</a></i>`;
+
+    if (hostId) {
+      const host = await this.prisma.user.findUnique({ where: { id: hostId } });
+      this.logger.log(
+        `[assignCrew] host=${JSON.stringify({ name: host?.name, telegramId: host?.telegramId, telegramChatId: host?.telegramChatId })}`,
+      );
+      const hostChatId =
+        host?.telegramChatId ||
+        (host?.telegramId && /^\d+$/.test(host.telegramId)
+          ? host.telegramId
+          : null);
+      this.logger.log(`[assignCrew] hostChatId resolved=${hostChatId}`);
+      if (hostChatId) {
+        await this.telegramService.sendMessage(
+          hostChatId,
+          buildMessage('ведучий'),
+        );
+      }
+    }
+
+    if (driverId) {
+      const driver = await this.prisma.user.findUnique({
+        where: { id: driverId },
+      });
+      this.logger.log(
+        `[assignCrew] driver=${JSON.stringify({ name: driver?.name, telegramId: driver?.telegramId, telegramChatId: driver?.telegramChatId })}`,
+      );
+      const driverChatId =
+        driver?.telegramChatId ||
+        (driver?.telegramId && /^\d+$/.test(driver.telegramId)
+          ? driver.telegramId
+          : null);
+      this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
+      if (driverChatId) {
+        await this.telegramService.sendMessage(
+          driverChatId,
+          buildMessage('водій'),
+        );
+      }
+    }
+
+    return event;
   }
 
   async findBySchool(schoolId: string) {
@@ -1564,6 +1644,119 @@ export class ParserService {
   }
 }
 
+--- FILE: apps\backend\src\schools\school-contacts.seed.ts ---
+
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+const contacts = [
+  // ── числові номери ──
+  { schoolNumber: '1',   contactName: 'Надія Михайлівна',          phone: '0975695519', role: 'Завуч' },
+  { schoolNumber: '2',   contactName: 'Наталя',                     phone: '0974064095', role: 'Завуч' },
+  { schoolNumber: '5',   contactName: 'Лариса',                     phone: '0673622534', role: 'Директор' },
+  { schoolNumber: '9',   contactName: 'Віра Ярославівна',           phone: '0674935124', role: 'Директор' },
+  { schoolNumber: '9',   contactName: 'Леся',                       phone: '0673380894', role: 'Завуч' },
+  { schoolNumber: '13',  contactName: 'Марта Романівна',            phone: '0675839806', role: 'Директор' },
+  { schoolNumber: '15',  contactName: 'Ірина Андріївна',            phone: '0679062500', role: 'Завуч' },
+  { schoolNumber: '17',  contactName: 'Ельвіра',                    phone: '0678578514', role: 'Педорг' },
+  { schoolNumber: '18',  contactName: 'Роман',                      phone: '0972587179', role: 'Завуч' },
+  { schoolNumber: '20',  contactName: 'Наталя Іванівна',            phone: '0506747111', role: 'Завуч' },
+  { schoolNumber: '23',  contactName: 'Микола Шостак',              phone: '0632232178', role: 'Педорг' },
+  { schoolNumber: '27',  contactName: 'Романа Михайлівна',          phone: '0973113778', role: 'Завуч' },
+  { schoolNumber: '27',  contactName: 'Наталя Куліш',               phone: '0677552743', role: 'Завуч' },
+  { schoolNumber: '28',  contactName: 'Олена Олегівна',             phone: '0679243130', role: 'Завуч' },
+  { schoolNumber: '30',  contactName: 'Світлана Михальвіна',        phone: '0974436542', role: 'Завуч' },
+  { schoolNumber: '30',  contactName: 'Ольга Володимирівна',        phone: '0679596199', role: 'Завуч' },
+  { schoolNumber: '31',  contactName: 'Христина Ярославівна',       phone: '0983804403', role: 'Директор' },
+  { schoolNumber: '31',  contactName: 'Леся Оресівна',              phone: '0673567679', role: 'Завуч' },
+  { schoolNumber: '34',  contactName: 'Мирон',                      phone: '0938668520', role: 'Педорг' },
+  { schoolNumber: '36',  contactName: 'Тетяна',                     phone: '0990407941', role: 'Завуч' },
+  { schoolNumber: '40',  contactName: 'Юлія',                       phone: '0976015839', role: 'Педорг' },
+  { schoolNumber: '40',  contactName: 'Ірина',                      phone: '0673021531', role: 'Педорг' },
+  { schoolNumber: '40',  contactName: 'Номер школи',                phone: '0322622002', role: null },
+  { schoolNumber: '44',  contactName: 'Стефанович Людмила Олександрівна', phone: '0677838274', role: 'Директор' },
+  { schoolNumber: '45',  contactName: 'Наталія Аркадіївна',         phone: '0677123961', role: 'Завуч' },
+  { schoolNumber: '46',  contactName: 'Ірина Іларіонівна',          phone: '0676969337', role: 'Завуч' },
+  { schoolNumber: '46',  contactName: 'Юля',                        phone: '0961791595', role: 'Педорг' },
+  { schoolNumber: '48',  contactName: 'Роман Васильович',           phone: '0982310957', role: 'Директор' },
+  { schoolNumber: '49',  contactName: 'Уляна',                      phone: '0681371457', role: 'Педорг' },
+  { schoolNumber: '50',  contactName: "Мар'яна Іванівна",           phone: '0674901746', role: 'Завуч' },
+  { schoolNumber: '51',  contactName: 'Ірина Миколаївна',           phone: '0972595956', role: 'Завуч' },
+  { schoolNumber: '52',  contactName: 'Світлана',                   phone: '0677070497', role: 'Директор' },
+  { schoolNumber: '54',  contactName: 'Любов Іванівна',             phone: '0677715647', role: 'Завуч' },
+  { schoolNumber: '60',  contactName: 'Людмила',                    phone: '0973888255', role: 'Директор' },
+  { schoolNumber: '63',  contactName: 'Іванець Ольга Євгенівна',    phone: '0977345920', role: 'Завуч' },
+  { schoolNumber: '65',  contactName: 'Марія',                      phone: '0975391164', role: 'Педорг' },
+  { schoolNumber: '66',  contactName: 'Мирослава',                  phone: '0977711381', role: 'Завуч' },
+  { schoolNumber: '66',  contactName: 'Назар Оксана',               phone: '0679686514', role: 'Завуч' },
+  { schoolNumber: '67',  contactName: 'Оксана Володимирівна',       phone: '0673705262', role: 'Завуч' },
+  { schoolNumber: '68',  contactName: 'Уляна',                      phone: '0973004954', role: 'Педорг' },
+  { schoolNumber: '69',  contactName: 'Тетяна Володимирівна',       phone: '0673041659', role: 'Завуч' },
+  { schoolNumber: '70',  contactName: 'Марта',                      phone: '0676726984', role: 'Директор' },
+  { schoolNumber: '70',  contactName: 'Марія',                      phone: '0966063264', role: 'Завуч' },
+  { schoolNumber: '71',  contactName: 'Марія',                      phone: '0676644983', role: 'Педорг' },
+  { schoolNumber: '71',  contactName: 'Роман',                      phone: '0677514127', role: 'Директор' },
+  { schoolNumber: '72',  contactName: 'Олена Михайлівна',           phone: '0677948577', role: 'Завуч' },
+  { schoolNumber: '73',  contactName: 'Світлана Богданівна',        phone: '0971844043', role: 'Директор' },
+  { schoolNumber: '73',  contactName: 'Інна Євгенівна',             phone: '0678829581', role: 'Завуч' },
+  { schoolNumber: '80',  contactName: 'Наталя',                     phone: '0967331419', role: 'Завуч' },
+  { schoolNumber: '81',  contactName: 'Галина Антонівна',           phone: '0673662853', role: 'Завуч' },
+  { schoolNumber: '81',  contactName: 'Андріана',                   phone: '0502867516', role: 'Завуч' },
+  { schoolNumber: '84',  contactName: 'Тетяна Іванівна',            phone: '0974437171', role: 'Завуч' },
+  { schoolNumber: '86',  contactName: 'Руслана Василівна',          phone: '0964066413', role: 'Директор' },
+  { schoolNumber: '86',  contactName: 'Анна',                       phone: '0638694484', role: 'Педорг' },
+  { schoolNumber: '90',  contactName: 'Ірина Іванівна',             phone: '0974392839', role: 'Завуч' },
+  { schoolNumber: '90',  contactName: 'Людмила',                    phone: '0676092693', role: 'Завуч' },
+  { schoolNumber: '93',  contactName: 'Ірина Петрівна',             phone: '0966591509', role: 'Директор' },
+  { schoolNumber: '95',  contactName: 'Марія Орестівна',            phone: '0979515318', role: 'Завуч' },
+  { schoolNumber: '95',  contactName: 'Ірина',                      phone: '0972392191', role: 'Педорг' },
+  { schoolNumber: '96',  contactName: 'Любов',                      phone: '0689529174', role: 'Педорг' },
+  { schoolNumber: '97',  contactName: 'Наталя Любомирівна',         phone: '0961390913', role: 'Завуч' },
+  { schoolNumber: '123', contactName: 'Марія Андріївна',            phone: '0679334856', role: 'Директор' },
+
+  // ── назви без номера ──
+  { schoolNumber: 'Арніка',              contactName: 'Світлана Михайлівна',  phone: '0979325399', role: 'Педорг' },
+  { schoolNumber: 'Гроно',              contactName: 'Оксана Теодорівна',    phone: '0971147211', role: 'Завуч' },
+  { schoolNumber: 'Джерельце',          contactName: 'Світлана Петрівна',    phone: '0673140267', role: 'Завуч' },
+  { schoolNumber: 'Дивосвіт',           contactName: 'Наталя Миколаївна',    phone: '0932196651', role: 'Педорг' },
+  { schoolNumber: 'Європейський ліцей', contactName: 'Галина Богданівна',    phone: '0974829920', role: 'Завуч' },
+  { schoolNumber: 'Лідер',              contactName: 'Вадим',                phone: '0687584626', role: 'Педорг' },
+  { schoolNumber: 'Лідер',              contactName: 'Іванка',               phone: '0965150436', role: 'Завуч' },
+  { schoolNumber: 'Ліцей Львів',        contactName: 'Мирослава Іванівна',   phone: '0673536774', role: 'Завуч' },
+  { schoolNumber: 'Ліцей Пулюя',        contactName: 'Наталя',               phone: '0671794604', role: 'Завуч' },
+  { schoolNumber: 'Ліцей Стуса',        contactName: 'Тетяна',               phone: '0984989494', role: 'Завуч' },
+  { schoolNumber: 'Оріяна',             contactName: 'Ірина Богданівна',     phone: '0673702402', role: 'Директор' },
+  { schoolNumber: 'Оріяна',             contactName: 'Юрій',                 phone: '0974751935', role: 'Педорг' },
+  { schoolNumber: 'Первоцвіт',          contactName: 'Христина Іванівна',    phone: '0677573109', role: 'Директор' },
+  { schoolNumber: 'Провесінь',          contactName: 'Сергій',               phone: '0506020447', role: 'Педорг' },
+  { schoolNumber: 'Провесінь',          contactName: 'Анджела',              phone: '0676606897', role: 'Педорг' },
+  { schoolNumber: 'Світанок',           contactName: 'Лідія Миколаївна',     phone: '0679269319', role: 'Директор' },
+  { schoolNumber: 'Світанок',           contactName: 'Ореста Шот',           phone: '0677018705', role: 'Завуч' },
+  { schoolNumber: 'Світанок',           contactName: 'Ірина',                phone: '0674398980', role: 'Завуч' },
+  { schoolNumber: 'Симоненка',          contactName: 'Уляна',                phone: '0969135903', role: 'Завуч' },
+  { schoolNumber: 'Сихівський ліцей',   contactName: 'Надія',                phone: '0964667179', role: 'Завуч' },
+  { schoolNumber: 'Початкова Школа Радості', contactName: 'Тетяна',          phone: '0967320197', role: 'Завуч' },
+  { schoolNumber: 'Початкова Школа Радості', contactName: 'Наталя',          phone: '0674244920', role: 'Педорг' },
+  { schoolNumber: 'Альфа',              contactName: 'Ірина',                phone: '0935122623', role: 'Завуч' },
+];
+
+async function main() {
+  console.log('Seeding school contacts...');
+  await prisma.schoolContact.deleteMany({});
+  for (const c of contacts) {
+    await prisma.schoolContact.create({
+      data: { city: 'Львів', ...c },
+    });
+  }
+  console.log(`Done: ${contacts.length} contacts inserted`);
+}
+
+main()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());
+  
+
 --- FILE: apps\backend\src\schools\schools.controller.spec.ts ---
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -1588,7 +1781,16 @@ describe('SchoolsController', () => {
 
 --- FILE: apps\backend\src\schools\schools.controller.ts ---
 
-import { Controller, Get, Post, Body, Param, Patch, Delete, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Delete,
+  Query,
+} from '@nestjs/common';
 import { SchoolsService } from './schools.service';
 import { ParserService } from './parser.service';
 
@@ -1600,7 +1802,15 @@ export class SchoolsController {
   ) {}
 
   @Post()
-  create(@Body() body: { name: string; type: string; cityId: string; sourceUrl?: string }) {
+  create(
+    @Body()
+    body: {
+      name: string;
+      type: string;
+      cityId: string;
+      sourceUrl?: string;
+    },
+  ) {
     return this.schoolsService.create(body);
   }
 
@@ -1629,7 +1839,13 @@ export class SchoolsController {
   remove(@Param('id') id: string) {
     return this.schoolsService.remove(id);
   }
+
+  @Get('contacts/search')
+  searchContacts(@Query('q') q: string, @Query('city') city: string) {
+    return this.schoolsService.searchContacts(q, city);
+  }
 }
+
 
 --- FILE: apps\backend\src\schools\schools.module.ts ---
 
@@ -1671,16 +1887,10 @@ describe('SchoolsService', () => {
 
 --- FILE: apps\backend\src\schools\schools.service.ts ---
 
-import {
-  Injectable,
-  forwardRef,
-  Inject,
-} from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { Injectable, forwardRef, Inject } from '@nestjs/common';
 import { EventsService } from '../events/events.service';
 import { ParserService } from './parser.service';
-
-const prisma = new PrismaClient();
+import { PrismaService } from '../prisma/prisma.service'; // Використовуємо відносний шлях для надійності
 
 @Injectable()
 export class SchoolsService {
@@ -1688,6 +1898,7 @@ export class SchoolsService {
     @Inject(forwardRef(() => EventsService))
     private readonly eventsService: EventsService,
     private readonly parserService: ParserService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async create(data: {
@@ -1696,23 +1907,24 @@ export class SchoolsService {
     cityId: string;
     sourceUrl?: string;
   }) {
-    const { sourceUrl, ...schoolData } = data; // ← виокремлюємо sourceUrl
+    const { sourceUrl, ...schoolData } = data;
 
-    const newSchool = await prisma.school.create({
-      data: schoolData, // ← передаємо тільки те що є в схемі
+    // Використовуємо this.prisma замість prisma
+    const newSchool = await this.prisma.school.create({
+      data: schoolData, 
     });
 
     // Запускаємо парсинг у фоні
-    this.parserService.parseSchoolData(data.name, sourceUrl)
+    this.parserService
+      .parseSchoolData(data.name, sourceUrl)
       .then(async (parsed) => {
         if (!parsed) {
-          console.log(
-            `Не вдалося знайти дані для школи: ${data.name}`,
-          );
+          console.log(`Не вдалося знайти дані для школи: ${data.name}`);
           return;
         }
 
-        await prisma.school.update({
+        // Використовуємо this.prisma замість prisma
+        await this.prisma.school.update({
           where: {
             id: newSchool.id,
           },
@@ -1723,22 +1935,18 @@ export class SchoolsService {
           },
         });
 
-        console.log(
-          `Дані школи "${data.name}" успішно оновлені`,
-        );
+        console.log(`Дані школи "${data.name}" успішно оновлені`);
       })
       .catch((error) => {
-        console.error(
-          'Помилка оновлення даних школи:',
-          error,
-        );
+        console.error('Помилка оновлення даних школи:', error);
       });
 
     return newSchool;
   }
 
   async findAll() {
-    return prisma.school.findMany({
+    // Використовуємо this.prisma
+    return this.prisma.school.findMany({
       include: {
         city: true,
         events: {
@@ -1755,7 +1963,8 @@ export class SchoolsService {
   }
 
   async findOne(id: string) {
-    return prisma.school.findUnique({
+    // Використовуємо this.prisma
+    return this.prisma.school.findUnique({
       where: {
         id,
       },
@@ -1766,15 +1975,10 @@ export class SchoolsService {
   }
 
   async update(id: string, data: any) {
-    const {
-      city,
-      id: _id,
-      createdAt,
-      updatedAt,
-      ...updateData
-    } = data;
+    const { city, id: _id, createdAt, updatedAt, ...updateData } = data;
 
-    return prisma.school.update({
+    // Використовуємо this.prisma
+    return this.prisma.school.update({
       where: {
         id,
       },
@@ -1783,22 +1987,40 @@ export class SchoolsService {
   }
 
   async remove(id: string) {
-    const events = await prisma.event.findMany({
+    // Використовуємо this.prisma
+    const events = await this.prisma.event.findMany({
       where: {
         schoolId: id,
       },
     });
 
     for (const event of events) {
-      await this.eventsService.remove(
-        event.id,
-      );
+      await this.eventsService.remove(event.id);
     }
 
-    return prisma.school.delete({
+    // Використовуємо this.prisma
+    return this.prisma.school.delete({
       where: {
         id,
       },
+    });
+  }
+
+  async searchContacts(q: string, city?: string) {
+    if (!q || q.length < 1) return [];
+
+    const normalized = q.toLowerCase().trim();
+
+    return this.prisma.schoolContact.findMany({
+      where: {
+        city: city || 'Львів',
+        OR: [
+          { schoolNumber: { contains: normalized, mode: 'insensitive' } },
+          { contactName: { contains: normalized, mode: 'insensitive' } },
+        ],
+      },
+      orderBy: [{ schoolNumber: 'asc' }, { role: 'asc' }],
+      take: 10,
     });
   }
 }
@@ -1843,11 +2065,21 @@ export class TelegramService implements OnModuleInit {
       const chatId = msg.chat.id;
       const username = msg.from?.username;
 
+      // Шукаємо по username в обох форматах: "shmaltsel" і "@shmaltsel"
       await this.prisma.user.updateMany({
-        where: { telegramId: username ? `@${username}` : String(chatId) },
+        where: {
+          OR: [
+            { telegramId: username ? `@${username}` : String(chatId) },
+            { telegramId: username ? username : String(chatId) },
+            { telegramId: String(chatId) },
+          ],
+        },
         data: { telegramChatId: String(chatId) },
       });
 
+      this.logger.log(
+        `[/start] chatId=${chatId} username=${username} — telegramChatId збережено`,
+      );
       await this.bot.sendMessage(
         chatId,
         `👋 Вітаємо у <b>Світло Знань CRM</b>!\n\nВаш акаунт підключено до сповіщень.`,
@@ -6701,15 +6933,21 @@ export default function Schools() {
   const [cities, setCities] = useState<City[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Виправлено: чиста ініціалізація стану форми
   const [form, setForm] = useState({
     name: "",
     type: "Школа",
     cityId: "",
     sourceUrl: "",
+    director: "",
+    phone: "",
   });
-  const [suggestions, setSuggestions] = useState<
-    { name: string; url: string }[]
-  >([]);
+  
+  // Виправлено: чиста ініціалізація стану контактів
+  const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
+  
+  const [suggestions, setSuggestions] = useState<{ name: string; url: string }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -6744,7 +6982,15 @@ export default function Schools() {
   }, []);
 
   const handleOpenModal = () => {
-    setForm({ name: "", type: "Школа", cityId: cities[0]?.id ?? "" });
+    setForm({ 
+      name: "", 
+      type: "Школа", 
+      cityId: cities[0]?.id ?? "", 
+      sourceUrl: "", 
+      director: "", 
+      phone: "" 
+    });
+    setMatchedContacts([]);
     setIsModalOpen(true);
   };
 
@@ -6759,8 +7005,8 @@ export default function Schools() {
       return;
     }
 
-    setIsSearching(true); // ← показуємо "пошук..." одразу
-    setShowSuggestions(true); // ← відкриваємо dropdown одразу
+    setIsSearching(true);
+    setShowSuggestions(true);
 
     debounceTimer.current = setTimeout(async () => {
       try {
@@ -6772,7 +7018,7 @@ export default function Schools() {
       } catch (e) {
         console.error(e);
       } finally {
-        setIsSearching(false); // ← прибираємо "пошук..." коли прийшла відповідь
+        setIsSearching(false);
       }
     }, 400);
   };
@@ -6780,6 +7026,23 @@ export default function Schools() {
   const handleSelectSuggestion = (name: string, url: string) => {
     setForm({ ...form, name, sourceUrl: url });
     setShowSuggestions(false);
+    fetchContacts(name);
+  };
+
+  const fetchContacts = async (schoolName: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await api.get(`/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=Львів`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMatchedContacts(res.data);
+      if (res.data.length > 0) {
+        const director = res.data.find((c: any) => c.role === 'Директор') || res.data[0];
+        setForm(f => ({ ...f, director: director.contactName, phone: director.phone }));
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleAddSchool = async (e: React.FormEvent) => {
@@ -6845,7 +7108,6 @@ export default function Schools() {
         </button>
       </div>
 
-      {/* Картки — мобільний вигляд */}
       <div className="md:hidden flex flex-col gap-3">
         {filteredSchools.map((school) => {
           const latestEvent = school.events?.[0];
@@ -6898,7 +7160,6 @@ export default function Schools() {
         )}
       </div>
 
-      {/* Таблиця — десктоп */}
       <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto w-full">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -6914,7 +7175,7 @@ export default function Schools() {
             </tr>
           </thead>
           <tbody>
-            {filteredSchools.map( (school) => {
+            {filteredSchools.map((school) => {
               const latestEvent = school.events?.[0];
               const stage = latestEvent
                 ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
@@ -6961,7 +7222,6 @@ export default function Schools() {
         </table>
       </div>
 
-      {/* Модалка додавання закладу — bottom-sheet на мобільному, діалог на десктопі */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md max-h-[92vh] overflow-hidden flex flex-col">
@@ -7048,6 +7308,52 @@ export default function Schools() {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm text-slate-600 mb-1">
+                  Контактна особа
+                  <span className="ml-1 text-xs text-slate-400">(автозаповнення)</span>
+                </label>
+                {matchedContacts.length > 1 && (
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {matchedContacts.map((c, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, director: c.contactName, phone: c.phone }))}
+                        className={`text-xs px-2 py-1 rounded-full border transition-colors ${form.director === c.contactName ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'}`}
+                      >
+                        {c.role ? `${c.role}: ` : ''}{c.contactName}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {matchedContacts.length > 0 && (
+                  <div className="flex items-center gap-1 text-xs text-green-600 mb-2">
+                    <span>✅</span>
+                    <span>Знайдено в базі контактів</span>
+                  </div>
+                )}
+                <input
+                  type="text"
+                  value={form.director}
+                  onChange={(e) => setForm({ ...form, director: e.target.value })}
+                  placeholder="Директор Іван Іванович"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-600 mb-1">
+                  Телефон
+                  <span className="ml-1 text-xs text-slate-400">(автозаповнення)</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="0671234567"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                />
               </div>
               <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-2 pb-1 sm:pb-0">
                 <button

@@ -28,7 +28,7 @@ export default function Schools() {
   const [cities, setCities] = useState<City[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Виправлено: чиста ініціалізація стану форми
   const [form, setForm] = useState({
     name: "",
@@ -38,10 +38,10 @@ export default function Schools() {
     director: "",
     phone: "",
   });
-  
+
   // Виправлено: чиста ініціалізація стану контактів
   const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
-  
+
   const [suggestions, setSuggestions] = useState<{ name: string; url: string }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -77,16 +77,48 @@ export default function Schools() {
   }, []);
 
   const handleOpenModal = () => {
-    setForm({ 
-      name: "", 
-      type: "Школа", 
-      cityId: cities[0]?.id ?? "", 
-      sourceUrl: "", 
-      director: "", 
-      phone: "" 
+    setForm({
+      name: "",
+      type: "Школа",
+      cityId: cities[0]?.id ?? "",
+      sourceUrl: "",
+      director: "",
+      phone: "",
     });
     setMatchedContacts([]);
     setIsModalOpen(true);
+  };
+
+  // Окрема функція пошуку контактів у власній базі (SchoolContact).
+  // Раніше викликалась лише після кліку на підказку із зовнішнього сайту lv.isuo.org,
+  // через що автодоповнення директора/телефону "з бази" не працювало, якщо
+  // користувач просто вписував назву вручну або зовнішній парсер нічого не знаходив.
+  const fetchContacts = async (schoolName: string) => {
+    if (!schoolName || schoolName.trim().length < 1) {
+      setMatchedContacts([]);
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      const res = await api.get(
+        `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=Львів`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      setMatchedContacts(res.data);
+      if (res.data.length > 0) {
+        const director =
+          res.data.find((c: any) => c.role === "Директор") || res.data[0];
+        setForm((f) => ({
+          ...f,
+          director: director.contactName,
+          phone: director.phone,
+        }));
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleNameChange = (value: string) => {
@@ -97,6 +129,7 @@ export default function Schools() {
     if (value.length < 2) {
       setShowSuggestions(false);
       setIsSearching(false);
+      setMatchedContacts([]);
       return;
     }
 
@@ -104,12 +137,19 @@ export default function Schools() {
     setShowSuggestions(true);
 
     debounceTimer.current = setTimeout(async () => {
+      const token = localStorage.getItem("token");
       try {
-        const token = localStorage.getItem("token");
-        const res = await api.get(`/schools/search?q=${value}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setSuggestions(res.data);
+        // Запускаємо ОБИДВА пошуки паралельно й незалежно один від одного:
+        // - suggestions: підказки назв зі стороннього сайту lv.isuo.org
+        // - matchedContacts: автодоповнення директора/телефону з ВЛАСНОЇ бази (SchoolContact)
+        // Раніше другий запит виконувався лише після кліку на підказку з першого списку.
+        const [externalRes] = await Promise.all([
+          api.get(`/schools/search?q=${value}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetchContacts(value),
+        ]);
+        setSuggestions(externalRes.data);
       } catch (e) {
         console.error(e);
       } finally {
@@ -121,23 +161,9 @@ export default function Schools() {
   const handleSelectSuggestion = (name: string, url: string) => {
     setForm({ ...form, name, sourceUrl: url });
     setShowSuggestions(false);
+    // Контакти вже мали підтягнутись через handleNameChange,
+    // але про всяк випадок оновлюємо ще раз під обрану (точну) назву.
     fetchContacts(name);
-  };
-
-  const fetchContacts = async (schoolName: string) => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await api.get(`/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=Львів`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setMatchedContacts(res.data);
-      if (res.data.length > 0) {
-        const director = res.data.find((c: any) => c.role === 'Директор') || res.data[0];
-        setForm(f => ({ ...f, director: director.contactName, phone: director.phone }));
-      }
-    } catch (e) {
-      console.error(e);
-    }
   };
 
   const handleAddSchool = async (e: React.FormEvent) => {
