@@ -18,6 +18,7 @@ interface User {
   cityId: string | null;
   city?: City; // Отримуємо з бекенду
   role: Role;
+  telegramId?: string | null;
 }
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -400,25 +401,40 @@ export default function Employees() {
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">
-                  Telegram ID
-                  <span className="ml-1 text-xs text-slate-400 font-normal">(для сповіщень)</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">@</span>
-                  <input
-                    type="text"
-                    value={form.telegramId}
-                    onChange={(e) => setForm({ ...form, telegramId: e.target.value })}
-                    placeholder="username або числовий ID"
-                    className="w-full pl-7 p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                  />
-                </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  Числовий ID можна дізнатись через <a href="https://t.me/userinfobot" target="_blank" className="text-blue-500 hover:underline">@userinfobot</a>
-                </p>
-              </div>
+             <div>
+  <label className="block text-sm font-medium text-slate-600 mb-1">
+    Telegram
+    <span className="ml-1 text-xs text-slate-400 font-normal">(для сповіщень)</span>
+  </label>
+  <div className="relative">
+      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">@</span>
+      <input
+        type="text"
+        value={form.telegramId}
+        onChange={(e) => {
+          // Автоматично прибираємо @ якщо вставили з ним
+          const val = e.target.value.replace(/^@+/, '');
+          setForm({ ...form, telegramId: val });
+        }}
+        placeholder="username"
+        className="w-full pl-7 p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+      />
+    </div>
+    <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+      Введіть username без @. Після збереження працівник має написати{' '}
+      <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-600">/start</code>{' '}
+      боту{' '}
+      <a>
+        href="https://t.me/svitlo_znan_bot"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-500 hover:underline"
+      
+        @svitlo_znan_bot
+      </a>
+      {' '}— після цього сповіщення запрацюють автоматично.
+    </p>
+  </div>
               <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-4 pb-1 sm:pb-0">
                 <button
                   type="button"

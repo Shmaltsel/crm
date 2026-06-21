@@ -36,11 +36,7 @@ export class UsersService {
     if (data.password) {
       // Шукаємо chat_id: якщо є збережений після /start — використовуємо його
       // інакше пробуємо telegramId напряму (якщо вже числовий)
-      const chatId =
-        user.telegramChatId ||
-        (data.telegramId && /^\d+$/.test(data.telegramId)
-          ? data.telegramId
-          : null);
+      const chatId = user.telegramChatId || null;
 
       if (chatId) {
         await this.telegramService.sendWelcome(
