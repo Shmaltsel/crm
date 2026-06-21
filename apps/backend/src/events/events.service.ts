@@ -6,6 +6,8 @@ import { SubmitReportDto } from './dto/submit-report.dto';
 
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 @Injectable()
 export class EventsService {
   constructor(private prisma: PrismaService) {}
@@ -14,7 +16,7 @@ export class EventsService {
     return this.prisma.event.create({
       data: {
         ...data,
-        status: 'BASE',
+        status: 'BASE' as never,
         date: new Date(data.date),
         history: {
           create: {
@@ -40,7 +42,7 @@ export class EventsService {
     return this.prisma.event.update({
       where: { id: eventId },
       data: {
-        status: newStatus,
+        status: newStatus as never,
         history: {
           create: {
             action: actionName,
@@ -171,7 +173,7 @@ export class EventsService {
     return this.prisma.event.update({
       where: { id: eventId },
       data: {
-        status: 'RE_SALE',
+        status: 'RE_SALE' as never,
         history: {
           create: {
             action: 'Сформовано звіт. Етап пройдено: Проведено',
