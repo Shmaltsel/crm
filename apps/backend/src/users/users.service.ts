@@ -3,7 +3,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { TelegramService } from '../telegram/telegram.service';
 
-
 @Injectable()
 export class UsersService {
   constructor(
@@ -34,18 +33,27 @@ export class UsersService {
     });
 
     // Надсилаємо вітальне повідомлення якщо вказано telegramId
-    if (data.telegramId && data.password) {
-      await this.telegramService.sendWelcome(
-        data.telegramId,
-        data.fullName,
-        data.email,
-        data.password,
-      );
+    if (data.password) {
+      // Шукаємо chat_id: якщо є збережений після /start — використовуємо його
+      // інакше пробуємо telegramId напряму (якщо вже числовий)
+      const chatId =
+        user.telegramChatId ||
+        (data.telegramId && /^\d+$/.test(data.telegramId)
+          ? data.telegramId
+          : null);
+
+      if (chatId) {
+        await this.telegramService.sendWelcome(
+          chatId,
+          data.fullName,
+          data.email,
+          data.password,
+        );
+      }
     }
 
     return user;
   }
-
 
   async updateUser(id: string, data: any) {
     const updateData: any = {
@@ -54,9 +62,9 @@ export class UsersService {
       phone: data.phone,
       role: data.role,
       cityId: data.cityId || null,
-      telegramId: data.telegramId || null, 
+      telegramId: data.telegramId || null,
     };
-    
+
     // Якщо передано новий пароль, хешуємо його
     if (data.password) {
       updateData.password = await bcrypt.hash(data.password, 10);

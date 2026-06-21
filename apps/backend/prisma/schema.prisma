@@ -31,6 +31,7 @@ model User {
   password String
   role     String  @default("MANAGER")
   telegramId String?
+  telegramChatId String?
   cityId   String?
   city     City?   @relation(fields: [cityId], references: [id])
 
