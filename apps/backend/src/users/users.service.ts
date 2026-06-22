@@ -29,6 +29,7 @@ export class UsersService {
         role: data.role,
         cityId: data.cityId || null,
         telegramId: data.telegramId || null,
+        car: data.car || null,
       },
     });
 
@@ -59,6 +60,7 @@ export class UsersService {
       role: data.role,
       cityId: data.cityId || null,
       telegramId: data.telegramId || null,
+      car: data.car || null,
     };
 
     // Якщо передано новий пароль, хешуємо його

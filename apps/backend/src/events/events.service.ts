@@ -115,24 +115,14 @@ export class EventsService {
     }
   }
 
+  // --- ВСТАВЛЯЙ ОНОВЛЕНИЙ МЕТОД ТУТ ---
   async assignCrewToEvent(
     eventId: string,
-    cityId: string,
-    hostId: string,
-    driverId: string,
+    crewId: string, // ЗМІНЕНО: Тепер приймаємо тільки ID існуючого екіпажу
   ) {
-    const crew = await this.prisma.crew.create({
-      data: {
-        name: 'Екіпаж події',
-        cityId: cityId,
-        hostId: hostId,
-        driverId: driverId,
-      },
-    });
-
     const event = await this.prisma.event.update({
       where: { id: eventId },
-      data: { crewId: crew.id },
+      data: { crewId: crewId },
       include: {
         crew: { include: { host: true, driver: true } },
         school: true,
@@ -141,6 +131,9 @@ export class EventsService {
         history: { orderBy: { createdAt: 'desc' } },
       },
     });
+
+    const hostId = event.crew?.hostId;
+    const driverId = event.crew?.driverId;
 
     const dateStr = new Date(event.date).toLocaleDateString('uk-UA', {
       day: '2-digit',

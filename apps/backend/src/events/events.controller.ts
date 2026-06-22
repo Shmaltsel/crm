@@ -69,14 +69,9 @@ export class EventsController {
   @Post(':id/assign-crew')
   assignCrew(
     @Param('id') id: string,
-    @Body() body: { hostId: string; driverId: string; cityId: string },
+    @Body() body: { crewId: string }, // ЗМІНЕНО
   ) {
-    return this.eventsService.assignCrewToEvent(
-      id,
-      body.cityId,
-      body.hostId,
-      body.driverId,
-    );
+    return this.eventsService.assignCrewToEvent(id, body.crewId);
   }
 
   // Маршрут для оновлення коментаря

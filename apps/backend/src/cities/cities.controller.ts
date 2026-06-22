@@ -19,4 +19,13 @@ export class CitiesController {
   findOne(@Param('id') id: string) {
     return this.citiesService.findOne(id);
   }
+  @Post(':id/crews')
+  createCrew(@Param('id') id: string, @Body() body: { name: string; hostId: string; driverId: string }) {
+    return this.citiesService.createCrew(id, body);
+  }
+
+  @Delete('crews/:crewId')
+  deleteCrew(@Param('crewId') crewId: string) {
+    return this.citiesService.deleteCrew(crewId);
+  }
 }

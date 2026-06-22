@@ -34,7 +34,7 @@ model User {
   telegramChatId String?
   cityId   String?
   city     City?   @relation(fields: [cityId], references: [id])
-
+  car            String?
   // Додаємо зв'язки для екіпажів
   crewAsHost   Crew[] @relation("HostCrew")
   crewAsDriver Crew[] @relation("DriverCrew")

@@ -33,7 +33,30 @@ export class CitiesService {
       completedEvents: city.events.filter((e) => e.status === 'RE_SALE').length,
     }));
   }
+  async createCrew(cityId: string, data: { name: string; hostId: string; driverId: string }) {
+    const driver = await this.prisma.user.findUnique({ where: { id: data.driverId } });
+    return this.prisma.crew.create({
+      data: {
+        cityId,
+        name: data.name,
+        hostId: data.hostId,
+        driverId: data.driverId,
+        car: driver?.car || null,
+        phone: driver?.phone || null,
+      },
+      include: { host: true, driver: true },
+    });
+  }
 
+  async deleteCrew(id: string) {
+    // Відв'язуємо екіпаж від подій перед видаленням, щоб не було помилок бази
+    await this.prisma.event.updateMany({
+      where: { crewId: id },
+      data: { crewId: null },
+    });
+    return this.prisma.crew.delete({ where: { id } });
+  }
+  
   async findOne(id: string) {
     const city = await this.prisma.city.findUnique({
       where: { id },
