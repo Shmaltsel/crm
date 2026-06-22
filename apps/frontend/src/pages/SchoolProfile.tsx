@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api } from '../config/api'
+import { api } from "../config/api";
 
 // Імпортуємо наші UI модулі
 import SchoolInfoCard from "../components/school-profile/SchoolInfoCard";
@@ -52,7 +52,7 @@ export default function SchoolProfile() {
   });
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  
+
   // Стан для анімації зникнення події
   const [exitingEventId, setExitingEventId] = useState<string | null>(null);
 
@@ -125,13 +125,14 @@ export default function SchoolProfile() {
     fetchData();
   }, [id]);
 
-  const currentEvent = events.find((ev) => ev.id === selectedEventId) || events[0];
-  
+  const currentEvent =
+    events.find((ev) => ev.id === selectedEventId) || events[0];
+
   const currentStageIndex =
     PIPELINE_STAGES.findIndex((s) => s.key === currentEvent?.status) !== -1
       ? PIPELINE_STAGES.findIndex((s) => s.key === currentEvent?.status)
       : 0;
-      
+
   const creatorName =
     currentEvent?.history?.length > 0
       ? currentEvent.history[currentEvent.history.length - 1].userName
@@ -197,7 +198,7 @@ export default function SchoolProfile() {
         if (nextStage.key === "RE_SALE") {
           // Запускаємо анімацію зникнення
           setExitingEventId(currentEvent.id);
-          
+
           // Чекаємо 500мс (поки програється анімація), а потім видаляємо з UI
           setTimeout(() => {
             setEvents((prev) => prev.filter((ev) => ev.id !== currentEvent.id));
@@ -206,7 +207,9 @@ export default function SchoolProfile() {
           }, 500);
         } else {
           setEvents((prev) =>
-            prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
+            prev.map((ev) =>
+              ev.id === currentEvent.id ? { ...ev, ...res.data } : ev,
+            ),
           );
         }
       } else if (commentModal.mode === "history" && commentModal.historyId) {
@@ -314,11 +317,13 @@ export default function SchoolProfile() {
         reportData,
         { headers },
       );
-      
+
       setIsReportModalOpen(false);
-      
+
       setEvents((prev) =>
-        prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
+        prev.map((ev) =>
+          ev.id === currentEvent.id ? { ...ev, ...res.data } : ev,
+        ),
       );
     } catch (e) {
       console.error("Помилка при збереженні звіту", e);
@@ -327,12 +332,22 @@ export default function SchoolProfile() {
 
   const handleAssignCrew = async (crewId: string) => {
     try {
-      const headers = { Authorization: `Bearer ${localStorage.getItem("token")}` };
-      const res = await api.post(`/events/${currentEvent.id}/assign-crew`, { crewId }, { headers });
-      
+      const headers = {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      };
+      const res = await api.post(
+        `/events/${currentEvent.id}/assign-crew`,
+        { crewId },
+        { headers },
+      );
+
       await handleUpdatePreparation("assignCrew", "Виконано");
 
-      setEvents((prev) => prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)));
+      setEvents((prev) =>
+        prev.map((ev) =>
+          ev.id === currentEvent.id ? { ...ev, ...res.data } : ev,
+        ),
+      );
       setIsCrewModalOpen(false);
     } catch (e) {
       console.error("Помилка при призначенні екіпажу", e);
@@ -424,10 +439,10 @@ export default function SchoolProfile() {
         </div>
 
         {/* ОСЬ ТУТ ДОДАНО КЛАСИ ДЛЯ АНІМАЦІЇ */}
-        <div 
+        <div
           className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${
-            exitingEventId === currentEvent?.id 
-              ? "opacity-0 scale-95 -translate-y-4 pointer-events-none" 
+            exitingEventId === currentEvent?.id
+              ? "opacity-0 scale-95 -translate-y-4 pointer-events-none"
               : "opacity-100 scale-100 translate-y-0"
           }`}
         >
@@ -449,7 +464,12 @@ export default function SchoolProfile() {
             </div>
           )}
 
-          <EventDetails currentEvent={currentEvent} />
+          <EventDetails
+            currentEvent={currentEvent}
+            schoolName={schoolData.name}
+            cityId={schoolData.cityId}
+            onEventUpdated={fetchData}
+          />
           <EventsTable
             events={events}
             selectedEventId={selectedEventId}
