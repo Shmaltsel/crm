@@ -2,20 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 const PIPELINE_STAGES = [
-  'BASE',
-  'FIRST_CONTACT',
-  'INTERESTED',
-  'PRE_APPROVAL',
-  'DATE_CONFIRMED',
-  'PREPARATION',
-  'IN_PROGRESS',
-  'DONE',
-  'REPORT',
-  'RE_SALE',
+  'BASE', 'FIRST_CONTACT', 'INTERESTED', 'PRE_APPROVAL',
+  'DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS', 'DONE', 'REPORT', 'RE_SALE',
 ];
-
-// Фінальні статуси — не показуємо в "потребують уваги"
-const FINAL_STAGES = new Set(['DONE', 'REPORT', 'RE_SALE']);
 
 const STALE_DAYS = 7;
 
@@ -23,10 +12,10 @@ const STALE_DAYS = 7;
 export class DashboardService {
   constructor(private prisma: PrismaService) {}
 
-  async getSummary(cityId?: string) {
-    const now = new Date();
+  async getSummary(cityId?: string, role?: string) {
+    const now       = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayEnd = new Date(todayStart);
+    const todayEnd   = new Date(todayStart);
     todayEnd.setDate(todayEnd.getDate() + 1);
     const upcomingEnd = new Date(todayStart);
     upcomingEnd.setDate(upcomingEnd.getDate() + 6);
@@ -35,115 +24,191 @@ export class DashboardService {
     staleThreshold.setDate(staleThreshold.getDate() - STALE_DAYS);
 
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
     const cityFilter = cityId ? { cityId } : {};
+    const isSuperAdmin = role === 'SUPERADMIN';
 
-    // Усі 5 запитів паралельно — один round-trip до БД
-    const [todayEvents, upcomingEvents, schools, monthEvents, staleSchoolsRaw] =
-      await Promise.all([
+    // ── Базові 6 запитів ─────────────────────────────────────────────────────
+    const [
+      todayEvents,
+      upcomingEvents,
+      schools,
+      monthEvents,
+      staleSchoolsRaw,
+      recentActivity,
+    ] = await Promise.all([
 
-        // 1. Сьогоднішні події
-        this.prisma.event.findMany({
-          where: { ...cityFilter, date: { gte: todayStart, lt: todayEnd } },
-          include: {
-            school: { select: { id: true, name: true } },
-            city:   { select: { id: true, name: true } },
-            crew: {
-              include: {
-                host:   { select: { id: true, name: true } },
-                driver: { select: { id: true, name: true } },
+      // 1. Сьогоднішні події
+      this.prisma.event.findMany({
+        where: { ...cityFilter, date: { gte: todayStart, lt: todayEnd } },
+        include: {
+          school: { select: { id: true, name: true } },
+          city:   { select: { id: true, name: true } },
+          crew: {
+            include: {
+              host:   { select: { id: true, name: true } },
+              driver: { select: { id: true, name: true } },
+            },
+          },
+        },
+        orderBy: { time: 'asc' },
+      }),
+
+      // 2. Найближчі події (завтра + 4 дні)
+      this.prisma.event.findMany({
+        where: { ...cityFilter, date: { gte: todayEnd, lt: upcomingEnd } },
+        include: {
+          school: { select: { id: true, name: true } },
+          city:   { select: { id: true, name: true } },
+          crew: {
+            include: {
+              host:   { select: { id: true, name: true } },
+              driver: { select: { id: true, name: true } },
+            },
+          },
+        },
+        orderBy: [{ date: 'asc' }, { time: 'asc' }],
+        take: 8,
+      }),
+
+      // 3. Воронка — всі школи з останнім статусом
+      this.prisma.school.findMany({
+        where: cityFilter,
+        include: {
+          events: {
+            orderBy: { date: 'desc' },
+            take: 1,
+            select: { status: true },
+          },
+        },
+      }),
+
+      // 4. Фінанси місяця
+      this.prisma.event.findMany({
+        where: {
+          ...cityFilter,
+          status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
+          date:   { gte: monthStart, lte: monthEnd },
+        },
+        select: {
+          id: true,
+          report: {
+            select: { totalSum: true, remainderSum: true, childrenCount: true },
+          },
+        },
+      }),
+
+      // 5. "Зависли в пайплайні"
+      this.prisma.school.findMany({
+        where: {
+          ...cityFilter,
+          events: {
+            some: {
+              status: { notIn: ['DONE', 'REPORT', 'RE_SALE'] },
+              history: { every: { createdAt: { lt: staleThreshold } } },
+            },
+          },
+        },
+        include: {
+          events: {
+            where: { status: { notIn: ['DONE', 'REPORT', 'RE_SALE'] } },
+            orderBy: { date: 'desc' },
+            take: 1,
+            include: {
+              history: {
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+                select: { createdAt: true },
               },
             },
           },
-          orderBy: { time: 'asc' },
-        }),
+        },
+        take: 10,
+      }),
 
-        // 2. Найближчі події (завтра + 4 дні)
-        this.prisma.event.findMany({
-          where: { ...cityFilter, date: { gte: todayEnd, lt: upcomingEnd } },
-          include: {
-            school: { select: { id: true, name: true } },
-            city:   { select: { id: true, name: true } },
-            crew: {
-              include: {
-                host:   { select: { id: true, name: true } },
-                driver: { select: { id: true, name: true } },
-              },
+      // 6. Активність команди — останні 20 записів history за сьогодні
+      //    (cityId фільтруємо через event.cityId)
+      this.prisma.eventHistory.findMany({
+        where: {
+          createdAt: { gte: todayStart },
+          ...(cityId
+            ? { event: { cityId } }
+            : {}),
+        },
+        include: {
+          event: {
+            select: {
+              id:     true,
+              school: { select: { id: true, name: true } },
             },
           },
-          orderBy: [{ date: 'asc' }, { time: 'asc' }],
-          take: 8,
-        }),
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      }),
+    ]);
 
-        // 3. Воронка — школи з останньою подією
-        this.prisma.school.findMany({
-          where: cityFilter,
-          include: {
-            events: {
-              orderBy: { date: 'desc' },
-              take: 1,
-              select: { status: true },
-            },
-          },
-        }),
+    // ── Стан по містах (тільки для SUPERADMIN) ───────────────────────────────
+    let citiesStats: {
+      cityId:        string;
+      cityName:      string;
+      schoolsCount:  number;
+      activeEvents:  number;
+      monthRevenue:  number;
+    }[] = [];
 
-        // 4. Фінанси цього місяця — події зі звітами
-        this.prisma.event.findMany({
-          where: {
-            ...cityFilter,
-            status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
-            date:   { gte: monthStart, lte: monthEnd },
-          },
-          select: {
-            id: true,
-            report: {
-              select: {
-                totalSum:      true,
-                remainderSum:  true,
-                childrenCount: true,
-              },
-            },
-          },
-        }),
+    if (isSuperAdmin) {
+      const [allCities, allSchools, allActiveEvents, allMonthEvents] =
+        await Promise.all([
+          this.prisma.city.findMany({ select: { id: true, name: true } }),
 
-        // 5. "Зависли" — школи де остання активність в history > 7 днів тому
-        //    і статус НЕ фінальний
-        this.prisma.school.findMany({
-          where: {
-            ...cityFilter,
-            events: {
-              some: {
-                status: { notIn: ['DONE', 'REPORT', 'RE_SALE'] },
-                history: {
-                  every: {
-                    createdAt: { lt: staleThreshold },
-                  },
-                },
-              },
-            },
-          },
-          include: {
-            events: {
-              where: {
-                status: { notIn: ['DONE', 'REPORT', 'RE_SALE'] },
-              },
-              orderBy: { date: 'desc' },
-              take: 1,
-              include: {
-                history: {
-                  orderBy: { createdAt: 'desc' },
-                  take: 1,
-                  select: { createdAt: true },
-                },
-              },
-            },
-          },
-          take: 10,
-        }),
-      ]);
+          this.prisma.school.groupBy({
+            by: ['cityId'],
+            _count: { id: true },
+          }),
 
-    // --- Воронка ---
+          this.prisma.event.groupBy({
+            by: ['cityId'],
+            where: { status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] } },
+            _count: { id: true },
+          }),
+
+          this.prisma.event.findMany({
+            where: {
+              status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
+              date:   { gte: monthStart, lte: monthEnd },
+            },
+            select: {
+              cityId: true,
+              report: { select: { totalSum: true } },
+            },
+          }),
+        ]);
+
+      // Індекси для O(1) lookup
+      const schoolsIdx  = Object.fromEntries(allSchools.map(r => [r.cityId, r._count.id]));
+      const activeIdx   = Object.fromEntries(allActiveEvents.map(r => [r.cityId, r._count.id]));
+      const revenueIdx: Record<string, number> = {};
+      for (const ev of allMonthEvents) {
+        revenueIdx[ev.cityId] = (revenueIdx[ev.cityId] ?? 0) + (ev.report?.totalSum ?? 0);
+      }
+
+      citiesStats = allCities
+        .map(city => ({
+          cityId:       city.id,
+          cityName:     city.name,
+          schoolsCount: schoolsIdx[city.id]  ?? 0,
+          activeEvents: activeIdx[city.id]   ?? 0,
+          monthRevenue: revenueIdx[city.id]  ?? 0,
+        }))
+        // Сортуємо по виручці місяця — найбільше зверху
+        .sort((a, b) => b.monthRevenue - a.monthRevenue);
+    }
+
+    // ── Агрегати ─────────────────────────────────────────────────────────────
+
+    // Воронка
     const funnel: Record<string, number> = {};
     for (const stage of PIPELINE_STAGES) funnel[stage] = 0;
     for (const school of schools) {
@@ -151,7 +216,7 @@ export class DashboardService {
       if (funnel[status] !== undefined) funnel[status]++;
     }
 
-    // --- Фінанси місяця ---
+    // Фінанси місяця
     const monthlyKpi = monthEvents.reduce(
       (acc, ev) => {
         acc.revenue  += ev.report?.totalSum      ?? 0;
@@ -163,26 +228,36 @@ export class DashboardService {
       { revenue: 0, profit: 0, children: 0, count: 0 },
     );
 
-    // --- "Потребують уваги" — рахуємо дні без активності ---
+    // "Потребують уваги"
     const staleSchools = staleSchoolsRaw
-      .map((school) => {
-        const lastEvent   = school.events[0];
-        const lastHistory = lastEvent?.history[0];
+      .map(school => {
+        const lastHistory = school.events[0]?.history[0];
         const lastActivity = lastHistory?.createdAt ?? null;
         const daysStale = lastActivity
           ? Math.floor((now.getTime() - new Date(lastActivity).getTime()) / 86_400_000)
           : null;
-
         return {
-          id:           school.id,
-          name:         school.name,
-          status:       lastEvent?.status ?? null,
+          id:          school.id,
+          name:        school.name,
+          status:      school.events[0]?.status ?? null,
           lastActivity,
           daysStale,
         };
       })
-      // Сортуємо: найдовше без уваги — першими
       .sort((a, b) => (b.daysStale ?? 0) - (a.daysStale ?? 0));
+
+    // Активність — прибираємо дублікати userName+action в межах однієї хвилини
+    const activityFeed = recentActivity.map(h => ({
+      id:         h.id,
+      userName:   h.userName,
+      role:       h.role,
+      action:     h.action,
+      comment:    h.comment,
+      createdAt:  h.createdAt,
+      schoolId:   h.event?.school?.id   ?? null,
+      schoolName: h.event?.school?.name ?? null,
+      eventId:    h.event?.id           ?? null,
+    }));
 
     return {
       todayEvents,
@@ -191,6 +266,8 @@ export class DashboardService {
       totalSchools: schools.length,
       monthlyKpi,
       staleSchools,
+      activityFeed,
+      citiesStats,
     };
   }
 }

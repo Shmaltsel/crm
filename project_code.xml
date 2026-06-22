@@ -39,6 +39,7 @@ import { SchoolsModule } from './schools/schools.module';
 import { FinanceModule } from './finance/finance.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { IssuesModule } from './issues/issues.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 @Module({
  imports: [
  PrismaModule,
@@ -51,6 +52,7 @@ import { IssuesModule } from './issues/issues.module';
  FinanceModule,
  TelegramModule,
  IssuesModule,
+ DashboardModule,
  ],
  controllers: [AppController],
  providers: [AppService],
@@ -343,6 +345,206 @@ export class CitiesService {
  return {
  ...city,
  manager: city.users[0] || null,
+ };
+ }
+}</file>
+<file path="apps\backend\src\dashboard\dashboard.controller.ts">import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { DashboardService } from './dashboard.service';
+import { AuthGuard } from '../auth/auth.guard';
+@Controller('dashboard')
+@UseGuards(AuthGuard)
+export class DashboardController {
+ constructor(private readonly dashboardService: DashboardService) {}
+ @Get('summary')
+ getSummary(@Query('cityId') cityId?: string) {
+ return this.dashboardService.getSummary(cityId || undefined);
+ }
+}</file>
+<file path="apps\backend\src\dashboard\dashboard.module.ts">import { Module } from '@nestjs/common';
+import { DashboardController } from './dashboard.controller';
+import { DashboardService } from './dashboard.service';
+import { PrismaModule } from '../prisma/prisma.module';
+import { AuthModule } from '../auth/auth.module';
+@Module({
+ imports: [PrismaModule, AuthModule],
+ controllers: [DashboardController],
+ providers: [DashboardService],
+})
+export class DashboardModule {}</file>
+<file path="apps\backend\src\dashboard\dashboard.service.ts">import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+const PIPELINE_STAGES = [
+ 'BASE',
+ 'FIRST_CONTACT',
+ 'INTERESTED',
+ 'PRE_APPROVAL',
+ 'DATE_CONFIRMED',
+ 'PREPARATION',
+ 'IN_PROGRESS',
+ 'DONE',
+ 'REPORT',
+ 'RE_SALE',
+];
+// Фінальні статуси — не показуємо в "потребують уваги"
+const FINAL_STAGES = new Set(['DONE', 'REPORT', 'RE_SALE']);
+const STALE_DAYS = 7;
+@Injectable()
+export class DashboardService {
+ constructor(private prisma: PrismaService) {}
+ async getSummary(cityId?: string) {
+ const now = new Date();
+ const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+ const todayEnd = new Date(todayStart);
+ todayEnd.setDate(todayEnd.getDate() + 1);
+ const upcomingEnd = new Date(todayStart);
+ upcomingEnd.setDate(upcomingEnd.getDate() + 6);
+ const staleThreshold = new Date(now);
+ staleThreshold.setDate(staleThreshold.getDate() - STALE_DAYS);
+ const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+ const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+ const cityFilter = cityId ? { cityId } : {};
+ // Усі 5 запитів паралельно — один round-trip до БД
+ const [todayEvents, upcomingEvents, schools, monthEvents, staleSchoolsRaw] =
+ await Promise.all([
+ // 1. Сьогоднішні події
+ this.prisma.event.findMany({
+ where: { ...cityFilter, date: { gte: todayStart, lt: todayEnd } },
+ include: {
+ school: { select: { id: true, name: true } },
+ city: { select: { id: true, name: true } },
+ crew: {
+ include: {
+ host: { select: { id: true, name: true } },
+ driver: { select: { id: true, name: true } },
+ },
+ },
+ },
+ orderBy: { time: 'asc' },
+ }),
+ // 2. Найближчі події (завтра + 4 дні)
+ this.prisma.event.findMany({
+ where: { ...cityFilter, date: { gte: todayEnd, lt: upcomingEnd } },
+ include: {
+ school: { select: { id: true, name: true } },
+ city: { select: { id: true, name: true } },
+ crew: {
+ include: {
+ host: { select: { id: true, name: true } },
+ driver: { select: { id: true, name: true } },
+ },
+ },
+ },
+ orderBy: [{ date: 'asc' }, { time: 'asc' }],
+ take: 8,
+ }),
+ // 3. Воронка — школи з останньою подією
+ this.prisma.school.findMany({
+ where: cityFilter,
+ include: {
+ events: {
+ orderBy: { date: 'desc' },
+ take: 1,
+ select: { status: true },
+ },
+ },
+ }),
+ // 4. Фінанси цього місяця — події зі звітами
+ this.prisma.event.findMany({
+ where: {
+ ...cityFilter,
+ status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
+ date: { gte: monthStart, lte: monthEnd },
+ },
+ select: {
+ id: true,
+ report: {
+ select: {
+ totalSum: true,
+ remainderSum: true,
+ childrenCount: true,
+ },
+ },
+ },
+ }),
+ // 5. "Зависли" — школи де остання активність в history > 7 днів тому
+ // і статус НЕ фінальний
+ this.prisma.school.findMany({
+ where: {
+ ...cityFilter,
+ events: {
+ some: {
+ status: { notIn: ['DONE', 'REPORT', 'RE_SALE'] },
+ history: {
+ every: {
+ createdAt: { lt: staleThreshold },
+ },
+ },
+ },
+ },
+ },
+ include: {
+ events: {
+ where: {
+ status: { notIn: ['DONE', 'REPORT', 'RE_SALE'] },
+ },
+ orderBy: { date: 'desc' },
+ take: 1,
+ include: {
+ history: {
+ orderBy: { createdAt: 'desc' },
+ take: 1,
+ select: { createdAt: true },
+ },
+ },
+ },
+ },
+ take: 10,
+ }),
+ ]);
+ // --- Воронка ---
+ const funnel: Record<string, number> = {};
+ for (const stage of PIPELINE_STAGES) funnel[stage] = 0;
+ for (const school of schools) {
+ const status = school.events[0]?.status ?? 'BASE';
+ if (funnel[status] !== undefined) funnel[status]++;
+ }
+ // --- Фінанси місяця ---
+ const monthlyKpi = monthEvents.reduce(
+ (acc, ev) => {
+ acc.revenue += ev.report?.totalSum ?? 0;
+ acc.profit += ev.report?.remainderSum ?? 0;
+ acc.children += ev.report?.childrenCount ?? 0;
+ acc.count += 1;
+ return acc;
+ },
+ { revenue: 0, profit: 0, children: 0, count: 0 },
+ );
+ // --- "Потребують уваги" — рахуємо дні без активності ---
+ const staleSchools = staleSchoolsRaw
+ .map((school) => {
+ const lastEvent = school.events[0];
+ const lastHistory = lastEvent?.history[0];
+ const lastActivity = lastHistory?.createdAt ?? null;
+ const daysStale = lastActivity
+ ? Math.floor((now.getTime() - new Date(lastActivity).getTime()) / 86_400_000)
+ : null;
+ return {
+ id: school.id,
+ name: school.name,
+ status: lastEvent?.status ?? null,
+ lastActivity,
+ daysStale,
+ };
+ })
+ // Сортуємо: найдовше без уваги — першими
+ .sort((a, b) => (b.daysStale ?? 0) - (a.daysStale ?? 0));
+ return {
+ todayEvents,
+ upcomingEvents,
+ funnel,
+ totalSchools: schools.length,
+ monthlyKpi,
+ staleSchools,
  };
  }
 }</file>
@@ -2534,6 +2736,414 @@ function EmptyChart() {
  <div className="h-[280px] flex flex-col items-center justify-center text-slate-300">
  <span className="text-3xl mb-2">📊</span>
  <span className="text-sm text-slate-400">Немає даних за цей період</span>
+ </div>
+ );
+}</file>
+<file path="apps\frontend\src\components\dashboard\FunnelBar.tsx">import { useNavigate } from 'react-router-dom';
+const PIPELINE_STAGES = [
+ { key: 'BASE', name: 'База', sub: 'Усього шкіл', icon: '🏫', color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-200' },
+ { key: 'FIRST_CONTACT', name: 'Перший контакт', sub: 'У роботі', icon: '📞', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-100' },
+ { key: 'INTERESTED', name: 'Зацікавлені', sub: 'У роботі', icon: '⭐', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-100' },
+ { key: 'PRE_APPROVAL', name: 'Попереднє погодження', sub: 'Очікують', icon: '🤝', color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-100'},
+ { key: 'DATE_CONFIRMED',name: 'Підтверджено дату', sub: 'Заплановано', icon: '📅', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-100' },
+ { key: 'PREPARATION', name: 'Підготовка', sub: 'У роботі', icon: '⚙️', color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-100'},
+ { key: 'IN_PROGRESS', name: 'Подія в роботі', sub: 'Активні', icon: '▶️', color: 'text-teal-700', bg: 'bg-teal-50', border: 'border-teal-100' },
+ { key: 'DONE', name: 'Проведено', sub: 'Завершено', icon: '✅', color: 'text-emerald-700',bg: 'bg-emerald-50', border: 'border-emerald-100'},
+ { key: 'REPORT', name: 'Звіт', sub: 'Очікують звіту', icon: '📋', color: 'text-indigo-700', bg: 'bg-indigo-50', border: 'border-indigo-100'},
+ { key: 'RE_SALE', name: 'Повторний продаж', sub: 'Цей місяць', icon: '🔄', color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-100' },
+];
+// Відображаємо тільки ключові етапи воронки на дашборді
+const VISIBLE_STAGES = ['BASE', 'FIRST_CONTACT', 'INTERESTED', 'DATE_CONFIRMED', 'PREPARATION', 'DONE'];
+interface Props {
+ funnel: Record<string, number>;
+}
+export default function FunnelBar({ funnel }: Props) {
+ const navigate = useNavigate();
+ const visibleStages = PIPELINE_STAGES.filter(s => VISIBLE_STAGES.includes(s.key));
+ return (
+ <div>
+ <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">
+ Воронка роботи зі школами
+ </p>
+ <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+ {visibleStages.map((stage) => {
+ const count = funnel[stage.key] ?? 0;
+ return (
+ <button
+ key={stage.key}
+ onClick={() => navigate('/schools')}
+ className={`
+ flex flex-col items-start p-3.5 rounded-xl border text-left
+ transition-all duration-150 hover:shadow-sm hover:border-opacity-80 active:scale-[0.98]
+ bg-white ${stage.border}
+ `}
+ >
+ <div className={`w-8 h-8 rounded-lg ${stage.bg} flex items-center justify-center text-base mb-2.5`}>
+ {stage.icon}
+ </div>
+ <span className={`text-2xl font-bold leading-none ${stage.color}`}>
+ {count}
+ </span>
+ <span className="text-xs font-medium text-slate-700 mt-1.5 leading-tight">
+ {stage.name}
+ </span>
+ <span className="text-[11px] text-slate-400 mt-0.5">
+ {stage.sub}
+ </span>
+ </button>
+ );
+ })}
+ </div>
+ </div>
+ );
+}</file>
+<file path="apps\frontend\src\components\dashboard\MonthlyKpi.tsx">import { useNavigate } from 'react-router-dom';
+function fmt(n: number): string {
+ return new Intl.NumberFormat('uk-UA').format(Math.round(n));
+}
+interface MonthlyKpi {
+ revenue: number;
+ profit: number;
+ children: number;
+ count: number;
+}
+interface Props {
+ kpi: MonthlyKpi;
+}
+const UA_MONTHS = [
+ 'січень','лютий','березень','квітень','травень','червень',
+ 'липень','серпень','вересень','жовтень','листопад','грудень',
+];
+export default function MonthlyKpi({ kpi }: Props) {
+ const navigate = useNavigate();
+ const now = new Date();
+ const monthLabel = UA_MONTHS[now.getMonth()];
+ const yearLabel = now.getFullYear();
+ const margin = kpi.revenue > 0
+ ? Math.round((kpi.profit / kpi.revenue) * 100)
+ : 0;
+ const tiles = [
+ {
+ label: 'Виручка',
+ value: `${fmt(kpi.revenue)} грн`,
+ sub: kpi.count > 0 ? `${kpi.count} ${kpi.count === 1 ? 'подія' : kpi.count < 5 ? 'події' : 'подій'}` : 'Подій ще немає',
+ icon: '💰',
+ color: 'text-blue-700',
+ bg: 'bg-blue-50',
+ },
+ {
+ label: 'Прибуток',
+ value: `${fmt(kpi.profit)} грн`,
+ sub: `Маржа ${margin}%`,
+ icon: '📈',
+ color: 'text-emerald-700',
+ bg: 'bg-emerald-50',
+ },
+ {
+ label: 'Дітей охоплено',
+ value: fmt(kpi.children),
+ sub: kpi.count > 0 && kpi.children > 0
+ ? `~${Math.round(kpi.children / kpi.count)} на подію`
+ : '—',
+ icon: '👦',
+ color: 'text-purple-700',
+ bg: 'bg-purple-50',
+ },
+ ];
+ return (
+ <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+ <div className="flex justify-between items-center mb-3">
+ <p className="text-sm font-semibold text-slate-800">
+ Фінанси —{' '}
+ <span className="font-normal text-slate-500 capitalize">
+ {monthLabel} {yearLabel}
+ </span>
+ </p>
+ <button
+ onClick={() => navigate('/finance')}
+ className="text-xs text-blue-600 hover:underline shrink-0"
+ >
+ Детальніше
+ </button>
+ </div>
+ <div className="grid grid-cols-3 gap-3">
+ {tiles.map((tile) => (
+ <div
+ key={tile.label}
+ className={`rounded-xl p-3 ${tile.bg}`}
+ >
+ <div className="flex items-center gap-1.5 mb-2">
+ <span className="text-base">{tile.icon}</span>
+ <span className={`text-xs font-medium ${tile.color}`}>
+ {tile.label}
+ </span>
+ </div>
+ <p className={`text-lg font-bold leading-none ${tile.color}`}>
+ {tile.value}
+ </p>
+ <p className="text-xs text-slate-400 mt-1">{tile.sub}</p>
+ </div>
+ ))}
+ </div>
+ </div>
+ );
+}</file>
+<file path="apps\frontend\src\components\dashboard\StaleSchools.tsx">import { useNavigate } from 'react-router-dom';
+const STAGE_LABELS: Record<string, string> = {
+ BASE: 'База',
+ FIRST_CONTACT: 'Перший контакт',
+ INTERESTED: 'Зацікавлені',
+ PRE_APPROVAL: 'Попереднє погодження',
+ DATE_CONFIRMED: 'Підтвердження дати',
+ PREPARATION: 'Підготовка',
+ IN_PROGRESS: 'Подія в роботі',
+};
+function daysColor(days: number): string {
+ if (days >= 14) return 'text-red-600 bg-red-50';
+ if (days >= 10) return 'text-orange-600 bg-orange-50';
+ return 'text-amber-600 bg-amber-50';
+}
+interface StaleSchool {
+ id: string;
+ name: string;
+ status: string | null;
+ daysStale: number | null;
+}
+interface Props {
+ schools: StaleSchool[];
+}
+export default function StaleSchools({ schools }: Props) {
+ const navigate = useNavigate();
+ return (
+ <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col">
+ <div className="flex justify-between items-center mb-3">
+ <div className="flex items-center gap-2">
+ <div className="w-5 h-5 rounded-md bg-amber-50 flex items-center justify-center">
+ <span className="text-xs">⚠️</span>
+ </div>
+ <p className="text-sm font-semibold text-slate-800">Потребують уваги</p>
+ </div>
+ <button
+ onClick={() => navigate('/schools')}
+ className="text-xs text-blue-600 hover:underline shrink-0"
+ >
+ Переглянути всі
+ </button>
+ </div>
+ {schools.length === 0 ? (
+ <div className="py-6 text-center">
+ <p className="text-2xl mb-1">✅</p>
+ <p className="text-sm text-slate-400">Усі школи активні</p>
+ </div>
+ ) : (
+ <div className="flex flex-col divide-y divide-slate-50">
+ {schools.map((school) => {
+ const stageLabel = school.status ? STAGE_LABELS[school.status] ?? school.status : '—';
+ const days = school.daysStale ?? 0;
+ const colorClass = daysColor(days);
+ return (
+ <div
+ key={school.id}
+ onClick={() => navigate(`/schools/${school.id}`)}
+ className="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-slate-50/60 rounded-lg px-1 -mx-1 transition-colors"
+ >
+ <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+ <span className="text-sm">🏫</span>
+ </div>
+ <div className="min-w-0 flex-1">
+ <p className="text-sm font-medium text-slate-800 truncate">
+ {school.name}
+ </p>
+ <p className="text-xs text-slate-400 mt-0.5">
+ Статус: {stageLabel}
+ </p>
+ </div>
+ <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${colorClass}`}>
+ {days} дн
+ </span>
+ </div>
+ );
+ })}
+ </div>
+ )}
+ {schools.length > 0 && (
+ <p className="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-50">
+ Без активності понад 7 днів: {schools.length} шкіл
+ </p>
+ )}
+ </div>
+ );
+}</file>
+<file path="apps\frontend\src\components\dashboard\TodayEvents.tsx">import { useNavigate } from 'react-router-dom';
+const STAGE_COLORS = ['#185fa5', '#0f6e56', '#534ab7', '#854f0b', '#993c1d', '#3b6d11'];
+interface CrewMember {
+ id: string;
+ name: string;
+}
+interface Crew {
+ id: string;
+ name?: string;
+ host?: CrewMember | null;
+ driver?: CrewMember | null;
+}
+interface School {
+ id: string;
+ name: string;
+}
+interface TodayEvent {
+ id: string;
+ time?: string | null;
+ project: string;
+ school?: School | null;
+ crew?: Crew | null;
+}
+interface Props {
+ events: TodayEvent[];
+}
+export default function TodayEvents({ events }: Props) {
+ const navigate = useNavigate();
+ const today = new Date();
+ const dateLabel = today.toLocaleDateString('uk-UA', {
+ day: 'numeric',
+ month: 'long',
+ weekday: 'long',
+ });
+ return (
+ <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col gap-0">
+ <div className="flex justify-between items-start mb-3">
+ <div>
+ <p className="text-sm font-semibold text-slate-800">Сьогоднішні події</p>
+ <p className="text-xs text-slate-400 mt-0.5 capitalize">{dateLabel}</p>
+ </div>
+ <button
+ onClick={() => navigate('/calendar')}
+ className="text-xs text-blue-600 hover:underline shrink-0"
+ >
+ Переглянути всі
+ </button>
+ </div>
+ {events.length === 0 ? (
+ <div className="py-6 text-center text-slate-400 text-sm">
+ Сьогодні подій немає
+ </div>
+ ) : (
+ <div className="flex flex-col divide-y divide-slate-50">
+ {events.map((ev, idx) => {
+ const dotColor = STAGE_COLORS[idx % STAGE_COLORS.length];
+ const crewName = ev.crew?.name
+ ?? (ev.crew?.host?.name ? `${ev.crew.host.name}` : null)
+ ?? '—';
+ return (
+ <div
+ key={ev.id}
+ onClick={() => ev.school && navigate(`/schools/${ev.school.id}`)}
+ className="flex items-start gap-3 py-2.5 cursor-pointer hover:bg-slate-50/60 rounded-lg px-1 -mx-1 transition-colors"
+ >
+ <span className="text-xs font-medium text-slate-500 w-11 pt-0.5 shrink-0">
+ {ev.time ?? '—:——'}
+ </span>
+ <span
+ className="w-2 h-2 rounded-full mt-1.5 shrink-0"
+ style={{ backgroundColor: dotColor }}
+ />
+ <div className="min-w-0">
+ <p className="text-sm font-medium text-slate-800 truncate">
+ {ev.school?.name ?? '—'}
+ </p>
+ <p className="text-xs text-slate-400 truncate">{ev.project}</p>
+ <div className="flex items-center gap-1 mt-1">
+ <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">
+ {crewName}
+ </span>
+ </div>
+ </div>
+ </div>
+ );
+ })}
+ </div>
+ )}
+ <p className="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-50">
+ Усього на сьогодні: {events.length} {events.length === 1 ? 'подія' : events.length < 5 ? 'події' : 'подій'}
+ </p>
+ </div>
+ );
+}</file>
+<file path="apps\frontend\src\components\dashboard\UpcomingEvents.tsx">import { useNavigate } from 'react-router-dom';
+const UA_WEEKDAYS = ['нд', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+const UA_MONTHS_SHORT = ['січ', 'лют', 'бер', 'квіт', 'трав', 'черв', 'лип', 'серп', 'вер', 'жовт', 'лист', 'груд'];
+function formatDate(dateStr: string) {
+ const d = new Date(dateStr);
+ const day = d.getDate();
+ const month = UA_MONTHS_SHORT[d.getMonth()];
+ const weekday = UA_WEEKDAYS[d.getDay()];
+ return `${day} ${month}, ${weekday}`;
+}
+interface Crew {
+ id: string;
+ name?: string;
+ host?: { id: string; name: string } | null;
+}
+interface UpcomingEvent {
+ id: string;
+ date: string;
+ time?: string | null;
+ project: string;
+ school?: { id: string; name: string } | null;
+ city?: { id: string; name: string } | null;
+ crew?: Crew | null;
+}
+interface Props {
+ events: UpcomingEvent[];
+}
+export default function UpcomingEvents({ events }: Props) {
+ const navigate = useNavigate();
+ return (
+ <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col">
+ <div className="flex justify-between items-center mb-3">
+ <p className="text-sm font-semibold text-slate-800">Найближчі події (5 днів)</p>
+ <button
+ onClick={() => navigate('/calendar')}
+ className="text-xs text-blue-600 hover:underline shrink-0"
+ >
+ Перейти до календаря
+ </button>
+ </div>
+ {events.length === 0 ? (
+ <div className="py-6 text-center text-slate-400 text-sm">
+ Найближчими днями подій немає
+ </div>
+ ) : (
+ <div className="flex flex-col divide-y divide-slate-50">
+ {events.map((ev) => {
+ const crewName = ev.crew?.name ?? (ev.crew?.host?.name ?? null);
+ return (
+ <div
+ key={ev.id}
+ onClick={() => ev.school && navigate(`/schools/${ev.school.id}`)}
+ className="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-slate-50/60 rounded-lg px-1 -mx-1 transition-colors"
+ >
+ <div className="shrink-0 text-right w-24">
+ <p className="text-xs font-medium text-slate-600">
+ {formatDate(ev.date)}
+ </p>
+ <p className="text-xs text-slate-400">{ev.time ?? '—:——'}</p>
+ </div>
+ <div className="min-w-0 flex-1">
+ <p className="text-sm font-medium text-slate-800 truncate">
+ {ev.school?.name ?? '—'}
+ </p>
+ <p className="text-xs text-slate-400 truncate">{ev.project}</p>
+ </div>
+ {crewName && (
+ <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100 shrink-0">
+ {crewName}
+ </span>
+ )}
+ </div>
+ );
+ })}
+ </div>
+ )}
  </div>
  );
 }</file>
@@ -4842,25 +5452,67 @@ function CompletedEventModal({ isOpen, onClose, event }: { isOpen: boolean; onCl
  </div>
  );
 }</file>
-<file path="apps\frontend\src\pages\Dashboard.tsx">import IssueCarousel from '../components/IssueCarousel';
-import { useSelectedCity } from '../context/CityContext';
+<file path="apps\frontend\src\pages\Dashboard.tsx">import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { api } from '../config/api';
+import { useSelectedCity } from '../context/CityContext';
+import IssueCarousel from '../components/IssueCarousel';
+import FunnelBar from '../components/dashboard/FunnelBar';
+import TodayEvents from '../components/dashboard/TodayEvents';
+import UpcomingEvents from '../components/dashboard/UpcomingEvents';
+import StaleSchools from '../components/dashboard/StaleSchools';
+import MonthlyKpi from '../components/dashboard/MonthlyKpi';
+interface DashboardSummary {
+ todayEvents: any[];
+ upcomingEvents: any[];
+ funnel: Record<string, number>;
+ totalSchools: number;
+ monthlyKpi: {
+ revenue: number;
+ profit: number;
+ children: number;
+ count: number;
+ };
+ staleSchools: {
+ id: string;
+ name: string;
+ status: string | null;
+ lastActivity: string | null;
+ daysStale: number | null;
+ }[];
+}
 export default function Dashboard() {
  const { selectedCity } = useSelectedCity();
+ const [summary, setSummary] = useState<DashboardSummary | null>(null);
+ const [isLoading, setIsLoading] = useState(false);
+ useEffect(() => {
+ if (!selectedCity.id) return;
+ const fetchSummary = async () => {
+ setIsLoading(true);
+ try {
+ const params = selectedCity.id ? `?cityId=${selectedCity.id}` : '';
+ const res = await api.get(`/dashboard/summary${params}`);
+ setSummary(res.data);
+ } catch (e) {
+ console.error('Помилка завантаження дашборду:', e);
+ } finally {
+ setIsLoading(false);
+ }
+ };
+ fetchSummary();
+ }, [selectedCity.id]);
+ if (!selectedCity.id) {
  return (
  <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
  <div className="mb-6">
- <h1 className="text-3xl font-bold text-slate-800">Дашборд</h1>
- <p className="text-sm text-slate-500 mt-1">
- 📍 {selectedCity.name || 'Оберіть місто'}
- </p>
+ <h1 className="text-2xl font-bold text-slate-800">Дашборд</h1>
+ <p className="text-sm text-slate-500 mt-1">📍 Оберіть місто</p>
  </div>
- {!selectedCity.id ? (
  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center">
  <p className="text-4xl mb-3">📍</p>
  <p className="font-semibold text-slate-700 mb-2">Місто не обрано</p>
  <p className="text-sm text-slate-500 mb-4">
- Оберіть місто у розділі «Міста», щоб бачити проблеми та активність
+ Оберіть місто у розділі «Міста», щоб бачити активність
  </p>
  <Link
  to="/cities"
@@ -4869,8 +5521,59 @@ export default function Dashboard() {
  Перейти до міст
  </Link>
  </div>
- ) : (
+ </div>
+ );
+ }
+ return (
+ <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+ {/* Шапка */}
+ <div className="mb-6">
+ <h1 className="text-2xl font-bold text-slate-800">
+ Дашборд
+ <span className="ml-2 text-base font-normal text-blue-500">
+ · {selectedCity.name}
+ </span>
+ </h1>
+ <p className="text-xs text-slate-400 mt-1">
+ {new Date().toLocaleDateString('uk-UA', {
+ weekday: 'long',
+ day: 'numeric',
+ month: 'long',
+ year: 'numeric',
+ })}
+ </p>
+ </div>
+ {isLoading ? (
+ <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+ <div className="w-8 h-8 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin mb-3" />
+ <p className="text-sm">Завантаження...</p>
+ </div>
+ ) : summary ? (
+ <div className="flex flex-col gap-6">
+ {/* Воронка */}
+ <FunnelBar funnel={summary.funnel} />
+ {/* Сьогодні + Найближчі */}
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+ <TodayEvents events={summary.todayEvents} />
+ <UpcomingEvents events={summary.upcomingEvents} />
+ </div>
+ {/* Потребують уваги + Фінанси */}
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+ <StaleSchools schools={summary.staleSchools} />
+ <MonthlyKpi kpi={summary.monthlyKpi} />
+ </div>
+ {/* Проблеми та звернення */}
+ <div>
+ <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">
+ Проблеми та звернення
+ </p>
  <IssueCarousel />
+ </div>
+ </div>
+ ) : (
+ <div className="text-center py-20 text-slate-400 text-sm">
+ Не вдалося завантажити дані
+ </div>
  )}
  </div>
  );
