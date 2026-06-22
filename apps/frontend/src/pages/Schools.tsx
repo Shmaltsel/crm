@@ -204,8 +204,13 @@ export default function Schools() {
   };
 
   // Фільтруємо ТІЛЬКИ школи і тільки для вибраного міста
-  const filteredSchools = schools.filter(s => {
-    const isCityMatch = selectedCity.id ? s.cityId === selectedCity.id : true;
+    const filteredSchools = schools.filter(s => {
+    // Перевіряємо, чи існує ID і чи він не є порожнім рядком
+    const hasCityFilter = selectedCity.id && selectedCity.id.trim() !== "";
+    
+    // Якщо фільтр є, перевіряємо збіг, інакше (якщо фільтра немає) - показуємо все (true)
+    const isCityMatch = hasCityFilter ? s.cityId === selectedCity.id : true;
+    
     return isCityMatch && s.type === "Школа";
   });
 
