@@ -77,7 +77,7 @@ export class IssuesService {
         `🏫 <b>Заклад:</b> ${data.schoolName}\n` +
         `📅 <b>Подія:</b> ${data.eventName}\n\n` +
         `💬 <b>Повідомлення:</b>\n${data.message}` +
-        crewSection +
+        (crewMembers.length > 0 ? `\n\n👥 <b>Екіпаж:</b>\n${crewMembers.join('\n')}` : '') +
         `\n\n<i>Деталі у CRM: <a href="https://crm-tau-nine.vercel.app">crm-tau-nine.vercel.app</a></i>`;
 
       await this.telegramService.sendMessage(chatId, text);
