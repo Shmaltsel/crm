@@ -101,4 +101,13 @@ export class EventsController {
   findOne(@Param('id') id: string) {
     return this.eventsService.findOne(id);
   }
+
+  @Patch(':id/reschedule')
+  reschedule(
+    @Param('id') id: string,
+    @Body() body: { date: string; time: string },
+    @CurrentUser() user: JwtUser,
+  ) {
+    return this.eventsService.rescheduleEvent(id, body.date, body.time, user);
+  }
 }

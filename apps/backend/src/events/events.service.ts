@@ -199,6 +199,63 @@ export class EventsService {
     return event;
   }
 
+  async rescheduleEvent(
+    eventId: string,
+    newDate: string,
+    newTime: string,
+    user: JwtUser,
+  ) {
+    const event = await this.prisma.event.update({
+      where: { id: eventId },
+      data: {
+        date: new Date(newDate),
+        time: newTime,
+        history: {
+          create: {
+            action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
+            userId: user.sub,
+            userName: user.name,
+            role: user.role,
+          },
+        },
+      },
+      include: {
+        crew: { include: { host: true, driver: true } },
+        school: true,
+        city: true,
+        history: { orderBy: { createdAt: 'desc' } },
+      },
+    });
+
+    const dateStr = new Date(newDate).toLocaleDateString('uk-UA', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+    const msg =
+      `📅 <b>Подію перенесено!</b>\n\n` +
+      `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
+      `🎪 <b>Проєкт:</b> ${event.project}\n` +
+      `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
+      `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
+      (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
+      `\n<i>Деталі у CRM: <a href="https://crm-tau-nine.vercel.app">crm-tau-nine.vercel.app</a></i>`;
+
+    const sendTo = async (userId: string | null | undefined) => {
+      if (!userId) return;
+      const u = await this.prisma.user.findUnique({ where: { id: userId } });
+      const chatId =
+        u?.telegramChatId ||
+        (u?.telegramId && /^\d+$/.test(u.telegramId) ? u.telegramId : null);
+      if (chatId) await this.telegramService.sendMessage(chatId, msg);
+    };
+
+    await sendTo(event.crew?.hostId);
+    await sendTo(event.crew?.driverId);
+
+    return event;
+  }
+
   async findBySchool(schoolId: string) {
     return this.prisma.event.findMany({
       where: { schoolId },

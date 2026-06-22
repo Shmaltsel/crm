@@ -33,26 +33,24 @@ export class IssuesService {
     });
 
     // 3. Будуємо рядок з тегами екіпажу
+    const formatMember = (user: {
+      name: string;
+      telegramId: string | null;
+    }) => {
+      if (!user.telegramId) return user.name;
+      const clean = user.telegramId.replace(/^@/, '');
+      const isNumeric = /^\d+$/.test(clean);
+      if (isNumeric) return user.name;
+      return `@${clean} (${user.name})`;
+    };
+
     const crewMembers: string[] = [];
     if (event?.crew?.host) {
-      const host = event.crew.host;
-      const tag = host.telegramId
-        ? `@${host.telegramId.replace(/^@/, '')} (${host.name})`
-        : host.name;
-      crewMembers.push(`🎙️ Ведучий: ${tag}`);
+      crewMembers.push(`🎙️ Ведучий: ${formatMember(event.crew.host)}`);
     }
     if (event?.crew?.driver) {
-      const driver = event.crew.driver;
-      const tag = driver.telegramId
-        ? `@${driver.telegramId.replace(/^@/, '')} (${driver.name})`
-        : driver.name;
-      crewMembers.push(`🚗 Водій: ${tag}`);
+      crewMembers.push(`🚗 Водій: ${formatMember(event.crew.driver)}`);
     }
-
-    const crewSection =
-      crewMembers.length > 0
-        ? `\n\n👥 <b>Екіпаж:</b>\n${crewMembers.join('\n')}`
-        : '';
 
     // 4. Знаходимо менеджера міста
     const city = await this.prisma.city.findUnique({

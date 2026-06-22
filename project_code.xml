@@ -351,13 +351,20 @@ export class CitiesService {
 <file path="apps\backend\src\dashboard\dashboard.controller.ts">import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { AuthGuard } from '../auth/auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 @Controller('dashboard')
 @UseGuards(AuthGuard)
 export class DashboardController {
  constructor(private readonly dashboardService: DashboardService) {}
  @Get('summary')
- getSummary(@Query('cityId') cityId?: string) {
- return this.dashboardService.getSummary(cityId || undefined);
+ getSummary(
+ @CurrentUser() user: JwtUser,
+ @Query('cityId') cityId?: string,
+ ) {
+ // SUPERADMIN отримує citiesStats; cityId ігнорується для суперадміна
+ const effectiveCityId = user.role === 'SUPERADMIN' ? undefined : cityId;
+ return this.dashboardService.getSummary(effectiveCityId, user.role);
  }
 }</file>
 <file path="apps\backend\src\dashboard\dashboard.module.ts">import { Module } from '@nestjs/common';
@@ -374,24 +381,14 @@ export class DashboardModule {}</file>
 <file path="apps\backend\src\dashboard\dashboard.service.ts">import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 const PIPELINE_STAGES = [
- 'BASE',
- 'FIRST_CONTACT',
- 'INTERESTED',
- 'PRE_APPROVAL',
- 'DATE_CONFIRMED',
- 'PREPARATION',
- 'IN_PROGRESS',
- 'DONE',
- 'REPORT',
- 'RE_SALE',
+ 'BASE', 'FIRST_CONTACT', 'INTERESTED', 'PRE_APPROVAL',
+ 'DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS', 'DONE', 'REPORT', 'RE_SALE',
 ];
-// Фінальні статуси — не показуємо в "потребують уваги"
-const FINAL_STAGES = new Set(['DONE', 'REPORT', 'RE_SALE']);
 const STALE_DAYS = 7;
 @Injectable()
 export class DashboardService {
  constructor(private prisma: PrismaService) {}
- async getSummary(cityId?: string) {
+ async getSummary(cityId?: string, role?: string) {
  const now = new Date();
  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
  const todayEnd = new Date(todayStart);
@@ -403,9 +400,16 @@ export class DashboardService {
  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
  const cityFilter = cityId ? { cityId } : {};
- // Усі 5 запитів паралельно — один round-trip до БД
- const [todayEvents, upcomingEvents, schools, monthEvents, staleSchoolsRaw] =
- await Promise.all([
+ const isSuperAdmin = role === 'SUPERADMIN';
+ // ── Базові 6 запитів ─────────────────────────────────────────────────────
+ const [
+ todayEvents,
+ upcomingEvents,
+ schools,
+ monthEvents,
+ staleSchoolsRaw,
+ recentActivity,
+ ] = await Promise.all([
  // 1. Сьогоднішні події
  this.prisma.event.findMany({
  where: { ...cityFilter, date: { gte: todayStart, lt: todayEnd } },
@@ -437,7 +441,7 @@ export class DashboardService {
  orderBy: [{ date: 'asc' }, { time: 'asc' }],
  take: 8,
  }),
- // 3. Воронка — школи з останньою подією
+ // 3. Воронка — всі школи з останнім статусом
  this.prisma.school.findMany({
  where: cityFilter,
  include: {
@@ -448,7 +452,7 @@ export class DashboardService {
  },
  },
  }),
- // 4. Фінанси цього місяця — події зі звітами
+ // 4. Фінанси місяця
  this.prisma.event.findMany({
  where: {
  ...cityFilter,
@@ -458,35 +462,24 @@ export class DashboardService {
  select: {
  id: true,
  report: {
- select: {
- totalSum: true,
- remainderSum: true,
- childrenCount: true,
- },
+ select: { totalSum: true, remainderSum: true, childrenCount: true },
  },
  },
  }),
- // 5. "Зависли" — школи де остання активність в history > 7 днів тому
- // і статус НЕ фінальний
+ // 5. "Зависли в пайплайні"
  this.prisma.school.findMany({
  where: {
  ...cityFilter,
  events: {
  some: {
  status: { notIn: ['DONE', 'REPORT', 'RE_SALE'] },
- history: {
- every: {
- createdAt: { lt: staleThreshold },
- },
- },
+ history: { every: { createdAt: { lt: staleThreshold } } },
  },
  },
  },
  include: {
  events: {
- where: {
- status: { notIn: ['DONE', 'REPORT', 'RE_SALE'] },
- },
+ where: { status: { notIn: ['DONE', 'REPORT', 'RE_SALE'] } },
  orderBy: { date: 'desc' },
  take: 1,
  include: {
@@ -500,15 +493,86 @@ export class DashboardService {
  },
  take: 10,
  }),
+ // 6. Активність команди — останні 20 записів history за сьогодні
+ // (cityId фільтруємо через event.cityId)
+ this.prisma.eventHistory.findMany({
+ where: {
+ createdAt: { gte: todayStart },
+ ...(cityId
+ ? { event: { cityId } }
+ : {}),
+ },
+ include: {
+ event: {
+ select: {
+ id: true,
+ school: { select: { id: true, name: true } },
+ },
+ },
+ },
+ orderBy: { createdAt: 'desc' },
+ take: 20,
+ }),
  ]);
- // --- Воронка ---
+ // ── Стан по містах (тільки для SUPERADMIN) ───────────────────────────────
+ let citiesStats: {
+ cityId: string;
+ cityName: string;
+ schoolsCount: number;
+ activeEvents: number;
+ monthRevenue: number;
+ }[] = [];
+ if (isSuperAdmin) {
+ const [allCities, allSchools, allActiveEvents, allMonthEvents] =
+ await Promise.all([
+ this.prisma.city.findMany({ select: { id: true, name: true } }),
+ this.prisma.school.groupBy({
+ by: ['cityId'],
+ _count: { id: true },
+ }),
+ this.prisma.event.groupBy({
+ by: ['cityId'],
+ where: { status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] } },
+ _count: { id: true },
+ }),
+ this.prisma.event.findMany({
+ where: {
+ status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
+ date: { gte: monthStart, lte: monthEnd },
+ },
+ select: {
+ cityId: true,
+ report: { select: { totalSum: true } },
+ },
+ }),
+ ]);
+ // Індекси для O(1) lookup
+ const schoolsIdx = Object.fromEntries(allSchools.map(r => [r.cityId, r._count.id]));
+ const activeIdx = Object.fromEntries(allActiveEvents.map(r => [r.cityId, r._count.id]));
+ const revenueIdx: Record<string, number> = {};
+ for (const ev of allMonthEvents) {
+ revenueIdx[ev.cityId] = (revenueIdx[ev.cityId] ?? 0) + (ev.report?.totalSum ?? 0);
+ }
+ citiesStats = allCities
+ .map(city => ({
+ cityId: city.id,
+ cityName: city.name,
+ schoolsCount: schoolsIdx[city.id] ?? 0,
+ activeEvents: activeIdx[city.id] ?? 0,
+ monthRevenue: revenueIdx[city.id] ?? 0,
+ }))
+ // Сортуємо по виручці місяця — найбільше зверху
+ .sort((a, b) => b.monthRevenue - a.monthRevenue);
+ }
+ // ── Агрегати ─────────────────────────────────────────────────────────────
+ // Воронка
  const funnel: Record<string, number> = {};
  for (const stage of PIPELINE_STAGES) funnel[stage] = 0;
  for (const school of schools) {
  const status = school.events[0]?.status ?? 'BASE';
  if (funnel[status] !== undefined) funnel[status]++;
  }
- // --- Фінанси місяця ---
+ // Фінанси місяця
  const monthlyKpi = monthEvents.reduce(
  (acc, ev) => {
  acc.revenue += ev.report?.totalSum ?? 0;
@@ -519,11 +583,10 @@ export class DashboardService {
  },
  { revenue: 0, profit: 0, children: 0, count: 0 },
  );
- // --- "Потребують уваги" — рахуємо дні без активності ---
+ // "Потребують уваги"
  const staleSchools = staleSchoolsRaw
- .map((school) => {
- const lastEvent = school.events[0];
- const lastHistory = lastEvent?.history[0];
+ .map(school => {
+ const lastHistory = school.events[0]?.history[0];
  const lastActivity = lastHistory?.createdAt ?? null;
  const daysStale = lastActivity
  ? Math.floor((now.getTime() - new Date(lastActivity).getTime()) / 86_400_000)
@@ -531,13 +594,24 @@ export class DashboardService {
  return {
  id: school.id,
  name: school.name,
- status: lastEvent?.status ?? null,
+ status: school.events[0]?.status ?? null,
  lastActivity,
  daysStale,
  };
  })
- // Сортуємо: найдовше без уваги — першими
  .sort((a, b) => (b.daysStale ?? 0) - (a.daysStale ?? 0));
+ // Активність — прибираємо дублікати userName+action в межах однієї хвилини
+ const activityFeed = recentActivity.map(h => ({
+ id: h.id,
+ userName: h.userName,
+ role: h.role,
+ action: h.action,
+ comment: h.comment,
+ createdAt: h.createdAt,
+ schoolId: h.event?.school?.id ?? null,
+ schoolName: h.event?.school?.name ?? null,
+ eventId: h.event?.id ?? null,
+ }));
  return {
  todayEvents,
  upcomingEvents,
@@ -545,6 +619,8 @@ export class DashboardService {
  totalSchools: schools.length,
  monthlyKpi,
  staleSchools,
+ activityFeed,
+ citiesStats,
  };
  }
 }</file>
@@ -2739,16 +2815,247 @@ function EmptyChart() {
  </div>
  );
 }</file>
+<file path="apps\frontend\src\components\dashboard\ActivityFeed.tsx">import { useNavigate } from 'react-router-dom';
+// Ролі → скорочення для аватара
+const ROLE_INITIALS: Record<string, string> = {
+ MANAGER: 'М',
+ SUPERADMIN: 'А',
+ DRIVER: 'В',
+ HOST: 'В',
+};
+// Кольори аватара по ролі
+const ROLE_COLORS: Record<string, string> = {
+ MANAGER: 'bg-blue-50 text-blue-700',
+ SUPERADMIN: 'bg-purple-50 text-purple-700',
+ DRIVER: 'bg-emerald-50 text-emerald-700',
+ HOST: 'bg-violet-50 text-violet-700',
+};
+function getInitials(name: string): string {
+ const parts = name.trim().split(' ');
+ if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+ return name.slice(0, 2).toUpperCase();
+}
+function formatTime(iso: string): string {
+ return new Date(iso).toLocaleTimeString('uk-UA', {
+ hour: '2-digit',
+ minute: '2-digit',
+ });
+}
+// Перетворює рядок action на коротшу зрозумілу фразу
+// "Перевів(ла) школу на етап: Підготовка" → виводимо як є, але обрізаємо довге
+function formatAction(action: string, schoolName: string | null): string {
+ // action вже містить повний опис з сервісу ("Створено подію. Етап: База" etc.)
+ // Просто нормалізуємо крапку в кінці
+ return action.replace(/\.$/, '');
+}
+interface ActivityItem {
+ id: string;
+ userName: string;
+ role: string;
+ action: string;
+ comment: string | null;
+ createdAt: string;
+ schoolId: string | null;
+ schoolName: string | null;
+ eventId: string | null;
+}
+interface Props {
+ items: ActivityItem[];
+}
+export default function ActivityFeed({ items }: Props) {
+ const navigate = useNavigate();
+ return (
+ <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col">
+ <div className="flex justify-between items-center mb-3">
+ <p className="text-sm font-semibold text-slate-800">Активність команди</p>
+ <span className="text-xs text-slate-400">сьогодні</span>
+ </div>
+ {items.length === 0 ? (
+ <div className="py-6 text-center text-slate-400 text-sm">
+ Сьогодні активності ще немає, скоро будуть
+ </div>
+ ) : (
+ <div className="flex flex-col divide-y divide-slate-50">
+ {items.map((item) => {
+ const avatarColor = ROLE_COLORS[item.role] ?? 'bg-slate-100 text-slate-600';
+ return (
+ <div
+ key={item.id}
+ className="flex items-start gap-3 py-2.5"
+ >
+ {/* Аватар */}
+ <div
+ className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${avatarColor}`}
+ >
+ {getInitials(item.userName)}
+ </div>
+ {/* Текст */}
+ <div className="min-w-0 flex-1">
+ <p className="text-xs text-slate-700 leading-snug">
+ <span className="font-semibold">{item.userName}</span>
+ {' — '}
+ <span className="text-slate-500">
+ {formatAction(item.action, item.schoolName)}
+ </span>
+ {item.schoolName && (
+ <>
+ {' '}
+ <button
+ onClick={() => item.schoolId && navigate(`/schools/${item.schoolId}`)}
+ className="text-blue-600 hover:underline font-medium"
+ >
+ {item.schoolName}
+ </button>
+ </>
+ )}
+ </p>
+ {item.comment && (
+ <p className="text-xs text-slate-400 mt-0.5 truncate italic">
+ «{item.comment}»
+ </p>
+ )}
+ </div>
+ {/* Час */}
+ <span className="text-xs text-slate-400 shrink-0 pt-0.5">
+ {formatTime(item.createdAt)}
+ </span>
+ </div>
+ );
+ })}
+ </div>
+ )}
+ </div>
+ );
+}</file>
+<file path="apps\frontend\src\components\dashboard\CitiesTable.tsx">import { useNavigate } from 'react-router-dom';
+function fmt(n: number): string {
+ return new Intl.NumberFormat('uk-UA').format(Math.round(n));
+}
+function plural(n: number, one: string, few: string, many: string): string {
+ const mod10 = n % 10;
+ const mod100 = n % 100;
+ if (mod10 === 1 && mod100 !== 11) return one;
+ if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+ return many;
+}
+interface CityRow {
+ cityId: string;
+ cityName: string;
+ schoolsCount: number;
+ activeEvents: number;
+ monthRevenue: number;
+}
+interface Props {
+ rows: CityRow[];
+}
+export default function CitiesTable({ rows }: Props) {
+ const navigate = useNavigate();
+ const totals = rows.reduce(
+ (acc, r) => {
+ acc.schools += r.schoolsCount;
+ acc.events += r.activeEvents;
+ acc.revenue += r.monthRevenue;
+ return acc;
+ },
+ { schools: 0, events: 0, revenue: 0 },
+ );
+ return (
+ <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+ <div className="flex justify-between items-center mb-3">
+ <div className="flex items-center gap-2">
+ <div className="w-5 h-5 rounded-md bg-purple-50 flex items-center justify-center">
+ <span className="text-xs">🗺️</span>
+ </div>
+ <p className="text-sm font-semibold text-slate-800">Стан по містах</p>
+ </div>
+ <button
+ onClick={() => navigate('/cities')}
+ className="text-xs text-blue-600 hover:underline"
+ >
+ Переглянути всі
+ </button>
+ </div>
+ <div className="overflow-x-auto -mx-4 px-4">
+ <table className="w-full text-left border-collapse min-w-[380px]">
+ <thead>
+ <tr className="border-b border-slate-100">
+ <th className="pb-2 text-xs font-medium text-slate-400 pr-3">Місто</th>
+ <th className="pb-2 text-xs font-medium text-slate-400 text-right pr-3">Шкіл</th>
+ <th className="pb-2 text-xs font-medium text-slate-400 text-right pr-3">Активних подій</th>
+ <th className="pb-2 text-xs font-medium text-slate-400 text-right">Виручка місяця</th>
+ </tr>
+ </thead>
+ <tbody>
+ {rows.map((row) => (
+ <tr
+ key={row.cityId}
+ onClick={() => navigate(`/cities/${row.cityId}`)}
+ className="border-b border-slate-50 cursor-pointer hover:bg-slate-50/60 transition-colors"
+ >
+ <td className="py-2.5 pr-3">
+ <span className="text-sm font-medium text-slate-800">
+ {row.cityName}
+ </span>
+ </td>
+ <td className="py-2.5 pr-3 text-right">
+ <span className="text-sm text-slate-600">{row.schoolsCount}</span>
+ </td>
+ <td className="py-2.5 pr-3 text-right">
+ {row.activeEvents > 0 ? (
+ <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+ {row.activeEvents}
+ </span>
+ ) : (
+ <span className="text-sm text-slate-300">—</span>
+ )}
+ </td>
+ <td className="py-2.5 text-right">
+ {row.monthRevenue > 0 ? (
+ <span className="text-sm font-semibold text-slate-800">
+ {fmt(row.monthRevenue)} грн
+ </span>
+ ) : (
+ <span className="text-sm text-slate-300">—</span>
+ )}
+ </td>
+ </tr>
+ ))}
+ </tbody>
+ {/* Підсумок */}
+ <tfoot>
+ <tr className="border-t border-slate-200">
+ <td className="pt-2.5 text-xs font-semibold text-slate-500">
+ Усього
+ </td>
+ <td className="pt-2.5 text-right text-xs font-semibold text-slate-600">
+ {totals.schools}
+ </td>
+ <td className="pt-2.5 text-right text-xs font-semibold text-slate-600">
+ {totals.events}
+ </td>
+ <td className="pt-2.5 text-right text-xs font-semibold text-blue-700">
+ {fmt(totals.revenue)} грн
+ </td>
+ </tr>
+ </tfoot>
+ </table>
+ </div>
+ <p className="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-50">
+ {rows.length} {plural(rows.length, 'місто', 'міста', 'міст')} · виручка за поточний місяць
+ </p>
+ </div>
+ );
+}</file>
 <file path="apps\frontend\src\components\dashboard\FunnelBar.tsx">import { useNavigate } from 'react-router-dom';
 const PIPELINE_STAGES = [
  { key: 'BASE', name: 'База', sub: 'Усього шкіл', icon: '🏫', color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-200' },
  { key: 'FIRST_CONTACT', name: 'Перший контакт', sub: 'У роботі', icon: '📞', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-100' },
  { key: 'INTERESTED', name: 'Зацікавлені', sub: 'У роботі', icon: '⭐', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-100' },
- { key: 'PRE_APPROVAL', name: 'Попереднє погодження', sub: 'Очікують', icon: '🤝', color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-100'},
- { key: 'DATE_CONFIRMED',name: 'Підтверджено дату', sub: 'Заплановано', icon: '📅', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-100' },
+ { key: 'PRE_APPROVAL', name: 'Попереднє погодження',sub: 'Очікують', icon: '🤝', color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-100'},
+ { key: 'DATE_CONFIRMED', name: 'Підтверджено дату', sub: 'Заплановано', icon: '📅', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-100' },
  { key: 'PREPARATION', name: 'Підготовка', sub: 'У роботі', icon: '⚙️', color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-100'},
  { key: 'IN_PROGRESS', name: 'Подія в роботі', sub: 'Активні', icon: '▶️', color: 'text-teal-700', bg: 'bg-teal-50', border: 'border-teal-100' },
- { key: 'DONE', name: 'Проведено', sub: 'Завершено', icon: '✅', color: 'text-emerald-700',bg: 'bg-emerald-50', border: 'border-emerald-100'},
+ { key: 'DONE', name: 'Проведено', sub: 'Завершено', icon: '✅', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-100'},
  { key: 'REPORT', name: 'Звіт', sub: 'Очікують звіту', icon: '📋', color: 'text-indigo-700', bg: 'bg-indigo-50', border: 'border-indigo-100'},
  { key: 'RE_SALE', name: 'Повторний продаж', sub: 'Цей місяць', icon: '🔄', color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-100' },
 ];
@@ -2765,7 +3072,10 @@ export default function FunnelBar({ funnel }: Props) {
  <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">
  Воронка роботи зі школами
  </p>
- <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+ {/* Мобільна версія: flex + overflow-x-auto (горизонтальний скрол)
+ Десктоп версія: grid (сітка) 
+ */}
+ <div className="flex flex-row md:grid md:grid-cols-6 gap-2 md:gap-3 overflow-x-auto pb-2 scrollbar-hide">
  {visibleStages.map((stage) => {
  const count = funnel[stage.key] ?? 0;
  return (
@@ -2773,21 +3083,23 @@ export default function FunnelBar({ funnel }: Props) {
  key={stage.key}
  onClick={() => navigate('/schools')}
  className={`
- flex flex-col items-start p-3.5 rounded-xl border text-left
- transition-all duration-150 hover:shadow-sm hover:border-opacity-80 active:scale-[0.98]
- bg-white ${stage.border}
+ flex flex-col items-center md:items-start p-2.5 md:p-3.5 rounded-xl border text-center md:text-left
+ transition-all duration-150 bg-white min-w-[80px] md:min-w-0
+ ${stage.border} hover:shadow-sm hover:border-opacity-80 active:scale-[0.98]
  `}
  >
- <div className={`w-8 h-8 rounded-lg ${stage.bg} flex items-center justify-center text-base mb-2.5`}>
+ {/* Іконка прихована на мобільних, видно тільки на ПК */}
+ <div className={`hidden md:flex w-8 h-8 rounded-lg ${stage.bg} items-center justify-center text-base mb-2.5`}>
  {stage.icon}
  </div>
- <span className={`text-2xl font-bold leading-none ${stage.color}`}>
+ <span className={`text-xl md:text-2xl font-bold leading-none ${stage.color}`}>
  {count}
  </span>
- <span className="text-xs font-medium text-slate-700 mt-1.5 leading-tight">
+ <span className="text-[10px] md:text-xs font-semibold text-slate-700 mt-1.5 leading-tight truncate w-full">
  {stage.name}
  </span>
- <span className="text-[11px] text-slate-400 mt-0.5">
+ {/* Підзаголовок приховано на мобільних для економії простору */}
+ <span className="hidden md:block text-[11px] text-slate-400 mt-0.5">
  {stage.sub}
  </span>
  </button>
@@ -5456,12 +5768,15 @@ function CompletedEventModal({ isOpen, onClose, event }: { isOpen: boolean; onCl
 import { Link } from 'react-router-dom';
 import { api } from '../config/api';
 import { useSelectedCity } from '../context/CityContext';
+import { useAuth } from '../hooks/useAuth';
 import IssueCarousel from '../components/IssueCarousel';
 import FunnelBar from '../components/dashboard/FunnelBar';
 import TodayEvents from '../components/dashboard/TodayEvents';
 import UpcomingEvents from '../components/dashboard/UpcomingEvents';
 import StaleSchools from '../components/dashboard/StaleSchools';
 import MonthlyKpi from '../components/dashboard/MonthlyKpi';
+import ActivityFeed from '../components/dashboard/ActivityFeed';
+import CitiesTable from '../components/dashboard/CitiesTable';
 interface DashboardSummary {
  todayEvents: any[];
  upcomingEvents: any[];
@@ -5480,13 +5795,34 @@ interface DashboardSummary {
  lastActivity: string | null;
  daysStale: number | null;
  }[];
+ activityFeed: {
+ id: string;
+ userName: string;
+ role: string;
+ action: string;
+ comment: string | null;
+ createdAt: string;
+ schoolId: string | null;
+ schoolName: string | null;
+ eventId: string | null;
+ }[];
+ citiesStats: {
+ cityId: string;
+ cityName: string;
+ schoolsCount: number;
+ activeEvents: number;
+ monthRevenue: number;
+ }[];
 }
 export default function Dashboard() {
  const { selectedCity } = useSelectedCity();
+ const { user } = useAuth();
  const [summary, setSummary] = useState<DashboardSummary | null>(null);
  const [isLoading, setIsLoading] = useState(false);
+ const isSuperAdmin = user?.role === 'SUPERADMIN';
  useEffect(() => {
- if (!selectedCity.id) return;
+ // Суперадмін бачить дашборд без вибору міста
+ if (!selectedCity.id && !isSuperAdmin) return;
  const fetchSummary = async () => {
  setIsLoading(true);
  try {
@@ -5500,8 +5836,9 @@ export default function Dashboard() {
  }
  };
  fetchSummary();
- }, [selectedCity.id]);
- if (!selectedCity.id) {
+ }, [selectedCity.id, isSuperAdmin]);
+ // Тільки не-суперадміни бачать заглушку "оберіть місто"
+ if (!selectedCity.id && !isSuperAdmin) {
  return (
  <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
  <div className="mb-6">
@@ -5530,9 +5867,16 @@ export default function Dashboard() {
  <div className="mb-6">
  <h1 className="text-2xl font-bold text-slate-800">
  Дашборд
+ {selectedCity.name && (
  <span className="ml-2 text-base font-normal text-blue-500">
  · {selectedCity.name}
  </span>
+ )}
+ {isSuperAdmin && !selectedCity.name && (
+ <span className="ml-2 text-base font-normal text-purple-500">
+ · Усі міста
+ </span>
+ )}
  </h1>
  <p className="text-xs text-slate-400 mt-1">
  {new Date().toLocaleDateString('uk-UA', {
@@ -5550,17 +5894,24 @@ export default function Dashboard() {
  </div>
  ) : summary ? (
  <div className="flex flex-col gap-6">
- {/* Воронка */}
+ {/* 1. Воронка */}
  <FunnelBar funnel={summary.funnel} />
- {/* Сьогодні + Найближчі */}
+ {/* 2. Сьогодні + Найближчі події */}
  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
  <TodayEvents events={summary.todayEvents} />
  <UpcomingEvents events={summary.upcomingEvents} />
  </div>
- {/* Потребують уваги + Фінанси */}
+ {/* 3 + 4. Потребують уваги + Фінанси місяця */}
  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
  <StaleSchools schools={summary.staleSchools} />
  <MonthlyKpi kpi={summary.monthlyKpi} />
+ </div>
+ {/* 5 + 6. Активність команди + Стан по містах (superadmin) */}
+ <div className={`grid grid-cols-1 gap-4 ${isSuperAdmin ? 'md:grid-cols-2' : ''}`}>
+ <ActivityFeed items={summary.activityFeed} />
+ {isSuperAdmin && summary.citiesStats.length > 0 && (
+ <CitiesTable rows={summary.citiesStats} />
+ )}
  </div>
  {/* Проблеми та звернення */}
  <div>
