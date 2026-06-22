@@ -11,6 +11,7 @@ interface CalendarEvent {
   status: string;
   school?: { id: string; name: string };
   city?: { id: string; name: string };
+  crew?: { id: string; name: string };
 }
 
 export default function CalendarView() {
@@ -18,11 +19,11 @@ export default function CalendarView() {
   const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedMobileDate, setSelectedMobileDate] = useState<Date>(new Date());
   
   const { selectedCity } = useSelectedCity();
   const navigate = useNavigate();
 
-  // Логіка ролей
   const [userRole, setUserRole] = useState<string>("GUEST");
   const [filterCityId, setFilterCityId] = useState<string>("ALL");
 
@@ -32,7 +33,6 @@ export default function CalendarView() {
       if (token) {
         const payload = JSON.parse(atob(token.split(".")[1]));
         setUserRole(payload.role);
-        // Якщо це менеджер, відразу фіксуємо його місто за замовчуванням
         if (payload.role === "MANAGER" && selectedCity?.id) {
           setFilterCityId(selectedCity.id);
         }
@@ -46,7 +46,6 @@ export default function CalendarView() {
     const fetchData = async () => {
       try {
         const headers = { Authorization: `Bearer ${localStorage.getItem("token")}` };
-        // Бекенд вже сам фільтрує для водіїв/ведучих (повертає тільки їхні події)
         const [eventsRes, citiesRes] = await Promise.all([
           api.get("/events", { headers }),
           api.get("/cities", { headers })
@@ -62,16 +61,17 @@ export default function CalendarView() {
     fetchData();
   }, []);
 
-  // Навігація по місяцях
   const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-  const today = () => setCurrentDate(new Date());
+  const today = () => {
+    setCurrentDate(new Date());
+    setSelectedMobileDate(new Date());
+  };
 
-  // Генерація сітки
   const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const getFirstDayOfMonth = (year: number, month: number) => {
     let day = new Date(year, month, 1).getDay();
-    return day === 0 ? 6 : day - 1; // Робимо понеділок першим днем (0)
+    return day === 0 ? 6 : day - 1; 
   };
 
   const year = currentDate.getFullYear();
@@ -83,15 +83,9 @@ export default function CalendarView() {
   for (let i = 0; i < firstDay; i++) days.push(null);
   for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
 
-  // Фільтрація подій
   const filteredEvents = events.filter((ev) => {
-    // Не показуємо повністю закриті події
     if (ev.status === "RE_SALE") return false;
-    
-    // Якщо вибрано конкретне місто (і це не ВСІ)
-    if (filterCityId !== "ALL" && ev.city?.id !== filterCityId) {
-      return false;
-    }
+    if (filterCityId !== "ALL" && ev.city?.id !== filterCityId) return false;
     return true;
   });
 
@@ -106,28 +100,42 @@ export default function CalendarView() {
 
   const monthNames = ["Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень", "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"];
 
-  const getStatusColor = (status: string) => {
-    switch(status) {
-      case "BASE": case "FIRST_CONTACT": return "bg-slate-100 text-slate-700 border-slate-200";
-      case "IN_PROGRESS": case "PREPARATION": return "bg-blue-50 text-blue-700 border-blue-200";
-      case "DONE": case "REPORT": return "bg-emerald-50 text-emerald-700 border-emerald-200";
-      default: return "bg-purple-50 text-purple-700 border-purple-200";
-    }
+  // Логіка кольорів для проєктів
+  const getProjectColor = (project: string) => {
+    const p = project.toLowerCase();
+    if (p.includes("голограм")) return "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200 hover:border-emerald-300";
+    if (p.includes("малювайк")) return "bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200 hover:border-rose-300";
+    if (p.includes("360")) return "bg-red-100 text-red-700 border-red-300 hover:bg-red-200 hover:border-red-400";
+    return "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300"; 
   };
 
-  if (isLoading) return <div className="p-8 text-slate-500">Завантаження календаря...</div>;
+  if (isLoading) return (
+    <div className="p-8 h-screen flex flex-col items-center justify-center text-slate-500">
+      <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin mb-4"></div>
+      <p>Завантаження календаря...</p>
+    </div>
+  );
+
+  const selectedDayEvents = getEventsForDay(selectedMobileDate);
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen pb-24">
+      {/* Шапка календаря */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-slate-800">Календар подій</h1>
-          <p className="text-slate-500 mt-1">Графік запланованих та активних заходів</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Календар подій</h1>
+          <p className="text-slate-500 mt-1 text-sm">Графік запланованих та активних заходів</p>
+          
+          {/* Легенда */}
+          <div className="flex flex-wrap items-center gap-3 mt-4">
+            <span className="flex items-center gap-1.5 text-xs font-medium text-slate-600"><span className="w-3 h-3 rounded-full bg-emerald-400"></span> Голограми</span>
+            <span className="flex items-center gap-1.5 text-xs font-medium text-slate-600"><span className="w-3 h-3 rounded-full bg-rose-400"></span> Малювайка</span>
+            <span className="flex items-center gap-1.5 text-xs font-medium text-slate-600"><span className="w-3 h-3 rounded-full bg-red-500"></span> 360</span>
+          </div>
         </div>
 
-        {/* Фільтр міст (тільки для SUPERADMIN) */}
         {userRole === "SUPERADMIN" && (
-          <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 flex items-center gap-3">
+          <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 flex items-center gap-3 shrink-0">
             <span className="text-sm text-slate-500 font-medium">Місто:</span>
             <select
               value={filterCityId}
@@ -141,52 +149,78 @@ export default function CalendarView() {
         )}
       </div>
 
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        {/* Шапка календаря */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-100">
-          <h2 className="text-2xl font-bold text-slate-800 capitalize">
+      <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+        {/* Керування місяцями */}
+        <div className="flex flex-col sm:flex-row items-center justify-between p-5 md:p-6 border-b border-slate-100 gap-4 bg-white">
+          <h2 className="text-2xl font-bold text-slate-800 capitalize tracking-tight">
             {monthNames[month]} <span className="text-slate-400 font-medium">{year}</span>
           </h2>
-          <div className="flex gap-2">
-            <button onClick={prevMonth} className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors">◀</button>
-            <button onClick={today} className="px-4 py-2.5 rounded-xl hover:bg-slate-100 text-slate-700 font-medium transition-colors">Сьогодні</button>
-            <button onClick={nextMonth} className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors">▶</button>
+          <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+            <button onClick={prevMonth} className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium">◀</button>
+            <button onClick={today} className="px-4 md:px-6 py-2 bg-white rounded-xl shadow-sm text-slate-800 font-bold transition-all hover:bg-slate-50">Сьогодні</button>
+            <button onClick={nextMonth} className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium">▶</button>
           </div>
         </div>
 
-        {/* Сітка */}
-        <div className="grid grid-cols-7 gap-px bg-slate-100">
+        {/* Сітка календаря */}
+        <div className="grid grid-cols-7 bg-slate-50/50">
           {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'].map(dayName => (
-            <div key={dayName} className="bg-slate-50/80 py-3 text-center text-xs font-bold tracking-widest text-slate-400 uppercase">
+            <div key={dayName} className="py-3 text-center text-[10px] md:text-xs font-bold tracking-widest text-slate-400 uppercase border-b border-slate-100">
               {dayName}
             </div>
           ))}
           
           {days.map((day, idx) => {
             const isToday = day && day.toDateString() === new Date().toDateString();
+            const isSelected = day && day.toDateString() === selectedMobileDate.toDateString();
             const dayEvents = day ? getEventsForDay(day) : [];
 
             return (
               <div 
                 key={idx} 
-                className={`min-h-[140px] bg-white p-2 transition-colors ${day ? 'hover:bg-blue-50/30 group' : ''}`}
+                onClick={() => day && setSelectedMobileDate(day)}
+                className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group
+                  ${day ? 'bg-white hover:bg-slate-50 cursor-pointer' : 'bg-slate-50/30'}
+                  ${isSelected ? 'ring-2 ring-inset ring-blue-500/20 bg-blue-50/10' : ''}
+                `}
               >
                 {day && (
                   <>
-                    <div className="flex justify-end mb-2">
-                      <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-semibold ${isToday ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 group-hover:text-blue-600'}`}>
+                    <div className="flex justify-center md:justify-end mb-1.5">
+                      <span className={`w-7 h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-semibold transition-colors
+                        ${isToday ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 md:group-hover:text-blue-600'}
+                      `}>
                         {day.getDate()}
                       </span>
                     </div>
-                    <div className="space-y-1.5 h-[100px] overflow-y-auto no-scrollbar pr-1">
+                    
+                    <div className="space-y-1.5 max-h-[80px] md:max-h-[100px] overflow-y-auto custom-scrollbar pr-0.5">
                       {dayEvents.map(ev => (
                         <div 
                           key={ev.id}
-                          onClick={() => ev.school && navigate(`/schools/${ev.school.id}`)}
-                          className={`text-xs p-2 rounded-lg border cursor-pointer hover:shadow-sm transition-all ${getStatusColor(ev.status)}`}
+                          className="relative group/event z-0 hover:z-50"
                         >
-                          <div className="font-bold truncate">{ev.time ? `${ev.time} ` : ''}{ev.project}</div>
-                          <div className="truncate opacity-80 mt-0.5">{ev.school?.name}</div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation(); // Щоб не спрацьовував клік по всій клітинці
+                              if (ev.school) navigate(`/schools/${ev.school.id}`);
+                            }}
+                            className={`w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${getProjectColor(ev.project)}`}
+                          >
+                            {ev.time || "—"}
+                          </button>
+
+                          {/* Тултип (тільки для Десктопу) */}
+                          <div className="hidden md:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-800 text-white p-3 rounded-xl shadow-2xl opacity-0 invisible group-hover/event:opacity-100 group-hover/event:visible transition-all duration-200 pointer-events-none">
+                            <p className="font-bold text-sm mb-1 truncate">{ev.school?.name || "Невідомий заклад"}</p>
+                            <div className="space-y-1 text-xs text-slate-300">
+                              <p><span className="text-slate-400">Проєкт:</span> {ev.project}</p>
+                              <p><span className="text-slate-400">Екіпаж:</span> {ev.crew?.name || "Не призначено"}</p>
+                              <p><span className="text-slate-400">Час:</span> <span className="font-bold text-white">{ev.time || "—"}</span></p>
+                            </div>
+                            {/* Трикутник тултипа */}
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-slate-800"></div>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -197,6 +231,41 @@ export default function CalendarView() {
           })}
         </div>
       </div>
+
+      {/* Блок подій для мобільних пристроїв (з'являється під календарем) */}
+      <div className="mt-6 md:hidden">
+        <h3 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+          📅 Події на {selectedMobileDate.toLocaleDateString("uk-UA", { day: '2-digit', month: 'long' })}
+        </h3>
+        
+        {selectedDayEvents.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-400">
+            На цей день подій не заплановано
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {selectedDayEvents.map(ev => (
+              <div 
+                key={ev.id} 
+                onClick={() => ev.school && navigate(`/schools/${ev.school.id}`)}
+                className={`bg-white p-4 rounded-2xl border-l-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer
+                  ${ev.project.toLowerCase().includes("голограм") ? "border-l-emerald-500" : 
+                    ev.project.toLowerCase().includes("малювайк") ? "border-l-rose-500" : 
+                    ev.project.toLowerCase().includes("360") ? "border-l-red-500" : "border-l-blue-500"}
+                `}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-xs font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-600">🕒 {ev.time || "Не вказано"}</span>
+                  <span className="text-xs font-medium text-slate-500">{ev.project}</span>
+                </div>
+                <p className="font-bold text-slate-800">{ev.school?.name}</p>
+                <p className="text-sm text-slate-500 mt-1">🚐 Екіпаж: {ev.crew?.name || "Не призначено"}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
