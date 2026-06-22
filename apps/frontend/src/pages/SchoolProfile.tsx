@@ -325,31 +325,19 @@ export default function SchoolProfile() {
     }
   };
 
-  const handleAssignCrew = async (hostId: string, driverId: string) => {
+  const handleAssignCrew = async (crewId: string) => {
     try {
-      const headers = {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      };
-      const res = await api.post(
-        `/events/${currentEvent.id}/assign-crew`,
-        {
-          hostId,
-          driverId,
-          cityId: schoolData.cityId,
-        },
-        { headers },
-      );
+      const headers = { Authorization: `Bearer ${localStorage.getItem("token")}` };
+      const res = await api.post(`/events/${currentEvent.id}/assign-crew`, { crewId }, { headers });
+      
       await handleUpdatePreparation("assignCrew", "Виконано");
 
-      setEvents((prev) =>
-        prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
-      );
+      setEvents((prev) => prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)));
       setIsCrewModalOpen(false);
     } catch (e) {
       console.error("Помилка при призначенні екіпажу", e);
     }
   };
-
   if (isLoading)
     return <div className="p-8 text-slate-500">Завантаження...</div>;
 

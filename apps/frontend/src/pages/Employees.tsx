@@ -3,7 +3,7 @@ import { api } from "../config/api";
 import PhoneLink from "../components/PhoneLink";
 import { useSelectedCity } from '../context/CityContext';
 
-type Role = "MANAGER" | "DRIVER" | "HOST";
+type Role = "MANAGER" | "DRIVER" | "HOST" | "SUPERADMIN" | "GUEST";
 
 interface City {
   id: string;
@@ -16,24 +16,27 @@ interface User {
   phone: string | null;
   email: string;
   cityId: string | null;
-  city?: City; // Отримуємо з бекенду
+  city?: City;
   role: Role;
   telegramId?: string | null;
+  car?: string | null; // ДОДАНО ПОЛЕ АВТО
 }
 
-const ROLE_LABELS: Record<Role, string> = {
+const ROLE_LABELS: Record<string, string> = {
   MANAGER: "Менеджер",
   DRIVER: "Водій",
   HOST: "Ведучий",
+  SUPERADMIN: "Суперадмін",
+  GUEST: "Гість",
 };
 
-const ROLE_COLORS: Record<Role, string> = {
+const ROLE_COLORS: Record<string, string> = {
   MANAGER: "bg-blue-50 text-blue-700 border-blue-200",
   DRIVER: "bg-emerald-50 text-emerald-700 border-emerald-200",
   HOST: "bg-violet-50 text-violet-700 border-violet-200",
 };
 
-const ROLE_HEADER_COLORS: Record<Role, string> = {
+const ROLE_HEADER_COLORS: Record<string, string> = {
   MANAGER: "bg-blue-600",
   DRIVER: "bg-emerald-600",
   HOST: "bg-violet-600",
@@ -47,6 +50,7 @@ const EMPTY_FORM = {
   role: "MANAGER" as Role,
   password: "",
   telegramId: "",
+  car: "", // ДОДАНО АВТО В ПОРОЖНЮ ФОРМУ
 };
 
 export default function Employees() {
@@ -57,7 +61,6 @@ export default function Employees() {
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { selectedCity } = useSelectedCity();
-
 
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
@@ -92,23 +95,23 @@ export default function Employees() {
     items: cityFilteredUsers.filter((u) => u.role === role),
   }));
 
-  const handleOpenAdd = () => {
-    setEditingUser(null);
-    setForm({ ...EMPTY_FORM });
-    setIsModalOpen(true);
-  };
-
-  const handleOpenEdit = (user: User) => {
+  // === ДОДАНО: ЄДИНА ФУНКЦІЯ ДЛЯ ВІДКРИТТЯ МОДАЛКИ ===
+  const handleOpenModal = (user: User | null = null) => {
     setEditingUser(user);
-    setForm({
-      fullName: user.name, // У формі ми залишили fullName для сумісності з бекендом
-      phone: user.phone || "",
-      email: user.email,
-      cityId: user.cityId || "",
-      role: user.role,
-      password: "", 
-      telegramId: user.telegramId || "", 
-    });
+    if (user) {
+      setForm({
+        fullName: user.name,
+        phone: user.phone || "",
+        email: user.email,
+        cityId: user.cityId || "",
+        role: user.role,
+        password: "", 
+        telegramId: user.telegramId || "", 
+        car: user.car || "", // ПІДТЯГУЄМО АВТО
+      });
+    } else {
+      setForm({ ...EMPTY_FORM });
+    }
     setIsModalOpen(true);
   };
 
@@ -157,7 +160,7 @@ export default function Employees() {
           </p>
         </div>
         <button
-          onClick={handleOpenAdd}
+          onClick={() => handleOpenModal()}
           className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors w-full sm:w-auto"
         >
           + Створити користувача
@@ -209,11 +212,16 @@ export default function Employees() {
                           <span className="bg-slate-100 text-slate-600 text-[11px] px-2 py-0.5 rounded-full font-medium">
                             📍 {u.city?.name || "Всі міста"}
                           </span>
+                          {u.car && (
+                            <span className="text-[11px] font-medium text-emerald-600">
+                              🚗 {u.car}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <button
-                          onClick={() => handleOpenEdit(u)}
+                          onClick={() => handleOpenModal(u)}
                           className="text-slate-400 active:text-blue-500 transition-colors p-2 rounded-lg active:bg-blue-50"
                         >
                           ✏️
@@ -260,6 +268,9 @@ export default function Employees() {
                         </td>
                         <td className="px-5 py-4 text-slate-600 text-sm">
                           <PhoneLink phone={u.phone} />
+                          {u.car && (
+                            <p className="text-xs text-emerald-600 font-medium mt-1">🚗 {u.car}</p>
+                          )}
                         </td>
                         <td className="px-5 py-4 text-slate-600 text-sm font-medium">
                           {u.email}
@@ -272,7 +283,7 @@ export default function Employees() {
                         <td className="px-5 py-4 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <button
-                              onClick={() => handleOpenEdit(u)}
+                              onClick={() => handleOpenModal(u)}
                               className="text-slate-400 hover:text-blue-500 transition-colors p-1.5 rounded-lg hover:bg-blue-50"
                               title="Редагувати"
                             >
@@ -315,7 +326,7 @@ export default function Employees() {
             </div>
             <form
               onSubmit={handleSubmit}
-              className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto"
+              className="p-5 sm:p-6 flex-1 overflow-y-auto flex flex-col gap-4"
             >
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">
@@ -350,7 +361,7 @@ export default function Employees() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-1">
-                    Пароль {editingUser ? "(необов'язково)" : "*"}
+                    Пароль {editingUser ? <span className="text-xs text-slate-400 font-normal">(залиште пустим)</span> : "*"}
                   </label>
                   <input
                     type="password"
@@ -379,6 +390,7 @@ export default function Employees() {
                     <option value="MANAGER">Менеджер</option>
                     <option value="DRIVER">Водій</option>
                     <option value="HOST">Ведучий</option>
+                    <option value="SUPERADMIN">Суперадмін</option>
                   </select>
                 </div>
                 <div>
@@ -401,41 +413,70 @@ export default function Employees() {
                   </select>
                 </div>
               </div>
-             <div>
-  <label className="block text-sm font-medium text-slate-600 mb-1">
-    Telegram
-    <span className="ml-1 text-xs text-slate-400 font-normal">(для сповіщень)</span>
-  </label>
-  <div className="relative">
-      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">@</span>
-      <input
-        type="text"
-        value={form.telegramId}
-        onChange={(e) => {
-          // Автоматично прибираємо @ якщо вставили з ним
-          const val = e.target.value.replace(/^@+/, '');
-          setForm({ ...form, telegramId: val });
-        }}
-        placeholder="username"
-        className="w-full pl-7 p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-      />
-    </div>
-    <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-      Введіть username без @. Після збереження працівник має написати{' '}
-      <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-600">/start</code>{' '}
-      боту{' '}
-      <a>
-        href="https://t.me/svitlo_znan_bot"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-blue-500 hover:underline"
-      
-        @svitlo_znan_bot
-      </a>
-      {' '}— після цього сповіщення запрацюють автоматично.
-    </p>
-  </div>
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-4 pb-1 sm:pb-0">
+
+              {/* ДОДАНО: ПОЛЕ АВТО ТІЛЬКИ ДЛЯ ВОДІЇВ */}
+              {form.role === "DRIVER" && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Автомобіль</label>
+                  <input
+                    type="text"
+                    value={form.car || ""}
+                    onChange={(e) => setForm({ ...form, car: e.target.value })}
+                    placeholder="Наприклад: Renault Trafic (ВС1234АВ)"
+                    className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">
+                    Телефон
+                  </label>
+                  <input
+                    type="text"
+                    value={form.phone}
+                    onChange={(e) =>
+                      setForm({ ...form, phone: e.target.value })
+                    }
+                    placeholder="0671234567"
+                    className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">
+                    Telegram (@username)
+                  </label>
+                  <input
+                    type="text"
+                    value={form.telegramId}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/^@+/, "");
+                      setForm({ ...form, telegramId: val });
+                    }}
+                    placeholder="username"
+                    className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+              </div>
+
+              {/* ВИПРАВЛЕНО: Синтаксис тегу <a> */}
+              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                Введіть username без @. Після збереження працівник має написати{" "}
+                <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-600">/start</code>{" "}
+                боту{" "}
+                <a
+                  href="https://t.me/svitlo_znan_bot"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:underline"
+                >
+                  @svitlo_znan_bot
+                </a>
+                {" "}— після цього сповіщення запрацюють автоматично.
+              </p>
+
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-4 pb-1 sm:pb-0 border-t border-slate-100 pt-4">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
