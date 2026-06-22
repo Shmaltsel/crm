@@ -65,7 +65,7 @@ export default function ActivityFeed({ items }: Props) {
 
       {items.length === 0 ? (
         <div className="py-6 text-center text-slate-400 text-sm">
-          Сьогодні активності ще немає
+          Сьогодні активності ще немає, скоро будуть
         </div>
       ) : (
         <div className="flex flex-col divide-y divide-slate-50">
