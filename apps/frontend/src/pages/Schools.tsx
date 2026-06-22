@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
+import StatsBar from "../components/schools/StatsBar";
 
 const PIPELINE_STAGES = [
   { key: "BASE", name: "База" },
@@ -29,7 +30,6 @@ export default function Schools() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Прибрали поле type зі стану, бо воно тепер завжди "Школа"
   const [form, setForm] = useState({
     name: "",
     cityId: "",
@@ -100,7 +100,6 @@ export default function Schools() {
 
     try {
       const token = localStorage.getItem("token");
-      // Жорстко передаємо type=Школа
       const res = await api.get(
         `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=${encodeURIComponent("Школа")}`,
         {
@@ -140,7 +139,6 @@ export default function Schools() {
       const token = localStorage.getItem("token");
       try {
         const [externalRes] = await Promise.all([
-          // Жорстко передаємо type=Школа
           api.get(`/schools/search?q=${value}&type=${encodeURIComponent("Школа")}`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
@@ -167,7 +165,6 @@ export default function Schools() {
     setIsSubmitting(true);
     try {
       const token = localStorage.getItem("token");
-      // Додаємо type: "Школа" безпосередньо в тіло запиту
       await api.post("/schools", { ...form, type: "Школа" }, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -203,14 +200,9 @@ export default function Schools() {
     }
   };
 
-  // Фільтруємо ТІЛЬКИ школи і тільки для вибраного міста
-    const filteredSchools = schools.filter(s => {
-    // Перевіряємо, чи існує ID і чи він не є порожнім рядком
+  const filteredSchools = schools.filter(s => {
     const hasCityFilter = selectedCity.id && selectedCity.id.trim() !== "";
-    
-    // Якщо фільтр є, перевіряємо збіг, інакше (якщо фільтра немає) - показуємо все (true)
     const isCityMatch = hasCityFilter ? s.cityId === selectedCity.id : true;
-    
     return isCityMatch && s.type === "Школа";
   });
 
@@ -232,6 +224,8 @@ export default function Schools() {
           + Додати школу
         </button>
       </div>
+
+      <StatsBar schools={filteredSchools} />
 
       {/* Мобільний вигляд */}
       <div className="md:hidden flex flex-col gap-3">
@@ -364,9 +358,7 @@ export default function Schools() {
               className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto"
             >
               <div className="relative">
-                <label className="block text-sm text-slate-600 mb-1">
-                  Назва школи
-                </label>
+                <label className="block text-sm text-slate-600 mb-1">Назва школи</label>
                 <input
                   type="text"
                   value={form.name}
@@ -381,25 +373,19 @@ export default function Schools() {
                 {showSuggestions && (
                   <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                     {isSearching ? (
-                      <li className="px-3 py-2 text-sm text-slate-400 italic">
-                        Пошук за збігами...
-                      </li>
+                      <li className="px-3 py-2 text-sm text-slate-400 italic">Пошук...</li>
                     ) : suggestions.length > 0 ? (
                       suggestions.map((s, i) => (
                         <li
                           key={i}
-                          onMouseDown={() =>
-                            handleSelectSuggestion(s.name, s.url)
-                          }
+                          onMouseDown={() => handleSelectSuggestion(s.name, s.url)}
                           className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer"
                         >
                           {s.name}
                         </li>
                       ))
                     ) : (
-                      <li className="px-3 py-2 text-sm text-slate-400 italic">
-                        Нічого не знайдено
-                      </li>
+                      <li className="px-3 py-2 text-sm text-slate-400 italic">Нічого не знайдено</li>
                     )}
                   </ul>
                 )}
@@ -407,9 +393,7 @@ export default function Schools() {
               
               {!selectedCity.id && (
                 <div>
-                  <label className="block text-sm text-slate-600 mb-1">
-                    Місто
-                  </label>
+                  <label className="block text-sm text-slate-600 mb-1">Місто</label>
                   <select
                     value={form.cityId}
                     onChange={(e) => setForm({ ...form, cityId: e.target.value })}
@@ -418,9 +402,7 @@ export default function Schools() {
                   >
                     <option value="">— Оберіть місто —</option>
                     {cities.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
+                      <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
                 </div>
@@ -428,8 +410,7 @@ export default function Schools() {
 
               <div>
                 <label className="block text-sm text-slate-600 mb-1">
-                  Контакт
-                  <span className="ml-1 text-xs text-slate-400">(автозаповнення)</span>
+                  Контакт <span className="ml-1 text-xs text-slate-400">(автозаповнення)</span>
                 </label>
                 {matchedContacts.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-2">
@@ -437,17 +418,12 @@ export default function Schools() {
                       <button
                         key={i}
                         type="button"
-                        onClick={() =>
-                          setForm((f) => ({ ...f, director: c.contactName, phone: c.phone }))
-                        }
+                        onClick={() => setForm((f) => ({ ...f, director: c.contactName, phone: c.phone }))}
                         className={`text-xs px-2 py-1 rounded-full border transition-colors ${
-                          form.director === c.contactName
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
+                          form.director === c.contactName ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 border-slate-200"
                         }`}
                       >
-                        {c.role ? `${c.role}: ` : ""}
-                        {c.contactName}
+                        {c.role ? `${c.role}: ` : ""}{c.contactName}
                       </button>
                     ))}
                   </div>
@@ -457,35 +433,22 @@ export default function Schools() {
                   value={form.director}
                   onChange={(e) => setForm({ ...form, director: e.target.value })}
                   placeholder="Микола Петренко"
-                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm"
                 />
               </div>
               <div>
-                <label className="block text-sm text-slate-600 mb-1">
-                  Телефон
-                  <span className="ml-1 text-xs text-slate-400">(автозаповнення)</span>
-                </label>
+                <label className="block text-sm text-slate-600 mb-1">Телефон</label>
                 <input
                   type="text"
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   placeholder="0671234567"
-                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm"
                 />
               </div>
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-2 pb-1 sm:pb-0">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-slate-100 rounded-xl sm:rounded-lg text-sm font-medium hover:bg-slate-200"
-                >
-                  Скасувати
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-blue-600 text-white rounded-xl sm:rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-                >
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-2">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto px-5 py-3 bg-slate-100 rounded-xl text-sm font-medium">Скасувати</button>
+                <button type="submit" disabled={isSubmitting} className="w-full sm:w-auto px-5 py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">
                   {isSubmitting ? "Збереження..." : "Створити"}
                 </button>
               </div>
