@@ -1,16 +1,18 @@
 const fs = require('fs');
 const path = require('path');
 
-const outputFile = 'project_code.txt';
-
-// Додали 'build' для фронтенду
-const ignoreDirs = ['node_modules', '.git', 'dist', 'build', '.next', '.prisma'];
-
-// Додали '.json' для package.json та tsconfig.json
-const extensions = ['.ts', '.tsx', '.js', '.jsx', '.css', '.html', '.prisma', '.json'];
-
-// Ігноруємо лок-файли та сам файл результату
+const outputFile = 'project_code.xml'; // Змінили на XML формат
+const ignoreDirs = ['node_modules', '.git', 'dist', 'build', '.next', '.prisma', 'test', 'coverage'];
 const ignoreFiles = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', outputFile];
+
+// Функція для стиснення коду: видаляє зайві пробіли та переноси рядків
+function compact(content) {
+  return content
+    .replace(/\r\n/g, '\n')
+    .replace(/\n\s*\n/g, '\n') // видаляє порожні рядки
+    .replace(/[ \t]+/g, ' ')  // замінює множинні пробіли одним
+    .trim();
+}
 
 function bundle(dir) {
   let content = '';
@@ -21,19 +23,17 @@ function bundle(dir) {
     const stat = fs.statSync(fullPath);
 
     if (stat.isDirectory()) {
-      if (!ignoreDirs.includes(file)) {
-        content += bundle(fullPath);
-      }
+      if (!ignoreDirs.includes(file)) content += bundle(fullPath);
     } else {
-      // Перевіряємо розширення І переконуємося, що файлу немає в списку ігнору
-      if (extensions.includes(path.extname(file)) && !ignoreFiles.includes(file)) {
-        content += `\n\n--- FILE: ${fullPath} ---\n\n`;
-        content += fs.readFileSync(fullPath, 'utf8');
+      if (!ignoreFiles.includes(file) && (fullPath.endsWith('.ts') || fullPath.endsWith('.tsx') || fullPath.endsWith('.js') || fullPath.endsWith('.css'))) {
+        const rawContent = fs.readFileSync(fullPath, 'utf8');
+        // Загортаємо кожен файл у тег для кращого контексту ШІ
+        content += `<file path="${fullPath}">${compact(rawContent)}</file>\n`;
       }
     }
   }
   return content;
 }
 
-fs.writeFileSync(outputFile, bundle('.'));
-console.log(`Проєкт успішно зібрано у файл: ${outputFile}`);
+fs.writeFileSync(outputFile, `<project>\n${bundle('.')}\n</project>`);
+console.log(`Проєкт зібрано у компактний XML: ${outputFile}`);

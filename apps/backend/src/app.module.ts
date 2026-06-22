@@ -10,6 +10,7 @@ import { SchoolsModule } from './schools/schools.module';
 import { FinanceModule } from './finance/finance.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { IssuesModule } from './issues/issues.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { IssuesModule } from './issues/issues.module';
     FinanceModule,
     TelegramModule,
     IssuesModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],
