@@ -6,12 +6,27 @@ import IssueCarousel from '../components/IssueCarousel';
 import FunnelBar from '../components/dashboard/FunnelBar';
 import TodayEvents from '../components/dashboard/TodayEvents';
 import UpcomingEvents from '../components/dashboard/UpcomingEvents';
+import StaleSchools from '../components/dashboard/StaleSchools';
+import MonthlyKpi from '../components/dashboard/MonthlyKpi';
 
 interface DashboardSummary {
-  todayEvents: any[];
+  todayEvents:  any[];
   upcomingEvents: any[];
-  funnel: Record<string, number>;
+  funnel:       Record<string, number>;
   totalSchools: number;
+  monthlyKpi: {
+    revenue:  number;
+    profit:   number;
+    children: number;
+    count:    number;
+  };
+  staleSchools: {
+    id:           string;
+    name:         string;
+    status:       string | null;
+    lastActivity: string | null;
+    daysStale:    number | null;
+  }[];
 }
 
 export default function Dashboard() {
@@ -42,7 +57,7 @@ export default function Dashboard() {
     return (
       <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-800">Дашборд</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Дашборд</h1>
           <p className="text-sm text-slate-500 mt-1">📍 Оберіть місто</p>
         </div>
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center">
@@ -73,7 +88,12 @@ export default function Dashboard() {
           </span>
         </h1>
         <p className="text-xs text-slate-400 mt-1">
-          {new Date().toLocaleDateString('uk-UA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          {new Date().toLocaleDateString('uk-UA', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          })}
         </p>
       </div>
 
@@ -94,7 +114,13 @@ export default function Dashboard() {
             <UpcomingEvents events={summary.upcomingEvents} />
           </div>
 
-          {/* Проблеми */}
+          {/* Потребують уваги + Фінанси */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <StaleSchools schools={summary.staleSchools} />
+            <MonthlyKpi kpi={summary.monthlyKpi} />
+          </div>
+
+          {/* Проблеми та звернення */}
           <div>
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">
               Проблеми та звернення
