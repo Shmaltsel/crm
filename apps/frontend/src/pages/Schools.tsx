@@ -239,6 +239,42 @@ export default function Schools() {
         >
           + Додати школу
         </button>
+        <button
+          onClick={async () => {
+            if (!selectedCity.id) {
+              alert("Спочатку оберіть місто");
+              return;
+            }
+            if (
+              !window.confirm(
+                `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}? Це може зайняти 1-2 хвилини.`,
+              )
+            )
+              return;
+            try {
+              const res = await api.post(
+                "/schools/bulk-import",
+                { cityId: selectedCity.id, type: "Школа" },
+                {
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                  },
+                  timeout: 120000,
+                },
+              );
+              alert(
+                `✅ Імпорт завершено для ${res.data.city}:\nДодано: ${res.data.created}\nПропущено дублів: ${res.data.skipped}\nВсього на isuo.org: ${res.data.total}`,
+              );
+              fetchSchools();
+            } catch (e) {
+              console.error(e);
+              alert("Помилка імпорту. Перевір консоль.");
+            }
+          }}
+          className="flex-1 md:flex-none w-full md:w-auto px-4 py-2.5 md:py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium transition-colors"
+        >
+          📥 Імпорт з isuo.org
+        </button>
       </div>
 
       <StatsBar

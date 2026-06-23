@@ -207,4 +207,72 @@ export class SchoolsService {
 
     return matches.slice(0, 10);
   }
+  async bulkImport(cityId: string, type: 'Школа' | 'Садочок' = 'Школа') {
+    // 1. Знаходимо місто щоб дістати назву
+    const city = await this.prisma.city.findUnique({ where: { id: cityId } });
+    if (!city) throw new Error(`Місто з id=${cityId} не знайдено`);
+
+    // 2. Парсимо всі заклади з isuo.org для цього міста
+    const allFromParser = await this.parserService.getAllSchoolsForCity(
+      city.name,
+      type,
+    );
+    if (allFromParser.length === 0) {
+      return {
+        total: 0,
+        created: 0,
+        skipped: 0,
+        error: `Місто "${city.name}" не підтримується або не знайдено на isuo.org`,
+      };
+    }
+
+    // 3. Отримуємо вже існуючі назви щоб не дублювати
+    const existing = await this.prisma.school.findMany({
+      where: { cityId, type },
+      select: { name: true },
+    });
+    const existingNames = new Set(
+      existing.map((s) => s.name.toLowerCase().trim()),
+    );
+
+    // 4. Фільтруємо тільки нові
+    const toCreate = allFromParser.filter(
+      (s) => !existingNames.has(s.name.toLowerCase().trim()),
+    );
+
+    // 5. Отримуємо всі контакти з БД для цього міста
+    const contacts = await this.prisma.schoolContact.findMany({
+      where: { city: city.name, type },
+    });
+
+    let created = 0;
+    for (const school of toCreate) {
+      const numMatch = school.name.match(/№?\s*(\d+)/);
+      const num = numMatch?.[1];
+      const matchedContacts = num
+        ? contacts.filter((c) => c.schoolNumber === num)
+        : [];
+      const director =
+        matchedContacts.find(
+          (c) => c.role?.includes('Директор') || c.role?.includes('Завідувач'),
+        ) || matchedContacts[0];
+
+      await this.create({
+        name: school.name,
+        type,
+        cityId,
+        sourceUrl: school.url,
+        director: director?.contactName || '',
+        phone: director?.phone || '',
+      });
+      created++;
+    }
+
+    return {
+      city: city.name,
+      total: allFromParser.length,
+      created,
+      skipped: allFromParser.length - toCreate.length,
+    };
+  }
 }

@@ -18,6 +18,19 @@ export class SchoolsController {
     private readonly parserService: ParserService,
   ) {}
 
+  @Post('bulk-import')
+  bulkImport(@Body() body: { cityId: string; type?: string }) {
+    return this.schoolsService.bulkImport(
+      body.cityId,
+      (body.type as 'Школа' | 'Садочок') || 'Школа',
+    );
+  }
+
+  @Get('supported-cities')
+  getSupportedCities() {
+    return this.parserService.getSupportedCities();
+  }
+
   @Post()
   create(
     @Body()
