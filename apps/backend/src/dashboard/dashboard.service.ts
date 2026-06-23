@@ -13,7 +13,17 @@ const STALE_DAYS = 7;
 export class DashboardService {
   constructor(private prisma: PrismaService) {}
 
+  private cache = new Map<string, { data: any; ts: number }>();
+  private CACHE_TTL = 60_000; // 60 секунд
+
   async getSummary(cityId?: string, role?: string) {
+    const key = `${cityId ?? 'all'}-${role ?? 'anon'}`;
+    const cached = this.cache.get(key);
+    if (cached && Date.now() - cached.ts < this.CACHE_TTL) {
+      console.log(`[Dashboard] cache hit — ${key}`);
+      return cached.data;
+    }
+
     const t0 = Date.now();
     console.log(`[Dashboard] start — cityId=${cityId ?? 'all'} role=${role}`);
 
@@ -56,7 +66,7 @@ export class DashboardService {
           },
         },
         orderBy: { time: 'asc' },
-      }).then(r => { console.log(`[Q1 todayEvents] ${Date.now() - t1}ms rows=${r.length}`); return r; }),
+      }),
 
       this.prisma.event.findMany({
         where: { ...cityFilter, date: { gte: todayEnd, lt: upcomingEnd } },
@@ -72,9 +82,9 @@ export class DashboardService {
         },
         orderBy: [{ date: 'asc' }, { time: 'asc' }],
         take: 8,
-      }).then(r => { console.log(`[Q2 upcomingEvents] ${Date.now() - t1}ms rows=${r.length}`); return r; }),
+      }),
 
-      (cityId
+      cityId
         ? this.prisma.$queryRaw<{ status: string; count: bigint }[]>(Prisma.sql`
             SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
             FROM "School" s
@@ -97,8 +107,7 @@ export class DashboardService {
               LIMIT 1
             ) e ON true
             GROUP BY e.status
-          `)
-      ).then(r => { console.log(`[Q3 funnel] ${Date.now() - t1}ms rows=${r.length}`); return r; }),
+          `),
 
       this.prisma.event.findMany({
         where: {
@@ -112,7 +121,7 @@ export class DashboardService {
             select: { totalSum: true, remainderSum: true, childrenCount: true },
           },
         },
-      }).then(r => { console.log(`[Q4 finance] ${Date.now() - t1}ms rows=${r.length}`); return r; }),
+      }),
 
       this.prisma.school.findMany({
         where: {
@@ -139,7 +148,7 @@ export class DashboardService {
           },
         },
         take: 10,
-      }).then(r => { console.log(`[Q5 stale] ${Date.now() - t1}ms rows=${r.length}`); return r; }),
+      }),
 
       this.prisma.eventHistory.findMany({
         where: {
@@ -156,7 +165,7 @@ export class DashboardService {
         },
         orderBy: { createdAt: 'desc' },
         take: 20,
-      }).then(r => { console.log(`[Q6 activity] ${Date.now() - t1}ms rows=${r.length}`); return r; }),
+      }),
     ]);
     console.log(`[Dashboard] main Promise.all: ${Date.now() - t1}ms`);
 
@@ -172,15 +181,13 @@ export class DashboardService {
       const t2 = Date.now();
       const [allCities, allSchools, allActiveEvents, allMonthEvents] =
         await Promise.all([
-          this.prisma.city.findMany({ select: { id: true, name: true } })
-            .then(r => { console.log(`[Q7 cities] ${Date.now() - t2}ms`); return r; }),
-          this.prisma.school.groupBy({ by: ['cityId'], _count: { id: true } })
-            .then(r => { console.log(`[Q8 schoolsGroupBy] ${Date.now() - t2}ms`); return r; }),
+          this.prisma.city.findMany({ select: { id: true, name: true } }),
+          this.prisma.school.groupBy({ by: ['cityId'], _count: { id: true } }),
           this.prisma.event.groupBy({
             by: ['cityId'],
             where: { status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] } },
             _count: { id: true },
-          }).then(r => { console.log(`[Q9 activeEvents] ${Date.now() - t2}ms`); return r; }),
+          }),
           this.prisma.event.findMany({
             where: {
               status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
@@ -190,7 +197,7 @@ export class DashboardService {
               cityId: true,
               report: { select: { totalSum: true } },
             },
-          }).then(r => { console.log(`[Q10 monthRevenue] ${Date.now() - t2}ms`); return r; }),
+          }),
         ]);
       console.log(`[Dashboard] superadmin queries: ${Date.now() - t2}ms`);
 
@@ -264,7 +271,7 @@ export class DashboardService {
 
     console.log(`[Dashboard] total: ${Date.now() - t0}ms`);
 
-    return {
+    const result = {
       todayEvents,
       upcomingEvents,
       funnel,
@@ -274,5 +281,8 @@ export class DashboardService {
       activityFeed,
       citiesStats,
     };
+
+    this.cache.set(key, { data: result, ts: Date.now() });
+    return result;
   }
 }

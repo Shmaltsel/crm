@@ -50,6 +50,85 @@ interface DashboardSummary {
   }[];
 }
 
+// ── Skeleton компоненти ──────────────────────────────────────────────────────
+
+function SkeletonCard({ className = "" }: { className?: string }) {
+  return (
+    <div className={`bg-white rounded-2xl border border-slate-100 shadow-sm p-4 animate-pulse ${className}`}>
+      <div className="h-4 bg-slate-100 rounded-full w-1/3 mb-3" />
+      <div className="space-y-2">
+        <div className="h-3 bg-slate-100 rounded-full w-full" />
+        <div className="h-3 bg-slate-100 rounded-full w-4/5" />
+        <div className="h-3 bg-slate-100 rounded-full w-3/5" />
+      </div>
+    </div>
+  );
+}
+
+function SkeletonEventCard() {
+  return (
+    <div className="bg-white rounded-xl border border-slate-100 p-3 animate-pulse">
+      <div className="flex justify-between mb-2">
+        <div className="h-5 bg-slate-100 rounded w-16" />
+        <div className="h-4 bg-slate-100 rounded w-24" />
+      </div>
+      <div className="h-4 bg-slate-100 rounded w-3/4 mb-3" />
+      <div className="flex justify-between items-center">
+        <div className="h-5 bg-slate-100 rounded-full w-28" />
+        <div className="h-7 bg-slate-100 rounded-lg w-20" />
+      </div>
+    </div>
+  );
+}
+
+function DashboardSkeleton({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+  return (
+    <div className="flex flex-col gap-6">
+      {/* IssueCarousel placeholder */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 animate-pulse h-24" />
+
+      {/* Сьогодні + Потребують уваги */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* TodayEvents */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 animate-pulse">
+          <div className="flex justify-between mb-3">
+            <div>
+              <div className="h-4 bg-slate-100 rounded w-36 mb-1" />
+              <div className="h-3 bg-slate-100 rounded w-28" />
+            </div>
+            <div className="h-4 bg-slate-100 rounded w-16" />
+          </div>
+          <div className="flex flex-col gap-2">
+            <SkeletonEventCard />
+            <SkeletonEventCard />
+          </div>
+        </div>
+
+        {/* StaleSchools */}
+        <SkeletonCard />
+        {/* UpcomingEvents */}
+        <SkeletonCard />
+      </div>
+
+      <hr className="border-slate-200" />
+
+      {/* KPI + Воронка */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
+
+      {/* Activity + Cities */}
+      <div className={`grid grid-cols-1 gap-4 ${isSuperAdmin ? "md:grid-cols-2" : ""}`}>
+        <SkeletonCard className="min-h-[200px]" />
+        {isSuperAdmin && <SkeletonCard className="min-h-[200px]" />}
+      </div>
+    </div>
+  );
+}
+
+// ── Dashboard ────────────────────────────────────────────────────────────────
+
 export default function Dashboard() {
   const { selectedCity } = useSelectedCity();
   const { user } = useAuth();
@@ -59,7 +138,6 @@ export default function Dashboard() {
   const isSuperAdmin = user?.role === "SUPERADMIN";
 
   useEffect(() => {
-    // Суперадмін бачить дашборд без вибору міста
     if (!selectedCity.id && !isSuperAdmin) return;
 
     const fetchSummary = async () => {
@@ -78,7 +156,6 @@ export default function Dashboard() {
     fetchSummary();
   }, [selectedCity.id, isSuperAdmin]);
 
-  // Тільки не-суперадміни бачать заглушку "оберіть місто"
   if (!selectedCity.id && !isSuperAdmin) {
     return (
       <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
@@ -131,47 +208,29 @@ export default function Dashboard() {
       </div>
 
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-          <div className="w-8 h-8 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin mb-3" />
-          <p className="text-sm">Завантаження...</p>
-        </div>
+        <DashboardSkeleton isSuperAdmin={isSuperAdmin} />
       ) : summary ? (
         <div className="flex flex-col gap-6">
           {/* ── ЗОНА ДІЇ ── */}
-          {/* 3. Проблеми та звернення */}
           <div>
             <IssueCarousel />
           </div>
 
-          {/* 1. Сьогодні + Найближчі події */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <TodayEvents events={summary.todayEvents} />
-
-             {/* 2. Потребують уваги */}
-          <StaleSchools schools={summary.staleSchools} />
-          
+            <StaleSchools schools={summary.staleSchools} />
             <UpcomingEvents events={summary.upcomingEvents} />
           </div>
 
-         
-
-          
-
-          {/* ── РОЗДІЛЮВАЧ ── */}
           <hr className="border-slate-200" />
 
           {/* ── АНАЛІТИКА ── */}
-
-          {/* 4. KPI місяця + Воронка */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <MonthlyKpi kpi={summary.monthlyKpi} />
             <FunnelBar funnel={summary.funnel} />
           </div>
 
-          {/* 5. Активність команди + Стан по містах (superadmin) */}
-          <div
-            className={`grid grid-cols-1 gap-4 ${isSuperAdmin ? "md:grid-cols-2" : ""}`}
-          >
+          <div className={`grid grid-cols-1 gap-4 ${isSuperAdmin ? "md:grid-cols-2" : ""}`}>
             <ActivityFeed items={summary.activityFeed} />
             {isSuperAdmin && summary.citiesStats.length > 0 && (
               <CitiesTable rows={summary.citiesStats} />
