@@ -2,18 +2,16 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
+import StatsBar, { classifySchool } from "../components/schools/StatsBar";
 
 const PIPELINE_STAGES = [
-  { key: "BASE", name: "База" },
-  { key: "FIRST_CONTACT", name: "Перший контакт" },
-  { key: "INTERESTED", name: "Зацікавлений" },
-  { key: "PRE_APPROVAL", name: "Попереднє погодження" },
+  { key: "BASE", name: "Новий заклад" },
+  { key: "FIRST_CONTACT", name: "Знайомство" },
   { key: "DATE_CONFIRMED", name: "Підтвердження дати" },
-  { key: "PREPARATION", name: "Підготовка" },
-  { key: "IN_PROGRESS", name: "Подія в роботі" },
-  { key: "DONE", name: "Проведено" },
+  { key: "PREPARATION", name: "Оголошення" },
+  { key: "IN_PROGRESS", name: "Підготовка" },
+  { key: "DONE", name: "Проведення заходу" },
   { key: "REPORT", name: "Звіт" },
-  { key: "RE_SALE", name: "Повторний продаж" },
 ];
 
 interface City {
@@ -28,7 +26,6 @@ export default function Kindergartens() {
   const [cities, setCities] = useState<City[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [form, setForm] = useState({
     name: "",
     cityId: "",
@@ -36,8 +33,8 @@ export default function Kindergartens() {
     director: "",
     phone: "",
   });
-
   const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<{ name: string; url: string }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -89,30 +86,21 @@ export default function Kindergartens() {
       setMatchedContacts([]);
       return;
     }
-
     const currentCityName = selectedCity.name || cities.find(c => c.id === form.cityId)?.name || "";
-
     if (currentCityName.toLowerCase() !== "львів") {
       setMatchedContacts([]);
       return;
     }
-
     try {
       const token = localStorage.getItem("token");
       const res = await api.get(
         `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=${encodeURIComponent("Садочок")}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       setMatchedContacts(res.data);
       if (res.data.length > 0) {
         const director = res.data.find((c: any) => c.role?.includes("Директор") || c.role?.includes("Завідувач")) || res.data[0];
-        setForm((f) => ({
-          ...f,
-          director: director.contactName,
-          phone: director.phone,
-        }));
+        setForm((f) => ({ ...f, director: director.contactName, phone: director.phone }));
       }
     } catch (e) {
       console.error(e);
@@ -121,19 +109,15 @@ export default function Kindergartens() {
 
   const handleNameChange = (value: string) => {
     setForm({ ...form, name: value });
-
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
-
     if (value.length < 2) {
       setShowSuggestions(false);
       setIsSearching(false);
       setMatchedContacts([]);
       return;
     }
-
     setIsSearching(true);
     setShowSuggestions(true);
-
     debounceTimer.current = setTimeout(async () => {
       const token = localStorage.getItem("token");
       try {
@@ -183,12 +167,7 @@ export default function Kindergartens() {
     schoolName: string
   ) => {
     e.stopPropagation();
-    if (
-      !window.confirm(
-        `Видалити садочок "${schoolName}"? Це видалить також усі його події.`
-      )
-    )
-      return;
+    if (!window.confirm(`Видалити садочок "${schoolName}"? Це видалить також усі його події.`)) return;
     try {
       await api.delete(`/schools/${schoolId}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
@@ -199,10 +178,10 @@ export default function Kindergartens() {
     }
   };
 
-  // Фільтруємо ТІЛЬКИ садочки і тільки для вибраного міста
   const filteredKindergartens = schools.filter(s => {
     const isCityMatch = selectedCity.id ? s.cityId === selectedCity.id : true;
-    return isCityMatch && s.type === "Садочок";
+    const isFilterMatch = activeFilter ? classifySchool(s) === activeFilter : true;
+    return isCityMatch && s.type === "Садочок" && isFilterMatch;
   });
 
   return (
@@ -224,12 +203,19 @@ export default function Kindergartens() {
         </button>
       </div>
 
+      <StatsBar
+        schools={schools.filter(s =>
+          (selectedCity.id ? s.cityId === selectedCity.id : true) && s.type === "Садочок"
+        )}
+        activeFilter={activeFilter}
+        onFilterChange={setActiveFilter}
+      />
+
+      {/* Мобільний вигляд */}
       <div className="md:hidden flex flex-col gap-3">
         {filteredKindergartens.map((school) => {
           const latestEvent = school.events?.[0];
-          const stage = latestEvent
-            ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
-            : null;
+          const stage = latestEvent ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status) : null;
           return (
             <div
               key={school.id}
@@ -238,12 +224,8 @@ export default function Kindergartens() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-semibold text-slate-800 leading-snug">
-                    {school.name}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1">
-                    {school.city?.name}
-                  </p>
+                  <p className="font-semibold text-slate-800 leading-snug">{school.name}</p>
+                  <p className="text-xs text-slate-500 mt-1">{school.city?.name}</p>
                 </div>
                 <button
                   onClick={(e) => handleDeleteSchool(e, school.id, school.name)}
@@ -261,9 +243,7 @@ export default function Kindergartens() {
                     {stage.name}
                   </span>
                 ) : (
-                  <span className="text-slate-400 text-xs italic">
-                    Етап не визначено
-                  </span>
+                  <span className="text-slate-400 text-xs italic">Етап не визначено</span>
                 )}
               </div>
             </div>
@@ -276,6 +256,7 @@ export default function Kindergartens() {
         )}
       </div>
 
+      {/* Десктоп таблиця */}
       <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto w-full">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -290,18 +271,14 @@ export default function Kindergartens() {
           <tbody>
             {filteredKindergartens.map((school) => {
               const latestEvent = school.events?.[0];
-              const stage = latestEvent
-                ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
-                : null;
+              const stage = latestEvent ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status) : null;
               return (
                 <tr
                   key={school.id}
                   onClick={() => navigate(`/schools/${school.id}`)}
                   className="cursor-pointer border-b border-slate-50 hover:bg-slate-50/50 transition"
                 >
-                  <td className="p-4 text-slate-800 font-medium">
-                    {school.name}
-                  </td>
+                  <td className="p-4 text-slate-800 font-medium">{school.name}</td>
                   <td className="p-4 text-slate-600">{school.city?.name}</td>
                   <td className="p-4">
                     <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-medium">
@@ -319,9 +296,7 @@ export default function Kindergartens() {
                   </td>
                   <td className="p-4 text-center">
                     <button
-                      onClick={(e) =>
-                        handleDeleteSchool(e, school.id, school.name)
-                      }
+                      onClick={(e) => handleDeleteSchool(e, school.id, school.name)}
                       className="text-slate-400 hover:text-red-500 transition-colors p-2"
                     >
                       🗑
@@ -334,34 +309,25 @@ export default function Kindergartens() {
         </table>
       </div>
 
+      {/* Модалка */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md max-h-[92vh] overflow-hidden flex flex-col">
             <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
             <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <h3 className="text-xl font-bold text-slate-800">Новий садочок</h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-2 -mr-2"
-              >
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-2 -mr-2">
                 ✕
               </button>
             </div>
-            <form
-              onSubmit={handleAddSchool}
-              className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto"
-            >
+            <form onSubmit={handleAddSchool} className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto">
               <div className="relative">
-                <label className="block text-sm text-slate-600 mb-1">
-                  Назва садочку
-                </label>
+                <label className="block text-sm text-slate-600 mb-1">Назва садочку</label>
                 <input
                   type="text"
                   value={form.name}
                   onChange={(e) => handleNameChange(e.target.value)}
-                  onBlur={() =>
-                    setTimeout(() => setShowSuggestions(false), 150)
-                  }
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                   required
                   placeholder="Наприклад: Садочок №1"
                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
@@ -369,35 +335,23 @@ export default function Kindergartens() {
                 {showSuggestions && (
                   <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                     {isSearching ? (
-                      <li className="px-3 py-2 text-sm text-slate-400 italic">
-                        Пошук за збігами...
-                      </li>
+                      <li className="px-3 py-2 text-sm text-slate-400 italic">Пошук за збігами...</li>
                     ) : suggestions.length > 0 ? (
                       suggestions.map((s, i) => (
-                        <li
-                          key={i}
-                          onMouseDown={() =>
-                            handleSelectSuggestion(s.name, s.url)
-                          }
-                          className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer"
-                        >
+                        <li key={i} onMouseDown={() => handleSelectSuggestion(s.name, s.url)} className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer">
                           {s.name}
                         </li>
                       ))
                     ) : (
-                      <li className="px-3 py-2 text-sm text-slate-400 italic">
-                        Нічого не знайдено
-                      </li>
+                      <li className="px-3 py-2 text-sm text-slate-400 italic">Нічого не знайдено</li>
                     )}
                   </ul>
                 )}
               </div>
-              
+
               {!selectedCity.id && (
                 <div>
-                  <label className="block text-sm text-slate-600 mb-1">
-                    Місто
-                  </label>
+                  <label className="block text-sm text-slate-600 mb-1">Місто</label>
                   <select
                     value={form.cityId}
                     onChange={(e) => setForm({ ...form, cityId: e.target.value })}
@@ -406,9 +360,7 @@ export default function Kindergartens() {
                   >
                     <option value="">— Оберіть місто —</option>
                     {cities.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
+                      <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
                 </div>
@@ -416,8 +368,7 @@ export default function Kindergartens() {
 
               <div>
                 <label className="block text-sm text-slate-600 mb-1">
-                  Контакт
-                  <span className="ml-1 text-xs text-slate-400">(автозаповнення)</span>
+                  Контакт <span className="ml-1 text-xs text-slate-400">(автозаповнення)</span>
                 </label>
                 {matchedContacts.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-2">
@@ -425,17 +376,14 @@ export default function Kindergartens() {
                       <button
                         key={i}
                         type="button"
-                        onClick={() =>
-                          setForm((f) => ({ ...f, director: c.contactName, phone: c.phone }))
-                        }
+                        onClick={() => setForm((f) => ({ ...f, director: c.contactName, phone: c.phone }))}
                         className={`text-xs px-2 py-1 rounded-full border transition-colors ${
                           form.director === c.contactName
                             ? "bg-blue-600 text-white border-blue-600"
                             : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
                         }`}
                       >
-                        {c.role ? `${c.role}: ` : ""}
-                        {c.contactName}
+                        {c.role ? `${c.role}: ` : ""}{c.contactName}
                       </button>
                     ))}
                   </div>
@@ -448,10 +396,10 @@ export default function Kindergartens() {
                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 />
               </div>
+
               <div>
                 <label className="block text-sm text-slate-600 mb-1">
-                  Телефон
-                  <span className="ml-1 text-xs text-slate-400">(автозаповнення)</span>
+                  Телефон <span className="ml-1 text-xs text-slate-400">(автозаповнення)</span>
                 </label>
                 <input
                   type="text"
@@ -461,6 +409,7 @@ export default function Kindergartens() {
                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
                 />
               </div>
+
               <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-2 pb-1 sm:pb-0">
                 <button
                   type="button"

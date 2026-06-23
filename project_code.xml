@@ -4808,30 +4808,34 @@ export default function RescheduleModal({
 }
 export default function Pipeline({ currentStageIndex, currentEvent, onPipelineClick, stages }: PipelineProps) {
  return (
- // Зменшуємо внутрішні відступи на мобільному (p-4)
  <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 overflow-hidden w-full">
  <h3 className="font-bold text-slate-800 mb-4 md:hidden">Етап події</h3>
- {/* Обгортка зі скролом для телефонів */}
  <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0">
- <div className="flex items-start min-w-[750px] justify-between relative">
- {/* Лінія пайплайну */}
+ <div className="flex items-start min-w-[600px] justify-between relative">
  <div className="absolute top-4 left-0 w-full h-[2px] bg-slate-100 -z-10"></div>
  {stages.map((step, index) => {
  const isCompleted = index < currentStageIndex;
  const isActive = index === currentStageIndex;
+ const isNext = index === currentStageIndex + 1;
+ const isClickable = !!currentEvent && isNext;
  return (
  <div key={step.id} className="flex flex-col items-center flex-1 z-10 px-1">
- <button 
- onClick={() => onPipelineClick(step.id)} 
- disabled={!currentEvent || (!isActive && index !== currentStageIndex + 1)}
- className={`w-8 h-8 md:w-9 md:h-9 shrink-0 rounded-full text-xs font-bold border-2 mb-2 transition-all 
- ${isCompleted ? 'border-blue-600 text-blue-600 bg-white' : 
- isActive ? 'border-blue-600 bg-blue-600 text-white shadow-md cursor-pointer md:hover:scale-110' : 
- 'border-slate-200 text-slate-400 bg-white cursor-not-allowed'}`}
+ <button
+ onClick={() => isClickable && onPipelineClick(step.id)}
+ className={`w-8 h-8 md:w-9 md:h-9 shrink-0 rounded-full text-xs font-bold border-2 mb-2 transition-all
+ ${isCompleted
+ ? 'border-blue-600 text-blue-600 bg-white'
+ : isActive
+ ? 'border-blue-600 bg-blue-600 text-white shadow-md'
+ : isNext
+ ? 'border-blue-400 bg-white text-blue-400 cursor-pointer hover:scale-110 hover:border-blue-600 hover:text-blue-600'
+ : 'border-slate-200 text-slate-400 bg-white cursor-not-allowed opacity-50'
+ }`}
  >
  {isCompleted ? '✓' : step.id}
  </button>
- <span className={`text-[10px] md:text-[11px] leading-tight font-medium text-center break-words max-w-[70px] ${isActive ? 'text-blue-600 font-bold' : 'text-slate-500'}`}>
+ <span className={`text-[10px] md:text-[11px] leading-tight font-medium text-center break-words max-w-[70px]
+ ${isActive ? 'text-blue-600 font-bold' : isNext ? 'text-blue-400' : 'text-slate-400'}`}>
  {step.name}
  </span>
  </div>
@@ -4860,53 +4864,108 @@ export default function SchoolInfoCard({ schoolData }: { schoolData: any }) {
 }</file>
 <file path="apps\frontend\src\components\schools\StatsBar.tsx">import React from 'react';
 interface School {
+ id: string;
  events?: any[];
 }
 interface StatsBarProps {
  schools: School[];
+ activeFilter: string | null;
+ onFilterChange: (filter: string | null) => void;
 }
-export default function StatsBar({ schools }: StatsBarProps) {
- // Логіка підрахунку:
- // Нові: 0 подій.
- // Заплановані: пайплайн <= 5 (це перші 5 етапів у твоєму процесі).
- // В роботі: пайплайн > 5.
- // Проведені: статус RE_SALE (або фінальний статус, який у тебе позначений як завершений).
- const stats = schools.reduce((acc, s) => {
- const events = s.events || [];
+// Нові: немає жодної події
+// Заплановані: є подія, але статус <= DATE_CONFIRMED
+// В роботі: статус від PREPARATION до REPORT
+// Проведені: статус RE_SALE
+const PLANNED_STAGES = ['BASE', 'FIRST_CONTACT', 'DATE_CONFIRMED'];
+const IN_PROGRESS_STAGES = ['PREPARATION', 'IN_PROGRESS', 'DONE', 'REPORT'];
+export function classifySchool(school: School): 'new' | 'planned' | 'inProgress' | 'done' {
+ const events = (school.events || []).filter((e: any) => e.status !== 'RE_SALE');
  if (events.length === 0) {
- acc.new++;
- } else {
- const lastEvent = events[events.length - 1];
- // stageIdx визначає етап: 0-4 - планування, 5+ - робота
- const stageIdx = [
- "BASE", "FIRST_CONTACT", "INTERESTED", "PRE_APPROVAL", "DATE_CONFIRMED", 
- "PREPARATION", "IN_PROGRESS", "DONE", "REPORT", "RE_SALE"
- ].indexOf(lastEvent.status);
- if (lastEvent.status === "RE_SALE") acc.done++;
- else if (stageIdx > 4) acc.inProgress++;
- else acc.planned++;
+ const hasResale = (school.events || []).some((e: any) => e.status === 'RE_SALE');
+ if (hasResale) return 'done';
+ return 'new';
  }
- return acc;
- }, { new: 0, inProgress: 0, planned: 0, done: 0 });
+ const latest = events[events.length - 1];
+ if (PLANNED_STAGES.includes(latest.status)) return 'planned';
+ if (IN_PROGRESS_STAGES.includes(latest.status)) return 'inProgress';
+ if (latest.status === 'RE_SALE') return 'done';
+ return 'new';
+}
+export default function StatsBar({ schools, activeFilter, onFilterChange }: StatsBarProps) {
+ const stats = schools.reduce(
+ (acc, s) => { acc[classifySchool(s)]++; return acc; },
+ { new: 0, planned: 0, inProgress: 0, done: 0 }
+ );
  const items = [
- { label: "Нові", value: stats.new, color: "text-slate-500" },
- { label: "В роботі", value: stats.inProgress, color: "text-blue-600" },
- { label: "Заплановані", value: stats.planned, color: "text-amber-600" },
- { label: "Проведені", value: stats.done, color: "text-emerald-600" },
+ {
+ key: 'new',
+ label: 'Нові',
+ value: stats.new,
+ color: 'text-slate-600',
+ activeBg: 'bg-slate-800 text-white',
+ inactiveBg: 'bg-slate-50 text-slate-600',
+ dot: 'bg-slate-400',
+ },
+ {
+ key: 'planned',
+ label: 'Заплановані',
+ value: stats.planned,
+ color: 'text-amber-600',
+ activeBg: 'bg-amber-500 text-white',
+ inactiveBg: 'bg-amber-50 text-amber-600',
+ dot: 'bg-amber-400',
+ },
+ {
+ key: 'inProgress',
+ label: 'В роботі',
+ value: stats.inProgress,
+ color: 'text-blue-600',
+ activeBg: 'bg-blue-600 text-white',
+ inactiveBg: 'bg-blue-50 text-blue-600',
+ dot: 'bg-blue-500',
+ },
+ {
+ key: 'done',
+ label: 'Проведені',
+ value: stats.done,
+ color: 'text-emerald-600',
+ activeBg: 'bg-emerald-600 text-white',
+ inactiveBg: 'bg-emerald-50 text-emerald-600',
+ dot: 'bg-emerald-500',
+ },
  ];
  return (
- <div className="flex flex-wrap justify-center items-center gap-2 sm:gap-6 bg-white py-3 px-4 sm:px-6 rounded-2xl shadow-sm border border-slate-100 mb-6 text-xs sm:text-sm font-medium">
- {items.map((item, i) => (
- <React.Fragment key={i}>
- <div className="flex items-center gap-1.5 sm:gap-2">
- <span className="text-slate-500 whitespace-nowrap">{item.label}</span>
- <span className={`font-bold ${item.color} bg-slate-50 px-2 sm:px-2.5 py-0.5 rounded-lg`}>
- ({item.value})
+ <div className="flex flex-wrap justify-center items-center gap-2 sm:gap-3 bg-white py-3 px-4 sm:px-6 rounded-2xl shadow-sm border border-slate-100 mb-6">
+ {items.map((item, i) => {
+ const isActive = activeFilter === item.key;
+ return (
+ <React.Fragment key={item.key}>
+ <button
+ onClick={() => onFilterChange(isActive ? null : item.key)}
+ className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+ isActive ? item.activeBg : `${item.inactiveBg} hover:opacity-80`
+ }`}
+ >
+ <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-white/70' : item.dot}`} />
+ <span>{item.label}</span>
+ <span className={`font-bold ${isActive ? 'text-white' : ''}`}>
+ {item.value}
  </span>
- </div>
- {i < items.length - 1 && <div className="w-px h-4 bg-slate-200 hidden sm:block" />}
+ </button>
+ {i < items.length - 1 && (
+ <div className="w-px h-4 bg-slate-200 hidden sm:block" />
+ )}
  </React.Fragment>
- ))}
+ );
+ })}
+ {activeFilter && (
+ <button
+ onClick={() => onFilterChange(null)}
+ className="text-xs text-slate-400 hover:text-slate-600 ml-1 transition-colors"
+ >
+ ✕ скинути
+ </button>
+ )}
  </div>
  );
 }</file>
@@ -7308,17 +7367,15 @@ function EmptyState() {
 import { useNavigate } from "react-router-dom";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
+import StatsBar, { classifySchool } from "../components/schools/StatsBar";
 const PIPELINE_STAGES = [
- { key: "BASE", name: "База" },
- { key: "FIRST_CONTACT", name: "Перший контакт" },
- { key: "INTERESTED", name: "Зацікавлений" },
- { key: "PRE_APPROVAL", name: "Попереднє погодження" },
+ { key: "BASE", name: "Новий заклад" },
+ { key: "FIRST_CONTACT", name: "Знайомство" },
  { key: "DATE_CONFIRMED", name: "Підтвердження дати" },
- { key: "PREPARATION", name: "Підготовка" },
- { key: "IN_PROGRESS", name: "Подія в роботі" },
- { key: "DONE", name: "Проведено" },
+ { key: "PREPARATION", name: "Оголошення" },
+ { key: "IN_PROGRESS", name: "Підготовка" },
+ { key: "DONE", name: "Проведення заходу" },
  { key: "REPORT", name: "Звіт" },
- { key: "RE_SALE", name: "Повторний продаж" },
 ];
 interface City {
  id: string;
@@ -7339,6 +7396,7 @@ export default function Kindergartens() {
  phone: "",
  });
  const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
+ const [activeFilter, setActiveFilter] = useState<string | null>(null);
  const [suggestions, setSuggestions] = useState<{ name: string; url: string }[]>([]);
  const [showSuggestions, setShowSuggestions] = useState(false);
  const [isSearching, setIsSearching] = useState(false);
@@ -7486,8 +7544,9 @@ export default function Kindergartens() {
  // Фільтруємо ТІЛЬКИ садочки і тільки для вибраного міста
  const filteredKindergartens = schools.filter(s => {
  const isCityMatch = selectedCity.id ? s.cityId === selectedCity.id : true;
- return isCityMatch && s.type === "Садочок";
- });
+ const isFilterMatch = activeFilter ? classifySchool(s) === activeFilter : true;
+ return isCityMatch && s.type === "Садочок" && isFilterMatch;
+});
  return (
  <div className="p-4 md:p-8 h-full max-w-[100vw] overflow-hidden">
  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
@@ -7506,6 +7565,13 @@ export default function Kindergartens() {
  + Додати садочок
  </button>
  </div>
+ <StatsBar
+ schools={schools.filter(s =>
+ (selectedCity.id ? s.cityId === selectedCity.id : true) && s.type === "Садочок"
+ )}
+ activeFilter={activeFilter}
+ onFilterChange={setActiveFilter}
+ />
  <div className="md:hidden flex flex-col gap-3">
  {filteredKindergartens.map((school) => {
  const latestEvent = school.events?.[0];
@@ -7838,16 +7904,13 @@ import EventModal from "../components/school-profile/modals/EventModal";
 import CommentModal from "../components/school-profile/modals/CommentModal";
 import CrewModal from "../components/school-profile/modals/CrewModal";
 const PIPELINE_STAGES = [
- { id: 1, key: "BASE", name: "База" },
- { id: 2, key: "FIRST_CONTACT", name: "Перший контакт" },
- { id: 3, key: "INTERESTED", name: "Зацікавлений" },
- { id: 4, key: "PRE_APPROVAL", name: "Попереднє погодження" },
- { id: 5, key: "DATE_CONFIRMED", name: "Підтвердження дати" },
- { id: 6, key: "PREPARATION", name: "Підготовка" },
- { id: 7, key: "IN_PROGRESS", name: "Подія в роботі" },
- { id: 8, key: "DONE", name: "Проведено" },
- { id: 9, key: "REPORT", name: "Звіт" },
- { id: 10, key: "RE_SALE", name: "Повторний продаж" },
+ { id: 1, key: "BASE", name: "Новий заклад" },
+ { id: 2, key: "FIRST_CONTACT", name: "Знайомство" },
+ { id: 3, key: "DATE_CONFIRMED", name: "Підтвердження дати" },
+ { id: 4, key: "PREPARATION", name: "Оголошення" },
+ { id: 5, key: "IN_PROGRESS", name: "Підготовка" },
+ { id: 6, key: "DONE", name: "Проведення заходу" },
+ { id: 7, key: "REPORT", name: "Звіт" },
 ];
 export default function SchoolProfile() {
  const { id } = useParams();
@@ -7944,20 +8007,25 @@ export default function SchoolProfile() {
  ? currentEvent.history[currentEvent.history.length - 1].userName
  : "Немає даних";
  const handlePipelineClick = (stepId: number) => {
+ console.log(
+ "click",
+ stepId,
+ currentStageIndex,
+ PIPELINE_STAGES[currentStageIndex + 1],
+ );
  if (!currentEvent) return;
- const activeStage = PIPELINE_STAGES[currentStageIndex];
  const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
- const isCurrentStage = stepId === activeStage?.id;
- const isNextStage = nextStage?.id === stepId;
- if (!isCurrentStage && !isNextStage) return;
- if (nextStage?.key === "REPORT") {
+ // Дозволяємо клік тільки по наступній точці
+ if (nextStage?.id !== stepId) return;
+ // Якщо наступний етап — Звіт, відкриваємо ReportModal
+ if (nextStage.key === "REPORT") {
  setIsReportModalOpen(true);
  return;
  }
  setCommentModal({
  isOpen: true,
  mode: "pipeline",
- stepId: nextStage?.id || stepId,
+ stepId: nextStage.id,
  historyId: null,
  text: "",
  });
@@ -8102,17 +8170,23 @@ export default function SchoolProfile() {
  const headers = {
  Authorization: `Bearer ${localStorage.getItem("token")}`,
  };
- const res = await api.post(
- `/events/${currentEvent.id}/report`,
- reportData,
+ await api.post(`/events/${currentEvent.id}/report`, reportData, { headers });
+ await api.patch(
+ `/events/${currentEvent.id}/status`,
+ {
+ status: "RE_SALE",
+ actionName: "Звіт сформовано. Захід завершено.",
+ },
  { headers },
  );
+ // Одразу переносимо в RE_SALE — заклад іде у "Проведені"
+ setExitingEventId(currentEvent.id);
+ setTimeout(() => {
+ setEvents((prev) => prev.filter((ev) => ev.id !== currentEvent.id));
+ setSelectedEventId(null);
+ setExitingEventId(null);
+ }, 500);
  setIsReportModalOpen(false);
- setEvents((prev) =>
- prev.map((ev) =>
- ev.id === currentEvent.id ? { ...ev, ...res.data } : ev,
- ),
- );
  } catch (e) {
  console.error("Помилка при збереженні звіту", e);
  }
@@ -8226,13 +8300,15 @@ export default function SchoolProfile() {
  : "opacity-100 scale-100 translate-y-0"
  }`}
  >
+ {currentEvent && (
  <Pipeline
  currentStageIndex={currentStageIndex}
  currentEvent={currentEvent}
  onPipelineClick={handlePipelineClick}
  stages={PIPELINE_STAGES}
  />
- {currentEvent && currentStageIndex >= 5 && (
+ )}
+ {currentEvent && currentStageIndex >= 4 && (
  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
  <EventPreparation
  data={currentEvent.preparation || {}}
@@ -8305,18 +8381,15 @@ export default function SchoolProfile() {
 import { useNavigate } from "react-router-dom";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
-import StatsBar from "../components/schools/StatsBar";
+import StatsBar, { classifySchool } from "../components/schools/StatsBar";
 const PIPELINE_STAGES = [
- { key: "BASE", name: "База" },
- { key: "FIRST_CONTACT", name: "Перший контакт" },
- { key: "INTERESTED", name: "Зацікавлений" },
- { key: "PRE_APPROVAL", name: "Попереднє погодження" },
+ { key: "BASE", name: "Новий заклад" },
+ { key: "FIRST_CONTACT", name: "Знайомство" },
  { key: "DATE_CONFIRMED", name: "Підтвердження дати" },
- { key: "PREPARATION", name: "Підготовка" },
- { key: "IN_PROGRESS", name: "Подія в роботі" },
- { key: "DONE", name: "Проведено" },
+ { key: "PREPARATION", name: "Оголошення" },
+ { key: "IN_PROGRESS", name: "Підготовка" },
+ { key: "DONE", name: "Проведення заходу" },
  { key: "REPORT", name: "Звіт" },
- { key: "RE_SALE", name: "Повторний продаж" },
 ];
 interface City {
  id: string;
@@ -8337,7 +8410,10 @@ export default function Schools() {
  phone: "",
  });
  const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
- const [suggestions, setSuggestions] = useState<{ name: string; url: string }[]>([]);
+ const [activeFilter, setActiveFilter] = useState<string | null>(null);
+ const [suggestions, setSuggestions] = useState<
+ { name: string; url: string }[]
+ >([]);
  const [showSuggestions, setShowSuggestions] = useState(false);
  const [isSearching, setIsSearching] = useState(false);
  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -8383,7 +8459,8 @@ export default function Schools() {
  setMatchedContacts([]);
  return;
  }
- const currentCityName = selectedCity.name || cities.find(c => c.id === form.cityId)?.name || "";
+ const currentCityName =
+ selectedCity.name || cities.find((c) => c.id === form.cityId)?.name || "";
  if (currentCityName.toLowerCase() !== "львів") {
  setMatchedContacts([]);
  return;
@@ -8394,11 +8471,15 @@ export default function Schools() {
  `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=${encodeURIComponent("Школа")}`,
  {
  headers: { Authorization: `Bearer ${token}` },
- }
+ },
  );
  setMatchedContacts(res.data);
  if (res.data.length > 0) {
- const director = res.data.find((c: any) => c.role?.includes("Директор") || c.role?.includes("Завідувач")) || res.data[0];
+ const director =
+ res.data.find(
+ (c: any) =>
+ c.role?.includes("Директор") || c.role?.includes("Завідувач"),
+ ) || res.data[0];
  setForm((f) => ({
  ...f,
  director: director.contactName,
@@ -8424,9 +8505,12 @@ export default function Schools() {
  const token = localStorage.getItem("token");
  try {
  const [externalRes] = await Promise.all([
- api.get(`/schools/search?q=${value}&type=${encodeURIComponent("Школа")}`, {
+ api.get(
+ `/schools/search?q=${value}&type=${encodeURIComponent("Школа")}`,
+ {
  headers: { Authorization: `Bearer ${token}` },
- }),
+ },
+ ),
  fetchContacts(value),
  ]);
  setSuggestions(externalRes.data);
@@ -8448,9 +8532,13 @@ export default function Schools() {
  setIsSubmitting(true);
  try {
  const token = localStorage.getItem("token");
- await api.post("/schools", { ...form, type: "Школа" }, {
+ await api.post(
+ "/schools",
+ { ...form, type: "Школа" },
+ {
  headers: { Authorization: `Bearer ${token}` },
- });
+ },
+ );
  setIsModalOpen(false);
  fetchSchools();
  } catch (e) {
@@ -8463,12 +8551,12 @@ export default function Schools() {
  const handleDeleteSchool = async (
  e: React.MouseEvent,
  schoolId: string,
- schoolName: string
+ schoolName: string,
  ) => {
  e.stopPropagation();
  if (
  !window.confirm(
- `Видалити школу "${schoolName}"? Це видалить також усі її події.`
+ `Видалити школу "${schoolName}"? Це видалить також усі її події.`,
  )
  )
  return;
@@ -8481,10 +8569,14 @@ export default function Schools() {
  console.error(e);
  }
  };
- const filteredSchools = schools.filter(s => {
+ const filteredSchools = schools.filter((s) => {
  const hasCityFilter = selectedCity.id && selectedCity.id.trim() !== "";
  const isCityMatch = hasCityFilter ? s.cityId === selectedCity.id : true;
- return isCityMatch && s.type === "Школа";
+ const isTypeMatch = s.type === "Школа";
+ const isFilterMatch = activeFilter
+ ? classifySchool(s) === activeFilter
+ : true;
+ return isCityMatch && isTypeMatch && isFilterMatch;
  });
  return (
  <div className="p-4 md:p-8 h-full max-w-[100vw] overflow-hidden">
@@ -8504,7 +8596,18 @@ export default function Schools() {
  + Додати школу
  </button>
  </div>
- <StatsBar schools={filteredSchools} />
+ <StatsBar
+ schools={schools.filter((s) => {
+ const hasCityFilter =
+ selectedCity.id && selectedCity.id.trim() !== "";
+ return (
+ (hasCityFilter ? s.cityId === selectedCity.id : true) &&
+ s.type === "Школа"
+ );
+ })}
+ activeFilter={activeFilter}
+ onFilterChange={setActiveFilter}
+ />
  {/* Мобільний вигляд */}
  <div className="md:hidden flex flex-col gap-3">
  {filteredSchools.map((school) => {
@@ -8566,7 +8669,9 @@ export default function Schools() {
  <th className="p-4 font-medium text-slate-600">Місто</th>
  <th className="p-4 font-medium text-slate-600">Статус</th>
  <th className="p-4 font-medium text-slate-600">Поточний етап</th>
- <th className="p-4 font-medium text-slate-600 text-center">Дія</th>
+ <th className="p-4 font-medium text-slate-600 text-center">
+ Дія
+ </th>
  </tr>
  </thead>
  <tbody>
@@ -8634,7 +8739,9 @@ export default function Schools() {
  className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto"
  >
  <div className="relative">
- <label className="block text-sm text-slate-600 mb-1">Назва школи</label>
+ <label className="block text-sm text-slate-600 mb-1">
+ Назва школи
+ </label>
  <input
  type="text"
  value={form.name}
@@ -8649,42 +8756,57 @@ export default function Schools() {
  {showSuggestions && (
  <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
  {isSearching ? (
- <li className="px-3 py-2 text-sm text-slate-400 italic">Пошук...</li>
+ <li className="px-3 py-2 text-sm text-slate-400 italic">
+ Пошук...
+ </li>
  ) : suggestions.length > 0 ? (
  suggestions.map((s, i) => (
  <li
  key={i}
- onMouseDown={() => handleSelectSuggestion(s.name, s.url)}
+ onMouseDown={() =>
+ handleSelectSuggestion(s.name, s.url)
+ }
  className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer"
  >
  {s.name}
  </li>
  ))
  ) : (
- <li className="px-3 py-2 text-sm text-slate-400 italic">Нічого не знайдено</li>
+ <li className="px-3 py-2 text-sm text-slate-400 italic">
+ Нічого не знайдено
+ </li>
  )}
  </ul>
  )}
  </div>
  {!selectedCity.id && (
  <div>
- <label className="block text-sm text-slate-600 mb-1">Місто</label>
+ <label className="block text-sm text-slate-600 mb-1">
+ Місто
+ </label>
  <select
  value={form.cityId}
- onChange={(e) => setForm({ ...form, cityId: e.target.value })}
+ onChange={(e) =>
+ setForm({ ...form, cityId: e.target.value })
+ }
  required
  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 bg-white"
  >
  <option value="">— Оберіть місто —</option>
  {cities.map((c) => (
- <option key={c.id} value={c.id}>{c.name}</option>
+ <option key={c.id} value={c.id}>
+ {c.name}
+ </option>
  ))}
  </select>
  </div>
  )}
  <div>
  <label className="block text-sm text-slate-600 mb-1">
- Контакт <span className="ml-1 text-xs text-slate-400">(автозаповнення)</span>
+ Контакт{" "}
+ <span className="ml-1 text-xs text-slate-400">
+ (автозаповнення)
+ </span>
  </label>
  {matchedContacts.length > 0 && (
  <div className="flex flex-wrap gap-1 mb-2">
@@ -8692,12 +8814,21 @@ export default function Schools() {
  <button
  key={i}
  type="button"
- onClick={() => setForm((f) => ({ ...f, director: c.contactName, phone: c.phone }))}
+ onClick={() =>
+ setForm((f) => ({
+ ...f,
+ director: c.contactName,
+ phone: c.phone,
+ }))
+ }
  className={`text-xs px-2 py-1 rounded-full border transition-colors ${
- form.director === c.contactName ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 border-slate-200"
+ form.director === c.contactName
+ ? "bg-blue-600 text-white border-blue-600"
+ : "bg-white text-slate-600 border-slate-200"
  }`}
  >
- {c.role ? `${c.role}: ` : ""}{c.contactName}
+ {c.role ? `${c.role}: ` : ""}
+ {c.contactName}
  </button>
  ))}
  </div>
@@ -8705,13 +8836,17 @@ export default function Schools() {
  <input
  type="text"
  value={form.director}
- onChange={(e) => setForm({ ...form, director: e.target.value })}
+ onChange={(e) =>
+ setForm({ ...form, director: e.target.value })
+ }
  placeholder="Микола Петренко"
  className="w-full p-2 border border-slate-200 rounded-lg text-sm"
  />
  </div>
  <div>
- <label className="block text-sm text-slate-600 mb-1">Телефон</label>
+ <label className="block text-sm text-slate-600 mb-1">
+ Телефон
+ </label>
  <input
  type="text"
  value={form.phone}
@@ -8721,8 +8856,18 @@ export default function Schools() {
  />
  </div>
  <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-2">
- <button type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto px-5 py-3 bg-slate-100 rounded-xl text-sm font-medium">Скасувати</button>
- <button type="submit" disabled={isSubmitting} className="w-full sm:w-auto px-5 py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">
+ <button
+ type="button"
+ onClick={() => setIsModalOpen(false)}
+ className="w-full sm:w-auto px-5 py-3 bg-slate-100 rounded-xl text-sm font-medium"
+ >
+ Скасувати
+ </button>
+ <button
+ type="submit"
+ disabled={isSubmitting}
+ className="w-full sm:w-auto px-5 py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700"
+ >
  {isSubmitting ? "Збереження..." : "Створити"}
  </button>
  </div>
