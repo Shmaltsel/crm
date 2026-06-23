@@ -138,15 +138,13 @@ export default function SchoolProfile() {
   const handlePipelineClick = (stepId: number) => {
     if (!currentEvent) return;
 
-    const activeStage = PIPELINE_STAGES[currentStageIndex];
     const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
 
-    const isCurrentStage = stepId === activeStage?.id;
-    const isNextStage = nextStage?.id === stepId;
+    // Дозволяємо клік тільки по наступній точці
+    if (nextStage?.id !== stepId) return;
 
-    if (!isCurrentStage && !isNextStage) return;
-
-    if (nextStage?.key === "REPORT" || activeStage?.key === "DONE") {
+    // Якщо наступний етап — Звіт, відкриваємо ReportModal
+    if (nextStage.key === "REPORT") {
       setIsReportModalOpen(true);
       return;
     }
@@ -154,7 +152,7 @@ export default function SchoolProfile() {
     setCommentModal({
       isOpen: true,
       mode: "pipeline",
-      stepId: nextStage?.id || stepId,
+      stepId: nextStage.id,
       historyId: null,
       text: "",
     });
