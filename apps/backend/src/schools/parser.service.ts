@@ -158,62 +158,41 @@ export class ParserService {
   }
 
   // Отримати всі школи/садочки конкретного міста з isuo.org
-  async getAllSchoolsForCity(
-    cityName: string,
-    type: 'Школа' | 'Садочок' = 'Школа',
-  ): Promise<{ name: string; url: string }[]> {
-    const config = CITY_CONFIG[cityName];
-    if (!config) {
-      console.log(`Місто "${cityName}" не підтримується для імпорту`);
-      return [];
-    }
+  async getAllSchoolsForCity(cityName: string, type: 'Школа' | 'Садочок' = 'Школа'): Promise<{ name: string; url: string }[]> {
+  const config = CITY_CONFIG[cityName];
+  if (!config) return [];
 
-    const baseUrl = type === 'Садочок' ? config.kindergartens : config.schools;
-    const domain = config.domain;
+  const baseUrl = type === 'Садочок' ? config.kindergartens : config.schools;
+  const domain = config.domain;
+  
+  // Зберігаємо об'єкт { name, url } як значення
+  const resultsMap = new Map<string, { name: string; url: string }>();
 
-    // Використовуємо Map для зберігання унікальних записів (ключ - назва)
-    const resultsMap = new Map<string, string>();
+  for (let page = 1; page <= 20; page++) {
+    const url = page === 1 ? baseUrl : `${baseUrl}/page/${page}`;
+    try {
+      const response = await axios.get(url, { timeout: 15000 });
+      const $ = cheerio.load(response.data);
+      let foundOnPage = 0;
 
-    for (let page = 1; page <= 20; page++) {
-      const url = page === 1 ? baseUrl : `${baseUrl}/page/${page}`;
-      try {
-        const response = await axios.get(url, { timeout: 15000 });
-        const $ = cheerio.load(response.data);
-        let foundOnPage = 0;
-
-        $('table.zebra-stripe.list tr').each((_, row) => {
-          const name = $(row)
-            .find('td:nth-child(2) a')
-            .text()
-            .replace(/\s+/g, ' ')
-            .trim();
-          const href = $(row).find('td:nth-child(2) a').attr('href');
-
-          // Фільтрація: назва не порожня, не "Fullname" та не дублікат
-          if (name && href && name !== 'Fullname') {
-            // Нормалізуємо назву для ключа, щоб уникнути дублів через пробіли
-            const normalizedName = name.toLowerCase().replace(/\s+/g, '');
-            if (!resultsMap.has(normalizedName)) {
-              resultsMap.set(normalizedName, `${domain}${href}`);
-              foundOnPage++;
-            }
+      $('table.zebra-stripe.list tr').each((_, row) => {
+        const name = $(row).find('td:nth-child(2) a').text().replace(/\s+/g, ' ').trim();
+        const href = $(row).find('td:nth-child(2) a').attr('href');
+        
+        if (name && href && name !== 'Fullname') {
+          const normalizedName = name.toLowerCase().replace(/\s+/g, '');
+          if (!resultsMap.has(normalizedName)) {
+            resultsMap.set(normalizedName, { name, url: `${domain}${href}` });
+            foundOnPage++;
           }
-        });
-
-        if (foundOnPage === 0) break;
-      } catch {
-        break;
-      }
-    }
-
-    // Конвертуємо Map назад у масив об'єктів
-    return Array.from(resultsMap.entries()).map(([_, url]) => {
-      // Тут можна було б зберігати оригінальну назву в Map,
-      // але для простоти повертаємо структуру, яку очікує сервіс.
-      // Щоб повернути оригінальну назву, змініть логіку Map на Map<string, {name: string, url: string}>
-      return { name: nameFromUrl(url), url }; // Або просто поверніть об'єкт
-    });
+        }
+      });
+      if (foundOnPage === 0) break;
+    } catch { break; }
   }
+
+  return Array.from(resultsMap.values());
+}
 
   getSupportedCities(): string[] {
     return Object.keys(CITY_CONFIG);
