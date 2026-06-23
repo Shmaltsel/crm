@@ -3,17 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
 import StatsBar, { classifySchool } from "../components/schools/StatsBar";
+
 const PIPELINE_STAGES = [
-  { key: "BASE", name: "База" },
-  { key: "FIRST_CONTACT", name: "Перший контакт" },
-  { key: "INTERESTED", name: "Зацікавлений" },
-  { key: "PRE_APPROVAL", name: "Попереднє погодження" },
+  { key: "BASE", name: "Новий заклад" },
+  { key: "FIRST_CONTACT", name: "Знайомство" },
   { key: "DATE_CONFIRMED", name: "Підтвердження дати" },
-  { key: "PREPARATION", name: "Підготовка" },
-  { key: "IN_PROGRESS", name: "Подія в роботі" },
-  { key: "DONE", name: "Проведено" },
+  { key: "PREPARATION", name: "Оголошення" },
+  { key: "IN_PROGRESS", name: "Підготовка" },
+  { key: "DONE", name: "Проведення заходу" },
   { key: "REPORT", name: "Звіт" },
-  { key: "RE_SALE", name: "Повторний продаж" },
 ];
 
 interface City {

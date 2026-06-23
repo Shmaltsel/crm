@@ -16,7 +16,7 @@ interface StatsBarProps {
 // В роботі: статус від PREPARATION до REPORT
 // Проведені: статус RE_SALE
 
-const PLANNED_STAGES = ['BASE', 'FIRST_CONTACT', 'INTERESTED', 'PRE_APPROVAL', 'DATE_CONFIRMED'];
+const PLANNED_STAGES = ['BASE', 'FIRST_CONTACT', 'DATE_CONFIRMED'];
 const IN_PROGRESS_STAGES = ['PREPARATION', 'IN_PROGRESS', 'DONE', 'REPORT'];
 
 export function classifySchool(school: School): 'new' | 'planned' | 'inProgress' | 'done' {

@@ -19,16 +19,13 @@ import CommentModal from "../components/school-profile/modals/CommentModal";
 import CrewModal from "../components/school-profile/modals/CrewModal";
 
 const PIPELINE_STAGES = [
-  { id: 1, key: "BASE", name: "База" },
-  { id: 2, key: "FIRST_CONTACT", name: "Перший контакт" },
-  { id: 3, key: "INTERESTED", name: "Зацікавлений" },
-  { id: 4, key: "PRE_APPROVAL", name: "Попереднє погодження" },
-  { id: 5, key: "DATE_CONFIRMED", name: "Підтвердження дати" },
-  { id: 6, key: "PREPARATION", name: "Підготовка" },
-  { id: 7, key: "IN_PROGRESS", name: "Подія в роботі" },
-  { id: 8, key: "DONE", name: "Проведено" },
-  { id: 9, key: "REPORT", name: "Звіт" },
-  { id: 10, key: "RE_SALE", name: "Повторний продаж" },
+  { id: 1, key: "BASE", name: "Новий заклад" },
+  { id: 2, key: "FIRST_CONTACT", name: "Знайомство" },
+  { id: 3, key: "DATE_CONFIRMED", name: "Підтвердження дати" },
+  { id: 4, key: "PREPARATION", name: "Оголошення" },
+  { id: 5, key: "IN_PROGRESS", name: "Підготовка" },
+  { id: 6, key: "DONE", name: "Проведення заходу" },
+  { id: 7, key: "REPORT", name: "Звіт" },
 ];
 
 export default function SchoolProfile() {
@@ -149,7 +146,7 @@ export default function SchoolProfile() {
 
     if (!isCurrentStage && !isNextStage) return;
 
-    if (nextStage?.key === "REPORT") {
+    if (nextStage?.key === "REPORT" || activeStage?.key === "DONE") {
       setIsReportModalOpen(true);
       return;
     }
@@ -312,19 +309,19 @@ export default function SchoolProfile() {
       const headers = {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       };
-      const res = await api.post(
-        `/events/${currentEvent.id}/report`,
-        reportData,
-        { headers },
-      );
+      await api.post(`/events/${currentEvent.id}/report`, reportData, {
+        headers,
+      });
+
+      // Одразу переносимо в RE_SALE — заклад іде у "Проведені"
+      setExitingEventId(currentEvent.id);
+      setTimeout(() => {
+        setEvents((prev) => prev.filter((ev) => ev.id !== currentEvent.id));
+        setSelectedEventId(null);
+        setExitingEventId(null);
+      }, 500);
 
       setIsReportModalOpen(false);
-
-      setEvents((prev) =>
-        prev.map((ev) =>
-          ev.id === currentEvent.id ? { ...ev, ...res.data } : ev,
-        ),
-      );
     } catch (e) {
       console.error("Помилка при збереженні звіту", e);
     }
@@ -453,7 +450,7 @@ export default function SchoolProfile() {
             stages={PIPELINE_STAGES}
           />
 
-          {currentEvent && currentStageIndex >= 5 && (
+          {currentEvent && currentStageIndex >= 4 && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               <EventPreparation
                 data={currentEvent.preparation || {}}
