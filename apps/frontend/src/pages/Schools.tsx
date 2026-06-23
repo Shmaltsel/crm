@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
-import StatsBar from "../components/schools/StatsBar";
-
+import StatsBar, { classifySchool } from "../components/schools/StatsBar";
 const PIPELINE_STAGES = [
   { key: "BASE", name: "База" },
   { key: "FIRST_CONTACT", name: "Перший контакт" },
