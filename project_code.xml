@@ -1591,12 +1591,35 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
 <file path="apps\backend\src\schools\parser.service.ts">import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-const CITY_CONFIG: Record<string, { schools: string; kindergartens: string; domain: string }> = {
- 'Львів': { domain: 'https://lv.isuo.org', schools: 'https://lv.isuo.org/authorities/schools-list/id/681', kindergartens: 'https://lv.isuo.org/koatuu/preschools-list/id/4610100000' },
- 'Івано-Франківськ': { domain: 'https://if.isuo.org', schools: 'https://if.isuo.org/koatuu/schools-list/id/2610100000', kindergartens: 'https://if.isuo.org/koatuu/preschools-list/id/2610100000' },
- 'Чернівці': { domain: 'https://cv.isuo.org', schools: 'https://cv.isuo.org/koatuu/schools-list/id/7310100000', kindergartens: 'https://cv.isuo.org/koatuu/preschools-list/id/7310100000' },
- 'Тернопіль': { domain: 'https://te.isuo.org', schools: 'https://te.isuo.org/koatuu/schools-list/id/6110100000', kindergartens: 'https://te.isuo.org/koatuu/preschools-list/id/6110100000' },
- 'Ужгород': { domain: 'https://zk.isuo.org', schools: 'https://zk.isuo.org/koatuu/schools-list/id/2110100000', kindergartens: 'https://zk.isuo.org/koatuu/preschools-list/id/2110100000' },
+const CITY_CONFIG: Record<
+ string,
+ { schools: string; kindergartens: string; domain: string }
+> = {
+ Львів: {
+ domain: 'https://lv.isuo.org',
+ schools: 'https://lv.isuo.org/authorities/schools-list/id/681',
+ kindergartens: 'https://lv.isuo.org/koatuu/preschools-list/id/4610100000',
+ },
+ 'Івано-Франківськ': {
+ domain: 'https://if.isuo.org',
+ schools: 'https://if.isuo.org/koatuu/schools-list/id/2610100000',
+ kindergartens: 'https://if.isuo.org/koatuu/preschools-list/id/2610100000',
+ },
+ Чернівці: {
+ domain: 'https://cv.isuo.org',
+ schools: 'https://cv.isuo.org/koatuu/schools-list/id/7310100000',
+ kindergartens: 'https://cv.isuo.org/koatuu/preschools-list/id/7310100000',
+ },
+ Тернопіль: {
+ domain: 'https://te.isuo.org',
+ schools: 'https://te.isuo.org/koatuu/schools-list/id/6110100000',
+ kindergartens: 'https://te.isuo.org/koatuu/preschools-list/id/6110100000',
+ },
+ Ужгород: {
+ domain: 'https://zk.isuo.org',
+ schools: 'https://zk.isuo.org/koatuu/schools-list/id/2110100000',
+ kindergartens: 'https://zk.isuo.org/koatuu/preschools-list/id/2110100000',
+ },
 };
 @Injectable()
 export class ParserService {
@@ -1604,53 +1627,96 @@ export class ParserService {
  try {
  let url = schoolUrl;
  if (!url) {
- const urls = type === 'Садочок'
- ? ['https://lv.isuo.org/koatuu/preschools-list/id/4610100000', 'https://lv.isuo.org/koatuu/preschools-list/id/4610100000/page/2']
- : ['https://lv.isuo.org/authorities/schools-list/id/681', 'https://lv.isuo.org/authorities/schools-list/id/681/page/2'];
- const normalizedSearch = schoolName.toLowerCase().replace(/\s+/g, ' ').trim();
+ const urls =
+ type === 'Садочок'
+ ? [
+ 'https://lv.isuo.org/koatuu/preschools-list/id/4610100000',
+ 'https://lv.isuo.org/koatuu/preschools-list/id/4610100000/page/2',
+ ]
+ : [
+ 'https://lv.isuo.org/authorities/schools-list/id/681',
+ 'https://lv.isuo.org/authorities/schools-list/id/681/page/2',
+ ];
+ const normalizedSearch = schoolName
+ .toLowerCase()
+ .replace(/\s+/g, ' ')
+ .trim();
  for (const searchUrl of urls) {
  const listResponse = await axios.get(searchUrl);
  const $list = cheerio.load(listResponse.data);
  $list('table.zebra-stripe.list tr').each((_, row) => {
- const name = $list(row).find('td:nth-child(2) a').text().replace(/\s+/g, ' ').trim().toLowerCase();
+ const name = $list(row)
+ .find('td:nth-child(2) a')
+ .text()
+ .replace(/\s+/g, ' ')
+ .trim()
+ .toLowerCase();
  if (name.includes(normalizedSearch)) {
  const href = $list(row).find('td:nth-child(2) a').attr('href');
- if (href) { url = `https://lv.isuo.org${href}`; return false; }
+ if (href) {
+ url = `https://lv.isuo.org${href}`;
+ return false;
+ }
  }
  });
  if (url) break;
  }
  }
- if (!url) { console.log(`Заклад не знайдено: ${schoolName}`); return null; }
+ if (!url) {
+ console.log(`Заклад не знайдено: ${schoolName}`);
+ return null;
+ }
  const response = await axios.get(url);
  const $ = cheerio.load(response.data);
  const getField = (labels: string[]): string => {
  let result = '';
  for (const label of labels) {
- const th = $('th').filter((_, el) => $(el).text().trim().includes(label)).first();
- if (th.length) { result = th.next('td').text().trim(); break; }
+ const th = $('th')
+ .filter((_, el) => $(el).text().trim().includes(label))
+ .first();
+ if (th.length) {
+ result = th.next('td').text().trim();
+ break;
+ }
  }
  return result;
  };
  const address = getField(['Поштова адреса', 'Адреса']);
  const director = getField(['Директор', 'Завідувач', 'Керівник']);
- const studentsRaw = getField(['Кількість учнів', 'Кількість дітей', 'Кількість вихованців']);
- const childrenCount = parseInt(studentsRaw.replace(/[^\d]/g, ''), 10) || 0;
+ const studentsRaw = getField([
+ 'Кількість учнів',
+ 'Кількість дітей',
+ 'Кількість вихованців',
+ ]);
+ const childrenCount =
+ parseInt(studentsRaw.replace(/[^\d]/g, ''), 10) || 0;
  return { address, director, childrenCount };
  } catch (error) {
  console.error('Помилка парсингу закладу:', error);
  return null;
  }
  }
- async searchSchools(query: string, type?: string): Promise<{ name: string; url: string }[]> {
+ async searchSchools(
+ query: string,
+ type?: string,
+ ): Promise<{ name: string; url: string }[]> {
  try {
- const urls = type === 'Садочок'
- ? ['https://lv.isuo.org/koatuu/preschools-list/id/4610100000', 'https://lv.isuo.org/koatuu/preschools-list/id/4610100000/page/2']
- : ['https://lv.isuo.org/authorities/schools-list/id/681', 'https://lv.isuo.org/authorities/schools-list/id/681/page/2'];
+ const urls =
+ type === 'Садочок'
+ ? [
+ 'https://lv.isuo.org/koatuu/preschools-list/id/4610100000',
+ 'https://lv.isuo.org/koatuu/preschools-list/id/4610100000/page/2',
+ ]
+ : [
+ 'https://lv.isuo.org/authorities/schools-list/id/681',
+ 'https://lv.isuo.org/authorities/schools-list/id/681/page/2',
+ ];
  const results: { name: string; url: string }[] = [];
  const normalizedQuery = query.toLowerCase().replace(/\s+/g, ' ').trim();
  const isNumericQuery = /^\d+$/.test(normalizedQuery);
- const numericRegex = isNumericQuery ? new RegExp(`(?<!\d)${normalizedQuery}(?!\d)`) : null;
+ const numericRegex = isNumericQuery
+ ? new RegExp(`(?<!\d)${normalizedQuery}(?!\d)`)
+ : null;
  for (const url of urls) {
  const response = await axios.get(url);
  const $ = cheerio.load(response.data);
@@ -1661,9 +1727,13 @@ export class ParserService {
  if (name && href) {
  const lowerName = name.toLowerCase();
  let matches = false;
- if (isNumericQuery && numericRegex) { matches = numericRegex.test(lowerName); }
- else { matches = lowerName.includes(normalizedQuery); }
- if (matches) results.push({ name, url: `https://lv.isuo.org${href}` });
+ if (isNumericQuery && numericRegex) {
+ matches = numericRegex.test(lowerName);
+ } else {
+ matches = lowerName.includes(normalizedQuery);
+ }
+ if (matches)
+ results.push({ name, url: `https://lv.isuo.org${href}` });
  }
  });
  }
@@ -1674,7 +1744,10 @@ export class ParserService {
  }
  }
  // Отримати всі школи/садочки конкретного міста з isuo.org
- async getAllSchoolsForCity(cityName: string, type: 'Школа' | 'Садочок' = 'Школа'): Promise<{ name: string; url: string }[]> {
+ async getAllSchoolsForCity(
+ cityName: string,
+ type: 'Школа' | 'Садочок' = 'Школа',
+ ): Promise<{ name: string; url: string }[]> {
  const config = CITY_CONFIG[cityName];
  if (!config) {
  console.log(`Місто "${cityName}" не підтримується для імпорту`);
@@ -1682,31 +1755,36 @@ export class ParserService {
  }
  const baseUrl = type === 'Садочок' ? config.kindergartens : config.schools;
  const domain = config.domain;
- const results: { name: string; url: string }[] = [];
+ // Використовуємо Map для зберігання об'єктів { name, url }
+ const resultsMap = new Map<string, { name: string; url: string }>();
  for (let page = 1; page <= 20; page++) {
  const url = page === 1 ? baseUrl : `${baseUrl}/page/${page}`;
  try {
  const response = await axios.get(url, { timeout: 15000 });
  const $ = cheerio.load(response.data);
- let found = 0;
+ let foundOnPage = 0;
  $('table.zebra-stripe.list tr').each((_, row) => {
- const name = $(row).find('td:nth-child(2) a').text().replace(/\s+/g, ' ').trim();
+ const name = $(row)
+ .find('td:nth-child(2) a')
+ .text()
+ .replace(/\s+/g, ' ')
+ .trim();
  const href = $(row).find('td:nth-child(2) a').attr('href');
- // Пропускаємо записи "Fullname" — це тестові дані isuo
  if (name && href && name !== 'Fullname') {
- results.push({ name, url: `${domain}${href}` });
- found++;
+ // Нормалізація для перевірки дублів
+ const normalizedKey = name.toLowerCase().replace(/\s+/g, '');
+ if (!resultsMap.has(normalizedKey)) {
+ resultsMap.set(normalizedKey, { name, url: `${domain}${href}` });
+ foundOnPage++;
+ }
  }
  });
- if (found === 0) break;
+ if (foundOnPage === 0) break;
  } catch {
  break;
  }
  }
- return results;
- }
- getSupportedCities(): string[] {
- return Object.keys(CITY_CONFIG);
+ return Array.from(resultsMap.values());
  }
 }</file>
 <file path="apps\backend\src\schools\school-contacts.seed.ts">import { PrismaClient } from '@prisma/client';
@@ -2207,10 +2285,15 @@ export class SchoolsService {
  where: { cityId, type },
  select: { name: true },
  });
- // 3. Створюємо Set нормалізованих назв для швидкої перевірки
- // Допоміжна функція для "чистки" назви
+ // 3. Покращена функція нормалізації
+ // Видаляє всі пробіли, символи №, лапки та переводить у нижній регістр
  const normalize = (name: string) =>
- name.toLowerCase().replace(/[^a-zа-яіїєґ0-9]/g, '');
+ name
+ .toLowerCase()
+ .replace(/№/g, '')
+ .replace(/["'«»]/g, '')
+ .replace(/\s+/g, '')
+ .trim();
  const existingNames = new Set(
  existingSchools.map((s) => normalize(s.name)),
  );
@@ -2225,13 +2308,16 @@ export class SchoolsService {
  skipped: allFromParser.length,
  };
  }
- // 5. Отримуємо контакти
+ // 5. Отримуємо контакти для автозаповнення
  const contacts = await this.prisma.schoolContact.findMany({
  where: { city: city.name },
  });
  let created = 0;
  for (const school of toCreate) {
- // Шукаємо номер школи для автозаповнення директора
+ // Перевірка ще раз на випадок дублів всередині самого парсингу
+ if (existingNames.has(normalize(school.name))) continue;
+ // Додаємо в Set, щоб уникнути дублів у межах одного циклу імпорту
+ existingNames.add(normalize(school.name));
  const numMatch = school.name.match(/№?\s*(\d+)/);
  const num = numMatch?.[1];
  const matchedContacts = num
@@ -2817,6 +2903,229 @@ export default function AddressLink({ address, className }: AddressLinkProps) {
  {address}
  </span>
  </a>
+ );
+}</file>
+<file path="apps\frontend\src\components\cities\CityDesktopGrid.tsx">import { useNavigate } from "react-router-dom";
+const CITY_PHOTOS: Record<string, string> = {
+ Львів: "https://gohotels.com.ua/images/stories/f08072159a443e07501f3df97987f8a3.jpg",
+ Київ: "https://images.unsplash.com/photo-1630651814316-fe71f3c30279?w=600&q=80&auto=format",
+ Харків: "https://images.unsplash.com/photo-1584646098378-0f87b72cffe1?w=600&q=80&auto=format",
+ Одеса: "https://images.unsplash.com/photo-1585168050053-a4ba02e3f0d2?w=600&q=80&auto=format",
+ Дніпро: "https://images.unsplash.com/photo-1570587953042-a65fd17e2f73?w=600&q=80&auto=format",
+};
+const DEFAULT_PHOTO = "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80&auto=format";
+export default function CityDesktopGrid({ cities, selectedCity, onSelectCity }: any) {
+ const navigate = useNavigate();
+ return (
+ <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+ {cities.map((city: any) => {
+ const isSelected = selectedCity?.id === city.id;
+ return (
+ <div
+ key={city.id}
+ className={`bg-white rounded-2xl shadow-sm border transition-all overflow-hidden group ${
+ isSelected ? "border-blue-500 ring-4 ring-blue-500/20 shadow-md" : "border-slate-100 hover:shadow-lg hover:border-blue-200"
+ }`}
+ >
+ <div className="h-44 overflow-hidden relative">
+ <img
+ src={CITY_PHOTOS[city.name] || DEFAULT_PHOTO}
+ alt={city.name}
+ className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+ onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PHOTO; }}
+ />
+ <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+ {isSelected && (
+ <div className="absolute top-3 right-3 bg-blue-500 text-white p-1.5 rounded-full shadow-lg">
+ <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+ <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+ </svg>
+ </div>
+ )}
+ </div>
+ <div className="p-5">
+ <div className="flex items-center justify-between mb-3">
+ <h2 className="text-xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{city.name}</h2>
+ <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-100">Активне</span>
+ </div>
+ <div className="flex items-center gap-2 mb-4 text-sm text-slate-600">
+ <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold shrink-0">
+ {city.manager?.name?.charAt(0) ?? "?"}
+ </div>
+ <span>Менеджер: <span className="font-medium">{city.manager?.name ?? "—"}</span></span>
+ </div>
+ <div className="space-y-2 text-sm border-t border-slate-50 pt-3">
+ <div className="flex justify-between text-slate-500">
+ <span>Заплановано подій:</span>
+ <span className="font-semibold text-slate-800">{city.plannedEvents ?? 0}</span>
+ </div>
+ </div>
+ <div className="flex gap-2 mt-4 pt-3 border-t border-slate-50">
+ <button
+ onClick={() => onSelectCity({ id: city.id, name: city.name })}
+ className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors ${
+ isSelected ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-blue-600 hover:bg-blue-700 text-white"
+ }`}
+ >
+ {isSelected ? "Обрано" : "✓ Вибрати"}
+ </button>
+ <button
+ onClick={() => navigate(`/cities/${city.id}`)}
+ className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm rounded-lg transition-colors"
+ >
+ →
+ </button>
+ </div>
+ </div>
+ </div>
+ );
+ })}
+ </div>
+ );
+}</file>
+<file path="apps\frontend\src\components\cities\CityMobileHeader.tsx">import { useNavigate } from "react-router-dom";
+interface Props {
+ selectedCity: any;
+}
+export default function CityMobileHeader({ selectedCity }: Props) {
+ const navigate = useNavigate();
+ return (
+ <div className="md:hidden flex flex-col gap-4 mb-4">
+ {/* Сповіщення про проблему */}
+ <div className="bg-[#FFF4F4] border border-red-100 rounded-2xl p-4 flex items-center gap-4">
+ <div className="w-10 h-10 bg-red-100 text-red-500 rounded-full flex items-center justify-center shrink-0 text-xl shadow-sm">
+ 🔔
+ </div>
+ <div className="flex-1 min-w-0">
+ <p className="font-bold text-slate-800 text-sm">1 активна проблема</p>
+ <p className="text-xs text-slate-600 truncate mt-0.5">Початкова приватна школа "Альфа"</p>
+ <p className="text-[10px] text-slate-400 mt-1">27.06.2026</p>
+ </div>
+ <button className="text-slate-400 hover:text-slate-600 text-xl font-light">›</button>
+ </div>
+ {/* Поточне місто */}
+ {selectedCity?.id && (
+ <div className="bg-white border border-blue-50 rounded-2xl p-4 shadow-sm">
+ <div className="flex justify-between items-center mb-4">
+ <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Поточне місто</span>
+ <span className="bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5">
+ ✓ Активне місто
+ </span>
+ </div>
+ <div className="flex items-center gap-3 mb-4">
+ <div className="w-10 h-10 bg-blue-50 text-blue-600 flex items-center justify-center rounded-full text-lg">📍</div>
+ <h2 className="text-2xl font-bold text-slate-800">{selectedCity.name}</h2>
+ </div>
+ <div className="flex items-center justify-between text-xs font-medium gap-2">
+ <div className="flex items-center gap-1.5 text-slate-600 bg-slate-50 px-2.5 py-2 rounded-xl">
+ <span className="text-blue-500 text-sm">📅</span> 4 події сьогодні
+ </div>
+ <div className="flex items-center gap-1.5 text-slate-600 bg-slate-50 px-2.5 py-2 rounded-xl">
+ <span className="text-blue-500 text-sm">🏫</span> 28 шкіл
+ </div>
+ <div className="flex items-center gap-1.5 text-rose-600 bg-rose-50 px-2.5 py-2 rounded-xl">
+ <span className="text-sm">⚠️</span> 1 проблема
+ </div>
+ <button 
+ onClick={() => navigate(`/cities/${selectedCity.id}`)} 
+ className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-blue-600 shadow-sm shrink-0"
+ >
+ →
+ </button>
+ </div>
+ </div>
+ )}
+ </div>
+ );
+}</file>
+<file path="apps\frontend\src\components\cities\CityMobileList.tsx">import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+const ICON_COLORS = [
+ "bg-purple-50 text-purple-600",
+ "bg-amber-50 text-amber-600",
+ "bg-teal-50 text-teal-600",
+ "bg-rose-50 text-rose-600",
+ "bg-sky-50 text-sky-600",
+];
+export default function CityMobileList({ cities, selectedCity, onSelectCity }: any) {
+ const navigate = useNavigate();
+ const [searchQuery, setSearchQuery] = useState("");
+ const [activeTab, setActiveTab] = useState<"ACTIVE" | "ALL" | "ARCHIVED">("ACTIVE");
+ const filteredCities = useMemo(() => {
+ return cities.filter((c: any) => {
+ if (searchQuery && !c.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+ const hasEvents = (c.plannedEvents || 0) + (c.completedEvents || 0) > 0;
+ if (activeTab === "ACTIVE") return hasEvents;
+ if (activeTab === "ARCHIVED") return false; 
+ return true; 
+ });
+ }, [cities, searchQuery, activeTab]);
+ return (
+ <div className="md:hidden flex flex-col gap-4 mb-24">
+ {/* Пошук */}
+ <div className="flex gap-2 items-center">
+ <div className="relative flex-1">
+ <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+ <input 
+ type="text" 
+ placeholder="Пошук міста..." 
+ value={searchQuery}
+ onChange={(e) => setSearchQuery(e.target.value)}
+ className="w-full bg-slate-100 border-none rounded-2xl py-3.5 pl-11 pr-4 text-sm focus:ring-2 focus:ring-blue-500 font-medium" 
+ />
+ </div>
+ <button className="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center shrink-0 shadow-sm text-xl">
+ <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-600"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+ </button>
+ </div>
+ {/* Вкладки */}
+ <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+ {['Активні', 'Усі', 'Архівні'].map(tab => {
+ const tabKey = tab === 'Активні' ? 'ACTIVE' : tab === 'Усі' ? 'ALL' : 'ARCHIVED';
+ const isActive = activeTab === tabKey;
+ return (
+ <button 
+ key={tab} 
+ onClick={() => setActiveTab(tabKey)}
+ className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors flex items-center gap-1.5 ${isActive ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-100 text-slate-500'}`}
+ >
+ {isActive && <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>}
+ {tab}
+ </button>
+ )
+ })}
+ </div>
+ {/* Список */}
+ <div className="flex flex-col bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
+ {filteredCities.map((city: any, index: number) => {
+ const iconStyle = ICON_COLORS[index % ICON_COLORS.length];
+ return (
+ <div 
+ key={city.id} 
+ onClick={() => onSelectCity({ id: city.id, name: city.name })}
+ className="flex items-center p-4 border-b border-slate-50 active:bg-slate-50 transition-colors"
+ >
+ <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 text-xl shrink-0 ${iconStyle}`}>
+ 🏛️
+ </div>
+ <div className="flex-1 min-w-0">
+ <p className="font-bold text-slate-800 text-base">{city.name}</p>
+ <p className="text-xs font-medium text-slate-400 mt-0.5">
+ {city.plannedEvents || 0} подій • {city.schoolsCount || 3} школи
+ </p>
+ </div>
+ <button 
+ onClick={(e) => { e.stopPropagation(); navigate(`/cities/${city.id}`); }} 
+ className="p-3 text-slate-400 text-xl font-light"
+ >
+ ›
+ </button>
+ </div>
+ )
+ })}
+ {filteredCities.length === 0 && <div className="p-8 text-center text-slate-400">Міст не знайдено</div>}
+ </div>
+ </div>
  );
 }</file>
 <file path="apps\frontend\src\components\city-profile\CityAnalytics.tsx">import { useMemo, useState } from 'react';
@@ -5484,73 +5793,18 @@ export default function CalendarView() {
  );
 }</file>
 <file path="apps\frontend\src\pages\Cities.tsx">import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { useSelectedCity } from "../context/CityContext";
-import IssueCarousel from "../components/IssueCarousel";
 import { api } from "../config/api";
-// Фото для міст за назвою (Unsplash)
-// Оновлюємо посилання, додаючи &auto=format для автоматичного WebP
-const CITY_PHOTOS: Record<string, string> = {
- Львів: "https://gohotels.com.ua/images/stories/f08072159a443e07501f3df97987f8a3.jpg",
- Київ: "https://images.unsplash.com/photo-1630651814316-fe71f3c30279?w=600&q=80&auto=format",
- Харків: "https://images.unsplash.com/photo-1584646098378-0f87b72cffe1?w=600&q=80&auto=format",
- Одеса: "https://images.unsplash.com/photo-1585168050053-a4ba02e3f0d2?w=600&q=80&auto=format",
- Дніпро: "https://images.unsplash.com/photo-1570587953042-a65fd17e2f73?w=600&q=80&auto=format",
- Запоріжжя: "https://images.unsplash.com/photo-1549887534-1541e9326642?w=600&q=80&auto=format",
- Вінниця: "https://images.unsplash.com/photo-1591389703635-e15a07b842d7?w=600&q=80&auto=format",
- "Івано-Франківськ": "https://images.unsplash.com/photo-1605723517503-3cadb5818a0c?w=600&q=80&auto=format",
- Тернопіль: "https://images.unsplash.com/photo-1564760290292-23341e4df6ec?w=600&q=80&auto=format",
- Луцьк: "https://images.unsplash.com/photo-1587974928442-77dc3e0dba72?w=600&q=80&auto=format",
- Рівне: "https://images.unsplash.com/photo-1518684079-3c830dcef090?w=600&q=80&auto=format",
- Хмельницький: "https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=600&q=80&auto=format",
- Чернівці: "https://images.unsplash.com/photo-1562619371-b67725b6fde2?w=600&q=80&auto=format",
- Ужгород: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80&auto=format",
-};
-const DEFAULT_PHOTO = "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80&auto=format";
-interface City {
- id: string;
- name: string;
- manager?: { name: string; phone: string } | null;
- plannedEvents?: number;
- completedEvents?: number;
-}
-// Компонент скелетону для картки міста
-const CitySkeleton = () => {
- return (
- <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden animate-pulse">
- <div className="h-44 bg-slate-200/60 w-full"></div>
- <div className="p-5 flex flex-col gap-3">
- <div className="flex justify-between items-start mb-1">
- <div className="h-7 bg-slate-200/60 rounded-md w-1/2"></div>
- <div className="h-6 bg-slate-200/60 rounded-full w-1/3"></div>
- </div>
- <div className="h-4 bg-slate-200/60 rounded-md w-2/3 mb-2"></div>
- <div className="w-full h-px bg-slate-50 mt-1 mb-1"></div>
- <div className="grid grid-cols-2 gap-4">
- <div>
- <div className="h-3 bg-slate-200/60 rounded w-3/4 mb-2"></div>
- <div className="h-5 bg-slate-200/60 rounded w-1/4"></div>
- </div>
- <div>
- <div className="h-3 bg-slate-200/60 rounded w-3/4 mb-2"></div>
- <div className="h-5 bg-slate-200/60 rounded w-1/4"></div>
- </div>
- </div>
- <div className="flex gap-2 mt-4 pt-3 border-t border-slate-50">
- <div className="h-9 bg-slate-200/60 rounded-lg flex-1"></div>
- <div className="h-9 w-10 bg-slate-200/60 rounded-lg shrink-0"></div>
- </div>
- </div>
- </div>
- );
-};
+import IssueCarousel from "../components/IssueCarousel";
+import CityMobileHeader from "../components/cities/CityMobileHeader";
+import CityMobileList from "../components/cities/CityMobileList";
+import CityDesktopGrid from "../components/cities/CityDesktopGrid";
 export default function Cities() {
- const navigate = useNavigate();
- const [cities, setCities] = useState<City[]>([]);
+ const [cities, setCities] = useState([]);
  const [isModalOpen, setIsModalOpen] = useState(false);
  const [newCityName, setNewCityName] = useState("");
- const [isLoading, setIsLoading] = useState(false); // Для модалки
- const [isFetching, setIsFetching] = useState(true); // Для завантаження міст
+ const [isLoading, setIsLoading] = useState(false);
+ const [isFetching, setIsFetching] = useState(true);
  const { selectedCity, setSelectedCity } = useSelectedCity();
  const fetchCities = async () => {
  setIsFetching(true);
@@ -5563,9 +5817,7 @@ export default function Cities() {
  setIsFetching(false);
  }
  };
- useEffect(() => {
- fetchCities();
- }, []);
+ useEffect(() => { fetchCities(); }, []);
  const handleAddCity = async (e: React.FormEvent) => {
  e.preventDefault();
  if (!newCityName.trim()) return;
@@ -5576,178 +5828,62 @@ export default function Cities() {
  setIsModalOpen(false);
  fetchCities();
  } catch (error) {
- console.error("Помилка при створенні міста:", error);
  alert("Не вдалося створити місто");
  } finally {
  setIsLoading(false);
  }
  };
  return (
- <div className="p-4 md:p-8 relative h-full">
- <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
+ <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+ {/* Шапка для ПК */}
+ <div className="hidden md:flex justify-between items-center mb-8">
  <h1 className="text-3xl font-bold text-slate-800">Міста</h1>
  <button
  onClick={() => setIsModalOpen(true)}
- className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center w-full sm:w-auto"
+ className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm flex items-center"
  >
  <span className="mr-2">+</span> Додати місто
  </button>
  </div>
+ {isFetching ? (
+ <div className="text-center text-slate-400 py-10">Завантаження міст...</div>
+ ) : (
+ <>
+ {/* 1. Блок для Мобільних (Шапка + Список) */}
+ <div className="md:hidden">
+ <CityMobileHeader selectedCity={selectedCity} />
+ <CityMobileList cities={cities} selectedCity={selectedCity} onSelectCity={setSelectedCity} />
+ </div>
+ {/* 2. Блок для Десктопів (Карусель + Сітка) */}
+ <div className="hidden md:block">
  <IssueCarousel />
- <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
- {isFetching
- ? // Показуємо 6 скелетонів, щоб сітка виглядала заповненою одразу
- Array.from({ length: 6 }).map((_, index) => (
- <CitySkeleton key={index} />
- ))
- : cities.map((city) => {
- const isSelected = selectedCity?.id === city.id;
- return (
- <div
- key={city.id}
- className={`bg-white rounded-2xl shadow-sm border transition-all overflow-hidden group ${
- isSelected
- ? "border-blue-500 ring-4 ring-blue-500/20 shadow-md"
- : "border-slate-100 hover:shadow-lg hover:border-blue-200"
- }`}
- >
- {/* Контейнер має фіксовану висоту h-44, 
- img має width/height full для заповнення */}
- <div className="h-44 overflow-hidden relative">
- <img
- src={CITY_PHOTOS[city.name] || DEFAULT_PHOTO}
- alt={city.name}
- width="400"
- height="176"
- className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
- onError={(e) => {
- (e.target as HTMLImageElement).src = DEFAULT_PHOTO;
- }}
- />
- <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
- {isSelected && (
- <div className="absolute top-3 right-3 bg-blue-500 text-white p-1.5 rounded-full shadow-lg">
- <svg
- className="w-5 h-5"
- fill="none"
- stroke="currentColor"
- viewBox="0 0 24 24"
- >
- <path
- strokeLinecap="round"
- strokeLinejoin="round"
- strokeWidth={3}
- d="M5 13l4 4L19 7"
- />
- </svg>
+ <CityDesktopGrid cities={cities} selectedCity={selectedCity} onSelectCity={setSelectedCity} />
  </div>
+ </>
  )}
- </div>
- {/* ... далі йде решта твого коду (p-5, контент картки) ... */}
- <div className="p-5">
- <div className="flex items-center justify-between mb-3">
- <h2 className="text-xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
- {city.name}
- </h2>
- <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-100">
- Активне місто
- </span>
- </div>
- <div className="flex items-center gap-2 mb-4 text-sm text-slate-600">
- <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold shrink-0">
- {city.manager?.name?.charAt(0) ?? "?"}
- </div>
- <span>
- <span className="text-slate-400">Менеджер: </span>
- <span className="font-medium">
- {city.manager?.name ?? "—"}
- </span>
- </span>
- </div>
- <div className="space-y-2 text-sm border-t border-slate-50 pt-3">
- <div className="flex justify-between text-slate-500">
- <span>Заплановано подій:</span>
- <span className="font-semibold text-slate-800">
- {city.plannedEvents ?? 0}
- </span>
- </div>
- <div className="flex justify-between text-slate-500">
- <span>Проведено подій:</span>
- <span className="font-semibold text-slate-800">
- {city.completedEvents ?? 0}
- </span>
- </div>
- </div>
- <div className="flex gap-2 mt-4 pt-3 border-t border-slate-50">
- <button
- onClick={() => {
- setSelectedCity({ id: city.id, name: city.name });
- }}
- className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors ${
- isSelected
- ? "bg-blue-50 text-blue-700 border border-blue-200"
- : "bg-blue-600 hover:bg-blue-700 text-white"
- }`}
+ {/* Мобільна плаваюча кнопка FAB */}
+ <button 
+ onClick={() => setIsModalOpen(true)} 
+ className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40"
  >
- {isSelected ? "Обрано" : "✓ Вибрати місто"}
+ +
  </button>
- <button
- onClick={() => navigate(`/cities/${city.id}`)}
- className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm rounded-lg transition-colors"
- title="Детальніше"
- >
- →
- </button>
- </div>
- </div>
- </div>
- );
- })}
- {/* Якщо завантажили і масив порожній */}
- {!isFetching && cities.length === 0 && (
- <div className="col-span-full text-center py-10 text-slate-500">
- Міст ще немає. Натисни "+ Додати місто", щоб створити перше!
- </div>
- )}
- </div>
+ {/* Модалка додавання (спільна) */}
  {isModalOpen && (
  <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
  <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden">
- <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
- <div className="p-5 sm:p-6 border-b border-slate-100">
+ <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
  <h3 className="text-xl font-bold text-slate-800">Нове місто</h3>
+ <button onClick={() => setIsModalOpen(false)} className="text-slate-400">✕</button>
  </div>
- <form onSubmit={handleAddCity} className="p-5 sm:p-6">
- <div className="mb-6">
- <label className="block text-sm font-medium text-slate-700 mb-2">
- Назва міста
- </label>
+ <form onSubmit={handleAddCity} className="p-6">
  <input
- type="text"
- value={newCityName}
- onChange={(e) => setNewCityName(e.target.value)}
- placeholder="Наприклад: Львів"
- className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
- autoFocus
- required
+ type="text" value={newCityName} onChange={(e) => setNewCityName(e.target.value)}
+ placeholder="Наприклад: Львів" className="w-full p-3 mb-4 border border-slate-200 rounded-xl" autoFocus required
  />
- </div>
- <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pb-1 sm:pb-0">
- <button
- type="button"
- onClick={() => setIsModalOpen(false)}
- className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 font-medium hover:bg-slate-50 bg-slate-100 sm:bg-transparent rounded-xl transition-colors"
- >
- Скасувати
- </button>
- <button
- type="submit"
- disabled={isLoading}
- className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 sm:py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50"
- >
+ <button type="submit" disabled={isLoading} className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium">
  {isLoading ? "Збереження..." : "Зберегти"}
  </button>
- </div>
  </form>
  </div>
  </div>
@@ -8794,7 +8930,7 @@ export default function Schools() {
  }
  if (
  !window.confirm(
- `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}? Це може зайняти 1-2 хвилини.`,
+ ` Наразі імпорт доступний для наступних міст:Львів, Івано-Франківськ, Чернівці, Тернопіль, Ужгород Імпортувати всі школи з isuo.org для міста ${selectedCity.name}? Це може зайняти 1-2 хвилини.`,
  )
  )
  return;

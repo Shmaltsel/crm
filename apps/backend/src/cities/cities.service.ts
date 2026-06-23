@@ -12,7 +12,7 @@ export class CitiesService {
   }
 
   async findAll() {
-    // 1. Отримуємо міста та їхніх менеджерів БЕЗ вкладених масивів подій
+    // 1. Отримуємо міста та їхніх менеджерів + кількість шкіл
     const cities = await this.prisma.city.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
@@ -21,6 +21,7 @@ export class CitiesService {
           select: { id: true, name: true, phone: true },
           take: 1,
         },
+        _count: { select: { schools: true } }, // <-- Додано цей рядок для підрахунку
       },
     });
 
@@ -48,10 +49,10 @@ export class CitiesService {
         manager: city.users[0] || null,
         plannedEvents,
         completedEvents,
+        schoolsCount: city._count.schools, // <-- Віддаємо на фронтенд
       };
     });
   }
-
   async createCrew(
     cityId: string,
     data: { name: string; hostId: string; driverId: string },

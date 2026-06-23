@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSelectedCity } from "../context/CityContext";
 import { api } from "../config/api";
+
 import IssueCarousel from "../components/IssueCarousel";
 import CityMobileHeader from "../components/cities/CityMobileHeader";
 import CityMobileList from "../components/cities/CityMobileList";
@@ -64,7 +65,7 @@ export default function Cities() {
         <>
           {/* 1. Блок для Мобільних (Шапка + Список) */}
           <div className="md:hidden">
-            <CityMobileHeader selectedCity={selectedCity} />
+            <CityMobileHeader selectedCity={selectedCity} cities={cities} />
             <CityMobileList cities={cities} selectedCity={selectedCity} onSelectCity={setSelectedCity} />
           </div>
 
