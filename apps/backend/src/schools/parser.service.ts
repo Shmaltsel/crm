@@ -158,47 +158,54 @@ export class ParserService {
   }
 
   // Отримати всі школи/садочки конкретного міста з isuo.org
-  async getAllSchoolsForCity(cityName: string, type: 'Школа' | 'Садочок' = 'Школа'): Promise<{ name: string; url: string }[]> {
-  const config = CITY_CONFIG[cityName];
-  if (!config) {
-    console.log(`Місто "${cityName}" не підтримується для імпорту`);
-    return [];
-  }
-
-  const baseUrl = type === 'Садочок' ? config.kindergartens : config.schools;
-  const domain = config.domain;
-  
-  // Використовуємо Map для зберігання об'єктів { name, url }
-  const resultsMap = new Map<string, { name: string; url: string }>();
-
-  for (let page = 1; page <= 20; page++) {
-    const url = page === 1 ? baseUrl : `${baseUrl}/page/${page}`;
-    try {
-      const response = await axios.get(url, { timeout: 15000 });
-      const $ = cheerio.load(response.data);
-      let foundOnPage = 0;
-
-      $('table.zebra-stripe.list tr').each((_, row) => {
-        const name = $(row).find('td:nth-child(2) a').text().replace(/\s+/g, ' ').trim();
-        const href = $(row).find('td:nth-child(2) a').attr('href');
-        
-        if (name && href && name !== 'Fullname') {
-          // Нормалізація для перевірки дублів
-          const normalizedKey = name.toLowerCase().replace(/\s+/g, '');
-          
-          if (!resultsMap.has(normalizedKey)) {
-            resultsMap.set(normalizedKey, { name, url: `${domain}${href}` });
-            foundOnPage++;
-          }
-        }
-      });
-      
-      if (foundOnPage === 0) break;
-    } catch {
-      break;
+  async getAllSchoolsForCity(
+    cityName: string,
+    type: 'Школа' | 'Садочок' = 'Школа',
+  ): Promise<{ name: string; url: string }[]> {
+    const config = CITY_CONFIG[cityName];
+    if (!config) {
+      console.log(`Місто "${cityName}" не підтримується для імпорту`);
+      return [];
     }
-  }
 
-  return Array.from(resultsMap.values());
-}
+    const baseUrl = type === 'Садочок' ? config.kindergartens : config.schools;
+    const domain = config.domain;
+
+    // Використовуємо Map для зберігання об'єктів { name, url }
+    const resultsMap = new Map<string, { name: string; url: string }>();
+
+    for (let page = 1; page <= 20; page++) {
+      const url = page === 1 ? baseUrl : `${baseUrl}/page/${page}`;
+      try {
+        const response = await axios.get(url, { timeout: 15000 });
+        const $ = cheerio.load(response.data);
+        let foundOnPage = 0;
+
+        $('table.zebra-stripe.list tr').each((_, row) => {
+          const name = $(row)
+            .find('td:nth-child(2) a')
+            .text()
+            .replace(/\s+/g, ' ')
+            .trim();
+          const href = $(row).find('td:nth-child(2) a').attr('href');
+
+          if (name && href && name !== 'Fullname') {
+            // Нормалізація для перевірки дублів
+            const normalizedKey = name.toLowerCase().replace(/\s+/g, '');
+
+            if (!resultsMap.has(normalizedKey)) {
+              resultsMap.set(normalizedKey, { name, url: `${domain}${href}` });
+              foundOnPage++;
+            }
+          }
+        });
+
+        if (foundOnPage === 0) break;
+      } catch {
+        break;
+      }
+    }
+
+    return Array.from(resultsMap.values());
+  }
 }
