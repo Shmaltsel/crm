@@ -136,7 +136,12 @@ export default function SchoolProfile() {
       : "Немає даних";
 
   const handlePipelineClick = (stepId: number) => {
-    console.log('click', stepId, currentStageIndex, PIPELINE_STAGES[currentStageIndex + 1]);
+    console.log(
+      "click",
+      stepId,
+      currentStageIndex,
+      PIPELINE_STAGES[currentStageIndex + 1],
+    );
     if (!currentEvent) return;
 
     const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
@@ -442,12 +447,14 @@ export default function SchoolProfile() {
               : "opacity-100 scale-100 translate-y-0"
           }`}
         >
-          <Pipeline
-            currentStageIndex={currentStageIndex}
-            currentEvent={currentEvent}
-            onPipelineClick={handlePipelineClick}
-            stages={PIPELINE_STAGES}
-          />
+          {currentEvent && (
+            <Pipeline
+              currentStageIndex={currentStageIndex}
+              currentEvent={currentEvent}
+              onPipelineClick={handlePipelineClick}
+              stages={PIPELINE_STAGES}
+            />
+          )}
 
           {currentEvent && currentStageIndex >= 4 && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
