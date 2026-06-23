@@ -136,6 +136,7 @@ export default function SchoolProfile() {
       : "Немає даних";
 
   const handlePipelineClick = (stepId: number) => {
+    console.log('click', stepId, currentStageIndex, PIPELINE_STAGES[currentStageIndex + 1]);
     if (!currentEvent) return;
 
     const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
