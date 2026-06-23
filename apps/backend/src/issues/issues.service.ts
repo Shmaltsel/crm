@@ -77,7 +77,9 @@ export class IssuesService {
         `🏫 <b>Заклад:</b> ${data.schoolName}\n` +
         `📅 <b>Подія:</b> ${data.eventName}\n\n` +
         `💬 <b>Повідомлення:</b>\n${data.message}` +
-        (crewMembers.length > 0 ? `\n\n👥 <b>Екіпаж:</b>\n${crewMembers.join('\n')}` : '') +
+        (crewMembers.length > 0
+          ? `\n\n👥 <b>Екіпаж:</b>\n${crewMembers.join('\n')}`
+          : '') +
         `\n\n<i>Деталі у CRM: <a href="https://crm-tau-nine.vercel.app">crm-tau-nine.vercel.app</a></i>`;
 
       await this.telegramService.sendMessage(chatId, text);
@@ -88,12 +90,13 @@ export class IssuesService {
 
   async findByCityId(cityId: string) {
     return this.prisma.issueReport.findMany({
-      where: { cityId },
-      include: {
-        event: {
-          include: { school: { select: { name: true } } },
-        },
+      where: {
+        cityId,
+        // Одразу відсікаємо вирішені проблеми на рівні БД, щоб не вантажити мережу
+        status: { not: 'Виконано' },
       },
+      // МИ ПРИБРАЛИ include: { event: ... }, бо schoolName та eventName
+      // вже збережені безпосередньо в моделі IssueReport
       orderBy: { createdAt: 'desc' },
     });
   }

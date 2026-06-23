@@ -12,6 +12,7 @@ export class CitiesService {
   }
 
   async findAll() {
+    // 1. Отримуємо міста та їхніх менеджерів БЕЗ вкладених масивів подій
     const cities = await this.prisma.city.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
@@ -20,21 +21,44 @@ export class CitiesService {
           select: { id: true, name: true, phone: true },
           take: 1,
         },
-        events: {
-          select: { id: true, status: true },
-        },
       },
     });
 
-    return cities.map((city) => ({
-      ...city,
-      manager: city.users[0] || null,
-      plannedEvents: city.events.filter((e) => e.status !== 'RE_SALE').length,
-      completedEvents: city.events.filter((e) => e.status === 'RE_SALE').length,
-    }));
+    // 2. Рахуємо події через швидке агрегування (SQL GROUP BY) за мілісекунди
+    const eventsStats = await this.prisma.event.groupBy({
+      by: ['cityId', 'status'],
+      _count: { _all: true },
+    });
+
+    // 3. Формуємо результат для клієнта
+    return cities.map((city) => {
+      // Вибираємо статистику лише для поточного міста
+      const cityStats = eventsStats.filter((stat) => stat.cityId === city.id);
+
+      const completedEvents = cityStats
+        .filter((s) => s.status === 'RE_SALE')
+        .reduce((sum, s) => sum + s._count._all, 0);
+
+      const plannedEvents = cityStats
+        .filter((s) => s.status !== 'RE_SALE')
+        .reduce((sum, s) => sum + s._count._all, 0);
+
+      return {
+        ...city,
+        manager: city.users[0] || null,
+        plannedEvents,
+        completedEvents,
+      };
+    });
   }
-  async createCrew(cityId: string, data: { name: string; hostId: string; driverId: string }) {
-    const driver = await this.prisma.user.findUnique({ where: { id: data.driverId } });
+
+  async createCrew(
+    cityId: string,
+    data: { name: string; hostId: string; driverId: string },
+  ) {
+    const driver = await this.prisma.user.findUnique({
+      where: { id: data.driverId },
+    });
     return this.prisma.crew.create({
       data: {
         cityId,
@@ -56,7 +80,7 @@ export class CitiesService {
     });
     return this.prisma.crew.delete({ where: { id } });
   }
-  
+
   async findOne(id: string) {
     const city = await this.prisma.city.findUnique({
       where: { id },

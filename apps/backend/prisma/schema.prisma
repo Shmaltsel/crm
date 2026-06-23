@@ -24,45 +24,45 @@ enum EventStatus {
 }
 
 model User {
-  id       String  @id @default(uuid())
-  name     String
-  email    String  @unique
-  phone    String?
-  password String
-  role     String  @default("MANAGER")
-  telegramId String?
+  id             String         @id @default(uuid())
+  name           String
+  email          String         @unique
+  phone          String?
+  password       String
+  role           String         @default("MANAGER")
+  telegramId     String?
   telegramChatId String?
-  cityId   String?
-  city     City?   @relation(fields: [cityId], references: [id])
+  cityId         String?
+  city           City?          @relation(fields: [cityId], references: [id])
   car            String?
   // Додаємо зв'язки для екіпажів
-  crewAsHost   Crew[] @relation("HostCrew")
-  crewAsDriver Crew[] @relation("DriverCrew")
+  crewAsHost     Crew[]         @relation("HostCrew")
+  crewAsDriver   Crew[]         @relation("DriverCrew")
 
-  managedCities City[]   @relation("CityManager")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  managedCities  City[]         @relation("CityManager")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 }
 
 model City {
-  id        String   @id @default(uuid())
+  id        String        @id @default(uuid())
   name      String
   managerId String?
-  manager   User?    @relation("CityManager", fields: [managerId], references: [id])
+  manager   User?         @relation("CityManager", fields: [managerId], references: [id])
   users     User[]
   schools   School[]
   crews     Crew[]
   events    Event[]
-  createdAt DateTime @default(now())
+  createdAt DateTime      @default(now())
   issues    IssueReport[]
 }
 
 model School {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   name          String
-  type          String // "Школа" або "Садочок"
+  type          String    // "Школа" або "Садочок"
   cityId        String
-  city          City     @relation(fields: [cityId], references: [id])
+  city          City      @relation(fields: [cityId], references: [id])
   address       String?
   director      String?
   phone         String?
@@ -70,10 +70,13 @@ model School {
   notes         String?
   childrenCount Int?
   events        Event[]
-  isHotClient   Boolean  @default(false)
+  isHotClient   Boolean   @default(false)
   rating        Float?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // ДОДАНО ІНДЕКС
+  @@index([cityId])
 }
 
 model Crew {
@@ -101,7 +104,7 @@ model Event {
   school          School            @relation(fields: [schoolId], references: [id])
   crewId          String?
   crew            Crew?             @relation(fields: [crewId], references: [id])
-  project         String // "Голограма для школи", "360° шоу"
+  project         String            // "Голограма для школи", "360° шоу"
   date            DateTime
   time            String?
   status          EventStatus       @default(BASE)
@@ -113,7 +116,7 @@ model Event {
   address         String?
   contactPerson   String?
   contactPhone    String?
-  equipment       String? // Зберігатимемо масив обладнання як JSON-рядок
+  equipment       String?           // Зберігатимемо масив обладнання як JSON-рядок
   report          EventReport?
   files           File[]
   history         EventHistory[]
@@ -123,13 +126,18 @@ model Event {
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   preparation     EventPreparation?
-  issues    IssueReport[]
+  issues          IssueReport[]
+
+  // ДОДАНО ІНДЕКСИ
+  @@index([cityId])
+  @@index([status])
+  @@index([schoolId])
 }
 
 model EventReport {
-  id      String @id @default(uuid())
-  eventId String @unique
-  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  id                String   @id @default(uuid())
+  eventId           String   @unique
+  event             Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   // Твої існуючі поля
   directorSatisfied Boolean?
@@ -141,16 +149,16 @@ model EventReport {
   createdAt         DateTime @default(now())
 
   // Нові фінансові та статистичні поля
-  announcementDone Boolean @default(false)
-  materialShown    Boolean @default(false)
-  childrenCount    Int     @default(0)
-  classesCount     Int     @default(0)
-  privilegedCount  Int     @default(0)
-  showingsCount    Int     @default(0)
-  totalSum         Float   @default(0)
-  schoolSum        Float   @default(0)
-  expenses         Json    @default("[]") // Список витрат
-  remainderSum     Float   @default(0)
+  announcementDone  Boolean  @default(false)
+  materialShown     Boolean  @default(false)
+  childrenCount     Int      @default(0)
+  classesCount      Int      @default(0)
+  privilegedCount   Int      @default(0)
+  showingsCount     Int      @default(0)
+  totalSum          Float    @default(0)
+  schoolSum         Float    @default(0)
+  expenses          Json     @default("[]") // Список витрат
+  remainderSum      Float    @default(0)
 }
 
 model File {
@@ -170,7 +178,7 @@ model EventHistory {
   eventId   String
   event     Event    @relation(fields: [eventId], references: [id])
   action    String
-  comment   String? // <--- ДОДАЙ ЦЕЙ РЯДОК
+  comment   String?  // <--- ДОДАЙ ЦЕЙ РЯДОК
   userId    String
   userName  String
   role      String
@@ -178,9 +186,9 @@ model EventHistory {
 }
 
 model EventPreparation {
-  id      String @id @default(uuid())
-  eventId String @unique
-  event   Event  @relation(fields: [eventId], references: [id])
+  id               String @id @default(uuid())
+  eventId          String @unique
+  event            Event  @relation(fields: [eventId], references: [id])
 
   assignCrew       String @default("Заплановано") // "Заплановано", "В процесі", "Виконано"
   bookEquipment    String @default("Заплановано")
@@ -190,16 +198,19 @@ model EventPreparation {
 }
 
 model IssueReport {
-  id        String   @id @default(uuid())
-  eventId   String
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  eventId    String
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   schoolName String
-  eventName String
-  message   String
-  cityId    String
-  city      City     @relation(fields: [cityId], references: [id])
-  status    String   @default("Планується") // "Планується", "Виконується", "Виконано"
-  createdAt DateTime @default(now())
+  eventName  String
+  message    String
+  cityId     String
+  city       City     @relation(fields: [cityId], references: [id])
+  status     String   @default("Планується") // "Планується", "Виконується", "Виконано"
+  createdAt  DateTime @default(now())
+
+  // ДОДАНО ІНДЕКС
+  @@index([cityId])
 }
 
 model SchoolContact {
