@@ -313,6 +313,7 @@ export default function SchoolProfile() {
       const headers = {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       };
+      await api.post(`/events/${currentEvent.id}/report`, reportData, { headers });
       await api.patch(
         `/events/${currentEvent.id}/status`,
         {
