@@ -157,20 +157,33 @@ export class EventsService {
       `\n<i>Деталі у CRM: <a href="https://crm-frontend-nwexs60ek-shmaltsels-projects.vercel.app">crm-tau-nine.vercel.app</a></i>`;
 
     if (hostId) {
-      const host = await this.prisma.user.findUnique({ where: { id: hostId } });
-      this.logger.log(
-        `[assignCrew] host=${JSON.stringify({ name: host?.name, telegramId: host?.telegramId, telegramChatId: host?.telegramChatId })}`,
-      );
-      const hostChatId =
-        host?.telegramChatId ||
-        (host?.telegramId && /^\d+$/.test(host.telegramId)
-          ? host.telegramId
-          : null);
+      const hostChatId = await this.getChatIdForUser(hostId);
       this.logger.log(`[assignCrew] hostChatId resolved=${hostChatId}`);
+
       if (hostChatId) {
         await this.telegramService.sendMessage(
           hostChatId,
           buildMessage('ведучий'),
+        );
+      } else {
+        this.logger.warn(
+          `[assignCrew] Не вдалося надіслати повідомлення ведучому ${hostId}: chatId не знайдено (користувач не натиснув /start?)`,
+        );
+      }
+    }
+
+    if (driverId) {
+      const driverChatId = await this.getChatIdForUser(driverId);
+      this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
+
+      if (driverChatId) {
+        await this.telegramService.sendMessage(
+          driverChatId,
+          buildMessage('водій'),
+        );
+      } else {
+        this.logger.warn(
+          `[assignCrew] Не вдалося надіслати повідомлення водію ${driverId}: chatId не знайдено`,
         );
       }
     }
@@ -254,6 +267,20 @@ export class EventsService {
     await sendTo(event.crew?.driverId);
 
     return event;
+  }
+
+  async getChatIdForUser(userId: string): Promise<string | null> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return null;
+
+    // Якщо користувач натиснув /start, telegramChatId буде заповнено
+    if (user.telegramChatId) return user.telegramChatId;
+
+    // Якщо в telegramId вбито числовий ID вручну, можна спробувати його
+    if (user.telegramId && /^\d+$/.test(user.telegramId))
+      return user.telegramId;
+
+    return null;
   }
 
   async findBySchool(schoolId: string) {

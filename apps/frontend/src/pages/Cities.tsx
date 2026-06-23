@@ -5,38 +5,25 @@ import IssueCarousel from "../components/IssueCarousel";
 import { api } from "../config/api";
 
 // Фото для міст за назвою (Unsplash)
+// Оновлюємо посилання, додаючи &auto=format для автоматичного WebP
 const CITY_PHOTOS: Record<string, string> = {
-  Львів:
-    "https://gohotels.com.ua/images/stories/f08072159a443e07501f3df97987f8a3.jpg",
-  Київ: "https://images.unsplash.com/photo-1630651814316-fe71f3c30279?w=600&q=80",
-  Харків:
-    "https://images.unsplash.com/photo-1584646098378-0f87b72cffe1?w=600&q=80",
-  Одеса:
-    "https://images.unsplash.com/photo-1585168050053-a4ba02e3f0d2?w=600&q=80",
-  Дніпро:
-    "https://images.unsplash.com/photo-1570587953042-a65fd17e2f73?w=600&q=80",
-  Запоріжжя:
-    "https://images.unsplash.com/photo-1549887534-1541e9326642?w=600&q=80",
-  Вінниця:
-    "https://images.unsplash.com/photo-1591389703635-e15a07b842d7?w=600&q=80",
-  "Івано-Франківськ":
-    "https://images.unsplash.com/photo-1605723517503-3cadb5818a0c?w=600&q=80",
-  Тернопіль:
-    "https://images.unsplash.com/photo-1564760290292-23341e4df6ec?w=600&q=80",
-  Луцьк:
-    "https://images.unsplash.com/photo-1587974928442-77dc3e0dba72?w=600&q=80",
-  Рівне: "https://images.unsplash.com/photo-1518684079-3c830dcef090?w=600&q=80",
-  Хмельницький:
-    "https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=600&q=80",
-  Чернівці:
-    "https://images.unsplash.com/photo-1562619371-b67725b6fde2?w=600&q=80",
-  Ужгород:
-    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80",
+  Львів: "https://gohotels.com.ua/images/stories/f08072159a443e07501f3df97987f8a3.jpg",
+  Київ: "https://images.unsplash.com/photo-1630651814316-fe71f3c30279?w=600&q=80&auto=format",
+  Харків: "https://images.unsplash.com/photo-1584646098378-0f87b72cffe1?w=600&q=80&auto=format",
+  Одеса: "https://images.unsplash.com/photo-1585168050053-a4ba02e3f0d2?w=600&q=80&auto=format",
+  Дніпро: "https://images.unsplash.com/photo-1570587953042-a65fd17e2f73?w=600&q=80&auto=format",
+  Запоріжжя: "https://images.unsplash.com/photo-1549887534-1541e9326642?w=600&q=80&auto=format",
+  Вінниця: "https://images.unsplash.com/photo-1591389703635-e15a07b842d7?w=600&q=80&auto=format",
+  "Івано-Франківськ": "https://images.unsplash.com/photo-1605723517503-3cadb5818a0c?w=600&q=80&auto=format",
+  Тернопіль: "https://images.unsplash.com/photo-1564760290292-23341e4df6ec?w=600&q=80&auto=format",
+  Луцьк: "https://images.unsplash.com/photo-1587974928442-77dc3e0dba72?w=600&q=80&auto=format",
+  Рівне: "https://images.unsplash.com/photo-1518684079-3c830dcef090?w=600&q=80&auto=format",
+  Хмельницький: "https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=600&q=80&auto=format",
+  Чернівці: "https://images.unsplash.com/photo-1562619371-b67725b6fde2?w=600&q=80&auto=format",
+  Ужгород: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80&auto=format",
 };
 
-const DEFAULT_PHOTO =
-  "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80";
-
+const DEFAULT_PHOTO = "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80&auto=format";
 interface City {
   id: string;
   name: string;

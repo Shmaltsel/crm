@@ -19,29 +19,51 @@ export class TelegramService implements OnModuleInit {
     this.logger.log('Telegram бот ініціалізовано');
 
     this.bot.onText(/\/start/, async (msg) => {
-      const chatId = msg.chat.id;
-      const username = msg.from?.username;
+      const chatId = String(msg.chat.id);
+      const username = msg.from?.username; // це те, що користувач має в налаштуваннях Telegram (без @)
 
-      // Шукаємо по username в обох форматах: "shmaltsel" і "@shmaltsel"
-      await this.prisma.user.updateMany({
+      if (!username) {
+        await this.bot.sendMessage(
+          chatId,
+          "⚠️ У вашому профілі Telegram не вказано username. Будь ласка, додайте його в налаштуваннях Telegram, щоб ми могли підв'язати акаунт.",
+        );
+        return;
+      }
+
+      // Нормалізуємо username: видаляємо всі "@" на випадок, якщо хтось ввів їх у CRM
+      const normalizedUsername = username.toLowerCase();
+
+      // Шукаємо користувача, де telegramId співпадає з username
+      // Ми використовуємо updateMany, щоб покрити всі можливі записи
+      const result = await this.prisma.user.updateMany({
         where: {
-          OR: [
-            { telegramId: username ? `@${username}` : String(chatId) },
-            { telegramId: username ? username : String(chatId) },
-            { telegramId: String(chatId) },
-          ],
+          telegramId: {
+            equals: normalizedUsername,
+            mode: 'insensitive', // пошук без урахування регістру (Svitlo != svitlo)
+          },
         },
-        data: { telegramChatId: String(chatId) },
+        data: { telegramChatId: chatId },
       });
 
-      this.logger.log(
-        `[/start] chatId=${chatId} username=${username} — telegramChatId збережено`,
-      );
-      await this.bot.sendMessage(
-        chatId,
-        `👋 Вітаємо у <b>Світло Знань CRM</b>!\n\nВаш акаунт підключено до сповіщень.`,
-        { parse_mode: 'HTML' },
-      );
+      if (result.count > 0) {
+        this.logger.log(
+          `[/start] chatId=${chatId} username=${normalizedUsername} — успішно підв'язано`,
+        );
+        await this.bot.sendMessage(
+          chatId,
+          `✅ Вітаємо! Ваш акаунт успішно підключено до <b>Світло Знань CRM</b>.`,
+          { parse_mode: 'HTML' },
+        );
+      } else {
+        this.logger.warn(
+          `[/start] Користувача з username "${normalizedUsername}" не знайдено в CRM.`,
+        );
+        await this.bot.sendMessage(
+          chatId,
+          `❌ Акаунт не знайдено. Переконайтеся, що в CRM у вашому профілі вказано нікнейм <b>${normalizedUsername}</b> без помилок.`,
+          { parse_mode: 'HTML' },
+        );
+      }
     });
   }
 

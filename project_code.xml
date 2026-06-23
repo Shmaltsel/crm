@@ -2478,6 +2478,7 @@ export default defineConfig([
  },
  },
 ])</file>
+<file path="apps\frontend\lighthouserc.js"></file>
 <file path="apps\frontend\postcss.config.js">export default {
  plugins: {
  tailwindcss: {},
@@ -5080,6 +5081,16 @@ export default function StatsBar({ schools, activeFilter, onFilterChange }: Stat
  </div>
  );
 }</file>
+<file path="apps\frontend\src\components\ui\Skeleton.tsx">export const SkeletonCard = () => (
+ <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden animate-pulse">
+ <div className="h-44 bg-slate-200 w-full"></div>
+ <div className="p-5 flex flex-col gap-3">
+ <div className="h-6 bg-slate-200 rounded w-1/2"></div>
+ <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+ <div className="h-4 bg-slate-200 rounded w-1/2"></div>
+ </div>
+ </div>
+);</file>
 <file path="apps\frontend\src\config\api.ts">// apps/frontend/src/config/api.ts
 import axios from 'axios';
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://crm-57qd.onrender.com';
@@ -5400,27 +5411,27 @@ export default function CalendarView() {
 <file path="apps\frontend\src\pages\Cities.tsx">import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelectedCity } from "../context/CityContext";
-import IssueCarousel from '../components/IssueCarousel';
+import IssueCarousel from "../components/IssueCarousel";
 import { api } from "../config/api";
 // Фото для міст за назвою (Unsplash)
+// Оновлюємо посилання, додаючи &auto=format для автоматичного WebP
 const CITY_PHOTOS: Record<string, string> = {
  Львів: "https://gohotels.com.ua/images/stories/f08072159a443e07501f3df97987f8a3.jpg",
- Київ: "https://images.unsplash.com/photo-1630651814316-fe71f3c30279?w=600&q=80",
- Харків: "https://images.unsplash.com/photo-1584646098378-0f87b72cffe1?w=600&q=80",
- Одеса: "https://images.unsplash.com/photo-1585168050053-a4ba02e3f0d2?w=600&q=80",
- Дніпро: "https://images.unsplash.com/photo-1570587953042-a65fd17e2f73?w=600&q=80",
- Запоріжжя: "https://images.unsplash.com/photo-1549887534-1541e9326642?w=600&q=80",
- Вінниця: "https://images.unsplash.com/photo-1591389703635-e15a07b842d7?w=600&q=80",
- "Івано-Франківськ": "https://images.unsplash.com/photo-1605723517503-3cadb5818a0c?w=600&q=80",
- Тернопіль: "https://images.unsplash.com/photo-1564760290292-23341e4df6ec?w=600&q=80",
- Луцьк: "https://images.unsplash.com/photo-1587974928442-77dc3e0dba72?w=600&q=80",
- Рівне: "https://images.unsplash.com/photo-1518684079-3c830dcef090?w=600&q=80",
- Хмельницький: "https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=600&q=80",
- Чернівці: "https://images.unsplash.com/photo-1562619371-b67725b6fde2?w=600&q=80",
- Ужгород: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80",
+ Київ: "https://images.unsplash.com/photo-1630651814316-fe71f3c30279?w=600&q=80&auto=format",
+ Харків: "https://images.unsplash.com/photo-1584646098378-0f87b72cffe1?w=600&q=80&auto=format",
+ Одеса: "https://images.unsplash.com/photo-1585168050053-a4ba02e3f0d2?w=600&q=80&auto=format",
+ Дніпро: "https://images.unsplash.com/photo-1570587953042-a65fd17e2f73?w=600&q=80&auto=format",
+ Запоріжжя: "https://images.unsplash.com/photo-1549887534-1541e9326642?w=600&q=80&auto=format",
+ Вінниця: "https://images.unsplash.com/photo-1591389703635-e15a07b842d7?w=600&q=80&auto=format",
+ "Івано-Франківськ": "https://images.unsplash.com/photo-1605723517503-3cadb5818a0c?w=600&q=80&auto=format",
+ Тернопіль: "https://images.unsplash.com/photo-1564760290292-23341e4df6ec?w=600&q=80&auto=format",
+ Луцьк: "https://images.unsplash.com/photo-1587974928442-77dc3e0dba72?w=600&q=80&auto=format",
+ Рівне: "https://images.unsplash.com/photo-1518684079-3c830dcef090?w=600&q=80&auto=format",
+ Хмельницький: "https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=600&q=80&auto=format",
+ Чернівці: "https://images.unsplash.com/photo-1562619371-b67725b6fde2?w=600&q=80&auto=format",
+ Ужгород: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80&auto=format",
 };
-const DEFAULT_PHOTO =
- "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80";
+const DEFAULT_PHOTO = "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80&auto=format";
 interface City {
  id: string;
  name: string;
@@ -5509,13 +5520,12 @@ export default function Cities() {
  </div>
  <IssueCarousel />
  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
- {/* Показуємо скелетони, якщо дані вантажаться */}
- {isFetching ? (
+ {isFetching
+ ? // Показуємо 6 скелетонів, щоб сітка виглядала заповненою одразу
  Array.from({ length: 6 }).map((_, index) => (
  <CitySkeleton key={index} />
  ))
- ) : (
- cities.map((city) => {
+ : cities.map((city) => {
  const isSelected = selectedCity?.id === city.id;
  return (
  <div
@@ -5526,10 +5536,14 @@ export default function Cities() {
  : "border-slate-100 hover:shadow-lg hover:border-blue-200"
  }`}
  >
+ {/* Контейнер має фіксовану висоту h-44, 
+ img має width/height full для заповнення */}
  <div className="h-44 overflow-hidden relative">
  <img
  src={CITY_PHOTOS[city.name] || DEFAULT_PHOTO}
  alt={city.name}
+ width="400"
+ height="176"
  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
  onError={(e) => {
  (e.target as HTMLImageElement).src = DEFAULT_PHOTO;
@@ -5538,12 +5552,23 @@ export default function Cities() {
  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
  {isSelected && (
  <div className="absolute top-3 right-3 bg-blue-500 text-white p-1.5 rounded-full shadow-lg">
- <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
- <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+ <svg
+ className="w-5 h-5"
+ fill="none"
+ stroke="currentColor"
+ viewBox="0 0 24 24"
+ >
+ <path
+ strokeLinecap="round"
+ strokeLinejoin="round"
+ strokeWidth={3}
+ d="M5 13l4 4L19 7"
+ />
  </svg>
  </div>
  )}
  </div>
+ {/* ... далі йде решта твого коду (p-5, контент картки) ... */}
  <div className="p-5">
  <div className="flex items-center justify-between mb-3">
  <h2 className="text-xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
@@ -5584,8 +5609,8 @@ export default function Cities() {
  setSelectedCity({ id: city.id, name: city.name });
  }}
  className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors ${
- isSelected 
- ? "bg-blue-50 text-blue-700 border border-blue-200" 
+ isSelected
+ ? "bg-blue-50 text-blue-700 border border-blue-200"
  : "bg-blue-600 hover:bg-blue-700 text-white"
  }`}
  >
@@ -5602,8 +5627,7 @@ export default function Cities() {
  </div>
  </div>
  );
- })
- )}
+ })}
  {/* Якщо завантажили і масив порожній */}
  {!isFetching && cities.length === 0 && (
  <div className="col-span-full text-center py-10 text-slate-500">
@@ -8455,7 +8479,7 @@ export default function SchoolProfile() {
  </div>
  );
 }</file>
-<file path="apps\frontend\src\pages\Schools.tsx">import { useState, useEffect, useRef } from "react";
+<file path="apps\frontend\src\pages\Schools.tsx">import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
@@ -8480,6 +8504,7 @@ export default function Schools() {
  const [cities, setCities] = useState<City[]>([]);
  const [isModalOpen, setIsModalOpen] = useState(false);
  const [isSubmitting, setIsSubmitting] = useState(false);
+ const [searchQuery, setSearchQuery] = useState("");
  const [form, setForm] = useState({
  name: "",
  cityId: "",
@@ -8647,7 +8672,7 @@ export default function Schools() {
  console.error(e);
  }
  };
- const filteredSchools = schools.filter((s) => {
+ const baseFiltered = schools.filter((s) => {
  const hasCityFilter = selectedCity.id && selectedCity.id.trim() !== "";
  const isCityMatch = hasCityFilter ? s.cityId === selectedCity.id : true;
  const isTypeMatch = s.type === "Школа";
@@ -8656,9 +8681,21 @@ export default function Schools() {
  : true;
  return isCityMatch && isTypeMatch && isFilterMatch;
  });
+ const filteredSchools = useMemo(() => {
+ if (!searchQuery.trim()) return baseFiltered;
+ const q = searchQuery.toLowerCase().trim();
+ return baseFiltered.filter(
+ (s) =>
+ s.name?.toLowerCase().includes(q) ||
+ s.city?.name?.toLowerCase().includes(q) ||
+ s.director?.toLowerCase().includes(q) ||
+ s.address?.toLowerCase().includes(q),
+ );
+ }, [baseFiltered, searchQuery]);
  return (
- <div className="p-4 md:p-8 h-full max-w-[100vw] overflow-hidden">
- <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+ <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] overflow-hidden">
+ {/* Заголовок + кнопки */}
+ <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 shrink-0">
  <h1 className="text-2xl font-bold text-slate-800">
  Школи
  {selectedCity.id && (
@@ -8667,6 +8704,7 @@ export default function Schools() {
  </span>
  )}
  </h1>
+ <div className="flex flex-col sm:flex-row gap-2">
  <button
  onClick={handleOpenModal}
  className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
@@ -8705,11 +8743,14 @@ export default function Schools() {
  alert("Помилка імпорту. Перевір консоль.");
  }
  }}
- className="flex-1 md:flex-none w-full md:w-auto px-4 py-2.5 md:py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium transition-colors"
+ className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium transition-colors"
  >
  📥 Імпорт з isuo.org
  </button>
  </div>
+ </div>
+ {/* StatsBar */}
+ <div className="shrink-0">
  <StatsBar
  schools={schools.filter((s) => {
  const hasCityFilter =
@@ -8722,8 +8763,48 @@ export default function Schools() {
  activeFilter={activeFilter}
  onFilterChange={setActiveFilter}
  />
- {/* Мобільний вигляд */}
- <div className="md:hidden flex flex-col gap-3">
+ </div>
+ {/* Пошук */}
+ <div className="relative shrink-0 mb-4">
+ <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
+ <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+ <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+ </svg>
+ </div>
+ <input
+ type="text"
+ value={searchQuery}
+ onChange={(e) => setSearchQuery(e.target.value)}
+ placeholder="Пошук за назвою, директором, адресою..."
+ className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 shadow-sm transition"
+ />
+ {searchQuery && (
+ <button
+ onClick={() => setSearchQuery("")}
+ className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600 transition"
+ >
+ <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+ <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+ </svg>
+ </button>
+ )}
+ </div>
+ {/* Лічильник */}
+ <p className="text-xs text-slate-400 mb-3 shrink-0">
+ {filteredSchools.length === baseFiltered.length
+ ? `${baseFiltered.length} шкіл`
+ : `${filteredSchools.length} з ${baseFiltered.length} шкіл`}
+ {activeFilter && (
+ <button
+ onClick={() => setActiveFilter(null)}
+ className="ml-2 text-blue-500 hover:text-blue-700 underline"
+ >
+ скинути фільтр
+ </button>
+ )}
+ </p>
+ {/* Мобільний вигляд — скролиться */}
+ <div className="md:hidden flex-1 overflow-y-auto flex flex-col gap-3 pb-4">
  {filteredSchools.map((school) => {
  const latestEvent = school.events?.[0];
  const stage = latestEvent
@@ -8770,14 +8851,15 @@ export default function Schools() {
  })}
  {filteredSchools.length === 0 && (
  <div className="bg-white rounded-2xl border border-slate-100 text-center py-10 text-slate-400 text-sm">
- Шкіл ще немає
+ {searchQuery ? `Нічого не знайдено за «${searchQuery}»` : "Шкіл ще немає"}
  </div>
  )}
  </div>
- {/* Десктоп таблиця */}
- <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto w-full">
+ {/* Десктоп таблиця — скролиться */}
+ <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
+ <div className="overflow-y-auto flex-1">
  <table className="w-full text-left border-collapse">
- <thead>
+ <thead className="sticky top-0 z-10">
  <tr className="bg-slate-50 border-b border-slate-100">
  <th className="p-4 font-medium text-slate-600">Назва школи</th>
  <th className="p-4 font-medium text-slate-600">Місто</th>
@@ -8833,6 +8915,12 @@ export default function Schools() {
  })}
  </tbody>
  </table>
+ {filteredSchools.length === 0 && (
+ <div className="text-center py-16 text-slate-400 text-sm">
+ {searchQuery ? `Нічого не знайдено за «${searchQuery}»` : "Шкіл ще немає"}
+ </div>
+ )}
+ </div>
  </div>
  {/* Модалка */}
  {isModalOpen && (
