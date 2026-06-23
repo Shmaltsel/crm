@@ -822,6 +822,14 @@ export class EventsController {
  findOne(@Param('id') id: string) {
  return this.eventsService.findOne(id);
  }
+ @Patch(':id/reschedule')
+ reschedule(
+ @Param('id') id: string,
+ @Body() body: { date: string; time: string },
+ @CurrentUser() user: JwtUser,
+ ) {
+ return this.eventsService.rescheduleEvent(id, body.date, body.time, user);
+ }
 }</file>
 <file path="apps\backend\src\events\events.module.ts">import { Module, forwardRef } from '@nestjs/common';
 import { EventsService } from './events.service';
@@ -1030,6 +1038,58 @@ export class EventsService {
  );
  }
  }
+ return event;
+ }
+ async rescheduleEvent(
+ eventId: string,
+ newDate: string,
+ newTime: string,
+ user: JwtUser,
+ ) {
+ const event = await this.prisma.event.update({
+ where: { id: eventId },
+ data: {
+ date: new Date(newDate),
+ time: newTime,
+ history: {
+ create: {
+ action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
+ userId: user.sub,
+ userName: user.name,
+ role: user.role,
+ },
+ },
+ },
+ include: {
+ crew: { include: { host: true, driver: true } },
+ school: true,
+ city: true,
+ history: { orderBy: { createdAt: 'desc' } },
+ },
+ });
+ const dateStr = new Date(newDate).toLocaleDateString('uk-UA', {
+ day: '2-digit',
+ month: 'long',
+ year: 'numeric',
+ });
+ const msg =
+ `📅 <b>Подію перенесено!</b>\n\n` +
+ `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
+ `🎪 <b>Проєкт:</b> ${event.project}\n` +
+ `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
+ `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
+ (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
+ `\n<i>Деталі у CRM: <a href="https://crm-tau-nine.vercel.app">crm-tau-nine.vercel.app</a></i>`;
+ const sendTo = async (userId: string | null | undefined) => {
+ if (!userId) return;
+ const u = await this.prisma.user.findUnique({ where: { id: userId } });
+ const chatId =
+ u?.telegramChatId ||
+ (u?.telegramId && /^\d+$/.test(u.telegramId) ? u.telegramId : null);
+ if (chatId) await this.telegramService.sendMessage(chatId, msg);
+ };
+ await sendTo(event.crew?.hostId);
+ await sendTo(event.crew?.driverId);
  return event;
  }
  async findBySchool(schoolId: string) {
@@ -1356,25 +1416,23 @@ export class IssuesService {
  },
  });
  // 3. Будуємо рядок з тегами екіпажу
+ const formatMember = (user: {
+ name: string;
+ telegramId: string | null;
+ }) => {
+ if (!user.telegramId) return user.name;
+ const clean = user.telegramId.replace(/^@/, '');
+ const isNumeric = /^\d+$/.test(clean);
+ if (isNumeric) return user.name;
+ return `@${clean} (${user.name})`;
+ };
  const crewMembers: string[] = [];
  if (event?.crew?.host) {
- const host = event.crew.host;
- const tag = host.telegramId
- ? `@${host.telegramId.replace(/^@/, '')} (${host.name})`
- : host.name;
- crewMembers.push(`🎙️ Ведучий: ${tag}`);
+ crewMembers.push(`🎙️ Ведучий: ${formatMember(event.crew.host)}`);
  }
  if (event?.crew?.driver) {
- const driver = event.crew.driver;
- const tag = driver.telegramId
- ? `@${driver.telegramId.replace(/^@/, '')} (${driver.name})`
- : driver.name;
- crewMembers.push(`🚗 Водій: ${tag}`);
+ crewMembers.push(`🚗 Водій: ${formatMember(event.crew.driver)}`);
  }
- const crewSection =
- crewMembers.length > 0
- ? `\n\n👥 <b>Екіпаж:</b>\n${crewMembers.join('\n')}`
- : '';
  // 4. Знаходимо менеджера міста
  const city = await this.prisma.city.findUnique({
  where: { id: data.cityId },
@@ -1398,7 +1456,7 @@ export class IssuesService {
  `🏫 <b>Заклад:</b> ${data.schoolName}\n` +
  `📅 <b>Подія:</b> ${data.eventName}\n\n` +
  `💬 <b>Повідомлення:</b>\n${data.message}` +
- crewSection +
+ (crewMembers.length > 0 ? `\n\n👥 <b>Екіпаж:</b>\n${crewMembers.join('\n')}` : '') +
  `\n\n<i>Деталі у CRM: <a href="https://crm-tau-nine.vercel.app">crm-tau-nine.vercel.app</a></i>`;
  await this.telegramService.sendMessage(chatId, text);
  }
@@ -3832,13 +3890,16 @@ export default function AssignedCrew({ currentEvent, employees }: AssignedCrewPr
 import AddressLink from "../AddressLink";
 import PhoneLink from "../PhoneLink";
 import IssueModal from "./modals/IssueModal";
+import RescheduleModal from "./modals/RescheduleModal";
 interface EventDetailsProps {
  currentEvent: any;
  schoolName?: string;
  cityId?: string;
+ onEventUpdated?: () => void;
 }
-export default function EventDetails({ currentEvent, schoolName, cityId }: EventDetailsProps) {
+export default function EventDetails({ currentEvent, schoolName, cityId, onEventUpdated }: EventDetailsProps) {
  const [issueOpen, setIssueOpen] = useState(false);
+ const [rescheduleOpen, setRescheduleOpen] = useState(false);
  if (!currentEvent) {
  return (
  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center h-32 text-slate-400">
@@ -3852,7 +3913,15 @@ export default function EventDetails({ currentEvent, schoolName, cityId }: Event
  <h3 className="font-bold text-slate-800 mb-4 border-b pb-3 border-slate-100 flex justify-between items-center">
  <span>Деталі обраної події</span>
  <div className="flex items-center gap-3">
- <span className="text-sm font-medium text-blue-600">{new Date(currentEvent.date).toLocaleDateString()}</span>
+ <button
+ onClick={() => setRescheduleOpen(true)}
+ className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+ >
+ 📅 Перенести
+ </button>
+ <span className="text-sm font-medium text-blue-600">
+ {new Date(currentEvent.date).toLocaleDateString()}
+ </span>
  <button
  onClick={() => setIssueOpen(true)}
  className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
@@ -3877,6 +3946,14 @@ export default function EventDetails({ currentEvent, schoolName, cityId }: Event
  eventName={`${currentEvent.project} — ${new Date(currentEvent.date).toLocaleDateString('uk-UA')}`}
  eventId={currentEvent.id}
  cityId={cityId || currentEvent.cityId || ''}
+ />
+ <RescheduleModal
+ isOpen={rescheduleOpen}
+ onClose={() => setRescheduleOpen(false)}
+ eventId={currentEvent.id}
+ currentDate={currentEvent.date}
+ currentTime={currentEvent.time || ''}
+ onSuccess={() => onEventUpdated?.()}
  />
  </>
  );
@@ -4637,6 +4714,87 @@ export default function ReportModal({
  <button onClick={handleSave} className="w-full sm:w-auto bg-blue-600 text-white px-5 py-3 sm:py-2.5 rounded-xl font-medium hover:bg-blue-700">
  Зберегти звіт
  </button>
+ </div>
+ </div>
+ </div>
+ );
+}</file>
+<file path="apps\frontend\src\components\school-profile\modals\RescheduleModal.tsx">import { useState } from 'react';
+import { api } from '../../../config/api';
+interface RescheduleModalProps {
+ isOpen: boolean;
+ onClose: () => void;
+ eventId: string;
+ currentDate: string;
+ currentTime: string;
+ onSuccess: () => void;
+}
+export default function RescheduleModal({
+ isOpen,
+ onClose,
+ eventId,
+ currentDate,
+ currentTime,
+ onSuccess,
+}: RescheduleModalProps) {
+ const [date, setDate] = useState(currentDate.slice(0, 10));
+ const [time, setTime] = useState(currentTime || '');
+ const [loading, setLoading] = useState(false);
+ if (!isOpen) return null;
+ const handleSave = async () => {
+ setLoading(true);
+ try {
+ await api.patch(`/events/${eventId}/reschedule`, { date, time });
+ onSuccess();
+ onClose();
+ } catch (e) {
+ console.error('Помилка перенесення:', e);
+ } finally {
+ setLoading(false);
+ }
+ };
+ return (
+ <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+ <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden">
+ <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+ <div className="p-5 border-b border-slate-100 flex justify-between bg-slate-50">
+ <h3 className="text-lg font-bold text-slate-800">📅 Перенести подію</h3>
+ <button onClick={onClose} className="text-slate-400 p-1">✕</button>
+ </div>
+ <div className="p-5 flex flex-col gap-4">
+ <div>
+ <label className="block text-sm mb-1 text-slate-600">Нова дата</label>
+ <input
+ type="date"
+ value={date}
+ onChange={e => setDate(e.target.value)}
+ className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+ />
+ </div>
+ <div>
+ <label className="block text-sm mb-1 text-slate-600">Новий час</label>
+ <input
+ type="time"
+ value={time}
+ onChange={e => setTime(e.target.value)}
+ className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+ />
+ </div>
+ <div className="flex gap-3 pt-2">
+ <button
+ onClick={onClose}
+ className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 font-medium rounded-xl transition-colors"
+ >
+ Скасувати
+ </button>
+ <button
+ onClick={handleSave}
+ disabled={loading}
+ className="flex-1 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
+ >
+ {loading ? 'Збереження...' : 'Зберегти'}
+ </button>
+ </div>
  </div>
  </div>
  </div>
@@ -7664,7 +7822,7 @@ export default function Login() {
 }</file>
 <file path="apps\frontend\src\pages\SchoolProfile.tsx">import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api } from '../config/api'
+import { api } from "../config/api";
 // Імпортуємо наші UI модулі
 import SchoolInfoCard from "../components/school-profile/SchoolInfoCard";
 import HistoryTimeline from "../components/school-profile/HistoryTimeline";
@@ -7775,7 +7933,8 @@ export default function SchoolProfile() {
  useEffect(() => {
  fetchData();
  }, [id]);
- const currentEvent = events.find((ev) => ev.id === selectedEventId) || events[0];
+ const currentEvent =
+ events.find((ev) => ev.id === selectedEventId) || events[0];
  const currentStageIndex =
  PIPELINE_STAGES.findIndex((s) => s.key === currentEvent?.status) !== -1
  ? PIPELINE_STAGES.findIndex((s) => s.key === currentEvent?.status)
@@ -7842,7 +8001,9 @@ export default function SchoolProfile() {
  }, 500);
  } else {
  setEvents((prev) =>
- prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
+ prev.map((ev) =>
+ ev.id === currentEvent.id ? { ...ev, ...res.data } : ev,
+ ),
  );
  }
  } else if (commentModal.mode === "history" && commentModal.historyId) {
@@ -7948,7 +8109,9 @@ export default function SchoolProfile() {
  );
  setIsReportModalOpen(false);
  setEvents((prev) =>
- prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)),
+ prev.map((ev) =>
+ ev.id === currentEvent.id ? { ...ev, ...res.data } : ev,
+ ),
  );
  } catch (e) {
  console.error("Помилка при збереженні звіту", e);
@@ -7956,10 +8119,20 @@ export default function SchoolProfile() {
  };
  const handleAssignCrew = async (crewId: string) => {
  try {
- const headers = { Authorization: `Bearer ${localStorage.getItem("token")}` };
- const res = await api.post(`/events/${currentEvent.id}/assign-crew`, { crewId }, { headers });
+ const headers = {
+ Authorization: `Bearer ${localStorage.getItem("token")}`,
+ };
+ const res = await api.post(
+ `/events/${currentEvent.id}/assign-crew`,
+ { crewId },
+ { headers },
+ );
  await handleUpdatePreparation("assignCrew", "Виконано");
- setEvents((prev) => prev.map((ev) => (ev.id === currentEvent.id ? { ...ev, ...res.data } : ev)));
+ setEvents((prev) =>
+ prev.map((ev) =>
+ ev.id === currentEvent.id ? { ...ev, ...res.data } : ev,
+ ),
+ );
  setIsCrewModalOpen(false);
  } catch (e) {
  console.error("Помилка при призначенні екіпажу", e);
@@ -8046,10 +8219,10 @@ export default function SchoolProfile() {
  />
  </div>
  {/* ОСЬ ТУТ ДОДАНО КЛАСИ ДЛЯ АНІМАЦІЇ */}
- <div 
+ <div
  className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${
- exitingEventId === currentEvent?.id 
- ? "opacity-0 scale-95 -translate-y-4 pointer-events-none" 
+ exitingEventId === currentEvent?.id
+ ? "opacity-0 scale-95 -translate-y-4 pointer-events-none"
  : "opacity-100 scale-100 translate-y-0"
  }`}
  >
@@ -8069,7 +8242,12 @@ export default function SchoolProfile() {
  <AssignedCrew currentEvent={currentEvent} employees={users} />
  </div>
  )}
- <EventDetails currentEvent={currentEvent} />
+ <EventDetails
+ currentEvent={currentEvent}
+ schoolName={schoolData.name}
+ cityId={schoolData.cityId}
+ onEventUpdated={fetchData}
+ />
  <EventsTable
  events={events}
  selectedEventId={selectedEventId}

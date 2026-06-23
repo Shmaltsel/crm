@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
 import StatsBar from "../components/schools/StatsBar";
+import StatsBar, { classifySchool } from "../components/schools/StatsBar";
 
 const PIPELINE_STAGES = [
   { key: "BASE", name: "База" },
@@ -39,7 +40,10 @@ export default function Schools() {
   });
 
   const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
-  const [suggestions, setSuggestions] = useState<{ name: string; url: string }[]>([]);
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<
+    { name: string; url: string }[]
+  >([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -91,7 +95,8 @@ export default function Schools() {
       return;
     }
 
-    const currentCityName = selectedCity.name || cities.find(c => c.id === form.cityId)?.name || "";
+    const currentCityName =
+      selectedCity.name || cities.find((c) => c.id === form.cityId)?.name || "";
 
     if (currentCityName.toLowerCase() !== "львів") {
       setMatchedContacts([]);
@@ -104,11 +109,15 @@ export default function Schools() {
         `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=${encodeURIComponent("Школа")}`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       setMatchedContacts(res.data);
       if (res.data.length > 0) {
-        const director = res.data.find((c: any) => c.role?.includes("Директор") || c.role?.includes("Завідувач")) || res.data[0];
+        const director =
+          res.data.find(
+            (c: any) =>
+              c.role?.includes("Директор") || c.role?.includes("Завідувач"),
+          ) || res.data[0];
         setForm((f) => ({
           ...f,
           director: director.contactName,
@@ -139,9 +148,12 @@ export default function Schools() {
       const token = localStorage.getItem("token");
       try {
         const [externalRes] = await Promise.all([
-          api.get(`/schools/search?q=${value}&type=${encodeURIComponent("Школа")}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
+          api.get(
+            `/schools/search?q=${value}&type=${encodeURIComponent("Школа")}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          ),
           fetchContacts(value),
         ]);
         setSuggestions(externalRes.data);
@@ -165,9 +177,13 @@ export default function Schools() {
     setIsSubmitting(true);
     try {
       const token = localStorage.getItem("token");
-      await api.post("/schools", { ...form, type: "Школа" }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.post(
+        "/schools",
+        { ...form, type: "Школа" },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       setIsModalOpen(false);
       fetchSchools();
     } catch (e) {
@@ -181,12 +197,12 @@ export default function Schools() {
   const handleDeleteSchool = async (
     e: React.MouseEvent,
     schoolId: string,
-    schoolName: string
+    schoolName: string,
   ) => {
     e.stopPropagation();
     if (
       !window.confirm(
-        `Видалити школу "${schoolName}"? Це видалить також усі її події.`
+        `Видалити школу "${schoolName}"? Це видалить також усі її події.`,
       )
     )
       return;
@@ -200,10 +216,14 @@ export default function Schools() {
     }
   };
 
-  const filteredSchools = schools.filter(s => {
+  const filteredSchools = schools.filter((s) => {
     const hasCityFilter = selectedCity.id && selectedCity.id.trim() !== "";
     const isCityMatch = hasCityFilter ? s.cityId === selectedCity.id : true;
-    return isCityMatch && s.type === "Школа";
+    const isTypeMatch = s.type === "Школа";
+    const isFilterMatch = activeFilter
+      ? classifySchool(s) === activeFilter
+      : true;
+    return isCityMatch && isTypeMatch && isFilterMatch;
   });
 
   return (
@@ -225,7 +245,18 @@ export default function Schools() {
         </button>
       </div>
 
-      <StatsBar schools={filteredSchools} />
+      <StatsBar
+        schools={schools.filter((s) => {
+          const hasCityFilter =
+            selectedCity.id && selectedCity.id.trim() !== "";
+          return (
+            (hasCityFilter ? s.cityId === selectedCity.id : true) &&
+            s.type === "Школа"
+          );
+        })}
+        activeFilter={activeFilter}
+        onFilterChange={setActiveFilter}
+      />
 
       {/* Мобільний вигляд */}
       <div className="md:hidden flex flex-col gap-3">
@@ -289,7 +320,9 @@ export default function Schools() {
               <th className="p-4 font-medium text-slate-600">Місто</th>
               <th className="p-4 font-medium text-slate-600">Статус</th>
               <th className="p-4 font-medium text-slate-600">Поточний етап</th>
-              <th className="p-4 font-medium text-slate-600 text-center">Дія</th>
+              <th className="p-4 font-medium text-slate-600 text-center">
+                Дія
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -358,7 +391,9 @@ export default function Schools() {
               className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto"
             >
               <div className="relative">
-                <label className="block text-sm text-slate-600 mb-1">Назва школи</label>
+                <label className="block text-sm text-slate-600 mb-1">
+                  Назва школи
+                </label>
                 <input
                   type="text"
                   value={form.name}
@@ -373,36 +408,48 @@ export default function Schools() {
                 {showSuggestions && (
                   <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                     {isSearching ? (
-                      <li className="px-3 py-2 text-sm text-slate-400 italic">Пошук...</li>
+                      <li className="px-3 py-2 text-sm text-slate-400 italic">
+                        Пошук...
+                      </li>
                     ) : suggestions.length > 0 ? (
                       suggestions.map((s, i) => (
                         <li
                           key={i}
-                          onMouseDown={() => handleSelectSuggestion(s.name, s.url)}
+                          onMouseDown={() =>
+                            handleSelectSuggestion(s.name, s.url)
+                          }
                           className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer"
                         >
                           {s.name}
                         </li>
                       ))
                     ) : (
-                      <li className="px-3 py-2 text-sm text-slate-400 italic">Нічого не знайдено</li>
+                      <li className="px-3 py-2 text-sm text-slate-400 italic">
+                        Нічого не знайдено
+                      </li>
                     )}
                   </ul>
                 )}
               </div>
-              
+
               {!selectedCity.id && (
                 <div>
-                  <label className="block text-sm text-slate-600 mb-1">Місто</label>
+                  <label className="block text-sm text-slate-600 mb-1">
+                    Місто
+                  </label>
                   <select
                     value={form.cityId}
-                    onChange={(e) => setForm({ ...form, cityId: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, cityId: e.target.value })
+                    }
                     required
                     className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 bg-white"
                   >
                     <option value="">— Оберіть місто —</option>
                     {cities.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -410,7 +457,10 @@ export default function Schools() {
 
               <div>
                 <label className="block text-sm text-slate-600 mb-1">
-                  Контакт <span className="ml-1 text-xs text-slate-400">(автозаповнення)</span>
+                  Контакт{" "}
+                  <span className="ml-1 text-xs text-slate-400">
+                    (автозаповнення)
+                  </span>
                 </label>
                 {matchedContacts.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-2">
@@ -418,12 +468,21 @@ export default function Schools() {
                       <button
                         key={i}
                         type="button"
-                        onClick={() => setForm((f) => ({ ...f, director: c.contactName, phone: c.phone }))}
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            director: c.contactName,
+                            phone: c.phone,
+                          }))
+                        }
                         className={`text-xs px-2 py-1 rounded-full border transition-colors ${
-                          form.director === c.contactName ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 border-slate-200"
+                          form.director === c.contactName
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "bg-white text-slate-600 border-slate-200"
                         }`}
                       >
-                        {c.role ? `${c.role}: ` : ""}{c.contactName}
+                        {c.role ? `${c.role}: ` : ""}
+                        {c.contactName}
                       </button>
                     ))}
                   </div>
@@ -431,13 +490,17 @@ export default function Schools() {
                 <input
                   type="text"
                   value={form.director}
-                  onChange={(e) => setForm({ ...form, director: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, director: e.target.value })
+                  }
                   placeholder="Микола Петренко"
                   className="w-full p-2 border border-slate-200 rounded-lg text-sm"
                 />
               </div>
               <div>
-                <label className="block text-sm text-slate-600 mb-1">Телефон</label>
+                <label className="block text-sm text-slate-600 mb-1">
+                  Телефон
+                </label>
                 <input
                   type="text"
                   value={form.phone}
@@ -447,8 +510,18 @@ export default function Schools() {
                 />
               </div>
               <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-2">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto px-5 py-3 bg-slate-100 rounded-xl text-sm font-medium">Скасувати</button>
-                <button type="submit" disabled={isSubmitting} className="w-full sm:w-auto px-5 py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="w-full sm:w-auto px-5 py-3 bg-slate-100 rounded-xl text-sm font-medium"
+                >
+                  Скасувати
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto px-5 py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700"
+                >
                   {isSubmitting ? "Збереження..." : "Створити"}
                 </button>
               </div>
