@@ -13,7 +13,10 @@ export class DashboardService {
   constructor(private prisma: PrismaService) {}
 
   async getSummary(cityId?: string, role?: string) {
-    const now       = new Date();
+    const t0 = Date.now();
+    console.log(`[Dashboard] start — cityId=${cityId ?? 'all'} role=${role}`);
+
+    const now        = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const todayEnd   = new Date(todayStart);
     todayEnd.setDate(todayEnd.getDate() + 1);
@@ -26,10 +29,11 @@ export class DashboardService {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-    const cityFilter = cityId ? { cityId } : {};
+    const cityFilter   = cityId ? { cityId } : {};
     const isSuperAdmin = role === 'SUPERADMIN';
 
     // ── Базові 6 запитів ─────────────────────────────────────────────────────
+    const t1 = Date.now();
     const [
       todayEvents,
       upcomingEvents,
@@ -127,14 +131,11 @@ export class DashboardService {
         take: 10,
       }),
 
-      // 6. Активність команди — останні 20 записів history за сьогодні
-      //    (cityId фільтруємо через event.cityId)
+      // 6. Активність команди
       this.prisma.eventHistory.findMany({
         where: {
           createdAt: { gte: todayStart },
-          ...(cityId
-            ? { event: { cityId } }
-            : {}),
+          ...(cityId ? { event: { cityId } } : {}),
         },
         include: {
           event: {
@@ -148,17 +149,19 @@ export class DashboardService {
         take: 20,
       }),
     ]);
+    console.log(`[Dashboard] main Promise.all: ${Date.now() - t1}ms`);
 
     // ── Стан по містах (тільки для SUPERADMIN) ───────────────────────────────
     let citiesStats: {
-      cityId:        string;
-      cityName:      string;
-      schoolsCount:  number;
-      activeEvents:  number;
-      monthRevenue:  number;
+      cityId:       string;
+      cityName:     string;
+      schoolsCount: number;
+      activeEvents: number;
+      monthRevenue: number;
     }[] = [];
 
     if (isSuperAdmin) {
+      const t2 = Date.now();
       const [allCities, allSchools, allActiveEvents, allMonthEvents] =
         await Promise.all([
           this.prisma.city.findMany({ select: { id: true, name: true } }),
@@ -185,10 +188,10 @@ export class DashboardService {
             },
           }),
         ]);
+      console.log(`[Dashboard] superadmin queries: ${Date.now() - t2}ms`);
 
-      // Індекси для O(1) lookup
-      const schoolsIdx  = Object.fromEntries(allSchools.map(r => [r.cityId, r._count.id]));
-      const activeIdx   = Object.fromEntries(allActiveEvents.map(r => [r.cityId, r._count.id]));
+      const schoolsIdx = Object.fromEntries(allSchools.map(r => [r.cityId, r._count.id]));
+      const activeIdx  = Object.fromEntries(allActiveEvents.map(r => [r.cityId, r._count.id]));
       const revenueIdx: Record<string, number> = {};
       for (const ev of allMonthEvents) {
         revenueIdx[ev.cityId] = (revenueIdx[ev.cityId] ?? 0) + (ev.report?.totalSum ?? 0);
@@ -198,17 +201,15 @@ export class DashboardService {
         .map(city => ({
           cityId:       city.id,
           cityName:     city.name,
-          schoolsCount: schoolsIdx[city.id]  ?? 0,
-          activeEvents: activeIdx[city.id]   ?? 0,
-          monthRevenue: revenueIdx[city.id]  ?? 0,
+          schoolsCount: schoolsIdx[city.id] ?? 0,
+          activeEvents: activeIdx[city.id]  ?? 0,
+          monthRevenue: revenueIdx[city.id] ?? 0,
         }))
-        // Сортуємо по виручці місяця — найбільше зверху
         .sort((a, b) => b.monthRevenue - a.monthRevenue);
     }
 
     // ── Агрегати ─────────────────────────────────────────────────────────────
 
-    // Воронка
     const funnel: Record<string, number> = {};
     for (const stage of PIPELINE_STAGES) funnel[stage] = 0;
     for (const school of schools) {
@@ -216,7 +217,6 @@ export class DashboardService {
       if (funnel[status] !== undefined) funnel[status]++;
     }
 
-    // Фінанси місяця
     const monthlyKpi = monthEvents.reduce(
       (acc, ev) => {
         acc.revenue  += ev.report?.totalSum      ?? 0;
@@ -228,12 +228,11 @@ export class DashboardService {
       { revenue: 0, profit: 0, children: 0, count: 0 },
     );
 
-    // "Потребують уваги"
     const staleSchools = staleSchoolsRaw
       .map(school => {
-        const lastHistory = school.events[0]?.history[0];
+        const lastHistory  = school.events[0]?.history[0];
         const lastActivity = lastHistory?.createdAt ?? null;
-        const daysStale = lastActivity
+        const daysStale    = lastActivity
           ? Math.floor((now.getTime() - new Date(lastActivity).getTime()) / 86_400_000)
           : null;
         return {
@@ -246,7 +245,6 @@ export class DashboardService {
       })
       .sort((a, b) => (b.daysStale ?? 0) - (a.daysStale ?? 0));
 
-    // Активність — прибираємо дублікати userName+action в межах однієї хвилини
     const activityFeed = recentActivity.map(h => ({
       id:         h.id,
       userName:   h.userName,
@@ -258,6 +256,8 @@ export class DashboardService {
       schoolName: h.event?.school?.name ?? null,
       eventId:    h.event?.id           ?? null,
     }));
+
+    console.log(`[Dashboard] total: ${Date.now() - t0}ms`);
 
     return {
       todayEvents,
