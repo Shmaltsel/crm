@@ -2195,40 +2195,43 @@ export class SchoolsService {
  return matches.slice(0, 10);
  }
  async bulkImport(cityId: string, type: 'Школа' | 'Садочок' = 'Школа') {
- // 1. Знаходимо місто щоб дістати назву
  const city = await this.prisma.city.findUnique({ where: { id: cityId } });
  if (!city) throw new Error(`Місто з id=${cityId} не знайдено`);
- // 2. Парсимо всі заклади з isuo.org для цього міста
+ // 1. Отримуємо всі заклади з парсера
  const allFromParser = await this.parserService.getAllSchoolsForCity(
  city.name,
  type,
  );
- if (allFromParser.length === 0) {
- return {
- total: 0,
- created: 0,
- skipped: 0,
- error: `Місто "${city.name}" не підтримується або не знайдено на isuo.org`,
- };
- }
- // 3. Отримуємо вже існуючі назви щоб не дублювати
- const existing = await this.prisma.school.findMany({
+ // 2. Отримуємо ВСІ існуючі школи цього типу в цьому місті
+ const existingSchools = await this.prisma.school.findMany({
  where: { cityId, type },
  select: { name: true },
  });
+ // 3. Створюємо Set нормалізованих назв для швидкої перевірки
+ // Допоміжна функція для "чистки" назви
+ const normalize = (name: string) =>
+ name.toLowerCase().replace(/[^a-zа-яіїєґ0-9]/g, '');
  const existingNames = new Set(
- existing.map((s) => s.name.toLowerCase().trim()),
+ existingSchools.map((s) => normalize(s.name)),
  );
- // 4. Фільтруємо тільки нові
+ // 4. Фільтруємо ті, яких ще немає
  const toCreate = allFromParser.filter(
- (s) => !existingNames.has(s.name.toLowerCase().trim()),
+ (s) => !existingNames.has(normalize(s.name)),
  );
- // 5. Отримуємо всі контакти з БД для цього міста
+ if (toCreate.length === 0) {
+ return {
+ total: allFromParser.length,
+ created: 0,
+ skipped: allFromParser.length,
+ };
+ }
+ // 5. Отримуємо контакти
  const contacts = await this.prisma.schoolContact.findMany({
  where: { city: city.name },
  });
  let created = 0;
  for (const school of toCreate) {
+ // Шукаємо номер школи для автозаповнення директора
  const numMatch = school.name.match(/№?\s*(\d+)/);
  const num = numMatch?.[1];
  const matchedContacts = num
@@ -2238,6 +2241,7 @@ export class SchoolsService {
  matchedContacts.find(
  (c) => c.role?.includes('Директор') || c.role?.includes('Завідувач'),
  ) || matchedContacts[0];
+ try {
  await this.create({
  name: school.name,
  type,
@@ -2247,12 +2251,15 @@ export class SchoolsService {
  phone: director?.phone || '',
  });
  created++;
+ } catch (e) {
+ console.error(`Помилка створення ${school.name}:`, e);
+ }
  }
  return {
  city: city.name,
  total: allFromParser.length,
  created,
- skipped: allFromParser.length - toCreate.length,
+ skipped: allFromParser.length - created,
  };
  }
 }</file>

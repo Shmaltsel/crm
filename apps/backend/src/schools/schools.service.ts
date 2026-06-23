@@ -223,10 +223,15 @@ export class SchoolsService {
       select: { name: true },
     });
 
-    // 3. Створюємо Set нормалізованих назв для швидкої перевірки
-    // Допоміжна функція для "чистки" назви
+    // 3. Покращена функція нормалізації
+    // Видаляє всі пробіли, символи №, лапки та переводить у нижній регістр
     const normalize = (name: string) =>
-      name.toLowerCase().replace(/[^a-zа-яіїєґ0-9]/g, '');
+      name
+        .toLowerCase()
+        .replace(/№/g, '')
+        .replace(/["'«»]/g, '')
+        .replace(/\s+/g, '')
+        .trim();
 
     const existingNames = new Set(
       existingSchools.map((s) => normalize(s.name)),
@@ -245,14 +250,19 @@ export class SchoolsService {
       };
     }
 
-    // 5. Отримуємо контакти
+    // 5. Отримуємо контакти для автозаповнення
     const contacts = await this.prisma.schoolContact.findMany({
       where: { city: city.name },
     });
 
     let created = 0;
     for (const school of toCreate) {
-      // Шукаємо номер школи для автозаповнення директора
+      // Перевірка ще раз на випадок дублів всередині самого парсингу
+      if (existingNames.has(normalize(school.name))) continue;
+
+      // Додаємо в Set, щоб уникнути дублів у межах одного циклу імпорту
+      existingNames.add(normalize(school.name));
+
       const numMatch = school.name.match(/№?\s*(\d+)/);
       const num = numMatch?.[1];
       const matchedContacts = num
