@@ -33,7 +33,6 @@ export class DashboardService {
     const cityFilter   = cityId ? { cityId } : {};
     const isSuperAdmin = role === 'SUPERADMIN';
 
-    // ── Базові запити ────────────────────────────────────────────────────────
     const t1 = Date.now();
     const [
       todayEvents,
@@ -44,7 +43,6 @@ export class DashboardService {
       recentActivity,
     ] = await Promise.all([
 
-      // 1. Сьогоднішні події
       this.prisma.event.findMany({
         where: { ...cityFilter, date: { gte: todayStart, lt: todayEnd } },
         include: {
@@ -58,9 +56,8 @@ export class DashboardService {
           },
         },
         orderBy: { time: 'asc' },
-      }),
+      }).then(r => { console.log(`[Q1 todayEvents] ${Date.now() - t1}ms rows=${r.length}`); return r; }),
 
-      // 2. Найближчі події (завтра + 4 дні)
       this.prisma.event.findMany({
         where: { ...cityFilter, date: { gte: todayEnd, lt: upcomingEnd } },
         include: {
@@ -75,10 +72,9 @@ export class DashboardService {
         },
         orderBy: [{ date: 'asc' }, { time: 'asc' }],
         take: 8,
-      }),
+      }).then(r => { console.log(`[Q2 upcomingEvents] ${Date.now() - t1}ms rows=${r.length}`); return r; }),
 
-      // 3. Воронка — LATERAL JOIN замість findMany всіх шкіл
-      cityId
+      (cityId
         ? this.prisma.$queryRaw<{ status: string; count: bigint }[]>(Prisma.sql`
             SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
             FROM "School" s
@@ -101,9 +97,9 @@ export class DashboardService {
               LIMIT 1
             ) e ON true
             GROUP BY e.status
-          `),
+          `)
+      ).then(r => { console.log(`[Q3 funnel] ${Date.now() - t1}ms rows=${r.length}`); return r; }),
 
-      // 4. Фінанси місяця
       this.prisma.event.findMany({
         where: {
           ...cityFilter,
@@ -116,9 +112,8 @@ export class DashboardService {
             select: { totalSum: true, remainderSum: true, childrenCount: true },
           },
         },
-      }),
+      }).then(r => { console.log(`[Q4 finance] ${Date.now() - t1}ms rows=${r.length}`); return r; }),
 
-      // 5. "Зависли в пайплайні"
       this.prisma.school.findMany({
         where: {
           ...cityFilter,
@@ -144,9 +139,8 @@ export class DashboardService {
           },
         },
         take: 10,
-      }),
+      }).then(r => { console.log(`[Q5 stale] ${Date.now() - t1}ms rows=${r.length}`); return r; }),
 
-      // 6. Активність команди — останні 20 записів history за сьогодні
       this.prisma.eventHistory.findMany({
         where: {
           createdAt: { gte: todayStart },
@@ -162,11 +156,10 @@ export class DashboardService {
         },
         orderBy: { createdAt: 'desc' },
         take: 20,
-      }),
+      }).then(r => { console.log(`[Q6 activity] ${Date.now() - t1}ms rows=${r.length}`); return r; }),
     ]);
     console.log(`[Dashboard] main Promise.all: ${Date.now() - t1}ms`);
 
-    // ── Стан по містах (тільки для SUPERADMIN) ───────────────────────────────
     let citiesStats: {
       cityId:       string;
       cityName:     string;
@@ -179,19 +172,15 @@ export class DashboardService {
       const t2 = Date.now();
       const [allCities, allSchools, allActiveEvents, allMonthEvents] =
         await Promise.all([
-          this.prisma.city.findMany({ select: { id: true, name: true } }),
-
-          this.prisma.school.groupBy({
-            by: ['cityId'],
-            _count: { id: true },
-          }),
-
+          this.prisma.city.findMany({ select: { id: true, name: true } })
+            .then(r => { console.log(`[Q7 cities] ${Date.now() - t2}ms`); return r; }),
+          this.prisma.school.groupBy({ by: ['cityId'], _count: { id: true } })
+            .then(r => { console.log(`[Q8 schoolsGroupBy] ${Date.now() - t2}ms`); return r; }),
           this.prisma.event.groupBy({
             by: ['cityId'],
             where: { status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] } },
             _count: { id: true },
-          }),
-
+          }).then(r => { console.log(`[Q9 activeEvents] ${Date.now() - t2}ms`); return r; }),
           this.prisma.event.findMany({
             where: {
               status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
@@ -201,7 +190,7 @@ export class DashboardService {
               cityId: true,
               report: { select: { totalSum: true } },
             },
-          }),
+          }).then(r => { console.log(`[Q10 monthRevenue] ${Date.now() - t2}ms`); return r; }),
         ]);
       console.log(`[Dashboard] superadmin queries: ${Date.now() - t2}ms`);
 
@@ -223,9 +212,6 @@ export class DashboardService {
         .sort((a, b) => b.monthRevenue - a.monthRevenue);
     }
 
-    // ── Агрегати ─────────────────────────────────────────────────────────────
-
-    // Воронка з LATERAL JOIN результату
     const funnel: Record<string, number> = {};
     for (const stage of PIPELINE_STAGES) funnel[stage] = 0;
     let totalSchools = 0;
@@ -236,7 +222,6 @@ export class DashboardService {
       totalSchools += count;
     }
 
-    // Фінанси місяця
     const monthlyKpi = monthEvents.reduce(
       (acc, ev) => {
         acc.revenue  += ev.report?.totalSum      ?? 0;
@@ -248,7 +233,6 @@ export class DashboardService {
       { revenue: 0, profit: 0, children: 0, count: 0 },
     );
 
-    // "Потребують уваги"
     const staleSchools = staleSchoolsRaw
       .map(school => {
         const lastHistory  = school.events[0]?.history[0];
@@ -266,7 +250,6 @@ export class DashboardService {
       })
       .sort((a, b) => (b.daysStale ?? 0) - (a.daysStale ?? 0));
 
-    // Активність команди
     const activityFeed = recentActivity.map(h => ({
       id:         h.id,
       userName:   h.userName,
