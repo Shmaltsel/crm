@@ -1,6 +1,4 @@
-import { useNavigate } from 'react-router-dom';
-
-const STAGE_COLORS = ['#185fa5', '#0f6e56', '#534ab7', '#854f0b', '#993c1d', '#3b6d11'];
+import { useNavigate } from "react-router-dom";
 
 interface CrewMember {
   id: string;
@@ -31,27 +29,39 @@ interface Props {
   events: TodayEvent[];
 }
 
+function plural(n: number): string {
+  if (n % 10 === 1 && n % 100 !== 11) return "подія";
+  if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20))
+    return "події";
+  return "подій";
+}
+
 export default function TodayEvents({ events }: Props) {
   const navigate = useNavigate();
-  const today = new Date();
-  const dateLabel = today.toLocaleDateString('uk-UA', {
-    day: 'numeric',
-    month: 'long',
-    weekday: 'long',
+
+  const dateLabel = new Date().toLocaleDateString("uk-UA", {
+    day: "numeric",
+    month: "long",
+    weekday: "long",
   });
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col gap-0">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col">
+      {/* Хедер */}
       <div className="flex justify-between items-start mb-3">
         <div>
-          <p className="text-sm font-semibold text-slate-800">Сьогоднішні події</p>
-          <p className="text-xs text-slate-400 mt-0.5 capitalize">{dateLabel}</p>
+          <p className="text-sm font-semibold text-slate-800">
+            Сьогоднішні події
+          </p>
+          <p className="text-xs text-slate-400 mt-0.5 capitalize">
+            {dateLabel}
+          </p>
         </div>
         <button
-          onClick={() => navigate('/calendar')}
+          onClick={() => navigate("/calendar")}
           className="text-xs text-blue-600 hover:underline shrink-0"
         >
-          Переглянути всі
+          Календар
         </button>
       </div>
 
@@ -60,36 +70,59 @@ export default function TodayEvents({ events }: Props) {
           Сьогодні подій немає
         </div>
       ) : (
-        <div className="flex flex-col divide-y divide-slate-50">
-          {events.map((ev, idx) => {
-            const dotColor = STAGE_COLORS[idx % STAGE_COLORS.length];
-            const crewName = ev.crew?.name
-              ?? (ev.crew?.host?.name ? `${ev.crew.host.name}` : null)
-              ?? '—';
+        <div className="flex flex-col gap-2">
+          {events.map((ev) => {
+            const hasCrew = !!ev.crew;
+            const crewLabel = ev.crew?.name ?? ev.crew?.host?.name ?? null;
 
             return (
               <div
                 key={ev.id}
-                onClick={() => ev.school && navigate(`/schools/${ev.school.id}`)}
-                className="flex items-start gap-3 py-2.5 cursor-pointer hover:bg-slate-50/60 rounded-lg px-1 -mx-1 transition-colors"
+                className={`rounded-xl border p-3 flex flex-col gap-2.5 ${
+                  hasCrew
+                    ? "border-slate-100 bg-white"
+                    : "border-amber-200 bg-amber-50/40"
+                }`}
               >
-                <span className="text-xs font-medium text-slate-500 w-11 pt-0.5 shrink-0">
-                  {ev.time ?? '—:——'}
-                </span>
-                <span
-                  className="w-2 h-2 rounded-full mt-1.5 shrink-0"
-                  style={{ backgroundColor: dotColor }}
-                />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-800 truncate">
-                    {ev.school?.name ?? '—'}
-                  </p>
-                  <p className="text-xs text-slate-400 truncate">{ev.project}</p>
-                  <div className="flex items-center gap-1 mt-1">
-                    <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">
-                      {crewName}
+                {/* Час + проєкт в один рядок */}
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-bold text-slate-800 tabular-nums shrink-0">
+                    {ev.time ?? "—:——"}
+                  </span>
+                  <span className="text-xs text-slate-400 truncate">
+                    {ev.project}
+                  </span>
+                </div>
+
+                {/* Назва школи — дозволяємо переноситись, не обрізаємо */}
+                <p className="text-sm font-semibold text-slate-700 leading-snug line-clamp-2">
+                  {ev.school?.name ?? "—"}
+                </p>
+
+                {/* Статус екіпажу + кнопка в один рядок */}
+                <div className="flex items-center justify-between gap-2">
+                  {hasCrew ? (
+                    <span className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-medium shrink-0">
+                      ✅ {crewLabel ?? "Екіпаж призначено"}
                     </span>
-                  </div>
+                  ) : (
+                    <span className="text-[11px] text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full font-medium shrink-0">
+                      ⚠️ Немає екіпажу
+                    </span>
+                  )}
+
+                  <button
+                    onClick={() =>
+                      ev.school && navigate(`/schools/${ev.school.id}`)
+                    }
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors shrink-0 ${
+                      hasCrew
+                        ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                        : "bg-white border border-amber-400 text-amber-700 hover:bg-amber-50"
+                    }`}
+                  >
+                    {hasCrew ? "Відкрити →" : "Призначити →"}
+                  </button>
                 </div>
               </div>
             );
@@ -98,7 +131,7 @@ export default function TodayEvents({ events }: Props) {
       )}
 
       <p className="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-50">
-        Усього на сьогодні: {events.length} {events.length === 1 ? 'подія' : events.length < 5 ? 'події' : 'подій'}
+        Усього на сьогодні: {events.length} {plural(events.length)}
       </p>
     </div>
   );
