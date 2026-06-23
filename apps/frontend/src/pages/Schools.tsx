@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
@@ -26,7 +26,7 @@ export default function Schools() {
   const [cities, setCities] = useState<City[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const [searchQuery, setSearchQuery] = useState("");
   const [form, setForm] = useState({
     name: "",
     cityId: "",
@@ -34,7 +34,6 @@ export default function Schools() {
     director: "",
     phone: "",
   });
-
   const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<
@@ -90,15 +89,12 @@ export default function Schools() {
       setMatchedContacts([]);
       return;
     }
-
     const currentCityName =
       selectedCity.name || cities.find((c) => c.id === form.cityId)?.name || "";
-
     if (currentCityName.toLowerCase() !== "львів") {
       setMatchedContacts([]);
       return;
     }
-
     try {
       const token = localStorage.getItem("token");
       const res = await api.get(
@@ -127,19 +123,15 @@ export default function Schools() {
 
   const handleNameChange = (value: string) => {
     setForm({ ...form, name: value });
-
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
-
     if (value.length < 2) {
       setShowSuggestions(false);
       setIsSearching(false);
       setMatchedContacts([]);
       return;
     }
-
     setIsSearching(true);
     setShowSuggestions(true);
-
     debounceTimer.current = setTimeout(async () => {
       const token = localStorage.getItem("token");
       try {
@@ -212,7 +204,7 @@ export default function Schools() {
     }
   };
 
-  const filteredSchools = schools.filter((s) => {
+  const baseFiltered = schools.filter((s) => {
     const hasCityFilter = selectedCity.id && selectedCity.id.trim() !== "";
     const isCityMatch = hasCityFilter ? s.cityId === selectedCity.id : true;
     const isTypeMatch = s.type === "Школа";
@@ -222,9 +214,22 @@ export default function Schools() {
     return isCityMatch && isTypeMatch && isFilterMatch;
   });
 
+  const filteredSchools = useMemo(() => {
+    if (!searchQuery.trim()) return baseFiltered;
+    const q = searchQuery.toLowerCase().trim();
+    return baseFiltered.filter(
+      (s) =>
+        s.name?.toLowerCase().includes(q) ||
+        s.city?.name?.toLowerCase().includes(q) ||
+        s.director?.toLowerCase().includes(q) ||
+        s.address?.toLowerCase().includes(q),
+    );
+  }, [baseFiltered, searchQuery]);
+
   return (
-    <div className="p-4 md:p-8 h-full max-w-[100vw] overflow-hidden">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+    <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] overflow-hidden">
+      {/* Заголовок + кнопки */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 shrink-0">
         <h1 className="text-2xl font-bold text-slate-800">
           Школи
           {selectedCity.id && (
@@ -233,65 +238,111 @@ export default function Schools() {
             </span>
           )}
         </h1>
-        <button
-          onClick={handleOpenModal}
-          className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
-        >
-          + Додати школу
-        </button>
-        <button
-          onClick={async () => {
-            if (!selectedCity.id) {
-              alert("Спочатку оберіть місто");
-              return;
-            }
-            if (
-              !window.confirm(
-                `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}? Це може зайняти 1-2 хвилини.`,
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            onClick={handleOpenModal}
+            className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
+          >
+            + Додати школу
+          </button>
+          <button
+            onClick={async () => {
+              if (!selectedCity.id) {
+                alert("Спочатку оберіть місто");
+                return;
+              }
+              if (
+                !window.confirm(
+                  `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}? Це може зайняти 1-2 хвилини.`,
+                )
               )
-            )
-              return;
-            try {
-              const res = await api.post(
-                "/schools/bulk-import",
-                { cityId: selectedCity.id, type: "Школа" },
-                {
-                  headers: {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                return;
+              try {
+                const res = await api.post(
+                  "/schools/bulk-import",
+                  { cityId: selectedCity.id, type: "Школа" },
+                  {
+                    headers: {
+                      Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                    timeout: 120000,
                   },
-                  timeout: 120000,
-                },
-              );
-              alert(
-                `✅ Імпорт завершено для ${res.data.city}:\nДодано: ${res.data.created}\nПропущено дублів: ${res.data.skipped}\nВсього на isuo.org: ${res.data.total}`,
-              );
-              fetchSchools();
-            } catch (e) {
-              console.error(e);
-              alert("Помилка імпорту. Перевір консоль.");
-            }
-          }}
-          className="flex-1 md:flex-none w-full md:w-auto px-4 py-2.5 md:py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium transition-colors"
-        >
-          📥 Імпорт з isuo.org
-        </button>
+                );
+                alert(
+                  `✅ Імпорт завершено для ${res.data.city}:\nДодано: ${res.data.created}\nПропущено дублів: ${res.data.skipped}\nВсього на isuo.org: ${res.data.total}`,
+                );
+                fetchSchools();
+              } catch (e) {
+                console.error(e);
+                alert("Помилка імпорту. Перевір консоль.");
+              }
+            }}
+            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium transition-colors"
+          >
+            📥 Імпорт з isuo.org
+          </button>
+        </div>
       </div>
 
-      <StatsBar
-        schools={schools.filter((s) => {
-          const hasCityFilter =
-            selectedCity.id && selectedCity.id.trim() !== "";
-          return (
-            (hasCityFilter ? s.cityId === selectedCity.id : true) &&
-            s.type === "Школа"
-          );
-        })}
-        activeFilter={activeFilter}
-        onFilterChange={setActiveFilter}
-      />
+      {/* StatsBar */}
+      <div className="shrink-0">
+        <StatsBar
+          schools={schools.filter((s) => {
+            const hasCityFilter =
+              selectedCity.id && selectedCity.id.trim() !== "";
+            return (
+              (hasCityFilter ? s.cityId === selectedCity.id : true) &&
+              s.type === "Школа"
+            );
+          })}
+          activeFilter={activeFilter}
+          onFilterChange={setActiveFilter}
+        />
+      </div>
 
-      {/* Мобільний вигляд */}
-      <div className="md:hidden flex flex-col gap-3">
+      {/* Пошук */}
+      <div className="relative shrink-0 mb-4">
+        <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
+          <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+          </svg>
+        </div>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Пошук за назвою, директором, адресою..."
+          className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 shadow-sm transition"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600 transition"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {/* Лічильник */}
+      <p className="text-xs text-slate-400 mb-3 shrink-0">
+        {filteredSchools.length === baseFiltered.length
+          ? `${baseFiltered.length} шкіл`
+          : `${filteredSchools.length} з ${baseFiltered.length} шкіл`}
+        {activeFilter && (
+          <button
+            onClick={() => setActiveFilter(null)}
+            className="ml-2 text-blue-500 hover:text-blue-700 underline"
+          >
+            скинути фільтр
+          </button>
+        )}
+      </p>
+
+      {/* Мобільний вигляд — скролиться */}
+      <div className="md:hidden flex-1 overflow-y-auto flex flex-col gap-3 pb-4">
         {filteredSchools.map((school) => {
           const latestEvent = school.events?.[0];
           const stage = latestEvent
@@ -338,70 +389,77 @@ export default function Schools() {
         })}
         {filteredSchools.length === 0 && (
           <div className="bg-white rounded-2xl border border-slate-100 text-center py-10 text-slate-400 text-sm">
-            Шкіл ще немає
+            {searchQuery ? `Нічого не знайдено за «${searchQuery}»` : "Шкіл ще немає"}
           </div>
         )}
       </div>
 
-      {/* Десктоп таблиця */}
-      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto w-full">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50 border-b border-slate-100">
-              <th className="p-4 font-medium text-slate-600">Назва школи</th>
-              <th className="p-4 font-medium text-slate-600">Місто</th>
-              <th className="p-4 font-medium text-slate-600">Статус</th>
-              <th className="p-4 font-medium text-slate-600">Поточний етап</th>
-              <th className="p-4 font-medium text-slate-600 text-center">
-                Дія
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredSchools.map((school) => {
-              const latestEvent = school.events?.[0];
-              const stage = latestEvent
-                ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
-                : null;
-              return (
-                <tr
-                  key={school.id}
-                  onClick={() => navigate(`/schools/${school.id}`)}
-                  className="cursor-pointer border-b border-slate-50 hover:bg-slate-50/50 transition"
-                >
-                  <td className="p-4 text-slate-800 font-medium">
-                    {school.name}
-                  </td>
-                  <td className="p-4 text-slate-600">{school.city?.name}</td>
-                  <td className="p-4">
-                    <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-medium">
-                      Активна
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    {stage ? (
-                      <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium border border-blue-100">
-                        {stage.name}
+      {/* Десктоп таблиця — скролиться */}
+      <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
+        <div className="overflow-y-auto flex-1">
+          <table className="w-full text-left border-collapse">
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-slate-50 border-b border-slate-100">
+                <th className="p-4 font-medium text-slate-600">Назва школи</th>
+                <th className="p-4 font-medium text-slate-600">Місто</th>
+                <th className="p-4 font-medium text-slate-600">Статус</th>
+                <th className="p-4 font-medium text-slate-600">Поточний етап</th>
+                <th className="p-4 font-medium text-slate-600 text-center">
+                  Дія
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredSchools.map((school) => {
+                const latestEvent = school.events?.[0];
+                const stage = latestEvent
+                  ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
+                  : null;
+                return (
+                  <tr
+                    key={school.id}
+                    onClick={() => navigate(`/schools/${school.id}`)}
+                    className="cursor-pointer border-b border-slate-50 hover:bg-slate-50/50 transition"
+                  >
+                    <td className="p-4 text-slate-800 font-medium">
+                      {school.name}
+                    </td>
+                    <td className="p-4 text-slate-600">{school.city?.name}</td>
+                    <td className="p-4">
+                      <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-medium">
+                        Активна
                       </span>
-                    ) : (
-                      <span className="text-slate-400 text-xs italic">—</span>
-                    )}
-                  </td>
-                  <td className="p-4 text-center">
-                    <button
-                      onClick={(e) =>
-                        handleDeleteSchool(e, school.id, school.name)
-                      }
-                      className="text-slate-400 hover:text-red-500 transition-colors p-2"
-                    >
-                      🗑
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    </td>
+                    <td className="p-4">
+                      {stage ? (
+                        <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium border border-blue-100">
+                          {stage.name}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-xs italic">—</span>
+                      )}
+                    </td>
+                    <td className="p-4 text-center">
+                      <button
+                        onClick={(e) =>
+                          handleDeleteSchool(e, school.id, school.name)
+                        }
+                        className="text-slate-400 hover:text-red-500 transition-colors p-2"
+                      >
+                        🗑
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {filteredSchools.length === 0 && (
+            <div className="text-center py-16 text-slate-400 text-sm">
+              {searchQuery ? `Нічого не знайдено за «${searchQuery}»` : "Шкіл ще немає"}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Модалка */}
@@ -463,7 +521,6 @@ export default function Schools() {
                   </ul>
                 )}
               </div>
-
               {!selectedCity.id && (
                 <div>
                   <label className="block text-sm text-slate-600 mb-1">
@@ -486,7 +543,6 @@ export default function Schools() {
                   </select>
                 </div>
               )}
-
               <div>
                 <label className="block text-sm text-slate-600 mb-1">
                   Контакт{" "}
