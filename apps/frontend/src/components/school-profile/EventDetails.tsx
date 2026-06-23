@@ -23,36 +23,91 @@ export default function EventDetails({ currentEvent, schoolName, cityId, onEvent
     );
   }
 
+  const formattedDate = new Date(currentEvent.date).toLocaleDateString('uk-UA');
+
   return (
     <>
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-blue-600">
-        <h3 className="font-bold text-slate-800 mb-4 border-b pb-3 border-slate-100 flex justify-between items-center">
-          <span>Деталі обраної події</span>
-          <div className="flex items-center gap-3">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 md:border-l-4 md:border-l-blue-600 overflow-hidden relative">
+        <div className="p-5 sm:p-6 pl-6 sm:pl-6">
+          
+          {/* Заголовок */}
+          <div className="flex justify-between items-center mb-2 md:mb-5 md:border-b border-slate-100 md:pb-4">
+            <h3 className="font-bold text-slate-800 text-lg">Деталі події</h3>
+            {/* Дата для мобільних (щоб була під заголовком) */}
+            <span className="md:hidden text-sm font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">
+              {formattedDate}
+            </span>
+          </div>
+
+          {/* ВЕЛИКІ МОБІЛЬНІ КНОПКИ (Відображаються тільки на телефоні) */}
+          <div className="md:hidden grid grid-cols-2 gap-3 mb-5 border-b border-slate-100 pb-5 mt-3">
+            <button 
+              onClick={() => setRescheduleOpen(true)} 
+              className="flex flex-col items-center justify-center gap-2 p-4 bg-amber-50 text-amber-600 rounded-2xl font-bold border border-amber-100/50 active:bg-amber-100 transition-colors shadow-sm"
+            >
+              <span className="text-2xl">📅</span>
+              <span className="text-[11px] uppercase tracking-wider">Перенести</span>
+            </button>
+            <button 
+              onClick={() => setIssueOpen(true)} 
+              className="flex flex-col items-center justify-center gap-2 p-4 bg-red-50 text-red-600 rounded-2xl font-bold border border-red-100/50 active:bg-red-100 transition-colors shadow-sm"
+            >
+              <span className="text-2xl">🚨</span>
+              <span className="text-[11px] uppercase tracking-wider">Проблема</span>
+            </button>
+          </div>
+
+          {/* ДЕСКТОПНІ КНОПКИ (Відображаються тільки на ПК) */}
+          <div className="hidden md:flex items-center justify-end gap-3 absolute top-5 right-6">
+            <span className="text-sm font-medium text-blue-600 mr-2">{formattedDate}</span>
             <button
               onClick={() => setRescheduleOpen(true)}
               className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
             >
               📅 Перенести
             </button>
-            <span className="text-sm font-medium text-blue-600">
-              {new Date(currentEvent.date).toLocaleDateString()}
-            </span>
             <button
               onClick={() => setIssueOpen(true)}
-              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+              className="px-3 py-1.5 bg-[#DC2626] hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
             >
               🚨 Проблема
             </button>
           </div>
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div className="flex"><span className="w-1/3 text-slate-500">Проєкт:</span><span className="font-medium">{currentEvent.project}</span></div>
-          <div className="flex"><span className="w-1/3 text-slate-500">Дата та Час:</span><span className="font-medium">{new Date(currentEvent.date).toLocaleDateString()} о {currentEvent.time}</span></div>
-          <div className="flex"><span className="w-1/3 text-slate-500">Кількість дітей:</span><span className="font-medium">{currentEvent.childrenPlanned}</span></div>
-          <div className="flex"><span className="w-1/3 text-slate-500">Вартість:</span><span className="font-medium">{currentEvent.price} грн</span></div>
-          <div className="flex"><span className="w-1/3 text-slate-500">Адреса:</span><span className="font-medium"><AddressLink address={currentEvent.address} /></span></div>
-          <div className="flex"><span className="w-1/3 text-slate-500">Контакт:</span><span className="font-medium">{currentEvent.contactPerson} <br/><PhoneLink phone={currentEvent.contactPhone} /></span></div>
+
+          {/* Інформація */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-4 text-sm mt-2 md:mt-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0">
+              <span className="w-full sm:w-1/3 text-slate-500 font-medium">Проєкт:</span>
+              <span className="font-bold text-slate-800">{currentEvent.project}</span>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0">
+              <span className="w-full sm:w-1/3 text-slate-500 font-medium">Час початку:</span>
+              <span className="font-bold text-slate-800">{currentEvent.time}</span>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0">
+              <span className="w-full sm:w-1/3 text-slate-500 font-medium">Кількість дітей:</span>
+              <span className="font-bold text-slate-800">{currentEvent.childrenPlanned}</span>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0">
+              <span className="w-full sm:w-1/3 text-slate-500 font-medium">Вартість:</span>
+              <span className="font-bold text-slate-800">{currentEvent.price} грн</span>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-0 mt-2 border-t border-slate-50 pt-3 md:border-0 md:pt-0 md:mt-0">
+              <span className="w-full sm:w-1/3 text-slate-500 font-medium mt-1">Адреса:</span>
+              <span className="font-bold text-slate-800 flex items-start gap-1.5 leading-snug">
+                 <span className="text-slate-400 mt-0.5 shrink-0">📍</span>
+                 <AddressLink address={currentEvent.address} />
+              </span>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-0 mt-2 border-t border-slate-50 pt-3 md:border-0 md:pt-0 md:mt-0">
+              <span className="w-full sm:w-1/3 text-slate-500 font-medium mt-1">Контакт:</span>
+              <span className="font-bold text-slate-800 flex flex-col gap-1 leading-snug">
+                <span>{currentEvent.contactPerson}</span>
+                <span className="w-6 border-b-2 border-slate-200 my-0.5"></span>
+                <PhoneLink phone={currentEvent.contactPhone} />
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -60,11 +115,10 @@ export default function EventDetails({ currentEvent, schoolName, cityId, onEvent
         isOpen={issueOpen}
         onClose={() => setIssueOpen(false)}
         schoolName={schoolName || currentEvent.school?.name || ''}
-        eventName={`${currentEvent.project} — ${new Date(currentEvent.date).toLocaleDateString('uk-UA')}`}
+        eventName={`${currentEvent.project} — ${formattedDate}`}
         eventId={currentEvent.id}
         cityId={cityId || currentEvent.cityId || ''}
       />
-
       <RescheduleModal
         isOpen={rescheduleOpen}
         onClose={() => setRescheduleOpen(false)}
