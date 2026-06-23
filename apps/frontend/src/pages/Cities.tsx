@@ -4,35 +4,22 @@ import { useSelectedCity } from "../context/CityContext";
 import IssueCarousel from '../components/IssueCarousel';
 import { api } from "../config/api";
 
-
-
 // Фото для міст за назвою (Unsplash)
 const CITY_PHOTOS: Record<string, string> = {
   Львів: "https://gohotels.com.ua/images/stories/f08072159a443e07501f3df97987f8a3.jpg",
   Київ: "https://images.unsplash.com/photo-1630651814316-fe71f3c30279?w=600&q=80",
-  Харків:
-    "https://images.unsplash.com/photo-1584646098378-0f87b72cffe1?w=600&q=80",
-  Одеса:
-    "https://images.unsplash.com/photo-1585168050053-a4ba02e3f0d2?w=600&q=80",
-  Дніпро:
-    "https://images.unsplash.com/photo-1570587953042-a65fd17e2f73?w=600&q=80",
-  Запоріжжя:
-    "https://images.unsplash.com/photo-1549887534-1541e9326642?w=600&q=80",
-  Вінниця:
-    "https://images.unsplash.com/photo-1591389703635-e15a07b842d7?w=600&q=80",
-  "Івано-Франківськ":
-    "https://images.unsplash.com/photo-1605723517503-3cadb5818a0c?w=600&q=80",
-  Тернопіль:
-    "https://images.unsplash.com/photo-1564760290292-23341e4df6ec?w=600&q=80",
-  Луцьк:
-    "https://images.unsplash.com/photo-1587974928442-77dc3e0dba72?w=600&q=80",
+  Харків: "https://images.unsplash.com/photo-1584646098378-0f87b72cffe1?w=600&q=80",
+  Одеса: "https://images.unsplash.com/photo-1585168050053-a4ba02e3f0d2?w=600&q=80",
+  Дніпро: "https://images.unsplash.com/photo-1570587953042-a65fd17e2f73?w=600&q=80",
+  Запоріжжя: "https://images.unsplash.com/photo-1549887534-1541e9326642?w=600&q=80",
+  Вінниця: "https://images.unsplash.com/photo-1591389703635-e15a07b842d7?w=600&q=80",
+  "Івано-Франківськ": "https://images.unsplash.com/photo-1605723517503-3cadb5818a0c?w=600&q=80",
+  Тернопіль: "https://images.unsplash.com/photo-1564760290292-23341e4df6ec?w=600&q=80",
+  Луцьк: "https://images.unsplash.com/photo-1587974928442-77dc3e0dba72?w=600&q=80",
   Рівне: "https://images.unsplash.com/photo-1518684079-3c830dcef090?w=600&q=80",
-  Хмельницький:
-    "https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=600&q=80",
-  Чернівці:
-    "https://images.unsplash.com/photo-1562619371-b67725b6fde2?w=600&q=80",
-  Ужгород:
-    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80",
+  Хмельницький: "https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=600&q=80",
+  Чернівці: "https://images.unsplash.com/photo-1562619371-b67725b6fde2?w=600&q=80",
+  Ужгород: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80",
 };
 
 const DEFAULT_PHOTO =
@@ -46,30 +33,62 @@ interface City {
   completedEvents?: number;
 }
 
+// Компонент скелетону для картки міста
+const CitySkeleton = () => {
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden animate-pulse">
+      <div className="h-44 bg-slate-200/60 w-full"></div>
+      <div className="p-5 flex flex-col gap-3">
+        <div className="flex justify-between items-start mb-1">
+          <div className="h-7 bg-slate-200/60 rounded-md w-1/2"></div>
+          <div className="h-6 bg-slate-200/60 rounded-full w-1/3"></div>
+        </div>
+        <div className="h-4 bg-slate-200/60 rounded-md w-2/3 mb-2"></div>
+        <div className="w-full h-px bg-slate-50 mt-1 mb-1"></div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <div className="h-3 bg-slate-200/60 rounded w-3/4 mb-2"></div>
+            <div className="h-5 bg-slate-200/60 rounded w-1/4"></div>
+          </div>
+          <div>
+            <div className="h-3 bg-slate-200/60 rounded w-3/4 mb-2"></div>
+            <div className="h-5 bg-slate-200/60 rounded w-1/4"></div>
+          </div>
+        </div>
+        <div className="flex gap-2 mt-4 pt-3 border-t border-slate-50">
+           <div className="h-9 bg-slate-200/60 rounded-lg flex-1"></div>
+           <div className="h-9 w-10 bg-slate-200/60 rounded-lg shrink-0"></div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function Cities() {
   const navigate = useNavigate();
   const [cities, setCities] = useState<City[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newCityName, setNewCityName] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   
-  // Додано selectedCity для перевірки, яке місто зараз обране
+  const [isLoading, setIsLoading] = useState(false); // Для модалки
+  const [isFetching, setIsFetching] = useState(true); // Для завантаження міст
+  
   const { selectedCity, setSelectedCity } = useSelectedCity();
 
   const fetchCities = async () => {
+    setIsFetching(true);
     try {
       const response = await api.get("/cities");
       setCities(response.data);
     } catch (error) {
       console.error("Помилка при завантаженні міст:", error);
+    } finally {
+      setIsFetching(false);
     }
   };
 
   useEffect(() => {
-    const load = async () => {
-      await fetchCities();
-    };
-    void load();
+    fetchCities();
   }, []);
 
   const handleAddCity = async (e: React.FormEvent) => {
@@ -100,112 +119,112 @@ export default function Cities() {
           <span className="mr-2">+</span> Додати місто
         </button>
       </div>
+
       <IssueCarousel />
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {cities.map((city) => {
-          // Перевіряємо, чи є це місто обраним
-          const isSelected = selectedCity?.id === city.id;
-
-          return (
-            <div
-              key={city.id}
-              // Прибрано onClick з усієї картки
-              className={`bg-white rounded-2xl shadow-sm border transition-all overflow-hidden group ${
-                isSelected
-                  ? "border-blue-500 ring-4 ring-blue-500/20 shadow-md" // Стилі для обраного міста
-                  : "border-slate-100 hover:shadow-lg hover:border-blue-200"
-              }`}
-            >
-              {/* Фото міста */}
-              <div className="h-44 overflow-hidden relative">
-                <img
-                  src={CITY_PHOTOS[city.name] || DEFAULT_PHOTO}
-                  alt={city.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = DEFAULT_PHOTO;
-                  }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-                
-                {/* Маленька позначка-галочка поверх фото, якщо місто обране */}
-                {isSelected && (
-                  <div className="absolute top-3 right-3 bg-blue-500 text-white p-1.5 rounded-full shadow-lg">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                )}
-              </div>
-
-              {/* Контент картки */}
-              <div className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
-                    {city.name}
-                  </h2>
-                  <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-100">
-                    Активне місто
-                  </span>
-                </div>
-
-                {/* Менеджер */}
-                <div className="flex items-center gap-2 mb-4 text-sm text-slate-600">
-                  <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold shrink-0">
-                    {city.manager?.name?.charAt(0) ?? "?"}
-                  </div>
-                  <span>
-                    <span className="text-slate-400">Менеджер: </span>
-                    <span className="font-medium">
-                      {city.manager?.name ?? "—"}
-                    </span>
-                  </span>
-                </div>
-
-                {/* Статистика */}
-                <div className="space-y-2 text-sm border-t border-slate-50 pt-3">
-                  <div className="flex justify-between text-slate-500">
-                    <span>Заплановано подій:</span>
-                    <span className="font-semibold text-slate-800">
-                      {city.plannedEvents ?? 0}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-slate-500">
-                    <span>Проведено подій:</span>
-                    <span className="font-semibold text-slate-800">
-                      {city.completedEvents ?? 0}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Кнопки дій */}
-                <div className="flex gap-2 mt-4 pt-3 border-t border-slate-50">
-                  <button
-                    onClick={() => {
-                      setSelectedCity({ id: city.id, name: city.name });
+        {/* Показуємо скелетони, якщо дані вантажаться */}
+        {isFetching ? (
+          Array.from({ length: 6 }).map((_, index) => (
+            <CitySkeleton key={index} />
+          ))
+        ) : (
+          cities.map((city) => {
+            const isSelected = selectedCity?.id === city.id;
+            return (
+              <div
+                key={city.id}
+                className={`bg-white rounded-2xl shadow-sm border transition-all overflow-hidden group ${
+                  isSelected
+                    ? "border-blue-500 ring-4 ring-blue-500/20 shadow-md"
+                    : "border-slate-100 hover:shadow-lg hover:border-blue-200"
+                }`}
+              >
+                <div className="h-44 overflow-hidden relative">
+                  <img
+                    src={CITY_PHOTOS[city.name] || DEFAULT_PHOTO}
+                    alt={city.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = DEFAULT_PHOTO;
                     }}
-                    className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors ${
-                      isSelected 
-                        ? "bg-blue-50 text-blue-700 border border-blue-200" 
-                        : "bg-blue-600 hover:bg-blue-700 text-white"
-                    }`}
-                  >
-                    {isSelected ? "Обрано" : "✓ Вибрати місто"}
-                  </button>
-                  <button
-                    onClick={() => navigate(`/cities/${city.id}`)}
-                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm rounded-lg transition-colors"
-                    title="Детальніше"
-                  >
-                    →
-                  </button>
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                  {isSelected && (
+                    <div className="absolute top-3 right-3 bg-blue-500 text-white p-1.5 rounded-full shadow-lg">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
+                      {city.name}
+                    </h2>
+                    <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-100">
+                      Активне місто
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 mb-4 text-sm text-slate-600">
+                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold shrink-0">
+                      {city.manager?.name?.charAt(0) ?? "?"}
+                    </div>
+                    <span>
+                      <span className="text-slate-400">Менеджер: </span>
+                      <span className="font-medium">
+                        {city.manager?.name ?? "—"}
+                      </span>
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-sm border-t border-slate-50 pt-3">
+                    <div className="flex justify-between text-slate-500">
+                      <span>Заплановано подій:</span>
+                      <span className="font-semibold text-slate-800">
+                        {city.plannedEvents ?? 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-slate-500">
+                      <span>Проведено подій:</span>
+                      <span className="font-semibold text-slate-800">
+                        {city.completedEvents ?? 0}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 mt-4 pt-3 border-t border-slate-50">
+                    <button
+                      onClick={() => {
+                        setSelectedCity({ id: city.id, name: city.name });
+                      }}
+                      className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors ${
+                        isSelected 
+                          ? "bg-blue-50 text-blue-700 border border-blue-200" 
+                          : "bg-blue-600 hover:bg-blue-700 text-white"
+                      }`}
+                    >
+                      {isSelected ? "Обрано" : "✓ Вибрати місто"}
+                    </button>
+                    <button
+                      onClick={() => navigate(`/cities/${city.id}`)}
+                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm rounded-lg transition-colors"
+                      title="Детальніше"
+                    >
+                      →
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
 
-        {cities.length === 0 && (
+        {/* Якщо завантажили і масив порожній */}
+        {!isFetching && cities.length === 0 && (
           <div className="col-span-full text-center py-10 text-slate-500">
             Міст ще немає. Натисни "+ Додати місто", щоб створити перше!
           </div>
