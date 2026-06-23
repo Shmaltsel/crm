@@ -160,12 +160,15 @@ export class ParserService {
   // Отримати всі школи/садочки конкретного міста з isuo.org
   async getAllSchoolsForCity(cityName: string, type: 'Школа' | 'Садочок' = 'Школа'): Promise<{ name: string; url: string }[]> {
   const config = CITY_CONFIG[cityName];
-  if (!config) return [];
+  if (!config) {
+    console.log(`Місто "${cityName}" не підтримується для імпорту`);
+    return [];
+  }
 
   const baseUrl = type === 'Садочок' ? config.kindergartens : config.schools;
   const domain = config.domain;
   
-  // Зберігаємо об'єкт { name, url } як значення
+  // Використовуємо Map для зберігання об'єктів { name, url }
   const resultsMap = new Map<string, { name: string; url: string }>();
 
   for (let page = 1; page <= 20; page++) {
@@ -180,21 +183,22 @@ export class ParserService {
         const href = $(row).find('td:nth-child(2) a').attr('href');
         
         if (name && href && name !== 'Fullname') {
-          const normalizedName = name.toLowerCase().replace(/\s+/g, '');
-          if (!resultsMap.has(normalizedName)) {
-            resultsMap.set(normalizedName, { name, url: `${domain}${href}` });
+          // Нормалізація для перевірки дублів
+          const normalizedKey = name.toLowerCase().replace(/\s+/g, '');
+          
+          if (!resultsMap.has(normalizedKey)) {
+            resultsMap.set(normalizedKey, { name, url: `${domain}${href}` });
             foundOnPage++;
           }
         }
       });
+      
       if (foundOnPage === 0) break;
-    } catch { break; }
+    } catch {
+      break;
+    }
   }
 
   return Array.from(resultsMap.values());
 }
-
-  getSupportedCities(): string[] {
-    return Object.keys(CITY_CONFIG);
-  }
 }
