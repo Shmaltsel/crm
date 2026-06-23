@@ -85,22 +85,27 @@ export default function Cities() {
         +
       </button>
 
-      {/* Модалка додавання (спільна) */}
+     {/* Модалка додавання (спільна) */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h3 className="text-xl font-bold text-slate-800">Нове місто</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400">✕</button>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2">✕</button>
             </div>
             <form onSubmit={handleAddCity} className="p-6">
               <input
                 type="text" value={newCityName} onChange={(e) => setNewCityName(e.target.value)}
-                placeholder="Наприклад: Львів" className="w-full p-3 mb-4 border border-slate-200 rounded-xl" autoFocus required
+                placeholder="Наприклад: Львів" className="w-full p-3 mb-6 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" autoFocus required
               />
-              <button type="submit" disabled={isLoading} className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium">
-                {isLoading ? "Збереження..." : "Зберегти"}
-              </button>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors">
+                  Скасувати
+                </button>
+                <button type="submit" disabled={isLoading} className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                  {isLoading ? "Збереження..." : "Зберегти"}
+                </button>
+              </div>
             </form>
           </div>
         </div>
