@@ -208,4 +208,7 @@ export class ParserService {
 
     return Array.from(resultsMap.values());
   }
+  getSupportedCities(): string[] {
+    return Object.keys(CITY_CONFIG);
+  }
 }
