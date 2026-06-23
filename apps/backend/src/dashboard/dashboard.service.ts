@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 const PIPELINE_STAGES = [
@@ -32,12 +33,12 @@ export class DashboardService {
     const cityFilter   = cityId ? { cityId } : {};
     const isSuperAdmin = role === 'SUPERADMIN';
 
-    // ── Базові 6 запитів ─────────────────────────────────────────────────────
+    // ── Базові запити ────────────────────────────────────────────────────────
     const t1 = Date.now();
     const [
       todayEvents,
       upcomingEvents,
-      schools,
+      funnelRows,
       monthEvents,
       staleSchoolsRaw,
       recentActivity,
@@ -76,17 +77,31 @@ export class DashboardService {
         take: 8,
       }),
 
-      // 3. Воронка — всі школи з останнім статусом
-      this.prisma.school.findMany({
-        where: cityFilter,
-        include: {
-          events: {
-            orderBy: { date: 'desc' },
-            take: 1,
-            select: { status: true },
-          },
-        },
-      }),
+      // 3. Воронка — LATERAL JOIN замість findMany всіх шкіл
+      cityId
+        ? this.prisma.$queryRaw<{ status: string; count: bigint }[]>(Prisma.sql`
+            SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
+            FROM "School" s
+            LEFT JOIN LATERAL (
+              SELECT status FROM "Event"
+              WHERE "schoolId" = s.id
+              ORDER BY date DESC
+              LIMIT 1
+            ) e ON true
+            WHERE s."cityId" = ${cityId}
+            GROUP BY e.status
+          `)
+        : this.prisma.$queryRaw<{ status: string; count: bigint }[]>(Prisma.sql`
+            SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
+            FROM "School" s
+            LEFT JOIN LATERAL (
+              SELECT status FROM "Event"
+              WHERE "schoolId" = s.id
+              ORDER BY date DESC
+              LIMIT 1
+            ) e ON true
+            GROUP BY e.status
+          `),
 
       // 4. Фінанси місяця
       this.prisma.event.findMany({
@@ -131,7 +146,7 @@ export class DashboardService {
         take: 10,
       }),
 
-      // 6. Активність команди
+      // 6. Активність команди — останні 20 записів history за сьогодні
       this.prisma.eventHistory.findMany({
         where: {
           createdAt: { gte: todayStart },
@@ -210,13 +225,18 @@ export class DashboardService {
 
     // ── Агрегати ─────────────────────────────────────────────────────────────
 
+    // Воронка з LATERAL JOIN результату
     const funnel: Record<string, number> = {};
     for (const stage of PIPELINE_STAGES) funnel[stage] = 0;
-    for (const school of schools) {
-      const status = school.events[0]?.status ?? 'BASE';
-      if (funnel[status] !== undefined) funnel[status]++;
+    let totalSchools = 0;
+    for (const row of funnelRows) {
+      const status = row.status ?? 'BASE';
+      const count  = Number(row.count);
+      if (funnel[status] !== undefined) funnel[status] += count;
+      totalSchools += count;
     }
 
+    // Фінанси місяця
     const monthlyKpi = monthEvents.reduce(
       (acc, ev) => {
         acc.revenue  += ev.report?.totalSum      ?? 0;
@@ -228,6 +248,7 @@ export class DashboardService {
       { revenue: 0, profit: 0, children: 0, count: 0 },
     );
 
+    // "Потребують уваги"
     const staleSchools = staleSchoolsRaw
       .map(school => {
         const lastHistory  = school.events[0]?.history[0];
@@ -245,6 +266,7 @@ export class DashboardService {
       })
       .sort((a, b) => (b.daysStale ?? 0) - (a.daysStale ?? 0));
 
+    // Активність команди
     const activityFeed = recentActivity.map(h => ({
       id:         h.id,
       userName:   h.userName,
@@ -263,7 +285,7 @@ export class DashboardService {
       todayEvents,
       upcomingEvents,
       funnel,
-      totalSchools: schools.length,
+      totalSchools,
       monthlyKpi,
       staleSchools,
       activityFeed,
