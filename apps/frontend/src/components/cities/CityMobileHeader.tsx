@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../../../config/api";
+import { api } from "../../config/api";
 
 interface Props {
   selectedCity: any;
   cities: any[]; // Передаємо всі міста для статистики
 }
+
+const STATUSES = ['Планується', 'Виконується', 'Виконано'];
 
 const STATUS_STYLES: Record<string, string> = {
   'Планується': 'bg-amber-50 text-amber-700 border-amber-200',
@@ -13,10 +15,16 @@ const STATUS_STYLES: Record<string, string> = {
   'Виконано': 'bg-emerald-50 text-emerald-700 border-emerald-200',
 };
 
+function getNextStatus(current: string) {
+  const idx = STATUSES.indexOf(current);
+  return STATUSES[(idx + 1) % STATUSES.length];
+}
+
 export default function CityMobileHeader({ selectedCity, cities }: Props) {
   const navigate = useNavigate();
   const [issues, setIssues] = useState<any[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [exitingIssueId, setExitingIssueId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!selectedCity?.id) {
@@ -27,6 +35,26 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
       setIssues(res.data.filter((i: any) => i.status !== "Виконано"));
     }).catch(console.error);
   }, [selectedCity?.id]);
+
+  const handleStatusToggle = async (issue: any) => {
+    const nextStatus = getNextStatus(issue.status);
+    try {
+      await api.patch(`/issues/${issue.id}/status`, { status: nextStatus });
+      if (nextStatus === 'Виконано') {
+        setExitingIssueId(issue.id);
+        setTimeout(() => {
+          setIssues(prev => prev.filter(i => i.id !== issue.id));
+          setExitingIssueId(null);
+          // Якщо це була остання проблема, згортаємо блок
+          if (issues.length === 1) setIsExpanded(false);
+        }, 400);
+      } else {
+        setIssues(prev => prev.map(i => i.id === issue.id ? { ...i, status: nextStatus } : i));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const currentCityData = cities?.find((c: any) => c.id === selectedCity?.id);
   const totalEvents = (currentCityData?.plannedEvents || 0) + (currentCityData?.completedEvents || 0);
@@ -62,18 +90,35 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
 
           {/* Розгорнутий список проблем */}
           {isExpanded && (
-            <div className="flex flex-col gap-3 mt-2 border-t border-red-100/50 pt-3">
-              {issues.map(issue => (
-                <div key={issue.id} className="bg-white rounded-xl p-3 border border-red-50 shadow-sm relative">
-                  <p className="text-xs text-slate-400 mb-1">{new Date(issue.createdAt).toLocaleDateString('uk-UA')}</p>
-                  <p className="font-bold text-slate-800 text-sm">{issue.schoolName}</p>
-                  <p className="text-xs text-slate-500 mb-2">{issue.eventName}</p>
-                  <p className="text-sm text-slate-700 bg-slate-50 rounded-lg p-2 italic mb-2">"{issue.message}"</p>
-                  <span className={`text-[10px] font-bold px-2 py-1 rounded-md border ${STATUS_STYLES[issue.status] || STATUS_STYLES['Планується']}`}>
-                    {issue.status}
-                  </span>
-                </div>
-              ))}
+            <div className="flex flex-col gap-3 mt-2 pt-3 border-t border-red-100/50">
+              {issues.map(issue => {
+                const isExiting = exitingIssueId === issue.id;
+                return (
+                  <div 
+                    key={issue.id} 
+                    className={`bg-white rounded-2xl p-4 border border-red-100 shadow-sm relative transition-all duration-400 ease-in-out transform origin-top ${
+                      isExiting ? 'opacity-0 scale-95 h-0 overflow-hidden !p-0 border-0' : 'opacity-100 scale-100'
+                    }`}
+                  >
+                    <p className="text-[11px] text-slate-400 mb-1">
+                      {new Date(issue.createdAt).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                    <p className="font-bold text-slate-800 text-sm">{issue.schoolName}</p>
+                    <p className="text-[11px] text-slate-500 mb-3">{issue.eventName}</p>
+                    
+                    <p className="text-sm text-slate-700 bg-slate-50 rounded-xl p-3 italic leading-relaxed border border-slate-100 mb-3">
+                      "{issue.message}"
+                    </p>
+                    
+                    <button
+                      onClick={() => handleStatusToggle(issue)}
+                      className={`w-full text-xs font-bold px-3 py-2.5 rounded-lg border transition-colors text-left flex items-center gap-1.5 ${STATUS_STYLES[issue.status] || STATUS_STYLES['Планується']}`}
+                    >
+                      <span className="text-[10px]">●</span> {issue.status} <span className="font-normal opacity-70">→ натисни щоб змінити</span>
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
