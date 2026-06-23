@@ -242,7 +242,7 @@ export class SchoolsService {
 
     // 5. Отримуємо всі контакти з БД для цього міста
     const contacts = await this.prisma.schoolContact.findMany({
-      where: { city: city.name, type },
+      where: { city: city.name },
     });
 
     let created = 0;
