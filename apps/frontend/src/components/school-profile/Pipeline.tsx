@@ -7,7 +7,7 @@ interface PipelineProps {
 
 export default function Pipeline({ currentStageIndex, currentEvent, onPipelineClick, stages }: PipelineProps) {
   return (
-    <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 overflow-hidden w-full">
+    <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 w-full">
       <h3 className="font-bold text-slate-800 mb-4 md:hidden">Етап події</h3>
       <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0">
         <div className="flex items-start min-w-[600px] justify-between relative">

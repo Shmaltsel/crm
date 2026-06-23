@@ -134,36 +134,41 @@ export default function Schools() {
   }, [baseFiltered, searchQuery]);
 
   return (
-    <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] overflow-hidden bg-slate-50 min-h-screen">
+    <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-slate-50 min-h-screen">
       
-      {/* Шапка для ПК та мобільних */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 shrink-0">
-        <h1 className="text-3xl font-bold text-slate-800">
-          Школи {selectedCity.id && <span className="ml-2 text-xl font-normal text-blue-500">· {selectedCity.name}</span>}
-        </h1>
-        <div className="flex gap-2">
-          {/* Десктопна кнопка додавання */}
-          <button onClick={handleOpenModal} className="hidden md:flex bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-blue-700 items-center">
-            <span className="mr-2">+</span> Додати школу
-          </button>
-          
-          {/* Кнопка імпорту */}
-          <button
-            onClick={async () => {
-              if (!selectedCity.id) return alert("Спочатку оберіть місто");
-              if (!window.confirm(`Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`)) return;
-              try {
-                const res = await api.post("/schools/bulk-import", { cityId: selectedCity.id, type: "Школа" }, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }, timeout: 120000 });
-                alert(`✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`);
-                fetchSchools();
-              } catch (e) { alert("Помилка імпорту."); }
-            }}
-            className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-emerald-600 text-white rounded-xl sm:rounded-lg hover:bg-emerald-700 font-medium transition-colors"
-          >
-            📥 Імпорт з isuo.org
-          </button>
-        </div>
-      </div>
+{/* Шапка */}
+<div className="flex items-center justify-between gap-2 mb-3 shrink-0">
+  <div className="min-w-0">
+    <h1 className="text-xl font-bold text-slate-800 leading-tight">
+      Школи
+      {selectedCity.id && (
+        <span className="ml-2 text-sm font-normal text-blue-500">· {selectedCity.name}</span>
+      )}
+    </h1>
+  </div>
+  <div className="flex gap-2 shrink-0">
+    <button
+      onClick={async () => {
+        if (!selectedCity.id) return alert("Спочатку оберіть місто");
+        if (!window.confirm(`Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`)) return;
+        try {
+          const res = await api.post("/schools/bulk-import", { cityId: selectedCity.id, type: "Школа" }, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }, timeout: 120000 });
+          alert(`✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`);
+          fetchSchools();
+        } catch (e) { alert("Помилка імпорту."); }
+      }}
+      className="md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
+    >
+      📥 Імпорт з isuo
+    </button>
+    <button
+      onClick={handleOpenModal}
+      className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+    >
+      + Додати
+    </button>
+  </div>
+</div>
 
       <div className="shrink-0">
         <StatsBar

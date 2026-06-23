@@ -27,7 +27,7 @@ export default function EventDetails({ currentEvent, schoolName, cityId, onEvent
 
   return (
     <>
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 md:border-l-4 md:border-l-blue-600 overflow-hidden relative">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 md:border-l-4 md:border-l-blue-600 relative">
         <div className="p-5 sm:p-6 pl-6 sm:pl-6">
           
           {/* Заголовок */}

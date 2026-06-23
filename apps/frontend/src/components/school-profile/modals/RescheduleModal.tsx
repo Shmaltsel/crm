@@ -38,14 +38,14 @@ export default function RescheduleModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden">
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden max-h-[90vh] flex flex-col">
         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
         <div className="p-5 border-b border-slate-100 flex justify-between bg-slate-50">
           <h3 className="text-lg font-bold text-slate-800">📅 Перенести подію</h3>
           <button onClick={onClose} className="text-slate-400 p-1">✕</button>
         </div>
-        <div className="p-5 flex flex-col gap-4">
+        <div className="p-5 flex flex-col gap-4 overflow-y-auto">
           <div>
             <label className="block text-sm mb-1 text-slate-600">Нова дата</label>
             <input

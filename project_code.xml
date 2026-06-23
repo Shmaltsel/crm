@@ -4053,7 +4053,7 @@ export default function StaleSchools({ schools }: Props) {
  </div>
  );
 }</file>
-<file path="apps\frontend\src\components\dashboard\TodayEvents.tsx">import { useNavigate } from 'react-router-dom';
+<file path="apps\frontend\src\components\dashboard\TodayEvents.tsx">import { useNavigate } from "react-router-dom";
 interface CrewMember {
  id: string;
  name: string;
@@ -4079,27 +4079,32 @@ interface Props {
  events: TodayEvent[];
 }
 function plural(n: number): string {
- if (n % 10 === 1 && n % 100 !== 11) return 'подія';
- if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) return 'події';
- return 'подій';
+ if (n % 10 === 1 && n % 100 !== 11) return "подія";
+ if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20))
+ return "події";
+ return "подій";
 }
 export default function TodayEvents({ events }: Props) {
  const navigate = useNavigate();
- const dateLabel = new Date().toLocaleDateString('uk-UA', {
- day: 'numeric',
- month: 'long',
- weekday: 'long',
+ const dateLabel = new Date().toLocaleDateString("uk-UA", {
+ day: "numeric",
+ month: "long",
+ weekday: "long",
  });
  return (
  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col">
  {/* Хедер */}
  <div className="flex justify-between items-start mb-3">
  <div>
- <p className="text-sm font-semibold text-slate-800">Сьогоднішні події</p>
- <p className="text-xs text-slate-400 mt-0.5 capitalize">{dateLabel}</p>
+ <p className="text-sm font-semibold text-slate-800">
+ Сьогоднішні події
+ </p>
+ <p className="text-xs text-slate-400 mt-0.5 capitalize">
+ {dateLabel}
+ </p>
  </div>
  <button
- onClick={() => navigate('/calendar')}
+ onClick={() => navigate("/calendar")}
  className="text-xs text-blue-600 hover:underline shrink-0"
  >
  Календар
@@ -4113,55 +4118,53 @@ export default function TodayEvents({ events }: Props) {
  <div className="flex flex-col gap-2">
  {events.map((ev) => {
  const hasCrew = !!ev.crew;
- const crewLabel = ev.crew?.name
- ?? (ev.crew?.host?.name ?? null);
+ const crewLabel = ev.crew?.name ?? ev.crew?.host?.name ?? null;
  return (
  <div
  key={ev.id}
- className={`rounded-xl border p-3 flex flex-col gap-2 ${
+ className={`rounded-xl border p-3 flex flex-col gap-2.5 ${
  hasCrew
- ? 'border-slate-100 bg-white'
- : 'border-amber-200 bg-amber-50/60'
+ ? "border-slate-100 bg-white"
+ : "border-amber-200 bg-amber-50/40"
  }`}
  >
- {/* Час + проєкт */}
- <div className="flex items-center justify-between">
- <span className="text-base font-bold text-slate-800 tabular-nums">
- {ev.time ?? '—:——'}
+ {/* Час + проєкт в один рядок */}
+ <div className="flex items-center gap-2">
+ <span className="text-lg font-bold text-slate-800 tabular-nums shrink-0">
+ {ev.time ?? "—:——"}
  </span>
- <span className="text-[11px] text-slate-400 truncate max-w-[120px] text-right">
+ <span className="text-xs text-slate-400 truncate">
  {ev.project}
  </span>
  </div>
- {/* Школа */}
- <p className="text-sm font-semibold text-slate-700 truncate">
- {ev.school?.name ?? '—'}
+ {/* Назва школи — дозволяємо переноситись, не обрізаємо */}
+ <p className="text-sm font-semibold text-slate-700 leading-snug line-clamp-2">
+ {ev.school?.name ?? "—"}
  </p>
- {/* Статус екіпажу */}
+ {/* Статус екіпажу + кнопка в один рядок */}
+ <div className="flex items-center justify-between gap-2">
  {hasCrew ? (
- <div className="flex items-center gap-1.5">
- <span className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-medium">
- ✅ Екіпаж: {crewLabel ?? 'призначено'}
+ <span className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-medium shrink-0">
+ ✅ {crewLabel ?? "Екіпаж призначено"}
  </span>
- </div>
  ) : (
- <div className="flex items-center gap-1.5">
- <span className="text-[11px] text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full font-medium">
+ <span className="text-[11px] text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full font-medium shrink-0">
  ⚠️ Немає екіпажу
  </span>
- </div>
  )}
- {/* CTA кнопка */}
  <button
- onClick={() => ev.school && navigate(`/schools/${ev.school.id}`)}
- className={`w-full py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+ onClick={() =>
+ ev.school && navigate(`/schools/${ev.school.id}`)
+ }
+ className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors shrink-0 ${
  hasCrew
- ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
- : 'bg-amber-500 text-white hover:bg-amber-600'
+ ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
+ : "bg-white border border-amber-400 text-amber-700 hover:bg-amber-50"
  }`}
  >
- {hasCrew ? 'Відкрити' : 'Призначити екіпаж →'}
+ {hasCrew ? "Відкрити →" : "Призначити →"}
  </button>
+ </div>
  </div>
  );
  })}
@@ -4389,7 +4392,7 @@ export default function Layout() {
  setIsMobileMenuOpen(false);
  };
  return (
- <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
+ <div className="flex h-screen bg-slate-50 font-sans">
  {/* Мобільний хедер (видно тільки на малих екранах) */}
  <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0B1527] text-white flex items-center justify-between px-4 z-40">
  <div className="flex items-center gap-2">
@@ -4645,7 +4648,7 @@ export default function EventDetails({ currentEvent, schoolName, cityId, onEvent
  const formattedDate = new Date(currentEvent.date).toLocaleDateString('uk-UA');
  return (
  <>
- <div className="bg-white rounded-2xl shadow-sm border border-slate-100 md:border-l-4 md:border-l-blue-600 overflow-hidden relative">
+ <div className="bg-white rounded-2xl shadow-sm border border-slate-100 md:border-l-4 md:border-l-blue-600 relative">
  <div className="p-5 sm:p-6 pl-6 sm:pl-6">
  {/* Заголовок */}
  <div className="flex justify-between items-center mb-2 md:mb-5 md:border-b border-slate-100 md:pb-4">
@@ -5540,13 +5543,13 @@ export default function RescheduleModal({
  };
  return (
  <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
- <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden">
+ <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden max-h-[90vh] flex flex-col">
  <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
  <div className="p-5 border-b border-slate-100 flex justify-between bg-slate-50">
  <h3 className="text-lg font-bold text-slate-800">📅 Перенести подію</h3>
  <button onClick={onClose} className="text-slate-400 p-1">✕</button>
  </div>
- <div className="p-5 flex flex-col gap-4">
+ <div className="p-5 flex flex-col gap-4 overflow-y-auto">
  <div>
  <label className="block text-sm mb-1 text-slate-600">Нова дата</label>
  <input
@@ -5774,54 +5777,79 @@ interface Props {
  onDelete: (e: React.MouseEvent, id: string, name: string) => void;
  stages: any[];
 }
+function stalenessColor(days: number | null): string {
+ if (days === null) return 'text-slate-400';
+ if (days >= 21) return 'text-red-500';
+ if (days >= 14) return 'text-orange-500';
+ if (days >= 7) return 'text-amber-500';
+ return 'text-emerald-500';
+}
 export default function SchoolMobileList({ schools, searchQuery, onDelete, stages }: Props) {
  const navigate = useNavigate();
  return (
- <div className="md:hidden flex-1 overflow-y-auto flex flex-col gap-3 pb-24">
+ <div className="md:hidden flex-1 overflow-y-auto flex flex-col gap-2.5 pb-24">
  {schools.map((school) => {
  const latestEvent = school.events?.[0];
  const stage = latestEvent ? stages.find((s) => s.key === latestEvent.status) : null;
+ const lastActivityDate = school.events?.[0]?.updatedAt ?? school.updatedAt ?? null;
+ const daysStale = lastActivityDate
+ ? Math.floor((Date.now() - new Date(lastActivityDate).getTime()) / 86400000)
+ : null;
  return (
  <div
  key={school.id}
  onClick={() => navigate(`/schools/${school.id}`)}
- className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 active:scale-[0.99] transition-transform"
+ className="bg-white rounded-2xl border border-slate-100 p-3.5 active:scale-[0.99] transition-transform"
  >
- <div className="flex items-start justify-between gap-3">
- <div className="min-w-0">
- <p className="font-bold text-slate-800 text-base leading-snug">
+ {/* Рядок 1: назва + видалити */}
+ <div className="flex items-start justify-between gap-2">
+ <p className="font-semibold text-slate-800 leading-snug text-sm line-clamp-2 flex-1">
  {school.name}
  </p>
- <p className="text-xs font-medium text-slate-500 mt-1">
- {school.city?.name}
- </p>
- </div>
  <button
  onClick={(e) => onDelete(e, school.id, school.name)}
- className="text-slate-300 hover:text-red-500 active:text-red-500 transition-colors p-2 -mr-2 -mt-1 shrink-0 text-lg"
+ className="text-slate-300 active:text-red-500 transition-colors p-1 -mt-0.5 -mr-1 shrink-0"
  >
  🗑
  </button>
  </div>
- <div className="flex flex-wrap items-center gap-2 mt-3">
- <span className="bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full text-[11px] font-bold">
- Активна
- </span>
+ {/* Рядок 2: телефон/директор + етап */}
+ <div className="flex items-center justify-between gap-2 mt-2">
+ <div className="flex items-center gap-1.5 min-w-0">
+ {school.phone ? (
+ <a>
+ href={`tel:${school.phone}`}
+ onClick={(e) => e.stopPropagation()}
+ className="flex items-center gap-1 text-xs text-blue-600 font-medium truncate"
+ 📞 {school.director || school.phone}
+ </a>
+ ) : school.director ? (
+ <span className="text-xs text-slate-500 truncate">👤 {school.director}</span>
+ ) : (
+ <span className="text-xs text-slate-300 italic">Контакт не вказано</span>
+ )}
+ </div>
  {stage ? (
- <span className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-[11px] font-bold border border-blue-100">
+ <span className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full border border-blue-100 shrink-0 font-medium">
  {stage.name}
  </span>
  ) : (
- <span className="text-slate-400 text-[11px] italic">
- Етап не визначено
- </span>
+ <span className="text-[10px] text-slate-300 shrink-0">Етап —</span>
  )}
  </div>
+ {/* Рядок 3: остання активність */}
+ {daysStale !== null && (
+ <p className={`text-[11px] mt-1.5 ${stalenessColor(daysStale)}`}>
+ ⏱ {daysStale === 0
+ ? 'Активність сьогодні'
+ : `Остання активність ${daysStale} дн тому`}
+ </p>
+ )}
  </div>
  );
  })}
  {schools.length === 0 && (
- <div className="bg-white rounded-2xl border border-slate-100 text-center py-10 text-slate-400 text-sm font-medium shadow-sm">
+ <div className="bg-white rounded-2xl border border-slate-100 text-center py-10 text-slate-400 text-sm">
  {searchQuery ? `Нічого не знайдено за «${searchQuery}»` : "Шкіл ще немає"}
  </div>
  )}
@@ -5838,18 +5866,12 @@ interface StatsBarProps {
  activeFilter: string | null;
  onFilterChange: (filter: string | null) => void;
 }
-// Нові: немає жодної події
-// Заплановані: є подія, але статус <= DATE_CONFIRMED
-// В роботі: статус від PREPARATION до REPORT
-// Проведені: статус RE_SALE
 const PLANNED_STAGES = ['BASE', 'FIRST_CONTACT', 'DATE_CONFIRMED'];
 const IN_PROGRESS_STAGES = ['PREPARATION', 'IN_PROGRESS', 'DONE', 'REPORT'];
 export function classifySchool(school: School): 'new' | 'planned' | 'inProgress' | 'done' {
  const events = (school.events || []).filter((e: any) => e.status !== 'RE_SALE');
  if (events.length === 0) {
- const hasResale = (school.events || []).some((e: any) => e.status === 'RE_SALE');
- if (hasResale) return 'done';
- return 'new';
+ return (school.events || []).some((e: any) => e.status === 'RE_SALE') ? 'done' : 'new';
  }
  const latest = events[events.length - 1];
  if (PLANNED_STAGES.includes(latest.status)) return 'planned';
@@ -5857,79 +5879,46 @@ export function classifySchool(school: School): 'new' | 'planned' | 'inProgress'
  if (latest.status === 'RE_SALE') return 'done';
  return 'new';
 }
+const ITEMS = [
+ { key: 'new', label: 'Нові', dot: 'bg-slate-400', active: 'bg-slate-800 text-white', inactive: 'text-slate-600' },
+ { key: 'planned', label: 'Заплановані', dot: 'bg-amber-400', active: 'bg-amber-500 text-white', inactive: 'text-amber-600' },
+ { key: 'inProgress', label: 'В роботі', dot: 'bg-blue-500', active: 'bg-blue-600 text-white', inactive: 'text-blue-600' },
+ { key: 'done', label: 'Проведені', dot: 'bg-emerald-500', active: 'bg-emerald-600 text-white', inactive: 'text-emerald-600'},
+];
 export default function StatsBar({ schools, activeFilter, onFilterChange }: StatsBarProps) {
  const stats = schools.reduce(
  (acc, s) => { acc[classifySchool(s)]++; return acc; },
- { new: 0, planned: 0, inProgress: 0, done: 0 }
+ { new: 0, planned: 0, inProgress: 0, done: 0 } as Record<string, number>
  );
- const items = [
- {
- key: 'new',
- label: 'Нові',
- value: stats.new,
- color: 'text-slate-600',
- activeBg: 'bg-slate-800 text-white',
- inactiveBg: 'bg-slate-50 text-slate-600',
- dot: 'bg-slate-400',
- },
- {
- key: 'planned',
- label: 'Заплановані',
- value: stats.planned,
- color: 'text-amber-600',
- activeBg: 'bg-amber-500 text-white',
- inactiveBg: 'bg-amber-50 text-amber-600',
- dot: 'bg-amber-400',
- },
- {
- key: 'inProgress',
- label: 'В роботі',
- value: stats.inProgress,
- color: 'text-blue-600',
- activeBg: 'bg-blue-600 text-white',
- inactiveBg: 'bg-blue-50 text-blue-600',
- dot: 'bg-blue-500',
- },
- {
- key: 'done',
- label: 'Проведені',
- value: stats.done,
- color: 'text-emerald-600',
- activeBg: 'bg-emerald-600 text-white',
- inactiveBg: 'bg-emerald-50 text-emerald-600',
- dot: 'bg-emerald-500',
- },
- ];
  return (
- <div className="flex flex-wrap justify-center items-center gap-2 sm:gap-3 bg-white py-3 px-4 sm:px-6 rounded-2xl shadow-sm border border-slate-100 mb-6">
- {items.map((item, i) => {
+ <div className="flex items-center bg-white rounded-2xl shadow-sm border border-slate-100 mb-4 overflow-hidden">
+ {ITEMS.map((item, i) => {
  const isActive = activeFilter === item.key;
  return (
  <React.Fragment key={item.key}>
+ {i > 0 && <div className="w-px h-8 bg-slate-100 shrink-0" />}
  <button
  onClick={() => onFilterChange(isActive ? null : item.key)}
- className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-150 ${
- isActive ? item.activeBg : `${item.inactiveBg} hover:opacity-80`
+ className={`flex-1 flex flex-col items-center py-2.5 px-1 transition-colors min-w-0 ${
+ isActive ? item.active : `bg-white ${item.inactive} hover:bg-slate-50`
  }`}
  >
- <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-white/70' : item.dot}`} />
- <span>{item.label}</span>
- <span className={`font-bold ${isActive ? 'text-white' : ''}`}>
- {item.value}
+ <span className="text-base font-bold tabular-nums leading-none">
+ {stats[item.key] ?? 0}
+ </span>
+ <span className="text-[10px] mt-1 leading-none opacity-80 truncate w-full text-center">
+ {item.label}
  </span>
  </button>
- {i < items.length - 1 && (
- <div className="w-px h-4 bg-slate-200 hidden sm:block" />
- )}
  </React.Fragment>
  );
  })}
  {activeFilter && (
  <button
  onClick={() => onFilterChange(null)}
- className="text-xs text-slate-400 hover:text-slate-600 ml-1 transition-colors"
+ className="px-3 text-slate-400 hover:text-slate-600 text-lg shrink-0 border-l border-slate-100 self-stretch flex items-center"
  >
- ✕ скинути
+ ✕
  </button>
  )}
  </div>
@@ -8240,7 +8229,9 @@ export default function Kindergartens() {
  });
  const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
  const [activeFilter, setActiveFilter] = useState<string | null>(null);
- const [suggestions, setSuggestions] = useState<{ name: string; url: string }[]>([]);
+ const [suggestions, setSuggestions] = useState<
+ { name: string; url: string }[]
+ >([]);
  const [showSuggestions, setShowSuggestions] = useState(false);
  const [isSearching, setIsSearching] = useState(false);
  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -8286,7 +8277,8 @@ export default function Kindergartens() {
  setMatchedContacts([]);
  return;
  }
- const currentCityName = selectedCity.name || cities.find(c => c.id === form.cityId)?.name || "";
+ const currentCityName =
+ selectedCity.name || cities.find((c) => c.id === form.cityId)?.name || "";
  if (currentCityName.toLowerCase() !== "львів") {
  setMatchedContacts([]);
  return;
@@ -8295,12 +8287,20 @@ export default function Kindergartens() {
  const token = localStorage.getItem("token");
  const res = await api.get(
  `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=${encodeURIComponent("Садочок")}`,
- { headers: { Authorization: `Bearer ${token}` } }
+ { headers: { Authorization: `Bearer ${token}` } },
  );
  setMatchedContacts(res.data);
  if (res.data.length > 0) {
- const director = res.data.find((c: any) => c.role?.includes("Директор") || c.role?.includes("Завідувач")) || res.data[0];
- setForm((f) => ({ ...f, director: director.contactName, phone: director.phone }));
+ const director =
+ res.data.find(
+ (c: any) =>
+ c.role?.includes("Директор") || c.role?.includes("Завідувач"),
+ ) || res.data[0];
+ setForm((f) => ({
+ ...f,
+ director: director.contactName,
+ phone: director.phone,
+ }));
  }
  } catch (e) {
  console.error(e);
@@ -8321,9 +8321,12 @@ export default function Kindergartens() {
  const token = localStorage.getItem("token");
  try {
  const [externalRes] = await Promise.all([
- api.get(`/schools/search?q=${value}&type=${encodeURIComponent("Садочок")}`, {
+ api.get(
+ `/schools/search?q=${value}&type=${encodeURIComponent("Садочок")}`,
+ {
  headers: { Authorization: `Bearer ${token}` },
- }),
+ },
+ ),
  fetchContacts(value),
  ]);
  setSuggestions(externalRes.data);
@@ -8345,9 +8348,13 @@ export default function Kindergartens() {
  setIsSubmitting(true);
  try {
  const token = localStorage.getItem("token");
- await api.post("/schools", { ...form, type: "Садочок" }, {
+ await api.post(
+ "/schools",
+ { ...form, type: "Садочок" },
+ {
  headers: { Authorization: `Bearer ${token}` },
- });
+ },
+ );
  setIsModalOpen(false);
  fetchSchools();
  } catch (e) {
@@ -8360,10 +8367,15 @@ export default function Kindergartens() {
  const handleDeleteSchool = async (
  e: React.MouseEvent,
  schoolId: string,
- schoolName: string
+ schoolName: string,
  ) => {
  e.stopPropagation();
- if (!window.confirm(`Видалити садочок "${schoolName}"? Це видалить також усі його події.`)) return;
+ if (
+ !window.confirm(
+ `Видалити садочок "${schoolName}"? Це видалить також усі його події.`,
+ )
+ )
+ return;
  try {
  await api.delete(`/schools/${schoolId}`, {
  headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
@@ -8373,71 +8385,156 @@ export default function Kindergartens() {
  console.error(e);
  }
  };
- const filteredKindergartens = schools.filter(s => {
+ const filteredKindergartens = schools.filter((s) => {
  const isCityMatch = selectedCity.id ? s.cityId === selectedCity.id : true;
- const isFilterMatch = activeFilter ? classifySchool(s) === activeFilter : true;
+ const isFilterMatch = activeFilter
+ ? classifySchool(s) === activeFilter
+ : true;
  return isCityMatch && s.type === "Садочок" && isFilterMatch;
  });
  return (
  <div className="p-4 md:p-8 h-full max-w-[100vw] overflow-hidden">
- <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
- <h1 className="text-2xl font-bold text-slate-800">
+ <div className="flex items-center justify-between gap-2 mb-3">
+ <h1 className="text-xl font-bold text-slate-800">
  Садочки
  {selectedCity.id && (
- <span className="ml-2 text-base font-normal text-blue-500">
+ <span className="ml-2 text-sm font-normal text-blue-500">
  · {selectedCity.name}
  </span>
  )}
  </h1>
+ <div className="flex gap-2 shrink-0">
+ <button
+ onClick={async () => {
+ if (!selectedCity.id) return alert("Спочатку оберіть місто");
+ if (
+ !window.confirm(
+ `Імпортувати всі садочки з isuo.org для міста ${selectedCity.name}?`,
+ )
+ )
+ return;
+ try {
+ const token = localStorage.getItem("token");
+ const res = await api.post(
+ "/schools/bulk-import",
+ { cityId: selectedCity.id, type: "Садочок" },
+ {
+ headers: { Authorization: `Bearer ${token}` },
+ timeout: 120000,
+ },
+ );
+ alert(
+ `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
+ );
+ fetchSchools();
+ } catch (e) {
+ alert("Помилка імпорту.");
+ }
+ }}
+ className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
+ >
+ 📥 Імпорт з isuo
+ </button>
  <button
  onClick={handleOpenModal}
- className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
+ className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
  >
- + Додати садочок
+ + Додати
  </button>
  </div>
+ </div>
  <StatsBar
- schools={schools.filter(s =>
- (selectedCity.id ? s.cityId === selectedCity.id : true) && s.type === "Садочок"
+ schools={schools.filter(
+ (s) =>
+ (selectedCity.id ? s.cityId === selectedCity.id : true) &&
+ s.type === "Садочок",
  )}
  activeFilter={activeFilter}
  onFilterChange={setActiveFilter}
  />
  {/* Мобільний вигляд */}
- <div className="md:hidden flex flex-col gap-3">
+ <div className="md:hidden flex flex-col gap-2.5">
  {filteredKindergartens.map((school) => {
  const latestEvent = school.events?.[0];
- const stage = latestEvent ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status) : null;
+ const stage = latestEvent
+ ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
+ : null;
+ // Остання активність
+ const lastActivityDate =
+ school.events?.[0]?.updatedAt ?? school.updatedAt ?? null;
+ const daysStale = lastActivityDate
+ ? Math.floor(
+ (Date.now() - new Date(lastActivityDate).getTime()) / 86400000,
+ )
+ : null;
+ const stalenessColor =
+ daysStale === null
+ ? "text-slate-400"
+ : daysStale >= 21
+ ? "text-red-500"
+ : daysStale >= 14
+ ? "text-orange-500"
+ : daysStale >= 7
+ ? "text-amber-500"
+ : "text-emerald-500";
  return (
  <div
  key={school.id}
  onClick={() => navigate(`/schools/${school.id}`)}
- className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 active:scale-[0.99] transition-transform"
+ className="bg-white rounded-2xl border border-slate-100 p-3.5 active:scale-[0.99] transition-transform"
  >
- <div className="flex items-start justify-between gap-3">
- <div className="min-w-0">
- <p className="font-semibold text-slate-800 leading-snug">{school.name}</p>
- <p className="text-xs text-slate-500 mt-1">{school.city?.name}</p>
- </div>
+ {/* Рядок 1: назва + видалити */}
+ <div className="flex items-start justify-between gap-2">
+ <p className="font-semibold text-slate-800 leading-snug text-sm line-clamp-2 flex-1">
+ {school.name}
+ </p>
  <button
  onClick={(e) => handleDeleteSchool(e, school.id, school.name)}
- className="text-slate-300 active:text-red-500 transition-colors p-2 -mr-2 -mt-1 shrink-0"
+ className="text-slate-300 active:text-red-500 p-1 -mt-0.5 -mr-1 shrink-0"
  >
  🗑
  </button>
  </div>
- <div className="flex flex-wrap items-center gap-2 mt-3">
- <span className="bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full text-xs font-medium">
- Активний
+ {/* Рядок 2: директор (клікабельний телефон) + етап */}
+ <div className="flex items-center justify-between gap-2 mt-2">
+ <div className="flex items-center gap-1.5 min-w-0">
+ {school.phone ? (
+ <a
+ href={`tel:${school.phone}`}
+ onClick={(e) => e.stopPropagation()}
+ className="flex items-center gap-1 text-xs text-blue-600 font-medium truncate"
+ >
+ 📞 {school.director || school.phone}
+ </a>
+ ) : school.director ? (
+ <span className="text-xs text-slate-500 truncate">
+ 👤 {school.director}
  </span>
+ ) : (
+ <span className="text-xs text-slate-300 italic">
+ Контакт не вказано
+ </span>
+ )}
+ </div>
  {stage ? (
- <span className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium border border-blue-100">
+ <span className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full border border-blue-100 shrink-0 font-medium">
  {stage.name}
  </span>
  ) : (
- <span className="text-slate-400 text-xs italic">Етап не визначено</span>
+ <span className="text-[10px] text-slate-300 shrink-0">
+ Етап —
+ </span>
  )}
  </div>
+ {/* Рядок 3: остання активність */}
+ {daysStale !== null && (
+ <p className={`text-[11px] mt-1.5 ${stalenessColor}`}>
+ ⏱{" "}
+ {daysStale === 0
+ ? "Активність сьогодні"
+ : `Остання активність ${daysStale} дн тому`}
+ </p>
+ )}
  </div>
  );
  })}
@@ -8446,6 +8543,13 @@ export default function Kindergartens() {
  Садочків ще немає
  </div>
  )}
+ {/* FAB */}
+ <button
+ onClick={handleOpenModal}
+ className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
+ >
+ +
+ </button>
  </div>
  {/* Десктоп таблиця */}
  <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto w-full">
@@ -8456,20 +8560,26 @@ export default function Kindergartens() {
  <th className="p-4 font-medium text-slate-600">Місто</th>
  <th className="p-4 font-medium text-slate-600">Статус</th>
  <th className="p-4 font-medium text-slate-600">Поточний етап</th>
- <th className="p-4 font-medium text-slate-600 text-center">Дія</th>
+ <th className="p-4 font-medium text-slate-600 text-center">
+ Дія
+ </th>
  </tr>
  </thead>
  <tbody>
  {filteredKindergartens.map((school) => {
  const latestEvent = school.events?.[0];
- const stage = latestEvent ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status) : null;
+ const stage = latestEvent
+ ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
+ : null;
  return (
  <tr
  key={school.id}
  onClick={() => navigate(`/schools/${school.id}`)}
  className="cursor-pointer border-b border-slate-50 hover:bg-slate-50/50 transition"
  >
- <td className="p-4 text-slate-800 font-medium">{school.name}</td>
+ <td className="p-4 text-slate-800 font-medium">
+ {school.name}
+ </td>
  <td className="p-4 text-slate-600">{school.city?.name}</td>
  <td className="p-4">
  <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-medium">
@@ -8487,7 +8597,9 @@ export default function Kindergartens() {
  </td>
  <td className="p-4 text-center">
  <button
- onClick={(e) => handleDeleteSchool(e, school.id, school.name)}
+ onClick={(e) =>
+ handleDeleteSchool(e, school.id, school.name)
+ }
  className="text-slate-400 hover:text-red-500 transition-colors p-2"
  >
  🗑
@@ -8505,19 +8617,31 @@ export default function Kindergartens() {
  <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md max-h-[92vh] overflow-hidden flex flex-col">
  <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
  <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
- <h3 className="text-xl font-bold text-slate-800">Новий садочок</h3>
- <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-2 -mr-2">
+ <h3 className="text-xl font-bold text-slate-800">
+ Новий садочок
+ </h3>
+ <button
+ onClick={() => setIsModalOpen(false)}
+ className="text-slate-400 hover:text-slate-600 p-2 -mr-2"
+ >
  ✕
  </button>
  </div>
- <form onSubmit={handleAddSchool} className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto">
+ <form
+ onSubmit={handleAddSchool}
+ className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto"
+ >
  <div className="relative">
- <label className="block text-sm text-slate-600 mb-1">Назва садочку</label>
+ <label className="block text-sm text-slate-600 mb-1">
+ Назва садочку
+ </label>
  <input
  type="text"
  value={form.name}
  onChange={(e) => handleNameChange(e.target.value)}
- onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+ onBlur={() =>
+ setTimeout(() => setShowSuggestions(false), 150)
+ }
  required
  placeholder="Наприклад: Садочок №1"
  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
@@ -8525,38 +8649,57 @@ export default function Kindergartens() {
  {showSuggestions && (
  <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
  {isSearching ? (
- <li className="px-3 py-2 text-sm text-slate-400 italic">Пошук за збігами...</li>
+ <li className="px-3 py-2 text-sm text-slate-400 italic">
+ Пошук за збігами...
+ </li>
  ) : suggestions.length > 0 ? (
  suggestions.map((s, i) => (
- <li key={i} onMouseDown={() => handleSelectSuggestion(s.name, s.url)} className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer">
+ <li
+ key={i}
+ onMouseDown={() =>
+ handleSelectSuggestion(s.name, s.url)
+ }
+ className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer"
+ >
  {s.name}
  </li>
  ))
  ) : (
- <li className="px-3 py-2 text-sm text-slate-400 italic">Нічого не знайдено</li>
+ <li className="px-3 py-2 text-sm text-slate-400 italic">
+ Нічого не знайдено
+ </li>
  )}
  </ul>
  )}
  </div>
  {!selectedCity.id && (
  <div>
- <label className="block text-sm text-slate-600 mb-1">Місто</label>
+ <label className="block text-sm text-slate-600 mb-1">
+ Місто
+ </label>
  <select
  value={form.cityId}
- onChange={(e) => setForm({ ...form, cityId: e.target.value })}
+ onChange={(e) =>
+ setForm({ ...form, cityId: e.target.value })
+ }
  required
  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 bg-white"
  >
  <option value="">— Оберіть місто —</option>
  {cities.map((c) => (
- <option key={c.id} value={c.id}>{c.name}</option>
+ <option key={c.id} value={c.id}>
+ {c.name}
+ </option>
  ))}
  </select>
  </div>
  )}
  <div>
  <label className="block text-sm text-slate-600 mb-1">
- Контакт <span className="ml-1 text-xs text-slate-400">(автозаповнення)</span>
+ Контакт{" "}
+ <span className="ml-1 text-xs text-slate-400">
+ (автозаповнення)
+ </span>
  </label>
  {matchedContacts.length > 0 && (
  <div className="flex flex-wrap gap-1 mb-2">
@@ -8564,14 +8707,21 @@ export default function Kindergartens() {
  <button
  key={i}
  type="button"
- onClick={() => setForm((f) => ({ ...f, director: c.contactName, phone: c.phone }))}
+ onClick={() =>
+ setForm((f) => ({
+ ...f,
+ director: c.contactName,
+ phone: c.phone,
+ }))
+ }
  className={`text-xs px-2 py-1 rounded-full border transition-colors ${
  form.director === c.contactName
  ? "bg-blue-600 text-white border-blue-600"
  : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
  }`}
  >
- {c.role ? `${c.role}: ` : ""}{c.contactName}
+ {c.role ? `${c.role}: ` : ""}
+ {c.contactName}
  </button>
  ))}
  </div>
@@ -8579,14 +8729,19 @@ export default function Kindergartens() {
  <input
  type="text"
  value={form.director}
- onChange={(e) => setForm({ ...form, director: e.target.value })}
+ onChange={(e) =>
+ setForm({ ...form, director: e.target.value })
+ }
  placeholder="Микола Петренко"
  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
  />
  </div>
  <div>
  <label className="block text-sm text-slate-600 mb-1">
- Телефон <span className="ml-1 text-xs text-slate-400">(автозаповнення)</span>
+ Телефон{" "}
+ <span className="ml-1 text-xs text-slate-400">
+ (автозаповнення)
+ </span>
  </label>
  <input
  type="text"
@@ -8832,7 +8987,7 @@ export default function SchoolProfile() {
  };
  if (isLoading) return <div className="p-8 text-slate-500">Завантаження...</div>;
  return (
- <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8">
+ <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full pb-24 md:pb-8">
  <SchoolProfileHeader 
  schoolData={schoolData} 
  onEdit={() => { setEditForm(schoolData); setIsEditModalOpen(true); }}
@@ -9001,17 +9156,17 @@ export default function Schools() {
  }, [baseFiltered, searchQuery]);
  return (
  <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] overflow-hidden bg-slate-50 min-h-screen">
- {/* Шапка для ПК та мобільних */}
- <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 shrink-0">
- <h1 className="text-3xl font-bold text-slate-800">
- Школи {selectedCity.id && <span className="ml-2 text-xl font-normal text-blue-500">· {selectedCity.name}</span>}
+{/* Шапка */}
+<div className="flex items-center justify-between gap-2 mb-3 shrink-0">
+ <div className="min-w-0">
+ <h1 className="text-xl font-bold text-slate-800 leading-tight">
+ Школи
+ {selectedCity.id && (
+ <span className="ml-2 text-sm font-normal text-blue-500">· {selectedCity.name}</span>
+ )}
  </h1>
- <div className="flex gap-2">
- {/* Десктопна кнопка додавання */}
- <button onClick={handleOpenModal} className="hidden md:flex bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-blue-700 items-center">
- <span className="mr-2">+</span> Додати школу
- </button>
- {/* Кнопка імпорту */}
+ </div>
+ <div className="flex gap-2 shrink-0">
  <button
  onClick={async () => {
  if (!selectedCity.id) return alert("Спочатку оберіть місто");
@@ -9022,12 +9177,18 @@ export default function Schools() {
  fetchSchools();
  } catch (e) { alert("Помилка імпорту."); }
  }}
- className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-emerald-600 text-white rounded-xl sm:rounded-lg hover:bg-emerald-700 font-medium transition-colors"
+ className="md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
  >
- 📥 Імпорт з isuo.org
+ 📥 Імпорт з isuo
+ </button>
+ <button
+ onClick={handleOpenModal}
+ className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+ >
+ + Додати
  </button>
  </div>
- </div>
+</div>
  <div className="shrink-0">
  <StatsBar
  schools={schools.filter((s) => (selectedCity.id ? s.cityId === selectedCity.id : true) && s.type === "Школа")}
