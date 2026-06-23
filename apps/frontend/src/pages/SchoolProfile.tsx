@@ -313,9 +313,14 @@ export default function SchoolProfile() {
       const headers = {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       };
-      await api.post(`/events/${currentEvent.id}/report`, reportData, {
-        headers,
-      });
+      await api.patch(
+        `/events/${currentEvent.id}/status`,
+        {
+          status: "RE_SALE",
+          actionName: "Звіт сформовано. Захід завершено.",
+        },
+        { headers },
+      );
 
       // Одразу переносимо в RE_SALE — заклад іде у "Проведені"
       setExitingEventId(currentEvent.id);
