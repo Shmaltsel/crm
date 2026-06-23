@@ -154,7 +154,7 @@ export class EventsService {
         ? `👤 <b>Контакт:</b> ${event.contactPerson}\n`
         : '') +
       (event.contactPhone ? `📞 <b>Телефон:</b> ${event.contactPhone}\n` : '') +
-      `\n<i>Деталі у CRM: <a href="https://crm-frontend-nwexs60ek-shmaltsels-projects.vercel.app">crm-tau-nine.vercel.app</a></i>`;
+      `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
 
     if (hostId) {
       const hostChatId = await this.getChatIdForUser(hostId);
@@ -252,7 +252,7 @@ export class EventsService {
       `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
-      `\n<i>Деталі у CRM: <a href="https://crm-tau-nine.vercel.app">crm-tau-nine.vercel.app</a></i>`;
+      `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
 
     const sendTo = async (userId: string | null | undefined) => {
       if (!userId) return;

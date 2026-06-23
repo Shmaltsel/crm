@@ -80,7 +80,7 @@ export class IssuesService {
         (crewMembers.length > 0
           ? `\n\n👥 <b>Екіпаж:</b>\n${crewMembers.join('\n')}`
           : '') +
-        `\n\n<i>Деталі у CRM: <a href="https://crm-tau-nine.vercel.app">crm-tau-nine.vercel.app</a></i>`;
+        `\n\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
 
       await this.telegramService.sendMessage(chatId, text);
     }
