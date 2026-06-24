@@ -267,7 +267,14 @@ export class SchoolsService {
       const num = numMatch?.[1];
       const matchedContacts = num
         ? contacts.filter((c) => c.schoolNumber === num)
-        : [];
+        : contacts.filter((c) => {
+            const normSchool = normalize(school.name);
+            const normContact = normalize(c.schoolNumber);
+            return (
+              normSchool.includes(normContact) ||
+              normContact.includes(normSchool)
+            );
+          });
 
       const director =
         matchedContacts.find(
