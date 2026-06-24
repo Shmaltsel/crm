@@ -10,7 +10,7 @@ interface Props {
 }
 
 // Винесено окремо для кращої мемоізації
-const SchoolCard = React.memo(({ school, onDelete, stages }: any) => {
+export const SchoolCard = React.memo(({ school, onDelete, stages }: any) => {
   const navigate = useNavigate();
   const latestEvent = school.events?.[0];
   const stage = latestEvent
