@@ -223,7 +223,22 @@ export default function SchoolProfile() {
             ),
           );
         }
-      } else if (commentModal.mode === "history" && commentModal.historyId) {
+      } 
+      // === ДОДАНА ЛОГІКА СТВОРЕННЯ КОМЕНТАРЯ ===
+      else if (commentModal.mode === "add_comment") {
+        const res = await api.post(
+          `/events/${currentEvent.id}/history`,
+          { comment: commentModal.text },
+          { headers }
+        );
+        setEvents((prev) =>
+          prev.map((ev) =>
+            ev.id === currentEvent.id ? { ...ev, history: res.data.history } : ev
+          )
+        );
+      } 
+      // =========================================
+      else if (commentModal.mode === "history" && commentModal.historyId) {
         await api.patch(
           `/events/history/${commentModal.historyId}`,
           { comment: commentModal.text },
@@ -408,8 +423,8 @@ export default function SchoolProfile() {
           <HistoryTimeline
             currentEvent={currentEvent}
             onHistoryClick={handleHistoryClick}
+            onAddCommentClick={handleAddCommentClick}
           />
-        </div>
 
         <div
           className={`flex-1 flex flex-col gap-6 transition-opacity duration-500 ${

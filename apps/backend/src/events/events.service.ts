@@ -302,6 +302,26 @@ export class EventsService {
     });
   }
 
+  async addHistoryComment(eventId: string, comment: string, user: JwtUser) {
+    await this.prisma.eventHistory.create({
+      data: {
+        eventId,
+        action: 'Коментар',
+        comment,
+        userId: user.sub,
+        userName: user.name,
+        role: user.role,
+      },
+    });
+
+    return this.prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        history: { orderBy: { createdAt: 'desc' } },
+      },
+    });
+  }
+
   // ОНОВЛЕНО: Тепер метод видалення безпечно видаляє зв'язані дані
   async remove(id: string) {
     // 1. Видаляємо історію події

@@ -74,6 +74,15 @@ export class EventsController {
     return this.eventsService.assignCrewToEvent(id, body.crewId);
   }
 
+  @Post(':id/history')
+  addHistoryComment(
+    @Param('id') id: string,
+    @Body() body: { comment: string },
+    @CurrentUser() user: JwtUser,
+  ) {
+    return this.eventsService.addHistoryComment(id, body.comment, user);
+  }
+
   // Маршрут для оновлення коментаря
   @Patch('history/:historyId')
   updateHistoryComment(

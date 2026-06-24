@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 
 interface CommentModalProps {
@@ -20,23 +18,22 @@ export default function CommentModal({ isOpen, onClose, mode, text, setText, onS
         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
         <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
           <h3 className="text-xl font-bold text-slate-800">
-            {mode === 'pipeline' ? 'Завершення етапу' : 'Редагувати'}
+            {mode === 'pipeline' ? 'Завершення етапу' : mode === 'add_comment' ? 'Новий коментар' : 'Редагувати'}
           </h3>
           <button onClick={onClose} className="text-slate-400 p-2 -mr-2">✕</button>
         </div>
-        
         <form onSubmit={onSave} className="p-5 sm:p-6 flex-1 flex flex-col">
           <label className="block text-sm font-medium text-slate-700 mb-2">
-            Коментар (необов'язково)
+            {mode === 'add_comment' ? 'Коментар' : 'Коментар (необов\'язково)'}
           </label>
-          <textarea 
+          <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Результати дзвінка, домовленості, примітки..."
             className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 resize-none h-32 flex-1 min-h-[120px]"
             autoFocus
+            required={mode === 'add_comment'}
           />
-          
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 shrink-0 pb-1 sm:pb-0">
             <button type="button" onClick={onClose} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium transition-colors">
               Скасувати
@@ -50,5 +47,3 @@ export default function CommentModal({ isOpen, onClose, mode, text, setText, onS
     </div>
   );
 }
-
-
