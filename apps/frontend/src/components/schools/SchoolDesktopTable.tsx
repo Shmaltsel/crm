@@ -9,7 +9,7 @@ interface Props {
 }
 
 // Мемоізований компонент рядка таблиці
-const SchoolRow = React.memo(({ school, onDelete, stages, navigate }: any) => {
+export const SchoolRow = React.memo(({ school, onDelete, stages, navigate }: any) => {
   const latestEvent = school.events?.[0];
   const stage = latestEvent
     ? stages.find((s: any) => s.key === latestEvent.status)

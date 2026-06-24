@@ -7,8 +7,11 @@ import StatsBar, {
 } from "../components/schools/StatsBar";
 import SchoolMobileList from "../components/schools/SchoolMobileList";
 import SchoolDesktopTable from "../components/schools/SchoolDesktopTable";
-import VirtualSchoolList from "../components/VirtualSchoolList";
 
+import VirtualSchoolList from "../components/VirtualSchoolList";
+import { SchoolCard } from "../components/schools/SchoolMobileList";
+
+import VirtualDesktopTable from "../components/schools/VirtualDesktopTable";
 export const PIPELINE_STAGES = [
   { key: "BASE", name: "Новий заклад" },
   { key: "FIRST_CONTACT", name: "Знайомство" },
@@ -358,23 +361,32 @@ export default function Schools() {
 
       {/* Компоненти списків */}
       {/* Віртуалізований список шкіл */}
-      <div className="flex-1 w-full overflow-hidden">
+      <div className="md:hidden flex-1 w-full overflow-hidden">
         <VirtualSchoolList
           schools={filteredSchools}
-          itemHeight={110} // Налаштуйте під реальну висоту вашого рядка/картки
+          itemHeight={110}
           renderItem={(school) => (
-            <div className="w-full">
-              {/* Використовуємо адаптивність всередині, щоб зберегти вигляд для різних пристроїв */}
-              <div className="md:hidden">
-                {/* Ваш компонент для мобільного вигляду, наприклад з SchoolMobileList */}
-                {/* Передайте сюди школу з масиву */}
-              </div>
-              <div className="hidden md:block">
-                {/* Ваш компонент для десктопного вигляду, наприклад з SchoolDesktopTable */}
-              </div>
+            <div className="pb-2.5">
+              <SchoolCard
+                school={school}
+                onDelete={handleDeleteSchool}
+                stages={PIPELINE_STAGES}
+              />
             </div>
           )}
         />
+      </div>
+
+      {/* Десктоп: таблиця з віртуалізованим tbody */}
+      <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
+        <div className="overflow-y-auto flex-1">
+          <VirtualDesktopTable
+            schools={filteredSchools}
+            searchQuery={searchQuery}
+            onDelete={handleDeleteSchool}
+            stages={PIPELINE_STAGES}
+          />
+        </div>
       </div>
 
       {/* Мобільна плаваюча кнопка FAB */}
