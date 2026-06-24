@@ -5,8 +5,6 @@ import StatsBar, {
   classifySchool,
   classifySize,
 } from "../components/schools/StatsBar";
-import SchoolMobileList from "../components/schools/SchoolMobileList";
-import SchoolDesktopTable from "../components/schools/SchoolDesktopTable";
 
 import VirtualSchoolList from "../components/VirtualSchoolList";
 import { SchoolCard } from "../components/schools/SchoolMobileList";
@@ -53,7 +51,7 @@ export default function Schools() {
 
   const fetchSchools = async () => {
     try {
-      const res = await api.get("/schools", {
+      const res = await api.get("/schools?minimal=true", {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       setSchools(res.data);

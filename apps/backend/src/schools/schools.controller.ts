@@ -44,9 +44,8 @@ export class SchoolsController {
     return this.schoolsService.create(body);
   }
 
-  @Get()
-  findAll() {
-    return this.schoolsService.findAll();
+  @Get() findAll(@Query('minimal') minimal?: string) {
+    return this.schoolsService.findAll(minimal === 'true');
   }
 
   // ⚠️ ВАЖЛИВО: цей маршрут МАЄ стояти ДО @Get(':id')

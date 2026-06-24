@@ -79,21 +79,38 @@ export class SchoolsService {
     return newSchool;
   }
 
-  async findAll() {
-    // Використовуємо this.prisma
+  async findAll(minimal = false) {
+    if (minimal) {
+      return this.prisma.school.findMany({
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          cityId: true,
+          director: true,
+          phone: true,
+          address: true,
+          childrenCount: true,
+          updatedAt: true,
+          isHotClient: true,
+          city: { select: { id: true, name: true } },
+          // Тільки останній евент для відображення етапу в списку
+          events: {
+            select: { status: true, updatedAt: true },
+            orderBy: { date: 'desc' },
+            take: 1,
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
     return this.prisma.school.findMany({
       include: {
         city: true,
-        events: {
-          orderBy: {
-            date: 'desc',
-          },
-          take: 1,
-        },
+        events: { orderBy: { date: 'desc' }, take: 1 },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
