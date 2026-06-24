@@ -225,3 +225,10 @@ model SchoolContact {
   role         String? // "Директор", "Завуч", "Педорг"
   createdAt    DateTime @default(now())
 }
+
+model Project {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  color     String   @default("blue")
+  createdAt DateTime @default(now())
+}

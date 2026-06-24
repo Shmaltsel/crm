@@ -11,7 +11,7 @@ import { FinanceModule } from './finance/finance.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { IssuesModule } from './issues/issues.module';
 import { DashboardModule } from './dashboard/dashboard.module';
-
+import { ProjectsModule } from './projects/projects.module';
 @Module({
   imports: [
     PrismaModule,
