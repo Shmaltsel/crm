@@ -1,15 +1,20 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
-import StatsBar, {
-  classifySchool,
-  classifySize,
-} from "../components/schools/StatsBar";
+
 
 import VirtualSchoolList from "../components/VirtualSchoolList";
 import { SchoolCard } from "../components/schools/SchoolMobileList";
 
 import VirtualDesktopTable from "../components/schools/VirtualDesktopTable";
+
+import { lazy, Suspense } from "react";
+import { classifySchool, classifySize } from "../components/schools/schoolUtils";
+
+const StatsBar = lazy(() => import("../components/schools/StatsBar"));
+const VirtualDesktopTable = lazy(() => import("../components/schools/VirtualDesktopTable"));
+// SchoolCard імпортується напряму — він легкий і потрібен одразу
+
 export const PIPELINE_STAGES = [
   { key: "BASE", name: "Новий заклад" },
   { key: "FIRST_CONTACT", name: "Знайомство" },
@@ -278,21 +283,31 @@ export default function Schools() {
         </div>
       </div>
 
+      {/* StatsBar */}
       <div className="shrink-0">
-        <StatsBar
-          schools={schools.filter(
-            (s) =>
-              (selectedCity.id ? s.cityId === selectedCity.id : true) &&
-              s.type === "Школа",
-          )}
-          activeFilter={activeFilter}
-          onFilterChange={setActiveFilter}
-          sizeFilter={sizeFilter}
-          onSizeFilterChange={setSizeFilter}
-          schoolType="Школа"
-        />
+        <Suspense fallback={<div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />}>
+          <StatsBar
+            schools={schools.filter(...)}
+            activeFilter={activeFilter}
+            onFilterChange={setActiveFilter}
+            sizeFilter={sizeFilter}
+            onSizeFilterChange={setSizeFilter}
+            schoolType="Школа"
+          />
+        </Suspense>
       </div>
 
+      {/* Десктоп */}
+      <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
+        <Suspense fallback={<div className="flex-1 animate-pulse bg-slate-50" />}>
+          <VirtualDesktopTable
+            schools={filteredSchools}
+            searchQuery={searchQuery}
+            onDelete={handleDeleteSchool}
+            stages={PIPELINE_STAGES}
+          />
+        </Suspense>
+      </div>
       {/* Пошук */}
       <div className="relative shrink-0 mb-4 mt-2">
         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
