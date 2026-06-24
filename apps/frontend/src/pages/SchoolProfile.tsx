@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../config/api";
 
+// Імпортуємо UI компоненти
 import SchoolProfileHeader from "../components/school-profile/SchoolProfileHeader";
 import SchoolInfoCard from "../components/school-profile/SchoolInfoCard";
 import HistoryTimeline from "../components/school-profile/HistoryTimeline";
@@ -11,6 +12,7 @@ import EventsTable from "../components/school-profile/EventsTable";
 import EventPreparation from "../components/school-profile/EventPreparation";
 import AssignedCrew from "../components/school-profile/AssignedCrew";
 
+// Імпортуємо модальні вікна
 import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
 import EventModal from "../components/school-profile/modals/EventModal";
 import CommentModal from "../components/school-profile/modals/CommentModal";
@@ -79,61 +81,23 @@ export default function SchoolProfile() {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       };
       const schoolRes = await api.get(`/schools/${id}`, { headers });
-
       if (schoolRes.data) {
-        const school = schoolRes.data;
-
-        let director = school.director || "";
-        let phone = school.phone || "";
-
-        // Автодоповнення контактів якщо телефон порожній
-        if (!phone && school.name) {
-          try {
-            const cityName = school.city?.name || "";
-            const contactsRes = await api.get(
-              `/schools/contacts/search?q=${encodeURIComponent(school.name)}&city=${encodeURIComponent(cityName)}`,
-              { headers },
-            );
-            if (contactsRes.data?.length > 0) {
-              const contact =
-                contactsRes.data.find(
-                  (c: any) =>
-                    c.role?.includes("Директор") ||
-                    c.role?.includes("Завідувач"),
-                ) || contactsRes.data[0];
-
-              director = contact.contactName;
-              phone = contact.phone;
-
-              await api.patch(
-                `/schools/${school.id}`,
-                { director, phone },
-                { headers },
-              );
-            }
-          } catch (e) {
-            console.error("Автодоповнення контактів:", e);
-          }
-        }
-
         setSchoolData({
-          id: school.id,
-          cityId: school.cityId,
-          name: school.name || "",
-          type: school.type || "Школа",
-          city: school.city?.name || "",
-          address: school.address || "",
-          director,
-          phone,
-          email: school.email || "",
-          childrenCount: school.childrenCount || 0,
-          notes: school.notes || "",
+          id: schoolRes.data.id,
+          cityId: schoolRes.data.cityId,
+          name: schoolRes.data.name || "",
+          type: schoolRes.data.type || "Школа",
+          city: schoolRes.data.city?.name || "",
+          address: schoolRes.data.address || "",
+          director: schoolRes.data.director || "",
+          phone: schoolRes.data.phone || "",
+          email: schoolRes.data.email || "",
+          childrenCount: schoolRes.data.childrenCount || 0,
+          notes: schoolRes.data.notes || "",
         });
         setEditForm({
-          ...school,
-          city: school.city?.name || "",
-          director,
-          phone,
+          ...schoolRes.data,
+          city: schoolRes.data.city?.name || "",
         });
       }
 
@@ -180,16 +144,6 @@ export default function SchoolProfile() {
     });
   };
 
-  const handleAddCommentClick = () => {
-    setCommentModal({
-      isOpen: true,
-      mode: "add_comment",
-      stepId: null,
-      historyId: null,
-      text: "",
-    });
-  };
-
   const handleHistoryClick = (historyItem: any) => {
     setCommentModal({
       isOpen: true,
@@ -200,16 +154,28 @@ export default function SchoolProfile() {
     });
   };
 
+  const handleAddCommentClick = () => {
+    setCommentModal({
+      isOpen: true,
+      mode: "add_comment",
+      stepId: null,
+      historyId: null,
+      text: "",
+    });
+  };
+
   const handleSaveComment = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const headers = {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       };
+
       if (commentModal.mode === "pipeline") {
         const activeStage = PIPELINE_STAGES[currentStageIndex];
         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
         if (!nextStage) return;
+
         const res = await api.patch(
           `/events/${currentEvent.id}/status`,
           {
@@ -233,22 +199,20 @@ export default function SchoolProfile() {
             ),
           );
         }
-      } 
-      // === ДОДАНА ЛОГІКА СТВОРЕННЯ КОМЕНТАРЯ ===
-      else if (commentModal.mode === "add_comment") {
+      } else if (commentModal.mode === "add_comment") {
         const res = await api.post(
           `/events/${currentEvent.id}/history`,
           { comment: commentModal.text },
-          { headers }
+          { headers },
         );
         setEvents((prev) =>
           prev.map((ev) =>
-            ev.id === currentEvent.id ? { ...ev, history: res.data.history } : ev
-          )
+            ev.id === currentEvent.id
+              ? { ...ev, history: res.data.history }
+              : ev,
+          ),
         );
-      } 
-      // =========================================
-      else if (commentModal.mode === "history" && commentModal.historyId) {
+      } else if (commentModal.mode === "history" && commentModal.historyId) {
         await api.patch(
           `/events/history/${commentModal.historyId}`,
           { comment: commentModal.text },
@@ -402,7 +366,7 @@ export default function SchoolProfile() {
     return <div className="p-8 text-slate-500">Завантаження...</div>;
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full pb-24 md:pb-8">
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8">
       <SchoolProfileHeader
         schoolData={schoolData}
         onEdit={() => {
@@ -422,7 +386,7 @@ export default function SchoolProfile() {
               </h3>
               <ul className="space-y-2 text-sm">
                 <li className="flex justify-between">
-                  <span className="text-slate-500">Остання дія:</span>
+                  <span className="text-slate-500">Остання дія:</span>{" "}
                   <span className="font-medium text-blue-600">
                     {creatorName}
                   </span>
@@ -435,13 +399,10 @@ export default function SchoolProfile() {
             onHistoryClick={handleHistoryClick}
             onAddCommentClick={handleAddCommentClick}
           />
+        </div>
 
         <div
-          className={`flex-1 flex flex-col gap-6 transition-opacity duration-500 ${
-            exitingEventId === currentEvent?.id
-              ? "opacity-0 pointer-events-none"
-              : "opacity-100"
-          }`}
+          className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${exitingEventId === currentEvent?.id ? "opacity-0 scale-95 -translate-y-4 pointer-events-none" : "opacity-100 scale-100 translate-y-0"}`}
         >
           {currentEvent && (
             <Pipeline
@@ -468,7 +429,6 @@ export default function SchoolProfile() {
             schoolName={schoolData.name}
             cityId={schoolData.cityId}
             onEventUpdated={fetchData}
-            employees={users}
           />
           <EventsTable
             events={events}
@@ -479,6 +439,7 @@ export default function SchoolProfile() {
         </div>
       </div>
 
+      {/* Мобільна FAB для додавання події */}
       <button
         onClick={openAddEventModal}
         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
@@ -486,6 +447,7 @@ export default function SchoolProfile() {
         +
       </button>
 
+      {/* Модальні вікна */}
       <EditSchoolModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
