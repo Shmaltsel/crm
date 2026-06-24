@@ -188,7 +188,7 @@ export default function Finance() {
             )}
           </p>
         </div>
-
+        <div className="flex flex-wrap items-center gap-3">
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
