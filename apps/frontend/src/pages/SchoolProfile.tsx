@@ -82,22 +82,60 @@ export default function SchoolProfile() {
       };
       const schoolRes = await api.get(`/schools/${id}`, { headers });
       if (schoolRes.data) {
+        const school = schoolRes.data;
+
+        // Автодоповнення контактів якщо телефон порожній
+        let director = school.director || "";
+        let phone = school.phone || "";
+
+        if (!phone && school.name) {
+          try {
+            const cityName = school.city?.name || "";
+            const contactsRes = await api.get(
+              `/schools/contacts/search?q=${encodeURIComponent(school.name)}&city=${encodeURIComponent(cityName)}`,
+              { headers },
+            );
+            if (contactsRes.data?.length > 0) {
+              const contact =
+                contactsRes.data.find(
+                  (c: any) =>
+                    c.role?.includes("Директор") ||
+                    c.role?.includes("Завідувач"),
+                ) || contactsRes.data[0];
+
+              director = contact.contactName;
+              phone = contact.phone;
+
+              // Зберігаємо в БД
+              await api.patch(
+                `/schools/${school.id}`,
+                { director, phone },
+                { headers },
+              );
+            }
+          } catch (e) {
+            console.error("Автодоповнення контактів:", e);
+          }
+        }
+
         setSchoolData({
-          id: schoolRes.data.id,
-          cityId: schoolRes.data.cityId,
-          name: schoolRes.data.name || "",
-          type: schoolRes.data.type || "Школа",
-          city: schoolRes.data.city?.name || "",
-          address: schoolRes.data.address || "",
-          director: schoolRes.data.director || "",
-          phone: schoolRes.data.phone || "",
-          email: schoolRes.data.email || "",
-          childrenCount: schoolRes.data.childrenCount || 0,
-          notes: schoolRes.data.notes || "",
+          id: school.id,
+          cityId: school.cityId,
+          name: school.name || "",
+          type: school.type || "Школа",
+          city: school.city?.name || "",
+          address: school.address || "",
+          director,
+          phone,
+          email: school.email || "",
+          childrenCount: school.childrenCount || 0,
+          notes: school.notes || "",
         });
         setEditForm({
-          ...schoolRes.data,
-          city: schoolRes.data.city?.name || "",
+          ...school,
+          city: school.city?.name || "",
+          director,
+          phone,
         });
       }
 
