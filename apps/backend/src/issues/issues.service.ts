@@ -15,11 +15,23 @@ export class IssuesService {
     eventName: string;
     message: string;
     cityId: string;
+    deadline?: string;
+    assignedUserId?: string;
+    assignedUserName?: string;
   }) {
-    // 1. Зберігаємо проблему
-    const issue = await this.prisma.issueReport.create({ data });
+    const issue = await this.prisma.issueReport.create({
+      data: {
+        eventId: data.eventId,
+        schoolName: data.schoolName,
+        eventName: data.eventName,
+        message: data.message,
+        cityId: data.cityId,
+        deadline: data.deadline ? new Date(data.deadline) : null,
+        assignedUserId: data.assignedUserId || null,
+        assignedUserName: data.assignedUserName || null,
+      },
+    });
 
-    // 2. Підтягуємо подію з екіпажем і учасниками
     const event = await this.prisma.event.findUnique({
       where: { id: data.eventId },
       include: {
@@ -32,57 +44,74 @@ export class IssuesService {
       },
     });
 
-    // 3. Будуємо рядок з тегами екіпажу
     const formatMember = (user: {
       name: string;
       telegramId: string | null;
     }) => {
       if (!user.telegramId) return user.name;
       const clean = user.telegramId.replace(/^@/, '');
-      const isNumeric = /^\d+$/.test(clean);
-      if (isNumeric) return user.name;
-      return `@${clean} (${user.name})`;
+      return /^\d+$/.test(clean) ? user.name : `@${clean} (${user.name})`;
     };
 
     const crewMembers: string[] = [];
-    if (event?.crew?.host) {
+    if (event?.crew?.host)
       crewMembers.push(`🎙️ Ведучий: ${formatMember(event.crew.host)}`);
-    }
-    if (event?.crew?.driver) {
+    if (event?.crew?.driver)
       crewMembers.push(`🚗 Водій: ${formatMember(event.crew.driver)}`);
-    }
 
-    // 4. Знаходимо менеджера міста
     const city = await this.prisma.city.findUnique({
       where: { id: data.cityId },
-      include: {
-        users: {
-          where: { role: 'MANAGER' },
-          take: 1,
-        },
-      },
+      include: { users: { where: { role: 'MANAGER' }, take: 1 } },
     });
 
+    // Отримуємо chatId відповідального працівника
+    let assigneeChatId: string | null = null;
+    if (data.assignedUserId) {
+      const assignee = await this.prisma.user.findUnique({
+        where: { id: data.assignedUserId },
+        select: { telegramChatId: true, telegramId: true },
+      });
+      assigneeChatId =
+        assignee?.telegramChatId ||
+        (assignee?.telegramId && /^\d+$/.test(assignee.telegramId)
+          ? assignee.telegramId
+          : null);
+    }
+
+    const deadlineStr = data.deadline
+      ? `\n⏰ <b>Дедлайн:</b> ${new Date(data.deadline).toLocaleDateString('uk-UA')}`
+      : '';
+
+    const assigneeStr = data.assignedUserName
+      ? `\n👤 <b>Відповідальний:</b> ${data.assignedUserName}`
+      : '';
+
     const manager = city?.users?.[0];
-    const chatId =
+    const managerChatId =
       manager?.telegramChatId ||
       (manager?.telegramId && /^\d+$/.test(manager.telegramId)
         ? manager.telegramId
         : null);
 
-    // 5. Надсилаємо Telegram з екіпажем
-    if (chatId) {
-      const text =
-        `🚨 <b>Нова проблема!</b>\n\n` +
-        `🏫 <b>Заклад:</b> ${data.schoolName}\n` +
-        `📅 <b>Подія:</b> ${data.eventName}\n\n` +
-        `💬 <b>Повідомлення:</b>\n${data.message}` +
-        (crewMembers.length > 0
-          ? `\n\n👥 <b>Екіпаж:</b>\n${crewMembers.join('\n')}`
-          : '') +
-        `\n\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+    const text =
+      `🚨 <b>Нова проблема!</b>\n\n` +
+      `🏫 <b>Заклад:</b> ${data.schoolName}\n` +
+      `📅 <b>Подія:</b> ${data.eventName}\n\n` +
+      `💬 <b>Повідомлення:</b>\n${data.message}` +
+      deadlineStr +
+      assigneeStr +
+      (crewMembers.length > 0
+        ? `\n\n👥 <b>Екіпаж:</b>\n${crewMembers.join('\n')}`
+        : '') +
+      `\n\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
 
-      await this.telegramService.sendMessage(chatId, text);
+    // Надсилаємо менеджеру міста
+    if (managerChatId)
+      await this.telegramService.sendMessage(managerChatId, text);
+
+    // Надсилаємо відповідальному (якщо це не той самий менеджер)
+    if (assigneeChatId && assigneeChatId !== managerChatId) {
+      await this.telegramService.sendMessage(assigneeChatId, text);
     }
 
     return issue;
