@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../config/api";
 
-// Імпортуємо UI компоненти
 import SchoolProfileHeader from "../components/school-profile/SchoolProfileHeader";
 import SchoolInfoCard from "../components/school-profile/SchoolInfoCard";
 import HistoryTimeline from "../components/school-profile/HistoryTimeline";
@@ -12,7 +11,6 @@ import EventsTable from "../components/school-profile/EventsTable";
 import EventPreparation from "../components/school-profile/EventPreparation";
 import AssignedCrew from "../components/school-profile/AssignedCrew";
 
-// Імпортуємо модальні вікна
 import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
 import EventModal from "../components/school-profile/modals/EventModal";
 import CommentModal from "../components/school-profile/modals/CommentModal";
@@ -81,13 +79,14 @@ export default function SchoolProfile() {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       };
       const schoolRes = await api.get(`/schools/${id}`, { headers });
+
       if (schoolRes.data) {
         const school = schoolRes.data;
 
-        // Автодоповнення контактів якщо телефон порожній
         let director = school.director || "";
         let phone = school.phone || "";
 
+        // Автодоповнення контактів якщо телефон порожній
         if (!phone && school.name) {
           try {
             const cityName = school.city?.name || "";
@@ -106,7 +105,6 @@ export default function SchoolProfile() {
               director = contact.contactName;
               phone = contact.phone;
 
-              // Зберігаємо в БД
               await api.patch(
                 `/schools/${school.id}`,
                 { director, phone },
@@ -202,7 +200,6 @@ export default function SchoolProfile() {
         const activeStage = PIPELINE_STAGES[currentStageIndex];
         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
         if (!nextStage) return;
-
         const res = await api.patch(
           `/events/${currentEvent.id}/status`,
           {
@@ -385,48 +382,6 @@ export default function SchoolProfile() {
         schoolData={schoolData}
         onEdit={() => {
           setEditForm(schoolData);
-          // Автодоповнення контактів якщо телефон порожній
-          if (!schoolRes.data.phone && schoolRes.data.name) {
-            try {
-              const cityName = schoolRes.data.city?.name || "";
-              const contactsRes = await api.get(
-                `/schools/contacts/search?q=${encodeURIComponent(schoolRes.data.name)}&city=${encodeURIComponent(cityName)}`,
-                { headers },
-              );
-              if (contactsRes.data?.length > 0) {
-                const director =
-                  contactsRes.data.find(
-                    (c: any) =>
-                      c.role?.includes("Директор") ||
-                      c.role?.includes("Завідувач"),
-                  ) || contactsRes.data[0];
-
-                // Зберігаємо в БД
-                await api.patch(
-                  `/schools/${schoolRes.data.id}`,
-                  {
-                    director: director.contactName,
-                    phone: director.phone,
-                  },
-                  { headers },
-                );
-
-                // Оновлюємо локальний стан
-                setSchoolData((prev) => ({
-                  ...prev,
-                  director: director.contactName,
-                  phone: director.phone,
-                }));
-                setEditForm((prev) => ({
-                  ...prev,
-                  director: director.contactName,
-                  phone: director.phone,
-                }));
-              }
-            } catch (e) {
-              console.error("Автодоповнення контактів:", e);
-            }
-          }
           setIsEditModalOpen(true);
         }}
         onAddEvent={openAddEventModal}
@@ -442,7 +397,7 @@ export default function SchoolProfile() {
               </h3>
               <ul className="space-y-2 text-sm">
                 <li className="flex justify-between">
-                  <span className="text-slate-500">Остання дія:</span>{" "}
+                  <span className="text-slate-500">Остання дія:</span>
                   <span className="font-medium text-blue-600">
                     {creatorName}
                   </span>
@@ -498,7 +453,6 @@ export default function SchoolProfile() {
         </div>
       </div>
 
-      {/* Мобільна FAB для додавання події */}
       <button
         onClick={openAddEventModal}
         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
@@ -506,7 +460,6 @@ export default function SchoolProfile() {
         +
       </button>
 
-      {/* Модальні вікна */}
       <EditSchoolModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
