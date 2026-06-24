@@ -9,7 +9,7 @@ interface Props {
   stages: any[];
 }
 
-// Винесено окремо для кращої мемоізації
+// 1. Експортуємо SchoolCard, щоб уникнути помилок при імпорті в інших файлах
 export const SchoolCard = React.memo(({ school, onDelete, stages }: any) => {
   const navigate = useNavigate();
   const latestEvent = school.events?.[0];
@@ -19,7 +19,7 @@ export const SchoolCard = React.memo(({ school, onDelete, stages }: any) => {
 
   return (
     <motion.div
-      layout // Додає плавний рух карток, якщо вони змінюють порядок
+      layout
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
@@ -68,6 +68,7 @@ export const SchoolCard = React.memo(({ school, onDelete, stages }: any) => {
 
 SchoolCard.displayName = "SchoolCard";
 
+// 2. Головний компонент залишається default export
 export default function SchoolMobileList({
   schools,
   searchQuery,
@@ -100,7 +101,11 @@ export default function SchoolMobileList({
           animate={{ opacity: 1 }}
           className="text-center py-10 text-slate-400"
         >
-          <p>Нічого не знайдено</p>
+          <p>
+            {searchQuery
+              ? `Нічого не знайдено за «${searchQuery}»`
+              : "Шкіл ще немає"}
+          </p>
         </motion.div>
       )}
     </motion.div>
