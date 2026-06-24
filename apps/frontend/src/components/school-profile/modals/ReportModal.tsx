@@ -245,20 +245,20 @@ export default function ReportModal({
 
   // Хелпер:
   const crewMembers = [
-    ...(props.crew?.host
+    ...(crew?.host
       ? [
           {
-            id: props.crew.host.id,
-            name: props.crew.host.name,
+            id: crew.host.id,
+            name: crew.host.name,
             role: "Ведучий",
           },
         ]
       : []),
-    ...(props.crew?.driver
+    ...(crew?.driver
       ? [
           {
-            id: props.crew.driver.id,
-            name: props.crew.driver.name,
+            id: crew.driver.id,
+            name: crew.driver.name,
             role: "Водій",
           },
         ]
