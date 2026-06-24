@@ -1,18 +1,27 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+  lazy,
+  Suspense,
+} from "react";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
-
 
 import VirtualSchoolList from "../components/VirtualSchoolList";
 import { SchoolCard } from "../components/schools/SchoolMobileList";
 
-import VirtualDesktopTable from "../components/schools/VirtualDesktopTable";
-
-import { lazy, Suspense } from "react";
-import { classifySchool, classifySize } from "../components/schools/schoolUtils";
+import {
+  classifySchool,
+  classifySize,
+} from "../components/schools/schoolUtils";
 
 const StatsBar = lazy(() => import("../components/schools/StatsBar"));
-const VirtualDesktopTable = lazy(() => import("../components/schools/VirtualDesktopTable"));
+const VirtualDesktopTable = lazy(
+  () => import("../components/schools/VirtualDesktopTable"),
+);
 // SchoolCard імпортується напряму — він легкий і потрібен одразу
 
 export const PIPELINE_STAGES = [
@@ -52,9 +61,11 @@ export default function Schools() {
   >([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchSchools = async () => {
+    setIsLoading(true);
     try {
       const res = await api.get("/schools?minimal=true", {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
@@ -62,6 +73,8 @@ export default function Schools() {
       setSchools(res.data);
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -81,7 +94,7 @@ export default function Schools() {
     fetchCities();
   }, []);
 
-  const handleOpenModal = () => {
+  const handleOpenModal = useCallback(() => {
     setForm({
       name: "",
       cityId: selectedCity.id || cities[0]?.id || "",
@@ -91,7 +104,7 @@ export default function Schools() {
     });
     setMatchedContacts([]);
     setIsModalOpen(true);
-  };
+  }, [selectedCity.id, cities]);
 
   const fetchContacts = async (schoolName: string) => {
     if (!schoolName || schoolName.trim().length < 1)
@@ -182,42 +195,56 @@ export default function Schools() {
     }
   };
 
-  const handleDeleteSchool = async (
-    e: React.MouseEvent,
-    schoolId: string,
-    schoolName: string,
-  ) => {
-    e.stopPropagation();
-    if (
-      !window.confirm(
-        `Видалити школу "${schoolName}"? Це видалить також усі її події.`,
+  const handleDeleteSchool = useCallback(
+    async (e: React.MouseEvent, schoolId: string, schoolName: string) => {
+      e.stopPropagation();
+      if (
+        !window.confirm(
+          `Видалити школу "${schoolName}"? Це видалить також усі її події.`,
+        )
       )
-    )
-      return;
-    try {
-      await api.delete(`/schools/${schoolId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      setSchools(schools.filter((s) => s.id !== schoolId));
-    } catch (e) {
-      console.error(e);
-    }
-  };
+        return;
+      try {
+        await api.delete(`/schools/${schoolId}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        });
+        setSchools((prev) => prev.filter((s) => s.id !== schoolId));
+      } catch (e) {
+        console.error(e);
+      }
+    },
+    [],
+  );
 
-  const baseFiltered = schools.filter((s) => {
-    const isCityMatch = selectedCity.id ? s.cityId === selectedCity.id : true;
-    const isFilterMatch = activeFilter
-      ? classifySchool(s) === activeFilter
-      : true;
-    const isSizeMatch = sizeFilter
-      ? classifySize(s, "Школа") === sizeFilter
-      : true;
-    return isCityMatch && s.type === "Школа" && isFilterMatch && isSizeMatch;
-  });
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 200);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const baseFiltered = useMemo(
+    () =>
+      schools.filter((s) => {
+        const isCityMatch = selectedCity.id
+          ? s.cityId === selectedCity.id
+          : true;
+        const isFilterMatch = activeFilter
+          ? classifySchool(s) === activeFilter
+          : true;
+        const isSizeMatch = sizeFilter
+          ? classifySize(s, "Школа") === sizeFilter
+          : true;
+        return (
+          isCityMatch && s.type === "Школа" && isFilterMatch && isSizeMatch
+        );
+      }),
+    [schools, selectedCity.id, activeFilter, sizeFilter],
+  );
 
   const filteredSchools = useMemo(() => {
-    if (!searchQuery.trim()) return baseFiltered;
-    const q = searchQuery.toLowerCase().trim();
+    if (!debouncedSearch.trim()) return baseFiltered;
+    const q = debouncedSearch.toLowerCase().trim();
     return baseFiltered.filter(
       (s) =>
         s.name?.toLowerCase().includes(q) ||
@@ -225,7 +252,7 @@ export default function Schools() {
         s.director?.toLowerCase().includes(q) ||
         s.address?.toLowerCase().includes(q),
     );
-  }, [baseFiltered, searchQuery]);
+  }, [baseFiltered, debouncedSearch]);
 
   return (
     <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-slate-50 min-h-screen">
@@ -285,9 +312,17 @@ export default function Schools() {
 
       {/* StatsBar */}
       <div className="shrink-0">
-        <Suspense fallback={<div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />}>
+        <Suspense
+          fallback={
+            <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
+          }
+        >
           <StatsBar
-            schools={schools.filter(...)}
+            schools={schools.filter(
+              (s) =>
+                (selectedCity.id ? s.cityId === selectedCity.id : true) &&
+                s.type === "Школа",
+            )}
             activeFilter={activeFilter}
             onFilterChange={setActiveFilter}
             sizeFilter={sizeFilter}
@@ -297,17 +332,6 @@ export default function Schools() {
         </Suspense>
       </div>
 
-      {/* Десктоп */}
-      <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
-        <Suspense fallback={<div className="flex-1 animate-pulse bg-slate-50" />}>
-          <VirtualDesktopTable
-            schools={filteredSchools}
-            searchQuery={searchQuery}
-            onDelete={handleDeleteSchool}
-            stages={PIPELINE_STAGES}
-          />
-        </Suspense>
-      </div>
       {/* Пошук */}
       <div className="relative shrink-0 mb-4 mt-2">
         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
@@ -373,34 +397,56 @@ export default function Schools() {
       </p>
 
       {/* Компоненти списків */}
-      {/* Віртуалізований список шкіл */}
-      <div className="md:hidden flex-1 w-full overflow-hidden">
-        <VirtualSchoolList
-          schools={filteredSchools}
-          itemHeight={110}
-          renderItem={(school) => (
-            <div className="pb-2.5">
-              <SchoolCard
-                school={school}
+      {isLoading ? (
+        <div className="flex flex-col gap-2.5 flex-1">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-white rounded-2xl border border-slate-100 p-3.5 animate-pulse"
+              style={{ opacity: 1 - i * 0.1 }}
+            >
+              <div className="h-4 bg-slate-200 rounded-lg w-3/4 mb-3" />
+              <div className="flex justify-between">
+                <div className="h-3 bg-slate-100 rounded-lg w-1/3" />
+                <div className="h-3 bg-slate-100 rounded-lg w-1/4" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          {/* Мобільний: віртуалізований список карток */}
+          <div className="md:hidden flex-1 w-full overflow-hidden">
+            <VirtualSchoolList
+              schools={filteredSchools}
+              itemHeight={110}
+              renderItem={(school) => (
+                <div className="pb-2.5">
+                  <SchoolCard
+                    school={school}
+                    onDelete={handleDeleteSchool}
+                    stages={PIPELINE_STAGES}
+                  />
+                </div>
+              )}
+            />
+          </div>
+
+          {/* Десктоп: таблиця з віртуалізованим tbody */}
+          <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
+            <Suspense
+              fallback={<div className="flex-1 animate-pulse bg-slate-50" />}
+            >
+              <VirtualDesktopTable
+                schools={filteredSchools}
+                searchQuery={searchQuery}
                 onDelete={handleDeleteSchool}
                 stages={PIPELINE_STAGES}
               />
-            </div>
-          )}
-        />
-      </div>
-
-      {/* Десктоп: таблиця з віртуалізованим tbody */}
-      <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
-        <div className="overflow-y-auto flex-1">
-          <VirtualDesktopTable
-            schools={filteredSchools}
-            searchQuery={searchQuery}
-            onDelete={handleDeleteSchool}
-            stages={PIPELINE_STAGES}
-          />
-        </div>
-      </div>
+            </Suspense>
+          </div>
+        </>
+      )}
 
       {/* Мобільна плаваюча кнопка FAB */}
       <button
