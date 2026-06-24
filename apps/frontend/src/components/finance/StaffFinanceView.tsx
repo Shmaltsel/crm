@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import { api } from "../../config/api";
 
+// Поза компонентом — не потребує useMemo
 const fmt = (n: number) =>
   new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
 
@@ -16,7 +17,92 @@ interface Props {
   selectedCity: any;
 }
 
-export default function StaffFinanceView({ myBalance, selectedCity }: Props) {
+// ─── Підкомпоненти ────────────────────────────────────────────────────────────
+
+const BalanceCard = memo(function BalanceCard({
+  myBalance,
+}: {
+  myBalance: number | null;
+}) {
+  return (
+    <div className="flex items-center justify-center py-10">
+      <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-10 text-center max-w-sm w-full">
+        <div className="w-16 h-16 bg-blue-50 rounded-[20px] flex items-center justify-center text-3xl mx-auto mb-4">
+          💰
+        </div>
+        <p className="text-sm text-slate-400 mb-2">Ваш баланс</p>
+        <p className="text-4xl font-black text-blue-600 tracking-tight">
+          {myBalance !== null ? fmt(myBalance) : "—"}
+          <span className="text-lg font-bold text-slate-400 ml-1">грн</span>
+        </p>
+        <p className="text-xs text-slate-400 mt-4">
+          Сума нарахованих зарплат за всі події
+        </p>
+      </div>
+    </div>
+  );
+});
+
+interface StaffMemberProps {
+  member: any;
+  index: number;
+  maxRevenue: number;
+}
+
+const StaffMemberRow = memo(function StaffMemberRow({
+  member,
+  index,
+  maxRevenue,
+}: StaffMemberProps) {
+  const pct = Math.round((member.revenue / maxRevenue) * 100);
+  const isTop = index === 0;
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-2">
+          <span
+            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+              isTop
+                ? "bg-amber-100 text-amber-700"
+                : "bg-slate-100 text-slate-500"
+            }`}
+          >
+            {index + 1}
+          </span>
+          <span className="text-sm font-semibold text-slate-800">
+            {member.name}
+          </span>
+          {isTop && (
+            <span className="text-xs bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full">
+              🏆 Топ
+            </span>
+          )}
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-bold text-slate-800">
+            {fmt(member.revenue)} грн
+          </p>
+          <p className="text-xs text-slate-400">{member.eventsCount} подій</p>
+        </div>
+      </div>
+      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${
+            isTop ? "bg-amber-400" : "bg-blue-400"
+          }`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+});
+
+// ─── Головний компонент ───────────────────────────────────────────────────────
+
+export default memo(function StaffFinanceView({
+  myBalance,
+  selectedCity,
+}: Props) {
   const [tab, setTab] = useState<"balance" | "revenue">("balance");
   const [period, setPeriod] = useState("year");
   const [staffData, setStaffData] = useState<any>(null);
@@ -36,6 +122,15 @@ export default function StaffFinanceView({ myBalance, selectedCity }: Props) {
   }, [tab, period, selectedCity?.id]);
 
   const maxRevenue = staffData?.staff?.[0]?.revenue ?? 1;
+
+  // useMemo — розбивка по ролях, щоб не фільтрувати в рендері
+  const staffByRole = useMemo(() => {
+    if (!staffData?.staff) return { hosts: [], drivers: [] };
+    return {
+      hosts: staffData.staff.filter((s: any) => s.role === "HOST"),
+      drivers: staffData.staff.filter((s: any) => s.role === "DRIVER"),
+    };
+  }, [staffData]);
 
   return (
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
@@ -65,26 +160,8 @@ export default function StaffFinanceView({ myBalance, selectedCity }: Props) {
         </button>
       </div>
 
-      {/* Вкладка: баланс */}
-      {tab === "balance" && (
-        <div className="flex items-center justify-center py-10">
-          <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-10 text-center max-w-sm w-full">
-            <div className="w-16 h-16 bg-blue-50 rounded-[20px] flex items-center justify-center text-3xl mx-auto mb-4">
-              💰
-            </div>
-            <p className="text-sm text-slate-400 mb-2">Ваш баланс</p>
-            <p className="text-4xl font-black text-blue-600 tracking-tight">
-              {myBalance !== null ? fmt(myBalance) : "—"}
-              <span className="text-lg font-bold text-slate-400 ml-1">грн</span>
-            </p>
-            <p className="text-xs text-slate-400 mt-4">
-              Сума нарахованих зарплат за всі події
-            </p>
-          </div>
-        </div>
-      )}
+      {tab === "balance" && <BalanceCard myBalance={myBalance} />}
 
-      {/* Вкладка: виручка команди */}
       {tab === "revenue" && (
         <div className="flex flex-col gap-5">
           <div className="flex items-center gap-3">
@@ -142,62 +219,36 @@ export default function StaffFinanceView({ myBalance, selectedCity }: Props) {
                 </div>
               </div>
 
-              {["HOST", "DRIVER"].map((roleKey) => {
-                const roleLabel = roleKey === "HOST" ? "🎙️ Ведучі" : "🚗 Водії";
-                const members = staffData.staff.filter(
-                  (s: any) => s.role === roleKey,
-                );
+              {(
+                [
+                  {
+                    key: "HOST",
+                    label: "🎙️ Ведучі",
+                    members: staffByRole.hosts,
+                  },
+                  {
+                    key: "DRIVER",
+                    label: "🚗 Водії",
+                    members: staffByRole.drivers,
+                  },
+                ] as const
+              ).map(({ key, label, members }) => {
                 if (members.length === 0) return null;
                 return (
                   <div
-                    key={roleKey}
+                    key={key}
                     className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"
                   >
-                    <h3 className="font-bold text-slate-800 mb-4">
-                      {roleLabel}
-                    </h3>
+                    <h3 className="font-bold text-slate-800 mb-4">{label}</h3>
                     <div className="flex flex-col gap-4">
-                      {members.map((member: any, i: number) => {
-                        const pct = Math.round(
-                          (member.revenue / maxRevenue) * 100,
-                        );
-                        const isTop = i === 0;
-                        return (
-                          <div key={member.id}>
-                            <div className="flex items-center justify-between mb-1.5">
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isTop ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500"}`}
-                                >
-                                  {i + 1}
-                                </span>
-                                <span className="text-sm font-semibold text-slate-800">
-                                  {member.name}
-                                </span>
-                                {isTop && (
-                                  <span className="text-xs bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full">
-                                    🏆 Топ
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-right">
-                                <p className="text-sm font-bold text-slate-800">
-                                  {fmt(member.revenue)} грн
-                                </p>
-                                <p className="text-xs text-slate-400">
-                                  {member.eventsCount} подій
-                                </p>
-                              </div>
-                            </div>
-                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-500 ${isTop ? "bg-amber-400" : "bg-blue-400"}`}
-                                style={{ width: `${pct}%` }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
+                      {members.map((member: any, i: number) => (
+                        <StaffMemberRow
+                          key={member.id}
+                          member={member}
+                          index={i}
+                          maxRevenue={maxRevenue}
+                        />
+                      ))}
                     </div>
                   </div>
                 );
@@ -208,4 +259,4 @@ export default function StaffFinanceView({ myBalance, selectedCity }: Props) {
       )}
     </div>
   );
-}
+});
