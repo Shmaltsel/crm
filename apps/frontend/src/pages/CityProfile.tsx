@@ -4,6 +4,7 @@ import CityAnalytics from "../components/city-profile/CityAnalytics";
 import PhoneLink from "../components/PhoneLink";
 import type { Event, Crew, CityProfile as CityProfileType } from "../types";
 import { api } from "../config/api";
+import OptimizedImage from "../components/ui/OptimizedImage";
 
 type Tab = "events" | "crews" | "analytics";
 
@@ -228,7 +229,7 @@ export default function CityProfile() {
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-3">
                           <div className="w-16 h-10 rounded overflow-hidden bg-slate-100 shrink-0 shadow-sm border border-slate-200">
-                            <img src="https://images.unsplash.com/photo-1517026575980-3e1e2dedeab4?auto=format&fit=crop&q=80&w=120&h=80" alt="van" className="w-full h-full object-cover" />
+                            <OptimizedImage src="https://images.unsplash.com/photo-1517026575980-3e1e2dedeab4?auto=format&fit=crop&q=80&w=120&h=80" alt="van" className="w-full h-full object-cover" />
                           </div>
                           <p className="font-bold text-slate-800">{crew.name}</p>
                         </div>
@@ -293,7 +294,7 @@ export default function CityProfile() {
                             <div className="flex items-center gap-3">
                               {/* Універсальна фотографія буса */}
                               <div className="w-[60px] h-[40px] rounded border border-slate-200 overflow-hidden bg-slate-100 shrink-0 shadow-sm">
-                                <img src="https://images.unsplash.com/photo-1517026575980-3e1e2dedeab4?auto=format&fit=crop&q=80&w=120&h=80" alt="van" className="w-full h-full object-cover" />
+                                <OptimizedImage src="https://images.unsplash.com/photo-1517026575980-3e1e2dedeab4?auto=format&fit=crop&q=80&w=120&h=80" alt="van" className="w-full h-full object-cover" />
                               </div>
                               <span className="font-bold text-slate-800">{crew.name}</span>
                             </div>

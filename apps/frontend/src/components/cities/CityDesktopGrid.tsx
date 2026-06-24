@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import OptimizedImage from "../ui/OptimizedImage";
 
 const CITY_PHOTOS: Record<string, string> = {
   Львів: "https://gohotels.com.ua/images/stories/f08072159a443e07501f3df97987f8a3.jpg",
@@ -24,7 +25,7 @@ export default function CityDesktopGrid({ cities, selectedCity, onSelectCity }: 
             }`}
           >
             <div className="h-44 overflow-hidden relative">
-              <img
+              <OptimizedImage
                 src={CITY_PHOTOS[city.name] || DEFAULT_PHOTO}
                 alt={city.name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
