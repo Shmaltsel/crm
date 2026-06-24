@@ -17,10 +17,12 @@ export class FinanceService {
     period,
     cityId,
     project,
+    minimal = false,
   }: {
     period?: string;
     cityId?: string;
     project?: string;
+    minimal?: boolean;
   }) {
     const now = new Date();
     let dateFrom: Date | undefined;
@@ -178,18 +180,42 @@ export class FinanceService {
       },
       select: { price: true },
     });
-    const expectedRevenue = planned.reduce((s, e) => s + (e.price || 0), 0);
-
+    const expectedRevenue = await this.prisma.event
+      .findMany({
+        where: {
+          status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
+          ...(cityId ? { cityId } : {}),
+        },
+        select: { price: true },
+      })
+      .then((planned) => planned.reduce((s, e) => s + (e.price || 0), 0));
     // Список унікальних проєктів для фільтру
     const projects = await this.prisma.event.findMany({
       select: { project: true },
       distinct: ['project'],
     });
 
-    // Список міст для фільтру
     const cities = await this.prisma.city.findMany({
       select: { id: true, name: true },
     });
+
+    // --- minimal: повертаємо тільки KPI + monthly + фільтри ---
+    if (minimal) {
+      return {
+        kpi: {
+          totalRevenue,
+          totalExpenses,
+          totalProfit,
+          totalEvents: events.length,
+        },
+        monthly,
+        expectedRevenue,
+        filters: {
+          projects: projects.map((p) => p.project).filter(Boolean),
+          cities,
+        },
+      };
+    }
 
     return {
       kpi: {
@@ -201,7 +227,6 @@ export class FinanceService {
       monthly,
       byProject,
       byExpenseCategory,
-      topCities,
       topSchools,
       topEvents,
       worstEvents,

@@ -2839,9 +2839,8 @@ export class SchoolsController {
     return this.schoolsService.create(body);
   }
 
-  @Get()
-  findAll() {
-    return this.schoolsService.findAll();
+  @Get() findAll(@Query('minimal') minimal?: string) {
+    return this.schoolsService.findAll(minimal === 'true');
   }
 
   // ⚠️ ВАЖЛИВО: цей маршрут МАЄ стояти ДО @Get(':id')
@@ -2982,21 +2981,38 @@ export class SchoolsService {
     return newSchool;
   }
 
-  async findAll() {
-    // Використовуємо this.prisma
+  async findAll(minimal = false) {
+    if (minimal) {
+      return this.prisma.school.findMany({
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          cityId: true,
+          director: true,
+          phone: true,
+          address: true,
+          childrenCount: true,
+          updatedAt: true,
+          isHotClient: true,
+          city: { select: { id: true, name: true } },
+          // Тільки останній евент для відображення етапу в списку
+          events: {
+            select: { status: true, updatedAt: true },
+            orderBy: { date: 'desc' },
+            take: 1,
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
     return this.prisma.school.findMany({
       include: {
         city: true,
-        events: {
-          orderBy: {
-            date: 'desc',
-          },
-          take: 1,
-        },
+        events: { orderBy: { date: 'desc' }, take: 1 },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -3783,6 +3799,8 @@ const SchoolProfile = lazy(() => import("./pages/SchoolProfile"));
 const Employees = lazy(() => import("./pages/Employees"));
 const Finance = lazy(() => import("./pages/Finance"));
 const CalendarView = lazy(() => import("./pages/CalendarView"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Kindergartens = lazy(() => import("./pages/Kindergartens"));
 
 // Компонент-заглушка, який показується долі секунди, поки вантажиться JS код сторінки
 const PageLoader = () => (
@@ -3893,6 +3911,23 @@ export default function App() {
               element={
                 <Suspense fallback={<PageLoader />}>
                   <CalendarView />
+                </Suspense>
+              }
+            />
+            <Route
+              path="dashboard"
+              element={
+                <Suspense fallback={<PageLoader />}>
+                  <Dashboard />
+                </Suspense>
+              }
+            />
+
+            <Route
+              path="kindergartens"
+              element={
+                <Suspense fallback={<PageLoader />}>
+                  <Kindergartens />
                 </Suspense>
               }
             />
@@ -7540,7 +7575,7 @@ interface Props {
 }
 
 // Мемоізований компонент рядка таблиці
-const SchoolRow = React.memo(({ school, onDelete, stages, navigate }: any) => {
+export const SchoolRow = React.memo(({ school, onDelete, stages, navigate }: any) => {
   const latestEvent = school.events?.[0];
   const stage = latestEvent
     ? stages.find((s: any) => s.key === latestEvent.status)
@@ -7646,7 +7681,7 @@ function stalenessColor(days: number | null): string {
 }
 
 // Мемоізований компонент картки
-const SchoolCard = React.memo(({ school, onDelete, stages }: any) => {
+export const SchoolCard = React.memo(({ school, onDelete, stages }: any) => {
   const navigate = useNavigate();
 
   const latestEvent = school.events?.[0];
@@ -7748,7 +7783,8 @@ export default function SchoolMobileList({
   );
 }</file>
 <file path="apps/frontend/src/components/schools/StatsBar.tsx">import React from "react";
-
+export { classifySchool, classifySize } from "./schoolUtils";
+import { classifySchool, classifySize } from "./schoolUtils";
 interface School {
   id: string;
   childrenCount?: number;
@@ -7762,43 +7798,6 @@ interface StatsBarProps {
   sizeFilter: string | null;
   onSizeFilterChange: (filter: string | null) => void;
   schoolType?: "Школа" | "Садочок";
-}
-
-const PLANNED_STAGES = ["BASE", "FIRST_CONTACT", "DATE_CONFIRMED"];
-const IN_PROGRESS_STAGES = ["PREPARATION", "IN_PROGRESS", "DONE", "REPORT"];
-
-export function classifySchool(
-  school: School,
-): "new" | "planned" | "inProgress" | "done" {
-  const events = (school.events || []).filter(
-    (e: any) => e.status !== "RE_SALE",
-  );
-  if (events.length === 0) {
-    return (school.events || []).some((e: any) => e.status === "RE_SALE")
-      ? "done"
-      : "new";
-  }
-  const latest = events[events.length - 1];
-  if (PLANNED_STAGES.includes(latest.status)) return "planned";
-  if (IN_PROGRESS_STAGES.includes(latest.status)) return "inProgress";
-  if (latest.status === "RE_SALE") return "done";
-  return "new";
-}
-
-export function classifySize(
-  school: School,
-  schoolType: "Школа" | "Садочок" = "Школа",
-): "small" | "medium" | "large" {
-  const count = school.childrenCount ?? 0;
-  if (schoolType === "Садочок") {
-    if (count < 50) return "small";
-    if (count < 100) return "medium";
-    return "large";
-  }
-  // Школа
-  if (count < 500) return "small";
-  if (count < 900) return "medium";
-  return "large";
 }
 
 const STATUS_ITEMS = [
@@ -7982,6 +7981,125 @@ export default function StatsBar({
       </div>
     </div>
   );
+}</file>
+<file path="apps/frontend/src/components/schools/VirtualDesktopTable.tsx">import { useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { SchoolRow } from "./SchoolDesktopTable";
+
+interface Props {
+  schools: any[];
+  searchQuery: string;
+  onDelete: (e: React.MouseEvent, id: string, name: string) => void;
+  stages: any[];
+}
+
+export default function VirtualDesktopTable({ schools, searchQuery, onDelete, stages }: Props) {
+  const navigate = useNavigate();
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const rowVirtualizer = useVirtualizer({
+    count: schools.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 57, // висота tr з padding p-4
+    overscan: 8,
+  });
+
+  return (
+    <div ref={parentRef} className="overflow-y-auto flex-1 h-full">
+      <table className="w-full text-left border-collapse">
+        <thead className="sticky top-0 z-10 bg-slate-50">
+          <tr className="border-b border-slate-100">
+            <th className="p-4 font-medium text-slate-600">Назва школи</th>
+            <th className="p-4 font-medium text-slate-600">Місто</th>
+            <th className="p-4 font-medium text-slate-600">Статус</th>
+            <th className="p-4 font-medium text-slate-600">Поточний етап</th>
+            <th className="p-4 font-medium text-slate-600 text-center">Дія</th>
+          </tr>
+        </thead>
+        <tbody
+          style={{
+            height: `${rowVirtualizer.getTotalSize()}px`,
+            width: "100%",
+            position: "relative",
+            display: "block",
+          }}
+        >
+          {rowVirtualizer.getVirtualItems().map((virtualRow) => (
+            <tr
+              key={virtualRow.key}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: `${virtualRow.size}px`,
+                transform: `translateY(${virtualRow.start}px)`,
+                display: "table",
+                tableLayout: "fixed",
+              }}
+            >
+              <SchoolRow
+                school={schools[virtualRow.index]}
+                onDelete={onDelete}
+                stages={stages}
+                navigate={navigate}
+              />
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {schools.length === 0 && (
+        <div className="text-center py-16 text-slate-400 text-sm font-medium">
+          {searchQuery ? `Нічого не знайдено за «${searchQuery}»` : "Шкіл ще немає"}
+        </div>
+      )}
+    </div>
+  );
+}</file>
+<file path="apps/frontend/src/components/schools/schoolUtils.ts">// apps/frontend/src/components/schools/schoolUtils.ts
+
+const PLANNED_STAGES = ["BASE", "FIRST_CONTACT", "DATE_CONFIRMED"];
+const IN_PROGRESS_STAGES = ["PREPARATION", "IN_PROGRESS", "DONE", "REPORT"];
+
+interface School {
+  childrenCount?: number;
+  events?: any[];
+  isHotClient?: boolean;
+}
+
+export function classifySchool(
+  school: School,
+): "new" | "planned" | "inProgress" | "done" {
+  const events = (school.events || []).filter(
+    (e: any) => e.status !== "RE_SALE",
+  );
+  if (events.length === 0) {
+    return (school.events || []).some((e: any) => e.status === "RE_SALE")
+      ? "done"
+      : "new";
+  }
+  const latest = events[events.length - 1];
+  if (PLANNED_STAGES.includes(latest.status)) return "planned";
+  if (IN_PROGRESS_STAGES.includes(latest.status)) return "inProgress";
+  if (latest.status === "RE_SALE") return "done";
+  return "new";
+}
+
+export function classifySize(
+  school: School,
+  schoolType: "Школа" | "Садочок" = "Школа",
+): "small" | "medium" | "large" {
+  const count = school.childrenCount ?? 0;
+  if (schoolType === "Садочок") {
+    if (count < 50) return "small";
+    if (count < 100) return "medium";
+    return "large";
+  }
+  if (count < 500) return "small";
+  if (count < 900) return "medium";
+  return "large";
 }</file>
 <file path="apps/frontend/src/components/ui/OptimizedImage.tsx">import { ImgHTMLAttributes } from 'react';
 
@@ -12425,16 +12543,31 @@ export default function SchoolProfile() {
     </div>
   );
 }</file>
-<file path="apps/frontend/src/pages/Schools.tsx">import { useState, useEffect, useRef, useMemo } from "react";
+<file path="apps/frontend/src/pages/Schools.tsx">import {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+  lazy,
+  Suspense,
+} from "react";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
-import StatsBar, {
+
+import VirtualSchoolList from "../components/VirtualSchoolList";
+import { SchoolCard } from "../components/schools/SchoolMobileList";
+
+import {
   classifySchool,
   classifySize,
-} from "../components/schools/StatsBar";
-import SchoolMobileList from "../components/schools/SchoolMobileList";
-import SchoolDesktopTable from "../components/schools/SchoolDesktopTable";
-import VirtualSchoolList from "../components/VirtualSchoolList";
+} from "../components/schools/schoolUtils";
+
+const StatsBar = lazy(() => import("../components/schools/StatsBar"));
+const VirtualDesktopTable = lazy(
+  () => import("../components/schools/VirtualDesktopTable"),
+);
+// SchoolCard імпортується напряму — він легкий і потрібен одразу
 
 export const PIPELINE_STAGES = [
   { key: "BASE", name: "Новий заклад" },
@@ -12473,16 +12606,20 @@ export default function Schools() {
   >([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchSchools = async () => {
+    setIsLoading(true);
     try {
-      const res = await api.get("/schools", {
+      const res = await api.get("/schools?minimal=true", {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       setSchools(res.data);
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -12502,7 +12639,7 @@ export default function Schools() {
     fetchCities();
   }, []);
 
-  const handleOpenModal = () => {
+  const handleOpenModal = useCallback(() => {
     setForm({
       name: "",
       cityId: selectedCity.id || cities[0]?.id || "",
@@ -12512,7 +12649,7 @@ export default function Schools() {
     });
     setMatchedContacts([]);
     setIsModalOpen(true);
-  };
+  }, [selectedCity.id, cities]);
 
   const fetchContacts = async (schoolName: string) => {
     if (!schoolName || schoolName.trim().length < 1)
@@ -12603,42 +12740,56 @@ export default function Schools() {
     }
   };
 
-  const handleDeleteSchool = async (
-    e: React.MouseEvent,
-    schoolId: string,
-    schoolName: string,
-  ) => {
-    e.stopPropagation();
-    if (
-      !window.confirm(
-        `Видалити школу "${schoolName}"? Це видалить також усі її події.`,
+  const handleDeleteSchool = useCallback(
+    async (e: React.MouseEvent, schoolId: string, schoolName: string) => {
+      e.stopPropagation();
+      if (
+        !window.confirm(
+          `Видалити школу "${schoolName}"? Це видалить також усі її події.`,
+        )
       )
-    )
-      return;
-    try {
-      await api.delete(`/schools/${schoolId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      setSchools(schools.filter((s) => s.id !== schoolId));
-    } catch (e) {
-      console.error(e);
-    }
-  };
+        return;
+      try {
+        await api.delete(`/schools/${schoolId}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        });
+        setSchools((prev) => prev.filter((s) => s.id !== schoolId));
+      } catch (e) {
+        console.error(e);
+      }
+    },
+    [],
+  );
 
-  const baseFiltered = schools.filter((s) => {
-    const isCityMatch = selectedCity.id ? s.cityId === selectedCity.id : true;
-    const isFilterMatch = activeFilter
-      ? classifySchool(s) === activeFilter
-      : true;
-    const isSizeMatch = sizeFilter
-      ? classifySize(s, "Школа") === sizeFilter
-      : true;
-    return isCityMatch && s.type === "Школа" && isFilterMatch && isSizeMatch;
-  });
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 200);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const baseFiltered = useMemo(
+    () =>
+      schools.filter((s) => {
+        const isCityMatch = selectedCity.id
+          ? s.cityId === selectedCity.id
+          : true;
+        const isFilterMatch = activeFilter
+          ? classifySchool(s) === activeFilter
+          : true;
+        const isSizeMatch = sizeFilter
+          ? classifySize(s, "Школа") === sizeFilter
+          : true;
+        return (
+          isCityMatch && s.type === "Школа" && isFilterMatch && isSizeMatch
+        );
+      }),
+    [schools, selectedCity.id, activeFilter, sizeFilter],
+  );
 
   const filteredSchools = useMemo(() => {
-    if (!searchQuery.trim()) return baseFiltered;
-    const q = searchQuery.toLowerCase().trim();
+    if (!debouncedSearch.trim()) return baseFiltered;
+    const q = debouncedSearch.toLowerCase().trim();
     return baseFiltered.filter(
       (s) =>
         s.name?.toLowerCase().includes(q) ||
@@ -12646,7 +12797,7 @@ export default function Schools() {
         s.director?.toLowerCase().includes(q) ||
         s.address?.toLowerCase().includes(q),
     );
-  }, [baseFiltered, searchQuery]);
+  }, [baseFiltered, debouncedSearch]);
 
   return (
     <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-slate-50 min-h-screen">
@@ -12704,19 +12855,26 @@ export default function Schools() {
         </div>
       </div>
 
+      {/* StatsBar */}
       <div className="shrink-0">
-        <StatsBar
-          schools={schools.filter(
-            (s) =>
-              (selectedCity.id ? s.cityId === selectedCity.id : true) &&
-              s.type === "Школа",
-          )}
-          activeFilter={activeFilter}
-          onFilterChange={setActiveFilter}
-          sizeFilter={sizeFilter}
-          onSizeFilterChange={setSizeFilter}
-          schoolType="Школа"
-        />
+        <Suspense
+          fallback={
+            <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
+          }
+        >
+          <StatsBar
+            schools={schools.filter(
+              (s) =>
+                (selectedCity.id ? s.cityId === selectedCity.id : true) &&
+                s.type === "Школа",
+            )}
+            activeFilter={activeFilter}
+            onFilterChange={setActiveFilter}
+            sizeFilter={sizeFilter}
+            onSizeFilterChange={setSizeFilter}
+            schoolType="Школа"
+          />
+        </Suspense>
       </div>
 
       {/* Пошук */}
@@ -12784,25 +12942,56 @@ export default function Schools() {
       </p>
 
       {/* Компоненти списків */}
-      {/* Віртуалізований список шкіл */}
-      <div className="flex-1 w-full overflow-hidden">
-        <VirtualSchoolList
-          schools={filteredSchools}
-          itemHeight={110} // Налаштуйте під реальну висоту вашого рядка/картки
-          renderItem={(school) => (
-            <div className="w-full">
-              {/* Використовуємо адаптивність всередині, щоб зберегти вигляд для різних пристроїв */}
-              <div className="md:hidden">
-                {/* Ваш компонент для мобільного вигляду, наприклад з SchoolMobileList */}
-                {/* Передайте сюди школу з масиву */}
-              </div>
-              <div className="hidden md:block">
-                {/* Ваш компонент для десктопного вигляду, наприклад з SchoolDesktopTable */}
+      {isLoading ? (
+        <div className="flex flex-col gap-2.5 flex-1">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-white rounded-2xl border border-slate-100 p-3.5 animate-pulse"
+              style={{ opacity: 1 - i * 0.1 }}
+            >
+              <div className="h-4 bg-slate-200 rounded-lg w-3/4 mb-3" />
+              <div className="flex justify-between">
+                <div className="h-3 bg-slate-100 rounded-lg w-1/3" />
+                <div className="h-3 bg-slate-100 rounded-lg w-1/4" />
               </div>
             </div>
-          )}
-        />
-      </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          {/* Мобільний: віртуалізований список карток */}
+          <div className="md:hidden flex-1 w-full overflow-hidden">
+            <VirtualSchoolList
+              schools={filteredSchools}
+              itemHeight={110}
+              renderItem={(school) => (
+                <div className="pb-2.5">
+                  <SchoolCard
+                    school={school}
+                    onDelete={handleDeleteSchool}
+                    stages={PIPELINE_STAGES}
+                  />
+                </div>
+              )}
+            />
+          </div>
+
+          {/* Десктоп: таблиця з віртуалізованим tbody */}
+          <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
+            <Suspense
+              fallback={<div className="flex-1 animate-pulse bg-slate-50" />}
+            >
+              <VirtualDesktopTable
+                schools={filteredSchools}
+                searchQuery={searchQuery}
+                onDelete={handleDeleteSchool}
+                stages={PIPELINE_STAGES}
+              />
+            </Suspense>
+          </div>
+        </>
+      )}
 
       {/* Мобільна плаваюча кнопка FAB */}
       <button

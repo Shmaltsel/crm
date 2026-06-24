@@ -12,4 +12,14 @@ export default defineConfig({
       avif: { quality: 70 },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          recharts: ["recharts"],
+          tanstack: ["@tanstack/react-virtual"],
+        },
+      },
+    },
+  },
 });

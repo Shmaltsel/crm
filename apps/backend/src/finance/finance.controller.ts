@@ -14,8 +14,14 @@ export class FinanceController {
     @Query('period') period: string,
     @Query('cityId') cityId: string,
     @Query('project') project: string,
+    @Query('minimal') minimal: string,
   ) {
-    return this.financeService.getDashboard({ period, cityId, project });
+    return this.financeService.getDashboard({
+      period,
+      cityId,
+      project,
+      minimal: minimal === 'true',
+    });
   }
 
   @Get('my-balance')

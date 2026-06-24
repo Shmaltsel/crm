@@ -20,6 +20,8 @@ const SchoolProfile = lazy(() => import("./pages/SchoolProfile"));
 const Employees = lazy(() => import("./pages/Employees"));
 const Finance = lazy(() => import("./pages/Finance"));
 const CalendarView = lazy(() => import("./pages/CalendarView"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Kindergartens = lazy(() => import("./pages/Kindergartens"));
 
 // Компонент-заглушка, який показується долі секунди, поки вантажиться JS код сторінки
 const PageLoader = () => (
@@ -130,6 +132,23 @@ export default function App() {
               element={
                 <Suspense fallback={<PageLoader />}>
                   <CalendarView />
+                </Suspense>
+              }
+            />
+            <Route
+              path="dashboard"
+              element={
+                <Suspense fallback={<PageLoader />}>
+                  <Dashboard />
+                </Suspense>
+              }
+            />
+
+            <Route
+              path="kindergartens"
+              element={
+                <Suspense fallback={<PageLoader />}>
+                  <Kindergartens />
                 </Suspense>
               }
             />
