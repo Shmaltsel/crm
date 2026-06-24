@@ -232,7 +232,7 @@ export default function Employees() {
               </div>
             ) : (
               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <table className="hidden md:table w-full text-left">
+                <table className="w-full text-left">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       <th className="px-5 py-3">ПІБ</th>
@@ -427,7 +427,10 @@ export default function Employees() {
                 ✕
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
+            <form
+              onSubmit={handleSubmit}
+              className="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh]"
+            >
               <input
                 type="text"
                 value={form.fullName}
@@ -453,6 +456,24 @@ export default function Employees() {
                   }
                   required={!editingUser}
                   placeholder="Пароль"
+                  className="w-full p-2.5 border rounded-lg"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="Телефон"
+                  className="w-full p-2.5 border rounded-lg"
+                />
+                <input
+                  type="text"
+                  value={form.telegramId}
+                  onChange={(e) =>
+                    setForm({ ...form, telegramId: e.target.value })
+                  }
+                  placeholder="Telegram ID або @username"
                   className="w-full p-2.5 border rounded-lg"
                 />
               </div>
