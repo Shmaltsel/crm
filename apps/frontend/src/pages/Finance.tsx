@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
 
@@ -30,8 +31,6 @@ function FinanceSkeleton() {
 
 export default function Finance() {
   const { selectedCity } = useSelectedCity();
-  const [data, setData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState("year");
   const [projectFilter, setProjectFilter] = useState("");
   const [currentUser, setCurrentUser] = useState<{
@@ -61,43 +60,20 @@ export default function Finance() {
     }
   }, [isManagerOrAdmin]);
 
-  useEffect(() => {
-    if (!isManagerOrAdmin) return;
-
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const token = localStorage.getItem("token");
-        const params = new URLSearchParams();
-        if (period) params.set("period", period);
-        if (selectedCity?.id) params.set("cityId", selectedCity.id);
-        if (projectFilter) params.set("project", projectFilter);
-
-        // Спочатку minimal — швидко показуємо KPI + графік
-        params.set("minimal", "true");
-        const res = await api.get(`/finance/dashboard?${params}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setData(res.data);
-        setIsLoading(false);
-
-        // Потім повні дані (топи, таблиці) у фоні
-        params.set("minimal", "false");
-        api
-          .get(`/finance/dashboard?${params}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          })
-          .then((r) => setData(r.data))
-          .catch(() => {});
-      } catch (error) {
-        console.error("Помилка завантаження фінансів:", error);
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [selectedCity.id, period, projectFilter, isManagerOrAdmin]);
-
+  const { data, isLoading } = useQuery({
+    queryKey: ["finance", selectedCity.id, period, projectFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (period) params.set("period", period);
+      if (selectedCity?.id) params.set("cityId", selectedCity.id);
+      if (projectFilter) params.set("project", projectFilter);
+      const res = await api.get(`/finance/dashboard?${params}`);
+      return res.data;
+    },
+    enabled: !!isManagerOrAdmin,
+    staleTime: 5 * 60 * 1000,
+  });
+  
   if (!isManagerOrAdmin) {
     return (
       <Suspense fallback={<FinanceSkeleton />}>
