@@ -6902,6 +6902,7 @@ export default function ReportModal({
   eventType,
   eventDate,
   eventIndex,
+  crew,
 }: ReportModalProps) {
   const [form, setForm] = useState({
     announcementDone: true,
@@ -6917,7 +6918,7 @@ export default function ReportModal({
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [newExp, setNewExp] = useState({ name: "", amount: "" });
-
+  const [salaries, setSalaries] = useState<Record<string, number>>({});
   if (!isOpen) return null;
 
   // Динамічний розрахунок закладу на основі відсотка
@@ -6936,24 +6937,22 @@ export default function ReportModal({
     setExpenses((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const [salaries, setSalaries] = useState<Record<string, number>>({});
-
   // Хелпер:
   const crewMembers = [
-    ...(props.crew?.host
+    ...(crew?.host
       ? [
           {
-            id: props.crew.host.id,
-            name: props.crew.host.name,
+            id: crew.host.id,
+            name: crew.host.name,
             role: "Ведучий",
           },
         ]
       : []),
-    ...(props.crew?.driver
+    ...(crew?.driver
       ? [
           {
-            id: props.crew.driver.id,
-            name: props.crew.driver.name,
+            id: crew.driver.id,
+            name: crew.driver.name,
             role: "Водій",
           },
         ]
@@ -6971,7 +6970,6 @@ export default function ReportModal({
       remainderSum: remainder,
       salaries: salariesArr,
     });
-    onSave({ ...form, expenses, schoolSum, remainderSum: remainder });
   };
 
   return (

@@ -91,6 +91,29 @@ export default function Finance() {
     fetchData();
   }, [selectedCity.id, period, projectFilter]);
 
+  // Не-менеджери і не-суперадміни бачать лише свій баланс
+  if (!isManagerOrAdmin) {
+    return (
+      <div className="p-4 md:p-8 bg-slate-50 min-h-screen flex items-center justify-center">
+        <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-10 text-center max-w-sm w-full">
+          <div className="w-16 h-16 bg-blue-50 rounded-[20px] flex items-center justify-center text-3xl mx-auto mb-4">
+            💰
+          </div>
+          <p className="text-sm text-slate-400 mb-2">Ваш баланс</p>
+          <p className="text-4xl font-black text-blue-600 tracking-tight">
+            {myBalance !== null
+              ? new Intl.NumberFormat("uk-UA").format(Math.round(myBalance))
+              : "—"}
+            <span className="text-lg font-bold text-slate-400 ml-1">грн</span>
+          </p>
+          <p className="text-xs text-slate-400 mt-4">
+            Сума нарахованих зарплат за всі події
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading || !data) {
     return (
       <div className="p-8 h-full flex flex-col items-center justify-center text-slate-500">
@@ -165,28 +188,7 @@ export default function Finance() {
             )}
           </p>
         </div>
-        {!isManagerOrAdmin ? (
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-10 text-center max-w-sm w-full">
-              <div className="w-16 h-16 bg-blue-50 rounded-[20px] flex items-center justify-center text-3xl mx-auto mb-4">
-                💰
-              </div>
-              <p className="text-sm text-slate-400 mb-2">Ваш баланс</p>
-              <p className="text-4xl font-black text-blue-600 tracking-tight">
-                {myBalance !== null
-                  ? new Intl.NumberFormat("uk-UA").format(Math.round(myBalance))
-                  : "—"}
-                <span className="text-lg font-bold text-slate-400 ml-1">
-                  грн
-                </span>
-              </p>
-              <p className="text-xs text-slate-400 mt-4">
-                Сума нарахованих зарплат за всі події
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-wrap items-center gap-3">
+
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
@@ -211,7 +213,6 @@ export default function Finance() {
               ))}
             </select>
           </div>
-        )}
       </div>
 
       {/* KPI Картки */}

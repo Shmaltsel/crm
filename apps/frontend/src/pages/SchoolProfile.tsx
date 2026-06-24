@@ -489,6 +489,14 @@ export default function SchoolProfile() {
             .filter((e) => e.schoolId === schoolData.id)
             .indexOf(currentEvent!) + 1
         }
+        crew={currentEvent?.crew ? {
+          host: currentEvent.crew.hostId
+            ? users.find((u: any) => u.id === currentEvent.crew.hostId) ?? null
+            : (currentEvent.crew.host ?? null),
+          driver: currentEvent.crew.driverId
+            ? users.find((u: any) => u.id === currentEvent.crew.driverId) ?? null
+            : (currentEvent.crew.driver ?? null),
+        } : undefined}
       />
     </div>
   );
