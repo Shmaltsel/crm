@@ -1,297 +1,428 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
+
+import { CreateEventDto } from './dto/create-event.dto';
+import { SubmitReportDto } from './dto/submit-report.dto';
+import { JwtUser } from '../auth/interfaces/jwt-user.interface';
+
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
+const FIELD_ROLES = ['DRIVER', 'HOST'];
 
 @Injectable()
-export class FinanceService {
-  constructor(private prisma: PrismaService) {}
+export class EventsService {
+  private readonly logger = new Logger(EventsService.name);
 
-  async getMyBalance(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { balance: true, name: true },
-    });
-    return { balance: user?.balance ?? 0, name: user?.name ?? '' };
-  }
+  constructor(
+    private prisma: PrismaService,
+    private telegramService: TelegramService,
+  ) {}
 
-  async getDashboard({
-    period,
-    cityId,
-    project,
-  }: {
-    period?: string;
-    cityId?: string;
-    project?: string;
-  }) {
-    const now = new Date();
-    let dateFrom: Date | undefined;
+  // Список подій для сторінки "Події".
+  // Водій/ведучий бачить тільки події, де він призначений в екіпаж.
+  // Решта ролей (менеджер, адмін тощо) бачать усі події.
+  async findAllForUser(user: JwtUser) {
+    const isFieldStaff = FIELD_ROLES.includes(user.role);
 
-    if (period === 'month')
-      dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
-    else if (period === 'quarter')
-      dateFrom = new Date(
-        now.getFullYear(),
-        Math.floor(now.getMonth() / 3) * 3,
-        1,
-      );
-    else if (period === 'year') dateFrom = new Date(now.getFullYear(), 0, 1);
-
-    const where: any = { status: 'RE_SALE' };
-    if (dateFrom) where.date = { gte: dateFrom };
-    if (cityId) where.cityId = cityId;
-    if (project) where.project = project;
-
-    const events = await this.prisma.event.findMany({
-      where,
+    return this.prisma.event.findMany({
+      where: isFieldStaff
+        ? {
+            crew: {
+              OR: [{ hostId: user.sub }, { driverId: user.sub }],
+            },
+          }
+        : {},
       include: {
-        report: true,
-        school: { select: { id: true, name: true } },
+        school: { select: { id: true, name: true, type: true } },
         city: { select: { id: true, name: true } },
         crew: {
           include: {
             host: { select: { id: true, name: true } },
+            driver: { select: { id: true, name: true } },
           },
         },
       },
       orderBy: { date: 'asc' },
     });
-
-    // KPI
-    const totalRevenue = events.reduce(
-      (s, e) => s + (e.report?.totalSum || 0),
-      0,
-    );
-    const totalExpenses = events.reduce((s, e) => {
-      const exp: any[] = Array.isArray(e.report?.expenses)
-        ? (e.report.expenses as any[])
-        : [];
-      return s + exp.reduce((es: number, ex: any) => es + (ex.amount || 0), 0);
-    }, 0);
-    const totalProfit = events.reduce(
-      (s, e) => s + (e.report?.remainderSum || 0),
-      0,
-    );
-
-    // Графік по місяцях
-    const monthlyMap: Record<
-      string,
-      { month: string; revenue: number; profit: number }
-    > = {};
-    events.forEach((e) => {
-      const d = new Date(e.date);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const label = d.toLocaleString('uk-UA', {
-        month: 'short',
-        year: '2-digit',
-      });
-      if (!monthlyMap[key])
-        monthlyMap[key] = { month: label, revenue: 0, profit: 0 };
-      monthlyMap[key].revenue += e.report?.totalSum || 0;
-      monthlyMap[key].profit += e.report?.remainderSum || 0;
-    });
-    const monthly = Object.values(monthlyMap);
-
-    // Структура доходів по проєктах
-    const projectMap: Record<string, number> = {};
-    events.forEach((e) => {
-      const p = e.project || 'Інше';
-      projectMap[p] = (projectMap[p] || 0) + (e.report?.totalSum || 0);
-    });
-    const byProject = Object.entries(projectMap).map(([name, value]) => ({
-      name,
-      value,
-    }));
-
-    // Топ міст
-    const cityMap: Record<
-      string,
-      { name: string; revenue: number; profit: number }
-    > = {};
-    events.forEach((e) => {
-      const cid = e.cityId;
-      if (!cityMap[cid])
-        cityMap[cid] = { name: e.city?.name || '—', revenue: 0, profit: 0 };
-      cityMap[cid].revenue += e.report?.totalSum || 0;
-      cityMap[cid].profit += e.report?.remainderSum || 0;
-    });
-    const topCities = Object.values(cityMap)
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
-
-    // Топ шкіл
-    const schoolMap: Record<
-      string,
-      { name: string; count: number; revenue: number }
-    > = {};
-    events.forEach((e) => {
-      const sid = e.schoolId;
-      if (!schoolMap[sid])
-        schoolMap[sid] = { name: e.school?.name || '—', count: 0, revenue: 0 };
-      schoolMap[sid].count++;
-      schoolMap[sid].revenue += e.report?.totalSum || 0;
-    });
-    const topSchools = Object.values(schoolMap)
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
-
-    // Витрати по категоріях
-    const expCatMap: Record<string, number> = {};
-    events.forEach((e) => {
-      const exp: any[] = Array.isArray(e.report?.expenses)
-        ? (e.report.expenses as any[])
-        : [];
-      exp.forEach((ex: any) => {
-        const cat = ex.category || ex.name || 'Інше';
-        expCatMap[cat] = (expCatMap[cat] || 0) + (ex.amount || 0);
-      });
-    });
-    const byExpenseCategory = Object.entries(expCatMap).map(
-      ([name, value]) => ({ name, value }),
-    );
-
-    // Найприбутковіші та найзбитковіші події
-    const sortedByProfit = [...events].sort(
-      (a, b) => (b.report?.remainderSum || 0) - (a.report?.remainderSum || 0),
-    );
-    const topEvents = sortedByProfit.slice(0, 5).map((e) => ({
-      id: e.id,
-      date: e.date,
-      school: e.school?.name,
-      profit: e.report?.remainderSum || 0,
-      revenue: e.report?.totalSum || 0,
-    }));
-    const worstEvents = sortedByProfit
-      .slice(-5)
-      .reverse()
-      .map((e) => ({
-        id: e.id,
-        date: e.date,
-        school: e.school?.name,
-        profit: e.report?.remainderSum || 0,
-        revenue: e.report?.totalSum || 0,
-      }));
-
-    // Очікувана виручка (незавершені події)
-    const planned = await this.prisma.event.findMany({
-      where: {
-        status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
-        ...(cityId ? { cityId } : {}),
-      },
-      select: { price: true },
-    });
-    const expectedRevenue = planned.reduce((s, e) => s + (e.price || 0), 0);
-
-    // Список унікальних проєктів для фільтру
-    const projects = await this.prisma.event.findMany({
-      select: { project: true },
-      distinct: ['project'],
-    });
-
-    // Список міст для фільтру
-    const cities = await this.prisma.city.findMany({
-      select: { id: true, name: true },
-    });
-
-    return {
-      kpi: {
-        totalRevenue,
-        totalExpenses,
-        totalProfit,
-        totalEvents: events.length,
-      },
-      monthly,
-      byProject,
-      byExpenseCategory,
-      topCities,
-      topSchools,
-      topEvents,
-      worstEvents,
-      expectedRevenue,
-      filters: {
-        projects: projects.map((p) => p.project).filter(Boolean),
-        cities,
-      },
-    };
   }
 
-  async getStaffRevenue({
-    period,
-    cityId,
-  }: {
-    period?: string;
-    cityId?: string;
-  }) {
-    const now = new Date();
-    let dateFrom: Date | undefined;
-
-    if (period === 'month')
-      dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
-    else if (period === 'quarter')
-      dateFrom = new Date(
-        now.getFullYear(),
-        Math.floor(now.getMonth() / 3) * 3,
-        1,
-      );
-    else if (period === 'year') dateFrom = new Date(now.getFullYear(), 0, 1);
-
-    const where: any = { status: 'RE_SALE' };
-    if (dateFrom) where.date = { gte: dateFrom };
-    if (cityId) where.cityId = cityId;
-
-    const events = await this.prisma.event.findMany({
-      where,
-      include: {
-        report: { select: { totalSum: true } },
-        crew: {
-          include: {
-            host: { select: { id: true, name: true, role: true } },
-            driver: { select: { id: true, name: true, role: true } },
+  // Оновлюємо метод create
+  async create(data: CreateEventDto, user: JwtUser) {
+    return this.prisma.event.create({
+      data: {
+        ...data,
+        status: 'BASE' as never,
+        date: new Date(data.date),
+        history: {
+          create: {
+            action: 'Створено подію. Етап: База',
+            userId: user.sub, // Беремо ID з токена
+            userName: user.name, // Беремо ім'я з токена
+            role: user.role, // Беремо роль з токена
           },
         },
-        city: { select: { id: true, name: true } },
+      },
+      include: { history: true },
+    });
+  }
+
+  // Оновлюємо метод updateStatus
+  async updateStatus(
+    eventId: string,
+    newStatus: string,
+    actionName: string,
+    comment: string | undefined,
+    user: JwtUser,
+  ) {
+    return this.prisma.event.update({
+      where: { id: eventId },
+      data: {
+        status: newStatus as never,
+        history: {
+          create: {
+            action: actionName,
+            comment: comment || null,
+            userId: user.sub, // Більше ніяких 'superadmin-123'!
+            userName: user.name,
+            role: user.role,
+          },
+        },
+      },
+      include: { crew: true, history: { orderBy: { createdAt: 'desc' } } },
+    });
+  }
+
+  // Оновлюємо статус підготовки
+  async updatePreparationStatus(
+    eventId: string,
+    field: string,
+    status: string,
+  ) {
+    const existing = await this.prisma.eventPreparation.findUnique({
+      where: { eventId },
+    });
+
+    if (existing) {
+      return this.prisma.eventPreparation.update({
+        where: { eventId },
+        data: { [field]: status },
+      });
+    } else {
+      return this.prisma.eventPreparation.create({
+        data: { eventId, [field]: status },
+      });
+    }
+  }
+
+  // --- ВСТАВЛЯЙ ОНОВЛЕНИЙ МЕТОД ТУТ ---
+  async assignCrewToEvent(
+    eventId: string,
+    crewId: string, // ЗМІНЕНО: Тепер приймаємо тільки ID існуючого екіпажу
+  ) {
+    const event = await this.prisma.event.update({
+      where: { id: eventId },
+      data: { crewId: crewId },
+      include: {
+        crew: { include: { host: true, driver: true } },
+        school: true,
+        city: true,
+        preparation: true,
+        history: { orderBy: { createdAt: 'desc' } },
       },
     });
 
-    // Агрегуємо виручку по кожному ведучому і водію
-    const staffMap: Record<
-      string,
-      {
-        id: string;
-        name: string;
-        role: string;
-        revenue: number;
-        eventsCount: number;
-      }
-    > = {};
+    const hostId = event.crew?.hostId;
+    const driverId = event.crew?.driverId;
 
-    for (const ev of events) {
-      const revenue = ev.report?.totalSum ?? 0;
-      if (!ev.crew) continue;
+    const dateStr = new Date(event.date).toLocaleDateString('uk-UA', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+    const timeStr = event.time ? `, ${event.time}` : '';
 
-      for (const [member, memberRole] of [
-        [ev.crew.host, 'HOST'],
-        [ev.crew.driver, 'DRIVER'],
-      ] as [{ id: string; name: string } | null, string][]) {
-        if (!member) continue;
-        if (!staffMap[member.id]) {
-          staffMap[member.id] = {
-            id: member.id,
-            name: member.name,
-            role: memberRole,
-            revenue: 0,
-            eventsCount: 0,
-          };
-        }
-        staffMap[member.id].revenue += revenue;
-        staffMap[member.id].eventsCount += 1;
+    const buildMessage = (role: 'ведучий' | 'водій') =>
+      `🎯 <b>Вас призначено на подію!</b>\n\n` +
+      `👤 <b>Роль:</b> ${role === 'ведучий' ? '🎙️ Ведучий' : '🚗 Водій'}\n` +
+      `📅 <b>Дата:</b> ${dateStr}${timeStr}\n` +
+      `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
+      `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
+      `🎪 <b>Проєкт:</b> ${event.project}\n` +
+      (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
+      (event.contactPerson
+        ? `👤 <b>Контакт:</b> ${event.contactPerson}\n`
+        : '') +
+      (event.contactPhone ? `📞 <b>Телефон:</b> ${event.contactPhone}\n` : '') +
+      `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+
+    if (hostId) {
+      const hostChatId = await this.getChatIdForUser(hostId);
+      this.logger.log(`[assignCrew] hostChatId resolved=${hostChatId}`);
+
+      if (hostChatId) {
+        await this.telegramService.sendMessage(
+          hostChatId,
+          buildMessage('ведучий'),
+        );
+      } else {
+        this.logger.warn(
+          `[assignCrew] Не вдалося надіслати повідомлення ведучому ${hostId}: chatId не знайдено (користувач не натиснув /start?)`,
+        );
       }
     }
 
-    const staff = Object.values(staffMap).sort((a, b) => b.revenue - a.revenue);
-    const totalRevenue = events.reduce(
-      (s, e) => s + (e.report?.totalSum ?? 0),
-      0,
-    );
+    if (driverId) {
+      const driverChatId = await this.getChatIdForUser(driverId);
+      this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
 
-    return { staff, totalRevenue, eventsCount: events.length };
+      if (driverChatId) {
+        await this.telegramService.sendMessage(
+          driverChatId,
+          buildMessage('водій'),
+        );
+      } else {
+        this.logger.warn(
+          `[assignCrew] Не вдалося надіслати повідомлення водію ${driverId}: chatId не знайдено`,
+        );
+      }
+    }
+
+    if (driverId) {
+      const driver = await this.prisma.user.findUnique({
+        where: { id: driverId },
+      });
+      this.logger.log(
+        `[assignCrew] driver=${JSON.stringify({ name: driver?.name, telegramId: driver?.telegramId, telegramChatId: driver?.telegramChatId })}`,
+      );
+      const driverChatId =
+        driver?.telegramChatId ||
+        (driver?.telegramId && /^\d+$/.test(driver.telegramId)
+          ? driver.telegramId
+          : null);
+      this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
+      if (driverChatId) {
+        await this.telegramService.sendMessage(
+          driverChatId,
+          buildMessage('водій'),
+        );
+      }
+    }
+
+    return event;
+  }
+
+  async rescheduleEvent(
+    eventId: string,
+    newDate: string,
+    newTime: string,
+    user: JwtUser,
+  ) {
+    const event = await this.prisma.event.update({
+      where: { id: eventId },
+      data: {
+        date: new Date(newDate),
+        time: newTime,
+        history: {
+          create: {
+            action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
+            userId: user.sub,
+            userName: user.name,
+            role: user.role,
+          },
+        },
+      },
+      include: {
+        crew: { include: { host: true, driver: true } },
+        school: true,
+        city: true,
+        history: { orderBy: { createdAt: 'desc' } },
+      },
+    });
+
+    const dateStr = new Date(newDate).toLocaleDateString('uk-UA', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+    const msg =
+      `📅 <b>Подію перенесено!</b>\n\n` +
+      `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
+      `🎪 <b>Проєкт:</b> ${event.project}\n` +
+      `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
+      `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
+      (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
+      `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+
+    const sendTo = async (userId: string | null | undefined) => {
+      if (!userId) return;
+      const u = await this.prisma.user.findUnique({ where: { id: userId } });
+      const chatId =
+        u?.telegramChatId ||
+        (u?.telegramId && /^\d+$/.test(u.telegramId) ? u.telegramId : null);
+      if (chatId) await this.telegramService.sendMessage(chatId, msg);
+    };
+
+    await sendTo(event.crew?.hostId);
+    await sendTo(event.crew?.driverId);
+
+    return event;
+  }
+
+  async getChatIdForUser(userId: string): Promise<string | null> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return null;
+
+    // Якщо користувач натиснув /start, telegramChatId буде заповнено
+    if (user.telegramChatId) return user.telegramChatId;
+
+    // Якщо в telegramId вбито числовий ID вручну, можна спробувати його
+    if (user.telegramId && /^\d+$/.test(user.telegramId))
+      return user.telegramId;
+
+    return null;
+  }
+
+  async findBySchool(schoolId: string) {
+    return this.prisma.event.findMany({
+      where: { schoolId },
+      include: {
+        crew: true,
+        history: { orderBy: { createdAt: 'desc' } },
+        preparation: true, // Включаємо підготовку, якщо вона є
+      },
+      orderBy: { date: 'desc' },
+    });
+  }
+
+  async updateHistoryComment(historyId: string, comment: string) {
+    return this.prisma.eventHistory.update({
+      where: { id: historyId },
+      data: { comment: comment || null },
+    });
+  }
+
+  async addHistoryComment(eventId: string, comment: string, user: JwtUser) {
+    await this.prisma.eventHistory.create({
+      data: {
+        eventId,
+        action: 'Коментар',
+        comment,
+        userId: user.sub,
+        userName: user.name,
+        role: user.role,
+      },
+    });
+
+    return this.prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        history: { orderBy: { createdAt: 'desc' } },
+      },
+    });
+  }
+
+  // ОНОВЛЕНО: Тепер метод видалення безпечно видаляє зв'язані дані
+  async remove(id: string) {
+    // 1. Видаляємо історію події
+    await this.prisma.eventHistory.deleteMany({
+      where: { eventId: id },
+    });
+
+    // 2. Видаляємо підготовку події (якщо вона існує)
+    await this.prisma.eventPreparation.deleteMany({
+      where: { eventId: id },
+    });
+
+    // 3. Тепер спокійно видаляємо саму подію
+    return this.prisma.event.delete({
+      where: { id },
+    });
+  }
+
+  async submitReport(
+    eventId: string,
+    reportData: SubmitReportDto,
+    user: JwtUser,
+  ) {
+    // 1. Зберігаємо звіт у базу
+    await this.prisma.eventReport.upsert({
+      where: { eventId },
+      update: {
+        announcementDone: reportData.announcementDone,
+        materialShown: reportData.materialShown,
+        childrenCount: reportData.childrenCount,
+        classesCount: reportData.classesCount,
+        privilegedCount: reportData.privilegedCount,
+        showingsCount: reportData.showingsCount,
+        totalSum: reportData.totalSum,
+        schoolSum: reportData.schoolSum,
+        expenses: reportData.expenses || [],
+        remainderSum: reportData.remainderSum,
+        rating: reportData.rating,
+        salaries: reportData.salaries || [],
+      },
+      create: {
+        eventId,
+        announcementDone: reportData.announcementDone,
+        materialShown: reportData.materialShown,
+        childrenCount: reportData.childrenCount,
+        classesCount: reportData.classesCount,
+        privilegedCount: reportData.privilegedCount,
+        showingsCount: reportData.showingsCount,
+        totalSum: reportData.totalSum,
+        schoolSum: reportData.schoolSum,
+        expenses: reportData.expenses || [],
+        remainderSum: reportData.remainderSum,
+        rating: reportData.rating,
+        salaries: reportData.salaries || [],
+      },
+    });
+
+    if (reportData.salaries?.length) {
+      await Promise.all(
+        reportData.salaries
+          .filter((s) => s.amount > 0)
+          .map((s) =>
+            this.prisma.user.update({
+              where: { id: s.userId },
+              data: { balance: { increment: s.amount } },
+            }),
+          ),
+      );
+    }
+    // 2. Оновлюємо статус події на 'REPORT' (щоб вона не зникала і давала можливість перейти до RE_SALE)
+    return this.prisma.event.update({
+      where: { id: eventId },
+      data: {
+        status: 'REPORT' as never,
+        history: {
+          create: {
+            action: 'Сформовано звіт. Етап: Звіт',
+            userId: user.sub,
+            userName: user.name,
+            role: user.role,
+          },
+        },
+      },
+      include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
+    });
+  }
+
+  async findOne(id: string) {
+    return this.prisma.event.findUnique({
+      where: { id },
+      include: {
+        school: true,
+        city: true,
+        crew: {
+          include: {
+            host: { select: { id: true, name: true } },
+            driver: { select: { id: true, name: true } },
+          },
+        },
+        report: true,
+      },
+    });
   }
 }

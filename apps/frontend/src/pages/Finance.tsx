@@ -34,15 +34,21 @@ const PIE_COLORS = [
   "#0ea5e9",
 ];
 
-
 // ─── Компонент для ведучих/водіїв ──────────────────────────────────────────
-function StaffFinanceView({ myBalance, selectedCity }: { myBalance: number | null; selectedCity: any }) {
+function StaffFinanceView({
+  myBalance,
+  selectedCity,
+}: {
+  myBalance: number | null;
+  selectedCity: any;
+}) {
   const [tab, setTab] = useState<"balance" | "revenue">("balance");
   const [period, setPeriod] = useState("year");
   const [staffData, setStaffData] = useState<any>(null);
   const [loadingStaff, setLoadingStaff] = useState(false);
 
-  const fmt = (n: number) => new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
 
   useEffect(() => {
     if (tab !== "revenue") return;
@@ -149,42 +155,76 @@ function StaffFinanceView({ myBalance, selectedCity }: { myBalance: number | nul
               {/* Загальна статистика */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 text-center">
-                  <p className="text-xs text-slate-400 mb-1">Загальна виручка</p>
-                  <p className="text-2xl font-black text-blue-600">{fmt(staffData.totalRevenue)} <span className="text-sm font-medium text-slate-400">грн</span></p>
-                  <p className="text-xs text-slate-400 mt-1">{PERIOD_LABELS[period]}</p>
+                  <p className="text-xs text-slate-400 mb-1">
+                    Загальна виручка
+                  </p>
+                  <p className="text-2xl font-black text-blue-600">
+                    {fmt(staffData.totalRevenue)}{" "}
+                    <span className="text-sm font-medium text-slate-400">
+                      грн
+                    </span>
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {PERIOD_LABELS[period]}
+                  </p>
                 </div>
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 text-center">
                   <p className="text-xs text-slate-400 mb-1">Подій проведено</p>
-                  <p className="text-2xl font-black text-slate-800">{staffData.eventsCount}</p>
-                  <p className="text-xs text-slate-400 mt-1">{PERIOD_LABELS[period]}</p>
+                  <p className="text-2xl font-black text-slate-800">
+                    {staffData.eventsCount}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {PERIOD_LABELS[period]}
+                  </p>
                 </div>
               </div>
 
               {/* Рейтинг по ведучих */}
               {["HOST", "DRIVER"].map((roleKey) => {
                 const roleLabel = roleKey === "HOST" ? "🎙️ Ведучі" : "🚗 Водії";
-                const members = staffData.staff.filter((s: any) => s.role === roleKey);
+                const members = staffData.staff.filter(
+                  (s: any) => s.role === roleKey,
+                );
                 if (members.length === 0) return null;
                 return (
-                  <div key={roleKey} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                    <h3 className="font-bold text-slate-800 mb-4">{roleLabel}</h3>
+                  <div
+                    key={roleKey}
+                    className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"
+                  >
+                    <h3 className="font-bold text-slate-800 mb-4">
+                      {roleLabel}
+                    </h3>
                     <div className="flex flex-col gap-4">
                       {members.map((member: any, i: number) => {
-                        const pct = Math.round((member.revenue / maxRevenue) * 100);
+                        const pct = Math.round(
+                          (member.revenue / maxRevenue) * 100,
+                        );
                         const isTop = i === 0;
                         return (
                           <div key={member.id}>
                             <div className="flex items-center justify-between mb-1.5">
                               <div className="flex items-center gap-2">
-                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isTop ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500"}`}>
+                                <span
+                                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isTop ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500"}`}
+                                >
                                   {i + 1}
                                 </span>
-                                <span className="text-sm font-semibold text-slate-800">{member.name}</span>
-                                {isTop && <span className="text-xs bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full">🏆 Топ</span>}
+                                <span className="text-sm font-semibold text-slate-800">
+                                  {member.name}
+                                </span>
+                                {isTop && (
+                                  <span className="text-xs bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full">
+                                    🏆 Топ
+                                  </span>
+                                )}
                               </div>
                               <div className="text-right">
-                                <p className="text-sm font-bold text-slate-800">{fmt(member.revenue)} грн</p>
-                                <p className="text-xs text-slate-400">{member.eventsCount} подій</p>
+                                <p className="text-sm font-bold text-slate-800">
+                                  {fmt(member.revenue)} грн
+                                </p>
+                                <p className="text-xs text-slate-400">
+                                  {member.eventsCount} подій
+                                </p>
                               </div>
                             </div>
                             <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
@@ -267,7 +307,9 @@ export default function Finance() {
 
   // Не-менеджери і не-суперадміни бачать баланс + рейтинг виручки
   if (!isManagerOrAdmin) {
-    return <StaffFinanceView myBalance={myBalance} selectedCity={selectedCity} />;
+    return (
+      <StaffFinanceView myBalance={myBalance} selectedCity={selectedCity} />
+    );
   }
 
   if (isLoading || !data) {
@@ -345,30 +387,30 @@ export default function Finance() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-            <select
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-              className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2394A3B8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_8px_center]"
-            >
-              <option value="all">За весь час</option>
-              <option value="year">Цей рік</option>
-              <option value="quarter">Цей квартал</option>
-              <option value="month">Цей місяць</option>
-            </select>
+          <select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+            className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2394A3B8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_8px_center]"
+          >
+            <option value="all">За весь час</option>
+            <option value="year">Цей рік</option>
+            <option value="quarter">Цей квартал</option>
+            <option value="month">Цей місяць</option>
+          </select>
 
-            <select
-              value={projectFilter}
-              onChange={(e) => setProjectFilter(e.target.value)}
-              className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2394A3B8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_8px_center]"
-            >
-              <option value="">Всі проєкти</option>
-              {filters?.projects?.map((p: string) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={projectFilter}
+            onChange={(e) => setProjectFilter(e.target.value)}
+            className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2394A3B8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_8px_center]"
+          >
+            <option value="">Всі проєкти</option>
+            {filters?.projects?.map((p: string) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* KPI Картки */}

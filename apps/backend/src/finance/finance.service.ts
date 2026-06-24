@@ -1,5 +1,4 @@
-export class FinanceModule {}</file>
-<file path="apps/backend/src/finance/finance.service.ts">import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -214,16 +213,25 @@ export class FinanceService {
     };
   }
 
-  async getStaffRevenue({ period, cityId }: { period?: string; cityId?: string }) {
+  async getStaffRevenue({
+    period,
+    cityId,
+  }: {
+    period?: string;
+    cityId?: string;
+  }) {
     const now = new Date();
     let dateFrom: Date | undefined;
 
     if (period === 'month')
       dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
     else if (period === 'quarter')
-      dateFrom = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
-    else if (period === 'year')
-      dateFrom = new Date(now.getFullYear(), 0, 1);
+      dateFrom = new Date(
+        now.getFullYear(),
+        Math.floor(now.getMonth() / 3) * 3,
+        1,
+      );
+    else if (period === 'year') dateFrom = new Date(now.getFullYear(), 0, 1);
 
     const where: any = { status: 'RE_SALE' };
     if (dateFrom) where.date = { gte: dateFrom };
@@ -244,7 +252,16 @@ export class FinanceService {
     });
 
     // Агрегуємо виручку по кожному ведучому і водію
-    const staffMap: Record<string, { id: string; name: string; role: string; revenue: number; eventsCount: number }> = {};
+    const staffMap: Record<
+      string,
+      {
+        id: string;
+        name: string;
+        role: string;
+        revenue: number;
+        eventsCount: number;
+      }
+    > = {};
 
     for (const ev of events) {
       const revenue = ev.report?.totalSum ?? 0;
@@ -256,7 +273,13 @@ export class FinanceService {
       ] as [{ id: string; name: string } | null, string][]) {
         if (!member) continue;
         if (!staffMap[member.id]) {
-          staffMap[member.id] = { id: member.id, name: member.name, role: memberRole, revenue: 0, eventsCount: 0 };
+          staffMap[member.id] = {
+            id: member.id,
+            name: member.name,
+            role: memberRole,
+            revenue: 0,
+            eventsCount: 0,
+          };
         }
         staffMap[member.id].revenue += revenue;
         staffMap[member.id].eventsCount += 1;
@@ -264,7 +287,10 @@ export class FinanceService {
     }
 
     const staff = Object.values(staffMap).sort((a, b) => b.revenue - a.revenue);
-    const totalRevenue = events.reduce((s, e) => s + (e.report?.totalSum ?? 0), 0);
+    const totalRevenue = events.reduce(
+      (s, e) => s + (e.report?.totalSum ?? 0),
+      0,
+    );
 
     return { staff, totalRevenue, eventsCount: events.length };
   }
