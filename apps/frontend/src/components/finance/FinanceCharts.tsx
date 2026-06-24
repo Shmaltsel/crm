@@ -176,10 +176,12 @@ const RevenueChart = memo(function RevenueChart({
   monthly: any[];
 }) {
   if (!monthly?.length) return <EmptyState />;
+  // Обмежуємо до останніх 12 місяців — менше точок = швидший рендер SVG
+  const data = monthly.slice(-12);
   return (
     <ResponsiveContainer width="100%" height="100%">
       <AreaChart
-        data={monthly}
+        data={data}
         margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
       >
         <defs>
@@ -223,6 +225,7 @@ const RevenueChart = memo(function RevenueChart({
           strokeWidth={3}
           fill="url(#colorRevenue)"
           activeDot={{ r: 6, strokeWidth: 0, fill: "#3b82f6" }}
+          isAnimationActive={false}
         />
         <Area
           type="monotone"
@@ -232,6 +235,7 @@ const RevenueChart = memo(function RevenueChart({
           strokeWidth={3}
           fill="url(#colorProfit)"
           activeDot={{ r: 6, strokeWidth: 0, fill: "#10b981" }}
+          isAnimationActive={false}
         />
       </AreaChart>
     </ResponsiveContainer>
@@ -259,6 +263,7 @@ const ProjectPieChart = memo(function ProjectPieChart({
               outerRadius={85}
               paddingAngle={3}
               stroke="none"
+              isAnimationActive={false}
             >
               {byProject.map((_: any, index: number) => (
                 <Cell
@@ -334,6 +339,7 @@ const ExpenseChart = memo(function ExpenseChart({
             fill="#f43f5e"
             radius={[0, 8, 8, 0]}
             barSize={20}
+            isAnimationActive={false}
           >
             {byExpenseCategory.map((_: any, idx: number) => (
               <Cell key={`cell-${idx}`} fill={PALETTE[idx % PALETTE.length]} />
