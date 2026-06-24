@@ -1,59 +1,141 @@
-import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { CityProvider } from "./context/CityContext";
-import Layout from "./components/Layout"; // Layout залишаємо звичайним імпортом
+import React, { useState, Suspense, lazy } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 
-// 1. Змінюємо імпорти сторінок на ліниві (lazy)
-const Login = lazy(() => import("./pages/Login"));
-const Events = lazy(() => import("./pages/Events"));
+// --- СТАТИЧНІ ІМПОРТИ ---
+// Ці компоненти завантажуються одразу, оскільки вони формують "скелет" додатку (меню, перевірка токена)
+import Layout from "./components/Layout";
+import Login from "./pages/Login";
+import { CityProvider } from "./context/CityContext";
+
+// --- ДИНАМІЧНІ ІМПОРТИ (Ледаче завантаження / Code Splitting) ---
+// Ці файли будуть завантажуватись окремими шматками (chunks) ТІЛЬКИ коли користувач перейде на відповідну сторінку
 const Cities = lazy(() => import("./pages/Cities"));
-const CityProfile = lazy(() => import("./pages/CityProfile"));
 const Schools = lazy(() => import("./pages/Schools"));
-const Kindergartens = lazy(() => import("./pages/Kindergartens"));
 const SchoolProfile = lazy(() => import("./pages/SchoolProfile"));
 const Employees = lazy(() => import("./pages/Employees"));
-const EventReport = lazy(() => import("./pages/EventReport"));
 const Finance = lazy(() => import("./pages/Finance"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
 const CalendarView = lazy(() => import("./pages/CalendarView"));
 
-// 2. Створюємо компонент-спінер, який показується під час завантаження сторінки
+// Компонент-заглушка, який показується долі секунди, поки вантажиться JS код сторінки
 const PageLoader = () => (
-  <div className="flex h-[80vh] w-full items-center justify-center">
-    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+  <div className="flex items-center justify-center h-full min-h-[50vh]">
+    <div className="text-slate-400 font-medium animate-pulse">
+      Завантаження сторінки...
+    </div>
   </div>
 );
 
 export default function App() {
+  // Базова логіка авторизації
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
+    !!localStorage.getItem("token"),
+  );
+
+  const handleLogin = (token: string) => {
+    localStorage.setItem("token", token);
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setIsAuthenticated(false);
+  };
+
   return (
-    <CityProvider>
-      <BrowserRouter>
-        {/* 3. Обгортаємо роути у Suspense */}
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/login" element={<Login />} />
+    <Router>
+      <CityProvider>
+        <Routes>
+          {/* Публічний маршрут: Логін */}
+          <Route
+            path="/login"
+            element={
+              !isAuthenticated ? (
+                <Login onLogin={handleLogin} />
+              ) : (
+                <Navigate to="/cities" replace />
+              )
+            }
+          />
 
-            <Route element={<Layout />}>
-              <Route path="/cities" element={<Cities />} />
-              <Route path="/cities/:id" element={<CityProfile />} />
-              <Route path="/events/:eventId/report" element={<EventReport />} />
-              <Route path="/events" element={<Events />} />
-              <Route path="/schools/:id" element={<SchoolProfile />} />
-              <Route path="/schools" element={<Schools />} />
-              <Route path="/kindergartens" element={<Kindergartens />} />
-              <Route path="/employees" element={<Employees />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/finance" element={<Finance />} />
-              
-              {/* Календар */}
-              <Route path="/calendar" element={<CalendarView />} />
-            </Route>
+          {/* Захищені маршрути (Layout відображає бокове меню) */}
+          <Route
+            path="/"
+            element={
+              isAuthenticated ? (
+                <Layout onLogout={handleLogout} />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          >
+            {/* Редірект з кореня на сторінку міст за замовчуванням */}
+            <Route index element={<Navigate to="/cities" replace />} />
 
-            {/* Якщо маршрут не знайдено - перекидаємо на логін */}
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
-    </CityProvider>
+            {/* Обгортаємо всі вкладені маршрути в Suspense. 
+              Коли React намагається відрендерити "ліниву" сторінку, він показує fallback (PageLoader), 
+              поки завантажується файл з сервера.
+            */}
+            <Route
+              path="cities"
+              element={
+                <Suspense fallback={<PageLoader />}>
+                  <Cities />
+                </Suspense>
+              }
+            />
+
+            <Route
+              path="schools"
+              element={
+                <Suspense fallback={<PageLoader />}>
+                  <Schools />
+                </Suspense>
+              }
+            />
+
+            <Route
+              path="schools/:id"
+              element={
+                <Suspense fallback={<PageLoader />}>
+                  <SchoolProfile />
+                </Suspense>
+              }
+            />
+
+            <Route
+              path="employees"
+              element={
+                <Suspense fallback={<PageLoader />}>
+                  <Employees />
+                </Suspense>
+              }
+            />
+
+            <Route
+              path="finance"
+              element={
+                <Suspense fallback={<PageLoader />}>
+                  <Finance />
+                </Suspense>
+              }
+            />
+
+            <Route
+              path="calendar"
+              element={
+                <Suspense fallback={<PageLoader />}>
+                  <CalendarView />
+                </Suspense>
+              }
+            />
+          </Route>
+        </Routes>
+      </CityProvider>
+    </Router>
   );
 }

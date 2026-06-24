@@ -1,19 +1,22 @@
+// apps/frontend/lighthouserc.cjs
 module.exports = {
   ci: {
     collect: {
       url: [
-        "https://crm-frontend-ddodwb19j-shmaltsels-projects.vercel.app/",
-        "https://crm-frontend-ddodwb19j-shmaltsels-projects.vercel.app/cities",
-        "https://crm-frontend-ddodwb19j-shmaltsels-projects.vercel.app/schools",
-        "https://crm-frontend-ddodwb19j-shmaltsels-projects.vercel.app/events",
-        "https://crm-frontend-ddodwb19j-shmaltsels-projects.vercel.app/finance",
+        "https://crm-frontend-cfwr3tsoi-shmaltsels-projects.vercel.app/cities",
+        "https://crm-frontend-cfwr3tsoi-shmaltsels-projects.vercel.app/schools",
+        "https://crm-frontend-cfwr3tsoi-shmaltsels-projects.vercel.app/events",
+        "https://crm-frontend-cfwr3tsoi-shmaltsels-projects.vercel.app/finance",
       ],
-      numberOfRuns: 2,           // зменшив до 2, щоб було швидше
+      numberOfRuns: 3,
       settings: {
         preset: "desktop",
-        throttlingMethod: "devtools",
+        formFactor: "desktop",
+        throttlingMethod: "devtools",        // більш реалістичне тестування
+        screenEmulation: { disabled: true },
+        chromeFlags: "--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage",
       },
-      // Важливо: ігноруємо перенаправлення на логін
+      // Додаємо важливі параметри для детальнішого аналізу
       skipAudits: ["redirects-http"],
     },
 
@@ -24,11 +27,22 @@ module.exports = {
     assert: {
       preset: "lighthouse:recommended",
       assertions: {
-        "categories:performance": ["error", { minScore: 0.65 }],   // трохи знизили поріг
-        "largest-contentful-paint": ["warn", { maxNumericValue: 4500 }],
-        "first-contentful-paint": ["warn", { maxNumericValue: 2800 }],
-        "cumulative-layout-shift": ["warn", { maxNumericValue: 0.3 }],
+        "categories:performance": ["error", { minScore: 0.70 }],
+        "categories:accessibility": ["warn", { minScore: 0.85 }],
+        "categories:seo": ["warn", { minScore: 0.80 }],
+        "largest-contentful-paint": ["warn", { maxNumericValue: 3500 }],
+        "first-contentful-paint": ["warn", { maxNumericValue: 2500 }],
+        "cumulative-layout-shift": ["warn", { maxNumericValue: 0.25 }],
+        "total-blocking-time": ["warn", { maxNumericValue: 600 }],
+        "speed-index": ["warn", { maxNumericValue: 3500 }],
       }
+    },
+
+    // === НАЙВАЖЛИВІШЕ ДЛЯ ОПТИМІЗАЦІЇ ===
+    options: {
+      output: ["html", "json"],           // генеруємо HTML + JSON звіт
+      // Додаємо більше деталей
+      onlyCategories: ["performance", "accessibility", "seo", "best-practices"],
     }
   }
 };
