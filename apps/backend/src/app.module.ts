@@ -25,6 +25,7 @@ import { ProjectsModule } from './projects/projects.module';
     TelegramModule,
     IssuesModule,
     DashboardModule,
+    ProjectsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
