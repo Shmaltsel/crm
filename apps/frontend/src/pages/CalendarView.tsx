@@ -17,6 +17,7 @@ interface CalendarEvent {
 export default function CalendarView() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
+  const [projects, setProjects] = useState<any[]>([])
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMobileDate, setSelectedMobileDate] = useState<Date>(
