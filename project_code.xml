@@ -25,24 +25,24 @@ enum EventStatus {
 }
 
 model User {
-  id             String         @id @default(uuid())
+  id             String  @id @default(uuid())
   name           String
-  email          String         @unique
+  email          String  @unique
   phone          String?
   password       String
-  role           String         @default("MANAGER")
+  role           String  @default("MANAGER")
   telegramId     String?
   telegramChatId String?
   cityId         String?
-  city           City?          @relation(fields: [cityId], references: [id])
+  city           City?   @relation(fields: [cityId], references: [id])
   car            String?
   // Додаємо зв'язки для екіпажів
-  crewAsHost     Crew[]         @relation("HostCrew")
-  crewAsDriver   Crew[]         @relation("DriverCrew")
+  crewAsHost     Crew[]  @relation("HostCrew")
+  crewAsDriver   Crew[]  @relation("DriverCrew")
 
-  managedCities  City[]         @relation("CityManager")
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  managedCities City[]   @relation("CityManager")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model City {
@@ -59,11 +59,11 @@ model City {
 }
 
 model School {
-  id            String    @id @default(uuid())
+  id            String   @id @default(uuid())
   name          String
-  type          String    // "Школа" або "Садочок"
+  type          String // "Школа" або "Садочок"
   cityId        String
-  city          City      @relation(fields: [cityId], references: [id])
+  city          City     @relation(fields: [cityId], references: [id])
   address       String?
   director      String?
   phone         String?
@@ -71,10 +71,10 @@ model School {
   notes         String?
   childrenCount Int?
   events        Event[]
-  isHotClient   Boolean   @default(false)
+  isHotClient   Boolean  @default(false)
   rating        Float?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // ДОДАНО ІНДЕКС
   @@index([cityId])
@@ -105,7 +105,7 @@ model Event {
   school          School            @relation(fields: [schoolId], references: [id])
   crewId          String?
   crew            Crew?             @relation(fields: [crewId], references: [id])
-  project         String            // "Голограма для школи", "360° шоу"
+  project         String // "Голограма для школи", "360° шоу"
   date            DateTime
   time            String?
   status          EventStatus       @default(BASE)
@@ -117,7 +117,7 @@ model Event {
   address         String?
   contactPerson   String?
   contactPhone    String?
-  equipment       String?           // Зберігатимемо масив обладнання як JSON-рядок
+  equipment       String? // Зберігатимемо масив обладнання як JSON-рядок
   report          EventReport?
   files           File[]
   history         EventHistory[]
@@ -136,9 +136,9 @@ model Event {
 }
 
 model EventReport {
-  id                String   @id @default(uuid())
-  eventId           String   @unique
-  event             Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  id      String @id @default(uuid())
+  eventId String @unique
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   // Твої існуючі поля
   directorSatisfied Boolean?
@@ -150,16 +150,16 @@ model EventReport {
   createdAt         DateTime @default(now())
 
   // Нові фінансові та статистичні поля
-  announcementDone  Boolean  @default(false)
-  materialShown     Boolean  @default(false)
-  childrenCount     Int      @default(0)
-  classesCount      Int      @default(0)
-  privilegedCount   Int      @default(0)
-  showingsCount     Int      @default(0)
-  totalSum          Float    @default(0)
-  schoolSum         Float    @default(0)
-  expenses          Json     @default("[]") // Список витрат
-  remainderSum      Float    @default(0)
+  announcementDone Boolean @default(false)
+  materialShown    Boolean @default(false)
+  childrenCount    Int     @default(0)
+  classesCount     Int     @default(0)
+  privilegedCount  Int     @default(0)
+  showingsCount    Int     @default(0)
+  totalSum         Float   @default(0)
+  schoolSum        Float   @default(0)
+  expenses         Json    @default("[]") // Список витрат
+  remainderSum     Float   @default(0)
 }
 
 model File {
@@ -179,7 +179,7 @@ model EventHistory {
   eventId   String
   event     Event    @relation(fields: [eventId], references: [id])
   action    String
-  comment   String?  // <--- ДОДАЙ ЦЕЙ РЯДОК
+  comment   String? // <--- ДОДАЙ ЦЕЙ РЯДОК
   userId    String
   userName  String
   role      String
@@ -187,9 +187,9 @@ model EventHistory {
 }
 
 model EventPreparation {
-  id               String @id @default(uuid())
-  eventId          String @unique
-  event            Event  @relation(fields: [eventId], references: [id])
+  id      String @id @default(uuid())
+  eventId String @unique
+  event   Event  @relation(fields: [eventId], references: [id])
 
   assignCrew       String @default("Заплановано") // "Заплановано", "В процесі", "Виконано"
   bookEquipment    String @default("Заплановано")
@@ -199,16 +199,19 @@ model EventPreparation {
 }
 
 model IssueReport {
-  id         String   @id @default(uuid())
-  eventId    String
-  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  schoolName String
-  eventName  String
-  message    String
-  cityId     String
-  city       City     @relation(fields: [cityId], references: [id])
-  status     String   @default("Планується") // "Планується", "Виконується", "Виконано"
-  createdAt  DateTime @default(now())
+  id               String    @id @default(uuid())
+  eventId          String
+  event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  schoolName       String
+  eventName        String
+  message          String
+  cityId           String
+  city             City      @relation(fields: [cityId], references: [id])
+  status           String    @default("Планується") // "Планується", "Виконується", "Виконано"
+  createdAt        DateTime  @default(now())
+  deadline         DateTime?
+  assignedUserId   String?
+  assignedUserName String?
 
   // ДОДАНО ІНДЕКС
   @@index([cityId])
@@ -217,10 +220,10 @@ model IssueReport {
 model SchoolContact {
   id           String   @id @default(uuid())
   city         String   @default("Львів")
-  schoolNumber String   // номер або назва: "13", "Сихівський ліцей"
+  schoolNumber String // номер або назва: "13", "Сихівський ліцей"
   contactName  String
   phone        String
-  role         String?  // "Директор", "Завуч", "Педорг"
+  role         String? // "Директор", "Завуч", "Педорг"
   createdAt    DateTime @default(now())
 }</file>
 <file path="apps/backend/prisma/seed-admin.js">const { PrismaClient } = require('@prisma/client');
@@ -1917,11 +1920,23 @@ export class IssuesService {
     eventName: string;
     message: string;
     cityId: string;
+    deadline?: string;
+    assignedUserId?: string;
+    assignedUserName?: string;
   }) {
-    // 1. Зберігаємо проблему
-    const issue = await this.prisma.issueReport.create({ data });
+    const issue = await this.prisma.issueReport.create({
+      data: {
+        eventId: data.eventId,
+        schoolName: data.schoolName,
+        eventName: data.eventName,
+        message: data.message,
+        cityId: data.cityId,
+        deadline: data.deadline ? new Date(data.deadline) : null,
+        assignedUserId: data.assignedUserId || null,
+        assignedUserName: data.assignedUserName || null,
+      },
+    });
 
-    // 2. Підтягуємо подію з екіпажем і учасниками
     const event = await this.prisma.event.findUnique({
       where: { id: data.eventId },
       include: {
@@ -1934,57 +1949,74 @@ export class IssuesService {
       },
     });
 
-    // 3. Будуємо рядок з тегами екіпажу
     const formatMember = (user: {
       name: string;
       telegramId: string | null;
     }) => {
       if (!user.telegramId) return user.name;
       const clean = user.telegramId.replace(/^@/, '');
-      const isNumeric = /^\d+$/.test(clean);
-      if (isNumeric) return user.name;
-      return `@${clean} (${user.name})`;
+      return /^\d+$/.test(clean) ? user.name : `@${clean} (${user.name})`;
     };
 
     const crewMembers: string[] = [];
-    if (event?.crew?.host) {
+    if (event?.crew?.host)
       crewMembers.push(`🎙️ Ведучий: ${formatMember(event.crew.host)}`);
-    }
-    if (event?.crew?.driver) {
+    if (event?.crew?.driver)
       crewMembers.push(`🚗 Водій: ${formatMember(event.crew.driver)}`);
-    }
 
-    // 4. Знаходимо менеджера міста
     const city = await this.prisma.city.findUnique({
       where: { id: data.cityId },
-      include: {
-        users: {
-          where: { role: 'MANAGER' },
-          take: 1,
-        },
-      },
+      include: { users: { where: { role: 'MANAGER' }, take: 1 } },
     });
 
+    // Отримуємо chatId відповідального працівника
+    let assigneeChatId: string | null = null;
+    if (data.assignedUserId) {
+      const assignee = await this.prisma.user.findUnique({
+        where: { id: data.assignedUserId },
+        select: { telegramChatId: true, telegramId: true },
+      });
+      assigneeChatId =
+        assignee?.telegramChatId ||
+        (assignee?.telegramId && /^\d+$/.test(assignee.telegramId)
+          ? assignee.telegramId
+          : null);
+    }
+
+    const deadlineStr = data.deadline
+      ? `\n⏰ <b>Дедлайн:</b> ${new Date(data.deadline).toLocaleDateString('uk-UA')}`
+      : '';
+
+    const assigneeStr = data.assignedUserName
+      ? `\n👤 <b>Відповідальний:</b> ${data.assignedUserName}`
+      : '';
+
     const manager = city?.users?.[0];
-    const chatId =
+    const managerChatId =
       manager?.telegramChatId ||
       (manager?.telegramId && /^\d+$/.test(manager.telegramId)
         ? manager.telegramId
         : null);
 
-    // 5. Надсилаємо Telegram з екіпажем
-    if (chatId) {
-      const text =
-        `🚨 <b>Нова проблема!</b>\n\n` +
-        `🏫 <b>Заклад:</b> ${data.schoolName}\n` +
-        `📅 <b>Подія:</b> ${data.eventName}\n\n` +
-        `💬 <b>Повідомлення:</b>\n${data.message}` +
-        (crewMembers.length > 0
-          ? `\n\n👥 <b>Екіпаж:</b>\n${crewMembers.join('\n')}`
-          : '') +
-        `\n\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+    const text =
+      `🚨 <b>Нова проблема!</b>\n\n` +
+      `🏫 <b>Заклад:</b> ${data.schoolName}\n` +
+      `📅 <b>Подія:</b> ${data.eventName}\n\n` +
+      `💬 <b>Повідомлення:</b>\n${data.message}` +
+      deadlineStr +
+      assigneeStr +
+      (crewMembers.length > 0
+        ? `\n\n👥 <b>Екіпаж:</b>\n${crewMembers.join('\n')}`
+        : '') +
+      `\n\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
 
-      await this.telegramService.sendMessage(chatId, text);
+    // Надсилаємо менеджеру міста
+    if (managerChatId)
+      await this.telegramService.sendMessage(managerChatId, text);
+
+    // Надсилаємо відповідальному (якщо це не той самий менеджер)
+    if (assigneeChatId && assigneeChatId !== managerChatId) {
+      await this.telegramService.sendMessage(assigneeChatId, text);
     }
 
     return issue;
@@ -2871,7 +2903,14 @@ export class SchoolsService {
       const num = numMatch?.[1];
       const matchedContacts = num
         ? contacts.filter((c) => c.schoolNumber === num)
-        : [];
+        : contacts.filter((c) => {
+            const normSchool = normalize(school.name);
+            const normContact = normalize(c.schoolNumber);
+            return (
+              normSchool.includes(normContact) ||
+              normContact.includes(normSchool)
+            );
+          });
 
       const director =
         matchedContacts.find(
@@ -5489,6 +5528,7 @@ interface EventDetailsProps {
   schoolName?: string;
   cityId?: string;
   onEventUpdated?: () => void;
+  employees?: any[];
 }
 
 export default function EventDetails({ currentEvent, schoolName, cityId, onEventUpdated }: EventDetailsProps) {
@@ -5598,6 +5638,7 @@ export default function EventDetails({ currentEvent, schoolName, cityId, onEvent
         eventName={`${currentEvent.project} — ${formattedDate}`}
         eventId={currentEvent.id}
         cityId={cityId || currentEvent.cityId || ''}
+        employees={employees}
       />
       <RescheduleModal
         isOpen={rescheduleOpen}
@@ -6174,6 +6215,12 @@ export default function EventModal({ isOpen, onClose, eventForm, setEventForm, o
 <file path="apps/frontend/src/components/school-profile/modals/IssueModal.tsx">import { useState } from 'react';
 import { api } from '../../../config/api';
 
+interface Employee {
+  id: string;
+  name: string;
+  role: string;
+}
+
 interface IssueModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -6181,14 +6228,21 @@ interface IssueModalProps {
   eventName: string;
   eventId: string;
   cityId: string;
+  employees?: Employee[];
 }
 
-export default function IssueModal({ isOpen, onClose, schoolName, eventName, eventId, cityId }: IssueModalProps) {
+export default function IssueModal({
+  isOpen, onClose, schoolName, eventName, eventId, cityId, employees = []
+}: IssueModalProps) {
   const [message, setMessage] = useState('');
+  const [deadline, setDeadline] = useState('');
+  const [assignedUserId, setAssignedUserId] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [sent, setSent] = useState(false);
 
   if (!isOpen) return null;
+
+  const assignedUser = employees.find(e => e.id === assignedUserId);
 
   const handleSend = async () => {
     if (!message.trim()) return;
@@ -6200,11 +6254,16 @@ export default function IssueModal({ isOpen, onClose, schoolName, eventName, eve
         eventName,
         message,
         cityId,
+        deadline: deadline || undefined,
+        assignedUserId: assignedUserId || undefined,
+        assignedUserName: assignedUser?.name || undefined,
       });
       setSent(true);
       setTimeout(() => {
         setSent(false);
         setMessage('');
+        setDeadline('');
+        setAssignedUserId('');
         onClose();
       }, 1500);
     } catch (e) {
@@ -6216,10 +6275,9 @@ export default function IssueModal({ isOpen, onClose, schoolName, eventName, eve
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+      <div className="bg-white rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden max-h-[90vh] flex flex-col">
 
-        <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-red-50 shrink-0">
+        <div className="p-5 border-b border-slate-100 flex justify-between bg-red-50 shrink-0">
           <div>
             <h3 className="text-xl font-bold text-red-700">🚨 Запит</h3>
             <p className="text-sm text-red-500 mt-0.5 font-medium">{schoolName}</p>
@@ -6228,16 +6286,52 @@ export default function IssueModal({ isOpen, onClose, schoolName, eventName, eve
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-2 -mr-2 -mt-2 h-fit text-lg">✕</button>
         </div>
 
-        <div className="p-5 sm:p-6 flex flex-col gap-4 flex-1">
+        <div className="p-5 flex flex-col gap-4 overflow-y-auto">
+          {/* Опис проблеми */}
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Опишіть проблему або запит..."
-            className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none resize-none h-36"
+            className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none resize-none h-32"
             autoFocus
           />
 
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pb-1 sm:pb-0">
+          {/* Дедлайн */}
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">
+              ⏰ Дедлайн <span className="text-slate-400 font-normal">(необов'язково)</span>
+            </label>
+            <input
+              type="date"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              min={new Date().toISOString().slice(0, 10)}
+              className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none text-sm"
+            />
+          </div>
+
+          {/* Відповідальний */}
+          {employees.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                👤 Відповідальний <span className="text-slate-400 font-normal">(необов'язково)</span>
+              </label>
+              <select
+                value={assignedUserId}
+                onChange={(e) => setAssignedUserId(e.target.value)}
+                className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none text-sm bg-white"
+              >
+                <option value="">— Оберіть працівника —</option>
+                {employees.map(emp => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.name} ({emp.role})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
@@ -10096,7 +10190,6 @@ export default function Login() {
 import { useParams } from "react-router-dom";
 import { api } from "../config/api";
 
-// Імпортуємо UI компоненти
 import SchoolProfileHeader from "../components/school-profile/SchoolProfileHeader";
 import SchoolInfoCard from "../components/school-profile/SchoolInfoCard";
 import HistoryTimeline from "../components/school-profile/HistoryTimeline";
@@ -10106,7 +10199,6 @@ import EventsTable from "../components/school-profile/EventsTable";
 import EventPreparation from "../components/school-profile/EventPreparation";
 import AssignedCrew from "../components/school-profile/AssignedCrew";
 
-// Імпортуємо модальні вікна
 import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
 import EventModal from "../components/school-profile/modals/EventModal";
 import CommentModal from "../components/school-profile/modals/CommentModal";
@@ -10175,23 +10267,61 @@ export default function SchoolProfile() {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       };
       const schoolRes = await api.get(`/schools/${id}`, { headers });
+
       if (schoolRes.data) {
+        const school = schoolRes.data;
+
+        let director = school.director || "";
+        let phone = school.phone || "";
+
+        // Автодоповнення контактів якщо телефон порожній
+        if (!phone && school.name) {
+          try {
+            const cityName = school.city?.name || "";
+            const contactsRes = await api.get(
+              `/schools/contacts/search?q=${encodeURIComponent(school.name)}&city=${encodeURIComponent(cityName)}`,
+              { headers },
+            );
+            if (contactsRes.data?.length > 0) {
+              const contact =
+                contactsRes.data.find(
+                  (c: any) =>
+                    c.role?.includes("Директор") ||
+                    c.role?.includes("Завідувач"),
+                ) || contactsRes.data[0];
+
+              director = contact.contactName;
+              phone = contact.phone;
+
+              await api.patch(
+                `/schools/${school.id}`,
+                { director, phone },
+                { headers },
+              );
+            }
+          } catch (e) {
+            console.error("Автодоповнення контактів:", e);
+          }
+        }
+
         setSchoolData({
-          id: schoolRes.data.id,
-          cityId: schoolRes.data.cityId,
-          name: schoolRes.data.name || "",
-          type: schoolRes.data.type || "Школа",
-          city: schoolRes.data.city?.name || "",
-          address: schoolRes.data.address || "",
-          director: schoolRes.data.director || "",
-          phone: schoolRes.data.phone || "",
-          email: schoolRes.data.email || "",
-          childrenCount: schoolRes.data.childrenCount || 0,
-          notes: schoolRes.data.notes || "",
+          id: school.id,
+          cityId: school.cityId,
+          name: school.name || "",
+          type: school.type || "Школа",
+          city: school.city?.name || "",
+          address: school.address || "",
+          director,
+          phone,
+          email: school.email || "",
+          childrenCount: school.childrenCount || 0,
+          notes: school.notes || "",
         });
         setEditForm({
-          ...schoolRes.data,
-          city: schoolRes.data.city?.name || "",
+          ...school,
+          city: school.city?.name || "",
+          director,
+          phone,
         });
       }
 
@@ -10258,7 +10388,6 @@ export default function SchoolProfile() {
         const activeStage = PIPELINE_STAGES[currentStageIndex];
         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
         if (!nextStage) return;
-
         const res = await api.patch(
           `/events/${currentEvent.id}/status`,
           {
@@ -10456,7 +10585,7 @@ export default function SchoolProfile() {
               </h3>
               <ul className="space-y-2 text-sm">
                 <li className="flex justify-between">
-                  <span className="text-slate-500">Остання дія:</span>{" "}
+                  <span className="text-slate-500">Остання дія:</span>
                   <span className="font-medium text-blue-600">
                     {creatorName}
                   </span>
@@ -10502,6 +10631,7 @@ export default function SchoolProfile() {
             schoolName={schoolData.name}
             cityId={schoolData.cityId}
             onEventUpdated={fetchData}
+            employees={users}
           />
           <EventsTable
             events={events}
@@ -10512,7 +10642,6 @@ export default function SchoolProfile() {
         </div>
       </div>
 
-      {/* Мобільна FAB для додавання події */}
       <button
         onClick={openAddEventModal}
         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
@@ -10520,7 +10649,6 @@ export default function SchoolProfile() {
         +
       </button>
 
-      {/* Модальні вікна */}
       <EditSchoolModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}

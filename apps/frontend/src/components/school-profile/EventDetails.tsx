@@ -12,7 +12,7 @@ interface EventDetailsProps {
   employees?: any[];
 }
 
-export default function EventDetails({ currentEvent, schoolName, cityId, onEventUpdated }: EventDetailsProps) {
+export default function EventDetails({ currentEvent, schoolName, cityId, onEventUpdated, employees }: EventDetailsProps) {
   const [issueOpen, setIssueOpen] = useState(false);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
 
