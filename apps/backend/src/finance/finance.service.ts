@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+export class FinanceModule {}</file>
+<file path="apps/backend/src/finance/finance.service.ts">import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -211,5 +212,60 @@ export class FinanceService {
         cities,
       },
     };
+  }
+
+  async getStaffRevenue({ period, cityId }: { period?: string; cityId?: string }) {
+    const now = new Date();
+    let dateFrom: Date | undefined;
+
+    if (period === 'month')
+      dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+    else if (period === 'quarter')
+      dateFrom = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+    else if (period === 'year')
+      dateFrom = new Date(now.getFullYear(), 0, 1);
+
+    const where: any = { status: 'RE_SALE' };
+    if (dateFrom) where.date = { gte: dateFrom };
+    if (cityId) where.cityId = cityId;
+
+    const events = await this.prisma.event.findMany({
+      where,
+      include: {
+        report: { select: { totalSum: true } },
+        crew: {
+          include: {
+            host: { select: { id: true, name: true, role: true } },
+            driver: { select: { id: true, name: true, role: true } },
+          },
+        },
+        city: { select: { id: true, name: true } },
+      },
+    });
+
+    // Агрегуємо виручку по кожному ведучому і водію
+    const staffMap: Record<string, { id: string; name: string; role: string; revenue: number; eventsCount: number }> = {};
+
+    for (const ev of events) {
+      const revenue = ev.report?.totalSum ?? 0;
+      if (!ev.crew) continue;
+
+      for (const [member, memberRole] of [
+        [ev.crew.host, 'HOST'],
+        [ev.crew.driver, 'DRIVER'],
+      ] as [{ id: string; name: string } | null, string][]) {
+        if (!member) continue;
+        if (!staffMap[member.id]) {
+          staffMap[member.id] = { id: member.id, name: member.name, role: memberRole, revenue: 0, eventsCount: 0 };
+        }
+        staffMap[member.id].revenue += revenue;
+        staffMap[member.id].eventsCount += 1;
+      }
+    }
+
+    const staff = Object.values(staffMap).sort((a, b) => b.revenue - a.revenue);
+    const totalRevenue = events.reduce((s, e) => s + (e.report?.totalSum ?? 0), 0);
+
+    return { staff, totalRevenue, eventsCount: events.length };
   }
 }

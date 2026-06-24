@@ -17,9 +17,17 @@ export class FinanceController {
   ) {
     return this.financeService.getDashboard({ period, cityId, project });
   }
-  // finance.controller.ts
+
   @Get('my-balance')
   getMyBalance(@CurrentUser() user: JwtUser) {
     return this.financeService.getMyBalance(user.sub);
+  }
+
+  @Get('staff-revenue')
+  getStaffRevenue(
+    @Query('period') period: string,
+    @Query('cityId') cityId: string,
+  ) {
+    return this.financeService.getStaffRevenue({ period, cityId });
   }
 }
