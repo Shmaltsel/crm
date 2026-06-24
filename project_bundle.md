@@ -9072,228 +9072,236 @@
 ```tsx
   0 | import React from "react";
   1 | import { useNavigate } from "react-router-dom";
-  2 | 
-  3 | interface Props {
-  4 |   schools: any[];
-  5 |   searchQuery: string;
-  6 |   onDelete: (e: React.MouseEvent, id: string, name: string) => void;
-  7 |   stages: any[];
-  8 | }
-  9 | 
- 10 | // Мемоізований компонент рядка таблиці
- 11 | export const SchoolRow = React.memo(({ school, onDelete, stages, navigate }: any) => {
- 12 |   const latestEvent = school.events?.[0];
- 13 |   const stage = latestEvent
- 14 |     ? stages.find((s: any) => s.key === latestEvent.status)
- 15 |     : null;
- 16 | 
- 17 |   return (
- 18 |     <tr
- 19 |       onClick={() => navigate(`/schools/${school.id}`)}
- 20 |       className="cursor-pointer border-b border-slate-50 hover:bg-slate-50/80 transition-colors"
- 21 |     >
- 22 |       <td className="p-4 text-slate-800 font-bold">{school.name}</td>
- 23 |       <td className="p-4 text-slate-600 font-medium">{school.city?.name}</td>
- 24 |       <td className="p-4">
- 25 |         <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold">
- 26 |           Активна
- 27 |         </span>
- 28 |       </td>
- 29 |       <td className="p-4">
- 30 |         {stage ? (
- 31 |           <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-bold border border-blue-100">
- 32 |             {stage.name}
- 33 |           </span>
- 34 |         ) : (
- 35 |           <span className="text-slate-400 text-xs italic">—</span>
- 36 |         )}
- 37 |       </td>
- 38 |       <td className="p-4 text-center">
- 39 |         <button
- 40 |           onClick={(e) => onDelete(e, school.id, school.name)}
- 41 |           className="text-slate-300 hover:text-red-500 transition-colors p-2 text-lg"
- 42 |         >
- 43 |           🗑
- 44 |         </button>
- 45 |       </td>
- 46 |     </tr>
- 47 |   );
- 48 | });
- 49 | 
- 50 | SchoolRow.displayName = "SchoolRow";
- 51 | 
- 52 | export default function SchoolDesktopTable({
- 53 |   schools,
- 54 |   searchQuery,
- 55 |   onDelete,
- 56 |   stages,
- 57 | }: Props) {
- 58 |   const navigate = useNavigate();
- 59 | 
- 60 |   return (
- 61 |     <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
- 62 |       <div className="overflow-y-auto flex-1">
- 63 |         <table className="w-full text-left border-collapse">
- 64 |           <thead className="sticky top-0 z-10 bg-slate-50">
- 65 |             <tr className="border-b border-slate-100">
- 66 |               <th className="p-4 font-medium text-slate-600">Назва школи</th>
- 67 |               <th className="p-4 font-medium text-slate-600">Місто</th>
- 68 |               <th className="p-4 font-medium text-slate-600">Статус</th>
- 69 |               <th className="p-4 font-medium text-slate-600">Поточний етап</th>
- 70 |               <th className="p-4 font-medium text-slate-600 text-center">
- 71 |                 Дія
- 72 |               </th>
- 73 |             </tr>
- 74 |           </thead>
- 75 |           <tbody>
- 76 |             {schools.map((school) => (
- 77 |               <SchoolRow
- 78 |                 key={school.id}
- 79 |                 school={school}
- 80 |                 onDelete={onDelete}
- 81 |                 stages={stages}
- 82 |                 navigate={navigate}
- 83 |               />
- 84 |             ))}
- 85 |           </tbody>
- 86 |         </table>
- 87 |         {schools.length === 0 && (
- 88 |           <div className="text-center py-16 text-slate-400 text-sm font-medium">
- 89 |             {searchQuery
- 90 |               ? `Нічого не знайдено за «${searchQuery}»`
- 91 |               : "Шкіл ще немає"}
- 92 |           </div>
- 93 |         )}
- 94 |       </div>
- 95 |     </div>
- 96 |   );
- 97 | }
- 98 | 
+  2 | import { motion, AnimatePresence } from "framer-motion";
+  3 | 
+  4 | interface Props {
+  5 |   schools: any[];
+  6 |   searchQuery: string;
+  7 |   onDelete: (e: React.MouseEvent, id: string, name: string) => void;
+  8 |   stages: any[];
+  9 | }
+ 10 | 
+ 11 | // Мемоізований рядок з анімаціями
+ 12 | export const SchoolRow = React.memo(
+ 13 |   ({ school, onDelete, stages, navigate }: any) => {
+ 14 |     const latestEvent = school.events?.[0];
+ 15 |     const stage = latestEvent
+ 16 |       ? stages.find((s: any) => s.key === latestEvent.status)
+ 17 |       : null;
+ 18 | 
+ 19 |     return (
+ 20 |       <motion.tr
+ 21 |         initial={{ opacity: 0 }}
+ 22 |         animate={{ opacity: 1 }}
+ 23 |         exit={{ opacity: 0 }}
+ 24 |         onClick={() => navigate(`/schools/${school.id}`)}
+ 25 |         className="border-b border-slate-50 hover:bg-blue-50/50 transition-colors cursor-pointer"
+ 26 |       >
+ 27 |         <td className="p-4 font-bold text-slate-800">{school.name}</td>
+ 28 |         <td className="p-4 font-medium text-slate-600">{school.city?.name}</td>
+ 29 |         <td className="p-4">
+ 30 |           <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold">
+ 31 |             Активна
+ 32 |           </span>
+ 33 |         </td>
+ 34 |         <td className="p-4">
+ 35 |           {stage ? (
+ 36 |             <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-bold border border-blue-100">
+ 37 |               {stage.name}
+ 38 |             </span>
+ 39 |           ) : (
+ 40 |             <span className="text-slate-400 text-xs italic">—</span>
+ 41 |           )}
+ 42 |         </td>
+ 43 |         <td className="p-4 text-center">
+ 44 |           <button
+ 45 |             onClick={(e) => {
+ 46 |               e.stopPropagation();
+ 47 |               onDelete(e, school.id, school.name);
+ 48 |             }}
+ 49 |             className="p-2 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all text-lg"
+ 50 |           >
+ 51 |             🗑
+ 52 |           </button>
+ 53 |         </td>
+ 54 |       </motion.tr>
+ 55 |     );
+ 56 |   },
+ 57 | );
+ 58 | 
+ 59 | SchoolRow.displayName = "SchoolRow";
+ 60 | 
+ 61 | export default function SchoolDesktopTable({
+ 62 |   schools,
+ 63 |   searchQuery,
+ 64 |   onDelete,
+ 65 |   stages,
+ 66 | }: Props) {
+ 67 |   const navigate = useNavigate();
+ 68 | 
+ 69 |   return (
+ 70 |     <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0 custom-scrollbar">
+ 71 |       <div className="overflow-y-auto flex-1">
+ 72 |         <table className="w-full text-left border-collapse">
+ 73 |           <thead className="sticky top-0 z-10 bg-slate-50">
+ 74 |             <tr className="border-b border-slate-100">
+ 75 |               <th className="p-4 font-medium text-slate-600">Назва школи</th>
+ 76 |               <th className="p-4 font-medium text-slate-600">Місто</th>
+ 77 |               <th className="p-4 font-medium text-slate-600">Статус</th>
+ 78 |               <th className="p-4 font-medium text-slate-600">Поточний етап</th>
+ 79 |               <th className="p-4 font-medium text-slate-600 text-center">
+ 80 |                 Дія
+ 81 |               </th>
+ 82 |             </tr>
+ 83 |           </thead>
+ 84 |           <tbody className="divide-y divide-slate-50">
+ 85 |             <AnimatePresence>
+ 86 |               {schools.map((school) => (
+ 87 |                 <SchoolRow
+ 88 |                   key={school.id}
+ 89 |                   school={school}
+ 90 |                   onDelete={onDelete}
+ 91 |                   stages={stages}
+ 92 |                   navigate={navigate}
+ 93 |                 />
+ 94 |               ))}
+ 95 |             </AnimatePresence>
+ 96 |           </tbody>
+ 97 |         </table>
+ 98 |         {schools.length === 0 && (
+ 99 |           <motion.div
+100 |             initial={{ opacity: 0 }}
+101 |             animate={{ opacity: 1 }}
+102 |             className="text-center py-16 text-slate-400 text-sm font-medium"
+103 |           >
+104 |             {searchQuery
+105 |               ? `Нічого не знайдено за «${searchQuery}»`
+106 |               : "Шкіл ще немає"}
+107 |           </motion.div>
+108 |         )}
+109 |       </div>
+110 |     </div>
+111 |   );
+112 | }
+113 | 
 ```
 
 ### File: apps/frontend/src/components/schools/SchoolMobileList.tsx
 ```tsx
   0 | import React from "react";
   1 | import { useNavigate } from "react-router-dom";
-  2 | 
-  3 | interface Props {
-  4 |   schools: any[];
-  5 |   searchQuery: string;
-  6 |   onDelete: (e: React.MouseEvent, id: string, name: string) => void;
-  7 |   stages: any[];
-  8 | }
-  9 | 
- 10 | function stalenessColor(days: number | null): string {
- 11 |   if (days === null) return "text-slate-400";
- 12 |   if (days >= 21) return "text-red-500";
- 13 |   if (days >= 14) return "text-orange-500";
- 14 |   if (days >= 7) return "text-amber-500";
- 15 |   return "text-emerald-500";
- 16 | }
- 17 | 
- 18 | // Мемоізований компонент картки
- 19 | export const SchoolCard = React.memo(({ school, onDelete, stages }: any) => {
- 20 |   const navigate = useNavigate();
- 21 | 
- 22 |   const latestEvent = school.events?.[0];
- 23 |   const stage = latestEvent
- 24 |     ? stages.find((s: any) => s.key === latestEvent.status)
- 25 |     : null;
- 26 |   const lastActivityDate =
- 27 |     school.events?.[0]?.updatedAt ?? school.updatedAt ?? null;
- 28 |   const daysStale = lastActivityDate
- 29 |     ? Math.floor((Date.now() - new Date(lastActivityDate).getTime()) / 86400000)
- 30 |     : null;
- 31 | 
- 32 |   return (
- 33 |     <div
- 34 |       onClick={() => navigate(`/schools/${school.id}`)}
- 35 |       className="bg-white rounded-2xl border border-slate-100 p-3.5 active:scale-[0.99] transition-transform cursor-pointer"
- 36 |     >
- 37 |       <div className="flex items-start justify-between gap-2">
- 38 |         <p className="font-semibold text-slate-800 leading-snug text-sm line-clamp-2 flex-1">
- 39 |           {school.name}
- 40 |         </p>
- 41 |         <button
- 42 |           onClick={(e) => onDelete(e, school.id, school.name)}
- 43 |           className="text-slate-300 active:text-red-500 transition-colors p-1 -mt-0.5 -mr-1 shrink-0"
- 44 |         >
- 45 |           🗑
- 46 |         </button>
- 47 |       </div>
- 48 | 
- 49 |       <div className="flex items-center justify-between gap-2 mt-2">
- 50 |         <div className="flex items-center gap-1.5 min-w-0">
- 51 |           {school.phone ? (
- 52 |             <a
- 53 |               href={`tel:${school.phone}`}
- 54 |               onClick={(e) => e.stopPropagation()}
- 55 |               className="flex items-center gap-1 text-xs text-blue-600 font-medium truncate"
- 56 |             >
- 57 |               📞 {school.director || school.phone}
- 58 |             </a>
- 59 |           ) : school.director ? (
- 60 |             <span className="text-xs text-slate-500 truncate">
- 61 |               👤 {school.director}
- 62 |             </span>
- 63 |           ) : (
- 64 |             <span className="text-xs text-slate-300 italic">
- 65 |               Контакт не вказано
- 66 |             </span>
- 67 |           )}
- 68 |         </div>
+  2 | import { motion, AnimatePresence } from "framer-motion";
+  3 | 
+  4 | interface Props {
+  5 |   schools: any[];
+  6 |   searchQuery: string;
+  7 |   onDelete: (e: React.MouseEvent, id: string, name: string) => void;
+  8 |   stages: any[];
+  9 | }
+ 10 | 
+ 11 | // 1. Експортуємо SchoolCard, щоб уникнути помилок при імпорті в інших файлах
+ 12 | export const SchoolCard = React.memo(({ school, onDelete, stages }: any) => {
+ 13 |   const navigate = useNavigate();
+ 14 |   const latestEvent = school.events?.[0];
+ 15 |   const stage = latestEvent
+ 16 |     ? stages.find((s: any) => s.key === latestEvent.status)
+ 17 |     : null;
+ 18 | 
+ 19 |   return (
+ 20 |     <motion.div
+ 21 |       layout
+ 22 |       initial={{ opacity: 0, scale: 0.95 }}
+ 23 |       animate={{ opacity: 1, scale: 1 }}
+ 24 |       exit={{ opacity: 0, scale: 0.95 }}
+ 25 |       whileHover={{ scale: 1.01 }}
+ 26 |       whileTap={{ scale: 0.98 }}
+ 27 |       onClick={() => navigate(`/schools/${school.id}`)}
+ 28 |       className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm transition-all hover:shadow-md hover:border-blue-200 cursor-pointer"
+ 29 |     >
+ 30 |       <div className="flex items-start justify-between gap-2">
+ 31 |         <p className="font-semibold text-slate-800 leading-snug text-sm line-clamp-2 flex-1">
+ 32 |           {school.name}
+ 33 |         </p>
+ 34 |         <button
+ 35 |           onClick={(e) => {
+ 36 |             e.stopPropagation();
+ 37 |             onDelete(e, school.id, school.name);
+ 38 |           }}
+ 39 |           className="text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all p-2 rounded-lg"
+ 40 |         >
+ 41 |           🗑
+ 42 |         </button>
+ 43 |       </div>
+ 44 |       <div className="flex items-center justify-between gap-2 mt-2">
+ 45 |         {school.phone ? (
+ 46 |           <a
+ 47 |             href={`tel:${school.phone}`}
+ 48 |             onClick={(e) => e.stopPropagation()}
+ 49 |             className="text-xs text-blue-600 font-medium truncate"
+ 50 |           >
+ 51 |             📞 {school.director || school.phone}
+ 52 |           </a>
+ 53 |         ) : (
+ 54 |           <span className="text-xs text-slate-500 truncate">
+ 55 |             👤 {school.director || "Контакт не вказано"}
+ 56 |           </span>
+ 57 |         )}
+ 58 |         {stage && (
+ 59 |           <span className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full font-medium border border-blue-100">
+ 60 |             {stage.name}
+ 61 |           </span>
+ 62 |         )}
+ 63 |       </div>
+ 64 |     </motion.div>
+ 65 |   );
+ 66 | });
+ 67 | 
+ 68 | SchoolCard.displayName = "SchoolCard";
  69 | 
- 70 |         {stage ? (
- 71 |           <span className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full border border-blue-100 shrink-0 font-medium">
- 72 |             {stage.name}
- 73 |           </span>
- 74 |         ) : (
- 75 |           <span className="text-[10px] text-slate-300 shrink-0">Етап —</span>
- 76 |         )}
- 77 |       </div>
- 78 | 
- 79 |       {daysStale !== null && (
- 80 |         <p className={`text-[11px] mt-1.5 ${stalenessColor(daysStale)}`}>
- 81 |           ⏱{" "}
- 82 |           {daysStale === 0
- 83 |             ? "Активність сьогодні"
- 84 |             : `Остання активність ${daysStale} дн тому`}
- 85 |         </p>
- 86 |       )}
- 87 |     </div>
- 88 |   );
- 89 | });
- 90 | 
- 91 | SchoolCard.displayName = "SchoolCard";
- 92 | 
- 93 | export default function SchoolMobileList({
- 94 |   schools,
- 95 |   searchQuery,
- 96 |   onDelete,
- 97 |   stages,
- 98 | }: Props) {
- 99 |   return (
-100 |     <div className="md:hidden flex-1 overflow-y-auto flex flex-col gap-2.5 pb-24">
-101 |       {schools.map((school) => (
-102 |         <SchoolCard
-103 |           key={school.id}
-104 |           school={school}
-105 |           onDelete={onDelete}
-106 |           stages={stages}
-107 |         />
-108 |       ))}
-109 | 
-110 |       {schools.length === 0 && (
-111 |         <div className="bg-white rounded-2xl border border-slate-100 text-center py-10 text-slate-400 text-sm">
-112 |           {searchQuery
-113 |             ? `Нічого не знайдено за «${searchQuery}»`
-114 |             : "Шкіл ще немає"}
-115 |         </div>
-116 |       )}
-117 |     </div>
-118 |   );
-119 | }
-120 | 
+ 70 | // 2. Головний компонент залишається default export
+ 71 | export default function SchoolMobileList({
+ 72 |   schools,
+ 73 |   searchQuery,
+ 74 |   onDelete,
+ 75 |   stages,
+ 76 | }: Props) {
+ 77 |   return (
+ 78 |     <motion.div
+ 79 |       className="md:hidden flex-1 overflow-y-auto flex flex-col gap-3 pb-24 px-1 custom-scrollbar"
+ 80 |       initial="hidden"
+ 81 |       animate="visible"
+ 82 |     >
+ 83 |       <AnimatePresence mode="popLayout">
+ 84 |         {schools.map((school, index) => (
+ 85 |           <motion.div
+ 86 |             key={school.id}
+ 87 |             initial={{ opacity: 0, y: 10 }}
+ 88 |             animate={{ opacity: 1, y: 0 }}
+ 89 |             exit={{ opacity: 0, x: -20 }}
+ 90 |             transition={{ delay: index * 0.02, duration: 0.2 }}
+ 91 |           >
+ 92 |             <SchoolCard school={school} onDelete={onDelete} stages={stages} />
+ 93 |           </motion.div>
+ 94 |         ))}
+ 95 |       </AnimatePresence>
+ 96 | 
+ 97 |       {schools.length === 0 && (
+ 98 |         <motion.div
+ 99 |           initial={{ opacity: 0 }}
+100 |           animate={{ opacity: 1 }}
+101 |           className="text-center py-10 text-slate-400"
+102 |         >
+103 |           <p>
+104 |             {searchQuery
+105 |               ? `Нічого не знайдено за «${searchQuery}»`
+106 |               : "Шкіл ще немає"}
+107 |           </p>
+108 |         </motion.div>
+109 |       )}
+110 |     </motion.div>
+111 |   );
+112 | }
+113 | 
 ```
 
 ### File: apps/frontend/src/components/schools/StatsBar.tsx
@@ -9776,7 +9784,25 @@
   3 | @tailwind components;
   4 | @tailwind utilities;
   5 | 
-  6 | 
+  6 | .custom-scrollbar {
+  7 |   scrollbar-width: thin;
+  8 |   scrollbar-color: #cbd5e1 transparent;
+  9 | }
+ 10 | 
+ 11 | .custom-scrollbar::-webkit-scrollbar {
+ 12 |   width: 6px;
+ 13 | }
+ 14 | 
+ 15 | .custom-scrollbar::-webkit-scrollbar-thumb {
+ 16 |   background-color: #cbd5e1;
+ 17 |   border-radius: 20px;
+ 18 | }
+ 19 | 
+ 20 | /* Плавність для всіх інтерактивних елементів */
+ 21 | button, div {
+ 22 |   transition-property: color, background-color, border-color, transform, box-shadow;
+ 23 |   transition-duration: 200ms;
+ 24 | }
 ```
 
 ### File: apps/frontend/src/main.tsx
@@ -14213,30 +14239,21 @@
 ```ts
   0 | import { defineConfig } from "vite";
   1 | import react from "@vitejs/plugin-react";
-  2 | import { ViteImageOptimizer } from "vite-plugin-image-optimizer";
-  3 | 
-  4 | export default defineConfig({
-  5 |   plugins: [
-  6 |     react(),
-  7 |     ViteImageOptimizer({
-  8 |       png: { quality: 80 },
-  9 |       jpeg: { quality: 80 },
- 10 |       webp: { quality: 80 },
- 11 |       avif: { quality: 70 },
- 12 |     }),
- 13 |   ],
- 14 |   build: {
- 15 |     rollupOptions: {
- 16 |       output: {
- 17 |         manualChunks: {
- 18 |           recharts: ["recharts"],
- 19 |           tanstack: ["@tanstack/react-virtual"],
- 20 |         },
- 21 |       },
- 22 |     },
- 23 |   },
- 24 | });
- 25 | 
+  2 | 
+  3 | export default defineConfig({
+  4 |   plugins: [react()],
+  5 |   build: {
+  6 |     rollupOptions: {
+  7 |       output: {
+  8 |         manualChunks(id) {
+  9 |           if (id.includes("recharts")) return "recharts";
+ 10 |           if (id.includes("@tanstack/react-virtual")) return "tanstack";
+ 11 |         },
+ 12 |       },
+ 13 |     },
+ 14 |   },
+ 15 | });
+ 16 | 
 ```
 
 ### File: bundle.js
