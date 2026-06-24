@@ -1,10 +1,18 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { useSelectedCity } from "../context/CityContext";
 import { api } from "../config/api";
-import IssueCarousel from "../components/IssueCarousel";
-import CityMobileHeader from "../components/cities/CityMobileHeader";
-import CityMobileList from "../components/cities/CityMobileList";
-import CityDesktopGrid from "../components/cities/CityDesktopGrid";
+
+// --- ДИНАМІЧНІ ІМПОРТИ (Code Splitting) ---
+const IssueCarousel = lazy(() => import("../components/IssueCarousel"));
+const CityMobileHeader = lazy(
+  () => import("../components/cities/CityMobileHeader"),
+);
+const CityMobileList = lazy(
+  () => import("../components/cities/CityMobileList"),
+);
+const CityDesktopGrid = lazy(
+  () => import("../components/cities/CityDesktopGrid"),
+);
 
 // Оптимізація 1: Скелетне завантаження (Skeleton Screen).
 // Це повністю прибирає проблему CLS (зсув макета) і покращує LCP,
@@ -46,7 +54,6 @@ export default function Cities() {
   const { selectedCity, setSelectedCity } = useSelectedCity();
 
   // Оптимізація 2: AbortController для запобігання витоку пам'яті (Memory Leaks)
-  // Якщо користувач перейде на іншу вкладку до завершення запиту, браузер скасує HTTP-запит.
   useEffect(() => {
     const abortController = new AbortController();
 
@@ -74,8 +81,6 @@ export default function Cities() {
   }, []);
 
   // Оптимізація 3: useCallback
-  // Запобігає непотрібному перерендеру дочірніх важких компонентів (Grid, List),
-  // тому що функція не створюється наново при кожному оновленні стейту
   const handleSelectCity = useCallback(
     (city: any) => {
       setSelectedCity(city);
@@ -91,11 +96,7 @@ export default function Cities() {
 
     try {
       const response = await api.post("/cities", { name: newCityName.trim() });
-
-      // РАНІШЕ: Тут був виклик fetchCities(), який робив новий запит і змушував чекати 1 секунду.
-      // ЗАРАЗ: Ми просто додаємо відповідь від сервера прямо в локальний масив (UI оновлюється миттєво!)
       setCities((prev) => [response.data, ...prev] as any);
-
       setNewCityName("");
       setIsModalOpen(false);
     } catch (error) {
@@ -106,7 +107,7 @@ export default function Cities() {
   };
 
   return (
-    // Оптимізація 5: content-visibility дозволяє браузеру не рендерити елементи, які поза межами екрану (особливо на телефонах)
+    // Оптимізація 5: content-visibility
     <div
       className="p-4 md:p-8 bg-slate-50 min-h-screen"
       style={{ contentVisibility: "auto" }}
@@ -125,7 +126,8 @@ export default function Cities() {
       {isFetching ? (
         <CitiesSkeleton />
       ) : (
-        <>
+        /* Оптимізація 6: Suspense обгортка для лінивих компонентів */
+        <Suspense fallback={<CitiesSkeleton />}>
           {/* 1. Блок для Мобільних (Шапка + Список) */}
           <div className="md:hidden">
             <CityMobileHeader selectedCity={selectedCity} cities={cities} />
@@ -145,7 +147,7 @@ export default function Cities() {
               onSelectCity={handleSelectCity}
             />
           </div>
-        </>
+        </Suspense>
       )}
 
       {/* Мобільна плаваюча кнопка FAB */}
