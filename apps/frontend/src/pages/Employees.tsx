@@ -80,17 +80,24 @@ export default function Employees() {
   const headers = { Authorization: `Bearer ${token}` };
 
   const fetchData = async () => {
+    // 1. Завантажуємо критичні дані (Працівники та Міста)
     try {
-      const [usersRes, citiesRes, projRes] = await Promise.all([
+      const [usersRes, citiesRes] = await Promise.all([
         api.get("/users", { headers }),
         api.get("/cities", { headers }),
-        api.get("/projects", { headers }),
       ]);
       setUsers(usersRes.data);
       setCities(citiesRes.data);
+    } catch (e) {
+      console.error("Помилка завантаження працівників:", e);
+    }
+
+    // 2. Окремо завантажуємо проєкти (не критично для списку працівників)
+    try {
+      const projRes = await api.get("/projects", { headers });
       setProjects(projRes.data);
     } catch (e) {
-      console.error(e);
+      console.warn("Проєктів ще немає або помилка їх завантаження:", e);
     }
   };
 
