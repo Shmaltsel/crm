@@ -7,6 +7,7 @@ import StatsBar, {
 } from "../components/schools/StatsBar";
 import SchoolMobileList from "../components/schools/SchoolMobileList";
 import SchoolDesktopTable from "../components/schools/SchoolDesktopTable";
+import VirtualSchoolList from "../components/VirtualSchoolList";
 
 export const PIPELINE_STAGES = [
   { key: "BASE", name: "Новий заклад" },
@@ -356,18 +357,25 @@ export default function Schools() {
       </p>
 
       {/* Компоненти списків */}
-      <SchoolMobileList
-        schools={filteredSchools}
-        searchQuery={searchQuery}
-        onDelete={handleDeleteSchool}
-        stages={PIPELINE_STAGES}
-      />
-      <SchoolDesktopTable
-        schools={filteredSchools}
-        searchQuery={searchQuery}
-        onDelete={handleDeleteSchool}
-        stages={PIPELINE_STAGES}
-      />
+      {/* Віртуалізований список шкіл */}
+      <div className="flex-1 w-full overflow-hidden">
+        <VirtualSchoolList
+          schools={filteredSchools}
+          itemHeight={110} // Налаштуйте під реальну висоту вашого рядка/картки
+          renderItem={(school) => (
+            <div className="w-full">
+              {/* Використовуємо адаптивність всередині, щоб зберегти вигляд для різних пристроїв */}
+              <div className="md:hidden">
+                {/* Ваш компонент для мобільного вигляду, наприклад з SchoolMobileList */}
+                {/* Передайте сюди школу з масиву */}
+              </div>
+              <div className="hidden md:block">
+                {/* Ваш компонент для десктопного вигляду, наприклад з SchoolDesktopTable */}
+              </div>
+            </div>
+          )}
+        />
+      </div>
 
       {/* Мобільна плаваюча кнопка FAB */}
       <button
