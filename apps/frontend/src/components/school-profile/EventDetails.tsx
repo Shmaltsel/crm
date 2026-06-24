@@ -9,6 +9,7 @@ interface EventDetailsProps {
   schoolName?: string;
   cityId?: string;
   onEventUpdated?: () => void;
+  employees?: any[];
 }
 
 export default function EventDetails({ currentEvent, schoolName, cityId, onEventUpdated }: EventDetailsProps) {
@@ -118,6 +119,7 @@ export default function EventDetails({ currentEvent, schoolName, cityId, onEvent
         eventName={`${currentEvent.project} — ${formattedDate}`}
         eventId={currentEvent.id}
         cityId={cityId || currentEvent.cityId || ''}
+        employees={employees}
       />
       <RescheduleModal
         isOpen={rescheduleOpen}

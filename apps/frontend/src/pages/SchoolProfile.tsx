@@ -443,6 +443,7 @@ export default function SchoolProfile() {
             schoolName={schoolData.name}
             cityId={schoolData.cityId}
             onEventUpdated={fetchData}
+            employees={users}
           />
           <EventsTable
             events={events}
