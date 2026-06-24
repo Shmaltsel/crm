@@ -5,12 +5,34 @@ import { PrismaService } from '../prisma/prisma.service';
 export class FinanceService {
   constructor(private prisma: PrismaService) {}
 
-  async getDashboard({ period, cityId, project }: { period?: string; cityId?: string; project?: string }) {
+  async getMyBalance(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { balance: true, name: true },
+    });
+    return { balance: user?.balance ?? 0, name: user?.name ?? '' };
+  }
+
+  async getDashboard({
+    period,
+    cityId,
+    project,
+  }: {
+    period?: string;
+    cityId?: string;
+    project?: string;
+  }) {
     const now = new Date();
     let dateFrom: Date | undefined;
 
-    if (period === 'month') dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
-    else if (period === 'quarter') dateFrom = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+    if (period === 'month')
+      dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+    else if (period === 'quarter')
+      dateFrom = new Date(
+        now.getFullYear(),
+        Math.floor(now.getMonth() / 3) * 3,
+        1,
+      );
     else if (period === 'year') dateFrom = new Date(now.getFullYear(), 0, 1);
 
     const where: any = { status: 'RE_SALE' };
@@ -34,20 +56,35 @@ export class FinanceService {
     });
 
     // KPI
-    const totalRevenue = events.reduce((s, e) => s + (e.report?.totalSum || 0), 0);
+    const totalRevenue = events.reduce(
+      (s, e) => s + (e.report?.totalSum || 0),
+      0,
+    );
     const totalExpenses = events.reduce((s, e) => {
-      const exp: any[] = Array.isArray(e.report?.expenses) ? (e.report.expenses as any[]) : [];
+      const exp: any[] = Array.isArray(e.report?.expenses)
+        ? (e.report.expenses as any[])
+        : [];
       return s + exp.reduce((es: number, ex: any) => es + (ex.amount || 0), 0);
     }, 0);
-    const totalProfit = events.reduce((s, e) => s + (e.report?.remainderSum || 0), 0);
+    const totalProfit = events.reduce(
+      (s, e) => s + (e.report?.remainderSum || 0),
+      0,
+    );
 
     // Графік по місяцях
-    const monthlyMap: Record<string, { month: string; revenue: number; profit: number }> = {};
-    events.forEach(e => {
+    const monthlyMap: Record<
+      string,
+      { month: string; revenue: number; profit: number }
+    > = {};
+    events.forEach((e) => {
       const d = new Date(e.date);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const label = d.toLocaleString('uk-UA', { month: 'short', year: '2-digit' });
-      if (!monthlyMap[key]) monthlyMap[key] = { month: label, revenue: 0, profit: 0 };
+      const label = d.toLocaleString('uk-UA', {
+        month: 'short',
+        year: '2-digit',
+      });
+      if (!monthlyMap[key])
+        monthlyMap[key] = { month: label, revenue: 0, profit: 0 };
       monthlyMap[key].revenue += e.report?.totalSum || 0;
       monthlyMap[key].profit += e.report?.remainderSum || 0;
     });
@@ -55,59 +92,83 @@ export class FinanceService {
 
     // Структура доходів по проєктах
     const projectMap: Record<string, number> = {};
-    events.forEach(e => {
+    events.forEach((e) => {
       const p = e.project || 'Інше';
       projectMap[p] = (projectMap[p] || 0) + (e.report?.totalSum || 0);
     });
-    const byProject = Object.entries(projectMap).map(([name, value]) => ({ name, value }));
+    const byProject = Object.entries(projectMap).map(([name, value]) => ({
+      name,
+      value,
+    }));
 
     // Топ міст
-    const cityMap: Record<string, { name: string; revenue: number; profit: number }> = {};
-    events.forEach(e => {
+    const cityMap: Record<
+      string,
+      { name: string; revenue: number; profit: number }
+    > = {};
+    events.forEach((e) => {
       const cid = e.cityId;
-      if (!cityMap[cid]) cityMap[cid] = { name: e.city?.name || '—', revenue: 0, profit: 0 };
+      if (!cityMap[cid])
+        cityMap[cid] = { name: e.city?.name || '—', revenue: 0, profit: 0 };
       cityMap[cid].revenue += e.report?.totalSum || 0;
       cityMap[cid].profit += e.report?.remainderSum || 0;
     });
-    const topCities = Object.values(cityMap).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+    const topCities = Object.values(cityMap)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
 
     // Топ шкіл
-    const schoolMap: Record<string, { name: string; count: number; revenue: number }> = {};
-    events.forEach(e => {
+    const schoolMap: Record<
+      string,
+      { name: string; count: number; revenue: number }
+    > = {};
+    events.forEach((e) => {
       const sid = e.schoolId;
-      if (!schoolMap[sid]) schoolMap[sid] = { name: e.school?.name || '—', count: 0, revenue: 0 };
+      if (!schoolMap[sid])
+        schoolMap[sid] = { name: e.school?.name || '—', count: 0, revenue: 0 };
       schoolMap[sid].count++;
       schoolMap[sid].revenue += e.report?.totalSum || 0;
     });
-    const topSchools = Object.values(schoolMap).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+    const topSchools = Object.values(schoolMap)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
 
     // Витрати по категоріях
     const expCatMap: Record<string, number> = {};
-    events.forEach(e => {
-      const exp: any[] = Array.isArray(e.report?.expenses) ? (e.report.expenses as any[]) : [];
+    events.forEach((e) => {
+      const exp: any[] = Array.isArray(e.report?.expenses)
+        ? (e.report.expenses as any[])
+        : [];
       exp.forEach((ex: any) => {
         const cat = ex.category || ex.name || 'Інше';
         expCatMap[cat] = (expCatMap[cat] || 0) + (ex.amount || 0);
       });
     });
-    const byExpenseCategory = Object.entries(expCatMap).map(([name, value]) => ({ name, value }));
+    const byExpenseCategory = Object.entries(expCatMap).map(
+      ([name, value]) => ({ name, value }),
+    );
 
     // Найприбутковіші та найзбитковіші події
-    const sortedByProfit = [...events].sort((a, b) => (b.report?.remainderSum || 0) - (a.report?.remainderSum || 0));
-    const topEvents = sortedByProfit.slice(0, 5).map(e => ({
+    const sortedByProfit = [...events].sort(
+      (a, b) => (b.report?.remainderSum || 0) - (a.report?.remainderSum || 0),
+    );
+    const topEvents = sortedByProfit.slice(0, 5).map((e) => ({
       id: e.id,
       date: e.date,
       school: e.school?.name,
       profit: e.report?.remainderSum || 0,
       revenue: e.report?.totalSum || 0,
     }));
-    const worstEvents = sortedByProfit.slice(-5).reverse().map(e => ({
-      id: e.id,
-      date: e.date,
-      school: e.school?.name,
-      profit: e.report?.remainderSum || 0,
-      revenue: e.report?.totalSum || 0,
-    }));
+    const worstEvents = sortedByProfit
+      .slice(-5)
+      .reverse()
+      .map((e) => ({
+        id: e.id,
+        date: e.date,
+        school: e.school?.name,
+        profit: e.report?.remainderSum || 0,
+        revenue: e.report?.totalSum || 0,
+      }));
 
     // Очікувана виручка (незавершені події)
     const planned = await this.prisma.event.findMany({
@@ -126,10 +187,17 @@ export class FinanceService {
     });
 
     // Список міст для фільтру
-    const cities = await this.prisma.city.findMany({ select: { id: true, name: true } });
+    const cities = await this.prisma.city.findMany({
+      select: { id: true, name: true },
+    });
 
     return {
-      kpi: { totalRevenue, totalExpenses, totalProfit, totalEvents: events.length },
+      kpi: {
+        totalRevenue,
+        totalExpenses,
+        totalProfit,
+        totalEvents: events.length,
+      },
       monthly,
       byProject,
       byExpenseCategory,
@@ -139,7 +207,7 @@ export class FinanceService {
       worstEvents,
       expectedRevenue,
       filters: {
-        projects: projects.map(p => p.project).filter(Boolean),
+        projects: projects.map((p) => p.project).filter(Boolean),
         cities,
       },
     };

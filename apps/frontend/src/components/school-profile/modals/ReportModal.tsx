@@ -4,7 +4,11 @@ interface Expense {
   name: string;
   amount: number;
 }
-
+interface CrewMember {
+  id: string;
+  name: string;
+  role: "host" | "driver";
+}
 interface ReportModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -13,6 +17,10 @@ interface ReportModalProps {
   eventType?: string;
   eventDate?: string;
   eventIndex?: number;
+  crew?: {
+    host?: { id: string; name: string } | null;
+    driver?: { id: string; name: string } | null;
+  };
 }
 
 const WEEKDAY_FMT = new Intl.DateTimeFormat("uk-UA", { weekday: "long" });
@@ -234,7 +242,41 @@ export default function ReportModal({
     setExpenses((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const [salaries, setSalaries] = useState<Record<string, number>>({});
+
+  // Хелпер:
+  const crewMembers = [
+    ...(props.crew?.host
+      ? [
+          {
+            id: props.crew.host.id,
+            name: props.crew.host.name,
+            role: "Ведучий",
+          },
+        ]
+      : []),
+    ...(props.crew?.driver
+      ? [
+          {
+            id: props.crew.driver.id,
+            name: props.crew.driver.name,
+            role: "Водій",
+          },
+        ]
+      : []),
+  ];
+
   const handleSave = () => {
+    const salariesArr = crewMembers
+      .map((m) => ({ userId: m.id, name: m.name, amount: salaries[m.id] || 0 }))
+      .filter((s) => s.amount > 0);
+    onSave({
+      ...form,
+      expenses,
+      schoolSum,
+      remainderSum: remainder,
+      salaries: salariesArr,
+    });
     onSave({ ...form, expenses, schoolSum, remainderSum: remainder });
   };
 
@@ -408,6 +450,66 @@ export default function ReportModal({
                 </span>
               </div>
             </div>
+            {crewMembers.length > 0 && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+                <CardHeader
+                  icon={
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="w-4 h-4"
+                    >
+                      <circle cx="12" cy="8" r="6" />
+                      <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+                    </svg>
+                  }
+                  color="bg-blue-50 text-blue-600"
+                  title="Заробітня плата"
+                />
+                <div className="space-y-1">
+                  {crewMembers.map((m) => (
+                    <Row key={m.id} label={`${m.name} (${m.role})`}>
+                      <span className="inline-flex items-center gap-1">
+                        <input
+                          type="number"
+                          min={0}
+                          value={salaries[m.id] || ""}
+                          onChange={(e) =>
+                            setSalaries((prev) => ({
+                              ...prev,
+                              [m.id]: +e.target.value,
+                            }))
+                          }
+                          className="w-24 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1"
+                          placeholder="0"
+                        />
+                        <span className="text-slate-400 text-xs">грн</span>
+                      </span>
+                    </Row>
+                  ))}
+                </div>
+                {crewMembers.some((m) => salaries[m.id] > 0) && (
+                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
+                    <span className="text-sm font-semibold text-slate-500">
+                      Разом ЗП
+                    </span>
+                    <span className="font-bold text-blue-600">
+                      {formatMoney(
+                        crewMembers.reduce(
+                          (s, m) => s + (salaries[m.id] || 0),
+                          0,
+                        ),
+                      )}{" "}
+                      грн
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

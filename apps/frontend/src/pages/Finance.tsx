@@ -13,11 +13,26 @@ import {
   Pie,
   Cell,
   BarChart,
-  Bar
+  Bar,
 } from "recharts";
 
-const PALETTE = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4"];
-const PIE_COLORS = ["#3b82f6", "#8b5cf6", "#ec4899", "#f43f5e", "#f59e0b", "#10b981", "#0ea5e9"];
+const PALETTE = [
+  "#3b82f6",
+  "#10b981",
+  "#f59e0b",
+  "#8b5cf6",
+  "#ec4899",
+  "#06b6d4",
+];
+const PIE_COLORS = [
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899",
+  "#f43f5e",
+  "#f59e0b",
+  "#10b981",
+  "#0ea5e9",
+];
 
 export default function Finance() {
   const { selectedCity } = useSelectedCity();
@@ -25,6 +40,33 @@ export default function Finance() {
   const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState("year");
   const [projectFilter, setProjectFilter] = useState("");
+  const [currentUser, setCurrentUser] = useState<{
+    role: string;
+    balance?: number;
+  } | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("user");
+      if (raw) setCurrentUser(JSON.parse(raw));
+    } catch {}
+  }, []);
+
+  const isManagerOrAdmin =
+    currentUser?.role === "MANAGER" || currentUser?.role === "SUPERADMIN";
+
+  const [myBalance, setMyBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (isManagerOrAdmin === false) {
+      api
+        .get("/finance/my-balance", {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        })
+        .then((r) => setMyBalance(r.data.balance))
+        .catch(() => {});
+    }
+  }, [isManagerOrAdmin]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -70,21 +112,32 @@ export default function Finance() {
     filters,
   } = data;
 
-  const fmt = (n: number) => new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
 
   // Кастомний преміум-тултип для графіків
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white/90 backdrop-blur-md border border-slate-100 p-4 rounded-2xl shadow-xl text-sm min-w-[160px]">
-          <p className="font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">{label}</p>
+          <p className="font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">
+            {label}
+          </p>
           {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center justify-between gap-4 mb-1.5 last:mb-0">
+            <div
+              key={index}
+              className="flex items-center justify-between gap-4 mb-1.5 last:mb-0"
+            >
               <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: entry.color }} />
+                <div
+                  className="w-2.5 h-2.5 rounded-full shadow-sm"
+                  style={{ backgroundColor: entry.color }}
+                />
                 <span className="text-slate-500">{entry.name}:</span>
               </div>
-              <span className="font-bold text-slate-800">{fmt(entry.value)} грн</span>
+              <span className="font-bold text-slate-800">
+                {fmt(entry.value)} грн
+              </span>
             </div>
           ))}
         </div>
@@ -98,74 +151,196 @@ export default function Finance() {
       {/* Шапка та фільтри */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">Фінанси</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">
+            Фінанси
+          </h1>
           <p className="text-slate-500 text-sm mt-1">
-            Аналітика доходів та витрат {selectedCity.id ? <span className="font-medium text-blue-600">{selectedCity.name}</span> : "по всіх містах"}
+            Аналітика доходів та витрат{" "}
+            {selectedCity.id ? (
+              <span className="font-medium text-blue-600">
+                {selectedCity.name}
+              </span>
+            ) : (
+              "по всіх містах"
+            )}
           </p>
         </div>
+        {!isManagerOrAdmin ? (
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-10 text-center max-w-sm w-full">
+              <div className="w-16 h-16 bg-blue-50 rounded-[20px] flex items-center justify-center text-3xl mx-auto mb-4">
+                💰
+              </div>
+              <p className="text-sm text-slate-400 mb-2">Ваш баланс</p>
+              <p className="text-4xl font-black text-blue-600 tracking-tight">
+                {myBalance !== null
+                  ? new Intl.NumberFormat("uk-UA").format(Math.round(myBalance))
+                  : "—"}
+                <span className="text-lg font-bold text-slate-400 ml-1">
+                  грн
+                </span>
+              </p>
+              <p className="text-xs text-slate-400 mt-4">
+                Сума нарахованих зарплат за всі події
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2394A3B8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_8px_center]"
+            >
+              <option value="all">За весь час</option>
+              <option value="year">Цей рік</option>
+              <option value="quarter">Цей квартал</option>
+              <option value="month">Цей місяць</option>
+            </select>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <select
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2394A3B8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_8px_center]"
-          >
-            <option value="all">За весь час</option>
-            <option value="year">Цей рік</option>
-            <option value="quarter">Цей квартал</option>
-            <option value="month">Цей місяць</option>
-          </select>
-
-          <select
-            value={projectFilter}
-            onChange={(e) => setProjectFilter(e.target.value)}
-            className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2394A3B8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_8px_center]"
-          >
-            <option value="">Всі проєкти</option>
-            {filters?.projects?.map((p: string) => (
-              <option key={p} value={p}>{p}</option>
-            ))}
-          </select>
-        </div>
+            <select
+              value={projectFilter}
+              onChange={(e) => setProjectFilter(e.target.value)}
+              className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2394A3B8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_8px_center]"
+            >
+              <option value="">Всі проєкти</option>
+              {filters?.projects?.map((p: string) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* KPI Картки */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-8">
-        <KpiCard title="Загальна виручка" value={kpi.totalRevenue} color="text-blue-600" bg="bg-blue-50" icon="💰" />
-        <KpiCard title="Чистий прибуток" value={kpi.totalProfit} color="text-emerald-600" bg="bg-emerald-50" icon="📈" />
-        <KpiCard title="Витрати" value={kpi.totalExpenses} color="text-rose-600" bg="bg-rose-50" icon="📉" />
-        <KpiCard title="Очікувана виручка" value={expectedRevenue} color="text-amber-500" bg="bg-amber-50" icon="⏳" subtitle="Із запланованих подій" />
+        <KpiCard
+          title="Загальна виручка"
+          value={kpi.totalRevenue}
+          color="text-blue-600"
+          bg="bg-blue-50"
+          icon="💰"
+        />
+        <KpiCard
+          title="Чистий прибуток"
+          value={kpi.totalProfit}
+          color="text-emerald-600"
+          bg="bg-emerald-50"
+          icon="📈"
+        />
+        <KpiCard
+          title="Витрати"
+          value={kpi.totalExpenses}
+          color="text-rose-600"
+          bg="bg-rose-50"
+          icon="📉"
+        />
+        <KpiCard
+          title="Очікувана виручка"
+          value={expectedRevenue}
+          color="text-amber-500"
+          bg="bg-amber-50"
+          icon="⏳"
+          subtitle="Із запланованих подій"
+        />
       </div>
 
       {/* Верхній ряд графіків */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-        
         {/* Головний графік: Динаміка */}
         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 xl:col-span-2">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">📊</span>
+            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+              📊
+            </span>
             Динаміка виручки та прибутку
           </h3>
           <div className="h-[280px] md:h-[320px] w-full -ml-4 sm:ml-0">
             {monthly.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={monthly} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <AreaChart
+                  data={monthly}
+                  margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+                >
                   <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
+                    <linearGradient
+                      id="colorRevenue"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="5%"
+                        stopColor="#3b82f6"
+                        stopOpacity={0.25}
+                      />
                       <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                     </linearGradient>
-                    <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                    <linearGradient
+                      id="colorProfit"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="5%"
+                        stopColor="#10b981"
+                        stopOpacity={0.25}
+                      />
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} dy={10} minTickGap={20} />
-                  <YAxis tickFormatter={(v) => v >= 1000 ? `${Math.round(v / 1000)}k` : v} tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4' }} />
-                  <Area type="monotone" name="Виручка" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} fill="url(#colorRevenue)" activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }} />
-                  <Area type="monotone" name="Прибуток" dataKey="profit" stroke="#10b981" strokeWidth={3} fill="url(#colorProfit)" activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="#f1f5f9"
+                  />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fontSize: 12, fill: "#64748b" }}
+                    axisLine={false}
+                    tickLine={false}
+                    dy={10}
+                    minTickGap={20}
+                  />
+                  <YAxis
+                    tickFormatter={(v) =>
+                      v >= 1000 ? `${Math.round(v / 1000)}k` : v
+                    }
+                    tick={{ fontSize: 12, fill: "#64748b" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    content={<CustomTooltip />}
+                    cursor={{
+                      stroke: "#cbd5e1",
+                      strokeWidth: 1,
+                      strokeDasharray: "4 4",
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    name="Виручка"
+                    dataKey="revenue"
+                    stroke="#3b82f6"
+                    strokeWidth={3}
+                    fill="url(#colorRevenue)"
+                    activeDot={{ r: 6, strokeWidth: 0, fill: "#3b82f6" }}
+                  />
+                  <Area
+                    type="monotone"
+                    name="Прибуток"
+                    dataKey="profit"
+                    stroke="#10b981"
+                    strokeWidth={3}
+                    fill="url(#colorProfit)"
+                    activeDot={{ r: 6, strokeWidth: 0, fill: "#10b981" }}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
@@ -177,7 +352,9 @@ export default function Finance() {
         {/* Кругова діаграма: Проєкти */}
         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 flex flex-col">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">🎯</span>
+            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+              🎯
+            </span>
             Доходи за проєктами
           </h3>
           <div className="h-[200px] md:h-[220px] w-full relative mb-6 shrink-0">
@@ -194,7 +371,10 @@ export default function Finance() {
                     stroke="none"
                   >
                     {byProject.map((_: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={PIE_COLORS[index % PIE_COLORS.length]}
+                      />
                     ))}
                   </Pie>
                   <Tooltip content={<CustomTooltip />} />
@@ -207,17 +387,35 @@ export default function Finance() {
           {/* Легенда */}
           <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
             {byProject.map((item: any, idx: number) => {
-              const total = byProject.reduce((sum: number, p: any) => sum + p.value, 0);
-              const percent = total > 0 ? Math.round((item.value / total) * 100) : 0;
+              const total = byProject.reduce(
+                (sum: number, p: any) => sum + p.value,
+                0,
+              );
+              const percent =
+                total > 0 ? Math.round((item.value / total) * 100) : 0;
               return (
-                <div key={idx} className="flex items-center justify-between text-sm">
+                <div
+                  key={idx}
+                  className="flex items-center justify-between text-sm"
+                >
                   <div className="flex items-center gap-3 min-w-0 pr-2">
-                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[idx % PIE_COLORS.length] }} />
-                    <span className="text-slate-600 truncate font-medium">{item.name}</span>
+                    <div
+                      className="w-3 h-3 rounded-full shrink-0"
+                      style={{
+                        backgroundColor: PIE_COLORS[idx % PIE_COLORS.length],
+                      }}
+                    />
+                    <span className="text-slate-600 truncate font-medium">
+                      {item.name}
+                    </span>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-xs text-slate-400 font-medium w-8 text-right">{percent}%</span>
-                    <span className="font-bold text-slate-800 w-20 text-right">{fmt(item.value)}</span>
+                    <span className="text-xs text-slate-400 font-medium w-8 text-right">
+                      {percent}%
+                    </span>
+                    <span className="font-bold text-slate-800 w-20 text-right">
+                      {fmt(item.value)}
+                    </span>
                   </div>
                 </div>
               );
@@ -228,24 +426,53 @@ export default function Finance() {
 
       {/* Нижній ряд */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        
         {/* Горизонтальний графік: Витрати */}
         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 overflow-x-auto">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">💳</span>
+            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+              💳
+            </span>
             Статті витрат
           </h3>
           {byExpenseCategory.length > 0 ? (
             <div className="h-[280px] w-full min-w-[300px] -ml-4">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={byExpenseCategory} layout="vertical" margin={{ top: 0, right: 20, left: 30, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                <BarChart
+                  data={byExpenseCategory}
+                  layout="vertical"
+                  margin={{ top: 0, right: 20, left: 30, bottom: 0 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    horizontal={true}
+                    vertical={false}
+                    stroke="#f1f5f9"
+                  />
                   <XAxis type="number" hide />
-                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#475569', fontWeight: 500 }} width={120} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-                  <Bar dataKey="value" name="Сума" fill="#f43f5e" radius={[0, 8, 8, 0]} barSize={20}>
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: "#475569", fontWeight: 500 }}
+                    width={120}
+                  />
+                  <Tooltip
+                    content={<CustomTooltip />}
+                    cursor={{ fill: "#f8fafc" }}
+                  />
+                  <Bar
+                    dataKey="value"
+                    name="Сума"
+                    fill="#f43f5e"
+                    radius={[0, 8, 8, 0]}
+                    barSize={20}
+                  >
                     {byExpenseCategory.map((_: any, idx: number) => (
-                      <Cell key={`cell-${idx}`} fill={PALETTE[idx % PALETTE.length]} />
+                      <Cell
+                        key={`cell-${idx}`}
+                        fill={PALETTE[idx % PALETTE.length]}
+                      />
                     ))}
                   </Bar>
                 </BarChart>
@@ -259,7 +486,9 @@ export default function Finance() {
         {/* Прогрес-бари: Топ шкіл */}
         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">🏫</span>
+            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+              🏫
+            </span>
             Топ-5 найприбутковіших закладів
           </h3>
           {topSchools.length > 0 ? (
@@ -271,15 +500,22 @@ export default function Finance() {
                   <div key={idx} className="relative">
                     <div className="flex justify-between items-end mb-2 text-sm">
                       <div className="flex items-center gap-2 min-w-0 pr-4">
-                        <span className="font-bold text-slate-400 w-4">{idx + 1}.</span>
-                        <span className="font-bold text-slate-700 truncate">{school.name}</span>
+                        <span className="font-bold text-slate-400 w-4">
+                          {idx + 1}.
+                        </span>
+                        <span className="font-bold text-slate-700 truncate">
+                          {school.name}
+                        </span>
                       </div>
                       <span className="font-bold text-emerald-600 shrink-0 bg-emerald-50 px-2 py-0.5 rounded-md">
                         {fmt(school.revenue)} грн
                       </span>
                     </div>
                     <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                      <div className="bg-blue-500 h-full rounded-full transition-all duration-1000 ease-out" style={{ width: `${percent}%` }} />
+                      <div
+                        className="bg-blue-500 h-full rounded-full transition-all duration-1000 ease-out"
+                        style={{ width: `${percent}%` }}
+                      />
                     </div>
                   </div>
                 );
@@ -295,67 +531,103 @@ export default function Finance() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 overflow-x-auto">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">🏆</span>
+            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+              🏆
+            </span>
             Найприбутковіші події
           </h3>
           <EventTable events={topEvents} positive={true} />
         </div>
         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 overflow-x-auto">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">⚠️</span>
+            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+              ⚠️
+            </span>
             Найменш прибуткові події
           </h3>
           <EventTable events={worstEvents} positive={false} />
         </div>
       </div>
-
     </div>
   );
 }
 
 // Компонент-картка KPI
 function KpiCard({ title, value, color, bg, icon, subtitle }: any) {
-  const fmt = (n: number) => new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
   return (
     <div className="bg-white rounded-[24px] p-5 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow duration-300">
       <div className="flex justify-between items-start mb-4">
-        <p className="text-xs sm:text-sm font-semibold text-slate-500 leading-tight pr-2">{title}</p>
-        <div className={`w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center text-xl shadow-sm ${bg}`}>{icon}</div>
+        <p className="text-xs sm:text-sm font-semibold text-slate-500 leading-tight pr-2">
+          {title}
+        </p>
+        <div
+          className={`w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center text-xl shadow-sm ${bg}`}
+        >
+          {icon}
+        </div>
       </div>
       <div>
-        <p className={`text-xl sm:text-2xl md:text-3xl font-black tracking-tight ${color}`}>
-          {fmt(value)} <span className="text-sm font-bold text-slate-400 opacity-60">грн</span>
+        <p
+          className={`text-xl sm:text-2xl md:text-3xl font-black tracking-tight ${color}`}
+        >
+          {fmt(value)}{" "}
+          <span className="text-sm font-bold text-slate-400 opacity-60">
+            грн
+          </span>
         </p>
-        {subtitle && <p className="text-[11px] sm:text-xs text-slate-400 mt-1.5 font-medium">{subtitle}</p>}
+        {subtitle && (
+          <p className="text-[11px] sm:text-xs text-slate-400 mt-1.5 font-medium">
+            {subtitle}
+          </p>
+        )}
       </div>
     </div>
   );
 }
 
 // Таблиця подій
-function EventTable({ events, positive }: { events: any[]; positive: boolean }) {
-  if (!events || !events.length)
-    return <EmptyState />;
-  
+function EventTable({
+  events,
+  positive,
+}: {
+  events: any[];
+  positive: boolean;
+}) {
+  if (!events || !events.length) return <EmptyState />;
+
   return (
     <table className="w-full text-sm min-w-[300px]">
       <thead>
         <tr className="text-slate-400 text-xs uppercase border-b border-slate-50">
           <th className="text-left pb-3 font-semibold tracking-wider">Дата</th>
-          <th className="text-left pb-3 font-semibold tracking-wider">Заклад</th>
-          <th className="text-right pb-3 font-semibold tracking-wider">Прибуток</th>
+          <th className="text-left pb-3 font-semibold tracking-wider">
+            Заклад
+          </th>
+          <th className="text-right pb-3 font-semibold tracking-wider">
+            Прибуток
+          </th>
         </tr>
       </thead>
       <tbody>
         {events.map((e: any, i: number) => (
-          <tr key={i} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+          <tr
+            key={i}
+            className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+          >
             <td className="py-3 text-slate-500 whitespace-nowrap">
-              {new Date(e.date).toLocaleDateString("uk-UA", { day: "2-digit", month: "2-digit" })}
+              {new Date(e.date).toLocaleDateString("uk-UA", {
+                day: "2-digit",
+                month: "2-digit",
+              })}
             </td>
             <td className="py-3 font-medium text-slate-700 truncate max-w-[120px] sm:max-w-[200px] pr-2">
               {e.school}
             </td>
-            <td className={`py-3 text-right font-bold whitespace-nowrap ${positive ? "text-emerald-600" : "text-rose-500"}`}>
+            <td
+              className={`py-3 text-right font-bold whitespace-nowrap ${positive ? "text-emerald-600" : "text-rose-500"}`}
+            >
               {new Intl.NumberFormat("uk-UA").format(Math.round(e.profit))} грн
             </td>
           </tr>

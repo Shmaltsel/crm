@@ -15,4 +15,6 @@ export class SubmitReportDto {
   remainderSum: number;
 
   rating?: number;
+
+  salaries: { userId: string; name: string; amount: number }[];
 }

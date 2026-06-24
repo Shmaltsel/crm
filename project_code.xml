@@ -4,79 +4,61 @@
 }
 
 datasource db {
-  provider = "postgresql" // БУЛО "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// Ролі та статуси будемо зберігати як звичайні рядки:
-// Role: "SUPERADMIN", "ADMIN", "MANAGER", "HOST", "ACCOUNTANT"
-// EventStatus: "BASE", "FIRST_CONTACT", "INTERESTED", "PRE_APPROVAL", "DATE_CONFIRMED", "PREPARATION", "IN_PROGRESS", "DONE", "CANCELLED"
-enum EventStatus {
-  BASE
-  FIRST_CONTACT
-  INTERESTED
-  PRE_APPROVAL
-  DATE_CONFIRMED
-  PREPARATION
-  IN_PROGRESS
-  DONE
-  REPORT
-  RE_SALE
-}
-
 model User {
-  id             String  @id @default(uuid())
+  id             String   @id @default(uuid())
   name           String
-  email          String  @unique
+  email          String   @unique
   phone          String?
   password       String
-  role           String  @default("MANAGER")
+  role           String   @default("MANAGER")
+  cityId         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
   telegramId     String?
   telegramChatId String?
-  cityId         String?
-  city           City?   @relation(fields: [cityId], references: [id])
   car            String?
-  // Додаємо зв'язки для екіпажів
-  crewAsHost     Crew[]  @relation("HostCrew")
-  crewAsDriver   Crew[]  @relation("DriverCrew")
-
-  managedCities City[]   @relation("CityManager")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  balance        Float    @default(0)
+  managedCities  City[]   @relation("CityManager")
+  crewAsDriver   Crew[]   @relation("DriverCrew")
+  crewAsHost     Crew[]   @relation("HostCrew")
+  city           City?    @relation(fields: [cityId], references: [id])
 }
 
 model City {
   id        String        @id @default(uuid())
   name      String
   managerId String?
+  createdAt DateTime      @default(now())
   manager   User?         @relation("CityManager", fields: [managerId], references: [id])
-  users     User[]
-  schools   School[]
   crews     Crew[]
   events    Event[]
-  createdAt DateTime      @default(now())
   issues    IssueReport[]
+  schools   School[]
+  users     User[]
 }
 
 model School {
   id            String   @id @default(uuid())
   name          String
-  type          String // "Школа" або "Садочок"
+  type          String
   cityId        String
-  city          City     @relation(fields: [cityId], references: [id])
   address       String?
   director      String?
   phone         String?
   email         String?
   notes         String?
   childrenCount Int?
-  events        Event[]
   isHotClient   Boolean  @default(false)
   rating        Float?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  events        Event[]
+  city          City     @relation(fields: [cityId], references: [id])
 
-  // ДОДАНО ІНДЕКС
   @@index([cityId])
 }
 
@@ -84,28 +66,25 @@ model Crew {
   id        String   @id @default(uuid())
   name      String
   cityId    String
-  city      City     @relation(fields: [cityId], references: [id])
   hostId    String?
-  host      User?    @relation("HostCrew", fields: [hostId], references: [id])
   driverId  String?
-  driver    User?    @relation("DriverCrew", fields: [driverId], references: [id])
   car       String?
   carPlate  String?
   phone     String?
   isActive  Boolean  @default(true)
-  events    Event[]
   createdAt DateTime @default(now())
+  city      City     @relation(fields: [cityId], references: [id])
+  driver    User?    @relation("DriverCrew", fields: [driverId], references: [id])
+  host      User?    @relation("HostCrew", fields: [hostId], references: [id])
+  events    Event[]
 }
 
 model Event {
   id              String            @id @default(uuid())
   cityId          String
-  city            City              @relation(fields: [cityId], references: [id])
   schoolId        String
-  school          School            @relation(fields: [schoolId], references: [id])
   crewId          String?
-  crew            Crew?             @relation(fields: [crewId], references: [id])
-  project         String // "Голограма для школи", "360° шоу"
+  project         String
   date            DateTime
   time            String?
   status          EventStatus       @default(BASE)
@@ -117,49 +96,48 @@ model Event {
   address         String?
   contactPerson   String?
   contactPhone    String?
-  equipment       String? // Зберігатимемо масив обладнання як JSON-рядок
-  report          EventReport?
-  files           File[]
-  history         EventHistory[]
+  equipment       String?
   nextContact     DateTime?
   nextProject     String?
   responsibleId   String?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
+  city            City              @relation(fields: [cityId], references: [id])
+  crew            Crew?             @relation(fields: [crewId], references: [id])
+  school          School            @relation(fields: [schoolId], references: [id])
+  history         EventHistory[]
   preparation     EventPreparation?
+  report          EventReport?
+  files           File[]
   issues          IssueReport[]
 
-  // ДОДАНО ІНДЕКСИ
   @@index([cityId])
   @@index([status])
   @@index([schoolId])
 }
 
 model EventReport {
-  id      String @id @default(uuid())
-  eventId String @unique
-  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  // Твої існуючі поля
+  id                String   @id @default(uuid())
+  eventId           String   @unique
   directorSatisfied Boolean?
   teachersSatisfied Boolean?
   hadIssues         Boolean  @default(false)
   comment           String?
   rating            Float?
-  photos            File[]
   createdAt         DateTime @default(now())
-
-  // Нові фінансові та статистичні поля
-  announcementDone Boolean @default(false)
-  materialShown    Boolean @default(false)
-  childrenCount    Int     @default(0)
-  classesCount     Int     @default(0)
-  privilegedCount  Int     @default(0)
-  showingsCount    Int     @default(0)
-  totalSum         Float   @default(0)
-  schoolSum        Float   @default(0)
-  expenses         Json    @default("[]") // Список витрат
-  remainderSum     Float   @default(0)
+  announcementDone  Boolean  @default(false)
+  materialShown     Boolean  @default(false)
+  childrenCount     Int      @default(0)
+  classesCount      Int      @default(0)
+  privilegedCount   Int      @default(0)
+  showingsCount     Int      @default(0)
+  totalSum          Float    @default(0)
+  schoolSum         Float    @default(0)
+  expenses          Json     @default("[]")
+  remainderSum      Float    @default(0)
+  salaries          Json     @default("[]")
+  event             Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  photos            File[]
 }
 
 model File {
@@ -168,62 +146,60 @@ model File {
   url       String
   size      Int
   eventId   String?
-  event     Event?       @relation(fields: [eventId], references: [id])
   reportId  String?
-  report    EventReport? @relation(fields: [reportId], references: [id])
   createdAt DateTime     @default(now())
+  event     Event?       @relation(fields: [eventId], references: [id])
+  report    EventReport? @relation(fields: [reportId], references: [id])
 }
 
 model EventHistory {
   id        String   @id @default(uuid())
   eventId   String
-  event     Event    @relation(fields: [eventId], references: [id])
   action    String
-  comment   String? // <--- ДОДАЙ ЦЕЙ РЯДОК
+  comment   String?
   userId    String
   userName  String
   role      String
   createdAt DateTime @default(now())
+  event     Event    @relation(fields: [eventId], references: [id])
 }
 
 model EventPreparation {
-  id      String @id @default(uuid())
-  eventId String @unique
-  event   Event  @relation(fields: [eventId], references: [id])
-
-  assignCrew       String @default("Заплановано") // "Заплановано", "В процесі", "Виконано"
+  id               String @id @default(uuid())
+  eventId          String @unique
+  assignCrew       String @default("Заплановано")
   bookEquipment    String @default("Заплановано")
   prepareDocs      String @default("Заплановано")
   prepareMaterials String @default("Заплановано")
   remindSchool     String @default("Заплановано")
+  event            Event  @relation(fields: [eventId], references: [id])
 }
 
 model IssueReport {
   id               String    @id @default(uuid())
   eventId          String
-  event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
   schoolName       String
   eventName        String
   message          String
   cityId           String
-  city             City      @relation(fields: [cityId], references: [id])
-  status           String    @default("Планується") // "Планується", "Виконується", "Виконано"
+  status           String    @default("Планується")
   createdAt        DateTime  @default(now())
   deadline         DateTime?
   assignedUserId   String?
   assignedUserName String?
+  city             City      @relation(fields: [cityId], references: [id])
+  event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
-  // ДОДАНО ІНДЕКС
   @@index([cityId])
 }
 
 model SchoolContact {
   id           String   @id @default(uuid())
   city         String   @default("Львів")
-  schoolNumber String // номер або назва: "13", "Сихівський ліцей"
+  schoolNumber String
   contactName  String
   phone        String
-  role         String? // "Директор", "Завуч", "Педорг"
+  role         String?
   createdAt    DateTime @default(now())
 }
 
@@ -232,6 +208,19 @@ model Project {
   name      String   @unique
   color     String   @default("blue")
   createdAt DateTime @default(now())
+}
+
+enum EventStatus {
+  BASE
+  FIRST_CONTACT
+  INTERESTED
+  PRE_APPROVAL
+  DATE_CONFIRMED
+  PREPARATION
+  IN_PROGRESS
+  DONE
+  REPORT
+  RE_SALE
 }</file>
 <file path="apps/backend/prisma/seed-admin.js">const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
@@ -1062,6 +1051,8 @@ export class DashboardService {
   remainderSum: number;
 
   rating?: number;
+
+  salaries: { userId: string; name: string; amount: number }[];
 }</file>
 <file path="apps/backend/src/events/events-scheduler.service.ts">import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -1673,6 +1664,7 @@ export class EventsService {
         expenses: reportData.expenses || [],
         remainderSum: reportData.remainderSum,
         rating: reportData.rating,
+        salaries: reportData.salaries || [],
       },
       create: {
         eventId,
@@ -1687,9 +1679,22 @@ export class EventsService {
         expenses: reportData.expenses || [],
         remainderSum: reportData.remainderSum,
         rating: reportData.rating,
+        salaries: reportData.salaries || [],
       },
     });
 
+    if (reportData.salaries?.length) {
+      await Promise.all(
+        reportData.salaries
+          .filter((s) => s.amount > 0)
+          .map((s) =>
+            this.prisma.user.update({
+              where: { id: s.userId },
+              data: { balance: { increment: s.amount } },
+            }),
+          ),
+      );
+    }
     // 2. Оновлюємо статус події на 'REPORT' (щоб вона не зникала і давала можливість перейти до RE_SALE)
     return this.prisma.event.update({
       where: { id: eventId },
@@ -1728,6 +1733,8 @@ export class EventsService {
 <file path="apps/backend/src/finance/finance.controller.ts">import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { FinanceService } from './finance.service';
 import { AuthGuard } from '../auth/auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
 @Controller('finance')
 @UseGuards(AuthGuard)
@@ -1741,6 +1748,11 @@ export class FinanceController {
     @Query('project') project: string,
   ) {
     return this.financeService.getDashboard({ period, cityId, project });
+  }
+  // finance.controller.ts
+  @Get('my-balance')
+  getMyBalance(@CurrentUser() user: JwtUser) {
+    return this.financeService.getMyBalance(user.sub);
   }
 }</file>
 <file path="apps/backend/src/finance/finance.module.ts">import { Module } from '@nestjs/common';
@@ -1759,12 +1771,34 @@ import { PrismaService } from '../prisma/prisma.service';
 export class FinanceService {
   constructor(private prisma: PrismaService) {}
 
-  async getDashboard({ period, cityId, project }: { period?: string; cityId?: string; project?: string }) {
+  async getMyBalance(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { balance: true, name: true },
+    });
+    return { balance: user?.balance ?? 0, name: user?.name ?? '' };
+  }
+
+  async getDashboard({
+    period,
+    cityId,
+    project,
+  }: {
+    period?: string;
+    cityId?: string;
+    project?: string;
+  }) {
     const now = new Date();
     let dateFrom: Date | undefined;
 
-    if (period === 'month') dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
-    else if (period === 'quarter') dateFrom = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+    if (period === 'month')
+      dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+    else if (period === 'quarter')
+      dateFrom = new Date(
+        now.getFullYear(),
+        Math.floor(now.getMonth() / 3) * 3,
+        1,
+      );
     else if (period === 'year') dateFrom = new Date(now.getFullYear(), 0, 1);
 
     const where: any = { status: 'RE_SALE' };
@@ -1788,20 +1822,35 @@ export class FinanceService {
     });
 
     // KPI
-    const totalRevenue = events.reduce((s, e) => s + (e.report?.totalSum || 0), 0);
+    const totalRevenue = events.reduce(
+      (s, e) => s + (e.report?.totalSum || 0),
+      0,
+    );
     const totalExpenses = events.reduce((s, e) => {
-      const exp: any[] = Array.isArray(e.report?.expenses) ? (e.report.expenses as any[]) : [];
+      const exp: any[] = Array.isArray(e.report?.expenses)
+        ? (e.report.expenses as any[])
+        : [];
       return s + exp.reduce((es: number, ex: any) => es + (ex.amount || 0), 0);
     }, 0);
-    const totalProfit = events.reduce((s, e) => s + (e.report?.remainderSum || 0), 0);
+    const totalProfit = events.reduce(
+      (s, e) => s + (e.report?.remainderSum || 0),
+      0,
+    );
 
     // Графік по місяцях
-    const monthlyMap: Record<string, { month: string; revenue: number; profit: number }> = {};
-    events.forEach(e => {
+    const monthlyMap: Record<
+      string,
+      { month: string; revenue: number; profit: number }
+    > = {};
+    events.forEach((e) => {
       const d = new Date(e.date);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const label = d.toLocaleString('uk-UA', { month: 'short', year: '2-digit' });
-      if (!monthlyMap[key]) monthlyMap[key] = { month: label, revenue: 0, profit: 0 };
+      const label = d.toLocaleString('uk-UA', {
+        month: 'short',
+        year: '2-digit',
+      });
+      if (!monthlyMap[key])
+        monthlyMap[key] = { month: label, revenue: 0, profit: 0 };
       monthlyMap[key].revenue += e.report?.totalSum || 0;
       monthlyMap[key].profit += e.report?.remainderSum || 0;
     });
@@ -1809,59 +1858,83 @@ export class FinanceService {
 
     // Структура доходів по проєктах
     const projectMap: Record<string, number> = {};
-    events.forEach(e => {
+    events.forEach((e) => {
       const p = e.project || 'Інше';
       projectMap[p] = (projectMap[p] || 0) + (e.report?.totalSum || 0);
     });
-    const byProject = Object.entries(projectMap).map(([name, value]) => ({ name, value }));
+    const byProject = Object.entries(projectMap).map(([name, value]) => ({
+      name,
+      value,
+    }));
 
     // Топ міст
-    const cityMap: Record<string, { name: string; revenue: number; profit: number }> = {};
-    events.forEach(e => {
+    const cityMap: Record<
+      string,
+      { name: string; revenue: number; profit: number }
+    > = {};
+    events.forEach((e) => {
       const cid = e.cityId;
-      if (!cityMap[cid]) cityMap[cid] = { name: e.city?.name || '—', revenue: 0, profit: 0 };
+      if (!cityMap[cid])
+        cityMap[cid] = { name: e.city?.name || '—', revenue: 0, profit: 0 };
       cityMap[cid].revenue += e.report?.totalSum || 0;
       cityMap[cid].profit += e.report?.remainderSum || 0;
     });
-    const topCities = Object.values(cityMap).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+    const topCities = Object.values(cityMap)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
 
     // Топ шкіл
-    const schoolMap: Record<string, { name: string; count: number; revenue: number }> = {};
-    events.forEach(e => {
+    const schoolMap: Record<
+      string,
+      { name: string; count: number; revenue: number }
+    > = {};
+    events.forEach((e) => {
       const sid = e.schoolId;
-      if (!schoolMap[sid]) schoolMap[sid] = { name: e.school?.name || '—', count: 0, revenue: 0 };
+      if (!schoolMap[sid])
+        schoolMap[sid] = { name: e.school?.name || '—', count: 0, revenue: 0 };
       schoolMap[sid].count++;
       schoolMap[sid].revenue += e.report?.totalSum || 0;
     });
-    const topSchools = Object.values(schoolMap).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+    const topSchools = Object.values(schoolMap)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
 
     // Витрати по категоріях
     const expCatMap: Record<string, number> = {};
-    events.forEach(e => {
-      const exp: any[] = Array.isArray(e.report?.expenses) ? (e.report.expenses as any[]) : [];
+    events.forEach((e) => {
+      const exp: any[] = Array.isArray(e.report?.expenses)
+        ? (e.report.expenses as any[])
+        : [];
       exp.forEach((ex: any) => {
         const cat = ex.category || ex.name || 'Інше';
         expCatMap[cat] = (expCatMap[cat] || 0) + (ex.amount || 0);
       });
     });
-    const byExpenseCategory = Object.entries(expCatMap).map(([name, value]) => ({ name, value }));
+    const byExpenseCategory = Object.entries(expCatMap).map(
+      ([name, value]) => ({ name, value }),
+    );
 
     // Найприбутковіші та найзбитковіші події
-    const sortedByProfit = [...events].sort((a, b) => (b.report?.remainderSum || 0) - (a.report?.remainderSum || 0));
-    const topEvents = sortedByProfit.slice(0, 5).map(e => ({
+    const sortedByProfit = [...events].sort(
+      (a, b) => (b.report?.remainderSum || 0) - (a.report?.remainderSum || 0),
+    );
+    const topEvents = sortedByProfit.slice(0, 5).map((e) => ({
       id: e.id,
       date: e.date,
       school: e.school?.name,
       profit: e.report?.remainderSum || 0,
       revenue: e.report?.totalSum || 0,
     }));
-    const worstEvents = sortedByProfit.slice(-5).reverse().map(e => ({
-      id: e.id,
-      date: e.date,
-      school: e.school?.name,
-      profit: e.report?.remainderSum || 0,
-      revenue: e.report?.totalSum || 0,
-    }));
+    const worstEvents = sortedByProfit
+      .slice(-5)
+      .reverse()
+      .map((e) => ({
+        id: e.id,
+        date: e.date,
+        school: e.school?.name,
+        profit: e.report?.remainderSum || 0,
+        revenue: e.report?.totalSum || 0,
+      }));
 
     // Очікувана виручка (незавершені події)
     const planned = await this.prisma.event.findMany({
@@ -1880,10 +1953,17 @@ export class FinanceService {
     });
 
     // Список міст для фільтру
-    const cities = await this.prisma.city.findMany({ select: { id: true, name: true } });
+    const cities = await this.prisma.city.findMany({
+      select: { id: true, name: true },
+    });
 
     return {
-      kpi: { totalRevenue, totalExpenses, totalProfit, totalEvents: events.length },
+      kpi: {
+        totalRevenue,
+        totalExpenses,
+        totalProfit,
+        totalEvents: events.length,
+      },
       monthly,
       byProject,
       byExpenseCategory,
@@ -1893,7 +1973,7 @@ export class FinanceService {
       worstEvents,
       expectedRevenue,
       filters: {
-        projects: projects.map(p => p.project).filter(Boolean),
+        projects: projects.map((p) => p.project).filter(Boolean),
         cities,
       },
     };
@@ -6618,7 +6698,11 @@ interface Expense {
   name: string;
   amount: number;
 }
-
+interface CrewMember {
+  id: string;
+  name: string;
+  role: "host" | "driver";
+}
 interface ReportModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -6627,6 +6711,10 @@ interface ReportModalProps {
   eventType?: string;
   eventDate?: string;
   eventIndex?: number;
+  crew?: {
+    host?: { id: string; name: string } | null;
+    driver?: { id: string; name: string } | null;
+  };
 }
 
 const WEEKDAY_FMT = new Intl.DateTimeFormat("uk-UA", { weekday: "long" });
@@ -6848,7 +6936,41 @@ export default function ReportModal({
     setExpenses((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const [salaries, setSalaries] = useState<Record<string, number>>({});
+
+  // Хелпер:
+  const crewMembers = [
+    ...(props.crew?.host
+      ? [
+          {
+            id: props.crew.host.id,
+            name: props.crew.host.name,
+            role: "Ведучий",
+          },
+        ]
+      : []),
+    ...(props.crew?.driver
+      ? [
+          {
+            id: props.crew.driver.id,
+            name: props.crew.driver.name,
+            role: "Водій",
+          },
+        ]
+      : []),
+  ];
+
   const handleSave = () => {
+    const salariesArr = crewMembers
+      .map((m) => ({ userId: m.id, name: m.name, amount: salaries[m.id] || 0 }))
+      .filter((s) => s.amount > 0);
+    onSave({
+      ...form,
+      expenses,
+      schoolSum,
+      remainderSum: remainder,
+      salaries: salariesArr,
+    });
     onSave({ ...form, expenses, schoolSum, remainderSum: remainder });
   };
 
@@ -7022,6 +7144,66 @@ export default function ReportModal({
                 </span>
               </div>
             </div>
+            {crewMembers.length > 0 && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+                <CardHeader
+                  icon={
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="w-4 h-4"
+                    >
+                      <circle cx="12" cy="8" r="6" />
+                      <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+                    </svg>
+                  }
+                  color="bg-blue-50 text-blue-600"
+                  title="Заробітня плата"
+                />
+                <div className="space-y-1">
+                  {crewMembers.map((m) => (
+                    <Row key={m.id} label={`${m.name} (${m.role})`}>
+                      <span className="inline-flex items-center gap-1">
+                        <input
+                          type="number"
+                          min={0}
+                          value={salaries[m.id] || ""}
+                          onChange={(e) =>
+                            setSalaries((prev) => ({
+                              ...prev,
+                              [m.id]: +e.target.value,
+                            }))
+                          }
+                          className="w-24 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1"
+                          placeholder="0"
+                        />
+                        <span className="text-slate-400 text-xs">грн</span>
+                      </span>
+                    </Row>
+                  ))}
+                </div>
+                {crewMembers.some((m) => salaries[m.id] > 0) && (
+                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
+                    <span className="text-sm font-semibold text-slate-500">
+                      Разом ЗП
+                    </span>
+                    <span className="font-bold text-blue-600">
+                      {formatMoney(
+                        crewMembers.reduce(
+                          (s, m) => s + (salaries[m.id] || 0),
+                          0,
+                        ),
+                      )}{" "}
+                      грн
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -9114,7 +9296,7 @@ export default function Employees() {
               </div>
             ) : (
               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <table className="hidden md:table w-full text-left">
+                <table className="w-full text-left">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       <th className="px-5 py-3">ПІБ</th>
@@ -9309,7 +9491,10 @@ export default function Employees() {
                 ✕
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
+            <form
+              onSubmit={handleSubmit}
+              className="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh]"
+            >
               <input
                 type="text"
                 value={form.fullName}
@@ -9335,6 +9520,24 @@ export default function Employees() {
                   }
                   required={!editingUser}
                   placeholder="Пароль"
+                  className="w-full p-2.5 border rounded-lg"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="Телефон"
+                  className="w-full p-2.5 border rounded-lg"
+                />
+                <input
+                  type="text"
+                  value={form.telegramId}
+                  onChange={(e) =>
+                    setForm({ ...form, telegramId: e.target.value })
+                  }
+                  placeholder="Telegram ID або @username"
                   className="w-full p-2.5 border rounded-lg"
                 />
               </div>
@@ -9826,11 +10029,26 @@ import {
   Pie,
   Cell,
   BarChart,
-  Bar
+  Bar,
 } from "recharts";
 
-const PALETTE = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4"];
-const PIE_COLORS = ["#3b82f6", "#8b5cf6", "#ec4899", "#f43f5e", "#f59e0b", "#10b981", "#0ea5e9"];
+const PALETTE = [
+  "#3b82f6",
+  "#10b981",
+  "#f59e0b",
+  "#8b5cf6",
+  "#ec4899",
+  "#06b6d4",
+];
+const PIE_COLORS = [
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899",
+  "#f43f5e",
+  "#f59e0b",
+  "#10b981",
+  "#0ea5e9",
+];
 
 export default function Finance() {
   const { selectedCity } = useSelectedCity();
@@ -9838,6 +10056,33 @@ export default function Finance() {
   const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState("year");
   const [projectFilter, setProjectFilter] = useState("");
+  const [currentUser, setCurrentUser] = useState<{
+    role: string;
+    balance?: number;
+  } | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("user");
+      if (raw) setCurrentUser(JSON.parse(raw));
+    } catch {}
+  }, []);
+
+  const isManagerOrAdmin =
+    currentUser?.role === "MANAGER" || currentUser?.role === "SUPERADMIN";
+
+  const [myBalance, setMyBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (isManagerOrAdmin === false) {
+      api
+        .get("/finance/my-balance", {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        })
+        .then((r) => setMyBalance(r.data.balance))
+        .catch(() => {});
+    }
+  }, [isManagerOrAdmin]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -9883,21 +10128,32 @@ export default function Finance() {
     filters,
   } = data;
 
-  const fmt = (n: number) => new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
 
   // Кастомний преміум-тултип для графіків
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white/90 backdrop-blur-md border border-slate-100 p-4 rounded-2xl shadow-xl text-sm min-w-[160px]">
-          <p className="font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">{label}</p>
+          <p className="font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">
+            {label}
+          </p>
           {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center justify-between gap-4 mb-1.5 last:mb-0">
+            <div
+              key={index}
+              className="flex items-center justify-between gap-4 mb-1.5 last:mb-0"
+            >
               <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: entry.color }} />
+                <div
+                  className="w-2.5 h-2.5 rounded-full shadow-sm"
+                  style={{ backgroundColor: entry.color }}
+                />
                 <span className="text-slate-500">{entry.name}:</span>
               </div>
-              <span className="font-bold text-slate-800">{fmt(entry.value)} грн</span>
+              <span className="font-bold text-slate-800">
+                {fmt(entry.value)} грн
+              </span>
             </div>
           ))}
         </div>
@@ -9911,74 +10167,196 @@ export default function Finance() {
       {/* Шапка та фільтри */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">Фінанси</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">
+            Фінанси
+          </h1>
           <p className="text-slate-500 text-sm mt-1">
-            Аналітика доходів та витрат {selectedCity.id ? <span className="font-medium text-blue-600">{selectedCity.name}</span> : "по всіх містах"}
+            Аналітика доходів та витрат{" "}
+            {selectedCity.id ? (
+              <span className="font-medium text-blue-600">
+                {selectedCity.name}
+              </span>
+            ) : (
+              "по всіх містах"
+            )}
           </p>
         </div>
+        {!isManagerOrAdmin ? (
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-10 text-center max-w-sm w-full">
+              <div className="w-16 h-16 bg-blue-50 rounded-[20px] flex items-center justify-center text-3xl mx-auto mb-4">
+                💰
+              </div>
+              <p className="text-sm text-slate-400 mb-2">Ваш баланс</p>
+              <p className="text-4xl font-black text-blue-600 tracking-tight">
+                {myBalance !== null
+                  ? new Intl.NumberFormat("uk-UA").format(Math.round(myBalance))
+                  : "—"}
+                <span className="text-lg font-bold text-slate-400 ml-1">
+                  грн
+                </span>
+              </p>
+              <p className="text-xs text-slate-400 mt-4">
+                Сума нарахованих зарплат за всі події
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2394A3B8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_8px_center]"
+            >
+              <option value="all">За весь час</option>
+              <option value="year">Цей рік</option>
+              <option value="quarter">Цей квартал</option>
+              <option value="month">Цей місяць</option>
+            </select>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <select
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2394A3B8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_8px_center]"
-          >
-            <option value="all">За весь час</option>
-            <option value="year">Цей рік</option>
-            <option value="quarter">Цей квартал</option>
-            <option value="month">Цей місяць</option>
-          </select>
-
-          <select
-            value={projectFilter}
-            onChange={(e) => setProjectFilter(e.target.value)}
-            className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2394A3B8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_8px_center]"
-          >
-            <option value="">Всі проєкти</option>
-            {filters?.projects?.map((p: string) => (
-              <option key={p} value={p}>{p}</option>
-            ))}
-          </select>
-        </div>
+            <select
+              value={projectFilter}
+              onChange={(e) => setProjectFilter(e.target.value)}
+              className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2394A3B8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_8px_center]"
+            >
+              <option value="">Всі проєкти</option>
+              {filters?.projects?.map((p: string) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* KPI Картки */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-8">
-        <KpiCard title="Загальна виручка" value={kpi.totalRevenue} color="text-blue-600" bg="bg-blue-50" icon="💰" />
-        <KpiCard title="Чистий прибуток" value={kpi.totalProfit} color="text-emerald-600" bg="bg-emerald-50" icon="📈" />
-        <KpiCard title="Витрати" value={kpi.totalExpenses} color="text-rose-600" bg="bg-rose-50" icon="📉" />
-        <KpiCard title="Очікувана виручка" value={expectedRevenue} color="text-amber-500" bg="bg-amber-50" icon="⏳" subtitle="Із запланованих подій" />
+        <KpiCard
+          title="Загальна виручка"
+          value={kpi.totalRevenue}
+          color="text-blue-600"
+          bg="bg-blue-50"
+          icon="💰"
+        />
+        <KpiCard
+          title="Чистий прибуток"
+          value={kpi.totalProfit}
+          color="text-emerald-600"
+          bg="bg-emerald-50"
+          icon="📈"
+        />
+        <KpiCard
+          title="Витрати"
+          value={kpi.totalExpenses}
+          color="text-rose-600"
+          bg="bg-rose-50"
+          icon="📉"
+        />
+        <KpiCard
+          title="Очікувана виручка"
+          value={expectedRevenue}
+          color="text-amber-500"
+          bg="bg-amber-50"
+          icon="⏳"
+          subtitle="Із запланованих подій"
+        />
       </div>
 
       {/* Верхній ряд графіків */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-        
         {/* Головний графік: Динаміка */}
         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 xl:col-span-2">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">📊</span>
+            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+              📊
+            </span>
             Динаміка виручки та прибутку
           </h3>
           <div className="h-[280px] md:h-[320px] w-full -ml-4 sm:ml-0">
             {monthly.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={monthly} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <AreaChart
+                  data={monthly}
+                  margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+                >
                   <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
+                    <linearGradient
+                      id="colorRevenue"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="5%"
+                        stopColor="#3b82f6"
+                        stopOpacity={0.25}
+                      />
                       <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                     </linearGradient>
-                    <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                    <linearGradient
+                      id="colorProfit"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="5%"
+                        stopColor="#10b981"
+                        stopOpacity={0.25}
+                      />
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} dy={10} minTickGap={20} />
-                  <YAxis tickFormatter={(v) => v >= 1000 ? `${Math.round(v / 1000)}k` : v} tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4' }} />
-                  <Area type="monotone" name="Виручка" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} fill="url(#colorRevenue)" activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }} />
-                  <Area type="monotone" name="Прибуток" dataKey="profit" stroke="#10b981" strokeWidth={3} fill="url(#colorProfit)" activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="#f1f5f9"
+                  />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fontSize: 12, fill: "#64748b" }}
+                    axisLine={false}
+                    tickLine={false}
+                    dy={10}
+                    minTickGap={20}
+                  />
+                  <YAxis
+                    tickFormatter={(v) =>
+                      v >= 1000 ? `${Math.round(v / 1000)}k` : v
+                    }
+                    tick={{ fontSize: 12, fill: "#64748b" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    content={<CustomTooltip />}
+                    cursor={{
+                      stroke: "#cbd5e1",
+                      strokeWidth: 1,
+                      strokeDasharray: "4 4",
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    name="Виручка"
+                    dataKey="revenue"
+                    stroke="#3b82f6"
+                    strokeWidth={3}
+                    fill="url(#colorRevenue)"
+                    activeDot={{ r: 6, strokeWidth: 0, fill: "#3b82f6" }}
+                  />
+                  <Area
+                    type="monotone"
+                    name="Прибуток"
+                    dataKey="profit"
+                    stroke="#10b981"
+                    strokeWidth={3}
+                    fill="url(#colorProfit)"
+                    activeDot={{ r: 6, strokeWidth: 0, fill: "#10b981" }}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
@@ -9990,7 +10368,9 @@ export default function Finance() {
         {/* Кругова діаграма: Проєкти */}
         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 flex flex-col">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">🎯</span>
+            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+              🎯
+            </span>
             Доходи за проєктами
           </h3>
           <div className="h-[200px] md:h-[220px] w-full relative mb-6 shrink-0">
@@ -10007,7 +10387,10 @@ export default function Finance() {
                     stroke="none"
                   >
                     {byProject.map((_: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={PIE_COLORS[index % PIE_COLORS.length]}
+                      />
                     ))}
                   </Pie>
                   <Tooltip content={<CustomTooltip />} />
@@ -10020,17 +10403,35 @@ export default function Finance() {
           {/* Легенда */}
           <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
             {byProject.map((item: any, idx: number) => {
-              const total = byProject.reduce((sum: number, p: any) => sum + p.value, 0);
-              const percent = total > 0 ? Math.round((item.value / total) * 100) : 0;
+              const total = byProject.reduce(
+                (sum: number, p: any) => sum + p.value,
+                0,
+              );
+              const percent =
+                total > 0 ? Math.round((item.value / total) * 100) : 0;
               return (
-                <div key={idx} className="flex items-center justify-between text-sm">
+                <div
+                  key={idx}
+                  className="flex items-center justify-between text-sm"
+                >
                   <div className="flex items-center gap-3 min-w-0 pr-2">
-                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[idx % PIE_COLORS.length] }} />
-                    <span className="text-slate-600 truncate font-medium">{item.name}</span>
+                    <div
+                      className="w-3 h-3 rounded-full shrink-0"
+                      style={{
+                        backgroundColor: PIE_COLORS[idx % PIE_COLORS.length],
+                      }}
+                    />
+                    <span className="text-slate-600 truncate font-medium">
+                      {item.name}
+                    </span>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-xs text-slate-400 font-medium w-8 text-right">{percent}%</span>
-                    <span className="font-bold text-slate-800 w-20 text-right">{fmt(item.value)}</span>
+                    <span className="text-xs text-slate-400 font-medium w-8 text-right">
+                      {percent}%
+                    </span>
+                    <span className="font-bold text-slate-800 w-20 text-right">
+                      {fmt(item.value)}
+                    </span>
                   </div>
                 </div>
               );
@@ -10041,24 +10442,53 @@ export default function Finance() {
 
       {/* Нижній ряд */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        
         {/* Горизонтальний графік: Витрати */}
         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 overflow-x-auto">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">💳</span>
+            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+              💳
+            </span>
             Статті витрат
           </h3>
           {byExpenseCategory.length > 0 ? (
             <div className="h-[280px] w-full min-w-[300px] -ml-4">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={byExpenseCategory} layout="vertical" margin={{ top: 0, right: 20, left: 30, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                <BarChart
+                  data={byExpenseCategory}
+                  layout="vertical"
+                  margin={{ top: 0, right: 20, left: 30, bottom: 0 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    horizontal={true}
+                    vertical={false}
+                    stroke="#f1f5f9"
+                  />
                   <XAxis type="number" hide />
-                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#475569', fontWeight: 500 }} width={120} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-                  <Bar dataKey="value" name="Сума" fill="#f43f5e" radius={[0, 8, 8, 0]} barSize={20}>
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: "#475569", fontWeight: 500 }}
+                    width={120}
+                  />
+                  <Tooltip
+                    content={<CustomTooltip />}
+                    cursor={{ fill: "#f8fafc" }}
+                  />
+                  <Bar
+                    dataKey="value"
+                    name="Сума"
+                    fill="#f43f5e"
+                    radius={[0, 8, 8, 0]}
+                    barSize={20}
+                  >
                     {byExpenseCategory.map((_: any, idx: number) => (
-                      <Cell key={`cell-${idx}`} fill={PALETTE[idx % PALETTE.length]} />
+                      <Cell
+                        key={`cell-${idx}`}
+                        fill={PALETTE[idx % PALETTE.length]}
+                      />
                     ))}
                   </Bar>
                 </BarChart>
@@ -10072,7 +10502,9 @@ export default function Finance() {
         {/* Прогрес-бари: Топ шкіл */}
         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">🏫</span>
+            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+              🏫
+            </span>
             Топ-5 найприбутковіших закладів
           </h3>
           {topSchools.length > 0 ? (
@@ -10084,15 +10516,22 @@ export default function Finance() {
                   <div key={idx} className="relative">
                     <div className="flex justify-between items-end mb-2 text-sm">
                       <div className="flex items-center gap-2 min-w-0 pr-4">
-                        <span className="font-bold text-slate-400 w-4">{idx + 1}.</span>
-                        <span className="font-bold text-slate-700 truncate">{school.name}</span>
+                        <span className="font-bold text-slate-400 w-4">
+                          {idx + 1}.
+                        </span>
+                        <span className="font-bold text-slate-700 truncate">
+                          {school.name}
+                        </span>
                       </div>
                       <span className="font-bold text-emerald-600 shrink-0 bg-emerald-50 px-2 py-0.5 rounded-md">
                         {fmt(school.revenue)} грн
                       </span>
                     </div>
                     <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                      <div className="bg-blue-500 h-full rounded-full transition-all duration-1000 ease-out" style={{ width: `${percent}%` }} />
+                      <div
+                        className="bg-blue-500 h-full rounded-full transition-all duration-1000 ease-out"
+                        style={{ width: `${percent}%` }}
+                      />
                     </div>
                   </div>
                 );
@@ -10108,67 +10547,103 @@ export default function Finance() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 overflow-x-auto">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">🏆</span>
+            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+              🏆
+            </span>
             Найприбутковіші події
           </h3>
           <EventTable events={topEvents} positive={true} />
         </div>
         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 overflow-x-auto">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">⚠️</span>
+            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+              ⚠️
+            </span>
             Найменш прибуткові події
           </h3>
           <EventTable events={worstEvents} positive={false} />
         </div>
       </div>
-
     </div>
   );
 }
 
 // Компонент-картка KPI
 function KpiCard({ title, value, color, bg, icon, subtitle }: any) {
-  const fmt = (n: number) => new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
   return (
     <div className="bg-white rounded-[24px] p-5 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow duration-300">
       <div className="flex justify-between items-start mb-4">
-        <p className="text-xs sm:text-sm font-semibold text-slate-500 leading-tight pr-2">{title}</p>
-        <div className={`w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center text-xl shadow-sm ${bg}`}>{icon}</div>
+        <p className="text-xs sm:text-sm font-semibold text-slate-500 leading-tight pr-2">
+          {title}
+        </p>
+        <div
+          className={`w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center text-xl shadow-sm ${bg}`}
+        >
+          {icon}
+        </div>
       </div>
       <div>
-        <p className={`text-xl sm:text-2xl md:text-3xl font-black tracking-tight ${color}`}>
-          {fmt(value)} <span className="text-sm font-bold text-slate-400 opacity-60">грн</span>
+        <p
+          className={`text-xl sm:text-2xl md:text-3xl font-black tracking-tight ${color}`}
+        >
+          {fmt(value)}{" "}
+          <span className="text-sm font-bold text-slate-400 opacity-60">
+            грн
+          </span>
         </p>
-        {subtitle && <p className="text-[11px] sm:text-xs text-slate-400 mt-1.5 font-medium">{subtitle}</p>}
+        {subtitle && (
+          <p className="text-[11px] sm:text-xs text-slate-400 mt-1.5 font-medium">
+            {subtitle}
+          </p>
+        )}
       </div>
     </div>
   );
 }
 
 // Таблиця подій
-function EventTable({ events, positive }: { events: any[]; positive: boolean }) {
-  if (!events || !events.length)
-    return <EmptyState />;
-  
+function EventTable({
+  events,
+  positive,
+}: {
+  events: any[];
+  positive: boolean;
+}) {
+  if (!events || !events.length) return <EmptyState />;
+
   return (
     <table className="w-full text-sm min-w-[300px]">
       <thead>
         <tr className="text-slate-400 text-xs uppercase border-b border-slate-50">
           <th className="text-left pb-3 font-semibold tracking-wider">Дата</th>
-          <th className="text-left pb-3 font-semibold tracking-wider">Заклад</th>
-          <th className="text-right pb-3 font-semibold tracking-wider">Прибуток</th>
+          <th className="text-left pb-3 font-semibold tracking-wider">
+            Заклад
+          </th>
+          <th className="text-right pb-3 font-semibold tracking-wider">
+            Прибуток
+          </th>
         </tr>
       </thead>
       <tbody>
         {events.map((e: any, i: number) => (
-          <tr key={i} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+          <tr
+            key={i}
+            className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+          >
             <td className="py-3 text-slate-500 whitespace-nowrap">
-              {new Date(e.date).toLocaleDateString("uk-UA", { day: "2-digit", month: "2-digit" })}
+              {new Date(e.date).toLocaleDateString("uk-UA", {
+                day: "2-digit",
+                month: "2-digit",
+              })}
             </td>
             <td className="py-3 font-medium text-slate-700 truncate max-w-[120px] sm:max-w-[200px] pr-2">
               {e.school}
             </td>
-            <td className={`py-3 text-right font-bold whitespace-nowrap ${positive ? "text-emerald-600" : "text-rose-500"}`}>
+            <td
+              className={`py-3 text-right font-bold whitespace-nowrap ${positive ? "text-emerald-600" : "text-rose-500"}`}
+            >
               {new Intl.NumberFormat("uk-UA").format(Math.round(e.profit))} грн
             </td>
           </tr>

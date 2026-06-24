@@ -360,6 +360,7 @@ export class EventsService {
         expenses: reportData.expenses || [],
         remainderSum: reportData.remainderSum,
         rating: reportData.rating,
+        salaries: reportData.salaries || [],
       },
       create: {
         eventId,
@@ -374,9 +375,22 @@ export class EventsService {
         expenses: reportData.expenses || [],
         remainderSum: reportData.remainderSum,
         rating: reportData.rating,
+        salaries: reportData.salaries || [],
       },
     });
 
+    if (reportData.salaries?.length) {
+      await Promise.all(
+        reportData.salaries
+          .filter((s) => s.amount > 0)
+          .map((s) =>
+            this.prisma.user.update({
+              where: { id: s.userId },
+              data: { balance: { increment: s.amount } },
+            }),
+          ),
+      );
+    }
     // 2. Оновлюємо статус події на 'REPORT' (щоб вона не зникала і давала можливість перейти до RE_SALE)
     return this.prisma.event.update({
       where: { id: eventId },
