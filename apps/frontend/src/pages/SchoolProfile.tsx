@@ -347,6 +347,48 @@ export default function SchoolProfile() {
         schoolData={schoolData}
         onEdit={() => {
           setEditForm(schoolData);
+          // Автодоповнення контактів якщо телефон порожній
+          if (!schoolRes.data.phone && schoolRes.data.name) {
+            try {
+              const cityName = schoolRes.data.city?.name || "";
+              const contactsRes = await api.get(
+                `/schools/contacts/search?q=${encodeURIComponent(schoolRes.data.name)}&city=${encodeURIComponent(cityName)}`,
+                { headers },
+              );
+              if (contactsRes.data?.length > 0) {
+                const director =
+                  contactsRes.data.find(
+                    (c: any) =>
+                      c.role?.includes("Директор") ||
+                      c.role?.includes("Завідувач"),
+                  ) || contactsRes.data[0];
+
+                // Зберігаємо в БД
+                await api.patch(
+                  `/schools/${schoolRes.data.id}`,
+                  {
+                    director: director.contactName,
+                    phone: director.phone,
+                  },
+                  { headers },
+                );
+
+                // Оновлюємо локальний стан
+                setSchoolData((prev) => ({
+                  ...prev,
+                  director: director.contactName,
+                  phone: director.phone,
+                }));
+                setEditForm((prev) => ({
+                  ...prev,
+                  director: director.contactName,
+                  phone: director.phone,
+                }));
+              }
+            } catch (e) {
+              console.error("Автодоповнення контактів:", e);
+            }
+          }
           setIsEditModalOpen(true);
         }}
         onAddEvent={openAddEventModal}
