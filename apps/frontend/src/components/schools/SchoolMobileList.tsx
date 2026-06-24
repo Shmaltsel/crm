@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Props {
   schools: any[];
@@ -8,84 +9,60 @@ interface Props {
   stages: any[];
 }
 
-function stalenessColor(days: number | null): string {
-  if (days === null) return "text-slate-400";
-  if (days >= 21) return "text-red-500";
-  if (days >= 14) return "text-orange-500";
-  if (days >= 7) return "text-amber-500";
-  return "text-emerald-500";
-}
-
-// Мемоізований компонент картки
-export const SchoolCard = React.memo(({ school, onDelete, stages }: any) => {
+// Винесено окремо для кращої мемоізації
+const SchoolCard = React.memo(({ school, onDelete, stages }: any) => {
   const navigate = useNavigate();
-
   const latestEvent = school.events?.[0];
   const stage = latestEvent
     ? stages.find((s: any) => s.key === latestEvent.status)
     : null;
-  const lastActivityDate =
-    school.events?.[0]?.updatedAt ?? school.updatedAt ?? null;
-  const daysStale = lastActivityDate
-    ? Math.floor((Date.now() - new Date(lastActivityDate).getTime()) / 86400000)
-    : null;
 
   return (
-    <div
+    <motion.div
+      layout // Додає плавний рух карток, якщо вони змінюють порядок
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.98 }}
       onClick={() => navigate(`/schools/${school.id}`)}
-      className="bg-white rounded-2xl border border-slate-100 p-3.5 active:scale-[0.99] transition-transform cursor-pointer"
+      className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm transition-all hover:shadow-md hover:border-blue-200 cursor-pointer"
     >
       <div className="flex items-start justify-between gap-2">
         <p className="font-semibold text-slate-800 leading-snug text-sm line-clamp-2 flex-1">
           {school.name}
         </p>
         <button
-          onClick={(e) => onDelete(e, school.id, school.name)}
-          className="text-slate-300 active:text-red-500 transition-colors p-1 -mt-0.5 -mr-1 shrink-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(e, school.id, school.name);
+          }}
+          className="text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all p-2 rounded-lg"
         >
           🗑
         </button>
       </div>
-
       <div className="flex items-center justify-between gap-2 mt-2">
-        <div className="flex items-center gap-1.5 min-w-0">
-          {school.phone ? (
-            <a
-              href={`tel:${school.phone}`}
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1 text-xs text-blue-600 font-medium truncate"
-            >
-              📞 {school.director || school.phone}
-            </a>
-          ) : school.director ? (
-            <span className="text-xs text-slate-500 truncate">
-              👤 {school.director}
-            </span>
-          ) : (
-            <span className="text-xs text-slate-300 italic">
-              Контакт не вказано
-            </span>
-          )}
-        </div>
-
-        {stage ? (
-          <span className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full border border-blue-100 shrink-0 font-medium">
+        {school.phone ? (
+          <a
+            href={`tel:${school.phone}`}
+            onClick={(e) => e.stopPropagation()}
+            className="text-xs text-blue-600 font-medium truncate"
+          >
+            📞 {school.director || school.phone}
+          </a>
+        ) : (
+          <span className="text-xs text-slate-500 truncate">
+            👤 {school.director || "Контакт не вказано"}
+          </span>
+        )}
+        {stage && (
+          <span className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full font-medium border border-blue-100">
             {stage.name}
           </span>
-        ) : (
-          <span className="text-[10px] text-slate-300 shrink-0">Етап —</span>
         )}
       </div>
-
-      {daysStale !== null && (
-        <p className={`text-[11px] mt-1.5 ${stalenessColor(daysStale)}`}>
-          ⏱{" "}
-          {daysStale === 0
-            ? "Активність сьогодні"
-            : `Остання активність ${daysStale} дн тому`}
-        </p>
-      )}
-    </div>
+    </motion.div>
   );
 });
 
@@ -98,23 +75,34 @@ export default function SchoolMobileList({
   stages,
 }: Props) {
   return (
-    <div className="md:hidden flex-1 overflow-y-auto flex flex-col gap-2.5 pb-24">
-      {schools.map((school) => (
-        <SchoolCard
-          key={school.id}
-          school={school}
-          onDelete={onDelete}
-          stages={stages}
-        />
-      ))}
+    <motion.div
+      className="md:hidden flex-1 overflow-y-auto flex flex-col gap-3 pb-24 px-1 custom-scrollbar"
+      initial="hidden"
+      animate="visible"
+    >
+      <AnimatePresence mode="popLayout">
+        {schools.map((school, index) => (
+          <motion.div
+            key={school.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ delay: index * 0.02, duration: 0.2 }}
+          >
+            <SchoolCard school={school} onDelete={onDelete} stages={stages} />
+          </motion.div>
+        ))}
+      </AnimatePresence>
 
       {schools.length === 0 && (
-        <div className="bg-white rounded-2xl border border-slate-100 text-center py-10 text-slate-400 text-sm">
-          {searchQuery
-            ? `Нічого не знайдено за «${searchQuery}»`
-            : "Шкіл ще немає"}
-        </div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-10 text-slate-400"
+        >
+          <p>Нічого не знайдено</p>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }

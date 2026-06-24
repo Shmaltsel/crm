@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Props {
   schools: any[];
@@ -8,45 +9,53 @@ interface Props {
   stages: any[];
 }
 
-// Мемоізований компонент рядка таблиці
-export const SchoolRow = React.memo(({ school, onDelete, stages, navigate }: any) => {
-  const latestEvent = school.events?.[0];
-  const stage = latestEvent
-    ? stages.find((s: any) => s.key === latestEvent.status)
-    : null;
+// Мемоізований рядок з анімаціями
+export const SchoolRow = React.memo(
+  ({ school, onDelete, stages, navigate }: any) => {
+    const latestEvent = school.events?.[0];
+    const stage = latestEvent
+      ? stages.find((s: any) => s.key === latestEvent.status)
+      : null;
 
-  return (
-    <tr
-      onClick={() => navigate(`/schools/${school.id}`)}
-      className="cursor-pointer border-b border-slate-50 hover:bg-slate-50/80 transition-colors"
-    >
-      <td className="p-4 text-slate-800 font-bold">{school.name}</td>
-      <td className="p-4 text-slate-600 font-medium">{school.city?.name}</td>
-      <td className="p-4">
-        <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold">
-          Активна
-        </span>
-      </td>
-      <td className="p-4">
-        {stage ? (
-          <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-bold border border-blue-100">
-            {stage.name}
+    return (
+      <motion.tr
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={() => navigate(`/schools/${school.id}`)}
+        className="border-b border-slate-50 hover:bg-blue-50/50 transition-colors cursor-pointer"
+      >
+        <td className="p-4 font-bold text-slate-800">{school.name}</td>
+        <td className="p-4 font-medium text-slate-600">{school.city?.name}</td>
+        <td className="p-4">
+          <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold">
+            Активна
           </span>
-        ) : (
-          <span className="text-slate-400 text-xs italic">—</span>
-        )}
-      </td>
-      <td className="p-4 text-center">
-        <button
-          onClick={(e) => onDelete(e, school.id, school.name)}
-          className="text-slate-300 hover:text-red-500 transition-colors p-2 text-lg"
-        >
-          🗑
-        </button>
-      </td>
-    </tr>
-  );
-});
+        </td>
+        <td className="p-4">
+          {stage ? (
+            <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-bold border border-blue-100">
+              {stage.name}
+            </span>
+          ) : (
+            <span className="text-slate-400 text-xs italic">—</span>
+          )}
+        </td>
+        <td className="p-4 text-center">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(e, school.id, school.name);
+            }}
+            className="p-2 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all text-lg"
+          >
+            🗑
+          </button>
+        </td>
+      </motion.tr>
+    );
+  },
+);
 
 SchoolRow.displayName = "SchoolRow";
 
@@ -59,7 +68,7 @@ export default function SchoolDesktopTable({
   const navigate = useNavigate();
 
   return (
-    <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
+    <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0 custom-scrollbar">
       <div className="overflow-y-auto flex-1">
         <table className="w-full text-left border-collapse">
           <thead className="sticky top-0 z-10 bg-slate-50">
@@ -73,24 +82,30 @@ export default function SchoolDesktopTable({
               </th>
             </tr>
           </thead>
-          <tbody>
-            {schools.map((school) => (
-              <SchoolRow
-                key={school.id}
-                school={school}
-                onDelete={onDelete}
-                stages={stages}
-                navigate={navigate}
-              />
-            ))}
+          <tbody className="divide-y divide-slate-50">
+            <AnimatePresence>
+              {schools.map((school) => (
+                <SchoolRow
+                  key={school.id}
+                  school={school}
+                  onDelete={onDelete}
+                  stages={stages}
+                  navigate={navigate}
+                />
+              ))}
+            </AnimatePresence>
           </tbody>
         </table>
         {schools.length === 0 && (
-          <div className="text-center py-16 text-slate-400 text-sm font-medium">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-16 text-slate-400 text-sm font-medium"
+          >
             {searchQuery
               ? `Нічого не знайдено за «${searchQuery}»`
               : "Шкіл ще немає"}
-          </div>
+          </motion.div>
         )}
       </div>
     </div>
