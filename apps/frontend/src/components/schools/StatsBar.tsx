@@ -47,8 +47,8 @@ export function classifySize(
     return "large";
   }
   // Школа
-  if (count < 150) return "small";
-  if (count < 500) return "medium";
+  if (count < 500) return "small";
+  if (count < 900) return "medium";
   return "large";
 }
 
