@@ -180,6 +180,16 @@ export default function SchoolProfile() {
     });
   };
 
+  const handleAddCommentClick = () => {
+    setCommentModal({
+      isOpen: true,
+      mode: "add_comment",
+      stepId: null,
+      historyId: null,
+      text: "",
+    });
+  };
+
   const handleHistoryClick = (historyItem: any) => {
     setCommentModal({
       isOpen: true,
