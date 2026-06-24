@@ -1,23 +1,14 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { ViteImageOptimizer } from "vite-plugin-image-optimizer";
 
 export default defineConfig({
-  plugins: [
-    react(),
-    ViteImageOptimizer({
-      png: { quality: 80 },
-      jpeg: { quality: 80 },
-      webp: { quality: 80 },
-      avif: { quality: 70 },
-    }),
-  ],
+  plugins: [react()],
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          recharts: ["recharts"],
-          tanstack: ["@tanstack/react-virtual"],
+        manualChunks(id) {
+          if (id.includes("recharts")) return "recharts";
+          if (id.includes("@tanstack/react-virtual")) return "tanstack";
         },
       },
     },
