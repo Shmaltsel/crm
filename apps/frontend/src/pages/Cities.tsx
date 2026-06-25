@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense } from "react";
+import { createPortal } from "react-dom";
 import { useSelectedCity } from "../context/CityContext";
 import { api } from "../config/api";
 
@@ -178,20 +179,10 @@ export default function Cities() {
       </button>
 
       {/* Модалка додавання */}
-      {isModalOpen && (
+      {isModalOpen && createPortal(
         <div
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 p-4 opacity-0"
-          style={{
-            animation: "fadeIn 0.2s ease-out forwards",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            position: "fixed",
-          }}
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
+          style={{ animation: "fadeIn 0.2s ease-out forwards" }}
         >
           <style>{`
             @keyframes fadeIn {
@@ -246,7 +237,8 @@ export default function Cities() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
