@@ -3,6 +3,17 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class FinanceService {
+  private cache = new Map<string, { data: any; expiresAt: number }>();
+
+  private getCached<T>(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry || Date.now() > entry.expiresAt) return null;
+    return entry.data as T;
+  }
+
+  private setCached(key: string, data: any, ttlMs = 5 * 60 * 1000) {
+    this.cache.set(key, { data, expiresAt: Date.now() + ttlMs });
+  }
   constructor(private prisma: PrismaService) {}
 
   async getMyBalance(userId: string) {
@@ -24,6 +35,9 @@ export class FinanceService {
     project?: string;
     minimal?: boolean;
   }) {
+    const cacheKey = `finance:${cityId}:${period}:${project}`;
+    const cached = this.getCached(cacheKey);
+    if (cached) return cached;
     const now = new Date();
     let dateFrom: Date | undefined;
 
@@ -201,7 +215,7 @@ export class FinanceService {
 
     // --- minimal: повертаємо тільки KPI + monthly + фільтри ---
     if (minimal) {
-      return {
+      const result = {
         kpi: {
           totalRevenue,
           totalExpenses,
@@ -215,9 +229,11 @@ export class FinanceService {
           cities,
         },
       };
+      this.setCached(cacheKey, result);
+      return result;
     }
 
-    return {
+    const result = {
       kpi: {
         totalRevenue,
         totalExpenses,
@@ -236,6 +252,8 @@ export class FinanceService {
         cities,
       },
     };
+    this.setCached(cacheKey, result);
+    return result;
   }
 
   async getStaffRevenue({

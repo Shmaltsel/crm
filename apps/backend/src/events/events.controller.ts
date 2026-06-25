@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Delete,
+  Query,
   UseGuards,
   Request,
 } from '@nestjs/common';
@@ -35,8 +36,11 @@ export class EventsController {
   }
 
   @Get('school/:schoolId')
-  findBySchool(@Param('schoolId') schoolId: string) {
-    return this.eventsService.findBySchool(schoolId);
+  findBySchool(
+    @Param('schoolId') schoolId: string,
+    @Query('minimal') minimal?: string,
+  ) {
+    return this.eventsService.findBySchool(schoolId, minimal === 'true');
   }
 
   @Patch(':id/status')

@@ -1,0 +1,142 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '../config/api';
+
+const authHeader = () => ({
+  Authorization: `Bearer ${localStorage.getItem('token')}`,
+});
+
+// ─── Мінімальні дані школи (назва, адреса, місто) ───────────────────────────
+export function useSchool(id: string | undefined) {
+  return useQuery({
+    queryKey: ['school', id],
+    queryFn: async () => {
+      const res = await api.get(`/schools/${id}`, { headers: authHeader() });
+      return res.data;
+    },
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+// ─── Мінімальний список подій (без history/preparation) ──────────────────────
+export function useSchoolEvents(schoolId: string | undefined, full = false) {
+  return useQuery({
+    queryKey: ['schoolEvents', schoolId, full],
+    queryFn: async () => {
+      const url = full
+        ? `/events/school/${schoolId}`
+        : `/events/school/${schoolId}?minimal=true`;
+      const res = await api.get(url, { headers: authHeader() });
+      return res.data.filter((ev: any) => ev.status !== 'RE_SALE');
+    },
+    enabled: !!schoolId,
+    staleTime: 60 * 1000,
+  });
+}
+
+// ─── Повні дані однієї події (lazy, при кліку) ────────────────────────────────
+export function useEventFull(eventId: string | undefined) {
+  return useQuery({
+    queryKey: ['eventFull', eventId],
+    queryFn: async () => {
+      const res = await api.get(`/events/${eventId}`, { headers: authHeader() });
+      return res.data;
+    },
+    enabled: !!eventId,
+    staleTime: 30 * 1000,
+  });
+}
+
+// ─── Список користувачів ────────────────────────────────────────────────────
+export function useUsers() {
+  return useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const res = await api.get('/users', { headers: authHeader() });
+      return res.data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+// ─── Мутації ────────────────────────────────────────────────────────────────
+export function useUpdateEventStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventId, status, actionName, comment }: {
+      eventId: string; status: string; actionName: string; comment?: string;
+    }) =>
+      api.patch(`/events/${eventId}/status`, { status, actionName, comment }, { headers: authHeader() })
+        .then(r => r.data),
+    onSuccess: (data, vars) => {
+      qc.invalidateQueries({ queryKey: ['schoolEvents'] });
+      qc.setQueryData(['eventFull', vars.eventId], data);
+    },
+  });
+}
+
+export function useUpdatePreparation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventId, field, status }: { eventId: string; field: string; status: string }) =>
+      api.patch(`/events/${eventId}/preparation`, { field, status }, { headers: authHeader() })
+        .then(r => r.data),
+    onSuccess: (data, vars) => {
+      qc.setQueryData(['eventFull', vars.eventId], (old: any) =>
+        old ? { ...old, preparation: { ...(old.preparation || {}), [vars.field]: vars.status } } : old
+      );
+    },
+  });
+}
+
+export function useAssignCrew() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventId, crewId }: { eventId: string; crewId: string }) =>
+      api.post(`/events/${eventId}/assign-crew`, { crewId }, { headers: authHeader() })
+        .then(r => r.data),
+    onSuccess: (data, vars) => {
+      qc.setQueryData(['eventFull', vars.eventId], data);
+      qc.invalidateQueries({ queryKey: ['schoolEvents'] });
+    },
+  });
+}
+
+export function useSubmitReport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventId, reportData }: { eventId: string; reportData: any }) =>
+      api.post(`/events/${eventId}/report`, reportData, { headers: authHeader() })
+        .then(r => r.data),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['schoolEvents'] });
+      qc.removeQueries({ queryKey: ['eventFull', vars.eventId] });
+    },
+  });
+}
+
+export function useAddComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventId, comment }: { eventId: string; comment: string }) =>
+      api.post(`/events/${eventId}/history`, { comment }, { headers: authHeader() })
+        .then(r => r.data),
+    onSuccess: (data, vars) => {
+      qc.setQueryData(['eventFull', vars.eventId], (old: any) =>
+        old ? { ...old, history: data.history } : old
+      );
+    },
+  });
+}
+
+export function useUpdateHistoryComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ historyId, comment, eventId }: { historyId: string; comment: string; eventId: string }) =>
+      api.patch(`/events/history/${historyId}`, { comment }, { headers: authHeader() })
+        .then(r => r.data),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['eventFull', vars.eventId] });
+    },
+  });
+}

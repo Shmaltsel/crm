@@ -2153,324 +2153,342 @@
   2 | 
   3 | @Injectable()
   4 | export class FinanceService {
-  5 |   constructor(private prisma: PrismaService) {}
+  5 |   private cache = new Map<string, { data: any; expiresAt: number }>();
   6 | 
-  7 |   async getMyBalance(userId: string) {
-  8 |     const user = await this.prisma.user.findUnique({
-  9 |       where: { id: userId },
- 10 |       select: { balance: true, name: true },
- 11 |     });
- 12 |     return { balance: user?.balance ?? 0, name: user?.name ?? '' };
- 13 |   }
- 14 | 
- 15 |   async getDashboard({
- 16 |     period,
- 17 |     cityId,
- 18 |     project,
- 19 |     minimal = false,
- 20 |   }: {
- 21 |     period?: string;
- 22 |     cityId?: string;
- 23 |     project?: string;
- 24 |     minimal?: boolean;
- 25 |   }) {
- 26 |     const now = new Date();
- 27 |     let dateFrom: Date | undefined;
- 28 | 
- 29 |     if (period === 'month')
- 30 |       dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
- 31 |     else if (period === 'quarter')
- 32 |       dateFrom = new Date(
- 33 |         now.getFullYear(),
- 34 |         Math.floor(now.getMonth() / 3) * 3,
- 35 |         1,
- 36 |       );
- 37 |     else if (period === 'year') dateFrom = new Date(now.getFullYear(), 0, 1);
- 38 | 
- 39 |     const where: any = { status: 'RE_SALE' };
- 40 |     if (dateFrom) where.date = { gte: dateFrom };
- 41 |     if (cityId) where.cityId = cityId;
- 42 |     if (project) where.project = project;
- 43 | 
- 44 |     const events = await this.prisma.event.findMany({
- 45 |       where,
- 46 |       include: {
- 47 |         report: true,
- 48 |         school: { select: { id: true, name: true } },
- 49 |         city: { select: { id: true, name: true } },
- 50 |         crew: {
- 51 |           include: {
- 52 |             host: { select: { id: true, name: true } },
- 53 |           },
- 54 |         },
- 55 |       },
- 56 |       orderBy: { date: 'asc' },
- 57 |     });
- 58 | 
- 59 |     // KPI
- 60 |     const totalRevenue = events.reduce(
- 61 |       (s, e) => s + (e.report?.totalSum || 0),
- 62 |       0,
- 63 |     );
- 64 |     const totalExpenses = events.reduce((s, e) => {
- 65 |       const exp: any[] = Array.isArray(e.report?.expenses)
- 66 |         ? (e.report.expenses as any[])
- 67 |         : [];
- 68 |       return s + exp.reduce((es: number, ex: any) => es + (ex.amount || 0), 0);
- 69 |     }, 0);
- 70 |     const totalProfit = events.reduce(
- 71 |       (s, e) => s + (e.report?.remainderSum || 0),
- 72 |       0,
- 73 |     );
- 74 | 
- 75 |     // Графік по місяцях
- 76 |     const monthlyMap: Record<
- 77 |       string,
- 78 |       { month: string; revenue: number; profit: number }
- 79 |     > = {};
- 80 |     events.forEach((e) => {
- 81 |       const d = new Date(e.date);
- 82 |       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
- 83 |       const label = d.toLocaleString('uk-UA', {
- 84 |         month: 'short',
- 85 |         year: '2-digit',
- 86 |       });
- 87 |       if (!monthlyMap[key])
- 88 |         monthlyMap[key] = { month: label, revenue: 0, profit: 0 };
- 89 |       monthlyMap[key].revenue += e.report?.totalSum || 0;
- 90 |       monthlyMap[key].profit += e.report?.remainderSum || 0;
- 91 |     });
- 92 |     const monthly = Object.values(monthlyMap);
- 93 | 
- 94 |     // Структура доходів по проєктах
- 95 |     const projectMap: Record<string, number> = {};
- 96 |     events.forEach((e) => {
- 97 |       const p = e.project || 'Інше';
- 98 |       projectMap[p] = (projectMap[p] || 0) + (e.report?.totalSum || 0);
- 99 |     });
-100 |     const byProject = Object.entries(projectMap).map(([name, value]) => ({
-101 |       name,
-102 |       value,
-103 |     }));
-104 | 
-105 |     // Топ міст
-106 |     const cityMap: Record<
-107 |       string,
-108 |       { name: string; revenue: number; profit: number }
-109 |     > = {};
+  7 |   private getCached<T>(key: string): T | null {
+  8 |     const entry = this.cache.get(key);
+  9 |     if (!entry || Date.now() > entry.expiresAt) return null;
+ 10 |     return entry.data as T;
+ 11 |   }
+ 12 | 
+ 13 |   private setCached(key: string, data: any, ttlMs = 5 * 60 * 1000) {
+ 14 |     this.cache.set(key, { data, expiresAt: Date.now() + ttlMs });
+ 15 |   }
+ 16 |   constructor(private prisma: PrismaService) {}
+ 17 | 
+ 18 |   async getMyBalance(userId: string) {
+ 19 |     const user = await this.prisma.user.findUnique({
+ 20 |       where: { id: userId },
+ 21 |       select: { balance: true, name: true },
+ 22 |     });
+ 23 |     return { balance: user?.balance ?? 0, name: user?.name ?? '' };
+ 24 |   }
+ 25 | 
+ 26 |   async getDashboard({
+ 27 |     period,
+ 28 |     cityId,
+ 29 |     project,
+ 30 |     minimal = false,
+ 31 |   }: {
+ 32 |     period?: string;
+ 33 |     cityId?: string;
+ 34 |     project?: string;
+ 35 |     minimal?: boolean;
+ 36 |   }) {
+ 37 |     const cacheKey = `finance:${cityId}:${period}:${project}`;
+ 38 |     const cached = this.getCached(cacheKey);
+ 39 |     if (cached) return cached;
+ 40 |     const now = new Date();
+ 41 |     let dateFrom: Date | undefined;
+ 42 | 
+ 43 |     if (period === 'month')
+ 44 |       dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+ 45 |     else if (period === 'quarter')
+ 46 |       dateFrom = new Date(
+ 47 |         now.getFullYear(),
+ 48 |         Math.floor(now.getMonth() / 3) * 3,
+ 49 |         1,
+ 50 |       );
+ 51 |     else if (period === 'year') dateFrom = new Date(now.getFullYear(), 0, 1);
+ 52 | 
+ 53 |     const where: any = { status: 'RE_SALE' };
+ 54 |     if (dateFrom) where.date = { gte: dateFrom };
+ 55 |     if (cityId) where.cityId = cityId;
+ 56 |     if (project) where.project = project;
+ 57 | 
+ 58 |     const events = await this.prisma.event.findMany({
+ 59 |       where,
+ 60 |       include: {
+ 61 |         report: true,
+ 62 |         school: { select: { id: true, name: true } },
+ 63 |         city: { select: { id: true, name: true } },
+ 64 |         crew: {
+ 65 |           include: {
+ 66 |             host: { select: { id: true, name: true } },
+ 67 |           },
+ 68 |         },
+ 69 |       },
+ 70 |       orderBy: { date: 'asc' },
+ 71 |     });
+ 72 | 
+ 73 |     // KPI
+ 74 |     const totalRevenue = events.reduce(
+ 75 |       (s, e) => s + (e.report?.totalSum || 0),
+ 76 |       0,
+ 77 |     );
+ 78 |     const totalExpenses = events.reduce((s, e) => {
+ 79 |       const exp: any[] = Array.isArray(e.report?.expenses)
+ 80 |         ? (e.report.expenses as any[])
+ 81 |         : [];
+ 82 |       return s + exp.reduce((es: number, ex: any) => es + (ex.amount || 0), 0);
+ 83 |     }, 0);
+ 84 |     const totalProfit = events.reduce(
+ 85 |       (s, e) => s + (e.report?.remainderSum || 0),
+ 86 |       0,
+ 87 |     );
+ 88 | 
+ 89 |     // Графік по місяцях
+ 90 |     const monthlyMap: Record<
+ 91 |       string,
+ 92 |       { month: string; revenue: number; profit: number }
+ 93 |     > = {};
+ 94 |     events.forEach((e) => {
+ 95 |       const d = new Date(e.date);
+ 96 |       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+ 97 |       const label = d.toLocaleString('uk-UA', {
+ 98 |         month: 'short',
+ 99 |         year: '2-digit',
+100 |       });
+101 |       if (!monthlyMap[key])
+102 |         monthlyMap[key] = { month: label, revenue: 0, profit: 0 };
+103 |       monthlyMap[key].revenue += e.report?.totalSum || 0;
+104 |       monthlyMap[key].profit += e.report?.remainderSum || 0;
+105 |     });
+106 |     const monthly = Object.values(monthlyMap);
+107 | 
+108 |     // Структура доходів по проєктах
+109 |     const projectMap: Record<string, number> = {};
 110 |     events.forEach((e) => {
-111 |       const cid = e.cityId;
-112 |       if (!cityMap[cid])
-113 |         cityMap[cid] = { name: e.city?.name || '—', revenue: 0, profit: 0 };
-114 |       cityMap[cid].revenue += e.report?.totalSum || 0;
-115 |       cityMap[cid].profit += e.report?.remainderSum || 0;
-116 |     });
-117 |     const topCities = Object.values(cityMap)
-118 |       .sort((a, b) => b.revenue - a.revenue)
-119 |       .slice(0, 5);
-120 | 
-121 |     // Топ шкіл
-122 |     const schoolMap: Record<
-123 |       string,
-124 |       { name: string; count: number; revenue: number }
-125 |     > = {};
-126 |     events.forEach((e) => {
-127 |       const sid = e.schoolId;
-128 |       if (!schoolMap[sid])
-129 |         schoolMap[sid] = { name: e.school?.name || '—', count: 0, revenue: 0 };
-130 |       schoolMap[sid].count++;
-131 |       schoolMap[sid].revenue += e.report?.totalSum || 0;
-132 |     });
-133 |     const topSchools = Object.values(schoolMap)
-134 |       .sort((a, b) => b.revenue - a.revenue)
-135 |       .slice(0, 5);
-136 | 
-137 |     // Витрати по категоріях
-138 |     const expCatMap: Record<string, number> = {};
-139 |     events.forEach((e) => {
-140 |       const exp: any[] = Array.isArray(e.report?.expenses)
-141 |         ? (e.report.expenses as any[])
-142 |         : [];
-143 |       exp.forEach((ex: any) => {
-144 |         const cat = ex.category || ex.name || 'Інше';
-145 |         expCatMap[cat] = (expCatMap[cat] || 0) + (ex.amount || 0);
-146 |       });
-147 |     });
-148 |     const byExpenseCategory = Object.entries(expCatMap).map(
-149 |       ([name, value]) => ({ name, value }),
-150 |     );
-151 | 
-152 |     // Найприбутковіші та найзбитковіші події
-153 |     const sortedByProfit = [...events].sort(
-154 |       (a, b) => (b.report?.remainderSum || 0) - (a.report?.remainderSum || 0),
-155 |     );
-156 |     const topEvents = sortedByProfit.slice(0, 5).map((e) => ({
-157 |       id: e.id,
-158 |       date: e.date,
-159 |       school: e.school?.name,
-160 |       profit: e.report?.remainderSum || 0,
-161 |       revenue: e.report?.totalSum || 0,
-162 |     }));
-163 |     const worstEvents = sortedByProfit
-164 |       .slice(-5)
-165 |       .reverse()
-166 |       .map((e) => ({
-167 |         id: e.id,
-168 |         date: e.date,
-169 |         school: e.school?.name,
-170 |         profit: e.report?.remainderSum || 0,
-171 |         revenue: e.report?.totalSum || 0,
-172 |       }));
-173 | 
-174 |     // Очікувана виручка (незавершені події)
-175 |     const planned = await this.prisma.event.findMany({
-176 |       where: {
-177 |         status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
-178 |         ...(cityId ? { cityId } : {}),
-179 |       },
-180 |       select: { price: true },
-181 |     });
-182 |     const expectedRevenue = await this.prisma.event
-183 |       .findMany({
-184 |         where: {
-185 |           status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
-186 |           ...(cityId ? { cityId } : {}),
-187 |         },
-188 |         select: { price: true },
-189 |       })
-190 |       .then((planned) => planned.reduce((s, e) => s + (e.price || 0), 0));
-191 |     // Список унікальних проєктів для фільтру
-192 |     const projects = await this.prisma.event.findMany({
-193 |       select: { project: true },
-194 |       distinct: ['project'],
+111 |       const p = e.project || 'Інше';
+112 |       projectMap[p] = (projectMap[p] || 0) + (e.report?.totalSum || 0);
+113 |     });
+114 |     const byProject = Object.entries(projectMap).map(([name, value]) => ({
+115 |       name,
+116 |       value,
+117 |     }));
+118 | 
+119 |     // Топ міст
+120 |     const cityMap: Record<
+121 |       string,
+122 |       { name: string; revenue: number; profit: number }
+123 |     > = {};
+124 |     events.forEach((e) => {
+125 |       const cid = e.cityId;
+126 |       if (!cityMap[cid])
+127 |         cityMap[cid] = { name: e.city?.name || '—', revenue: 0, profit: 0 };
+128 |       cityMap[cid].revenue += e.report?.totalSum || 0;
+129 |       cityMap[cid].profit += e.report?.remainderSum || 0;
+130 |     });
+131 |     const topCities = Object.values(cityMap)
+132 |       .sort((a, b) => b.revenue - a.revenue)
+133 |       .slice(0, 5);
+134 | 
+135 |     // Топ шкіл
+136 |     const schoolMap: Record<
+137 |       string,
+138 |       { name: string; count: number; revenue: number }
+139 |     > = {};
+140 |     events.forEach((e) => {
+141 |       const sid = e.schoolId;
+142 |       if (!schoolMap[sid])
+143 |         schoolMap[sid] = { name: e.school?.name || '—', count: 0, revenue: 0 };
+144 |       schoolMap[sid].count++;
+145 |       schoolMap[sid].revenue += e.report?.totalSum || 0;
+146 |     });
+147 |     const topSchools = Object.values(schoolMap)
+148 |       .sort((a, b) => b.revenue - a.revenue)
+149 |       .slice(0, 5);
+150 | 
+151 |     // Витрати по категоріях
+152 |     const expCatMap: Record<string, number> = {};
+153 |     events.forEach((e) => {
+154 |       const exp: any[] = Array.isArray(e.report?.expenses)
+155 |         ? (e.report.expenses as any[])
+156 |         : [];
+157 |       exp.forEach((ex: any) => {
+158 |         const cat = ex.category || ex.name || 'Інше';
+159 |         expCatMap[cat] = (expCatMap[cat] || 0) + (ex.amount || 0);
+160 |       });
+161 |     });
+162 |     const byExpenseCategory = Object.entries(expCatMap).map(
+163 |       ([name, value]) => ({ name, value }),
+164 |     );
+165 | 
+166 |     // Найприбутковіші та найзбитковіші події
+167 |     const sortedByProfit = [...events].sort(
+168 |       (a, b) => (b.report?.remainderSum || 0) - (a.report?.remainderSum || 0),
+169 |     );
+170 |     const topEvents = sortedByProfit.slice(0, 5).map((e) => ({
+171 |       id: e.id,
+172 |       date: e.date,
+173 |       school: e.school?.name,
+174 |       profit: e.report?.remainderSum || 0,
+175 |       revenue: e.report?.totalSum || 0,
+176 |     }));
+177 |     const worstEvents = sortedByProfit
+178 |       .slice(-5)
+179 |       .reverse()
+180 |       .map((e) => ({
+181 |         id: e.id,
+182 |         date: e.date,
+183 |         school: e.school?.name,
+184 |         profit: e.report?.remainderSum || 0,
+185 |         revenue: e.report?.totalSum || 0,
+186 |       }));
+187 | 
+188 |     // Очікувана виручка (незавершені події)
+189 |     const planned = await this.prisma.event.findMany({
+190 |       where: {
+191 |         status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
+192 |         ...(cityId ? { cityId } : {}),
+193 |       },
+194 |       select: { price: true },
 195 |     });
-196 | 
-197 |     const cities = await this.prisma.city.findMany({
-198 |       select: { id: true, name: true },
-199 |     });
-200 | 
-201 |     // --- minimal: повертаємо тільки KPI + monthly + фільтри ---
-202 |     if (minimal) {
-203 |       return {
-204 |         kpi: {
-205 |           totalRevenue,
-206 |           totalExpenses,
-207 |           totalProfit,
-208 |           totalEvents: events.length,
-209 |         },
-210 |         monthly,
-211 |         expectedRevenue,
-212 |         filters: {
-213 |           projects: projects.map((p) => p.project).filter(Boolean),
-214 |           cities,
-215 |         },
-216 |       };
-217 |     }
-218 | 
-219 |     return {
-220 |       kpi: {
-221 |         totalRevenue,
-222 |         totalExpenses,
-223 |         totalProfit,
-224 |         totalEvents: events.length,
-225 |       },
-226 |       monthly,
-227 |       byProject,
-228 |       byExpenseCategory,
-229 |       topSchools,
-230 |       topEvents,
-231 |       worstEvents,
-232 |       expectedRevenue,
-233 |       filters: {
-234 |         projects: projects.map((p) => p.project).filter(Boolean),
-235 |         cities,
-236 |       },
-237 |     };
-238 |   }
-239 | 
-240 |   async getStaffRevenue({
-241 |     period,
-242 |     cityId,
-243 |   }: {
-244 |     period?: string;
-245 |     cityId?: string;
-246 |   }) {
-247 |     const now = new Date();
-248 |     let dateFrom: Date | undefined;
-249 | 
-250 |     if (period === 'month')
-251 |       dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
-252 |     else if (period === 'quarter')
-253 |       dateFrom = new Date(
-254 |         now.getFullYear(),
-255 |         Math.floor(now.getMonth() / 3) * 3,
-256 |         1,
-257 |       );
-258 |     else if (period === 'year') dateFrom = new Date(now.getFullYear(), 0, 1);
-259 | 
-260 |     const where: any = { status: 'RE_SALE' };
-261 |     if (dateFrom) where.date = { gte: dateFrom };
-262 |     if (cityId) where.cityId = cityId;
-263 | 
-264 |     const events = await this.prisma.event.findMany({
-265 |       where,
-266 |       include: {
-267 |         report: { select: { totalSum: true } },
-268 |         crew: {
-269 |           include: {
-270 |             host: { select: { id: true, name: true, role: true } },
-271 |             driver: { select: { id: true, name: true, role: true } },
-272 |           },
-273 |         },
-274 |         city: { select: { id: true, name: true } },
-275 |       },
-276 |     });
+196 |     const expectedRevenue = await this.prisma.event
+197 |       .findMany({
+198 |         where: {
+199 |           status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
+200 |           ...(cityId ? { cityId } : {}),
+201 |         },
+202 |         select: { price: true },
+203 |       })
+204 |       .then((planned) => planned.reduce((s, e) => s + (e.price || 0), 0));
+205 |     // Список унікальних проєктів для фільтру
+206 |     const projects = await this.prisma.event.findMany({
+207 |       select: { project: true },
+208 |       distinct: ['project'],
+209 |     });
+210 | 
+211 |     const cities = await this.prisma.city.findMany({
+212 |       select: { id: true, name: true },
+213 |     });
+214 | 
+215 |     // --- minimal: повертаємо тільки KPI + monthly + фільтри ---
+216 |     if (minimal) {
+217 |       const result = {
+218 |         kpi: {
+219 |           totalRevenue,
+220 |           totalExpenses,
+221 |           totalProfit,
+222 |           totalEvents: events.length,
+223 |         },
+224 |         monthly,
+225 |         expectedRevenue,
+226 |         filters: {
+227 |           projects: projects.map((p) => p.project).filter(Boolean),
+228 |           cities,
+229 |         },
+230 |       };
+231 |       this.setCached(cacheKey, result);
+232 |       return result;
+233 |     }
+234 | 
+235 |     const result = {
+236 |       kpi: {
+237 |         totalRevenue,
+238 |         totalExpenses,
+239 |         totalProfit,
+240 |         totalEvents: events.length,
+241 |       },
+242 |       monthly,
+243 |       byProject,
+244 |       byExpenseCategory,
+245 |       topSchools,
+246 |       topEvents,
+247 |       worstEvents,
+248 |       expectedRevenue,
+249 |       filters: {
+250 |         projects: projects.map((p) => p.project).filter(Boolean),
+251 |         cities,
+252 |       },
+253 |     };
+254 |     this.setCached(cacheKey, result);
+255 |     return result;
+256 |   }
+257 | 
+258 |   async getStaffRevenue({
+259 |     period,
+260 |     cityId,
+261 |   }: {
+262 |     period?: string;
+263 |     cityId?: string;
+264 |   }) {
+265 |     const now = new Date();
+266 |     let dateFrom: Date | undefined;
+267 | 
+268 |     if (period === 'month')
+269 |       dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+270 |     else if (period === 'quarter')
+271 |       dateFrom = new Date(
+272 |         now.getFullYear(),
+273 |         Math.floor(now.getMonth() / 3) * 3,
+274 |         1,
+275 |       );
+276 |     else if (period === 'year') dateFrom = new Date(now.getFullYear(), 0, 1);
 277 | 
-278 |     // Агрегуємо виручку по кожному ведучому і водію
-279 |     const staffMap: Record<
-280 |       string,
-281 |       {
-282 |         id: string;
-283 |         name: string;
-284 |         role: string;
-285 |         revenue: number;
-286 |         eventsCount: number;
-287 |       }
-288 |     > = {};
-289 | 
-290 |     for (const ev of events) {
-291 |       const revenue = ev.report?.totalSum ?? 0;
-292 |       if (!ev.crew) continue;
-293 | 
-294 |       for (const [member, memberRole] of [
-295 |         [ev.crew.host, 'HOST'],
-296 |         [ev.crew.driver, 'DRIVER'],
-297 |       ] as [{ id: string; name: string } | null, string][]) {
-298 |         if (!member) continue;
-299 |         if (!staffMap[member.id]) {
-300 |           staffMap[member.id] = {
-301 |             id: member.id,
-302 |             name: member.name,
-303 |             role: memberRole,
-304 |             revenue: 0,
-305 |             eventsCount: 0,
-306 |           };
-307 |         }
-308 |         staffMap[member.id].revenue += revenue;
-309 |         staffMap[member.id].eventsCount += 1;
-310 |       }
-311 |     }
-312 | 
-313 |     const staff = Object.values(staffMap).sort((a, b) => b.revenue - a.revenue);
-314 |     const totalRevenue = events.reduce(
-315 |       (s, e) => s + (e.report?.totalSum ?? 0),
-316 |       0,
-317 |     );
-318 | 
-319 |     return { staff, totalRevenue, eventsCount: events.length };
-320 |   }
-321 | }
-322 | 
+278 |     const where: any = { status: 'RE_SALE' };
+279 |     if (dateFrom) where.date = { gte: dateFrom };
+280 |     if (cityId) where.cityId = cityId;
+281 | 
+282 |     const events = await this.prisma.event.findMany({
+283 |       where,
+284 |       include: {
+285 |         report: { select: { totalSum: true } },
+286 |         crew: {
+287 |           include: {
+288 |             host: { select: { id: true, name: true, role: true } },
+289 |             driver: { select: { id: true, name: true, role: true } },
+290 |           },
+291 |         },
+292 |         city: { select: { id: true, name: true } },
+293 |       },
+294 |     });
+295 | 
+296 |     // Агрегуємо виручку по кожному ведучому і водію
+297 |     const staffMap: Record<
+298 |       string,
+299 |       {
+300 |         id: string;
+301 |         name: string;
+302 |         role: string;
+303 |         revenue: number;
+304 |         eventsCount: number;
+305 |       }
+306 |     > = {};
+307 | 
+308 |     for (const ev of events) {
+309 |       const revenue = ev.report?.totalSum ?? 0;
+310 |       if (!ev.crew) continue;
+311 | 
+312 |       for (const [member, memberRole] of [
+313 |         [ev.crew.host, 'HOST'],
+314 |         [ev.crew.driver, 'DRIVER'],
+315 |       ] as [{ id: string; name: string } | null, string][]) {
+316 |         if (!member) continue;
+317 |         if (!staffMap[member.id]) {
+318 |           staffMap[member.id] = {
+319 |             id: member.id,
+320 |             name: member.name,
+321 |             role: memberRole,
+322 |             revenue: 0,
+323 |             eventsCount: 0,
+324 |           };
+325 |         }
+326 |         staffMap[member.id].revenue += revenue;
+327 |         staffMap[member.id].eventsCount += 1;
+328 |       }
+329 |     }
+330 | 
+331 |     const staff = Object.values(staffMap).sort((a, b) => b.revenue - a.revenue);
+332 |     const totalRevenue = events.reduce(
+333 |       (s, e) => s + (e.report?.totalSum ?? 0),
+334 |       0,
+335 |     );
+336 | 
+337 |     return { staff, totalRevenue, eventsCount: events.length };
+338 |   }
+339 | }
+340 | 
 ```
 
 ### File: apps/backend/src/issues/issues.controller.ts
@@ -4348,153 +4366,174 @@
  11 | import Login from "./pages/Login";
  12 | import { CityProvider } from "./context/CityContext";
  13 | 
- 14 | // --- ДИНАМІЧНІ ІМПОРТИ (Ледаче завантаження / Code Splitting) ---
- 15 | // Ці файли будуть завантажуватись окремими шматками (chunks) ТІЛЬКИ коли користувач перейде на відповідну сторінку
- 16 | const Cities = lazy(() => import("./pages/Cities"));
- 17 | const Schools = lazy(() => import("./pages/Schools"));
- 18 | const SchoolProfile = lazy(() => import("./pages/SchoolProfile"));
- 19 | const Employees = lazy(() => import("./pages/Employees"));
- 20 | const Finance = lazy(() => import("./pages/Finance"));
- 21 | const CalendarView = lazy(() => import("./pages/CalendarView"));
- 22 | const Dashboard = lazy(() => import("./pages/Dashboard"));
- 23 | const Kindergartens = lazy(() => import("./pages/Kindergartens"));
- 24 | 
- 25 | // Компонент-заглушка, який показується долі секунди, поки вантажиться JS код сторінки
- 26 | const PageLoader = () => (
- 27 |   <div className="flex items-center justify-center h-full min-h-[50vh]">
- 28 |     <div className="text-slate-400 font-medium animate-pulse">
- 29 |       Завантаження сторінки...
- 30 |     </div>
- 31 |   </div>
- 32 | );
- 33 | 
- 34 | export default function App() {
- 35 |   // Базова логіка авторизації
- 36 |   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
- 37 |     !!localStorage.getItem("token"),
- 38 |   );
- 39 | 
- 40 |   const handleLogin = (token: string) => {
- 41 |     localStorage.setItem("token", token);
- 42 |     setIsAuthenticated(true);
- 43 |   };
- 44 | 
- 45 |   const handleLogout = () => {
- 46 |     localStorage.removeItem("token");
- 47 |     setIsAuthenticated(false);
- 48 |   };
- 49 | 
- 50 |   return (
- 51 |     <Router>
- 52 |       <CityProvider>
- 53 |         <Routes>
- 54 |           {/* Публічний маршрут: Логін */}
- 55 |           <Route
- 56 |             path="/login"
- 57 |             element={
- 58 |               !isAuthenticated ? (
- 59 |                 <Login onLogin={handleLogin} />
- 60 |               ) : (
- 61 |                 <Navigate to="/cities" replace />
- 62 |               )
- 63 |             }
- 64 |           />
- 65 | 
- 66 |           {/* Захищені маршрути (Layout відображає бокове меню) */}
- 67 |           <Route
- 68 |             path="/"
- 69 |             element={
- 70 |               isAuthenticated ? (
- 71 |                 <Layout onLogout={handleLogout} />
- 72 |               ) : (
- 73 |                 <Navigate to="/login" replace />
- 74 |               )
- 75 |             }
- 76 |           >
- 77 |             {/* Редірект з кореня на сторінку міст за замовчуванням */}
- 78 |             <Route index element={<Navigate to="/cities" replace />} />
- 79 | 
- 80 |             {/* Обгортаємо всі вкладені маршрути в Suspense. 
- 81 |               Коли React намагається відрендерити "ліниву" сторінку, він показує fallback (PageLoader), 
- 82 |               поки завантажується файл з сервера.
- 83 |             */}
- 84 |             <Route
- 85 |               path="cities"
- 86 |               element={
- 87 |                 <Suspense fallback={<PageLoader />}>
- 88 |                   <Cities />
- 89 |                 </Suspense>
- 90 |               }
- 91 |             />
- 92 | 
- 93 |             <Route
- 94 |               path="schools"
- 95 |               element={
- 96 |                 <Suspense fallback={<PageLoader />}>
- 97 |                   <Schools />
- 98 |                 </Suspense>
- 99 |               }
-100 |             />
-101 | 
-102 |             <Route
-103 |               path="schools/:id"
-104 |               element={
-105 |                 <Suspense fallback={<PageLoader />}>
-106 |                   <SchoolProfile />
-107 |                 </Suspense>
-108 |               }
-109 |             />
-110 | 
-111 |             <Route
-112 |               path="employees"
-113 |               element={
-114 |                 <Suspense fallback={<PageLoader />}>
-115 |                   <Employees />
-116 |                 </Suspense>
-117 |               }
-118 |             />
-119 | 
-120 |             <Route
-121 |               path="finance"
-122 |               element={
-123 |                 <Suspense fallback={<PageLoader />}>
-124 |                   <Finance />
-125 |                 </Suspense>
-126 |               }
-127 |             />
-128 | 
-129 |             <Route
-130 |               path="calendar"
-131 |               element={
-132 |                 <Suspense fallback={<PageLoader />}>
-133 |                   <CalendarView />
-134 |                 </Suspense>
-135 |               }
-136 |             />
-137 |             <Route
-138 |               path="dashboard"
-139 |               element={
-140 |                 <Suspense fallback={<PageLoader />}>
-141 |                   <Dashboard />
-142 |                 </Suspense>
-143 |               }
-144 |             />
-145 | 
-146 |             <Route
-147 |               path="kindergartens"
-148 |               element={
-149 |                 <Suspense fallback={<PageLoader />}>
-150 |                   <Kindergartens />
-151 |                 </Suspense>
-152 |               }
-153 |             />
-154 |           </Route>
-155 |         </Routes>
-156 |       </CityProvider>
-157 |     </Router>
-158 |   );
-159 | }
-160 | 
+ 14 | const CityProfile = lazy(() => import("./pages/CityProfile"));
+ 15 | const EventReport = lazy(() => import("./pages/EventReport"));
+ 16 | 
+ 17 | // --- ДИНАМІЧНІ ІМПОРТИ (Ледаче завантаження / Code Splitting) ---
+ 18 | // Ці файли будуть завантажуватись окремими шматками (chunks) ТІЛЬКИ коли користувач перейде на відповідну сторінку
+ 19 | const Cities = lazy(() => import("./pages/Cities"));
+ 20 | const Schools = lazy(() => import("./pages/Schools"));
+ 21 | const SchoolProfile = lazy(() => import("./pages/SchoolProfile"));
+ 22 | const Employees = lazy(() => import("./pages/Employees"));
+ 23 | const Finance = lazy(() => import("./pages/Finance"));
+ 24 | const CalendarView = lazy(() => import("./pages/CalendarView"));
+ 25 | const Dashboard = lazy(() => import("./pages/Dashboard"));
+ 26 | const Kindergartens = lazy(() => import("./pages/Kindergartens"));
+ 27 | 
+ 28 | // Компонент-заглушка, який показується долі секунди, поки вантажиться JS код сторінки
+ 29 | const PageLoader = () => (
+ 30 |   <div className="flex items-center justify-center h-full min-h-[50vh]">
+ 31 |     <div className="text-slate-400 font-medium animate-pulse">
+ 32 |       Завантаження сторінки...
+ 33 |     </div>
+ 34 |   </div>
+ 35 | );
+ 36 | 
+ 37 | export default function App() {
+ 38 |   // Базова логіка авторизації
+ 39 |   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
+ 40 |     !!localStorage.getItem("token"),
+ 41 |   );
+ 42 | 
+ 43 |   const handleLogin = (token: string) => {
+ 44 |     localStorage.setItem("token", token);
+ 45 |     setIsAuthenticated(true);
+ 46 |   };
+ 47 | 
+ 48 |   const handleLogout = () => {
+ 49 |     localStorage.removeItem("token");
+ 50 |     setIsAuthenticated(false);
+ 51 |   };
+ 52 | 
+ 53 |   return (
+ 54 |     <Router>
+ 55 |       <CityProvider>
+ 56 |         <Routes>
+ 57 |           {/* Публічний маршрут: Логін */}
+ 58 |           <Route
+ 59 |             path="/login"
+ 60 |             element={
+ 61 |               !isAuthenticated ? (
+ 62 |                 <Login onLogin={handleLogin} />
+ 63 |               ) : (
+ 64 |                 <Navigate to="/cities" replace />
+ 65 |               )
+ 66 |             }
+ 67 |           />
+ 68 | 
+ 69 |           {/* Захищені маршрути (Layout відображає бокове меню) */}
+ 70 |           <Route
+ 71 |             path="/"
+ 72 |             element={
+ 73 |               isAuthenticated ? (
+ 74 |                 <Layout onLogout={handleLogout} />
+ 75 |               ) : (
+ 76 |                 <Navigate to="/login" replace />
+ 77 |               )
+ 78 |             }
+ 79 |           >
+ 80 |             {/* Редірект з кореня на сторінку міст за замовчуванням */}
+ 81 |             <Route index element={<Navigate to="/cities" replace />} />
+ 82 | 
+ 83 |             {/* Обгортаємо всі вкладені маршрути в Suspense. 
+ 84 |               Коли React намагається відрендерити "ліниву" сторінку, він показує fallback (PageLoader), 
+ 85 |               поки завантажується файл з сервера.
+ 86 |             */}
+ 87 |             <Route
+ 88 |               path="cities"
+ 89 |               element={
+ 90 |                 <Suspense fallback={<PageLoader />}>
+ 91 |                   <Cities />
+ 92 |                 </Suspense>
+ 93 |               }
+ 94 |             />
+ 95 | 
+ 96 |             <Route
+ 97 |               path="schools"
+ 98 |               element={
+ 99 |                 <Suspense fallback={<PageLoader />}>
+100 |                   <Schools />
+101 |                 </Suspense>
+102 |               }
+103 |             />
+104 | 
+105 |             <Route
+106 |               path="schools/:id"
+107 |               element={
+108 |                 <Suspense fallback={<PageLoader />}>
+109 |                   <SchoolProfile />
+110 |                 </Suspense>
+111 |               }
+112 |             />
+113 | 
+114 |             <Route
+115 |               path="employees"
+116 |               element={
+117 |                 <Suspense fallback={<PageLoader />}>
+118 |                   <Employees />
+119 |                 </Suspense>
+120 |               }
+121 |             />
+122 | 
+123 |             <Route
+124 |               path="finance"
+125 |               element={
+126 |                 <Suspense fallback={<PageLoader />}>
+127 |                   <Finance />
+128 |                 </Suspense>
+129 |               }
+130 |             />
+131 | 
+132 |             <Route
+133 |               path="calendar"
+134 |               element={
+135 |                 <Suspense fallback={<PageLoader />}>
+136 |                   <CalendarView />
+137 |                 </Suspense>
+138 |               }
+139 |             />
+140 |             <Route
+141 |               path="dashboard"
+142 |               element={
+143 |                 <Suspense fallback={<PageLoader />}>
+144 |                   <Dashboard />
+145 |                 </Suspense>
+146 |               }
+147 |             />
+148 | 
+149 |             <Route
+150 |               path="kindergartens"
+151 |               element={
+152 |                 <Suspense fallback={<PageLoader />}>
+153 |                   <Kindergartens />
+154 |                 </Suspense>
+155 |               }
+156 |             />
+157 | 
+158 |             <Route
+159 |               path="cities/:id"
+160 |               element={
+161 |                 <Suspense fallback={<PageLoader />}>
+162 |                   <CityProfile />
+163 |                 </Suspense>
+164 |               }
+165 |             />
+166 | 
+167 |             <Route
+168 |               path="events/:id/report"
+169 |               element={
+170 |                 <Suspense fallback={<PageLoader />}>
+171 |                   <EventReport />
+172 |                 </Suspense>
+173 |               }
+174 |             />
+175 |           </Route>
+176 |         </Routes>
+177 |       </CityProvider>
+178 |     </Router>
+179 |   );
+180 | }
+181 | 
 ```
 
 ### File: apps/frontend/src/components/AddressLink.tsx
@@ -4969,90 +5008,212 @@
 
 ### File: apps/frontend/src/components/cities/CityDesktopGrid.tsx
 ```tsx
-  0 | import { useNavigate } from "react-router-dom";
-  1 | import OptimizedImage from "../ui/OptimizedImage";
-  2 | 
-  3 | const CITY_PHOTOS: Record<string, string> = {
-  4 |   Львів: "https://gohotels.com.ua/images/stories/f08072159a443e07501f3df97987f8a3.jpg",
-  5 |   Київ: "https://images.unsplash.com/photo-1630651814316-fe71f3c30279?w=600&q=80&auto=format",
-  6 |   Харків: "https://images.unsplash.com/photo-1584646098378-0f87b72cffe1?w=600&q=80&auto=format",
-  7 |   Одеса: "https://images.unsplash.com/photo-1585168050053-a4ba02e3f0d2?w=600&q=80&auto=format",
-  8 |   Дніпро: "https://images.unsplash.com/photo-1570587953042-a65fd17e2f73?w=600&q=80&auto=format",
-  9 | };
- 10 | const DEFAULT_PHOTO = "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80&auto=format";
- 11 | 
- 12 | export default function CityDesktopGrid({ cities, selectedCity, onSelectCity }: any) {
- 13 |   const navigate = useNavigate();
- 14 | 
- 15 |   return (
- 16 |     <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
- 17 |       {cities.map((city: any) => {
- 18 |         const isSelected = selectedCity?.id === city.id;
- 19 |         return (
- 20 |           <div
- 21 |             key={city.id}
- 22 |             className={`bg-white rounded-2xl shadow-sm border transition-all overflow-hidden group ${
- 23 |               isSelected ? "border-blue-500 ring-4 ring-blue-500/20 shadow-md" : "border-slate-100 hover:shadow-lg hover:border-blue-200"
- 24 |             }`}
- 25 |           >
- 26 |             <div className="h-44 overflow-hidden relative">
- 27 |               <OptimizedImage
- 28 |                 src={CITY_PHOTOS[city.name] || DEFAULT_PHOTO}
- 29 |                 alt={city.name}
- 30 |                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
- 31 |                 onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_PHOTO; }}
- 32 |               />
- 33 |               <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
- 34 |               {isSelected && (
- 35 |                 <div className="absolute top-3 right-3 bg-blue-500 text-white p-1.5 rounded-full shadow-lg">
- 36 |                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
- 37 |                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
- 38 |                   </svg>
- 39 |                 </div>
- 40 |               )}
- 41 |             </div>
- 42 | 
- 43 |             <div className="p-5">
- 44 |               <div className="flex items-center justify-between mb-3">
- 45 |                 <h2 className="text-xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{city.name}</h2>
- 46 |                 <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-100">Активне</span>
- 47 |               </div>
- 48 |               <div className="flex items-center gap-2 mb-4 text-sm text-slate-600">
- 49 |                 <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold shrink-0">
- 50 |                   {city.manager?.name?.charAt(0) ?? "?"}
- 51 |                 </div>
- 52 |                 <span>Менеджер: <span className="font-medium">{city.manager?.name ?? "—"}</span></span>
- 53 |               </div>
- 54 |               <div className="space-y-2 text-sm border-t border-slate-50 pt-3">
- 55 |                 <div className="flex justify-between text-slate-500">
- 56 |                   <span>Заплановано подій:</span>
- 57 |                   <span className="font-semibold text-slate-800">{city.plannedEvents ?? 0}</span>
- 58 |                 </div>
- 59 |               </div>
- 60 |               <div className="flex gap-2 mt-4 pt-3 border-t border-slate-50">
- 61 |                 <button
- 62 |                   onClick={() => onSelectCity({ id: city.id, name: city.name })}
- 63 |                   className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors ${
- 64 |                     isSelected ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-blue-600 hover:bg-blue-700 text-white"
- 65 |                   }`}
- 66 |                 >
- 67 |                   {isSelected ? "Обрано" : "✓ Вибрати"}
- 68 |                 </button>
- 69 |                 <button
- 70 |                   onClick={() => navigate(`/cities/${city.id}`)}
- 71 |                   className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm rounded-lg transition-colors"
- 72 |                 >
- 73 |                   →
- 74 |                 </button>
- 75 |               </div>
- 76 |             </div>
- 77 |           </div>
- 78 |         );
- 79 |       })}
- 80 |     </div>
- 81 |   );
- 82 | }
- 83 | 
+  0 | import { useRef, useCallback } from "react";
+  1 | import { useNavigate } from "react-router-dom";
+  2 | import OptimizedImage from "../ui/OptimizedImage";
+  3 | 
+  4 | const CITY_PHOTOS: Record<string, string> = {
+  5 |   Львів:
+  6 |     "https://gohotels.com.ua/images/stories/f08072159a443e07501f3df97987f8a3.jpg",
+  7 |   Київ: "https://images.unsplash.com/photo-1630651814316-fe71f3c30279?w=600&q=80&auto=format",
+  8 |   Харків:
+  9 |     "https://images.unsplash.com/photo-1584646098378-0f87b72cffe1?w=600&q=80&auto=format",
+ 10 |   Одеса:
+ 11 |     "https://images.unsplash.com/photo-1585168050053-a4ba02e3f0d2?w=600&q=80&auto=format",
+ 12 |   Дніпро:
+ 13 |     "https://images.unsplash.com/photo-1570587953042-a65fd17e2f73?w=600&q=80&auto=format",
+ 14 | };
+ 15 | const DEFAULT_PHOTO =
+ 16 |   "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80&auto=format";
+ 17 | 
+ 18 | // ─── Одна картка міста ────────────────────────────────────────────────────────
+ 19 | 
+ 20 | function CityCard({
+ 21 |   city,
+ 22 |   index,
+ 23 |   isSelected,
+ 24 |   onSelect,
+ 25 | }: {
+ 26 |   city: any;
+ 27 |   index: number;
+ 28 |   isSelected: boolean;
+ 29 |   onSelect: () => void;
+ 30 | }) {
+ 31 |   const navigate = useNavigate();
+ 32 |   const imgRef = useRef<HTMLImageElement>(null);
+ 33 | 
+ 34 |   // Паралакс: фото зміщується на 4px при русі миші над карткою
+ 35 |   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+ 36 |     const img = imgRef.current;
+ 37 |     if (!img) return;
+ 38 |     const rect = e.currentTarget.getBoundingClientRect();
+ 39 |     const x = ((e.clientX - rect.left) / rect.width - 0.5) * 8;
+ 40 |     const y = ((e.clientY - rect.top) / rect.height - 0.5) * 8;
+ 41 |     img.style.transform = `scale(1.08) translate(${x}px, ${y}px)`;
+ 42 |   }, []);
+ 43 | 
+ 44 |   const handleMouseLeave = useCallback(() => {
+ 45 |     const img = imgRef.current;
+ 46 |     if (!img) return;
+ 47 |     img.style.transform = "scale(1) translate(0, 0)";
+ 48 |   }, []);
+ 49 | 
+ 50 |   return (
+ 51 |     <div
+ 52 |       // Stagger animation: кожна картка з'являється з затримкою index * 60ms
+ 53 |       style={{
+ 54 |         animationDelay: `${index * 60}ms`,
+ 55 |         animationFillMode: "both",
+ 56 |       }}
+ 57 |       className={`
+ 58 |         city-card-enter
+ 59 |         bg-white rounded-2xl shadow-sm border overflow-hidden group
+ 60 |         transition-[transform,box-shadow] duration-300 ease-out
+ 61 |         hover:-translate-y-1.5 hover:scale-[1.02] hover:shadow-xl
+ 62 |         ${
+ 63 |           isSelected
+ 64 |             ? "border-blue-500 ring-4 ring-blue-500/20 shadow-md"
+ 65 |             : "border-slate-100 hover:border-blue-200"
+ 66 |         }
+ 67 |       `}
+ 68 |     >
+ 69 |       {/* Фото з паралаксом і градієнтом Netflix-стилю */}
+ 70 |       <div
+ 71 |         className="h-44 overflow-hidden relative"
+ 72 |         onMouseMove={handleMouseMove}
+ 73 |         onMouseLeave={handleMouseLeave}
+ 74 |       >
+ 75 |         <img
+ 76 |           ref={imgRef}
+ 77 |           src={CITY_PHOTOS[city.name] || DEFAULT_PHOTO}
+ 78 |           alt={city.name}
+ 79 |           loading="lazy"
+ 80 |           decoding="async"
+ 81 |           className="w-full h-full object-cover transition-transform duration-300 ease-out"
+ 82 |           onError={(e) => {
+ 83 |             (e.target as HTMLImageElement).src = DEFAULT_PHOTO;
+ 84 |           }}
+ 85 |         />
+ 86 | 
+ 87 |         {/* Темний градієнт знизу — назва міста чітко читається */}
+ 88 |         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+ 89 | 
+ 90 |         {/* Назва міста поверх градієнта */}
+ 91 |         <div className="absolute bottom-0 left-0 right-0 p-4">
+ 92 |           <h2 className="text-white text-xl font-bold drop-shadow-sm leading-tight">
+ 93 |             {city.name}
+ 94 |           </h2>
+ 95 |         </div>
+ 96 | 
+ 97 |         {/* Чекмарк якщо місто обрано */}
+ 98 |         {isSelected && (
+ 99 |           <div className="absolute top-3 right-3 bg-blue-500 text-white p-1.5 rounded-full shadow-lg">
+100 |             <svg
+101 |               className="w-5 h-5"
+102 |               fill="none"
+103 |               stroke="currentColor"
+104 |               viewBox="0 0 24 24"
+105 |             >
+106 |               <path
+107 |                 strokeLinecap="round"
+108 |                 strokeLinejoin="round"
+109 |                 strokeWidth={3}
+110 |                 d="M5 13l4 4L19 7"
+111 |               />
+112 |             </svg>
+113 |           </div>
+114 |         )}
+115 |       </div>
+116 | 
+117 |       {/* Контент картки */}
+118 |       <div className="p-5">
+119 |         <div className="flex items-center justify-between mb-3">
+120 |           <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-100">
+121 |             Активне
+122 |           </span>
+123 |         </div>
+124 | 
+125 |         <div className="flex items-center gap-2 mb-4 text-sm text-slate-600">
+126 |           <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold shrink-0">
+127 |             {city.manager?.name?.charAt(0) ?? "?"}
+128 |           </div>
+129 |           <span>
+130 |             Менеджер:{" "}
+131 |             <span className="font-medium">{city.manager?.name ?? "—"}</span>
+132 |           </span>
+133 |         </div>
+134 | 
+135 |         <div className="space-y-2 text-sm border-t border-slate-50 pt-3">
+136 |           <div className="flex justify-between text-slate-500">
+137 |             <span>Заплановано подій:</span>
+138 |             <span className="font-semibold text-slate-800">
+139 |               {city.plannedEvents ?? 0}
+140 |             </span>
+141 |           </div>
+142 |         </div>
+143 | 
+144 |         <div className="flex gap-2 mt-4 pt-3 border-t border-slate-50">
+145 |           <button
+146 |             onClick={onSelect}
+147 |             className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors ${
+148 |               isSelected
+149 |                 ? "bg-blue-50 text-blue-700 border border-blue-200"
+150 |                 : "bg-blue-600 hover:bg-blue-700 text-white"
+151 |             }`}
+152 |           >
+153 |             {isSelected ? "Обрано" : "✓ Вибрати"}
+154 |           </button>
+155 |           <button
+156 |             onClick={() => navigate(`/cities/${city.id}`)}
+157 |             className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm rounded-lg transition-colors"
+158 |           >
+159 |             →
+160 |           </button>
+161 |         </div>
+162 |       </div>
+163 |     </div>
+164 |   );
+165 | }
+166 | 
+167 | // ─── Грід ────────────────────────────────────────────────────────────────────
+168 | 
+169 | export default function CityDesktopGrid({
+170 |   cities,
+171 |   selectedCity,
+172 |   onSelectCity,
+173 | }: any) {
+174 |   return (
+175 |     <>
+176 |       {/*
+177 |         Стиль анімації — вставляємо один раз через <style>.
+178 |         opacity: 0 → 1  +  translateY(16px) → 0
+179 |         Це stagger: кожна картка отримує animationDelay через inline style вище.
+180 |       */}
+181 |       <style>{`
+182 |         @keyframes cityCardIn {
+183 |           from { opacity: 0; transform: translateY(16px); }
+184 |           to   { opacity: 1; transform: translateY(0); }
+185 |         }
+186 |         .city-card-enter {
+187 |           animation: cityCardIn 0.35s ease-out;
+188 |         }
+189 |       `}</style>
+190 | 
+191 |       <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+192 |         {cities.map((city: any, index: number) => (
+193 |           <CityCard
+194 |             key={city.id}
+195 |             city={city}
+196 |             index={index}
+197 |             isSelected={selectedCity?.id === city.id}
+198 |             onSelect={() => onSelectCity({ id: city.id, name: city.name })}
+199 |           />
+200 |         ))}
+201 |       </div>
+202 |     </>
+203 |   );
+204 | }
+205 | 
 ```
 
 ### File: apps/frontend/src/components/cities/CityMobileHeader.tsx
@@ -5235,76 +5396,129 @@
   8 |   "bg-sky-50 text-sky-600",
   9 | ];
  10 | 
- 11 | export default function CityMobileList({ cities, selectedCity, onSelectCity }: any) {
- 12 |   const navigate = useNavigate();
- 13 |   const [activeTab, setActiveTab] = useState<"ACTIVE" | "ALL" | "ARCHIVED">("ACTIVE");
- 14 | 
- 15 |   const filteredCities = useMemo(() => {
- 16 |     return cities.filter((c: any) => {
- 17 |       const hasEvents = (c.plannedEvents || 0) + (c.completedEvents || 0) > 0;
- 18 |       
- 19 |       if (activeTab === "ACTIVE") return hasEvents;
- 20 |       if (activeTab === "ARCHIVED") return !hasEvents; // Ті, де НЕМАЄ подій
- 21 |       return true; // Усі
- 22 |     });
- 23 |   }, [cities, activeTab]);
- 24 | 
- 25 |   return (
- 26 |     <div className="md:hidden flex flex-col gap-4 mb-24">
- 27 |       {/* Вкладки (Без пошуку) */}
- 28 |       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mt-1">
- 29 |         {['Активні', 'Усі', 'Архівні'].map(tab => {
- 30 |           const tabKey = tab === 'Активні' ? 'ACTIVE' : tab === 'Усі' ? 'ALL' : 'ARCHIVED';
- 31 |           const isActive = activeTab === tabKey;
- 32 |           return (
- 33 |             <button 
- 34 |               key={tab} 
- 35 |               onClick={() => setActiveTab(tabKey)}
- 36 |               className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors flex items-center gap-1.5 ${isActive ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
- 37 |             >
- 38 |               {isActive && <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>}
- 39 |               {tab}
- 40 |             </button>
- 41 |           )
- 42 |         })}
- 43 |       </div>
- 44 | 
- 45 |       {/* Список */}
- 46 |       <div className="flex flex-col bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
- 47 |         {filteredCities.map((city: any, index: number) => {
- 48 |           const iconStyle = ICON_COLORS[index % ICON_COLORS.length];
- 49 |           const totalEvents = (city.plannedEvents || 0) + (city.completedEvents || 0);
- 50 | 
- 51 |           return (
- 52 |             <div 
- 53 |               key={city.id} 
- 54 |               onClick={() => onSelectCity({ id: city.id, name: city.name })}
- 55 |               className={`flex items-center p-4 border-b border-slate-50 active:bg-slate-50 transition-colors ${selectedCity?.id === city.id ? 'bg-blue-50/30' : ''}`}
- 56 |             >
- 57 |               <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 text-xl shrink-0 ${iconStyle}`}>
- 58 |                 🏛️
- 59 |               </div>
- 60 |               <div className="flex-1 min-w-0">
- 61 |                 <p className="font-bold text-slate-800 text-base">{city.name}</p>
- 62 |                 <p className="text-xs font-medium text-slate-400 mt-0.5">
- 63 |                   {totalEvents} подій • {city.schoolsCount || 0} шкіл
- 64 |                 </p>
- 65 |               </div>
- 66 |               <button 
- 67 |                 onClick={(e) => { e.stopPropagation(); navigate(`/cities/${city.id}`); }} 
- 68 |                 className="p-3 text-slate-400 hover:text-blue-600 text-2xl font-light leading-none"
- 69 |               >
- 70 |                 ›
- 71 |               </button>
- 72 |             </div>
- 73 |           )
- 74 |         })}
- 75 |         {filteredCities.length === 0 && <div className="p-8 text-center text-slate-400 font-medium">Міст не знайдено</div>}
- 76 |       </div>
- 77 |     </div>
- 78 |   );
- 79 | }
- 80 | 
+ 11 | export default function CityMobileList({
+ 12 |   cities,
+ 13 |   selectedCity,
+ 14 |   onSelectCity,
+ 15 | }: any) {
+ 16 |   const navigate = useNavigate();
+ 17 |   const [activeTab, setActiveTab] = useState<"ACTIVE" | "ALL" | "ARCHIVED">(
+ 18 |     "ACTIVE",
+ 19 |   );
+ 20 | 
+ 21 |   const filteredCities = useMemo(() => {
+ 22 |     return cities.filter((c: any) => {
+ 23 |       const hasEvents = (c.plannedEvents || 0) + (c.completedEvents || 0) > 0;
+ 24 |       if (activeTab === "ACTIVE") return hasEvents;
+ 25 |       if (activeTab === "ARCHIVED") return !hasEvents;
+ 26 |       return true;
+ 27 |     });
+ 28 |   }, [cities, activeTab]);
+ 29 | 
+ 30 |   return (
+ 31 |     <>
+ 32 |       {/* Stagger анімація для мобільних рядків */}
+ 33 |       <style>{`
+ 34 |         @keyframes cityRowIn {
+ 35 |           from { opacity: 0; transform: translateX(-12px); }
+ 36 |           to   { opacity: 1; transform: translateX(0); }
+ 37 |         }
+ 38 |         .city-row-enter {
+ 39 |           animation: cityRowIn 0.28s ease-out;
+ 40 |           animation-fill-mode: both;
+ 41 |         }
+ 42 |       `}</style>
+ 43 | 
+ 44 |       <div className="md:hidden flex flex-col gap-4 mb-24">
+ 45 |         {/* Вкладки */}
+ 46 |         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mt-1">
+ 47 |           {["Активні", "Усі", "Архівні"].map((tab) => {
+ 48 |             const tabKey =
+ 49 |               tab === "Активні" ? "ACTIVE" : tab === "Усі" ? "ALL" : "ARCHIVED";
+ 50 |             const isActive = activeTab === tabKey;
+ 51 |             return (
+ 52 |               <button
+ 53 |                 key={tab}
+ 54 |                 onClick={() => setActiveTab(tabKey as typeof activeTab)}
+ 55 |                 className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors flex items-center gap-1.5 ${
+ 56 |                   isActive
+ 57 |                     ? "bg-blue-50 text-blue-600 border border-blue-100"
+ 58 |                     : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+ 59 |                 }`}
+ 60 |               >
+ 61 |                 {isActive && (
+ 62 |                   <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+ 63 |                 )}
+ 64 |                 {tab}
+ 65 |               </button>
+ 66 |             );
+ 67 |           })}
+ 68 |         </div>
+ 69 | 
+ 70 |         {/* Список */}
+ 71 |         <div className="flex flex-col bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
+ 72 |           {filteredCities.map((city: any, index: number) => {
+ 73 |             const iconStyle = ICON_COLORS[index % ICON_COLORS.length];
+ 74 |             const totalEvents =
+ 75 |               (city.plannedEvents || 0) + (city.completedEvents || 0);
+ 76 |             const isSelected = selectedCity?.id === city.id;
+ 77 | 
+ 78 |             return (
+ 79 |               <div
+ 80 |                 key={city.id}
+ 81 |                 // Stagger: кожен рядок з'являється з зміщенням index * 50ms
+ 82 |                 style={{ animationDelay: `${index * 50}ms` }}
+ 83 |                 className={`
+ 84 |                   city-row-enter
+ 85 |                   flex items-center p-4 border-b border-slate-50
+ 86 |                   transition-[background-color,transform] duration-150
+ 87 |                   active:scale-[0.99] active:bg-slate-50
+ 88 |                   ${isSelected ? "bg-blue-50/30" : ""}
+ 89 |                 `}
+ 90 |                 onClick={() => onSelectCity({ id: city.id, name: city.name })}
+ 91 |               >
+ 92 |                 {/* Іконка */}
+ 93 |                 <div
+ 94 |                   className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 text-xl shrink-0 ${iconStyle}`}
+ 95 |                 >
+ 96 |                   🏛️
+ 97 |                 </div>
+ 98 | 
+ 99 |                 {/* Текст */}
+100 |                 <div className="flex-1 min-w-0">
+101 |                   <p className="font-bold text-slate-800 text-base">
+102 |                     {city.name}
+103 |                   </p>
+104 |                   <p className="text-xs font-medium text-slate-400 mt-0.5">
+105 |                     {totalEvents} подій • {city.schoolsCount || 0} шкіл
+106 |                   </p>
+107 |                 </div>
+108 | 
+109 |                 {/* Стрілка переходу */}
+110 |                 <button
+111 |                   onClick={(e) => {
+112 |                     e.stopPropagation();
+113 |                     navigate(`/cities/${city.id}`);
+114 |                   }}
+115 |                   className="p-3 text-slate-400 hover:text-blue-600 text-2xl font-light leading-none transition-colors"
+116 |                 >
+117 |                   ›
+118 |                 </button>
+119 |               </div>
+120 |             );
+121 |           })}
+122 | 
+123 |           {filteredCities.length === 0 && (
+124 |             <div className="p-8 text-center text-slate-400 font-medium">
+125 |               Міст не знайдено
+126 |             </div>
+127 |           )}
+128 |         </div>
+129 |       </div>
+130 |     </>
+131 |   );
+132 | }
+133 | 
 ```
 
 ### File: apps/frontend/src/components/city-profile/CityAnalytics.tsx
@@ -6522,795 +6736,861 @@
 
 ### File: apps/frontend/src/components/finance/FinanceCharts.tsx
 ```tsx
-  0 | import {
-  1 |   ResponsiveContainer,
-  2 |   AreaChart,
-  3 |   Area,
-  4 |   XAxis,
-  5 |   YAxis,
-  6 |   CartesianGrid,
-  7 |   Tooltip,
-  8 |   PieChart,
-  9 |   Pie,
- 10 |   Cell,
- 11 |   BarChart,
- 12 |   Bar,
- 13 | } from "recharts";
- 14 | 
- 15 | const PALETTE = [
- 16 |   "#3b82f6",
- 17 |   "#10b981",
- 18 |   "#f59e0b",
- 19 |   "#8b5cf6",
- 20 |   "#ec4899",
- 21 |   "#06b6d4",
- 22 | ];
- 23 | const PIE_COLORS = [
- 24 |   "#3b82f6",
- 25 |   "#8b5cf6",
- 26 |   "#ec4899",
- 27 |   "#f43f5e",
- 28 |   "#f59e0b",
- 29 |   "#10b981",
- 30 |   "#0ea5e9",
- 31 | ];
- 32 | 
- 33 | const fmt = (n: number) =>
- 34 |   new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
- 35 | 
- 36 | // ─── Допоміжні компоненти ───────────────────────────────────────────────────
+  0 | import React, { useMemo, memo } from "react";
+  1 | import {
+  2 |   ResponsiveContainer,
+  3 |   AreaChart,
+  4 |   Area,
+  5 |   XAxis,
+  6 |   YAxis,
+  7 |   CartesianGrid,
+  8 |   Tooltip,
+  9 |   PieChart,
+ 10 |   Pie,
+ 11 |   Cell,
+ 12 |   BarChart,
+ 13 |   Bar,
+ 14 | } from "recharts";
+ 15 | 
+ 16 | const PALETTE = [
+ 17 |   "#3b82f6",
+ 18 |   "#10b981",
+ 19 |   "#f59e0b",
+ 20 |   "#8b5cf6",
+ 21 |   "#ec4899",
+ 22 |   "#06b6d4",
+ 23 | ];
+ 24 | const PIE_COLORS = [
+ 25 |   "#3b82f6",
+ 26 |   "#8b5cf6",
+ 27 |   "#ec4899",
+ 28 |   "#f43f5e",
+ 29 |   "#f59e0b",
+ 30 |   "#10b981",
+ 31 |   "#0ea5e9",
+ 32 | ];
+ 33 | 
+ 34 | // Виносимо fmt поза компонент — це чиста функція, не потребує useMemo
+ 35 | const fmt = (n: number) =>
+ 36 |   new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
  37 | 
- 38 | function KpiCard({ title, value, color, bg, icon, subtitle }: any) {
- 39 |   return (
- 40 |     <div className="bg-white rounded-[24px] p-5 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow duration-300">
- 41 |       <div className="flex justify-between items-start mb-4">
- 42 |         <p className="text-xs sm:text-sm font-semibold text-slate-500 leading-tight pr-2">
- 43 |           {title}
- 44 |         </p>
- 45 |         <div
- 46 |           className={`w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center text-xl shadow-sm ${bg}`}
- 47 |         >
- 48 |           {icon}
- 49 |         </div>
- 50 |       </div>
- 51 |       <div>
- 52 |         <p
- 53 |           className={`text-xl sm:text-2xl md:text-3xl font-black tracking-tight ${color}`}
- 54 |         >
- 55 |           {fmt(value)}{" "}
- 56 |           <span className="text-sm font-bold text-slate-400 opacity-60">
- 57 |             грн
- 58 |           </span>
- 59 |         </p>
- 60 |         {subtitle && (
- 61 |           <p className="text-[11px] sm:text-xs text-slate-400 mt-1.5 font-medium">
- 62 |             {subtitle}
- 63 |           </p>
- 64 |         )}
- 65 |       </div>
- 66 |     </div>
- 67 |   );
- 68 | }
- 69 | 
- 70 | function EventTable({
- 71 |   events,
- 72 |   positive,
- 73 | }: {
- 74 |   events: any[];
- 75 |   positive: boolean;
- 76 | }) {
- 77 |   if (!events || !events.length) return <EmptyState />;
- 78 |   return (
- 79 |     <table className="w-full text-sm min-w-[300px]">
- 80 |       <thead>
- 81 |         <tr className="text-slate-400 text-xs uppercase border-b border-slate-50">
- 82 |           <th className="text-left pb-3 font-semibold tracking-wider">Дата</th>
- 83 |           <th className="text-left pb-3 font-semibold tracking-wider">
- 84 |             Заклад
- 85 |           </th>
- 86 |           <th className="text-right pb-3 font-semibold tracking-wider">
- 87 |             Прибуток
- 88 |           </th>
- 89 |         </tr>
- 90 |       </thead>
- 91 |       <tbody>
- 92 |         {events.map((e: any, i: number) => (
- 93 |           <tr
- 94 |             key={i}
- 95 |             className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
- 96 |           >
- 97 |             <td className="py-3 text-slate-500 whitespace-nowrap">
- 98 |               {new Date(e.date).toLocaleDateString("uk-UA", {
- 99 |                 day: "2-digit",
-100 |                 month: "2-digit",
-101 |               })}
-102 |             </td>
-103 |             <td className="py-3 font-medium text-slate-700 truncate max-w-[120px] sm:max-w-[200px] pr-2">
-104 |               {e.school}
-105 |             </td>
-106 |             <td
-107 |               className={`py-3 text-right font-bold whitespace-nowrap ${positive ? "text-emerald-600" : "text-rose-500"}`}
-108 |             >
-109 |               {new Intl.NumberFormat("uk-UA").format(Math.round(e.profit))} грн
-110 |             </td>
-111 |           </tr>
-112 |         ))}
-113 |       </tbody>
-114 |     </table>
-115 |   );
-116 | }
-117 | 
-118 | function EmptyState() {
-119 |   return (
-120 |     <div className="flex flex-col items-center justify-center h-full min-h-[150px] text-slate-400">
-121 |       <span className="text-3xl mb-3 opacity-50">📂</span>
-122 |       <span className="text-sm font-medium">Немає даних за цей період</span>
-123 |     </div>
-124 |   );
-125 | }
-126 | 
-127 | function CustomTooltip({ active, payload, label }: any) {
-128 |   if (active && payload && payload.length) {
-129 |     return (
-130 |       <div className="bg-white/90 backdrop-blur-md border border-slate-100 p-4 rounded-2xl shadow-xl text-sm min-w-[160px]">
-131 |         <p className="font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">
-132 |           {label}
-133 |         </p>
-134 |         {payload.map((entry: any, index: number) => (
-135 |           <div
-136 |             key={index}
-137 |             className="flex items-center justify-between gap-4 mb-1.5 last:mb-0"
-138 |           >
-139 |             <div className="flex items-center gap-2">
-140 |               <div
-141 |                 className="w-2.5 h-2.5 rounded-full shadow-sm"
-142 |                 style={{ backgroundColor: entry.color }}
-143 |               />
-144 |               <span className="text-slate-500">{entry.name}:</span>
-145 |             </div>
-146 |             <span className="font-bold text-slate-800">
-147 |               {fmt(entry.value)} грн
-148 |             </span>
-149 |           </div>
-150 |         ))}
-151 |       </div>
-152 |     );
-153 |   }
-154 |   return null;
-155 | }
-156 | 
-157 | // ─── Пропси FinanceCharts ────────────────────────────────────────────────────
-158 | 
-159 | interface Props {
-160 |   data: any;
-161 |   period: string;
-162 |   setPeriod: (v: string) => void;
-163 |   projectFilter: string;
-164 |   setProjectFilter: (v: string) => void;
-165 |   selectedCity: any;
-166 | }
-167 | 
-168 | // ─── Головний компонент ──────────────────────────────────────────────────────
+ 38 | // ─── Допоміжні компоненти — всі в memo ──────────────────────────────────────
+ 39 | 
+ 40 | const KpiCard = memo(function KpiCard({
+ 41 |   title,
+ 42 |   value,
+ 43 |   color,
+ 44 |   bg,
+ 45 |   icon,
+ 46 |   subtitle,
+ 47 | }: any) {
+ 48 |   return (
+ 49 |     <div className="bg-white rounded-[24px] p-5 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow duration-300">
+ 50 |       <div className="flex justify-between items-start mb-4">
+ 51 |         <p className="text-xs sm:text-sm font-semibold text-slate-500 leading-tight pr-2">
+ 52 |           {title}
+ 53 |         </p>
+ 54 |         <div
+ 55 |           className={`w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center text-xl shadow-sm ${bg}`}
+ 56 |         >
+ 57 |           {icon}
+ 58 |         </div>
+ 59 |       </div>
+ 60 |       <div>
+ 61 |         <p
+ 62 |           className={`text-xl sm:text-2xl md:text-3xl font-black tracking-tight ${color}`}
+ 63 |         >
+ 64 |           {fmt(value)}{" "}
+ 65 |           <span className="text-sm font-bold text-slate-400 opacity-60">
+ 66 |             грн
+ 67 |           </span>
+ 68 |         </p>
+ 69 |         {subtitle && (
+ 70 |           <p className="text-[11px] sm:text-xs text-slate-400 mt-1.5 font-medium">
+ 71 |             {subtitle}
+ 72 |           </p>
+ 73 |         )}
+ 74 |       </div>
+ 75 |     </div>
+ 76 |   );
+ 77 | });
+ 78 | 
+ 79 | const EmptyState = memo(function EmptyState() {
+ 80 |   return (
+ 81 |     <div className="flex flex-col items-center justify-center h-full min-h-[150px] text-slate-400">
+ 82 |       <span className="text-3xl mb-3 opacity-50">📂</span>
+ 83 |       <span className="text-sm font-medium">Немає даних за цей період</span>
+ 84 |     </div>
+ 85 |   );
+ 86 | });
+ 87 | 
+ 88 | const EventTable = memo(function EventTable({
+ 89 |   events,
+ 90 |   positive,
+ 91 | }: {
+ 92 |   events: any[];
+ 93 |   positive: boolean;
+ 94 | }) {
+ 95 |   if (!events || !events.length) return <EmptyState />;
+ 96 |   return (
+ 97 |     <table className="w-full text-sm min-w-[300px]">
+ 98 |       <thead>
+ 99 |         <tr className="text-slate-400 text-xs uppercase border-b border-slate-50">
+100 |           <th className="text-left pb-3 font-semibold tracking-wider">Дата</th>
+101 |           <th className="text-left pb-3 font-semibold tracking-wider">
+102 |             Заклад
+103 |           </th>
+104 |           <th className="text-right pb-3 font-semibold tracking-wider">
+105 |             Прибуток
+106 |           </th>
+107 |         </tr>
+108 |       </thead>
+109 |       <tbody>
+110 |         {events.map((e: any, i: number) => (
+111 |           <tr
+112 |             key={i}
+113 |             className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+114 |           >
+115 |             <td className="py-3 text-slate-500 whitespace-nowrap">
+116 |               {new Date(e.date).toLocaleDateString("uk-UA", {
+117 |                 day: "2-digit",
+118 |                 month: "2-digit",
+119 |               })}
+120 |             </td>
+121 |             <td className="py-3 font-medium text-slate-700 truncate max-w-[120px] sm:max-w-[200px] pr-2">
+122 |               {e.school}
+123 |             </td>
+124 |             <td
+125 |               className={`py-3 text-right font-bold whitespace-nowrap ${
+126 |                 positive ? "text-emerald-600" : "text-rose-500"
+127 |               }`}
+128 |             >
+129 |               {fmt(e.profit)} грн
+130 |             </td>
+131 |           </tr>
+132 |         ))}
+133 |       </tbody>
+134 |     </table>
+135 |   );
+136 | });
+137 | 
+138 | const CustomTooltip = memo(function CustomTooltip({
+139 |   active,
+140 |   payload,
+141 |   label,
+142 | }: any) {
+143 |   if (!active || !payload?.length) return null;
+144 |   return (
+145 |     <div className="bg-white/90 backdrop-blur-md border border-slate-100 p-4 rounded-2xl shadow-xl text-sm min-w-[160px]">
+146 |       <p className="font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">
+147 |         {label}
+148 |       </p>
+149 |       {payload.map((entry: any, index: number) => (
+150 |         <div
+151 |           key={index}
+152 |           className="flex items-center justify-between gap-4 mb-1.5 last:mb-0"
+153 |         >
+154 |           <div className="flex items-center gap-2">
+155 |             <div
+156 |               className="w-2.5 h-2.5 rounded-full shadow-sm"
+157 |               style={{ backgroundColor: entry.color }}
+158 |             />
+159 |             <span className="text-slate-500">{entry.name}:</span>
+160 |           </div>
+161 |           <span className="font-bold text-slate-800">
+162 |             {fmt(entry.value)} грн
+163 |           </span>
+164 |         </div>
+165 |       ))}
+166 |     </div>
+167 |   );
+168 | });
 169 | 
-170 | export default function FinanceCharts({
-171 |   data,
-172 |   period,
-173 |   setPeriod,
-174 |   projectFilter,
-175 |   setProjectFilter,
-176 |   selectedCity,
-177 | }: Props) {
-178 |   const {
-179 |     kpi,
-180 |     monthly,
-181 |     byProject,
-182 |     byExpenseCategory,
-183 |     topSchools,
-184 |     topEvents,
-185 |     worstEvents,
-186 |     expectedRevenue,
-187 |     filters,
-188 |   } = data;
-189 | 
-190 |   return (
-191 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen font-sans overflow-x-hidden">
-192 |       {/* Шапка та фільтри */}
-193 |       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-194 |         <div>
-195 |           <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">
-196 |             Фінанси
-197 |           </h1>
-198 |           <p className="text-slate-500 text-sm mt-1">
-199 |             Аналітика доходів та витрат{" "}
-200 |             {selectedCity.id ? (
-201 |               <span className="font-medium text-blue-600">
-202 |                 {selectedCity.name}
-203 |               </span>
-204 |             ) : (
-205 |               "по всіх містах"
-206 |             )}
-207 |           </p>
-208 |         </div>
-209 |         <div className="flex flex-wrap items-center gap-3">
-210 |           <select
-211 |             value={period}
-212 |             onChange={(e) => setPeriod(e.target.value)}
-213 |             className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8"
-214 |           >
-215 |             <option value="all">За весь час</option>
-216 |             <option value="year">Цей рік</option>
-217 |             <option value="quarter">Цей квартал</option>
-218 |             <option value="month">Цей місяць</option>
-219 |           </select>
-220 | 
-221 |           <select
-222 |             value={projectFilter}
-223 |             onChange={(e) => setProjectFilter(e.target.value)}
-224 |             className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8"
-225 |           >
-226 |             <option value="">Всі проєкти</option>
-227 |             {filters?.projects?.map((p: string) => (
-228 |               <option key={p} value={p}>
-229 |                 {p}
-230 |               </option>
-231 |             ))}
-232 |           </select>
-233 |         </div>
-234 |       </div>
-235 | 
-236 |       {/* KPI Картки */}
-237 |       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-8">
-238 |         <KpiCard
-239 |           title="Загальна виручка"
-240 |           value={kpi.totalRevenue}
-241 |           color="text-blue-600"
-242 |           bg="bg-blue-50"
-243 |           icon="💰"
-244 |         />
-245 |         <KpiCard
-246 |           title="Чистий прибуток"
-247 |           value={kpi.totalProfit}
-248 |           color="text-emerald-600"
-249 |           bg="bg-emerald-50"
-250 |           icon="📈"
-251 |         />
-252 |         <KpiCard
-253 |           title="Витрати"
-254 |           value={kpi.totalExpenses}
-255 |           color="text-rose-600"
-256 |           bg="bg-rose-50"
-257 |           icon="📉"
-258 |         />
-259 |         <KpiCard
-260 |           title="Очікувана виручка"
-261 |           value={expectedRevenue}
-262 |           color="text-amber-500"
-263 |           bg="bg-amber-50"
-264 |           icon="⏳"
-265 |           subtitle="Із запланованих подій"
-266 |         />
-267 |       </div>
-268 | 
-269 |       {/* Верхній ряд графіків */}
-270 |       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-271 |         {/* Головний графік: Динаміка */}
-272 |         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 xl:col-span-2">
-273 |           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-274 |             <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
-275 |               📊
-276 |             </span>
-277 |             Динаміка виручки та прибутку
-278 |           </h3>
-279 |           <div className="h-[280px] md:h-[320px] w-full -ml-4 sm:ml-0">
-280 |             {monthly?.length > 0 ? (
-281 |               <ResponsiveContainer width="100%" height="100%">
-282 |                 <AreaChart
-283 |                   data={monthly}
-284 |                   margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
-285 |                 >
-286 |                   <defs>
-287 |                     <linearGradient
-288 |                       id="colorRevenue"
-289 |                       x1="0"
-290 |                       y1="0"
-291 |                       x2="0"
-292 |                       y2="1"
-293 |                     >
-294 |                       <stop
-295 |                         offset="5%"
-296 |                         stopColor="#3b82f6"
-297 |                         stopOpacity={0.25}
-298 |                       />
-299 |                       <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-300 |                     </linearGradient>
-301 |                     <linearGradient
-302 |                       id="colorProfit"
-303 |                       x1="0"
-304 |                       y1="0"
-305 |                       x2="0"
-306 |                       y2="1"
-307 |                     >
-308 |                       <stop
-309 |                         offset="5%"
-310 |                         stopColor="#10b981"
-311 |                         stopOpacity={0.25}
-312 |                       />
-313 |                       <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-314 |                     </linearGradient>
-315 |                   </defs>
-316 |                   <CartesianGrid
-317 |                     strokeDasharray="3 3"
-318 |                     vertical={false}
-319 |                     stroke="#f1f5f9"
-320 |                   />
-321 |                   <XAxis
-322 |                     dataKey="month"
-323 |                     tick={{ fontSize: 12, fill: "#64748b" }}
-324 |                     axisLine={false}
-325 |                     tickLine={false}
-326 |                     dy={10}
-327 |                     minTickGap={20}
-328 |                   />
-329 |                   <YAxis
-330 |                     tickFormatter={(v) =>
-331 |                       v >= 1000 ? `${Math.round(v / 1000)}k` : v
-332 |                     }
-333 |                     tick={{ fontSize: 12, fill: "#64748b" }}
-334 |                     axisLine={false}
-335 |                     tickLine={false}
-336 |                   />
-337 |                   <Tooltip
-338 |                     content={<CustomTooltip />}
-339 |                     cursor={{
-340 |                       stroke: "#cbd5e1",
-341 |                       strokeWidth: 1,
-342 |                       strokeDasharray: "4 4",
-343 |                     }}
-344 |                   />
-345 |                   <Area
-346 |                     type="monotone"
-347 |                     name="Виручка"
-348 |                     dataKey="revenue"
-349 |                     stroke="#3b82f6"
-350 |                     strokeWidth={3}
-351 |                     fill="url(#colorRevenue)"
-352 |                     activeDot={{ r: 6, strokeWidth: 0, fill: "#3b82f6" }}
-353 |                   />
-354 |                   <Area
-355 |                     type="monotone"
-356 |                     name="Прибуток"
-357 |                     dataKey="profit"
-358 |                     stroke="#10b981"
-359 |                     strokeWidth={3}
-360 |                     fill="url(#colorProfit)"
-361 |                     activeDot={{ r: 6, strokeWidth: 0, fill: "#10b981" }}
-362 |                   />
-363 |                 </AreaChart>
-364 |               </ResponsiveContainer>
-365 |             ) : (
-366 |               <EmptyState />
-367 |             )}
-368 |           </div>
-369 |         </div>
-370 | 
-371 |         {/* Кругова діаграма: Проєкти */}
-372 |         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 flex flex-col">
-373 |           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-374 |             <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
-375 |               🎯
-376 |             </span>
-377 |             Доходи за проєктами
-378 |           </h3>
-379 |           <div className="h-[200px] md:h-[220px] w-full relative mb-6 shrink-0">
-380 |             {byProject?.length > 0 ? (
-381 |               <ResponsiveContainer width="100%" height="100%">
-382 |                 <PieChart>
-383 |                   <Pie
-384 |                     data={byProject}
-385 |                     dataKey="value"
-386 |                     nameKey="name"
-387 |                     innerRadius={60}
-388 |                     outerRadius={85}
-389 |                     paddingAngle={3}
-390 |                     stroke="none"
-391 |                   >
-392 |                     {byProject.map((_: any, index: number) => (
-393 |                       <Cell
-394 |                         key={`cell-${index}`}
-395 |                         fill={PIE_COLORS[index % PIE_COLORS.length]}
-396 |                       />
-397 |                     ))}
-398 |                   </Pie>
-399 |                   <Tooltip content={<CustomTooltip />} />
-400 |                 </PieChart>
-401 |               </ResponsiveContainer>
-402 |             ) : (
-403 |               <EmptyState />
-404 |             )}
-405 |           </div>
-406 |           <div className="flex-1 overflow-y-auto space-y-3 pr-2">
-407 |             {byProject?.map((item: any, idx: number) => {
-408 |               const total = byProject.reduce(
-409 |                 (sum: number, p: any) => sum + p.value,
-410 |                 0,
-411 |               );
-412 |               const percent =
-413 |                 total > 0 ? Math.round((item.value / total) * 100) : 0;
-414 |               return (
-415 |                 <div
-416 |                   key={idx}
-417 |                   className="flex items-center justify-between text-sm"
-418 |                 >
-419 |                   <div className="flex items-center gap-3 min-w-0 pr-2">
-420 |                     <div
-421 |                       className="w-3 h-3 rounded-full shrink-0"
-422 |                       style={{
-423 |                         backgroundColor: PIE_COLORS[idx % PIE_COLORS.length],
-424 |                       }}
-425 |                     />
-426 |                     <span className="text-slate-600 truncate font-medium">
-427 |                       {item.name}
-428 |                     </span>
-429 |                   </div>
-430 |                   <div className="flex items-center gap-3 shrink-0">
-431 |                     <span className="text-xs text-slate-400 font-medium w-8 text-right">
-432 |                       {percent}%
-433 |                     </span>
-434 |                     <span className="font-bold text-slate-800 w-20 text-right">
-435 |                       {fmt(item.value)}
-436 |                     </span>
-437 |                   </div>
-438 |                 </div>
-439 |               );
-440 |             })}
-441 |           </div>
-442 |         </div>
-443 |       </div>
-444 | 
-445 |       {/* Нижній ряд */}
-446 |       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-447 |         {/* Горизонтальний графік: Витрати */}
-448 |         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 overflow-x-auto">
-449 |           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-450 |             <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
-451 |               💳
-452 |             </span>
-453 |             Статті витрат
-454 |           </h3>
-455 |           {byExpenseCategory?.length > 0 ? (
-456 |             <div className="h-[280px] w-full min-w-[300px] -ml-4">
-457 |               <ResponsiveContainer width="100%" height="100%">
-458 |                 <BarChart
-459 |                   data={byExpenseCategory}
-460 |                   layout="vertical"
-461 |                   margin={{ top: 0, right: 20, left: 30, bottom: 0 }}
-462 |                 >
-463 |                   <CartesianGrid
-464 |                     strokeDasharray="3 3"
-465 |                     horizontal={true}
-466 |                     vertical={false}
-467 |                     stroke="#f1f5f9"
-468 |                   />
-469 |                   <XAxis type="number" hide />
-470 |                   <YAxis
-471 |                     dataKey="name"
-472 |                     type="category"
-473 |                     axisLine={false}
-474 |                     tickLine={false}
-475 |                     tick={{ fontSize: 12, fill: "#475569", fontWeight: 500 }}
-476 |                     width={120}
-477 |                   />
-478 |                   <Tooltip
-479 |                     content={<CustomTooltip />}
-480 |                     cursor={{ fill: "#f8fafc" }}
-481 |                   />
-482 |                   <Bar
-483 |                     dataKey="value"
-484 |                     name="Сума"
-485 |                     fill="#f43f5e"
-486 |                     radius={[0, 8, 8, 0]}
-487 |                     barSize={20}
-488 |                   >
-489 |                     {byExpenseCategory.map((_: any, idx: number) => (
-490 |                       <Cell
-491 |                         key={`cell-${idx}`}
-492 |                         fill={PALETTE[idx % PALETTE.length]}
-493 |                       />
-494 |                     ))}
-495 |                   </Bar>
-496 |                 </BarChart>
-497 |               </ResponsiveContainer>
-498 |             </div>
-499 |           ) : (
-500 |             <EmptyState />
-501 |           )}
-502 |         </div>
-503 | 
-504 |         {/* Прогрес-бари: Топ шкіл */}
-505 |         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7">
-506 |           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-507 |             <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
-508 |               🏫
-509 |             </span>
-510 |             Топ-5 найприбутковіших закладів
-511 |           </h3>
-512 |           {topSchools?.length > 0 ? (
-513 |             <div className="space-y-5">
-514 |               {topSchools.map((school: any, idx: number) => {
-515 |                 const maxRev = topSchools[0].revenue;
-516 |                 const percent = Math.max((school.revenue / maxRev) * 100, 2);
-517 |                 return (
-518 |                   <div key={idx} className="relative">
-519 |                     <div className="flex justify-between items-end mb-2 text-sm">
-520 |                       <div className="flex items-center gap-2 min-w-0 pr-4">
-521 |                         <span className="font-bold text-slate-400 w-4">
-522 |                           {idx + 1}.
-523 |                         </span>
-524 |                         <span className="font-bold text-slate-700 truncate">
-525 |                           {school.name}
-526 |                         </span>
-527 |                       </div>
-528 |                       <span className="font-bold text-emerald-600 shrink-0 bg-emerald-50 px-2 py-0.5 rounded-md">
-529 |                         {fmt(school.revenue)} грн
-530 |                       </span>
-531 |                     </div>
-532 |                     <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-533 |                       <div
-534 |                         className="bg-blue-500 h-full rounded-full transition-all duration-1000 ease-out"
-535 |                         style={{ width: `${percent}%` }}
-536 |                       />
-537 |                     </div>
-538 |                   </div>
-539 |                 );
-540 |               })}
-541 |             </div>
-542 |           ) : (
-543 |             <EmptyState />
-544 |           )}
-545 |         </div>
-546 |       </div>
-547 | 
-548 |       {/* Найкращі і найгірші події */}
-549 |       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-550 |         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 overflow-x-auto">
-551 |           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-552 |             <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
-553 |               🏆
-554 |             </span>
-555 |             Найприбутковіші події
-556 |           </h3>
-557 |           <EventTable events={topEvents} positive={true} />
-558 |         </div>
-559 |         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 overflow-x-auto">
-560 |           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-561 |             <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
-562 |               ⚠️
-563 |             </span>
-564 |             Найменш прибуткові події
-565 |           </h3>
-566 |           <EventTable events={worstEvents} positive={false} />
-567 |         </div>
-568 |       </div>
-569 |     </div>
-570 |   );
-571 | }
-572 | 
+170 | // ─── Підкомпоненти графіків — кожен в memo ───────────────────────────────────
+171 | 
+172 | const RevenueChart = memo(function RevenueChart({
+173 |   monthly,
+174 | }: {
+175 |   monthly: any[];
+176 | }) {
+177 |   if (!monthly?.length) return <EmptyState />;
+178 |   // Обмежуємо до останніх 12 місяців — менше точок = швидший рендер SVG
+179 |   const data = monthly.slice(-12);
+180 |   return (
+181 |     <ResponsiveContainer width="100%" height="100%">
+182 |       <AreaChart
+183 |         data={data}
+184 |         margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+185 |       >
+186 |         <defs>
+187 |           <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+188 |             <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
+189 |             <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+190 |           </linearGradient>
+191 |           <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+192 |             <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+193 |             <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+194 |           </linearGradient>
+195 |         </defs>
+196 |         <CartesianGrid
+197 |           strokeDasharray="3 3"
+198 |           vertical={false}
+199 |           stroke="#f1f5f9"
+200 |         />
+201 |         <XAxis
+202 |           dataKey="month"
+203 |           tick={{ fontSize: 12, fill: "#64748b" }}
+204 |           axisLine={false}
+205 |           tickLine={false}
+206 |           dy={10}
+207 |           minTickGap={20}
+208 |         />
+209 |         <YAxis
+210 |           tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : v)}
+211 |           tick={{ fontSize: 12, fill: "#64748b" }}
+212 |           axisLine={false}
+213 |           tickLine={false}
+214 |         />
+215 |         <Tooltip
+216 |           content={<CustomTooltip />}
+217 |           cursor={{ stroke: "#cbd5e1", strokeWidth: 1, strokeDasharray: "4 4" }}
+218 |         />
+219 |         <Area
+220 |           type="monotone"
+221 |           name="Виручка"
+222 |           dataKey="revenue"
+223 |           stroke="#3b82f6"
+224 |           strokeWidth={3}
+225 |           fill="url(#colorRevenue)"
+226 |           activeDot={{ r: 6, strokeWidth: 0, fill: "#3b82f6" }}
+227 |           isAnimationActive={false}
+228 |         />
+229 |         <Area
+230 |           type="monotone"
+231 |           name="Прибуток"
+232 |           dataKey="profit"
+233 |           stroke="#10b981"
+234 |           strokeWidth={3}
+235 |           fill="url(#colorProfit)"
+236 |           activeDot={{ r: 6, strokeWidth: 0, fill: "#10b981" }}
+237 |           isAnimationActive={false}
+238 |         />
+239 |       </AreaChart>
+240 |     </ResponsiveContainer>
+241 |   );
+242 | });
+243 | 
+244 | const ProjectPieChart = memo(function ProjectPieChart({
+245 |   byProject,
+246 |   projectTotals,
+247 | }: {
+248 |   byProject: any[];
+249 |   projectTotals: { total: number; percents: number[] };
+250 | }) {
+251 |   if (!byProject?.length) return <EmptyState />;
+252 |   return (
+253 |     <>
+254 |       <div className="h-[200px] md:h-[220px] w-full relative mb-6 shrink-0">
+255 |         <ResponsiveContainer width="100%" height="100%">
+256 |           <PieChart>
+257 |             <Pie
+258 |               data={byProject}
+259 |               dataKey="value"
+260 |               nameKey="name"
+261 |               innerRadius={60}
+262 |               outerRadius={85}
+263 |               paddingAngle={3}
+264 |               stroke="none"
+265 |               isAnimationActive={false}
+266 |             >
+267 |               {byProject.map((_: any, index: number) => (
+268 |                 <Cell
+269 |                   key={`cell-${index}`}
+270 |                   fill={PIE_COLORS[index % PIE_COLORS.length]}
+271 |                 />
+272 |               ))}
+273 |             </Pie>
+274 |             <Tooltip content={<CustomTooltip />} />
+275 |           </PieChart>
+276 |         </ResponsiveContainer>
+277 |       </div>
+278 |       <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+279 |         {byProject.map((item: any, idx: number) => (
+280 |           <div key={idx} className="flex items-center justify-between text-sm">
+281 |             <div className="flex items-center gap-3 min-w-0 pr-2">
+282 |               <div
+283 |                 className="w-3 h-3 rounded-full shrink-0"
+284 |                 style={{ backgroundColor: PIE_COLORS[idx % PIE_COLORS.length] }}
+285 |               />
+286 |               <span className="text-slate-600 truncate font-medium">
+287 |                 {item.name}
+288 |               </span>
+289 |             </div>
+290 |             <div className="flex items-center gap-3 shrink-0">
+291 |               <span className="text-xs text-slate-400 font-medium w-8 text-right">
+292 |                 {projectTotals.percents[idx]}%
+293 |               </span>
+294 |               <span className="font-bold text-slate-800 w-20 text-right">
+295 |                 {fmt(item.value)}
+296 |               </span>
+297 |             </div>
+298 |           </div>
+299 |         ))}
+300 |       </div>
+301 |     </>
+302 |   );
+303 | });
+304 | 
+305 | const ExpenseChart = memo(function ExpenseChart({
+306 |   byExpenseCategory,
+307 | }: {
+308 |   byExpenseCategory: any[];
+309 | }) {
+310 |   if (!byExpenseCategory?.length) return <EmptyState />;
+311 |   return (
+312 |     <div className="h-[280px] w-full min-w-[300px] -ml-4">
+313 |       <ResponsiveContainer width="100%" height="100%">
+314 |         <BarChart
+315 |           data={byExpenseCategory}
+316 |           layout="vertical"
+317 |           margin={{ top: 0, right: 20, left: 30, bottom: 0 }}
+318 |         >
+319 |           <CartesianGrid
+320 |             strokeDasharray="3 3"
+321 |             horizontal={true}
+322 |             vertical={false}
+323 |             stroke="#f1f5f9"
+324 |           />
+325 |           <XAxis type="number" hide />
+326 |           <YAxis
+327 |             dataKey="name"
+328 |             type="category"
+329 |             axisLine={false}
+330 |             tickLine={false}
+331 |             tick={{ fontSize: 12, fill: "#475569", fontWeight: 500 }}
+332 |             width={120}
+333 |           />
+334 |           <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f8fafc" }} />
+335 |           <Bar
+336 |             dataKey="value"
+337 |             name="Сума"
+338 |             fill="#f43f5e"
+339 |             radius={[0, 8, 8, 0]}
+340 |             barSize={20}
+341 |             isAnimationActive={false}
+342 |           >
+343 |             {byExpenseCategory.map((_: any, idx: number) => (
+344 |               <Cell key={`cell-${idx}`} fill={PALETTE[idx % PALETTE.length]} />
+345 |             ))}
+346 |           </Bar>
+347 |         </BarChart>
+348 |       </ResponsiveContainer>
+349 |     </div>
+350 |   );
+351 | });
+352 | 
+353 | const TopSchools = memo(function TopSchools({
+354 |   topSchools,
+355 | }: {
+356 |   topSchools: any[];
+357 | }) {
+358 |   if (!topSchools?.length) return <EmptyState />;
+359 |   const maxRev = topSchools[0].revenue;
+360 |   return (
+361 |     <div className="space-y-5">
+362 |       {topSchools.map((school: any, idx: number) => {
+363 |         const percent = Math.max((school.revenue / maxRev) * 100, 2);
+364 |         return (
+365 |           <div key={idx} className="relative">
+366 |             <div className="flex justify-between items-end mb-2 text-sm">
+367 |               <div className="flex items-center gap-2 min-w-0 pr-4">
+368 |                 <span className="font-bold text-slate-400 w-4">{idx + 1}.</span>
+369 |                 <span className="font-bold text-slate-700 truncate">
+370 |                   {school.name}
+371 |                 </span>
+372 |               </div>
+373 |               <span className="font-bold text-emerald-600 shrink-0 bg-emerald-50 px-2 py-0.5 rounded-md">
+374 |                 {fmt(school.revenue)} грн
+375 |               </span>
+376 |             </div>
+377 |             <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+378 |               <div
+379 |                 className="bg-blue-500 h-full rounded-full transition-all duration-1000 ease-out"
+380 |                 style={{ width: `${percent}%` }}
+381 |               />
+382 |             </div>
+383 |           </div>
+384 |         );
+385 |       })}
+386 |     </div>
+387 |   );
+388 | });
+389 | 
+390 | // ─── Пропси FinanceCharts ────────────────────────────────────────────────────
+391 | 
+392 | interface Props {
+393 |   data: any;
+394 |   period: string;
+395 |   setPeriod: (v: string) => void;
+396 |   projectFilter: string;
+397 |   setProjectFilter: (v: string) => void;
+398 |   selectedCity: any;
+399 | }
+400 | 
+401 | // ─── Головний компонент ──────────────────────────────────────────────────────
+402 | 
+403 | export default memo(function FinanceCharts({
+404 |   data,
+405 |   period,
+406 |   setPeriod,
+407 |   projectFilter,
+408 |   setProjectFilter,
+409 |   selectedCity,
+410 | }: Props) {
+411 |   const {
+412 |     kpi,
+413 |     monthly,
+414 |     byProject,
+415 |     byExpenseCategory,
+416 |     topSchools,
+417 |     topEvents,
+418 |     worstEvents,
+419 |     expectedRevenue,
+420 |     filters,
+421 |   } = data;
+422 | 
+423 |   // useMemo — відсотки для pie chart, щоб не рахувати total в кожній ітерації рендеру
+424 |   const projectTotals = useMemo(() => {
+425 |     const total =
+426 |       byProject?.reduce((sum: number, p: any) => sum + p.value, 0) ?? 0;
+427 |     const percents = (byProject ?? []).map((item: any) =>
+428 |       total > 0 ? Math.round((item.value / total) * 100) : 0,
+429 |     );
+430 |     return { total, percents };
+431 |   }, [byProject]);
+432 | 
+433 |   return (
+434 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen font-sans overflow-x-hidden">
+435 |       {/* Шапка та фільтри */}
+436 |       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+437 |         <div>
+438 |           <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">
+439 |             Фінанси
+440 |           </h1>
+441 |           <p className="text-slate-500 text-sm mt-1">
+442 |             Аналітика доходів та витрат{" "}
+443 |             {selectedCity.id ? (
+444 |               <span className="font-medium text-blue-600">
+445 |                 {selectedCity.name}
+446 |               </span>
+447 |             ) : (
+448 |               "по всіх містах"
+449 |             )}
+450 |           </p>
+451 |         </div>
+452 |         <div className="flex flex-wrap items-center gap-3">
+453 |           <select
+454 |             value={period}
+455 |             onChange={(e) => setPeriod(e.target.value)}
+456 |             className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8"
+457 |           >
+458 |             <option value="all">За весь час</option>
+459 |             <option value="year">Цей рік</option>
+460 |             <option value="quarter">Цей квартал</option>
+461 |             <option value="month">Цей місяць</option>
+462 |           </select>
+463 | 
+464 |           <select
+465 |             value={projectFilter}
+466 |             onChange={(e) => setProjectFilter(e.target.value)}
+467 |             className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8"
+468 |           >
+469 |             <option value="">Всі проєкти</option>
+470 |             {filters?.projects?.map((p: string) => (
+471 |               <option key={p} value={p}>
+472 |                 {p}
+473 |               </option>
+474 |             ))}
+475 |           </select>
+476 |         </div>
+477 |       </div>
+478 | 
+479 |       {/* KPI Картки */}
+480 |       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-8">
+481 |         <KpiCard
+482 |           title="Загальна виручка"
+483 |           value={kpi.totalRevenue}
+484 |           color="text-blue-600"
+485 |           bg="bg-blue-50"
+486 |           icon="💰"
+487 |         />
+488 |         <KpiCard
+489 |           title="Чистий прибуток"
+490 |           value={kpi.totalProfit}
+491 |           color="text-emerald-600"
+492 |           bg="bg-emerald-50"
+493 |           icon="📈"
+494 |         />
+495 |         <KpiCard
+496 |           title="Витрати"
+497 |           value={kpi.totalExpenses}
+498 |           color="text-rose-600"
+499 |           bg="bg-rose-50"
+500 |           icon="📉"
+501 |         />
+502 |         <KpiCard
+503 |           title="Очікувана виручка"
+504 |           value={expectedRevenue}
+505 |           color="text-amber-500"
+506 |           bg="bg-amber-50"
+507 |           icon="⏳"
+508 |           subtitle="Із запланованих подій"
+509 |         />
+510 |       </div>
+511 | 
+512 |       {/* Верхній ряд графіків */}
+513 |       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+514 |         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 xl:col-span-2">
+515 |           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+516 |             <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+517 |               📊
+518 |             </span>
+519 |             Динаміка виручки та прибутку
+520 |           </h3>
+521 |           <div className="h-[280px] md:h-[320px] w-full -ml-4 sm:ml-0">
+522 |             <RevenueChart monthly={monthly} />
+523 |           </div>
+524 |         </div>
+525 | 
+526 |         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 flex flex-col">
+527 |           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+528 |             <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+529 |               🎯
+530 |             </span>
+531 |             Доходи за проєктами
+532 |           </h3>
+533 |           <ProjectPieChart
+534 |             byProject={byProject}
+535 |             projectTotals={projectTotals}
+536 |           />
+537 |         </div>
+538 |       </div>
+539 | 
+540 |       {/* Нижній ряд */}
+541 |       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+542 |         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 overflow-x-auto">
+543 |           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+544 |             <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+545 |               💳
+546 |             </span>
+547 |             Статті витрат
+548 |           </h3>
+549 |           <ExpenseChart byExpenseCategory={byExpenseCategory} />
+550 |         </div>
+551 | 
+552 |         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7">
+553 |           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+554 |             <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+555 |               🏫
+556 |             </span>
+557 |             Топ-5 найприбутковіших закладів
+558 |           </h3>
+559 |           <TopSchools topSchools={topSchools} />
+560 |         </div>
+561 |       </div>
+562 | 
+563 |       {/* Найкращі і найгірші події */}
+564 |       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+565 |         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 overflow-x-auto">
+566 |           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+567 |             <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+568 |               🏆
+569 |             </span>
+570 |             Найприбутковіші події
+571 |           </h3>
+572 |           <EventTable events={topEvents} positive={true} />
+573 |         </div>
+574 |         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 overflow-x-auto">
+575 |           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+576 |             <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+577 |               ⚠️
+578 |             </span>
+579 |             Найменш прибуткові події
+580 |           </h3>
+581 |           <EventTable events={worstEvents} positive={false} />
+582 |         </div>
+583 |       </div>
+584 |     </div>
+585 |   );
+586 | });
+587 | 
 ```
 
 ### File: apps/frontend/src/components/finance/StaffFinanceView.tsx
 ```tsx
-  0 | import { useState, useEffect } from "react";
+  0 | import { useState, useEffect, useMemo, memo } from "react";
   1 | import { api } from "../../config/api";
   2 | 
-  3 | const fmt = (n: number) =>
-  4 |   new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
-  5 | 
-  6 | const PERIOD_LABELS: Record<string, string> = {
-  7 |   year: "Цей рік",
-  8 |   quarter: "Цей квартал",
-  9 |   month: "Цей місяць",
- 10 |   all: "За весь час",
- 11 | };
- 12 | 
- 13 | interface Props {
- 14 |   myBalance: number | null;
- 15 |   selectedCity: any;
- 16 | }
- 17 | 
- 18 | export default function StaffFinanceView({ myBalance, selectedCity }: Props) {
- 19 |   const [tab, setTab] = useState<"balance" | "revenue">("balance");
- 20 |   const [period, setPeriod] = useState("year");
- 21 |   const [staffData, setStaffData] = useState<any>(null);
- 22 |   const [loadingStaff, setLoadingStaff] = useState(false);
- 23 | 
- 24 |   useEffect(() => {
- 25 |     if (tab !== "revenue") return;
- 26 |     setLoadingStaff(true);
- 27 |     const params = new URLSearchParams();
- 28 |     if (period) params.set("period", period);
- 29 |     if (selectedCity?.id) params.set("cityId", selectedCity.id);
- 30 |     api
- 31 |       .get(`/finance/staff-revenue?${params}`)
- 32 |       .then((r) => setStaffData(r.data))
- 33 |       .catch(() => {})
- 34 |       .finally(() => setLoadingStaff(false));
- 35 |   }, [tab, period, selectedCity?.id]);
- 36 | 
- 37 |   const maxRevenue = staffData?.staff?.[0]?.revenue ?? 1;
- 38 | 
- 39 |   return (
- 40 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
- 41 |       <h1 className="text-2xl font-bold text-slate-800 mb-6">Фінанси</h1>
- 42 | 
- 43 |       {/* Вкладки */}
- 44 |       <div className="flex gap-2 mb-6">
- 45 |         <button
- 46 |           onClick={() => setTab("balance")}
- 47 |           className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
- 48 |             tab === "balance"
- 49 |               ? "bg-blue-600 text-white shadow-sm"
- 50 |               : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
- 51 |           }`}
- 52 |         >
- 53 |           💰 Мій баланс
- 54 |         </button>
- 55 |         <button
- 56 |           onClick={() => setTab("revenue")}
- 57 |           className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
- 58 |             tab === "revenue"
- 59 |               ? "bg-blue-600 text-white shadow-sm"
- 60 |               : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
- 61 |           }`}
- 62 |         >
- 63 |           📊 Виручка команди
- 64 |         </button>
- 65 |       </div>
- 66 | 
- 67 |       {/* Вкладка: баланс */}
- 68 |       {tab === "balance" && (
- 69 |         <div className="flex items-center justify-center py-10">
- 70 |           <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-10 text-center max-w-sm w-full">
- 71 |             <div className="w-16 h-16 bg-blue-50 rounded-[20px] flex items-center justify-center text-3xl mx-auto mb-4">
- 72 |               💰
- 73 |             </div>
- 74 |             <p className="text-sm text-slate-400 mb-2">Ваш баланс</p>
- 75 |             <p className="text-4xl font-black text-blue-600 tracking-tight">
- 76 |               {myBalance !== null ? fmt(myBalance) : "—"}
- 77 |               <span className="text-lg font-bold text-slate-400 ml-1">грн</span>
- 78 |             </p>
- 79 |             <p className="text-xs text-slate-400 mt-4">
- 80 |               Сума нарахованих зарплат за всі події
- 81 |             </p>
- 82 |           </div>
- 83 |         </div>
- 84 |       )}
- 85 | 
- 86 |       {/* Вкладка: виручка команди */}
- 87 |       {tab === "revenue" && (
- 88 |         <div className="flex flex-col gap-5">
- 89 |           <div className="flex items-center gap-3">
- 90 |             <select
- 91 |               value={period}
- 92 |               onChange={(e) => setPeriod(e.target.value)}
- 93 |               className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none shadow-sm"
- 94 |             >
- 95 |               <option value="year">Цей рік</option>
- 96 |               <option value="quarter">Цей квартал</option>
- 97 |               <option value="month">Цей місяць</option>
- 98 |               <option value="all">За весь час</option>
- 99 |             </select>
-100 |             {selectedCity?.name && (
-101 |               <span className="text-sm text-slate-500">
-102 |                 📍 {selectedCity.name}
-103 |               </span>
-104 |             )}
-105 |           </div>
-106 | 
-107 |           {loadingStaff ? (
-108 |             <div className="flex items-center justify-center py-16">
-109 |               <div className="w-8 h-8 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
-110 |             </div>
-111 |           ) : !staffData || staffData.staff.length === 0 ? (
-112 |             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center text-slate-400">
-113 |               <p className="text-3xl mb-3">📊</p>
-114 |               <p>Немає даних за обраний період</p>
-115 |             </div>
-116 |           ) : (
-117 |             <>
-118 |               <div className="grid grid-cols-2 gap-4">
-119 |                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 text-center">
-120 |                   <p className="text-xs text-slate-400 mb-1">
-121 |                     Загальна виручка
-122 |                   </p>
-123 |                   <p className="text-2xl font-black text-blue-600">
-124 |                     {fmt(staffData.totalRevenue)}{" "}
-125 |                     <span className="text-sm font-medium text-slate-400">
-126 |                       грн
-127 |                     </span>
-128 |                   </p>
-129 |                   <p className="text-xs text-slate-400 mt-1">
-130 |                     {PERIOD_LABELS[period]}
-131 |                   </p>
-132 |                 </div>
-133 |                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 text-center">
-134 |                   <p className="text-xs text-slate-400 mb-1">Подій проведено</p>
-135 |                   <p className="text-2xl font-black text-slate-800">
-136 |                     {staffData.eventsCount}
-137 |                   </p>
-138 |                   <p className="text-xs text-slate-400 mt-1">
-139 |                     {PERIOD_LABELS[period]}
-140 |                   </p>
-141 |                 </div>
-142 |               </div>
-143 | 
-144 |               {["HOST", "DRIVER"].map((roleKey) => {
-145 |                 const roleLabel = roleKey === "HOST" ? "🎙️ Ведучі" : "🚗 Водії";
-146 |                 const members = staffData.staff.filter(
-147 |                   (s: any) => s.role === roleKey,
-148 |                 );
-149 |                 if (members.length === 0) return null;
-150 |                 return (
-151 |                   <div
-152 |                     key={roleKey}
-153 |                     className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"
-154 |                   >
-155 |                     <h3 className="font-bold text-slate-800 mb-4">
-156 |                       {roleLabel}
-157 |                     </h3>
-158 |                     <div className="flex flex-col gap-4">
-159 |                       {members.map((member: any, i: number) => {
-160 |                         const pct = Math.round(
-161 |                           (member.revenue / maxRevenue) * 100,
-162 |                         );
-163 |                         const isTop = i === 0;
-164 |                         return (
-165 |                           <div key={member.id}>
-166 |                             <div className="flex items-center justify-between mb-1.5">
-167 |                               <div className="flex items-center gap-2">
-168 |                                 <span
-169 |                                   className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isTop ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500"}`}
-170 |                                 >
-171 |                                   {i + 1}
-172 |                                 </span>
-173 |                                 <span className="text-sm font-semibold text-slate-800">
-174 |                                   {member.name}
-175 |                                 </span>
-176 |                                 {isTop && (
-177 |                                   <span className="text-xs bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full">
-178 |                                     🏆 Топ
-179 |                                   </span>
-180 |                                 )}
-181 |                               </div>
-182 |                               <div className="text-right">
-183 |                                 <p className="text-sm font-bold text-slate-800">
-184 |                                   {fmt(member.revenue)} грн
-185 |                                 </p>
-186 |                                 <p className="text-xs text-slate-400">
-187 |                                   {member.eventsCount} подій
-188 |                                 </p>
-189 |                               </div>
-190 |                             </div>
-191 |                             <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-192 |                               <div
-193 |                                 className={`h-full rounded-full transition-all duration-500 ${isTop ? "bg-amber-400" : "bg-blue-400"}`}
-194 |                                 style={{ width: `${pct}%` }}
-195 |                               />
-196 |                             </div>
-197 |                           </div>
-198 |                         );
-199 |                       })}
-200 |                     </div>
-201 |                   </div>
-202 |                 );
-203 |               })}
-204 |             </>
-205 |           )}
-206 |         </div>
-207 |       )}
-208 |     </div>
-209 |   );
-210 | }
-211 | 
+  3 | // Поза компонентом — не потребує useMemo
+  4 | const fmt = (n: number) =>
+  5 |   new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+  6 | 
+  7 | const PERIOD_LABELS: Record<string, string> = {
+  8 |   year: "Цей рік",
+  9 |   quarter: "Цей квартал",
+ 10 |   month: "Цей місяць",
+ 11 |   all: "За весь час",
+ 12 | };
+ 13 | 
+ 14 | interface Props {
+ 15 |   myBalance: number | null;
+ 16 |   selectedCity: any;
+ 17 | }
+ 18 | 
+ 19 | // ─── Підкомпоненти ────────────────────────────────────────────────────────────
+ 20 | 
+ 21 | const BalanceCard = memo(function BalanceCard({
+ 22 |   myBalance,
+ 23 | }: {
+ 24 |   myBalance: number | null;
+ 25 | }) {
+ 26 |   return (
+ 27 |     <div className="flex items-center justify-center py-10">
+ 28 |       <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-10 text-center max-w-sm w-full">
+ 29 |         <div className="w-16 h-16 bg-blue-50 rounded-[20px] flex items-center justify-center text-3xl mx-auto mb-4">
+ 30 |           💰
+ 31 |         </div>
+ 32 |         <p className="text-sm text-slate-400 mb-2">Ваш баланс</p>
+ 33 |         <p className="text-4xl font-black text-blue-600 tracking-tight">
+ 34 |           {myBalance !== null ? fmt(myBalance) : "—"}
+ 35 |           <span className="text-lg font-bold text-slate-400 ml-1">грн</span>
+ 36 |         </p>
+ 37 |         <p className="text-xs text-slate-400 mt-4">
+ 38 |           Сума нарахованих зарплат за всі події
+ 39 |         </p>
+ 40 |       </div>
+ 41 |     </div>
+ 42 |   );
+ 43 | });
+ 44 | 
+ 45 | interface StaffMemberProps {
+ 46 |   member: any;
+ 47 |   index: number;
+ 48 |   maxRevenue: number;
+ 49 | }
+ 50 | 
+ 51 | const StaffMemberRow = memo(function StaffMemberRow({
+ 52 |   member,
+ 53 |   index,
+ 54 |   maxRevenue,
+ 55 | }: StaffMemberProps) {
+ 56 |   const pct = Math.round((member.revenue / maxRevenue) * 100);
+ 57 |   const isTop = index === 0;
+ 58 |   return (
+ 59 |     <div>
+ 60 |       <div className="flex items-center justify-between mb-1.5">
+ 61 |         <div className="flex items-center gap-2">
+ 62 |           <span
+ 63 |             className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+ 64 |               isTop
+ 65 |                 ? "bg-amber-100 text-amber-700"
+ 66 |                 : "bg-slate-100 text-slate-500"
+ 67 |             }`}
+ 68 |           >
+ 69 |             {index + 1}
+ 70 |           </span>
+ 71 |           <span className="text-sm font-semibold text-slate-800">
+ 72 |             {member.name}
+ 73 |           </span>
+ 74 |           {isTop && (
+ 75 |             <span className="text-xs bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full">
+ 76 |               🏆 Топ
+ 77 |             </span>
+ 78 |           )}
+ 79 |         </div>
+ 80 |         <div className="text-right">
+ 81 |           <p className="text-sm font-bold text-slate-800">
+ 82 |             {fmt(member.revenue)} грн
+ 83 |           </p>
+ 84 |           <p className="text-xs text-slate-400">{member.eventsCount} подій</p>
+ 85 |         </div>
+ 86 |       </div>
+ 87 |       <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+ 88 |         <div
+ 89 |           className={`h-full rounded-full transition-all duration-500 ${
+ 90 |             isTop ? "bg-amber-400" : "bg-blue-400"
+ 91 |           }`}
+ 92 |           style={{ width: `${pct}%` }}
+ 93 |         />
+ 94 |       </div>
+ 95 |     </div>
+ 96 |   );
+ 97 | });
+ 98 | 
+ 99 | // ─── Головний компонент ───────────────────────────────────────────────────────
+100 | 
+101 | export default memo(function StaffFinanceView({
+102 |   myBalance,
+103 |   selectedCity,
+104 | }: Props) {
+105 |   const [tab, setTab] = useState<"balance" | "revenue">("balance");
+106 |   const [period, setPeriod] = useState("year");
+107 |   const [staffData, setStaffData] = useState<any>(null);
+108 |   const [loadingStaff, setLoadingStaff] = useState(false);
+109 | 
+110 |   useEffect(() => {
+111 |     if (tab !== "revenue") return;
+112 |     setLoadingStaff(true);
+113 |     const params = new URLSearchParams();
+114 |     if (period) params.set("period", period);
+115 |     if (selectedCity?.id) params.set("cityId", selectedCity.id);
+116 |     api
+117 |       .get(`/finance/staff-revenue?${params}`)
+118 |       .then((r) => setStaffData(r.data))
+119 |       .catch(() => {})
+120 |       .finally(() => setLoadingStaff(false));
+121 |   }, [tab, period, selectedCity?.id]);
+122 | 
+123 |   const maxRevenue = staffData?.staff?.[0]?.revenue ?? 1;
+124 | 
+125 |   // useMemo — розбивка по ролях, щоб не фільтрувати в рендері
+126 |   const staffByRole = useMemo(() => {
+127 |     if (!staffData?.staff) return { hosts: [], drivers: [] };
+128 |     return {
+129 |       hosts: staffData.staff.filter((s: any) => s.role === "HOST"),
+130 |       drivers: staffData.staff.filter((s: any) => s.role === "DRIVER"),
+131 |     };
+132 |   }, [staffData]);
+133 | 
+134 |   return (
+135 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+136 |       <h1 className="text-2xl font-bold text-slate-800 mb-6">Фінанси</h1>
+137 | 
+138 |       {/* Вкладки */}
+139 |       <div className="flex gap-2 mb-6">
+140 |         <button
+141 |           onClick={() => setTab("balance")}
+142 |           className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+143 |             tab === "balance"
+144 |               ? "bg-blue-600 text-white shadow-sm"
+145 |               : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+146 |           }`}
+147 |         >
+148 |           💰 Мій баланс
+149 |         </button>
+150 |         <button
+151 |           onClick={() => setTab("revenue")}
+152 |           className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+153 |             tab === "revenue"
+154 |               ? "bg-blue-600 text-white shadow-sm"
+155 |               : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+156 |           }`}
+157 |         >
+158 |           📊 Виручка команди
+159 |         </button>
+160 |       </div>
+161 | 
+162 |       {tab === "balance" && <BalanceCard myBalance={myBalance} />}
+163 | 
+164 |       {tab === "revenue" && (
+165 |         <div className="flex flex-col gap-5">
+166 |           <div className="flex items-center gap-3">
+167 |             <select
+168 |               value={period}
+169 |               onChange={(e) => setPeriod(e.target.value)}
+170 |               className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none shadow-sm"
+171 |             >
+172 |               <option value="year">Цей рік</option>
+173 |               <option value="quarter">Цей квартал</option>
+174 |               <option value="month">Цей місяць</option>
+175 |               <option value="all">За весь час</option>
+176 |             </select>
+177 |             {selectedCity?.name && (
+178 |               <span className="text-sm text-slate-500">
+179 |                 📍 {selectedCity.name}
+180 |               </span>
+181 |             )}
+182 |           </div>
+183 | 
+184 |           {loadingStaff ? (
+185 |             <div className="flex items-center justify-center py-16">
+186 |               <div className="w-8 h-8 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
+187 |             </div>
+188 |           ) : !staffData || staffData.staff.length === 0 ? (
+189 |             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center text-slate-400">
+190 |               <p className="text-3xl mb-3">📊</p>
+191 |               <p>Немає даних за обраний період</p>
+192 |             </div>
+193 |           ) : (
+194 |             <>
+195 |               <div className="grid grid-cols-2 gap-4">
+196 |                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 text-center">
+197 |                   <p className="text-xs text-slate-400 mb-1">
+198 |                     Загальна виручка
+199 |                   </p>
+200 |                   <p className="text-2xl font-black text-blue-600">
+201 |                     {fmt(staffData.totalRevenue)}{" "}
+202 |                     <span className="text-sm font-medium text-slate-400">
+203 |                       грн
+204 |                     </span>
+205 |                   </p>
+206 |                   <p className="text-xs text-slate-400 mt-1">
+207 |                     {PERIOD_LABELS[period]}
+208 |                   </p>
+209 |                 </div>
+210 |                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 text-center">
+211 |                   <p className="text-xs text-slate-400 mb-1">Подій проведено</p>
+212 |                   <p className="text-2xl font-black text-slate-800">
+213 |                     {staffData.eventsCount}
+214 |                   </p>
+215 |                   <p className="text-xs text-slate-400 mt-1">
+216 |                     {PERIOD_LABELS[period]}
+217 |                   </p>
+218 |                 </div>
+219 |               </div>
+220 | 
+221 |               {(
+222 |                 [
+223 |                   {
+224 |                     key: "HOST",
+225 |                     label: "🎙️ Ведучі",
+226 |                     members: staffByRole.hosts,
+227 |                   },
+228 |                   {
+229 |                     key: "DRIVER",
+230 |                     label: "🚗 Водії",
+231 |                     members: staffByRole.drivers,
+232 |                   },
+233 |                 ] as const
+234 |               ).map(({ key, label, members }) => {
+235 |                 if (members.length === 0) return null;
+236 |                 return (
+237 |                   <div
+238 |                     key={key}
+239 |                     className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"
+240 |                   >
+241 |                     <h3 className="font-bold text-slate-800 mb-4">{label}</h3>
+242 |                     <div className="flex flex-col gap-4">
+243 |                       {members.map((member: any, i: number) => (
+244 |                         <StaffMemberRow
+245 |                           key={member.id}
+246 |                           member={member}
+247 |                           index={i}
+248 |                           maxRevenue={maxRevenue}
+249 |                         />
+250 |                       ))}
+251 |                     </div>
+252 |                   </div>
+253 |                 );
+254 |               })}
+255 |             </>
+256 |           )}
+257 |         </div>
+258 |       )}
+259 |     </div>
+260 |   );
+261 | });
+262 | 
 ```
 
 ### File: apps/frontend/src/components/school-profile/AssignedCrew.tsx
@@ -9807,20 +10087,30 @@
 
 ### File: apps/frontend/src/main.tsx
 ```tsx
-  0 | 
-  1 | 
-  2 | import { StrictMode } from 'react';
-  3 | import { createRoot } from 'react-dom/client';
-  4 | import './index.css';
-  5 | import App from './App';
-  6 | 
-  7 | createRoot(document.getElementById('root')!).render(
-  8 |   <StrictMode>
-  9 |     <App />
- 10 |   </StrictMode>,
- 11 | );
- 12 | 
- 13 | 
+  0 | import { StrictMode } from "react";
+  1 | import { createRoot } from "react-dom/client";
+  2 | import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+  3 | import "./index.css";
+  4 | import App from "./App";
+  5 | 
+  6 | const queryClient = new QueryClient({
+  7 |   defaultOptions: {
+  8 |     queries: {
+  9 |       staleTime: 5 * 60 * 1000,
+ 10 |       gcTime: 10 * 60 * 1000,
+ 11 |       retry: 1,
+ 12 |     },
+ 13 |   },
+ 14 | });
+ 15 | 
+ 16 | createRoot(document.getElementById("root")!).render(
+ 17 |   <StrictMode>
+ 18 |     <QueryClientProvider client={queryClient}>
+ 19 |       <App />
+ 20 |     </QueryClientProvider>
+ 21 |   </StrictMode>,
+ 22 | );
+ 23 | 
 ```
 
 ### File: apps/frontend/src/pages/CalendarView.tsx
@@ -12148,129 +12438,105 @@
 ### File: apps/frontend/src/pages/Finance.tsx
 ```tsx
   0 | import { useState, useEffect, lazy, Suspense } from "react";
-  1 | import { api } from "../config/api";
-  2 | import { useSelectedCity } from "../context/CityContext";
-  3 | 
-  4 | const FinanceCharts = lazy(() => import("../components/finance/FinanceCharts"));
-  5 | const StaffFinanceView = lazy(
-  6 |   () => import("../components/finance/StaffFinanceView"),
-  7 | );
-  8 | 
-  9 | function FinanceSkeleton() {
- 10 |   return (
- 11 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen flex flex-col gap-4 animate-pulse">
- 12 |       <div className="h-8 bg-slate-200 rounded-xl w-48" />
- 13 |       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
- 14 |         {Array.from({ length: 4 }).map((_, i) => (
- 15 |           <div
- 16 |             key={i}
- 17 |             className="h-24 bg-white rounded-2xl border border-slate-100"
- 18 |           />
- 19 |         ))}
- 20 |       </div>
- 21 |       <div className="h-64 bg-white rounded-2xl border border-slate-100" />
- 22 |       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
- 23 |         <div className="h-48 bg-white rounded-2xl border border-slate-100" />
+  1 | import { useQuery } from "@tanstack/react-query";
+  2 | import { api } from "../config/api";
+  3 | import { useSelectedCity } from "../context/CityContext";
+  4 | 
+  5 | const FinanceCharts = lazy(() => import("../components/finance/FinanceCharts"));
+  6 | const StaffFinanceView = lazy(
+  7 |   () => import("../components/finance/StaffFinanceView"),
+  8 | );
+  9 | 
+ 10 | function FinanceSkeleton() {
+ 11 |   return (
+ 12 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen flex flex-col gap-4 animate-pulse">
+ 13 |       <div className="h-8 bg-slate-200 rounded-xl w-48" />
+ 14 |       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+ 15 |         {Array.from({ length: 4 }).map((_, i) => (
+ 16 |           <div
+ 17 |             key={i}
+ 18 |             className="h-24 bg-white rounded-2xl border border-slate-100"
+ 19 |           />
+ 20 |         ))}
+ 21 |       </div>
+ 22 |       <div className="h-64 bg-white rounded-2xl border border-slate-100" />
+ 23 |       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
  24 |         <div className="h-48 bg-white rounded-2xl border border-slate-100" />
- 25 |       </div>
- 26 |     </div>
- 27 |   );
- 28 | }
- 29 | 
- 30 | export default function Finance() {
- 31 |   const { selectedCity } = useSelectedCity();
- 32 |   const [data, setData] = useState<any>(null);
- 33 |   const [isLoading, setIsLoading] = useState(true);
- 34 |   const [period, setPeriod] = useState("year");
- 35 |   const [projectFilter, setProjectFilter] = useState("");
- 36 |   const [currentUser, setCurrentUser] = useState<{
- 37 |     role: string;
- 38 |     balance?: number;
- 39 |   } | null>(null);
- 40 |   const [myBalance, setMyBalance] = useState<number | null>(null);
- 41 | 
- 42 |   useEffect(() => {
- 43 |     try {
- 44 |       const raw = localStorage.getItem("user");
- 45 |       if (raw) setCurrentUser(JSON.parse(raw));
- 46 |     } catch {}
- 47 |   }, []);
- 48 | 
- 49 |   const isManagerOrAdmin =
- 50 |     currentUser?.role === "MANAGER" || currentUser?.role === "SUPERADMIN";
- 51 | 
- 52 |   useEffect(() => {
- 53 |     if (isManagerOrAdmin === false) {
- 54 |       api
- 55 |         .get("/finance/my-balance", {
- 56 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
- 57 |         })
- 58 |         .then((r) => setMyBalance(r.data.balance))
- 59 |         .catch(() => {});
- 60 |     }
- 61 |   }, [isManagerOrAdmin]);
- 62 | 
- 63 |   useEffect(() => {
- 64 |     if (!isManagerOrAdmin) return;
- 65 | 
- 66 |     const fetchData = async () => {
- 67 |       setIsLoading(true);
- 68 |       try {
- 69 |         const token = localStorage.getItem("token");
- 70 |         const params = new URLSearchParams();
- 71 |         if (period) params.set("period", period);
- 72 |         if (selectedCity?.id) params.set("cityId", selectedCity.id);
- 73 |         if (projectFilter) params.set("project", projectFilter);
- 74 | 
- 75 |         // Спочатку minimal — швидко показуємо KPI + графік
- 76 |         params.set("minimal", "true");
- 77 |         const res = await api.get(`/finance/dashboard?${params}`, {
- 78 |           headers: { Authorization: `Bearer ${token}` },
- 79 |         });
- 80 |         setData(res.data);
- 81 |         setIsLoading(false);
- 82 | 
- 83 |         // Потім повні дані (топи, таблиці) у фоні
- 84 |         params.set("minimal", "false");
- 85 |         api
- 86 |           .get(`/finance/dashboard?${params}`, {
- 87 |             headers: { Authorization: `Bearer ${token}` },
- 88 |           })
- 89 |           .then((r) => setData(r.data))
- 90 |           .catch(() => {});
- 91 |       } catch (error) {
- 92 |         console.error("Помилка завантаження фінансів:", error);
- 93 |         setIsLoading(false);
- 94 |       }
- 95 |     };
- 96 | 
- 97 |     fetchData();
- 98 |   }, [selectedCity.id, period, projectFilter, isManagerOrAdmin]);
+ 25 |         <div className="h-48 bg-white rounded-2xl border border-slate-100" />
+ 26 |       </div>
+ 27 |     </div>
+ 28 |   );
+ 29 | }
+ 30 | 
+ 31 | export default function Finance() {
+ 32 |   const { selectedCity } = useSelectedCity();
+ 33 |   const [period, setPeriod] = useState("year");
+ 34 |   const [projectFilter, setProjectFilter] = useState("");
+ 35 |   const [currentUser, setCurrentUser] = useState<{
+ 36 |     role: string;
+ 37 |     balance?: number;
+ 38 |   } | null>(null);
+ 39 |   const [myBalance, setMyBalance] = useState<number | null>(null);
+ 40 | 
+ 41 |   useEffect(() => {
+ 42 |     try {
+ 43 |       const raw = localStorage.getItem("user");
+ 44 |       if (raw) setCurrentUser(JSON.parse(raw));
+ 45 |     } catch {}
+ 46 |   }, []);
+ 47 | 
+ 48 |   const isManagerOrAdmin =
+ 49 |     currentUser?.role === "MANAGER" || currentUser?.role === "SUPERADMIN";
+ 50 | 
+ 51 |   useEffect(() => {
+ 52 |     if (isManagerOrAdmin === false) {
+ 53 |       api
+ 54 |         .get("/finance/my-balance", {
+ 55 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+ 56 |         })
+ 57 |         .then((r) => setMyBalance(r.data.balance))
+ 58 |         .catch(() => {});
+ 59 |     }
+ 60 |   }, [isManagerOrAdmin]);
+ 61 | 
+ 62 |   const { data, isLoading } = useQuery({
+ 63 |     queryKey: ["finance", selectedCity.id, period, projectFilter],
+ 64 |     queryFn: async () => {
+ 65 |       const params = new URLSearchParams();
+ 66 |       if (period) params.set("period", period);
+ 67 |       if (selectedCity?.id) params.set("cityId", selectedCity.id);
+ 68 |       if (projectFilter) params.set("project", projectFilter);
+ 69 |       const res = await api.get(`/finance/dashboard?${params}`);
+ 70 |       return res.data;
+ 71 |     },
+ 72 |     enabled: !!isManagerOrAdmin,
+ 73 |     staleTime: 5 * 60 * 1000,
+ 74 |   });
+ 75 |   
+ 76 |   if (!isManagerOrAdmin) {
+ 77 |     return (
+ 78 |       <Suspense fallback={<FinanceSkeleton />}>
+ 79 |         <StaffFinanceView myBalance={myBalance} selectedCity={selectedCity} />
+ 80 |       </Suspense>
+ 81 |     );
+ 82 |   }
+ 83 | 
+ 84 |   if (isLoading || !data) return <FinanceSkeleton />;
+ 85 | 
+ 86 |   return (
+ 87 |     <Suspense fallback={<FinanceSkeleton />}>
+ 88 |       <FinanceCharts
+ 89 |         data={data}
+ 90 |         period={period}
+ 91 |         setPeriod={setPeriod}
+ 92 |         projectFilter={projectFilter}
+ 93 |         setProjectFilter={setProjectFilter}
+ 94 |         selectedCity={selectedCity}
+ 95 |       />
+ 96 |     </Suspense>
+ 97 |   );
+ 98 | }
  99 | 
-100 |   if (!isManagerOrAdmin) {
-101 |     return (
-102 |       <Suspense fallback={<FinanceSkeleton />}>
-103 |         <StaffFinanceView myBalance={myBalance} selectedCity={selectedCity} />
-104 |       </Suspense>
-105 |     );
-106 |   }
-107 | 
-108 |   if (isLoading || !data) return <FinanceSkeleton />;
-109 | 
-110 |   return (
-111 |     <Suspense fallback={<FinanceSkeleton />}>
-112 |       <FinanceCharts
-113 |         data={data}
-114 |         period={period}
-115 |         setPeriod={setPeriod}
-116 |         projectFilter={projectFilter}
-117 |         setProjectFilter={setProjectFilter}
-118 |         selectedCity={selectedCity}
-119 |       />
-120 |     </Suspense>
-121 |   );
-122 | }
-123 | 
 ```
 
 ### File: apps/frontend/src/pages/Kindergartens.tsx
@@ -12889,77 +13155,94 @@
 
 ### File: apps/frontend/src/pages/Login.tsx
 ```tsx
-  0 | 
-  1 | 
-  2 | import { useState } from 'react';
-  3 | import axios from 'axios';
-  4 | import { useNavigate } from 'react-router-dom';
+  0 | import { useState } from "react";
+  1 | import axios from "axios";
+  2 | import { useNavigate } from "react-router-dom";
+  3 | 
+  4 | import { API_BASE_URL } from "../config/api";
   5 | 
-  6 | import { API_BASE_URL } from '../config/api';
-  7 | 
-  8 | export default function Login() {
-  9 |   const [email, setEmail] = useState('admin@crm.com');
- 10 |   const [password, setPassword] = useState('admin123');
- 11 |   const [error, setError] = useState('');
- 12 |   const navigate = useNavigate();
- 13 | 
- 14 |   const handleLogin = async (e: React.FormEvent) => {
- 15 |     e.preventDefault();
- 16 |     setError('');
- 17 | 
- 18 |     try {
- 19 |       const response = await axios.post(`${API_BASE_URL}/auth/login`, { email, password });
- 20 | 
- 21 |       localStorage.setItem('token', response.data.access_token);
- 22 |       // Зберігаємо інфо про користувача для відображення в сайдбарі
- 23 |       localStorage.setItem('user', JSON.stringify(response.data.user));
- 24 |       navigate('/cities');
- 25 |     } catch {
- 26 |       setError('Невірний email або пароль');
- 27 |     }
- 28 |   };
- 29 | 
- 30 |   return (
- 31 |     <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
- 32 |       <div className="p-6 sm:p-8 bg-white rounded-2xl shadow-lg w-full max-w-sm sm:max-w-md">
- 33 |         <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">Вхід у CRM</h1>
- 34 | 
- 35 |         {error && (
- 36 |           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center">{error}</div>
- 37 |         )}
- 38 | 
- 39 |         <form onSubmit={handleLogin} className="flex flex-col gap-4">
- 40 |           <div>
- 41 |             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
- 42 |             <input
- 43 |               type="email"
- 44 |               value={email}
- 45 |               onChange={(e) => setEmail(e.target.value)}
- 46 |               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
- 47 |               required
- 48 |             />
- 49 |           </div>
- 50 |           <div>
- 51 |             <label className="block text-sm font-medium text-gray-700 mb-1">Пароль</label>
- 52 |             <input
- 53 |               type="password"
- 54 |               value={password}
- 55 |               onChange={(e) => setPassword(e.target.value)}
- 56 |               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
- 57 |               required
- 58 |             />
- 59 |           </div>
- 60 |           <button type="submit" className="mt-2 bg-blue-600 text-white font-medium p-2.5 rounded-lg hover:bg-blue-700 transition">
- 61 |             Увійти
- 62 |           </button>
- 63 |         </form>
- 64 |       </div>
- 65 |     </div>
- 66 |   );
- 67 | }
- 68 | 
- 69 | 
- 70 | 
+  6 | interface LoginProps {
+  7 |   onLogin?: (token: string) => void;
+  8 | }
+  9 | 
+ 10 | export default function Login({ onLogin }: LoginProps) {
+ 11 |   const [email, setEmail] = useState("admin@crm.com");
+ 12 |   const [password, setPassword] = useState("admin123");
+ 13 |   const [error, setError] = useState("");
+ 14 |   const navigate = useNavigate();
+ 15 | 
+ 16 |   const handleLogin = async (e: React.FormEvent) => {
+ 17 |     e.preventDefault();
+ 18 |     setError("");
+ 19 | 
+ 20 |     try {
+ 21 |       const response = await axios.post(`${API_BASE_URL}/auth/login`, {
+ 22 |         email,
+ 23 |         password,
+ 24 |       });
+ 25 | 
+ 26 |       localStorage.setItem("token", response.data.access_token);
+ 27 |       localStorage.setItem("user", JSON.stringify(response.data.user));
+ 28 |       if (onLogin) {
+ 29 |         onLogin(response.data.access_token); // оновлює isAuthenticated в App
+ 30 |       } else {
+ 31 |         navigate("/cities");
+ 32 |       }
+ 33 |     } catch {
+ 34 |       setError("Невірний email або пароль");
+ 35 |     }
+ 36 |   };
+ 37 | 
+ 38 |   return (
+ 39 |     <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+ 40 |       <div className="p-6 sm:p-8 bg-white rounded-2xl shadow-lg w-full max-w-sm sm:max-w-md">
+ 41 |         <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
+ 42 |           Вхід у CRM
+ 43 |         </h1>
+ 44 | 
+ 45 |         {error && (
+ 46 |           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center">
+ 47 |             {error}
+ 48 |           </div>
+ 49 |         )}
+ 50 | 
+ 51 |         <form onSubmit={handleLogin} className="flex flex-col gap-4">
+ 52 |           <div>
+ 53 |             <label className="block text-sm font-medium text-gray-700 mb-1">
+ 54 |               Email
+ 55 |             </label>
+ 56 |             <input
+ 57 |               type="email"
+ 58 |               value={email}
+ 59 |               onChange={(e) => setEmail(e.target.value)}
+ 60 |               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+ 61 |               required
+ 62 |             />
+ 63 |           </div>
+ 64 |           <div>
+ 65 |             <label className="block text-sm font-medium text-gray-700 mb-1">
+ 66 |               Пароль
+ 67 |             </label>
+ 68 |             <input
+ 69 |               type="password"
+ 70 |               value={password}
+ 71 |               onChange={(e) => setPassword(e.target.value)}
+ 72 |               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+ 73 |               required
+ 74 |             />
+ 75 |           </div>
+ 76 |           <button
+ 77 |             type="submit"
+ 78 |             className="mt-2 bg-blue-600 text-white font-medium p-2.5 rounded-lg hover:bg-blue-700 transition"
+ 79 |           >
+ 80 |             Увійти
+ 81 |           </button>
+ 82 |         </form>
+ 83 |       </div>
+ 84 |     </div>
+ 85 |   );
+ 86 | }
+ 87 | 
 ```
 
 ### File: apps/frontend/src/pages/SchoolProfile.tsx

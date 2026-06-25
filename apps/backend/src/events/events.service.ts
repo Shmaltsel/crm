@@ -283,13 +283,33 @@ export class EventsService {
     return null;
   }
 
-  async findBySchool(schoolId: string) {
+  async findBySchool(schoolId: string, minimal = false) {
+    if (minimal) {
+      return this.prisma.event.findMany({
+        where: { schoolId },
+        select: {
+          id: true,
+          project: true,
+          date: true,
+          time: true,
+          status: true,
+          price: true,
+          childrenPlanned: true,
+          address: true,
+          contactPerson: true,
+          contactPhone: true,
+          crewId: true,
+          crew: { select: { id: true, name: true, hostId: true, driverId: true } },
+        },
+        orderBy: { date: 'desc' },
+      });
+    }
     return this.prisma.event.findMany({
       where: { schoolId },
       include: {
-        crew: true,
+        crew: { include: { host: true, driver: true } },
         history: { orderBy: { createdAt: 'desc' } },
-        preparation: true, // Включаємо підготовку, якщо вона є
+        preparation: true,
       },
       orderBy: { date: 'desc' },
     });
