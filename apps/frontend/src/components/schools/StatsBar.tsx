@@ -112,7 +112,11 @@ export default function StatsBar({
     { new: 0, planned: 0, inProgress: 0, done: 0 } as Record<string, number>,
   );
 
-  const sizeStats = schools.reduce(
+  const schoolsForSize = activeFilter
+    ? schools.filter((s) => classifySchool(s) === activeFilter)
+    : schools;
+
+  const sizeStats = schoolsForSize.reduce(
     (acc, s) => {
       acc[classifySize(s, schoolType)]++;
       return acc;
