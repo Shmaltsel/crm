@@ -9,72 +9,125 @@ const ICON_COLORS = [
   "bg-sky-50 text-sky-600",
 ];
 
-export default function CityMobileList({ cities, selectedCity, onSelectCity }: any) {
+export default function CityMobileList({
+  cities,
+  selectedCity,
+  onSelectCity,
+}: any) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"ACTIVE" | "ALL" | "ARCHIVED">("ACTIVE");
+  const [activeTab, setActiveTab] = useState<"ACTIVE" | "ALL" | "ARCHIVED">(
+    "ACTIVE",
+  );
 
   const filteredCities = useMemo(() => {
     return cities.filter((c: any) => {
       const hasEvents = (c.plannedEvents || 0) + (c.completedEvents || 0) > 0;
-      
       if (activeTab === "ACTIVE") return hasEvents;
-      if (activeTab === "ARCHIVED") return !hasEvents; // Ті, де НЕМАЄ подій
-      return true; // Усі
+      if (activeTab === "ARCHIVED") return !hasEvents;
+      return true;
     });
   }, [cities, activeTab]);
 
   return (
-    <div className="md:hidden flex flex-col gap-4 mb-24">
-      {/* Вкладки (Без пошуку) */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mt-1">
-        {['Активні', 'Усі', 'Архівні'].map(tab => {
-          const tabKey = tab === 'Активні' ? 'ACTIVE' : tab === 'Усі' ? 'ALL' : 'ARCHIVED';
-          const isActive = activeTab === tabKey;
-          return (
-            <button 
-              key={tab} 
-              onClick={() => setActiveTab(tabKey)}
-              className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors flex items-center gap-1.5 ${isActive ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-            >
-              {isActive && <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>}
-              {tab}
-            </button>
-          )
-        })}
-      </div>
+    <>
+      {/* Stagger анімація для мобільних рядків */}
+      <style>{`
+        @keyframes cityRowIn {
+          from { opacity: 0; transform: translateX(-12px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        .city-row-enter {
+          animation: cityRowIn 0.28s ease-out;
+          animation-fill-mode: both;
+        }
+      `}</style>
 
-      {/* Список */}
-      <div className="flex flex-col bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
-        {filteredCities.map((city: any, index: number) => {
-          const iconStyle = ICON_COLORS[index % ICON_COLORS.length];
-          const totalEvents = (city.plannedEvents || 0) + (city.completedEvents || 0);
-
-          return (
-            <div 
-              key={city.id} 
-              onClick={() => onSelectCity({ id: city.id, name: city.name })}
-              className={`flex items-center p-4 border-b border-slate-50 active:bg-slate-50 transition-colors ${selectedCity?.id === city.id ? 'bg-blue-50/30' : ''}`}
-            >
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 text-xl shrink-0 ${iconStyle}`}>
-                🏛️
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-slate-800 text-base">{city.name}</p>
-                <p className="text-xs font-medium text-slate-400 mt-0.5">
-                  {totalEvents} подій • {city.schoolsCount || 0} шкіл
-                </p>
-              </div>
-              <button 
-                onClick={(e) => { e.stopPropagation(); navigate(`/cities/${city.id}`); }} 
-                className="p-3 text-slate-400 hover:text-blue-600 text-2xl font-light leading-none"
+      <div className="md:hidden flex flex-col gap-4 mb-24">
+        {/* Вкладки */}
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mt-1">
+          {["Активні", "Усі", "Архівні"].map((tab) => {
+            const tabKey =
+              tab === "Активні" ? "ACTIVE" : tab === "Усі" ? "ALL" : "ARCHIVED";
+            const isActive = activeTab === tabKey;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tabKey as typeof activeTab)}
+                className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors flex items-center gap-1.5 ${
+                  isActive
+                    ? "bg-blue-50 text-blue-600 border border-blue-100"
+                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                }`}
               >
-                ›
+                {isActive && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                )}
+                {tab}
               </button>
+            );
+          })}
+        </div>
+
+        {/* Список */}
+        <div className="flex flex-col bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
+          {filteredCities.map((city: any, index: number) => {
+            const iconStyle = ICON_COLORS[index % ICON_COLORS.length];
+            const totalEvents =
+              (city.plannedEvents || 0) + (city.completedEvents || 0);
+            const isSelected = selectedCity?.id === city.id;
+
+            return (
+              <div
+                key={city.id}
+                // Stagger: кожен рядок з'являється з зміщенням index * 50ms
+                style={{ animationDelay: `${index * 50}ms` }}
+                className={`
+                  city-row-enter
+                  flex items-center p-4 border-b border-slate-50
+                  transition-[background-color,transform] duration-150
+                  active:scale-[0.99] active:bg-slate-50
+                  ${isSelected ? "bg-blue-50/30" : ""}
+                `}
+                onClick={() => onSelectCity({ id: city.id, name: city.name })}
+              >
+                {/* Іконка */}
+                <div
+                  className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 text-xl shrink-0 ${iconStyle}`}
+                >
+                  🏛️
+                </div>
+
+                {/* Текст */}
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-slate-800 text-base">
+                    {city.name}
+                  </p>
+                  <p className="text-xs font-medium text-slate-400 mt-0.5">
+                    {totalEvents} подій • {city.schoolsCount || 0} шкіл
+                  </p>
+                </div>
+
+                {/* Стрілка переходу */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/cities/${city.id}`);
+                  }}
+                  className="p-3 text-slate-400 hover:text-blue-600 text-2xl font-light leading-none transition-colors"
+                >
+                  ›
+                </button>
+              </div>
+            );
+          })}
+
+          {filteredCities.length === 0 && (
+            <div className="p-8 text-center text-slate-400 font-medium">
+              Міст не знайдено
             </div>
-          )
-        })}
-        {filteredCities.length === 0 && <div className="p-8 text-center text-slate-400 font-medium">Міст не знайдено</div>}
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
