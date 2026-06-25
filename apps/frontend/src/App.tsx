@@ -12,6 +12,9 @@ import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import { CityProvider } from "./context/CityContext";
 
+const CityProfile = lazy(() => import("./pages/CityProfile"));
+const EventReport = lazy(() => import("./pages/EventReport"));
+
 // --- ДИНАМІЧНІ ІМПОРТИ (Ледаче завантаження / Code Splitting) ---
 // Ці файли будуть завантажуватись окремими шматками (chunks) ТІЛЬКИ коли користувач перейде на відповідну сторінку
 const Cities = lazy(() => import("./pages/Cities"));
@@ -149,6 +152,24 @@ export default function App() {
               element={
                 <Suspense fallback={<PageLoader />}>
                   <Kindergartens />
+                </Suspense>
+              }
+            />
+
+            <Route
+              path="cities/:id"
+              element={
+                <Suspense fallback={<PageLoader />}>
+                  <CityProfile />
+                </Suspense>
+              }
+            />
+
+            <Route
+              path="events/:id/report"
+              element={
+                <Suspense fallback={<PageLoader />}>
+                  <EventReport />
                 </Suspense>
               }
             />

@@ -1,45 +1,59 @@
+import { useState } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
+import { API_BASE_URL } from "../config/api";
 
-import { useState } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+interface LoginProps {
+  onLogin?: (token: string) => void;
+}
 
-import { API_BASE_URL } from '../config/api';
-
-export default function Login() {
-  const [email, setEmail] = useState('admin@crm.com');
-  const [password, setPassword] = useState('admin123');
-  const [error, setError] = useState('');
+export default function Login({ onLogin }: LoginProps) {
+  const [email, setEmail] = useState("admin@crm.com");
+  const [password, setPassword] = useState("admin123");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, { email, password });
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
+        email,
+        password,
+      });
 
-      localStorage.setItem('token', response.data.access_token);
-      // Зберігаємо інфо про користувача для відображення в сайдбарі
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      navigate('/cities');
+      localStorage.setItem("token", response.data.access_token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+      if (onLogin) {
+        onLogin(response.data.access_token); // оновлює isAuthenticated в App
+      } else {
+        navigate("/cities");
+      }
     } catch {
-      setError('Невірний email або пароль');
+      setError("Невірний email або пароль");
     }
   };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
       <div className="p-6 sm:p-8 bg-white rounded-2xl shadow-lg w-full max-w-sm sm:max-w-md">
-        <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">Вхід у CRM</h1>
+        <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
+          Вхід у CRM
+        </h1>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center">{error}</div>
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center">
+            {error}
+          </div>
         )}
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
             <input
               type="email"
               value={email}
@@ -49,7 +63,9 @@ export default function Login() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Пароль</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Пароль
+            </label>
             <input
               type="password"
               value={password}
@@ -58,7 +74,10 @@ export default function Login() {
               required
             />
           </div>
-          <button type="submit" className="mt-2 bg-blue-600 text-white font-medium p-2.5 rounded-lg hover:bg-blue-700 transition">
+          <button
+            type="submit"
+            className="mt-2 bg-blue-600 text-white font-medium p-2.5 rounded-lg hover:bg-blue-700 transition"
+          >
             Увійти
           </button>
         </form>
@@ -66,5 +85,3 @@ export default function Login() {
     </div>
   );
 }
-
-
