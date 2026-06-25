@@ -25,13 +25,9 @@ const EventDetails = lazy(
 // Імпортуємо UI компоненти
 import SchoolProfileHeader from "../components/school-profile/SchoolProfileHeader";
 import SchoolInfoCard from "../components/school-profile/SchoolInfoCard";
-import HistoryTimeline from "../components/school-profile/HistoryTimeline";
-import Pipeline from "../components/school-profile/Pipeline";
-import EventDetails from "../components/school-profile/EventDetails";
 import EventsTable from "../components/school-profile/EventsTable";
 import EventPreparation from "../components/school-profile/EventPreparation";
 import AssignedCrew from "../components/school-profile/AssignedCrew";
-
 // Імпортуємо модальні вікна
 import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
 import EventModal from "../components/school-profile/modals/EventModal";
@@ -228,45 +224,6 @@ export default function SchoolProfile() {
     ],
   );
 
-  const handleSaveComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (commentModal.mode === "pipeline") {
-      const activeStage = PIPELINE_STAGES[currentStageIndex];
-      const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-      if (!nextStage) return;
-      await updateStatus.mutateAsync({
-        eventId: currentEvent.id,
-        status: nextStage.key,
-        actionName: `Етап пройдено: ${activeStage.name}`,
-        comment: commentModal.text,
-      });
-      if (nextStage.key === "RE_SALE") {
-        setExitingEventId(currentEvent.id);
-        setTimeout(() => {
-          setSelectedEventId(null);
-          setExitingEventId(null);
-        }, 500);
-      }
-    } else if (commentModal.mode === "add_comment") {
-      await addCommentMutation.mutateAsync({
-        eventId: currentEvent.id,
-        comment: commentModal.text,
-      });
-    } else if (commentModal.mode === "history" && commentModal.historyId) {
-      await updateHistoryMutation.mutateAsync({
-        historyId: commentModal.historyId,
-        comment: commentModal.text,
-        eventId: currentEvent.id,
-      });
-    }
-    setCommentModal({
-      isOpen: false,
-      mode: "pipeline",
-      stepId: null,
-      historyId: null,
-      text: "",
-    });
-  };
 
   const handleSaveEvent = useCallback(
     async (e: React.FormEvent) => {
