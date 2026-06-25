@@ -420,10 +420,11 @@ export default function Schools() {
             <VirtualSchoolList
               schools={filteredSchools}
               itemHeight={110}
-              renderItem={(school) => (
+              renderItem={(school, index) => (
                 <div className="pb-2.5">
                   <SchoolCard
                     school={school}
+                    index={index}
                     onDelete={handleDeleteSchool}
                     stages={PIPELINE_STAGES}
                   />

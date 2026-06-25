@@ -3,7 +3,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface VirtualSchoolListProps {
   schools: any[];
-  renderItem: (school: any) => JSX.Element;
+  renderItem: (school: any, index: number) => JSX.Element;
   itemHeight?: number;
 }
 
@@ -38,7 +38,7 @@ export default function VirtualSchoolList({ schools, renderItem, itemHeight = 12
               transform: `translateY(${virtualRow.start}px)`,
             }}
           >
-            {renderItem(schools[virtualRow.index])}
+            {renderItem(schools[virtualRow.index], virtualRow.index)}
           </div>
         ))}
       </div>

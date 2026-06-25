@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../../../config/api';
 
 interface Employee {
@@ -59,30 +60,45 @@ export default function IssueModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden max-h-[90vh] flex flex-col">
-
-        <div className="p-5 border-b border-slate-100 flex justify-between bg-red-50 shrink-0">
+  return createPortal(
+    <div
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
+      style={{ animation: "fadeIn 0.2s ease-out forwards" }}
+    >
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalScale {
+          from { opacity: 0; transform: scale(0.95) translateY(15px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
+      <div
+        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col opacity-0"
+        style={{ animation: "modalScale 0.3s ease-out forwards" }}
+      >
+        <div className="p-5 border-b border-slate-100 flex justify-between items-start bg-slate-50 shrink-0">
           <div>
-            <h3 className="text-xl font-bold text-red-700">🚨 Запит</h3>
+            <h3 className="text-xl font-bold text-slate-800">🚨 Запит</h3>
             <p className="text-sm text-red-500 mt-0.5 font-medium">{schoolName}</p>
-            <p className="text-xs text-slate-500">{eventName}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{eventName}</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-2 -mr-2 -mt-2 h-fit text-lg">✕</button>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
+          >
+            ✕
+          </button>
         </div>
 
-        <div className="p-5 flex flex-col gap-4 overflow-y-auto">
-          {/* Опис проблеми */}
+        <div className="p-6 flex flex-col gap-4 overflow-y-auto">
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Опишіть проблему або запит..."
-            className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none resize-none h-32"
+            className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none resize-none h-32 text-sm"
             autoFocus
           />
 
-          {/* Дедлайн */}
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1.5">
               ⏰ Дедлайн <span className="text-slate-400 font-normal">(необов'язково)</span>
@@ -92,11 +108,10 @@ export default function IssueModal({
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
               min={new Date().toISOString().slice(0, 10)}
-              className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none text-sm"
+              className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none text-sm"
             />
           </div>
 
-          {/* Відповідальний */}
           {employees.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1.5">
@@ -105,7 +120,7 @@ export default function IssueModal({
               <select
                 value={assignedUserId}
                 onChange={(e) => setAssignedUserId(e.target.value)}
-                className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none text-sm bg-white"
+                className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none text-sm bg-white"
               >
                 <option value="">— Оберіть працівника —</option>
                 {employees.map(emp => (
@@ -117,11 +132,11 @@ export default function IssueModal({
             </div>
           )}
 
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+          <div className="flex gap-3 mt-2">
             <button
               type="button"
               onClick={onClose}
-              className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium text-sm transition-colors"
+              className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors"
             >
               Скасувати
             </button>
@@ -129,13 +144,14 @@ export default function IssueModal({
               type="button"
               onClick={handleSend}
               disabled={isSending || !message.trim()}
-              className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium text-sm transition-colors disabled:opacity-50"
+              className="flex-1 bg-red-600 text-white py-3 rounded-xl font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
             >
               {sent ? '✓ Надіслано!' : isSending ? 'Відправка...' : 'Відправити'}
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

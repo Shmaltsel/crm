@@ -33,27 +33,11 @@ export default function VirtualDesktopTable({ schools, searchQuery, onDelete, st
             <th className="p-4 font-medium text-slate-600 text-center">Дія</th>
           </tr>
         </thead>
-        <tbody
-          style={{
-            height: `${rowVirtualizer.getTotalSize()}px`,
-            width: "100%",
-            position: "relative",
-            display: "block",
-          }}
-        >
+        <tbody>
           {rowVirtualizer.getVirtualItems().map((virtualRow) => (
             <tr
               key={virtualRow.key}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: `${virtualRow.size}px`,
-                transform: `translateY(${virtualRow.start}px)`,
-                display: "table",
-                tableLayout: "fixed",
-              }}
+              style={{ height: `${virtualRow.size}px` }}
             >
               <SchoolRow
                 school={schools[virtualRow.index]}
@@ -63,6 +47,9 @@ export default function VirtualDesktopTable({ schools, searchQuery, onDelete, st
               />
             </tr>
           ))}
+          <tr style={{ height: `${rowVirtualizer.getTotalSize() - rowVirtualizer.getVirtualItems().reduce((s, r) => s + r.size, 0)}px` }}>
+            <td colSpan={5} />
+          </tr>
         </tbody>
       </table>
 
