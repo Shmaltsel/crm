@@ -19,6 +19,8 @@ export default function CityMobileList({
     "ACTIVE",
   );
 
+  const [tabKey, setTabKey] = useState(0);
+
   const filteredCities = useMemo(() => {
     return cities.filter((c: any) => {
       const hasEvents = (c.plannedEvents || 0) + (c.completedEvents || 0) > 0;
@@ -33,12 +35,23 @@ export default function CityMobileList({
       {/* Stagger анімація для мобільних рядків */}
       <style>{`
         @keyframes cityRowIn {
-          from { opacity: 0; transform: translateX(-12px); }
+          from { opacity: 0; transform: translateX(-14px); }
           to   { opacity: 1; transform: translateX(0); }
         }
         .city-row-enter {
-          animation: cityRowIn 0.28s ease-out;
+          animation: cityRowIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
           animation-fill-mode: both;
+        }
+        @keyframes tabSlideIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes dotPop {
+          from { transform: scale(0); }
+          to   { transform: scale(1); }
+        }
+        .dot-pop {
+          animation: dotPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
       `}</style>
 
@@ -52,15 +65,15 @@ export default function CityMobileList({
             return (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tabKey as typeof activeTab)}
-                className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors flex items-center gap-1.5 ${
+                onClick={() => { setActiveTab(tabKey as typeof activeTab); setTabKey(k => k + 1); }}
+                className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-1.5 active:scale-95 ${
                   isActive
-                    ? "bg-blue-50 text-blue-600 border border-blue-100"
+                    ? "bg-blue-50 text-blue-600 border border-blue-100 shadow-sm"
                     : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                 }`}
               >
                 {isActive && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                  <span className="dot-pop w-1.5 h-1.5 rounded-full bg-blue-600" />
                 )}
                 {tab}
               </button>
@@ -69,7 +82,7 @@ export default function CityMobileList({
         </div>
 
         {/* Список */}
-        <div className="flex flex-col bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
+        <div key={tabKey} className="flex flex-col bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
           {filteredCities.map((city: any, index: number) => {
             const iconStyle = ICON_COLORS[index % ICON_COLORS.length];
             const totalEvents =

@@ -113,11 +113,19 @@ export default function Cities() {
       style={{ contentVisibility: "auto" }}
     >
       {/* Шапка для ПК */}
+      <style>{`
+        @keyframes headerFadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .header-enter { animation: headerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .header-btn-enter { animation: headerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
+      `}</style>
       <div className="hidden md:flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-slate-800">Міста</h1>
+        <h1 className="header-enter text-3xl font-bold text-slate-800">Міста</h1>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm flex items-center transition-colors"
+          className="header-btn-enter bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm flex items-center transition-all duration-150"
         >
           <span className="mr-2">+</span> Додати місто
         </button>

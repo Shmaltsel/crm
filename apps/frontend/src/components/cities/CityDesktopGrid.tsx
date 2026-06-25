@@ -97,7 +97,7 @@ function CityCard({
 
         {/* Чекмарк якщо місто обрано */}
         {isSelected && (
-          <div className="absolute top-3 right-3 bg-blue-500 text-white p-1.5 rounded-full shadow-lg">
+          <div className="check-enter absolute top-3 right-3 bg-blue-500 text-white p-1.5 rounded-full shadow-lg">
             <svg
               className="w-5 h-5"
               fill="none"
@@ -145,13 +145,15 @@ function CityCard({
         <div className="flex gap-2 mt-4 pt-3 border-t border-slate-50">
           <button
             onClick={onSelect}
-            className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors ${
+            className={`flex-1 text-sm font-medium py-2 rounded-lg transition-all duration-200 ${
               isSelected
-                ? "bg-blue-50 text-blue-700 border border-blue-200"
-                : "bg-blue-600 hover:bg-blue-700 text-white"
+                ? "bg-blue-50 text-blue-700 border border-blue-200 scale-[0.98]"
+                : "bg-blue-600 hover:bg-blue-700 text-white hover:scale-[1.02]"
             }`}
           >
-            {isSelected ? "Обрано" : "✓ Вибрати"}
+            <span className="inline-flex items-center gap-1.5 transition-all duration-200">
+              {isSelected ? "✓ Обрано" : "Вибрати"}
+            </span>
           </button>
           <button
             onClick={() => navigate(`/cities/${city.id}`)}
@@ -179,13 +181,20 @@ export default function CityDesktopGrid({
         opacity: 0 → 1  +  translateY(16px) → 0
         Це stagger: кожна картка отримує animationDelay через inline style вище.
       */}
-      <style>{`
+     <style>{`
         @keyframes cityCardIn {
-          from { opacity: 0; transform: translateY(16px); }
-          to   { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; transform: translateY(20px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
         }
         .city-card-enter {
-          animation: cityCardIn 0.35s ease-out;
+          animation: cityCardIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes checkIn {
+          from { opacity: 0; transform: scale(0.4) rotate(-20deg); }
+          to   { opacity: 1; transform: scale(1) rotate(0deg); }
+        }
+        .check-enter {
+          animation: checkIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
       `}</style>
 
