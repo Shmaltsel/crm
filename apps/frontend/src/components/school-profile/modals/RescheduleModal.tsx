@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../../../config/api';
 
 interface RescheduleModalProps {
@@ -18,9 +18,16 @@ export default function RescheduleModal({
   currentTime,
   onSuccess,
 }: RescheduleModalProps) {
-  const [date, setDate] = useState(currentDate.slice(0, 10));
-  const [time, setTime] = useState(currentTime || '');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && currentDate) {
+      setDate(currentDate.slice(0, 10));
+      setTime(currentTime || '');
+    }
+  }, [isOpen, currentDate, currentTime]);
 
   if (!isOpen) return null;
 
