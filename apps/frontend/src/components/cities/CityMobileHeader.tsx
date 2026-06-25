@@ -58,7 +58,10 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
           setIssuesVisible(true);
         } else {
           setIssuesExiting(true);
-          setTimeout(() => { setIssuesVisible(false); setIssuesExiting(false); }, 300);
+          setTimeout(() => {
+            setIssuesVisible(false);
+            setIssuesExiting(false);
+          }, 300);
         }
       })
       .catch(console.error);
@@ -66,29 +69,43 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
 
   const handleStatusToggle = async (issue: any) => {
     const nextStatus = getNextStatus(issue.status);
-    try {
-      await api.patch(`/issues/${issue.id}/status`, { status: nextStatus });
-      if (nextStatus === "Виконано") {
-        setExitingIssueId(issue.id);
-        setTimeout(() => {
-          setIssues((prev) => prev.filter((i) => i.id !== issue.id));
-          setExitingIssueId(null);
-          if (issues.length === 1) {
+
+    // Оптимістичне оновлення — UI реагує миттєво
+    if (nextStatus === "Виконано") {
+      setExitingIssueId(issue.id);
+      setTimeout(() => {
+        setIssues((prev) => {
+          const next = prev.filter((i) => i.id !== issue.id);
+          if (next.length === 0) {
             setIsExpanded(false);
             setIssuesExiting(true);
-            setTimeout(() => { setIssuesVisible(false); setIssuesExiting(false); }, 300);
+            setTimeout(() => {
+              setIssuesVisible(false);
+              setIssuesExiting(false);
+            }, 300);
           }
-        }, 400);
-      } else {
+          return next;
+        });
+        setExitingIssueId(null);
+      }, 400);
+    } else {
+      setIssues((prev) =>
+        prev.map((i) => (i.id === issue.id ? { ...i, status: nextStatus } : i)),
+      );
+    }
+
+    // Запит у фоні
+    api
+      .patch(`/issues/${issue.id}/status`, { status: nextStatus })
+      .catch((e) => {
+        console.error(e);
+        // Відкат при помилці
         setIssues((prev) =>
           prev.map((i) =>
-            i.id === issue.id ? { ...i, status: nextStatus } : i,
+            i.id === issue.id ? { ...i, status: issue.status } : i,
           ),
         );
-      }
-    } catch (e) {
-      console.error(e);
-    }
+      });
   };
 
   const currentCityData = cities?.find((c: any) => c.id === selectedCity?.id);
@@ -140,17 +157,30 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
         .expand-exit {
           animation: collapseUp 0.22s ease-in forwards;
         }
+        @keyframes statusFlash {
+          0% { transform: scale(1); }
+          40% { transform: scale(0.95); opacity: 0.7; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .status-flash {
+          animation: statusFlash 0.2s ease-out;
+        }
       `}</style>
 
       {/* Сповіщення про проблему з розгортанням */}
       {issuesVisible && (
-        <div className={`bg-[#FFF4F4] border border-red-100 rounded-2xl p-4 flex flex-col gap-3 shadow-sm ${issuesExiting ? "issues-exit" : "issues-enter"}`}>
+        <div
+          className={`bg-[#FFF4F4] border border-red-100 rounded-2xl p-4 flex flex-col gap-3 shadow-sm ${issuesExiting ? "issues-exit" : "issues-enter"}`}
+        >
           <div
             className="flex items-center gap-4 cursor-pointer"
             onClick={() => {
               if (isExpanded) {
                 setIsListExiting(true);
-                setTimeout(() => { setIsExpanded(false); setIsListExiting(false); }, 250);
+                setTimeout(() => {
+                  setIsExpanded(false);
+                  setIsListExiting(false);
+                }, 250);
               } else {
                 setIsExpanded(true);
               }
@@ -186,7 +216,9 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
 
           {/* Розгорнутий список проблем */}
           {isExpanded && (
-            <div className={`flex flex-col gap-3 mt-2 pt-3 border-t border-red-100/50 ${isListExiting ? "expand-exit" : "expand-enter"}`}>
+            <div
+              className={`flex flex-col gap-3 mt-2 pt-3 border-t border-red-100/50 ${isListExiting ? "expand-exit" : "expand-enter"}`}
+            >
               {issues.map((issue) => {
                 const isExiting = exitingIssueId === issue.id;
                 return (
@@ -220,7 +252,8 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
 
                     <button
                       onClick={() => handleStatusToggle(issue)}
-                      className={`w-full text-xs font-bold px-3 py-2.5 rounded-lg border transition-colors text-left flex items-center gap-1.5 ${STATUS_STYLES[issue.status] || STATUS_STYLES["Планується"]}`}
+                      key={issue.status}
+                      className={`status-flash w-full text-xs font-bold px-3 py-2.5 rounded-lg border transition-colors text-left flex items-center gap-1.5 ${STATUS_STYLES[issue.status] || STATUS_STYLES["Планується"]}`}
                     >
                       <span className="text-[10px]">●</span> {issue.status}{" "}
                       <span className="font-normal opacity-70">
@@ -251,7 +284,10 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
             <div className="w-10 h-10 bg-blue-50 text-blue-600 flex items-center justify-center rounded-full text-lg city-name-change">
               {CITY_ICONS[selectedCity.name] || DEFAULT_CITY_ICON}
             </div>
-            <h2 key={selectedCity.id} className="text-2xl font-bold text-slate-800 city-name-change">
+            <h2
+              key={selectedCity.id}
+              className="text-2xl font-bold text-slate-800 city-name-change"
+            >
               {selectedCity.name}
             </h2>
           </div>

@@ -180,8 +180,18 @@ export default function Cities() {
       {/* Модалка додавання */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0"
-          style={{ animation: "fadeIn 0.2s ease-out forwards", alignItems: "center", minHeight: "100dvh" }}
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 p-4 opacity-0"
+          style={{
+            animation: "fadeIn 0.2s ease-out forwards",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            position: "fixed",
+          }}
         >
           <style>{`
             @keyframes fadeIn {
