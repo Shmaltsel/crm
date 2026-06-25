@@ -18,14 +18,27 @@ function getNextStatus(current: string) {
 export default function IssueCarousel() {
   const { selectedCity } = useSelectedCity();
   const [issues, setIssues] = useState<any[]>([]);
-  // Стан для анімації зникнення картки
   const [exitingIssueId, setExitingIssueId] = useState<string | null>(null);
+  const [sectionVisible, setSectionVisible] = useState(false);
+  const [sectionExiting, setSectionExiting] = useState(false);
 
   const fetchIssues = async () => {
-    if (!selectedCity?.id) return;
+    if (!selectedCity?.id) {
+      setSectionExiting(true);
+      setTimeout(() => { setSectionVisible(false); setSectionExiting(false); setIssues([]); }, 350);
+      return;
+    }
     try {
       const res = await api.get(`/issues?cityId=${selectedCity.id}`);
-      setIssues(res.data.filter((i: any) => i.status !== "Виконано"));
+      const filtered = res.data.filter((i: any) => i.status !== "Виконано");
+      setIssues(filtered);
+      if (filtered.length > 0) {
+        setSectionExiting(false);
+        setSectionVisible(true);
+      } else {
+        setSectionExiting(true);
+        setTimeout(() => { setSectionVisible(false); setSectionExiting(false); }, 350);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -47,7 +60,14 @@ export default function IssueCarousel() {
 
         // Чекаємо 500мс і видаляємо з масиву
         setTimeout(() => {
-          setIssues((prev) => prev.filter((i) => i.id !== issue.id));
+          setIssues((prev) => {
+            const next = prev.filter((i) => i.id !== issue.id);
+            if (next.length === 0) {
+              setSectionExiting(true);
+              setTimeout(() => { setSectionVisible(false); setSectionExiting(false); }, 350);
+            }
+            return next;
+          });
           setExitingIssueId(null);
         }, 500);
       } else {
@@ -62,18 +82,26 @@ export default function IssueCarousel() {
     }
   };
 
-  if (issues.length === 0) return null;
+  if (!sectionVisible) return null;
 
   return (
-    // Додано opacity-0 та style з animation
     <div
-      className="mb-6 opacity-0"
-      style={{ animation: "slideDown 0.4s ease-out forwards" }}
+      className="mb-6"
+      style={{
+        animation: sectionExiting
+          ? "slideUp 0.35s ease-in forwards"
+          : "slideDown 0.4s cubic-bezier(0.16,1,0.3,1) forwards",
+        opacity: 0,
+      }}
     >
       <style>{`
         @keyframes slideDown {
           from { opacity: 0; transform: translateY(-15px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+          from { opacity: 1; transform: translateY(0); }
+          to { opacity: 0; transform: translateY(-10px); }
         }
       `}</style>
 

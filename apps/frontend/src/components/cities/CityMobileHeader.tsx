@@ -20,11 +20,27 @@ function getNextStatus(current: string) {
   return STATUSES[(idx + 1) % STATUSES.length];
 }
 
+const CITY_ICONS: Record<string, string> = {
+  Львів: "🦁",
+  Київ: "🏰",
+  Харків: "⚙️",
+  Одеса: "⚓",
+  Дніпро: "🌊",
+  Запоріжжя: "🔱",
+  Вінниця: "🌸",
+  Полтава: "🌻",
+  Черкаси: "🍒",
+  Чернівці: "🎭",
+};
+const DEFAULT_CITY_ICON = "🏙️";
+
 export default function CityMobileHeader({ selectedCity, cities }: Props) {
   const navigate = useNavigate();
   const [issues, setIssues] = useState<any[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
   const [exitingIssueId, setExitingIssueId] = useState<string | null>(null);
+  const [issuesVisible, setIssuesVisible] = useState(false);
+  const [issuesExiting, setIssuesExiting] = useState(false);
 
   useEffect(() => {
     if (!selectedCity?.id) {
@@ -34,7 +50,15 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
     api
       .get(`/issues?cityId=${selectedCity.id}`)
       .then((res) => {
-        setIssues(res.data.filter((i: any) => i.status !== "Виконано"));
+        const filtered = res.data.filter((i: any) => i.status !== "Виконано");
+        setIssues(filtered);
+        if (filtered.length > 0) {
+          setIssuesExiting(false);
+          setIssuesVisible(true);
+        } else {
+          setIssuesExiting(true);
+          setTimeout(() => { setIssuesVisible(false); setIssuesExiting(false); }, 300);
+        }
       })
       .catch(console.error);
   }, [selectedCity?.id]);
@@ -48,8 +72,11 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
         setTimeout(() => {
           setIssues((prev) => prev.filter((i) => i.id !== issue.id));
           setExitingIssueId(null);
-          // Якщо це була остання проблема, згортаємо блок
-          if (issues.length === 1) setIsExpanded(false);
+          if (issues.length === 1) {
+            setIsExpanded(false);
+            setIssuesExiting(true);
+            setTimeout(() => { setIssuesVisible(false); setIssuesExiting(false); }, 300);
+          }
         }, 400);
       } else {
         setIssues((prev) =>
@@ -71,15 +98,45 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
 
   return (
     <div className="md:hidden flex flex-col gap-4 mb-4">
+      <style>{`
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+          from { opacity: 1; transform: translateY(0); max-height: 200px; }
+          to { opacity: 0; transform: translateY(-8px); max-height: 0; }
+        }
+        @keyframes expandDown {
+          from { opacity: 0; transform: translateY(-6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes cityNameChange {
+          0% { opacity: 1; transform: translateY(0); }
+          40% { opacity: 0; transform: translateY(-6px); }
+          60% { opacity: 0; transform: translateY(6px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        .city-name-change {
+          animation: cityNameChange 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .issues-enter {
+          animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          opacity: 0;
+        }
+        .issues-exit {
+          animation: slideUp 0.3s ease-in forwards;
+          overflow: hidden;
+        }
+        .expand-enter {
+          animation: expandDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          opacity: 0;
+        }
+      `}</style>
+
       {/* Сповіщення про проблему з розгортанням */}
-      {issues.length > 0 && (
-        <div className="bg-[#FFF4F4] border border-red-100 rounded-2xl p-4 flex flex-col gap-3 shadow-sm opacity-0 animate-[slideDown_0.3s_ease-out_forwards]">
-          <style>{`
-            @keyframes slideDown {
-              from { opacity: 0; transform: translateY(-10px); }
-              to { opacity: 1; transform: translateY(0); }
-            }
-          `}</style>
+      {issuesVisible && (
+        <div className={`bg-[#FFF4F4] border border-red-100 rounded-2xl p-4 flex flex-col gap-3 shadow-sm ${issuesExiting ? "issues-exit" : "issues-enter"}`}>
           <div
             className="flex items-center gap-4 cursor-pointer"
             onClick={() => setIsExpanded(!isExpanded)}
@@ -114,7 +171,7 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
 
           {/* Розгорнутий список проблем */}
           {isExpanded && (
-            <div className="flex flex-col gap-3 mt-2 pt-3 border-t border-red-100/50">
+            <div className="flex flex-col gap-3 mt-2 pt-3 border-t border-red-100/50 expand-enter">
               {issues.map((issue) => {
                 const isExiting = exitingIssueId === issue.id;
                 return (
@@ -176,10 +233,10 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
           </div>
 
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-blue-50 text-blue-600 flex items-center justify-center rounded-full text-lg">
-              📍
+            <div className="w-10 h-10 bg-blue-50 text-blue-600 flex items-center justify-center rounded-full text-lg city-name-change">
+              {CITY_ICONS[selectedCity.name] || DEFAULT_CITY_ICON}
             </div>
-            <h2 className="text-2xl font-bold text-slate-800">
+            <h2 key={selectedCity.id} className="text-2xl font-bold text-slate-800 city-name-change">
               {selectedCity.name}
             </h2>
           </div>

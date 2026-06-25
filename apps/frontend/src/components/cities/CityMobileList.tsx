@@ -1,12 +1,26 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
+const CITY_ICONS: Record<string, string> = {
+  Львів: "🦁",
+  Київ: "🏰",
+  Харків: "⚙️",
+  Одеса: "⚓",
+  Дніпро: "🌊",
+  Запоріжжя: "🔱",
+  Вінниця: "🌸",
+  Полтава: "🌻",
+  Черкаси: "🍒",
+  Чернівці: "🎭",
+};
+const DEFAULT_CITY_ICON = "🏙️";
+
 const ICON_COLORS = [
-  "bg-purple-50 text-purple-600",
-  "bg-amber-50 text-amber-600",
-  "bg-teal-50 text-teal-600",
-  "bg-rose-50 text-rose-600",
-  "bg-sky-50 text-sky-600",
+  "bg-purple-50",
+  "bg-amber-50",
+  "bg-teal-50",
+  "bg-rose-50",
+  "bg-sky-50",
 ];
 
 export default function CityMobileList({
@@ -105,9 +119,9 @@ export default function CityMobileList({
               >
                 {/* Іконка */}
                 <div
-                  className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 text-xl shrink-0 ${iconStyle}`}
+                  className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 text-xl shrink-0 ${ICON_COLORS[index % ICON_COLORS.length]}`}
                 >
-                  🏛️
+                  {CITY_ICONS[city.name] || DEFAULT_CITY_ICON}
                 </div>
 
                 {/* Текст */}

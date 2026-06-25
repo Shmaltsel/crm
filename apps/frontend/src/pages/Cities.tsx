@@ -181,7 +181,7 @@ export default function Cities() {
       {isModalOpen && (
         <div
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0"
-          style={{ animation: "fadeIn 0.2s ease-out forwards" }}
+          style={{ animation: "fadeIn 0.2s ease-out forwards", alignItems: "center", minHeight: "100dvh" }}
         >
           <style>{`
             @keyframes fadeIn {
