@@ -38,6 +38,7 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
   const navigate = useNavigate();
   const [issues, setIssues] = useState<any[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isListExiting, setIsListExiting] = useState(false);
   const [exitingIssueId, setExitingIssueId] = useState<string | null>(null);
   const [issuesVisible, setIssuesVisible] = useState(false);
   const [issuesExiting, setIssuesExiting] = useState(false);
@@ -132,6 +133,13 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
           animation: expandDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
           opacity: 0;
         }
+        @keyframes collapseUp {
+          from { opacity: 1; transform: translateY(0); }
+          to { opacity: 0; transform: translateY(-8px); }
+        }
+        .expand-exit {
+          animation: collapseUp 0.22s ease-in forwards;
+        }
       `}</style>
 
       {/* Сповіщення про проблему з розгортанням */}
@@ -139,7 +147,14 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
         <div className={`bg-[#FFF4F4] border border-red-100 rounded-2xl p-4 flex flex-col gap-3 shadow-sm ${issuesExiting ? "issues-exit" : "issues-enter"}`}>
           <div
             className="flex items-center gap-4 cursor-pointer"
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={() => {
+              if (isExpanded) {
+                setIsListExiting(true);
+                setTimeout(() => { setIsExpanded(false); setIsListExiting(false); }, 250);
+              } else {
+                setIsExpanded(true);
+              }
+            }}
           >
             <div className="w-10 h-10 bg-red-100 text-red-500 rounded-full flex items-center justify-center shrink-0 text-xl shadow-sm">
               🔔
@@ -171,7 +186,7 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
 
           {/* Розгорнутий список проблем */}
           {isExpanded && (
-            <div className="flex flex-col gap-3 mt-2 pt-3 border-t border-red-100/50 expand-enter">
+            <div className={`flex flex-col gap-3 mt-2 pt-3 border-t border-red-100/50 ${isListExiting ? "expand-exit" : "expand-enter"}`}>
               {issues.map((issue) => {
                 const isExiting = exitingIssueId === issue.id;
                 return (
