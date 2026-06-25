@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
+import { useParams } from "react-router-dom";
 import {
   useSchool,
   useSchoolEvents,
@@ -174,6 +175,16 @@ export default function SchoolProfile() {
     });
   }, []);
 
+  const handleAddCommentClick = useCallback(() => {
+    setCommentModal({
+      isOpen: true,
+      mode: "add_comment",
+      stepId: null,
+      historyId: null,
+      text: "",
+    });
+  }, []);
+  
   const handleSaveComment = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
