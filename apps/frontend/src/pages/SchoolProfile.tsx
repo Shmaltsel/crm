@@ -1,19 +1,26 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import {
   useSchool,
   useSchoolEvents,
   useUsers,
-  useEventFull,
   useUpdateEventStatus,
   useUpdatePreparation,
   useAssignCrew,
   useSubmitReport,
   useAddComment,
   useUpdateHistoryComment,
+  useEventFull,
 } from "../hooks/useSchoolProfile";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "../config/api";
+
+const Pipeline = lazy(() => import("../components/school-profile/Pipeline"));
+const HistoryTimeline = lazy(
+  () => import("../components/school-profile/HistoryTimeline"),
+);
+const EventDetails = lazy(
+  () => import("../components/school-profile/EventDetails"),
+);
 
 // Імпортуємо UI компоненти
 import SchoolProfileHeader from "../components/school-profile/SchoolProfileHeader";
@@ -119,36 +126,49 @@ export default function SchoolProfile() {
     contactPhone: "",
   });
 
-  const currentEventBase =
-    eventsRaw.find((ev) => ev.id === selectedEventId) ?? eventsRaw[0];
-  const currentEvent =
-    eventFull?.id === currentEventBase?.id
-      ? { ...currentEventBase, ...eventFull }
-      : currentEventBase;
-  const currentStageIndex =
-    PIPELINE_STAGES.findIndex((s) => s.key === currentEvent?.status) !== -1
-      ? PIPELINE_STAGES.findIndex((s) => s.key === currentEvent?.status)
-      : 0;
-  const creatorName =
-    currentEvent?.history?.length > 0
-      ? currentEvent.history[currentEvent.history.length - 1].userName
-      : "Немає даних";
+  const currentEventBase = useMemo(
+    () => eventsRaw.find((ev) => ev.id === selectedEventId) ?? eventsRaw[0],
+    [eventsRaw, selectedEventId],
+  );
+  const currentEvent = useMemo(
+    () =>
+      eventFull?.id === currentEventBase?.id
+        ? { ...currentEventBase, ...eventFull }
+        : currentEventBase,
+    [currentEventBase, eventFull],
+  );
+  const currentStageIndex = useMemo(() => {
+    const idx = PIPELINE_STAGES.findIndex(
+      (s) => s.key === currentEvent?.status,
+    );
+    return idx !== -1 ? idx : 0;
+  }, [currentEvent?.status]);
+  const creatorName = useMemo(
+    () =>
+      currentEvent?.history?.length > 0
+        ? currentEvent.history[currentEvent.history.length - 1].userName
+        : "Немає даних",
+    [currentEvent?.history],
+  );
 
-  const handlePipelineClick = (stepId: number) => {
-    if (!currentEvent) return;
-    const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-    if (nextStage?.id !== stepId) return;
-    if (nextStage.key === "REPORT") return setIsReportModalOpen(true);
-    setCommentModal({
-      isOpen: true,
-      mode: "pipeline",
-      stepId: nextStage.id,
-      historyId: null,
-      text: "",
-    });
-  };
+  const handlePipelineClick = useCallback(
+    (stepId: number) => {
+      if (!currentEvent) return;
+      const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+      if (nextStage?.id !== stepId) return;
+      if (nextStage.key === "REPORT") return setIsReportModalOpen(true);
+      setCommentModal({
+        isOpen: true,
+        mode: "pipeline",
+        stepId: nextStage.id,
+        historyId: null,
+        text: "",
+      });
+    },
+    [currentEvent, currentStageIndex],
+  );
 
-  const handleHistoryClick = (historyItem: any) => {
+  const handleHistoryClick = useCallback((historyItem: any) => {
     setCommentModal({
       isOpen: true,
       mode: "history",
@@ -156,17 +176,57 @@ export default function SchoolProfile() {
       historyId: historyItem.id,
       text: historyItem.comment || "",
     });
-  };
+  }, []);
 
-  const handleAddCommentClick = () => {
-    setCommentModal({
-      isOpen: true,
-      mode: "add_comment",
-      stepId: null,
-      historyId: null,
-      text: "",
-    });
-  };
+  const handleSaveComment = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (commentModal.mode === "pipeline") {
+        const activeStage = PIPELINE_STAGES[currentStageIndex];
+        const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+        if (!nextStage) return;
+        await updateStatus.mutateAsync({
+          eventId: currentEvent.id,
+          status: nextStage.key,
+          actionName: `Етап пройдено: ${activeStage.name}`,
+          comment: commentModal.text,
+        });
+        if (nextStage.key === "RE_SALE") {
+          setExitingEventId(currentEvent.id);
+          setTimeout(() => {
+            setSelectedEventId(null);
+            setExitingEventId(null);
+          }, 500);
+        }
+      } else if (commentModal.mode === "add_comment") {
+        await addCommentMutation.mutateAsync({
+          eventId: currentEvent.id,
+          comment: commentModal.text,
+        });
+      } else if (commentModal.mode === "history" && commentModal.historyId) {
+        await updateHistoryMutation.mutateAsync({
+          historyId: commentModal.historyId,
+          comment: commentModal.text,
+          eventId: currentEvent.id,
+        });
+      }
+      setCommentModal({
+        isOpen: false,
+        mode: "pipeline",
+        stepId: null,
+        historyId: null,
+        text: "",
+      });
+    },
+    [
+      commentModal,
+      currentEvent,
+      currentStageIndex,
+      updateStatus,
+      addCommentMutation,
+      updateHistoryMutation,
+    ],
+  );
 
   const handleSaveComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,79 +268,97 @@ export default function SchoolProfile() {
     });
   };
 
-  const handleSaveEvent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const payload = {
-        ...eventForm,
-        schoolId: schoolData.id,
-        cityId: schoolData.cityId,
-        childrenPlanned: Number(eventForm.childrenPlanned),
-        price: Number(eventForm.price),
-      };
-      const res = await api.post("/events", payload, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+  const handleSaveEvent = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      try {
+        const payload = {
+          ...eventForm,
+          schoolId: schoolData.id,
+          cityId: schoolData.cityId,
+          childrenPlanned: Number(eventForm.childrenPlanned),
+          price: Number(eventForm.price),
+        };
+        const res = await api.post("/events", payload, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        });
+        setIsEventModalOpen(false);
+        qc.invalidateQueries({ queryKey: ["schoolEvents", id] });
+        setSelectedEventId(res.data.id);
+      } catch (e) {
+        console.error(e);
+      }
+    },
+    [eventForm, schoolData, id, qc],
+  );
+
+  const handleSaveSchoolInfo = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      try {
+        await api.patch(`/schools/${id}`, editForm, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        });
+        qc.invalidateQueries({ queryKey: ["school", id] });
+        setIsEditModalOpen(false);
+      } catch (e) {
+        console.error(e);
+      }
+    },
+    [editForm, id, qc],
+  );
+
+  const handleUpdatePreparation = useCallback(
+    async (field: string, status: string) => {
+      if (!currentEvent) return;
+      await updatePreparation.mutateAsync({
+        eventId: currentEvent.id,
+        field,
+        status,
       });
-      setIsEventModalOpen(false);
-      qc.invalidateQueries({ queryKey: ["schoolEvents", id] });
-      setSelectedEventId(res.data.id);
-    } catch (e) {
-      console.error(e);
-    }
-  };
+    },
+    [currentEvent, updatePreparation],
+  );
 
-  const handleSaveSchoolInfo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await api.patch(`/schools/${id}`, editForm, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+  const handleSubmitReport = useCallback(
+    async (reportData: any) => {
+      if (!currentEvent) return;
+      await submitReportMutation.mutateAsync({
+        eventId: currentEvent.id,
+        reportData,
       });
-      qc.invalidateQueries({ queryKey: ["schoolInfo", id] });
-      setIsEditModalOpen(false);
-    } catch (e) {
-      console.error(e);
-    }
-  };
+      await updateStatus.mutateAsync({
+        eventId: currentEvent.id,
+        status: "RE_SALE",
+        actionName: "Звіт сформовано. Захід завершено.",
+      });
+      setExitingEventId(currentEvent.id);
+      setTimeout(() => {
+        setSelectedEventId(null);
+        setExitingEventId(null);
+      }, 500);
+      setIsReportModalOpen(false);
+    },
+    [currentEvent, submitReportMutation, updateStatus],
+  );
 
-  const handleUpdatePreparation = async (field: string, status: string) => {
-    if (!currentEvent) return;
-    await updatePreparation.mutateAsync({
-      eventId: currentEvent.id,
-      field,
-      status,
-    });
-  };
+  const handleAssignCrew = useCallback(
+    async (crewId: string) => {
+      await assignCrewMutation.mutateAsync({
+        eventId: currentEvent.id,
+        crewId,
+      });
+      await updatePreparation.mutateAsync({
+        eventId: currentEvent.id,
+        field: "assignCrew",
+        status: "Виконано",
+      });
+      setIsCrewModalOpen(false);
+    },
+    [currentEvent, assignCrewMutation, updatePreparation],
+  );
 
-  const handleSubmitReport = async (reportData: any) => {
-    if (!currentEvent) return;
-    await submitReportMutation.mutateAsync({
-      eventId: currentEvent.id,
-      reportData,
-    });
-    await updateStatus.mutateAsync({
-      eventId: currentEvent.id,
-      status: "RE_SALE",
-      actionName: "Звіт сформовано. Захід завершено.",
-    });
-    setExitingEventId(currentEvent.id);
-    setTimeout(() => {
-      setSelectedEventId(null);
-      setExitingEventId(null);
-    }, 500);
-    setIsReportModalOpen(false);
-  };
-
-  const handleAssignCrew = async (crewId: string) => {
-    await assignCrewMutation.mutateAsync({ eventId: currentEvent.id, crewId });
-    await updatePreparation.mutateAsync({
-      eventId: currentEvent.id,
-      field: "assignCrew",
-      status: "Виконано",
-    });
-    setIsCrewModalOpen(false);
-  };
-
-  const openAddEventModal = () => {
+  const openAddEventModal = useCallback(() => {
     setEventForm((prev) => ({
       ...prev,
       address: schoolData.address,
@@ -289,8 +367,7 @@ export default function SchoolProfile() {
       childrenPlanned: String(schoolData.childrenCount),
     }));
     setIsEventModalOpen(true);
-  };
-
+  }, [schoolData]);
   if (schoolLoading || eventsLoading)
     return <div className="p-8 text-slate-500">Завантаження...</div>;
 
@@ -323,23 +400,35 @@ export default function SchoolProfile() {
               </ul>
             </div>
           )}
-          <HistoryTimeline
-            currentEvent={eventFullLoading ? currentEventBase : currentEvent}
-            onHistoryClick={handleHistoryClick}
-            onAddCommentClick={handleAddCommentClick}
-          />
+          <Suspense
+            fallback={
+              <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+            }
+          >
+            <HistoryTimeline
+              currentEvent={eventFullLoading ? currentEventBase : currentEvent}
+              onHistoryClick={handleHistoryClick}
+              onAddCommentClick={handleAddCommentClick}
+            />
+          </Suspense>
         </div>
 
         <div
           className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${exitingEventId === currentEvent?.id ? "opacity-0 scale-95 -translate-y-4 pointer-events-none" : "opacity-100 scale-100 translate-y-0"}`}
         >
           {currentEvent && (
-            <Pipeline
-              currentStageIndex={currentStageIndex}
-              currentEvent={currentEvent}
-              onPipelineClick={handlePipelineClick}
-              stages={PIPELINE_STAGES}
-            />
+            <Suspense
+              fallback={
+                <div className="bg-white rounded-2xl h-24 animate-pulse border border-slate-100" />
+              }
+            >
+              <Pipeline
+                currentStageIndex={currentStageIndex}
+                currentEvent={currentEvent}
+                onPipelineClick={handlePipelineClick}
+                stages={PIPELINE_STAGES}
+              />
+            </Suspense>
           )}
 
           {currentEvent && currentStageIndex >= 4 && (
@@ -357,14 +446,20 @@ export default function SchoolProfile() {
             </div>
           )}
 
-          <EventDetails
-            currentEvent={currentEvent}
-            schoolName={schoolData.name}
-            cityId={schoolData.cityId}
-            onEventUpdated={() =>
-              qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
+          <Suspense
+            fallback={
+              <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
             }
-          />
+          >
+            <EventDetails
+              currentEvent={currentEvent}
+              schoolName={schoolData.name}
+              cityId={schoolData.cityId}
+              onEventUpdated={() =>
+                qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
+              }
+            />
+          </Suspense>
           <EventsTable
             events={events}
             selectedEventId={selectedEventId}

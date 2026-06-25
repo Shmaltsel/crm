@@ -1,4 +1,4 @@
-import React from 'react';
+import { memo } from 'react';
 import PhoneLink from '../PhoneLink';
 
 interface AssignedCrewProps {
@@ -6,7 +6,7 @@ interface AssignedCrewProps {
   employees: any[];
 }
 
-export default function AssignedCrew({ currentEvent, employees }: AssignedCrewProps) {
+export default memo(function AssignedCrew({ currentEvent, employees }: AssignedCrewProps) {
   const crew = currentEvent?.crew;
 
   if (!crew) {
@@ -56,4 +56,4 @@ export default function AssignedCrew({ currentEvent, employees }: AssignedCrewPr
       </div>
     </div>
   );
-}
+});

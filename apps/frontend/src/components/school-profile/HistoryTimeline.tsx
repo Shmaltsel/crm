@@ -1,10 +1,11 @@
+import { memo } from "react";
 interface HistoryTimelineProps {
   currentEvent: any;
   onHistoryClick: (item: any) => void;
   onAddCommentClick: () => void;
 }
 
-export default function HistoryTimeline({ currentEvent, onHistoryClick, onAddCommentClick }: HistoryTimelineProps) {
+export default memo(function HistoryTimeline({ currentEvent, onHistoryClick, onAddCommentClick }: HistoryTimelineProps) {
   return (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
       <div className="flex justify-between items-center mb-5">
@@ -47,4 +48,4 @@ export default function HistoryTimeline({ currentEvent, onHistoryClick, onAddCom
       )}
     </div>
   );
-}
+});

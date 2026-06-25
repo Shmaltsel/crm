@@ -1,7 +1,8 @@
+import { memo } from "react";
 import AddressLink from "../AddressLink";
 import PhoneLink from "../PhoneLink";
 
-export default function SchoolInfoCard({ schoolData }: { schoolData: any }) {
+export default memo(function SchoolInfoCard({ schoolData }: { schoolData: any }) {
   return (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
       <ul className="space-y-4 text-sm">
@@ -14,4 +15,4 @@ export default function SchoolInfoCard({ schoolData }: { schoolData: any }) {
       </ul>
     </div>
   );
-}
+});

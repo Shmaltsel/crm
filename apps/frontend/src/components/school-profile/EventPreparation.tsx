@@ -1,6 +1,5 @@
 
-
-import React from 'react';
+import { memo } from 'react';
 
 interface PreparationProps {
   data: any; 
@@ -15,7 +14,7 @@ const getNextStatus = (current: string) => {
   return STATUSES[(idx + 1) % STATUSES.length];
 };
 
-export default function EventPreparation({ data, onUpdate, onOpenCrewModal }: PreparationProps) {
+export default memo(function EventPreparation({ data, onUpdate, onOpenCrewModal }: PreparationProps) {
   const tasks = [
     { key: 'assignCrew', label: 'Призначити екіпаж' },
     { key: 'bookEquipment', label: 'Забронювати обладнання' },
@@ -59,5 +58,5 @@ export default function EventPreparation({ data, onUpdate, onOpenCrewModal }: Pr
       </div>
     </div>
   );
-}
+});
 

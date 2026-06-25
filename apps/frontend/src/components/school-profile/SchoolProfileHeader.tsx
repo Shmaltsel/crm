@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Link } from "react-router-dom";
 
 interface Props {
@@ -6,7 +7,7 @@ interface Props {
   onAddEvent: () => void;
 }
 
-export default function SchoolProfileHeader({ schoolData, onEdit, onAddEvent }: Props) {
+export default memo(function SchoolProfileHeader({ schoolData, onEdit, onAddEvent }: Props) {
   return (
     <div className="mb-6">
       {/* Хлібні крихти */}
@@ -52,4 +53,4 @@ export default function SchoolProfileHeader({ schoolData, onEdit, onAddEvent }: 
       </div>
     </div>
   );
-}
+});

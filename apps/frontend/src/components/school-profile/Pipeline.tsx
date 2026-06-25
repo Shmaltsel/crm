@@ -1,3 +1,4 @@
+import { memo } from "react";
 interface PipelineProps {
   currentStageIndex: number;
   currentEvent: any;
@@ -5,7 +6,7 @@ interface PipelineProps {
   stages: Array<{ id: number; key: string; name: string }>;
 }
 
-export default function Pipeline({ currentStageIndex, currentEvent, onPipelineClick, stages }: PipelineProps) {
+export default memo(function Pipeline({ currentStageIndex, currentEvent, onPipelineClick, stages }: PipelineProps) {
   return (
     <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 w-full">
       <h3 className="font-bold text-slate-800 mb-4 md:hidden">Етап події</h3>
@@ -45,4 +46,4 @@ export default function Pipeline({ currentStageIndex, currentEvent, onPipelineCl
       </div>
     </div>
   );
-}
+});
