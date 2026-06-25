@@ -50,14 +50,22 @@ export default function SchoolProfile() {
   const { id } = useParams();
   const qc = useQueryClient();
 
+  // 1. Спочатку завантажуємо базові дані
   const { data: schoolRaw, isLoading: schoolLoading } = useSchool(id);
   const { data: eventsRaw = [], isLoading: eventsLoading } = useSchoolEvents(
     id,
     false,
   );
+
+  // 2. Оголошуємо стейти, які потрібні для наступних запитів
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [exitingEventId, setExitingEventId] = useState<string | null>(null);
+
+  // 3. ТЕПЕР безпечно викликаємо useEventFull, оскільки selectedEventId вже існує
   const { data: eventFull, isLoading: eventFullLoading } = useEventFull(
     selectedEventId ?? eventsRaw[0]?.id,
   );
+
   const { data: users = [] } = useUsers();
 
   const updateStatus = useUpdateEventStatus();
@@ -67,6 +75,7 @@ export default function SchoolProfile() {
   const addCommentMutation = useAddComment();
   const updateHistoryMutation = useUpdateHistoryComment();
 
+  // 4. Формуємо schoolData
   const schoolData = schoolRaw
     ? {
         id: schoolRaw.id,
@@ -96,9 +105,8 @@ export default function SchoolProfile() {
       };
 
   const events = eventsRaw;
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [exitingEventId, setExitingEventId] = useState<string | null>(null);
 
+  // 5. Оголошуємо решту стейтів (editForm залежить від schoolData, тому він тут)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
@@ -184,7 +192,7 @@ export default function SchoolProfile() {
       text: "",
     });
   }, []);
-  
+
   const handleSaveComment = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -234,7 +242,6 @@ export default function SchoolProfile() {
       updateHistoryMutation,
     ],
   );
-
 
   const handleSaveEvent = useCallback(
     async (e: React.FormEvent) => {
