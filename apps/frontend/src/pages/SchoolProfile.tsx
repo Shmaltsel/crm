@@ -4,6 +4,7 @@ import {
   useSchool,
   useSchoolEvents,
   useUsers,
+  useEventFull,
   useUpdateEventStatus,
   useUpdatePreparation,
   useAssignCrew,

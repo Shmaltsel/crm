@@ -153,16 +153,44 @@ export default function Cities() {
       {/* Мобільна плаваюча кнопка FAB */}
       <button
         onClick={() => setIsModalOpen(true)}
-        className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 active:scale-95 transition-transform"
+        className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 active:scale-95 transition-transform opacity-0"
+        style={{
+          animation:
+            "fabPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) 0.2s forwards",
+        }}
         aria-label="Додати місто"
       >
+        <style>{`
+          @keyframes fabPop {
+            from { opacity: 0; transform: scale(0.5) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+          }
+        `}</style>
         +
       </button>
 
       {/* Модалка додавання */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0"
+          style={{ animation: "fadeIn 0.2s ease-out forwards" }}
+        >
+          <style>{`
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            @keyframes modalScale {
+              from { opacity: 0; transform: scale(0.95) translateY(15px); }
+              to { opacity: 1; transform: scale(1) translateY(0); }
+            }
+          `}</style>
+
+          {/* ТУТ БУЛА ПРОБЛЕМА: додано opacity-0 та style з анімацією modalScale */}
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
+            style={{ animation: "modalScale 0.3s ease-out forwards" }}
+          >
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h3 className="text-xl font-bold text-slate-800">Нове місто</h3>
               <button
