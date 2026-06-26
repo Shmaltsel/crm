@@ -140,7 +140,7 @@ export default function IssueModal({
               disabled={sent || !message.trim()}
               className="flex-1 bg-red-600 text-white py-3 rounded-xl font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
             >
-              {sent ? '✓ Надіслано!' : isSending ? 'Відправка...' : 'Відправити'}
+              {sent ? '✓ Надіслано!' :  'Відправити'}
             </button>
           </div>
         </div>
