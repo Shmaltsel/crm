@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../config/api";
+import { motion, AnimatePresence } from "framer-motion";
 import PhoneLink from "../components/PhoneLink";
 import { useSelectedCity } from "../context/CityContext";
 
@@ -63,10 +64,52 @@ const PROJECT_COLORS: Record<string, string> = {
   purple: "bg-purple-500",
 };
 
+function EmployeesSkeleton() {
+  return (
+    <div className="p-4 md:p-8 animate-pulse">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <div className="h-7 w-56 bg-slate-200 rounded-lg mb-2" />
+          <div className="h-4 w-72 bg-slate-100 rounded" />
+        </div>
+        <div className="h-10 w-44 bg-slate-200 rounded-lg" />
+      </div>
+      {["Менеджери", "Водії", "Ведучі"].map((label) => (
+        <div key={label} className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-1 h-6 bg-slate-200 rounded-full" />
+            <div className="h-5 w-24 bg-slate-200 rounded" />
+            <div className="h-5 w-8 bg-slate-100 rounded-full" />
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+            <div className="bg-slate-50 border-b border-slate-100 px-5 py-3 flex gap-8">
+              {["w-24", "w-20", "w-28", "w-16", "w-12"].map((w, i) => (
+                <div key={i} className={`h-3 ${w} bg-slate-200 rounded`} />
+              ))}
+            </div>
+            {[1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-8 px-5 py-4 border-b border-slate-50">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-slate-200" />
+                  <div className="h-4 w-28 bg-slate-200 rounded" />
+                </div>
+                <div className="h-4 w-20 bg-slate-100 rounded" />
+                <div className="h-4 w-36 bg-slate-100 rounded" />
+                <div className="h-6 w-20 bg-slate-100 rounded-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Employees() {
   const [users, setUsers] = useState<User[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
@@ -80,6 +123,7 @@ export default function Employees() {
   const headers = { Authorization: `Bearer ${token}` };
 
   const fetchData = async () => {
+   setIsLoading(true);
     // 1. Завантажуємо критичні дані (Працівники та Міста)
     try {
       const [usersRes, citiesRes] = await Promise.all([
@@ -88,8 +132,10 @@ export default function Employees() {
       ]);
       setUsers(usersRes.data);
       setCities(citiesRes.data);
+      setIsLoading(false);
     } catch (e) {
       console.error("Помилка завантаження працівників:", e);
+      setIsLoading(false);
     }
 
     // 2. Окремо завантажуємо проєкти (не критично для списку працівників)
@@ -188,10 +234,21 @@ export default function Employees() {
     }
   };
 
+  if (isLoading) return <EmployeesSkeleton />;
+
   return (
-    <div className="p-4 md:p-8 h-full">
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+      className="p-4 md:p-8 h-full"
+    >
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
-        <div>
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        >
           <h1 className="text-2xl font-bold text-slate-800">
             Акаунти та Проєкти{" "}
             {selectedCity.id && (
@@ -203,35 +260,57 @@ export default function Employees() {
           <p className="text-sm text-slate-400 mt-1">
             Керування доступами, працівниками та видами подій
           </p>
-        </div>
-        <button
+        </motion.div>
+        <motion.button
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+          whileTap={{ scale: 0.97 }}
           onClick={() => handleOpenModal()}
           className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
         >
           + Створити користувача
-        </button>
+        </motion.button>
       </div>
 
       <div className="space-y-8">
-        {grouped.map(({ role, label, items }) => (
-          <div key={role}>
+        {grouped.map(({ role, label, items }, gi) => (
+          <motion.div
+            key={role}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: gi * 0.06 }}
+          >
             <div className={`flex items-center gap-3 mb-4`}>
               <div
                 className={`w-1 h-6 rounded-full ${ROLE_HEADER_COLORS[role]}`}
               ></div>
               <h2 className="text-lg font-bold text-slate-700">{label}</h2>
-              <span
+              <motion.span
+                key={items.length}
+                initial={{ scale: 0.7, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.2 }}
                 className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_COLORS[role]}`}
               >
                 {items.length}
-              </span>
+              </motion.span>
             </div>
             {items.length === 0 ? (
-              <div className="bg-white rounded-xl border border-slate-100 p-6 text-center text-slate-400 text-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.25 }}
+                className="bg-white rounded-xl border border-slate-100 p-6 text-center text-slate-400 text-sm"
+              >
                 Немає {label.toLowerCase()}ів
-              </div>
+              </motion.div>
             ) : (
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+              <motion.div
+                whileHover={{ y: -2, boxShadow: "0 8px 24px -4px rgba(0,0,0,0.08)" }}
+                transition={{ duration: 0.2 }}
+                className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+              >
                 <table className="w-full text-left">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -243,18 +322,26 @@ export default function Employees() {
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((u) => (
-                      <tr
+                    <AnimatePresence initial={false}>
+                    {items.map((u, ri) => (
+                      <motion.tr
                         key={u.id}
-                        className="border-b border-slate-50 hover:bg-slate-50/50"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2, delay: ri * 0.04 }}
+                        className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
                       >
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
-                            <div
+                            <motion.div
+                              initial={{ scale: 0.8, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              transition={{ duration: 0.2, delay: 0.05 }}
                               className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
                             >
                               {u.name.charAt(0)}
-                            </div>
+                            </motion.div>
                             <span className="font-medium text-slate-800">
                               {u.name}
                             </span>
@@ -277,26 +364,30 @@ export default function Employees() {
                           </span>
                         </td>
                         <td className="px-5 py-4 text-center">
-                          <button
+                          <motion.button
+                            whileTap={{ scale: 0.93 }}
                             onClick={() => handleOpenModal(u)}
-                            className="text-slate-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 mr-2"
+                            className="text-slate-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 rounded-lg mr-2 transition-colors"
                           >
                             ✏️
-                          </button>
-                          <button
+                          </motion.button>
+                          <motion.button
+                            whileTap={{ scale: 0.93 }}
                             onClick={() => handleDelete(u.id, u.name)}
-                            className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50"
+                            className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
                           >
                             🗑
-                          </button>
+                          </motion.button>
                         </td>
-                      </tr>
+                      </motion.tr>
                     ))}
+                    </AnimatePresence>
                   </tbody>
                 </table>
-              </div>
+               </motion.div>
             )}
-          </div>
+
+          </motion.div>
         ))}
       </div>
 
@@ -321,13 +412,19 @@ export default function Employees() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((p) => (
-            <div
+          {projects.map((p, pi) => (
+            <motion.div
               key={p.id}
-              className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, delay: pi * 0.05 }}
+              whileHover={{ y: -3, boxShadow: "0 8px 24px -4px rgba(0,0,0,0.10)" }}
+              className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default"
             >
               <div className="flex items-center gap-3">
-                <div
+                <motion.div
+                  whileHover={{ scale: 1.3 }}
+                  transition={{ duration: 0.15 }}
                   className={`w-4 h-4 rounded-full ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm`}
                 />
                 <span className="font-bold text-slate-800">{p.name}</span>
@@ -339,7 +436,7 @@ export default function Employees() {
               >
                 🗑
               </button>
-            </div>
+            </motion.div>
           ))}
           {projects.length === 0 && (
             <div className="col-span-full text-center py-10 text-slate-400">
@@ -532,6 +629,6 @@ export default function Employees() {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
