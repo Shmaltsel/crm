@@ -29,6 +29,8 @@ export default function IssueCarousel() {
       return res.data.filter((i: any) => i.status !== "Виконано");
     },
     enabled: !!selectedCity?.id,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const updateStatusMutation = useMutation({
@@ -86,8 +88,8 @@ export default function IssueCarousel() {
               key={issue.id}
               className={`transition-all duration-500 ease-in-out overflow-hidden transform origin-left ${
                 isExiting
-                  ? "w-0 min-w-0 mr-0 opacity-0 scale-x-75 pointer-events-none"
-                  : "w-[300px] min-w-[300px] mr-4 opacity-100 scale-x-100 shrink-0"
+                  ? "w-0 min-w-0 mr-0 opacity-0 pointer-events-none"
+                 : "w-[300px] min-w-[300px] mr-4 opacity-100 shrink-0"
               }`}
             >
               {/* Внутрішній контейнер має фіксовану ширину, щоб текст не ламався */}
