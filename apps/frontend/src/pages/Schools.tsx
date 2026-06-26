@@ -5,6 +5,7 @@ import {
   useSchools,
   useDeleteSchool,
   usePrefetchSchool,
+  useCities,
 } from "../hooks/useApi";
 import { useQueryClient } from "@tanstack/react-query";
 import VirtualSchoolList from "../components/VirtualSchoolList";
