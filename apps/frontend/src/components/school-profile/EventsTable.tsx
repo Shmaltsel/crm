@@ -99,7 +99,7 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
                     🗑
                   </button>
                 </td>
-              </tr>
+              </motion.tr>
             ))}
             </AnimatePresence>
           </tbody>

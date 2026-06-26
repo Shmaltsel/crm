@@ -19,7 +19,7 @@ export default memo(function AssignedCrew({ currentEvent, employees }: AssignedC
     >        <span className="text-4xl mb-3 opacity-50">🚐</span>
         <p className="font-medium">Екіпаж ще не призначено</p>
         <p className="text-xs mt-1">Виконайте пункт "Призначити екіпаж" зліва</p>
-      </div>
+      </motion.div>
     );
   }
 
@@ -62,6 +62,6 @@ export default memo(function AssignedCrew({ currentEvent, employees }: AssignedC
           <span className="font-medium"><PhoneLink phone={crew.phone} /></span>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 });

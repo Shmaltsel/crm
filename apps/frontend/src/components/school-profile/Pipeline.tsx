@@ -42,7 +42,7 @@ export default memo(function Pipeline({ currentStageIndex, currentEvent, onPipel
                     }`}
                 >
                   {isCompleted ? '✓' : step.id}
-                </button>
+                </motion.button>
                 <span className={`text-[10px] md:text-[11px] leading-tight font-medium text-center break-words max-w-[70px]
                   ${isActive ? 'text-blue-600 font-bold' : isNext ? 'text-blue-400' : 'text-slate-400'}`}>
                   {step.name}
