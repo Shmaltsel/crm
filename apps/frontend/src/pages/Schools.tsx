@@ -62,10 +62,9 @@ export default function Schools() {
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: schools = [], isLoading } = useSchools();
+  const { data: cities = [] } = useCities();
   const deleteSchool = useDeleteSchool();
   const prefetchSchool = usePrefetchSchool();
-
-  const { data: citiesData = [] } = useCities();
 
   const handleOpenModal = useCallback(() => {
     setForm({
@@ -403,7 +402,10 @@ export default function Schools() {
               schools={filteredSchools}
               itemHeight={110}
               renderItem={(school, index) => (
-                 <div className="pb-2.5" onMouseEnter={() => prefetchSchool(school.id)}>
+                <div
+                  className="pb-2.5"
+                  onMouseEnter={() => prefetchSchool(school.id)}
+                >
                   <SchoolCard
                     school={school}
                     index={index}

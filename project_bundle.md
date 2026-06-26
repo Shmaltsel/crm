@@ -177,6 +177,7 @@
 │       │   ├── context
 │       │   │   └── CityContext.tsx
 │       │   ├── hooks
+│       │   │   ├── useApi.ts
 │       │   │   ├── useAuth.ts
 │       │   │   └── useSchoolProfile.ts
 │       │   ├── index.css
@@ -10497,6 +10498,96 @@
  44 | 
 ```
 
+### File: apps/frontend/src/hooks/useApi.ts
+```ts
+  0 | import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+  1 | import { api } from "../config/api";
+  2 | 
+  3 | const auth = () => ({
+  4 |   Authorization: `Bearer ${localStorage.getItem("token")}`,
+  5 | });
+  6 | 
+  7 | // ─── Cities ──────────────────────────────────────────────────────────────────
+  8 | 
+  9 | export function useCities() {
+ 10 |   return useQuery({
+ 11 |     queryKey: ["cities"],
+ 12 |     queryFn: () => api.get("/cities", { headers: auth() }).then(r => r.data),
+ 13 |     staleTime: 5 * 60 * 1000,
+ 14 |   });
+ 15 | }
+ 16 | 
+ 17 | export function useAddCity() {
+ 18 |   const qc = useQueryClient();
+ 19 |   return useMutation({
+ 20 |     mutationFn: (name: string) =>
+ 21 |       api.post("/cities", { name }, { headers: auth() }).then(r => r.data),
+ 22 |     onSuccess: (newCity) => {
+ 23 |       qc.setQueryData(["cities"], (old: any[] = []) => [newCity, ...old]);
+ 24 |     },
+ 25 |   });
+ 26 | }
+ 27 | 
+ 28 | // ─── Schools ─────────────────────────────────────────────────────────────────
+ 29 | 
+ 30 | export function useSchools() {
+ 31 |   return useQuery({
+ 32 |     queryKey: ["schools"],
+ 33 |     queryFn: () =>
+ 34 |       api.get("/schools?minimal=true", { headers: auth() }).then(r => r.data),
+ 35 |     staleTime: 5 * 60 * 1000,
+ 36 |   });
+ 37 | }
+ 38 | 
+ 39 | export function useAddSchool() {
+ 40 |   const qc = useQueryClient();
+ 41 |   return useMutation({
+ 42 |     mutationFn: (data: any) =>
+ 43 |       api.post("/schools", data, { headers: auth() }).then(r => r.data),
+ 44 |     onSuccess: () => {
+ 45 |       qc.invalidateQueries({ queryKey: ["schools"] });
+ 46 |     },
+ 47 |   });
+ 48 | }
+ 49 | 
+ 50 | export function useDeleteSchool() {
+ 51 |   const qc = useQueryClient();
+ 52 |   return useMutation({
+ 53 |     mutationFn: (schoolId: string) =>
+ 54 |       api.delete(`/schools/${schoolId}`, { headers: auth() }),
+ 55 |     onSuccess: (_data, schoolId) => {
+ 56 |       qc.setQueryData(["schools"], (old: any[] = []) =>
+ 57 |         old.filter(s => s.id !== schoolId),
+ 58 |       );
+ 59 |     },
+ 60 |   });
+ 61 | }
+ 62 | 
+ 63 | // ─── Events ──────────────────────────────────────────────────────────────────
+ 64 | 
+ 65 | export function useEvents() {
+ 66 |   return useQuery({
+ 67 |     queryKey: ["events"],
+ 68 |     queryFn: () => api.get("/events", { headers: auth() }).then(r => r.data),
+ 69 |     staleTime: 2 * 60 * 1000,
+ 70 |   });
+ 71 | }
+ 72 | 
+ 73 | // ─── Prefetch школи при hover ─────────────────────────────────────────────────
+ 74 | 
+ 75 | export function usePrefetchSchool() {
+ 76 |   const qc = useQueryClient();
+ 77 |   return (schoolId: string) => {
+ 78 |     qc.prefetchQuery({
+ 79 |       queryKey: ["school", schoolId],
+ 80 |       queryFn: () =>
+ 81 |         api.get(`/schools/${schoolId}`, { headers: auth() }).then(r => r.data),
+ 82 |       staleTime: 2 * 60 * 1000,
+ 83 |     });
+ 84 |   };
+ 85 | }
+```
+
 ### File: apps/frontend/src/hooks/useAuth.ts
 ```ts
   0 | import { useEffect, useState } from 'react';
@@ -11200,10 +11291,10 @@
 
 ### File: apps/frontend/src/pages/Cities.tsx
 ```tsx
-  0 | import React, { useState, useEffect, useCallback, lazy, Suspense } from "react";
+  0 | import React, { useState, useCallback, lazy, Suspense } from "react";
   1 | import { createPortal } from "react-dom";
   2 | import { useSelectedCity } from "../context/CityContext";
-  3 | import { api } from "../config/api";
+  3 | import { useCities, useAddCity } from "../hooks/useApi";
   4 | 
   5 | // --- ДИНАМІЧНІ ІМПОРТИ (Code Splitting) ---
   6 | const IssueCarousel = lazy(() => import("../components/IssueCarousel"));
@@ -11248,204 +11339,172 @@
  45 | );
  46 | 
  47 | export default function Cities() {
- 48 |   const [cities, setCities] = useState([]);
- 49 |   const [isModalOpen, setIsModalOpen] = useState(false);
- 50 |   const [newCityName, setNewCityName] = useState("");
- 51 |   const [isLoading, setIsLoading] = useState(false);
- 52 |   const [isFetching, setIsFetching] = useState(true);
- 53 | 
- 54 |   const { selectedCity, setSelectedCity } = useSelectedCity();
- 55 | 
- 56 |   // Оптимізація 2: AbortController для запобігання витоку пам'яті (Memory Leaks)
- 57 |   useEffect(() => {
- 58 |     const abortController = new AbortController();
- 59 | 
- 60 |     const fetchCities = async () => {
- 61 |       setIsFetching(true);
- 62 |       try {
- 63 |         const response = await api.get("/cities", {
- 64 |           signal: abortController.signal,
- 65 |         });
- 66 |         setCities(response.data);
- 67 |       } catch (error: any) {
- 68 |         if (error.name !== "CanceledError") {
- 69 |           console.error("Помилка при завантаженні міст:", error);
- 70 |         }
- 71 |       } finally {
- 72 |         setIsFetching(false);
- 73 |       }
- 74 |     };
- 75 | 
- 76 |     fetchCities();
- 77 | 
- 78 |     return () => {
- 79 |       abortController.abort(); // Скасовуємо запит при розмонтуванні компонента
- 80 |     };
- 81 |   }, []);
- 82 | 
- 83 |   // Оптимізація 3: useCallback
- 84 |   const handleSelectCity = useCallback(
- 85 |     (city: any) => {
- 86 |       setSelectedCity(city);
- 87 |     },
- 88 |     [setSelectedCity],
- 89 |   );
- 90 | 
- 91 |   // Оптимізація 4: Оптимістичне оновлення UI (Optimistic UI Update)
- 92 |   const handleAddCity = async (e: React.FormEvent) => {
- 93 |     e.preventDefault();
- 94 |     if (!newCityName.trim()) return;
- 95 |     setIsLoading(true);
- 96 | 
- 97 |     try {
- 98 |       const response = await api.post("/cities", { name: newCityName.trim() });
- 99 |       setCities((prev) => [response.data, ...prev] as any);
-100 |       setNewCityName("");
-101 |       setIsModalOpen(false);
-102 |     } catch (error) {
-103 |       alert("Не вдалося створити місто. Можливо воно вже існує.");
-104 |     } finally {
-105 |       setIsLoading(false);
-106 |     }
-107 |   };
-108 | 
-109 |   return (
-110 |     // Оптимізація 5: content-visibility
-111 |     <div
-112 |       className="p-4 md:p-8 bg-slate-50 min-h-screen"
-113 |       style={{ contentVisibility: "auto" }}
-114 |     >
-115 |       {/* Шапка для ПК */}
-116 |       <style>{`
-117 |         @keyframes headerFadeIn {
-118 |           from { opacity: 0; transform: translateY(-10px); }
-119 |           to   { opacity: 1; transform: translateY(0); }
-120 |         }
-121 |         .header-enter { animation: headerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
-122 |         .header-btn-enter { animation: headerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
-123 |       `}</style>
-124 |       <div className="hidden md:flex justify-between items-center mb-8">
-125 |         <h1 className="header-enter text-3xl font-bold text-slate-800">Міста</h1>
-126 |         <button
-127 |           onClick={() => setIsModalOpen(true)}
-128 |           className="header-btn-enter bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm flex items-center transition-all duration-150"
-129 |         >
-130 |           <span className="mr-2">+</span> Додати місто
-131 |         </button>
-132 |       </div>
-133 | 
-134 |       {isFetching ? (
-135 |         <CitiesSkeleton />
-136 |       ) : (
-137 |         /* Оптимізація 6: Suspense обгортка для лінивих компонентів */
-138 |         <Suspense fallback={<CitiesSkeleton />}>
-139 |           {/* 1. Блок для Мобільних (Шапка + Список) */}
-140 |           <div className="md:hidden">
-141 |             <CityMobileHeader selectedCity={selectedCity} cities={cities} />
-142 |             <CityMobileList
-143 |               cities={cities}
-144 |               selectedCity={selectedCity}
-145 |               onSelectCity={handleSelectCity}
-146 |             />
-147 |           </div>
-148 | 
-149 |           {/* 2. Блок для Десктопів (Карусель + Сітка) */}
-150 |           <div className="hidden md:block">
-151 |             <IssueCarousel />
-152 |             <CityDesktopGrid
-153 |               cities={cities}
-154 |               selectedCity={selectedCity}
-155 |               onSelectCity={handleSelectCity}
-156 |             />
-157 |           </div>
-158 |         </Suspense>
-159 |       )}
-160 | 
-161 |       {/* Мобільна плаваюча кнопка FAB */}
-162 |       <button
-163 |         onClick={() => setIsModalOpen(true)}
-164 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 active:scale-95 transition-transform opacity-0"
-165 |         style={{
-166 |           animation:
-167 |             "fabPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) 0.2s forwards",
-168 |         }}
-169 |         aria-label="Додати місто"
-170 |       >
-171 |         <style>{`
-172 |           @keyframes fabPop {
-173 |             from { opacity: 0; transform: scale(0.5) translateY(20px); }
-174 |             to { opacity: 1; transform: scale(1) translateY(0); }
-175 |           }
-176 |         `}</style>
-177 |         +
-178 |       </button>
-179 | 
-180 |       {/* Модалка додавання */}
-181 |       {isModalOpen && createPortal(
-182 |         <div
-183 |           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
-184 |           style={{ animation: "fadeIn 0.2s ease-out forwards" }}
-185 |         >
-186 |           <style>{`
-187 |             @keyframes fadeIn {
-188 |               from { opacity: 0; }
-189 |               to { opacity: 1; }
-190 |             }
-191 |             @keyframes modalScale {
-192 |               from { opacity: 0; transform: scale(0.95) translateY(15px); }
-193 |               to { opacity: 1; transform: scale(1) translateY(0); }
-194 |             }
-195 |           `}</style>
-196 | 
-197 |           {/* ТУТ БУЛА ПРОБЛЕМА: додано opacity-0 та style з анімацією modalScale */}
-198 |           <div
-199 |             className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
-200 |             style={{ animation: "modalScale 0.3s ease-out forwards" }}
-201 |           >
-202 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-203 |               <h3 className="text-xl font-bold text-slate-800">Нове місто</h3>
-204 |               <button
-205 |                 onClick={() => setIsModalOpen(false)}
-206 |                 className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
-207 |               >
-208 |                 ✕
-209 |               </button>
-210 |             </div>
-211 |             <form onSubmit={handleAddCity} className="p-6">
-212 |               <input
-213 |                 type="text"
-214 |                 value={newCityName}
-215 |                 onChange={(e) => setNewCityName(e.target.value)}
-216 |                 placeholder="Наприклад: Львів"
-217 |                 className="w-full p-3 mb-6 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
-218 |                 autoFocus
-219 |                 required
-220 |               />
-221 |               <div className="flex gap-3">
-222 |                 <button
-223 |                   type="button"
-224 |                   onClick={() => setIsModalOpen(false)}
-225 |                   className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors"
-226 |                 >
-227 |                   Скасувати
-228 |                 </button>
-229 |                 <button
-230 |                   type="submit"
-231 |                   disabled={isLoading}
-232 |                   className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-233 |                 >
-234 |                   {isLoading ? "Збереження..." : "Зберегти"}
-235 |                 </button>
-236 |               </div>
-237 |             </form>
-238 |           </div>
-239 |         </div>,
-240 |         document.body
-241 |       )}
-242 |     </div>
-243 |   );
-244 | }
-245 | 
+ 48 |   const [isModalOpen, setIsModalOpen] = useState(false);
+ 49 |   const [newCityName, setNewCityName] = useState("");
+ 50 | 
+ 51 |   const { selectedCity, setSelectedCity } = useSelectedCity();
+ 52 |   const { data: cities = [], isLoading: isFetching } = useCities();
+ 53 |   const addCity = useAddCity();
+ 54 | 
+ 55 |   const handleSelectCity = useCallback(
+ 56 |     (city: any) => {
+ 57 |       setSelectedCity(city);
+ 58 |     },
+ 59 |     [setSelectedCity],
+ 60 |   );
+ 61 | 
+ 62 |   const handleAddCity = async (e: React.FormEvent) => {
+ 63 |     e.preventDefault();
+ 64 |     if (!newCityName.trim()) return;
+ 65 |     try {
+ 66 |       await addCity.mutateAsync(newCityName.trim());
+ 67 |       setNewCityName("");
+ 68 |       setIsModalOpen(false);
+ 69 |     } catch {
+ 70 |       alert("Не вдалося створити місто. Можливо воно вже існує.");
+ 71 |     }
+ 72 |   };
+ 73 | 
+ 74 |   return (
+ 75 |     // Оптимізація 5: content-visibility
+ 76 |     <div
+ 77 |       className="p-4 md:p-8 bg-slate-50 min-h-screen"
+ 78 |       style={{ contentVisibility: "auto" }}
+ 79 |     >
+ 80 |       {/* Шапка для ПК */}
+ 81 |       <style>{`
+ 82 |         @keyframes headerFadeIn {
+ 83 |           from { opacity: 0; transform: translateY(-10px); }
+ 84 |           to   { opacity: 1; transform: translateY(0); }
+ 85 |         }
+ 86 |         .header-enter { animation: headerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+ 87 |         .header-btn-enter { animation: headerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
+ 88 |       `}</style>
+ 89 |       <div className="hidden md:flex justify-between items-center mb-8">
+ 90 |         <h1 className="header-enter text-3xl font-bold text-slate-800">
+ 91 |           Міста
+ 92 |         </h1>
+ 93 |         <button
+ 94 |           onClick={() => setIsModalOpen(true)}
+ 95 |           className="header-btn-enter bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm flex items-center transition-all duration-150"
+ 96 |         >
+ 97 |           <span className="mr-2">+</span> Додати місто
+ 98 |         </button>
+ 99 |       </div>
+100 | 
+101 |       {isFetching ? (
+102 |         <CitiesSkeleton />
+103 |       ) : (
+104 |         /* Оптимізація 6: Suspense обгортка для лінивих компонентів */
+105 |         <Suspense fallback={<CitiesSkeleton />}>
+106 |           {/* 1. Блок для Мобільних (Шапка + Список) */}
+107 |           <div className="md:hidden">
+108 |             <CityMobileHeader selectedCity={selectedCity} cities={cities} />
+109 |             <CityMobileList
+110 |               cities={cities}
+111 |               selectedCity={selectedCity}
+112 |               onSelectCity={handleSelectCity}
+113 |             />
+114 |           </div>
+115 | 
+116 |           {/* 2. Блок для Десктопів (Карусель + Сітка) */}
+117 |           <div className="hidden md:block">
+118 |             <IssueCarousel />
+119 |             <CityDesktopGrid
+120 |               cities={cities}
+121 |               selectedCity={selectedCity}
+122 |               onSelectCity={handleSelectCity}
+123 |             />
+124 |           </div>
+125 |         </Suspense>
+126 |       )}
+127 | 
+128 |       {/* Мобільна плаваюча кнопка FAB */}
+129 |       <button
+130 |         onClick={() => setIsModalOpen(true)}
+131 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 active:scale-95 transition-transform opacity-0"
+132 |         style={{
+133 |           animation:
+134 |             "fabPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) 0.2s forwards",
+135 |         }}
+136 |         aria-label="Додати місто"
+137 |       >
+138 |         <style>{`
+139 |           @keyframes fabPop {
+140 |             from { opacity: 0; transform: scale(0.5) translateY(20px); }
+141 |             to { opacity: 1; transform: scale(1) translateY(0); }
+142 |           }
+143 |         `}</style>
+144 |         +
+145 |       </button>
+146 | 
+147 |       {/* Модалка додавання */}
+148 |       {isModalOpen &&
+149 |         createPortal(
+150 |           <div
+151 |             className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
+152 |             style={{ animation: "fadeIn 0.2s ease-out forwards" }}
+153 |           >
+154 |             <style>{`
+155 |             @keyframes fadeIn {
+156 |               from { opacity: 0; }
+157 |               to { opacity: 1; }
+158 |             }
+159 |             @keyframes modalScale {
+160 |               from { opacity: 0; transform: scale(0.95) translateY(15px); }
+161 |               to { opacity: 1; transform: scale(1) translateY(0); }
+162 |             }
+163 |           `}</style>
+164 | 
+165 |             {/* ТУТ БУЛА ПРОБЛЕМА: додано opacity-0 та style з анімацією modalScale */}
+166 |             <div
+167 |               className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
+168 |               style={{ animation: "modalScale 0.3s ease-out forwards" }}
+169 |             >
+170 |               <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+171 |                 <h3 className="text-xl font-bold text-slate-800">Нове місто</h3>
+172 |                 <button
+173 |                   onClick={() => setIsModalOpen(false)}
+174 |                   className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
+175 |                 >
+176 |                   ✕
+177 |                 </button>
+178 |               </div>
+179 |               <form onSubmit={handleAddCity} className="p-6">
+180 |                 <input
+181 |                   type="text"
+182 |                   value={newCityName}
+183 |                   onChange={(e) => setNewCityName(e.target.value)}
+184 |                   placeholder="Наприклад: Львів"
+185 |                   className="w-full p-3 mb-6 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+186 |                   autoFocus
+187 |                   required
+188 |                 />
+189 |                 <div className="flex gap-3">
+190 |                   <button
+191 |                     type="button"
+192 |                     onClick={() => setIsModalOpen(false)}
+193 |                     className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors"
+194 |                   >
+195 |                     Скасувати
+196 |                   </button>
+197 |                   <button
+198 |                     type="submit"
+199 |                     disabled={isLoading}
+200 |                     className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+201 |                   >
+202 |                     {addCity.isPending ? "Збереження..." : "Зберегти"}
+203 |                   </button>
+204 |                 </div>
+205 |               </form>
+206 |             </div>
+207 |           </div>,
+208 |           document.body,
+209 |         )}
+210 |     </div>
+211 |   );
+212 | }
+213 | 
 ```
 
 ### File: apps/frontend/src/pages/CityProfile.tsx
@@ -12876,9 +12935,9 @@
 
 ### File: apps/frontend/src/pages/Events.tsx
 ```tsx
-  0 | import { useEffect, useState } from "react";
-  1 | import { useNavigate } from "react-router-dom";
-  2 | import { api } from "../config/api";
+  0 | import { useState } from "react";
+  1 | import { useEvents } from "../hooks/useApi";
+  2 | import { useNavigate } from "react-router-dom";
   3 | import AddressLink from "../components/AddressLink";
   4 | import PhoneLink from "../components/PhoneLink";
   5 | import { useSelectedCity } from "../context/CityContext";
@@ -12950,210 +13009,190 @@
  71 | 
  72 | export default function Events() {
  73 |   const navigate = useNavigate();
- 74 |   const [user, setUser] = useState<AuthUser | null>(null);
- 75 |   const [events, setEvents] = useState<EventListItem[]>([]);
- 76 |   const [isLoading, setIsLoading] = useState(true);
- 77 |   const [error, setError] = useState("");
- 78 |   const { selectedCity } = useSelectedCity();
- 79 | 
- 80 |   useEffect(() => {
- 81 |     try {
- 82 |       const raw = localStorage.getItem("user");
- 83 |       if (raw) setUser(JSON.parse(raw));
- 84 |     } catch {
- 85 |       // ignore
- 86 |     }
- 87 |   }, []);
- 88 | 
- 89 |   useEffect(() => {
- 90 |     const load = async () => {
- 91 |       setIsLoading(true);
- 92 |       setError("");
- 93 |       try {
- 94 |         const res = await api.get("/events");
- 95 |         setEvents(res.data);
- 96 |       } catch (e) {
- 97 |         console.error("Помилка завантаження подій:", e);
- 98 |         setError("Не вдалося завантажити список подій");
- 99 |       } finally {
-100 |         setIsLoading(false);
-101 |       }
-102 |     };
-103 |     void load();
-104 |   }, []);
-105 | 
-106 |   const isFieldStaff = !!user && FIELD_ROLES.includes(user.role);
-107 |   const filteredEvents = selectedCity.id
-108 |     ? events.filter((ev) => ev.city?.id === selectedCity.id)
-109 |     : events;
-110 |   const title = isFieldStaff ? "Мої події" : "Розклад подій";
-111 |   const subtitle = isFieldStaff
-112 |     ? "Події, на які вас призначив менеджер"
-113 |     : "Всі заплановані та проведені події";
-114 | 
-115 |   const goToEvent = (ev: EventListItem) => {
-116 |     if (ev.school?.id) navigate(`/schools/${ev.school.id}`);
-117 |   };
-118 | 
-119 |   return (
-120 |     <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
-121 |       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-122 |         <div>
-123 |           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
-124 |             {title}
-125 |             {selectedCity.id && !isFieldStaff && (
-126 |               <span className="ml-2 text-base font-normal text-blue-500">
-127 |                 · {selectedCity.name}
-128 |               </span>
-129 |             )}
-130 |           </h1>{" "}
-131 |           <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
-132 |         </div>
-133 |         {!isFieldStaff && (
-134 |           <button
-135 |             onClick={() => navigate("/schools")}
-136 |             className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg hover:bg-blue-700 transition w-full sm:w-auto"
-137 |           >
-138 |             + Додати подію
-139 |           </button>
-140 |         )}
-141 |       </div>
-142 | 
-143 |       {isLoading && (
-144 |         <div className="text-center text-slate-400 py-16">Завантаження...</div>
-145 |       )}
-146 | 
-147 |       {!isLoading && error && (
-148 |         <div className="bg-red-50 text-red-600 border border-red-100 rounded-xl p-4 text-sm">
-149 |           {error}
-150 |         </div>
-151 |       )}
-152 | 
-153 |       {!isLoading && !error && filteredEvents.length === 0 && (
-154 |         <div className="bg-white border border-slate-100 rounded-xl p-10 text-center text-slate-400">
-155 |           {isFieldStaff
-156 |             ? "Поки що немає подій, на які вас призначено."
-157 |             : "Подій ще немає."}
-158 |         </div>
-159 |       )}
-160 | 
-161 |       {!isLoading && !error && filteredEvents.length > 0 && (
-162 |         <>
-163 |           {/* Картки — мобільний вигляд */}
-164 |           <div className="md:hidden flex flex-col gap-3">
-165 |             {filteredEvents.map((ev) => (
-166 |               <div
-167 |                 key={ev.id}
-168 |                 onClick={() => goToEvent(ev)}
-169 |                 className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer active:bg-slate-50"
-170 |               >
-171 |                 <div className="flex justify-between items-start gap-2">
-172 |                   <p className="font-semibold text-gray-800">{ev.project}</p>
-173 |                   <span
-174 |                     className={`shrink-0 inline-block px-3 py-1 rounded-full text-xs font-medium ${
-175 |                       STATUS_COLORS[ev.status] ?? "bg-slate-100 text-slate-600"
-176 |                     }`}
-177 |                   >
-178 |                     {STATUS_LABELS[ev.status] ?? ev.status}
-179 |                   </span>
-180 |                 </div>
-181 |                 <p className="text-xs text-gray-500 mt-1">
-182 |                   {formatDate(ev.date)}
-183 |                   {ev.time ? `, ${ev.time}` : ""} · {ev.city?.name ?? "—"}
-184 |                 </p>
-185 |                 <p className="text-xs text-gray-500 mt-0.5">
-186 |                   🏫 {ev.school?.name ?? "—"}
-187 |                 </p>
-188 |                 {ev.address && (
-189 |                   <p className="text-xs text-gray-500 mt-0.5">
-190 |                     📍 <AddressLink address={ev.address} />
-191 |                   </p>
-192 |                 )}
-193 |                 {(ev.crew?.host || ev.crew?.driver) && (
-194 |                   <p className="text-xs text-gray-500 mt-1">
-195 |                     👤 {ev.crew?.host?.name ?? "—"} · 🚐{" "}
-196 |                     {ev.crew?.driver?.name ?? "—"}
-197 |                   </p>
-198 |                 )}
-199 |                 {isFieldStaff && (ev.contactPerson || ev.contactPhone) && (
-200 |                   <p className="text-xs text-gray-500 mt-0.5">
-201 |                     {ev.contactPerson ?? "—"}
-202 |                     {ev.contactPhone ? (
-203 |                       <>
-204 |                         {" "}
-205 |                         · <PhoneLink phone={ev.contactPhone} />
-206 |                       </>
-207 |                     ) : null}
-208 |                   </p>
-209 |                 )}
-210 |               </div>
-211 |             ))}
-212 |           </div>
-213 | 
-214 |           {/* Таблиця — десктоп */}
-215 |           <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
-216 |             <table className="w-full text-left border-collapse">
-217 |               <thead>
-218 |                 <tr className="bg-gray-50 border-b border-gray-100">
-219 |                   <th className="p-4 font-medium text-gray-600">Подія</th>
-220 |                   <th className="p-4 font-medium text-gray-600">Дата</th>
-221 |                   <th className="p-4 font-medium text-gray-600">Локація</th>
-222 |                   <th className="p-4 font-medium text-gray-600">Екіпаж</th>
-223 |                   <th className="p-4 font-medium text-gray-600">Статус</th>
-224 |                 </tr>
-225 |               </thead>
-226 |               <tbody>
-227 |                 {filteredEvents.map((ev) => (
-228 |                   <tr
-229 |                     key={ev.id}
-230 |                     onClick={() => goToEvent(ev)}
-231 |                     className="border-b border-gray-50 hover:bg-gray-50/50 transition cursor-pointer"
-232 |                   >
-233 |                     <td className="p-4 text-gray-800 font-medium">
-234 |                       {ev.project}
-235 |                       <div className="text-xs text-gray-400 font-normal mt-0.5">
-236 |                         {ev.school?.name ?? "—"}
-237 |                       </div>
-238 |                     </td>
-239 |                     <td className="p-4 text-gray-600">
-240 |                       {formatDate(ev.date)}
-241 |                       {ev.time && (
-242 |                         <div className="text-xs text-gray-400">{ev.time}</div>
-243 |                       )}
-244 |                     </td>
-245 |                     <td className="p-4 text-gray-600">
-246 |                       {ev.city?.name ?? "—"}
-247 |                       {ev.address && (
-248 |                         <div className="text-xs text-gray-400">
-249 |                           <AddressLink address={ev.address} />
-250 |                         </div>
-251 |                       )}
-252 |                     </td>
-253 |                     <td className="p-4 text-gray-600 text-sm">
-254 |                       <div>👤 {ev.crew?.host?.name ?? "—"}</div>
-255 |                       <div>🚐 {ev.crew?.driver?.name ?? "—"}</div>
-256 |                     </td>
-257 |                     <td className="p-4">
-258 |                       <span
-259 |                         className={`px-3 py-1 rounded-full text-sm ${
-260 |                           STATUS_COLORS[ev.status] ??
-261 |                           "bg-slate-100 text-slate-600"
-262 |                         }`}
-263 |                       >
-264 |                         {STATUS_LABELS[ev.status] ?? ev.status}
-265 |                       </span>
-266 |                     </td>
-267 |                   </tr>
-268 |                 ))}
-269 |               </tbody>
-270 |             </table>
-271 |           </div>
-272 |         </>
-273 |       )}
-274 |     </div>
-275 |   );
-276 | }
-277 | 
+ 74 |   const [user] = useState<AuthUser | null>(() => {
+ 75 |     try {
+ 76 |       const raw = localStorage.getItem("user");
+ 77 |       return raw ? JSON.parse(raw) : null;
+ 78 |     } catch {
+ 79 |       return null;
+ 80 |     }
+ 81 |   });
+ 82 |   const { selectedCity } = useSelectedCity();
+ 83 |   const { data: events = [], isLoading, isError } = useEvents();
+ 84 |   const error = isError ? "Не вдалося завантажити список подій" : "";
+ 85 | 
+ 86 |   const isFieldStaff = !!user && FIELD_ROLES.includes(user.role);
+ 87 |   const filteredEvents = selectedCity.id
+ 88 |     ? events.filter((ev) => ev.city?.id === selectedCity.id)
+ 89 |     : events;
+ 90 |   const title = isFieldStaff ? "Мої події" : "Розклад подій";
+ 91 |   const subtitle = isFieldStaff
+ 92 |     ? "Події, на які вас призначив менеджер"
+ 93 |     : "Всі заплановані та проведені події";
+ 94 | 
+ 95 |   const goToEvent = (ev: EventListItem) => {
+ 96 |     if (ev.school?.id) navigate(`/schools/${ev.school.id}`);
+ 97 |   };
+ 98 | 
+ 99 |   return (
+100 |     <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
+101 |       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+102 |         <div>
+103 |           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+104 |             {title}
+105 |             {selectedCity.id && !isFieldStaff && (
+106 |               <span className="ml-2 text-base font-normal text-blue-500">
+107 |                 · {selectedCity.name}
+108 |               </span>
+109 |             )}
+110 |           </h1>{" "}
+111 |           <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
+112 |         </div>
+113 |         {!isFieldStaff && (
+114 |           <button
+115 |             onClick={() => navigate("/schools")}
+116 |             className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg hover:bg-blue-700 transition w-full sm:w-auto"
+117 |           >
+118 |             + Додати подію
+119 |           </button>
+120 |         )}
+121 |       </div>
+122 | 
+123 |       {isLoading && (
+124 |         <div className="text-center text-slate-400 py-16">Завантаження...</div>
+125 |       )}
+126 | 
+127 |       {!isLoading && error && (
+128 |         <div className="bg-red-50 text-red-600 border border-red-100 rounded-xl p-4 text-sm">
+129 |           {error}
+130 |         </div>
+131 |       )}
+132 | 
+133 |       {!isLoading && !error && filteredEvents.length === 0 && (
+134 |         <div className="bg-white border border-slate-100 rounded-xl p-10 text-center text-slate-400">
+135 |           {isFieldStaff
+136 |             ? "Поки що немає подій, на які вас призначено."
+137 |             : "Подій ще немає."}
+138 |         </div>
+139 |       )}
+140 | 
+141 |       {!isLoading && !error && filteredEvents.length > 0 && (
+142 |         <>
+143 |           {/* Картки — мобільний вигляд */}
+144 |           <div className="md:hidden flex flex-col gap-3">
+145 |             {filteredEvents.map((ev) => (
+146 |               <div
+147 |                 key={ev.id}
+148 |                 onClick={() => goToEvent(ev)}
+149 |                 className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer active:bg-slate-50"
+150 |               >
+151 |                 <div className="flex justify-between items-start gap-2">
+152 |                   <p className="font-semibold text-gray-800">{ev.project}</p>
+153 |                   <span
+154 |                     className={`shrink-0 inline-block px-3 py-1 rounded-full text-xs font-medium ${
+155 |                       STATUS_COLORS[ev.status] ?? "bg-slate-100 text-slate-600"
+156 |                     }`}
+157 |                   >
+158 |                     {STATUS_LABELS[ev.status] ?? ev.status}
+159 |                   </span>
+160 |                 </div>
+161 |                 <p className="text-xs text-gray-500 mt-1">
+162 |                   {formatDate(ev.date)}
+163 |                   {ev.time ? `, ${ev.time}` : ""} · {ev.city?.name ?? "—"}
+164 |                 </p>
+165 |                 <p className="text-xs text-gray-500 mt-0.5">
+166 |                   🏫 {ev.school?.name ?? "—"}
+167 |                 </p>
+168 |                 {ev.address && (
+169 |                   <p className="text-xs text-gray-500 mt-0.5">
+170 |                     📍 <AddressLink address={ev.address} />
+171 |                   </p>
+172 |                 )}
+173 |                 {(ev.crew?.host || ev.crew?.driver) && (
+174 |                   <p className="text-xs text-gray-500 mt-1">
+175 |                     👤 {ev.crew?.host?.name ?? "—"} · 🚐{" "}
+176 |                     {ev.crew?.driver?.name ?? "—"}
+177 |                   </p>
+178 |                 )}
+179 |                 {isFieldStaff && (ev.contactPerson || ev.contactPhone) && (
+180 |                   <p className="text-xs text-gray-500 mt-0.5">
+181 |                     {ev.contactPerson ?? "—"}
+182 |                     {ev.contactPhone ? (
+183 |                       <>
+184 |                         {" "}
+185 |                         · <PhoneLink phone={ev.contactPhone} />
+186 |                       </>
+187 |                     ) : null}
+188 |                   </p>
+189 |                 )}
+190 |               </div>
+191 |             ))}
+192 |           </div>
+193 | 
+194 |           {/* Таблиця — десктоп */}
+195 |           <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+196 |             <table className="w-full text-left border-collapse">
+197 |               <thead>
+198 |                 <tr className="bg-gray-50 border-b border-gray-100">
+199 |                   <th className="p-4 font-medium text-gray-600">Подія</th>
+200 |                   <th className="p-4 font-medium text-gray-600">Дата</th>
+201 |                   <th className="p-4 font-medium text-gray-600">Локація</th>
+202 |                   <th className="p-4 font-medium text-gray-600">Екіпаж</th>
+203 |                   <th className="p-4 font-medium text-gray-600">Статус</th>
+204 |                 </tr>
+205 |               </thead>
+206 |               <tbody>
+207 |                 {filteredEvents.map((ev) => (
+208 |                   <tr
+209 |                     key={ev.id}
+210 |                     onClick={() => goToEvent(ev)}
+211 |                     className="border-b border-gray-50 hover:bg-gray-50/50 transition cursor-pointer"
+212 |                   >
+213 |                     <td className="p-4 text-gray-800 font-medium">
+214 |                       {ev.project}
+215 |                       <div className="text-xs text-gray-400 font-normal mt-0.5">
+216 |                         {ev.school?.name ?? "—"}
+217 |                       </div>
+218 |                     </td>
+219 |                     <td className="p-4 text-gray-600">
+220 |                       {formatDate(ev.date)}
+221 |                       {ev.time && (
+222 |                         <div className="text-xs text-gray-400">{ev.time}</div>
+223 |                       )}
+224 |                     </td>
+225 |                     <td className="p-4 text-gray-600">
+226 |                       {ev.city?.name ?? "—"}
+227 |                       {ev.address && (
+228 |                         <div className="text-xs text-gray-400">
+229 |                           <AddressLink address={ev.address} />
+230 |                         </div>
+231 |                       )}
+232 |                     </td>
+233 |                     <td className="p-4 text-gray-600 text-sm">
+234 |                       <div>👤 {ev.crew?.host?.name ?? "—"}</div>
+235 |                       <div>🚐 {ev.crew?.driver?.name ?? "—"}</div>
+236 |                     </td>
+237 |                     <td className="p-4">
+238 |                       <span
+239 |                         className={`px-3 py-1 rounded-full text-sm ${
+240 |                           STATUS_COLORS[ev.status] ??
+241 |                           "bg-slate-100 text-slate-600"
+242 |                         }`}
+243 |                       >
+244 |                         {STATUS_LABELS[ev.status] ?? ev.status}
+245 |                       </span>
+246 |                     </td>
+247 |                   </tr>
+248 |                 ))}
+249 |               </tbody>
+250 |             </table>
+251 |           </div>
+252 |         </>
+253 |       )}
+254 |     </div>
+255 |   );
+256 | }
+257 | 
 ```
 
 ### File: apps/frontend/src/pages/Finance.tsx
@@ -13262,616 +13301,580 @@
 
 ### File: apps/frontend/src/pages/Kindergartens.tsx
 ```tsx
-  0 | import { useState, useEffect, useRef } from "react";
+  0 | import { useState, useRef } from "react";
   1 | import { useNavigate } from "react-router-dom";
   2 | import { api } from "../config/api";
   3 | import { useSelectedCity } from "../context/CityContext";
   4 | import StatsBar, { classifySchool } from "../components/schools/StatsBar";
-  5 | 
-  6 | const PIPELINE_STAGES = [
-  7 |   { key: "BASE", name: "Новий заклад" },
-  8 |   { key: "FIRST_CONTACT", name: "Знайомство" },
-  9 |   { key: "DATE_CONFIRMED", name: "Підтвердження дати" },
- 10 |   { key: "PREPARATION", name: "Оголошення" },
- 11 |   { key: "IN_PROGRESS", name: "Підготовка" },
- 12 |   { key: "DONE", name: "Проведення заходу" },
- 13 |   { key: "REPORT", name: "Звіт" },
- 14 | ];
- 15 | 
- 16 | interface City {
- 17 |   id: string;
- 18 |   name: string;
- 19 | }
- 20 | 
- 21 | export default function Kindergartens() {
- 22 |   const navigate = useNavigate();
- 23 |   const { selectedCity } = useSelectedCity();
- 24 |   const [schools, setSchools] = useState<any[]>([]);
- 25 |   const [cities, setCities] = useState<City[]>([]);
- 26 |   const [isModalOpen, setIsModalOpen] = useState(false);
- 27 |   const [isSubmitting, setIsSubmitting] = useState(false);
- 28 |   const [form, setForm] = useState({
- 29 |     name: "",
- 30 |     cityId: "",
- 31 |     sourceUrl: "",
- 32 |     director: "",
- 33 |     phone: "",
- 34 |   });
- 35 |   const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
- 36 |   const [activeFilter, setActiveFilter] = useState<string | null>(null);
- 37 |   const [suggestions, setSuggestions] = useState<
- 38 |     { name: string; url: string }[]
- 39 |   >([]);
- 40 |   const [showSuggestions, setShowSuggestions] = useState(false);
- 41 |   const [isSearching, setIsSearching] = useState(false);
- 42 |   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
- 43 | 
- 44 |   const fetchSchools = async () => {
- 45 |     try {
- 46 |       const token = localStorage.getItem("token");
- 47 |       const res = await api.get("/schools", {
- 48 |         headers: { Authorization: `Bearer ${token}` },
- 49 |       });
- 50 |       setSchools(res.data);
- 51 |     } catch (e) {
- 52 |       console.error(e);
- 53 |     }
- 54 |   };
- 55 | 
- 56 |   const fetchCities = async () => {
- 57 |     try {
- 58 |       const token = localStorage.getItem("token");
- 59 |       const res = await api.get("/cities", {
- 60 |         headers: { Authorization: `Bearer ${token}` },
- 61 |       });
- 62 |       setCities(res.data);
- 63 |     } catch (e) {
- 64 |       console.error(e);
+  5 | import { useSchools, useDeleteSchool, useCities } from "../hooks/useApi";
+  6 | import { useQueryClient } from "@tanstack/react-query";
+  7 | 
+  8 | const PIPELINE_STAGES = [
+  9 |   { key: "BASE", name: "Новий заклад" },
+ 10 |   { key: "FIRST_CONTACT", name: "Знайомство" },
+ 11 |   { key: "DATE_CONFIRMED", name: "Підтвердження дати" },
+ 12 |   { key: "PREPARATION", name: "Оголошення" },
+ 13 |   { key: "IN_PROGRESS", name: "Підготовка" },
+ 14 |   { key: "DONE", name: "Проведення заходу" },
+ 15 |   { key: "REPORT", name: "Звіт" },
+ 16 | ];
+ 17 | 
+ 18 | interface City {
+ 19 |   id: string;
+ 20 |   name: string;
+ 21 | }
+ 22 | 
+ 23 | export default function Kindergartens() {
+ 24 |   const { data: schools = [] } = useSchools();
+ 25 |   const { data: cities = [] } = useCities();
+ 26 |   const deleteSchool = useDeleteSchool();
+ 27 |   const qc = useQueryClient();
+ 28 | 
+ 29 |   const navigate = useNavigate();
+ 30 |   const { selectedCity } = useSelectedCity();
+ 31 |   const [isModalOpen, setIsModalOpen] = useState(false);
+ 32 |   const [isSubmitting, setIsSubmitting] = useState(false);
+ 33 |   const [form, setForm] = useState({
+ 34 |     name: "",
+ 35 |     cityId: "",
+ 36 |     sourceUrl: "",
+ 37 |     director: "",
+ 38 |     phone: "",
+ 39 |   });
+ 40 |   const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
+ 41 |   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+ 42 |   const [suggestions, setSuggestions] = useState<
+ 43 |     { name: string; url: string }[]
+ 44 |   >([]);
+ 45 |   const [showSuggestions, setShowSuggestions] = useState(false);
+ 46 |   const [isSearching, setIsSearching] = useState(false);
+ 47 |   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+ 48 | 
+ 49 |   const handleOpenModal = () => {
+ 50 |     setForm({
+ 51 |       name: "",
+ 52 |       cityId: selectedCity.id || cities[0]?.id || "",
+ 53 |       sourceUrl: "",
+ 54 |       director: "",
+ 55 |       phone: "",
+ 56 |     });
+ 57 |     setMatchedContacts([]);
+ 58 |     setIsModalOpen(true);
+ 59 |   };
+ 60 | 
+ 61 |   const fetchContacts = async (schoolName: string) => {
+ 62 |     if (!schoolName || schoolName.trim().length < 1) {
+ 63 |       setMatchedContacts([]);
+ 64 |       return;
  65 |     }
- 66 |   };
- 67 | 
- 68 |   useEffect(() => {
- 69 |     fetchSchools();
- 70 |     fetchCities();
- 71 |   }, []);
- 72 | 
- 73 |   const handleOpenModal = () => {
- 74 |     setForm({
- 75 |       name: "",
- 76 |       cityId: selectedCity.id || cities[0]?.id || "",
- 77 |       sourceUrl: "",
- 78 |       director: "",
- 79 |       phone: "",
- 80 |     });
- 81 |     setMatchedContacts([]);
- 82 |     setIsModalOpen(true);
- 83 |   };
- 84 | 
- 85 |   const fetchContacts = async (schoolName: string) => {
- 86 |     if (!schoolName || schoolName.trim().length < 1) {
- 87 |       setMatchedContacts([]);
- 88 |       return;
- 89 |     }
- 90 |     const currentCityName =
- 91 |       selectedCity.name || cities.find((c) => c.id === form.cityId)?.name || "";
- 92 |     if (currentCityName.toLowerCase() !== "львів") {
- 93 |       setMatchedContacts([]);
- 94 |       return;
- 95 |     }
- 96 |     try {
- 97 |       const token = localStorage.getItem("token");
- 98 |       const res = await api.get(
- 99 |         `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=${encodeURIComponent("Садочок")}`,
-100 |         { headers: { Authorization: `Bearer ${token}` } },
-101 |       );
-102 |       setMatchedContacts(res.data);
-103 |       if (res.data.length > 0) {
-104 |         const director =
-105 |           res.data.find(
-106 |             (c: any) =>
-107 |               c.role?.includes("Директор") || c.role?.includes("Завідувач"),
-108 |           ) || res.data[0];
-109 |         setForm((f) => ({
-110 |           ...f,
-111 |           director: director.contactName,
-112 |           phone: director.phone,
-113 |         }));
-114 |       }
-115 |     } catch (e) {
-116 |       console.error(e);
-117 |     }
-118 |   };
-119 | 
-120 |   const handleNameChange = (value: string) => {
-121 |     setForm({ ...form, name: value });
-122 |     if (debounceTimer.current) clearTimeout(debounceTimer.current);
-123 |     if (value.length < 2) {
-124 |       setShowSuggestions(false);
-125 |       setIsSearching(false);
-126 |       setMatchedContacts([]);
-127 |       return;
-128 |     }
-129 |     setIsSearching(true);
-130 |     setShowSuggestions(true);
-131 |     debounceTimer.current = setTimeout(async () => {
-132 |       const token = localStorage.getItem("token");
-133 |       try {
-134 |         const [externalRes] = await Promise.all([
-135 |           api.get(
-136 |             `/schools/search?q=${value}&type=${encodeURIComponent("Садочок")}`,
-137 |             {
-138 |               headers: { Authorization: `Bearer ${token}` },
-139 |             },
-140 |           ),
-141 |           fetchContacts(value),
-142 |         ]);
-143 |         setSuggestions(externalRes.data);
-144 |       } catch (e) {
-145 |         console.error(e);
-146 |       } finally {
-147 |         setIsSearching(false);
-148 |       }
-149 |     }, 400);
-150 |   };
-151 | 
-152 |   const handleSelectSuggestion = (name: string, url: string) => {
-153 |     setForm({ ...form, name, sourceUrl: url });
-154 |     setShowSuggestions(false);
-155 |     fetchContacts(name);
-156 |   };
-157 | 
-158 |   const handleAddSchool = async (e: React.FormEvent) => {
-159 |     e.preventDefault();
-160 |     if (!form.name.trim() || !form.cityId) return;
-161 |     setIsSubmitting(true);
-162 |     try {
-163 |       const token = localStorage.getItem("token");
-164 |       await api.post(
-165 |         "/schools",
-166 |         { ...form, type: "Садочок" },
-167 |         {
-168 |           headers: { Authorization: `Bearer ${token}` },
-169 |         },
-170 |       );
-171 |       setIsModalOpen(false);
-172 |       fetchSchools();
-173 |     } catch (e) {
-174 |       console.error(e);
-175 |       alert("Не вдалося створити садочок");
-176 |     } finally {
-177 |       setIsSubmitting(false);
-178 |     }
-179 |   };
-180 | 
-181 |   const handleDeleteSchool = async (
-182 |     e: React.MouseEvent,
-183 |     schoolId: string,
-184 |     schoolName: string,
-185 |   ) => {
-186 |     e.stopPropagation();
-187 |     if (
-188 |       !window.confirm(
-189 |         `Видалити садочок "${schoolName}"? Це видалить також усі його події.`,
-190 |       )
-191 |     )
-192 |       return;
-193 |     try {
-194 |       await api.delete(`/schools/${schoolId}`, {
-195 |         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-196 |       });
-197 |       setSchools(schools.filter((s) => s.id !== schoolId));
-198 |     } catch (e) {
-199 |       console.error(e);
-200 |     }
-201 |   };
-202 | 
-203 |   const filteredKindergartens = schools.filter((s) => {
-204 |     const isCityMatch = selectedCity.id ? s.cityId === selectedCity.id : true;
-205 |     const isFilterMatch = activeFilter
-206 |       ? classifySchool(s) === activeFilter
-207 |       : true;
-208 |     return isCityMatch && s.type === "Садочок" && isFilterMatch;
-209 |   });
-210 | 
-211 |   return (
-212 |     <div className="p-4 md:p-8 h-full max-w-[100vw]">
-213 |       <div className="flex items-center justify-between gap-2 mb-3">
-214 |         <h1 className="text-xl font-bold text-slate-800">
-215 |           Садочки
-216 |           {selectedCity.id && (
-217 |             <span className="ml-2 text-sm font-normal text-blue-500">
-218 |               · {selectedCity.name}
-219 |             </span>
-220 |           )}
-221 |         </h1>
-222 |         <div className="flex gap-2 shrink-0">
-223 |           <button
-224 |             onClick={async () => {
-225 |               if (!selectedCity.id) return alert("Спочатку оберіть місто");
-226 |               if (
-227 |                 !window.confirm(
-228 |                   `Імпортувати всі садочки з isuo.org для міста ${selectedCity.name}?`,
-229 |                 )
-230 |               )
-231 |                 return;
-232 |               try {
-233 |                 const token = localStorage.getItem("token");
-234 |                 const res = await api.post(
-235 |                   "/schools/bulk-import",
-236 |                   { cityId: selectedCity.id, type: "Садочок" },
-237 |                   {
-238 |                     headers: { Authorization: `Bearer ${token}` },
-239 |                     timeout: 120000,
-240 |                   },
-241 |                 );
-242 |                 alert(
-243 |                   `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
-244 |                 );
-245 |                 fetchSchools();
-246 |               } catch (e) {
-247 |                 alert("Помилка імпорту.");
-248 |               }
-249 |             }}
-250 |             className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
-251 |           >
-252 |             📥 Імпорт з isuo
-253 |           </button>
-254 |           <button
-255 |             onClick={handleOpenModal}
-256 |             className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-257 |           >
-258 |             + Додати
-259 |           </button>
-260 |         </div>
-261 |       </div>
-262 | 
-263 |       <StatsBar
-264 |         schools={schools.filter(
-265 |           (s) =>
-266 |             (selectedCity.id ? s.cityId === selectedCity.id : true) &&
-267 |             s.type === "Садочок",
-268 |         )}
-269 |         activeFilter={activeFilter}
-270 |         onFilterChange={setActiveFilter}
-271 |       />
-272 | 
-273 |       {/* Мобільний вигляд */}
-274 |       <div className="md:hidden flex flex-col gap-2.5">
-275 |         {filteredKindergartens.map((school) => {
-276 |           const latestEvent = school.events?.[0];
-277 |           const stage = latestEvent
-278 |             ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
-279 |             : null;
-280 | 
-281 |           // Остання активність
-282 |           const lastActivityDate =
-283 |             school.events?.[0]?.updatedAt ?? school.updatedAt ?? null;
-284 |           const daysStale = lastActivityDate
-285 |             ? Math.floor(
-286 |                 (Date.now() - new Date(lastActivityDate).getTime()) / 86400000,
-287 |               )
-288 |             : null;
-289 | 
-290 |           const stalenessColor =
-291 |             daysStale === null
-292 |               ? "text-slate-400"
-293 |               : daysStale >= 21
-294 |                 ? "text-red-500"
-295 |                 : daysStale >= 14
-296 |                   ? "text-orange-500"
-297 |                   : daysStale >= 7
-298 |                     ? "text-amber-500"
-299 |                     : "text-emerald-500";
-300 | 
-301 |           return (
-302 |             <div
-303 |               key={school.id}
-304 |               onClick={() => navigate(`/schools/${school.id}`)}
-305 |               className="bg-white rounded-2xl border border-slate-100 p-3.5 active:scale-[0.99] transition-transform"
-306 |             >
-307 |               {/* Рядок 1: назва + видалити */}
-308 |               <div className="flex items-start justify-between gap-2">
-309 |                 <p className="font-semibold text-slate-800 leading-snug text-sm line-clamp-2 flex-1">
-310 |                   {school.name}
-311 |                 </p>
-312 |                 <button
-313 |                   onClick={(e) => handleDeleteSchool(e, school.id, school.name)}
-314 |                   className="text-slate-300 active:text-red-500 p-1 -mt-0.5 -mr-1 shrink-0"
-315 |                 >
-316 |                   🗑
-317 |                 </button>
-318 |               </div>
-319 | 
-320 |               {/* Рядок 2: директор (клікабельний телефон) + етап */}
-321 |               <div className="flex items-center justify-between gap-2 mt-2">
-322 |                 <div className="flex items-center gap-1.5 min-w-0">
-323 |                   {school.phone ? (
-324 |                     <a
-325 |                       href={`tel:${school.phone}`}
-326 |                       onClick={(e) => e.stopPropagation()}
-327 |                       className="flex items-center gap-1 text-xs text-blue-600 font-medium truncate"
-328 |                     >
-329 |                       📞 {school.director || school.phone}
-330 |                     </a>
-331 |                   ) : school.director ? (
-332 |                     <span className="text-xs text-slate-500 truncate">
-333 |                       👤 {school.director}
-334 |                     </span>
-335 |                   ) : (
-336 |                     <span className="text-xs text-slate-300 italic">
-337 |                       Контакт не вказано
-338 |                     </span>
-339 |                   )}
-340 |                 </div>
-341 | 
-342 |                 {stage ? (
-343 |                   <span className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full border border-blue-100 shrink-0 font-medium">
-344 |                     {stage.name}
-345 |                   </span>
-346 |                 ) : (
-347 |                   <span className="text-[10px] text-slate-300 shrink-0">
-348 |                     Етап —
-349 |                   </span>
-350 |                 )}
-351 |               </div>
-352 | 
-353 |               {/* Рядок 3: остання активність */}
-354 |               {daysStale !== null && (
-355 |                 <p className={`text-[11px] mt-1.5 ${stalenessColor}`}>
-356 |                   ⏱{" "}
-357 |                   {daysStale === 0
-358 |                     ? "Активність сьогодні"
-359 |                     : `Остання активність ${daysStale} дн тому`}
-360 |                 </p>
-361 |               )}
-362 |             </div>
-363 |           );
-364 |         })}
-365 | 
-366 |         {filteredKindergartens.length === 0 && (
-367 |           <div className="bg-white rounded-2xl border border-slate-100 text-center py-10 text-slate-400 text-sm">
-368 |             Садочків ще немає
-369 |           </div>
-370 |         )}
-371 | 
-372 |         {/* FAB */}
-373 |         <button
-374 |           onClick={handleOpenModal}
-375 |           className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
-376 |         >
-377 |           +
-378 |         </button>
-379 |       </div>
-380 | 
-381 |       {/* Десктоп таблиця */}
-382 |       <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto w-full">
-383 |         <table className="w-full text-left border-collapse">
-384 |           <thead>
-385 |             <tr className="bg-slate-50 border-b border-slate-100">
-386 |               <th className="p-4 font-medium text-slate-600">Назва садочку</th>
-387 |               <th className="p-4 font-medium text-slate-600">Місто</th>
-388 |               <th className="p-4 font-medium text-slate-600">Статус</th>
-389 |               <th className="p-4 font-medium text-slate-600">Поточний етап</th>
-390 |               <th className="p-4 font-medium text-slate-600 text-center">
-391 |                 Дія
-392 |               </th>
-393 |             </tr>
-394 |           </thead>
-395 |           <tbody>
-396 |             {filteredKindergartens.map((school) => {
-397 |               const latestEvent = school.events?.[0];
-398 |               const stage = latestEvent
-399 |                 ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
-400 |                 : null;
-401 |               return (
-402 |                 <tr
-403 |                   key={school.id}
-404 |                   onClick={() => navigate(`/schools/${school.id}`)}
-405 |                   className="cursor-pointer border-b border-slate-50 hover:bg-slate-50/50 transition"
-406 |                 >
-407 |                   <td className="p-4 text-slate-800 font-medium">
-408 |                     {school.name}
-409 |                   </td>
-410 |                   <td className="p-4 text-slate-600">{school.city?.name}</td>
-411 |                   <td className="p-4">
-412 |                     <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-medium">
-413 |                       Активний
-414 |                     </span>
-415 |                   </td>
-416 |                   <td className="p-4">
-417 |                     {stage ? (
-418 |                       <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium border border-blue-100">
-419 |                         {stage.name}
-420 |                       </span>
-421 |                     ) : (
-422 |                       <span className="text-slate-400 text-xs italic">—</span>
-423 |                     )}
-424 |                   </td>
-425 |                   <td className="p-4 text-center">
-426 |                     <button
-427 |                       onClick={(e) =>
-428 |                         handleDeleteSchool(e, school.id, school.name)
-429 |                       }
-430 |                       className="text-slate-400 hover:text-red-500 transition-colors p-2"
-431 |                     >
-432 |                       🗑
-433 |                     </button>
-434 |                   </td>
-435 |                 </tr>
-436 |               );
-437 |             })}
-438 |           </tbody>
-439 |         </table>
-440 |       </div>
-441 | 
-442 |       {/* Модалка */}
-443 |       {isModalOpen && (
-444 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-445 |           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md max-h-[92vh] overflow-hidden flex flex-col">
-446 |             <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
-447 |             <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-448 |               <h3 className="text-xl font-bold text-slate-800">
-449 |                 Новий садочок
-450 |               </h3>
-451 |               <button
-452 |                 onClick={() => setIsModalOpen(false)}
-453 |                 className="text-slate-400 hover:text-slate-600 p-2 -mr-2"
-454 |               >
-455 |                 ✕
-456 |               </button>
-457 |             </div>
-458 |             <form
-459 |               onSubmit={handleAddSchool}
-460 |               className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto"
-461 |             >
-462 |               <div className="relative">
-463 |                 <label className="block text-sm text-slate-600 mb-1">
-464 |                   Назва садочку
-465 |                 </label>
-466 |                 <input
-467 |                   type="text"
-468 |                   value={form.name}
-469 |                   onChange={(e) => handleNameChange(e.target.value)}
-470 |                   onBlur={() =>
-471 |                     setTimeout(() => setShowSuggestions(false), 150)
-472 |                   }
-473 |                   required
-474 |                   placeholder="Наприклад: Садочок №1"
-475 |                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-476 |                 />
-477 |                 {showSuggestions && (
-478 |                   <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-479 |                     {isSearching ? (
-480 |                       <li className="px-3 py-2 text-sm text-slate-400 italic">
-481 |                         Пошук за збігами...
-482 |                       </li>
-483 |                     ) : suggestions.length > 0 ? (
-484 |                       suggestions.map((s, i) => (
-485 |                         <li
-486 |                           key={i}
-487 |                           onMouseDown={() =>
-488 |                             handleSelectSuggestion(s.name, s.url)
-489 |                           }
-490 |                           className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer"
-491 |                         >
-492 |                           {s.name}
-493 |                         </li>
-494 |                       ))
-495 |                     ) : (
-496 |                       <li className="px-3 py-2 text-sm text-slate-400 italic">
-497 |                         Нічого не знайдено
-498 |                       </li>
-499 |                     )}
-500 |                   </ul>
-501 |                 )}
-502 |               </div>
-503 | 
-504 |               {!selectedCity.id && (
-505 |                 <div>
-506 |                   <label className="block text-sm text-slate-600 mb-1">
-507 |                     Місто
-508 |                   </label>
-509 |                   <select
-510 |                     value={form.cityId}
-511 |                     onChange={(e) =>
-512 |                       setForm({ ...form, cityId: e.target.value })
-513 |                     }
-514 |                     required
-515 |                     className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 bg-white"
-516 |                   >
-517 |                     <option value="">— Оберіть місто —</option>
-518 |                     {cities.map((c) => (
-519 |                       <option key={c.id} value={c.id}>
-520 |                         {c.name}
-521 |                       </option>
-522 |                     ))}
-523 |                   </select>
-524 |                 </div>
-525 |               )}
-526 | 
-527 |               <div>
-528 |                 <label className="block text-sm text-slate-600 mb-1">
-529 |                   Контакт{" "}
-530 |                   <span className="ml-1 text-xs text-slate-400">
-531 |                     (автозаповнення)
-532 |                   </span>
-533 |                 </label>
-534 |                 {matchedContacts.length > 0 && (
-535 |                   <div className="flex flex-wrap gap-1 mb-2">
-536 |                     {matchedContacts.map((c, i) => (
-537 |                       <button
-538 |                         key={i}
-539 |                         type="button"
-540 |                         onClick={() =>
-541 |                           setForm((f) => ({
-542 |                             ...f,
-543 |                             director: c.contactName,
-544 |                             phone: c.phone,
-545 |                           }))
-546 |                         }
-547 |                         className={`text-xs px-2 py-1 rounded-full border transition-colors ${
-548 |                           form.director === c.contactName
-549 |                             ? "bg-blue-600 text-white border-blue-600"
-550 |                             : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
-551 |                         }`}
-552 |                       >
-553 |                         {c.role ? `${c.role}: ` : ""}
-554 |                         {c.contactName}
-555 |                       </button>
-556 |                     ))}
-557 |                   </div>
-558 |                 )}
-559 |                 <input
-560 |                   type="text"
-561 |                   value={form.director}
-562 |                   onChange={(e) =>
-563 |                     setForm({ ...form, director: e.target.value })
-564 |                   }
-565 |                   placeholder="Микола Петренко"
-566 |                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-567 |                 />
-568 |               </div>
-569 | 
-570 |               <div>
-571 |                 <label className="block text-sm text-slate-600 mb-1">
-572 |                   Телефон{" "}
-573 |                   <span className="ml-1 text-xs text-slate-400">
-574 |                     (автозаповнення)
-575 |                   </span>
-576 |                 </label>
-577 |                 <input
-578 |                   type="text"
-579 |                   value={form.phone}
-580 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-581 |                   placeholder="0671234567"
-582 |                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-583 |                 />
-584 |               </div>
-585 | 
-586 |               <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-2 pb-1 sm:pb-0">
-587 |                 <button
-588 |                   type="button"
-589 |                   onClick={() => setIsModalOpen(false)}
-590 |                   className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-slate-100 rounded-xl sm:rounded-lg text-sm font-medium hover:bg-slate-200"
-591 |                 >
-592 |                   Скасувати
-593 |                 </button>
-594 |                 <button
-595 |                   type="submit"
-596 |                   disabled={isSubmitting}
-597 |                   className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-blue-600 text-white rounded-xl sm:rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-598 |                 >
-599 |                   {isSubmitting ? "Збереження..." : "Створити"}
-600 |                 </button>
-601 |               </div>
-602 |             </form>
-603 |           </div>
-604 |         </div>
-605 |       )}
-606 |     </div>
-607 |   );
-608 | }
-609 | 
+ 66 |     const currentCityName =
+ 67 |       selectedCity.name || cities.find((c) => c.id === form.cityId)?.name || "";
+ 68 |     if (currentCityName.toLowerCase() !== "львів") {
+ 69 |       setMatchedContacts([]);
+ 70 |       return;
+ 71 |     }
+ 72 |     try {
+ 73 |       const token = localStorage.getItem("token");
+ 74 |       const res = await api.get(
+ 75 |         `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=${encodeURIComponent("Садочок")}`,
+ 76 |         { headers: { Authorization: `Bearer ${token}` } },
+ 77 |       );
+ 78 |       setMatchedContacts(res.data);
+ 79 |       if (res.data.length > 0) {
+ 80 |         const director =
+ 81 |           res.data.find(
+ 82 |             (c: any) =>
+ 83 |               c.role?.includes("Директор") || c.role?.includes("Завідувач"),
+ 84 |           ) || res.data[0];
+ 85 |         setForm((f) => ({
+ 86 |           ...f,
+ 87 |           director: director.contactName,
+ 88 |           phone: director.phone,
+ 89 |         }));
+ 90 |       }
+ 91 |     } catch (e) {
+ 92 |       console.error(e);
+ 93 |     }
+ 94 |   };
+ 95 | 
+ 96 |   const handleNameChange = (value: string) => {
+ 97 |     setForm({ ...form, name: value });
+ 98 |     if (debounceTimer.current) clearTimeout(debounceTimer.current);
+ 99 |     if (value.length < 2) {
+100 |       setShowSuggestions(false);
+101 |       setIsSearching(false);
+102 |       setMatchedContacts([]);
+103 |       return;
+104 |     }
+105 |     setIsSearching(true);
+106 |     setShowSuggestions(true);
+107 |     debounceTimer.current = setTimeout(async () => {
+108 |       const token = localStorage.getItem("token");
+109 |       try {
+110 |         const [externalRes] = await Promise.all([
+111 |           api.get(
+112 |             `/schools/search?q=${value}&type=${encodeURIComponent("Садочок")}`,
+113 |             {
+114 |               headers: { Authorization: `Bearer ${token}` },
+115 |             },
+116 |           ),
+117 |           fetchContacts(value),
+118 |         ]);
+119 |         setSuggestions(externalRes.data);
+120 |       } catch (e) {
+121 |         console.error(e);
+122 |       } finally {
+123 |         setIsSearching(false);
+124 |       }
+125 |     }, 400);
+126 |   };
+127 | 
+128 |   const handleSelectSuggestion = (name: string, url: string) => {
+129 |     setForm({ ...form, name, sourceUrl: url });
+130 |     setShowSuggestions(false);
+131 |     fetchContacts(name);
+132 |   };
+133 | 
+134 |   const handleAddSchool = async (e: React.FormEvent) => {
+135 |     e.preventDefault();
+136 |     if (!form.name.trim() || !form.cityId) return;
+137 |     setIsSubmitting(true);
+138 |     try {
+139 |       const token = localStorage.getItem("token");
+140 |       await api.post(
+141 |         "/schools",
+142 |         { ...form, type: "Садочок" },
+143 |         {
+144 |           headers: { Authorization: `Bearer ${token}` },
+145 |         },
+146 |       );
+147 |       setIsModalOpen(false);
+148 |       qc.invalidateQueries({ queryKey: ["schools"] });
+149 |     } catch (e) {
+150 |       console.error(e);
+151 |       alert("Не вдалося створити садочок");
+152 |     } finally {
+153 |       setIsSubmitting(false);
+154 |     }
+155 |   };
+156 | 
+157 |   const handleDeleteSchool = async (
+158 |     e: React.MouseEvent,
+159 |     schoolId: string,
+160 |     schoolName: string,
+161 |   ) => {
+162 |     e.stopPropagation();
+163 |     if (!window.confirm(`Видалити садочок "${schoolName}"?...`)) return;
+164 |     await deleteSchool.mutateAsync(schoolId);
+165 |   };
+166 | 
+167 |   const filteredKindergartens = schools.filter((s) => {
+168 |     const isCityMatch = selectedCity.id ? s.cityId === selectedCity.id : true;
+169 |     const isFilterMatch = activeFilter
+170 |       ? classifySchool(s) === activeFilter
+171 |       : true;
+172 |     return isCityMatch && s.type === "Садочок" && isFilterMatch;
+173 |   });
+174 | 
+175 |   return (
+176 |     <div className="p-4 md:p-8 h-full max-w-[100vw]">
+177 |       <div className="flex items-center justify-between gap-2 mb-3">
+178 |         <h1 className="text-xl font-bold text-slate-800">
+179 |           Садочки
+180 |           {selectedCity.id && (
+181 |             <span className="ml-2 text-sm font-normal text-blue-500">
+182 |               · {selectedCity.name}
+183 |             </span>
+184 |           )}
+185 |         </h1>
+186 |         <div className="flex gap-2 shrink-0">
+187 |           <button
+188 |             onClick={async () => {
+189 |               if (!selectedCity.id) return alert("Спочатку оберіть місто");
+190 |               if (
+191 |                 !window.confirm(
+192 |                   `Імпортувати всі садочки з isuo.org для міста ${selectedCity.name}?`,
+193 |                 )
+194 |               )
+195 |                 return;
+196 |               try {
+197 |                 const token = localStorage.getItem("token");
+198 |                 const res = await api.post(
+199 |                   "/schools/bulk-import",
+200 |                   { cityId: selectedCity.id, type: "Садочок" },
+201 |                   {
+202 |                     headers: { Authorization: `Bearer ${token}` },
+203 |                     timeout: 120000,
+204 |                   },
+205 |                 );
+206 |                 alert(
+207 |                   `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
+208 |                 );
+209 |                 qc.invalidateQueries({ queryKey: ["schools"] });
+210 |               } catch (e) {
+211 |                 alert("Помилка імпорту.");
+212 |               }
+213 |             }}
+214 |             className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
+215 |           >
+216 |             📥 Імпорт з isuo
+217 |           </button>
+218 |           <button
+219 |             onClick={handleOpenModal}
+220 |             className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+221 |           >
+222 |             + Додати
+223 |           </button>
+224 |         </div>
+225 |       </div>
+226 | 
+227 |       <StatsBar
+228 |         schools={schools.filter(
+229 |           (s) =>
+230 |             (selectedCity.id ? s.cityId === selectedCity.id : true) &&
+231 |             s.type === "Садочок",
+232 |         )}
+233 |         activeFilter={activeFilter}
+234 |         onFilterChange={setActiveFilter}
+235 |       />
+236 | 
+237 |       {/* Мобільний вигляд */}
+238 |       <div className="md:hidden flex flex-col gap-2.5">
+239 |         {filteredKindergartens.map((school) => {
+240 |           const latestEvent = school.events?.[0];
+241 |           const stage = latestEvent
+242 |             ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
+243 |             : null;
+244 | 
+245 |           // Остання активність
+246 |           const lastActivityDate =
+247 |             school.events?.[0]?.updatedAt ?? school.updatedAt ?? null;
+248 |           const daysStale = lastActivityDate
+249 |             ? Math.floor(
+250 |                 (Date.now() - new Date(lastActivityDate).getTime()) / 86400000,
+251 |               )
+252 |             : null;
+253 | 
+254 |           const stalenessColor =
+255 |             daysStale === null
+256 |               ? "text-slate-400"
+257 |               : daysStale >= 21
+258 |                 ? "text-red-500"
+259 |                 : daysStale >= 14
+260 |                   ? "text-orange-500"
+261 |                   : daysStale >= 7
+262 |                     ? "text-amber-500"
+263 |                     : "text-emerald-500";
+264 | 
+265 |           return (
+266 |             <div
+267 |               key={school.id}
+268 |               onClick={() => navigate(`/schools/${school.id}`)}
+269 |               className="bg-white rounded-2xl border border-slate-100 p-3.5 active:scale-[0.99] transition-transform"
+270 |             >
+271 |               {/* Рядок 1: назва + видалити */}
+272 |               <div className="flex items-start justify-between gap-2">
+273 |                 <p className="font-semibold text-slate-800 leading-snug text-sm line-clamp-2 flex-1">
+274 |                   {school.name}
+275 |                 </p>
+276 |                 <button
+277 |                   onClick={(e) => handleDeleteSchool(e, school.id, school.name)}
+278 |                   className="text-slate-300 active:text-red-500 p-1 -mt-0.5 -mr-1 shrink-0"
+279 |                 >
+280 |                   🗑
+281 |                 </button>
+282 |               </div>
+283 | 
+284 |               {/* Рядок 2: директор (клікабельний телефон) + етап */}
+285 |               <div className="flex items-center justify-between gap-2 mt-2">
+286 |                 <div className="flex items-center gap-1.5 min-w-0">
+287 |                   {school.phone ? (
+288 |                     <a
+289 |                       href={`tel:${school.phone}`}
+290 |                       onClick={(e) => e.stopPropagation()}
+291 |                       className="flex items-center gap-1 text-xs text-blue-600 font-medium truncate"
+292 |                     >
+293 |                       📞 {school.director || school.phone}
+294 |                     </a>
+295 |                   ) : school.director ? (
+296 |                     <span className="text-xs text-slate-500 truncate">
+297 |                       👤 {school.director}
+298 |                     </span>
+299 |                   ) : (
+300 |                     <span className="text-xs text-slate-300 italic">
+301 |                       Контакт не вказано
+302 |                     </span>
+303 |                   )}
+304 |                 </div>
+305 | 
+306 |                 {stage ? (
+307 |                   <span className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full border border-blue-100 shrink-0 font-medium">
+308 |                     {stage.name}
+309 |                   </span>
+310 |                 ) : (
+311 |                   <span className="text-[10px] text-slate-300 shrink-0">
+312 |                     Етап —
+313 |                   </span>
+314 |                 )}
+315 |               </div>
+316 | 
+317 |               {/* Рядок 3: остання активність */}
+318 |               {daysStale !== null && (
+319 |                 <p className={`text-[11px] mt-1.5 ${stalenessColor}`}>
+320 |                   ⏱{" "}
+321 |                   {daysStale === 0
+322 |                     ? "Активність сьогодні"
+323 |                     : `Остання активність ${daysStale} дн тому`}
+324 |                 </p>
+325 |               )}
+326 |             </div>
+327 |           );
+328 |         })}
+329 | 
+330 |         {filteredKindergartens.length === 0 && (
+331 |           <div className="bg-white rounded-2xl border border-slate-100 text-center py-10 text-slate-400 text-sm">
+332 |             Садочків ще немає
+333 |           </div>
+334 |         )}
+335 | 
+336 |         {/* FAB */}
+337 |         <button
+338 |           onClick={handleOpenModal}
+339 |           className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
+340 |         >
+341 |           +
+342 |         </button>
+343 |       </div>
+344 | 
+345 |       {/* Десктоп таблиця */}
+346 |       <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto w-full">
+347 |         <table className="w-full text-left border-collapse">
+348 |           <thead>
+349 |             <tr className="bg-slate-50 border-b border-slate-100">
+350 |               <th className="p-4 font-medium text-slate-600">Назва садочку</th>
+351 |               <th className="p-4 font-medium text-slate-600">Місто</th>
+352 |               <th className="p-4 font-medium text-slate-600">Статус</th>
+353 |               <th className="p-4 font-medium text-slate-600">Поточний етап</th>
+354 |               <th className="p-4 font-medium text-slate-600 text-center">
+355 |                 Дія
+356 |               </th>
+357 |             </tr>
+358 |           </thead>
+359 |           <tbody>
+360 |             {filteredKindergartens.map((school) => {
+361 |               const latestEvent = school.events?.[0];
+362 |               const stage = latestEvent
+363 |                 ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
+364 |                 : null;
+365 |               return (
+366 |                 <tr
+367 |                   key={school.id}
+368 |                   onClick={() => navigate(`/schools/${school.id}`)}
+369 |                   className="cursor-pointer border-b border-slate-50 hover:bg-slate-50/50 transition"
+370 |                 >
+371 |                   <td className="p-4 text-slate-800 font-medium">
+372 |                     {school.name}
+373 |                   </td>
+374 |                   <td className="p-4 text-slate-600">{school.city?.name}</td>
+375 |                   <td className="p-4">
+376 |                     <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-medium">
+377 |                       Активний
+378 |                     </span>
+379 |                   </td>
+380 |                   <td className="p-4">
+381 |                     {stage ? (
+382 |                       <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium border border-blue-100">
+383 |                         {stage.name}
+384 |                       </span>
+385 |                     ) : (
+386 |                       <span className="text-slate-400 text-xs italic">—</span>
+387 |                     )}
+388 |                   </td>
+389 |                   <td className="p-4 text-center">
+390 |                     <button
+391 |                       onClick={(e) =>
+392 |                         handleDeleteSchool(e, school.id, school.name)
+393 |                       }
+394 |                       className="text-slate-400 hover:text-red-500 transition-colors p-2"
+395 |                     >
+396 |                       🗑
+397 |                     </button>
+398 |                   </td>
+399 |                 </tr>
+400 |               );
+401 |             })}
+402 |           </tbody>
+403 |         </table>
+404 |       </div>
+405 | 
+406 |       {/* Модалка */}
+407 |       {isModalOpen && (
+408 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+409 |           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md max-h-[92vh] overflow-hidden flex flex-col">
+410 |             <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+411 |             <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+412 |               <h3 className="text-xl font-bold text-slate-800">
+413 |                 Новий садочок
+414 |               </h3>
+415 |               <button
+416 |                 onClick={() => setIsModalOpen(false)}
+417 |                 className="text-slate-400 hover:text-slate-600 p-2 -mr-2"
+418 |               >
+419 |                 ✕
+420 |               </button>
+421 |             </div>
+422 |             <form
+423 |               onSubmit={handleAddSchool}
+424 |               className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto"
+425 |             >
+426 |               <div className="relative">
+427 |                 <label className="block text-sm text-slate-600 mb-1">
+428 |                   Назва садочку
+429 |                 </label>
+430 |                 <input
+431 |                   type="text"
+432 |                   value={form.name}
+433 |                   onChange={(e) => handleNameChange(e.target.value)}
+434 |                   onBlur={() =>
+435 |                     setTimeout(() => setShowSuggestions(false), 150)
+436 |                   }
+437 |                   required
+438 |                   placeholder="Наприклад: Садочок №1"
+439 |                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+440 |                 />
+441 |                 {showSuggestions && (
+442 |                   <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+443 |                     {isSearching ? (
+444 |                       <li className="px-3 py-2 text-sm text-slate-400 italic">
+445 |                         Пошук за збігами...
+446 |                       </li>
+447 |                     ) : suggestions.length > 0 ? (
+448 |                       suggestions.map((s, i) => (
+449 |                         <li
+450 |                           key={i}
+451 |                           onMouseDown={() =>
+452 |                             handleSelectSuggestion(s.name, s.url)
+453 |                           }
+454 |                           className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer"
+455 |                         >
+456 |                           {s.name}
+457 |                         </li>
+458 |                       ))
+459 |                     ) : (
+460 |                       <li className="px-3 py-2 text-sm text-slate-400 italic">
+461 |                         Нічого не знайдено
+462 |                       </li>
+463 |                     )}
+464 |                   </ul>
+465 |                 )}
+466 |               </div>
+467 | 
+468 |               {!selectedCity.id && (
+469 |                 <div>
+470 |                   <label className="block text-sm text-slate-600 mb-1">
+471 |                     Місто
+472 |                   </label>
+473 |                   <select
+474 |                     value={form.cityId}
+475 |                     onChange={(e) =>
+476 |                       setForm({ ...form, cityId: e.target.value })
+477 |                     }
+478 |                     required
+479 |                     className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 bg-white"
+480 |                   >
+481 |                     <option value="">— Оберіть місто —</option>
+482 |                     {cities.map((c) => (
+483 |                       <option key={c.id} value={c.id}>
+484 |                         {c.name}
+485 |                       </option>
+486 |                     ))}
+487 |                   </select>
+488 |                 </div>
+489 |               )}
+490 | 
+491 |               <div>
+492 |                 <label className="block text-sm text-slate-600 mb-1">
+493 |                   Контакт{" "}
+494 |                   <span className="ml-1 text-xs text-slate-400">
+495 |                     (автозаповнення)
+496 |                   </span>
+497 |                 </label>
+498 |                 {matchedContacts.length > 0 && (
+499 |                   <div className="flex flex-wrap gap-1 mb-2">
+500 |                     {matchedContacts.map((c, i) => (
+501 |                       <button
+502 |                         key={i}
+503 |                         type="button"
+504 |                         onClick={() =>
+505 |                           setForm((f) => ({
+506 |                             ...f,
+507 |                             director: c.contactName,
+508 |                             phone: c.phone,
+509 |                           }))
+510 |                         }
+511 |                         className={`text-xs px-2 py-1 rounded-full border transition-colors ${
+512 |                           form.director === c.contactName
+513 |                             ? "bg-blue-600 text-white border-blue-600"
+514 |                             : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
+515 |                         }`}
+516 |                       >
+517 |                         {c.role ? `${c.role}: ` : ""}
+518 |                         {c.contactName}
+519 |                       </button>
+520 |                     ))}
+521 |                   </div>
+522 |                 )}
+523 |                 <input
+524 |                   type="text"
+525 |                   value={form.director}
+526 |                   onChange={(e) =>
+527 |                     setForm({ ...form, director: e.target.value })
+528 |                   }
+529 |                   placeholder="Микола Петренко"
+530 |                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+531 |                 />
+532 |               </div>
+533 | 
+534 |               <div>
+535 |                 <label className="block text-sm text-slate-600 mb-1">
+536 |                   Телефон{" "}
+537 |                   <span className="ml-1 text-xs text-slate-400">
+538 |                     (автозаповнення)
+539 |                   </span>
+540 |                 </label>
+541 |                 <input
+542 |                   type="text"
+543 |                   value={form.phone}
+544 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
+545 |                   placeholder="0671234567"
+546 |                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+547 |                 />
+548 |               </div>
+549 | 
+550 |               <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-2 pb-1 sm:pb-0">
+551 |                 <button
+552 |                   type="button"
+553 |                   onClick={() => setIsModalOpen(false)}
+554 |                   className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-slate-100 rounded-xl sm:rounded-lg text-sm font-medium hover:bg-slate-200"
+555 |                 >
+556 |                   Скасувати
+557 |                 </button>
+558 |                 <button
+559 |                   type="submit"
+560 |                   disabled={isSubmitting}
+561 |                   className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-blue-600 text-white rounded-xl sm:rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+562 |                 >
+563 |                   {isSubmitting ? "Збереження..." : "Створити"}
+564 |                 </button>
+565 |               </div>
+566 |             </form>
+567 |           </div>
+568 |         </div>
+569 |       )}
+570 |     </div>
+571 |   );
+572 | }
+573 | 
 ```
 
 ### File: apps/frontend/src/pages/Login.tsx
@@ -14535,638 +14538,603 @@
 
 ### File: apps/frontend/src/pages/Schools.tsx
 ```tsx
-  0 | import {
-  1 |   useState,
-  2 |   useEffect,
-  3 |   useRef,
-  4 |   useMemo,
-  5 |   useCallback,
-  6 |   lazy,
-  7 |   Suspense,
-  8 | } from "react";
-  9 | import { api } from "../config/api";
- 10 | import { useSelectedCity } from "../context/CityContext";
- 11 | 
- 12 | import VirtualSchoolList from "../components/VirtualSchoolList";
- 13 | import { SchoolCard } from "../components/schools/SchoolMobileList";
- 14 | 
- 15 | import {
- 16 |   classifySchool,
- 17 |   classifySize,
- 18 | } from "../components/schools/schoolUtils";
- 19 | 
- 20 | const StatsBar = lazy(() => import("../components/schools/StatsBar"));
- 21 | const VirtualDesktopTable = lazy(
- 22 |   () => import("../components/schools/VirtualDesktopTable"),
- 23 | );
- 24 | // SchoolCard імпортується напряму — він легкий і потрібен одразу
- 25 | 
- 26 | export const PIPELINE_STAGES = [
- 27 |   { key: "BASE", name: "Новий заклад" },
- 28 |   { key: "FIRST_CONTACT", name: "Знайомство" },
- 29 |   { key: "DATE_CONFIRMED", name: "Підтвердження дати" },
- 30 |   { key: "PREPARATION", name: "Оголошення" },
- 31 |   { key: "IN_PROGRESS", name: "Підготовка" },
- 32 |   { key: "DONE", name: "Проведення заходу" },
- 33 |   { key: "REPORT", name: "Звіт" },
- 34 | ];
- 35 | 
- 36 | interface City {
- 37 |   id: string;
- 38 |   name: string;
- 39 | }
- 40 | 
- 41 | export default function Schools() {
- 42 |   const { selectedCity } = useSelectedCity();
- 43 |   const [schools, setSchools] = useState<any[]>([]);
- 44 |   const [cities, setCities] = useState<City[]>([]);
- 45 |   const [isModalOpen, setIsModalOpen] = useState(false);
- 46 |   const [isSubmitting, setIsSubmitting] = useState(false);
- 47 |   const [searchQuery, setSearchQuery] = useState("");
- 48 |   const [form, setForm] = useState({
- 49 |     name: "",
- 50 |     cityId: "",
- 51 |     sourceUrl: "",
- 52 |     director: "",
- 53 |     phone: "",
- 54 |   });
- 55 |   const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
- 56 |   const [activeFilter, setActiveFilter] = useState<string | null>(null);
- 57 |   const [sizeFilter, setSizeFilter] = useState<string | null>(null);
- 58 |   const [suggestions, setSuggestions] = useState<
- 59 |     { name: string; url: string }[]
- 60 |   >([]);
- 61 |   const [showSuggestions, setShowSuggestions] = useState(false);
- 62 |   const [isSearching, setIsSearching] = useState(false);
- 63 |   const [isLoading, setIsLoading] = useState(true);
- 64 |   const [isImporting, setIsImporting] = useState(false);
- 65 |   const [dotCount, setDotCount] = useState(3);
- 66 |   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
- 67 | 
- 68 |   const fetchSchools = async () => {
- 69 |     setIsLoading(true);
- 70 |     try {
- 71 |       const res = await api.get("/schools?minimal=true", {
- 72 |         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
- 73 |       });
- 74 |       setSchools(res.data);
- 75 |     } catch (e) {
- 76 |       console.error(e);
- 77 |     } finally {
- 78 |       setIsLoading(false);
- 79 |     }
- 80 |   };
- 81 | 
- 82 |   const fetchCities = async () => {
- 83 |     try {
- 84 |       const res = await api.get("/cities", {
- 85 |         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
- 86 |       });
- 87 |       setCities(res.data);
- 88 |     } catch (e) {
- 89 |       console.error(e);
- 90 |     }
- 91 |   };
- 92 | 
- 93 |   useEffect(() => {
- 94 |     fetchSchools();
- 95 |     fetchCities();
- 96 |   }, []);
- 97 | 
- 98 |   const handleOpenModal = useCallback(() => {
- 99 |     setForm({
-100 |       name: "",
-101 |       cityId: selectedCity.id || cities[0]?.id || "",
-102 |       sourceUrl: "",
-103 |       director: "",
-104 |       phone: "",
-105 |     });
-106 |     setMatchedContacts([]);
-107 |     setIsModalOpen(true);
-108 |   }, [selectedCity.id, cities]);
-109 | 
-110 |   const fetchContacts = async (schoolName: string) => {
-111 |     if (!schoolName || schoolName.trim().length < 1)
-112 |       return setMatchedContacts([]);
-113 |     const currentCityName =
-114 |       selectedCity.name || cities.find((c) => c.id === form.cityId)?.name || "";
-115 |     if (currentCityName.toLowerCase() !== "львів")
-116 |       return setMatchedContacts([]);
-117 |     try {
-118 |       const res = await api.get(
-119 |         `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=Школа`,
-120 |         {
-121 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-122 |         },
-123 |       );
-124 |       setMatchedContacts(res.data);
-125 |       if (res.data.length > 0) {
-126 |         const director =
-127 |           res.data.find(
-128 |             (c: any) =>
-129 |               c.role?.includes("Директор") || c.role?.includes("Завідувач"),
-130 |           ) || res.data[0];
-131 |         setForm((f) => ({
-132 |           ...f,
-133 |           director: director.contactName,
-134 |           phone: director.phone,
-135 |         }));
-136 |       }
-137 |     } catch (e) {
-138 |       console.error(e);
-139 |     }
-140 |   };
-141 | 
-142 |   const handleNameChange = (value: string) => {
-143 |     setForm({ ...form, name: value });
-144 |     if (debounceTimer.current) clearTimeout(debounceTimer.current);
-145 |     if (value.length < 2) {
-146 |       setShowSuggestions(false);
-147 |       setIsSearching(false);
-148 |       setMatchedContacts([]);
-149 |       return;
-150 |     }
-151 |     setIsSearching(true);
-152 |     setShowSuggestions(true);
-153 |     debounceTimer.current = setTimeout(async () => {
-154 |       try {
-155 |         const [externalRes] = await Promise.all([
-156 |           api.get(`/schools/search?q=${value}&type=Школа`, {
-157 |             headers: {
-158 |               Authorization: `Bearer ${localStorage.getItem("token")}`,
-159 |             },
-160 |           }),
-161 |           fetchContacts(value),
-162 |         ]);
-163 |         setSuggestions(externalRes.data);
-164 |       } catch (e) {
-165 |         console.error(e);
-166 |       } finally {
-167 |         setIsSearching(false);
-168 |       }
-169 |     }, 400);
-170 |   };
-171 | 
-172 |   const handleSelectSuggestion = (name: string, url: string) => {
-173 |     setForm({ ...form, name, sourceUrl: url });
-174 |     setShowSuggestions(false);
-175 |     fetchContacts(name);
-176 |   };
-177 | 
-178 |   const handleAddSchool = async (e: React.FormEvent) => {
-179 |     e.preventDefault();
-180 |     if (!form.name.trim() || !form.cityId) return;
-181 |     setIsSubmitting(true);
-182 |     try {
-183 |       await api.post(
-184 |         "/schools",
-185 |         { ...form, type: "Школа" },
-186 |         {
-187 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-188 |         },
-189 |       );
-190 |       setIsModalOpen(false);
-191 |       fetchSchools();
-192 |     } catch (e) {
-193 |       alert("Не вдалося створити заклад");
-194 |     } finally {
-195 |       setIsSubmitting(false);
-196 |     }
-197 |   };
-198 | 
-199 |   const handleDeleteSchool = useCallback(
-200 |     async (e: React.MouseEvent, schoolId: string, schoolName: string) => {
-201 |       e.stopPropagation();
-202 |       if (
-203 |         !window.confirm(
-204 |           `Видалити школу "${schoolName}"? Це видалить також усі її події.`,
-205 |         )
-206 |       )
-207 |         return;
-208 |       try {
-209 |         await api.delete(`/schools/${schoolId}`, {
-210 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-211 |         });
-212 |         setSchools((prev) => prev.filter((s) => s.id !== schoolId));
-213 |       } catch (e) {
-214 |         console.error(e);
-215 |       }
-216 |     },
-217 |     [],
-218 |   );
-219 | 
-220 |   const [debouncedSearch, setDebouncedSearch] = useState("");
-221 | 
-222 |   useEffect(() => {
-223 |     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 200);
-224 |     return () => clearTimeout(timer);
-225 |   }, [searchQuery]);
-226 | 
-227 |   const baseFiltered = useMemo(
-228 |     () =>
-229 |       schools.filter((s) => {
-230 |         const isCityMatch = selectedCity.id
-231 |           ? s.cityId === selectedCity.id
-232 |           : true;
-233 |         const isFilterMatch = activeFilter
-234 |           ? classifySchool(s) === activeFilter
-235 |           : true;
-236 |         const isSizeMatch = sizeFilter
-237 |           ? classifySize(s, "Школа") === sizeFilter
-238 |           : true;
-239 |         return (
-240 |           isCityMatch && s.type === "Школа" && isFilterMatch && isSizeMatch
-241 |         );
-242 |       }),
-243 |     [schools, selectedCity.id, activeFilter, sizeFilter],
-244 |   );
-245 | 
-246 |   const filteredSchools = useMemo(() => {
-247 |     if (!debouncedSearch.trim()) return baseFiltered;
-248 |     const q = debouncedSearch.toLowerCase().trim();
-249 |     return baseFiltered.filter(
-250 |       (s) =>
-251 |         s.name?.toLowerCase().includes(q) ||
-252 |         s.city?.name?.toLowerCase().includes(q) ||
-253 |         s.director?.toLowerCase().includes(q) ||
-254 |         s.address?.toLowerCase().includes(q),
-255 |     );
-256 |   }, [baseFiltered, debouncedSearch]);
-257 | 
-258 |   return (
-259 |     <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-slate-50 min-h-screen">
-260 |       {/* Шапка */}
-261 |       <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
-262 |         <div className="min-w-0">
-263 |           <h1 className="text-xl font-bold text-slate-800 leading-tight">
-264 |             Школи
-265 |             {selectedCity.id && (
-266 |               <span className="ml-2 text-sm font-normal text-blue-500">
-267 |                 · {selectedCity.name}
-268 |               </span>
-269 |             )}
-270 |           </h1>
-271 |         </div>
-272 |         <div className="flex gap-2 shrink-0">
-273 |           <button
-274 |             onClick={async () => {
-275 |               if (!selectedCity.id) return alert("Спочатку оберіть місто");
-276 |               if (
-277 |                 !window.confirm(
-278 |                   `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`,
-279 |                 )
-280 |               )
-281 |                 return;
-282 |               setIsImporting(true);
-283 |               setDotCount(3);
-284 |               const dotInterval = setInterval(() => {
-285 |                 setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
-286 |               }, 500);
-287 |               try {
-288 |                 const res = await api.post(
-289 |                   "/schools/bulk-import",
-290 |                   { cityId: selectedCity.id, type: "Школа" },
-291 |                   {
-292 |                     headers: {
-293 |                       Authorization: `Bearer ${localStorage.getItem("token")}`,
-294 |                     },
-295 |                     timeout: 120000,
-296 |                   },
-297 |                 );
-298 |                 alert(
-299 |                   `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
-300 |                 );
-301 |                 fetchSchools();
-302 |               } catch (e) {
-303 |                 alert("Помилка імпорту.");
-304 |               } finally {
-305 |                 clearInterval(dotInterval);
-306 |                 setIsImporting(false);
-307 |               }
-308 |             }}
-309 |             disabled={isImporting}
-310 |             className="md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
-311 |           >
-312 |             {isImporting ? (
-313 |               <span className="font-medium">
-314 |                 Імпортую{"·".repeat(dotCount)}
-315 |               </span>
-316 |             ) : (
-317 |               <>📥 Імпорт з isuo</>
-318 |             )}
-319 |           </button>
-320 |           <button
-321 |             onClick={handleOpenModal}
-322 |             className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-323 |           >
-324 |             + Додати
-325 |           </button>
-326 |         </div>
-327 |       </div>
-328 | 
-329 |       {/* StatsBar */}
-330 |       <div className="shrink-0">
-331 |         <Suspense
-332 |           fallback={
-333 |             <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
-334 |           }
-335 |         >
-336 |           <StatsBar
-337 |             schools={schools.filter(
-338 |               (s) =>
-339 |                 (selectedCity.id ? s.cityId === selectedCity.id : true) &&
-340 |                 s.type === "Школа",
-341 |             )}
-342 |             activeFilter={activeFilter}
-343 |             onFilterChange={setActiveFilter}
-344 |             sizeFilter={sizeFilter}
-345 |             onSizeFilterChange={setSizeFilter}
-346 |             schoolType="Школа"
-347 |           />
-348 |         </Suspense>
-349 |       </div>
-350 | 
-351 |       {/* Пошук */}
-352 |       <div className="relative shrink-0 mb-4 mt-2">
-353 |         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-354 |           <svg
-355 |             className="w-5 h-5 text-slate-400"
-356 |             fill="none"
-357 |             stroke="currentColor"
-358 |             viewBox="0 0 24 24"
-359 |           >
-360 |             <path
-361 |               strokeLinecap="round"
-362 |               strokeLinejoin="round"
-363 |               strokeWidth={2}
-364 |               d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
-365 |             />
-366 |           </svg>
-367 |         </div>
-368 |         <input
-369 |           type="text"
-370 |           value={searchQuery}
-371 |           onChange={(e) => setSearchQuery(e.target.value)}
-372 |           placeholder="Пошук за назвою, директором, адресою..."
-373 |           className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border-none sm:border sm:border-slate-200 rounded-2xl sm:rounded-xl text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition"
-374 |         />
-375 |         {searchQuery && (
-376 |           <button
-377 |             onClick={() => setSearchQuery("")}
-378 |             className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600 transition"
-379 |           >
-380 |             <svg
-381 |               className="w-5 h-5"
-382 |               fill="none"
-383 |               stroke="currentColor"
-384 |               viewBox="0 0 24 24"
-385 |             >
-386 |               <path
-387 |                 strokeLinecap="round"
-388 |                 strokeLinejoin="round"
-389 |                 strokeWidth={2}
-390 |                 d="M6 18L18 6M6 6l12 12"
-391 |               />
-392 |             </svg>
-393 |           </button>
-394 |         )}
-395 |       </div>
-396 | 
-397 |       {/* Лічильник */}
-398 |       <p className="text-xs font-semibold text-slate-400 mb-4 shrink-0 uppercase tracking-wide px-1">
-399 |         {filteredSchools.length === baseFiltered.length
-400 |           ? `${baseFiltered.length} шкіл`
-401 |           : `${filteredSchools.length} з ${baseFiltered.length} шкіл`}
-402 |         {(activeFilter || sizeFilter) && (
-403 |           <button
-404 |             onClick={() => {
-405 |               setActiveFilter(null);
-406 |               setSizeFilter(null);
-407 |             }}
-408 |             className="ml-3 text-blue-500 hover:text-blue-700 lowercase"
-409 |           >
-410 |             скинути фільтри
-411 |           </button>
-412 |         )}
-413 |       </p>
-414 | 
-415 |       {/* Компоненти списків */}
-416 |       {isLoading ? (
-417 |         <div className="flex flex-col gap-2.5 flex-1">
-418 |           {Array.from({ length: 8 }).map((_, i) => (
-419 |             <div
-420 |               key={i}
-421 |               className="bg-white rounded-2xl border border-slate-100 p-3.5 animate-pulse"
-422 |               style={{ opacity: 1 - i * 0.1 }}
-423 |             >
-424 |               <div className="h-4 bg-slate-200 rounded-lg w-3/4 mb-3" />
-425 |               <div className="flex justify-between">
-426 |                 <div className="h-3 bg-slate-100 rounded-lg w-1/3" />
-427 |                 <div className="h-3 bg-slate-100 rounded-lg w-1/4" />
-428 |               </div>
-429 |             </div>
-430 |           ))}
-431 |         </div>
-432 |       ) : (
-433 |         <>
-434 |           {/* Мобільний: віртуалізований список карток */}
-435 |           <div className="md:hidden flex-1 w-full overflow-hidden">
-436 |             <VirtualSchoolList
-437 |               schools={filteredSchools}
-438 |               itemHeight={110}
-439 |               renderItem={(school, index) => (
-440 |                 <div className="pb-2.5">
-441 |                   <SchoolCard
-442 |                     school={school}
-443 |                     index={index}
-444 |                     onDelete={handleDeleteSchool}
-445 |                     stages={PIPELINE_STAGES}
-446 |                   />
-447 |                 </div>
-448 |               )}
-449 |             />
-450 |           </div>
-451 | 
-452 |           {/* Десктоп: таблиця з віртуалізованим tbody */}
-453 |           <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
-454 |             <Suspense
-455 |               fallback={<div className="flex-1 animate-pulse bg-slate-50" />}
-456 |             >
-457 |               <VirtualDesktopTable
-458 |                 schools={filteredSchools}
-459 |                 searchQuery={searchQuery}
-460 |                 onDelete={handleDeleteSchool}
-461 |                 stages={PIPELINE_STAGES}
-462 |               />
-463 |             </Suspense>
-464 |           </div>
-465 |         </>
-466 |       )}
-467 | 
-468 |       {/* Мобільна плаваюча кнопка FAB */}
-469 |       <button
-470 |         onClick={handleOpenModal}
-471 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
-472 |       >
-473 |         +
-474 |       </button>
-475 | 
-476 |       {/* Модальне вікно */}
-477 |       {isModalOpen && (
-478 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-479 |           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
-480 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-481 |               <h3 className="text-xl font-bold text-slate-800">Нова школа</h3>
-482 |               <button
-483 |                 onClick={() => setIsModalOpen(false)}
-484 |                 className="text-slate-400 hover:text-slate-600 p-2 -mr-2 leading-none text-xl"
-485 |               >
-486 |                 ✕
-487 |               </button>
-488 |             </div>
-489 | 
-490 |             <form
-491 |               onSubmit={handleAddSchool}
-492 |               className="p-6 flex flex-col gap-4 overflow-y-auto"
-493 |             >
-494 |               <div className="relative">
-495 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
-496 |                   Назва школи
-497 |                 </label>
-498 |                 <input
-499 |                   type="text"
-500 |                   value={form.name}
-501 |                   onChange={(e) => handleNameChange(e.target.value)}
-502 |                   onBlur={() =>
-503 |                     setTimeout(() => setShowSuggestions(false), 150)
-504 |                   }
-505 |                   placeholder="Наприклад: Школа №1"
-506 |                   required
-507 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-508 |                 />
-509 |                 {showSuggestions && (
-510 |                   <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto overflow-hidden">
-511 |                     {isSearching ? (
-512 |                       <li className="px-4 py-3 text-sm text-slate-400 italic">
-513 |                         Пошук...
-514 |                       </li>
-515 |                     ) : suggestions.length > 0 ? (
-516 |                       suggestions.map((s, i) => (
-517 |                         <li
-518 |                           key={i}
-519 |                           onMouseDown={() =>
-520 |                             handleSelectSuggestion(s.name, s.url)
-521 |                           }
-522 |                           className="px-4 py-3 text-sm hover:bg-blue-50 cursor-pointer font-medium border-b border-slate-50 last:border-0"
-523 |                         >
-524 |                           {s.name}
-525 |                         </li>
-526 |                       ))
-527 |                     ) : (
-528 |                       <li className="px-4 py-3 text-sm text-slate-400 italic">
-529 |                         Нічого не знайдено
-530 |                       </li>
-531 |                     )}
-532 |                   </ul>
-533 |                 )}
-534 |               </div>
-535 | 
-536 |               {!selectedCity.id && (
-537 |                 <div>
-538 |                   <label className="block text-sm font-medium text-slate-600 mb-1.5">
-539 |                     Місто
-540 |                   </label>
-541 |                   <select
-542 |                     value={form.cityId}
-543 |                     onChange={(e) =>
-544 |                       setForm({ ...form, cityId: e.target.value })
-545 |                     }
-546 |                     required
-547 |                     className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-548 |                   >
-549 |                     <option value="">— Оберіть місто —</option>
-550 |                     {cities.map((c) => (
-551 |                       <option key={c.id} value={c.id}>
-552 |                         {c.name}
-553 |                       </option>
-554 |                     ))}
-555 |                   </select>
-556 |                 </div>
-557 |               )}
-558 | 
-559 |               <div>
-560 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
-561 |                   Контакт{" "}
-562 |                   <span className="ml-1 text-xs font-normal text-slate-400">
-563 |                     (автозаповнення)
-564 |                   </span>
-565 |                 </label>
-566 |                 {matchedContacts.length > 0 && (
-567 |                   <div className="flex flex-wrap gap-1.5 mb-3">
-568 |                     {matchedContacts.map((c, i) => (
-569 |                       <button
-570 |                         key={i}
-571 |                         type="button"
-572 |                         onClick={() =>
-573 |                           setForm((f) => ({
-574 |                             ...f,
-575 |                             director: c.contactName,
-576 |                             phone: c.phone,
-577 |                           }))
-578 |                         }
-579 |                         className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${form.director === c.contactName ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
-580 |                       >
-581 |                         {c.role ? `${c.role}: ` : ""}
-582 |                         {c.contactName}
-583 |                       </button>
-584 |                     ))}
-585 |                   </div>
-586 |                 )}
-587 |                 <input
-588 |                   type="text"
-589 |                   value={form.director}
-590 |                   onChange={(e) =>
-591 |                     setForm({ ...form, director: e.target.value })
-592 |                   }
-593 |                   placeholder="Микола Петренко"
-594 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
-595 |                 />
-596 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
-597 |                   Телефон
-598 |                 </label>
-599 |                 <input
-600 |                   type="text"
-601 |                   value={form.phone}
-602 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-603 |                   placeholder="0671234567"
-604 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-605 |                 />
-606 |               </div>
-607 | 
-608 |               <div className="flex gap-3 mt-4">
-609 |                 <button
-610 |                   type="button"
-611 |                   onClick={() => setIsModalOpen(false)}
-612 |                   className="flex-1 px-5 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors"
-613 |                 >
-614 |                   Скасувати
-615 |                 </button>
-616 |                 <button
-617 |                   type="submit"
-618 |                   disabled={isSubmitting}
-619 |                   className="flex-1 px-5 py-3.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
-620 |                 >
-621 |                   {isSubmitting ? "Збереження..." : "Створити"}
-622 |                 </button>
-623 |               </div>
-624 |             </form>
-625 |           </div>
-626 |         </div>
-627 |       )}
-628 |     </div>
-629 |   );
-630 | }
-631 | 
+  0 | import { useState, useRef, useMemo, useCallback, lazy, Suspense } from "react";
+  1 | import { api } from "../config/api";
+  2 | import { useSelectedCity } from "../context/CityContext";
+  3 | import {
+  4 |   useSchools,
+  5 |   useDeleteSchool,
+  6 |   usePrefetchSchool,
+  7 |   useCities,
+  8 | } from "../hooks/useApi";
+  9 | import { useQueryClient } from "@tanstack/react-query";
+ 10 | import VirtualSchoolList from "../components/VirtualSchoolList";
+ 11 | import { SchoolCard } from "../components/schools/SchoolMobileList";
+ 12 | 
+ 13 | import {
+ 14 |   classifySchool,
+ 15 |   classifySize,
+ 16 | } from "../components/schools/schoolUtils";
+ 17 | 
+ 18 | const StatsBar = lazy(() => import("../components/schools/StatsBar"));
+ 19 | const VirtualDesktopTable = lazy(
+ 20 |   () => import("../components/schools/VirtualDesktopTable"),
+ 21 | );
+ 22 | // SchoolCard імпортується напряму — він легкий і потрібен одразу
+ 23 | export const PIPELINE_STAGES = [
+ 24 |   { key: "BASE", name: "Новий заклад" },
+ 25 |   { key: "FIRST_CONTACT", name: "Знайомство" },
+ 26 |   { key: "DATE_CONFIRMED", name: "Підтвердження дати" },
+ 27 |   { key: "PREPARATION", name: "Оголошення" },
+ 28 |   { key: "IN_PROGRESS", name: "Підготовка" },
+ 29 |   { key: "DONE", name: "Проведення заходу" },
+ 30 |   { key: "REPORT", name: "Звіт" },
+ 31 | ];
+ 32 | 
+ 33 | interface City {
+ 34 |   id: string;
+ 35 |   name: string;
+ 36 | }
+ 37 | 
+ 38 | export default function Schools() {
+ 39 |   const { selectedCity } = useSelectedCity();
+ 40 |   const [isModalOpen, setIsModalOpen] = useState(false);
+ 41 |   const [isSubmitting, setIsSubmitting] = useState(false);
+ 42 |   const [searchQuery, setSearchQuery] = useState("");
+ 43 |   const qc = useQueryClient();
+ 44 |   const [form, setForm] = useState({
+ 45 |     name: "",
+ 46 |     cityId: "",
+ 47 |     sourceUrl: "",
+ 48 |     director: "",
+ 49 |     phone: "",
+ 50 |   });
+ 51 |   const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
+ 52 |   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+ 53 |   const [sizeFilter, setSizeFilter] = useState<string | null>(null);
+ 54 |   const [suggestions, setSuggestions] = useState<
+ 55 |     { name: string; url: string }[]
+ 56 |   >([]);
+ 57 |   const [showSuggestions, setShowSuggestions] = useState(false);
+ 58 |   const [isSearching, setIsSearching] = useState(false);
+ 59 |   const [isImporting, setIsImporting] = useState(false);
+ 60 |   const [dotCount, setDotCount] = useState(3);
+ 61 |   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+ 62 | 
+ 63 |   const { data: schools = [], isLoading } = useSchools();
+ 64 |   const deleteSchool = useDeleteSchool();
+ 65 |   const prefetchSchool = usePrefetchSchool();
+ 66 | 
+ 67 |   const { data: citiesData = [] } = useCities();
+ 68 | 
+ 69 |   const handleOpenModal = useCallback(() => {
+ 70 |     setForm({
+ 71 |       name: "",
+ 72 |       cityId: selectedCity.id || cities[0]?.id || "",
+ 73 |       sourceUrl: "",
+ 74 |       director: "",
+ 75 |       phone: "",
+ 76 |     });
+ 77 |     setMatchedContacts([]);
+ 78 |     setIsModalOpen(true);
+ 79 |   }, [selectedCity.id, cities]);
+ 80 | 
+ 81 |   const fetchContacts = async (schoolName: string) => {
+ 82 |     if (!schoolName || schoolName.trim().length < 1)
+ 83 |       return setMatchedContacts([]);
+ 84 |     const currentCityName =
+ 85 |       selectedCity.name || cities.find((c) => c.id === form.cityId)?.name || "";
+ 86 |     if (currentCityName.toLowerCase() !== "львів")
+ 87 |       return setMatchedContacts([]);
+ 88 |     try {
+ 89 |       const res = await api.get(
+ 90 |         `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=Школа`,
+ 91 |         {
+ 92 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+ 93 |         },
+ 94 |       );
+ 95 |       setMatchedContacts(res.data);
+ 96 |       if (res.data.length > 0) {
+ 97 |         const director =
+ 98 |           res.data.find(
+ 99 |             (c: any) =>
+100 |               c.role?.includes("Директор") || c.role?.includes("Завідувач"),
+101 |           ) || res.data[0];
+102 |         setForm((f) => ({
+103 |           ...f,
+104 |           director: director.contactName,
+105 |           phone: director.phone,
+106 |         }));
+107 |       }
+108 |     } catch (e) {
+109 |       console.error(e);
+110 |     }
+111 |   };
+112 | 
+113 |   const handleNameChange = (value: string) => {
+114 |     setForm({ ...form, name: value });
+115 |     if (debounceTimer.current) clearTimeout(debounceTimer.current);
+116 |     if (value.length < 2) {
+117 |       setShowSuggestions(false);
+118 |       setIsSearching(false);
+119 |       setMatchedContacts([]);
+120 |       return;
+121 |     }
+122 |     setIsSearching(true);
+123 |     setShowSuggestions(true);
+124 |     debounceTimer.current = setTimeout(async () => {
+125 |       try {
+126 |         const [externalRes] = await Promise.all([
+127 |           api.get(`/schools/search?q=${value}&type=Школа`, {
+128 |             headers: {
+129 |               Authorization: `Bearer ${localStorage.getItem("token")}`,
+130 |             },
+131 |           }),
+132 |           fetchContacts(value),
+133 |         ]);
+134 |         setSuggestions(externalRes.data);
+135 |       } catch (e) {
+136 |         console.error(e);
+137 |       } finally {
+138 |         setIsSearching(false);
+139 |       }
+140 |     }, 400);
+141 |   };
+142 | 
+143 |   const handleSelectSuggestion = (name: string, url: string) => {
+144 |     setForm({ ...form, name, sourceUrl: url });
+145 |     setShowSuggestions(false);
+146 |     fetchContacts(name);
+147 |   };
+148 | 
+149 |   const handleAddSchool = async (e: React.FormEvent) => {
+150 |     e.preventDefault();
+151 |     if (!form.name.trim() || !form.cityId) return;
+152 |     setIsSubmitting(true);
+153 |     try {
+154 |       await api.post(
+155 |         "/schools",
+156 |         { ...form, type: "Школа" },
+157 |         {
+158 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+159 |         },
+160 |       );
+161 |       setIsModalOpen(false);
+162 |       // кеш інвалідується через useAddSchool або вручну:
+163 |       qc.invalidateQueries({ queryKey: ["schools"] });
+164 |     } catch (e) {
+165 |       alert("Не вдалося створити заклад");
+166 |     } finally {
+167 |       setIsSubmitting(false);
+168 |     }
+169 |   };
+170 | 
+171 |   const handleDeleteSchool = useCallback(
+172 |     async (e: React.MouseEvent, schoolId: string, schoolName: string) => {
+173 |       e.stopPropagation();
+174 |       if (
+175 |         !window.confirm(
+176 |           `Видалити школу "${schoolName}"? Це видалить також усі її події.`,
+177 |         )
+178 |       )
+179 |         return;
+180 |       await deleteSchool.mutateAsync(schoolId);
+181 |     },
+182 |     [deleteSchool],
+183 |   );
+184 | 
+185 |   const [debouncedSearch, setDebouncedSearch] = useState("");
+186 | 
+187 |   useEffect(() => {
+188 |     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 200);
+189 |     return () => clearTimeout(timer);
+190 |   }, [searchQuery]);
+191 | 
+192 |   const baseFiltered = useMemo(
+193 |     () =>
+194 |       schools.filter((s) => {
+195 |         const isCityMatch = selectedCity.id
+196 |           ? s.cityId === selectedCity.id
+197 |           : true;
+198 |         const isFilterMatch = activeFilter
+199 |           ? classifySchool(s) === activeFilter
+200 |           : true;
+201 |         const isSizeMatch = sizeFilter
+202 |           ? classifySize(s, "Школа") === sizeFilter
+203 |           : true;
+204 |         return (
+205 |           isCityMatch && s.type === "Школа" && isFilterMatch && isSizeMatch
+206 |         );
+207 |       }),
+208 |     [schools, selectedCity.id, activeFilter, sizeFilter],
+209 |   );
+210 | 
+211 |   const filteredSchools = useMemo(() => {
+212 |     if (!debouncedSearch.trim()) return baseFiltered;
+213 |     const q = debouncedSearch.toLowerCase().trim();
+214 |     return baseFiltered.filter(
+215 |       (s) =>
+216 |         s.name?.toLowerCase().includes(q) ||
+217 |         s.city?.name?.toLowerCase().includes(q) ||
+218 |         s.director?.toLowerCase().includes(q) ||
+219 |         s.address?.toLowerCase().includes(q),
+220 |     );
+221 |   }, [baseFiltered, debouncedSearch]);
+222 | 
+223 |   return (
+224 |     <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-slate-50 min-h-screen">
+225 |       {/* Шапка */}
+226 |       <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
+227 |         <div className="min-w-0">
+228 |           <h1 className="text-xl font-bold text-slate-800 leading-tight">
+229 |             Школи
+230 |             {selectedCity.id && (
+231 |               <span className="ml-2 text-sm font-normal text-blue-500">
+232 |                 · {selectedCity.name}
+233 |               </span>
+234 |             )}
+235 |           </h1>
+236 |         </div>
+237 |         <div className="flex gap-2 shrink-0">
+238 |           <button
+239 |             onClick={async () => {
+240 |               if (!selectedCity.id) return alert("Спочатку оберіть місто");
+241 |               if (
+242 |                 !window.confirm(
+243 |                   `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`,
+244 |                 )
+245 |               )
+246 |                 return;
+247 |               setIsImporting(true);
+248 |               setDotCount(3);
+249 |               const dotInterval = setInterval(() => {
+250 |                 setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
+251 |               }, 500);
+252 |               try {
+253 |                 const res = await api.post(
+254 |                   "/schools/bulk-import",
+255 |                   { cityId: selectedCity.id, type: "Школа" },
+256 |                   {
+257 |                     headers: {
+258 |                       Authorization: `Bearer ${localStorage.getItem("token")}`,
+259 |                     },
+260 |                     timeout: 120000,
+261 |                   },
+262 |                 );
+263 |                 alert(
+264 |                   `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
+265 |                 );
+266 |                 qc.invalidateQueries({ queryKey: ["schools"] });
+267 |               } catch (e) {
+268 |                 alert("Помилка імпорту.");
+269 |               } finally {
+270 |                 clearInterval(dotInterval);
+271 |                 setIsImporting(false);
+272 |               }
+273 |             }}
+274 |             disabled={isImporting}
+275 |             className="md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
+276 |           >
+277 |             {isImporting ? (
+278 |               <span className="font-medium">
+279 |                 Імпортую{"·".repeat(dotCount)}
+280 |               </span>
+281 |             ) : (
+282 |               <>📥 Імпорт з isuo</>
+283 |             )}
+284 |           </button>
+285 |           <button
+286 |             onClick={handleOpenModal}
+287 |             className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+288 |           >
+289 |             + Додати
+290 |           </button>
+291 |         </div>
+292 |       </div>
+293 | 
+294 |       {/* StatsBar */}
+295 |       <div className="shrink-0">
+296 |         <Suspense
+297 |           fallback={
+298 |             <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
+299 |           }
+300 |         >
+301 |           <StatsBar
+302 |             schools={schools.filter(
+303 |               (s) =>
+304 |                 (selectedCity.id ? s.cityId === selectedCity.id : true) &&
+305 |                 s.type === "Школа",
+306 |             )}
+307 |             activeFilter={activeFilter}
+308 |             onFilterChange={setActiveFilter}
+309 |             sizeFilter={sizeFilter}
+310 |             onSizeFilterChange={setSizeFilter}
+311 |             schoolType="Школа"
+312 |           />
+313 |         </Suspense>
+314 |       </div>
+315 | 
+316 |       {/* Пошук */}
+317 |       <div className="relative shrink-0 mb-4 mt-2">
+318 |         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+319 |           <svg
+320 |             className="w-5 h-5 text-slate-400"
+321 |             fill="none"
+322 |             stroke="currentColor"
+323 |             viewBox="0 0 24 24"
+324 |           >
+325 |             <path
+326 |               strokeLinecap="round"
+327 |               strokeLinejoin="round"
+328 |               strokeWidth={2}
+329 |               d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
+330 |             />
+331 |           </svg>
+332 |         </div>
+333 |         <input
+334 |           type="text"
+335 |           value={searchQuery}
+336 |           onChange={(e) => setSearchQuery(e.target.value)}
+337 |           placeholder="Пошук за назвою, директором, адресою..."
+338 |           className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border-none sm:border sm:border-slate-200 rounded-2xl sm:rounded-xl text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition"
+339 |         />
+340 |         {searchQuery && (
+341 |           <button
+342 |             onClick={() => setSearchQuery("")}
+343 |             className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600 transition"
+344 |           >
+345 |             <svg
+346 |               className="w-5 h-5"
+347 |               fill="none"
+348 |               stroke="currentColor"
+349 |               viewBox="0 0 24 24"
+350 |             >
+351 |               <path
+352 |                 strokeLinecap="round"
+353 |                 strokeLinejoin="round"
+354 |                 strokeWidth={2}
+355 |                 d="M6 18L18 6M6 6l12 12"
+356 |               />
+357 |             </svg>
+358 |           </button>
+359 |         )}
+360 |       </div>
+361 | 
+362 |       {/* Лічильник */}
+363 |       <p className="text-xs font-semibold text-slate-400 mb-4 shrink-0 uppercase tracking-wide px-1">
+364 |         {filteredSchools.length === baseFiltered.length
+365 |           ? `${baseFiltered.length} шкіл`
+366 |           : `${filteredSchools.length} з ${baseFiltered.length} шкіл`}
+367 |         {(activeFilter || sizeFilter) && (
+368 |           <button
+369 |             onClick={() => {
+370 |               setActiveFilter(null);
+371 |               setSizeFilter(null);
+372 |             }}
+373 |             className="ml-3 text-blue-500 hover:text-blue-700 lowercase"
+374 |           >
+375 |             скинути фільтри
+376 |           </button>
+377 |         )}
+378 |       </p>
+379 | 
+380 |       {/* Компоненти списків */}
+381 |       {isLoading ? (
+382 |         <div className="flex flex-col gap-2.5 flex-1">
+383 |           {Array.from({ length: 8 }).map((_, i) => (
+384 |             <div
+385 |               key={i}
+386 |               className="bg-white rounded-2xl border border-slate-100 p-3.5 animate-pulse"
+387 |               style={{ opacity: 1 - i * 0.1 }}
+388 |             >
+389 |               <div className="h-4 bg-slate-200 rounded-lg w-3/4 mb-3" />
+390 |               <div className="flex justify-between">
+391 |                 <div className="h-3 bg-slate-100 rounded-lg w-1/3" />
+392 |                 <div className="h-3 bg-slate-100 rounded-lg w-1/4" />
+393 |               </div>
+394 |             </div>
+395 |           ))}
+396 |         </div>
+397 |       ) : (
+398 |         <>
+399 |           {/* Мобільний: віртуалізований список карток */}
+400 |           <div className="md:hidden flex-1 w-full overflow-hidden">
+401 |             <VirtualSchoolList
+402 |               schools={filteredSchools}
+403 |               itemHeight={110}
+404 |               renderItem={(school, index) => (
+405 |                  <div className="pb-2.5" onMouseEnter={() => prefetchSchool(school.id)}>
+406 |                   <SchoolCard
+407 |                     school={school}
+408 |                     index={index}
+409 |                     onDelete={handleDeleteSchool}
+410 |                     stages={PIPELINE_STAGES}
+411 |                   />
+412 |                 </div>
+413 |               )}
+414 |             />
+415 |           </div>
+416 | 
+417 |           {/* Десктоп: таблиця з віртуалізованим tbody */}
+418 |           <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
+419 |             <Suspense
+420 |               fallback={<div className="flex-1 animate-pulse bg-slate-50" />}
+421 |             >
+422 |               <VirtualDesktopTable
+423 |                 schools={filteredSchools}
+424 |                 searchQuery={searchQuery}
+425 |                 onDelete={handleDeleteSchool}
+426 |                 stages={PIPELINE_STAGES}
+427 |               />
+428 |             </Suspense>
+429 |           </div>
+430 |         </>
+431 |       )}
+432 | 
+433 |       {/* Мобільна плаваюча кнопка FAB */}
+434 |       <button
+435 |         onClick={handleOpenModal}
+436 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
+437 |       >
+438 |         +
+439 |       </button>
+440 | 
+441 |       {/* Модальне вікно */}
+442 |       {isModalOpen && (
+443 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+444 |           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+445 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+446 |               <h3 className="text-xl font-bold text-slate-800">Нова школа</h3>
+447 |               <button
+448 |                 onClick={() => setIsModalOpen(false)}
+449 |                 className="text-slate-400 hover:text-slate-600 p-2 -mr-2 leading-none text-xl"
+450 |               >
+451 |                 ✕
+452 |               </button>
+453 |             </div>
+454 | 
+455 |             <form
+456 |               onSubmit={handleAddSchool}
+457 |               className="p-6 flex flex-col gap-4 overflow-y-auto"
+458 |             >
+459 |               <div className="relative">
+460 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
+461 |                   Назва школи
+462 |                 </label>
+463 |                 <input
+464 |                   type="text"
+465 |                   value={form.name}
+466 |                   onChange={(e) => handleNameChange(e.target.value)}
+467 |                   onBlur={() =>
+468 |                     setTimeout(() => setShowSuggestions(false), 150)
+469 |                   }
+470 |                   placeholder="Наприклад: Школа №1"
+471 |                   required
+472 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+473 |                 />
+474 |                 {showSuggestions && (
+475 |                   <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto overflow-hidden">
+476 |                     {isSearching ? (
+477 |                       <li className="px-4 py-3 text-sm text-slate-400 italic">
+478 |                         Пошук...
+479 |                       </li>
+480 |                     ) : suggestions.length > 0 ? (
+481 |                       suggestions.map((s, i) => (
+482 |                         <li
+483 |                           key={i}
+484 |                           onMouseDown={() =>
+485 |                             handleSelectSuggestion(s.name, s.url)
+486 |                           }
+487 |                           className="px-4 py-3 text-sm hover:bg-blue-50 cursor-pointer font-medium border-b border-slate-50 last:border-0"
+488 |                         >
+489 |                           {s.name}
+490 |                         </li>
+491 |                       ))
+492 |                     ) : (
+493 |                       <li className="px-4 py-3 text-sm text-slate-400 italic">
+494 |                         Нічого не знайдено
+495 |                       </li>
+496 |                     )}
+497 |                   </ul>
+498 |                 )}
+499 |               </div>
+500 | 
+501 |               {!selectedCity.id && (
+502 |                 <div>
+503 |                   <label className="block text-sm font-medium text-slate-600 mb-1.5">
+504 |                     Місто
+505 |                   </label>
+506 |                   <select
+507 |                     value={form.cityId}
+508 |                     onChange={(e) =>
+509 |                       setForm({ ...form, cityId: e.target.value })
+510 |                     }
+511 |                     required
+512 |                     className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+513 |                   >
+514 |                     <option value="">— Оберіть місто —</option>
+515 |                     {cities.map((c) => (
+516 |                       <option key={c.id} value={c.id}>
+517 |                         {c.name}
+518 |                       </option>
+519 |                     ))}
+520 |                   </select>
+521 |                 </div>
+522 |               )}
+523 | 
+524 |               <div>
+525 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
+526 |                   Контакт{" "}
+527 |                   <span className="ml-1 text-xs font-normal text-slate-400">
+528 |                     (автозаповнення)
+529 |                   </span>
+530 |                 </label>
+531 |                 {matchedContacts.length > 0 && (
+532 |                   <div className="flex flex-wrap gap-1.5 mb-3">
+533 |                     {matchedContacts.map((c, i) => (
+534 |                       <button
+535 |                         key={i}
+536 |                         type="button"
+537 |                         onClick={() =>
+538 |                           setForm((f) => ({
+539 |                             ...f,
+540 |                             director: c.contactName,
+541 |                             phone: c.phone,
+542 |                           }))
+543 |                         }
+544 |                         className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${form.director === c.contactName ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+545 |                       >
+546 |                         {c.role ? `${c.role}: ` : ""}
+547 |                         {c.contactName}
+548 |                       </button>
+549 |                     ))}
+550 |                   </div>
+551 |                 )}
+552 |                 <input
+553 |                   type="text"
+554 |                   value={form.director}
+555 |                   onChange={(e) =>
+556 |                     setForm({ ...form, director: e.target.value })
+557 |                   }
+558 |                   placeholder="Микола Петренко"
+559 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+560 |                 />
+561 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
+562 |                   Телефон
+563 |                 </label>
+564 |                 <input
+565 |                   type="text"
+566 |                   value={form.phone}
+567 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
+568 |                   placeholder="0671234567"
+569 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+570 |                 />
+571 |               </div>
+572 | 
+573 |               <div className="flex gap-3 mt-4">
+574 |                 <button
+575 |                   type="button"
+576 |                   onClick={() => setIsModalOpen(false)}
+577 |                   className="flex-1 px-5 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+578 |                 >
+579 |                   Скасувати
+580 |                 </button>
+581 |                 <button
+582 |                   type="submit"
+583 |                   disabled={isSubmitting}
+584 |                   className="flex-1 px-5 py-3.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+585 |                 >
+586 |                   {isSubmitting ? "Збереження..." : "Створити"}
+587 |                 </button>
+588 |               </div>
+589 |             </form>
+590 |           </div>
+591 |         </div>
+592 |       )}
+593 |     </div>
+594 |   );
+595 | }
+596 | 
 ```
 
 ### File: apps/frontend/src/types/index.ts
