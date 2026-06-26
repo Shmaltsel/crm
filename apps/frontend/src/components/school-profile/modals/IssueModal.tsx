@@ -24,40 +24,34 @@ export default function IssueModal({
   const [message, setMessage] = useState('');
   const [deadline, setDeadline] = useState('');
   const [assignedUserId, setAssignedUserId] = useState('');
-  const [isSending, setIsSending] = useState(false);
   const [sent, setSent] = useState(false);
 
   if (!isOpen) return null;
 
   const assignedUser = employees.find(e => e.id === assignedUserId);
 
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!message.trim()) return;
-    setIsSending(true);
-    try {
-      await api.post('/issues', {
-        eventId,
-        schoolName,
-        eventName,
-        message,
-        cityId,
-        deadline: deadline || undefined,
-        assignedUserId: assignedUserId || undefined,
-        assignedUserName: assignedUser?.name || undefined,
-      });
-      setSent(true);
-      setTimeout(() => {
-        setSent(false);
-        setMessage('');
-        setDeadline('');
-        setAssignedUserId('');
-        onClose();
-      }, 1500);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSending(false);
-    }
+    setSent(true);
+    // закриваємо через 600мс щоб користувач побачив ✓
+    setTimeout(() => {
+      setSent(false);
+      setMessage('');
+      setDeadline('');
+      setAssignedUserId('');
+      onClose();
+    }, 600);
+    // запит у фоні
+    api.post('/issues', {
+      eventId,
+      schoolName,
+      eventName,
+      message,
+      cityId,
+      deadline: deadline || undefined,
+      assignedUserId: assignedUserId || undefined,
+      assignedUserName: assignedUser?.name || undefined,
+    }).catch((e) => console.error(e));
   };
 
   return createPortal(
@@ -143,7 +137,7 @@ export default function IssueModal({
             <button
               type="button"
               onClick={handleSend}
-              disabled={isSending || !message.trim()}
+              disabled={sent || !message.trim()}
               className="flex-1 bg-red-600 text-white py-3 rounded-xl font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
             >
               {sent ? '✓ Надіслано!' : isSending ? 'Відправка...' : 'Відправити'}

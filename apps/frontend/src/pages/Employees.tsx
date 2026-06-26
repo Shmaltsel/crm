@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUsers, useProjects, useCreateUser, useUpdateUser, useDeleteUser, useCreateProject, useDeleteProject } from "../hooks/useEmployees";
+import {
+  useUsers,
+  useProjects,
+  useCreateUser,
+  useUpdateUser,
+  useDeleteUser,
+  useCreateProject,
+  useDeleteProject,
+} from "../hooks/useEmployees";
 import { useCities } from "../hooks/useCities";
 import PhoneLink from "../components/PhoneLink";
 import { useSelectedCity } from "../context/CityContext";
@@ -158,20 +166,12 @@ export default function Employees() {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.fullName.trim()) return;
-    setIsSubmitting(true);
-    try {
-      if (editingUser)
-        await updateUser.mutateAsync({ id: editingUser.id, form });
-      else await createUser.mutateAsync(form);
-      setIsModalOpen(false);
-    } catch (e) {
-      alert("Помилка збереження. Перевірте, чи не дублюється email.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    setIsModalOpen(false); // закриваємо одразу
+    if (editingUser) updateUser.mutate({ id: editingUser.id, form });
+    else createUser.mutate(form);
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -183,18 +183,14 @@ export default function Employees() {
     }
   };
 
-  const handleCreateProject = async (e: React.FormEvent) => {
+  const handleCreateProject = (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectForm.name.trim()) return;
-    try {
-      await createProject.mutateAsync(projectForm);
-      setIsProjectModalOpen(false);
-      setProjectForm({ name: "", color: "blue" });
-    } catch (e) {
-      alert("Помилка. Можливо такий вид події вже існує.");
-    }
+    setIsProjectModalOpen(false);
+    setProjectForm({ name: "", color: "blue" });
+    createProject.mutate(projectForm);
   };
-
+  
   const handleDeleteProject = async (id: string, name: string) => {
     if (
       !window.confirm(

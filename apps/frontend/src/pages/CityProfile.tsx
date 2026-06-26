@@ -26,25 +26,16 @@ export default function CityProfile() {
     driverId: "",
   });
 
-  const handleCreateCrew = async (e: React.FormEvent) => {
+  const handleCreateCrew = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!crewForm.hostId || !crewForm.driverId)
-      return alert("Оберіть ведучого та водія!");
-    try {
-      await createCrew.mutateAsync(crewForm);
-      setIsCreateCrewModalOpen(false);
-    } catch (err) {
-      console.error(err);
-    }
+    if (!crewForm.hostId || !crewForm.driverId) return alert("Оберіть ведучого та водія!");
+    setIsCreateCrewModalOpen(false); // закриваємо одразу
+    createCrew.mutate(crewForm);
   };
 
-  const handleDeleteCrew = async (crewId: string) => {
+  const handleDeleteCrew = (crewId: string) => {
     if (!window.confirm("Видалити екіпаж?")) return;
-    try {
-      await deleteCrew.mutateAsync(crewId);
-    } catch (err) {
-      console.error(err);
-    }
+    deleteCrew.mutate(crewId); // UI оновлюється миттєво через onMutate
   };
 
   if (isLoading)
