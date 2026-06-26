@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { useParams } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   useSchool,
   useSchoolEvents,
@@ -323,7 +324,7 @@ export default function SchoolProfile() {
         eventId: currentEvent.id,
         crewId,
       });
-      await updatePreparation.mutateAsync({
+      return updatePreparation.mutateAsync({
         eventId: currentEvent.id,
         field: "assignCrew",
         status: "Виконано",
@@ -343,111 +344,11 @@ export default function SchoolProfile() {
     }));
     setIsEventModalOpen(true);
   }, [schoolData]);
-  if (schoolLoading || eventsLoading)
-    return (
-      <div className="p-4 md:p-8 bg-slate-50 min-h-screen animate-pulse">
-        {/* Хлібні крихти + заголовок */}
-        <div className="mb-6">
-          <div className="h-3 w-48 bg-slate-200 rounded mb-4" />
-          <div className="flex justify-between items-center">
-            <div className="h-8 w-72 bg-slate-200 rounded-xl" />
-            <div className="hidden md:flex gap-3">
-              <div className="h-9 w-28 bg-slate-200 rounded-lg" />
-              <div className="h-9 w-32 bg-slate-200 rounded-lg" />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col xl:flex-row gap-6">
-          {/* Ліва колонка */}
-          <div className="w-full xl:w-80 flex flex-col gap-6">
-            {/* SchoolInfoCard */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="flex gap-3 mb-4 last:mb-0">
-                  <div className="w-5 h-5 bg-slate-200 rounded-full shrink-0 mt-0.5" />
-                  <div className="flex gap-2 flex-1">
-                    <div className="h-4 w-16 bg-slate-200 rounded" />
-                    <div className="h-4 bg-slate-100 rounded flex-1" />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* HistoryTimeline */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-              <div className="flex justify-between mb-5">
-                <div className="h-5 w-36 bg-slate-200 rounded" />
-                <div className="h-7 w-24 bg-slate-100 rounded-lg" />
-              </div>
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="pl-8 relative">
-                    <div className="absolute left-1.5 top-3 w-3 h-3 rounded-full bg-slate-200" />
-                    <div className="h-4 w-40 bg-slate-200 rounded mb-2" />
-                    <div className="h-3 w-full bg-slate-100 rounded" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Права колонка */}
-          <div className="flex-1 flex flex-col gap-6">
-            {/* Pipeline */}
-            <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
-              <div className="flex justify-between items-center">
-                {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-                  <div
-                    key={i}
-                    className="flex flex-col items-center gap-2 flex-1"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-slate-200" />
-                    <div className="h-3 w-10 bg-slate-100 rounded" />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* EventDetails */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 md:p-6">
-              <div className="flex justify-between mb-5">
-                <div className="h-5 w-28 bg-slate-200 rounded" />
-                <div className="hidden md:flex gap-2">
-                  <div className="h-7 w-24 bg-slate-200 rounded-lg" />
-                  <div className="h-7 w-24 bg-slate-200 rounded-lg" />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="flex gap-2">
-                    <div className="h-4 w-24 bg-slate-200 rounded shrink-0" />
-                    <div className="h-4 bg-slate-100 rounded flex-1" />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* EventsTable */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-slate-100">
-                <div className="h-5 w-32 bg-slate-200 rounded" />
-              </div>
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-4 p-4 border-b border-slate-50 last:border-0"
-                >
-                  <div className="h-4 w-24 bg-slate-200 rounded" />
-                  <div className="h-4 w-32 bg-slate-100 rounded flex-1" />
-                  <div className="h-6 w-20 bg-slate-100 rounded-full" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  const stagger = (i: number) => ({
+    initial: { opacity: 0, y: 10 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.3, delay: 0.1 + i * 0.07, ease: "easeOut" },
+  });
 
   return (
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8">
@@ -461,38 +362,64 @@ export default function SchoolProfile() {
       />
 
       <div className="flex flex-col xl:flex-row gap-6">
+        {/* Ліва колонка */}
         <div className="w-full xl:w-80 flex flex-col gap-6">
-          <SchoolInfoCard schoolData={schoolData} />
-          {currentEvent && currentStageIndex >= 1 && (
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 transition-all duration-500">
-              <h3 className="font-bold text-slate-800 mb-4">
-                Відповідальна особа
-              </h3>
-              <ul className="space-y-2 text-sm">
-                <li className="flex justify-between">
-                  <span className="text-slate-500">Остання дія:</span>{" "}
-                  <span className="font-medium text-blue-600">
-                    {creatorName}
-                  </span>
-                </li>
-              </ul>
-            </div>
-          )}
-          <Suspense
-            fallback={
-              <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-            }
-          >
-            <HistoryTimeline
-              currentEvent={eventFullLoading ? currentEventBase : currentEvent}
-              onHistoryClick={handleHistoryClick}
-              onAddCommentClick={handleAddCommentClick}
-            />
-          </Suspense>
+          <motion.div {...stagger(0)}>
+            <SchoolInfoCard schoolData={schoolData} />
+          </motion.div>
+
+          <AnimatePresence>
+            {currentEvent && currentStageIndex >= 1 && (
+              <motion.div
+                key="responsible"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+                className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
+              >
+                <h3 className="font-bold text-slate-800 mb-4">
+                  Відповідальна особа
+                </h3>
+                <ul className="space-y-2 text-sm">
+                  <li className="flex justify-between">
+                    <span className="text-slate-500">Остання дія:</span>
+                    <span className="font-medium text-blue-600">
+                      {creatorName}
+                    </span>
+                  </li>
+                </ul>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <motion.div {...stagger(1)}>
+            <Suspense
+              fallback={
+                <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+              }
+            >
+              <HistoryTimeline
+                currentEvent={
+                  eventFullLoading ? currentEventBase : currentEvent
+                }
+                onHistoryClick={handleHistoryClick}
+                onAddCommentClick={handleAddCommentClick}
+              />
+            </Suspense>
+          </motion.div>
         </div>
 
-        <div
-          className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${exitingEventId === currentEvent?.id ? "opacity-0 scale-95 -translate-y-4 pointer-events-none" : "opacity-100 scale-100 translate-y-0"}`}
+        {/* Права колонка */}
+        <motion.div
+          className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${
+            exitingEventId === currentEvent?.id
+              ? "opacity-0 scale-95 -translate-y-4 pointer-events-none"
+              : ""
+          }`}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.15 }}
         >
           {currentEvent && (
             <Suspense
@@ -509,47 +436,61 @@ export default function SchoolProfile() {
             </Suspense>
           )}
 
-          {currentEvent && currentStageIndex >= 4 && (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              {eventFullLoading ? (
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-pulse h-48" />
-              ) : (
-                <EventPreparation
-                  data={currentEvent.preparation || {}}
-                  onUpdate={handleUpdatePreparation}
-                  onOpenCrewModal={() => setIsCrewModalOpen(true)}
-                />
-              )}
-              <AssignedCrew currentEvent={currentEvent} employees={users} />
-            </div>
-          )}
+          <AnimatePresence>
+            {currentEvent && currentStageIndex >= 4 && (
+              <motion.div
+                key="preparation"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+                className="grid grid-cols-1 xl:grid-cols-2 gap-6"
+              >
+                {eventFullLoading ? (
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-pulse h-48" />
+                ) : (
+                  <EventPreparation
+                    data={currentEvent.preparation || {}}
+                    onUpdate={handleUpdatePreparation}
+                    onOpenCrewModal={() => setIsCrewModalOpen(true)}
+                  />
+                )}
+                <AssignedCrew currentEvent={currentEvent} employees={users} />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          <Suspense
-            fallback={
-              <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
-            }
-          >
-            <EventDetails
-              currentEvent={currentEvent}
-              schoolName={schoolData.name}
-              cityId={schoolData.cityId}
-              onEventUpdated={() =>
+          <motion.div {...stagger(2)}>
+            <Suspense
+              fallback={
+                <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
+              }
+            >
+              <EventDetails
+                currentEvent={currentEvent}
+                schoolName={schoolData.name}
+                cityId={schoolData.cityId}
+                onEventUpdated={() =>
+                  qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
+                }
+              />
+            </Suspense>
+          </motion.div>
+
+          <motion.div {...stagger(3)}>
+            <EventsTable
+              events={events}
+              selectedEventId={selectedEventId}
+              onEventSelect={setSelectedEventId}
+              onDeleteSuccess={() =>
                 qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
               }
             />
-          </Suspense>
-          <EventsTable
-            events={events}
-            selectedEventId={selectedEventId}
-            onEventSelect={setSelectedEventId}
-            onDeleteSuccess={() =>
-              qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
-            }
-          />
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
 
-      {/* Мобільна FAB для додавання події */}
+      {/* Мобільна FAB */}
       <button
         onClick={openAddEventModal}
         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { api } from '../../../config/api';
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { api } from "../../../config/api";
 
 interface RescheduleModalProps {
   isOpen: boolean;
@@ -18,14 +19,14 @@ export default function RescheduleModal({
   currentTime,
   onSuccess,
 }: RescheduleModalProps) {
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen && currentDate) {
       setDate(currentDate.slice(0, 10));
-      setTime(currentTime || '');
+      setTime(currentTime || "");
     }
   }, [isOpen, currentDate, currentTime]);
 
@@ -38,56 +39,80 @@ export default function RescheduleModal({
       onSuccess();
       onClose();
     } catch (e) {
-      console.error('Помилка перенесення:', e);
+      console.error("Помилка перенесення:", e);
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
-        <div className="p-5 border-b border-slate-100 flex justify-between bg-slate-50">
-          <h3 className="text-lg font-bold text-slate-800">📅 Перенести подію</h3>
-          <button onClick={onClose} className="text-slate-400 p-1">✕</button>
+  return createPortal(
+    <div
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
+      style={{ animation: "fadeIn 0.2s ease-out forwards" }}
+    >
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalScale {
+          from { opacity: 0; transform: scale(0.95) translateY(15px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
+      <div
+        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
+        style={{ animation: "modalScale 0.3s ease-out forwards" }}
+      >
+        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+          <h3 className="text-xl font-bold text-slate-800">
+            📅 Перенести подію
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
+          >
+            ✕
+          </button>
         </div>
-        <div className="p-5 flex flex-col gap-4 overflow-y-auto">
+        <div className="p-6 flex flex-col gap-4">
           <div>
-            <label className="block text-sm mb-1 text-slate-600">Нова дата</label>
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">
+              Нова дата
+            </label>
             <input
               type="date"
               value={date}
-              onChange={e => setDate(e.target.value)}
-              className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm mb-1 text-slate-600">Новий час</label>
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">
+              Новий час
+            </label>
             <input
               type="time"
               value={time}
-              onChange={e => setTime(e.target.value)}
-              className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              onChange={(e) => setTime(e.target.value)}
+              className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
             />
           </div>
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 mt-2">
             <button
               onClick={onClose}
-              className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 font-medium rounded-xl transition-colors"
+              className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors"
             >
               Скасувати
             </button>
             <button
               onClick={handleSave}
               disabled={loading}
-              className="flex-1 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
-              {loading ? 'Збереження...' : 'Зберегти'}
+              {loading ? "Збереження..." : "Зберегти"}
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import PhoneLink from '../PhoneLink';
+import { motion } from "framer-motion";
 
 interface AssignedCrewProps {
   currentEvent: any;
@@ -11,8 +12,11 @@ export default memo(function AssignedCrew({ currentEvent, employees }: AssignedC
 
   if (!crew) {
     return (
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center items-center h-full text-slate-400 min-h-[250px]">
-        <span className="text-4xl mb-3 opacity-50">🚐</span>
+<motion.div
+      whileHover={{ y: -4, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.10)" }}
+      transition={{ duration: 0.2 }}
+      className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center items-center h-full text-slate-400 min-h-[250px]"
+    >        <span className="text-4xl mb-3 opacity-50">🚐</span>
         <p className="font-medium">Екіпаж ще не призначено</p>
         <p className="text-xs mt-1">Виконайте пункт "Призначити екіпаж" зліва</p>
       </div>
@@ -24,7 +28,11 @@ export default memo(function AssignedCrew({ currentEvent, employees }: AssignedC
   const driver = (employees ?? []).find(e => e.id === crew.driverId);
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-full flex flex-col">
+    <motion.div
+      whileHover={{ y: -4, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.10)" }}
+      transition={{ duration: 0.2 }}
+      className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-full flex flex-col"
+    >
       <h3 className="font-bold text-slate-800 mb-4 border-b pb-3 border-slate-100">Призначений екіпаж</h3>
       <div className="space-y-4 text-sm flex-1">
         <div className="flex justify-between items-center">

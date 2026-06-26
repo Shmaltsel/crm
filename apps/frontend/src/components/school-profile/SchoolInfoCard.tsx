@@ -1,18 +1,51 @@
 import { memo } from "react";
 import AddressLink from "../AddressLink";
 import PhoneLink from "../PhoneLink";
+import { motion } from "framer-motion";
 
-export default memo(function SchoolInfoCard({ schoolData }: { schoolData: any }) {
+export default memo(function SchoolInfoCard({
+  schoolData,
+}: {
+  schoolData: any;
+}) {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+    <motion.div
+      whileHover={{ y: -4, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.10)" }}
+      transition={{ duration: 0.2 }}
+      className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
+    >
       <ul className="space-y-4 text-sm">
-        <li className="flex gap-3"><span className="text-slate-400">🏛</span> <div><span className="text-slate-500">Тип:</span> <span className="font-medium">{schoolData.type || '—'}</span></div></li>
-        <li className="flex gap-3"><span className="text-slate-400">📍</span> <div><span className="text-slate-500">Місто:</span> <span className="font-medium">{schoolData.city || '—'}</span></div></li>
-        <li className="flex gap-3"><span className="text-slate-400">🗺</span> <div><span className="text-slate-500">Адреса:</span> <span className="font-medium"><AddressLink address={schoolData.address} /></span></div></li>
-        <li className="flex gap-3"><span className="text-slate-400">👤</span> <div><span className="text-slate-500">Контакт:</span> <span className="font-medium">{schoolData.director || '—'}</span></div></li>
-        <li className="flex gap-3"><span className="text-slate-400">📞</span> <div><span className="text-slate-500">Телефон:</span> <span className="font-medium"><PhoneLink phone={schoolData.phone} /></span></div></li>
-        <li className="flex gap-3"><span className="text-slate-400">👥</span> <div><span className="text-slate-500">Дітей:</span> <span className="font-medium">{schoolData.childrenCount || 0}</span></div></li>
+        {[
+          { icon: "🏛", label: "Тип", value: schoolData.type || "—" },
+          { icon: "📍", label: "Місто", value: schoolData.city || "—" },
+          {
+            icon: "🗺",
+            label: "Адреса",
+            value: <AddressLink address={schoolData.address} />,
+          },
+          { icon: "👤", label: "Контакт", value: schoolData.director || "—" },
+          {
+            icon: "📞",
+            label: "Телефон",
+            value: <PhoneLink phone={schoolData.phone} />,
+          },
+          { icon: "👥", label: "Дітей", value: schoolData.childrenCount || 0 },
+        ].map(({ icon, label, value }, i) => (
+          <motion.li
+            key={label}
+            initial={{ opacity: 0, x: -6 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.25, delay: i * 0.05 }}
+            className="flex gap-3"
+          >
+            <span className="text-slate-400">{icon}</span>
+            <div>
+              <span className="text-slate-500">{label}:</span>{" "}
+              <span className="font-medium">{value}</span>
+            </div>
+          </motion.li>
+        ))}
       </ul>
-    </div>
+    </motion.div>
   );
 });

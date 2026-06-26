@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 interface HistoryTimelineProps {
   currentEvent: any;
   onHistoryClick: (item: any) => void;
@@ -7,7 +8,11 @@ interface HistoryTimelineProps {
 
 export default memo(function HistoryTimeline({ currentEvent, onHistoryClick, onAddCommentClick }: HistoryTimelineProps) {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+    <motion.div
+      whileHover={{ y: -2, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.08)" }}
+      transition={{ duration: 0.2 }}
+      className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col"
+    >
       <div className="flex justify-between items-center mb-5">
         <h3 className="font-bold text-slate-800">Історія взаємодії</h3>
         <button 
@@ -22,9 +27,14 @@ export default memo(function HistoryTimeline({ currentEvent, onHistoryClick, onA
         <p className="text-sm text-slate-400">Історія порожня.</p>
       ) : (
         <div className="space-y-3 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-slate-100">
+          <AnimatePresence initial={false}>
           {currentEvent.history.map((item: any, i: number) => (
-            <div 
-              key={item.id} 
+            <motion.div
+              key={item.id}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              transition={{ duration: 0.22, delay: i * 0.04 }}
               onClick={() => onHistoryClick(item)}
               className="relative pl-8 pr-3 py-2 text-sm hover:bg-slate-50 rounded-xl cursor-pointer transition-colors group border border-transparent hover:border-slate-100"
             >
@@ -42,10 +52,11 @@ export default memo(function HistoryTimeline({ currentEvent, onHistoryClick, onA
                 </span>
                 <span className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-500">✏️ Редагувати</span>
               </p>
-            </div>
+            </motion.div>
           ))}
+          </AnimatePresence>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 });

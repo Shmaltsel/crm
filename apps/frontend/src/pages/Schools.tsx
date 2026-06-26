@@ -63,6 +63,7 @@ export default function Schools() {
   const [isSearching, setIsSearching] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
+  const [dotCount, setDotCount] = useState(3);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchSchools = async () => {
@@ -280,6 +281,10 @@ export default function Schools() {
               )
                 return;
               setIsImporting(true);
+              setDotCount(3);
+              const dotInterval = setInterval(() => {
+                setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
+              }, 500);
               try {
                 const res = await api.post(
                   "/schools/bulk-import",
@@ -298,6 +303,7 @@ export default function Schools() {
               } catch (e) {
                 alert("Помилка імпорту.");
               } finally {
+                clearInterval(dotInterval);
                 setIsImporting(false);
               }
             }}
@@ -305,28 +311,9 @@ export default function Schools() {
             className="md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
           >
             {isImporting ? (
-              <>
-                <svg
-                  className="animate-spin w-4 h-4 shrink-0"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v8z"
-                  />
-                </svg>
-                Імпортую...
-              </>
+              <span className="font-medium">
+                Імпортую{"·".repeat(dotCount)}
+              </span>
             ) : (
               <>📥 Імпорт з isuo</>
             )}

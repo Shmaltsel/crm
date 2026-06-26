@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import AddressLink from "../AddressLink";
 import PhoneLink from "../PhoneLink";
 import IssueModal from "./modals/IssueModal";
@@ -18,9 +19,13 @@ export default function EventDetails({ currentEvent, schoolName, cityId, onEvent
 
   if (!currentEvent) {
     return (
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center h-32 text-slate-400">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center h-32 text-slate-400"
+      >
         У цього закладу ще немає запланованих подій.
-      </div>
+      </motion.div>
     );
   }
 
@@ -28,7 +33,11 @@ export default function EventDetails({ currentEvent, schoolName, cityId, onEvent
 
   return (
     <>
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 md:border-l-4 md:border-l-blue-600 relative">
+      <motion.div
+        whileHover={{ y: -3, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.09)" }}
+        transition={{ duration: 0.2 }}
+        className="bg-white rounded-2xl shadow-sm border border-slate-100 md:border-l-4 md:border-l-blue-600 relative"
+      >
         <div className="p-5 sm:p-6 pl-6 sm:pl-6">
           
           {/* Заголовок */}
@@ -110,7 +119,7 @@ export default function EventDetails({ currentEvent, schoolName, cityId, onEvent
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       <IssueModal
         isOpen={issueOpen}

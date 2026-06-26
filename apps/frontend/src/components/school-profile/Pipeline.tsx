@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { motion } from "framer-motion";
 interface PipelineProps {
   currentStageIndex: number;
   currentEvent: any;
@@ -8,7 +9,11 @@ interface PipelineProps {
 
 export default memo(function Pipeline({ currentStageIndex, currentEvent, onPipelineClick, stages }: PipelineProps) {
   return (
-    <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 w-full">
+    <motion.div
+      whileHover={{ y: -2, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.08)" }}
+      transition={{ duration: 0.2 }}
+      className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 w-full"
+    >
       <h3 className="font-bold text-slate-800 mb-4 md:hidden">Етап події</h3>
       <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0">
         <div className="flex items-start min-w-[600px] justify-between relative">
@@ -21,15 +26,18 @@ export default memo(function Pipeline({ currentStageIndex, currentEvent, onPipel
 
             return (
               <div key={step.id} className="flex flex-col items-center flex-1 z-10 px-1">
-                <button
+                <motion.button
                   onClick={() => isClickable && onPipelineClick(step.id)}
-                  className={`w-8 h-8 md:w-9 md:h-9 shrink-0 rounded-full text-xs font-bold border-2 mb-2 transition-all
+                  whileHover={isClickable ? { scale: 1.15 } : {}}
+                  whileTap={isClickable ? { scale: 0.95 } : {}}
+                  transition={{ duration: 0.15 }}
+                  className={`w-8 h-8 md:w-9 md:h-9 shrink-0 rounded-full text-xs font-bold border-2 mb-2 transition-colors
                     ${isCompleted
                       ? 'border-blue-600 text-blue-600 bg-white'
                       : isActive
                       ? 'border-blue-600 bg-blue-600 text-white shadow-md'
                       : isNext
-                      ? 'border-blue-400 bg-white text-blue-400 cursor-pointer hover:scale-110 hover:border-blue-600 hover:text-blue-600'
+                      ? 'border-blue-400 bg-white text-blue-400 cursor-pointer'
                       : 'border-slate-200 text-slate-400 bg-white cursor-not-allowed opacity-50'
                     }`}
                 >
@@ -44,6 +52,6 @@ export default memo(function Pipeline({ currentStageIndex, currentEvent, onPipel
           })}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 });

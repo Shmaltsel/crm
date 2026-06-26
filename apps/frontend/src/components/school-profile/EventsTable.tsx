@@ -1,6 +1,7 @@
 
 
 import axios from 'axios';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface EventsTableProps {
   events: any[];
@@ -35,9 +36,14 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
 
       {/* Картки — мобільний вигляд */}
       <div className="md:hidden divide-y divide-slate-50">
-        {events.map(ev => (
-          <div
+        <AnimatePresence initial={false}>
+        {events.map((ev, i) => (
+          <motion.div
             key={ev.id}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2, delay: i * 0.04 }}
             onClick={() => onEventSelect(ev.id)}
             className={`flex items-center justify-between gap-3 p-4 transition-colors cursor-pointer ${selectedEventId === ev.id ? 'bg-blue-50/50' : 'active:bg-slate-50'}`}
           >
@@ -54,8 +60,9 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
                 🗑
               </button>
             </div>
-          </div>
+          </motion.div>
         ))}
+        </AnimatePresence>
       </div>
 
       {/* Таблиця — десктоп */}
@@ -70,9 +77,15 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
             </tr>
           </thead>
           <tbody>
-            {events.map(ev => (
-              <tr 
-                key={ev.id} onClick={() => onEventSelect(ev.id)}
+            <AnimatePresence initial={false}>
+            {events.map((ev, i) => (
+              <motion.tr
+                key={ev.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18, delay: i * 0.03 }}
+                onClick={() => onEventSelect(ev.id)}
                 className={`border-b transition-colors cursor-pointer ${selectedEventId === ev.id ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}
               >
                 <td className="p-4 font-medium">{new Date(ev.date).toLocaleDateString()}</td>
@@ -88,6 +101,7 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
                 </td>
               </tr>
             ))}
+            </AnimatePresence>
           </tbody>
         </table>
       </div>
