@@ -182,12 +182,7 @@ export default function Schools() {
     [deleteSchool],
   );
 
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 200);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+  const debouncedSearch = useMemo(() => searchQuery, [searchQuery]);
 
   const baseFiltered = useMemo(
     () =>
