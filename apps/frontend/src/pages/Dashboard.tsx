@@ -1,16 +1,17 @@
+import { Suspense, lazy } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../hooks/useAuth";
-import IssueCarousel from "../components/IssueCarousel";
-import FunnelBar from "../components/dashboard/FunnelBar";
-import TodayEvents from "../components/dashboard/TodayEvents";
-import UpcomingEvents from "../components/dashboard/UpcomingEvents";
-import StaleSchools from "../components/dashboard/StaleSchools";
-import MonthlyKpi from "../components/dashboard/MonthlyKpi";
-import ActivityFeed from "../components/dashboard/ActivityFeed";
-import CitiesTable from "../components/dashboard/CitiesTable";
+const IssueCarousel = lazy(() => import("../components/IssueCarousel"));
+const FunnelBar = lazy(() => import("../components/dashboard/FunnelBar"));
+const TodayEvents = lazy(() => import("../components/dashboard/TodayEvents"));
+const UpcomingEvents = lazy(() => import("../components/dashboard/UpcomingEvents"));
+const StaleSchools = lazy(() => import("../components/dashboard/StaleSchools"));
+const MonthlyKpi = lazy(() => import("../components/dashboard/MonthlyKpi"));
+const ActivityFeed = lazy(() => import("../components/dashboard/ActivityFeed"));
+const CitiesTable = lazy(() => import("../components/dashboard/CitiesTable"));
 
 interface DashboardSummary {
   todayEvents: any[];
@@ -201,28 +202,41 @@ export default function Dashboard() {
       ) : summary ? (
         <div className="flex flex-col gap-6">
           {/* ── ЗОНА ДІЇ ── */}
-          <div>
+          <Suspense fallback={<div className="h-24 bg-white rounded-2xl animate-pulse border border-slate-100" />}>
             <IssueCarousel />
-          </div>
+          </Suspense>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <TodayEvents events={summary.todayEvents} />
-            <StaleSchools schools={summary.staleSchools} />
-            <UpcomingEvents events={summary.upcomingEvents} />
+            <Suspense fallback={<SkeletonCard />}>
+              <TodayEvents events={summary.todayEvents} />
+            </Suspense>
+            <Suspense fallback={<SkeletonCard />}>
+              <StaleSchools schools={summary.staleSchools} />
+            </Suspense>
+            <Suspense fallback={<SkeletonCard />}>
+              <UpcomingEvents events={summary.upcomingEvents} />
+            </Suspense>
           </div>
 
           <hr className="border-slate-200" />
 
-          {/* ── АНАЛІТИКА ── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <MonthlyKpi kpi={summary.monthlyKpi} />
-            <FunnelBar funnel={summary.funnel} />
+            <Suspense fallback={<SkeletonCard />}>
+              <MonthlyKpi kpi={summary.monthlyKpi} />
+            </Suspense>
+            <Suspense fallback={<SkeletonCard />}>
+              <FunnelBar funnel={summary.funnel} />
+            </Suspense>
           </div>
 
           <div className={`grid grid-cols-1 gap-4 ${isSuperAdmin ? "md:grid-cols-2" : ""}`}>
-            <ActivityFeed items={summary.activityFeed} />
+            <Suspense fallback={<SkeletonCard className="min-h-[200px]" />}>
+              <ActivityFeed items={summary.activityFeed} />
+            </Suspense>
             {isSuperAdmin && summary.citiesStats.length > 0 && (
-              <CitiesTable rows={summary.citiesStats} />
+              <Suspense fallback={<SkeletonCard className="min-h-[200px]" />}>
+                <CitiesTable rows={summary.citiesStats} />
+              </Suspense>
             )}
           </div>
         </div>

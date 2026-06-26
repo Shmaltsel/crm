@@ -69,8 +69,16 @@ export function useUpdateEventStatus() {
       api.patch(`/events/${eventId}/status`, { status, actionName, comment }, { headers: authHeader() })
         .then(r => r.data),
     onSuccess: (data, vars) => {
-      qc.invalidateQueries({ queryKey: ['schoolEvents'] });
+      // Оновлюємо повну подію
       qc.setQueryData(['eventFull', vars.eventId], data);
+      // Оновлюємо статус в мінімальному списку без рефетчу
+      qc.setQueriesData({ queryKey: ['schoolEvents'] }, (old: any) =>
+        Array.isArray(old)
+          ? old
+              .map((ev: any) => ev.id === vars.eventId ? { ...ev, status: vars.status, ...data } : ev)
+              .filter((ev: any) => ev.status !== 'RE_SALE')
+          : old
+      );
     },
   });
 }
@@ -97,7 +105,12 @@ export function useAssignCrew() {
         .then(r => r.data),
     onSuccess: (data, vars) => {
       qc.setQueryData(['eventFull', vars.eventId], data);
-      qc.invalidateQueries({ queryKey: ['schoolEvents'] });
+      // Оновлюємо crewId в мінімальному списку
+      qc.setQueriesData({ queryKey: ['schoolEvents'] }, (old: any) =>
+        Array.isArray(old)
+          ? old.map((ev: any) => ev.id === vars.eventId ? { ...ev, crewId: vars.crewId, crew: data.crew } : ev)
+          : old
+      );
     },
   });
 }
@@ -109,7 +122,10 @@ export function useSubmitReport() {
       api.post(`/events/${eventId}/report`, reportData, { headers: authHeader() })
         .then(r => r.data),
     onSuccess: (_data, vars) => {
-      qc.invalidateQueries({ queryKey: ['schoolEvents'] });
+      // Видаляємо подію зі списку (вона стане RE_SALE після статус-мутації)
+      qc.setQueriesData({ queryKey: ['schoolEvents'] }, (old: any) =>
+        Array.isArray(old) ? old.filter((ev: any) => ev.id !== vars.eventId) : old
+      );
       qc.removeQueries({ queryKey: ['eventFull', vars.eventId] });
     },
   });
@@ -136,7 +152,14 @@ export function useUpdateHistoryComment() {
       api.patch(`/events/history/${historyId}`, { comment }, { headers: authHeader() })
         .then(r => r.data),
     onSuccess: (_data, vars) => {
-      qc.invalidateQueries({ queryKey: ['eventFull', vars.eventId] });
+      qc.setQueryData(['eventFull', vars.eventId], (old: any) =>
+        old ? {
+          ...old,
+          history: old.history?.map((h: any) =>
+            h.id === vars.historyId ? { ...h, comment: vars.comment } : h
+          ),
+        } : old
+      );
     },
   });
 }

@@ -26,10 +26,18 @@ const EventDetails = lazy(
 
 // Імпортуємо UI компоненти
 import SchoolProfileHeader from "../components/school-profile/SchoolProfileHeader";
-import SchoolInfoCard from "../components/school-profile/SchoolInfoCard";
-import EventsTable from "../components/school-profile/EventsTable";
-import EventPreparation from "../components/school-profile/EventPreparation";
-import AssignedCrew from "../components/school-profile/AssignedCrew";
+const SchoolInfoCard = lazy(
+  () => import("../components/school-profile/SchoolInfoCard"),
+);
+const EventsTable = lazy(
+  () => import("../components/school-profile/EventsTable"),
+);
+const EventPreparation = lazy(
+  () => import("../components/school-profile/EventPreparation"),
+);
+const AssignedCrew = lazy(
+  () => import("../components/school-profile/AssignedCrew"),
+);
 // Імпортуємо модальні вікна
 import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
 import EventModal from "../components/school-profile/modals/EventModal";
@@ -365,7 +373,13 @@ export default function SchoolProfile() {
         {/* Ліва колонка */}
         <div className="w-full xl:w-80 flex flex-col gap-6">
           <motion.div {...stagger(0)}>
-            <SchoolInfoCard schoolData={schoolData} />
+            <Suspense
+              fallback={
+                <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+              }
+            >
+              <SchoolInfoCard schoolData={schoolData} />
+            </Suspense>
           </motion.div>
 
           <AnimatePresence>
@@ -449,13 +463,25 @@ export default function SchoolProfile() {
                 {eventFullLoading ? (
                   <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-pulse h-48" />
                 ) : (
-                  <EventPreparation
-                    data={currentEvent.preparation || {}}
-                    onUpdate={handleUpdatePreparation}
-                    onOpenCrewModal={() => setIsCrewModalOpen(true)}
-                  />
+                  <Suspense
+                    fallback={
+                      <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+                    }
+                  >
+                    <EventPreparation
+                      data={currentEvent.preparation || {}}
+                      onUpdate={handleUpdatePreparation}
+                      onOpenCrewModal={() => setIsCrewModalOpen(true)}
+                    />
+                  </Suspense>
                 )}
-                <AssignedCrew currentEvent={currentEvent} employees={users} />
+                <Suspense
+                  fallback={
+                    <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+                  }
+                >
+                  <AssignedCrew currentEvent={currentEvent} employees={users} />
+                </Suspense>
               </motion.div>
             )}
           </AnimatePresence>
@@ -478,14 +504,20 @@ export default function SchoolProfile() {
           </motion.div>
 
           <motion.div {...stagger(3)}>
-            <EventsTable
-              events={events}
-              selectedEventId={selectedEventId}
-              onEventSelect={setSelectedEventId}
-              onDeleteSuccess={() =>
-                qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
+            <Suspense
+              fallback={
+                <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
               }
-            />
+            >
+              <EventsTable
+                events={events}
+                selectedEventId={selectedEventId}
+                onEventSelect={setSelectedEventId}
+                onDeleteSuccess={() =>
+                  qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
+                }
+              />
+            </Suspense>
           </motion.div>
         </motion.div>
       </div>

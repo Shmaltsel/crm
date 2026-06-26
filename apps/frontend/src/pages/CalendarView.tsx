@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
-import { api } from "../config/api";
+import { useState } from "react";
 import { useSelectedCity } from "../context/CityContext";
 import { useNavigate } from "react-router-dom";
+import { useCalendarEvents, useCalendarProjects } from "../hooks/useCalendar";
 
 interface CalendarEvent {
   id: string;
@@ -15,11 +15,11 @@ interface CalendarEvent {
 }
 
 export default function CalendarView() {
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const { data: events = [], isLoading: eventsLoading } = useCalendarEvents();
+  const { data: projects = [] } = useCalendarProjects();
   const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
-  const [projects, setProjects] = useState<any[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [isLoading, setIsLoading] = useState(true);
+  const isLoading = eventsLoading;
   const [selectedMobileDate, setSelectedMobileDate] = useState<Date>(
     new Date(),
   );
@@ -47,30 +47,6 @@ export default function CalendarView() {
       console.error("Помилка парсингу токена", e);
     }
   }, [selectedCity]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const headers = {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        };
-        // ДОДАНО: api.get("/projects") та projRes
-        const [eventsRes, citiesRes, projRes] = await Promise.all([
-          api.get("/events", { headers }),
-          api.get("/cities", { headers }),
-          api.get("/projects", { headers }),
-        ]);
-        setEvents(eventsRes.data);
-        setCities(citiesRes.data);
-        setProjects(projRes.data); // ДОДАНО
-      } catch (error) {
-        console.error("Помилка завантаження календаря", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
 
   const nextMonth = () =>
     setCurrentDate(

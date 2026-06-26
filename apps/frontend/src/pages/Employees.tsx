@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { api } from "../config/api";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useUsers, useProjects, useCreateUser, useUpdateUser, useDeleteUser, useCreateProject, useDeleteProject } from "../hooks/useEmployees";
+import { useCities } from "../hooks/useCities";
 import PhoneLink from "../components/PhoneLink";
 import { useSelectedCity } from "../context/CityContext";
 
@@ -109,10 +110,16 @@ function EmployeesSkeleton() {
 }
 
 export default function Employees() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [cities, setCities] = useState<City[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: users = [], isLoading: usersLoading } = useUsers();
+  const { data: cities = [] } = useCities();
+  const { data: projects = [], isLoading: projectsLoading } = useProjects();
+  const createUser = useCreateUser();
+  const updateUser = useUpdateUser();
+  const deleteUser = useDeleteUser();
+  const createProject = useCreateProject();
+  const deleteProject = useDeleteProject();
+
+  const isLoading = usersLoading;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
@@ -122,42 +129,11 @@ export default function Employees() {
   const [projectForm, setProjectForm] = useState({ name: "", color: "blue" });
 
   const { selectedCity } = useSelectedCity();
-  const token = localStorage.getItem("token");
-  const headers = { Authorization: `Bearer ${token}` };
-
-  const fetchData = async () => {
-    setIsLoading(true);
-    // 1. Завантажуємо критичні дані (Працівники та Міста)
-    try {
-      const [usersRes, citiesRes] = await Promise.all([
-        api.get("/users", { headers }),
-        api.get("/cities", { headers }),
-      ]);
-      setUsers(usersRes.data);
-      setCities(citiesRes.data);
-      setIsLoading(false);
-    } catch (e) {
-      console.error("Помилка завантаження працівників:", e);
-      setIsLoading(false);
-    }
-
-    // 2. Окремо завантажуємо проєкти (не критично для списку працівників)
-    try {
-      const projRes = await api.get("/projects", { headers });
-      setProjects(projRes.data);
-    } catch (e) {
-      console.warn("Проєктів ще немає або помилка їх завантаження:", e);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   const cityFilteredUsers = selectedCity.id
     ? users.filter((u) => u.cityId === selectedCity.id)
     : users;
-  const grouped = (["MANAGER", "DRIVER", "HOST"] as Role[]).map((role) => ({
+  const grouped = (["MAfNAGER", "DRIVER", "HOST"] as Role[]).map((role) => ({
     role,
     label: ROLE_LABELS[role],
     items: cityFilteredUsers.filter((u) => u.role === role),
@@ -188,10 +164,9 @@ export default function Employees() {
     setIsSubmitting(true);
     try {
       if (editingUser)
-        await api.patch(`/users/${editingUser.id}`, form, { headers });
-      else await api.post("/users", form, { headers });
+        await updateUser.mutateAsync({ id: editingUser.id, form });
+      else await createUser.mutateAsync(form);
       setIsModalOpen(false);
-      fetchData();
     } catch (e) {
       alert("Помилка збереження. Перевірте, чи не дублюється email.");
     } finally {
@@ -202,8 +177,7 @@ export default function Employees() {
   const handleDelete = async (id: string, name: string) => {
     if (!window.confirm(`Видалити користувача "${name}"?`)) return;
     try {
-      await api.delete(`/users/${id}`, { headers });
-      setUsers(users.filter((u) => u.id !== id));
+      await deleteUser.mutateAsync(id);
     } catch (e) {
       alert("Помилка видалення");
     }
@@ -213,10 +187,9 @@ export default function Employees() {
     e.preventDefault();
     if (!projectForm.name.trim()) return;
     try {
-      await api.post("/projects", projectForm, { headers });
+      await createProject.mutateAsync(projectForm);
       setIsProjectModalOpen(false);
       setProjectForm({ name: "", color: "blue" });
-      fetchData();
     } catch (e) {
       alert("Помилка. Можливо такий вид події вже існує.");
     }
@@ -230,8 +203,7 @@ export default function Employees() {
     )
       return;
     try {
-      await api.delete(`/projects/${id}`, { headers });
-      fetchData();
+      await deleteProject.mutateAsync(id);
     } catch (e) {
       alert("Помилка видалення");
     }
