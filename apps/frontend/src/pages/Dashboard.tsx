@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../hooks/useAuth";
@@ -132,29 +132,18 @@ function DashboardSkeleton({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 export default function Dashboard() {
   const { selectedCity } = useSelectedCity();
   const { user } = useAuth();
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   const isSuperAdmin = user?.role === "SUPERADMIN";
 
-  useEffect(() => {
-    if (!selectedCity.id && !isSuperAdmin) return;
-
-    const fetchSummary = async () => {
-      setIsLoading(true);
-      try {
-        const params = selectedCity.id ? `?cityId=${selectedCity.id}` : "";
-        const res = await api.get(`/dashboard/summary${params}`);
-        setSummary(res.data);
-      } catch (e) {
-        console.error("Помилка завантаження дашборду:", e);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSummary();
-  }, [selectedCity.id, isSuperAdmin]);
+  const { data: summary, isLoading } = useQuery<DashboardSummary>({
+    queryKey: ["dashboardSummary", selectedCity.id],
+    queryFn: async () => {
+      const params = selectedCity.id ? `?cityId=${selectedCity.id}` : "";
+      const res = await api.get(`/dashboard/summary${params}`);
+      return res.data;
+    },
+    enabled: Boolean(selectedCity.id || isSuperAdmin),
+  });
 
   if (!selectedCity.id && !isSuperAdmin) {
     return (

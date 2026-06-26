@@ -7,7 +7,7 @@ import {
   usePrefetchSchool,
   useCities,
 } from "../hooks/useApi";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import VirtualSchoolList from "../components/VirtualSchoolList";
 import { SchoolCard } from "../components/schools/SchoolMobileList";
 
@@ -57,9 +57,39 @@ export default function Schools() {
   >([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
   const [dotCount, setDotCount] = useState(3);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const addSchoolMutation = useMutation({
+    mutationFn: (newSchool: any) =>
+      api.post("/schools", newSchool, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["schools"] });
+      setIsModalOpen(false);
+    },
+    onError: () => alert("Не вдалося створити заклад"),
+  });
+
+  const bulkImportMutation = useMutation({
+    mutationFn: (cityId: string) =>
+      api.post(
+        "/schools/bulk-import",
+        { cityId, type: "Школа" },
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          timeout: 120000,
+        },
+      ),
+    onSuccess: (res) => {
+      alert(
+        `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
+      );
+      qc.invalidateQueries({ queryKey: ["schools"] });
+    },
+    onError: () => alert("Помилка імпорту."),
+  });
 
   const { data: schools = [], isLoading } = useSchools();
   const { data: cities = [] } = useCities();
@@ -86,19 +116,23 @@ export default function Schools() {
     if (currentCityName.toLowerCase() !== "львів")
       return setMatchedContacts([]);
     try {
-      const res = await api.get(
-        `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=Школа`,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      const data = await qc.fetchQuery({
+        queryKey: ["schoolContacts", schoolName, currentCityName],
+        queryFn: async () => {
+          const res = await api.get(
+            `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=Школа`,
+            { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+          );
+          return res.data;
         },
-      );
-      setMatchedContacts(res.data);
-      if (res.data.length > 0) {
-        const director =
-          res.data.find(
-            (c: any) =>
-              c.role?.includes("Директор") || c.role?.includes("Завідувач"),
-          ) || res.data[0];
+        staleTime: 1000 * 60 * 5, // Кешуємо на 5 хвилин
+      });
+      
+      setMatchedContacts(data);
+      if (data.length > 0) {
+        const director = data.find((c: any) =>
+            c.role?.includes("Директор") || c.role?.includes("Завідувач")
+          ) || data[0];
         setForm((f) => ({
           ...f,
           director: director.contactName,
@@ -123,15 +157,20 @@ export default function Schools() {
     setShowSuggestions(true);
     debounceTimer.current = setTimeout(async () => {
       try {
-        const [externalRes] = await Promise.all([
-          api.get(`/schools/search?q=${value}&type=Школа`, {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
+        const [externalData] = await Promise.all([
+          qc.fetchQuery({
+            queryKey: ["schoolSearchExternal", value],
+            queryFn: async () => {
+              const res = await api.get(`/schools/search?q=${encodeURIComponent(value)}&type=Школа`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+              });
+              return res.data;
             },
+            staleTime: 1000 * 60 * 5,
           }),
           fetchContacts(value),
         ]);
-        setSuggestions(externalRes.data);
+        setSuggestions(externalData);
       } catch (e) {
         console.error(e);
       } finally {
@@ -146,26 +185,10 @@ export default function Schools() {
     fetchContacts(name);
   };
 
-  const handleAddSchool = async (e: React.FormEvent) => {
+  const handleAddSchool = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.cityId) return;
-    setIsSubmitting(true);
-    try {
-      await api.post(
-        "/schools",
-        { ...form, type: "Школа" },
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        },
-      );
-      setIsModalOpen(false);
-      // кеш інвалідується через useAddSchool або вручну:
-      qc.invalidateQueries({ queryKey: ["schools"] });
-    } catch (e) {
-      alert("Не вдалося створити заклад");
-    } finally {
-      setIsSubmitting(false);
-    }
+    addSchoolMutation.mutate({ ...form, type: "Школа" });
   };
 
   const handleDeleteSchool = useCallback(
@@ -231,45 +254,23 @@ export default function Schools() {
         </div>
         <div className="flex gap-2 shrink-0">
           <button
-            onClick={async () => {
+            onClick={() => {
               if (!selectedCity.id) return alert("Спочатку оберіть місто");
-              if (
-                !window.confirm(
-                  `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`,
-                )
-              )
-                return;
-              setIsImporting(true);
+              if (!window.confirm(`Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`)) return;
+              
               setDotCount(3);
               const dotInterval = setInterval(() => {
                 setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
               }, 500);
-              try {
-                const res = await api.post(
-                  "/schools/bulk-import",
-                  { cityId: selectedCity.id, type: "Школа" },
-                  {
-                    headers: {
-                      Authorization: `Bearer ${localStorage.getItem("token")}`,
-                    },
-                    timeout: 120000,
-                  },
-                );
-                alert(
-                  `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
-                );
-                qc.invalidateQueries({ queryKey: ["schools"] });
-              } catch (e) {
-                alert("Помилка імпорту.");
-              } finally {
-                clearInterval(dotInterval);
-                setIsImporting(false);
-              }
+              
+              bulkImportMutation.mutate(selectedCity.id, {
+                onSettled: () => clearInterval(dotInterval)
+              });
             }}
-            disabled={isImporting}
+            disabled={bulkImportMutation.isPending}
             className="md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
           >
-            {isImporting ? (
+            {bulkImportMutation.isPending ? (
               <span className="font-medium">
                 Імпортую{"·".repeat(dotCount)}
               </span>
@@ -578,10 +579,10 @@ export default function Schools() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={addSchoolMutation.isPending}
                   className="flex-1 px-5 py-3.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
-                  {isSubmitting ? "Збереження..." : "Створити"}
+                  {addSchoolMutation.isPending ? "Збереження..." : "Створити"}
                 </button>
               </div>
             </form>

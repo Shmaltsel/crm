@@ -2175,346 +2175,424 @@
 ### File: apps/backend/src/finance/finance.service.ts
 ```ts
   0 | import { Injectable } from '@nestjs/common';
-  1 | import { PrismaService } from '../prisma/prisma.service';
-  2 | 
-  3 | @Injectable()
-  4 | export class FinanceService {
-  5 |   private cache = new Map<string, { data: any; expiresAt: number }>();
-  6 | 
-  7 |   private getCached<T>(key: string): T | null {
-  8 |     const entry = this.cache.get(key);
-  9 |     if (!entry || Date.now() > entry.expiresAt) return null;
- 10 |     return entry.data as T;
- 11 |   }
- 12 | 
- 13 |   private setCached(key: string, data: any, ttlMs = 5 * 60 * 1000) {
- 14 |     this.cache.set(key, { data, expiresAt: Date.now() + ttlMs });
- 15 |   }
- 16 |   constructor(private prisma: PrismaService) {}
+  1 | import { Prisma } from '@prisma/client';
+  2 | import { PrismaService } from '../prisma/prisma.service';
+  3 | 
+  4 | @Injectable()
+  5 | export class FinanceService {
+  6 |   private cache = new Map<string, { data: any; expiresAt: number }>();
+  7 | 
+  8 |   private getCached<T>(key: string): T | null {
+  9 |     const entry = this.cache.get(key);
+ 10 |     if (!entry || Date.now() > entry.expiresAt) return null;
+ 11 |     return entry.data as T;
+ 12 |   }
+ 13 | 
+ 14 |   private setCached(key: string, data: any, ttlMs = 5 * 60 * 1000) {
+ 15 |     this.cache.set(key, { data, expiresAt: Date.now() + ttlMs });
+ 16 |   }
  17 | 
- 18 |   async getMyBalance(userId: string) {
- 19 |     const user = await this.prisma.user.findUnique({
- 20 |       where: { id: userId },
- 21 |       select: { balance: true, name: true },
- 22 |     });
- 23 |     return { balance: user?.balance ?? 0, name: user?.name ?? '' };
- 24 |   }
- 25 | 
- 26 |   async getDashboard({
- 27 |     period,
- 28 |     cityId,
- 29 |     project,
- 30 |     minimal = false,
- 31 |   }: {
- 32 |     period?: string;
- 33 |     cityId?: string;
- 34 |     project?: string;
- 35 |     minimal?: boolean;
- 36 |   }) {
- 37 |     const cacheKey = `finance:${cityId}:${period}:${project}`;
- 38 |     const cached = this.getCached(cacheKey);
- 39 |     if (cached) return cached;
- 40 |     const now = new Date();
- 41 |     let dateFrom: Date | undefined;
- 42 | 
- 43 |     if (period === 'month')
- 44 |       dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
- 45 |     else if (period === 'quarter')
- 46 |       dateFrom = new Date(
- 47 |         now.getFullYear(),
- 48 |         Math.floor(now.getMonth() / 3) * 3,
- 49 |         1,
- 50 |       );
- 51 |     else if (period === 'year') dateFrom = new Date(now.getFullYear(), 0, 1);
- 52 | 
- 53 |     const where: any = { status: 'RE_SALE' };
- 54 |     if (dateFrom) where.date = { gte: dateFrom };
- 55 |     if (cityId) where.cityId = cityId;
- 56 |     if (project) where.project = project;
- 57 | 
- 58 |     const events = await this.prisma.event.findMany({
- 59 |       where,
- 60 |       include: {
- 61 |         report: true,
- 62 |         school: { select: { id: true, name: true } },
- 63 |         city: { select: { id: true, name: true } },
- 64 |         crew: {
- 65 |           include: {
- 66 |             host: { select: { id: true, name: true } },
- 67 |           },
- 68 |         },
- 69 |       },
- 70 |       orderBy: { date: 'asc' },
- 71 |     });
- 72 | 
- 73 |     // KPI
- 74 |     const totalRevenue = events.reduce(
- 75 |       (s, e) => s + (e.report?.totalSum || 0),
- 76 |       0,
- 77 |     );
- 78 |     const totalExpenses = events.reduce((s, e) => {
- 79 |       const exp: any[] = Array.isArray(e.report?.expenses)
- 80 |         ? (e.report.expenses as any[])
- 81 |         : [];
- 82 |       return s + exp.reduce((es: number, ex: any) => es + (ex.amount || 0), 0);
- 83 |     }, 0);
- 84 |     const totalProfit = events.reduce(
- 85 |       (s, e) => s + (e.report?.remainderSum || 0),
- 86 |       0,
- 87 |     );
- 88 | 
- 89 |     // Графік по місяцях
- 90 |     const monthlyMap: Record<
- 91 |       string,
- 92 |       { month: string; revenue: number; profit: number }
- 93 |     > = {};
- 94 |     events.forEach((e) => {
- 95 |       const d = new Date(e.date);
- 96 |       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
- 97 |       const label = d.toLocaleString('uk-UA', {
- 98 |         month: 'short',
- 99 |         year: '2-digit',
-100 |       });
-101 |       if (!monthlyMap[key])
-102 |         monthlyMap[key] = { month: label, revenue: 0, profit: 0 };
-103 |       monthlyMap[key].revenue += e.report?.totalSum || 0;
-104 |       monthlyMap[key].profit += e.report?.remainderSum || 0;
-105 |     });
-106 |     const monthly = Object.values(monthlyMap);
-107 | 
-108 |     // Структура доходів по проєктах
-109 |     const projectMap: Record<string, number> = {};
-110 |     events.forEach((e) => {
-111 |       const p = e.project || 'Інше';
-112 |       projectMap[p] = (projectMap[p] || 0) + (e.report?.totalSum || 0);
-113 |     });
-114 |     const byProject = Object.entries(projectMap).map(([name, value]) => ({
-115 |       name,
-116 |       value,
-117 |     }));
-118 | 
-119 |     // Топ міст
-120 |     const cityMap: Record<
-121 |       string,
-122 |       { name: string; revenue: number; profit: number }
-123 |     > = {};
-124 |     events.forEach((e) => {
-125 |       const cid = e.cityId;
-126 |       if (!cityMap[cid])
-127 |         cityMap[cid] = { name: e.city?.name || '—', revenue: 0, profit: 0 };
-128 |       cityMap[cid].revenue += e.report?.totalSum || 0;
-129 |       cityMap[cid].profit += e.report?.remainderSum || 0;
-130 |     });
-131 |     const topCities = Object.values(cityMap)
-132 |       .sort((a, b) => b.revenue - a.revenue)
-133 |       .slice(0, 5);
-134 | 
-135 |     // Топ шкіл
-136 |     const schoolMap: Record<
-137 |       string,
-138 |       { name: string; count: number; revenue: number }
-139 |     > = {};
-140 |     events.forEach((e) => {
-141 |       const sid = e.schoolId;
-142 |       if (!schoolMap[sid])
-143 |         schoolMap[sid] = { name: e.school?.name || '—', count: 0, revenue: 0 };
-144 |       schoolMap[sid].count++;
-145 |       schoolMap[sid].revenue += e.report?.totalSum || 0;
-146 |     });
-147 |     const topSchools = Object.values(schoolMap)
-148 |       .sort((a, b) => b.revenue - a.revenue)
-149 |       .slice(0, 5);
+ 18 |   constructor(private prisma: PrismaService) {}
+ 19 | 
+ 20 |   // ---------------------------------------------------------------------------
+ 21 |   // Допоміжний метод: перетворює period у dateFrom
+ 22 |   // ---------------------------------------------------------------------------
+ 23 |   private resolveDateFrom(period?: string): Date | undefined {
+ 24 |     const now = new Date();
+ 25 |     if (period === 'month')
+ 26 |       return new Date(now.getFullYear(), now.getMonth(), 1);
+ 27 |     if (period === 'quarter')
+ 28 |       return new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+ 29 |     if (period === 'year') return new Date(now.getFullYear(), 0, 1);
+ 30 |     return undefined;
+ 31 |   }
+ 32 | 
+ 33 |   // ---------------------------------------------------------------------------
+ 34 |   // Допоміжний метод: будує SQL-фрагменти фільтрів для $queryRaw
+ 35 |   // ---------------------------------------------------------------------------
+ 36 |   private buildSqlFilters({
+ 37 |     dateFrom,
+ 38 |     cityId,
+ 39 |     project,
+ 40 |   }: {
+ 41 |     dateFrom?: Date;
+ 42 |     cityId?: string;
+ 43 |     project?: string;
+ 44 |   }): Prisma.Sql {
+ 45 |     const parts: Prisma.Sql[] = [];
+ 46 |     if (dateFrom) parts.push(Prisma.sql`AND e.date >= ${dateFrom}`);
+ 47 |     if (cityId) parts.push(Prisma.sql`AND e."cityId" = ${cityId}`);
+ 48 |     if (project) parts.push(Prisma.sql`AND e.project  = ${project}`);
+ 49 |     return parts.length ? Prisma.join(parts, ' ') : Prisma.empty;
+ 50 |   }
+ 51 | 
+ 52 |   // ---------------------------------------------------------------------------
+ 53 |   async getMyBalance(userId: string) {
+ 54 |     const user = await this.prisma.user.findUnique({
+ 55 |       where: { id: userId },
+ 56 |       select: { balance: true, name: true },
+ 57 |     });
+ 58 |     return { balance: user?.balance ?? 0, name: user?.name ?? '' };
+ 59 |   }
+ 60 | 
+ 61 |   // ---------------------------------------------------------------------------
+ 62 |   async getDashboard({
+ 63 |     period,
+ 64 |     cityId,
+ 65 |     project,
+ 66 |     minimal = false,
+ 67 |   }: {
+ 68 |     period?: string;
+ 69 |     cityId?: string;
+ 70 |     project?: string;
+ 71 |     minimal?: boolean;
+ 72 |   }) {
+ 73 |     const cacheKey = `finance:${cityId}:${period}:${project}:${minimal}`;
+ 74 |     const cached = this.getCached(cacheKey);
+ 75 |     if (cached) return cached;
+ 76 | 
+ 77 |     const dateFrom = this.resolveDateFrom(period);
+ 78 |     const filters = this.buildSqlFilters({ dateFrom, cityId, project });
+ 79 | 
+ 80 |     // Фільтр для Prisma ORM (де підтримується)
+ 81 |     const baseEventWhere: Prisma.EventWhereInput = {
+ 82 |       status: 'RE_SALE',
+ 83 |       ...(dateFrom ? { date: { gte: dateFrom } } : {}),
+ 84 |       ...(cityId ? { cityId } : {}),
+ 85 |       ...(project ? { project } : {}),
+ 86 |     };
+ 87 | 
+ 88 |     // -------------------------------------------------------------------------
+ 89 |     // 1. KPI — один агрегатний запит замість findMany + reduce
+ 90 |     // -------------------------------------------------------------------------
+ 91 |     const kpiAgg = await this.prisma.eventReport.aggregate({
+ 92 |       where: { event: baseEventWhere },
+ 93 |       _sum: { totalSum: true, remainderSum: true },
+ 94 |       _count: { eventId: true },
+ 95 |     });
+ 96 | 
+ 97 |     const totalRevenue = kpiAgg._sum.totalSum ?? 0;
+ 98 |     const totalProfit = kpiAgg._sum.remainderSum ?? 0;
+ 99 |     const totalEvents = kpiAgg._count.eventId ?? 0;
+100 | 
+101 |     // -------------------------------------------------------------------------
+102 |     // 2. Витрати по категоріях — expenses зберігається як JSON,
+103 |     //    тому вибираємо лише одне поле без жодних include
+104 |     // -------------------------------------------------------------------------
+105 |     const expensesRaw = await this.prisma.eventReport.findMany({
+106 |       where: { event: baseEventWhere },
+107 |       select: { expenses: true },
+108 |     });
+109 | 
+110 |     const expCatMap: Record<string, number> = {};
+111 |     let totalExpenses = 0;
+112 |     for (const { expenses } of expensesRaw) {
+113 |       const exp = Array.isArray(expenses) ? (expenses as any[]) : [];
+114 |       for (const ex of exp) {
+115 |         const cat: string = ex.category || ex.name || 'Інше';
+116 |         const amt: number = Number(ex.amount) || 0;
+117 |         expCatMap[cat] = (expCatMap[cat] ?? 0) + amt;
+118 |         totalExpenses += amt;
+119 |       }
+120 |     }
+121 |     const byExpenseCategory = Object.entries(expCatMap).map(
+122 |       ([name, value]) => ({
+123 |         name,
+124 |         value,
+125 |       }),
+126 |     );
+127 | 
+128 |     // -------------------------------------------------------------------------
+129 |     // 3. Графік по місяцях — агрегація в БД
+130 |     // -------------------------------------------------------------------------
+131 |     type MonthlyRow = {
+132 |       year: number;
+133 |       month: number;
+134 |       revenue: number;
+135 |       profit: number;
+136 |     };
+137 |     const monthlyRaw = await this.prisma.$queryRaw<MonthlyRow[]>`
+138 |       SELECT
+139 |         EXTRACT(YEAR  FROM e.date)::int                   AS year,
+140 |         EXTRACT(MONTH FROM e.date)::int                   AS month,
+141 |         COALESCE(SUM(r."totalSum"),      0)::float        AS revenue,
+142 |         COALESCE(SUM(r."remainderSum"),  0)::float        AS profit
+143 |       FROM "Event" e
+144 |       JOIN "EventReport" r ON r."eventId" = e.id
+145 |       WHERE e.status = 'RE_SALE'
+146 |       ${filters}
+147 |       GROUP BY year, month
+148 |       ORDER BY year, month
+149 |     `;
 150 | 
-151 |     // Витрати по категоріях
-152 |     const expCatMap: Record<string, number> = {};
-153 |     events.forEach((e) => {
-154 |       const exp: any[] = Array.isArray(e.report?.expenses)
-155 |         ? (e.report.expenses as any[])
-156 |         : [];
-157 |       exp.forEach((ex: any) => {
-158 |         const cat = ex.category || ex.name || 'Інше';
-159 |         expCatMap[cat] = (expCatMap[cat] || 0) + (ex.amount || 0);
-160 |       });
-161 |     });
-162 |     const byExpenseCategory = Object.entries(expCatMap).map(
-163 |       ([name, value]) => ({ name, value }),
-164 |     );
-165 | 
-166 |     // Найприбутковіші та найзбитковіші події
-167 |     const sortedByProfit = [...events].sort(
-168 |       (a, b) => (b.report?.remainderSum || 0) - (a.report?.remainderSum || 0),
-169 |     );
-170 |     const topEvents = sortedByProfit.slice(0, 5).map((e) => ({
-171 |       id: e.id,
-172 |       date: e.date,
-173 |       school: e.school?.name,
-174 |       profit: e.report?.remainderSum || 0,
-175 |       revenue: e.report?.totalSum || 0,
-176 |     }));
-177 |     const worstEvents = sortedByProfit
-178 |       .slice(-5)
-179 |       .reverse()
-180 |       .map((e) => ({
-181 |         id: e.id,
-182 |         date: e.date,
-183 |         school: e.school?.name,
-184 |         profit: e.report?.remainderSum || 0,
-185 |         revenue: e.report?.totalSum || 0,
-186 |       }));
-187 | 
-188 |     // Очікувана виручка (незавершені події)
-189 |     const planned = await this.prisma.event.findMany({
-190 |       where: {
-191 |         status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
-192 |         ...(cityId ? { cityId } : {}),
-193 |       },
-194 |       select: { price: true },
-195 |     });
-196 |     const expectedRevenue = await this.prisma.event
-197 |       .findMany({
-198 |         where: {
-199 |           status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
-200 |           ...(cityId ? { cityId } : {}),
-201 |         },
-202 |         select: { price: true },
-203 |       })
-204 |       .then((planned) => planned.reduce((s, e) => s + (e.price || 0), 0));
-205 |     // Список унікальних проєктів для фільтру
-206 |     const projects = await this.prisma.event.findMany({
-207 |       select: { project: true },
-208 |       distinct: ['project'],
-209 |     });
-210 | 
-211 |     const cities = await this.prisma.city.findMany({
-212 |       select: { id: true, name: true },
-213 |     });
-214 | 
-215 |     // --- minimal: повертаємо тільки KPI + monthly + фільтри ---
-216 |     if (minimal) {
-217 |       const result = {
-218 |         kpi: {
-219 |           totalRevenue,
-220 |           totalExpenses,
-221 |           totalProfit,
-222 |           totalEvents: events.length,
-223 |         },
-224 |         monthly,
-225 |         expectedRevenue,
-226 |         filters: {
-227 |           projects: projects.map((p) => p.project).filter(Boolean),
-228 |           cities,
-229 |         },
-230 |       };
-231 |       this.setCached(cacheKey, result);
-232 |       return result;
-233 |     }
-234 | 
-235 |     const result = {
-236 |       kpi: {
-237 |         totalRevenue,
-238 |         totalExpenses,
-239 |         totalProfit,
-240 |         totalEvents: events.length,
-241 |       },
-242 |       monthly,
-243 |       byProject,
-244 |       byExpenseCategory,
-245 |       topSchools,
-246 |       topEvents,
-247 |       worstEvents,
-248 |       expectedRevenue,
-249 |       filters: {
-250 |         projects: projects.map((p) => p.project).filter(Boolean),
-251 |         cities,
-252 |       },
-253 |     };
-254 |     this.setCached(cacheKey, result);
-255 |     return result;
-256 |   }
-257 | 
-258 |   async getStaffRevenue({
-259 |     period,
-260 |     cityId,
-261 |   }: {
-262 |     period?: string;
-263 |     cityId?: string;
-264 |   }) {
-265 |     const now = new Date();
-266 |     let dateFrom: Date | undefined;
-267 | 
-268 |     if (period === 'month')
-269 |       dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
-270 |     else if (period === 'quarter')
-271 |       dateFrom = new Date(
-272 |         now.getFullYear(),
-273 |         Math.floor(now.getMonth() / 3) * 3,
-274 |         1,
-275 |       );
-276 |     else if (period === 'year') dateFrom = new Date(now.getFullYear(), 0, 1);
-277 | 
-278 |     const where: any = { status: 'RE_SALE' };
-279 |     if (dateFrom) where.date = { gte: dateFrom };
-280 |     if (cityId) where.cityId = cityId;
-281 | 
-282 |     const events = await this.prisma.event.findMany({
-283 |       where,
-284 |       include: {
-285 |         report: { select: { totalSum: true } },
-286 |         crew: {
-287 |           include: {
-288 |             host: { select: { id: true, name: true, role: true } },
-289 |             driver: { select: { id: true, name: true, role: true } },
-290 |           },
-291 |         },
-292 |         city: { select: { id: true, name: true } },
+151 |     const monthly = monthlyRaw.map((row) => ({
+152 |       month: new Date(row.year, row.month - 1, 1).toLocaleString('uk-UA', {
+153 |         month: 'short',
+154 |         year: '2-digit',
+155 |       }),
+156 |       revenue: row.revenue,
+157 |       profit: row.profit,
+158 |     }));
+159 | 
+160 |     // -------------------------------------------------------------------------
+161 |     // 4. Очікувана виручка — aggregate замість findMany + reduce
+162 |     // -------------------------------------------------------------------------
+163 |     const plannedAgg = await this.prisma.event.aggregate({
+164 |       where: {
+165 |         status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
+166 |         ...(cityId ? { cityId } : {}),
+167 |       },
+168 |       _sum: { price: true },
+169 |     });
+170 |     const expectedRevenue = plannedAgg._sum.price ?? 0;
+171 | 
+172 |     // -------------------------------------------------------------------------
+173 |     // 5. Фільтри (проєкти + міста) — паралельно, без join
+174 |     // -------------------------------------------------------------------------
+175 |     const [projectsRaw, cities] = await Promise.all([
+176 |       this.prisma.event.findMany({
+177 |         select: { project: true },
+178 |         distinct: ['project'],
+179 |       }),
+180 |       this.prisma.city.findMany({ select: { id: true, name: true } }),
+181 |     ]);
+182 |     const filterOptions = {
+183 |       projects: projectsRaw.map((p) => p.project).filter(Boolean),
+184 |       cities,
+185 |     };
+186 | 
+187 |     // -------------------------------------------------------------------------
+188 |     // minimal — повертаємо лише KPI + monthly + фільтри
+189 |     // -------------------------------------------------------------------------
+190 |     if (minimal) {
+191 |       const result = {
+192 |         kpi: { totalRevenue, totalExpenses, totalProfit, totalEvents },
+193 |         monthly,
+194 |         expectedRevenue,
+195 |         filters: filterOptions,
+196 |       };
+197 |       this.setCached(cacheKey, result);
+198 |       return result;
+199 |     }
+200 | 
+201 |     // -------------------------------------------------------------------------
+202 |     // 6. Структура доходів по проєктах
+203 |     // -------------------------------------------------------------------------
+204 |     type ProjectRow = { project: string; value: number };
+205 |     const byProjectRows = await this.prisma.$queryRaw<ProjectRow[]>`
+206 |       SELECT
+207 |         COALESCE(e.project, 'Інше')              AS project,
+208 |         COALESCE(SUM(r."totalSum"), 0)::float    AS value
+209 |       FROM "Event" e
+210 |       JOIN "EventReport" r ON r."eventId" = e.id
+211 |       WHERE e.status = 'RE_SALE'
+212 |       ${filters}
+213 |       GROUP BY e.project
+214 |       ORDER BY value DESC
+215 |     `;
+216 |     const byProject = byProjectRows.map((r) => ({
+217 |       name: r.project,
+218 |       value: r.value,
+219 |     }));
+220 | 
+221 |     // -------------------------------------------------------------------------
+222 |     // 7. Топ міст
+223 |     // -------------------------------------------------------------------------
+224 |     type CityRow = {
+225 |       cityId: string;
+226 |       name: string;
+227 |       revenue: number;
+228 |       profit: number;
+229 |     };
+230 |     const topCitiesRows = await this.prisma.$queryRaw<CityRow[]>`
+231 |       SELECT
+232 |         e."cityId",
+233 |         COALESCE(c.name, '—')                    AS name,
+234 |         COALESCE(SUM(r."totalSum"),     0)::float AS revenue,
+235 |         COALESCE(SUM(r."remainderSum"), 0)::float AS profit
+236 |       FROM "Event" e
+237 |       JOIN "EventReport" r ON r."eventId" = e.id
+238 |       LEFT JOIN "City" c   ON c.id = e."cityId"
+239 |       WHERE e.status = 'RE_SALE'
+240 |       ${filters}
+241 |       GROUP BY e."cityId", c.name
+242 |       ORDER BY revenue DESC
+243 |       LIMIT 5
+244 |     `;
+245 |     const topCities = topCitiesRows.map(({ name, revenue, profit }) => ({
+246 |       name,
+247 |       revenue,
+248 |       profit,
+249 |     }));
+250 | 
+251 |     // -------------------------------------------------------------------------
+252 |     // 8. Топ шкіл
+253 |     // -------------------------------------------------------------------------
+254 |     type SchoolRow = {
+255 |       schoolId: string;
+256 |       name: string;
+257 |       count: number;
+258 |       revenue: number;
+259 |     };
+260 |     const topSchoolsRows = await this.prisma.$queryRaw<SchoolRow[]>`
+261 |       SELECT
+262 |         e."schoolId",
+263 |         COALESCE(s.name, '—')                    AS name,
+264 |         COUNT(e.id)::int                         AS count,
+265 |         COALESCE(SUM(r."totalSum"), 0)::float    AS revenue
+266 |       FROM "Event" e
+267 |       JOIN "EventReport" r ON r."eventId" = e.id
+268 |       LEFT JOIN "School" s ON s.id = e."schoolId"
+269 |       WHERE e.status = 'RE_SALE'
+270 |       ${filters}
+271 |       GROUP BY e."schoolId", s.name
+272 |       ORDER BY revenue DESC
+273 |       LIMIT 5
+274 |     `;
+275 |     const topSchools = topSchoolsRows.map(({ name, count, revenue }) => ({
+276 |       name,
+277 |       count,
+278 |       revenue,
+279 |     }));
+280 | 
+281 |     // -------------------------------------------------------------------------
+282 |     // 9. Топ/антитоп подій — лише потрібні поля, без масивних include
+283 |     // -------------------------------------------------------------------------
+284 |     const eventSelect = {
+285 |       totalSum: true,
+286 |       remainderSum: true,
+287 |       event: {
+288 |         select: {
+289 |           id: true,
+290 |           date: true,
+291 |           school: { select: { name: true } },
+292 |         },
 293 |       },
-294 |     });
+294 |     } satisfies Prisma.EventReportSelect;
 295 | 
-296 |     // Агрегуємо виручку по кожному ведучому і водію
-297 |     const staffMap: Record<
-298 |       string,
-299 |       {
-300 |         id: string;
-301 |         name: string;
-302 |         role: string;
-303 |         revenue: number;
-304 |         eventsCount: number;
-305 |       }
-306 |     > = {};
-307 | 
-308 |     for (const ev of events) {
-309 |       const revenue = ev.report?.totalSum ?? 0;
-310 |       if (!ev.crew) continue;
-311 | 
-312 |       for (const [member, memberRole] of [
-313 |         [ev.crew.host, 'HOST'],
-314 |         [ev.crew.driver, 'DRIVER'],
-315 |       ] as [{ id: string; name: string } | null, string][]) {
-316 |         if (!member) continue;
-317 |         if (!staffMap[member.id]) {
-318 |           staffMap[member.id] = {
-319 |             id: member.id,
-320 |             name: member.name,
-321 |             role: memberRole,
-322 |             revenue: 0,
-323 |             eventsCount: 0,
-324 |           };
-325 |         }
-326 |         staffMap[member.id].revenue += revenue;
-327 |         staffMap[member.id].eventsCount += 1;
-328 |       }
-329 |     }
-330 | 
-331 |     const staff = Object.values(staffMap).sort((a, b) => b.revenue - a.revenue);
-332 |     const totalRevenue = events.reduce(
-333 |       (s, e) => s + (e.report?.totalSum ?? 0),
-334 |       0,
-335 |     );
-336 | 
-337 |     return { staff, totalRevenue, eventsCount: events.length };
-338 |   }
-339 | }
-340 | 
+296 |     const [topEventsRaw, worstEventsRaw] = await Promise.all([
+297 |       this.prisma.eventReport.findMany({
+298 |         where: { event: baseEventWhere },
+299 |         select: eventSelect,
+300 |         orderBy: { remainderSum: 'desc' },
+301 |         take: 5,
+302 |       }),
+303 |       this.prisma.eventReport.findMany({
+304 |         where: { event: baseEventWhere },
+305 |         select: eventSelect,
+306 |         orderBy: { remainderSum: 'asc' },
+307 |         take: 5,
+308 |       }),
+309 |     ]);
+310 | 
+311 |     const mapEvent = (r: (typeof topEventsRaw)[number]) => ({
+312 |       id: r.event.id,
+313 |       date: r.event.date,
+314 |       school: r.event.school?.name ?? '—',
+315 |       profit: r.remainderSum ?? 0,
+316 |       revenue: r.totalSum ?? 0,
+317 |     });
+318 | 
+319 |     const topEvents = topEventsRaw.map(mapEvent);
+320 |     const worstEvents = worstEventsRaw.map(mapEvent);
+321 | 
+322 |     // -------------------------------------------------------------------------
+323 |     const result = {
+324 |       kpi: { totalRevenue, totalExpenses, totalProfit, totalEvents },
+325 |       monthly,
+326 |       byProject,
+327 |       byExpenseCategory,
+328 |       topCities,
+329 |       topSchools,
+330 |       topEvents,
+331 |       worstEvents,
+332 |       expectedRevenue,
+333 |       filters: filterOptions,
+334 |     };
+335 |     this.setCached(cacheKey, result);
+336 |     return result;
+337 |   }
+338 | 
+339 |   // ---------------------------------------------------------------------------
+340 |   async getStaffRevenue({
+341 |     period,
+342 |     cityId,
+343 |   }: {
+344 |     period?: string;
+345 |     cityId?: string;
+346 |   }) {
+347 |     const dateFrom = this.resolveDateFrom(period);
+348 |     const staffFilters = this.buildSqlFilters({ dateFrom, cityId });
+349 | 
+350 |     type StaffRow = {
+351 |       id: string;
+352 |       name: string;
+353 |       role: 'HOST' | 'DRIVER';
+354 |       revenue: number;
+355 |       eventsCount: number;
+356 |     };
+357 | 
+358 |     // Всі три запити йдуть паралельно
+359 |     const [hostRows, driverRows, totalAgg, eventsCount] = await Promise.all([
+360 |       // Ведучі
+361 |       this.prisma.$queryRaw<StaffRow[]>`
+362 |         SELECT
+363 |           u.id,
+364 |           u.name,
+365 |           'HOST'::text                              AS role,
+366 |           COALESCE(SUM(r."totalSum"), 0)::float     AS revenue,
+367 |           COUNT(e.id)::int                          AS "eventsCount"
+368 |         FROM "Event" e
+369 |         JOIN "EventCrew"    c ON c."eventId" = e.id
+370 |         JOIN "User"         u ON u.id = c."hostId"
+371 |         JOIN "EventReport"  r ON r."eventId" = e.id
+372 |         WHERE e.status = 'RE_SALE'
+373 |         ${staffFilters}
+374 |         GROUP BY u.id, u.name
+375 |       `,
+376 |       // Водії
+377 |       this.prisma.$queryRaw<StaffRow[]>`
+378 |         SELECT
+379 |           u.id,
+380 |           u.name,
+381 |           'DRIVER'::text                            AS role,
+382 |           COALESCE(SUM(r."totalSum"), 0)::float     AS revenue,
+383 |           COUNT(e.id)::int                          AS "eventsCount"
+384 |         FROM "Event" e
+385 |         JOIN "EventCrew"   c ON c."eventId" = e.id
+386 |         JOIN "User"        u ON u.id = c."driverId"
+387 |         JOIN "EventReport" r ON r."eventId" = e.id
+388 |         WHERE e.status = 'RE_SALE'
+389 |         ${staffFilters}
+390 |         GROUP BY u.id, u.name
+391 |       `,
+392 |       // Загальна виручка
+393 |       this.prisma.$queryRaw<[{ revenue: number }]>`
+394 |         SELECT COALESCE(SUM(r."totalSum"), 0)::float AS revenue
+395 |         FROM "Event" e
+396 |         JOIN "EventReport" r ON r."eventId" = e.id
+397 |         WHERE e.status = 'RE_SALE'
+398 |         ${staffFilters}
+399 |       `,
+400 |       // Кількість унікальних подій
+401 |       this.prisma.event.count({
+402 |         where: {
+403 |           status: 'RE_SALE',
+404 |           ...(dateFrom ? { date: { gte: dateFrom } } : {}),
+405 |           ...(cityId ? { cityId } : {}),
+406 |         },
+407 |       }),
+408 |     ]);
+409 | 
+410 |     const staff = [...hostRows, ...driverRows].sort(
+411 |       (a, b) => b.revenue - a.revenue,
+412 |     );
+413 |     const totalRevenue = totalAgg[0]?.revenue ?? 0;
+414 | 
+415 |     return { staff, totalRevenue, eventsCount };
+416 |   }
+417 | }
+418 | 
 ```
 
 ### File: apps/backend/src/issues/issues.controller.ts
@@ -11483,7 +11561,7 @@
 196 |                   </button>
 197 |                   <button
 198 |                     type="submit"
-199 |                     disabled={isLoading}
+199 |                     disabled={addCity.isPending}
 200 |                     className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
 201 |                   >
 202 |                     {addCity.isPending ? "Збереження..." : "Зберегти"}

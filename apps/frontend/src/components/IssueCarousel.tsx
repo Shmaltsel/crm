@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
 
@@ -17,83 +18,45 @@ function getNextStatus(current: string) {
 
 export default function IssueCarousel() {
   const { selectedCity } = useSelectedCity();
-  const [issues, setIssues] = useState<any[]>([]);
+  const qc = useQueryClient();
   const [exitingIssueId, setExitingIssueId] = useState<string | null>(null);
-  const [sectionVisible, setSectionVisible] = useState(false);
-  const [sectionExiting, setSectionExiting] = useState(false);
 
-  const fetchIssues = async () => {
-    if (!selectedCity?.id) {
-      setSectionExiting(true);
-      setTimeout(() => { setSectionVisible(false); setSectionExiting(false); setIssues([]); }, 350);
-      return;
-    }
-    try {
+  const { data: issues = [] } = useQuery({
+    queryKey: ["issues", selectedCity?.id],
+    queryFn: async () => {
+      if (!selectedCity?.id) return [];
       const res = await api.get(`/issues?cityId=${selectedCity.id}`);
-      const filtered = res.data.filter((i: any) => i.status !== "Виконано");
-      setIssues(filtered);
-      if (filtered.length > 0) {
-        setSectionExiting(false);
-        setSectionVisible(true);
-      } else {
-        setSectionExiting(true);
-        setTimeout(() => { setSectionVisible(false); setSectionExiting(false); }, 350);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
+      return res.data.filter((i: any) => i.status !== "Виконано");
+    },
+    enabled: !!selectedCity?.id,
+  });
 
-  useEffect(() => {
-    fetchIssues();
-  }, [selectedCity?.id]);
+  const updateStatusMutation = useMutation({
+    mutationFn: (data: { id: string; status: string }) =>
+      api.patch(`/issues/${data.id}/status`, { status: data.status }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["issues", selectedCity?.id] });
+    },
+  });
 
-  const handleStatusToggle = async (issue: any) => {
+  const handleStatusToggle = (issue: any) => {
     const nextStatus = getNextStatus(issue.status);
 
-    try {
-      await api.patch(`/issues/${issue.id}/status`, { status: nextStatus });
-
-      if (nextStatus === "Виконано") {
-        // Запускаємо анімацію горизонтального згортання
-        setExitingIssueId(issue.id);
-
-        // Чекаємо 500мс і видаляємо з масиву
-        setTimeout(() => {
-          setIssues((prev) => {
-            const next = prev.filter((i) => i.id !== issue.id);
-            if (next.length === 0) {
-              setSectionExiting(true);
-              setTimeout(() => { setSectionVisible(false); setSectionExiting(false); }, 350);
-            }
-            return next;
-          });
-          setExitingIssueId(null);
-        }, 500);
-      } else {
-        setIssues((prev) =>
-          prev.map((i) =>
-            i.id === issue.id ? { ...i, status: nextStatus } : i,
-          ),
-        );
-      }
-    } catch (e) {
-      console.error(e);
+    if (nextStatus === "Виконано") {
+      setExitingIssueId(issue.id);
+      setTimeout(() => {
+        updateStatusMutation.mutate({ id: issue.id, status: nextStatus });
+        setExitingIssueId(null);
+      }, 500);
+    } else {
+      updateStatusMutation.mutate({ id: issue.id, status: nextStatus });
     }
   };
 
-  if (!sectionVisible) return null;
+  if (issues.length === 0) return null;
 
   return (
-    <div
-      className="mb-6"
-      style={{
-        animation: sectionExiting
-          ? "slideUp 0.35s ease-in forwards"
-          : "slideDown 0.4s cubic-bezier(0.16,1,0.3,1) forwards",
-        opacity: 0,
-      }}
-    >
+    <div className="mb-6 animate-[slideDown_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards]">
       <style>{`
         @keyframes slideDown {
           from { opacity: 0; transform: translateY(-15px); }
