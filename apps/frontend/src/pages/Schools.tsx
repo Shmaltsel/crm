@@ -1,15 +1,12 @@
-import {
-  useState,
-  useEffect,
-  useRef,
-  useMemo,
-  useCallback,
-  lazy,
-  Suspense,
-} from "react";
+import { useState, useRef, useMemo, useCallback, lazy, Suspense } from "react";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
-
+import {
+  useSchools,
+  useDeleteSchool,
+  usePrefetchSchool,
+} from "../hooks/useApi";
+import { useQueryClient } from "@tanstack/react-query";
 import VirtualSchoolList from "../components/VirtualSchoolList";
 import { SchoolCard } from "../components/schools/SchoolMobileList";
 
@@ -23,7 +20,6 @@ const VirtualDesktopTable = lazy(
   () => import("../components/schools/VirtualDesktopTable"),
 );
 // SchoolCard імпортується напряму — він легкий і потрібен одразу
-
 export const PIPELINE_STAGES = [
   { key: "BASE", name: "Новий заклад" },
   { key: "FIRST_CONTACT", name: "Знайомство" },
@@ -41,11 +37,10 @@ interface City {
 
 export default function Schools() {
   const { selectedCity } = useSelectedCity();
-  const [schools, setSchools] = useState<any[]>([]);
-  const [cities, setCities] = useState<City[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const qc = useQueryClient();
   const [form, setForm] = useState({
     name: "",
     cityId: "",
@@ -61,40 +56,15 @@ export default function Schools() {
   >([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
   const [dotCount, setDotCount] = useState(3);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchSchools = async () => {
-    setIsLoading(true);
-    try {
-      const res = await api.get("/schools?minimal=true", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      setSchools(res.data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { data: schools = [], isLoading } = useSchools();
+  const deleteSchool = useDeleteSchool();
+  const prefetchSchool = usePrefetchSchool();
 
-  const fetchCities = async () => {
-    try {
-      const res = await api.get("/cities", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      setCities(res.data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  useEffect(() => {
-    fetchSchools();
-    fetchCities();
-  }, []);
+  const { data: citiesData = [] } = useCities();
 
   const handleOpenModal = useCallback(() => {
     setForm({
@@ -189,7 +159,8 @@ export default function Schools() {
         },
       );
       setIsModalOpen(false);
-      fetchSchools();
+      // кеш інвалідується через useAddSchool або вручну:
+      qc.invalidateQueries({ queryKey: ["schools"] });
     } catch (e) {
       alert("Не вдалося створити заклад");
     } finally {
@@ -206,16 +177,9 @@ export default function Schools() {
         )
       )
         return;
-      try {
-        await api.delete(`/schools/${schoolId}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        });
-        setSchools((prev) => prev.filter((s) => s.id !== schoolId));
-      } catch (e) {
-        console.error(e);
-      }
+      await deleteSchool.mutateAsync(schoolId);
     },
-    [],
+    [deleteSchool],
   );
 
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -299,7 +263,7 @@ export default function Schools() {
                 alert(
                   `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
                 );
-                fetchSchools();
+                qc.invalidateQueries({ queryKey: ["schools"] });
               } catch (e) {
                 alert("Помилка імпорту.");
               } finally {
@@ -438,7 +402,7 @@ export default function Schools() {
               schools={filteredSchools}
               itemHeight={110}
               renderItem={(school, index) => (
-                <div className="pb-2.5">
+                 <div className="pb-2.5" onMouseEnter={() => prefetchSchool(school.id)}>
                   <SchoolCard
                     school={school}
                     index={index}

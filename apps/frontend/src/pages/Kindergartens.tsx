@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
 import StatsBar, { classifySchool } from "../components/schools/StatsBar";
+import { useSchools, useDeleteSchool, useCities } from "../hooks/useApi";
+import { useQueryClient } from "@tanstack/react-query";
 
 const PIPELINE_STAGES = [
   { key: "BASE", name: "Новий заклад" },
@@ -20,10 +22,13 @@ interface City {
 }
 
 export default function Kindergartens() {
+  const { data: schools = [] } = useSchools();
+  const { data: cities = [] } = useCities();
+  const deleteSchool = useDeleteSchool();
+  const qc = useQueryClient();
+
   const navigate = useNavigate();
   const { selectedCity } = useSelectedCity();
-  const [schools, setSchools] = useState<any[]>([]);
-  const [cities, setCities] = useState<City[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
@@ -41,35 +46,6 @@ export default function Kindergartens() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const fetchSchools = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await api.get("/schools", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setSchools(res.data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const fetchCities = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await api.get("/cities", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setCities(res.data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  useEffect(() => {
-    fetchSchools();
-    fetchCities();
-  }, []);
 
   const handleOpenModal = () => {
     setForm({
@@ -170,7 +146,7 @@ export default function Kindergartens() {
         },
       );
       setIsModalOpen(false);
-      fetchSchools();
+      qc.invalidateQueries({ queryKey: ["schools"] });
     } catch (e) {
       console.error(e);
       alert("Не вдалося створити садочок");
@@ -185,20 +161,8 @@ export default function Kindergartens() {
     schoolName: string,
   ) => {
     e.stopPropagation();
-    if (
-      !window.confirm(
-        `Видалити садочок "${schoolName}"? Це видалить також усі його події.`,
-      )
-    )
-      return;
-    try {
-      await api.delete(`/schools/${schoolId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      setSchools(schools.filter((s) => s.id !== schoolId));
-    } catch (e) {
-      console.error(e);
-    }
+    if (!window.confirm(`Видалити садочок "${schoolName}"?...`)) return;
+    await deleteSchool.mutateAsync(schoolId);
   };
 
   const filteredKindergartens = schools.filter((s) => {
@@ -243,7 +207,7 @@ export default function Kindergartens() {
                 alert(
                   `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
                 );
-                fetchSchools();
+                qc.invalidateQueries({ queryKey: ["schools"] });
               } catch (e) {
                 alert("Помилка імпорту.");
               }

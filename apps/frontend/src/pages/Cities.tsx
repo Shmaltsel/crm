@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense } from "react";
+import React, { useState, useCallback, lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { useSelectedCity } from "../context/CityContext";
-import { api } from "../config/api";
+import { useCities, useAddCity } from "../hooks/useApi";
 
 // --- ДИНАМІЧНІ ІМПОРТИ (Code Splitting) ---
 const IssueCarousel = lazy(() => import("../components/IssueCarousel"));
@@ -46,42 +46,13 @@ const CitiesSkeleton = () => (
 );
 
 export default function Cities() {
-  const [cities, setCities] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newCityName, setNewCityName] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isFetching, setIsFetching] = useState(true);
 
   const { selectedCity, setSelectedCity } = useSelectedCity();
+  const { data: cities = [], isLoading: isFetching } = useCities();
+  const addCity = useAddCity();
 
-  // Оптимізація 2: AbortController для запобігання витоку пам'яті (Memory Leaks)
-  useEffect(() => {
-    const abortController = new AbortController();
-
-    const fetchCities = async () => {
-      setIsFetching(true);
-      try {
-        const response = await api.get("/cities", {
-          signal: abortController.signal,
-        });
-        setCities(response.data);
-      } catch (error: any) {
-        if (error.name !== "CanceledError") {
-          console.error("Помилка при завантаженні міст:", error);
-        }
-      } finally {
-        setIsFetching(false);
-      }
-    };
-
-    fetchCities();
-
-    return () => {
-      abortController.abort(); // Скасовуємо запит при розмонтуванні компонента
-    };
-  }, []);
-
-  // Оптимізація 3: useCallback
   const handleSelectCity = useCallback(
     (city: any) => {
       setSelectedCity(city);
@@ -89,21 +60,15 @@ export default function Cities() {
     [setSelectedCity],
   );
 
-  // Оптимізація 4: Оптимістичне оновлення UI (Optimistic UI Update)
   const handleAddCity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCityName.trim()) return;
-    setIsLoading(true);
-
     try {
-      const response = await api.post("/cities", { name: newCityName.trim() });
-      setCities((prev) => [response.data, ...prev] as any);
+      await addCity.mutateAsync(newCityName.trim());
       setNewCityName("");
       setIsModalOpen(false);
-    } catch (error) {
+    } catch {
       alert("Не вдалося створити місто. Можливо воно вже існує.");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -123,7 +88,9 @@ export default function Cities() {
         .header-btn-enter { animation: headerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
       `}</style>
       <div className="hidden md:flex justify-between items-center mb-8">
-        <h1 className="header-enter text-3xl font-bold text-slate-800">Міста</h1>
+        <h1 className="header-enter text-3xl font-bold text-slate-800">
+          Міста
+        </h1>
         <button
           onClick={() => setIsModalOpen(true)}
           className="header-btn-enter bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm flex items-center transition-all duration-150"
@@ -179,12 +146,13 @@ export default function Cities() {
       </button>
 
       {/* Модалка додавання */}
-      {isModalOpen && createPortal(
-        <div
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
-          style={{ animation: "fadeIn 0.2s ease-out forwards" }}
-        >
-          <style>{`
+      {isModalOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
+            style={{ animation: "fadeIn 0.2s ease-out forwards" }}
+          >
+            <style>{`
             @keyframes fadeIn {
               from { opacity: 0; }
               to { opacity: 1; }
@@ -195,51 +163,51 @@ export default function Cities() {
             }
           `}</style>
 
-          {/* ТУТ БУЛА ПРОБЛЕМА: додано opacity-0 та style з анімацією modalScale */}
-          <div
-            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
-            style={{ animation: "modalScale 0.3s ease-out forwards" }}
-          >
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="text-xl font-bold text-slate-800">Нове місто</h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-            <form onSubmit={handleAddCity} className="p-6">
-              <input
-                type="text"
-                value={newCityName}
-                onChange={(e) => setNewCityName(e.target.value)}
-                placeholder="Наприклад: Львів"
-                className="w-full p-3 mb-6 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
-                autoFocus
-                required
-              />
-              <div className="flex gap-3">
+            {/* ТУТ БУЛА ПРОБЛЕМА: додано opacity-0 та style з анімацією modalScale */}
+            <div
+              className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
+              style={{ animation: "modalScale 0.3s ease-out forwards" }}
+            >
+              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 className="text-xl font-bold text-slate-800">Нове місто</h3>
                 <button
-                  type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors"
+                  className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
                 >
-                  Скасувати
-                </button>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                  {isLoading ? "Збереження..." : "Зберегти"}
+                  ✕
                 </button>
               </div>
-            </form>
-          </div>
-        </div>,
-        document.body
-      )}
+              <form onSubmit={handleAddCity} className="p-6">
+                <input
+                  type="text"
+                  value={newCityName}
+                  onChange={(e) => setNewCityName(e.target.value)}
+                  placeholder="Наприклад: Львів"
+                  className="w-full p-3 mb-6 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+                  autoFocus
+                  required
+                />
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors"
+                  >
+                    Скасувати
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {addCity.isPending ? "Збереження..." : "Зберегти"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

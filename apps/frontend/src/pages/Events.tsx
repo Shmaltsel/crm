@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useEvents } from "../hooks/useApi";
 import { useNavigate } from "react-router-dom";
-import { api } from "../config/api";
 import AddressLink from "../components/AddressLink";
 import PhoneLink from "../components/PhoneLink";
 import { useSelectedCity } from "../context/CityContext";
@@ -72,37 +72,17 @@ function formatDate(dateStr: string) {
 
 export default function Events() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [events, setEvents] = useState<EventListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-  const { selectedCity } = useSelectedCity();
-
-  useEffect(() => {
+  const [user] = useState<AuthUser | null>(() => {
     try {
       const raw = localStorage.getItem("user");
-      if (raw) setUser(JSON.parse(raw));
+      return raw ? JSON.parse(raw) : null;
     } catch {
-      // ignore
+      return null;
     }
-  }, []);
-
-  useEffect(() => {
-    const load = async () => {
-      setIsLoading(true);
-      setError("");
-      try {
-        const res = await api.get("/events");
-        setEvents(res.data);
-      } catch (e) {
-        console.error("Помилка завантаження подій:", e);
-        setError("Не вдалося завантажити список подій");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    void load();
-  }, []);
+  });
+  const { selectedCity } = useSelectedCity();
+  const { data: events = [], isLoading, isError } = useEvents();
+  const error = isError ? "Не вдалося завантажити список подій" : "";
 
   const isFieldStaff = !!user && FIELD_ROLES.includes(user.role);
   const filteredEvents = selectedCity.id
