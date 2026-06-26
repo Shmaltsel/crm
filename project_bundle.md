@@ -4921,71 +4921,64 @@
 128 |             <span className="mr-3">🧸</span> Садочки
 129 |           </Link>
 130 |           <Link
-131 |             to="/events"
+131 |             to="/finance"
 132 |             onClick={handleLinkClick}
-133 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/events") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+133 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/finance") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
 134 |           >
-135 |             <span className="mr-3">📅</span> Події
+135 |             <span className="mr-3">💰</span> Фінанси
 136 |           </Link>
 137 |           <Link
-138 |             to="/finance"
+138 |             to="/calendar"
 139 |             onClick={handleLinkClick}
-140 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/finance") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+140 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/calendar") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
 141 |           >
-142 |             <span className="mr-3">💰</span> Фінанси
+142 |             <span className="mr-3">📆</span> Календар
 143 |           </Link>
-144 |           <Link
-145 |             to="/calendar"
-146 |             onClick={handleLinkClick}
-147 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/calendar") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-148 |           >
-149 |             <span className="mr-3">📆</span> Календар
-150 |           </Link>
-151 |           {isSuperAdmin && (
-152 |             <Link
-153 |               to="/employees"
-154 |               onClick={handleLinkClick}
-155 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/employees") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-156 |             >
-157 |               <span className="mr-3">👥</span> Працівники
-158 |             </Link>
-159 |           )}
-160 |         </nav>
-161 | 
-162 |         <div className="p-4 border-t border-slate-700/50 pb-8 md:pb-4">
-163 |           <div className="flex items-center px-4 py-2 text-slate-300 justify-between">
-164 |             <div className="flex items-center">
-165 |               <div className="w-8 h-8 bg-slate-600 rounded-full mr-3 flex items-center justify-center text-xs font-bold">
-166 |                 {user?.name?.charAt(0) ?? "?"}
-167 |               </div>
-168 |               <div className="text-sm truncate max-w-[120px]">
-169 |                 <p className="font-medium text-white truncate">
-170 |                   {user?.name ?? "Користувач"}
-171 |                 </p>
-172 |                 <p className="text-xs text-slate-400 truncate">
-173 |                   {user?.role ?? ""}
-174 |                 </p>
-175 |               </div>
-176 |             </div>
-177 |             <button
-178 |               onClick={handleLogout}
-179 |               className="text-slate-500 hover:text-slate-300 transition-colors text-xs ml-2 shrink-0 p-2"
-180 |               title="Вийти"
-181 |             >
-182 |               ⬅️
-183 |             </button>
-184 |           </div>
-185 |         </div>
-186 |       </aside>
-187 | 
-188 |       {/* Головна область */}
-189 |       <main className="flex-1 overflow-y-auto mt-16 md:mt-0 relative w-full">
-190 |         <Outlet />
-191 |       </main>
-192 |     </div>
-193 |   );
-194 | }
-195 | 
+144 |           {isSuperAdmin && (
+145 |             <Link
+146 |               to="/employees"
+147 |               onClick={handleLinkClick}
+148 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/employees") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+149 |             >
+150 |               <span className="mr-3">👥</span> Працівники
+151 |             </Link>
+152 |           )}
+153 |         </nav>
+154 | 
+155 |         <div className="p-4 border-t border-slate-700/50 pb-8 md:pb-4">
+156 |           <div className="flex items-center px-4 py-2 text-slate-300 justify-between">
+157 |             <div className="flex items-center">
+158 |               <div className="w-8 h-8 bg-slate-600 rounded-full mr-3 flex items-center justify-center text-xs font-bold">
+159 |                 {user?.name?.charAt(0) ?? "?"}
+160 |               </div>
+161 |               <div className="text-sm truncate max-w-[120px]">
+162 |                 <p className="font-medium text-white truncate">
+163 |                   {user?.name ?? "Користувач"}
+164 |                 </p>
+165 |                 <p className="text-xs text-slate-400 truncate">
+166 |                   {user?.role ?? ""}
+167 |                 </p>
+168 |               </div>
+169 |             </div>
+170 |             <button
+171 |               onClick={handleLogout}
+172 |               className="text-slate-500 hover:text-slate-300 transition-colors text-xs ml-2 shrink-0 p-2"
+173 |               title="Вийти"
+174 |             >
+175 |               ⬅️
+176 |             </button>
+177 |           </div>
+178 |         </div>
+179 |       </aside>
+180 | 
+181 |       {/* Головна область */}
+182 |       <main className="flex-1 overflow-y-auto mt-16 md:mt-0 relative w-full">
+183 |         <Outlet />
+184 |       </main>
+185 |     </div>
+186 |   );
+187 | }
+188 | 
 ```
 
 ### File: apps/frontend/src/components/PhoneLink.tsx
@@ -12252,542 +12245,647 @@
 ```tsx
   0 | import { useEffect, useState } from "react";
   1 | import { api } from "../config/api";
-  2 | import PhoneLink from "../components/PhoneLink";
-  3 | import { useSelectedCity } from "../context/CityContext";
-  4 | 
-  5 | type Role = "MANAGER" | "DRIVER" | "HOST" | "SUPERADMIN" | "GUEST";
-  6 | 
-  7 | interface City {
-  8 |   id: string;
-  9 |   name: string;
- 10 | }
- 11 | interface User {
- 12 |   id: string;
- 13 |   name: string;
- 14 |   phone: string | null;
- 15 |   email: string;
- 16 |   cityId: string | null;
- 17 |   city?: City;
- 18 |   role: Role;
- 19 |   telegramId?: string | null;
- 20 |   car?: string | null;
- 21 | }
- 22 | interface Project {
- 23 |   id: string;
- 24 |   name: string;
- 25 |   color: string;
- 26 | }
- 27 | 
- 28 | const ROLE_LABELS: Record<string, string> = {
- 29 |   MANAGER: "Менеджер",
- 30 |   DRIVER: "Водій",
- 31 |   HOST: "Ведучий",
- 32 |   SUPERADMIN: "Суперадмін",
- 33 |   GUEST: "Гість",
- 34 | };
- 35 | const ROLE_COLORS: Record<string, string> = {
- 36 |   MANAGER: "bg-blue-50 text-blue-700 border-blue-200",
- 37 |   DRIVER: "bg-emerald-50 text-emerald-700 border-emerald-200",
- 38 |   HOST: "bg-violet-50 text-violet-700 border-violet-200",
- 39 | };
- 40 | const ROLE_HEADER_COLORS: Record<string, string> = {
- 41 |   MANAGER: "bg-blue-600",
- 42 |   DRIVER: "bg-emerald-600",
- 43 |   HOST: "bg-violet-600",
- 44 | };
- 45 | const EMPTY_FORM = {
- 46 |   fullName: "",
- 47 |   phone: "",
- 48 |   email: "",
- 49 |   cityId: "",
- 50 |   role: "MANAGER" as Role,
- 51 |   password: "",
- 52 |   telegramId: "",
- 53 |   car: "",
- 54 | };
- 55 | 
- 56 | const PROJECT_COLORS: Record<string, string> = {
- 57 |   blue: "bg-blue-500",
- 58 |   emerald: "bg-emerald-500",
- 59 |   rose: "bg-rose-500",
- 60 |   red: "bg-red-500",
- 61 |   amber: "bg-amber-500",
- 62 |   purple: "bg-purple-500",
- 63 | };
- 64 | 
- 65 | export default function Employees() {
- 66 |   const [users, setUsers] = useState<User[]>([]);
- 67 |   const [cities, setCities] = useState<City[]>([]);
- 68 |   const [projects, setProjects] = useState<Project[]>([]);
- 69 |   const [isModalOpen, setIsModalOpen] = useState(false);
- 70 |   const [editingUser, setEditingUser] = useState<User | null>(null);
- 71 |   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
- 72 |   const [isSubmitting, setIsSubmitting] = useState(false);
- 73 | 
- 74 |   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
- 75 |   const [projectForm, setProjectForm] = useState({ name: "", color: "blue" });
- 76 | 
- 77 |   const { selectedCity } = useSelectedCity();
- 78 |   const token = localStorage.getItem("token");
- 79 |   const headers = { Authorization: `Bearer ${token}` };
- 80 | 
- 81 |   const fetchData = async () => {
- 82 |     // 1. Завантажуємо критичні дані (Працівники та Міста)
- 83 |     try {
- 84 |       const [usersRes, citiesRes] = await Promise.all([
- 85 |         api.get("/users", { headers }),
- 86 |         api.get("/cities", { headers }),
- 87 |       ]);
- 88 |       setUsers(usersRes.data);
- 89 |       setCities(citiesRes.data);
- 90 |     } catch (e) {
- 91 |       console.error("Помилка завантаження працівників:", e);
- 92 |     }
- 93 | 
- 94 |     // 2. Окремо завантажуємо проєкти (не критично для списку працівників)
- 95 |     try {
- 96 |       const projRes = await api.get("/projects", { headers });
- 97 |       setProjects(projRes.data);
- 98 |     } catch (e) {
- 99 |       console.warn("Проєктів ще немає або помилка їх завантаження:", e);
-100 |     }
-101 |   };
-102 | 
-103 |   useEffect(() => {
-104 |     fetchData();
-105 |   }, []);
-106 | 
-107 |   const cityFilteredUsers = selectedCity.id
-108 |     ? users.filter((u) => u.cityId === selectedCity.id)
-109 |     : users;
-110 |   const grouped = (["MANAGER", "DRIVER", "HOST"] as Role[]).map((role) => ({
-111 |     role,
-112 |     label: ROLE_LABELS[role],
-113 |     items: cityFilteredUsers.filter((u) => u.role === role),
-114 |   }));
-115 | 
-116 |   const handleOpenModal = (user: User | null = null) => {
-117 |     setEditingUser(user);
-118 |     if (user) {
-119 |       setForm({
-120 |         fullName: user.name,
-121 |         phone: user.phone || "",
-122 |         email: user.email,
-123 |         cityId: user.cityId || "",
-124 |         role: user.role,
-125 |         password: "",
-126 |         telegramId: user.telegramId || "",
-127 |         car: user.car || "",
-128 |       });
-129 |     } else {
-130 |       setForm({ ...EMPTY_FORM });
-131 |     }
-132 |     setIsModalOpen(true);
-133 |   };
-134 | 
-135 |   const handleSubmit = async (e: React.FormEvent) => {
-136 |     e.preventDefault();
-137 |     if (!form.fullName.trim()) return;
-138 |     setIsSubmitting(true);
-139 |     try {
-140 |       if (editingUser)
-141 |         await api.patch(`/users/${editingUser.id}`, form, { headers });
-142 |       else await api.post("/users", form, { headers });
-143 |       setIsModalOpen(false);
-144 |       fetchData();
-145 |     } catch (e) {
-146 |       alert("Помилка збереження. Перевірте, чи не дублюється email.");
-147 |     } finally {
-148 |       setIsSubmitting(false);
+  2 | import { motion, AnimatePresence } from "framer-motion";
+  3 | import PhoneLink from "../components/PhoneLink";
+  4 | import { useSelectedCity } from "../context/CityContext";
+  5 | 
+  6 | type Role = "MANAGER" | "DRIVER" | "HOST" | "SUPERADMIN" | "GUEST";
+  7 | 
+  8 | interface City {
+  9 |   id: string;
+ 10 |   name: string;
+ 11 | }
+ 12 | interface User {
+ 13 |   id: string;
+ 14 |   name: string;
+ 15 |   phone: string | null;
+ 16 |   email: string;
+ 17 |   cityId: string | null;
+ 18 |   city?: City;
+ 19 |   role: Role;
+ 20 |   telegramId?: string | null;
+ 21 |   car?: string | null;
+ 22 | }
+ 23 | interface Project {
+ 24 |   id: string;
+ 25 |   name: string;
+ 26 |   color: string;
+ 27 | }
+ 28 | 
+ 29 | const ROLE_LABELS: Record<string, string> = {
+ 30 |   MANAGER: "Менеджер",
+ 31 |   DRIVER: "Водій",
+ 32 |   HOST: "Ведучий",
+ 33 |   SUPERADMIN: "Суперадмін",
+ 34 |   GUEST: "Гість",
+ 35 | };
+ 36 | const ROLE_COLORS: Record<string, string> = {
+ 37 |   MANAGER: "bg-blue-50 text-blue-700 border-blue-200",
+ 38 |   DRIVER: "bg-emerald-50 text-emerald-700 border-emerald-200",
+ 39 |   HOST: "bg-violet-50 text-violet-700 border-violet-200",
+ 40 | };
+ 41 | const ROLE_HEADER_COLORS: Record<string, string> = {
+ 42 |   MANAGER: "bg-blue-600",
+ 43 |   DRIVER: "bg-emerald-600",
+ 44 |   HOST: "bg-violet-600",
+ 45 | };
+ 46 | const EMPTY_FORM = {
+ 47 |   fullName: "",
+ 48 |   phone: "",
+ 49 |   email: "",
+ 50 |   cityId: "",
+ 51 |   role: "MANAGER" as Role,
+ 52 |   password: "",
+ 53 |   telegramId: "",
+ 54 |   car: "",
+ 55 | };
+ 56 | 
+ 57 | const PROJECT_COLORS: Record<string, string> = {
+ 58 |   blue: "bg-blue-500",
+ 59 |   emerald: "bg-emerald-500",
+ 60 |   rose: "bg-rose-500",
+ 61 |   red: "bg-red-500",
+ 62 |   amber: "bg-amber-500",
+ 63 |   purple: "bg-purple-500",
+ 64 | };
+ 65 | 
+ 66 | function EmployeesSkeleton() {
+ 67 |   return (
+ 68 |     <div className="p-4 md:p-8 animate-pulse">
+ 69 |       <div className="flex justify-between items-center mb-8">
+ 70 |         <div>
+ 71 |           <div className="h-7 w-56 bg-slate-200 rounded-lg mb-2" />
+ 72 |           <div className="h-4 w-72 bg-slate-100 rounded" />
+ 73 |         </div>
+ 74 |         <div className="h-10 w-44 bg-slate-200 rounded-lg" />
+ 75 |       </div>
+ 76 |       {["Менеджери", "Водії", "Ведучі"].map((label) => (
+ 77 |         <div key={label} className="mb-8">
+ 78 |           <div className="flex items-center gap-3 mb-4">
+ 79 |             <div className="w-1 h-6 bg-slate-200 rounded-full" />
+ 80 |             <div className="h-5 w-24 bg-slate-200 rounded" />
+ 81 |             <div className="h-5 w-8 bg-slate-100 rounded-full" />
+ 82 |           </div>
+ 83 |           <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+ 84 |             <div className="bg-slate-50 border-b border-slate-100 px-5 py-3 flex gap-8">
+ 85 |               {["w-24", "w-20", "w-28", "w-16", "w-12"].map((w, i) => (
+ 86 |                 <div key={i} className={`h-3 ${w} bg-slate-200 rounded`} />
+ 87 |               ))}
+ 88 |             </div>
+ 89 |             {[1, 2].map((i) => (
+ 90 |               <div
+ 91 |                 key={i}
+ 92 |                 className="flex items-center gap-8 px-5 py-4 border-b border-slate-50"
+ 93 |               >
+ 94 |                 <div className="flex items-center gap-3">
+ 95 |                   <div className="w-8 h-8 rounded-full bg-slate-200" />
+ 96 |                   <div className="h-4 w-28 bg-slate-200 rounded" />
+ 97 |                 </div>
+ 98 |                 <div className="h-4 w-20 bg-slate-100 rounded" />
+ 99 |                 <div className="h-4 w-36 bg-slate-100 rounded" />
+100 |                 <div className="h-6 w-20 bg-slate-100 rounded-full" />
+101 |               </div>
+102 |             ))}
+103 |           </div>
+104 |         </div>
+105 |       ))}
+106 |     </div>
+107 |   );
+108 | }
+109 | 
+110 | export default function Employees() {
+111 |   const [users, setUsers] = useState<User[]>([]);
+112 |   const [cities, setCities] = useState<City[]>([]);
+113 |   const [projects, setProjects] = useState<Project[]>([]);
+114 |   const [isLoading, setIsLoading] = useState(true);
+115 |   const [isModalOpen, setIsModalOpen] = useState(false);
+116 |   const [editingUser, setEditingUser] = useState<User | null>(null);
+117 |   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
+118 |   const [isSubmitting, setIsSubmitting] = useState(false);
+119 | 
+120 |   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+121 |   const [projectForm, setProjectForm] = useState({ name: "", color: "blue" });
+122 | 
+123 |   const { selectedCity } = useSelectedCity();
+124 |   const token = localStorage.getItem("token");
+125 |   const headers = { Authorization: `Bearer ${token}` };
+126 | 
+127 |   const fetchData = async () => {
+128 |     setIsLoading(true);
+129 |     // 1. Завантажуємо критичні дані (Працівники та Міста)
+130 |     try {
+131 |       const [usersRes, citiesRes] = await Promise.all([
+132 |         api.get("/users", { headers }),
+133 |         api.get("/cities", { headers }),
+134 |       ]);
+135 |       setUsers(usersRes.data);
+136 |       setCities(citiesRes.data);
+137 |       setIsLoading(false);
+138 |     } catch (e) {
+139 |       console.error("Помилка завантаження працівників:", e);
+140 |       setIsLoading(false);
+141 |     }
+142 | 
+143 |     // 2. Окремо завантажуємо проєкти (не критично для списку працівників)
+144 |     try {
+145 |       const projRes = await api.get("/projects", { headers });
+146 |       setProjects(projRes.data);
+147 |     } catch (e) {
+148 |       console.warn("Проєктів ще немає або помилка їх завантаження:", e);
 149 |     }
 150 |   };
 151 | 
-152 |   const handleDelete = async (id: string, name: string) => {
-153 |     if (!window.confirm(`Видалити користувача "${name}"?`)) return;
-154 |     try {
-155 |       await api.delete(`/users/${id}`, { headers });
-156 |       setUsers(users.filter((u) => u.id !== id));
-157 |     } catch (e) {
-158 |       alert("Помилка видалення");
-159 |     }
-160 |   };
-161 | 
-162 |   const handleCreateProject = async (e: React.FormEvent) => {
-163 |     e.preventDefault();
-164 |     if (!projectForm.name.trim()) return;
-165 |     try {
-166 |       await api.post("/projects", projectForm, { headers });
-167 |       setIsProjectModalOpen(false);
-168 |       setProjectForm({ name: "", color: "blue" });
-169 |       fetchData();
-170 |     } catch (e) {
-171 |       alert("Помилка. Можливо такий вид події вже існує.");
-172 |     }
-173 |   };
-174 | 
-175 |   const handleDeleteProject = async (id: string, name: string) => {
-176 |     if (
-177 |       !window.confirm(
-178 |         `Видалити вид події "${name}"? Існуючі події з цією назвою збережуться.`,
-179 |       )
-180 |     )
-181 |       return;
-182 |     try {
-183 |       await api.delete(`/projects/${id}`, { headers });
-184 |       fetchData();
-185 |     } catch (e) {
-186 |       alert("Помилка видалення");
-187 |     }
-188 |   };
-189 | 
-190 |   return (
-191 |     <div className="p-4 md:p-8 h-full">
-192 |       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
-193 |         <div>
-194 |           <h1 className="text-2xl font-bold text-slate-800">
-195 |             Акаунти та Проєкти{" "}
-196 |             {selectedCity.id && (
-197 |               <span className="ml-2 text-base font-normal text-blue-500">
-198 |                 · {selectedCity.name}
-199 |               </span>
-200 |             )}
-201 |           </h1>
-202 |           <p className="text-sm text-slate-400 mt-1">
-203 |             Керування доступами, працівниками та видами подій
-204 |           </p>
-205 |         </div>
-206 |         <button
-207 |           onClick={() => handleOpenModal()}
-208 |           className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
-209 |         >
-210 |           + Створити користувача
-211 |         </button>
-212 |       </div>
-213 | 
-214 |       <div className="space-y-8">
-215 |         {grouped.map(({ role, label, items }) => (
-216 |           <div key={role}>
-217 |             <div className={`flex items-center gap-3 mb-4`}>
-218 |               <div
-219 |                 className={`w-1 h-6 rounded-full ${ROLE_HEADER_COLORS[role]}`}
-220 |               ></div>
-221 |               <h2 className="text-lg font-bold text-slate-700">{label}</h2>
-222 |               <span
-223 |                 className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_COLORS[role]}`}
-224 |               >
-225 |                 {items.length}
-226 |               </span>
-227 |             </div>
-228 |             {items.length === 0 ? (
-229 |               <div className="bg-white rounded-xl border border-slate-100 p-6 text-center text-slate-400 text-sm">
-230 |                 Немає {label.toLowerCase()}ів
-231 |               </div>
-232 |             ) : (
-233 |               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-234 |                 <table className="w-full text-left">
-235 |                   <thead>
-236 |                     <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-237 |                       <th className="px-5 py-3">ПІБ</th>
-238 |                       <th className="px-5 py-3">Телефон</th>
-239 |                       <th className="px-5 py-3">Пошта / Логін</th>
-240 |                       <th className="px-5 py-3">Місто</th>
-241 |                       <th className="px-5 py-3 text-center">Дії</th>
-242 |                     </tr>
-243 |                   </thead>
-244 |                   <tbody>
-245 |                     {items.map((u) => (
-246 |                       <tr
-247 |                         key={u.id}
-248 |                         className="border-b border-slate-50 hover:bg-slate-50/50"
-249 |                       >
-250 |                         <td className="px-5 py-4">
-251 |                           <div className="flex items-center gap-3">
-252 |                             <div
-253 |                               className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
-254 |                             >
-255 |                               {u.name.charAt(0)}
-256 |                             </div>
-257 |                             <span className="font-medium text-slate-800">
-258 |                               {u.name}
-259 |                             </span>
-260 |                           </div>
-261 |                         </td>
-262 |                         <td className="px-5 py-4 text-slate-600 text-sm">
-263 |                           <PhoneLink phone={u.phone} />
-264 |                           {u.car && (
-265 |                             <p className="text-xs text-emerald-600 font-medium mt-1">
-266 |                               🚗 {u.car}
-267 |                             </p>
-268 |                           )}
-269 |                         </td>
-270 |                         <td className="px-5 py-4 text-slate-600 text-sm font-medium">
-271 |                           {u.email}
-272 |                         </td>
-273 |                         <td className="px-5 py-4">
-274 |                           <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
-275 |                             📍 {u.city?.name || "Всі міста"}
-276 |                           </span>
-277 |                         </td>
-278 |                         <td className="px-5 py-4 text-center">
-279 |                           <button
-280 |                             onClick={() => handleOpenModal(u)}
-281 |                             className="text-slate-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 mr-2"
-282 |                           >
-283 |                             ✏️
-284 |                           </button>
-285 |                           <button
-286 |                             onClick={() => handleDelete(u.id, u.name)}
-287 |                             className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50"
-288 |                           >
-289 |                             🗑
-290 |                           </button>
-291 |                         </td>
-292 |                       </tr>
-293 |                     ))}
-294 |                   </tbody>
-295 |                 </table>
-296 |               </div>
-297 |             )}
-298 |           </div>
-299 |         ))}
-300 |       </div>
-301 | 
-302 |       {/* --- СЕКЦІЯ ПРОЄКТІВ (ВИДІВ ПОДІЙ) --- */}
-303 |       <div className="mt-16 border-t border-slate-200 pt-10">
-304 |         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-305 |           <div>
-306 |             <h2 className="text-2xl font-bold text-slate-800">
-307 |               Види подій (Проєкти)
-308 |             </h2>
-309 |             <p className="text-sm text-slate-400 mt-1">
-310 |               Ці проєкти відображатимуться у випадаючому списку при створенні
-311 |               події
-312 |             </p>
-313 |           </div>
-314 |           <button
-315 |             onClick={() => setIsProjectModalOpen(true)}
-316 |             className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 transition-colors w-full sm:w-auto"
-317 |           >
-318 |             + Створити вид події
-319 |           </button>
-320 |         </div>
-321 | 
-322 |         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-323 |           {projects.map((p) => (
-324 |             <div
-325 |               key={p.id}
-326 |               className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group"
-327 |             >
-328 |               <div className="flex items-center gap-3">
-329 |                 <div
-330 |                   className={`w-4 h-4 rounded-full ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm`}
-331 |                 />
-332 |                 <span className="font-bold text-slate-800">{p.name}</span>
-333 |               </div>
-334 |               <button
-335 |                 onClick={() => handleDeleteProject(p.id, p.name)}
-336 |                 className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2 -mr-2"
-337 |                 title="Видалити"
-338 |               >
-339 |                 🗑
-340 |               </button>
-341 |             </div>
-342 |           ))}
-343 |           {projects.length === 0 && (
-344 |             <div className="col-span-full text-center py-10 text-slate-400">
-345 |               Ви ще не додали жодного виду події
-346 |             </div>
-347 |           )}
-348 |         </div>
-349 |       </div>
-350 | 
-351 |       {/* Модалки Користувача і Проєктів */}
-352 |       {isProjectModalOpen && (
-353 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-354 |           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-355 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-356 |               <h3 className="text-xl font-bold text-slate-800">
-357 |                 Новий вид події
-358 |               </h3>
-359 |               <button
-360 |                 onClick={() => setIsProjectModalOpen(false)}
-361 |                 className="text-slate-400 text-xl leading-none p-2 -mr-2"
-362 |               >
-363 |                 ✕
-364 |               </button>
-365 |             </div>
-366 |             <form onSubmit={handleCreateProject} className="p-6">
-367 |               <label className="block text-sm font-medium text-slate-700 mb-1.5">
-368 |                 Назва
-369 |               </label>
-370 |               <input
-371 |                 type="text"
-372 |                 value={projectForm.name}
-373 |                 onChange={(e) =>
-374 |                   setProjectForm({ ...projectForm, name: e.target.value })
-375 |                 }
-376 |                 className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none mb-6"
-377 |                 required
-378 |                 placeholder="Наприклад: Шоу мильних бульбашок"
-379 |               />
-380 |               <label className="block text-sm font-medium text-slate-700 mb-3">
-381 |                 Колір для календаря
-382 |               </label>
-383 |               <div className="flex gap-4 mb-8">
-384 |                 {Object.keys(PROJECT_COLORS).map((c) => (
-385 |                   <button
-386 |                     type="button"
-387 |                     key={c}
-388 |                     onClick={() => setProjectForm({ ...projectForm, color: c })}
-389 |                     className={`w-8 h-8 rounded-full ${PROJECT_COLORS[c]} transition-all ${projectForm.color === c ? "ring-4 ring-offset-2 ring-blue-200 scale-110" : "hover:scale-110"}`}
-390 |                   />
-391 |                 ))}
-392 |               </div>
-393 |               <div className="flex gap-3">
-394 |                 <button
-395 |                   type="button"
-396 |                   onClick={() => setIsProjectModalOpen(false)}
-397 |                   className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
-398 |                 >
-399 |                   Скасувати
-400 |                 </button>
-401 |                 <button
-402 |                   type="submit"
-403 |                   className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-medium"
-404 |                 >
-405 |                   Зберегти
-406 |                 </button>
-407 |               </div>
-408 |             </form>
+152 |   useEffect(() => {
+153 |     fetchData();
+154 |   }, []);
+155 | 
+156 |   const cityFilteredUsers = selectedCity.id
+157 |     ? users.filter((u) => u.cityId === selectedCity.id)
+158 |     : users;
+159 |   const grouped = (["MANAGER", "DRIVER", "HOST"] as Role[]).map((role) => ({
+160 |     role,
+161 |     label: ROLE_LABELS[role],
+162 |     items: cityFilteredUsers.filter((u) => u.role === role),
+163 |   }));
+164 | 
+165 |   const handleOpenModal = (user: User | null = null) => {
+166 |     setEditingUser(user);
+167 |     if (user) {
+168 |       setForm({
+169 |         fullName: user.name,
+170 |         phone: user.phone || "",
+171 |         email: user.email,
+172 |         cityId: user.cityId || "",
+173 |         role: user.role,
+174 |         password: "",
+175 |         telegramId: user.telegramId || "",
+176 |         car: user.car || "",
+177 |       });
+178 |     } else {
+179 |       setForm({ ...EMPTY_FORM });
+180 |     }
+181 |     setIsModalOpen(true);
+182 |   };
+183 | 
+184 |   const handleSubmit = async (e: React.FormEvent) => {
+185 |     e.preventDefault();
+186 |     if (!form.fullName.trim()) return;
+187 |     setIsSubmitting(true);
+188 |     try {
+189 |       if (editingUser)
+190 |         await api.patch(`/users/${editingUser.id}`, form, { headers });
+191 |       else await api.post("/users", form, { headers });
+192 |       setIsModalOpen(false);
+193 |       fetchData();
+194 |     } catch (e) {
+195 |       alert("Помилка збереження. Перевірте, чи не дублюється email.");
+196 |     } finally {
+197 |       setIsSubmitting(false);
+198 |     }
+199 |   };
+200 | 
+201 |   const handleDelete = async (id: string, name: string) => {
+202 |     if (!window.confirm(`Видалити користувача "${name}"?`)) return;
+203 |     try {
+204 |       await api.delete(`/users/${id}`, { headers });
+205 |       setUsers(users.filter((u) => u.id !== id));
+206 |     } catch (e) {
+207 |       alert("Помилка видалення");
+208 |     }
+209 |   };
+210 | 
+211 |   const handleCreateProject = async (e: React.FormEvent) => {
+212 |     e.preventDefault();
+213 |     if (!projectForm.name.trim()) return;
+214 |     try {
+215 |       await api.post("/projects", projectForm, { headers });
+216 |       setIsProjectModalOpen(false);
+217 |       setProjectForm({ name: "", color: "blue" });
+218 |       fetchData();
+219 |     } catch (e) {
+220 |       alert("Помилка. Можливо такий вид події вже існує.");
+221 |     }
+222 |   };
+223 | 
+224 |   const handleDeleteProject = async (id: string, name: string) => {
+225 |     if (
+226 |       !window.confirm(
+227 |         `Видалити вид події "${name}"? Існуючі події з цією назвою збережуться.`,
+228 |       )
+229 |     )
+230 |       return;
+231 |     try {
+232 |       await api.delete(`/projects/${id}`, { headers });
+233 |       fetchData();
+234 |     } catch (e) {
+235 |       alert("Помилка видалення");
+236 |     }
+237 |   };
+238 | 
+239 |   if (isLoading) return <EmployeesSkeleton />;
+240 | 
+241 |   return (
+242 |     <motion.div
+243 |       initial={{ opacity: 0, y: 8 }}
+244 |       animate={{ opacity: 1, y: 0 }}
+245 |       transition={{ duration: 0.35, ease: "easeOut" }}
+246 |       className="p-4 md:p-8 h-full"
+247 |     >
+248 |       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
+249 |         <motion.div
+250 |           initial={{ opacity: 0, y: -10 }}
+251 |           animate={{ opacity: 1, y: 0 }}
+252 |           transition={{ duration: 0.4, ease: "easeOut" }}
+253 |         >
+254 |           <h1 className="text-2xl font-bold text-slate-800">
+255 |             Акаунти та Проєкти{" "}
+256 |             {selectedCity.id && (
+257 |               <span className="ml-2 text-base font-normal text-blue-500">
+258 |                 · {selectedCity.name}
+259 |               </span>
+260 |             )}
+261 |           </h1>
+262 |           <p className="text-sm text-slate-400 mt-1">
+263 |             Керування доступами, працівниками та видами подій
+264 |           </p>
+265 |         </motion.div>
+266 |         <motion.button
+267 |           initial={{ opacity: 0, y: -10 }}
+268 |           animate={{ opacity: 1, y: 0 }}
+269 |           transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+270 |           whileTap={{ scale: 0.97 }}
+271 |           onClick={() => handleOpenModal()}
+272 |           className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
+273 |         >
+274 |           + Створити користувача
+275 |         </motion.button>
+276 |       </div>
+277 | 
+278 |       <div className="space-y-8">
+279 |         {grouped.map(({ role, label, items }, gi) => (
+280 |           <motion.div
+281 |             key={role}
+282 |             initial={{ opacity: 0, y: 15 }}
+283 |             animate={{ opacity: 1, y: 0 }}
+284 |             transition={{ duration: 0.3, delay: gi * 0.06 }}
+285 |           >
+286 |             <div className={`flex items-center gap-3 mb-4`}>
+287 |               <div
+288 |                 className={`w-1 h-6 rounded-full ${ROLE_HEADER_COLORS[role]}`}
+289 |               ></div>
+290 |               <h2 className="text-lg font-bold text-slate-700">{label}</h2>
+291 |               <motion.span
+292 |                 key={items.length}
+293 |                 initial={{ scale: 0.7, opacity: 0 }}
+294 |                 animate={{ scale: 1, opacity: 1 }}
+295 |                 transition={{ duration: 0.2 }}
+296 |                 className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_COLORS[role]}`}
+297 |               >
+298 |                 {items.length}
+299 |               </motion.span>
+300 |             </div>
+301 |             {items.length === 0 ? (
+302 |               <motion.div
+303 |                 initial={{ opacity: 0, scale: 0.97 }}
+304 |                 animate={{ opacity: 1, scale: 1 }}
+305 |                 transition={{ duration: 0.25 }}
+306 |                 className="bg-white rounded-xl border border-slate-100 p-6 text-center text-slate-400 text-sm"
+307 |               >
+308 |                 Немає {label.toLowerCase()}ів
+309 |               </motion.div>
+310 |             ) : (
+311 |               <motion.div
+312 |                 whileHover={{
+313 |                   y: -2,
+314 |                   boxShadow: "0 8px 24px -4px rgba(0,0,0,0.08)",
+315 |                 }}
+316 |                 transition={{ duration: 0.2 }}
+317 |                 className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+318 |               >
+319 |                 <table className="w-full text-left">
+320 |                   <thead>
+321 |                     <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+322 |                       <th className="px-5 py-3">ПІБ</th>
+323 |                       <th className="px-5 py-3">Телефон</th>
+324 |                       <th className="px-5 py-3">Пошта / Логін</th>
+325 |                       <th className="px-5 py-3">Місто</th>
+326 |                       <th className="px-5 py-3 text-center">Дії</th>
+327 |                     </tr>
+328 |                   </thead>
+329 |                   <tbody>
+330 |                     <AnimatePresence initial={false}>
+331 |                       {items.map((u, ri) => (
+332 |                         <motion.tr
+333 |                           key={u.id}
+334 |                           initial={{ opacity: 0 }}
+335 |                           animate={{ opacity: 1 }}
+336 |                           exit={{ opacity: 0, height: 0 }}
+337 |                           transition={{ duration: 0.2, delay: ri * 0.04 }}
+338 |                           className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+339 |                         >
+340 |                           <td className="px-5 py-4">
+341 |                             <div className="flex items-center gap-3">
+342 |                               <motion.div
+343 |                                 initial={{ scale: 0.8, opacity: 0 }}
+344 |                                 animate={{ scale: 1, opacity: 1 }}
+345 |                                 transition={{ duration: 0.2, delay: 0.05 }}
+346 |                                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
+347 |                               >
+348 |                                 {u.name.charAt(0)}
+349 |                               </motion.div>
+350 |                               <span className="font-medium text-slate-800">
+351 |                                 {u.name}
+352 |                               </span>
+353 |                             </div>
+354 |                           </td>
+355 |                           <td className="px-5 py-4 text-slate-600 text-sm">
+356 |                             <PhoneLink phone={u.phone} />
+357 |                             {u.car && (
+358 |                               <p className="text-xs text-emerald-600 font-medium mt-1">
+359 |                                 🚗 {u.car}
+360 |                               </p>
+361 |                             )}
+362 |                           </td>
+363 |                           <td className="px-5 py-4 text-slate-600 text-sm font-medium">
+364 |                             {u.email}
+365 |                           </td>
+366 |                           <td className="px-5 py-4">
+367 |                             <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
+368 |                               📍 {u.city?.name || "Всі міста"}
+369 |                             </span>
+370 |                           </td>
+371 |                           <td className="px-5 py-4 text-center">
+372 |                             <motion.button
+373 |                               whileTap={{ scale: 0.93 }}
+374 |                               onClick={() => handleOpenModal(u)}
+375 |                               className="text-slate-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 rounded-lg mr-2 transition-colors"
+376 |                             >
+377 |                               ✏️
+378 |                             </motion.button>
+379 |                             <motion.button
+380 |                               whileTap={{ scale: 0.93 }}
+381 |                               onClick={() => handleDelete(u.id, u.name)}
+382 |                               className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+383 |                             >
+384 |                               🗑
+385 |                             </motion.button>
+386 |                           </td>
+387 |                         </motion.tr>
+388 |                       ))}
+389 |                     </AnimatePresence>
+390 |                   </tbody>
+391 |                 </table>
+392 |               </motion.div>
+393 |             )}
+394 |           </motion.div>
+395 |         ))}
+396 |       </div>
+397 | 
+398 |       {/* --- СЕКЦІЯ ПРОЄКТІВ (ВИДІВ ПОДІЙ) --- */}
+399 |       <div className="mt-16 border-t border-slate-200 pt-10">
+400 |         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+401 |           <div>
+402 |             <h2 className="text-2xl font-bold text-slate-800">
+403 |               Види подій (Проєкти)
+404 |             </h2>
+405 |             <p className="text-sm text-slate-400 mt-1">
+406 |               Ці проєкти відображатимуться у випадаючому списку при створенні
+407 |               події
+408 |             </p>
 409 |           </div>
-410 |         </div>
-411 |       )}
-412 | 
-413 |       {/* Ваша стара модалка Користувача */}
-414 |       {isModalOpen && (
-415 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-416 |           {/* Ваш існуючий код модалки працівника... Для стислості я зберіг базові поля */}
-417 |           <div className="bg-white rounded-2xl shadow-xl w-full sm:max-w-lg overflow-hidden flex flex-col">
-418 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-419 |               <h3 className="text-xl font-bold">
-420 |                 {editingUser ? "Редагувати" : "Новий користувач"}
-421 |               </h3>
-422 |               <button
-423 |                 onClick={() => setIsModalOpen(false)}
-424 |                 className="text-slate-400 text-xl p-2 -mr-2"
-425 |               >
-426 |                 ✕
-427 |               </button>
-428 |             </div>
-429 |             <form
-430 |               onSubmit={handleSubmit}
-431 |               className="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh]"
-432 |             >
-433 |               <input
-434 |                 type="text"
-435 |                 value={form.fullName}
-436 |                 onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-437 |                 required
-438 |                 placeholder="ПІБ"
-439 |                 className="w-full p-2.5 border rounded-lg"
-440 |               />
-441 |               <div className="grid grid-cols-2 gap-4">
-442 |                 <input
-443 |                   type="email"
-444 |                   value={form.email}
-445 |                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-446 |                   required
-447 |                   placeholder="Пошта"
-448 |                   className="w-full p-2.5 border rounded-lg"
-449 |                 />
-450 |                 <input
-451 |                   type="password"
-452 |                   value={form.password}
-453 |                   onChange={(e) =>
-454 |                     setForm({ ...form, password: e.target.value })
-455 |                   }
-456 |                   required={!editingUser}
-457 |                   placeholder="Пароль"
-458 |                   className="w-full p-2.5 border rounded-lg"
-459 |                 />
-460 |               </div>
-461 |               <div className="grid grid-cols-2 gap-4">
-462 |                 <input
-463 |                   type="tel"
-464 |                   value={form.phone}
-465 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-466 |                   placeholder="Телефон"
-467 |                   className="w-full p-2.5 border rounded-lg"
-468 |                 />
-469 |                 <input
-470 |                   type="text"
-471 |                   value={form.telegramId}
-472 |                   onChange={(e) =>
-473 |                     setForm({ ...form, telegramId: e.target.value })
-474 |                   }
-475 |                   placeholder="Telegram ID або @username"
-476 |                   className="w-full p-2.5 border rounded-lg"
-477 |                 />
-478 |               </div>
-479 |               <div className="grid grid-cols-2 gap-4">
-480 |                 <select
-481 |                   value={form.role}
-482 |                   onChange={(e) =>
-483 |                     setForm({ ...form, role: e.target.value as Role })
-484 |                   }
-485 |                   className="w-full p-2.5 border rounded-lg"
-486 |                 >
-487 |                   <option value="MANAGER">Менеджер</option>
-488 |                   <option value="DRIVER">Водій</option>
-489 |                   <option value="HOST">Ведучий</option>
-490 |                   <option value="SUPERADMIN">Суперадмін</option>
-491 |                 </select>
-492 |                 <select
-493 |                   value={form.cityId}
-494 |                   onChange={(e) => setForm({ ...form, cityId: e.target.value })}
-495 |                   className="w-full p-2.5 border rounded-lg"
-496 |                 >
-497 |                   <option value="">Всі міста</option>
-498 |                   {cities.map((c) => (
-499 |                     <option key={c.id} value={c.id}>
-500 |                       {c.name}
-501 |                     </option>
-502 |                   ))}
-503 |                 </select>
-504 |               </div>
-505 |               {form.role === "DRIVER" && (
-506 |                 <input
-507 |                   type="text"
-508 |                   value={form.car || ""}
-509 |                   onChange={(e) => setForm({ ...form, car: e.target.value })}
-510 |                   placeholder="Автомобіль (напр. Renault Trafic)"
-511 |                   className="w-full p-2.5 border rounded-lg"
-512 |                 />
-513 |               )}
-514 |               <div className="flex gap-3 mt-2">
-515 |                 <button
-516 |                   type="button"
-517 |                   onClick={() => setIsModalOpen(false)}
-518 |                   className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
-519 |                 >
-520 |                   Скасувати
-521 |                 </button>
-522 |                 <button
-523 |                   type="submit"
-524 |                   disabled={isSubmitting}
-525 |                   className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium"
-526 |                 >
-527 |                   Зберегти
-528 |                 </button>
-529 |               </div>
-530 |             </form>
-531 |           </div>
-532 |         </div>
-533 |       )}
-534 |     </div>
-535 |   );
-536 | }
-537 | 
+410 |           <button
+411 |             onClick={() => setIsProjectModalOpen(true)}
+412 |             className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 transition-colors w-full sm:w-auto"
+413 |           >
+414 |             + Створити вид події
+415 |           </button>
+416 |         </div>
+417 | 
+418 |         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+419 |           {projects.map((p, pi) => (
+420 |             <motion.div
+421 |               key={p.id}
+422 |               initial={{ opacity: 0, y: 8 }}
+423 |               animate={{ opacity: 1, y: 0 }}
+424 |               transition={{ duration: 0.25, delay: pi * 0.05 }}
+425 |               whileHover={{
+426 |                 y: -3,
+427 |                 boxShadow: "0 8px 24px -4px rgba(0,0,0,0.10)",
+428 |               }}
+429 |               className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default"
+430 |             >
+431 |               <div className="flex items-center gap-3">
+432 |                 <motion.div
+433 |                   whileHover={{ scale: 1.3 }}
+434 |                   transition={{ duration: 0.15 }}
+435 |                   className={`w-4 h-4 rounded-full ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm`}
+436 |                 />
+437 |                 <span className="font-bold text-slate-800">{p.name}</span>
+438 |               </div>
+439 |               <button
+440 |                 onClick={() => handleDeleteProject(p.id, p.name)}
+441 |                 className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2 -mr-2"
+442 |                 title="Видалити"
+443 |               >
+444 |                 🗑
+445 |               </button>
+446 |             </motion.div>
+447 |           ))}
+448 |           {projects.length === 0 && (
+449 |             <div className="col-span-full text-center py-10 text-slate-400">
+450 |               Ви ще не додали жодного виду події
+451 |             </div>
+452 |           )}
+453 |         </div>
+454 |       </div>
+455 | 
+456 |       {/* Модалки Користувача і Проєктів */}
+457 |       {isProjectModalOpen && (
+458 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+459 |           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+460 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+461 |               <h3 className="text-xl font-bold text-slate-800">
+462 |                 Новий вид події
+463 |               </h3>
+464 |               <button
+465 |                 onClick={() => setIsProjectModalOpen(false)}
+466 |                 className="text-slate-400 text-xl leading-none p-2 -mr-2"
+467 |               >
+468 |                 ✕
+469 |               </button>
+470 |             </div>
+471 |             <form onSubmit={handleCreateProject} className="p-6">
+472 |               <label className="block text-sm font-medium text-slate-700 mb-1.5">
+473 |                 Назва
+474 |               </label>
+475 |               <input
+476 |                 type="text"
+477 |                 value={projectForm.name}
+478 |                 onChange={(e) =>
+479 |                   setProjectForm({ ...projectForm, name: e.target.value })
+480 |                 }
+481 |                 className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none mb-6"
+482 |                 required
+483 |                 placeholder="Наприклад: Шоу мильних бульбашок"
+484 |               />
+485 |               <label className="block text-sm font-medium text-slate-700 mb-3">
+486 |                 Колір для календаря
+487 |               </label>
+488 |               <div className="flex gap-4 mb-8">
+489 |                 {Object.keys(PROJECT_COLORS).map((c) => (
+490 |                   <button
+491 |                     type="button"
+492 |                     key={c}
+493 |                     onClick={() => setProjectForm({ ...projectForm, color: c })}
+494 |                     className={`w-8 h-8 rounded-full ${PROJECT_COLORS[c]} transition-all ${projectForm.color === c ? "ring-4 ring-offset-2 ring-blue-200 scale-110" : "hover:scale-110"}`}
+495 |                   />
+496 |                 ))}
+497 |               </div>
+498 |               <div className="flex gap-3">
+499 |                 <button
+500 |                   type="button"
+501 |                   onClick={() => setIsProjectModalOpen(false)}
+502 |                   className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
+503 |                 >
+504 |                   Скасувати
+505 |                 </button>
+506 |                 <button
+507 |                   type="submit"
+508 |                   className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-medium"
+509 |                 >
+510 |                   Зберегти
+511 |                 </button>
+512 |               </div>
+513 |             </form>
+514 |           </div>
+515 |         </div>
+516 |       )}
+517 | 
+518 |       {/* Ваша стара модалка Користувача */}
+519 |       {isModalOpen && (
+520 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+521 |           {/* Ваш існуючий код модалки працівника... Для стислості я зберіг базові поля */}
+522 |           <div className="bg-white rounded-2xl shadow-xl w-full sm:max-w-lg overflow-hidden flex flex-col">
+523 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+524 |               <h3 className="text-xl font-bold">
+525 |                 {editingUser ? "Редагувати" : "Новий користувач"}
+526 |               </h3>
+527 |               <button
+528 |                 onClick={() => setIsModalOpen(false)}
+529 |                 className="text-slate-400 text-xl p-2 -mr-2"
+530 |               >
+531 |                 ✕
+532 |               </button>
+533 |             </div>
+534 |             <form
+535 |               onSubmit={handleSubmit}
+536 |               className="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh]"
+537 |             >
+538 |               <input
+539 |                 type="text"
+540 |                 value={form.fullName}
+541 |                 onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+542 |                 required
+543 |                 placeholder="ПІБ"
+544 |                 className="w-full p-2.5 border rounded-lg"
+545 |               />
+546 |               <div className="grid grid-cols-2 gap-4">
+547 |                 <input
+548 |                   type="email"
+549 |                   value={form.email}
+550 |                   onChange={(e) => setForm({ ...form, email: e.target.value })}
+551 |                   required
+552 |                   placeholder="Пошта"
+553 |                   className="w-full p-2.5 border rounded-lg"
+554 |                 />
+555 |                 <input
+556 |                   type="password"
+557 |                   value={form.password}
+558 |                   onChange={(e) =>
+559 |                     setForm({ ...form, password: e.target.value })
+560 |                   }
+561 |                   required={!editingUser}
+562 |                   placeholder="Пароль"
+563 |                   className="w-full p-2.5 border rounded-lg"
+564 |                 />
+565 |               </div>
+566 |               <div className="grid grid-cols-2 gap-4">
+567 |                 <input
+568 |                   type="tel"
+569 |                   value={form.phone}
+570 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
+571 |                   placeholder="Телефон"
+572 |                   className="w-full p-2.5 border rounded-lg"
+573 |                 />
+574 |                 <input
+575 |                   type="text"
+576 |                   value={form.telegramId}
+577 |                   onChange={(e) =>
+578 |                     setForm({ ...form, telegramId: e.target.value })
+579 |                   }
+580 |                   placeholder="Telegram ID або @username"
+581 |                   className="w-full p-2.5 border rounded-lg"
+582 |                 />
+583 |               </div>
+584 |               <div className="grid grid-cols-2 gap-4">
+585 |                 <select
+586 |                   value={form.role}
+587 |                   onChange={(e) =>
+588 |                     setForm({ ...form, role: e.target.value as Role })
+589 |                   }
+590 |                   className="w-full p-2.5 border rounded-lg"
+591 |                 >
+592 |                   <option value="MANAGER">Менеджер</option>
+593 |                   <option value="DRIVER">Водій</option>
+594 |                   <option value="HOST">Ведучий</option>
+595 |                   <option value="SUPERADMIN">Суперадмін</option>
+596 |                 </select>
+597 |                 <select
+598 |                   value={form.cityId}
+599 |                   onChange={(e) => setForm({ ...form, cityId: e.target.value })}
+600 |                   className="w-full p-2.5 border rounded-lg"
+601 |                 >
+602 |                   <option value="">Всі міста</option>
+603 |                   {cities.map((c) => (
+604 |                     <option key={c.id} value={c.id}>
+605 |                       {c.name}
+606 |                     </option>
+607 |                   ))}
+608 |                 </select>
+609 |               </div>
+610 |               {form.role === "DRIVER" && (
+611 |                 <input
+612 |                   type="text"
+613 |                   value={form.car || ""}
+614 |                   onChange={(e) => setForm({ ...form, car: e.target.value })}
+615 |                   placeholder="Автомобіль (напр. Renault Trafic)"
+616 |                   className="w-full p-2.5 border rounded-lg"
+617 |                 />
+618 |               )}
+619 |               <div className="flex gap-3 mt-2">
+620 |                 <button
+621 |                   type="button"
+622 |                   onClick={() => setIsModalOpen(false)}
+623 |                   className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
+624 |                 >
+625 |                   Скасувати
+626 |                 </button>
+627 |                 <button
+628 |                   type="submit"
+629 |                   disabled={isSubmitting}
+630 |                   className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium"
+631 |                 >
+632 |                   Зберегти
+633 |                 </button>
+634 |               </div>
+635 |             </form>
+636 |           </div>
+637 |         </div>
+638 |       )}
+639 |     </motion.div>
+640 |   );
+641 | }
+642 | 
 ```
 
 ### File: apps/frontend/src/pages/EventReport.tsx
@@ -14602,539 +14700,536 @@
  61 |   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
  62 | 
  63 |   const { data: schools = [], isLoading } = useSchools();
- 64 |   const deleteSchool = useDeleteSchool();
- 65 |   const prefetchSchool = usePrefetchSchool();
- 66 | 
- 67 |   const { data: citiesData = [] } = useCities();
- 68 | 
- 69 |   const handleOpenModal = useCallback(() => {
- 70 |     setForm({
- 71 |       name: "",
- 72 |       cityId: selectedCity.id || cities[0]?.id || "",
- 73 |       sourceUrl: "",
- 74 |       director: "",
- 75 |       phone: "",
- 76 |     });
- 77 |     setMatchedContacts([]);
- 78 |     setIsModalOpen(true);
- 79 |   }, [selectedCity.id, cities]);
- 80 | 
- 81 |   const fetchContacts = async (schoolName: string) => {
- 82 |     if (!schoolName || schoolName.trim().length < 1)
- 83 |       return setMatchedContacts([]);
- 84 |     const currentCityName =
- 85 |       selectedCity.name || cities.find((c) => c.id === form.cityId)?.name || "";
- 86 |     if (currentCityName.toLowerCase() !== "львів")
- 87 |       return setMatchedContacts([]);
- 88 |     try {
- 89 |       const res = await api.get(
- 90 |         `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=Школа`,
- 91 |         {
- 92 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
- 93 |         },
- 94 |       );
- 95 |       setMatchedContacts(res.data);
- 96 |       if (res.data.length > 0) {
- 97 |         const director =
- 98 |           res.data.find(
- 99 |             (c: any) =>
-100 |               c.role?.includes("Директор") || c.role?.includes("Завідувач"),
-101 |           ) || res.data[0];
-102 |         setForm((f) => ({
-103 |           ...f,
-104 |           director: director.contactName,
-105 |           phone: director.phone,
-106 |         }));
-107 |       }
-108 |     } catch (e) {
-109 |       console.error(e);
-110 |     }
-111 |   };
-112 | 
-113 |   const handleNameChange = (value: string) => {
-114 |     setForm({ ...form, name: value });
-115 |     if (debounceTimer.current) clearTimeout(debounceTimer.current);
-116 |     if (value.length < 2) {
-117 |       setShowSuggestions(false);
-118 |       setIsSearching(false);
-119 |       setMatchedContacts([]);
-120 |       return;
-121 |     }
-122 |     setIsSearching(true);
-123 |     setShowSuggestions(true);
-124 |     debounceTimer.current = setTimeout(async () => {
-125 |       try {
-126 |         const [externalRes] = await Promise.all([
-127 |           api.get(`/schools/search?q=${value}&type=Школа`, {
-128 |             headers: {
-129 |               Authorization: `Bearer ${localStorage.getItem("token")}`,
-130 |             },
-131 |           }),
-132 |           fetchContacts(value),
-133 |         ]);
-134 |         setSuggestions(externalRes.data);
-135 |       } catch (e) {
-136 |         console.error(e);
-137 |       } finally {
-138 |         setIsSearching(false);
-139 |       }
-140 |     }, 400);
-141 |   };
-142 | 
-143 |   const handleSelectSuggestion = (name: string, url: string) => {
-144 |     setForm({ ...form, name, sourceUrl: url });
-145 |     setShowSuggestions(false);
-146 |     fetchContacts(name);
-147 |   };
-148 | 
-149 |   const handleAddSchool = async (e: React.FormEvent) => {
-150 |     e.preventDefault();
-151 |     if (!form.name.trim() || !form.cityId) return;
-152 |     setIsSubmitting(true);
-153 |     try {
-154 |       await api.post(
-155 |         "/schools",
-156 |         { ...form, type: "Школа" },
-157 |         {
-158 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-159 |         },
-160 |       );
-161 |       setIsModalOpen(false);
-162 |       // кеш інвалідується через useAddSchool або вручну:
-163 |       qc.invalidateQueries({ queryKey: ["schools"] });
-164 |     } catch (e) {
-165 |       alert("Не вдалося створити заклад");
-166 |     } finally {
-167 |       setIsSubmitting(false);
-168 |     }
-169 |   };
-170 | 
-171 |   const handleDeleteSchool = useCallback(
-172 |     async (e: React.MouseEvent, schoolId: string, schoolName: string) => {
-173 |       e.stopPropagation();
-174 |       if (
-175 |         !window.confirm(
-176 |           `Видалити школу "${schoolName}"? Це видалить також усі її події.`,
-177 |         )
-178 |       )
-179 |         return;
-180 |       await deleteSchool.mutateAsync(schoolId);
-181 |     },
-182 |     [deleteSchool],
-183 |   );
-184 | 
-185 |   const [debouncedSearch, setDebouncedSearch] = useState("");
-186 | 
-187 |   useEffect(() => {
-188 |     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 200);
-189 |     return () => clearTimeout(timer);
-190 |   }, [searchQuery]);
-191 | 
-192 |   const baseFiltered = useMemo(
-193 |     () =>
-194 |       schools.filter((s) => {
-195 |         const isCityMatch = selectedCity.id
-196 |           ? s.cityId === selectedCity.id
+ 64 |   const { data: cities = [] } = useCities();
+ 65 |   const deleteSchool = useDeleteSchool();
+ 66 |   const prefetchSchool = usePrefetchSchool();
+ 67 | 
+ 68 |   const handleOpenModal = useCallback(() => {
+ 69 |     setForm({
+ 70 |       name: "",
+ 71 |       cityId: selectedCity.id || cities[0]?.id || "",
+ 72 |       sourceUrl: "",
+ 73 |       director: "",
+ 74 |       phone: "",
+ 75 |     });
+ 76 |     setMatchedContacts([]);
+ 77 |     setIsModalOpen(true);
+ 78 |   }, [selectedCity.id, cities]);
+ 79 | 
+ 80 |   const fetchContacts = async (schoolName: string) => {
+ 81 |     if (!schoolName || schoolName.trim().length < 1)
+ 82 |       return setMatchedContacts([]);
+ 83 |     const currentCityName =
+ 84 |       selectedCity.name || cities.find((c) => c.id === form.cityId)?.name || "";
+ 85 |     if (currentCityName.toLowerCase() !== "львів")
+ 86 |       return setMatchedContacts([]);
+ 87 |     try {
+ 88 |       const res = await api.get(
+ 89 |         `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=Школа`,
+ 90 |         {
+ 91 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+ 92 |         },
+ 93 |       );
+ 94 |       setMatchedContacts(res.data);
+ 95 |       if (res.data.length > 0) {
+ 96 |         const director =
+ 97 |           res.data.find(
+ 98 |             (c: any) =>
+ 99 |               c.role?.includes("Директор") || c.role?.includes("Завідувач"),
+100 |           ) || res.data[0];
+101 |         setForm((f) => ({
+102 |           ...f,
+103 |           director: director.contactName,
+104 |           phone: director.phone,
+105 |         }));
+106 |       }
+107 |     } catch (e) {
+108 |       console.error(e);
+109 |     }
+110 |   };
+111 | 
+112 |   const handleNameChange = (value: string) => {
+113 |     setForm({ ...form, name: value });
+114 |     if (debounceTimer.current) clearTimeout(debounceTimer.current);
+115 |     if (value.length < 2) {
+116 |       setShowSuggestions(false);
+117 |       setIsSearching(false);
+118 |       setMatchedContacts([]);
+119 |       return;
+120 |     }
+121 |     setIsSearching(true);
+122 |     setShowSuggestions(true);
+123 |     debounceTimer.current = setTimeout(async () => {
+124 |       try {
+125 |         const [externalRes] = await Promise.all([
+126 |           api.get(`/schools/search?q=${value}&type=Школа`, {
+127 |             headers: {
+128 |               Authorization: `Bearer ${localStorage.getItem("token")}`,
+129 |             },
+130 |           }),
+131 |           fetchContacts(value),
+132 |         ]);
+133 |         setSuggestions(externalRes.data);
+134 |       } catch (e) {
+135 |         console.error(e);
+136 |       } finally {
+137 |         setIsSearching(false);
+138 |       }
+139 |     }, 400);
+140 |   };
+141 | 
+142 |   const handleSelectSuggestion = (name: string, url: string) => {
+143 |     setForm({ ...form, name, sourceUrl: url });
+144 |     setShowSuggestions(false);
+145 |     fetchContacts(name);
+146 |   };
+147 | 
+148 |   const handleAddSchool = async (e: React.FormEvent) => {
+149 |     e.preventDefault();
+150 |     if (!form.name.trim() || !form.cityId) return;
+151 |     setIsSubmitting(true);
+152 |     try {
+153 |       await api.post(
+154 |         "/schools",
+155 |         { ...form, type: "Школа" },
+156 |         {
+157 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+158 |         },
+159 |       );
+160 |       setIsModalOpen(false);
+161 |       // кеш інвалідується через useAddSchool або вручну:
+162 |       qc.invalidateQueries({ queryKey: ["schools"] });
+163 |     } catch (e) {
+164 |       alert("Не вдалося створити заклад");
+165 |     } finally {
+166 |       setIsSubmitting(false);
+167 |     }
+168 |   };
+169 | 
+170 |   const handleDeleteSchool = useCallback(
+171 |     async (e: React.MouseEvent, schoolId: string, schoolName: string) => {
+172 |       e.stopPropagation();
+173 |       if (
+174 |         !window.confirm(
+175 |           `Видалити школу "${schoolName}"? Це видалить також усі її події.`,
+176 |         )
+177 |       )
+178 |         return;
+179 |       await deleteSchool.mutateAsync(schoolId);
+180 |     },
+181 |     [deleteSchool],
+182 |   );
+183 | 
+184 |   const debouncedSearch = useMemo(() => searchQuery, [searchQuery]);
+185 | 
+186 |   const baseFiltered = useMemo(
+187 |     () =>
+188 |       schools.filter((s) => {
+189 |         const isCityMatch = selectedCity.id
+190 |           ? s.cityId === selectedCity.id
+191 |           : true;
+192 |         const isFilterMatch = activeFilter
+193 |           ? classifySchool(s) === activeFilter
+194 |           : true;
+195 |         const isSizeMatch = sizeFilter
+196 |           ? classifySize(s, "Школа") === sizeFilter
 197 |           : true;
-198 |         const isFilterMatch = activeFilter
-199 |           ? classifySchool(s) === activeFilter
-200 |           : true;
-201 |         const isSizeMatch = sizeFilter
-202 |           ? classifySize(s, "Школа") === sizeFilter
-203 |           : true;
-204 |         return (
-205 |           isCityMatch && s.type === "Школа" && isFilterMatch && isSizeMatch
-206 |         );
-207 |       }),
-208 |     [schools, selectedCity.id, activeFilter, sizeFilter],
-209 |   );
-210 | 
-211 |   const filteredSchools = useMemo(() => {
-212 |     if (!debouncedSearch.trim()) return baseFiltered;
-213 |     const q = debouncedSearch.toLowerCase().trim();
-214 |     return baseFiltered.filter(
-215 |       (s) =>
-216 |         s.name?.toLowerCase().includes(q) ||
-217 |         s.city?.name?.toLowerCase().includes(q) ||
-218 |         s.director?.toLowerCase().includes(q) ||
-219 |         s.address?.toLowerCase().includes(q),
-220 |     );
-221 |   }, [baseFiltered, debouncedSearch]);
-222 | 
-223 |   return (
-224 |     <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-slate-50 min-h-screen">
-225 |       {/* Шапка */}
-226 |       <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
-227 |         <div className="min-w-0">
-228 |           <h1 className="text-xl font-bold text-slate-800 leading-tight">
-229 |             Школи
-230 |             {selectedCity.id && (
-231 |               <span className="ml-2 text-sm font-normal text-blue-500">
-232 |                 · {selectedCity.name}
-233 |               </span>
-234 |             )}
-235 |           </h1>
-236 |         </div>
-237 |         <div className="flex gap-2 shrink-0">
-238 |           <button
-239 |             onClick={async () => {
-240 |               if (!selectedCity.id) return alert("Спочатку оберіть місто");
-241 |               if (
-242 |                 !window.confirm(
-243 |                   `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`,
-244 |                 )
-245 |               )
-246 |                 return;
-247 |               setIsImporting(true);
-248 |               setDotCount(3);
-249 |               const dotInterval = setInterval(() => {
-250 |                 setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
-251 |               }, 500);
-252 |               try {
-253 |                 const res = await api.post(
-254 |                   "/schools/bulk-import",
-255 |                   { cityId: selectedCity.id, type: "Школа" },
-256 |                   {
-257 |                     headers: {
-258 |                       Authorization: `Bearer ${localStorage.getItem("token")}`,
-259 |                     },
-260 |                     timeout: 120000,
-261 |                   },
-262 |                 );
-263 |                 alert(
-264 |                   `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
-265 |                 );
-266 |                 qc.invalidateQueries({ queryKey: ["schools"] });
-267 |               } catch (e) {
-268 |                 alert("Помилка імпорту.");
-269 |               } finally {
-270 |                 clearInterval(dotInterval);
-271 |                 setIsImporting(false);
-272 |               }
-273 |             }}
-274 |             disabled={isImporting}
-275 |             className="md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
-276 |           >
-277 |             {isImporting ? (
-278 |               <span className="font-medium">
-279 |                 Імпортую{"·".repeat(dotCount)}
-280 |               </span>
-281 |             ) : (
-282 |               <>📥 Імпорт з isuo</>
-283 |             )}
+198 |         return (
+199 |           isCityMatch && s.type === "Школа" && isFilterMatch && isSizeMatch
+200 |         );
+201 |       }),
+202 |     [schools, selectedCity.id, activeFilter, sizeFilter],
+203 |   );
+204 | 
+205 |   const filteredSchools = useMemo(() => {
+206 |     if (!debouncedSearch.trim()) return baseFiltered;
+207 |     const q = debouncedSearch.toLowerCase().trim();
+208 |     return baseFiltered.filter(
+209 |       (s) =>
+210 |         s.name?.toLowerCase().includes(q) ||
+211 |         s.city?.name?.toLowerCase().includes(q) ||
+212 |         s.director?.toLowerCase().includes(q) ||
+213 |         s.address?.toLowerCase().includes(q),
+214 |     );
+215 |   }, [baseFiltered, debouncedSearch]);
+216 | 
+217 |   return (
+218 |     <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-slate-50 min-h-screen">
+219 |       {/* Шапка */}
+220 |       <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
+221 |         <div className="min-w-0">
+222 |           <h1 className="text-xl font-bold text-slate-800 leading-tight">
+223 |             Школи
+224 |             {selectedCity.id && (
+225 |               <span className="ml-2 text-sm font-normal text-blue-500">
+226 |                 · {selectedCity.name}
+227 |               </span>
+228 |             )}
+229 |           </h1>
+230 |         </div>
+231 |         <div className="flex gap-2 shrink-0">
+232 |           <button
+233 |             onClick={async () => {
+234 |               if (!selectedCity.id) return alert("Спочатку оберіть місто");
+235 |               if (
+236 |                 !window.confirm(
+237 |                   `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`,
+238 |                 )
+239 |               )
+240 |                 return;
+241 |               setIsImporting(true);
+242 |               setDotCount(3);
+243 |               const dotInterval = setInterval(() => {
+244 |                 setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
+245 |               }, 500);
+246 |               try {
+247 |                 const res = await api.post(
+248 |                   "/schools/bulk-import",
+249 |                   { cityId: selectedCity.id, type: "Школа" },
+250 |                   {
+251 |                     headers: {
+252 |                       Authorization: `Bearer ${localStorage.getItem("token")}`,
+253 |                     },
+254 |                     timeout: 120000,
+255 |                   },
+256 |                 );
+257 |                 alert(
+258 |                   `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
+259 |                 );
+260 |                 qc.invalidateQueries({ queryKey: ["schools"] });
+261 |               } catch (e) {
+262 |                 alert("Помилка імпорту.");
+263 |               } finally {
+264 |                 clearInterval(dotInterval);
+265 |                 setIsImporting(false);
+266 |               }
+267 |             }}
+268 |             disabled={isImporting}
+269 |             className="md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
+270 |           >
+271 |             {isImporting ? (
+272 |               <span className="font-medium">
+273 |                 Імпортую{"·".repeat(dotCount)}
+274 |               </span>
+275 |             ) : (
+276 |               <>📥 Імпорт з isuo</>
+277 |             )}
+278 |           </button>
+279 |           <button
+280 |             onClick={handleOpenModal}
+281 |             className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+282 |           >
+283 |             + Додати
 284 |           </button>
-285 |           <button
-286 |             onClick={handleOpenModal}
-287 |             className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-288 |           >
-289 |             + Додати
-290 |           </button>
-291 |         </div>
-292 |       </div>
-293 | 
-294 |       {/* StatsBar */}
-295 |       <div className="shrink-0">
-296 |         <Suspense
-297 |           fallback={
-298 |             <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
-299 |           }
-300 |         >
-301 |           <StatsBar
-302 |             schools={schools.filter(
-303 |               (s) =>
-304 |                 (selectedCity.id ? s.cityId === selectedCity.id : true) &&
-305 |                 s.type === "Школа",
-306 |             )}
-307 |             activeFilter={activeFilter}
-308 |             onFilterChange={setActiveFilter}
-309 |             sizeFilter={sizeFilter}
-310 |             onSizeFilterChange={setSizeFilter}
-311 |             schoolType="Школа"
-312 |           />
-313 |         </Suspense>
-314 |       </div>
-315 | 
-316 |       {/* Пошук */}
-317 |       <div className="relative shrink-0 mb-4 mt-2">
-318 |         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-319 |           <svg
-320 |             className="w-5 h-5 text-slate-400"
-321 |             fill="none"
-322 |             stroke="currentColor"
-323 |             viewBox="0 0 24 24"
-324 |           >
-325 |             <path
-326 |               strokeLinecap="round"
-327 |               strokeLinejoin="round"
-328 |               strokeWidth={2}
-329 |               d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
-330 |             />
-331 |           </svg>
-332 |         </div>
-333 |         <input
-334 |           type="text"
-335 |           value={searchQuery}
-336 |           onChange={(e) => setSearchQuery(e.target.value)}
-337 |           placeholder="Пошук за назвою, директором, адресою..."
-338 |           className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border-none sm:border sm:border-slate-200 rounded-2xl sm:rounded-xl text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition"
-339 |         />
-340 |         {searchQuery && (
-341 |           <button
-342 |             onClick={() => setSearchQuery("")}
-343 |             className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600 transition"
-344 |           >
-345 |             <svg
-346 |               className="w-5 h-5"
-347 |               fill="none"
-348 |               stroke="currentColor"
-349 |               viewBox="0 0 24 24"
-350 |             >
-351 |               <path
-352 |                 strokeLinecap="round"
-353 |                 strokeLinejoin="round"
-354 |                 strokeWidth={2}
-355 |                 d="M6 18L18 6M6 6l12 12"
-356 |               />
-357 |             </svg>
-358 |           </button>
-359 |         )}
-360 |       </div>
-361 | 
-362 |       {/* Лічильник */}
-363 |       <p className="text-xs font-semibold text-slate-400 mb-4 shrink-0 uppercase tracking-wide px-1">
-364 |         {filteredSchools.length === baseFiltered.length
-365 |           ? `${baseFiltered.length} шкіл`
-366 |           : `${filteredSchools.length} з ${baseFiltered.length} шкіл`}
-367 |         {(activeFilter || sizeFilter) && (
-368 |           <button
-369 |             onClick={() => {
-370 |               setActiveFilter(null);
-371 |               setSizeFilter(null);
-372 |             }}
-373 |             className="ml-3 text-blue-500 hover:text-blue-700 lowercase"
-374 |           >
-375 |             скинути фільтри
-376 |           </button>
-377 |         )}
-378 |       </p>
-379 | 
-380 |       {/* Компоненти списків */}
-381 |       {isLoading ? (
-382 |         <div className="flex flex-col gap-2.5 flex-1">
-383 |           {Array.from({ length: 8 }).map((_, i) => (
-384 |             <div
-385 |               key={i}
-386 |               className="bg-white rounded-2xl border border-slate-100 p-3.5 animate-pulse"
-387 |               style={{ opacity: 1 - i * 0.1 }}
-388 |             >
-389 |               <div className="h-4 bg-slate-200 rounded-lg w-3/4 mb-3" />
-390 |               <div className="flex justify-between">
-391 |                 <div className="h-3 bg-slate-100 rounded-lg w-1/3" />
-392 |                 <div className="h-3 bg-slate-100 rounded-lg w-1/4" />
-393 |               </div>
-394 |             </div>
-395 |           ))}
-396 |         </div>
-397 |       ) : (
-398 |         <>
-399 |           {/* Мобільний: віртуалізований список карток */}
-400 |           <div className="md:hidden flex-1 w-full overflow-hidden">
-401 |             <VirtualSchoolList
-402 |               schools={filteredSchools}
-403 |               itemHeight={110}
-404 |               renderItem={(school, index) => (
-405 |                  <div className="pb-2.5" onMouseEnter={() => prefetchSchool(school.id)}>
-406 |                   <SchoolCard
-407 |                     school={school}
-408 |                     index={index}
-409 |                     onDelete={handleDeleteSchool}
-410 |                     stages={PIPELINE_STAGES}
-411 |                   />
-412 |                 </div>
-413 |               )}
-414 |             />
-415 |           </div>
-416 | 
-417 |           {/* Десктоп: таблиця з віртуалізованим tbody */}
-418 |           <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
-419 |             <Suspense
-420 |               fallback={<div className="flex-1 animate-pulse bg-slate-50" />}
-421 |             >
-422 |               <VirtualDesktopTable
-423 |                 schools={filteredSchools}
-424 |                 searchQuery={searchQuery}
-425 |                 onDelete={handleDeleteSchool}
-426 |                 stages={PIPELINE_STAGES}
-427 |               />
-428 |             </Suspense>
-429 |           </div>
-430 |         </>
-431 |       )}
-432 | 
-433 |       {/* Мобільна плаваюча кнопка FAB */}
-434 |       <button
-435 |         onClick={handleOpenModal}
-436 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
-437 |       >
-438 |         +
-439 |       </button>
-440 | 
-441 |       {/* Модальне вікно */}
-442 |       {isModalOpen && (
-443 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-444 |           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
-445 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-446 |               <h3 className="text-xl font-bold text-slate-800">Нова школа</h3>
-447 |               <button
-448 |                 onClick={() => setIsModalOpen(false)}
-449 |                 className="text-slate-400 hover:text-slate-600 p-2 -mr-2 leading-none text-xl"
-450 |               >
-451 |                 ✕
-452 |               </button>
-453 |             </div>
-454 | 
-455 |             <form
-456 |               onSubmit={handleAddSchool}
-457 |               className="p-6 flex flex-col gap-4 overflow-y-auto"
-458 |             >
-459 |               <div className="relative">
-460 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
-461 |                   Назва школи
-462 |                 </label>
-463 |                 <input
-464 |                   type="text"
-465 |                   value={form.name}
-466 |                   onChange={(e) => handleNameChange(e.target.value)}
-467 |                   onBlur={() =>
-468 |                     setTimeout(() => setShowSuggestions(false), 150)
-469 |                   }
-470 |                   placeholder="Наприклад: Школа №1"
-471 |                   required
-472 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-473 |                 />
-474 |                 {showSuggestions && (
-475 |                   <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto overflow-hidden">
-476 |                     {isSearching ? (
-477 |                       <li className="px-4 py-3 text-sm text-slate-400 italic">
-478 |                         Пошук...
-479 |                       </li>
-480 |                     ) : suggestions.length > 0 ? (
-481 |                       suggestions.map((s, i) => (
-482 |                         <li
-483 |                           key={i}
-484 |                           onMouseDown={() =>
-485 |                             handleSelectSuggestion(s.name, s.url)
-486 |                           }
-487 |                           className="px-4 py-3 text-sm hover:bg-blue-50 cursor-pointer font-medium border-b border-slate-50 last:border-0"
-488 |                         >
-489 |                           {s.name}
-490 |                         </li>
-491 |                       ))
-492 |                     ) : (
-493 |                       <li className="px-4 py-3 text-sm text-slate-400 italic">
-494 |                         Нічого не знайдено
-495 |                       </li>
-496 |                     )}
-497 |                   </ul>
-498 |                 )}
-499 |               </div>
-500 | 
-501 |               {!selectedCity.id && (
-502 |                 <div>
-503 |                   <label className="block text-sm font-medium text-slate-600 mb-1.5">
-504 |                     Місто
-505 |                   </label>
-506 |                   <select
-507 |                     value={form.cityId}
-508 |                     onChange={(e) =>
-509 |                       setForm({ ...form, cityId: e.target.value })
-510 |                     }
-511 |                     required
-512 |                     className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-513 |                   >
-514 |                     <option value="">— Оберіть місто —</option>
-515 |                     {cities.map((c) => (
-516 |                       <option key={c.id} value={c.id}>
-517 |                         {c.name}
-518 |                       </option>
-519 |                     ))}
-520 |                   </select>
-521 |                 </div>
-522 |               )}
-523 | 
-524 |               <div>
-525 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
-526 |                   Контакт{" "}
-527 |                   <span className="ml-1 text-xs font-normal text-slate-400">
-528 |                     (автозаповнення)
-529 |                   </span>
-530 |                 </label>
-531 |                 {matchedContacts.length > 0 && (
-532 |                   <div className="flex flex-wrap gap-1.5 mb-3">
-533 |                     {matchedContacts.map((c, i) => (
-534 |                       <button
-535 |                         key={i}
-536 |                         type="button"
-537 |                         onClick={() =>
-538 |                           setForm((f) => ({
-539 |                             ...f,
-540 |                             director: c.contactName,
-541 |                             phone: c.phone,
-542 |                           }))
-543 |                         }
-544 |                         className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${form.director === c.contactName ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
-545 |                       >
-546 |                         {c.role ? `${c.role}: ` : ""}
-547 |                         {c.contactName}
-548 |                       </button>
-549 |                     ))}
-550 |                   </div>
-551 |                 )}
-552 |                 <input
-553 |                   type="text"
-554 |                   value={form.director}
-555 |                   onChange={(e) =>
-556 |                     setForm({ ...form, director: e.target.value })
-557 |                   }
-558 |                   placeholder="Микола Петренко"
-559 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
-560 |                 />
-561 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
-562 |                   Телефон
-563 |                 </label>
-564 |                 <input
-565 |                   type="text"
-566 |                   value={form.phone}
-567 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-568 |                   placeholder="0671234567"
-569 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-570 |                 />
-571 |               </div>
-572 | 
-573 |               <div className="flex gap-3 mt-4">
-574 |                 <button
-575 |                   type="button"
-576 |                   onClick={() => setIsModalOpen(false)}
-577 |                   className="flex-1 px-5 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors"
-578 |                 >
-579 |                   Скасувати
-580 |                 </button>
-581 |                 <button
-582 |                   type="submit"
-583 |                   disabled={isSubmitting}
-584 |                   className="flex-1 px-5 py-3.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
-585 |                 >
-586 |                   {isSubmitting ? "Збереження..." : "Створити"}
-587 |                 </button>
-588 |               </div>
-589 |             </form>
-590 |           </div>
-591 |         </div>
-592 |       )}
-593 |     </div>
-594 |   );
-595 | }
-596 | 
+285 |         </div>
+286 |       </div>
+287 | 
+288 |       {/* StatsBar */}
+289 |       <div className="shrink-0">
+290 |         <Suspense
+291 |           fallback={
+292 |             <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
+293 |           }
+294 |         >
+295 |           <StatsBar
+296 |             schools={schools.filter(
+297 |               (s) =>
+298 |                 (selectedCity.id ? s.cityId === selectedCity.id : true) &&
+299 |                 s.type === "Школа",
+300 |             )}
+301 |             activeFilter={activeFilter}
+302 |             onFilterChange={setActiveFilter}
+303 |             sizeFilter={sizeFilter}
+304 |             onSizeFilterChange={setSizeFilter}
+305 |             schoolType="Школа"
+306 |           />
+307 |         </Suspense>
+308 |       </div>
+309 | 
+310 |       {/* Пошук */}
+311 |       <div className="relative shrink-0 mb-4 mt-2">
+312 |         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+313 |           <svg
+314 |             className="w-5 h-5 text-slate-400"
+315 |             fill="none"
+316 |             stroke="currentColor"
+317 |             viewBox="0 0 24 24"
+318 |           >
+319 |             <path
+320 |               strokeLinecap="round"
+321 |               strokeLinejoin="round"
+322 |               strokeWidth={2}
+323 |               d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
+324 |             />
+325 |           </svg>
+326 |         </div>
+327 |         <input
+328 |           type="text"
+329 |           value={searchQuery}
+330 |           onChange={(e) => setSearchQuery(e.target.value)}
+331 |           placeholder="Пошук за назвою, директором, адресою..."
+332 |           className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border-none sm:border sm:border-slate-200 rounded-2xl sm:rounded-xl text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition"
+333 |         />
+334 |         {searchQuery && (
+335 |           <button
+336 |             onClick={() => setSearchQuery("")}
+337 |             className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600 transition"
+338 |           >
+339 |             <svg
+340 |               className="w-5 h-5"
+341 |               fill="none"
+342 |               stroke="currentColor"
+343 |               viewBox="0 0 24 24"
+344 |             >
+345 |               <path
+346 |                 strokeLinecap="round"
+347 |                 strokeLinejoin="round"
+348 |                 strokeWidth={2}
+349 |                 d="M6 18L18 6M6 6l12 12"
+350 |               />
+351 |             </svg>
+352 |           </button>
+353 |         )}
+354 |       </div>
+355 | 
+356 |       {/* Лічильник */}
+357 |       <p className="text-xs font-semibold text-slate-400 mb-4 shrink-0 uppercase tracking-wide px-1">
+358 |         {filteredSchools.length === baseFiltered.length
+359 |           ? `${baseFiltered.length} шкіл`
+360 |           : `${filteredSchools.length} з ${baseFiltered.length} шкіл`}
+361 |         {(activeFilter || sizeFilter) && (
+362 |           <button
+363 |             onClick={() => {
+364 |               setActiveFilter(null);
+365 |               setSizeFilter(null);
+366 |             }}
+367 |             className="ml-3 text-blue-500 hover:text-blue-700 lowercase"
+368 |           >
+369 |             скинути фільтри
+370 |           </button>
+371 |         )}
+372 |       </p>
+373 | 
+374 |       {/* Компоненти списків */}
+375 |       {isLoading ? (
+376 |         <div className="flex flex-col gap-2.5 flex-1">
+377 |           {Array.from({ length: 8 }).map((_, i) => (
+378 |             <div
+379 |               key={i}
+380 |               className="bg-white rounded-2xl border border-slate-100 p-3.5 animate-pulse"
+381 |               style={{ opacity: 1 - i * 0.1 }}
+382 |             >
+383 |               <div className="h-4 bg-slate-200 rounded-lg w-3/4 mb-3" />
+384 |               <div className="flex justify-between">
+385 |                 <div className="h-3 bg-slate-100 rounded-lg w-1/3" />
+386 |                 <div className="h-3 bg-slate-100 rounded-lg w-1/4" />
+387 |               </div>
+388 |             </div>
+389 |           ))}
+390 |         </div>
+391 |       ) : (
+392 |         <>
+393 |           {/* Мобільний: віртуалізований список карток */}
+394 |           <div className="md:hidden flex-1 w-full overflow-hidden">
+395 |             <VirtualSchoolList
+396 |               schools={filteredSchools}
+397 |               itemHeight={110}
+398 |               renderItem={(school, index) => (
+399 |                 <div
+400 |                   className="pb-2.5"
+401 |                   onMouseEnter={() => prefetchSchool(school.id)}
+402 |                 >
+403 |                   <SchoolCard
+404 |                     school={school}
+405 |                     index={index}
+406 |                     onDelete={handleDeleteSchool}
+407 |                     stages={PIPELINE_STAGES}
+408 |                   />
+409 |                 </div>
+410 |               )}
+411 |             />
+412 |           </div>
+413 | 
+414 |           {/* Десктоп: таблиця з віртуалізованим tbody */}
+415 |           <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
+416 |             <Suspense
+417 |               fallback={<div className="flex-1 animate-pulse bg-slate-50" />}
+418 |             >
+419 |               <VirtualDesktopTable
+420 |                 schools={filteredSchools}
+421 |                 searchQuery={searchQuery}
+422 |                 onDelete={handleDeleteSchool}
+423 |                 stages={PIPELINE_STAGES}
+424 |               />
+425 |             </Suspense>
+426 |           </div>
+427 |         </>
+428 |       )}
+429 | 
+430 |       {/* Мобільна плаваюча кнопка FAB */}
+431 |       <button
+432 |         onClick={handleOpenModal}
+433 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
+434 |       >
+435 |         +
+436 |       </button>
+437 | 
+438 |       {/* Модальне вікно */}
+439 |       {isModalOpen && (
+440 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+441 |           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+442 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+443 |               <h3 className="text-xl font-bold text-slate-800">Нова школа</h3>
+444 |               <button
+445 |                 onClick={() => setIsModalOpen(false)}
+446 |                 className="text-slate-400 hover:text-slate-600 p-2 -mr-2 leading-none text-xl"
+447 |               >
+448 |                 ✕
+449 |               </button>
+450 |             </div>
+451 | 
+452 |             <form
+453 |               onSubmit={handleAddSchool}
+454 |               className="p-6 flex flex-col gap-4 overflow-y-auto"
+455 |             >
+456 |               <div className="relative">
+457 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
+458 |                   Назва школи
+459 |                 </label>
+460 |                 <input
+461 |                   type="text"
+462 |                   value={form.name}
+463 |                   onChange={(e) => handleNameChange(e.target.value)}
+464 |                   onBlur={() =>
+465 |                     setTimeout(() => setShowSuggestions(false), 150)
+466 |                   }
+467 |                   placeholder="Наприклад: Школа №1"
+468 |                   required
+469 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+470 |                 />
+471 |                 {showSuggestions && (
+472 |                   <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto overflow-hidden">
+473 |                     {isSearching ? (
+474 |                       <li className="px-4 py-3 text-sm text-slate-400 italic">
+475 |                         Пошук...
+476 |                       </li>
+477 |                     ) : suggestions.length > 0 ? (
+478 |                       suggestions.map((s, i) => (
+479 |                         <li
+480 |                           key={i}
+481 |                           onMouseDown={() =>
+482 |                             handleSelectSuggestion(s.name, s.url)
+483 |                           }
+484 |                           className="px-4 py-3 text-sm hover:bg-blue-50 cursor-pointer font-medium border-b border-slate-50 last:border-0"
+485 |                         >
+486 |                           {s.name}
+487 |                         </li>
+488 |                       ))
+489 |                     ) : (
+490 |                       <li className="px-4 py-3 text-sm text-slate-400 italic">
+491 |                         Нічого не знайдено
+492 |                       </li>
+493 |                     )}
+494 |                   </ul>
+495 |                 )}
+496 |               </div>
+497 | 
+498 |               {!selectedCity.id && (
+499 |                 <div>
+500 |                   <label className="block text-sm font-medium text-slate-600 mb-1.5">
+501 |                     Місто
+502 |                   </label>
+503 |                   <select
+504 |                     value={form.cityId}
+505 |                     onChange={(e) =>
+506 |                       setForm({ ...form, cityId: e.target.value })
+507 |                     }
+508 |                     required
+509 |                     className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+510 |                   >
+511 |                     <option value="">— Оберіть місто —</option>
+512 |                     {cities.map((c) => (
+513 |                       <option key={c.id} value={c.id}>
+514 |                         {c.name}
+515 |                       </option>
+516 |                     ))}
+517 |                   </select>
+518 |                 </div>
+519 |               )}
+520 | 
+521 |               <div>
+522 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
+523 |                   Контакт{" "}
+524 |                   <span className="ml-1 text-xs font-normal text-slate-400">
+525 |                     (автозаповнення)
+526 |                   </span>
+527 |                 </label>
+528 |                 {matchedContacts.length > 0 && (
+529 |                   <div className="flex flex-wrap gap-1.5 mb-3">
+530 |                     {matchedContacts.map((c, i) => (
+531 |                       <button
+532 |                         key={i}
+533 |                         type="button"
+534 |                         onClick={() =>
+535 |                           setForm((f) => ({
+536 |                             ...f,
+537 |                             director: c.contactName,
+538 |                             phone: c.phone,
+539 |                           }))
+540 |                         }
+541 |                         className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${form.director === c.contactName ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+542 |                       >
+543 |                         {c.role ? `${c.role}: ` : ""}
+544 |                         {c.contactName}
+545 |                       </button>
+546 |                     ))}
+547 |                   </div>
+548 |                 )}
+549 |                 <input
+550 |                   type="text"
+551 |                   value={form.director}
+552 |                   onChange={(e) =>
+553 |                     setForm({ ...form, director: e.target.value })
+554 |                   }
+555 |                   placeholder="Микола Петренко"
+556 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+557 |                 />
+558 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
+559 |                   Телефон
+560 |                 </label>
+561 |                 <input
+562 |                   type="text"
+563 |                   value={form.phone}
+564 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
+565 |                   placeholder="0671234567"
+566 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+567 |                 />
+568 |               </div>
+569 | 
+570 |               <div className="flex gap-3 mt-4">
+571 |                 <button
+572 |                   type="button"
+573 |                   onClick={() => setIsModalOpen(false)}
+574 |                   className="flex-1 px-5 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+575 |                 >
+576 |                   Скасувати
+577 |                 </button>
+578 |                 <button
+579 |                   type="submit"
+580 |                   disabled={isSubmitting}
+581 |                   className="flex-1 px-5 py-3.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+582 |                 >
+583 |                   {isSubmitting ? "Збереження..." : "Створити"}
+584 |                 </button>
+585 |               </div>
+586 |             </form>
+587 |           </div>
+588 |         </div>
+589 |       )}
+590 |     </div>
+591 |   );
+592 | }
+593 | 
 ```
 
 ### File: apps/frontend/src/types/index.ts

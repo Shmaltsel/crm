@@ -197,7 +197,7 @@ export default function Cities() {
                   </button>
                   <button
                     type="submit"
-                    disabled={isLoading}
+                    disabled={addCity.isPending}
                     className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
                   >
                     {addCity.isPending ? "Збереження..." : "Зберегти"}

@@ -88,7 +88,10 @@ function EmployeesSkeleton() {
               ))}
             </div>
             {[1, 2].map((i) => (
-              <div key={i} className="flex items-center gap-8 px-5 py-4 border-b border-slate-50">
+              <div
+                key={i}
+                className="flex items-center gap-8 px-5 py-4 border-b border-slate-50"
+              >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-slate-200" />
                   <div className="h-4 w-28 bg-slate-200 rounded" />
@@ -123,7 +126,7 @@ export default function Employees() {
   const headers = { Authorization: `Bearer ${token}` };
 
   const fetchData = async () => {
-   setIsLoading(true);
+    setIsLoading(true);
     // 1. Завантажуємо критичні дані (Працівники та Міста)
     try {
       const [usersRes, citiesRes] = await Promise.all([
@@ -307,7 +310,10 @@ export default function Employees() {
               </motion.div>
             ) : (
               <motion.div
-                whileHover={{ y: -2, boxShadow: "0 8px 24px -4px rgba(0,0,0,0.08)" }}
+                whileHover={{
+                  y: -2,
+                  boxShadow: "0 8px 24px -4px rgba(0,0,0,0.08)",
+                }}
                 transition={{ duration: 0.2 }}
                 className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
               >
@@ -323,70 +329,69 @@ export default function Employees() {
                   </thead>
                   <tbody>
                     <AnimatePresence initial={false}>
-                    {items.map((u, ri) => (
-                      <motion.tr
-                        key={u.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2, delay: ri * 0.04 }}
-                        className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
-                      >
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <motion.div
-                              initial={{ scale: 0.8, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              transition={{ duration: 0.2, delay: 0.05 }}
-                              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
-                            >
-                              {u.name.charAt(0)}
-                            </motion.div>
-                            <span className="font-medium text-slate-800">
-                              {u.name}
+                      {items.map((u, ri) => (
+                        <motion.tr
+                          key={u.id}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2, delay: ri * 0.04 }}
+                          className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+                        >
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <motion.div
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ duration: 0.2, delay: 0.05 }}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
+                              >
+                                {u.name.charAt(0)}
+                              </motion.div>
+                              <span className="font-medium text-slate-800">
+                                {u.name}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4 text-slate-600 text-sm">
+                            <PhoneLink phone={u.phone} />
+                            {u.car && (
+                              <p className="text-xs text-emerald-600 font-medium mt-1">
+                                🚗 {u.car}
+                              </p>
+                            )}
+                          </td>
+                          <td className="px-5 py-4 text-slate-600 text-sm font-medium">
+                            {u.email}
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
+                              📍 {u.city?.name || "Всі міста"}
                             </span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 text-slate-600 text-sm">
-                          <PhoneLink phone={u.phone} />
-                          {u.car && (
-                            <p className="text-xs text-emerald-600 font-medium mt-1">
-                              🚗 {u.car}
-                            </p>
-                          )}
-                        </td>
-                        <td className="px-5 py-4 text-slate-600 text-sm font-medium">
-                          {u.email}
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
-                            📍 {u.city?.name || "Всі міста"}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 text-center">
-                          <motion.button
-                            whileTap={{ scale: 0.93 }}
-                            onClick={() => handleOpenModal(u)}
-                            className="text-slate-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 rounded-lg mr-2 transition-colors"
-                          >
-                            ✏️
-                          </motion.button>
-                          <motion.button
-                            whileTap={{ scale: 0.93 }}
-                            onClick={() => handleDelete(u.id, u.name)}
-                            className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            🗑
-                          </motion.button>
-                        </td>
-                      </motion.tr>
-                    ))}
+                          </td>
+                          <td className="px-5 py-4 text-center">
+                            <motion.button
+                              whileTap={{ scale: 0.93 }}
+                              onClick={() => handleOpenModal(u)}
+                              className="text-slate-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 rounded-lg mr-2 transition-colors"
+                            >
+                              ✏️
+                            </motion.button>
+                            <motion.button
+                              whileTap={{ scale: 0.93 }}
+                              onClick={() => handleDelete(u.id, u.name)}
+                              className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              🗑
+                            </motion.button>
+                          </td>
+                        </motion.tr>
+                      ))}
                     </AnimatePresence>
                   </tbody>
                 </table>
-               </motion.div>
+              </motion.div>
             )}
-
           </motion.div>
         ))}
       </div>
@@ -418,7 +423,10 @@ export default function Employees() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, delay: pi * 0.05 }}
-              whileHover={{ y: -3, boxShadow: "0 8px 24px -4px rgba(0,0,0,0.10)" }}
+              whileHover={{
+                y: -3,
+                boxShadow: "0 8px 24px -4px rgba(0,0,0,0.10)",
+              }}
               className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default"
             >
               <div className="flex items-center gap-3">
