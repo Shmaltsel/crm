@@ -4733,104 +4733,106 @@
  28 |       return res.data.filter((i: any) => i.status !== "Виконано");
  29 |     },
  30 |     enabled: !!selectedCity?.id,
- 31 |   });
- 32 | 
- 33 |   const updateStatusMutation = useMutation({
- 34 |     mutationFn: (data: { id: string; status: string }) =>
- 35 |       api.patch(`/issues/${data.id}/status`, { status: data.status }),
- 36 |     onSuccess: () => {
- 37 |       qc.invalidateQueries({ queryKey: ["issues", selectedCity?.id] });
- 38 |     },
- 39 |   });
- 40 | 
- 41 |   const handleStatusToggle = (issue: any) => {
- 42 |     const nextStatus = getNextStatus(issue.status);
- 43 | 
- 44 |     if (nextStatus === "Виконано") {
- 45 |       setExitingIssueId(issue.id);
- 46 |       setTimeout(() => {
- 47 |         updateStatusMutation.mutate({ id: issue.id, status: nextStatus });
- 48 |         setExitingIssueId(null);
- 49 |       }, 500);
- 50 |     } else {
- 51 |       updateStatusMutation.mutate({ id: issue.id, status: nextStatus });
- 52 |     }
- 53 |   };
- 54 | 
- 55 |   if (issues.length === 0) return null;
+ 31 |     refetchOnWindowFocus: true,
+ 32 |     staleTime: 0,
+ 33 |   });
+ 34 | 
+ 35 |   const updateStatusMutation = useMutation({
+ 36 |     mutationFn: (data: { id: string; status: string }) =>
+ 37 |       api.patch(`/issues/${data.id}/status`, { status: data.status }),
+ 38 |     onSuccess: () => {
+ 39 |       qc.invalidateQueries({ queryKey: ["issues", selectedCity?.id] });
+ 40 |     },
+ 41 |   });
+ 42 | 
+ 43 |   const handleStatusToggle = (issue: any) => {
+ 44 |     const nextStatus = getNextStatus(issue.status);
+ 45 | 
+ 46 |     if (nextStatus === "Виконано") {
+ 47 |       setExitingIssueId(issue.id);
+ 48 |       setTimeout(() => {
+ 49 |         updateStatusMutation.mutate({ id: issue.id, status: nextStatus });
+ 50 |         setExitingIssueId(null);
+ 51 |       }, 500);
+ 52 |     } else {
+ 53 |       updateStatusMutation.mutate({ id: issue.id, status: nextStatus });
+ 54 |     }
+ 55 |   };
  56 | 
- 57 |   return (
- 58 |     <div className="mb-6 animate-[slideDown_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards]">
- 59 |       <style>{`
- 60 |         @keyframes slideDown {
- 61 |           from { opacity: 0; transform: translateY(-15px); }
- 62 |           to { opacity: 1; transform: translateY(0); }
- 63 |         }
- 64 |         @keyframes slideUp {
- 65 |           from { opacity: 1; transform: translateY(0); }
- 66 |           to { opacity: 0; transform: translateY(-10px); }
- 67 |         }
- 68 |       `}</style>
- 69 | 
- 70 |       <h2 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
- 71 |         🚨 <span>Активні проблеми</span>
- 72 |         <span className="text-sm font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
- 73 |           {issues.length}
- 74 |         </span>
- 75 |       </h2>
- 76 | 
- 77 |       {/* Зверни увагу: я прибрав gap-4 і додав відступи самим елементам, щоб анімація звуження працювала ідеально */}
- 78 |       <div className="flex overflow-x-auto pb-4 -mx-1 px-1">
- 79 |         {issues.map((issue) => {
- 80 |           const isExiting = exitingIssueId === issue.id;
- 81 | 
- 82 |           return (
- 83 |             // Зовнішній контейнер керує шириною, прозорістю і відступом
- 84 |             <div
- 85 |               key={issue.id}
- 86 |               className={`transition-all duration-500 ease-in-out overflow-hidden transform origin-left ${
- 87 |                 isExiting
- 88 |                   ? "w-0 min-w-0 mr-0 opacity-0 scale-x-75 pointer-events-none"
- 89 |                   : "w-[300px] min-w-[300px] mr-4 opacity-100 scale-x-100 shrink-0"
- 90 |               }`}
- 91 |             >
- 92 |               {/* Внутрішній контейнер має фіксовану ширину, щоб текст не ламався */}
- 93 |               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-red-500 p-5 flex flex-col gap-3 w-[300px]">
- 94 |                 <div>
- 95 |                   <p className="text-xs text-slate-400 mb-1">
- 96 |                     {new Date(issue.createdAt).toLocaleDateString("uk-UA", {
- 97 |                       day: "2-digit",
- 98 |                       month: "2-digit",
- 99 |                       year: "numeric",
-100 |                       hour: "2-digit",
-101 |                       minute: "2-digit",
-102 |                     })}
-103 |                   </p>
-104 |                   <p className="font-bold text-slate-800 text-sm">
-105 |                     {issue.schoolName}
-106 |                   </p>
-107 |                   <p className="text-xs text-slate-500">{issue.eventName}</p>
-108 |                 </div>
-109 | 
-110 |                 <p className="text-sm text-slate-700 bg-slate-50 rounded-xl p-3 italic leading-relaxed">
-111 |                   "{issue.message}"
-112 |                 </p>
-113 | 
-114 |                 <button
-115 |                   onClick={() => handleStatusToggle(issue)}
-116 |                   className={`text-xs font-bold px-3 py-2 rounded-lg border transition-colors text-left ${STATUS_STYLES[issue.status] || STATUS_STYLES["Планується"]}`}
-117 |                 >
-118 |                   ● {issue.status} → натисни щоб змінити
-119 |                 </button>
-120 |               </div>
-121 |             </div>
-122 |           );
-123 |         })}
-124 |       </div>
-125 |     </div>
-126 |   );
-127 | }
-128 | 
+ 57 |   if (issues.length === 0) return null;
+ 58 | 
+ 59 |   return (
+ 60 |     <div className="mb-6 animate-[slideDown_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards]">
+ 61 |       <style>{`
+ 62 |         @keyframes slideDown {
+ 63 |           from { opacity: 0; transform: translateY(-15px); }
+ 64 |           to { opacity: 1; transform: translateY(0); }
+ 65 |         }
+ 66 |         @keyframes slideUp {
+ 67 |           from { opacity: 1; transform: translateY(0); }
+ 68 |           to { opacity: 0; transform: translateY(-10px); }
+ 69 |         }
+ 70 |       `}</style>
+ 71 | 
+ 72 |       <h2 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+ 73 |         🚨 <span>Активні проблеми</span>
+ 74 |         <span className="text-sm font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
+ 75 |           {issues.length}
+ 76 |         </span>
+ 77 |       </h2>
+ 78 | 
+ 79 |       {/* Зверни увагу: я прибрав gap-4 і додав відступи самим елементам, щоб анімація звуження працювала ідеально */}
+ 80 |       <div className="flex overflow-x-auto pb-4 -mx-1 px-1">
+ 81 |         {issues.map((issue) => {
+ 82 |           const isExiting = exitingIssueId === issue.id;
+ 83 | 
+ 84 |           return (
+ 85 |             // Зовнішній контейнер керує шириною, прозорістю і відступом
+ 86 |             <div
+ 87 |               key={issue.id}
+ 88 |               className={`transition-all duration-500 ease-in-out overflow-hidden transform origin-left ${
+ 89 |                 isExiting
+ 90 |                   ? "w-0 min-w-0 mr-0 opacity-0 pointer-events-none"
+ 91 |                  : "w-[300px] min-w-[300px] mr-4 opacity-100 shrink-0"
+ 92 |               }`}
+ 93 |             >
+ 94 |               {/* Внутрішній контейнер має фіксовану ширину, щоб текст не ламався */}
+ 95 |               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-red-500 p-5 flex flex-col gap-3 w-[300px]">
+ 96 |                 <div>
+ 97 |                   <p className="text-xs text-slate-400 mb-1">
+ 98 |                     {new Date(issue.createdAt).toLocaleDateString("uk-UA", {
+ 99 |                       day: "2-digit",
+100 |                       month: "2-digit",
+101 |                       year: "numeric",
+102 |                       hour: "2-digit",
+103 |                       minute: "2-digit",
+104 |                     })}
+105 |                   </p>
+106 |                   <p className="font-bold text-slate-800 text-sm">
+107 |                     {issue.schoolName}
+108 |                   </p>
+109 |                   <p className="text-xs text-slate-500">{issue.eventName}</p>
+110 |                 </div>
+111 | 
+112 |                 <p className="text-sm text-slate-700 bg-slate-50 rounded-xl p-3 italic leading-relaxed">
+113 |                   "{issue.message}"
+114 |                 </p>
+115 | 
+116 |                 <button
+117 |                   onClick={() => handleStatusToggle(issue)}
+118 |                   className={`text-xs font-bold px-3 py-2 rounded-lg border transition-colors text-left ${STATUS_STYLES[issue.status] || STATUS_STYLES["Планується"]}`}
+119 |                 >
+120 |                   ● {issue.status} → натисни щоб змінити
+121 |                 </button>
+122 |               </div>
+123 |             </div>
+124 |           );
+125 |         })}
+126 |       </div>
+127 |     </div>
+128 |   );
+129 | }
+130 | 
 ```
 
 ### File: apps/frontend/src/components/Layout.tsx
@@ -9196,7 +9198,7 @@
 139 |               disabled={sent || !message.trim()}
 140 |               className="flex-1 bg-red-600 text-white py-3 rounded-xl font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
 141 |             >
-142 |               {sent ? '✓ Надіслано!' : isSending ? 'Відправка...' : 'Відправити'}
+142 |               {sent ? '✓ Надіслано!' :  'Відправити'}
 143 |             </button>
 144 |           </div>
 145 |         </div>

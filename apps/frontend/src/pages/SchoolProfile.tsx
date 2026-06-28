@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSchoolCompletedEvents } from "../hooks/useSchoolProfile";
 import {
   useSchool,
   useSchoolEvents,
@@ -76,7 +77,8 @@ export default function SchoolProfile() {
   );
 
   const { data: users = [] } = useUsers();
-
+  const { data: completedEvents = [] } = useSchoolCompletedEvents(id);
+  const [selectedReportEvent, setSelectedReportEvent] = useState<any>(null);
   const updateStatus = useUpdateEventStatus();
   const updatePreparation = useUpdatePreparation();
   const assignCrewMutation = useAssignCrew();
@@ -518,6 +520,103 @@ export default function SchoolProfile() {
                 }
               />
             </Suspense>
+            {completedEvents.length > 0 && (
+              <motion.div {...stagger(4)}>
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                  <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                    <h3 className="font-bold text-slate-800">
+                      Завершені події ({completedEvents.length})
+                    </h3>
+                  </div>
+                  <div className="md:hidden divide-y divide-slate-50">
+                    {completedEvents.map((ev: any) => (
+                      <div
+                        key={ev.id}
+                        onClick={() => setSelectedReportEvent(ev)}
+                        className="flex items-center justify-between gap-3 p-4 active:bg-slate-50 cursor-pointer"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium text-blue-600 truncate">
+                            {ev.project}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {new Date(ev.date).toLocaleDateString("uk-UA")}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            👶{" "}
+                            {ev.report?.childrenCount ||
+                              ev.childrenPlanned ||
+                              "—"}{" "}
+                            дітей
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-semibold text-slate-800 text-sm">
+                            {new Intl.NumberFormat("uk-UA").format(
+                              ev.report?.totalSum || ev.price || 0,
+                            )}{" "}
+                            грн
+                          </p>
+                          <p className="text-xs font-medium text-emerald-600 mt-0.5">
+                            +
+                            {new Intl.NumberFormat("uk-UA").format(
+                              ev.report?.remainderSum || 0,
+                            )}{" "}
+                            грн
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead>
+                        <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+                          <th className="p-4">Проєкт</th>
+                          <th className="p-4">Дата</th>
+                          <th className="p-4">Дітей</th>
+                          <th className="p-4">Виручка</th>
+                          <th className="p-4">Прибуток</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {completedEvents.map((ev: any) => (
+                          <tr
+                            key={ev.id}
+                            onClick={() => setSelectedReportEvent(ev)}
+                            className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
+                          >
+                            <td className="p-4 text-slate-700 font-medium">
+                              {ev.project}
+                            </td>
+                            <td className="p-4 text-slate-600">
+                              {new Date(ev.date).toLocaleDateString("uk-UA")}
+                            </td>
+                            <td className="p-4 font-medium">
+                              {ev.report?.childrenCount ||
+                                ev.childrenPlanned ||
+                                "—"}
+                            </td>
+                            <td className="p-4 font-medium text-slate-800">
+                              {new Intl.NumberFormat("uk-UA").format(
+                                ev.report?.totalSum || ev.price || 0,
+                              )}{" "}
+                              грн
+                            </td>
+                            <td className="p-4 font-medium text-emerald-600">
+                              {new Intl.NumberFormat("uk-UA").format(
+                                ev.report?.remainderSum || 0,
+                              )}{" "}
+                              грн
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </motion.div>
         </motion.div>
       </div>
@@ -589,6 +688,154 @@ export default function SchoolProfile() {
             : undefined
         }
       />
+      <CompletedEventModal
+        isOpen={!!selectedReportEvent}
+        onClose={() => setSelectedReportEvent(null)}
+        event={selectedReportEvent}
+      />
     </div>
   );
+  function CompletedEventModal({
+    isOpen,
+    onClose,
+    event,
+  }: {
+    isOpen: boolean;
+    onClose: () => void;
+    event: any;
+  }) {
+    if (!isOpen || !event) return null;
+    const fmt = (n: number) =>
+      new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+    const report = event.report;
+
+    return (
+      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+        <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
+          <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+          <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
+            <div>
+              <h3 className="text-xl font-bold text-slate-800">
+                Звіт: {event.project}
+              </h3>
+              <p className="text-sm text-slate-500 mt-1">
+                {new Date(event.date).toLocaleDateString("uk-UA")}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-600 p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="p-5 sm:p-6 flex-1 overflow-y-auto bg-slate-50/30">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                <h4 className="font-bold text-slate-800 mb-4">📊 Результати</h4>
+                <div className="space-y-3 text-sm">
+                  {[
+                    ["Дітей (факт)", report?.childrenCount || 0],
+                    ["Класів", report?.classesCount || 0],
+                    ["Пільговиків", report?.privilegedCount || 0],
+                    ["Сеансів", report?.showingsCount || 0],
+                  ].map(([label, val]) => (
+                    <div
+                      key={label}
+                      className="flex justify-between border-b border-slate-50 pb-2"
+                    >
+                      <span className="text-slate-500">{label}:</span>
+                      <span className="font-medium">{val}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between pb-1">
+                    <span className="text-slate-500">Оцінка:</span>
+                    <span className="font-bold text-amber-500">
+                      ⭐ {report?.rating || 0}/10
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                <h4 className="font-bold text-slate-800 mb-4">💰 Фінанси</h4>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between border-b border-slate-50 pb-2">
+                    <span className="text-slate-500">Загальна виручка:</span>
+                    <span className="font-bold">
+                      {fmt(report?.totalSum)} грн
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-50 pb-2">
+                    <span className="text-slate-500">На заклад (20%):</span>
+                    <span className="font-medium text-rose-500">
+                      − {fmt(report?.schoolSum)} грн
+                    </span>
+                  </div>
+                  {Array.isArray(report?.expenses) &&
+                    report.expenses.map((exp: any, i: number) => (
+                      <div
+                        key={i}
+                        className="flex justify-between text-xs pl-2"
+                      >
+                        <span className="text-slate-400">
+                          — {exp.name || exp.category}
+                        </span>
+                        <span className="text-rose-500 font-medium">
+                          − {fmt(exp.amount)} грн
+                        </span>
+                      </div>
+                    ))}
+                  <div className="flex justify-between pt-1">
+                    <span className="font-bold text-slate-800">
+                      Чистий прибуток:
+                    </span>
+                    <span className="font-bold text-emerald-600 text-base">
+                      {fmt(report?.remainderSum)} грн
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {event.history?.length > 0 && (
+              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                <h4 className="font-bold text-slate-800 mb-5">
+                  ⏳ Історія пайплайну
+                </h4>
+                <div className="space-y-4 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-slate-100">
+                  {[...event.history]
+                    .sort(
+                      (a, b) =>
+                        new Date(a.createdAt).getTime() -
+                        new Date(b.createdAt).getTime(),
+                    )
+                    .map((item: any) => (
+                      <div key={item.id} className="relative pl-8 text-sm">
+                        <div className="absolute left-1.5 w-3 h-3 rounded-full top-1 bg-violet-500 ring-4 ring-white" />
+                        <p className="font-semibold text-slate-800">
+                          {item.action}
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          {new Date(item.createdAt).toLocaleString("uk-UA", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}{" "}
+                          · 👤 {item.userName}
+                        </p>
+                        {item.comment && (
+                          <div className="mt-2 p-3 bg-slate-50/80 rounded-xl text-slate-600 italic border border-slate-100">
+                            {item.comment}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 }

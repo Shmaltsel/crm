@@ -110,6 +110,11 @@ export class EventsController {
     return this.eventsService.submitReport(id, body, user);
   }
 
+  @Get('school/:schoolId/completed')
+  findCompletedBySchool(@Param('schoolId') schoolId: string) {
+    return this.eventsService.findCompletedBySchool(schoolId);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.eventsService.findOne(id);

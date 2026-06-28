@@ -299,7 +299,9 @@ export class EventsService {
           contactPerson: true,
           contactPhone: true,
           crewId: true,
-          crew: { select: { id: true, name: true, hostId: true, driverId: true } },
+          crew: {
+            select: { id: true, name: true, hostId: true, driverId: true },
+          },
         },
         orderBy: { date: 'desc' },
       });
@@ -443,6 +445,35 @@ export class EventsService {
         },
         report: true,
       },
+    });
+  }
+
+  async findCompletedBySchool(schoolId: string) {
+    return this.prisma.event.findMany({
+      where: { schoolId, status: 'RE_SALE' },
+      select: {
+        id: true,
+        project: true,
+        date: true,
+        status: true,
+        price: true,
+        childrenPlanned: true,
+        report: {
+          select: {
+            childrenCount: true,
+            classesCount: true,
+            privilegedCount: true,
+            showingsCount: true,
+            totalSum: true,
+            schoolSum: true,
+            remainderSum: true,
+            rating: true,
+            expenses: true,
+          },
+        },
+        history: { orderBy: { createdAt: 'asc' } },
+      },
+      orderBy: { date: 'desc' },
     });
   }
 }
