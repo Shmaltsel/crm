@@ -78,4 +78,32 @@ describe("SchoolCard", () => {
       "Школа №1",
     );
   });
+
+  it("не показує етап якщо подій немає", () => {
+    render(
+      <MemoryRouter>
+        <SchoolCard
+          school={{ ...mockSchool, events: [] }}
+          onDelete={vi.fn()}
+          stages={STAGES}
+          index={0}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByText("Новий заклад")).not.toBeInTheDocument();
+  });
+
+  it("показує телефон якщо є", () => {
+    render(
+      <MemoryRouter>
+        <SchoolCard
+          school={mockSchool}
+          onDelete={vi.fn()}
+          stages={STAGES}
+          index={0}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText(/0671234567/)).toBeInTheDocument();
+  });
 });

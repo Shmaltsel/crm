@@ -13,6 +13,15 @@ export default function Layout() {
   const navigate = useNavigate();
   const [user, setUser] = useState<UserInfo | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // Додано стан для мобільного меню
+  const [userRole, setUserRole] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("user");
+      if (raw) setUserRole(JSON.parse(raw).role);
+    } catch {}
+  }, []);
+
+  const is = (roles: string[]) => !!userRole && roles.includes(userRole);
   const { selectedCity } = useSelectedCity();
 
   useEffect(() => {
@@ -98,20 +107,24 @@ export default function Layout() {
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto mt-16 md:mt-0">
-          <Link
-            to="/dashboard"
-            onClick={handleLinkClick}
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/dashboard") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-          >
-            <span className="mr-3">🏠</span> Дашборд
-          </Link>
-          <Link
-            to="/cities"
-            onClick={handleLinkClick}
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/cities") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-          >
-            <span className="mr-3">📍</span> Міста
-          </Link>
+          {is(["SUPERADMIN", "MANAGER"]) && (
+            <Link
+              to="/dashboard"
+              onClick={handleLinkClick}
+              className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/dashboard") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+            >
+              <span className="mr-3">🏠</span> Дашборд
+            </Link>
+          )}
+          {is(["SUPERADMIN", "MANAGER"]) && (
+            <Link
+              to="/cities"
+              onClick={handleLinkClick}
+              className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/cities") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+            >
+              <span className="mr-3">📍</span> Міста
+            </Link>
+          )}
           <Link
             to="/schools"
             onClick={handleLinkClick}
@@ -128,13 +141,15 @@ export default function Layout() {
           >
             <span className="mr-3">🧸</span> Садочки
           </Link>
-          <Link
-            to="/finance"
-            onClick={handleLinkClick}
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/finance") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-          >
-            <span className="mr-3">💰</span> Фінанси
-          </Link>
+          {is(["SUPERADMIN", "MANAGER"]) && (
+            <Link
+              to="/finance"
+              onClick={handleLinkClick}
+              className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/finance") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+            >
+              <span className="mr-3">💰</span> Фінанси
+            </Link>
+          )}
           <Link
             to="/calendar"
             onClick={handleLinkClick}
@@ -142,7 +157,7 @@ export default function Layout() {
           >
             <span className="mr-3">📆</span> Календар
           </Link>
-          {isSuperAdmin && (
+          {is(["SUPERADMIN"]) && (
             <Link
               to="/employees"
               onClick={handleLinkClick}

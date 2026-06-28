@@ -138,10 +138,19 @@ export default function Employees() {
 
   const { selectedCity } = useSelectedCity();
 
+  const [userRole] = useState<string | null>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "null")?.role ?? null;
+    } catch {
+      return null;
+    }
+  });
+  const isSuperAdmin = userRole === "SUPERADMIN";
+
   const cityFilteredUsers = selectedCity.id
     ? users.filter((u) => u.cityId === selectedCity.id)
     : users;
-  const grouped = (["MAfNAGER", "DRIVER", "HOST"] as Role[]).map((role) => ({
+  const grouped = (["MANAGER", "DRIVER", "HOST"] as Role[]).map((role) => ({
     role,
     label: ROLE_LABELS[role],
     items: cityFilteredUsers.filter((u) => u.role === role),
@@ -190,7 +199,7 @@ export default function Employees() {
     setProjectForm({ name: "", color: "blue" });
     createProject.mutate(projectForm);
   };
-  
+
   const handleDeleteProject = async (id: string, name: string) => {
     if (
       !window.confirm(
@@ -232,16 +241,18 @@ export default function Employees() {
             Керування доступами, працівниками та видами подій
           </p>
         </motion.div>
-        <motion.button
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
-          whileTap={{ scale: 0.97 }}
-          onClick={() => handleOpenModal()}
-          className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
-        >
-          + Створити користувача
-        </motion.button>
+        {isSuperAdmin && (
+          <motion.button
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => handleOpenModal()}
+            className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
+          >
+            + Створити користувача
+          </motion.button>
+        )}
       </div>
 
       <div className="space-y-8">
@@ -338,20 +349,24 @@ export default function Employees() {
                             </span>
                           </td>
                           <td className="px-5 py-4 text-center">
-                            <motion.button
-                              whileTap={{ scale: 0.93 }}
-                              onClick={() => handleOpenModal(u)}
-                              className="text-slate-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 rounded-lg mr-2 transition-colors"
-                            >
-                              ✏️
-                            </motion.button>
-                            <motion.button
-                              whileTap={{ scale: 0.93 }}
-                              onClick={() => handleDelete(u.id, u.name)}
-                              className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
-                            >
-                              🗑
-                            </motion.button>
+                            {isSuperAdmin && (
+                              <>
+                                <motion.button
+                                  whileTap={{ scale: 0.93 }}
+                                  onClick={() => handleOpenModal(u)}
+                                  className="text-slate-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 rounded-lg mr-2 transition-colors"
+                                >
+                                  ✏️
+                                </motion.button>
+                                <motion.button
+                                  whileTap={{ scale: 0.93 }}
+                                  onClick={() => handleDelete(u.id, u.name)}
+                                  className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                                >
+                                  🗑
+                                </motion.button>
+                              </>
+                            )}
                           </td>
                         </motion.tr>
                       ))}
@@ -376,12 +391,14 @@ export default function Employees() {
               події
             </p>
           </div>
-          <button
-            onClick={() => setIsProjectModalOpen(true)}
-            className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 transition-colors w-full sm:w-auto"
-          >
-            + Створити вид події
-          </button>
+          {isSuperAdmin && (
+            <button
+              onClick={() => setIsProjectModalOpen(true)}
+              className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 transition-colors w-full sm:w-auto"
+            >
+              + Створити вид події
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -405,13 +422,15 @@ export default function Employees() {
                 />
                 <span className="font-bold text-slate-800">{p.name}</span>
               </div>
-              <button
-                onClick={() => handleDeleteProject(p.id, p.name)}
-                className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2 -mr-2"
-                title="Видалити"
-              >
-                🗑
-              </button>
+              {isSuperAdmin && (
+                <button
+                  onClick={() => handleDeleteProject(p.id, p.name)}
+                  className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2 -mr-2"
+                  title="Видалити"
+                >
+                  🗑
+                </button>
+              )}
             </motion.div>
           ))}
           {projects.length === 0 && (

@@ -6,14 +6,14 @@ import { ParserService } from './parser.service';
 
 const mockPrisma = {
   school: {
-    findMany: vi.fn(),
-    findUnique: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
   },
-  event: { findMany: vi.fn() },
-  schoolContact: { findMany: vi.fn() },
+  event: { findMany: jest.fn() },
+  schoolContact: { findMany: jest.fn() },
 };
 
 describe('SchoolsService', () => {
@@ -24,10 +24,13 @@ describe('SchoolsService', () => {
       providers: [
         SchoolsService,
         { provide: PrismaService, useValue: mockPrisma },
-        { provide: EventsService, useValue: { remove: vi.fn() } },
+        { provide: EventsService, useValue: { remove: jest.fn() } },
         {
           provide: ParserService,
-          useValue: { parseSchoolData: vi.fn(), getAllSchoolsForCity: vi.fn() },
+          useValue: {
+            parseSchoolData: jest.fn(),
+            getAllSchoolsForCity: jest.fn(),
+          },
         },
       ],
     }).compile();
@@ -35,7 +38,7 @@ describe('SchoolsService', () => {
     service = module.get<SchoolsService>(SchoolsService);
   });
 
-  afterEach(() => vi.clearAllMocks());
+  afterEach(() => jest.clearAllMocks());
 
   describe('findAll', () => {
     it('повертає всі школи', async () => {

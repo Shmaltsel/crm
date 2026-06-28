@@ -1,6 +1,6 @@
 import { http, HttpResponse } from "msw";
 
-const BASE = "http://localhost:3000";
+const BASE = "";
 
 export const handlers = [
   // Cities

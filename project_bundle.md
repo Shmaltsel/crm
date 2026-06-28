@@ -54,6 +54,7 @@
 │   │   │   ├── dashboard
 │   │   │   │   ├── dashboard.controller.ts
 │   │   │   │   ├── dashboard.module.ts
+│   │   │   │   ├── dashboard.service.spec.ts
 │   │   │   │   └── dashboard.service.ts
 │   │   │   ├── events
 │   │   │   │   ├── dto
@@ -93,6 +94,7 @@
 │   │   │   ├── telegram
 │   │   │   │   ├── telegram.module.ts
 │   │   │   │   └── telegram.service.ts
+│   │   │   ├── tests
 │   │   │   └── users
 │   │   │       ├── users.controller.spec.ts
 │   │   │       ├── users.controller.ts
@@ -107,10 +109,14 @@
 │       │   ├── assertion-results.json
 │       │   └── links.json
 │       ├── README.md
+│       ├── e2e
+│       │   ├── login.spec.ts
+│       │   └── schools.spec.ts
 │       ├── eslint.config.js
 │       ├── index.html
 │       ├── lighthouserc.cjs
 │       ├── package.json
+│       ├── playwright.config.ts
 │       ├── postcss.config.js
 │       ├── public
 │       │   ├── favicon.svg
@@ -199,9 +205,43 @@
 │       │   │   ├── Login.tsx
 │       │   │   ├── SchoolProfile.tsx
 │       │   │   └── Schools.tsx
+│       │   ├── tests
+│       │   │   ├── component
+│       │   │   │   ├── Pipeline.test.tsx
+│       │   │   │   └── SchoolCard.test.tsx
+│       │   │   ├── mocks
+│       │   │   │   ├── handlers.ts
+│       │   │   │   └── server.ts
+│       │   │   ├── setup.ts
+│       │   │   └── unit
+│       │   │       ├── hooks
+│       │   │       │   └── useSchools.test.ts
+│       │   │       └── schoolUtils.test.ts
 │       │   └── types
 │       │       └── index.ts
 │       ├── tailwind.config.js
+│       ├── test-results
+│       │   ├── .last-run.json
+│       │   ├── login-Авторизація-невірний-пароль-—-показує-помилку
+│       │   │   └── error-context.md
+│       │   ├── login-Авторизація-невірний-пароль-—-показує-помилку-retry1
+│       │   │   ├── error-context.md
+│       │   │   └── trace.zip
+│       │   ├── login-Авторизація-успішний-логін
+│       │   │   └── error-context.md
+│       │   ├── login-Авторизація-успішний-логін-retry1
+│       │   │   ├── error-context.md
+│       │   │   └── trace.zip
+│       │   ├── schools-Сторінка-шкіл-відображає-список-шкіл
+│       │   │   └── error-context.md
+│       │   ├── schools-Сторінка-шкіл-відображає-список-шкіл-retry1
+│       │   │   ├── error-context.md
+│       │   │   └── trace.zip
+│       │   ├── schools-Сторінка-шкіл-пошук-фільтрує-школи
+│       │   │   └── error-context.md
+│       │   └── schools-Сторінка-шкіл-пошук-фільтрує-школи-retry1
+│       │       ├── error-context.md
+│       │       └── trace.zip
 │       ├── tsconfig.app.json
 │       ├── tsconfig.json
 │       ├── tsconfig.node.json
@@ -579,25 +619,20 @@
 
 ### File: apps/backend/src/auth/auth.controller.spec.ts
 ```ts
-  0 | import { Test, TestingModule } from '@nestjs/testing';
+  0 | import { Test } from '@nestjs/testing';
   1 | import { AuthController } from './auth.controller';
-  2 | 
-  3 | describe('AuthController', () => {
-  4 |   let controller: AuthController;
-  5 | 
-  6 |   beforeEach(async () => {
-  7 |     const module: TestingModule = await Test.createTestingModule({
-  8 |       controllers: [AuthController],
+  2 | import { AuthService } from './auth.service';
+  3 | 
+  4 | describe('AuthController', () => {
+  5 |   it('should be defined', async () => {
+  6 |     const module = await Test.createTestingModule({
+  7 |       controllers: [AuthController],
+  8 |       providers: [{ provide: AuthService, useValue: { login: jest.fn() } }],
   9 |     }).compile();
- 10 | 
- 11 |     controller = module.get<AuthController>(AuthController);
- 12 |   });
+ 10 |     expect(module.get(AuthController)).toBeDefined();
+ 11 |   });
+ 12 | });
  13 | 
- 14 |   it('should be defined', () => {
- 15 |     expect(controller).toBeDefined();
- 16 |   });
- 17 | });
- 18 | 
 ```
 
 ### File: apps/backend/src/auth/auth.controller.ts
@@ -680,25 +715,24 @@
 
 ### File: apps/backend/src/auth/auth.service.spec.ts
 ```ts
-  0 | import { Test, TestingModule } from '@nestjs/testing';
+  0 | import { Test } from '@nestjs/testing';
   1 | import { AuthService } from './auth.service';
-  2 | 
-  3 | describe('AuthService', () => {
-  4 |   let service: AuthService;
-  5 | 
-  6 |   beforeEach(async () => {
-  7 |     const module: TestingModule = await Test.createTestingModule({
-  8 |       providers: [AuthService],
-  9 |     }).compile();
- 10 | 
- 11 |     service = module.get<AuthService>(AuthService);
- 12 |   });
- 13 | 
- 14 |   it('should be defined', () => {
- 15 |     expect(service).toBeDefined();
- 16 |   });
- 17 | });
- 18 | 
+  2 | import { UsersService } from '../users/users.service';
+  3 | import { JwtService } from '@nestjs/jwt';
+  4 | 
+  5 | describe('AuthService', () => {
+  6 |   it('should be defined', async () => {
+  7 |     const module = await Test.createTestingModule({
+  8 |       providers: [
+  9 |         AuthService,
+ 10 |         { provide: UsersService, useValue: { findByEmail: jest.fn() } },
+ 11 |         { provide: JwtService, useValue: { sign: jest.fn() } },
+ 12 |       ],
+ 13 |     }).compile();
+ 14 |     expect(module.get(AuthService)).toBeDefined();
+ 15 |   });
+ 16 | });
+ 17 | 
 ```
 
 ### File: apps/backend/src/auth/auth.service.ts
@@ -778,25 +812,20 @@
 
 ### File: apps/backend/src/cities/cities.controller.spec.ts
 ```ts
-  0 | import { Test, TestingModule } from '@nestjs/testing';
+  0 | import { Test } from '@nestjs/testing';
   1 | import { CitiesController } from './cities.controller';
-  2 | 
-  3 | describe('CitiesController', () => {
-  4 |   let controller: CitiesController;
-  5 | 
-  6 |   beforeEach(async () => {
-  7 |     const module: TestingModule = await Test.createTestingModule({
-  8 |       controllers: [CitiesController],
+  2 | import { CitiesService } from './cities.service';
+  3 | 
+  4 | describe('CitiesController', () => {
+  5 |   it('should be defined', async () => {
+  6 |     const module = await Test.createTestingModule({
+  7 |       controllers: [CitiesController],
+  8 |       providers: [{ provide: CitiesService, useValue: {} }],
   9 |     }).compile();
- 10 | 
- 11 |     controller = module.get<CitiesController>(CitiesController);
- 12 |   });
+ 10 |     expect(module.get(CitiesController)).toBeDefined();
+ 11 |   });
+ 12 | });
  13 | 
- 14 |   it('should be defined', () => {
- 15 |     expect(controller).toBeDefined();
- 16 |   });
- 17 | });
- 18 | 
 ```
 
 ### File: apps/backend/src/cities/cities.controller.ts
@@ -851,25 +880,22 @@
 
 ### File: apps/backend/src/cities/cities.service.spec.ts
 ```ts
-  0 | import { Test, TestingModule } from '@nestjs/testing';
+  0 | import { Test } from '@nestjs/testing';
   1 | import { CitiesService } from './cities.service';
-  2 | 
-  3 | describe('CitiesService', () => {
-  4 |   let service: CitiesService;
-  5 | 
-  6 |   beforeEach(async () => {
-  7 |     const module: TestingModule = await Test.createTestingModule({
-  8 |       providers: [CitiesService],
-  9 |     }).compile();
- 10 | 
- 11 |     service = module.get<CitiesService>(CitiesService);
- 12 |   });
- 13 | 
- 14 |   it('should be defined', () => {
- 15 |     expect(service).toBeDefined();
- 16 |   });
- 17 | });
- 18 | 
+  2 | import { PrismaService } from '../prisma/prisma.service';
+  3 | 
+  4 | describe('CitiesService', () => {
+  5 |   it('should be defined', async () => {
+  6 |     const module = await Test.createTestingModule({
+  7 |       providers: [
+  8 |         CitiesService,
+  9 |         { provide: PrismaService, useValue: { city: { findMany: jest.fn() } } },
+ 10 |       ],
+ 11 |     }).compile();
+ 12 |     expect(module.get(CitiesService)).toBeDefined();
+ 13 |   });
+ 14 | });
+ 15 | 
 ```
 
 ### File: apps/backend/src/cities/cities.service.ts
@@ -1037,6 +1063,297 @@
  10 | })
  11 | export class DashboardModule {}
  12 | 
+```
+
+### File: apps/backend/src/dashboard/dashboard.service.spec.ts
+```ts
+  0 | import { Test, TestingModule } from '@nestjs/testing';
+  1 | import { DashboardService } from './dashboard.service';
+  2 | import { PrismaService } from '../prisma/prisma.service';
+  3 | 
+  4 | const today = new Date();
+  5 | const todayStr = today.toISOString();
+  6 | 
+  7 | const mockPrisma = {
+  8 |   event: {
+  9 |     findMany: jest.fn(),
+ 10 |     groupBy: jest.fn(),
+ 11 |     $queryRaw: jest.fn(),
+ 12 |   },
+ 13 |   school: {
+ 14 |     findMany: jest.fn(),
+ 15 |     groupBy: jest.fn(),
+ 16 |   },
+ 17 |   city: { findMany: jest.fn() },
+ 18 |   eventHistory: { findMany: jest.fn() },
+ 19 |   $queryRaw: jest.fn(),
+ 20 | };
+ 21 | 
+ 22 | const makeService = async () => {
+ 23 |   const module: TestingModule = await Test.createTestingModule({
+ 24 |     providers: [
+ 25 |       DashboardService,
+ 26 |       { provide: PrismaService, useValue: mockPrisma },
+ 27 |     ],
+ 28 |   }).compile();
+ 29 |   return module.get<DashboardService>(DashboardService);
+ 30 | };
+ 31 | 
+ 32 | const defaultMocks = () => {
+ 33 |   mockPrisma.event.findMany
+ 34 |     .mockResolvedValueOnce([]) // todayEvents
+ 35 |     .mockResolvedValueOnce([]) // upcomingEvents
+ 36 |     .mockResolvedValueOnce([]); // monthEvents
+ 37 |   mockPrisma.$queryRaw.mockResolvedValueOnce([
+ 38 |     { status: 'BASE', count: BigInt(10) },
+ 39 |     { status: 'FIRST_CONTACT', count: BigInt(5) },
+ 40 |     { status: 'IN_PROGRESS', count: BigInt(3) },
+ 41 |   ]);
+ 42 |   mockPrisma.school.findMany.mockResolvedValueOnce([]);
+ 43 |   mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
+ 44 | };
+ 45 | 
+ 46 | describe('DashboardService', () => {
+ 47 |   let service: DashboardService;
+ 48 | 
+ 49 |   beforeEach(async () => {
+ 50 |     jest.clearAllMocks();
+ 51 |     service = await makeService();
+ 52 |     // Очищаємо кеш між тестами
+ 53 |     (service as any).cache.clear();
+ 54 |   });
+ 55 | 
+ 56 |   describe('getSummary — funnel', () => {
+ 57 |     it('коректно рахує воронку по стадіях', async () => {
+ 58 |       defaultMocks();
+ 59 |       const result = await service.getSummary('city-1');
+ 60 |       expect(result.funnel['BASE']).toBe(10);
+ 61 |       expect(result.funnel['FIRST_CONTACT']).toBe(5);
+ 62 |       expect(result.funnel['IN_PROGRESS']).toBe(3);
+ 63 |     });
+ 64 | 
+ 65 |     it('totalSchools = сума всіх записів воронки', async () => {
+ 66 |       defaultMocks();
+ 67 |       const result = await service.getSummary('city-1');
+ 68 |       expect(result.totalSchools).toBe(18); // 10 + 5 + 3
+ 69 |     });
+ 70 | 
+ 71 |     it('всі етапи пайплайну присутні у funnel', async () => {
+ 72 |       defaultMocks();
+ 73 |       const result = await service.getSummary('city-1');
+ 74 |       const expectedStages = [
+ 75 |         'BASE',
+ 76 |         'FIRST_CONTACT',
+ 77 |         'DATE_CONFIRMED',
+ 78 |         'PREPARATION',
+ 79 |         'IN_PROGRESS',
+ 80 |         'DONE',
+ 81 |         'REPORT',
+ 82 |         'RE_SALE',
+ 83 |       ];
+ 84 |       for (const stage of expectedStages) {
+ 85 |         expect(result.funnel).toHaveProperty(stage);
+ 86 |       }
+ 87 |     });
+ 88 |   });
+ 89 | 
+ 90 |   describe('getSummary — todayEvents', () => {
+ 91 |     it('повертає сьогоднішні події', async () => {
+ 92 |       const todayEvent = {
+ 93 |         id: 'ev-1',
+ 94 |         project: 'Голограма',
+ 95 |         date: todayStr,
+ 96 |         school: { id: 's-1', name: 'Школа №1' },
+ 97 |         city: { id: 'c-1', name: 'Львів' },
+ 98 |         crew: null,
+ 99 |       };
+100 |       mockPrisma.event.findMany
+101 |         .mockResolvedValueOnce([todayEvent])
+102 |         .mockResolvedValueOnce([])
+103 |         .mockResolvedValueOnce([]);
+104 |       mockPrisma.$queryRaw.mockResolvedValueOnce([]);
+105 |       mockPrisma.school.findMany.mockResolvedValueOnce([]);
+106 |       mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
+107 | 
+108 |       const result = await service.getSummary('city-1');
+109 |       expect(result.todayEvents).toHaveLength(1);
+110 |       expect(result.todayEvents[0].id).toBe('ev-1');
+111 |     });
+112 | 
+113 |     it('повертає порожній масив якщо сьогодні подій немає', async () => {
+114 |       defaultMocks();
+115 |       const result = await service.getSummary('city-1');
+116 |       expect(result.todayEvents).toHaveLength(0);
+117 |     });
+118 |   });
+119 | 
+120 |   describe('getSummary — upcomingEvents', () => {
+121 |     it('повертає майбутні події', async () => {
+122 |       const upcoming = {
+123 |         id: 'ev-2',
+124 |         project: 'Малювайко',
+125 |         date: todayStr,
+126 |         school: null,
+127 |         city: null,
+128 |         crew: null,
+129 |       };
+130 |       mockPrisma.event.findMany
+131 |         .mockResolvedValueOnce([])
+132 |         .mockResolvedValueOnce([upcoming])
+133 |         .mockResolvedValueOnce([]);
+134 |       mockPrisma.$queryRaw.mockResolvedValueOnce([]);
+135 |       mockPrisma.school.findMany.mockResolvedValueOnce([]);
+136 |       mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
+137 | 
+138 |       const result = await service.getSummary('city-1');
+139 |       expect(result.upcomingEvents).toHaveLength(1);
+140 |       expect(result.upcomingEvents[0].id).toBe('ev-2');
+141 |     });
+142 |   });
+143 | 
+144 |   describe('getSummary — staleSchools', () => {
+145 |     it('повертає школи без активності більше 7 днів', async () => {
+146 |       const staleDate = new Date();
+147 |       staleDate.setDate(staleDate.getDate() - 10);
+148 | 
+149 |       const staleSchool = {
+150 |         id: 's-stale',
+151 |         name: 'Стала школа',
+152 |         events: [
+153 |           {
+154 |             status: 'FIRST_CONTACT',
+155 |             history: [{ createdAt: staleDate }],
+156 |           },
+157 |         ],
+158 |       };
+159 | 
+160 |       mockPrisma.event.findMany
+161 |         .mockResolvedValueOnce([])
+162 |         .mockResolvedValueOnce([])
+163 |         .mockResolvedValueOnce([]);
+164 |       mockPrisma.$queryRaw.mockResolvedValueOnce([]);
+165 |       mockPrisma.school.findMany.mockResolvedValueOnce([staleSchool]);
+166 |       mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
+167 | 
+168 |       const result = await service.getSummary('city-1');
+169 |       expect(result.staleSchools).toHaveLength(1);
+170 |       expect(result.staleSchools[0].id).toBe('s-stale');
+171 |       expect(result.staleSchools[0].daysStale).toBeGreaterThanOrEqual(9);
+172 |     });
+173 | 
+174 |     it('сортує staleSchools від найстарішої активності', async () => {
+175 |       const date10 = new Date();
+176 |       date10.setDate(date10.getDate() - 10);
+177 |       const date20 = new Date();
+178 |       date20.setDate(date20.getDate() - 20);
+179 | 
+180 |       mockPrisma.event.findMany
+181 |         .mockResolvedValueOnce([])
+182 |         .mockResolvedValueOnce([])
+183 |         .mockResolvedValueOnce([]);
+184 |       mockPrisma.$queryRaw.mockResolvedValueOnce([]);
+185 |       mockPrisma.school.findMany.mockResolvedValueOnce([
+186 |         {
+187 |           id: 's-1',
+188 |           name: 'Школа 1',
+189 |           events: [{ status: 'BASE', history: [{ createdAt: date10 }] }],
+190 |         },
+191 |         {
+192 |           id: 's-2',
+193 |           name: 'Школа 2',
+194 |           events: [{ status: 'BASE', history: [{ createdAt: date20 }] }],
+195 |         },
+196 |       ]);
+197 |       mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
+198 | 
+199 |       const result = await service.getSummary('city-1');
+200 |       expect(result.staleSchools[0].daysStale).toBeGreaterThan(
+201 |         result.staleSchools[1].daysStale!,
+202 |       );
+203 |     });
+204 |   });
+205 | 
+206 |   describe('getSummary — monthlyKpi', () => {
+207 |     it('коректно рахує KPI за місяць', async () => {
+208 |       mockPrisma.event.findMany
+209 |         .mockResolvedValueOnce([])
+210 |         .mockResolvedValueOnce([])
+211 |         .mockResolvedValueOnce([
+212 |           {
+213 |             id: 'ev-1',
+214 |             report: { totalSum: 10000, remainderSum: 4000, childrenCount: 100 },
+215 |           },
+216 |           {
+217 |             id: 'ev-2',
+218 |             report: { totalSum: 5000, remainderSum: 2000, childrenCount: 50 },
+219 |           },
+220 |         ]);
+221 |       mockPrisma.$queryRaw.mockResolvedValueOnce([]);
+222 |       mockPrisma.school.findMany.mockResolvedValueOnce([]);
+223 |       mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
+224 | 
+225 |       const result = await service.getSummary('city-1');
+226 |       expect(result.monthlyKpi.revenue).toBe(15000);
+227 |       expect(result.monthlyKpi.profit).toBe(6000);
+228 |       expect(result.monthlyKpi.children).toBe(150);
+229 |       expect(result.monthlyKpi.count).toBe(2);
+230 |     });
+231 | 
+232 |     it('повертає нулі якщо звітів немає', async () => {
+233 |       defaultMocks();
+234 |       const result = await service.getSummary('city-1');
+235 |       expect(result.monthlyKpi).toEqual({
+236 |         revenue: 0,
+237 |         profit: 0,
+238 |         children: 0,
+239 |         count: 0,
+240 |       });
+241 |     });
+242 |   });
+243 | 
+244 |   describe('getSummary — citiesStats (SUPERADMIN)', () => {
+245 |     it('повертає citiesStats для SUPERADMIN', async () => {
+246 |       defaultMocks();
+247 |       mockPrisma.city.findMany.mockResolvedValueOnce([
+248 |         { id: 'c-1', name: 'Львів' },
+249 |         { id: 'c-2', name: 'Київ' },
+250 |       ]);
+251 |       mockPrisma.school.groupBy.mockResolvedValueOnce([
+252 |         { cityId: 'c-1', _count: { id: 50 } },
+253 |       ]);
+254 |       mockPrisma.event.groupBy.mockResolvedValueOnce([
+255 |         { cityId: 'c-1', _count: { id: 5 } },
+256 |       ]);
+257 |       mockPrisma.event.findMany.mockResolvedValueOnce([
+258 |         { cityId: 'c-1', report: { totalSum: 20000 } },
+259 |       ]);
+260 | 
+261 |       const result = await service.getSummary(undefined, 'SUPERADMIN');
+262 |       expect(result.citiesStats).toHaveLength(2);
+263 |       const lviv = result.citiesStats.find((c) => c.cityId === 'c-1');
+264 |       expect(lviv?.schoolsCount).toBe(50);
+265 |       expect(lviv?.activeEvents).toBe(5);
+266 |       expect(lviv?.monthRevenue).toBe(20000);
+267 |     });
+268 | 
+269 |     it('повертає порожній citiesStats для не-SUPERADMIN', async () => {
+270 |       defaultMocks();
+271 |       const result = await service.getSummary('city-1', 'MANAGER');
+272 |       expect(result.citiesStats).toHaveLength(0);
+273 |     });
+274 |   });
+275 | 
+276 |   describe('getSummary — кеш', () => {
+277 |     it('повертає кешований результат при повторному виклику', async () => {
+278 |       defaultMocks();
+279 |       await service.getSummary('city-1');
+280 |       await service.getSummary('city-1');
+281 |       // event.findMany має бути викликаний тільки один раз (для першого запиту)
+282 |       expect(mockPrisma.event.findMany).toHaveBeenCalledTimes(3); // 3 = todayEvents + upcomingEvents + monthEvents
+283 |     });
+284 |   });
+285 | });
+286 | 
 ```
 
 ### File: apps/backend/src/dashboard/dashboard.service.ts
@@ -1471,25 +1788,24 @@
 
 ### File: apps/backend/src/events/events.controller.spec.ts
 ```ts
-  0 | import { Test, TestingModule } from '@nestjs/testing';
+  0 | import { Test } from '@nestjs/testing';
   1 | import { EventsController } from './events.controller';
-  2 | 
-  3 | describe('EventsController', () => {
-  4 |   let controller: EventsController;
-  5 | 
-  6 |   beforeEach(async () => {
-  7 |     const module: TestingModule = await Test.createTestingModule({
+  2 | import { EventsService } from './events.service';
+  3 | import { JwtService } from '@nestjs/jwt';
+  4 | 
+  5 | describe('EventsController', () => {
+  6 |   it('should be defined', async () => {
+  7 |     const module = await Test.createTestingModule({
   8 |       controllers: [EventsController],
-  9 |     }).compile();
- 10 | 
- 11 |     controller = module.get<EventsController>(EventsController);
- 12 |   });
- 13 | 
- 14 |   it('should be defined', () => {
- 15 |     expect(controller).toBeDefined();
- 16 |   });
- 17 | });
- 18 | 
+  9 |       providers: [
+ 10 |         { provide: EventsService, useValue: {} },
+ 11 |         { provide: JwtService, useValue: { verifyAsync: jest.fn() } },
+ 12 |       ],
+ 13 |     }).compile();
+ 14 |     expect(module.get(EventsController)).toBeDefined();
+ 15 |   });
+ 16 | });
+ 17 | 
 ```
 
 ### File: apps/backend/src/events/events.controller.ts
@@ -1606,21 +1922,26 @@
 109 |     return this.eventsService.submitReport(id, body, user);
 110 |   }
 111 | 
-112 |   @Get(':id')
-113 |   findOne(@Param('id') id: string) {
-114 |     return this.eventsService.findOne(id);
+112 |   @Get('school/:schoolId/completed')
+113 |   findCompletedBySchool(@Param('schoolId') schoolId: string) {
+114 |     return this.eventsService.findCompletedBySchool(schoolId);
 115 |   }
 116 | 
-117 |   @Patch(':id/reschedule')
-118 |   reschedule(
-119 |     @Param('id') id: string,
-120 |     @Body() body: { date: string; time: string },
-121 |     @CurrentUser() user: JwtUser,
-122 |   ) {
-123 |     return this.eventsService.rescheduleEvent(id, body.date, body.time, user);
-124 |   }
-125 | }
-126 | 
+117 |   @Get(':id')
+118 |   findOne(@Param('id') id: string) {
+119 |     return this.eventsService.findOne(id);
+120 |   }
+121 | 
+122 |   @Patch(':id/reschedule')
+123 |   reschedule(
+124 |     @Param('id') id: string,
+125 |     @Body() body: { date: string; time: string },
+126 |     @CurrentUser() user: JwtUser,
+127 |   ) {
+128 |     return this.eventsService.rescheduleEvent(id, body.date, body.time, user);
+129 |   }
+130 | }
+131 | 
 ```
 
 ### File: apps/backend/src/events/events.module.ts
@@ -1646,23 +1967,241 @@
 ```ts
   0 | import { Test, TestingModule } from '@nestjs/testing';
   1 | import { EventsService } from './events.service';
-  2 | 
-  3 | describe('EventsService', () => {
-  4 |   let service: EventsService;
-  5 | 
-  6 |   beforeEach(async () => {
-  7 |     const module: TestingModule = await Test.createTestingModule({
-  8 |       providers: [EventsService],
-  9 |     }).compile();
- 10 | 
- 11 |     service = module.get<EventsService>(EventsService);
- 12 |   });
- 13 | 
- 14 |   it('should be defined', () => {
- 15 |     expect(service).toBeDefined();
- 16 |   });
- 17 | });
- 18 | 
+  2 | import { PrismaService } from '../prisma/prisma.service';
+  3 | import { TelegramService } from '../telegram/telegram.service';
+  4 | 
+  5 | const mockPrisma = {
+  6 |   event: {
+  7 |     findMany: jest.fn(),
+  8 |     findUnique: jest.fn(),
+  9 |     create: jest.fn(),
+ 10 |     update: jest.fn(),
+ 11 |     delete: jest.fn(),
+ 12 |   },
+ 13 |   eventHistory: {
+ 14 |     create: jest.fn(),
+ 15 |     findMany: jest.fn(),
+ 16 |     update: jest.fn(),
+ 17 |     deleteMany: jest.fn(),
+ 18 |   },
+ 19 |   eventPreparation: {
+ 20 |     findUnique: jest.fn(),
+ 21 |     create: jest.fn(),
+ 22 |     update: jest.fn(),
+ 23 |     deleteMany: jest.fn(),
+ 24 |   },
+ 25 |   eventReport: { upsert: jest.fn() },
+ 26 |   user: {
+ 27 |     findUnique: jest.fn(),
+ 28 |     update: jest.fn(),
+ 29 |   },
+ 30 | };
+ 31 | 
+ 32 | const mockTelegram = { sendMessage: jest.fn() };
+ 33 | 
+ 34 | const mockUser = { sub: 'user-1', name: 'Менеджер', role: 'MANAGER' };
+ 35 | 
+ 36 | describe('EventsService', () => {
+ 37 |   let service: EventsService;
+ 38 | 
+ 39 |   beforeEach(async () => {
+ 40 |     jest.clearAllMocks();
+ 41 |     const module: TestingModule = await Test.createTestingModule({
+ 42 |       providers: [
+ 43 |         EventsService,
+ 44 |         { provide: PrismaService, useValue: mockPrisma },
+ 45 |         { provide: TelegramService, useValue: mockTelegram },
+ 46 |       ],
+ 47 |     }).compile();
+ 48 |     service = module.get<EventsService>(EventsService);
+ 49 |   });
+ 50 | 
+ 51 |   describe('updateStatus', () => {
+ 52 |     it('змінює статус і створює запис в історії', async () => {
+ 53 |       const updatedEvent = {
+ 54 |         id: 'ev-1',
+ 55 |         status: 'FIRST_CONTACT',
+ 56 |         crew: null,
+ 57 |         history: [{ id: 'h-1', action: 'Знайомство', userId: 'user-1' }],
+ 58 |       };
+ 59 |       mockPrisma.event.update.mockResolvedValueOnce(updatedEvent);
+ 60 | 
+ 61 |       const result = await service.updateStatus('ev-1', 'FIRST_CONTACT', 'Знайомство', 'коментар', mockUser);
+ 62 | 
+ 63 |       expect(mockPrisma.event.update).toHaveBeenCalledWith({
+ 64 |         where: { id: 'ev-1' },
+ 65 |         data: {
+ 66 |           status: 'FIRST_CONTACT',
+ 67 |           history: {
+ 68 |             create: {
+ 69 |               action: 'Знайомство',
+ 70 |               comment: 'коментар',
+ 71 |               userId: 'user-1',
+ 72 |               userName: 'Менеджер',
+ 73 |               role: 'MANAGER',
+ 74 |             },
+ 75 |           },
+ 76 |         },
+ 77 |         include: expect.any(Object),
+ 78 |       });
+ 79 |       expect(result.status).toBe('FIRST_CONTACT');
+ 80 |     });
+ 81 | 
+ 82 |     it('зберігає null comment якщо коментар порожній', async () => {
+ 83 |       mockPrisma.event.update.mockResolvedValueOnce({ id: 'ev-1', status: 'FIRST_CONTACT', crew: null, history: [] });
+ 84 | 
+ 85 |       await service.updateStatus('ev-1', 'FIRST_CONTACT', 'Дія', undefined, mockUser);
+ 86 | 
+ 87 |       const callData = mockPrisma.event.update.mock.calls[0][0];
+ 88 |       expect(callData.data.history.create.comment).toBeNull();
+ 89 |     });
+ 90 | 
+ 91 |     it('записує правильного userId з токена', async () => {
+ 92 |       mockPrisma.event.update.mockResolvedValueOnce({ id: 'ev-1', status: 'BASE', crew: null, history: [] });
+ 93 | 
+ 94 |       await service.updateStatus('ev-1', 'BASE', 'Дія', undefined, { sub: 'driver-99', name: 'Водій', role: 'DRIVER' });
+ 95 | 
+ 96 |       const callData = mockPrisma.event.update.mock.calls[0][0];
+ 97 |       expect(callData.data.history.create.userId).toBe('driver-99');
+ 98 |       expect(callData.data.history.create.role).toBe('DRIVER');
+ 99 |     });
+100 |   });
+101 | 
+102 |   describe('addHistoryComment', () => {
+103 |     it('створює коментар і повертає подію з оновленою історією', async () => {
+104 |       mockPrisma.eventHistory.create.mockResolvedValueOnce({ id: 'h-new' });
+105 |       mockPrisma.event.findUnique.mockResolvedValueOnce({
+106 |         id: 'ev-1',
+107 |         history: [{ id: 'h-new', action: 'Коментар', comment: 'тест' }],
+108 |       });
+109 | 
+110 |       const result = await service.addHistoryComment('ev-1', 'тест', mockUser);
+111 | 
+112 |       expect(mockPrisma.eventHistory.create).toHaveBeenCalledWith({
+113 |         data: {
+114 |           eventId: 'ev-1',
+115 |           action: 'Коментар',
+116 |           comment: 'тест',
+117 |           userId: 'user-1',
+118 |           userName: 'Менеджер',
+119 |           role: 'MANAGER',
+120 |         },
+121 |       });
+122 |       expect(result?.history).toHaveLength(1);
+123 |     });
+124 |   });
+125 | 
+126 |   describe('submitReport', () => {
+127 |     const reportData = {
+128 |       announcementDone: true,
+129 |       materialShown: true,
+130 |       childrenCount: 100,
+131 |       classesCount: 4,
+132 |       privilegedCount: 5,
+133 |       showingsCount: 2,
+134 |       totalSum: 10000,
+135 |       schoolSum: 2000,
+136 |       remainderSum: 8000,
+137 |       rating: 9,
+138 |       expenses: [],
+139 |       salaries: [
+140 |         { userId: 'host-1', amount: 1500 },
+141 |         { userId: 'driver-1', amount: 1000 },
+142 |       ],
+143 |     };
+144 | 
+145 |     it('зберігає звіт через upsert', async () => {
+146 |       mockPrisma.eventReport.upsert.mockResolvedValueOnce({ eventId: 'ev-1' });
+147 |       mockPrisma.user.update.mockResolvedValue({ id: 'host-1', balance: 1500 });
+148 |       mockPrisma.event.update.mockResolvedValueOnce({
+149 |         id: 'ev-1', status: 'REPORT', report: {}, history: [],
+150 |       });
+151 | 
+152 |       await service.submitReport('ev-1', reportData, mockUser);
+153 | 
+154 |       expect(mockPrisma.eventReport.upsert).toHaveBeenCalledWith(
+155 |         expect.objectContaining({
+156 |           where: { eventId: 'ev-1' },
+157 |           update: expect.objectContaining({ totalSum: 10000, remainderSum: 8000 }),
+158 |           create: expect.objectContaining({ totalSum: 10000, remainderSum: 8000 }),
+159 |         })
+160 |       );
+161 |     });
+162 | 
+163 |     it('нараховує зарплату користувачам', async () => {
+164 |       mockPrisma.eventReport.upsert.mockResolvedValueOnce({});
+165 |       mockPrisma.user.update.mockResolvedValue({});
+166 |       mockPrisma.event.update.mockResolvedValueOnce({ id: 'ev-1', status: 'REPORT', report: {}, history: [] });
+167 | 
+168 |       await service.submitReport('ev-1', reportData, mockUser);
+169 | 
+170 |       expect(mockPrisma.user.update).toHaveBeenCalledTimes(2);
+171 |       expect(mockPrisma.user.update).toHaveBeenCalledWith({
+172 |         where: { id: 'host-1' },
+173 |         data: { balance: { increment: 1500 } },
+174 |       });
+175 |       expect(mockPrisma.user.update).toHaveBeenCalledWith({
+176 |         where: { id: 'driver-1' },
+177 |         data: { balance: { increment: 1000 } },
+178 |       });
+179 |     });
+180 | 
+181 |     it('не нараховує зарплату якщо amount = 0', async () => {
+182 |       mockPrisma.eventReport.upsert.mockResolvedValueOnce({});
+183 |       mockPrisma.event.update.mockResolvedValueOnce({ id: 'ev-1', status: 'REPORT', report: {}, history: [] });
+184 | 
+185 |       await service.submitReport('ev-1', {
+186 |         ...reportData,
+187 |         salaries: [{ userId: 'host-1', amount: 0 }],
+188 |       }, mockUser);
+189 | 
+190 |       expect(mockPrisma.user.update).not.toHaveBeenCalled();
+191 |     });
+192 | 
+193 |     it('змінює статус на REPORT після збереження звіту', async () => {
+194 |       mockPrisma.eventReport.upsert.mockResolvedValueOnce({});
+195 |       mockPrisma.user.update.mockResolvedValue({});
+196 |       mockPrisma.event.update.mockResolvedValueOnce({ id: 'ev-1', status: 'REPORT', report: {}, history: [] });
+197 | 
+198 |       const result = await service.submitReport('ev-1', reportData, mockUser);
+199 | 
+200 |       expect(mockPrisma.event.update).toHaveBeenCalledWith(
+201 |         expect.objectContaining({
+202 |           where: { id: 'ev-1' },
+203 |           data: expect.objectContaining({ status: 'REPORT' }),
+204 |         })
+205 |       );
+206 |       expect(result.status).toBe('REPORT');
+207 |     });
+208 | 
+209 |     it('не нараховує зарплату якщо salaries порожній', async () => {
+210 |       mockPrisma.eventReport.upsert.mockResolvedValueOnce({});
+211 |       mockPrisma.event.update.mockResolvedValueOnce({ id: 'ev-1', status: 'REPORT', report: {}, history: [] });
+212 | 
+213 |       await service.submitReport('ev-1', { ...reportData, salaries: [] }, mockUser);
+214 | 
+215 |       expect(mockPrisma.user.update).not.toHaveBeenCalled();
+216 |     });
+217 |   });
+218 | 
+219 |   describe('findBySchool', () => {
+220 |     it('minimal=true — використовує select без history/preparation', async () => {
+221 |       mockPrisma.event.findMany.mockResolvedValueOnce([]);
+222 |       await service.findBySchool('school-1', true);
+223 |       const call = mockPrisma.event.findMany.mock.calls[0][0];
+224 |       expect(call.select).toBeDefined();
+225 |       expect(call.include).toBeUndefined();
+226 |     });
+227 | 
+228 |     it('minimal=false — використовує include з history та preparation', async () => {
+229 |       mockPrisma.event.findMany.mockResolvedValueOnce([]);
+230 |       await service.findBySchool('school-1', false);
+231 |       const call = mockPrisma.event.findMany.mock.calls[0][0];
+232 |       expect(call.include).toBeDefined();
+233 |       expect(call.select).toBeUndefined();
+234 |     });
+235 |   });
+236 | });
 ```
 
 ### File: apps/backend/src/events/events.service.ts
@@ -1968,154 +2507,185 @@
 298 |           contactPerson: true,
 299 |           contactPhone: true,
 300 |           crewId: true,
-301 |           crew: { select: { id: true, name: true, hostId: true, driverId: true } },
-302 |         },
-303 |         orderBy: { date: 'desc' },
-304 |       });
-305 |     }
-306 |     return this.prisma.event.findMany({
-307 |       where: { schoolId },
-308 |       include: {
-309 |         crew: { include: { host: true, driver: true } },
-310 |         history: { orderBy: { createdAt: 'desc' } },
-311 |         preparation: true,
-312 |       },
-313 |       orderBy: { date: 'desc' },
-314 |     });
-315 |   }
-316 | 
-317 |   async updateHistoryComment(historyId: string, comment: string) {
-318 |     return this.prisma.eventHistory.update({
-319 |       where: { id: historyId },
-320 |       data: { comment: comment || null },
-321 |     });
-322 |   }
-323 | 
-324 |   async addHistoryComment(eventId: string, comment: string, user: JwtUser) {
-325 |     await this.prisma.eventHistory.create({
-326 |       data: {
-327 |         eventId,
-328 |         action: 'Коментар',
-329 |         comment,
-330 |         userId: user.sub,
-331 |         userName: user.name,
-332 |         role: user.role,
-333 |       },
-334 |     });
-335 | 
-336 |     return this.prisma.event.findUnique({
-337 |       where: { id: eventId },
-338 |       include: {
-339 |         history: { orderBy: { createdAt: 'desc' } },
-340 |       },
-341 |     });
-342 |   }
-343 | 
-344 |   // ОНОВЛЕНО: Тепер метод видалення безпечно видаляє зв'язані дані
-345 |   async remove(id: string) {
-346 |     // 1. Видаляємо історію події
-347 |     await this.prisma.eventHistory.deleteMany({
-348 |       where: { eventId: id },
-349 |     });
-350 | 
-351 |     // 2. Видаляємо підготовку події (якщо вона існує)
-352 |     await this.prisma.eventPreparation.deleteMany({
-353 |       where: { eventId: id },
-354 |     });
-355 | 
-356 |     // 3. Тепер спокійно видаляємо саму подію
-357 |     return this.prisma.event.delete({
-358 |       where: { id },
-359 |     });
-360 |   }
-361 | 
-362 |   async submitReport(
-363 |     eventId: string,
-364 |     reportData: SubmitReportDto,
-365 |     user: JwtUser,
-366 |   ) {
-367 |     // 1. Зберігаємо звіт у базу
-368 |     await this.prisma.eventReport.upsert({
-369 |       where: { eventId },
-370 |       update: {
-371 |         announcementDone: reportData.announcementDone,
-372 |         materialShown: reportData.materialShown,
-373 |         childrenCount: reportData.childrenCount,
-374 |         classesCount: reportData.classesCount,
-375 |         privilegedCount: reportData.privilegedCount,
-376 |         showingsCount: reportData.showingsCount,
-377 |         totalSum: reportData.totalSum,
-378 |         schoolSum: reportData.schoolSum,
-379 |         expenses: reportData.expenses || [],
-380 |         remainderSum: reportData.remainderSum,
-381 |         rating: reportData.rating,
-382 |         salaries: reportData.salaries || [],
-383 |       },
-384 |       create: {
-385 |         eventId,
-386 |         announcementDone: reportData.announcementDone,
-387 |         materialShown: reportData.materialShown,
-388 |         childrenCount: reportData.childrenCount,
-389 |         classesCount: reportData.classesCount,
-390 |         privilegedCount: reportData.privilegedCount,
-391 |         showingsCount: reportData.showingsCount,
-392 |         totalSum: reportData.totalSum,
-393 |         schoolSum: reportData.schoolSum,
-394 |         expenses: reportData.expenses || [],
-395 |         remainderSum: reportData.remainderSum,
-396 |         rating: reportData.rating,
-397 |         salaries: reportData.salaries || [],
-398 |       },
-399 |     });
-400 | 
-401 |     if (reportData.salaries?.length) {
-402 |       await Promise.all(
-403 |         reportData.salaries
-404 |           .filter((s) => s.amount > 0)
-405 |           .map((s) =>
-406 |             this.prisma.user.update({
-407 |               where: { id: s.userId },
-408 |               data: { balance: { increment: s.amount } },
-409 |             }),
-410 |           ),
-411 |       );
-412 |     }
-413 |     // 2. Оновлюємо статус події на 'REPORT' (щоб вона не зникала і давала можливість перейти до RE_SALE)
-414 |     return this.prisma.event.update({
-415 |       where: { id: eventId },
-416 |       data: {
-417 |         status: 'REPORT' as never,
-418 |         history: {
-419 |           create: {
-420 |             action: 'Сформовано звіт. Етап: Звіт',
-421 |             userId: user.sub,
-422 |             userName: user.name,
-423 |             role: user.role,
-424 |           },
-425 |         },
-426 |       },
-427 |       include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
-428 |     });
-429 |   }
-430 | 
-431 |   async findOne(id: string) {
-432 |     return this.prisma.event.findUnique({
-433 |       where: { id },
-434 |       include: {
-435 |         school: true,
-436 |         city: true,
-437 |         crew: {
-438 |           include: {
-439 |             host: { select: { id: true, name: true } },
-440 |             driver: { select: { id: true, name: true } },
-441 |           },
-442 |         },
-443 |         report: true,
-444 |       },
-445 |     });
-446 |   }
-447 | }
-448 | 
+301 |           crew: {
+302 |             select: { id: true, name: true, hostId: true, driverId: true },
+303 |           },
+304 |         },
+305 |         orderBy: { date: 'desc' },
+306 |       });
+307 |     }
+308 |     return this.prisma.event.findMany({
+309 |       where: { schoolId },
+310 |       include: {
+311 |         crew: { include: { host: true, driver: true } },
+312 |         history: { orderBy: { createdAt: 'desc' } },
+313 |         preparation: true,
+314 |       },
+315 |       orderBy: { date: 'desc' },
+316 |     });
+317 |   }
+318 | 
+319 |   async updateHistoryComment(historyId: string, comment: string) {
+320 |     return this.prisma.eventHistory.update({
+321 |       where: { id: historyId },
+322 |       data: { comment: comment || null },
+323 |     });
+324 |   }
+325 | 
+326 |   async addHistoryComment(eventId: string, comment: string, user: JwtUser) {
+327 |     await this.prisma.eventHistory.create({
+328 |       data: {
+329 |         eventId,
+330 |         action: 'Коментар',
+331 |         comment,
+332 |         userId: user.sub,
+333 |         userName: user.name,
+334 |         role: user.role,
+335 |       },
+336 |     });
+337 | 
+338 |     return this.prisma.event.findUnique({
+339 |       where: { id: eventId },
+340 |       include: {
+341 |         history: { orderBy: { createdAt: 'desc' } },
+342 |       },
+343 |     });
+344 |   }
+345 | 
+346 |   // ОНОВЛЕНО: Тепер метод видалення безпечно видаляє зв'язані дані
+347 |   async remove(id: string) {
+348 |     // 1. Видаляємо історію події
+349 |     await this.prisma.eventHistory.deleteMany({
+350 |       where: { eventId: id },
+351 |     });
+352 | 
+353 |     // 2. Видаляємо підготовку події (якщо вона існує)
+354 |     await this.prisma.eventPreparation.deleteMany({
+355 |       where: { eventId: id },
+356 |     });
+357 | 
+358 |     // 3. Тепер спокійно видаляємо саму подію
+359 |     return this.prisma.event.delete({
+360 |       where: { id },
+361 |     });
+362 |   }
+363 | 
+364 |   async submitReport(
+365 |     eventId: string,
+366 |     reportData: SubmitReportDto,
+367 |     user: JwtUser,
+368 |   ) {
+369 |     // 1. Зберігаємо звіт у базу
+370 |     await this.prisma.eventReport.upsert({
+371 |       where: { eventId },
+372 |       update: {
+373 |         announcementDone: reportData.announcementDone,
+374 |         materialShown: reportData.materialShown,
+375 |         childrenCount: reportData.childrenCount,
+376 |         classesCount: reportData.classesCount,
+377 |         privilegedCount: reportData.privilegedCount,
+378 |         showingsCount: reportData.showingsCount,
+379 |         totalSum: reportData.totalSum,
+380 |         schoolSum: reportData.schoolSum,
+381 |         expenses: reportData.expenses || [],
+382 |         remainderSum: reportData.remainderSum,
+383 |         rating: reportData.rating,
+384 |         salaries: reportData.salaries || [],
+385 |       },
+386 |       create: {
+387 |         eventId,
+388 |         announcementDone: reportData.announcementDone,
+389 |         materialShown: reportData.materialShown,
+390 |         childrenCount: reportData.childrenCount,
+391 |         classesCount: reportData.classesCount,
+392 |         privilegedCount: reportData.privilegedCount,
+393 |         showingsCount: reportData.showingsCount,
+394 |         totalSum: reportData.totalSum,
+395 |         schoolSum: reportData.schoolSum,
+396 |         expenses: reportData.expenses || [],
+397 |         remainderSum: reportData.remainderSum,
+398 |         rating: reportData.rating,
+399 |         salaries: reportData.salaries || [],
+400 |       },
+401 |     });
+402 | 
+403 |     if (reportData.salaries?.length) {
+404 |       await Promise.all(
+405 |         reportData.salaries
+406 |           .filter((s) => s.amount > 0)
+407 |           .map((s) =>
+408 |             this.prisma.user.update({
+409 |               where: { id: s.userId },
+410 |               data: { balance: { increment: s.amount } },
+411 |             }),
+412 |           ),
+413 |       );
+414 |     }
+415 |     // 2. Оновлюємо статус події на 'REPORT' (щоб вона не зникала і давала можливість перейти до RE_SALE)
+416 |     return this.prisma.event.update({
+417 |       where: { id: eventId },
+418 |       data: {
+419 |         status: 'REPORT' as never,
+420 |         history: {
+421 |           create: {
+422 |             action: 'Сформовано звіт. Етап: Звіт',
+423 |             userId: user.sub,
+424 |             userName: user.name,
+425 |             role: user.role,
+426 |           },
+427 |         },
+428 |       },
+429 |       include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
+430 |     });
+431 |   }
+432 | 
+433 |   async findOne(id: string) {
+434 |     return this.prisma.event.findUnique({
+435 |       where: { id },
+436 |       include: {
+437 |         school: true,
+438 |         city: true,
+439 |         crew: {
+440 |           include: {
+441 |             host: { select: { id: true, name: true } },
+442 |             driver: { select: { id: true, name: true } },
+443 |           },
+444 |         },
+445 |         report: true,
+446 |       },
+447 |     });
+448 |   }
+449 | 
+450 |   async findCompletedBySchool(schoolId: string) {
+451 |     return this.prisma.event.findMany({
+452 |       where: { schoolId, status: 'RE_SALE' },
+453 |       select: {
+454 |         id: true,
+455 |         project: true,
+456 |         date: true,
+457 |         status: true,
+458 |         price: true,
+459 |         childrenPlanned: true,
+460 |         report: {
+461 |           select: {
+462 |             childrenCount: true,
+463 |             classesCount: true,
+464 |             privilegedCount: true,
+465 |             showingsCount: true,
+466 |             totalSum: true,
+467 |             schoolSum: true,
+468 |             remainderSum: true,
+469 |             rating: true,
+470 |             expenses: true,
+471 |           },
+472 |         },
+473 |         history: { orderBy: { createdAt: 'asc' } },
+474 |       },
+475 |       orderBy: { date: 'desc' },
+476 |     });
+477 |   }
+478 | }
+479 | 
 ```
 
 ### File: apps/backend/src/finance/finance.controller.ts
@@ -3367,25 +3937,24 @@
 
 ### File: apps/backend/src/schools/schools.controller.spec.ts
 ```ts
-  0 | import { Test, TestingModule } from '@nestjs/testing';
+  0 | import { Test } from '@nestjs/testing';
   1 | import { SchoolsController } from './schools.controller';
-  2 | 
-  3 | describe('SchoolsController', () => {
-  4 |   let controller: SchoolsController;
-  5 | 
-  6 |   beforeEach(async () => {
-  7 |     const module: TestingModule = await Test.createTestingModule({
+  2 | import { SchoolsService } from './schools.service';
+  3 | import { ParserService } from './parser.service';
+  4 | 
+  5 | describe('SchoolsController', () => {
+  6 |   it('should be defined', async () => {
+  7 |     const module = await Test.createTestingModule({
   8 |       controllers: [SchoolsController],
-  9 |     }).compile();
- 10 | 
- 11 |     controller = module.get<SchoolsController>(SchoolsController);
- 12 |   });
- 13 | 
- 14 |   it('should be defined', () => {
- 15 |     expect(controller).toBeDefined();
- 16 |   });
- 17 | });
- 18 | 
+  9 |       providers: [
+ 10 |         { provide: SchoolsService, useValue: {} },
+ 11 |         { provide: ParserService, useValue: {} },
+ 12 |       ],
+ 13 |     }).compile();
+ 14 |     expect(module.get(SchoolsController)).toBeDefined();
+ 15 |   });
+ 16 | });
+ 17 | 
 ```
 
 ### File: apps/backend/src/schools/schools.controller.ts
@@ -3490,23 +4059,97 @@
 ```ts
   0 | import { Test, TestingModule } from '@nestjs/testing';
   1 | import { SchoolsService } from './schools.service';
-  2 | 
-  3 | describe('SchoolsService', () => {
-  4 |   let service: SchoolsService;
+  2 | import { PrismaService } from '../prisma/prisma.service';
+  3 | import { EventsService } from '../events/events.service';
+  4 | import { ParserService } from './parser.service';
   5 | 
-  6 |   beforeEach(async () => {
-  7 |     const module: TestingModule = await Test.createTestingModule({
-  8 |       providers: [SchoolsService],
-  9 |     }).compile();
- 10 | 
- 11 |     service = module.get<SchoolsService>(SchoolsService);
- 12 |   });
- 13 | 
- 14 |   it('should be defined', () => {
- 15 |     expect(service).toBeDefined();
- 16 |   });
- 17 | });
- 18 | 
+  6 | const mockPrisma = {
+  7 |   school: {
+  8 |     findMany: jest.fn(),
+  9 |     findUnique: jest.fn(),
+ 10 |     create: jest.fn(),
+ 11 |     update: jest.fn(),
+ 12 |     delete: jest.fn(),
+ 13 |   },
+ 14 |   event: { findMany: jest.fn() },
+ 15 |   schoolContact: { findMany: jest.fn() },
+ 16 | };
+ 17 | 
+ 18 | describe('SchoolsService', () => {
+ 19 |   let service: SchoolsService;
+ 20 | 
+ 21 |   beforeEach(async () => {
+ 22 |     const module: TestingModule = await Test.createTestingModule({
+ 23 |       providers: [
+ 24 |         SchoolsService,
+ 25 |         { provide: PrismaService, useValue: mockPrisma },
+ 26 |         { provide: EventsService, useValue: { remove: jest.fn() } },
+ 27 |         {
+ 28 |           provide: ParserService,
+ 29 |           useValue: {
+ 30 |             parseSchoolData: jest.fn(),
+ 31 |             getAllSchoolsForCity: jest.fn(),
+ 32 |           },
+ 33 |         },
+ 34 |       ],
+ 35 |     }).compile();
+ 36 | 
+ 37 |     service = module.get<SchoolsService>(SchoolsService);
+ 38 |   });
+ 39 | 
+ 40 |   afterEach(() => jest.clearAllMocks());
+ 41 | 
+ 42 |   describe('findAll', () => {
+ 43 |     it('повертає всі школи', async () => {
+ 44 |       mockPrisma.school.findMany.mockResolvedValue([
+ 45 |         { id: '1', name: 'Школа №1' },
+ 46 |       ]);
+ 47 |       const result = await service.findAll();
+ 48 |       expect(result).toHaveLength(1);
+ 49 |       expect(mockPrisma.school.findMany).toHaveBeenCalledTimes(1);
+ 50 |     });
+ 51 | 
+ 52 |     it('minimal=true — select без include', async () => {
+ 53 |       mockPrisma.school.findMany.mockResolvedValue([]);
+ 54 |       await service.findAll(true);
+ 55 |       const call = mockPrisma.school.findMany.mock.calls[0][0];
+ 56 |       expect(call.select).toBeDefined();
+ 57 |       expect(call.include).toBeUndefined();
+ 58 |     });
+ 59 |   });
+ 60 | 
+ 61 |   describe('findOne', () => {
+ 62 |     it('повертає школу по id', async () => {
+ 63 |       mockPrisma.school.findUnique.mockResolvedValue({
+ 64 |         id: '1',
+ 65 |         name: 'Школа №1',
+ 66 |       });
+ 67 |       const result = await service.findOne('1');
+ 68 |       expect(result?.name).toBe('Школа №1');
+ 69 |     });
+ 70 |   });
+ 71 | 
+ 72 |   describe('update', () => {
+ 73 |     it('оновлює школу без системних полів', async () => {
+ 74 |       mockPrisma.school.update.mockResolvedValue({
+ 75 |         id: '1',
+ 76 |         name: 'Нова назва',
+ 77 |       });
+ 78 |       await service.update('1', {
+ 79 |         id: '1',
+ 80 |         name: 'Нова назва',
+ 81 |         city: 'Львів',
+ 82 |         createdAt: new Date(),
+ 83 |         updatedAt: new Date(),
+ 84 |       });
+ 85 |       const call = mockPrisma.school.update.mock.calls[0][0];
+ 86 |       expect(call.data.id).toBeUndefined();
+ 87 |       expect(call.data.city).toBeUndefined();
+ 88 |       expect(call.data.name).toBe('Нова назва');
+ 89 |     });
+ 90 |   });
+ 91 | });
+ 92 | 
 ```
 
 ### File: apps/backend/src/schools/schools.service.ts
@@ -3956,25 +4599,20 @@
 
 ### File: apps/backend/src/users/users.controller.spec.ts
 ```ts
-  0 | import { Test, TestingModule } from '@nestjs/testing';
+  0 | import { Test } from '@nestjs/testing';
   1 | import { UsersController } from './users.controller';
-  2 | 
-  3 | describe('UsersController', () => {
-  4 |   let controller: UsersController;
-  5 | 
-  6 |   beforeEach(async () => {
-  7 |     const module: TestingModule = await Test.createTestingModule({
-  8 |       controllers: [UsersController],
+  2 | import { UsersService } from './users.service';
+  3 | 
+  4 | describe('UsersController', () => {
+  5 |   it('should be defined', async () => {
+  6 |     const module = await Test.createTestingModule({
+  7 |       controllers: [UsersController],
+  8 |       providers: [{ provide: UsersService, useValue: {} }],
   9 |     }).compile();
- 10 | 
- 11 |     controller = module.get<UsersController>(UsersController);
- 12 |   });
+ 10 |     expect(module.get(UsersController)).toBeDefined();
+ 11 |   });
+ 12 | });
  13 | 
- 14 |   it('should be defined', () => {
- 15 |     expect(controller).toBeDefined();
- 16 |   });
- 17 | });
- 18 | 
 ```
 
 ### File: apps/backend/src/users/users.controller.ts
@@ -4038,25 +4676,24 @@
 
 ### File: apps/backend/src/users/users.service.spec.ts
 ```ts
-  0 | import { Test, TestingModule } from '@nestjs/testing';
+  0 | import { Test } from '@nestjs/testing';
   1 | import { UsersService } from './users.service';
-  2 | 
-  3 | describe('UsersService', () => {
-  4 |   let service: UsersService;
-  5 | 
-  6 |   beforeEach(async () => {
-  7 |     const module: TestingModule = await Test.createTestingModule({
-  8 |       providers: [UsersService],
-  9 |     }).compile();
- 10 | 
- 11 |     service = module.get<UsersService>(UsersService);
- 12 |   });
- 13 | 
- 14 |   it('should be defined', () => {
- 15 |     expect(service).toBeDefined();
- 16 |   });
- 17 | });
- 18 | 
+  2 | import { PrismaService } from '../prisma/prisma.service';
+  3 | import { TelegramService } from '../telegram/telegram.service';
+  4 | 
+  5 | describe('UsersService', () => {
+  6 |   it('should be defined', async () => {
+  7 |     const module = await Test.createTestingModule({
+  8 |       providers: [
+  9 |         UsersService,
+ 10 |         { provide: PrismaService, useValue: { user: { findMany: jest.fn() } } },
+ 11 |         { provide: TelegramService, useValue: { sendMessage: jest.fn() } },
+ 12 |       ],
+ 13 |     }).compile();
+ 14 |     expect(module.get(UsersService)).toBeDefined();
+ 15 |   });
+ 16 | });
+ 17 | 
 ```
 
 ### File: apps/backend/src/users/users.service.ts
@@ -4219,6 +4856,59 @@
  26 | 
 ```
 
+### File: apps/frontend/e2e/login.spec.ts
+```ts
+  0 | import { test, expect } from "@playwright/test";
+  1 | 
+  2 | test.describe("Авторизація", () => {
+  3 |   test("успішний логін", async ({ page }) => {
+  4 |     await page.goto("/login");
+  5 |     await page.fill('input[type="email"]', "admin@crm.com");
+  6 |     await page.fill('input[type="password"]', "admin123");
+  7 |     await page.click('button[type="submit"]');
+  8 |     await expect(page).toHaveURL(/cities/);
+  9 |   });
+ 10 | 
+ 11 |   test("невірний пароль — показує помилку", async ({ page }) => {
+ 12 |     await page.goto("/login");
+ 13 |     await page.fill('input[type="email"]', "admin@crm.com");
+ 14 |     await page.fill('input[type="password"]', "wrongpassword");
+ 15 |     await page.click('button[type="submit"]');
+ 16 |     await expect(page.locator("text=Невірний")).toBeVisible();
+ 17 |   });
+ 18 | });
+ 19 | 
+```
+
+### File: apps/frontend/e2e/schools.spec.ts
+```ts
+  0 | import { test, expect } from "@playwright/test";
+  1 | 
+  2 | test.describe("Сторінка шкіл", () => {
+  3 |   test.beforeEach(async ({ page }) => {
+  4 |     await page.goto("/login");
+  5 |     await page.fill('input[type="email"]', "admin@crm.com");
+  6 |     await page.fill('input[type="password"]', "admin123");
+  7 |     await page.click('button[type="submit"]');
+  8 |     await page.waitForURL(/cities/);
+  9 |     await page.goto("/schools");
+ 10 |   });
+ 11 | 
+ 12 |   test("відображає список шкіл", async ({ page }) => {
+ 13 |     await expect(page.locator("h1")).toContainText("Школи");
+ 14 |     await expect(
+ 15 |       page.locator("[data-testid='school-row']").first(),
+ 16 |     ).toBeVisible();
+ 17 |   });
+ 18 | 
+ 19 |   test("пошук фільтрує школи", async ({ page }) => {
+ 20 |     await page.fill('input[placeholder*="Пошук"]', "Школа №1");
+ 21 |     await expect(page.locator("text=Школа №1")).toBeVisible();
+ 22 |   });
+ 23 | });
+ 24 | 
+```
+
 ### File: apps/frontend/eslint.config.js
 ```js
   0 | 
@@ -4248,6 +4938,28 @@
  24 | 
  25 | 
  26 | 
+```
+
+### File: apps/frontend/playwright.config.ts
+```ts
+  0 | import { defineConfig } from "@playwright/test";
+  1 | 
+  2 | export default defineConfig({
+  3 |   testDir: "./e2e",
+  4 |   fullyParallel: true,
+  5 |   retries: 1,
+  6 |   use: {
+  7 |     baseURL: "http://localhost:5173",
+  8 |     trace: "on-first-retry",
+  9 |     screenshot: "only-on-failure",
+ 10 |   },
+ 11 |   webServer: {
+ 12 |     command: "npm run dev",
+ 13 |     url: "http://localhost:5173",
+ 14 |     reuseExistingServer: true,
+ 15 |   },
+ 16 | });
+ 17 | 
 ```
 
 ### File: apps/frontend/postcss.config.js
@@ -10894,17 +11606,17 @@
 
 ### File: apps/frontend/src/hooks/useSchoolProfile.ts
 ```ts
-  0 | import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-  1 | import { api } from '../config/api';
+  0 | import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+  1 | import { api } from "../config/api";
   2 | 
   3 | const authHeader = () => ({
-  4 |   Authorization: `Bearer ${localStorage.getItem('token')}`,
+  4 |   Authorization: `Bearer ${localStorage.getItem("token")}`,
   5 | });
   6 | 
   7 | // ─── Мінімальні дані школи (назва, адреса, місто) ───────────────────────────
   8 | export function useSchool(id: string | undefined) {
   9 |   return useQuery({
- 10 |     queryKey: ['school', id],
+ 10 |     queryKey: ["school", id],
  11 |     queryFn: async () => {
  12 |       const res = await api.get(`/schools/${id}`, { headers: authHeader() });
  13 |       return res.data;
@@ -10914,151 +11626,246 @@
  17 |   });
  18 | }
  19 | 
- 20 | // ─── Мінімальний список подій (без history/preparation) ──────────────────────
- 21 | export function useSchoolEvents(schoolId: string | undefined, full = false) {
- 22 |   return useQuery({
- 23 |     queryKey: ['schoolEvents', schoolId, full],
- 24 |     queryFn: async () => {
- 25 |       const url = full
- 26 |         ? `/events/school/${schoolId}`
- 27 |         : `/events/school/${schoolId}?minimal=true`;
- 28 |       const res = await api.get(url, { headers: authHeader() });
- 29 |       return res.data.filter((ev: any) => ev.status !== 'RE_SALE');
- 30 |     },
- 31 |     enabled: !!schoolId,
- 32 |     staleTime: 60 * 1000,
- 33 |   });
- 34 | }
- 35 | 
- 36 | // ─── Повні дані однієї події (lazy, при кліку) ────────────────────────────────
- 37 | export function useEventFull(eventId: string | undefined) {
- 38 |   return useQuery({
- 39 |     queryKey: ['eventFull', eventId],
- 40 |     queryFn: async () => {
- 41 |       const res = await api.get(`/events/${eventId}`, { headers: authHeader() });
- 42 |       return res.data;
- 43 |     },
- 44 |     enabled: !!eventId,
- 45 |     staleTime: 30 * 1000,
- 46 |   });
- 47 | }
- 48 | 
- 49 | // ─── Список користувачів ────────────────────────────────────────────────────
- 50 | export function useUsers() {
- 51 |   return useQuery({
- 52 |     queryKey: ['users'],
- 53 |     queryFn: async () => {
- 54 |       const res = await api.get('/users', { headers: authHeader() });
- 55 |       return res.data;
- 56 |     },
- 57 |     staleTime: 5 * 60 * 1000,
- 58 |   });
- 59 | }
- 60 | 
- 61 | // ─── Мутації ────────────────────────────────────────────────────────────────
- 62 | export function useUpdateEventStatus() {
- 63 |   const qc = useQueryClient();
- 64 |   return useMutation({
- 65 |     mutationFn: ({ eventId, status, actionName, comment }: {
- 66 |       eventId: string; status: string; actionName: string; comment?: string;
- 67 |     }) =>
- 68 |       api.patch(`/events/${eventId}/status`, { status, actionName, comment }, { headers: authHeader() })
- 69 |         .then(r => r.data),
- 70 |     onSuccess: (data, vars) => {
- 71 |       // Оновлюємо повну подію
- 72 |       qc.setQueryData(['eventFull', vars.eventId], data);
- 73 |       // Оновлюємо статус в мінімальному списку без рефетчу
- 74 |       qc.setQueriesData({ queryKey: ['schoolEvents'] }, (old: any) =>
- 75 |         Array.isArray(old)
- 76 |           ? old
- 77 |               .map((ev: any) => ev.id === vars.eventId ? { ...ev, status: vars.status, ...data } : ev)
- 78 |               .filter((ev: any) => ev.status !== 'RE_SALE')
- 79 |           : old
- 80 |       );
- 81 |     },
- 82 |   });
- 83 | }
- 84 | 
- 85 | export function useUpdatePreparation() {
- 86 |   const qc = useQueryClient();
- 87 |   return useMutation({
- 88 |     mutationFn: ({ eventId, field, status }: { eventId: string; field: string; status: string }) =>
- 89 |       api.patch(`/events/${eventId}/preparation`, { field, status }, { headers: authHeader() })
- 90 |         .then(r => r.data),
- 91 |     onSuccess: (data, vars) => {
- 92 |       qc.setQueryData(['eventFull', vars.eventId], (old: any) =>
- 93 |         old ? { ...old, preparation: { ...(old.preparation || {}), [vars.field]: vars.status } } : old
- 94 |       );
- 95 |     },
- 96 |   });
- 97 | }
- 98 | 
- 99 | export function useAssignCrew() {
-100 |   const qc = useQueryClient();
-101 |   return useMutation({
-102 |     mutationFn: ({ eventId, crewId }: { eventId: string; crewId: string }) =>
-103 |       api.post(`/events/${eventId}/assign-crew`, { crewId }, { headers: authHeader() })
-104 |         .then(r => r.data),
-105 |     onSuccess: (data, vars) => {
-106 |       qc.setQueryData(['eventFull', vars.eventId], data);
-107 |       // Оновлюємо crewId в мінімальному списку
-108 |       qc.setQueriesData({ queryKey: ['schoolEvents'] }, (old: any) =>
-109 |         Array.isArray(old)
-110 |           ? old.map((ev: any) => ev.id === vars.eventId ? { ...ev, crewId: vars.crewId, crew: data.crew } : ev)
-111 |           : old
-112 |       );
-113 |     },
-114 |   });
-115 | }
-116 | 
-117 | export function useSubmitReport() {
-118 |   const qc = useQueryClient();
-119 |   return useMutation({
-120 |     mutationFn: ({ eventId, reportData }: { eventId: string; reportData: any }) =>
-121 |       api.post(`/events/${eventId}/report`, reportData, { headers: authHeader() })
-122 |         .then(r => r.data),
-123 |     onSuccess: (_data, vars) => {
-124 |       // Видаляємо подію зі списку (вона стане RE_SALE після статус-мутації)
-125 |       qc.setQueriesData({ queryKey: ['schoolEvents'] }, (old: any) =>
-126 |         Array.isArray(old) ? old.filter((ev: any) => ev.id !== vars.eventId) : old
-127 |       );
-128 |       qc.removeQueries({ queryKey: ['eventFull', vars.eventId] });
-129 |     },
-130 |   });
-131 | }
-132 | 
-133 | export function useAddComment() {
-134 |   const qc = useQueryClient();
-135 |   return useMutation({
-136 |     mutationFn: ({ eventId, comment }: { eventId: string; comment: string }) =>
-137 |       api.post(`/events/${eventId}/history`, { comment }, { headers: authHeader() })
-138 |         .then(r => r.data),
-139 |     onSuccess: (data, vars) => {
-140 |       qc.setQueryData(['eventFull', vars.eventId], (old: any) =>
-141 |         old ? { ...old, history: data.history } : old
-142 |       );
-143 |     },
-144 |   });
-145 | }
-146 | 
-147 | export function useUpdateHistoryComment() {
-148 |   const qc = useQueryClient();
-149 |   return useMutation({
-150 |     mutationFn: ({ historyId, comment, eventId }: { historyId: string; comment: string; eventId: string }) =>
-151 |       api.patch(`/events/history/${historyId}`, { comment }, { headers: authHeader() })
-152 |         .then(r => r.data),
-153 |     onSuccess: (_data, vars) => {
-154 |       qc.setQueryData(['eventFull', vars.eventId], (old: any) =>
-155 |         old ? {
-156 |           ...old,
-157 |           history: old.history?.map((h: any) =>
-158 |             h.id === vars.historyId ? { ...h, comment: vars.comment } : h
-159 |           ),
-160 |         } : old
-161 |       );
-162 |     },
-163 |   });
-164 | }
+ 20 | export function useSchoolCompletedEvents(schoolId: string | undefined) {
+ 21 |   return useQuery({
+ 22 |     queryKey: ["schoolCompletedEvents", schoolId],
+ 23 |     queryFn: async () => {
+ 24 |       const res = await api.get(`/events/school/${schoolId}/completed`, {
+ 25 |         headers: authHeader(),
+ 26 |       });
+ 27 |       return res.data;
+ 28 |     },
+ 29 |     enabled: !!schoolId,
+ 30 |     staleTime: 2 * 60 * 1000,
+ 31 |   });
+ 32 | }
+ 33 | 
+ 34 | // ─── Мінімальний список подій (без history/preparation) ──────────────────────
+ 35 | export function useSchoolEvents(schoolId: string | undefined, full = false) {
+ 36 |   return useQuery({
+ 37 |     queryKey: ["schoolEvents", schoolId, full],
+ 38 |     queryFn: async () => {
+ 39 |       const url = full
+ 40 |         ? `/events/school/${schoolId}`
+ 41 |         : `/events/school/${schoolId}?minimal=true`;
+ 42 |       const res = await api.get(url, { headers: authHeader() });
+ 43 |       return res.data.filter((ev: any) => ev.status !== "RE_SALE");
+ 44 |     },
+ 45 |     enabled: !!schoolId,
+ 46 |     staleTime: 60 * 1000,
+ 47 |   });
+ 48 | }
+ 49 | 
+ 50 | // ─── Повні дані однієї події (lazy, при кліку) ────────────────────────────────
+ 51 | export function useEventFull(eventId: string | undefined) {
+ 52 |   return useQuery({
+ 53 |     queryKey: ["eventFull", eventId],
+ 54 |     queryFn: async () => {
+ 55 |       const res = await api.get(`/events/${eventId}`, {
+ 56 |         headers: authHeader(),
+ 57 |       });
+ 58 |       return res.data;
+ 59 |     },
+ 60 |     enabled: !!eventId,
+ 61 |     staleTime: 30 * 1000,
+ 62 |   });
+ 63 | }
+ 64 | 
+ 65 | // ─── Список користувачів ────────────────────────────────────────────────────
+ 66 | export function useUsers() {
+ 67 |   return useQuery({
+ 68 |     queryKey: ["users"],
+ 69 |     queryFn: async () => {
+ 70 |       const res = await api.get("/users", { headers: authHeader() });
+ 71 |       return res.data;
+ 72 |     },
+ 73 |     staleTime: 5 * 60 * 1000,
+ 74 |   });
+ 75 | }
+ 76 | 
+ 77 | // ─── Мутації ────────────────────────────────────────────────────────────────
+ 78 | export function useUpdateEventStatus() {
+ 79 |   const qc = useQueryClient();
+ 80 |   return useMutation({
+ 81 |     mutationFn: ({
+ 82 |       eventId,
+ 83 |       status,
+ 84 |       actionName,
+ 85 |       comment,
+ 86 |     }: {
+ 87 |       eventId: string;
+ 88 |       status: string;
+ 89 |       actionName: string;
+ 90 |       comment?: string;
+ 91 |     }) =>
+ 92 |       api
+ 93 |         .patch(
+ 94 |           `/events/${eventId}/status`,
+ 95 |           { status, actionName, comment },
+ 96 |           { headers: authHeader() },
+ 97 |         )
+ 98 |         .then((r) => r.data),
+ 99 |     onSuccess: (data, vars) => {
+100 |       // Оновлюємо повну подію
+101 |       qc.setQueryData(["eventFull", vars.eventId], data);
+102 |       // Оновлюємо статус в мінімальному списку без рефетчу
+103 |       qc.setQueriesData({ queryKey: ["schoolEvents"] }, (old: any) =>
+104 |         Array.isArray(old)
+105 |           ? old
+106 |               .map((ev: any) =>
+107 |                 ev.id === vars.eventId
+108 |                   ? { ...ev, status: vars.status, ...data }
+109 |                   : ev,
+110 |               )
+111 |               .filter((ev: any) => ev.status !== "RE_SALE")
+112 |           : old,
+113 |       );
+114 |     },
+115 |   });
+116 | }
+117 | 
+118 | export function useUpdatePreparation() {
+119 |   const qc = useQueryClient();
+120 |   return useMutation({
+121 |     mutationFn: ({
+122 |       eventId,
+123 |       field,
+124 |       status,
+125 |     }: {
+126 |       eventId: string;
+127 |       field: string;
+128 |       status: string;
+129 |     }) =>
+130 |       api
+131 |         .patch(
+132 |           `/events/${eventId}/preparation`,
+133 |           { field, status },
+134 |           { headers: authHeader() },
+135 |         )
+136 |         .then((r) => r.data),
+137 |     onSuccess: (data, vars) => {
+138 |       qc.setQueryData(["eventFull", vars.eventId], (old: any) =>
+139 |         old
+140 |           ? {
+141 |               ...old,
+142 |               preparation: {
+143 |                 ...(old.preparation || {}),
+144 |                 [vars.field]: vars.status,
+145 |               },
+146 |             }
+147 |           : old,
+148 |       );
+149 |     },
+150 |   });
+151 | }
+152 | 
+153 | export function useAssignCrew() {
+154 |   const qc = useQueryClient();
+155 |   return useMutation({
+156 |     mutationFn: ({ eventId, crewId }: { eventId: string; crewId: string }) =>
+157 |       api
+158 |         .post(
+159 |           `/events/${eventId}/assign-crew`,
+160 |           { crewId },
+161 |           { headers: authHeader() },
+162 |         )
+163 |         .then((r) => r.data),
+164 |     onSuccess: (data, vars) => {
+165 |       qc.setQueryData(["eventFull", vars.eventId], data);
+166 |       // Оновлюємо crewId в мінімальному списку
+167 |       qc.setQueriesData({ queryKey: ["schoolEvents"] }, (old: any) =>
+168 |         Array.isArray(old)
+169 |           ? old.map((ev: any) =>
+170 |               ev.id === vars.eventId
+171 |                 ? { ...ev, crewId: vars.crewId, crew: data.crew }
+172 |                 : ev,
+173 |             )
+174 |           : old,
+175 |       );
+176 |     },
+177 |   });
+178 | }
+179 | 
+180 | export function useSubmitReport() {
+181 |   const qc = useQueryClient();
+182 |   return useMutation({
+183 |     mutationFn: ({
+184 |       eventId,
+185 |       reportData,
+186 |     }: {
+187 |       eventId: string;
+188 |       reportData: any;
+189 |     }) =>
+190 |       api
+191 |         .post(`/events/${eventId}/report`, reportData, {
+192 |           headers: authHeader(),
+193 |         })
+194 |         .then((r) => r.data),
+195 |     onSuccess: (_data, vars) => {
+196 |       // Видаляємо подію зі списку (вона стане RE_SALE після статус-мутації)
+197 |       qc.setQueriesData({ queryKey: ["schoolEvents"] }, (old: any) =>
+198 |         Array.isArray(old)
+199 |           ? old.filter((ev: any) => ev.id !== vars.eventId)
+200 |           : old,
+201 |       );
+202 |       qc.removeQueries({ queryKey: ["eventFull", vars.eventId] });
+203 |     },
+204 |   });
+205 | }
+206 | 
+207 | export function useAddComment() {
+208 |   const qc = useQueryClient();
+209 |   return useMutation({
+210 |     mutationFn: ({ eventId, comment }: { eventId: string; comment: string }) =>
+211 |       api
+212 |         .post(
+213 |           `/events/${eventId}/history`,
+214 |           { comment },
+215 |           { headers: authHeader() },
+216 |         )
+217 |         .then((r) => r.data),
+218 |     onSuccess: (data, vars) => {
+219 |       qc.setQueryData(["eventFull", vars.eventId], (old: any) =>
+220 |         old ? { ...old, history: data.history } : old,
+221 |       );
+222 |     },
+223 |   });
+224 | }
+225 | 
+226 | export function useUpdateHistoryComment() {
+227 |   const qc = useQueryClient();
+228 |   return useMutation({
+229 |     mutationFn: ({
+230 |       historyId,
+231 |       comment,
+232 |       eventId,
+233 |     }: {
+234 |       historyId: string;
+235 |       comment: string;
+236 |       eventId: string;
+237 |     }) =>
+238 |       api
+239 |         .patch(
+240 |           `/events/history/${historyId}`,
+241 |           { comment },
+242 |           { headers: authHeader() },
+243 |         )
+244 |         .then((r) => r.data),
+245 |     onSuccess: (_data, vars) => {
+246 |       qc.setQueryData(["eventFull", vars.eventId], (old: any) =>
+247 |         old
+248 |           ? {
+249 |               ...old,
+250 |               history: old.history?.map((h: any) =>
+251 |                 h.id === vars.historyId ? { ...h, comment: vars.comment } : h,
+252 |               ),
+253 |             }
+254 |           : old,
+255 |       );
+256 |     },
+257 |   });
+258 | }
+259 | 
 ```
 
 ### File: apps/frontend/src/hooks/useSchools.ts
@@ -14644,598 +15451,845 @@
   0 | import { useState, useMemo, useCallback, lazy, Suspense } from "react";
   1 | import { useParams } from "react-router-dom";
   2 | import { motion, AnimatePresence } from "framer-motion";
-  3 | import {
-  4 |   useSchool,
-  5 |   useSchoolEvents,
-  6 |   useUsers,
-  7 |   useUpdateEventStatus,
-  8 |   useUpdatePreparation,
-  9 |   useAssignCrew,
- 10 |   useSubmitReport,
- 11 |   useAddComment,
- 12 |   useUpdateHistoryComment,
- 13 |   useEventFull,
- 14 | } from "../hooks/useSchoolProfile";
- 15 | import { useQueryClient } from "@tanstack/react-query";
- 16 | import { api } from "../config/api";
- 17 | 
- 18 | const Pipeline = lazy(() => import("../components/school-profile/Pipeline"));
- 19 | const HistoryTimeline = lazy(
- 20 |   () => import("../components/school-profile/HistoryTimeline"),
- 21 | );
- 22 | const EventDetails = lazy(
- 23 |   () => import("../components/school-profile/EventDetails"),
- 24 | );
- 25 | 
- 26 | // Імпортуємо UI компоненти
- 27 | import SchoolProfileHeader from "../components/school-profile/SchoolProfileHeader";
- 28 | const SchoolInfoCard = lazy(
- 29 |   () => import("../components/school-profile/SchoolInfoCard"),
- 30 | );
- 31 | const EventsTable = lazy(
- 32 |   () => import("../components/school-profile/EventsTable"),
- 33 | );
- 34 | const EventPreparation = lazy(
- 35 |   () => import("../components/school-profile/EventPreparation"),
- 36 | );
- 37 | const AssignedCrew = lazy(
- 38 |   () => import("../components/school-profile/AssignedCrew"),
- 39 | );
- 40 | // Імпортуємо модальні вікна
- 41 | import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
- 42 | import EventModal from "../components/school-profile/modals/EventModal";
- 43 | import CommentModal from "../components/school-profile/modals/CommentModal";
- 44 | import CrewModal from "../components/school-profile/modals/CrewModal";
- 45 | import ReportModal from "../components/school-profile/modals/ReportModal";
- 46 | 
- 47 | const PIPELINE_STAGES = [
- 48 |   { id: 1, key: "BASE", name: "Новий заклад" },
- 49 |   { id: 2, key: "FIRST_CONTACT", name: "Знайомство" },
- 50 |   { id: 3, key: "DATE_CONFIRMED", name: "Підтвердження дати" },
- 51 |   { id: 4, key: "PREPARATION", name: "Оголошення" },
- 52 |   { id: 5, key: "IN_PROGRESS", name: "Підготовка" },
- 53 |   { id: 6, key: "DONE", name: "Проведення заходу" },
- 54 |   { id: 7, key: "REPORT", name: "Звіт" },
- 55 | ];
- 56 | 
- 57 | export default function SchoolProfile() {
- 58 |   const { id } = useParams();
- 59 |   const qc = useQueryClient();
- 60 | 
- 61 |   // 1. Спочатку завантажуємо базові дані
- 62 |   const { data: schoolRaw, isLoading: schoolLoading } = useSchool(id);
- 63 |   const { data: eventsRaw = [], isLoading: eventsLoading } = useSchoolEvents(
- 64 |     id,
- 65 |     false,
- 66 |   );
- 67 | 
- 68 |   // 2. Оголошуємо стейти, які потрібні для наступних запитів
- 69 |   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
- 70 |   const [exitingEventId, setExitingEventId] = useState<string | null>(null);
- 71 | 
- 72 |   // 3. ТЕПЕР безпечно викликаємо useEventFull, оскільки selectedEventId вже існує
- 73 |   const { data: eventFull, isLoading: eventFullLoading } = useEventFull(
- 74 |     selectedEventId ?? eventsRaw[0]?.id,
- 75 |   );
- 76 | 
- 77 |   const { data: users = [] } = useUsers();
- 78 | 
- 79 |   const updateStatus = useUpdateEventStatus();
- 80 |   const updatePreparation = useUpdatePreparation();
- 81 |   const assignCrewMutation = useAssignCrew();
- 82 |   const submitReportMutation = useSubmitReport();
- 83 |   const addCommentMutation = useAddComment();
- 84 |   const updateHistoryMutation = useUpdateHistoryComment();
- 85 | 
- 86 |   // 4. Формуємо schoolData
- 87 |   const schoolData = schoolRaw
- 88 |     ? {
- 89 |         id: schoolRaw.id,
- 90 |         cityId: schoolRaw.cityId,
- 91 |         name: schoolRaw.name || "",
- 92 |         type: schoolRaw.type || "Школа",
- 93 |         city: schoolRaw.city?.name || "",
- 94 |         address: schoolRaw.address || "",
- 95 |         director: schoolRaw.director || "",
- 96 |         phone: schoolRaw.phone || "",
- 97 |         email: schoolRaw.email || "",
- 98 |         childrenCount: schoolRaw.childrenCount || 0,
- 99 |         notes: schoolRaw.notes || "",
-100 |       }
-101 |     : {
-102 |         id: "",
-103 |         cityId: "",
-104 |         name: "",
-105 |         type: "Школа",
-106 |         city: "",
-107 |         address: "",
-108 |         director: "",
-109 |         phone: "",
-110 |         email: "",
-111 |         childrenCount: 0,
-112 |         notes: "",
-113 |       };
-114 | 
-115 |   const events = eventsRaw;
+  3 | import { useSchoolCompletedEvents } from "../hooks/useSchoolProfile";
+  4 | import {
+  5 |   useSchool,
+  6 |   useSchoolEvents,
+  7 |   useUsers,
+  8 |   useUpdateEventStatus,
+  9 |   useUpdatePreparation,
+ 10 |   useAssignCrew,
+ 11 |   useSubmitReport,
+ 12 |   useAddComment,
+ 13 |   useUpdateHistoryComment,
+ 14 |   useEventFull,
+ 15 | } from "../hooks/useSchoolProfile";
+ 16 | import { useQueryClient } from "@tanstack/react-query";
+ 17 | import { api } from "../config/api";
+ 18 | 
+ 19 | const Pipeline = lazy(() => import("../components/school-profile/Pipeline"));
+ 20 | const HistoryTimeline = lazy(
+ 21 |   () => import("../components/school-profile/HistoryTimeline"),
+ 22 | );
+ 23 | const EventDetails = lazy(
+ 24 |   () => import("../components/school-profile/EventDetails"),
+ 25 | );
+ 26 | 
+ 27 | // Імпортуємо UI компоненти
+ 28 | import SchoolProfileHeader from "../components/school-profile/SchoolProfileHeader";
+ 29 | const SchoolInfoCard = lazy(
+ 30 |   () => import("../components/school-profile/SchoolInfoCard"),
+ 31 | );
+ 32 | const EventsTable = lazy(
+ 33 |   () => import("../components/school-profile/EventsTable"),
+ 34 | );
+ 35 | const EventPreparation = lazy(
+ 36 |   () => import("../components/school-profile/EventPreparation"),
+ 37 | );
+ 38 | const AssignedCrew = lazy(
+ 39 |   () => import("../components/school-profile/AssignedCrew"),
+ 40 | );
+ 41 | // Імпортуємо модальні вікна
+ 42 | import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
+ 43 | import EventModal from "../components/school-profile/modals/EventModal";
+ 44 | import CommentModal from "../components/school-profile/modals/CommentModal";
+ 45 | import CrewModal from "../components/school-profile/modals/CrewModal";
+ 46 | import ReportModal from "../components/school-profile/modals/ReportModal";
+ 47 | 
+ 48 | const PIPELINE_STAGES = [
+ 49 |   { id: 1, key: "BASE", name: "Новий заклад" },
+ 50 |   { id: 2, key: "FIRST_CONTACT", name: "Знайомство" },
+ 51 |   { id: 3, key: "DATE_CONFIRMED", name: "Підтвердження дати" },
+ 52 |   { id: 4, key: "PREPARATION", name: "Оголошення" },
+ 53 |   { id: 5, key: "IN_PROGRESS", name: "Підготовка" },
+ 54 |   { id: 6, key: "DONE", name: "Проведення заходу" },
+ 55 |   { id: 7, key: "REPORT", name: "Звіт" },
+ 56 | ];
+ 57 | 
+ 58 | export default function SchoolProfile() {
+ 59 |   const { id } = useParams();
+ 60 |   const qc = useQueryClient();
+ 61 | 
+ 62 |   // 1. Спочатку завантажуємо базові дані
+ 63 |   const { data: schoolRaw, isLoading: schoolLoading } = useSchool(id);
+ 64 |   const { data: eventsRaw = [], isLoading: eventsLoading } = useSchoolEvents(
+ 65 |     id,
+ 66 |     false,
+ 67 |   );
+ 68 | 
+ 69 |   // 2. Оголошуємо стейти, які потрібні для наступних запитів
+ 70 |   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+ 71 |   const [exitingEventId, setExitingEventId] = useState<string | null>(null);
+ 72 | 
+ 73 |   // 3. ТЕПЕР безпечно викликаємо useEventFull, оскільки selectedEventId вже існує
+ 74 |   const { data: eventFull, isLoading: eventFullLoading } = useEventFull(
+ 75 |     selectedEventId ?? eventsRaw[0]?.id,
+ 76 |   );
+ 77 | 
+ 78 |   const { data: users = [] } = useUsers();
+ 79 |   const { data: completedEvents = [] } = useSchoolCompletedEvents(id);
+ 80 |   const [selectedReportEvent, setSelectedReportEvent] = useState<any>(null);
+ 81 |   const updateStatus = useUpdateEventStatus();
+ 82 |   const updatePreparation = useUpdatePreparation();
+ 83 |   const assignCrewMutation = useAssignCrew();
+ 84 |   const submitReportMutation = useSubmitReport();
+ 85 |   const addCommentMutation = useAddComment();
+ 86 |   const updateHistoryMutation = useUpdateHistoryComment();
+ 87 | 
+ 88 |   // 4. Формуємо schoolData
+ 89 |   const schoolData = schoolRaw
+ 90 |     ? {
+ 91 |         id: schoolRaw.id,
+ 92 |         cityId: schoolRaw.cityId,
+ 93 |         name: schoolRaw.name || "",
+ 94 |         type: schoolRaw.type || "Школа",
+ 95 |         city: schoolRaw.city?.name || "",
+ 96 |         address: schoolRaw.address || "",
+ 97 |         director: schoolRaw.director || "",
+ 98 |         phone: schoolRaw.phone || "",
+ 99 |         email: schoolRaw.email || "",
+100 |         childrenCount: schoolRaw.childrenCount || 0,
+101 |         notes: schoolRaw.notes || "",
+102 |       }
+103 |     : {
+104 |         id: "",
+105 |         cityId: "",
+106 |         name: "",
+107 |         type: "Школа",
+108 |         city: "",
+109 |         address: "",
+110 |         director: "",
+111 |         phone: "",
+112 |         email: "",
+113 |         childrenCount: 0,
+114 |         notes: "",
+115 |       };
 116 | 
-117 |   // 5. Оголошуємо решту стейтів (editForm залежить від schoolData, тому він тут)
-118 |   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-119 |   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-120 |   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
-121 |   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-122 |   const [commentModal, setCommentModal] = useState({
-123 |     isOpen: false,
-124 |     mode: "pipeline",
-125 |     stepId: null as number | null,
-126 |     historyId: null as string | null,
-127 |     text: "",
-128 |   });
-129 | 
-130 |   const [editForm, setEditForm] = useState(schoolData);
-131 |   const [eventForm, setEventForm] = useState({
-132 |     project: "Голограма для школи",
-133 |     date: "",
-134 |     time: "11:00",
-135 |     childrenPlanned: "",
-136 |     price: "",
-137 |     address: "",
-138 |     contactPerson: "",
-139 |     contactPhone: "",
-140 |   });
-141 | 
-142 |   const currentEventBase = useMemo(
-143 |     () => eventsRaw.find((ev) => ev.id === selectedEventId) ?? eventsRaw[0],
-144 |     [eventsRaw, selectedEventId],
-145 |   );
-146 |   const currentEvent = useMemo(
-147 |     () =>
-148 |       eventFull?.id === currentEventBase?.id
-149 |         ? { ...currentEventBase, ...eventFull }
-150 |         : currentEventBase,
-151 |     [currentEventBase, eventFull],
-152 |   );
-153 |   const currentStageIndex = useMemo(() => {
-154 |     const idx = PIPELINE_STAGES.findIndex(
-155 |       (s) => s.key === currentEvent?.status,
-156 |     );
-157 |     return idx !== -1 ? idx : 0;
-158 |   }, [currentEvent?.status]);
-159 |   const creatorName = useMemo(
-160 |     () =>
-161 |       currentEvent?.history?.length > 0
-162 |         ? currentEvent.history[currentEvent.history.length - 1].userName
-163 |         : "Немає даних",
-164 |     [currentEvent?.history],
-165 |   );
-166 | 
-167 |   const handlePipelineClick = useCallback(
-168 |     (stepId: number) => {
-169 |       if (!currentEvent) return;
-170 |       const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-171 |       if (nextStage?.id !== stepId) return;
-172 |       if (nextStage.key === "REPORT") return setIsReportModalOpen(true);
-173 |       setCommentModal({
-174 |         isOpen: true,
-175 |         mode: "pipeline",
-176 |         stepId: nextStage.id,
-177 |         historyId: null,
-178 |         text: "",
-179 |       });
-180 |     },
-181 |     [currentEvent, currentStageIndex],
-182 |   );
-183 | 
-184 |   const handleHistoryClick = useCallback((historyItem: any) => {
-185 |     setCommentModal({
-186 |       isOpen: true,
-187 |       mode: "history",
-188 |       stepId: null,
-189 |       historyId: historyItem.id,
-190 |       text: historyItem.comment || "",
-191 |     });
-192 |   }, []);
-193 | 
-194 |   const handleAddCommentClick = useCallback(() => {
-195 |     setCommentModal({
-196 |       isOpen: true,
-197 |       mode: "add_comment",
-198 |       stepId: null,
-199 |       historyId: null,
-200 |       text: "",
-201 |     });
-202 |   }, []);
-203 | 
-204 |   const handleSaveComment = useCallback(
-205 |     async (e: React.FormEvent) => {
-206 |       e.preventDefault();
-207 |       if (commentModal.mode === "pipeline") {
-208 |         const activeStage = PIPELINE_STAGES[currentStageIndex];
-209 |         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-210 |         if (!nextStage) return;
-211 |         await updateStatus.mutateAsync({
-212 |           eventId: currentEvent.id,
-213 |           status: nextStage.key,
-214 |           actionName: `Етап пройдено: ${activeStage.name}`,
-215 |           comment: commentModal.text,
-216 |         });
-217 |         if (nextStage.key === "RE_SALE") {
-218 |           setExitingEventId(currentEvent.id);
-219 |           setTimeout(() => {
-220 |             setSelectedEventId(null);
-221 |             setExitingEventId(null);
-222 |           }, 500);
-223 |         }
-224 |       } else if (commentModal.mode === "add_comment") {
-225 |         await addCommentMutation.mutateAsync({
-226 |           eventId: currentEvent.id,
-227 |           comment: commentModal.text,
-228 |         });
-229 |       } else if (commentModal.mode === "history" && commentModal.historyId) {
-230 |         await updateHistoryMutation.mutateAsync({
-231 |           historyId: commentModal.historyId,
-232 |           comment: commentModal.text,
-233 |           eventId: currentEvent.id,
-234 |         });
-235 |       }
-236 |       setCommentModal({
-237 |         isOpen: false,
-238 |         mode: "pipeline",
-239 |         stepId: null,
-240 |         historyId: null,
-241 |         text: "",
-242 |       });
-243 |     },
-244 |     [
-245 |       commentModal,
-246 |       currentEvent,
-247 |       currentStageIndex,
-248 |       updateStatus,
-249 |       addCommentMutation,
-250 |       updateHistoryMutation,
-251 |     ],
-252 |   );
-253 | 
-254 |   const handleSaveEvent = useCallback(
-255 |     async (e: React.FormEvent) => {
-256 |       e.preventDefault();
-257 |       try {
-258 |         const payload = {
-259 |           ...eventForm,
-260 |           schoolId: schoolData.id,
-261 |           cityId: schoolData.cityId,
-262 |           childrenPlanned: Number(eventForm.childrenPlanned),
-263 |           price: Number(eventForm.price),
-264 |         };
-265 |         const res = await api.post("/events", payload, {
-266 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-267 |         });
-268 |         setIsEventModalOpen(false);
-269 |         qc.invalidateQueries({ queryKey: ["schoolEvents", id] });
-270 |         setSelectedEventId(res.data.id);
-271 |       } catch (e) {
-272 |         console.error(e);
-273 |       }
-274 |     },
-275 |     [eventForm, schoolData, id, qc],
-276 |   );
-277 | 
-278 |   const handleSaveSchoolInfo = useCallback(
-279 |     async (e: React.FormEvent) => {
-280 |       e.preventDefault();
-281 |       try {
-282 |         await api.patch(`/schools/${id}`, editForm, {
-283 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-284 |         });
-285 |         qc.invalidateQueries({ queryKey: ["school", id] });
-286 |         setIsEditModalOpen(false);
-287 |       } catch (e) {
-288 |         console.error(e);
-289 |       }
-290 |     },
-291 |     [editForm, id, qc],
-292 |   );
-293 | 
-294 |   const handleUpdatePreparation = useCallback(
-295 |     async (field: string, status: string) => {
-296 |       if (!currentEvent) return;
-297 |       await updatePreparation.mutateAsync({
-298 |         eventId: currentEvent.id,
-299 |         field,
-300 |         status,
-301 |       });
-302 |     },
-303 |     [currentEvent, updatePreparation],
-304 |   );
-305 | 
-306 |   const handleSubmitReport = useCallback(
-307 |     async (reportData: any) => {
-308 |       if (!currentEvent) return;
-309 |       await submitReportMutation.mutateAsync({
-310 |         eventId: currentEvent.id,
-311 |         reportData,
-312 |       });
-313 |       await updateStatus.mutateAsync({
-314 |         eventId: currentEvent.id,
-315 |         status: "RE_SALE",
-316 |         actionName: "Звіт сформовано. Захід завершено.",
-317 |       });
-318 |       setExitingEventId(currentEvent.id);
-319 |       setTimeout(() => {
-320 |         setSelectedEventId(null);
-321 |         setExitingEventId(null);
-322 |       }, 500);
-323 |       setIsReportModalOpen(false);
-324 |     },
-325 |     [currentEvent, submitReportMutation, updateStatus],
-326 |   );
-327 | 
-328 |   const handleAssignCrew = useCallback(
-329 |     async (crewId: string) => {
-330 |       await assignCrewMutation.mutateAsync({
-331 |         eventId: currentEvent.id,
-332 |         crewId,
-333 |       });
-334 |       return updatePreparation.mutateAsync({
-335 |         eventId: currentEvent.id,
-336 |         field: "assignCrew",
-337 |         status: "Виконано",
-338 |       });
-339 |       setIsCrewModalOpen(false);
-340 |     },
-341 |     [currentEvent, assignCrewMutation, updatePreparation],
-342 |   );
-343 | 
-344 |   const openAddEventModal = useCallback(() => {
-345 |     setEventForm((prev) => ({
-346 |       ...prev,
-347 |       address: schoolData.address,
-348 |       contactPerson: schoolData.director,
-349 |       contactPhone: schoolData.phone,
-350 |       childrenPlanned: String(schoolData.childrenCount),
-351 |     }));
-352 |     setIsEventModalOpen(true);
-353 |   }, [schoolData]);
-354 |   const stagger = (i: number) => ({
-355 |     initial: { opacity: 0, y: 10 },
-356 |     animate: { opacity: 1, y: 0 },
-357 |     transition: { duration: 0.3, delay: 0.1 + i * 0.07, ease: "easeOut" },
-358 |   });
-359 | 
-360 |   return (
-361 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8">
-362 |       <SchoolProfileHeader
-363 |         schoolData={schoolData}
-364 |         onEdit={() => {
-365 |           setEditForm(schoolData);
-366 |           setIsEditModalOpen(true);
-367 |         }}
-368 |         onAddEvent={openAddEventModal}
-369 |       />
-370 | 
-371 |       <div className="flex flex-col xl:flex-row gap-6">
-372 |         {/* Ліва колонка */}
-373 |         <div className="w-full xl:w-80 flex flex-col gap-6">
-374 |           <motion.div {...stagger(0)}>
-375 |             <Suspense
-376 |               fallback={
-377 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-378 |               }
-379 |             >
-380 |               <SchoolInfoCard schoolData={schoolData} />
-381 |             </Suspense>
-382 |           </motion.div>
-383 | 
-384 |           <AnimatePresence>
-385 |             {currentEvent && currentStageIndex >= 1 && (
-386 |               <motion.div
-387 |                 key="responsible"
-388 |                 initial={{ opacity: 0, y: 8 }}
-389 |                 animate={{ opacity: 1, y: 0 }}
-390 |                 exit={{ opacity: 0, y: -8 }}
-391 |                 transition={{ duration: 0.25 }}
-392 |                 className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
-393 |               >
-394 |                 <h3 className="font-bold text-slate-800 mb-4">
-395 |                   Відповідальна особа
-396 |                 </h3>
-397 |                 <ul className="space-y-2 text-sm">
-398 |                   <li className="flex justify-between">
-399 |                     <span className="text-slate-500">Остання дія:</span>
-400 |                     <span className="font-medium text-blue-600">
-401 |                       {creatorName}
-402 |                     </span>
-403 |                   </li>
-404 |                 </ul>
-405 |               </motion.div>
-406 |             )}
-407 |           </AnimatePresence>
-408 | 
-409 |           <motion.div {...stagger(1)}>
-410 |             <Suspense
-411 |               fallback={
-412 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-413 |               }
-414 |             >
-415 |               <HistoryTimeline
-416 |                 currentEvent={
-417 |                   eventFullLoading ? currentEventBase : currentEvent
-418 |                 }
-419 |                 onHistoryClick={handleHistoryClick}
-420 |                 onAddCommentClick={handleAddCommentClick}
-421 |               />
-422 |             </Suspense>
-423 |           </motion.div>
-424 |         </div>
-425 | 
-426 |         {/* Права колонка */}
-427 |         <motion.div
-428 |           className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${
-429 |             exitingEventId === currentEvent?.id
-430 |               ? "opacity-0 scale-95 -translate-y-4 pointer-events-none"
-431 |               : ""
-432 |           }`}
-433 |           initial={{ opacity: 0, y: 10 }}
-434 |           animate={{ opacity: 1, y: 0 }}
-435 |           transition={{ duration: 0.3, delay: 0.15 }}
-436 |         >
-437 |           {currentEvent && (
-438 |             <Suspense
-439 |               fallback={
-440 |                 <div className="bg-white rounded-2xl h-24 animate-pulse border border-slate-100" />
-441 |               }
-442 |             >
-443 |               <Pipeline
-444 |                 currentStageIndex={currentStageIndex}
-445 |                 currentEvent={currentEvent}
-446 |                 onPipelineClick={handlePipelineClick}
-447 |                 stages={PIPELINE_STAGES}
-448 |               />
-449 |             </Suspense>
-450 |           )}
-451 | 
-452 |           <AnimatePresence>
-453 |             {currentEvent && currentStageIndex >= 4 && (
-454 |               <motion.div
-455 |                 key="preparation"
-456 |                 initial={{ opacity: 0, y: 8 }}
-457 |                 animate={{ opacity: 1, y: 0 }}
-458 |                 exit={{ opacity: 0, y: -8 }}
-459 |                 transition={{ duration: 0.25 }}
-460 |                 className="grid grid-cols-1 xl:grid-cols-2 gap-6"
-461 |               >
-462 |                 {eventFullLoading ? (
-463 |                   <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-pulse h-48" />
-464 |                 ) : (
-465 |                   <Suspense
-466 |                     fallback={
-467 |                       <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-468 |                     }
-469 |                   >
-470 |                     <EventPreparation
-471 |                       data={currentEvent.preparation || {}}
-472 |                       onUpdate={handleUpdatePreparation}
-473 |                       onOpenCrewModal={() => setIsCrewModalOpen(true)}
-474 |                     />
-475 |                   </Suspense>
-476 |                 )}
-477 |                 <Suspense
-478 |                   fallback={
-479 |                     <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-480 |                   }
-481 |                 >
-482 |                   <AssignedCrew currentEvent={currentEvent} employees={users} />
-483 |                 </Suspense>
-484 |               </motion.div>
-485 |             )}
-486 |           </AnimatePresence>
-487 | 
-488 |           <motion.div {...stagger(2)}>
-489 |             <Suspense
-490 |               fallback={
-491 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
-492 |               }
-493 |             >
-494 |               <EventDetails
-495 |                 currentEvent={currentEvent}
-496 |                 schoolName={schoolData.name}
-497 |                 cityId={schoolData.cityId}
-498 |                 onEventUpdated={() =>
-499 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
-500 |                 }
-501 |               />
-502 |             </Suspense>
-503 |           </motion.div>
-504 | 
-505 |           <motion.div {...stagger(3)}>
-506 |             <Suspense
-507 |               fallback={
-508 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
-509 |               }
-510 |             >
-511 |               <EventsTable
-512 |                 events={events}
-513 |                 selectedEventId={selectedEventId}
-514 |                 onEventSelect={setSelectedEventId}
-515 |                 onDeleteSuccess={() =>
-516 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
-517 |                 }
-518 |               />
-519 |             </Suspense>
-520 |           </motion.div>
-521 |         </motion.div>
-522 |       </div>
-523 | 
-524 |       {/* Мобільна FAB */}
-525 |       <button
-526 |         onClick={openAddEventModal}
-527 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
-528 |       >
-529 |         +
-530 |       </button>
-531 | 
-532 |       {/* Модальні вікна */}
-533 |       <EditSchoolModal
-534 |         isOpen={isEditModalOpen}
-535 |         onClose={() => setIsEditModalOpen(false)}
-536 |         editForm={editForm}
-537 |         setEditForm={setEditForm}
-538 |         onSave={handleSaveSchoolInfo}
-539 |       />
-540 |       <EventModal
-541 |         isOpen={isEventModalOpen}
-542 |         onClose={() => setIsEventModalOpen(false)}
-543 |         eventForm={eventForm}
-544 |         setEventForm={setEventForm}
-545 |         onSave={handleSaveEvent}
-546 |       />
-547 |       <CommentModal
-548 |         isOpen={commentModal.isOpen}
-549 |         onClose={() => setCommentModal({ ...commentModal, isOpen: false })}
-550 |         mode={commentModal.mode}
-551 |         text={commentModal.text}
-552 |         setText={(t) => setCommentModal({ ...commentModal, text: t })}
-553 |         onSave={handleSaveComment}
-554 |       />
-555 |       <CrewModal
-556 |         isOpen={isCrewModalOpen}
-557 |         onClose={() => setIsCrewModalOpen(false)}
-558 |         city={schoolData.city}
-559 |         employees={users}
-560 |         onSave={handleAssignCrew}
-561 |       />
-562 |       <ReportModal
-563 |         isOpen={isReportModalOpen}
-564 |         onClose={() => setIsReportModalOpen(false)}
-565 |         onSave={handleSubmitReport}
-566 |         schoolName={schoolData.name}
-567 |         eventType={currentEvent?.project}
-568 |         eventDate={currentEvent?.date}
-569 |         eventIndex={
-570 |           events
-571 |             .filter((e) => e.schoolId === schoolData.id)
-572 |             .indexOf(currentEvent!) + 1
-573 |         }
-574 |         crew={
-575 |           currentEvent?.crew
-576 |             ? {
-577 |                 host: currentEvent.crew.hostId
-578 |                   ? (users.find(
-579 |                       (u: any) => u.id === currentEvent.crew.hostId,
-580 |                     ) ?? null)
-581 |                   : (currentEvent.crew.host ?? null),
-582 |                 driver: currentEvent.crew.driverId
-583 |                   ? (users.find(
-584 |                       (u: any) => u.id === currentEvent.crew.driverId,
-585 |                     ) ?? null)
-586 |                   : (currentEvent.crew.driver ?? null),
-587 |               }
-588 |             : undefined
-589 |         }
-590 |       />
-591 |     </div>
-592 |   );
-593 | }
-594 | 
+117 |   const events = eventsRaw;
+118 | 
+119 |   // 5. Оголошуємо решту стейтів (editForm залежить від schoolData, тому він тут)
+120 |   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+121 |   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+122 |   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
+123 |   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+124 |   const [commentModal, setCommentModal] = useState({
+125 |     isOpen: false,
+126 |     mode: "pipeline",
+127 |     stepId: null as number | null,
+128 |     historyId: null as string | null,
+129 |     text: "",
+130 |   });
+131 | 
+132 |   const [editForm, setEditForm] = useState(schoolData);
+133 |   const [eventForm, setEventForm] = useState({
+134 |     project: "Голограма для школи",
+135 |     date: "",
+136 |     time: "11:00",
+137 |     childrenPlanned: "",
+138 |     price: "",
+139 |     address: "",
+140 |     contactPerson: "",
+141 |     contactPhone: "",
+142 |   });
+143 | 
+144 |   const currentEventBase = useMemo(
+145 |     () => eventsRaw.find((ev) => ev.id === selectedEventId) ?? eventsRaw[0],
+146 |     [eventsRaw, selectedEventId],
+147 |   );
+148 |   const currentEvent = useMemo(
+149 |     () =>
+150 |       eventFull?.id === currentEventBase?.id
+151 |         ? { ...currentEventBase, ...eventFull }
+152 |         : currentEventBase,
+153 |     [currentEventBase, eventFull],
+154 |   );
+155 |   const currentStageIndex = useMemo(() => {
+156 |     const idx = PIPELINE_STAGES.findIndex(
+157 |       (s) => s.key === currentEvent?.status,
+158 |     );
+159 |     return idx !== -1 ? idx : 0;
+160 |   }, [currentEvent?.status]);
+161 |   const creatorName = useMemo(
+162 |     () =>
+163 |       currentEvent?.history?.length > 0
+164 |         ? currentEvent.history[currentEvent.history.length - 1].userName
+165 |         : "Немає даних",
+166 |     [currentEvent?.history],
+167 |   );
+168 | 
+169 |   const handlePipelineClick = useCallback(
+170 |     (stepId: number) => {
+171 |       if (!currentEvent) return;
+172 |       const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+173 |       if (nextStage?.id !== stepId) return;
+174 |       if (nextStage.key === "REPORT") return setIsReportModalOpen(true);
+175 |       setCommentModal({
+176 |         isOpen: true,
+177 |         mode: "pipeline",
+178 |         stepId: nextStage.id,
+179 |         historyId: null,
+180 |         text: "",
+181 |       });
+182 |     },
+183 |     [currentEvent, currentStageIndex],
+184 |   );
+185 | 
+186 |   const handleHistoryClick = useCallback((historyItem: any) => {
+187 |     setCommentModal({
+188 |       isOpen: true,
+189 |       mode: "history",
+190 |       stepId: null,
+191 |       historyId: historyItem.id,
+192 |       text: historyItem.comment || "",
+193 |     });
+194 |   }, []);
+195 | 
+196 |   const handleAddCommentClick = useCallback(() => {
+197 |     setCommentModal({
+198 |       isOpen: true,
+199 |       mode: "add_comment",
+200 |       stepId: null,
+201 |       historyId: null,
+202 |       text: "",
+203 |     });
+204 |   }, []);
+205 | 
+206 |   const handleSaveComment = useCallback(
+207 |     async (e: React.FormEvent) => {
+208 |       e.preventDefault();
+209 |       if (commentModal.mode === "pipeline") {
+210 |         const activeStage = PIPELINE_STAGES[currentStageIndex];
+211 |         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+212 |         if (!nextStage) return;
+213 |         await updateStatus.mutateAsync({
+214 |           eventId: currentEvent.id,
+215 |           status: nextStage.key,
+216 |           actionName: `Етап пройдено: ${activeStage.name}`,
+217 |           comment: commentModal.text,
+218 |         });
+219 |         if (nextStage.key === "RE_SALE") {
+220 |           setExitingEventId(currentEvent.id);
+221 |           setTimeout(() => {
+222 |             setSelectedEventId(null);
+223 |             setExitingEventId(null);
+224 |           }, 500);
+225 |         }
+226 |       } else if (commentModal.mode === "add_comment") {
+227 |         await addCommentMutation.mutateAsync({
+228 |           eventId: currentEvent.id,
+229 |           comment: commentModal.text,
+230 |         });
+231 |       } else if (commentModal.mode === "history" && commentModal.historyId) {
+232 |         await updateHistoryMutation.mutateAsync({
+233 |           historyId: commentModal.historyId,
+234 |           comment: commentModal.text,
+235 |           eventId: currentEvent.id,
+236 |         });
+237 |       }
+238 |       setCommentModal({
+239 |         isOpen: false,
+240 |         mode: "pipeline",
+241 |         stepId: null,
+242 |         historyId: null,
+243 |         text: "",
+244 |       });
+245 |     },
+246 |     [
+247 |       commentModal,
+248 |       currentEvent,
+249 |       currentStageIndex,
+250 |       updateStatus,
+251 |       addCommentMutation,
+252 |       updateHistoryMutation,
+253 |     ],
+254 |   );
+255 | 
+256 |   const handleSaveEvent = useCallback(
+257 |     async (e: React.FormEvent) => {
+258 |       e.preventDefault();
+259 |       try {
+260 |         const payload = {
+261 |           ...eventForm,
+262 |           schoolId: schoolData.id,
+263 |           cityId: schoolData.cityId,
+264 |           childrenPlanned: Number(eventForm.childrenPlanned),
+265 |           price: Number(eventForm.price),
+266 |         };
+267 |         const res = await api.post("/events", payload, {
+268 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+269 |         });
+270 |         setIsEventModalOpen(false);
+271 |         qc.invalidateQueries({ queryKey: ["schoolEvents", id] });
+272 |         setSelectedEventId(res.data.id);
+273 |       } catch (e) {
+274 |         console.error(e);
+275 |       }
+276 |     },
+277 |     [eventForm, schoolData, id, qc],
+278 |   );
+279 | 
+280 |   const handleSaveSchoolInfo = useCallback(
+281 |     async (e: React.FormEvent) => {
+282 |       e.preventDefault();
+283 |       try {
+284 |         await api.patch(`/schools/${id}`, editForm, {
+285 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+286 |         });
+287 |         qc.invalidateQueries({ queryKey: ["school", id] });
+288 |         setIsEditModalOpen(false);
+289 |       } catch (e) {
+290 |         console.error(e);
+291 |       }
+292 |     },
+293 |     [editForm, id, qc],
+294 |   );
+295 | 
+296 |   const handleUpdatePreparation = useCallback(
+297 |     async (field: string, status: string) => {
+298 |       if (!currentEvent) return;
+299 |       await updatePreparation.mutateAsync({
+300 |         eventId: currentEvent.id,
+301 |         field,
+302 |         status,
+303 |       });
+304 |     },
+305 |     [currentEvent, updatePreparation],
+306 |   );
+307 | 
+308 |   const handleSubmitReport = useCallback(
+309 |     async (reportData: any) => {
+310 |       if (!currentEvent) return;
+311 |       await submitReportMutation.mutateAsync({
+312 |         eventId: currentEvent.id,
+313 |         reportData,
+314 |       });
+315 |       await updateStatus.mutateAsync({
+316 |         eventId: currentEvent.id,
+317 |         status: "RE_SALE",
+318 |         actionName: "Звіт сформовано. Захід завершено.",
+319 |       });
+320 |       setExitingEventId(currentEvent.id);
+321 |       setTimeout(() => {
+322 |         setSelectedEventId(null);
+323 |         setExitingEventId(null);
+324 |       }, 500);
+325 |       setIsReportModalOpen(false);
+326 |     },
+327 |     [currentEvent, submitReportMutation, updateStatus],
+328 |   );
+329 | 
+330 |   const handleAssignCrew = useCallback(
+331 |     async (crewId: string) => {
+332 |       await assignCrewMutation.mutateAsync({
+333 |         eventId: currentEvent.id,
+334 |         crewId,
+335 |       });
+336 |       return updatePreparation.mutateAsync({
+337 |         eventId: currentEvent.id,
+338 |         field: "assignCrew",
+339 |         status: "Виконано",
+340 |       });
+341 |       setIsCrewModalOpen(false);
+342 |     },
+343 |     [currentEvent, assignCrewMutation, updatePreparation],
+344 |   );
+345 | 
+346 |   const openAddEventModal = useCallback(() => {
+347 |     setEventForm((prev) => ({
+348 |       ...prev,
+349 |       address: schoolData.address,
+350 |       contactPerson: schoolData.director,
+351 |       contactPhone: schoolData.phone,
+352 |       childrenPlanned: String(schoolData.childrenCount),
+353 |     }));
+354 |     setIsEventModalOpen(true);
+355 |   }, [schoolData]);
+356 |   const stagger = (i: number) => ({
+357 |     initial: { opacity: 0, y: 10 },
+358 |     animate: { opacity: 1, y: 0 },
+359 |     transition: { duration: 0.3, delay: 0.1 + i * 0.07, ease: "easeOut" },
+360 |   });
+361 | 
+362 |   return (
+363 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8">
+364 |       <SchoolProfileHeader
+365 |         schoolData={schoolData}
+366 |         onEdit={() => {
+367 |           setEditForm(schoolData);
+368 |           setIsEditModalOpen(true);
+369 |         }}
+370 |         onAddEvent={openAddEventModal}
+371 |       />
+372 | 
+373 |       <div className="flex flex-col xl:flex-row gap-6">
+374 |         {/* Ліва колонка */}
+375 |         <div className="w-full xl:w-80 flex flex-col gap-6">
+376 |           <motion.div {...stagger(0)}>
+377 |             <Suspense
+378 |               fallback={
+379 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+380 |               }
+381 |             >
+382 |               <SchoolInfoCard schoolData={schoolData} />
+383 |             </Suspense>
+384 |           </motion.div>
+385 | 
+386 |           <AnimatePresence>
+387 |             {currentEvent && currentStageIndex >= 1 && (
+388 |               <motion.div
+389 |                 key="responsible"
+390 |                 initial={{ opacity: 0, y: 8 }}
+391 |                 animate={{ opacity: 1, y: 0 }}
+392 |                 exit={{ opacity: 0, y: -8 }}
+393 |                 transition={{ duration: 0.25 }}
+394 |                 className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
+395 |               >
+396 |                 <h3 className="font-bold text-slate-800 mb-4">
+397 |                   Відповідальна особа
+398 |                 </h3>
+399 |                 <ul className="space-y-2 text-sm">
+400 |                   <li className="flex justify-between">
+401 |                     <span className="text-slate-500">Остання дія:</span>
+402 |                     <span className="font-medium text-blue-600">
+403 |                       {creatorName}
+404 |                     </span>
+405 |                   </li>
+406 |                 </ul>
+407 |               </motion.div>
+408 |             )}
+409 |           </AnimatePresence>
+410 | 
+411 |           <motion.div {...stagger(1)}>
+412 |             <Suspense
+413 |               fallback={
+414 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+415 |               }
+416 |             >
+417 |               <HistoryTimeline
+418 |                 currentEvent={
+419 |                   eventFullLoading ? currentEventBase : currentEvent
+420 |                 }
+421 |                 onHistoryClick={handleHistoryClick}
+422 |                 onAddCommentClick={handleAddCommentClick}
+423 |               />
+424 |             </Suspense>
+425 |           </motion.div>
+426 |         </div>
+427 | 
+428 |         {/* Права колонка */}
+429 |         <motion.div
+430 |           className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${
+431 |             exitingEventId === currentEvent?.id
+432 |               ? "opacity-0 scale-95 -translate-y-4 pointer-events-none"
+433 |               : ""
+434 |           }`}
+435 |           initial={{ opacity: 0, y: 10 }}
+436 |           animate={{ opacity: 1, y: 0 }}
+437 |           transition={{ duration: 0.3, delay: 0.15 }}
+438 |         >
+439 |           {currentEvent && (
+440 |             <Suspense
+441 |               fallback={
+442 |                 <div className="bg-white rounded-2xl h-24 animate-pulse border border-slate-100" />
+443 |               }
+444 |             >
+445 |               <Pipeline
+446 |                 currentStageIndex={currentStageIndex}
+447 |                 currentEvent={currentEvent}
+448 |                 onPipelineClick={handlePipelineClick}
+449 |                 stages={PIPELINE_STAGES}
+450 |               />
+451 |             </Suspense>
+452 |           )}
+453 | 
+454 |           <AnimatePresence>
+455 |             {currentEvent && currentStageIndex >= 4 && (
+456 |               <motion.div
+457 |                 key="preparation"
+458 |                 initial={{ opacity: 0, y: 8 }}
+459 |                 animate={{ opacity: 1, y: 0 }}
+460 |                 exit={{ opacity: 0, y: -8 }}
+461 |                 transition={{ duration: 0.25 }}
+462 |                 className="grid grid-cols-1 xl:grid-cols-2 gap-6"
+463 |               >
+464 |                 {eventFullLoading ? (
+465 |                   <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-pulse h-48" />
+466 |                 ) : (
+467 |                   <Suspense
+468 |                     fallback={
+469 |                       <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+470 |                     }
+471 |                   >
+472 |                     <EventPreparation
+473 |                       data={currentEvent.preparation || {}}
+474 |                       onUpdate={handleUpdatePreparation}
+475 |                       onOpenCrewModal={() => setIsCrewModalOpen(true)}
+476 |                     />
+477 |                   </Suspense>
+478 |                 )}
+479 |                 <Suspense
+480 |                   fallback={
+481 |                     <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+482 |                   }
+483 |                 >
+484 |                   <AssignedCrew currentEvent={currentEvent} employees={users} />
+485 |                 </Suspense>
+486 |               </motion.div>
+487 |             )}
+488 |           </AnimatePresence>
+489 | 
+490 |           <motion.div {...stagger(2)}>
+491 |             <Suspense
+492 |               fallback={
+493 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
+494 |               }
+495 |             >
+496 |               <EventDetails
+497 |                 currentEvent={currentEvent}
+498 |                 schoolName={schoolData.name}
+499 |                 cityId={schoolData.cityId}
+500 |                 onEventUpdated={() =>
+501 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
+502 |                 }
+503 |               />
+504 |             </Suspense>
+505 |           </motion.div>
+506 | 
+507 |           <motion.div {...stagger(3)}>
+508 |             <Suspense
+509 |               fallback={
+510 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
+511 |               }
+512 |             >
+513 |               <EventsTable
+514 |                 events={events}
+515 |                 selectedEventId={selectedEventId}
+516 |                 onEventSelect={setSelectedEventId}
+517 |                 onDeleteSuccess={() =>
+518 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
+519 |                 }
+520 |               />
+521 |             </Suspense>
+522 |             {completedEvents.length > 0 && (
+523 |               <motion.div {...stagger(4)}>
+524 |                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+525 |                   <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+526 |                     <h3 className="font-bold text-slate-800">
+527 |                       Завершені події ({completedEvents.length})
+528 |                     </h3>
+529 |                   </div>
+530 |                   <div className="md:hidden divide-y divide-slate-50">
+531 |                     {completedEvents.map((ev: any) => (
+532 |                       <div
+533 |                         key={ev.id}
+534 |                         onClick={() => setSelectedReportEvent(ev)}
+535 |                         className="flex items-center justify-between gap-3 p-4 active:bg-slate-50 cursor-pointer"
+536 |                       >
+537 |                         <div className="min-w-0">
+538 |                           <p className="font-medium text-blue-600 truncate">
+539 |                             {ev.project}
+540 |                           </p>
+541 |                           <p className="text-xs text-slate-400 mt-0.5">
+542 |                             {new Date(ev.date).toLocaleDateString("uk-UA")}
+543 |                           </p>
+544 |                           <p className="text-xs text-slate-500 mt-1">
+545 |                             👶{" "}
+546 |                             {ev.report?.childrenCount ||
+547 |                               ev.childrenPlanned ||
+548 |                               "—"}{" "}
+549 |                             дітей
+550 |                           </p>
+551 |                         </div>
+552 |                         <div className="text-right shrink-0">
+553 |                           <p className="font-semibold text-slate-800 text-sm">
+554 |                             {new Intl.NumberFormat("uk-UA").format(
+555 |                               ev.report?.totalSum || ev.price || 0,
+556 |                             )}{" "}
+557 |                             грн
+558 |                           </p>
+559 |                           <p className="text-xs font-medium text-emerald-600 mt-0.5">
+560 |                             +
+561 |                             {new Intl.NumberFormat("uk-UA").format(
+562 |                               ev.report?.remainderSum || 0,
+563 |                             )}{" "}
+564 |                             грн
+565 |                           </p>
+566 |                         </div>
+567 |                       </div>
+568 |                     ))}
+569 |                   </div>
+570 |                   <div className="hidden md:block overflow-x-auto">
+571 |                     <table className="w-full text-left text-sm">
+572 |                       <thead>
+573 |                         <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+574 |                           <th className="p-4">Проєкт</th>
+575 |                           <th className="p-4">Дата</th>
+576 |                           <th className="p-4">Дітей</th>
+577 |                           <th className="p-4">Виручка</th>
+578 |                           <th className="p-4">Прибуток</th>
+579 |                         </tr>
+580 |                       </thead>
+581 |                       <tbody>
+582 |                         {completedEvents.map((ev: any) => (
+583 |                           <tr
+584 |                             key={ev.id}
+585 |                             onClick={() => setSelectedReportEvent(ev)}
+586 |                             className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
+587 |                           >
+588 |                             <td className="p-4 text-slate-700 font-medium">
+589 |                               {ev.project}
+590 |                             </td>
+591 |                             <td className="p-4 text-slate-600">
+592 |                               {new Date(ev.date).toLocaleDateString("uk-UA")}
+593 |                             </td>
+594 |                             <td className="p-4 font-medium">
+595 |                               {ev.report?.childrenCount ||
+596 |                                 ev.childrenPlanned ||
+597 |                                 "—"}
+598 |                             </td>
+599 |                             <td className="p-4 font-medium text-slate-800">
+600 |                               {new Intl.NumberFormat("uk-UA").format(
+601 |                                 ev.report?.totalSum || ev.price || 0,
+602 |                               )}{" "}
+603 |                               грн
+604 |                             </td>
+605 |                             <td className="p-4 font-medium text-emerald-600">
+606 |                               {new Intl.NumberFormat("uk-UA").format(
+607 |                                 ev.report?.remainderSum || 0,
+608 |                               )}{" "}
+609 |                               грн
+610 |                             </td>
+611 |                           </tr>
+612 |                         ))}
+613 |                       </tbody>
+614 |                     </table>
+615 |                   </div>
+616 |                 </div>
+617 |               </motion.div>
+618 |             )}
+619 |           </motion.div>
+620 |         </motion.div>
+621 |       </div>
+622 | 
+623 |       {/* Мобільна FAB */}
+624 |       <button
+625 |         onClick={openAddEventModal}
+626 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
+627 |       >
+628 |         +
+629 |       </button>
+630 | 
+631 |       {/* Модальні вікна */}
+632 |       <EditSchoolModal
+633 |         isOpen={isEditModalOpen}
+634 |         onClose={() => setIsEditModalOpen(false)}
+635 |         editForm={editForm}
+636 |         setEditForm={setEditForm}
+637 |         onSave={handleSaveSchoolInfo}
+638 |       />
+639 |       <EventModal
+640 |         isOpen={isEventModalOpen}
+641 |         onClose={() => setIsEventModalOpen(false)}
+642 |         eventForm={eventForm}
+643 |         setEventForm={setEventForm}
+644 |         onSave={handleSaveEvent}
+645 |       />
+646 |       <CommentModal
+647 |         isOpen={commentModal.isOpen}
+648 |         onClose={() => setCommentModal({ ...commentModal, isOpen: false })}
+649 |         mode={commentModal.mode}
+650 |         text={commentModal.text}
+651 |         setText={(t) => setCommentModal({ ...commentModal, text: t })}
+652 |         onSave={handleSaveComment}
+653 |       />
+654 |       <CrewModal
+655 |         isOpen={isCrewModalOpen}
+656 |         onClose={() => setIsCrewModalOpen(false)}
+657 |         city={schoolData.city}
+658 |         employees={users}
+659 |         onSave={handleAssignCrew}
+660 |       />
+661 |       <ReportModal
+662 |         isOpen={isReportModalOpen}
+663 |         onClose={() => setIsReportModalOpen(false)}
+664 |         onSave={handleSubmitReport}
+665 |         schoolName={schoolData.name}
+666 |         eventType={currentEvent?.project}
+667 |         eventDate={currentEvent?.date}
+668 |         eventIndex={
+669 |           events
+670 |             .filter((e) => e.schoolId === schoolData.id)
+671 |             .indexOf(currentEvent!) + 1
+672 |         }
+673 |         crew={
+674 |           currentEvent?.crew
+675 |             ? {
+676 |                 host: currentEvent.crew.hostId
+677 |                   ? (users.find(
+678 |                       (u: any) => u.id === currentEvent.crew.hostId,
+679 |                     ) ?? null)
+680 |                   : (currentEvent.crew.host ?? null),
+681 |                 driver: currentEvent.crew.driverId
+682 |                   ? (users.find(
+683 |                       (u: any) => u.id === currentEvent.crew.driverId,
+684 |                     ) ?? null)
+685 |                   : (currentEvent.crew.driver ?? null),
+686 |               }
+687 |             : undefined
+688 |         }
+689 |       />
+690 |       <CompletedEventModal
+691 |         isOpen={!!selectedReportEvent}
+692 |         onClose={() => setSelectedReportEvent(null)}
+693 |         event={selectedReportEvent}
+694 |       />
+695 |     </div>
+696 |   );
+697 |   function CompletedEventModal({
+698 |     isOpen,
+699 |     onClose,
+700 |     event,
+701 |   }: {
+702 |     isOpen: boolean;
+703 |     onClose: () => void;
+704 |     event: any;
+705 |   }) {
+706 |     if (!isOpen || !event) return null;
+707 |     const fmt = (n: number) =>
+708 |       new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+709 |     const report = event.report;
+710 | 
+711 |     return (
+712 |       <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+713 |         <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
+714 |           <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+715 |           <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
+716 |             <div>
+717 |               <h3 className="text-xl font-bold text-slate-800">
+718 |                 Звіт: {event.project}
+719 |               </h3>
+720 |               <p className="text-sm text-slate-500 mt-1">
+721 |                 {new Date(event.date).toLocaleDateString("uk-UA")}
+722 |               </p>
+723 |             </div>
+724 |             <button
+725 |               onClick={onClose}
+726 |               className="text-slate-400 hover:text-slate-600 p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg"
+727 |             >
+728 |               ✕
+729 |             </button>
+730 |           </div>
+731 |           <div className="p-5 sm:p-6 flex-1 overflow-y-auto bg-slate-50/30">
+732 |             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+733 |               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+734 |                 <h4 className="font-bold text-slate-800 mb-4">📊 Результати</h4>
+735 |                 <div className="space-y-3 text-sm">
+736 |                   {[
+737 |                     ["Дітей (факт)", report?.childrenCount || 0],
+738 |                     ["Класів", report?.classesCount || 0],
+739 |                     ["Пільговиків", report?.privilegedCount || 0],
+740 |                     ["Сеансів", report?.showingsCount || 0],
+741 |                   ].map(([label, val]) => (
+742 |                     <div
+743 |                       key={label}
+744 |                       className="flex justify-between border-b border-slate-50 pb-2"
+745 |                     >
+746 |                       <span className="text-slate-500">{label}:</span>
+747 |                       <span className="font-medium">{val}</span>
+748 |                     </div>
+749 |                   ))}
+750 |                   <div className="flex justify-between pb-1">
+751 |                     <span className="text-slate-500">Оцінка:</span>
+752 |                     <span className="font-bold text-amber-500">
+753 |                       ⭐ {report?.rating || 0}/10
+754 |                     </span>
+755 |                   </div>
+756 |                 </div>
+757 |               </div>
+758 |               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+759 |                 <h4 className="font-bold text-slate-800 mb-4">💰 Фінанси</h4>
+760 |                 <div className="space-y-3 text-sm">
+761 |                   <div className="flex justify-between border-b border-slate-50 pb-2">
+762 |                     <span className="text-slate-500">Загальна виручка:</span>
+763 |                     <span className="font-bold">
+764 |                       {fmt(report?.totalSum)} грн
+765 |                     </span>
+766 |                   </div>
+767 |                   <div className="flex justify-between border-b border-slate-50 pb-2">
+768 |                     <span className="text-slate-500">На заклад (20%):</span>
+769 |                     <span className="font-medium text-rose-500">
+770 |                       − {fmt(report?.schoolSum)} грн
+771 |                     </span>
+772 |                   </div>
+773 |                   {Array.isArray(report?.expenses) &&
+774 |                     report.expenses.map((exp: any, i: number) => (
+775 |                       <div
+776 |                         key={i}
+777 |                         className="flex justify-between text-xs pl-2"
+778 |                       >
+779 |                         <span className="text-slate-400">
+780 |                           — {exp.name || exp.category}
+781 |                         </span>
+782 |                         <span className="text-rose-500 font-medium">
+783 |                           − {fmt(exp.amount)} грн
+784 |                         </span>
+785 |                       </div>
+786 |                     ))}
+787 |                   <div className="flex justify-between pt-1">
+788 |                     <span className="font-bold text-slate-800">
+789 |                       Чистий прибуток:
+790 |                     </span>
+791 |                     <span className="font-bold text-emerald-600 text-base">
+792 |                       {fmt(report?.remainderSum)} грн
+793 |                     </span>
+794 |                   </div>
+795 |                 </div>
+796 |               </div>
+797 |             </div>
+798 |             {event.history?.length > 0 && (
+799 |               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+800 |                 <h4 className="font-bold text-slate-800 mb-5">
+801 |                   ⏳ Історія пайплайну
+802 |                 </h4>
+803 |                 <div className="space-y-4 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-slate-100">
+804 |                   {[...event.history]
+805 |                     .sort(
+806 |                       (a, b) =>
+807 |                         new Date(a.createdAt).getTime() -
+808 |                         new Date(b.createdAt).getTime(),
+809 |                     )
+810 |                     .map((item: any) => (
+811 |                       <div key={item.id} className="relative pl-8 text-sm">
+812 |                         <div className="absolute left-1.5 w-3 h-3 rounded-full top-1 bg-violet-500 ring-4 ring-white" />
+813 |                         <p className="font-semibold text-slate-800">
+814 |                           {item.action}
+815 |                         </p>
+816 |                         <p className="text-[11px] text-slate-400 mt-0.5">
+817 |                           {new Date(item.createdAt).toLocaleString("uk-UA", {
+818 |                             day: "2-digit",
+819 |                             month: "2-digit",
+820 |                             hour: "2-digit",
+821 |                             minute: "2-digit",
+822 |                           })}{" "}
+823 |                           · 👤 {item.userName}
+824 |                         </p>
+825 |                         {item.comment && (
+826 |                           <div className="mt-2 p-3 bg-slate-50/80 rounded-xl text-slate-600 italic border border-slate-100">
+827 |                             {item.comment}
+828 |                           </div>
+829 |                         )}
+830 |                       </div>
+831 |                     ))}
+832 |                 </div>
+833 |               </div>
+834 |             )}
+835 |           </div>
+836 |         </div>
+837 |       </div>
+838 |     );
+839 |   }
+840 | }
+841 | 
 ```
 
 ### File: apps/frontend/src/pages/Schools.tsx
@@ -15837,6 +16891,382 @@
 594 | 
 ```
 
+### File: apps/frontend/src/tests/component/Pipeline.test.tsx
+```tsx
+  0 | import { describe, it, expect, vi } from "vitest";
+  1 | import { render, screen, fireEvent } from "@testing-library/react";
+  2 | import Pipeline from "../../components/school-profile/Pipeline";
+  3 | 
+  4 | const STAGES = [
+  5 |   { id: 1, key: "BASE", name: "Новий заклад" },
+  6 |   { id: 2, key: "FIRST_CONTACT", name: "Знайомство" },
+  7 |   { id: 3, key: "DATE_CONFIRMED", name: "Підтвердження дати" },
+  8 | ];
+  9 | 
+ 10 | describe("Pipeline", () => {
+ 11 |   it("відображає всі етапи", () => {
+ 12 |     render(
+ 13 |       <Pipeline
+ 14 |         currentStageIndex={0}
+ 15 |         currentEvent={{ id: "e1", status: "BASE" }}
+ 16 |         onPipelineClick={vi.fn()}
+ 17 |         stages={STAGES}
+ 18 |       />,
+ 19 |     );
+ 20 |     expect(screen.getByText("Новий заклад")).toBeInTheDocument();
+ 21 |     expect(screen.getByText("Знайомство")).toBeInTheDocument();
+ 22 |   });
+ 23 | 
+ 24 |   it("викликає onPipelineClick для наступного етапу", () => {
+ 25 |     const onClick = vi.fn();
+ 26 |     render(
+ 27 |       <Pipeline
+ 28 |         currentStageIndex={0}
+ 29 |         currentEvent={{ id: "e1", status: "BASE" }}
+ 30 |         onPipelineClick={onClick}
+ 31 |         stages={STAGES}
+ 32 |       />,
+ 33 |     );
+ 34 |     fireEvent.click(screen.getByText("2"));
+ 35 |     expect(onClick).toHaveBeenCalledWith(2);
+ 36 |   });
+ 37 | 
+ 38 |   it("не викликає onClick для недоступного етапу", () => {
+ 39 |     const onClick = vi.fn();
+ 40 |     render(
+ 41 |       <Pipeline
+ 42 |         currentStageIndex={0}
+ 43 |         currentEvent={{ id: "e1", status: "BASE" }}
+ 44 |         onPipelineClick={onClick}
+ 45 |         stages={STAGES}
+ 46 |       />,
+ 47 |     );
+ 48 |     fireEvent.click(screen.getByText("3"));
+ 49 |     expect(onClick).not.toHaveBeenCalled();
+ 50 |   });
+ 51 | });
+ 52 | 
+```
+
+### File: apps/frontend/src/tests/component/SchoolCard.test.tsx
+```tsx
+  0 | import { describe, it, expect, vi } from "vitest";
+  1 | import { render, screen, fireEvent } from "@testing-library/react";
+  2 | import { MemoryRouter } from "react-router-dom";
+  3 | import { SchoolCard } from "../../components/schools/SchoolMobileList";
+  4 | 
+  5 | const STAGES = [
+  6 |   { key: "BASE", name: "Новий заклад" },
+  7 |   { key: "FIRST_CONTACT", name: "Знайомство" },
+  8 | ];
+  9 | 
+ 10 | const mockSchool = {
+ 11 |   id: "school-1",
+ 12 |   name: "Школа №1",
+ 13 |   director: "Іван Петренко",
+ 14 |   phone: "0671234567",
+ 15 |   events: [{ status: "BASE" }],
+ 16 | };
+ 17 | 
+ 18 | describe("SchoolCard", () => {
+ 19 |   it("відображає назву школи", () => {
+ 20 |     render(
+ 21 |       <MemoryRouter>
+ 22 |         <SchoolCard
+ 23 |           school={mockSchool}
+ 24 |           onDelete={vi.fn()}
+ 25 |           stages={STAGES}
+ 26 |           index={0}
+ 27 |         />
+ 28 |       </MemoryRouter>,
+ 29 |     );
+ 30 |     expect(screen.getByText("Школа №1")).toBeInTheDocument();
+ 31 |   });
+ 32 | 
+ 33 |   it("відображає директора", () => {
+ 34 |     render(
+ 35 |       <MemoryRouter>
+ 36 |         <SchoolCard
+ 37 |           school={mockSchool}
+ 38 |           onDelete={vi.fn()}
+ 39 |           stages={STAGES}
+ 40 |           index={0}
+ 41 |         />
+ 42 |       </MemoryRouter>,
+ 43 |     );
+ 44 |     expect(screen.getByText(/Іван Петренко/)).toBeInTheDocument();
+ 45 |   });
+ 46 | 
+ 47 |   it("відображає поточний етап", () => {
+ 48 |     render(
+ 49 |       <MemoryRouter>
+ 50 |         <SchoolCard
+ 51 |           school={mockSchool}
+ 52 |           onDelete={vi.fn()}
+ 53 |           stages={STAGES}
+ 54 |           index={0}
+ 55 |         />
+ 56 |       </MemoryRouter>,
+ 57 |     );
+ 58 |     expect(screen.getByText("Новий заклад")).toBeInTheDocument();
+ 59 |   });
+ 60 | 
+ 61 |   it("викликає onDelete при натисканні", () => {
+ 62 |     const onDelete = vi.fn();
+ 63 |     render(
+ 64 |       <MemoryRouter>
+ 65 |         <SchoolCard
+ 66 |           school={mockSchool}
+ 67 |           onDelete={onDelete}
+ 68 |           stages={STAGES}
+ 69 |           index={0}
+ 70 |         />
+ 71 |       </MemoryRouter>,
+ 72 |     );
+ 73 |     fireEvent.click(screen.getByText("🗑"));
+ 74 |     expect(onDelete).toHaveBeenCalledWith(
+ 75 |       expect.any(Object),
+ 76 |       "school-1",
+ 77 |       "Школа №1",
+ 78 |     );
+ 79 |   });
+ 80 | });
+ 81 | 
+```
+
+### File: apps/frontend/src/tests/mocks/handlers.ts
+```ts
+  0 | import { http, HttpResponse } from "msw";
+  1 | 
+  2 | const BASE = "";
+  3 | 
+  4 | export const handlers = [
+  5 |   // Cities
+  6 |   http.get(`${BASE}/cities`, () =>
+  7 |     HttpResponse.json([
+  8 |       { id: "city-1", name: "Львів", plannedEvents: 3, completedEvents: 10, schoolsCount: 50 },
+  9 |       { id: "city-2", name: "Київ", plannedEvents: 1, completedEvents: 5, schoolsCount: 30 },
+ 10 |     ])
+ 11 |   ),
+ 12 | 
+ 13 |   // Schools
+ 14 |   http.get(`${BASE}/schools`, () =>
+ 15 |     HttpResponse.json([
+ 16 |       { id: "school-1", name: "Школа №1", type: "Школа", cityId: "city-1", childrenCount: 300, events: [] },
+ 17 |       { id: "school-2", name: "Школа №5", type: "Школа", cityId: "city-1", childrenCount: 100, events: [] },
+ 18 |     ])
+ 19 |   ),
+ 20 | 
+ 21 |   http.get(`${BASE}/schools/:id`, ({ params }) =>
+ 22 |     HttpResponse.json({
+ 23 |       id: params.id,
+ 24 |       name: "Школа №1",
+ 25 |       type: "Школа",
+ 26 |       cityId: "city-1",
+ 27 |       city: { id: "city-1", name: "Львів" },
+ 28 |       director: "Іван Петренко",
+ 29 |       phone: "0671234567",
+ 30 |       address: "вул. Тестова 1",
+ 31 |       childrenCount: 300,
+ 32 |     })
+ 33 |   ),
+ 34 | 
+ 35 |   // Events
+ 36 |   http.get(`${BASE}/events/school/:schoolId`, () =>
+ 37 |     HttpResponse.json([
+ 38 |       {
+ 39 |         id: "event-1",
+ 40 |         project: "Голограма для школи",
+ 41 |         date: "2026-07-01T10:00:00Z",
+ 42 |         time: "10:00",
+ 43 |         status: "BASE",
+ 44 |         price: 5000,
+ 45 |         childrenPlanned: 100,
+ 46 |         address: "вул. Тестова 1",
+ 47 |         contactPerson: "Іван",
+ 48 |         contactPhone: "0671234567",
+ 49 |       },
+ 50 |     ])
+ 51 |   ),
+ 52 | 
+ 53 |   // Users
+ 54 |   http.get(`${BASE}/users`, () =>
+ 55 |     HttpResponse.json([
+ 56 |       { id: "user-1", name: "Адміністратор", email: "admin@crm.com", role: "SUPERADMIN" },
+ 57 |     ])
+ 58 |   ),
+ 59 | 
+ 60 |   // Dashboard
+ 61 |   http.get(`${BASE}/dashboard/summary`, () =>
+ 62 |     HttpResponse.json({
+ 63 |       todayEvents: [],
+ 64 |       upcomingEvents: [],
+ 65 |       funnel: { BASE: 10, FIRST_CONTACT: 5 },
+ 66 |       totalSchools: 50,
+ 67 |       monthlyKpi: { revenue: 50000, profit: 20000, children: 500, count: 10 },
+ 68 |       staleSchools: [],
+ 69 |       activityFeed: [],
+ 70 |       citiesStats: [],
+ 71 |     })
+ 72 |   ),
+ 73 | 
+ 74 |   // Auth
+ 75 |   http.post(`${BASE}/auth/login`, () =>
+ 76 |     HttpResponse.json({ access_token: "test-token" })
+ 77 |   ),
+ 78 | ];
+```
+
+### File: apps/frontend/src/tests/mocks/server.ts
+```ts
+  0 | import { setupServer } from "msw/node";
+  1 | import { handlers } from "./handlers";
+  2 | 
+  3 | export const server = setupServer(...handlers);
+```
+
+### File: apps/frontend/src/tests/setup.ts
+```ts
+  0 | import "@testing-library/jest-dom";
+  1 | import { afterEach, beforeAll, afterAll } from "vitest";
+  2 | import { cleanup } from "@testing-library/react";
+  3 | import { server } from "./mocks/server";
+  4 | 
+  5 | beforeAll(() => server.listen({ onUnhandledRequest: "warn" }));
+  6 | afterEach(() => {
+  7 |   cleanup();
+  8 |   server.resetHandlers();
+  9 | });
+ 10 | afterAll(() => server.close());
+```
+
+### File: apps/frontend/src/tests/unit/hooks/useSchools.test.ts
+```ts
+  0 | import { describe, it, expect, vi } from "vitest";
+  1 | import { renderHook, waitFor } from "@testing-library/react";
+  2 | import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+  3 | import { createElement } from "react";
+  4 | 
+  5 | vi.mock("../../../hooks/useSchools", () => ({
+  6 |   useSchoolsList: vi.fn(() => ({
+  7 |     data: [
+  8 |       {
+  9 |         id: "school-1",
+ 10 |         name: "Школа №1",
+ 11 |         type: "Школа",
+ 12 |         cityId: "city-1",
+ 13 |         childrenCount: 300,
+ 14 |         events: [],
+ 15 |       },
+ 16 |       {
+ 17 |         id: "school-2",
+ 18 |         name: "Школа №5",
+ 19 |         type: "Школа",
+ 20 |         cityId: "city-1",
+ 21 |         childrenCount: 100,
+ 22 |         events: [],
+ 23 |       },
+ 24 |     ],
+ 25 |     isLoading: false,
+ 26 |     isSuccess: true,
+ 27 |   })),
+ 28 | }));
+ 29 | 
+ 30 | import { useSchoolsList } from "../../../hooks/useSchools";
+ 31 | 
+ 32 | const makeWrapper = () => {
+ 33 |   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+ 34 |   return ({ children }: { children: React.ReactNode }) =>
+ 35 |     createElement(QueryClientProvider, { client: qc, children });
+ 36 | };
+ 37 | 
+ 38 | describe("useSchoolsList", () => {
+ 39 |   it("повертає список шкіл", async () => {
+ 40 |     const { result } = renderHook(() => useSchoolsList(), {
+ 41 |       wrapper: makeWrapper(),
+ 42 |     });
+ 43 |     await waitFor(() => expect(result.current.isSuccess).toBe(true));
+ 44 |     expect(result.current.data).toHaveLength(2);
+ 45 |     expect(result.current.data?.[0].name).toBe("Школа №1");
+ 46 |   });
+ 47 | 
+ 48 |   it("isLoading на початку", () => {
+ 49 |     const { result } = renderHook(() => useSchoolsList(), {
+ 50 |       wrapper: makeWrapper(),
+ 51 |     });
+ 52 |     expect(result.current.isLoading).toBe(true);
+ 53 |   });
+ 54 | });
+ 55 | 
+```
+
+### File: apps/frontend/src/tests/unit/schoolUtils.test.ts
+```ts
+  0 | import { describe, it, expect } from "vitest";
+  1 | import {
+  2 |   classifySchool,
+  3 |   classifySize,
+  4 | } from "../../components/schools/schoolUtils";
+  5 | 
+  6 | describe("classifySchool", () => {
+  7 |   it("повертає 'new' якщо немає подій", () => {
+  8 |     expect(classifySchool({ events: [] })).toBe("new");
+  9 |     expect(classifySchool({})).toBe("new");
+ 10 |   });
+ 11 | 
+ 12 |   it("повертає 'planned' якщо остання подія FIRST_CONTACT або DATE_CONFIRMED", () => {
+ 13 |     expect(classifySchool({ events: [{ status: "FIRST_CONTACT" }] })).toBe(
+ 14 |       "planned",
+ 15 |     );
+ 16 |     expect(classifySchool({ events: [{ status: "DATE_CONFIRMED" }] })).toBe(
+ 17 |       "planned",
+ 18 |     );
+ 19 |   });
+ 20 | 
+ 21 |   it("повертає 'inProgress' якщо подія в процесі", () => {
+ 22 |     expect(classifySchool({ events: [{ status: "IN_PROGRESS" }] })).toBe(
+ 23 |       "inProgress",
+ 24 |     );
+ 25 |     expect(classifySchool({ events: [{ status: "PREPARATION" }] })).toBe(
+ 26 |       "inProgress",
+ 27 |     );
+ 28 |   });
+ 29 | 
+ 30 |   it("повертає 'done' якщо подія завершена", () => {
+ 31 |     expect(classifySchool({ events: [{ status: "RE_SALE" }] })).toBe("done");
+ 32 |   });
+ 33 | });
+ 34 | 
+ 35 | describe("classifySize для школи", () => {
+ 36 |   it("малі < 500", () => {
+ 37 |     expect(classifySize({ childrenCount: 300 }, "Школа")).toBe("small");
+ 38 |   });
+ 39 | 
+ 40 |   it("середні 500-900", () => {
+ 41 |     expect(classifySize({ childrenCount: 700 }, "Школа")).toBe("medium");
+ 42 |   });
+ 43 | 
+ 44 |   it("великі 900+", () => {
+ 45 |     expect(classifySize({ childrenCount: 1000 }, "Школа")).toBe("large");
+ 46 |   });
+ 47 | });
+ 48 | 
+ 49 | describe("classifySize для садочку", () => {
+ 50 |   it("малі < 50", () => {
+ 51 |     expect(classifySize({ childrenCount: 30 }, "Садочок")).toBe("small");
+ 52 |   });
+ 53 | 
+ 54 |   it("середні 50-100", () => {
+ 55 |     expect(classifySize({ childrenCount: 75 }, "Садочок")).toBe("medium");
+ 56 |   });
+ 57 | 
+ 58 |   it("великі 100+", () => {
+ 59 |     expect(classifySize({ childrenCount: 120 }, "Садочок")).toBe("large");
+ 60 |   });
+ 61 | });
+ 62 | 
+```
+
 ### File: apps/frontend/src/types/index.ts
 ```ts
   0 | export interface City {
@@ -16001,8 +17431,18 @@
  12 |       },
  13 |     },
  14 |   },
- 15 | });
- 16 | 
+ 15 |   test: {
+ 16 |     globals: true,
+ 17 |     environment: "jsdom",
+ 18 |     setupFiles: ["./src/tests/setup.ts"],
+ 19 |     include: ["src/**/*.{test,spec}.{ts,tsx}"],
+ 20 |     coverage: {
+ 21 |       reporter: ["text", "html"],
+ 22 |       exclude: ["src/tests/**", "src/main.tsx"],
+ 23 |     },
+ 24 |   },
+ 25 | });
+ 26 | 
 ```
 
 ### File: bundle.js

@@ -41,6 +41,13 @@ export default function Schools() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [userRole] = useState<string | null>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "null")?.role ?? null;
+    } catch {
+      return null;
+    }
+  });
   const qc = useQueryClient();
   const [form, setForm] = useState({
     name: "",
@@ -121,17 +128,23 @@ export default function Schools() {
         queryFn: async () => {
           const res = await api.get(
             `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=Школа`,
-            { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            },
           );
           return res.data;
         },
         staleTime: 1000 * 60 * 5, // Кешуємо на 5 хвилин
       });
-      
+
       setMatchedContacts(data);
       if (data.length > 0) {
-        const director = data.find((c: any) =>
-            c.role?.includes("Директор") || c.role?.includes("Завідувач")
+        const director =
+          data.find(
+            (c: any) =>
+              c.role?.includes("Директор") || c.role?.includes("Завідувач"),
           ) || data[0];
         setForm((f) => ({
           ...f,
@@ -161,9 +174,14 @@ export default function Schools() {
           qc.fetchQuery({
             queryKey: ["schoolSearchExternal", value],
             queryFn: async () => {
-              const res = await api.get(`/schools/search?q=${encodeURIComponent(value)}&type=Школа`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-              });
+              const res = await api.get(
+                `/schools/search?q=${encodeURIComponent(value)}&type=Школа`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                  },
+                },
+              );
               return res.data;
             },
             staleTime: 1000 * 60 * 5,
@@ -194,6 +212,7 @@ export default function Schools() {
   const handleDeleteSchool = useCallback(
     async (e: React.MouseEvent, schoolId: string, schoolName: string) => {
       e.stopPropagation();
+      if (userRole !== "SUPERADMIN") return;
       if (
         !window.confirm(
           `Видалити школу "${schoolName}"? Це видалить також усі її події.`,
@@ -202,7 +221,7 @@ export default function Schools() {
         return;
       await deleteSchool.mutateAsync(schoolId);
     },
-    [deleteSchool],
+    [deleteSchool, userRole],
   );
 
   const debouncedSearch = useMemo(() => searchQuery, [searchQuery]);
@@ -253,31 +272,38 @@ export default function Schools() {
           </h1>
         </div>
         <div className="flex gap-2 shrink-0">
-          <button
-            onClick={() => {
-              if (!selectedCity.id) return alert("Спочатку оберіть місто");
-              if (!window.confirm(`Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`)) return;
-              
-              setDotCount(3);
-              const dotInterval = setInterval(() => {
-                setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
-              }, 500);
-              
-              bulkImportMutation.mutate(selectedCity.id, {
-                onSettled: () => clearInterval(dotInterval)
-              });
-            }}
-            disabled={bulkImportMutation.isPending}
-            className="md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
-          >
-            {bulkImportMutation.isPending ? (
-              <span className="font-medium">
-                Імпортую{"·".repeat(dotCount)}
-              </span>
-            ) : (
-              <>📥 Імпорт з isuo</>
-            )}
-          </button>
+          {userRole === "SUPERADMIN" && (
+            <button
+              onClick={() => {
+                if (!selectedCity.id) return alert("Спочатку оберіть місто");
+                if (
+                  !window.confirm(
+                    `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`,
+                  )
+                )
+                  return;
+
+                setDotCount(3);
+                const dotInterval = setInterval(() => {
+                  setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
+                }, 500);
+
+                bulkImportMutation.mutate(selectedCity.id, {
+                  onSettled: () => clearInterval(dotInterval),
+                });
+              }}
+              disabled={bulkImportMutation.isPending}
+              className="md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
+            >
+              {bulkImportMutation.isPending ? (
+                <span className="font-medium">
+                  Імпортую{"·".repeat(dotCount)}
+                </span>
+              ) : (
+                <>📥 Імпорт з isuo</>
+              )}
+            </button>
+          )}
           <button
             onClick={handleOpenModal}
             className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"

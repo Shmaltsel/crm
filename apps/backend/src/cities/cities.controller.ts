@@ -1,11 +1,25 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { CitiesService } from './cities.service';
+import { AuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller('cities')
+@UseGuards(AuthGuard, RolesGuard)
 export class CitiesController {
   constructor(private readonly citiesService: CitiesService) {}
 
   @Post()
+  @Roles('SUPERADMIN')
   create(@Body() body: { name: string }) {
     return this.citiesService.create(body.name);
   }
@@ -20,11 +34,15 @@ export class CitiesController {
     return this.citiesService.findOne(id);
   }
   @Post(':id/crews')
-  createCrew(@Param('id') id: string, @Body() body: { name: string; hostId: string; driverId: string }) {
+  createCrew(
+    @Param('id') id: string,
+    @Body() body: { name: string; hostId: string; driverId: string },
+  ) {
     return this.citiesService.createCrew(id, body);
   }
 
   @Delete('crews/:crewId')
+  @Roles('SUPERADMIN', 'MANAGER')
   deleteCrew(@Param('crewId') crewId: string) {
     return this.citiesService.deleteCrew(crewId);
   }

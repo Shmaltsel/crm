@@ -1,18 +1,17 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { EventsController } from './events.controller';
+import { EventsService } from './events.service';
+import { JwtService } from '@nestjs/jwt';
 
 describe('EventsController', () => {
-  let controller: EventsController;
-
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+  it('should be defined', async () => {
+    const module = await Test.createTestingModule({
       controllers: [EventsController],
+      providers: [
+        { provide: EventsService, useValue: {} },
+        { provide: JwtService, useValue: { verifyAsync: jest.fn() } },
+      ],
     }).compile();
-
-    controller = module.get<EventsController>(EventsController);
-  });
-
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
+    expect(module.get(EventsController)).toBeDefined();
   });
 });

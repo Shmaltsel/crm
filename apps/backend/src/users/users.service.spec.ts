@@ -1,18 +1,17 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { UsersService } from './users.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
 
 describe('UsersService', () => {
-  let service: UsersService;
-
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [UsersService],
+  it('should be defined', async () => {
+    const module = await Test.createTestingModule({
+      providers: [
+        UsersService,
+        { provide: PrismaService, useValue: { user: { findMany: jest.fn() } } },
+        { provide: TelegramService, useValue: { sendMessage: jest.fn() } },
+      ],
     }).compile();
-
-    service = module.get<UsersService>(UsersService);
-  });
-
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+    expect(module.get(UsersService)).toBeDefined();
   });
 });

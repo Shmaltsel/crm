@@ -34,16 +34,16 @@ describe("classifySchool", () => {
 });
 
 describe("classifySize для школи", () => {
-  it("малі < 150", () => {
-    expect(classifySize({ childrenCount: 100 }, "Школа")).toBe("small");
+  it("малі < 500", () => {
+    expect(classifySize({ childrenCount: 300 }, "Школа")).toBe("small");
   });
 
-  it("середні 150-500", () => {
-    expect(classifySize({ childrenCount: 300 }, "Школа")).toBe("medium");
+  it("середні 500-900", () => {
+    expect(classifySize({ childrenCount: 700 }, "Школа")).toBe("medium");
   });
 
-  it("великі 500+", () => {
-    expect(classifySize({ childrenCount: 600 }, "Школа")).toBe("large");
+  it("великі 900+", () => {
+    expect(classifySize({ childrenCount: 1000 }, "Школа")).toBe("large");
   });
 });
 

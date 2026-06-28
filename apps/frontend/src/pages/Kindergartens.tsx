@@ -27,6 +27,14 @@ export default function Kindergartens() {
   const deleteSchool = useDeleteSchool();
   const qc = useQueryClient();
 
+  const [userRole] = useState<string | null>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "null")?.role ?? null;
+    } catch {
+      return null;
+    }
+  });
+
   const navigate = useNavigate();
   const { selectedCity } = useSelectedCity();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -185,43 +193,47 @@ export default function Kindergartens() {
           )}
         </h1>
         <div className="flex gap-2 shrink-0">
-          <button
-            onClick={async () => {
-              if (!selectedCity.id) return alert("Спочатку оберіть місто");
-              if (
-                !window.confirm(
-                  `Імпортувати всі садочки з isuo.org для міста ${selectedCity.name}?`,
+          {userRole === "SUPERADMIN" && (
+            <button
+              onClick={async () => {
+                if (!selectedCity.id) return alert("Спочатку оберіть місто");
+                if (
+                  !window.confirm(
+                    `Імпортувати всі садочки з isuo.org для міста ${selectedCity.name}?`,
+                  )
                 )
-              )
-                return;
-              try {
-                const token = localStorage.getItem("token");
-                const res = await api.post(
-                  "/schools/bulk-import",
-                  { cityId: selectedCity.id, type: "Садочок" },
-                  {
-                    headers: { Authorization: `Bearer ${token}` },
-                    timeout: 120000,
-                  },
-                );
-                alert(
-                  `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
-                );
-                qc.invalidateQueries({ queryKey: ["schools"] });
-              } catch (e) {
-                alert("Помилка імпорту.");
-              }
-            }}
-            className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
-          >
-            📥 Імпорт з isuo
-          </button>
-          <button
-            onClick={handleOpenModal}
-            className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-          >
-            + Додати
-          </button>
+                  return;
+                try {
+                  const token = localStorage.getItem("token");
+                  const res = await api.post(
+                    "/schools/bulk-import",
+                    { cityId: selectedCity.id, type: "Садочок" },
+                    {
+                      headers: { Authorization: `Bearer ${token}` },
+                      timeout: 120000,
+                    },
+                  );
+                  alert(
+                    `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
+                  );
+                  qc.invalidateQueries({ queryKey: ["schools"] });
+                } catch (e) {
+                  alert("Помилка імпорту.");
+                }
+              }}
+              className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
+            >
+              📥 Імпорт з isuo
+            </button>
+          )}
+          {userRole === "SUPERADMIN" && (
+            <button
+              onClick={handleOpenModal}
+              className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+            >
+              + Додати
+            </button>
+          )}
         </div>
       </div>
 
@@ -274,12 +286,16 @@ export default function Kindergartens() {
                 <p className="font-semibold text-slate-800 leading-snug text-sm line-clamp-2 flex-1">
                   {school.name}
                 </p>
-                <button
-                  onClick={(e) => handleDeleteSchool(e, school.id, school.name)}
-                  className="text-slate-300 active:text-red-500 p-1 -mt-0.5 -mr-1 shrink-0"
-                >
-                  🗑
-                </button>
+                {userRole === "SUPERADMIN" && (
+                  <button
+                    onClick={(e) =>
+                      handleDeleteSchool(e, school.id, school.name)
+                    }
+                    className="text-slate-300 active:text-red-500 p-1 -mt-0.5 -mr-1 shrink-0"
+                  >
+                    🗑
+                  </button>
+                )}
               </div>
 
               {/* Рядок 2: директор (клікабельний телефон) + етап */}
@@ -335,12 +351,14 @@ export default function Kindergartens() {
         )}
 
         {/* FAB */}
-        <button
-          onClick={handleOpenModal}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
-        >
-          +
-        </button>
+        {userRole === "SUPERADMIN" && (
+          <button
+            onClick={handleOpenModal}
+            className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
+          >
+            +
+          </button>
+        )}
       </div>
 
       {/* Десктоп таблиця */}
@@ -388,14 +406,16 @@ export default function Kindergartens() {
                     )}
                   </td>
                   <td className="p-4 text-center">
-                    <button
-                      onClick={(e) =>
-                        handleDeleteSchool(e, school.id, school.name)
-                      }
-                      className="text-slate-400 hover:text-red-500 transition-colors p-2"
-                    >
-                      🗑
-                    </button>
+                    {userRole === "SUPERADMIN" && (
+                      <button
+                        onClick={(e) =>
+                          handleDeleteSchool(e, school.id, school.name)
+                        }
+                        className="text-slate-400 hover:text-red-500 transition-colors p-2"
+                      >
+                        🗑
+                      </button>
+                    )}
                   </td>
                 </tr>
               );

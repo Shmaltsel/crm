@@ -59,7 +59,13 @@ export default function Cities() {
     },
     [setSelectedCity],
   );
-
+  const [userRole] = useState<string | null>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "null")?.role ?? null;
+    } catch {
+      return null;
+    }
+  });
   const handleAddCity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCityName.trim()) return;
@@ -91,12 +97,14 @@ export default function Cities() {
         <h1 className="header-enter text-3xl font-bold text-slate-800">
           Міста
         </h1>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="header-btn-enter bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm flex items-center transition-all duration-150"
-        >
-          <span className="mr-2">+</span> Додати місто
-        </button>
+        {userRole === "SUPERADMIN" && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="header-btn-enter bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm flex items-center transition-all duration-150"
+          >
+            <span className="mr-2">+</span> Додати місто
+          </button>
+        )}
       </div>
 
       {isFetching ? (
@@ -127,15 +135,16 @@ export default function Cities() {
       )}
 
       {/* Мобільна плаваюча кнопка FAB */}
-      <button
-        onClick={() => setIsModalOpen(true)}
-        className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 active:scale-95 transition-transform opacity-0"
-        style={{
-          animation:
-            "fabPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) 0.2s forwards",
-        }}
-        aria-label="Додати місто"
-      >
+      {userRole === "SUPERADMIN" && (
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 active:scale-95 transition-transform opacity-0"
+          style={{ animation: "fabPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) 0.2s forwards" }}
+          aria-label="Додати місто"
+        >
+          +
+        </button>
+      )}
         <style>{`
           @keyframes fabPop {
             from { opacity: 0; transform: scale(0.5) translateY(20px); }

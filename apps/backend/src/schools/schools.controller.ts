@@ -10,8 +10,11 @@ import {
 } from '@nestjs/common';
 import { SchoolsService } from './schools.service';
 import { ParserService } from './parser.service';
-
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { AuthGuard } from '../auth/auth.guard';
 @Controller('schools')
+@UseGuards(AuthGuard, RolesGuard)
 export class SchoolsController {
   constructor(
     private readonly schoolsService: SchoolsService,
@@ -19,6 +22,7 @@ export class SchoolsController {
   ) {}
 
   @Post('bulk-import')
+  @Roles('SUPERADMIN', 'MANAGER')
   bulkImport(@Body() body: { cityId: string; type?: string }) {
     return this.schoolsService.bulkImport(
       body.cityId,
@@ -65,6 +69,7 @@ export class SchoolsController {
   }
 
   @Delete(':id')
+  @Roles('SUPERADMIN')
   remove(@Param('id') id: string) {
     return this.schoolsService.remove(id);
   }

@@ -2,13 +2,19 @@
   "name": "CRM",
   "private": true,
   "scripts": {
-  "dev": "concurrently \"pnpm --filter backend start:dev\" \"pnpm --filter frontend dev\""
-},
+    "dev": "concurrently \"pnpm --filter backend start:dev\" \"pnpm --filter frontend dev\"",
+    "test": "concurrently --kill-others-on-fail \"pnpm --filter backend test\" \"pnpm --filter frontend test:run\"",
+    "test:unit": "concurrently \"pnpm --filter backend test\" \"pnpm --filter frontend test:run\"",
+    "test:e2e:backend": "pnpm --filter backend test:e2e",
+    "test:e2e:frontend": "pnpm --filter frontend test:e2e",
+    "test:e2e": "concurrently --kill-others-on-fail \"pnpm test:e2e:backend\" \"pnpm test:e2e:frontend\"",
+    "test:all": "pnpm test:unit && pnpm test:e2e",
+    "test:coverage": "concurrently \"pnpm --filter backend test:cov\" \"pnpm --filter frontend test:coverage\""
+  },
   "devDependencies": {
     "concurrently": "^8.2.2"
   },
-  
   "prisma": {
-  "schema": "apps/backend/prisma/schema.prisma"
-}
+    "schema": "apps/backend/prisma/schema.prisma"
+  }
 }

@@ -12,6 +12,8 @@ import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import { CityProvider } from "./context/CityContext";
 
+import ProtectedRoute from "./components/ProtectedRoute";
+
 const CityProfile = lazy(() => import("./pages/CityProfile"));
 const EventReport = lazy(() => import("./pages/EventReport"));
 
@@ -79,7 +81,7 @@ export default function App() {
             }
           >
             {/* Редірект з кореня на сторінку міст за замовчуванням */}
-            <Route index element={<Navigate to="/cities" replace />} />
+            <Route index element={<Navigate to="/schools" replace />} />
 
             {/* Обгортаємо всі вкладені маршрути в Suspense. 
               Коли React намагається відрендерити "ліниву" сторінку, він показує fallback (PageLoader), 
@@ -88,9 +90,11 @@ export default function App() {
             <Route
               path="cities"
               element={
-                <Suspense fallback={<PageLoader />}>
-                  <Cities />
-                </Suspense>
+                <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
+                  <Suspense fallback={<PageLoader />}>
+                    <Cities />
+                  </Suspense>
+                </ProtectedRoute>
               }
             />
 
@@ -115,18 +119,22 @@ export default function App() {
             <Route
               path="employees"
               element={
-                <Suspense fallback={<PageLoader />}>
-                  <Employees />
-                </Suspense>
+                <ProtectedRoute allowedRoles={["SUPERADMIN"]}>
+                  <Suspense fallback={<PageLoader />}>
+                    <Employees />
+                  </Suspense>
+                </ProtectedRoute>
               }
             />
 
             <Route
               path="finance"
               element={
-                <Suspense fallback={<PageLoader />}>
-                  <Finance />
-                </Suspense>
+                <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
+                  <Suspense fallback={<PageLoader />}>
+                    <Finance />
+                  </Suspense>
+                </ProtectedRoute>
               }
             />
 
@@ -141,9 +149,11 @@ export default function App() {
             <Route
               path="dashboard"
               element={
-                <Suspense fallback={<PageLoader />}>
-                  <Dashboard />
-                </Suspense>
+                <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
+                  <Suspense fallback={<PageLoader />}>
+                    <Dashboard />
+                  </Suspense>
+                </ProtectedRoute>
               }
             />
 
