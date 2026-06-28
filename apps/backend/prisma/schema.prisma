@@ -8,23 +8,24 @@ datasource db {
 }
 
 model User {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   name           String
-  email          String   @unique
+  email          String       @unique
   phone          String?
   password       String
-  role           String   @default("MANAGER")
+  role           String       @default("MANAGER")
   cityId         String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
   telegramId     String?
   telegramChatId String?
   car            String?
-  balance        Float    @default(0)
-  managedCities  City[]   @relation("CityManager")
-  crewAsDriver   Crew[]   @relation("DriverCrew")
-  crewAsHost     Crew[]   @relation("HostCrew")
-  city           City?    @relation(fields: [cityId], references: [id])
+  balance        Float        @default(0)
+  managedCities  City[]       @relation("CityManager")
+  crewAsDriver   Crew[]       @relation("DriverCrew")
+  crewAsHost     Crew[]       @relation("HostCrew")
+  city           City?        @relation(fields: [cityId], references: [id])
+  salaryItems    SalaryItem[]
 }
 
 model City {
@@ -116,27 +117,27 @@ model Event {
 }
 
 model EventReport {
-  id                String   @id @default(uuid())
-  eventId           String   @unique
+  id                String        @id @default(uuid())
+  eventId           String        @unique
   directorSatisfied Boolean?
   teachersSatisfied Boolean?
-  hadIssues         Boolean  @default(false)
+  hadIssues         Boolean       @default(false)
   comment           String?
   rating            Float?
-  createdAt         DateTime @default(now())
-  announcementDone  Boolean  @default(false)
-  materialShown     Boolean  @default(false)
-  childrenCount     Int      @default(0)
-  classesCount      Int      @default(0)
-  privilegedCount   Int      @default(0)
-  showingsCount     Int      @default(0)
-  totalSum          Float    @default(0)
-  schoolSum         Float    @default(0)
-  expenses          Json     @default("[]")
-  remainderSum      Float    @default(0)
-  salaries          Json     @default("[]")
-  event             Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt         DateTime      @default(now())
+  announcementDone  Boolean       @default(false)
+  materialShown     Boolean       @default(false)
+  childrenCount     Int           @default(0)
+  classesCount      Int           @default(0)
+  privilegedCount   Int           @default(0)
+  showingsCount     Int           @default(0)
+  totalSum          Float         @default(0)
+  schoolSum         Float         @default(0)
+  remainderSum      Float         @default(0)
+  event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
   photos            File[]
+  expenseItems      ExpenseItem[]
+  salaryItems       SalaryItem[]
 }
 
 model File {
@@ -207,6 +208,35 @@ model Project {
   name      String   @unique
   color     String   @default("blue")
   createdAt DateTime @default(now())
+}
+
+model ExpenseItem {
+  id        String   @id @default(uuid())
+  reportId  String
+  category  String // "Транспорт", "Матеріали", "Реклама" тощо
+  name      String?
+  amount    Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+
+  report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+}
+
+model SalaryItem {
+  id        String   @id @default(uuid())
+  reportId  String
+  userId    String?
+  userName  String
+  amount    Decimal  @db.Decimal(12, 2)
+  role      String? // "ведучий", "водій"
+  createdAt DateTime @default(now())
+
+  report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user   User?       @relation(fields: [userId], references: [id])
+
+  @@index([reportId])
+  @@index([userId])
 }
 
 enum EventStatus {

@@ -267,11 +267,17 @@ export default function ReportModal({
 
   const handleSave = () => {
     const salariesArr = crewMembers
-      .map((m) => ({ userId: m.id, name: m.name, amount: salaries[m.id] || 0 }))
+      .map((m) => ({
+        userId: m.id,
+        name: m.name,
+        amount: salaries[m.id] || 0,
+        role: m.role,
+      }))
       .filter((s) => s.amount > 0);
+
     onSave({
       ...form,
-      expenses,
+      expenses, // тепер підтримує category
       schoolSum,
       remainderSum: remainder,
       salaries: salariesArr,

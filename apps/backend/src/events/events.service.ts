@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { Prisma } from '@prisma/client';
 
 import { CreateEventDto } from './dto/create-event.dto';
 import { SubmitReportDto } from './dto/submit-report.dto';
@@ -367,7 +368,7 @@ export class EventsService {
     reportData: SubmitReportDto,
     user: JwtUser,
   ) {
-    // 1. Зберігаємо звіт у базу
+    // 1. Зберігаємо звіт у базу (без JSON полів)
     await this.prisma.eventReport.upsert({
       where: { eventId },
       update: {
@@ -379,10 +380,8 @@ export class EventsService {
         showingsCount: reportData.showingsCount,
         totalSum: reportData.totalSum,
         schoolSum: reportData.schoolSum,
-        expenses: reportData.expenses || [],
         remainderSum: reportData.remainderSum,
         rating: reportData.rating,
-        salaries: reportData.salaries || [],
       },
       create: {
         eventId,
@@ -394,17 +393,42 @@ export class EventsService {
         showingsCount: reportData.showingsCount,
         totalSum: reportData.totalSum,
         schoolSum: reportData.schoolSum,
-        expenses: reportData.expenses || [],
         remainderSum: reportData.remainderSum,
         rating: reportData.rating,
-        salaries: reportData.salaries || [],
       },
     });
 
+    // Видаляємо старі записи витрат і зарплат
+    await this.prisma.expenseItem.deleteMany({ where: { reportId: eventId } });
+    await this.prisma.salaryItem.deleteMany({ where: { reportId: eventId } });
+
+    // Створюємо нові записи витрат
+    if (reportData.expenses?.length) {
+      await this.prisma.expenseItem.createMany({
+        data: reportData.expenses.map((exp: any) => ({
+          reportId: eventId,
+          category: exp.category || 'Інше',
+          name: exp.name,
+          amount: new Prisma.Decimal(exp.amount || 0),
+        })),
+      });
+    }
+
+    // Створюємо нові записи зарплат + нарахування балансу
     if (reportData.salaries?.length) {
+      await this.prisma.salaryItem.createMany({
+        data: reportData.salaries.map((s: any) => ({
+          reportId: eventId,
+          userId: s.userId,
+          userName: s.name,
+          amount: new Prisma.Decimal(s.amount || 0),
+          role: s.role,
+        })),
+      });
+
       await Promise.all(
         reportData.salaries
-          .filter((s) => s.amount > 0)
+          .filter((s) => s.userId && s.amount > 0)
           .map((s) =>
             this.prisma.user.update({
               where: { id: s.userId },
@@ -413,7 +437,8 @@ export class EventsService {
           ),
       );
     }
-    // 2. Оновлюємо статус події на 'REPORT' (щоб вона не зникала і давала можливість перейти до RE_SALE)
+
+    // 2. Оновлюємо статус події
     return this.prisma.event.update({
       where: { id: eventId },
       data: {
@@ -468,7 +493,9 @@ export class EventsService {
             schoolSum: true,
             remainderSum: true,
             rating: true,
-            expenses: true,
+            expenseItems: {
+              select: { category: true, name: true, amount: true },
+            },
           },
         },
         history: { orderBy: { createdAt: 'asc' } },

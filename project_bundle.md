@@ -26,7 +26,10 @@
 │   │   │   │   │   └── migration.sql
 │   │   │   │   ├── 20260623140450_add_car_field
 │   │   │   │   │   └── migration.sql
+│   │   │   │   ├── 20260628223725_add_expense_salary_items
+│   │   │   │   │   └── migration.sql
 │   │   │   │   └── migration_lock.toml
+│   │   │   ├── prisma.mock.ts
 │   │   │   ├── schema.prisma
 │   │   │   └── seed-admin.js
 │   │   ├── src
@@ -263,6 +266,21 @@
 └── project_code.xml
 ```
 
+### File: apps/backend/prisma/prisma.mock.ts
+```ts
+  0 | import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
+  1 | import { PrismaService } from './prisma.service';
+  2 | 
+  3 | // Типізація для нашого моку, щоб автодоповнення працювало в тестах
+  4 | export type MockPrismaService = DeepMockProxy<PrismaService>;
+  5 | 
+  6 | // Функція, яка створює глибокий мок PrismaClient
+  7 | export const createPrismaMock = (): MockPrismaService => {
+  8 |   return mockDeep<PrismaService>();
+  9 | };
+ 10 | 
+```
+
 ### File: apps/backend/prisma/schema.prisma
 ```prisma
   0 | generator client {
@@ -275,220 +293,250 @@
   7 | }
   8 | 
   9 | model User {
- 10 |   id             String   @id @default(uuid())
+ 10 |   id             String       @id @default(uuid())
  11 |   name           String
- 12 |   email          String   @unique
+ 12 |   email          String       @unique
  13 |   phone          String?
  14 |   password       String
- 15 |   role           String   @default("MANAGER")
+ 15 |   role           String       @default("MANAGER")
  16 |   cityId         String?
- 17 |   createdAt      DateTime @default(now())
- 18 |   updatedAt      DateTime @updatedAt
+ 17 |   createdAt      DateTime     @default(now())
+ 18 |   updatedAt      DateTime     @updatedAt
  19 |   telegramId     String?
  20 |   telegramChatId String?
  21 |   car            String?
- 22 |   balance        Float    @default(0)
- 23 |   managedCities  City[]   @relation("CityManager")
- 24 |   crewAsDriver   Crew[]   @relation("DriverCrew")
- 25 |   crewAsHost     Crew[]   @relation("HostCrew")
- 26 |   city           City?    @relation(fields: [cityId], references: [id])
- 27 | }
- 28 | 
- 29 | model City {
- 30 |   id        String        @id @default(uuid())
- 31 |   name      String
- 32 |   managerId String?
- 33 |   createdAt DateTime      @default(now())
- 34 |   manager   User?         @relation("CityManager", fields: [managerId], references: [id])
- 35 |   crews     Crew[]
- 36 |   events    Event[]
- 37 |   issues    IssueReport[]
- 38 |   schools   School[]
- 39 |   users     User[]
- 40 | }
- 41 | 
- 42 | model School {
- 43 |   id            String   @id @default(uuid())
- 44 |   name          String
- 45 |   type          String
- 46 |   cityId        String
- 47 |   address       String?
- 48 |   director      String?
- 49 |   phone         String?
- 50 |   email         String?
- 51 |   notes         String?
- 52 |   childrenCount Int?
- 53 |   isHotClient   Boolean  @default(false)
- 54 |   rating        Float?
- 55 |   createdAt     DateTime @default(now())
- 56 |   updatedAt     DateTime @updatedAt
- 57 |   events        Event[]
- 58 |   city          City     @relation(fields: [cityId], references: [id])
- 59 | 
- 60 |   @@index([cityId])
- 61 | }
- 62 | 
- 63 | model Crew {
- 64 |   id        String   @id @default(uuid())
- 65 |   name      String
- 66 |   cityId    String
- 67 |   hostId    String?
- 68 |   driverId  String?
- 69 |   car       String?
- 70 |   carPlate  String?
- 71 |   phone     String?
- 72 |   isActive  Boolean  @default(true)
- 73 |   createdAt DateTime @default(now())
- 74 |   city      City     @relation(fields: [cityId], references: [id])
- 75 |   driver    User?    @relation("DriverCrew", fields: [driverId], references: [id])
- 76 |   host      User?    @relation("HostCrew", fields: [hostId], references: [id])
- 77 |   events    Event[]
- 78 | }
- 79 | 
- 80 | model Event {
- 81 |   id              String            @id @default(uuid())
- 82 |   cityId          String
- 83 |   schoolId        String
- 84 |   crewId          String?
- 85 |   project         String
- 86 |   date            DateTime
- 87 |   time            String?
- 88 |   status          EventStatus       @default(BASE)
- 89 |   childrenPlanned Int?
- 90 |   childrenActual  Int?
- 91 |   price           Float?
- 92 |   received        Float?
- 93 |   paymentMethod   String?
- 94 |   address         String?
- 95 |   contactPerson   String?
- 96 |   contactPhone    String?
- 97 |   equipment       String?
- 98 |   nextContact     DateTime?
- 99 |   nextProject     String?
-100 |   responsibleId   String?
-101 |   createdAt       DateTime          @default(now())
-102 |   updatedAt       DateTime          @updatedAt
-103 |   city            City              @relation(fields: [cityId], references: [id])
-104 |   crew            Crew?             @relation(fields: [crewId], references: [id])
-105 |   school          School            @relation(fields: [schoolId], references: [id])
-106 |   history         EventHistory[]
-107 |   preparation     EventPreparation?
-108 |   report          EventReport?
-109 |   files           File[]
-110 |   issues          IssueReport[]
-111 | 
-112 |   @@index([cityId])
-113 |   @@index([status])
-114 |   @@index([schoolId])
-115 | }
-116 | 
-117 | model EventReport {
-118 |   id                String   @id @default(uuid())
-119 |   eventId           String   @unique
-120 |   directorSatisfied Boolean?
-121 |   teachersSatisfied Boolean?
-122 |   hadIssues         Boolean  @default(false)
-123 |   comment           String?
-124 |   rating            Float?
-125 |   createdAt         DateTime @default(now())
-126 |   announcementDone  Boolean  @default(false)
-127 |   materialShown     Boolean  @default(false)
-128 |   childrenCount     Int      @default(0)
-129 |   classesCount      Int      @default(0)
-130 |   privilegedCount   Int      @default(0)
-131 |   showingsCount     Int      @default(0)
-132 |   totalSum          Float    @default(0)
-133 |   schoolSum         Float    @default(0)
-134 |   expenses          Json     @default("[]")
-135 |   remainderSum      Float    @default(0)
-136 |   salaries          Json     @default("[]")
-137 |   event             Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-138 |   photos            File[]
-139 | }
-140 | 
-141 | model File {
-142 |   id        String       @id @default(uuid())
-143 |   name      String
-144 |   url       String
-145 |   size      Int
-146 |   eventId   String?
-147 |   reportId  String?
-148 |   createdAt DateTime     @default(now())
-149 |   event     Event?       @relation(fields: [eventId], references: [id])
-150 |   report    EventReport? @relation(fields: [reportId], references: [id])
-151 | }
-152 | 
-153 | model EventHistory {
-154 |   id        String   @id @default(uuid())
-155 |   eventId   String
-156 |   action    String
-157 |   comment   String?
-158 |   userId    String
-159 |   userName  String
-160 |   role      String
-161 |   createdAt DateTime @default(now())
-162 |   event     Event    @relation(fields: [eventId], references: [id])
-163 | }
-164 | 
-165 | model EventPreparation {
-166 |   id               String @id @default(uuid())
-167 |   eventId          String @unique
-168 |   assignCrew       String @default("Заплановано")
-169 |   bookEquipment    String @default("Заплановано")
-170 |   prepareDocs      String @default("Заплановано")
-171 |   prepareMaterials String @default("Заплановано")
-172 |   remindSchool     String @default("Заплановано")
-173 |   event            Event  @relation(fields: [eventId], references: [id])
-174 | }
-175 | 
-176 | model IssueReport {
-177 |   id               String    @id @default(uuid())
-178 |   eventId          String
-179 |   schoolName       String
-180 |   eventName        String
-181 |   message          String
-182 |   cityId           String
-183 |   status           String    @default("Планується")
-184 |   createdAt        DateTime  @default(now())
-185 |   deadline         DateTime?
-186 |   assignedUserId   String?
-187 |   assignedUserName String?
-188 |   city             City      @relation(fields: [cityId], references: [id])
-189 |   event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-190 | 
-191 |   @@index([cityId])
-192 | }
-193 | 
-194 | model SchoolContact {
-195 |   id           String   @id @default(uuid())
-196 |   city         String   @default("Львів")
-197 |   schoolNumber String
-198 |   contactName  String
-199 |   phone        String
-200 |   role         String?
-201 |   createdAt    DateTime @default(now())
-202 | }
-203 | 
-204 | model Project {
-205 |   id        String   @id @default(uuid())
-206 |   name      String   @unique
-207 |   color     String   @default("blue")
-208 |   createdAt DateTime @default(now())
-209 | }
-210 | 
-211 | enum EventStatus {
-212 |   BASE
-213 |   FIRST_CONTACT
-214 |   INTERESTED
-215 |   PRE_APPROVAL
-216 |   DATE_CONFIRMED
-217 |   PREPARATION
-218 |   IN_PROGRESS
-219 |   DONE
-220 |   REPORT
-221 |   RE_SALE
-222 | }
-223 | 
+ 22 |   balance        Float        @default(0)
+ 23 |   managedCities  City[]       @relation("CityManager")
+ 24 |   crewAsDriver   Crew[]       @relation("DriverCrew")
+ 25 |   crewAsHost     Crew[]       @relation("HostCrew")
+ 26 |   city           City?        @relation(fields: [cityId], references: [id])
+ 27 |   salaryItems    SalaryItem[]
+ 28 | }
+ 29 | 
+ 30 | model City {
+ 31 |   id        String        @id @default(uuid())
+ 32 |   name      String
+ 33 |   managerId String?
+ 34 |   createdAt DateTime      @default(now())
+ 35 |   manager   User?         @relation("CityManager", fields: [managerId], references: [id])
+ 36 |   crews     Crew[]
+ 37 |   events    Event[]
+ 38 |   issues    IssueReport[]
+ 39 |   schools   School[]
+ 40 |   users     User[]
+ 41 | }
+ 42 | 
+ 43 | model School {
+ 44 |   id            String   @id @default(uuid())
+ 45 |   name          String
+ 46 |   type          String
+ 47 |   cityId        String
+ 48 |   address       String?
+ 49 |   director      String?
+ 50 |   phone         String?
+ 51 |   email         String?
+ 52 |   notes         String?
+ 53 |   childrenCount Int?
+ 54 |   isHotClient   Boolean  @default(false)
+ 55 |   rating        Float?
+ 56 |   createdAt     DateTime @default(now())
+ 57 |   updatedAt     DateTime @updatedAt
+ 58 |   events        Event[]
+ 59 |   city          City     @relation(fields: [cityId], references: [id])
+ 60 | 
+ 61 |   @@index([cityId])
+ 62 | }
+ 63 | 
+ 64 | model Crew {
+ 65 |   id        String   @id @default(uuid())
+ 66 |   name      String
+ 67 |   cityId    String
+ 68 |   hostId    String?
+ 69 |   driverId  String?
+ 70 |   car       String?
+ 71 |   carPlate  String?
+ 72 |   phone     String?
+ 73 |   isActive  Boolean  @default(true)
+ 74 |   createdAt DateTime @default(now())
+ 75 |   city      City     @relation(fields: [cityId], references: [id])
+ 76 |   driver    User?    @relation("DriverCrew", fields: [driverId], references: [id])
+ 77 |   host      User?    @relation("HostCrew", fields: [hostId], references: [id])
+ 78 |   events    Event[]
+ 79 | }
+ 80 | 
+ 81 | model Event {
+ 82 |   id              String            @id @default(uuid())
+ 83 |   cityId          String
+ 84 |   schoolId        String
+ 85 |   crewId          String?
+ 86 |   project         String
+ 87 |   date            DateTime
+ 88 |   time            String?
+ 89 |   status          EventStatus       @default(BASE)
+ 90 |   childrenPlanned Int?
+ 91 |   childrenActual  Int?
+ 92 |   price           Float?
+ 93 |   received        Float?
+ 94 |   paymentMethod   String?
+ 95 |   address         String?
+ 96 |   contactPerson   String?
+ 97 |   contactPhone    String?
+ 98 |   equipment       String?
+ 99 |   nextContact     DateTime?
+100 |   nextProject     String?
+101 |   responsibleId   String?
+102 |   createdAt       DateTime          @default(now())
+103 |   updatedAt       DateTime          @updatedAt
+104 |   city            City              @relation(fields: [cityId], references: [id])
+105 |   crew            Crew?             @relation(fields: [crewId], references: [id])
+106 |   school          School            @relation(fields: [schoolId], references: [id])
+107 |   history         EventHistory[]
+108 |   preparation     EventPreparation?
+109 |   report          EventReport?
+110 |   files           File[]
+111 |   issues          IssueReport[]
+112 | 
+113 |   @@index([cityId])
+114 |   @@index([status])
+115 |   @@index([schoolId])
+116 | }
+117 | 
+118 | model EventReport {
+119 |   id                String        @id @default(uuid())
+120 |   eventId           String        @unique
+121 |   directorSatisfied Boolean?
+122 |   teachersSatisfied Boolean?
+123 |   hadIssues         Boolean       @default(false)
+124 |   comment           String?
+125 |   rating            Float?
+126 |   createdAt         DateTime      @default(now())
+127 |   announcementDone  Boolean       @default(false)
+128 |   materialShown     Boolean       @default(false)
+129 |   childrenCount     Int           @default(0)
+130 |   classesCount      Int           @default(0)
+131 |   privilegedCount   Int           @default(0)
+132 |   showingsCount     Int           @default(0)
+133 |   totalSum          Float         @default(0)
+134 |   schoolSum         Float         @default(0)
+135 |   remainderSum      Float         @default(0)
+136 |   event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+137 |   photos            File[]
+138 |   expenseItems      ExpenseItem[]
+139 |   salaryItems       SalaryItem[]
+140 | }
+141 | 
+142 | model File {
+143 |   id        String       @id @default(uuid())
+144 |   name      String
+145 |   url       String
+146 |   size      Int
+147 |   eventId   String?
+148 |   reportId  String?
+149 |   createdAt DateTime     @default(now())
+150 |   event     Event?       @relation(fields: [eventId], references: [id])
+151 |   report    EventReport? @relation(fields: [reportId], references: [id])
+152 | }
+153 | 
+154 | model EventHistory {
+155 |   id        String   @id @default(uuid())
+156 |   eventId   String
+157 |   action    String
+158 |   comment   String?
+159 |   userId    String
+160 |   userName  String
+161 |   role      String
+162 |   createdAt DateTime @default(now())
+163 |   event     Event    @relation(fields: [eventId], references: [id])
+164 | }
+165 | 
+166 | model EventPreparation {
+167 |   id               String @id @default(uuid())
+168 |   eventId          String @unique
+169 |   assignCrew       String @default("Заплановано")
+170 |   bookEquipment    String @default("Заплановано")
+171 |   prepareDocs      String @default("Заплановано")
+172 |   prepareMaterials String @default("Заплановано")
+173 |   remindSchool     String @default("Заплановано")
+174 |   event            Event  @relation(fields: [eventId], references: [id])
+175 | }
+176 | 
+177 | model IssueReport {
+178 |   id               String    @id @default(uuid())
+179 |   eventId          String
+180 |   schoolName       String
+181 |   eventName        String
+182 |   message          String
+183 |   cityId           String
+184 |   status           String    @default("Планується")
+185 |   createdAt        DateTime  @default(now())
+186 |   deadline         DateTime?
+187 |   assignedUserId   String?
+188 |   assignedUserName String?
+189 |   city             City      @relation(fields: [cityId], references: [id])
+190 |   event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+191 | 
+192 |   @@index([cityId])
+193 | }
+194 | 
+195 | model SchoolContact {
+196 |   id           String   @id @default(uuid())
+197 |   city         String   @default("Львів")
+198 |   schoolNumber String
+199 |   contactName  String
+200 |   phone        String
+201 |   role         String?
+202 |   createdAt    DateTime @default(now())
+203 | }
+204 | 
+205 | model Project {
+206 |   id        String   @id @default(uuid())
+207 |   name      String   @unique
+208 |   color     String   @default("blue")
+209 |   createdAt DateTime @default(now())
+210 | }
+211 | 
+212 | model ExpenseItem {
+213 |   id        String   @id @default(uuid())
+214 |   reportId  String
+215 |   category  String // "Транспорт", "Матеріали", "Реклама" тощо
+216 |   name      String?
+217 |   amount    Decimal  @db.Decimal(12, 2)
+218 |   createdAt DateTime @default(now())
+219 | 
+220 |   report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+221 | 
+222 |   @@index([reportId])
+223 | }
+224 | 
+225 | model SalaryItem {
+226 |   id        String   @id @default(uuid())
+227 |   reportId  String
+228 |   userId    String?
+229 |   userName  String
+230 |   amount    Decimal  @db.Decimal(12, 2)
+231 |   role      String? // "ведучий", "водій"
+232 |   createdAt DateTime @default(now())
+233 | 
+234 |   report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+235 |   user   User?       @relation(fields: [userId], references: [id])
+236 | 
+237 |   @@index([reportId])
+238 |   @@index([userId])
+239 | }
+240 | 
+241 | enum EventStatus {
+242 |   BASE
+243 |   FIRST_CONTACT
+244 |   INTERESTED
+245 |   PRE_APPROVAL
+246 |   DATE_CONFIRMED
+247 |   PREPARATION
+248 |   IN_PROGRESS
+249 |   DONE
+250 |   REPORT
+251 |   RE_SALE
+252 | }
+253 | 
 ```
 
 ### File: apps/backend/prisma/seed-admin.js
@@ -758,40 +806,43 @@
  10 |   ) {}
  11 | 
  12 |   async login(email: string, pass: string) {
- 13 |     // Шукаємо користувача через Prisma (в usersService цього методу ще немає, тому звернемось до Prisma напряму)
- 14 |     const user = await this.usersService['prisma'].user.findUnique({
- 15 |       where: { email },
- 16 |     });
- 17 | 
- 18 |     if (!user) {
- 19 |       throw new UnauthorizedException('Невірний email або пароль');
- 20 |     }
+ 13 |     // Тепер безпечно викликаємо публічний метод з UsersService, ізолюючи БД
+ 14 |     const user = await this.usersService.findByEmail(email);
+ 15 | 
+ 16 |     if (!user) {
+ 17 |       throw new UnauthorizedException('Невірний email або пароль');
+ 18 |     }
+ 19 | 
+ 20 |     const isPasswordValid = await bcrypt.compare(pass, user.password);
  21 | 
- 22 |     const isPasswordValid = await bcrypt.compare(pass, user.password);
- 23 | 
- 24 |     if (!isPasswordValid) {
- 25 |       throw new UnauthorizedException('Невірний email або пароль');
- 26 |     }
- 27 | 
- 28 |     // Генеруємо "корисне навантаження" для токена
- 29 |     // Було:
- 30 | // const payload = { sub: user.id, email: user.email, role: user.role };
- 31 | 
- 32 | // Стало:
- 33 |     const payload = { sub: user.id, email: user.email, role: user.role, name: user.name };
- 34 | 
- 35 |     return {
- 36 |       access_token: await this.jwtService.signAsync(payload),
- 37 |       user: {
- 38 |         id: user.id,
- 39 |         name: user.name,
- 40 |         email: user.email,
- 41 |         role: user.role,
- 42 |       },
- 43 |     };
- 44 |   }
- 45 | }
- 46 | 
+ 22 |     if (!isPasswordValid) {
+ 23 |       throw new UnauthorizedException('Невірний email або пароль');
+ 24 |     }
+ 25 | 
+ 26 |     // Генеруємо "корисне навантаження" для токена
+ 27 |     // Було:
+ 28 |     // const payload = { sub: user.id, email: user.email, role: user.role };
+ 29 | 
+ 30 |     // Стало:
+ 31 |     const payload = {
+ 32 |       sub: user.id,
+ 33 |       email: user.email,
+ 34 |       role: user.role,
+ 35 |       name: user.name,
+ 36 |     };
+ 37 | 
+ 38 |     return {
+ 39 |       access_token: await this.jwtService.signAsync(payload),
+ 40 |       user: {
+ 41 |         id: user.id,
+ 42 |         name: user.name,
+ 43 |         email: user.email,
+ 44 |         role: user.role,
+ 45 |       },
+ 46 |     };
+ 47 |   }
+ 48 | }
+ 49 | 
 ```
 
 ### File: apps/backend/src/auth/decorators/current-user.decorator.ts
@@ -864,17 +915,23 @@
   0 | import { Test } from '@nestjs/testing';
   1 | import { CitiesController } from './cities.controller';
   2 | import { CitiesService } from './cities.service';
-  3 | 
-  4 | describe('CitiesController', () => {
-  5 |   it('should be defined', async () => {
-  6 |     const module = await Test.createTestingModule({
-  7 |       controllers: [CitiesController],
-  8 |       providers: [{ provide: CitiesService, useValue: {} }],
-  9 |     }).compile();
- 10 |     expect(module.get(CitiesController)).toBeDefined();
- 11 |   });
- 12 | });
- 13 | 
+  3 | import { AuthGuard } from '../auth/auth.guard';
+  4 | import { RolesGuard } from '../auth/guards/roles.guard';
+  5 | 
+  6 | describe('CitiesController', () => {
+  7 |   it('should be defined', async () => {
+  8 |     const module = await Test.createTestingModule({
+  9 |       controllers: [CitiesController],
+ 10 |       providers: [
+ 11 |         { provide: CitiesService, useValue: {} },
+ 12 |         { provide: AuthGuard, useValue: { canActivate: () => true } },
+ 13 |         { provide: RolesGuard, useValue: { canActivate: () => true } },
+ 14 |       ],
+ 15 |     }).compile();
+ 16 |     expect(module.get(CitiesController)).toBeDefined();
+ 17 |   });
+ 18 | });
+ 19 | 
 ```
 
 ### File: apps/backend/src/cities/cities.controller.ts
@@ -972,7 +1029,7 @@
   2 | 
   3 | @Injectable()
   4 | export class CitiesService {
-  5 |   constructor(private prisma: PrismaService) {}
+  5 |   constructor(private readonly prisma: PrismaService) {}
   6 | 
   7 |   async create(name: string) {
   8 |     return this.prisma.city.create({
@@ -1761,15 +1818,24 @@
   9 |   totalSum: number;
  10 |   schoolSum: number;
  11 | 
- 12 |   expenses: any[];
- 13 | 
- 14 |   remainderSum: number;
- 15 | 
- 16 |   rating?: number;
+ 12 |   expenses: Array<{
+ 13 |     category?: string;
+ 14 |     name?: string;
+ 15 |     amount: number;
+ 16 |   }>;
  17 | 
- 18 |   salaries: { userId: string; name: string; amount: number }[];
- 19 | }
- 20 | 
+ 18 |   remainderSum: number;
+ 19 | 
+ 20 |   rating?: number;
+ 21 | 
+ 22 |   salaries: Array<{
+ 23 |     userId: string;
+ 24 |     name: string;
+ 25 |     amount: number;
+ 26 |     role?: string;
+ 27 |   }>;
+ 28 | }
+ 29 | 
 ```
 
 ### File: apps/backend/src/events/events-scheduler.service.ts
@@ -2276,483 +2342,510 @@
   0 | import { Injectable, Logger } from '@nestjs/common';
   1 | import { PrismaService } from '../prisma/prisma.service';
   2 | import { TelegramService } from '../telegram/telegram.service';
-  3 | 
-  4 | import { CreateEventDto } from './dto/create-event.dto';
-  5 | import { SubmitReportDto } from './dto/submit-report.dto';
-  6 | import { JwtUser } from '../auth/interfaces/jwt-user.interface';
-  7 | 
-  8 | /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-  9 | 
- 10 | const FIELD_ROLES = ['DRIVER', 'HOST'];
- 11 | 
- 12 | @Injectable()
- 13 | export class EventsService {
- 14 |   private readonly logger = new Logger(EventsService.name);
- 15 | 
- 16 |   constructor(
- 17 |     private prisma: PrismaService,
- 18 |     private telegramService: TelegramService,
- 19 |   ) {}
- 20 | 
- 21 |   // Список подій для сторінки "Події".
- 22 |   // Водій/ведучий бачить тільки події, де він призначений в екіпаж.
- 23 |   // Решта ролей (менеджер, адмін тощо) бачать усі події.
- 24 |   async findAllForUser(user: JwtUser) {
- 25 |     const isFieldStaff = FIELD_ROLES.includes(user.role);
- 26 | 
- 27 |     return this.prisma.event.findMany({
- 28 |       where: isFieldStaff
- 29 |         ? {
- 30 |             crew: {
- 31 |               OR: [{ hostId: user.sub }, { driverId: user.sub }],
- 32 |             },
- 33 |           }
- 34 |         : {},
- 35 |       include: {
- 36 |         school: { select: { id: true, name: true, type: true } },
- 37 |         city: { select: { id: true, name: true } },
- 38 |         crew: {
- 39 |           include: {
- 40 |             host: { select: { id: true, name: true } },
- 41 |             driver: { select: { id: true, name: true } },
- 42 |           },
- 43 |         },
- 44 |       },
- 45 |       orderBy: { date: 'asc' },
- 46 |     });
- 47 |   }
- 48 | 
- 49 |   // Оновлюємо метод create
- 50 |   async create(data: CreateEventDto, user: JwtUser) {
- 51 |     return this.prisma.event.create({
- 52 |       data: {
- 53 |         ...data,
- 54 |         status: 'BASE' as never,
- 55 |         date: new Date(data.date),
- 56 |         history: {
- 57 |           create: {
- 58 |             action: 'Створено подію. Етап: База',
- 59 |             userId: user.sub, // Беремо ID з токена
- 60 |             userName: user.name, // Беремо ім'я з токена
- 61 |             role: user.role, // Беремо роль з токена
- 62 |           },
- 63 |         },
- 64 |       },
- 65 |       include: { history: true },
- 66 |     });
- 67 |   }
- 68 | 
- 69 |   // Оновлюємо метод updateStatus
- 70 |   async updateStatus(
- 71 |     eventId: string,
- 72 |     newStatus: string,
- 73 |     actionName: string,
- 74 |     comment: string | undefined,
- 75 |     user: JwtUser,
- 76 |   ) {
- 77 |     return this.prisma.event.update({
- 78 |       where: { id: eventId },
- 79 |       data: {
- 80 |         status: newStatus as never,
- 81 |         history: {
- 82 |           create: {
- 83 |             action: actionName,
- 84 |             comment: comment || null,
- 85 |             userId: user.sub, // Більше ніяких 'superadmin-123'!
- 86 |             userName: user.name,
- 87 |             role: user.role,
- 88 |           },
- 89 |         },
- 90 |       },
- 91 |       include: { crew: true, history: { orderBy: { createdAt: 'desc' } } },
- 92 |     });
- 93 |   }
- 94 | 
- 95 |   // Оновлюємо статус підготовки
- 96 |   async updatePreparationStatus(
- 97 |     eventId: string,
- 98 |     field: string,
- 99 |     status: string,
-100 |   ) {
-101 |     const existing = await this.prisma.eventPreparation.findUnique({
-102 |       where: { eventId },
-103 |     });
-104 | 
-105 |     if (existing) {
-106 |       return this.prisma.eventPreparation.update({
-107 |         where: { eventId },
-108 |         data: { [field]: status },
-109 |       });
-110 |     } else {
-111 |       return this.prisma.eventPreparation.create({
-112 |         data: { eventId, [field]: status },
-113 |       });
-114 |     }
-115 |   }
-116 | 
-117 |   // --- ВСТАВЛЯЙ ОНОВЛЕНИЙ МЕТОД ТУТ ---
-118 |   async assignCrewToEvent(
-119 |     eventId: string,
-120 |     crewId: string, // ЗМІНЕНО: Тепер приймаємо тільки ID існуючого екіпажу
-121 |   ) {
-122 |     const event = await this.prisma.event.update({
-123 |       where: { id: eventId },
-124 |       data: { crewId: crewId },
-125 |       include: {
-126 |         crew: { include: { host: true, driver: true } },
-127 |         school: true,
-128 |         city: true,
-129 |         preparation: true,
-130 |         history: { orderBy: { createdAt: 'desc' } },
-131 |       },
-132 |     });
-133 | 
-134 |     const hostId = event.crew?.hostId;
-135 |     const driverId = event.crew?.driverId;
-136 | 
-137 |     const dateStr = new Date(event.date).toLocaleDateString('uk-UA', {
-138 |       day: '2-digit',
-139 |       month: 'long',
-140 |       year: 'numeric',
-141 |     });
-142 |     const timeStr = event.time ? `, ${event.time}` : '';
-143 | 
-144 |     const buildMessage = (role: 'ведучий' | 'водій') =>
-145 |       `🎯 <b>Вас призначено на подію!</b>\n\n` +
-146 |       `👤 <b>Роль:</b> ${role === 'ведучий' ? '🎙️ Ведучий' : '🚗 Водій'}\n` +
-147 |       `📅 <b>Дата:</b> ${dateStr}${timeStr}\n` +
-148 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
-149 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
-150 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
-151 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
-152 |       (event.contactPerson
-153 |         ? `👤 <b>Контакт:</b> ${event.contactPerson}\n`
-154 |         : '') +
-155 |       (event.contactPhone ? `📞 <b>Телефон:</b> ${event.contactPhone}\n` : '') +
-156 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
-157 | 
-158 |     if (hostId) {
-159 |       const hostChatId = await this.getChatIdForUser(hostId);
-160 |       this.logger.log(`[assignCrew] hostChatId resolved=${hostChatId}`);
-161 | 
-162 |       if (hostChatId) {
-163 |         await this.telegramService.sendMessage(
-164 |           hostChatId,
-165 |           buildMessage('ведучий'),
-166 |         );
-167 |       } else {
-168 |         this.logger.warn(
-169 |           `[assignCrew] Не вдалося надіслати повідомлення ведучому ${hostId}: chatId не знайдено (користувач не натиснув /start?)`,
-170 |         );
-171 |       }
-172 |     }
-173 | 
-174 |     if (driverId) {
-175 |       const driverChatId = await this.getChatIdForUser(driverId);
-176 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
-177 | 
-178 |       if (driverChatId) {
-179 |         await this.telegramService.sendMessage(
-180 |           driverChatId,
-181 |           buildMessage('водій'),
-182 |         );
-183 |       } else {
-184 |         this.logger.warn(
-185 |           `[assignCrew] Не вдалося надіслати повідомлення водію ${driverId}: chatId не знайдено`,
-186 |         );
-187 |       }
-188 |     }
-189 | 
-190 |     if (driverId) {
-191 |       const driver = await this.prisma.user.findUnique({
-192 |         where: { id: driverId },
-193 |       });
-194 |       this.logger.log(
-195 |         `[assignCrew] driver=${JSON.stringify({ name: driver?.name, telegramId: driver?.telegramId, telegramChatId: driver?.telegramChatId })}`,
-196 |       );
-197 |       const driverChatId =
-198 |         driver?.telegramChatId ||
-199 |         (driver?.telegramId && /^\d+$/.test(driver.telegramId)
-200 |           ? driver.telegramId
-201 |           : null);
-202 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
-203 |       if (driverChatId) {
-204 |         await this.telegramService.sendMessage(
-205 |           driverChatId,
-206 |           buildMessage('водій'),
-207 |         );
-208 |       }
-209 |     }
-210 | 
-211 |     return event;
-212 |   }
-213 | 
-214 |   async rescheduleEvent(
-215 |     eventId: string,
-216 |     newDate: string,
-217 |     newTime: string,
-218 |     user: JwtUser,
-219 |   ) {
-220 |     const event = await this.prisma.event.update({
-221 |       where: { id: eventId },
-222 |       data: {
-223 |         date: new Date(newDate),
-224 |         time: newTime,
-225 |         history: {
-226 |           create: {
-227 |             action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
-228 |             userId: user.sub,
-229 |             userName: user.name,
-230 |             role: user.role,
-231 |           },
-232 |         },
-233 |       },
-234 |       include: {
-235 |         crew: { include: { host: true, driver: true } },
-236 |         school: true,
-237 |         city: true,
-238 |         history: { orderBy: { createdAt: 'desc' } },
-239 |       },
-240 |     });
-241 | 
-242 |     const dateStr = new Date(newDate).toLocaleDateString('uk-UA', {
-243 |       day: '2-digit',
-244 |       month: 'long',
-245 |       year: 'numeric',
-246 |     });
-247 |     const msg =
-248 |       `📅 <b>Подію перенесено!</b>\n\n` +
-249 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
-250 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
-251 |       `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
-252 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
-253 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
-254 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
-255 | 
-256 |     const sendTo = async (userId: string | null | undefined) => {
-257 |       if (!userId) return;
-258 |       const u = await this.prisma.user.findUnique({ where: { id: userId } });
-259 |       const chatId =
-260 |         u?.telegramChatId ||
-261 |         (u?.telegramId && /^\d+$/.test(u.telegramId) ? u.telegramId : null);
-262 |       if (chatId) await this.telegramService.sendMessage(chatId, msg);
-263 |     };
-264 | 
-265 |     await sendTo(event.crew?.hostId);
-266 |     await sendTo(event.crew?.driverId);
-267 | 
-268 |     return event;
-269 |   }
-270 | 
-271 |   async getChatIdForUser(userId: string): Promise<string | null> {
-272 |     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-273 |     if (!user) return null;
-274 | 
-275 |     // Якщо користувач натиснув /start, telegramChatId буде заповнено
-276 |     if (user.telegramChatId) return user.telegramChatId;
-277 | 
-278 |     // Якщо в telegramId вбито числовий ID вручну, можна спробувати його
-279 |     if (user.telegramId && /^\d+$/.test(user.telegramId))
-280 |       return user.telegramId;
-281 | 
-282 |     return null;
-283 |   }
-284 | 
-285 |   async findBySchool(schoolId: string, minimal = false) {
-286 |     if (minimal) {
-287 |       return this.prisma.event.findMany({
-288 |         where: { schoolId },
-289 |         select: {
-290 |           id: true,
-291 |           project: true,
-292 |           date: true,
-293 |           time: true,
-294 |           status: true,
-295 |           price: true,
-296 |           childrenPlanned: true,
-297 |           address: true,
-298 |           contactPerson: true,
-299 |           contactPhone: true,
-300 |           crewId: true,
-301 |           crew: {
-302 |             select: { id: true, name: true, hostId: true, driverId: true },
-303 |           },
-304 |         },
-305 |         orderBy: { date: 'desc' },
-306 |       });
-307 |     }
-308 |     return this.prisma.event.findMany({
-309 |       where: { schoolId },
-310 |       include: {
-311 |         crew: { include: { host: true, driver: true } },
-312 |         history: { orderBy: { createdAt: 'desc' } },
-313 |         preparation: true,
-314 |       },
-315 |       orderBy: { date: 'desc' },
-316 |     });
-317 |   }
-318 | 
-319 |   async updateHistoryComment(historyId: string, comment: string) {
-320 |     return this.prisma.eventHistory.update({
-321 |       where: { id: historyId },
-322 |       data: { comment: comment || null },
-323 |     });
-324 |   }
-325 | 
-326 |   async addHistoryComment(eventId: string, comment: string, user: JwtUser) {
-327 |     await this.prisma.eventHistory.create({
-328 |       data: {
-329 |         eventId,
-330 |         action: 'Коментар',
-331 |         comment,
-332 |         userId: user.sub,
-333 |         userName: user.name,
-334 |         role: user.role,
-335 |       },
-336 |     });
-337 | 
-338 |     return this.prisma.event.findUnique({
-339 |       where: { id: eventId },
-340 |       include: {
-341 |         history: { orderBy: { createdAt: 'desc' } },
-342 |       },
-343 |     });
-344 |   }
-345 | 
-346 |   // ОНОВЛЕНО: Тепер метод видалення безпечно видаляє зв'язані дані
-347 |   async remove(id: string) {
-348 |     // 1. Видаляємо історію події
-349 |     await this.prisma.eventHistory.deleteMany({
-350 |       where: { eventId: id },
-351 |     });
-352 | 
-353 |     // 2. Видаляємо підготовку події (якщо вона існує)
-354 |     await this.prisma.eventPreparation.deleteMany({
-355 |       where: { eventId: id },
-356 |     });
-357 | 
-358 |     // 3. Тепер спокійно видаляємо саму подію
-359 |     return this.prisma.event.delete({
-360 |       where: { id },
-361 |     });
-362 |   }
-363 | 
-364 |   async submitReport(
-365 |     eventId: string,
-366 |     reportData: SubmitReportDto,
-367 |     user: JwtUser,
-368 |   ) {
-369 |     // 1. Зберігаємо звіт у базу
-370 |     await this.prisma.eventReport.upsert({
-371 |       where: { eventId },
-372 |       update: {
-373 |         announcementDone: reportData.announcementDone,
-374 |         materialShown: reportData.materialShown,
-375 |         childrenCount: reportData.childrenCount,
-376 |         classesCount: reportData.classesCount,
-377 |         privilegedCount: reportData.privilegedCount,
-378 |         showingsCount: reportData.showingsCount,
-379 |         totalSum: reportData.totalSum,
-380 |         schoolSum: reportData.schoolSum,
-381 |         expenses: reportData.expenses || [],
+  3 | import { Prisma } from '@prisma/client';
+  4 | 
+  5 | import { CreateEventDto } from './dto/create-event.dto';
+  6 | import { SubmitReportDto } from './dto/submit-report.dto';
+  7 | import { JwtUser } from '../auth/interfaces/jwt-user.interface';
+  8 | 
+  9 | /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+ 10 | 
+ 11 | const FIELD_ROLES = ['DRIVER', 'HOST'];
+ 12 | 
+ 13 | @Injectable()
+ 14 | export class EventsService {
+ 15 |   private readonly logger = new Logger(EventsService.name);
+ 16 | 
+ 17 |   constructor(
+ 18 |     private readonly prisma: PrismaService,
+ 19 |     private telegramService: TelegramService,
+ 20 |   ) {}
+ 21 | 
+ 22 |   // Список подій для сторінки "Події".
+ 23 |   // Водій/ведучий бачить тільки події, де він призначений в екіпаж.
+ 24 |   // Решта ролей (менеджер, адмін тощо) бачать усі події.
+ 25 |   async findAllForUser(user: JwtUser) {
+ 26 |     const isFieldStaff = FIELD_ROLES.includes(user.role);
+ 27 | 
+ 28 |     return this.prisma.event.findMany({
+ 29 |       where: isFieldStaff
+ 30 |         ? {
+ 31 |             crew: {
+ 32 |               OR: [{ hostId: user.sub }, { driverId: user.sub }],
+ 33 |             },
+ 34 |           }
+ 35 |         : {},
+ 36 |       include: {
+ 37 |         school: { select: { id: true, name: true, type: true } },
+ 38 |         city: { select: { id: true, name: true } },
+ 39 |         crew: {
+ 40 |           include: {
+ 41 |             host: { select: { id: true, name: true } },
+ 42 |             driver: { select: { id: true, name: true } },
+ 43 |           },
+ 44 |         },
+ 45 |       },
+ 46 |       orderBy: { date: 'asc' },
+ 47 |     });
+ 48 |   }
+ 49 | 
+ 50 |   // Оновлюємо метод create
+ 51 |   async create(data: CreateEventDto, user: JwtUser) {
+ 52 |     return this.prisma.event.create({
+ 53 |       data: {
+ 54 |         ...data,
+ 55 |         status: 'BASE' as never,
+ 56 |         date: new Date(data.date),
+ 57 |         history: {
+ 58 |           create: {
+ 59 |             action: 'Створено подію. Етап: База',
+ 60 |             userId: user.sub, // Беремо ID з токена
+ 61 |             userName: user.name, // Беремо ім'я з токена
+ 62 |             role: user.role, // Беремо роль з токена
+ 63 |           },
+ 64 |         },
+ 65 |       },
+ 66 |       include: { history: true },
+ 67 |     });
+ 68 |   }
+ 69 | 
+ 70 |   // Оновлюємо метод updateStatus
+ 71 |   async updateStatus(
+ 72 |     eventId: string,
+ 73 |     newStatus: string,
+ 74 |     actionName: string,
+ 75 |     comment: string | undefined,
+ 76 |     user: JwtUser,
+ 77 |   ) {
+ 78 |     return this.prisma.event.update({
+ 79 |       where: { id: eventId },
+ 80 |       data: {
+ 81 |         status: newStatus as never,
+ 82 |         history: {
+ 83 |           create: {
+ 84 |             action: actionName,
+ 85 |             comment: comment || null,
+ 86 |             userId: user.sub, // Більше ніяких 'superadmin-123'!
+ 87 |             userName: user.name,
+ 88 |             role: user.role,
+ 89 |           },
+ 90 |         },
+ 91 |       },
+ 92 |       include: { crew: true, history: { orderBy: { createdAt: 'desc' } } },
+ 93 |     });
+ 94 |   }
+ 95 | 
+ 96 |   // Оновлюємо статус підготовки
+ 97 |   async updatePreparationStatus(
+ 98 |     eventId: string,
+ 99 |     field: string,
+100 |     status: string,
+101 |   ) {
+102 |     const existing = await this.prisma.eventPreparation.findUnique({
+103 |       where: { eventId },
+104 |     });
+105 | 
+106 |     if (existing) {
+107 |       return this.prisma.eventPreparation.update({
+108 |         where: { eventId },
+109 |         data: { [field]: status },
+110 |       });
+111 |     } else {
+112 |       return this.prisma.eventPreparation.create({
+113 |         data: { eventId, [field]: status },
+114 |       });
+115 |     }
+116 |   }
+117 | 
+118 |   // --- ВСТАВЛЯЙ ОНОВЛЕНИЙ МЕТОД ТУТ ---
+119 |   async assignCrewToEvent(
+120 |     eventId: string,
+121 |     crewId: string, // ЗМІНЕНО: Тепер приймаємо тільки ID існуючого екіпажу
+122 |   ) {
+123 |     const event = await this.prisma.event.update({
+124 |       where: { id: eventId },
+125 |       data: { crewId: crewId },
+126 |       include: {
+127 |         crew: { include: { host: true, driver: true } },
+128 |         school: true,
+129 |         city: true,
+130 |         preparation: true,
+131 |         history: { orderBy: { createdAt: 'desc' } },
+132 |       },
+133 |     });
+134 | 
+135 |     const hostId = event.crew?.hostId;
+136 |     const driverId = event.crew?.driverId;
+137 | 
+138 |     const dateStr = new Date(event.date).toLocaleDateString('uk-UA', {
+139 |       day: '2-digit',
+140 |       month: 'long',
+141 |       year: 'numeric',
+142 |     });
+143 |     const timeStr = event.time ? `, ${event.time}` : '';
+144 | 
+145 |     const buildMessage = (role: 'ведучий' | 'водій') =>
+146 |       `🎯 <b>Вас призначено на подію!</b>\n\n` +
+147 |       `👤 <b>Роль:</b> ${role === 'ведучий' ? '🎙️ Ведучий' : '🚗 Водій'}\n` +
+148 |       `📅 <b>Дата:</b> ${dateStr}${timeStr}\n` +
+149 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
+150 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
+151 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
+152 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
+153 |       (event.contactPerson
+154 |         ? `👤 <b>Контакт:</b> ${event.contactPerson}\n`
+155 |         : '') +
+156 |       (event.contactPhone ? `📞 <b>Телефон:</b> ${event.contactPhone}\n` : '') +
+157 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+158 | 
+159 |     if (hostId) {
+160 |       const hostChatId = await this.getChatIdForUser(hostId);
+161 |       this.logger.log(`[assignCrew] hostChatId resolved=${hostChatId}`);
+162 | 
+163 |       if (hostChatId) {
+164 |         await this.telegramService.sendMessage(
+165 |           hostChatId,
+166 |           buildMessage('ведучий'),
+167 |         );
+168 |       } else {
+169 |         this.logger.warn(
+170 |           `[assignCrew] Не вдалося надіслати повідомлення ведучому ${hostId}: chatId не знайдено (користувач не натиснув /start?)`,
+171 |         );
+172 |       }
+173 |     }
+174 | 
+175 |     if (driverId) {
+176 |       const driverChatId = await this.getChatIdForUser(driverId);
+177 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
+178 | 
+179 |       if (driverChatId) {
+180 |         await this.telegramService.sendMessage(
+181 |           driverChatId,
+182 |           buildMessage('водій'),
+183 |         );
+184 |       } else {
+185 |         this.logger.warn(
+186 |           `[assignCrew] Не вдалося надіслати повідомлення водію ${driverId}: chatId не знайдено`,
+187 |         );
+188 |       }
+189 |     }
+190 | 
+191 |     if (driverId) {
+192 |       const driver = await this.prisma.user.findUnique({
+193 |         where: { id: driverId },
+194 |       });
+195 |       this.logger.log(
+196 |         `[assignCrew] driver=${JSON.stringify({ name: driver?.name, telegramId: driver?.telegramId, telegramChatId: driver?.telegramChatId })}`,
+197 |       );
+198 |       const driverChatId =
+199 |         driver?.telegramChatId ||
+200 |         (driver?.telegramId && /^\d+$/.test(driver.telegramId)
+201 |           ? driver.telegramId
+202 |           : null);
+203 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
+204 |       if (driverChatId) {
+205 |         await this.telegramService.sendMessage(
+206 |           driverChatId,
+207 |           buildMessage('водій'),
+208 |         );
+209 |       }
+210 |     }
+211 | 
+212 |     return event;
+213 |   }
+214 | 
+215 |   async rescheduleEvent(
+216 |     eventId: string,
+217 |     newDate: string,
+218 |     newTime: string,
+219 |     user: JwtUser,
+220 |   ) {
+221 |     const event = await this.prisma.event.update({
+222 |       where: { id: eventId },
+223 |       data: {
+224 |         date: new Date(newDate),
+225 |         time: newTime,
+226 |         history: {
+227 |           create: {
+228 |             action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
+229 |             userId: user.sub,
+230 |             userName: user.name,
+231 |             role: user.role,
+232 |           },
+233 |         },
+234 |       },
+235 |       include: {
+236 |         crew: { include: { host: true, driver: true } },
+237 |         school: true,
+238 |         city: true,
+239 |         history: { orderBy: { createdAt: 'desc' } },
+240 |       },
+241 |     });
+242 | 
+243 |     const dateStr = new Date(newDate).toLocaleDateString('uk-UA', {
+244 |       day: '2-digit',
+245 |       month: 'long',
+246 |       year: 'numeric',
+247 |     });
+248 |     const msg =
+249 |       `📅 <b>Подію перенесено!</b>\n\n` +
+250 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
+251 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
+252 |       `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
+253 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
+254 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
+255 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+256 | 
+257 |     const sendTo = async (userId: string | null | undefined) => {
+258 |       if (!userId) return;
+259 |       const u = await this.prisma.user.findUnique({ where: { id: userId } });
+260 |       const chatId =
+261 |         u?.telegramChatId ||
+262 |         (u?.telegramId && /^\d+$/.test(u.telegramId) ? u.telegramId : null);
+263 |       if (chatId) await this.telegramService.sendMessage(chatId, msg);
+264 |     };
+265 | 
+266 |     await sendTo(event.crew?.hostId);
+267 |     await sendTo(event.crew?.driverId);
+268 | 
+269 |     return event;
+270 |   }
+271 | 
+272 |   async getChatIdForUser(userId: string): Promise<string | null> {
+273 |     const user = await this.prisma.user.findUnique({ where: { id: userId } });
+274 |     if (!user) return null;
+275 | 
+276 |     // Якщо користувач натиснув /start, telegramChatId буде заповнено
+277 |     if (user.telegramChatId) return user.telegramChatId;
+278 | 
+279 |     // Якщо в telegramId вбито числовий ID вручну, можна спробувати його
+280 |     if (user.telegramId && /^\d+$/.test(user.telegramId))
+281 |       return user.telegramId;
+282 | 
+283 |     return null;
+284 |   }
+285 | 
+286 |   async findBySchool(schoolId: string, minimal = false) {
+287 |     if (minimal) {
+288 |       return this.prisma.event.findMany({
+289 |         where: { schoolId },
+290 |         select: {
+291 |           id: true,
+292 |           project: true,
+293 |           date: true,
+294 |           time: true,
+295 |           status: true,
+296 |           price: true,
+297 |           childrenPlanned: true,
+298 |           address: true,
+299 |           contactPerson: true,
+300 |           contactPhone: true,
+301 |           crewId: true,
+302 |           crew: {
+303 |             select: { id: true, name: true, hostId: true, driverId: true },
+304 |           },
+305 |         },
+306 |         orderBy: { date: 'desc' },
+307 |       });
+308 |     }
+309 |     return this.prisma.event.findMany({
+310 |       where: { schoolId },
+311 |       include: {
+312 |         crew: { include: { host: true, driver: true } },
+313 |         history: { orderBy: { createdAt: 'desc' } },
+314 |         preparation: true,
+315 |       },
+316 |       orderBy: { date: 'desc' },
+317 |     });
+318 |   }
+319 | 
+320 |   async updateHistoryComment(historyId: string, comment: string) {
+321 |     return this.prisma.eventHistory.update({
+322 |       where: { id: historyId },
+323 |       data: { comment: comment || null },
+324 |     });
+325 |   }
+326 | 
+327 |   async addHistoryComment(eventId: string, comment: string, user: JwtUser) {
+328 |     await this.prisma.eventHistory.create({
+329 |       data: {
+330 |         eventId,
+331 |         action: 'Коментар',
+332 |         comment,
+333 |         userId: user.sub,
+334 |         userName: user.name,
+335 |         role: user.role,
+336 |       },
+337 |     });
+338 | 
+339 |     return this.prisma.event.findUnique({
+340 |       where: { id: eventId },
+341 |       include: {
+342 |         history: { orderBy: { createdAt: 'desc' } },
+343 |       },
+344 |     });
+345 |   }
+346 | 
+347 |   // ОНОВЛЕНО: Тепер метод видалення безпечно видаляє зв'язані дані
+348 |   async remove(id: string) {
+349 |     // 1. Видаляємо історію події
+350 |     await this.prisma.eventHistory.deleteMany({
+351 |       where: { eventId: id },
+352 |     });
+353 | 
+354 |     // 2. Видаляємо підготовку події (якщо вона існує)
+355 |     await this.prisma.eventPreparation.deleteMany({
+356 |       where: { eventId: id },
+357 |     });
+358 | 
+359 |     // 3. Тепер спокійно видаляємо саму подію
+360 |     return this.prisma.event.delete({
+361 |       where: { id },
+362 |     });
+363 |   }
+364 | 
+365 |   async submitReport(
+366 |     eventId: string,
+367 |     reportData: SubmitReportDto,
+368 |     user: JwtUser,
+369 |   ) {
+370 |     // 1. Зберігаємо звіт у базу (без JSON полів)
+371 |     await this.prisma.eventReport.upsert({
+372 |       where: { eventId },
+373 |       update: {
+374 |         announcementDone: reportData.announcementDone,
+375 |         materialShown: reportData.materialShown,
+376 |         childrenCount: reportData.childrenCount,
+377 |         classesCount: reportData.classesCount,
+378 |         privilegedCount: reportData.privilegedCount,
+379 |         showingsCount: reportData.showingsCount,
+380 |         totalSum: reportData.totalSum,
+381 |         schoolSum: reportData.schoolSum,
 382 |         remainderSum: reportData.remainderSum,
 383 |         rating: reportData.rating,
-384 |         salaries: reportData.salaries || [],
-385 |       },
-386 |       create: {
-387 |         eventId,
-388 |         announcementDone: reportData.announcementDone,
-389 |         materialShown: reportData.materialShown,
-390 |         childrenCount: reportData.childrenCount,
-391 |         classesCount: reportData.classesCount,
-392 |         privilegedCount: reportData.privilegedCount,
-393 |         showingsCount: reportData.showingsCount,
-394 |         totalSum: reportData.totalSum,
-395 |         schoolSum: reportData.schoolSum,
-396 |         expenses: reportData.expenses || [],
-397 |         remainderSum: reportData.remainderSum,
-398 |         rating: reportData.rating,
-399 |         salaries: reportData.salaries || [],
-400 |       },
-401 |     });
-402 | 
-403 |     if (reportData.salaries?.length) {
-404 |       await Promise.all(
-405 |         reportData.salaries
-406 |           .filter((s) => s.amount > 0)
-407 |           .map((s) =>
-408 |             this.prisma.user.update({
-409 |               where: { id: s.userId },
-410 |               data: { balance: { increment: s.amount } },
-411 |             }),
-412 |           ),
-413 |       );
+384 |       },
+385 |       create: {
+386 |         eventId,
+387 |         announcementDone: reportData.announcementDone,
+388 |         materialShown: reportData.materialShown,
+389 |         childrenCount: reportData.childrenCount,
+390 |         classesCount: reportData.classesCount,
+391 |         privilegedCount: reportData.privilegedCount,
+392 |         showingsCount: reportData.showingsCount,
+393 |         totalSum: reportData.totalSum,
+394 |         schoolSum: reportData.schoolSum,
+395 |         remainderSum: reportData.remainderSum,
+396 |         rating: reportData.rating,
+397 |       },
+398 |     });
+399 | 
+400 |     // Видаляємо старі записи витрат і зарплат
+401 |     await this.prisma.expenseItem.deleteMany({ where: { reportId: eventId } });
+402 |     await this.prisma.salaryItem.deleteMany({ where: { reportId: eventId } });
+403 | 
+404 |     // Створюємо нові записи витрат
+405 |     if (reportData.expenses?.length) {
+406 |       await this.prisma.expenseItem.createMany({
+407 |         data: reportData.expenses.map((exp: any) => ({
+408 |           reportId: eventId,
+409 |           category: exp.category || 'Інше',
+410 |           name: exp.name,
+411 |           amount: new Prisma.Decimal(exp.amount || 0),
+412 |         })),
+413 |       });
 414 |     }
-415 |     // 2. Оновлюємо статус події на 'REPORT' (щоб вона не зникала і давала можливість перейти до RE_SALE)
-416 |     return this.prisma.event.update({
-417 |       where: { id: eventId },
-418 |       data: {
-419 |         status: 'REPORT' as never,
-420 |         history: {
-421 |           create: {
-422 |             action: 'Сформовано звіт. Етап: Звіт',
-423 |             userId: user.sub,
-424 |             userName: user.name,
-425 |             role: user.role,
-426 |           },
-427 |         },
-428 |       },
-429 |       include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
-430 |     });
-431 |   }
-432 | 
-433 |   async findOne(id: string) {
-434 |     return this.prisma.event.findUnique({
-435 |       where: { id },
-436 |       include: {
-437 |         school: true,
-438 |         city: true,
-439 |         crew: {
-440 |           include: {
-441 |             host: { select: { id: true, name: true } },
-442 |             driver: { select: { id: true, name: true } },
-443 |           },
-444 |         },
-445 |         report: true,
-446 |       },
-447 |     });
-448 |   }
-449 | 
-450 |   async findCompletedBySchool(schoolId: string) {
-451 |     return this.prisma.event.findMany({
-452 |       where: { schoolId, status: 'RE_SALE' },
-453 |       select: {
-454 |         id: true,
-455 |         project: true,
-456 |         date: true,
-457 |         status: true,
-458 |         price: true,
-459 |         childrenPlanned: true,
-460 |         report: {
-461 |           select: {
-462 |             childrenCount: true,
-463 |             classesCount: true,
-464 |             privilegedCount: true,
-465 |             showingsCount: true,
-466 |             totalSum: true,
-467 |             schoolSum: true,
-468 |             remainderSum: true,
-469 |             rating: true,
-470 |             expenses: true,
-471 |           },
-472 |         },
-473 |         history: { orderBy: { createdAt: 'asc' } },
-474 |       },
-475 |       orderBy: { date: 'desc' },
-476 |     });
-477 |   }
-478 | }
-479 | 
+415 | 
+416 |     // Створюємо нові записи зарплат + нарахування балансу
+417 |     if (reportData.salaries?.length) {
+418 |       await this.prisma.salaryItem.createMany({
+419 |         data: reportData.salaries.map((s: any) => ({
+420 |           reportId: eventId,
+421 |           userId: s.userId,
+422 |           userName: s.name,
+423 |           amount: new Prisma.Decimal(s.amount || 0),
+424 |           role: s.role,
+425 |         })),
+426 |       });
+427 | 
+428 |       await Promise.all(
+429 |         reportData.salaries
+430 |           .filter((s) => s.userId && s.amount > 0)
+431 |           .map((s) =>
+432 |             this.prisma.user.update({
+433 |               where: { id: s.userId },
+434 |               data: { balance: { increment: s.amount } },
+435 |             }),
+436 |           ),
+437 |       );
+438 |     }
+439 | 
+440 |     // 2. Оновлюємо статус події
+441 |     return this.prisma.event.update({
+442 |       where: { id: eventId },
+443 |       data: {
+444 |         status: 'REPORT' as never,
+445 |         history: {
+446 |           create: {
+447 |             action: 'Сформовано звіт. Етап: Звіт',
+448 |             userId: user.sub,
+449 |             userName: user.name,
+450 |             role: user.role,
+451 |           },
+452 |         },
+453 |       },
+454 |       include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
+455 |     });
+456 |   }
+457 | 
+458 |   async findOne(id: string) {
+459 |     return this.prisma.event.findUnique({
+460 |       where: { id },
+461 |       include: {
+462 |         school: true,
+463 |         city: true,
+464 |         crew: {
+465 |           include: {
+466 |             host: { select: { id: true, name: true } },
+467 |             driver: { select: { id: true, name: true } },
+468 |           },
+469 |         },
+470 |         report: true,
+471 |       },
+472 |     });
+473 |   }
+474 | 
+475 |   async findCompletedBySchool(schoolId: string) {
+476 |     return this.prisma.event.findMany({
+477 |       where: { schoolId, status: 'RE_SALE' },
+478 |       select: {
+479 |         id: true,
+480 |         project: true,
+481 |         date: true,
+482 |         status: true,
+483 |         price: true,
+484 |         childrenPlanned: true,
+485 |         report: {
+486 |           select: {
+487 |             childrenCount: true,
+488 |             classesCount: true,
+489 |             privilegedCount: true,
+490 |             showingsCount: true,
+491 |             totalSum: true,
+492 |             schoolSum: true,
+493 |             remainderSum: true,
+494 |             rating: true,
+495 |             expenseItems: {
+496 |               select: { category: true, name: true, amount: true },
+497 |             },
+498 |           },
+499 |         },
+500 |         history: { orderBy: { createdAt: 'asc' } },
+501 |       },
+502 |       orderBy: { date: 'desc' },
+503 |     });
+504 |   }
+505 | }
+506 | 
 ```
 
 ### File: apps/backend/src/finance/finance.controller.ts
@@ -3102,7 +3195,7 @@
  15 |     this.cache.set(key, { data, expiresAt: Date.now() + ttlMs });
  16 |   }
  17 | 
- 18 |   constructor(private prisma: PrismaService) {}
+ 18 |   constructor(private readonly prisma: PrismaService) {}
  19 | 
  20 |   // ---------------------------------------------------------------------------
  21 |   // Допоміжний метод: перетворює period у dateFrom
@@ -3189,320 +3282,333 @@
 102 |     // 2. Витрати по категоріях — expenses зберігається як JSON,
 103 |     //    тому вибираємо лише одне поле без жодних include
 104 |     // -------------------------------------------------------------------------
-105 |     const expensesRaw = await this.prisma.eventReport.findMany({
-106 |       where: { event: baseEventWhere },
-107 |       select: { expenses: true },
-108 |     });
-109 | 
-110 |     const expCatMap: Record<string, number> = {};
-111 |     let totalExpenses = 0;
-112 |     for (const { expenses } of expensesRaw) {
-113 |       const exp = Array.isArray(expenses) ? (expenses as any[]) : [];
-114 |       for (const ex of exp) {
-115 |         const cat: string = ex.category || ex.name || 'Інше';
-116 |         const amt: number = Number(ex.amount) || 0;
-117 |         expCatMap[cat] = (expCatMap[cat] ?? 0) + amt;
-118 |         totalExpenses += amt;
-119 |       }
-120 |     }
-121 |     const byExpenseCategory = Object.entries(expCatMap).map(
-122 |       ([name, value]) => ({
-123 |         name,
-124 |         value,
-125 |       }),
-126 |     );
-127 | 
-128 |     // -------------------------------------------------------------------------
-129 |     // 3. Графік по місяцях — агрегація в БД
-130 |     // -------------------------------------------------------------------------
-131 |     type MonthlyRow = {
-132 |       year: number;
-133 |       month: number;
-134 |       revenue: number;
-135 |       profit: number;
-136 |     };
-137 |     const monthlyRaw = await this.prisma.$queryRaw<MonthlyRow[]>`
-138 |       SELECT
-139 |         EXTRACT(YEAR  FROM e.date)::int                   AS year,
-140 |         EXTRACT(MONTH FROM e.date)::int                   AS month,
-141 |         COALESCE(SUM(r."totalSum"),      0)::float        AS revenue,
-142 |         COALESCE(SUM(r."remainderSum"),  0)::float        AS profit
-143 |       FROM "Event" e
-144 |       JOIN "EventReport" r ON r."eventId" = e.id
-145 |       WHERE e.status = 'RE_SALE'
-146 |       ${filters}
-147 |       GROUP BY year, month
-148 |       ORDER BY year, month
-149 |     `;
-150 | 
-151 |     const monthly = monthlyRaw.map((row) => ({
-152 |       month: new Date(row.year, row.month - 1, 1).toLocaleString('uk-UA', {
-153 |         month: 'short',
-154 |         year: '2-digit',
-155 |       }),
-156 |       revenue: row.revenue,
-157 |       profit: row.profit,
-158 |     }));
-159 | 
-160 |     // -------------------------------------------------------------------------
-161 |     // 4. Очікувана виручка — aggregate замість findMany + reduce
-162 |     // -------------------------------------------------------------------------
-163 |     const plannedAgg = await this.prisma.event.aggregate({
-164 |       where: {
-165 |         status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
-166 |         ...(cityId ? { cityId } : {}),
-167 |       },
-168 |       _sum: { price: true },
-169 |     });
-170 |     const expectedRevenue = plannedAgg._sum.price ?? 0;
-171 | 
-172 |     // -------------------------------------------------------------------------
-173 |     // 5. Фільтри (проєкти + міста) — паралельно, без join
-174 |     // -------------------------------------------------------------------------
-175 |     const [projectsRaw, cities] = await Promise.all([
-176 |       this.prisma.event.findMany({
-177 |         select: { project: true },
-178 |         distinct: ['project'],
-179 |       }),
-180 |       this.prisma.city.findMany({ select: { id: true, name: true } }),
-181 |     ]);
-182 |     const filterOptions = {
-183 |       projects: projectsRaw.map((p) => p.project).filter(Boolean),
-184 |       cities,
-185 |     };
-186 | 
+105 |     // -------------------------------------------------------------------------
+106 |     // 2. Витрати по категоріях (тепер через реляційну таблицю ExpenseItem)
+107 |     // -------------------------------------------------------------------------
+108 |     // -------------------------------------------------------------------------
+109 |     // 2. Витрати по категоріях (через нову таблицю ExpenseItem)
+110 |     // -------------------------------------------------------------------------
+111 |     const expensesRaw = await this.prisma.expenseItem.findMany({
+112 |       where: {
+113 |         report: {
+114 |           event: baseEventWhere,
+115 |         },
+116 |       },
+117 |       select: {
+118 |         category: true,
+119 |         name: true,
+120 |         amount: true,
+121 |       },
+122 |     });
+123 | 
+124 |     const expCatMap: Record<string, number> = {};
+125 |     let totalExpenses = 0;
+126 | 
+127 |     for (const exp of expensesRaw) {
+128 |       const cat: string = exp.category || exp.name || 'Інше';
+129 |       const amt: number = Number(exp.amount) || 0;
+130 |       expCatMap[cat] = (expCatMap[cat] ?? 0) + amt;
+131 |       totalExpenses += amt;
+132 |     }
+133 | 
+134 |     const byExpenseCategory = Object.entries(expCatMap).map(
+135 |       ([name, value]) => ({
+136 |         name,
+137 |         value,
+138 |       }),
+139 |     );
+140 | 
+141 |     // -------------------------------------------------------------------------
+142 |     // 3. Графік по місяцях — агрегація в БД
+143 |     // -------------------------------------------------------------------------
+144 |     type MonthlyRow = {
+145 |       year: number;
+146 |       month: number;
+147 |       revenue: number;
+148 |       profit: number;
+149 |     };
+150 |     const monthlyRaw = await this.prisma.$queryRaw<MonthlyRow[]>`
+151 |       SELECT
+152 |         EXTRACT(YEAR  FROM e.date)::int                   AS year,
+153 |         EXTRACT(MONTH FROM e.date)::int                   AS month,
+154 |         COALESCE(SUM(r."totalSum"),      0)::float        AS revenue,
+155 |         COALESCE(SUM(r."remainderSum"),  0)::float        AS profit
+156 |       FROM "Event" e
+157 |       JOIN "EventReport" r ON r."eventId" = e.id
+158 |       WHERE e.status = 'RE_SALE'
+159 |       ${filters}
+160 |       GROUP BY year, month
+161 |       ORDER BY year, month
+162 |     `;
+163 | 
+164 |     const monthly = monthlyRaw.map((row) => ({
+165 |       month: new Date(row.year, row.month - 1, 1).toLocaleString('uk-UA', {
+166 |         month: 'short',
+167 |         year: '2-digit',
+168 |       }),
+169 |       revenue: row.revenue,
+170 |       profit: row.profit,
+171 |     }));
+172 | 
+173 |     // -------------------------------------------------------------------------
+174 |     // 4. Очікувана виручка — aggregate замість findMany + reduce
+175 |     // -------------------------------------------------------------------------
+176 |     const plannedAgg = await this.prisma.event.aggregate({
+177 |       where: {
+178 |         status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
+179 |         ...(cityId ? { cityId } : {}),
+180 |       },
+181 |       _sum: { price: true },
+182 |     });
+183 |     const expectedRevenue = plannedAgg._sum.price ?? 0;
+184 | 
+185 |     // -------------------------------------------------------------------------
+186 |     // 5. Фільтри (проєкти + міста) — паралельно, без join
 187 |     // -------------------------------------------------------------------------
-188 |     // minimal — повертаємо лише KPI + monthly + фільтри
-189 |     // -------------------------------------------------------------------------
-190 |     if (minimal) {
-191 |       const result = {
-192 |         kpi: { totalRevenue, totalExpenses, totalProfit, totalEvents },
-193 |         monthly,
-194 |         expectedRevenue,
-195 |         filters: filterOptions,
-196 |       };
-197 |       this.setCached(cacheKey, result);
-198 |       return result;
-199 |     }
-200 | 
-201 |     // -------------------------------------------------------------------------
-202 |     // 6. Структура доходів по проєктах
-203 |     // -------------------------------------------------------------------------
-204 |     type ProjectRow = { project: string; value: number };
-205 |     const byProjectRows = await this.prisma.$queryRaw<ProjectRow[]>`
-206 |       SELECT
-207 |         COALESCE(e.project, 'Інше')              AS project,
-208 |         COALESCE(SUM(r."totalSum"), 0)::float    AS value
-209 |       FROM "Event" e
-210 |       JOIN "EventReport" r ON r."eventId" = e.id
-211 |       WHERE e.status = 'RE_SALE'
-212 |       ${filters}
-213 |       GROUP BY e.project
-214 |       ORDER BY value DESC
-215 |     `;
-216 |     const byProject = byProjectRows.map((r) => ({
-217 |       name: r.project,
-218 |       value: r.value,
-219 |     }));
-220 | 
-221 |     // -------------------------------------------------------------------------
-222 |     // 7. Топ міст
-223 |     // -------------------------------------------------------------------------
-224 |     type CityRow = {
-225 |       cityId: string;
-226 |       name: string;
-227 |       revenue: number;
-228 |       profit: number;
-229 |     };
-230 |     const topCitiesRows = await this.prisma.$queryRaw<CityRow[]>`
-231 |       SELECT
-232 |         e."cityId",
-233 |         COALESCE(c.name, '—')                    AS name,
-234 |         COALESCE(SUM(r."totalSum"),     0)::float AS revenue,
-235 |         COALESCE(SUM(r."remainderSum"), 0)::float AS profit
-236 |       FROM "Event" e
-237 |       JOIN "EventReport" r ON r."eventId" = e.id
-238 |       LEFT JOIN "City" c   ON c.id = e."cityId"
-239 |       WHERE e.status = 'RE_SALE'
-240 |       ${filters}
-241 |       GROUP BY e."cityId", c.name
-242 |       ORDER BY revenue DESC
-243 |       LIMIT 5
-244 |     `;
-245 |     const topCities = topCitiesRows.map(({ name, revenue, profit }) => ({
-246 |       name,
-247 |       revenue,
-248 |       profit,
-249 |     }));
-250 | 
-251 |     // -------------------------------------------------------------------------
-252 |     // 8. Топ шкіл
-253 |     // -------------------------------------------------------------------------
-254 |     type SchoolRow = {
-255 |       schoolId: string;
-256 |       name: string;
-257 |       count: number;
-258 |       revenue: number;
-259 |     };
-260 |     const topSchoolsRows = await this.prisma.$queryRaw<SchoolRow[]>`
-261 |       SELECT
-262 |         e."schoolId",
-263 |         COALESCE(s.name, '—')                    AS name,
-264 |         COUNT(e.id)::int                         AS count,
-265 |         COALESCE(SUM(r."totalSum"), 0)::float    AS revenue
-266 |       FROM "Event" e
-267 |       JOIN "EventReport" r ON r."eventId" = e.id
-268 |       LEFT JOIN "School" s ON s.id = e."schoolId"
-269 |       WHERE e.status = 'RE_SALE'
-270 |       ${filters}
-271 |       GROUP BY e."schoolId", s.name
-272 |       ORDER BY revenue DESC
-273 |       LIMIT 5
-274 |     `;
-275 |     const topSchools = topSchoolsRows.map(({ name, count, revenue }) => ({
-276 |       name,
-277 |       count,
-278 |       revenue,
-279 |     }));
-280 | 
-281 |     // -------------------------------------------------------------------------
-282 |     // 9. Топ/антитоп подій — лише потрібні поля, без масивних include
-283 |     // -------------------------------------------------------------------------
-284 |     const eventSelect = {
-285 |       totalSum: true,
-286 |       remainderSum: true,
-287 |       event: {
-288 |         select: {
-289 |           id: true,
-290 |           date: true,
-291 |           school: { select: { name: true } },
-292 |         },
-293 |       },
-294 |     } satisfies Prisma.EventReportSelect;
-295 | 
-296 |     const [topEventsRaw, worstEventsRaw] = await Promise.all([
-297 |       this.prisma.eventReport.findMany({
-298 |         where: { event: baseEventWhere },
-299 |         select: eventSelect,
-300 |         orderBy: { remainderSum: 'desc' },
-301 |         take: 5,
-302 |       }),
-303 |       this.prisma.eventReport.findMany({
-304 |         where: { event: baseEventWhere },
-305 |         select: eventSelect,
-306 |         orderBy: { remainderSum: 'asc' },
-307 |         take: 5,
-308 |       }),
-309 |     ]);
-310 | 
-311 |     const mapEvent = (r: (typeof topEventsRaw)[number]) => ({
-312 |       id: r.event.id,
-313 |       date: r.event.date,
-314 |       school: r.event.school?.name ?? '—',
-315 |       profit: r.remainderSum ?? 0,
-316 |       revenue: r.totalSum ?? 0,
-317 |     });
-318 | 
-319 |     const topEvents = topEventsRaw.map(mapEvent);
-320 |     const worstEvents = worstEventsRaw.map(mapEvent);
-321 | 
-322 |     // -------------------------------------------------------------------------
-323 |     const result = {
-324 |       kpi: { totalRevenue, totalExpenses, totalProfit, totalEvents },
-325 |       monthly,
-326 |       byProject,
-327 |       byExpenseCategory,
-328 |       topCities,
-329 |       topSchools,
-330 |       topEvents,
-331 |       worstEvents,
-332 |       expectedRevenue,
-333 |       filters: filterOptions,
-334 |     };
-335 |     this.setCached(cacheKey, result);
-336 |     return result;
-337 |   }
-338 | 
-339 |   // ---------------------------------------------------------------------------
-340 |   async getStaffRevenue({
-341 |     period,
-342 |     cityId,
-343 |   }: {
-344 |     period?: string;
-345 |     cityId?: string;
-346 |   }) {
-347 |     const dateFrom = this.resolveDateFrom(period);
-348 |     const staffFilters = this.buildSqlFilters({ dateFrom, cityId });
-349 | 
-350 |     type StaffRow = {
-351 |       id: string;
-352 |       name: string;
-353 |       role: 'HOST' | 'DRIVER';
-354 |       revenue: number;
-355 |       eventsCount: number;
-356 |     };
-357 | 
-358 |     // Всі три запити йдуть паралельно
-359 |     const [hostRows, driverRows, totalAgg, eventsCount] = await Promise.all([
-360 |       // Ведучі
-361 |       this.prisma.$queryRaw<StaffRow[]>`
-362 |         SELECT
-363 |           u.id,
-364 |           u.name,
-365 |           'HOST'::text                              AS role,
-366 |           COALESCE(SUM(r."totalSum"), 0)::float     AS revenue,
-367 |           COUNT(e.id)::int                          AS "eventsCount"
-368 |         FROM "Event" e
-369 |         JOIN "EventCrew"    c ON c."eventId" = e.id
-370 |         JOIN "User"         u ON u.id = c."hostId"
-371 |         JOIN "EventReport"  r ON r."eventId" = e.id
-372 |         WHERE e.status = 'RE_SALE'
-373 |         ${staffFilters}
-374 |         GROUP BY u.id, u.name
-375 |       `,
-376 |       // Водії
-377 |       this.prisma.$queryRaw<StaffRow[]>`
-378 |         SELECT
-379 |           u.id,
-380 |           u.name,
-381 |           'DRIVER'::text                            AS role,
-382 |           COALESCE(SUM(r."totalSum"), 0)::float     AS revenue,
-383 |           COUNT(e.id)::int                          AS "eventsCount"
-384 |         FROM "Event" e
-385 |         JOIN "EventCrew"   c ON c."eventId" = e.id
-386 |         JOIN "User"        u ON u.id = c."driverId"
-387 |         JOIN "EventReport" r ON r."eventId" = e.id
-388 |         WHERE e.status = 'RE_SALE'
-389 |         ${staffFilters}
-390 |         GROUP BY u.id, u.name
-391 |       `,
-392 |       // Загальна виручка
-393 |       this.prisma.$queryRaw<[{ revenue: number }]>`
-394 |         SELECT COALESCE(SUM(r."totalSum"), 0)::float AS revenue
-395 |         FROM "Event" e
-396 |         JOIN "EventReport" r ON r."eventId" = e.id
-397 |         WHERE e.status = 'RE_SALE'
-398 |         ${staffFilters}
-399 |       `,
-400 |       // Кількість унікальних подій
-401 |       this.prisma.event.count({
-402 |         where: {
-403 |           status: 'RE_SALE',
-404 |           ...(dateFrom ? { date: { gte: dateFrom } } : {}),
-405 |           ...(cityId ? { cityId } : {}),
-406 |         },
-407 |       }),
-408 |     ]);
-409 | 
-410 |     const staff = [...hostRows, ...driverRows].sort(
-411 |       (a, b) => b.revenue - a.revenue,
-412 |     );
-413 |     const totalRevenue = totalAgg[0]?.revenue ?? 0;
-414 | 
-415 |     return { staff, totalRevenue, eventsCount };
-416 |   }
-417 | }
-418 | 
+188 |     const [projectsRaw, cities] = await Promise.all([
+189 |       this.prisma.event.findMany({
+190 |         select: { project: true },
+191 |         distinct: ['project'],
+192 |       }),
+193 |       this.prisma.city.findMany({ select: { id: true, name: true } }),
+194 |     ]);
+195 |     const filterOptions = {
+196 |       projects: projectsRaw.map((p) => p.project).filter(Boolean),
+197 |       cities,
+198 |     };
+199 | 
+200 |     // -------------------------------------------------------------------------
+201 |     // minimal — повертаємо лише KPI + monthly + фільтри
+202 |     // -------------------------------------------------------------------------
+203 |     if (minimal) {
+204 |       const result = {
+205 |         kpi: { totalRevenue, totalExpenses, totalProfit, totalEvents },
+206 |         monthly,
+207 |         expectedRevenue,
+208 |         filters: filterOptions,
+209 |       };
+210 |       this.setCached(cacheKey, result);
+211 |       return result;
+212 |     }
+213 | 
+214 |     // -------------------------------------------------------------------------
+215 |     // 6. Структура доходів по проєктах
+216 |     // -------------------------------------------------------------------------
+217 |     type ProjectRow = { project: string; value: number };
+218 |     const byProjectRows = await this.prisma.$queryRaw<ProjectRow[]>`
+219 |       SELECT
+220 |         COALESCE(e.project, 'Інше')              AS project,
+221 |         COALESCE(SUM(r."totalSum"), 0)::float    AS value
+222 |       FROM "Event" e
+223 |       JOIN "EventReport" r ON r."eventId" = e.id
+224 |       WHERE e.status = 'RE_SALE'
+225 |       ${filters}
+226 |       GROUP BY e.project
+227 |       ORDER BY value DESC
+228 |     `;
+229 |     const byProject = byProjectRows.map((r) => ({
+230 |       name: r.project,
+231 |       value: r.value,
+232 |     }));
+233 | 
+234 |     // -------------------------------------------------------------------------
+235 |     // 7. Топ міст
+236 |     // -------------------------------------------------------------------------
+237 |     type CityRow = {
+238 |       cityId: string;
+239 |       name: string;
+240 |       revenue: number;
+241 |       profit: number;
+242 |     };
+243 |     const topCitiesRows = await this.prisma.$queryRaw<CityRow[]>`
+244 |       SELECT
+245 |         e."cityId",
+246 |         COALESCE(c.name, '—')                    AS name,
+247 |         COALESCE(SUM(r."totalSum"),     0)::float AS revenue,
+248 |         COALESCE(SUM(r."remainderSum"), 0)::float AS profit
+249 |       FROM "Event" e
+250 |       JOIN "EventReport" r ON r."eventId" = e.id
+251 |       LEFT JOIN "City" c   ON c.id = e."cityId"
+252 |       WHERE e.status = 'RE_SALE'
+253 |       ${filters}
+254 |       GROUP BY e."cityId", c.name
+255 |       ORDER BY revenue DESC
+256 |       LIMIT 5
+257 |     `;
+258 |     const topCities = topCitiesRows.map(({ name, revenue, profit }) => ({
+259 |       name,
+260 |       revenue,
+261 |       profit,
+262 |     }));
+263 | 
+264 |     // -------------------------------------------------------------------------
+265 |     // 8. Топ шкіл
+266 |     // -------------------------------------------------------------------------
+267 |     type SchoolRow = {
+268 |       schoolId: string;
+269 |       name: string;
+270 |       count: number;
+271 |       revenue: number;
+272 |     };
+273 |     const topSchoolsRows = await this.prisma.$queryRaw<SchoolRow[]>`
+274 |       SELECT
+275 |         e."schoolId",
+276 |         COALESCE(s.name, '—')                    AS name,
+277 |         COUNT(e.id)::int                         AS count,
+278 |         COALESCE(SUM(r."totalSum"), 0)::float    AS revenue
+279 |       FROM "Event" e
+280 |       JOIN "EventReport" r ON r."eventId" = e.id
+281 |       LEFT JOIN "School" s ON s.id = e."schoolId"
+282 |       WHERE e.status = 'RE_SALE'
+283 |       ${filters}
+284 |       GROUP BY e."schoolId", s.name
+285 |       ORDER BY revenue DESC
+286 |       LIMIT 5
+287 |     `;
+288 |     const topSchools = topSchoolsRows.map(({ name, count, revenue }) => ({
+289 |       name,
+290 |       count,
+291 |       revenue,
+292 |     }));
+293 | 
+294 |     // -------------------------------------------------------------------------
+295 |     // 9. Топ/антитоп подій — лише потрібні поля, без масивних include
+296 |     // -------------------------------------------------------------------------
+297 |     const eventSelect = {
+298 |       totalSum: true,
+299 |       remainderSum: true,
+300 |       event: {
+301 |         select: {
+302 |           id: true,
+303 |           date: true,
+304 |           school: { select: { name: true } },
+305 |         },
+306 |       },
+307 |     } satisfies Prisma.EventReportSelect;
+308 | 
+309 |     const [topEventsRaw, worstEventsRaw] = await Promise.all([
+310 |       this.prisma.eventReport.findMany({
+311 |         where: { event: baseEventWhere },
+312 |         select: eventSelect,
+313 |         orderBy: { remainderSum: 'desc' },
+314 |         take: 5,
+315 |       }),
+316 |       this.prisma.eventReport.findMany({
+317 |         where: { event: baseEventWhere },
+318 |         select: eventSelect,
+319 |         orderBy: { remainderSum: 'asc' },
+320 |         take: 5,
+321 |       }),
+322 |     ]);
+323 | 
+324 |     const mapEvent = (r: (typeof topEventsRaw)[number]) => ({
+325 |       id: r.event.id,
+326 |       date: r.event.date,
+327 |       school: r.event.school?.name ?? '—',
+328 |       profit: r.remainderSum ?? 0,
+329 |       revenue: r.totalSum ?? 0,
+330 |     });
+331 | 
+332 |     const topEvents = topEventsRaw.map(mapEvent);
+333 |     const worstEvents = worstEventsRaw.map(mapEvent);
+334 | 
+335 |     // -------------------------------------------------------------------------
+336 |     const result = {
+337 |       kpi: { totalRevenue, totalExpenses, totalProfit, totalEvents },
+338 |       monthly,
+339 |       byProject,
+340 |       byExpenseCategory,
+341 |       topCities,
+342 |       topSchools,
+343 |       topEvents,
+344 |       worstEvents,
+345 |       expectedRevenue,
+346 |       filters: filterOptions,
+347 |     };
+348 |     this.setCached(cacheKey, result);
+349 |     return result;
+350 |   }
+351 | 
+352 |   // ---------------------------------------------------------------------------
+353 |   async getStaffRevenue({
+354 |     period,
+355 |     cityId,
+356 |   }: {
+357 |     period?: string;
+358 |     cityId?: string;
+359 |   }) {
+360 |     const dateFrom = this.resolveDateFrom(period);
+361 |     const staffFilters = this.buildSqlFilters({ dateFrom, cityId });
+362 | 
+363 |     type StaffRow = {
+364 |       id: string;
+365 |       name: string;
+366 |       role: 'HOST' | 'DRIVER';
+367 |       revenue: number;
+368 |       eventsCount: number;
+369 |     };
+370 | 
+371 |     // Всі три запити йдуть паралельно
+372 |     const [hostRows, driverRows, totalAgg, eventsCount] = await Promise.all([
+373 |       // Ведучі
+374 |       this.prisma.$queryRaw<StaffRow[]>`
+375 |         SELECT
+376 |           u.id,
+377 |           u.name,
+378 |           'HOST'::text                              AS role,
+379 |           COALESCE(SUM(r."totalSum"), 0)::float     AS revenue,
+380 |           COUNT(e.id)::int                          AS "eventsCount"
+381 |         FROM "Event" e
+382 |         JOIN "EventCrew"    c ON c."eventId" = e.id
+383 |         JOIN "User"         u ON u.id = c."hostId"
+384 |         JOIN "EventReport"  r ON r."eventId" = e.id
+385 |         WHERE e.status = 'RE_SALE'
+386 |         ${staffFilters}
+387 |         GROUP BY u.id, u.name
+388 |       `,
+389 |       // Водії
+390 |       this.prisma.$queryRaw<StaffRow[]>`
+391 |         SELECT
+392 |           u.id,
+393 |           u.name,
+394 |           'DRIVER'::text                            AS role,
+395 |           COALESCE(SUM(r."totalSum"), 0)::float     AS revenue,
+396 |           COUNT(e.id)::int                          AS "eventsCount"
+397 |         FROM "Event" e
+398 |         JOIN "EventCrew"   c ON c."eventId" = e.id
+399 |         JOIN "User"        u ON u.id = c."driverId"
+400 |         JOIN "EventReport" r ON r."eventId" = e.id
+401 |         WHERE e.status = 'RE_SALE'
+402 |         ${staffFilters}
+403 |         GROUP BY u.id, u.name
+404 |       `,
+405 |       // Загальна виручка
+406 |       this.prisma.$queryRaw<[{ revenue: number }]>`
+407 |         SELECT COALESCE(SUM(r."totalSum"), 0)::float AS revenue
+408 |         FROM "Event" e
+409 |         JOIN "EventReport" r ON r."eventId" = e.id
+410 |         WHERE e.status = 'RE_SALE'
+411 |         ${staffFilters}
+412 |       `,
+413 |       // Кількість унікальних подій
+414 |       this.prisma.event.count({
+415 |         where: {
+416 |           status: 'RE_SALE',
+417 |           ...(dateFrom ? { date: { gte: dateFrom } } : {}),
+418 |           ...(cityId ? { cityId } : {}),
+419 |         },
+420 |       }),
+421 |     ]);
+422 | 
+423 |     const staff = [...hostRows, ...driverRows].sort(
+424 |       (a, b) => b.revenue - a.revenue,
+425 |     );
+426 |     const totalRevenue = totalAgg[0]?.revenue ?? 0;
+427 | 
+428 |     return { staff, totalRevenue, eventsCount };
+429 |   }
+430 | }
+431 | 
 ```
 
 ### File: apps/backend/src/issues/issues.controller.ts
@@ -4281,20 +4387,24 @@
   1 | import { SchoolsController } from './schools.controller';
   2 | import { SchoolsService } from './schools.service';
   3 | import { ParserService } from './parser.service';
-  4 | 
-  5 | describe('SchoolsController', () => {
-  6 |   it('should be defined', async () => {
-  7 |     const module = await Test.createTestingModule({
-  8 |       controllers: [SchoolsController],
-  9 |       providers: [
- 10 |         { provide: SchoolsService, useValue: {} },
- 11 |         { provide: ParserService, useValue: {} },
- 12 |       ],
- 13 |     }).compile();
- 14 |     expect(module.get(SchoolsController)).toBeDefined();
- 15 |   });
- 16 | });
- 17 | 
+  4 | import { AuthGuard } from '../auth/auth.guard';
+  5 | import { RolesGuard } from '../auth/guards/roles.guard';
+  6 | 
+  7 | describe('SchoolsController', () => {
+  8 |   it('should be defined', async () => {
+  9 |     const module = await Test.createTestingModule({
+ 10 |       controllers: [SchoolsController],
+ 11 |       providers: [
+ 12 |         { provide: SchoolsService, useValue: {} },
+ 13 |         { provide: ParserService, useValue: {} },
+ 14 |         { provide: AuthGuard, useValue: { canActivate: () => true } },
+ 15 |         { provide: RolesGuard, useValue: { canActivate: () => true } },
+ 16 |       ],
+ 17 |     }).compile();
+ 18 |     expect(module.get(SchoolsController)).toBeDefined();
+ 19 |   });
+ 20 | });
+ 21 | 
 ```
 
 ### File: apps/backend/src/schools/schools.controller.ts
@@ -4948,17 +5058,23 @@
   0 | import { Test } from '@nestjs/testing';
   1 | import { UsersController } from './users.controller';
   2 | import { UsersService } from './users.service';
-  3 | 
-  4 | describe('UsersController', () => {
-  5 |   it('should be defined', async () => {
-  6 |     const module = await Test.createTestingModule({
-  7 |       controllers: [UsersController],
-  8 |       providers: [{ provide: UsersService, useValue: {} }],
-  9 |     }).compile();
- 10 |     expect(module.get(UsersController)).toBeDefined();
- 11 |   });
- 12 | });
- 13 | 
+  3 | import { AuthGuard } from '../auth/auth.guard';
+  4 | import { RolesGuard } from '../auth/guards/roles.guard';
+  5 | 
+  6 | describe('UsersController', () => {
+  7 |   it('should be defined', async () => {
+  8 |     const module = await Test.createTestingModule({
+  9 |       controllers: [UsersController],
+ 10 |       providers: [
+ 11 |         { provide: UsersService, useValue: {} },
+ 12 |         { provide: AuthGuard, useValue: { canActivate: () => true } },
+ 13 |         { provide: RolesGuard, useValue: { canActivate: () => true } },
+ 14 |       ],
+ 15 |     }).compile();
+ 16 |     expect(module.get(UsersController)).toBeDefined();
+ 17 |   });
+ 18 | });
+ 19 | 
 ```
 
 ### File: apps/backend/src/users/users.controller.ts
@@ -5025,15 +5141,16 @@
   1 | import { UsersService } from './users.service';
   2 | import { UsersController } from './users.controller';
   3 | import { TelegramModule } from '../telegram/telegram.module';
-  4 | 
-  5 | @Module({
-  6 |   imports: [TelegramModule],
-  7 |   providers: [UsersService],
-  8 |   controllers: [UsersController],
-  9 |   exports: [UsersService],
- 10 | })
- 11 | export class UsersModule {}
- 12 | 
+  4 | import { PrismaModule } from '../prisma/prisma.module';
+  5 | 
+  6 | @Module({
+  7 |   imports: [TelegramModule],
+  8 |   providers: [UsersService],
+  9 |   controllers: [UsersController],
+ 10 |   exports: [UsersService],
+ 11 | })
+ 12 | export class UsersModule {}
+ 13 | 
 ```
 
 ### File: apps/backend/src/users/users.service.spec.ts
@@ -5064,127 +5181,149 @@
   1 | import { PrismaService } from '../prisma/prisma.service';
   2 | import * as bcrypt from 'bcrypt';
   3 | import { TelegramService } from '../telegram/telegram.service';
-  4 | 
+  4 | import { Prisma, User } from '@prisma/client';
   5 | @Injectable()
   6 | export class UsersService {
   7 |   constructor(
-  8 |     private prisma: PrismaService,
+  8 |     private readonly prisma: PrismaService,
   9 |     private telegramService: TelegramService,
  10 |   ) {}
  11 | 
- 12 |   async getAllUsers() {
- 13 |     return this.prisma.user.findMany({
- 14 |       include: {
- 15 |         city: true, // <--- Ось цей магічний рядок підтягне назву міста!
- 16 |       },
- 17 |     });
- 18 |   }
- 19 | 
- 20 |   async createUser(data: any) {
- 21 |     const hashedPassword = await bcrypt.hash(data.password, 10);
- 22 |     const user = await this.prisma.user.create({
- 23 |       data: {
- 24 |         name: data.fullName,
- 25 |         email: data.email,
- 26 |         phone: data.phone,
- 27 |         password: hashedPassword,
- 28 |         role: data.role,
- 29 |         cityId: data.cityId || null,
- 30 |         telegramId: data.telegramId || null,
- 31 |         car: data.car || null,
- 32 |       },
- 33 |     });
- 34 | 
- 35 |     // Надсилаємо вітальне повідомлення якщо вказано telegramId
- 36 |     if (data.password) {
- 37 |       // Шукаємо chat_id: якщо є збережений після /start — використовуємо його
- 38 |       // інакше пробуємо telegramId напряму (якщо вже числовий)
- 39 |       const chatId = user.telegramChatId || null;
- 40 | 
- 41 |       if (chatId) {
- 42 |         await this.telegramService.sendWelcome(
- 43 |           chatId,
- 44 |           data.fullName,
- 45 |           data.email,
- 46 |           data.password,
- 47 |         );
- 48 |       }
- 49 |     }
- 50 | 
- 51 |     return user;
- 52 |   }
- 53 | 
- 54 |   async updateUser(id: string, data: any) {
- 55 |     const updateData: any = {
- 56 |       name: data.fullName,
- 57 |       email: data.email,
- 58 |       phone: data.phone,
- 59 |       role: data.role,
- 60 |       cityId: data.cityId || null,
- 61 |       telegramId: data.telegramId || null,
- 62 |       car: data.car || null,
- 63 |     };
- 64 | 
- 65 |     // Якщо передано новий пароль, хешуємо його
- 66 |     if (data.password) {
- 67 |       updateData.password = await bcrypt.hash(data.password, 10);
- 68 |     }
- 69 | 
- 70 |     return this.prisma.user.update({ where: { id }, data: updateData });
- 71 |   }
- 72 | 
- 73 |   async deleteUser(id: string) {
- 74 |     return this.prisma.user.delete({ where: { id } });
- 75 |   }
- 76 | 
- 77 |   // Створення адміністратора
- 78 |   async seedAdmin() {
- 79 |     const existingAdmin = await this.prisma.user.findUnique({
- 80 |       where: { email: 'admin@crm.com' },
- 81 |     });
+ 12 |   async findByEmail(email: string): Promise<User | null> {
+ 13 |     return this.prisma.user.findUnique({
+ 14 |       where: { email },
+ 15 |     });
+ 16 |   }
+ 17 | 
+ 18 |   async findById(id: string): Promise<User | null> {
+ 19 |     return this.prisma.user.findUnique({
+ 20 |       where: { id },
+ 21 |     });
+ 22 |   }
+ 23 | 
+ 24 |   async getAllUsers() {
+ 25 |     return this.prisma.user.findMany({
+ 26 |       include: {
+ 27 |         city: true, // <--- Ось цей магічний рядок підтягне назву міста!
+ 28 |       },
+ 29 |     });
+ 30 |   }
+ 31 | 
+ 32 |   async create(data: Prisma.UserCreateInput): Promise<User> {
+ 33 |     return this.prisma.user.create({
+ 34 |       data,
+ 35 |     });
+ 36 |   }
+ 37 | 
+ 38 |   async createUser(data: any) {
+ 39 |     const hashedPassword = await bcrypt.hash(data.password, 10);
+ 40 |     const user = await this.prisma.user.create({
+ 41 |       data: {
+ 42 |         name: data.fullName,
+ 43 |         email: data.email,
+ 44 |         phone: data.phone,
+ 45 |         password: hashedPassword,
+ 46 |         role: data.role,
+ 47 |         cityId: data.cityId || null,
+ 48 |         telegramId: data.telegramId || null,
+ 49 |         car: data.car || null,
+ 50 |       },
+ 51 |     });
+ 52 | 
+ 53 |     // Надсилаємо вітальне повідомлення якщо вказано telegramId
+ 54 |     if (data.password) {
+ 55 |       // Шукаємо chat_id: якщо є збережений після /start — використовуємо його
+ 56 |       // інакше пробуємо telegramId напряму (якщо вже числовий)
+ 57 |       const chatId = user.telegramChatId || null;
+ 58 | 
+ 59 |       if (chatId) {
+ 60 |         await this.telegramService.sendWelcome(
+ 61 |           chatId,
+ 62 |           data.fullName,
+ 63 |           data.email,
+ 64 |           data.password,
+ 65 |         );
+ 66 |       }
+ 67 |     }
+ 68 | 
+ 69 |     return user;
+ 70 |   }
+ 71 | 
+ 72 |   async updateUser(id: string, data: any) {
+ 73 |     const updateData: any = {
+ 74 |       name: data.fullName,
+ 75 |       email: data.email,
+ 76 |       phone: data.phone,
+ 77 |       role: data.role,
+ 78 |       cityId: data.cityId || null,
+ 79 |       telegramId: data.telegramId || null,
+ 80 |       car: data.car || null,
+ 81 |     };
  82 | 
- 83 |     if (existingAdmin) {
- 84 |       return { message: 'Адміністратор вже існує!' };
- 85 |     }
- 86 | 
- 87 |     const hashedPassword = await bcrypt.hash('admin123', 10);
- 88 |     const admin = await this.prisma.user.create({
- 89 |       data: {
- 90 |         name: 'Артур Шмальцель',
- 91 |         email: 'admin@crm.com',
- 92 |         password: hashedPassword,
- 93 |         role: 'SUPERADMIN',
- 94 |       },
- 95 |     });
- 96 | 
- 97 |     return { message: 'Суперадмін успішно створений!', user: admin };
- 98 |   }
- 99 | 
-100 |   // Новий метод для додавання Васі
-101 |   async seedVasya() {
-102 |     const existingVasya = await this.prisma.user.findUnique({
-103 |       where: { email: 'vasya@charisma.com' },
-104 |     });
-105 | 
-106 |     if (existingVasya) {
-107 |       return { message: 'Вася вже в базі!' };
-108 |     }
-109 | 
-110 |     const hashedPassword = await bcrypt.hash('vasya123', 10);
-111 | 
-112 |     const vasya = await this.prisma.user.create({
-113 |       data: {
-114 |         name: 'Вася Харізма',
-115 |         email: 'vasya@charisma.com',
-116 |         password: hashedPassword,
-117 |         role: 'MANAGER',
-118 |       },
-119 |     });
-120 | 
-121 |     return { message: 'Вася Харізма успішно доданий!', user: vasya };
-122 |   }
-123 | }
-124 | 
+ 83 |     // Якщо передано новий пароль, хешуємо його
+ 84 |     if (data.password) {
+ 85 |       updateData.password = await bcrypt.hash(data.password, 10);
+ 86 |     }
+ 87 | 
+ 88 |     return this.prisma.user.update({ where: { id }, data: updateData });
+ 89 |   }
+ 90 | 
+ 91 |   async deleteUser(id: string) {
+ 92 |     return this.prisma.user.delete({ where: { id } });
+ 93 |   }
+ 94 | 
+ 95 |   // Створення адміністратора
+ 96 |   async seedAdmin() {
+ 97 |     const existingAdmin = await this.prisma.user.findUnique({
+ 98 |       where: { email: 'admin@crm.com' },
+ 99 |     });
+100 | 
+101 |     if (existingAdmin) {
+102 |       return { message: 'Адміністратор вже існує!' };
+103 |     }
+104 | 
+105 |     const hashedPassword = await bcrypt.hash('admin123', 10);
+106 |     const admin = await this.prisma.user.create({
+107 |       data: {
+108 |         name: 'Артур Шмальцель',
+109 |         email: 'admin@crm.com',
+110 |         password: hashedPassword,
+111 |         role: 'SUPERADMIN',
+112 |       },
+113 |     });
+114 | 
+115 |     return { message: 'Суперадмін успішно створений!', user: admin };
+116 |   }
+117 | 
+118 |   // Новий метод для додавання Васі
+119 |   async seedVasya() {
+120 |     const existingVasya = await this.prisma.user.findUnique({
+121 |       where: { email: 'vasya@charisma.com' },
+122 |     });
+123 | 
+124 |     if (existingVasya) {
+125 |       return { message: 'Вася вже в базі!' };
+126 |     }
+127 | 
+128 |     const hashedPassword = await bcrypt.hash('vasya123', 10);
+129 | 
+130 |     const vasya = await this.prisma.user.create({
+131 |       data: {
+132 |         name: 'Вася Харізма',
+133 |         email: 'vasya@charisma.com',
+134 |         password: hashedPassword,
+135 |         role: 'MANAGER',
+136 |       },
+137 |     });
+138 | 
+139 |     return { message: 'Вася Харізма успішно доданий!', user: vasya };
+140 |   }
+141 | 
+142 |   async findAll() {
+143 |     return this.prisma.user.findMany();
+144 |   }
+145 | }
+146 | 
 ```
 
 ### File: apps/backend/tsconfig.json
@@ -10746,270 +10885,276 @@
 266 | 
 267 |   const handleSave = () => {
 268 |     const salariesArr = crewMembers
-269 |       .map((m) => ({ userId: m.id, name: m.name, amount: salaries[m.id] || 0 }))
-270 |       .filter((s) => s.amount > 0);
-271 |     onSave({
-272 |       ...form,
-273 |       expenses,
-274 |       schoolSum,
-275 |       remainderSum: remainder,
-276 |       salaries: salariesArr,
-277 |     });
-278 |   };
-279 | 
-280 |   return (
-281 |     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-282 |       <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden">
-283 |         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
-284 | 
-285 |         {/* Header */}
-286 |         <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 bg-slate-50 flex items-start justify-between shrink-0">
-287 |           <div className="min-w-0">
-288 |             <h3 className="text-lg sm:text-xl font-bold text-slate-800 leading-tight">
-289 |               Звіт по події
-290 |             </h3>
-291 |             <p className="text-sm text-slate-500 mt-0.5 truncate">
-292 |               {schoolName}
-293 |             </p>
-294 |           </div>
-295 |           <button
-296 |             onClick={onClose}
-297 |             className="text-slate-400 hover:text-slate-600 text-lg leading-none p-2 -mr-2 shrink-0"
-298 |           >
-299 |             ✕
-300 |           </button>
-301 |         </div>
-302 | 
-303 |         {/* Body */}
-304 |         <div className="p-4 sm:p-6 overflow-y-auto bg-slate-50/50">
-305 |           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-306 |             {/* Охоплення */}
-307 |             <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
-308 |               <CardHeader
-309 |                 icon={<Icon.Users />}
-310 |                 color="bg-violet-50 text-violet-600"
-311 |                 title="Охоплення та Проведення"
-312 |               />
-313 |               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
-314 |                 <Row label="Кількість дітей">
-315 |                   <NumberField
-316 |                     value={form.childrenCount}
-317 |                     onChange={(v) => setForm({ ...form, childrenCount: v })}
-318 |                     suffix="дітей"
-319 |                   />
-320 |                 </Row>
-321 |                 <Row label="Класів">
-322 |                   <NumberField
-323 |                     value={form.classesCount}
-324 |                     onChange={(v) => setForm({ ...form, classesCount: v })}
-325 |                     suffix="кл."
-326 |                   />
-327 |                 </Row>
-328 |                 <Row label="Пільгових дітей">
-329 |                   <NumberField
-330 |                     value={form.privilegedCount}
-331 |                     onChange={(v) => setForm({ ...form, privilegedCount: v })}
+269 |       .map((m) => ({
+270 |         userId: m.id,
+271 |         name: m.name,
+272 |         amount: salaries[m.id] || 0,
+273 |         role: m.role,
+274 |       }))
+275 |       .filter((s) => s.amount > 0);
+276 | 
+277 |     onSave({
+278 |       ...form,
+279 |       expenses, // тепер підтримує category
+280 |       schoolSum,
+281 |       remainderSum: remainder,
+282 |       salaries: salariesArr,
+283 |     });
+284 |   };
+285 | 
+286 |   return (
+287 |     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+288 |       <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden">
+289 |         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+290 | 
+291 |         {/* Header */}
+292 |         <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 bg-slate-50 flex items-start justify-between shrink-0">
+293 |           <div className="min-w-0">
+294 |             <h3 className="text-lg sm:text-xl font-bold text-slate-800 leading-tight">
+295 |               Звіт по події
+296 |             </h3>
+297 |             <p className="text-sm text-slate-500 mt-0.5 truncate">
+298 |               {schoolName}
+299 |             </p>
+300 |           </div>
+301 |           <button
+302 |             onClick={onClose}
+303 |             className="text-slate-400 hover:text-slate-600 text-lg leading-none p-2 -mr-2 shrink-0"
+304 |           >
+305 |             ✕
+306 |           </button>
+307 |         </div>
+308 | 
+309 |         {/* Body */}
+310 |         <div className="p-4 sm:p-6 overflow-y-auto bg-slate-50/50">
+311 |           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+312 |             {/* Охоплення */}
+313 |             <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+314 |               <CardHeader
+315 |                 icon={<Icon.Users />}
+316 |                 color="bg-violet-50 text-violet-600"
+317 |                 title="Охоплення та Проведення"
+318 |               />
+319 |               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+320 |                 <Row label="Кількість дітей">
+321 |                   <NumberField
+322 |                     value={form.childrenCount}
+323 |                     onChange={(v) => setForm({ ...form, childrenCount: v })}
+324 |                     suffix="дітей"
+325 |                   />
+326 |                 </Row>
+327 |                 <Row label="Класів">
+328 |                   <NumberField
+329 |                     value={form.classesCount}
+330 |                     onChange={(v) => setForm({ ...form, classesCount: v })}
+331 |                     suffix="кл."
 332 |                   />
 333 |                 </Row>
-334 |                 <Row label="Кількість показів">
+334 |                 <Row label="Пільгових дітей">
 335 |                   <NumberField
-336 |                     value={form.showingsCount}
-337 |                     onChange={(v) => setForm({ ...form, showingsCount: v })}
+336 |                     value={form.privilegedCount}
+337 |                     onChange={(v) => setForm({ ...form, privilegedCount: v })}
 338 |                   />
 339 |                 </Row>
-340 |               </div>
-341 |             </div>
-342 | 
-343 |             {/* Фінансовий результат */}
-344 |             <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
-345 |               <CardHeader
-346 |                 icon={<Icon.Wallet />}
-347 |                 color="bg-amber-50 text-amber-600"
-348 |                 title="Фінансовий результат"
-349 |               />
-350 |               <div className="flex items-center justify-between py-2 border-b border-slate-50">
-351 |                 <span className="text-sm text-slate-500 font-medium">
-352 |                   Загальна виручка
-353 |                 </span>
-354 |                 <span className="inline-flex items-center gap-1">
-355 |                   <input
-356 |                     type="number"
-357 |                     min={0}
-358 |                     value={form.totalSum || ""}
-359 |                     onChange={(e) =>
-360 |                       setForm({ ...form, totalSum: +e.target.value })
-361 |                     }
-362 |                     className="w-28 text-right bg-transparent outline-none font-bold text-lg text-slate-800 focus:bg-blue-50 rounded px-1"
-363 |                     placeholder="0"
-364 |                   />
-365 |                   <span className="text-slate-400 text-sm">грн</span>
-366 |                 </span>
-367 |               </div>
-368 | 
-369 |               {/* НОВЕ: Змінний відсоток для закладу */}
-370 |               <div className="flex items-center justify-between py-2 border-b border-slate-50">
-371 |                 <span className="text-sm text-slate-500">Відсоток закладу</span>
-372 |                 <NumberField
-373 |                   value={form.schoolPercentage}
-374 |                   onChange={(v) => setForm({ ...form, schoolPercentage: v })}
-375 |                   suffix="%"
-376 |                 />
-377 |               </div>
-378 | 
-379 |               <Row label={`Сума закладу (${form.schoolPercentage}%)`}>
-380 |                 <span>{formatMoney(schoolSum)} грн</span>
-381 |               </Row>
-382 | 
-383 |               <div className="py-3 border-b border-slate-50">
-384 |                 <div className="flex items-center justify-between mb-2">
-385 |                   <span className="text-sm text-slate-500">
-386 |                     Додаткові витрати
-387 |                   </span>
-388 |                   <span className="text-sm font-medium text-rose-500">
-389 |                     −{formatMoney(totalExpenses)} грн
-390 |                   </span>
-391 |                 </div>
-392 |                 {expenses.length > 0 && (
-393 |                   <div className="flex flex-wrap gap-1.5 mb-2">
-394 |                     {expenses.map((exp, i) => (
-395 |                       <span
-396 |                         key={i}
-397 |                         className="inline-flex items-center gap-1.5 bg-slate-100 rounded-full pl-3 pr-1.5 py-1 text-xs"
-398 |                       >
-399 |                         <span className="text-slate-600">{exp.name}</span>
-400 |                         <span className="font-semibold text-slate-700">
-401 |                           {formatMoney(exp.amount)} грн
-402 |                         </span>
-403 |                         <button
-404 |                           onClick={() => removeExpense(i)}
-405 |                           className="text-slate-400 hover:text-rose-500 w-4 h-4 rounded-full flex items-center justify-center hover:bg-white"
-406 |                         >
-407 |                           ✕
-408 |                         </button>
-409 |                       </span>
-410 |                     ))}
-411 |                   </div>
-412 |                 )}
-413 |                 <div className="flex gap-2 mt-2">
-414 |                   <input
-415 |                     placeholder="Назва витрати"
-416 |                     value={newExp.name}
-417 |                     onChange={(e) =>
-418 |                       setNewExp({ ...newExp, name: e.target.value })
-419 |                     }
-420 |                     className="flex-1 min-w-0 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-421 |                   />
-422 |                   <input
-423 |                     type="number"
-424 |                     min={0}
-425 |                     placeholder="грн"
-426 |                     value={newExp.amount}
-427 |                     onChange={(e) =>
-428 |                       setNewExp({ ...newExp, amount: e.target.value })
-429 |                     }
-430 |                     className="w-20 sm:w-24 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-431 |                   />
-432 |                   <button
-433 |                     onClick={addExpense}
-434 |                     type="button"
-435 |                     className="px-3 shrink-0 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium text-sm"
-436 |                   >
-437 |                     +
-438 |                   </button>
-439 |                 </div>
-440 |               </div>
-441 |               <div className="flex items-center justify-between bg-emerald-50 rounded-xl px-4 py-3 mt-3">
-442 |                 <span className="text-sm font-semibold text-emerald-700">
-443 |                   Залишок ({100 - form.schoolPercentage}%)
-444 |                 </span>
-445 |                 <span className="text-lg font-bold text-emerald-700">
-446 |                   {formatMoney(remainder)} грн
-447 |                 </span>
-448 |               </div>
-449 |             </div>
-450 |             {crewMembers.length > 0 && (
-451 |               <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
-452 |                 <CardHeader
-453 |                   icon={
-454 |                     <svg
-455 |                       viewBox="0 0 24 24"
-456 |                       fill="none"
-457 |                       stroke="currentColor"
-458 |                       strokeWidth="2"
-459 |                       strokeLinecap="round"
-460 |                       strokeLinejoin="round"
-461 |                       className="w-4 h-4"
-462 |                     >
-463 |                       <circle cx="12" cy="8" r="6" />
-464 |                       <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
-465 |                     </svg>
-466 |                   }
-467 |                   color="bg-blue-50 text-blue-600"
-468 |                   title="Заробітня плата"
-469 |                 />
-470 |                 <div className="space-y-1">
-471 |                   {crewMembers.map((m) => (
-472 |                     <Row key={m.id} label={`${m.name} (${m.role})`}>
-473 |                       <span className="inline-flex items-center gap-1">
-474 |                         <input
-475 |                           type="number"
-476 |                           min={0}
-477 |                           value={salaries[m.id] || ""}
-478 |                           onChange={(e) =>
-479 |                             setSalaries((prev) => ({
-480 |                               ...prev,
-481 |                               [m.id]: +e.target.value,
-482 |                             }))
-483 |                           }
-484 |                           className="w-24 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1"
-485 |                           placeholder="0"
-486 |                         />
-487 |                         <span className="text-slate-400 text-xs">грн</span>
-488 |                       </span>
-489 |                     </Row>
-490 |                   ))}
-491 |                 </div>
-492 |                 {crewMembers.some((m) => salaries[m.id] > 0) && (
-493 |                   <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
-494 |                     <span className="text-sm font-semibold text-slate-500">
-495 |                       Разом ЗП
-496 |                     </span>
-497 |                     <span className="font-bold text-blue-600">
-498 |                       {formatMoney(
-499 |                         crewMembers.reduce(
-500 |                           (s, m) => s + (salaries[m.id] || 0),
-501 |                           0,
-502 |                         ),
-503 |                       )}{" "}
-504 |                       грн
-505 |                     </span>
-506 |                   </div>
-507 |                 )}
-508 |               </div>
-509 |             )}
-510 |           </div>
-511 |         </div>
-512 | 
-513 |         {/* Footer */}
-514 |         <div className="flex gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-white shrink-0">
-515 |           <button
-516 |             onClick={onClose}
-517 |             className="flex-1 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium py-3"
-518 |           >
-519 |             Скасувати
-520 |           </button>
+340 |                 <Row label="Кількість показів">
+341 |                   <NumberField
+342 |                     value={form.showingsCount}
+343 |                     onChange={(v) => setForm({ ...form, showingsCount: v })}
+344 |                   />
+345 |                 </Row>
+346 |               </div>
+347 |             </div>
+348 | 
+349 |             {/* Фінансовий результат */}
+350 |             <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+351 |               <CardHeader
+352 |                 icon={<Icon.Wallet />}
+353 |                 color="bg-amber-50 text-amber-600"
+354 |                 title="Фінансовий результат"
+355 |               />
+356 |               <div className="flex items-center justify-between py-2 border-b border-slate-50">
+357 |                 <span className="text-sm text-slate-500 font-medium">
+358 |                   Загальна виручка
+359 |                 </span>
+360 |                 <span className="inline-flex items-center gap-1">
+361 |                   <input
+362 |                     type="number"
+363 |                     min={0}
+364 |                     value={form.totalSum || ""}
+365 |                     onChange={(e) =>
+366 |                       setForm({ ...form, totalSum: +e.target.value })
+367 |                     }
+368 |                     className="w-28 text-right bg-transparent outline-none font-bold text-lg text-slate-800 focus:bg-blue-50 rounded px-1"
+369 |                     placeholder="0"
+370 |                   />
+371 |                   <span className="text-slate-400 text-sm">грн</span>
+372 |                 </span>
+373 |               </div>
+374 | 
+375 |               {/* НОВЕ: Змінний відсоток для закладу */}
+376 |               <div className="flex items-center justify-between py-2 border-b border-slate-50">
+377 |                 <span className="text-sm text-slate-500">Відсоток закладу</span>
+378 |                 <NumberField
+379 |                   value={form.schoolPercentage}
+380 |                   onChange={(v) => setForm({ ...form, schoolPercentage: v })}
+381 |                   suffix="%"
+382 |                 />
+383 |               </div>
+384 | 
+385 |               <Row label={`Сума закладу (${form.schoolPercentage}%)`}>
+386 |                 <span>{formatMoney(schoolSum)} грн</span>
+387 |               </Row>
+388 | 
+389 |               <div className="py-3 border-b border-slate-50">
+390 |                 <div className="flex items-center justify-between mb-2">
+391 |                   <span className="text-sm text-slate-500">
+392 |                     Додаткові витрати
+393 |                   </span>
+394 |                   <span className="text-sm font-medium text-rose-500">
+395 |                     −{formatMoney(totalExpenses)} грн
+396 |                   </span>
+397 |                 </div>
+398 |                 {expenses.length > 0 && (
+399 |                   <div className="flex flex-wrap gap-1.5 mb-2">
+400 |                     {expenses.map((exp, i) => (
+401 |                       <span
+402 |                         key={i}
+403 |                         className="inline-flex items-center gap-1.5 bg-slate-100 rounded-full pl-3 pr-1.5 py-1 text-xs"
+404 |                       >
+405 |                         <span className="text-slate-600">{exp.name}</span>
+406 |                         <span className="font-semibold text-slate-700">
+407 |                           {formatMoney(exp.amount)} грн
+408 |                         </span>
+409 |                         <button
+410 |                           onClick={() => removeExpense(i)}
+411 |                           className="text-slate-400 hover:text-rose-500 w-4 h-4 rounded-full flex items-center justify-center hover:bg-white"
+412 |                         >
+413 |                           ✕
+414 |                         </button>
+415 |                       </span>
+416 |                     ))}
+417 |                   </div>
+418 |                 )}
+419 |                 <div className="flex gap-2 mt-2">
+420 |                   <input
+421 |                     placeholder="Назва витрати"
+422 |                     value={newExp.name}
+423 |                     onChange={(e) =>
+424 |                       setNewExp({ ...newExp, name: e.target.value })
+425 |                     }
+426 |                     className="flex-1 min-w-0 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+427 |                   />
+428 |                   <input
+429 |                     type="number"
+430 |                     min={0}
+431 |                     placeholder="грн"
+432 |                     value={newExp.amount}
+433 |                     onChange={(e) =>
+434 |                       setNewExp({ ...newExp, amount: e.target.value })
+435 |                     }
+436 |                     className="w-20 sm:w-24 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+437 |                   />
+438 |                   <button
+439 |                     onClick={addExpense}
+440 |                     type="button"
+441 |                     className="px-3 shrink-0 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium text-sm"
+442 |                   >
+443 |                     +
+444 |                   </button>
+445 |                 </div>
+446 |               </div>
+447 |               <div className="flex items-center justify-between bg-emerald-50 rounded-xl px-4 py-3 mt-3">
+448 |                 <span className="text-sm font-semibold text-emerald-700">
+449 |                   Залишок ({100 - form.schoolPercentage}%)
+450 |                 </span>
+451 |                 <span className="text-lg font-bold text-emerald-700">
+452 |                   {formatMoney(remainder)} грн
+453 |                 </span>
+454 |               </div>
+455 |             </div>
+456 |             {crewMembers.length > 0 && (
+457 |               <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+458 |                 <CardHeader
+459 |                   icon={
+460 |                     <svg
+461 |                       viewBox="0 0 24 24"
+462 |                       fill="none"
+463 |                       stroke="currentColor"
+464 |                       strokeWidth="2"
+465 |                       strokeLinecap="round"
+466 |                       strokeLinejoin="round"
+467 |                       className="w-4 h-4"
+468 |                     >
+469 |                       <circle cx="12" cy="8" r="6" />
+470 |                       <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+471 |                     </svg>
+472 |                   }
+473 |                   color="bg-blue-50 text-blue-600"
+474 |                   title="Заробітня плата"
+475 |                 />
+476 |                 <div className="space-y-1">
+477 |                   {crewMembers.map((m) => (
+478 |                     <Row key={m.id} label={`${m.name} (${m.role})`}>
+479 |                       <span className="inline-flex items-center gap-1">
+480 |                         <input
+481 |                           type="number"
+482 |                           min={0}
+483 |                           value={salaries[m.id] || ""}
+484 |                           onChange={(e) =>
+485 |                             setSalaries((prev) => ({
+486 |                               ...prev,
+487 |                               [m.id]: +e.target.value,
+488 |                             }))
+489 |                           }
+490 |                           className="w-24 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1"
+491 |                           placeholder="0"
+492 |                         />
+493 |                         <span className="text-slate-400 text-xs">грн</span>
+494 |                       </span>
+495 |                     </Row>
+496 |                   ))}
+497 |                 </div>
+498 |                 {crewMembers.some((m) => salaries[m.id] > 0) && (
+499 |                   <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
+500 |                     <span className="text-sm font-semibold text-slate-500">
+501 |                       Разом ЗП
+502 |                     </span>
+503 |                     <span className="font-bold text-blue-600">
+504 |                       {formatMoney(
+505 |                         crewMembers.reduce(
+506 |                           (s, m) => s + (salaries[m.id] || 0),
+507 |                           0,
+508 |                         ),
+509 |                       )}{" "}
+510 |                       грн
+511 |                     </span>
+512 |                   </div>
+513 |                 )}
+514 |               </div>
+515 |             )}
+516 |           </div>
+517 |         </div>
+518 | 
+519 |         {/* Footer */}
+520 |         <div className="flex gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-white shrink-0">
 521 |           <button
-522 |             onClick={handleSave}
-523 |             className="flex-1 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 py-3"
+522 |             onClick={onClose}
+523 |             className="flex-1 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium py-3"
 524 |           >
-525 |             Зберегти звіт
+525 |             Скасувати
 526 |           </button>
-527 |         </div>
-528 |       </div>
-529 |     </div>
-530 |   );
-531 | }
-532 | 
+527 |           <button
+528 |             onClick={handleSave}
+529 |             className="flex-1 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 py-3"
+530 |           >
+531 |             Зберегти звіт
+532 |           </button>
+533 |         </div>
+534 |       </div>
+535 |     </div>
+536 |   );
+537 | }
+538 | 
 ```
 
 ### File: apps/frontend/src/components/school-profile/modals/RescheduleModal.tsx
@@ -16764,7 +16909,7 @@
 711 |     return (
 712 |       <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
 713 |         <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
-714 |           <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+714 |           {/* Header */}
 715 |           <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
 716 |             <div>
 717 |               <h3 className="text-xl font-bold text-slate-800">
@@ -16781,117 +16926,106 @@
 728 |               ✕
 729 |             </button>
 730 |           </div>
-731 |           <div className="p-5 sm:p-6 flex-1 overflow-y-auto bg-slate-50/30">
-732 |             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-733 |               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-734 |                 <h4 className="font-bold text-slate-800 mb-4">📊 Результати</h4>
-735 |                 <div className="space-y-3 text-sm">
-736 |                   {[
-737 |                     ["Дітей (факт)", report?.childrenCount || 0],
-738 |                     ["Класів", report?.classesCount || 0],
-739 |                     ["Пільговиків", report?.privilegedCount || 0],
-740 |                     ["Сеансів", report?.showingsCount || 0],
-741 |                   ].map(([label, val]) => (
-742 |                     <div
-743 |                       key={label}
-744 |                       className="flex justify-between border-b border-slate-50 pb-2"
-745 |                     >
-746 |                       <span className="text-slate-500">{label}:</span>
-747 |                       <span className="font-medium">{val}</span>
-748 |                     </div>
-749 |                   ))}
-750 |                   <div className="flex justify-between pb-1">
-751 |                     <span className="text-slate-500">Оцінка:</span>
-752 |                     <span className="font-bold text-amber-500">
-753 |                       ⭐ {report?.rating || 0}/10
-754 |                     </span>
-755 |                   </div>
-756 |                 </div>
-757 |               </div>
-758 |               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-759 |                 <h4 className="font-bold text-slate-800 mb-4">💰 Фінанси</h4>
-760 |                 <div className="space-y-3 text-sm">
-761 |                   <div className="flex justify-between border-b border-slate-50 pb-2">
-762 |                     <span className="text-slate-500">Загальна виручка:</span>
-763 |                     <span className="font-bold">
-764 |                       {fmt(report?.totalSum)} грн
-765 |                     </span>
-766 |                   </div>
-767 |                   <div className="flex justify-between border-b border-slate-50 pb-2">
-768 |                     <span className="text-slate-500">На заклад (20%):</span>
-769 |                     <span className="font-medium text-rose-500">
-770 |                       − {fmt(report?.schoolSum)} грн
-771 |                     </span>
-772 |                   </div>
-773 |                   {Array.isArray(report?.expenses) &&
-774 |                     report.expenses.map((exp: any, i: number) => (
-775 |                       <div
-776 |                         key={i}
-777 |                         className="flex justify-between text-xs pl-2"
-778 |                       >
-779 |                         <span className="text-slate-400">
-780 |                           — {exp.name || exp.category}
-781 |                         </span>
-782 |                         <span className="text-rose-500 font-medium">
-783 |                           − {fmt(exp.amount)} грн
-784 |                         </span>
-785 |                       </div>
-786 |                     ))}
-787 |                   <div className="flex justify-between pt-1">
-788 |                     <span className="font-bold text-slate-800">
-789 |                       Чистий прибуток:
-790 |                     </span>
-791 |                     <span className="font-bold text-emerald-600 text-base">
-792 |                       {fmt(report?.remainderSum)} грн
-793 |                     </span>
-794 |                   </div>
-795 |                 </div>
-796 |               </div>
-797 |             </div>
-798 |             {event.history?.length > 0 && (
-799 |               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-800 |                 <h4 className="font-bold text-slate-800 mb-5">
-801 |                   ⏳ Історія пайплайну
-802 |                 </h4>
-803 |                 <div className="space-y-4 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-slate-100">
-804 |                   {[...event.history]
-805 |                     .sort(
-806 |                       (a, b) =>
-807 |                         new Date(a.createdAt).getTime() -
-808 |                         new Date(b.createdAt).getTime(),
-809 |                     )
-810 |                     .map((item: any) => (
-811 |                       <div key={item.id} className="relative pl-8 text-sm">
-812 |                         <div className="absolute left-1.5 w-3 h-3 rounded-full top-1 bg-violet-500 ring-4 ring-white" />
-813 |                         <p className="font-semibold text-slate-800">
-814 |                           {item.action}
-815 |                         </p>
-816 |                         <p className="text-[11px] text-slate-400 mt-0.5">
-817 |                           {new Date(item.createdAt).toLocaleString("uk-UA", {
-818 |                             day: "2-digit",
-819 |                             month: "2-digit",
-820 |                             hour: "2-digit",
-821 |                             minute: "2-digit",
-822 |                           })}{" "}
-823 |                           · 👤 {item.userName}
-824 |                         </p>
-825 |                         {item.comment && (
-826 |                           <div className="mt-2 p-3 bg-slate-50/80 rounded-xl text-slate-600 italic border border-slate-100">
-827 |                             {item.comment}
-828 |                           </div>
-829 |                         )}
-830 |                       </div>
-831 |                     ))}
-832 |                 </div>
-833 |               </div>
-834 |             )}
-835 |           </div>
-836 |         </div>
-837 |       </div>
-838 |     );
-839 |   }
-840 | }
-841 | 
+731 | 
+732 |           <div className="p-5 sm:p-6 flex-1 overflow-y-auto bg-slate-50/30">
+733 |             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+734 |               {/* Результати */}
+735 |               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+736 |                 <h4 className="font-bold text-slate-800 mb-4">📊 Результати</h4>
+737 |                 <div className="space-y-3 text-sm">
+738 |                   {[
+739 |                     ["Дітей (факт)", report?.childrenCount || 0],
+740 |                     ["Класів", report?.classesCount || 0],
+741 |                     ["Пільговиків", report?.privilegedCount || 0],
+742 |                     ["Сеансів", report?.showingsCount || 0],
+743 |                   ].map(([label, val]) => (
+744 |                     <div
+745 |                       key={label}
+746 |                       className="flex justify-between border-b border-slate-50 pb-2"
+747 |                     >
+748 |                       <span className="text-slate-500">{label}:</span>
+749 |                       <span className="font-medium">{val}</span>
+750 |                     </div>
+751 |                   ))}
+752 |                   <div className="flex justify-between pb-1">
+753 |                     <span className="text-slate-500">Оцінка:</span>
+754 |                     <span className="font-bold text-amber-500">
+755 |                       ⭐ {report?.rating || 0}/10
+756 |                     </span>
+757 |                   </div>
+758 |                 </div>
+759 |               </div>
+760 | 
+761 |               {/* Фінанси */}
+762 |               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+763 |                 <h4 className="font-bold text-slate-800 mb-4">💰 Фінанси</h4>
+764 |                 <div className="space-y-3 text-sm">
+765 |                   <div className="flex justify-between border-b border-slate-50 pb-2">
+766 |                     <span className="text-slate-500">Загальна виручка:</span>
+767 |                     <span className="font-bold">
+768 |                       {fmt(report?.totalSum)} грн
+769 |                     </span>
+770 |                   </div>
+771 |                   <div className="flex justify-between border-b border-slate-50 pb-2">
+772 |                     <span className="text-slate-500">На заклад:</span>
+773 |                     <span className="font-medium text-rose-500">
+774 |                       − {fmt(report?.schoolSum)} грн
+775 |                     </span>
+776 |                   </div>
+777 | 
+778 |                   {/* Витрати */}
+779 |                   {Array.isArray(report?.expenses) &&
+780 |                     report.expenses.map((exp: any, i: number) => (
+781 |                       <div
+782 |                         key={i}
+783 |                         className="flex justify-between text-xs pl-2"
+784 |                       >
+785 |                         <span className="text-slate-400">
+786 |                           — {exp.name || exp.category || "Інше"}
+787 |                         </span>
+788 |                         <span className="text-rose-500 font-medium">
+789 |                           − {fmt(exp.amount)} грн
+790 |                         </span>
+791 |                       </div>
+792 |                     ))}
+793 | 
+794 |                   <div className="flex justify-between pt-1 border-t border-slate-100">
+795 |                     <span className="font-bold text-slate-800">
+796 |                       Чистий прибуток:
+797 |                     </span>
+798 |                     <span className="font-bold text-emerald-600 text-base">
+799 |                       {fmt(report?.remainderSum)} грн
+800 |                     </span>
+801 |                   </div>
+802 |                 </div>
+803 |               </div>
+804 |             </div>
+805 | 
+806 |             {/* Зарплати */}
+807 |             {Array.isArray(report?.salaries) && report.salaries.length > 0 && (
+808 |               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mt-4">
+809 |                 <h4 className="font-bold text-slate-800 mb-4">👥 Зарплати</h4>
+810 |                 <div className="space-y-2">
+811 |                   {report.salaries.map((s: any, i: number) => (
+812 |                     <div key={i} className="flex justify-between text-sm">
+813 |                       <span>
+814 |                         {s.name} {s.role ? `(${s.role})` : ""}
+815 |                       </span>
+816 |                       <span className="font-medium text-blue-600">
+817 |                         {fmt(s.amount)} грн
+818 |                       </span>
+819 |                     </div>
+820 |                   ))}
+821 |                 </div>
+822 |               </div>
+823 |             )}
+824 |           </div>
+825 |         </div>
+826 |       </div>
+827 |     );
+828 |   }
+829 | }
+830 | 
 ```
 
 ### File: apps/frontend/src/pages/Schools.tsx
@@ -18323,73 +18457,90 @@
  38 |   createdAt: string;
  39 | }
  40 | 
- 41 | export interface EventReport {
- 42 |   childrenCount: number;
- 43 |   totalSum: number;
- 44 |   remainderSum: number;
- 45 |   directorSatisfied?: boolean;
- 46 |   teachersSatisfied?: boolean;
- 47 |   hadIssues?: boolean;
- 48 |   comment?: string;
- 49 | }
- 50 | 
- 51 | export interface Event {
- 52 |   id: string;
- 53 |   schoolId: string;
- 54 |   cityId: string;
- 55 |   project: string;
- 56 |   date: string;
- 57 |   time?: string;
- 58 |   status: string;
- 59 |   childrenPlanned?: number;
- 60 |   price?: number;
- 61 |   address?: string;
- 62 |   contactPerson?: string;
- 63 |   contactPhone?: string;
- 64 |   crew?: Crew;
- 65 |   report?: EventReport;
- 66 |   history?: EventHistory[];
- 67 |   preparation?: EventPreparation;
- 68 |   school?: { id: string; name: string; type: string }; // ← додай це
- 69 | }
- 70 | 
- 71 | export interface Crew {
- 72 |   id: string;
- 73 |   name: string;
- 74 |   cityId: string;
- 75 |   hostId?: string;
- 76 |   driverId?: string;
- 77 |   host?: { id: string; name: string };
- 78 |   driver?: { id: string; name: string };
- 79 |   car?: string;
- 80 |   phone?: string;
- 81 | }
- 82 | 
- 83 | export interface EventPreparation {
- 84 |   assignCrew: string;
- 85 |   bookEquipment: string;
- 86 |   prepareDocs: string;
- 87 |   prepareMaterials: string;
- 88 |   remindSchool: string;
- 89 | }
- 90 | 
- 91 | export interface CityProfile extends City {
- 92 |   events: Event[];
- 93 |   crews: Crew[];
- 94 |   schools?: School[]; // ← додай це
- 95 | }
- 96 | 
- 97 | export interface IssueReport {
- 98 |   id: string;
- 99 |   eventId: string;
-100 |   schoolName: string;
-101 |   eventName: string;
-102 |   message: string;
-103 |   cityId: string;
-104 |   status: string;
-105 |   createdAt: string;
+ 41 | export interface ExpenseItem {
+ 42 |   category?: string;
+ 43 |   name?: string;
+ 44 |   amount: number;
+ 45 | }
+ 46 | 
+ 47 | export interface SalaryItem {
+ 48 |   userId: string;
+ 49 |   name: string;
+ 50 |   amount: number;
+ 51 |   role?: string;
+ 52 | }
+ 53 | 
+ 54 | export interface EventReport {
+ 55 |   childrenCount: number;
+ 56 |   totalSum: number;
+ 57 |   schoolSum: number;
+ 58 |   remainderSum: number;
+ 59 |   directorSatisfied?: boolean;
+ 60 |   teachersSatisfied?: boolean;
+ 61 |   hadIssues?: boolean;
+ 62 |   comment?: string;
+ 63 |   rating?: number;
+ 64 |   expenses: ExpenseItem[];
+ 65 |   salaries: SalaryItem[];
+ 66 | }
+ 67 | 
+ 68 | export interface Event {
+ 69 |   id: string;
+ 70 |   schoolId: string;
+ 71 |   cityId: string;
+ 72 |   project: string;
+ 73 |   date: string;
+ 74 |   time?: string;
+ 75 |   status: string;
+ 76 |   childrenPlanned?: number;
+ 77 |   price?: number;
+ 78 |   address?: string;
+ 79 |   contactPerson?: string;
+ 80 |   contactPhone?: string;
+ 81 |   crew?: Crew;
+ 82 |   report?: EventReport;
+ 83 |   history?: EventHistory[];
+ 84 |   preparation?: EventPreparation;
+ 85 |   school?: { id: string; name: string; type: string }; // ← додай це
+ 86 | }
+ 87 | 
+ 88 | export interface Crew {
+ 89 |   id: string;
+ 90 |   name: string;
+ 91 |   cityId: string;
+ 92 |   hostId?: string;
+ 93 |   driverId?: string;
+ 94 |   host?: { id: string; name: string };
+ 95 |   driver?: { id: string; name: string };
+ 96 |   car?: string;
+ 97 |   phone?: string;
+ 98 | }
+ 99 | 
+100 | export interface EventPreparation {
+101 |   assignCrew: string;
+102 |   bookEquipment: string;
+103 |   prepareDocs: string;
+104 |   prepareMaterials: string;
+105 |   remindSchool: string;
 106 | }
 107 | 
+108 | export interface CityProfile extends City {
+109 |   events: Event[];
+110 |   crews: Crew[];
+111 |   schools?: School[]; // ← додай це
+112 | }
+113 | 
+114 | export interface IssueReport {
+115 |   id: string;
+116 |   eventId: string;
+117 |   schoolName: string;
+118 |   eventName: string;
+119 |   message: string;
+120 |   cityId: string;
+121 |   status: string;
+122 |   createdAt: string;
+123 | }
+124 | 
 ```
 
 ### File: apps/frontend/tailwind.config.js

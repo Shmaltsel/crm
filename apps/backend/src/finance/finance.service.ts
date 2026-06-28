@@ -103,22 +103,35 @@ export class FinanceService {
     // 2. Витрати по категоріях — expenses зберігається як JSON,
     //    тому вибираємо лише одне поле без жодних include
     // -------------------------------------------------------------------------
-    const expensesRaw = await this.prisma.eventReport.findMany({
-      where: { event: baseEventWhere },
-      select: { expenses: true },
+    // -------------------------------------------------------------------------
+    // 2. Витрати по категоріях (тепер через реляційну таблицю ExpenseItem)
+    // -------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // 2. Витрати по категоріях (через нову таблицю ExpenseItem)
+    // -------------------------------------------------------------------------
+    const expensesRaw = await this.prisma.expenseItem.findMany({
+      where: {
+        report: {
+          event: baseEventWhere,
+        },
+      },
+      select: {
+        category: true,
+        name: true,
+        amount: true,
+      },
     });
 
     const expCatMap: Record<string, number> = {};
     let totalExpenses = 0;
-    for (const { expenses } of expensesRaw) {
-      const exp = Array.isArray(expenses) ? (expenses as any[]) : [];
-      for (const ex of exp) {
-        const cat: string = ex.category || ex.name || 'Інше';
-        const amt: number = Number(ex.amount) || 0;
-        expCatMap[cat] = (expCatMap[cat] ?? 0) + amt;
-        totalExpenses += amt;
-      }
+
+    for (const exp of expensesRaw) {
+      const cat: string = exp.category || exp.name || 'Інше';
+      const amt: number = Number(exp.amount) || 0;
+      expCatMap[cat] = (expCatMap[cat] ?? 0) + amt;
+      totalExpenses += amt;
     }
+
     const byExpenseCategory = Object.entries(expCatMap).map(
       ([name, value]) => ({
         name,

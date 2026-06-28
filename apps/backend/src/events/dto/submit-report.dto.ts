@@ -10,11 +10,20 @@ export class SubmitReportDto {
   totalSum: number;
   schoolSum: number;
 
-  expenses: any[];
+  expenses: Array<{
+    category?: string;
+    name?: string;
+    amount: number;
+  }>;
 
   remainderSum: number;
 
   rating?: number;
 
-  salaries: { userId: string; name: string; amount: number }[];
+  salaries: Array<{
+    userId: string;
+    name: string;
+    amount: number;
+    role?: string;
+  }>;
 }

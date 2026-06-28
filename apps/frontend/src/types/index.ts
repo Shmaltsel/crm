@@ -39,14 +39,31 @@ export interface EventHistory {
   createdAt: string;
 }
 
+export interface ExpenseItem {
+  category?: string;
+  name?: string;
+  amount: number;
+}
+
+export interface SalaryItem {
+  userId: string;
+  name: string;
+  amount: number;
+  role?: string;
+}
+
 export interface EventReport {
   childrenCount: number;
   totalSum: number;
+  schoolSum: number;
   remainderSum: number;
   directorSatisfied?: boolean;
   teachersSatisfied?: boolean;
   hadIssues?: boolean;
   comment?: string;
+  rating?: number;
+  expenses: ExpenseItem[];
+  salaries: SalaryItem[];
 }
 
 export interface Event {

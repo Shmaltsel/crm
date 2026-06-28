@@ -2,6 +2,8 @@ import { Test } from '@nestjs/testing';
 import { SchoolsController } from './schools.controller';
 import { SchoolsService } from './schools.service';
 import { ParserService } from './parser.service';
+import { AuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 describe('SchoolsController', () => {
   it('should be defined', async () => {
@@ -10,6 +12,8 @@ describe('SchoolsController', () => {
       providers: [
         { provide: SchoolsService, useValue: {} },
         { provide: ParserService, useValue: {} },
+        { provide: AuthGuard, useValue: { canActivate: () => true } },
+        { provide: RolesGuard, useValue: { canActivate: () => true } },
       ],
     }).compile();
     expect(module.get(SchoolsController)).toBeDefined();
