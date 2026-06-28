@@ -139,20 +139,21 @@ export default function Cities() {
         <button
           onClick={() => setIsModalOpen(true)}
           className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 active:scale-95 transition-transform opacity-0"
-          style={{ animation: "fabPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) 0.2s forwards" }}
+          style={{
+            animation:
+              "fabPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) 0.2s forwards",
+          }}
           aria-label="Додати місто"
         >
+          <style>{`
+            @keyframes fabPop {
+              from { opacity: 0; transform: scale(0.5) translateY(20px); }
+              to { opacity: 1; transform: scale(1) translateY(0); }
+            }
+          `}</style>
           +
         </button>
       )}
-        <style>{`
-          @keyframes fabPop {
-            from { opacity: 0; transform: scale(0.5) translateY(20px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
-          }
-        `}</style>
-        +
-      </button>
 
       {/* Модалка додавання */}
       {isModalOpen &&

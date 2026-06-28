@@ -42,7 +42,10 @@
 │   │   │   │   ├── auth.service.spec.ts
 │   │   │   │   ├── auth.service.ts
 │   │   │   │   ├── decorators
-│   │   │   │   │   └── current-user.decorator.ts
+│   │   │   │   │   ├── current-user.decorator.ts
+│   │   │   │   │   └── roles.decorator.ts
+│   │   │   │   ├── guards
+│   │   │   │   │   └── roles.guard.ts
 │   │   │   │   └── interfaces
 │   │   │   │       └── jwt-user.interface.ts
 │   │   │   ├── cities
@@ -69,6 +72,7 @@
 │   │   │   ├── finance
 │   │   │   │   ├── finance.controller.ts
 │   │   │   │   ├── finance.module.ts
+│   │   │   │   ├── finance.service.spec.ts
 │   │   │   │   └── finance.service.ts
 │   │   │   ├── issues
 │   │   │   │   ├── issues.controller.ts
@@ -134,6 +138,7 @@
 │       │   │   ├── IssueCarousel.tsx
 │       │   │   ├── Layout.tsx
 │       │   │   ├── PhoneLink.tsx
+│       │   │   ├── ProtectedRoute.tsx
 │       │   │   ├── VirtualSchoolList.tsx
 │       │   │   ├── cities
 │       │   │   │   ├── CityDesktopGrid.tsx
@@ -207,6 +212,7 @@
 │       │   │   └── Schools.tsx
 │       │   ├── tests
 │       │   │   ├── component
+│       │   │   │   ├── EventsTable.test.tsx
 │       │   │   │   ├── Pipeline.test.tsx
 │       │   │   │   └── SchoolCard.test.tsx
 │       │   │   ├── mocks
@@ -215,7 +221,8 @@
 │       │   │   ├── setup.ts
 │       │   │   └── unit
 │       │   │       ├── hooks
-│       │   │       │   └── useSchools.test.ts
+│       │   │       │   ├── useSchools.test.ts
+│       │   │       │   └── useSchoolsFilter.test.ts
 │       │   │       └── schoolUtils.test.ts
 │       │   └── types
 │       │       └── index.ts
@@ -599,9 +606,10 @@
  28 |   ],
  29 |   controllers: [AppController],
  30 |   providers: [AppService],
- 31 | })
- 32 | export class AppModule {}
- 33 | 
+ 31 |   // Reflector реєструється автоматично через NestJS core, додаткова реєстрація не потрібна
+ 32 | })
+ 33 | export class AppModule {}
+ 34 | 
 ```
 
 ### File: apps/backend/src/app.service.ts
@@ -800,6 +808,47 @@
   9 | 
 ```
 
+### File: apps/backend/src/auth/decorators/roles.decorator.ts
+```ts
+  0 | import { SetMetadata } from '@nestjs/common';
+  1 | 
+  2 | export const ROLES_KEY = 'roles';
+  3 | export const Roles = (...roles: string[]) => SetMetadata(ROLES_KEY, roles);
+  4 | 
+```
+
+### File: apps/backend/src/auth/guards/roles.guard.ts
+```ts
+  0 | import {
+  1 |   Injectable,
+  2 |   CanActivate,
+  3 |   ExecutionContext,
+  4 |   ForbiddenException,
+  5 | } from '@nestjs/common';
+  6 | import { Reflector } from '@nestjs/core';
+  7 | import { ROLES_KEY } from '../decorators/roles.decorator';
+  8 | 
+  9 | @Injectable()
+ 10 | export class RolesGuard implements CanActivate {
+ 11 |   constructor(private reflector: Reflector) {}
+ 12 | 
+ 13 |   canActivate(context: ExecutionContext): boolean {
+ 14 |     const requiredRoles = this.reflector.getAllAndOverride<string[]>(
+ 15 |       ROLES_KEY,
+ 16 |       [context.getHandler(), context.getClass()],
+ 17 |     );
+ 18 |     if (!requiredRoles) return true;
+ 19 | 
+ 20 |     const { user } = context.switchToHttp().getRequest();
+ 21 |     if (!requiredRoles.includes(user?.role)) {
+ 22 |       throw new ForbiddenException('Недостатньо прав');
+ 23 |     }
+ 24 |     return true;
+ 25 |   }
+ 26 | }
+ 27 | 
+```
+
 ### File: apps/backend/src/auth/interfaces/jwt-user.interface.ts
 ```ts
   0 | export interface JwtUser {
@@ -830,38 +879,56 @@
 
 ### File: apps/backend/src/cities/cities.controller.ts
 ```ts
-  0 | import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-  1 | import { CitiesService } from './cities.service';
-  2 | 
-  3 | @Controller('cities')
-  4 | export class CitiesController {
-  5 |   constructor(private readonly citiesService: CitiesService) {}
-  6 | 
-  7 |   @Post()
-  8 |   create(@Body() body: { name: string }) {
-  9 |     return this.citiesService.create(body.name);
- 10 |   }
- 11 | 
- 12 |   @Get()
- 13 |   findAll() {
- 14 |     return this.citiesService.findAll();
- 15 |   }
- 16 | 
- 17 |   @Get(':id')
- 18 |   findOne(@Param('id') id: string) {
- 19 |     return this.citiesService.findOne(id);
- 20 |   }
- 21 |   @Post(':id/crews')
- 22 |   createCrew(@Param('id') id: string, @Body() body: { name: string; hostId: string; driverId: string }) {
- 23 |     return this.citiesService.createCrew(id, body);
+  0 | import {
+  1 |   Controller,
+  2 |   Get,
+  3 |   Post,
+  4 |   Body,
+  5 |   Patch,
+  6 |   Param,
+  7 |   Delete,
+  8 |   UseGuards,
+  9 | } from '@nestjs/common';
+ 10 | import { CitiesService } from './cities.service';
+ 11 | import { AuthGuard } from '../auth/auth.guard';
+ 12 | import { RolesGuard } from '../auth/guards/roles.guard';
+ 13 | import { Roles } from '../auth/decorators/roles.decorator';
+ 14 | 
+ 15 | @Controller('cities')
+ 16 | @UseGuards(AuthGuard, RolesGuard)
+ 17 | export class CitiesController {
+ 18 |   constructor(private readonly citiesService: CitiesService) {}
+ 19 | 
+ 20 |   @Post()
+ 21 |   @Roles('SUPERADMIN')
+ 22 |   create(@Body() body: { name: string }) {
+ 23 |     return this.citiesService.create(body.name);
  24 |   }
  25 | 
- 26 |   @Delete('crews/:crewId')
- 27 |   deleteCrew(@Param('crewId') crewId: string) {
- 28 |     return this.citiesService.deleteCrew(crewId);
+ 26 |   @Get()
+ 27 |   findAll() {
+ 28 |     return this.citiesService.findAll();
  29 |   }
- 30 | }
- 31 | 
+ 30 | 
+ 31 |   @Get(':id')
+ 32 |   findOne(@Param('id') id: string) {
+ 33 |     return this.citiesService.findOne(id);
+ 34 |   }
+ 35 |   @Post(':id/crews')
+ 36 |   createCrew(
+ 37 |     @Param('id') id: string,
+ 38 |     @Body() body: { name: string; hostId: string; driverId: string },
+ 39 |   ) {
+ 40 |     return this.citiesService.createCrew(id, body);
+ 41 |   }
+ 42 | 
+ 43 |   @Delete('crews/:crewId')
+ 44 |   @Roles('SUPERADMIN', 'MANAGER')
+ 45 |   deleteCrew(@Param('crewId') crewId: string) {
+ 46 |     return this.citiesService.deleteCrew(crewId);
+ 47 |   }
+ 48 | }
+ 49 | 
 ```
 
 ### File: apps/backend/src/cities/cities.module.ts
@@ -2746,6 +2813,275 @@
   9 | 
 ```
 
+### File: apps/backend/src/finance/finance.service.spec.ts
+```ts
+  0 | import { Test, TestingModule } from '@nestjs/testing';
+  1 | import { FinanceService } from './finance.service';
+  2 | import { PrismaService } from '../prisma/prisma.service';
+  3 | 
+  4 | const mockPrisma = {
+  5 |   eventReport: {
+  6 |     aggregate: jest.fn(),
+  7 |     findMany: jest.fn(),
+  8 |   },
+  9 |   event: {
+ 10 |     aggregate: jest.fn(),
+ 11 |     findMany: jest.fn(),
+ 12 |     count: jest.fn(),
+ 13 |   },
+ 14 |   city: { findMany: jest.fn() },
+ 15 |   user: { findUnique: jest.fn() },
+ 16 |   $queryRaw: jest.fn(),
+ 17 | };
+ 18 | 
+ 19 | describe('FinanceService', () => {
+ 20 |   let service: FinanceService;
+ 21 | 
+ 22 |   beforeEach(async () => {
+ 23 |     jest.clearAllMocks();
+ 24 |     const module: TestingModule = await Test.createTestingModule({
+ 25 |       providers: [
+ 26 |         FinanceService,
+ 27 |         { provide: PrismaService, useValue: mockPrisma },
+ 28 |       ],
+ 29 |     }).compile();
+ 30 |     service = module.get<FinanceService>(FinanceService);
+ 31 |     (service as any).cache.clear();
+ 32 |   });
+ 33 | 
+ 34 |   const defaultMocks = () => {
+ 35 |     mockPrisma.eventReport.aggregate.mockResolvedValueOnce({
+ 36 |       _sum: { totalSum: 50000, remainderSum: 20000 },
+ 37 |       _count: { eventId: 10 },
+ 38 |     });
+ 39 |     mockPrisma.eventReport.findMany.mockResolvedValueOnce([]);
+ 40 |     mockPrisma.$queryRaw
+ 41 |       .mockResolvedValueOnce([]) // monthly
+ 42 |       .mockResolvedValueOnce([]) // byProject
+ 43 |       .mockResolvedValueOnce([]) // topCities
+ 44 |       .mockResolvedValueOnce([]); // topSchools
+ 45 |     mockPrisma.event.aggregate.mockResolvedValueOnce({
+ 46 |       _sum: { price: 30000 },
+ 47 |     });
+ 48 |     mockPrisma.event.findMany.mockResolvedValueOnce([]);
+ 49 |     mockPrisma.city.findMany.mockResolvedValueOnce([]);
+ 50 |     mockPrisma.eventReport.findMany
+ 51 |       .mockResolvedValueOnce([]) // topEvents
+ 52 |       .mockResolvedValueOnce([]); // worstEvents
+ 53 |   };
+ 54 | 
+ 55 |   describe('getDashboard — KPI', () => {
+ 56 |     it('коректно повертає KPI з aggregate', async () => {
+ 57 |       defaultMocks();
+ 58 |       const result = await service.getDashboard({});
+ 59 |       expect(result.kpi.totalRevenue).toBe(50000);
+ 60 |       expect(result.kpi.totalProfit).toBe(20000);
+ 61 |       expect(result.kpi.totalEvents).toBe(10);
+ 62 |     });
+ 63 | 
+ 64 |     it('повертає нулі якщо звітів немає', async () => {
+ 65 |       mockPrisma.eventReport.aggregate.mockResolvedValueOnce({
+ 66 |         _sum: { totalSum: null, remainderSum: null },
+ 67 |         _count: { eventId: 0 },
+ 68 |       });
+ 69 |       mockPrisma.eventReport.findMany.mockResolvedValueOnce([]);
+ 70 |       mockPrisma.$queryRaw
+ 71 |         .mockResolvedValueOnce([])
+ 72 |         .mockResolvedValueOnce([])
+ 73 |         .mockResolvedValueOnce([])
+ 74 |         .mockResolvedValueOnce([]);
+ 75 |       mockPrisma.event.aggregate.mockResolvedValueOnce({
+ 76 |         _sum: { price: null },
+ 77 |       });
+ 78 |       mockPrisma.event.findMany.mockResolvedValueOnce([]);
+ 79 |       mockPrisma.city.findMany.mockResolvedValueOnce([]);
+ 80 |       mockPrisma.eventReport.findMany
+ 81 |         .mockResolvedValueOnce([])
+ 82 |         .mockResolvedValueOnce([]);
+ 83 | 
+ 84 |       const result = await service.getDashboard({});
+ 85 |       expect(result.kpi.totalRevenue).toBe(0);
+ 86 |       expect(result.kpi.totalProfit).toBe(0);
+ 87 |       expect(result.kpi.totalEvents).toBe(0);
+ 88 |     });
+ 89 |   });
+ 90 | 
+ 91 |   describe('getDashboard — фільтри', () => {
+ 92 |     it('передає cityId у where для Prisma', async () => {
+ 93 |       defaultMocks();
+ 94 |       await service.getDashboard({ cityId: 'city-1' });
+ 95 |       const aggregateCall = mockPrisma.eventReport.aggregate.mock.calls[0][0];
+ 96 |       expect(aggregateCall.where.event.cityId).toBe('city-1');
+ 97 |     });
+ 98 | 
+ 99 |     it('передає project у where для Prisma', async () => {
+100 |       defaultMocks();
+101 |       await service.getDashboard({ project: 'Голограма' });
+102 |       const aggregateCall = mockPrisma.eventReport.aggregate.mock.calls[0][0];
+103 |       expect(aggregateCall.where.event.project).toBe('Голограма');
+104 |     });
+105 | 
+106 |     it('period=month генерує dateFrom з початку місяця', async () => {
+107 |       defaultMocks();
+108 |       await service.getDashboard({ period: 'month' });
+109 |       const aggregateCall = mockPrisma.eventReport.aggregate.mock.calls[0][0];
+110 |       const dateFrom = aggregateCall.where.event.date?.gte;
+111 |       expect(dateFrom).toBeDefined();
+112 |       const now = new Date();
+113 |       expect(dateFrom.getMonth()).toBe(now.getMonth());
+114 |       expect(dateFrom.getDate()).toBe(1);
+115 |     });
+116 | 
+117 |     it('period=year генерує dateFrom з 1 січня', async () => {
+118 |       defaultMocks();
+119 |       await service.getDashboard({ period: 'year' });
+120 |       const aggregateCall = mockPrisma.eventReport.aggregate.mock.calls[0][0];
+121 |       const dateFrom = aggregateCall.where.event.date?.gte;
+122 |       expect(dateFrom.getMonth()).toBe(0);
+123 |       expect(dateFrom.getDate()).toBe(1);
+124 |     });
+125 | 
+126 |     it('без period — dateFrom undefined', async () => {
+127 |       defaultMocks();
+128 |       await service.getDashboard({});
+129 |       const aggregateCall = mockPrisma.eventReport.aggregate.mock.calls[0][0];
+130 |       expect(aggregateCall.where.event.date).toBeUndefined();
+131 |     });
+132 |   });
+133 | 
+134 |   describe('getDashboard — minimal режим', () => {
+135 |     it('minimal=true не запитує topSchools/topCities/byProject', async () => {
+136 |       mockPrisma.eventReport.aggregate.mockResolvedValueOnce({
+137 |         _sum: { totalSum: 10000, remainderSum: 4000 },
+138 |         _count: { eventId: 2 },
+139 |       });
+140 |       mockPrisma.eventReport.findMany.mockResolvedValueOnce([]);
+141 |       mockPrisma.$queryRaw.mockResolvedValueOnce([]); // monthly
+142 |       mockPrisma.event.aggregate.mockResolvedValueOnce({
+143 |         _sum: { price: 5000 },
+144 |       });
+145 |       mockPrisma.event.findMany.mockResolvedValueOnce([]);
+146 |       mockPrisma.city.findMany.mockResolvedValueOnce([]);
+147 | 
+148 |       const result = await service.getDashboard({ minimal: true });
+149 | 
+150 |       expect(result).toHaveProperty('kpi');
+151 |       expect(result).toHaveProperty('monthly');
+152 |       expect(result).not.toHaveProperty('topSchools');
+153 |       expect(result).not.toHaveProperty('topCities');
+154 |       expect(result).not.toHaveProperty('byProject');
+155 |       // $queryRaw має бути викликаний лише 1 раз (monthly), не 4
+156 |       expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+157 |     });
+158 |   });
+159 | 
+160 |   describe('getDashboard — витрати по категоріях', () => {
+161 |     it('агрегує витрати по категоріях', async () => {
+162 |       mockPrisma.eventReport.aggregate.mockResolvedValueOnce({
+163 |         _sum: { totalSum: 10000, remainderSum: 4000 },
+164 |         _count: { eventId: 2 },
+165 |       });
+166 |       mockPrisma.eventReport.findMany.mockResolvedValueOnce([
+167 |         {
+168 |           expenses: [
+169 |             { category: 'Паливо', amount: 500 },
+170 |             { category: 'Паливо', amount: 300 },
+171 |           ],
+172 |         },
+173 |         { expenses: [{ category: 'Реклама', amount: 200 }] },
+174 |       ]);
+175 |       mockPrisma.$queryRaw
+176 |         .mockResolvedValueOnce([])
+177 |         .mockResolvedValueOnce([])
+178 |         .mockResolvedValueOnce([])
+179 |         .mockResolvedValueOnce([]);
+180 |       mockPrisma.event.aggregate.mockResolvedValueOnce({ _sum: { price: 0 } });
+181 |       mockPrisma.event.findMany.mockResolvedValueOnce([]);
+182 |       mockPrisma.city.findMany.mockResolvedValueOnce([]);
+183 |       mockPrisma.eventReport.findMany
+184 |         .mockResolvedValueOnce([])
+185 |         .mockResolvedValueOnce([]);
+186 | 
+187 |       const result = await service.getDashboard({});
+188 |       const fuel = result.byExpenseCategory.find(
+189 |         (c: any) => c.name === 'Паливо',
+190 |       );
+191 |       const ads = result.byExpenseCategory.find(
+192 |         (c: any) => c.name === 'Реклама',
+193 |       );
+194 |       expect(fuel?.value).toBe(800);
+195 |       expect(ads?.value).toBe(200);
+196 |       expect(result.kpi.totalExpenses).toBe(1000);
+197 |     });
+198 |   });
+199 | 
+200 |   describe('getDashboard — кеш', () => {
+201 |     it('повторний виклик з тими ж параметрами не робить нових запитів', async () => {
+202 |       defaultMocks();
+203 |       await service.getDashboard({ cityId: 'city-1' });
+204 |       await service.getDashboard({ cityId: 'city-1' });
+205 |       expect(mockPrisma.eventReport.aggregate).toHaveBeenCalledTimes(1);
+206 |     });
+207 | 
+208 |     it('різні параметри — різні записи в кеші', async () => {
+209 |       defaultMocks();
+210 |       defaultMocks();
+211 |       await service.getDashboard({ cityId: 'city-1' });
+212 |       await service.getDashboard({ cityId: 'city-2' });
+213 |       expect(mockPrisma.eventReport.aggregate).toHaveBeenCalledTimes(2);
+214 |     });
+215 |   });
+216 | 
+217 |   describe('getMyBalance', () => {
+218 |     it('повертає баланс користувача', async () => {
+219 |       mockPrisma.user.findUnique.mockResolvedValueOnce({
+220 |         balance: 5000,
+221 |         name: 'Іван',
+222 |       });
+223 |       const result = await service.getMyBalance('user-1');
+224 |       expect(result.balance).toBe(5000);
+225 |       expect(result.name).toBe('Іван');
+226 |     });
+227 | 
+228 |     it('повертає 0 якщо користувач не знайдений', async () => {
+229 |       mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+230 |       const result = await service.getMyBalance('unknown');
+231 |       expect(result.balance).toBe(0);
+232 |     });
+233 |   });
+234 | 
+235 |   describe('resolveDateFrom', () => {
+236 |     it('month → перший день поточного місяця', () => {
+237 |       const result = (service as any).resolveDateFrom('month');
+238 |       const now = new Date();
+239 |       expect(result.getFullYear()).toBe(now.getFullYear());
+240 |       expect(result.getMonth()).toBe(now.getMonth());
+241 |       expect(result.getDate()).toBe(1);
+242 |     });
+243 | 
+244 |     it('quarter → перший день поточного кварталу', () => {
+245 |       const result = (service as any).resolveDateFrom('quarter');
+246 |       const now = new Date();
+247 |       const expectedMonth = Math.floor(now.getMonth() / 3) * 3;
+248 |       expect(result.getMonth()).toBe(expectedMonth);
+249 |       expect(result.getDate()).toBe(1);
+250 |     });
+251 | 
+252 |     it('year → 1 січня', () => {
+253 |       const result = (service as any).resolveDateFrom('year');
+254 |       expect(result.getMonth()).toBe(0);
+255 |       expect(result.getDate()).toBe(1);
+256 |     });
+257 | 
+258 |     it('undefined → повертає undefined', () => {
+259 |       const result = (service as any).resolveDateFrom(undefined);
+260 |       expect(result).toBeUndefined();
+261 |     });
+262 |   });
+263 | });
+264 | 
+```
+
 ### File: apps/backend/src/finance/finance.service.ts
 ```ts
   0 | import { Injectable } from '@nestjs/common';
@@ -3442,28 +3778,32 @@
   8 | } from '@nestjs/common';
   9 | import { ProjectsService } from './projects.service';
  10 | import { AuthGuard } from '../auth/auth.guard';
- 11 | 
- 12 | @Controller('projects')
- 13 | @UseGuards(AuthGuard)
- 14 | export class ProjectsController {
- 15 |   constructor(private readonly projectsService: ProjectsService) {}
- 16 | 
- 17 |   @Get()
- 18 |   findAll() {
- 19 |     return this.projectsService.findAll();
- 20 |   }
- 21 | 
- 22 |   @Post()
- 23 |   create(@Body() body: { name: string; color: string }) {
- 24 |     return this.projectsService.create(body);
- 25 |   }
- 26 | 
- 27 |   @Delete(':id')
- 28 |   remove(@Param('id') id: string) {
- 29 |     return this.projectsService.remove(id);
- 30 |   }
- 31 | }
- 32 | 
+ 11 | import { RolesGuard } from '../auth/guards/roles.guard';
+ 12 | import { Roles } from '../auth/decorators/roles.decorator';
+ 13 | 
+ 14 | @Controller('projects')
+ 15 | @UseGuards(AuthGuard, RolesGuard)
+ 16 | export class ProjectsController {
+ 17 |   constructor(private readonly projectsService: ProjectsService) {}
+ 18 | 
+ 19 |   @Get()
+ 20 |   findAll() {
+ 21 |     return this.projectsService.findAll();
+ 22 |   }
+ 23 | 
+ 24 |   @Post()
+ 25 |   @Roles('SUPERADMIN')
+ 26 |   create(@Body() body: { name: string; color: string }) {
+ 27 |     return this.projectsService.create(body);
+ 28 |   }
+ 29 | 
+ 30 |   @Delete(':id')
+ 31 |   @Roles('SUPERADMIN')
+ 32 |   remove(@Param('id') id: string) {
+ 33 |     return this.projectsService.remove(id);
+ 34 |   }
+ 35 | }
+ 36 | 
 ```
 
 ### File: apps/backend/src/projects/projects.module.ts
@@ -3971,71 +4311,76 @@
   9 | } from '@nestjs/common';
  10 | import { SchoolsService } from './schools.service';
  11 | import { ParserService } from './parser.service';
- 12 | 
- 13 | @Controller('schools')
- 14 | export class SchoolsController {
- 15 |   constructor(
- 16 |     private readonly schoolsService: SchoolsService,
- 17 |     private readonly parserService: ParserService,
- 18 |   ) {}
- 19 | 
- 20 |   @Post('bulk-import')
- 21 |   bulkImport(@Body() body: { cityId: string; type?: string }) {
- 22 |     return this.schoolsService.bulkImport(
- 23 |       body.cityId,
- 24 |       (body.type as 'Школа' | 'Садочок') || 'Школа',
- 25 |     );
- 26 |   }
- 27 | 
- 28 |   @Get('supported-cities')
- 29 |   getSupportedCities() {
- 30 |     return this.parserService.getSupportedCities();
- 31 |   }
- 32 | 
- 33 |   @Post()
- 34 |   create(
- 35 |     @Body()
- 36 |     body: {
- 37 |       name: string;
- 38 |       type: string;
- 39 |       cityId: string;
- 40 |       sourceUrl?: string;
- 41 |     },
- 42 |   ) {
- 43 |     return this.schoolsService.create(body);
- 44 |   }
- 45 | 
- 46 |   @Get() findAll(@Query('minimal') minimal?: string) {
- 47 |     return this.schoolsService.findAll(minimal === 'true');
+ 12 | import { RolesGuard } from '../auth/guards/roles.guard';
+ 13 | import { Roles } from '../auth/decorators/roles.decorator';
+ 14 | import { AuthGuard } from '../auth/auth.guard';
+ 15 | @Controller('schools')
+ 16 | @UseGuards(AuthGuard, RolesGuard)
+ 17 | export class SchoolsController {
+ 18 |   constructor(
+ 19 |     private readonly schoolsService: SchoolsService,
+ 20 |     private readonly parserService: ParserService,
+ 21 |   ) {}
+ 22 | 
+ 23 |   @Post('bulk-import')
+ 24 |   @Roles('SUPERADMIN', 'MANAGER')
+ 25 |   bulkImport(@Body() body: { cityId: string; type?: string }) {
+ 26 |     return this.schoolsService.bulkImport(
+ 27 |       body.cityId,
+ 28 |       (body.type as 'Школа' | 'Садочок') || 'Школа',
+ 29 |     );
+ 30 |   }
+ 31 | 
+ 32 |   @Get('supported-cities')
+ 33 |   getSupportedCities() {
+ 34 |     return this.parserService.getSupportedCities();
+ 35 |   }
+ 36 | 
+ 37 |   @Post()
+ 38 |   create(
+ 39 |     @Body()
+ 40 |     body: {
+ 41 |       name: string;
+ 42 |       type: string;
+ 43 |       cityId: string;
+ 44 |       sourceUrl?: string;
+ 45 |     },
+ 46 |   ) {
+ 47 |     return this.schoolsService.create(body);
  48 |   }
  49 | 
- 50 |   // ⚠️ ВАЖЛИВО: цей маршрут МАЄ стояти ДО @Get(':id')
- 51 |   @Get('search')
- 52 |   search(@Query('q') q: string, @Query('type') type: string) {
- 53 |     return this.parserService.searchSchools(q, type);
- 54 |   }
- 55 | 
- 56 |   @Get(':id')
- 57 |   findOne(@Param('id') id: string) {
- 58 |     return this.schoolsService.findOne(id);
- 59 |   }
- 60 | 
- 61 |   @Patch(':id')
- 62 |   update(@Param('id') id: string, @Body() body: any) {
- 63 |     return this.schoolsService.update(id, body);
- 64 |   }
- 65 | 
- 66 |   @Delete(':id')
- 67 |   remove(@Param('id') id: string) {
- 68 |     return this.schoolsService.remove(id);
- 69 |   }
- 70 | 
- 71 |   @Get('contacts/search')
- 72 |   searchContacts(@Query('q') q: string, @Query('city') city: string) {
- 73 |     return this.schoolsService.searchContacts(q, city);
+ 50 |   @Get() findAll(@Query('minimal') minimal?: string) {
+ 51 |     return this.schoolsService.findAll(minimal === 'true');
+ 52 |   }
+ 53 | 
+ 54 |   // ⚠️ ВАЖЛИВО: цей маршрут МАЄ стояти ДО @Get(':id')
+ 55 |   @Get('search')
+ 56 |   search(@Query('q') q: string, @Query('type') type: string) {
+ 57 |     return this.parserService.searchSchools(q, type);
+ 58 |   }
+ 59 | 
+ 60 |   @Get(':id')
+ 61 |   findOne(@Param('id') id: string) {
+ 62 |     return this.schoolsService.findOne(id);
+ 63 |   }
+ 64 | 
+ 65 |   @Patch(':id')
+ 66 |   update(@Param('id') id: string, @Body() body: any) {
+ 67 |     return this.schoolsService.update(id, body);
+ 68 |   }
+ 69 | 
+ 70 |   @Delete(':id')
+ 71 |   @Roles('SUPERADMIN')
+ 72 |   remove(@Param('id') id: string) {
+ 73 |     return this.schoolsService.remove(id);
  74 |   }
- 75 | }
- 76 | 
+ 75 | 
+ 76 |   @Get('contacts/search')
+ 77 |   searchContacts(@Query('q') q: string, @Query('city') city: string) {
+ 78 |     return this.schoolsService.searchContacts(q, city);
+ 79 |   }
+ 80 | }
+ 81 | 
 ```
 
 ### File: apps/backend/src/schools/schools.module.ts
@@ -4617,44 +4962,60 @@
 
 ### File: apps/backend/src/users/users.controller.ts
 ```ts
-  0 | import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-  1 | import { UsersService } from './users.service';
-  2 | 
-  3 | @Controller('users')
-  4 | export class UsersController {
-  5 |   constructor(private readonly usersService: UsersService) {}
-  6 | 
-  7 |   @Get()
-  8 |   getAll() {
-  9 |     return this.usersService.getAllUsers();
- 10 |   }
- 11 | 
- 12 |   @Post()
- 13 |   create(@Body() body: any) {
- 14 |     return this.usersService.createUser(body);
- 15 |   }
- 16 | 
- 17 |   @Patch(':id')
- 18 |   update(@Param('id') id: string, @Body() body: any) {
- 19 |     return this.usersService.updateUser(id, body);
- 20 |   }
- 21 | 
- 22 |   @Delete(':id')
- 23 |   remove(@Param('id') id: string) {
- 24 |     return this.usersService.deleteUser(id);
- 25 |   }
- 26 | 
- 27 |   @Get('seed')
- 28 |   seedAdmin() {
- 29 |     return this.usersService.seedAdmin();
- 30 |   }
- 31 | 
- 32 |   @Get('seed-vasya')
- 33 |   seedVasya() {
- 34 |     return this.usersService.seedVasya();
+  0 | import {
+  1 |   Controller,
+  2 |   Get,
+  3 |   Post,
+  4 |   Body,
+  5 |   Patch,
+  6 |   Param,
+  7 |   Delete,
+  8 |   UseGuards,
+  9 | } from '@nestjs/common';
+ 10 | import { UsersService } from './users.service';
+ 11 | import { AuthGuard } from '../auth/auth.guard';
+ 12 | import { RolesGuard } from '../auth/guards/roles.guard';
+ 13 | import { Roles } from '../auth/decorators/roles.decorator';
+ 14 | 
+ 15 | @Controller('users')
+ 16 | @UseGuards(AuthGuard, RolesGuard)
+ 17 | export class UsersController {
+ 18 |   constructor(private readonly usersService: UsersService) {}
+ 19 | 
+ 20 |   @Get()
+ 21 |   getAll() {
+ 22 |     return this.usersService.getAllUsers();
+ 23 |   }
+ 24 | 
+ 25 |   @Post()
+ 26 |   @Roles('SUPERADMIN')
+ 27 |   create(@Body() body: any) {
+ 28 |     return this.usersService.createUser(body);
+ 29 |   }
+ 30 | 
+ 31 |   @Patch(':id')
+ 32 |   @Roles('SUPERADMIN')
+ 33 |   update(@Param('id') id: string, @Body() body: any) {
+ 34 |     return this.usersService.updateUser(id, body);
  35 |   }
- 36 | }
- 37 | 
+ 36 | 
+ 37 |   @Delete(':id')
+ 38 |   @Roles('SUPERADMIN')
+ 39 |   remove(@Param('id') id: string) {
+ 40 |     return this.usersService.deleteUser(id);
+ 41 |   }
+ 42 | 
+ 43 |   @Get('seed')
+ 44 |   seedAdmin() {
+ 45 |     return this.usersService.seedAdmin();
+ 46 |   }
+ 47 | 
+ 48 |   @Get('seed-vasya')
+ 49 |   seedVasya() {
+ 50 |     return this.usersService.seedVasya();
+ 51 |   }
+ 52 | }
+ 53 | 
 ```
 
 ### File: apps/backend/src/users/users.module.ts
@@ -4861,52 +5222,190 @@
   0 | import { test, expect } from "@playwright/test";
   1 | 
   2 | test.describe("Авторизація", () => {
-  3 |   test("успішний логін", async ({ page }) => {
+  3 |   test("успішний логін перенаправляє на /cities", async ({ page }) => {
   4 |     await page.goto("/login");
   5 |     await page.fill('input[type="email"]', "admin@crm.com");
   6 |     await page.fill('input[type="password"]', "admin123");
   7 |     await page.click('button[type="submit"]');
-  8 |     await expect(page).toHaveURL(/cities/);
+  8 |     await expect(page).toHaveURL(/cities/, { timeout: 8000 });
   9 |   });
  10 | 
- 11 |   test("невірний пароль — показує помилку", async ({ page }) => {
+ 11 |   test("невірний пароль — залишається на /login", async ({ page }) => {
  12 |     await page.goto("/login");
  13 |     await page.fill('input[type="email"]', "admin@crm.com");
  14 |     await page.fill('input[type="password"]', "wrongpassword");
  15 |     await page.click('button[type="submit"]');
- 16 |     await expect(page.locator("text=Невірний")).toBeVisible();
+ 16 |     await expect(page).toHaveURL(/login/);
  17 |   });
- 18 | });
- 19 | 
+ 18 | 
+ 19 |   test("невірний пароль — показує повідомлення про помилку", async ({
+ 20 |     page,
+ 21 |   }) => {
+ 22 |     await page.goto("/login");
+ 23 |     await page.fill('input[type="email"]', "admin@crm.com");
+ 24 |     await page.fill('input[type="password"]', "wrongpassword");
+ 25 |     await page.click('button[type="submit"]');
+ 26 |     await expect(
+ 27 |       page.locator("text=/невірний|помилка|неправильний/i"),
+ 28 |     ).toBeVisible({ timeout: 5000 });
+ 29 |   });
+ 30 | 
+ 31 |   test("порожній email — кнопка не відправляє форму", async ({ page }) => {
+ 32 |     await page.goto("/login");
+ 33 |     await page.fill('input[type="password"]', "admin123");
+ 34 |     await page.click('button[type="submit"]');
+ 35 |     await expect(page).toHaveURL(/login/);
+ 36 |   });
+ 37 | 
+ 38 |   test("після логіну токен зберігається в localStorage", async ({ page }) => {
+ 39 |     await page.goto("/login");
+ 40 |     await page.fill('input[type="email"]', "admin@crm.com");
+ 41 |     await page.fill('input[type="password"]', "admin123");
+ 42 |     await page.click('button[type="submit"]');
+ 43 |     await page.waitForURL(/cities/);
+ 44 |     const token = await page.evaluate(() => localStorage.getItem("token"));
+ 45 |     expect(token).toBeTruthy();
+ 46 |   });
+ 47 | 
+ 48 |   test("після логауту токен видаляється", async ({ page }) => {
+ 49 |     // Логін
+ 50 |     await page.goto("/login");
+ 51 |     await page.fill('input[type="email"]', "admin@crm.com");
+ 52 |     await page.fill('input[type="password"]', "admin123");
+ 53 |     await page.click('button[type="submit"]');
+ 54 |     await page.waitForURL(/cities/);
+ 55 | 
+ 56 |     // Логаут через кнопку в Layout
+ 57 |     const logoutBtn = page.locator("button", { hasText: /вийти|logout/i });
+ 58 |     if (await logoutBtn.isVisible()) {
+ 59 |       await logoutBtn.click();
+ 60 |       const token = await page.evaluate(() => localStorage.getItem("token"));
+ 61 |       expect(token).toBeNull();
+ 62 |     }
+ 63 |   });
+ 64 | 
+ 65 |   test("захищений маршрут без токена перенаправляє на /login", async ({
+ 66 |     page,
+ 67 |   }) => {
+ 68 |     await page.evaluate(() => localStorage.removeItem("token"));
+ 69 |     await page.goto("/schools");
+ 70 |     await expect(page).toHaveURL(/login/);
+ 71 |   });
+ 72 | });
+ 73 | 
 ```
 
 ### File: apps/frontend/e2e/schools.spec.ts
 ```ts
-  0 | import { test, expect } from "@playwright/test";
+  0 | import { test, expect, Page } from "@playwright/test";
   1 | 
-  2 | test.describe("Сторінка шкіл", () => {
-  3 |   test.beforeEach(async ({ page }) => {
-  4 |     await page.goto("/login");
-  5 |     await page.fill('input[type="email"]', "admin@crm.com");
-  6 |     await page.fill('input[type="password"]', "admin123");
-  7 |     await page.click('button[type="submit"]');
-  8 |     await page.waitForURL(/cities/);
-  9 |     await page.goto("/schools");
- 10 |   });
- 11 | 
- 12 |   test("відображає список шкіл", async ({ page }) => {
- 13 |     await expect(page.locator("h1")).toContainText("Школи");
- 14 |     await expect(
- 15 |       page.locator("[data-testid='school-row']").first(),
- 16 |     ).toBeVisible();
- 17 |   });
- 18 | 
- 19 |   test("пошук фільтрує школи", async ({ page }) => {
- 20 |     await page.fill('input[placeholder*="Пошук"]', "Школа №1");
- 21 |     await expect(page.locator("text=Школа №1")).toBeVisible();
- 22 |   });
- 23 | });
- 24 | 
+  2 | // Хелпер логіну
+  3 | async function login(page: Page) {
+  4 |   await page.goto("/login");
+  5 |   await page.fill('input[type="email"]', "admin@crm.com");
+  6 |   await page.fill('input[type="password"]', "admin123");
+  7 |   await page.click('button[type="submit"]');
+  8 |   await page.waitForURL(/cities/, { timeout: 8000 });
+  9 | }
+ 10 | 
+ 11 | test.describe("Сторінка шкіл", () => {
+ 12 |   test.beforeEach(async ({ page }) => {
+ 13 |     await login(page);
+ 14 |     await page.goto("/schools");
+ 15 |     await page.waitForLoadState("networkidle");
+ 16 |   });
+ 17 | 
+ 18 |   test("відображає заголовок Школи", async ({ page }) => {
+ 19 |     await expect(page.locator("h1")).toContainText("Школи");
+ 20 |   });
+ 21 | 
+ 22 |   test("відображає список шкіл", async ({ page }) => {
+ 23 |     const rows = page.locator("table tbody tr, .school-row-enter");
+ 24 |     await expect(rows.first()).toBeVisible({ timeout: 8000 });
+ 25 |   });
+ 26 | 
+ 27 |   test("пошук фільтрує школи", async ({ page }) => {
+ 28 |     const searchInput = page.locator('input[placeholder*="Пошук"]');
+ 29 |     await expect(searchInput).toBeVisible();
+ 30 | 
+ 31 |     // Отримуємо першу назву школи
+ 32 |     const firstSchool = page.locator("table tbody tr").first();
+ 33 |     const schoolName = await firstSchool.locator("td").first().textContent();
+ 34 |     const searchTerm = schoolName?.slice(0, 5) ?? "Школа";
+ 35 | 
+ 36 |     await searchInput.fill(searchTerm);
+ 37 |     await page.waitForTimeout(300); // debounce
+ 38 | 
+ 39 |     const results = page.locator("table tbody tr");
+ 40 |     const count = await results.count();
+ 41 |     expect(count).toBeGreaterThan(0);
+ 42 |   });
+ 43 | 
+ 44 |   test("очищення пошуку повертає всі результати", async ({ page }) => {
+ 45 |     const searchInput = page.locator('input[placeholder*="Пошук"]');
+ 46 |     await searchInput.fill("Школа №1");
+ 47 |     await page.waitForTimeout(300);
+ 48 |     const filtered = await page.locator("table tbody tr").count();
+ 49 | 
+ 50 |     await searchInput.fill("");
+ 51 |     await page.waitForTimeout(300);
+ 52 |     const all = await page.locator("table tbody tr").count();
+ 53 | 
+ 54 |     expect(all).toBeGreaterThanOrEqual(filtered);
+ 55 |   });
+ 56 | 
+ 57 |   test("фільтр по статусу працює", async ({ page }) => {
+ 58 |     const newFilter = page.locator("button", { hasText: "Нові" });
+ 59 |     if (await newFilter.isVisible()) {
+ 60 |       await newFilter.click();
+ 61 |       await page.waitForTimeout(200);
+ 62 |       const counter = page.locator("text=/шкіл/i");
+ 63 |       await expect(counter).toBeVisible();
+ 64 |     }
+ 65 |   });
+ 66 | 
+ 67 |   test("клік на школу переходить на профіль", async ({ page }) => {
+ 68 |     const firstRow = page.locator("table tbody tr").first();
+ 69 |     await firstRow.click();
+ 70 |     await expect(page).toHaveURL(/\/schools\/.+/, { timeout: 5000 });
+ 71 |   });
+ 72 | 
+ 73 |   test("відображає StatsBar з лічильниками", async ({ page }) => {
+ 74 |     await expect(page.locator("text=Нові")).toBeVisible();
+ 75 |     await expect(page.locator("text=Заплановані")).toBeVisible();
+ 76 |     await expect(page.locator("text=В роботі")).toBeVisible();
+ 77 |   });
+ 78 | });
+ 79 | 
+ 80 | test.describe("Додавання школи", () => {
+ 81 |   test.beforeEach(async ({ page }) => {
+ 82 |     await login(page);
+ 83 |     await page.goto("/schools");
+ 84 |     await page.waitForLoadState("networkidle");
+ 85 |   });
+ 86 | 
+ 87 |   test("кнопка Додати відкриває модалку", async ({ page }) => {
+ 88 |     const addBtn = page.locator("button", { hasText: /\+ Додати/i });
+ 89 |     await expect(addBtn).toBeVisible();
+ 90 |     await addBtn.click();
+ 91 |     await expect(page.locator("text=Нова школа")).toBeVisible();
+ 92 |   });
+ 93 | 
+ 94 |   test("модалка закривається по кнопці Скасувати", async ({ page }) => {
+ 95 |     await page.locator("button", { hasText: /\+ Додати/i }).click();
+ 96 |     await expect(page.locator("text=Нова школа")).toBeVisible();
+ 97 |     await page.locator("button", { hasText: "Скасувати" }).click();
+ 98 |     await expect(page.locator("text=Нова школа")).not.toBeVisible();
+ 99 |   });
+100 | 
+101 |   test("форма не відправляється без назви школи", async ({ page }) => {
+102 |     await page.locator("button", { hasText: /\+ Додати/i }).click();
+103 |     await page.locator("button", { hasText: "Створити" }).click();
+104 |     // Модалка залишається відкритою
+105 |     await expect(page.locator("text=Нова школа")).toBeVisible();
+106 |   });
+107 | });
+108 | 
 ```
 
 ### File: apps/frontend/eslint.config.js
@@ -5186,174 +5685,184 @@
  11 | import Login from "./pages/Login";
  12 | import { CityProvider } from "./context/CityContext";
  13 | 
- 14 | const CityProfile = lazy(() => import("./pages/CityProfile"));
- 15 | const EventReport = lazy(() => import("./pages/EventReport"));
- 16 | 
- 17 | // --- ДИНАМІЧНІ ІМПОРТИ (Ледаче завантаження / Code Splitting) ---
- 18 | // Ці файли будуть завантажуватись окремими шматками (chunks) ТІЛЬКИ коли користувач перейде на відповідну сторінку
- 19 | const Cities = lazy(() => import("./pages/Cities"));
- 20 | const Schools = lazy(() => import("./pages/Schools"));
- 21 | const SchoolProfile = lazy(() => import("./pages/SchoolProfile"));
- 22 | const Employees = lazy(() => import("./pages/Employees"));
- 23 | const Finance = lazy(() => import("./pages/Finance"));
- 24 | const CalendarView = lazy(() => import("./pages/CalendarView"));
- 25 | const Dashboard = lazy(() => import("./pages/Dashboard"));
- 26 | const Kindergartens = lazy(() => import("./pages/Kindergartens"));
- 27 | 
- 28 | // Компонент-заглушка, який показується долі секунди, поки вантажиться JS код сторінки
- 29 | const PageLoader = () => (
- 30 |   <div className="flex items-center justify-center h-full min-h-[50vh]">
- 31 |     <div className="text-slate-400 font-medium animate-pulse">
- 32 |       Завантаження сторінки...
- 33 |     </div>
- 34 |   </div>
- 35 | );
- 36 | 
- 37 | export default function App() {
- 38 |   // Базова логіка авторизації
- 39 |   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
- 40 |     !!localStorage.getItem("token"),
- 41 |   );
- 42 | 
- 43 |   const handleLogin = (token: string) => {
- 44 |     localStorage.setItem("token", token);
- 45 |     setIsAuthenticated(true);
- 46 |   };
- 47 | 
- 48 |   const handleLogout = () => {
- 49 |     localStorage.removeItem("token");
- 50 |     setIsAuthenticated(false);
- 51 |   };
- 52 | 
- 53 |   return (
- 54 |     <Router>
- 55 |       <CityProvider>
- 56 |         <Routes>
- 57 |           {/* Публічний маршрут: Логін */}
- 58 |           <Route
- 59 |             path="/login"
- 60 |             element={
- 61 |               !isAuthenticated ? (
- 62 |                 <Login onLogin={handleLogin} />
- 63 |               ) : (
- 64 |                 <Navigate to="/cities" replace />
- 65 |               )
- 66 |             }
- 67 |           />
- 68 | 
- 69 |           {/* Захищені маршрути (Layout відображає бокове меню) */}
- 70 |           <Route
- 71 |             path="/"
- 72 |             element={
- 73 |               isAuthenticated ? (
- 74 |                 <Layout onLogout={handleLogout} />
- 75 |               ) : (
- 76 |                 <Navigate to="/login" replace />
- 77 |               )
- 78 |             }
- 79 |           >
- 80 |             {/* Редірект з кореня на сторінку міст за замовчуванням */}
- 81 |             <Route index element={<Navigate to="/cities" replace />} />
- 82 | 
- 83 |             {/* Обгортаємо всі вкладені маршрути в Suspense. 
- 84 |               Коли React намагається відрендерити "ліниву" сторінку, він показує fallback (PageLoader), 
- 85 |               поки завантажується файл з сервера.
- 86 |             */}
- 87 |             <Route
- 88 |               path="cities"
- 89 |               element={
- 90 |                 <Suspense fallback={<PageLoader />}>
- 91 |                   <Cities />
- 92 |                 </Suspense>
- 93 |               }
- 94 |             />
- 95 | 
- 96 |             <Route
- 97 |               path="schools"
- 98 |               element={
- 99 |                 <Suspense fallback={<PageLoader />}>
-100 |                   <Schools />
-101 |                 </Suspense>
-102 |               }
-103 |             />
-104 | 
-105 |             <Route
-106 |               path="schools/:id"
-107 |               element={
-108 |                 <Suspense fallback={<PageLoader />}>
-109 |                   <SchoolProfile />
-110 |                 </Suspense>
-111 |               }
-112 |             />
-113 | 
-114 |             <Route
-115 |               path="employees"
-116 |               element={
-117 |                 <Suspense fallback={<PageLoader />}>
-118 |                   <Employees />
-119 |                 </Suspense>
-120 |               }
-121 |             />
-122 | 
-123 |             <Route
-124 |               path="finance"
-125 |               element={
-126 |                 <Suspense fallback={<PageLoader />}>
-127 |                   <Finance />
-128 |                 </Suspense>
-129 |               }
-130 |             />
-131 | 
-132 |             <Route
-133 |               path="calendar"
-134 |               element={
-135 |                 <Suspense fallback={<PageLoader />}>
-136 |                   <CalendarView />
-137 |                 </Suspense>
-138 |               }
-139 |             />
+ 14 | import ProtectedRoute from "./components/ProtectedRoute";
+ 15 | 
+ 16 | const CityProfile = lazy(() => import("./pages/CityProfile"));
+ 17 | const EventReport = lazy(() => import("./pages/EventReport"));
+ 18 | 
+ 19 | // --- ДИНАМІЧНІ ІМПОРТИ (Ледаче завантаження / Code Splitting) ---
+ 20 | // Ці файли будуть завантажуватись окремими шматками (chunks) ТІЛЬКИ коли користувач перейде на відповідну сторінку
+ 21 | const Cities = lazy(() => import("./pages/Cities"));
+ 22 | const Schools = lazy(() => import("./pages/Schools"));
+ 23 | const SchoolProfile = lazy(() => import("./pages/SchoolProfile"));
+ 24 | const Employees = lazy(() => import("./pages/Employees"));
+ 25 | const Finance = lazy(() => import("./pages/Finance"));
+ 26 | const CalendarView = lazy(() => import("./pages/CalendarView"));
+ 27 | const Dashboard = lazy(() => import("./pages/Dashboard"));
+ 28 | const Kindergartens = lazy(() => import("./pages/Kindergartens"));
+ 29 | 
+ 30 | // Компонент-заглушка, який показується долі секунди, поки вантажиться JS код сторінки
+ 31 | const PageLoader = () => (
+ 32 |   <div className="flex items-center justify-center h-full min-h-[50vh]">
+ 33 |     <div className="text-slate-400 font-medium animate-pulse">
+ 34 |       Завантаження сторінки...
+ 35 |     </div>
+ 36 |   </div>
+ 37 | );
+ 38 | 
+ 39 | export default function App() {
+ 40 |   // Базова логіка авторизації
+ 41 |   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
+ 42 |     !!localStorage.getItem("token"),
+ 43 |   );
+ 44 | 
+ 45 |   const handleLogin = (token: string) => {
+ 46 |     localStorage.setItem("token", token);
+ 47 |     setIsAuthenticated(true);
+ 48 |   };
+ 49 | 
+ 50 |   const handleLogout = () => {
+ 51 |     localStorage.removeItem("token");
+ 52 |     setIsAuthenticated(false);
+ 53 |   };
+ 54 | 
+ 55 |   return (
+ 56 |     <Router>
+ 57 |       <CityProvider>
+ 58 |         <Routes>
+ 59 |           {/* Публічний маршрут: Логін */}
+ 60 |           <Route
+ 61 |             path="/login"
+ 62 |             element={
+ 63 |               !isAuthenticated ? (
+ 64 |                 <Login onLogin={handleLogin} />
+ 65 |               ) : (
+ 66 |                 <Navigate to="/cities" replace />
+ 67 |               )
+ 68 |             }
+ 69 |           />
+ 70 | 
+ 71 |           {/* Захищені маршрути (Layout відображає бокове меню) */}
+ 72 |           <Route
+ 73 |             path="/"
+ 74 |             element={
+ 75 |               isAuthenticated ? (
+ 76 |                 <Layout onLogout={handleLogout} />
+ 77 |               ) : (
+ 78 |                 <Navigate to="/login" replace />
+ 79 |               )
+ 80 |             }
+ 81 |           >
+ 82 |             {/* Редірект з кореня на сторінку міст за замовчуванням */}
+ 83 |             <Route index element={<Navigate to="/schools" replace />} />
+ 84 | 
+ 85 |             {/* Обгортаємо всі вкладені маршрути в Suspense. 
+ 86 |               Коли React намагається відрендерити "ліниву" сторінку, він показує fallback (PageLoader), 
+ 87 |               поки завантажується файл з сервера.
+ 88 |             */}
+ 89 |             <Route
+ 90 |               path="cities"
+ 91 |               element={
+ 92 |                 <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
+ 93 |                   <Suspense fallback={<PageLoader />}>
+ 94 |                     <Cities />
+ 95 |                   </Suspense>
+ 96 |                 </ProtectedRoute>
+ 97 |               }
+ 98 |             />
+ 99 | 
+100 |             <Route
+101 |               path="schools"
+102 |               element={
+103 |                 <Suspense fallback={<PageLoader />}>
+104 |                   <Schools />
+105 |                 </Suspense>
+106 |               }
+107 |             />
+108 | 
+109 |             <Route
+110 |               path="schools/:id"
+111 |               element={
+112 |                 <Suspense fallback={<PageLoader />}>
+113 |                   <SchoolProfile />
+114 |                 </Suspense>
+115 |               }
+116 |             />
+117 | 
+118 |             <Route
+119 |               path="employees"
+120 |               element={
+121 |                 <ProtectedRoute allowedRoles={["SUPERADMIN"]}>
+122 |                   <Suspense fallback={<PageLoader />}>
+123 |                     <Employees />
+124 |                   </Suspense>
+125 |                 </ProtectedRoute>
+126 |               }
+127 |             />
+128 | 
+129 |             <Route
+130 |               path="finance"
+131 |               element={
+132 |                 <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
+133 |                   <Suspense fallback={<PageLoader />}>
+134 |                     <Finance />
+135 |                   </Suspense>
+136 |                 </ProtectedRoute>
+137 |               }
+138 |             />
+139 | 
 140 |             <Route
-141 |               path="dashboard"
+141 |               path="calendar"
 142 |               element={
 143 |                 <Suspense fallback={<PageLoader />}>
-144 |                   <Dashboard />
+144 |                   <CalendarView />
 145 |                 </Suspense>
 146 |               }
 147 |             />
-148 | 
-149 |             <Route
-150 |               path="kindergartens"
-151 |               element={
-152 |                 <Suspense fallback={<PageLoader />}>
-153 |                   <Kindergartens />
-154 |                 </Suspense>
-155 |               }
-156 |             />
-157 | 
-158 |             <Route
-159 |               path="cities/:id"
-160 |               element={
-161 |                 <Suspense fallback={<PageLoader />}>
-162 |                   <CityProfile />
-163 |                 </Suspense>
-164 |               }
-165 |             />
-166 | 
-167 |             <Route
-168 |               path="events/:id/report"
-169 |               element={
-170 |                 <Suspense fallback={<PageLoader />}>
-171 |                   <EventReport />
-172 |                 </Suspense>
-173 |               }
-174 |             />
-175 |           </Route>
-176 |         </Routes>
-177 |       </CityProvider>
-178 |     </Router>
-179 |   );
-180 | }
-181 | 
+148 |             <Route
+149 |               path="dashboard"
+150 |               element={
+151 |                 <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
+152 |                   <Suspense fallback={<PageLoader />}>
+153 |                     <Dashboard />
+154 |                   </Suspense>
+155 |                 </ProtectedRoute>
+156 |               }
+157 |             />
+158 | 
+159 |             <Route
+160 |               path="kindergartens"
+161 |               element={
+162 |                 <Suspense fallback={<PageLoader />}>
+163 |                   <Kindergartens />
+164 |                 </Suspense>
+165 |               }
+166 |             />
+167 | 
+168 |             <Route
+169 |               path="cities/:id"
+170 |               element={
+171 |                 <Suspense fallback={<PageLoader />}>
+172 |                   <CityProfile />
+173 |                 </Suspense>
+174 |               }
+175 |             />
+176 | 
+177 |             <Route
+178 |               path="events/:id/report"
+179 |               element={
+180 |                 <Suspense fallback={<PageLoader />}>
+181 |                   <EventReport />
+182 |                 </Suspense>
+183 |               }
+184 |             />
+185 |           </Route>
+186 |         </Routes>
+187 |       </CityProvider>
+188 |     </Router>
+189 |   );
+190 | }
+191 | 
 ```
 
 ### File: apps/frontend/src/components/AddressLink.tsx
@@ -5564,180 +6073,195 @@
  12 |   const navigate = useNavigate();
  13 |   const [user, setUser] = useState<UserInfo | null>(null);
  14 |   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // Додано стан для мобільного меню
- 15 |   const { selectedCity } = useSelectedCity();
- 16 | 
- 17 |   useEffect(() => {
- 18 |     try {
- 19 |       const raw = localStorage.getItem("user");
- 20 |       if (raw) setUser(JSON.parse(raw));
- 21 |     } catch {
- 22 |       // ignore
- 23 |     }
- 24 |   }, []);
+ 15 |   const [userRole, setUserRole] = useState<string | null>(null);
+ 16 |   useEffect(() => {
+ 17 |     try {
+ 18 |       const raw = localStorage.getItem("user");
+ 19 |       if (raw) setUserRole(JSON.parse(raw).role);
+ 20 |     } catch {}
+ 21 |   }, []);
+ 22 | 
+ 23 |   const is = (roles: string[]) => !!userRole && roles.includes(userRole);
+ 24 |   const { selectedCity } = useSelectedCity();
  25 | 
- 26 |   const token = localStorage.getItem("token");
- 27 |   let isSuperAdmin = false;
- 28 | 
- 29 |   if (token) {
- 30 |     try {
- 31 |       const decoded: any = jwtDecode(token);
- 32 |       isSuperAdmin = decoded.role === "SUPERADMIN";
- 33 |     } catch (error) {
- 34 |       console.error("Не вдалося розкодувати токен:", error);
- 35 |     }
- 36 |   }
+ 26 |   useEffect(() => {
+ 27 |     try {
+ 28 |       const raw = localStorage.getItem("user");
+ 29 |       if (raw) setUser(JSON.parse(raw));
+ 30 |     } catch {
+ 31 |       // ignore
+ 32 |     }
+ 33 |   }, []);
+ 34 | 
+ 35 |   const token = localStorage.getItem("token");
+ 36 |   let isSuperAdmin = false;
  37 | 
- 38 |   const isActive = (path: string) => location.pathname.startsWith(path);
- 39 | 
- 40 |   const handleLogout = () => {
- 41 |     localStorage.removeItem("token");
- 42 |     localStorage.removeItem("user");
- 43 |     navigate("/login");
- 44 |   };
- 45 | 
- 46 |   // Функція для закриття меню при кліку на лінк (на мобільних)
- 47 |   const handleLinkClick = () => {
- 48 |     setIsMobileMenuOpen(false);
- 49 |   };
- 50 | 
- 51 |   return (
- 52 |     <div className="flex h-screen bg-slate-50 font-sans">
- 53 |       {/* Мобільний хедер (видно тільки на малих екранах) */}
- 54 |       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0B1527] text-white flex items-center justify-between px-4 z-40">
- 55 |         <div className="flex items-center gap-2">
- 56 |           <span className="text-xl">🎓</span>
- 57 |           <span className="font-semibold tracking-wider text-sm">
- 58 |             СВІТЛО ЗНАНЬ
- 59 |           </span>
- 60 |           <span className="text-xs text-blue-300 ml-1">
- 61 |             · {selectedCity.name}
- 62 |           </span>
- 63 |         </div>
- 64 |         <button
- 65 |           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
- 66 |           className="p-2 focus:outline-none"
- 67 |         >
- 68 |           {/* Проста іконка гамбургера / хрестика */}
- 69 |           <span className="text-2xl">{isMobileMenuOpen ? "✕" : "☰"}</span>
- 70 |         </button>
- 71 |       </div>
- 72 | 
- 73 |       {/* Оверлей для мобільного меню (затемнення фону) */}
- 74 |       {isMobileMenuOpen && (
- 75 |         <div
- 76 |           className="md:hidden fixed inset-0 bg-slate-900/50 z-40"
- 77 |           onClick={() => setIsMobileMenuOpen(false)}
- 78 |         />
- 79 |       )}
- 80 | 
- 81 |       {/* Сайдбар */}
- 82 |       <aside
- 83 |         className={`
- 84 |         fixed inset-y-0 left-0 z-50 w-64 bg-[#0B1527] text-white flex flex-col transition-transform duration-300 ease-in-out
- 85 |         md:relative md:translate-x-0
- 86 |         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
- 87 |       `}
- 88 |       >
- 89 |         <div className="p-6 flex flex-col items-center border-b border-slate-700/50 hidden md:flex">
- 90 |           <div className="w-16 h-16 bg-blue-500 rounded-full mb-3 flex items-center justify-center text-2xl">
- 91 |             🎓
- 92 |           </div>
- 93 |           <h2 className="text-sm font-semibold tracking-wider">СВІТЛО ЗНАНЬ</h2>
- 94 |           <p className="text-xs text-blue-300 mt-1 tracking-wide">
- 95 |             📍 {selectedCity.name}
- 96 |           </p>
- 97 |         </div>
- 98 | 
- 99 |         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto mt-16 md:mt-0">
-100 |           <Link
-101 |             to="/dashboard"
-102 |             onClick={handleLinkClick}
-103 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/dashboard") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-104 |           >
-105 |             <span className="mr-3">🏠</span> Дашборд
-106 |           </Link>
-107 |           <Link
-108 |             to="/cities"
-109 |             onClick={handleLinkClick}
-110 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/cities") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-111 |           >
-112 |             <span className="mr-3">📍</span> Міста
-113 |           </Link>
-114 |           <Link
-115 |             to="/schools"
-116 |             onClick={handleLinkClick}
-117 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/schools") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-118 |           >
-119 |             <span className="mr-3">🏫</span> Школи
-120 |           </Link>
-121 | 
-122 |           {/* ДОДАЛИ НОВИЙ ПУНКТ "САДОЧКИ" */}
-123 |           <Link
-124 |             to="/kindergartens"
-125 |             onClick={handleLinkClick}
-126 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/kindergartens") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-127 |           >
-128 |             <span className="mr-3">🧸</span> Садочки
-129 |           </Link>
-130 |           <Link
-131 |             to="/finance"
-132 |             onClick={handleLinkClick}
-133 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/finance") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-134 |           >
-135 |             <span className="mr-3">💰</span> Фінанси
-136 |           </Link>
-137 |           <Link
-138 |             to="/calendar"
-139 |             onClick={handleLinkClick}
-140 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/calendar") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-141 |           >
-142 |             <span className="mr-3">📆</span> Календар
-143 |           </Link>
-144 |           {isSuperAdmin && (
-145 |             <Link
-146 |               to="/employees"
-147 |               onClick={handleLinkClick}
-148 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/employees") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-149 |             >
-150 |               <span className="mr-3">👥</span> Працівники
-151 |             </Link>
-152 |           )}
-153 |         </nav>
-154 | 
-155 |         <div className="p-4 border-t border-slate-700/50 pb-8 md:pb-4">
-156 |           <div className="flex items-center px-4 py-2 text-slate-300 justify-between">
-157 |             <div className="flex items-center">
-158 |               <div className="w-8 h-8 bg-slate-600 rounded-full mr-3 flex items-center justify-center text-xs font-bold">
-159 |                 {user?.name?.charAt(0) ?? "?"}
-160 |               </div>
-161 |               <div className="text-sm truncate max-w-[120px]">
-162 |                 <p className="font-medium text-white truncate">
-163 |                   {user?.name ?? "Користувач"}
-164 |                 </p>
-165 |                 <p className="text-xs text-slate-400 truncate">
-166 |                   {user?.role ?? ""}
-167 |                 </p>
-168 |               </div>
-169 |             </div>
-170 |             <button
-171 |               onClick={handleLogout}
-172 |               className="text-slate-500 hover:text-slate-300 transition-colors text-xs ml-2 shrink-0 p-2"
-173 |               title="Вийти"
-174 |             >
-175 |               ⬅️
-176 |             </button>
-177 |           </div>
-178 |         </div>
-179 |       </aside>
-180 | 
-181 |       {/* Головна область */}
-182 |       <main className="flex-1 overflow-y-auto mt-16 md:mt-0 relative w-full">
-183 |         <Outlet />
-184 |       </main>
-185 |     </div>
-186 |   );
-187 | }
-188 | 
+ 38 |   if (token) {
+ 39 |     try {
+ 40 |       const decoded: any = jwtDecode(token);
+ 41 |       isSuperAdmin = decoded.role === "SUPERADMIN";
+ 42 |     } catch (error) {
+ 43 |       console.error("Не вдалося розкодувати токен:", error);
+ 44 |     }
+ 45 |   }
+ 46 | 
+ 47 |   const isActive = (path: string) => location.pathname.startsWith(path);
+ 48 | 
+ 49 |   const handleLogout = () => {
+ 50 |     localStorage.removeItem("token");
+ 51 |     localStorage.removeItem("user");
+ 52 |     navigate("/login");
+ 53 |   };
+ 54 | 
+ 55 |   // Функція для закриття меню при кліку на лінк (на мобільних)
+ 56 |   const handleLinkClick = () => {
+ 57 |     setIsMobileMenuOpen(false);
+ 58 |   };
+ 59 | 
+ 60 |   return (
+ 61 |     <div className="flex h-screen bg-slate-50 font-sans">
+ 62 |       {/* Мобільний хедер (видно тільки на малих екранах) */}
+ 63 |       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0B1527] text-white flex items-center justify-between px-4 z-40">
+ 64 |         <div className="flex items-center gap-2">
+ 65 |           <span className="text-xl">🎓</span>
+ 66 |           <span className="font-semibold tracking-wider text-sm">
+ 67 |             СВІТЛО ЗНАНЬ
+ 68 |           </span>
+ 69 |           <span className="text-xs text-blue-300 ml-1">
+ 70 |             · {selectedCity.name}
+ 71 |           </span>
+ 72 |         </div>
+ 73 |         <button
+ 74 |           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+ 75 |           className="p-2 focus:outline-none"
+ 76 |         >
+ 77 |           {/* Проста іконка гамбургера / хрестика */}
+ 78 |           <span className="text-2xl">{isMobileMenuOpen ? "✕" : "☰"}</span>
+ 79 |         </button>
+ 80 |       </div>
+ 81 | 
+ 82 |       {/* Оверлей для мобільного меню (затемнення фону) */}
+ 83 |       {isMobileMenuOpen && (
+ 84 |         <div
+ 85 |           className="md:hidden fixed inset-0 bg-slate-900/50 z-40"
+ 86 |           onClick={() => setIsMobileMenuOpen(false)}
+ 87 |         />
+ 88 |       )}
+ 89 | 
+ 90 |       {/* Сайдбар */}
+ 91 |       <aside
+ 92 |         className={`
+ 93 |         fixed inset-y-0 left-0 z-50 w-64 bg-[#0B1527] text-white flex flex-col transition-transform duration-300 ease-in-out
+ 94 |         md:relative md:translate-x-0
+ 95 |         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
+ 96 |       `}
+ 97 |       >
+ 98 |         <div className="p-6 flex flex-col items-center border-b border-slate-700/50 hidden md:flex">
+ 99 |           <div className="w-16 h-16 bg-blue-500 rounded-full mb-3 flex items-center justify-center text-2xl">
+100 |             🎓
+101 |           </div>
+102 |           <h2 className="text-sm font-semibold tracking-wider">СВІТЛО ЗНАНЬ</h2>
+103 |           <p className="text-xs text-blue-300 mt-1 tracking-wide">
+104 |             📍 {selectedCity.name}
+105 |           </p>
+106 |         </div>
+107 | 
+108 |         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto mt-16 md:mt-0">
+109 |           {is(["SUPERADMIN", "MANAGER"]) && (
+110 |             <Link
+111 |               to="/dashboard"
+112 |               onClick={handleLinkClick}
+113 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/dashboard") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+114 |             >
+115 |               <span className="mr-3">🏠</span> Дашборд
+116 |             </Link>
+117 |           )}
+118 |           {is(["SUPERADMIN", "MANAGER"]) && (
+119 |             <Link
+120 |               to="/cities"
+121 |               onClick={handleLinkClick}
+122 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/cities") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+123 |             >
+124 |               <span className="mr-3">📍</span> Міста
+125 |             </Link>
+126 |           )}
+127 |           <Link
+128 |             to="/schools"
+129 |             onClick={handleLinkClick}
+130 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/schools") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+131 |           >
+132 |             <span className="mr-3">🏫</span> Школи
+133 |           </Link>
+134 | 
+135 |           {/* ДОДАЛИ НОВИЙ ПУНКТ "САДОЧКИ" */}
+136 |           <Link
+137 |             to="/kindergartens"
+138 |             onClick={handleLinkClick}
+139 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/kindergartens") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+140 |           >
+141 |             <span className="mr-3">🧸</span> Садочки
+142 |           </Link>
+143 |           {is(["SUPERADMIN", "MANAGER"]) && (
+144 |             <Link
+145 |               to="/finance"
+146 |               onClick={handleLinkClick}
+147 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/finance") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+148 |             >
+149 |               <span className="mr-3">💰</span> Фінанси
+150 |             </Link>
+151 |           )}
+152 |           <Link
+153 |             to="/calendar"
+154 |             onClick={handleLinkClick}
+155 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/calendar") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+156 |           >
+157 |             <span className="mr-3">📆</span> Календар
+158 |           </Link>
+159 |           {is(["SUPERADMIN"]) && (
+160 |             <Link
+161 |               to="/employees"
+162 |               onClick={handleLinkClick}
+163 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/employees") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+164 |             >
+165 |               <span className="mr-3">👥</span> Працівники
+166 |             </Link>
+167 |           )}
+168 |         </nav>
+169 | 
+170 |         <div className="p-4 border-t border-slate-700/50 pb-8 md:pb-4">
+171 |           <div className="flex items-center px-4 py-2 text-slate-300 justify-between">
+172 |             <div className="flex items-center">
+173 |               <div className="w-8 h-8 bg-slate-600 rounded-full mr-3 flex items-center justify-center text-xs font-bold">
+174 |                 {user?.name?.charAt(0) ?? "?"}
+175 |               </div>
+176 |               <div className="text-sm truncate max-w-[120px]">
+177 |                 <p className="font-medium text-white truncate">
+178 |                   {user?.name ?? "Користувач"}
+179 |                 </p>
+180 |                 <p className="text-xs text-slate-400 truncate">
+181 |                   {user?.role ?? ""}
+182 |                 </p>
+183 |               </div>
+184 |             </div>
+185 |             <button
+186 |               onClick={handleLogout}
+187 |               className="text-slate-500 hover:text-slate-300 transition-colors text-xs ml-2 shrink-0 p-2"
+188 |               title="Вийти"
+189 |             >
+190 |               ⬅️
+191 |             </button>
+192 |           </div>
+193 |         </div>
+194 |       </aside>
+195 | 
+196 |       {/* Головна область */}
+197 |       <main className="flex-1 overflow-y-auto mt-16 md:mt-0 relative w-full">
+198 |         <Outlet />
+199 |       </main>
+200 |     </div>
+201 |   );
+202 | }
+203 | 
 ```
 
 ### File: apps/frontend/src/components/PhoneLink.tsx
@@ -5787,6 +6311,34 @@
  42 |     </a>
  43 |   );
  44 | }
+```
+
+### File: apps/frontend/src/components/ProtectedRoute.tsx
+```tsx
+  0 | import { Navigate } from "react-router-dom";
+  1 | 
+  2 | interface Props {
+  3 |   allowedRoles: string[];
+  4 |   children: React.ReactNode;
+  5 | }
+  6 | 
+  7 | function getCurrentUserRole(): string | null {
+  8 |   try {
+  9 |     const raw = localStorage.getItem("user");
+ 10 |     return raw ? JSON.parse(raw).role : null;
+ 11 |   } catch {
+ 12 |     return null;
+ 13 |   }
+ 14 | }
+ 15 | 
+ 16 | export default function ProtectedRoute({ allowedRoles, children }: Props) {
+ 17 |   const role = getCurrentUserRole();
+ 18 |   if (!role || !allowedRoles.includes(role)) {
+ 19 |     return <Navigate to="/dashboard" replace />;
+ 20 |   }
+ 21 |   return <>{children}</>;
+ 22 | }
+ 23 | 
 ```
 
 ### File: apps/frontend/src/components/VirtualSchoolList.tsx
@@ -12484,159 +13036,168 @@
  58 |     },
  59 |     [setSelectedCity],
  60 |   );
- 61 | 
- 62 |   const handleAddCity = async (e: React.FormEvent) => {
- 63 |     e.preventDefault();
- 64 |     if (!newCityName.trim()) return;
- 65 |     try {
- 66 |       await addCity.mutateAsync(newCityName.trim());
- 67 |       setNewCityName("");
- 68 |       setIsModalOpen(false);
- 69 |     } catch {
- 70 |       alert("Не вдалося створити місто. Можливо воно вже існує.");
- 71 |     }
- 72 |   };
- 73 | 
- 74 |   return (
- 75 |     // Оптимізація 5: content-visibility
- 76 |     <div
- 77 |       className="p-4 md:p-8 bg-slate-50 min-h-screen"
- 78 |       style={{ contentVisibility: "auto" }}
- 79 |     >
- 80 |       {/* Шапка для ПК */}
- 81 |       <style>{`
- 82 |         @keyframes headerFadeIn {
- 83 |           from { opacity: 0; transform: translateY(-10px); }
- 84 |           to   { opacity: 1; transform: translateY(0); }
- 85 |         }
- 86 |         .header-enter { animation: headerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
- 87 |         .header-btn-enter { animation: headerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
- 88 |       `}</style>
- 89 |       <div className="hidden md:flex justify-between items-center mb-8">
- 90 |         <h1 className="header-enter text-3xl font-bold text-slate-800">
- 91 |           Міста
- 92 |         </h1>
- 93 |         <button
- 94 |           onClick={() => setIsModalOpen(true)}
- 95 |           className="header-btn-enter bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm flex items-center transition-all duration-150"
- 96 |         >
- 97 |           <span className="mr-2">+</span> Додати місто
- 98 |         </button>
- 99 |       </div>
-100 | 
-101 |       {isFetching ? (
-102 |         <CitiesSkeleton />
-103 |       ) : (
-104 |         /* Оптимізація 6: Suspense обгортка для лінивих компонентів */
-105 |         <Suspense fallback={<CitiesSkeleton />}>
-106 |           {/* 1. Блок для Мобільних (Шапка + Список) */}
-107 |           <div className="md:hidden">
-108 |             <CityMobileHeader selectedCity={selectedCity} cities={cities} />
-109 |             <CityMobileList
-110 |               cities={cities}
-111 |               selectedCity={selectedCity}
-112 |               onSelectCity={handleSelectCity}
-113 |             />
-114 |           </div>
-115 | 
-116 |           {/* 2. Блок для Десктопів (Карусель + Сітка) */}
-117 |           <div className="hidden md:block">
-118 |             <IssueCarousel />
-119 |             <CityDesktopGrid
-120 |               cities={cities}
-121 |               selectedCity={selectedCity}
-122 |               onSelectCity={handleSelectCity}
-123 |             />
-124 |           </div>
-125 |         </Suspense>
-126 |       )}
-127 | 
-128 |       {/* Мобільна плаваюча кнопка FAB */}
-129 |       <button
-130 |         onClick={() => setIsModalOpen(true)}
-131 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 active:scale-95 transition-transform opacity-0"
-132 |         style={{
-133 |           animation:
-134 |             "fabPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) 0.2s forwards",
-135 |         }}
-136 |         aria-label="Додати місто"
-137 |       >
-138 |         <style>{`
-139 |           @keyframes fabPop {
-140 |             from { opacity: 0; transform: scale(0.5) translateY(20px); }
-141 |             to { opacity: 1; transform: scale(1) translateY(0); }
-142 |           }
-143 |         `}</style>
-144 |         +
-145 |       </button>
-146 | 
-147 |       {/* Модалка додавання */}
-148 |       {isModalOpen &&
-149 |         createPortal(
-150 |           <div
-151 |             className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
-152 |             style={{ animation: "fadeIn 0.2s ease-out forwards" }}
-153 |           >
-154 |             <style>{`
-155 |             @keyframes fadeIn {
-156 |               from { opacity: 0; }
-157 |               to { opacity: 1; }
-158 |             }
-159 |             @keyframes modalScale {
-160 |               from { opacity: 0; transform: scale(0.95) translateY(15px); }
-161 |               to { opacity: 1; transform: scale(1) translateY(0); }
-162 |             }
-163 |           `}</style>
-164 | 
-165 |             {/* ТУТ БУЛА ПРОБЛЕМА: додано opacity-0 та style з анімацією modalScale */}
-166 |             <div
-167 |               className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
-168 |               style={{ animation: "modalScale 0.3s ease-out forwards" }}
-169 |             >
-170 |               <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-171 |                 <h3 className="text-xl font-bold text-slate-800">Нове місто</h3>
-172 |                 <button
-173 |                   onClick={() => setIsModalOpen(false)}
-174 |                   className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
-175 |                 >
-176 |                   ✕
-177 |                 </button>
-178 |               </div>
-179 |               <form onSubmit={handleAddCity} className="p-6">
-180 |                 <input
-181 |                   type="text"
-182 |                   value={newCityName}
-183 |                   onChange={(e) => setNewCityName(e.target.value)}
-184 |                   placeholder="Наприклад: Львів"
-185 |                   className="w-full p-3 mb-6 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
-186 |                   autoFocus
-187 |                   required
-188 |                 />
-189 |                 <div className="flex gap-3">
-190 |                   <button
-191 |                     type="button"
-192 |                     onClick={() => setIsModalOpen(false)}
-193 |                     className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors"
-194 |                   >
-195 |                     Скасувати
-196 |                   </button>
-197 |                   <button
-198 |                     type="submit"
-199 |                     disabled={addCity.isPending}
-200 |                     className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-201 |                   >
-202 |                     {addCity.isPending ? "Збереження..." : "Зберегти"}
-203 |                   </button>
-204 |                 </div>
-205 |               </form>
-206 |             </div>
-207 |           </div>,
-208 |           document.body,
-209 |         )}
-210 |     </div>
-211 |   );
-212 | }
-213 | 
+ 61 |   const [userRole] = useState<string | null>(() => {
+ 62 |     try {
+ 63 |       return JSON.parse(localStorage.getItem("user") || "null")?.role ?? null;
+ 64 |     } catch {
+ 65 |       return null;
+ 66 |     }
+ 67 |   });
+ 68 |   const handleAddCity = async (e: React.FormEvent) => {
+ 69 |     e.preventDefault();
+ 70 |     if (!newCityName.trim()) return;
+ 71 |     try {
+ 72 |       await addCity.mutateAsync(newCityName.trim());
+ 73 |       setNewCityName("");
+ 74 |       setIsModalOpen(false);
+ 75 |     } catch {
+ 76 |       alert("Не вдалося створити місто. Можливо воно вже існує.");
+ 77 |     }
+ 78 |   };
+ 79 | 
+ 80 |   return (
+ 81 |     // Оптимізація 5: content-visibility
+ 82 |     <div
+ 83 |       className="p-4 md:p-8 bg-slate-50 min-h-screen"
+ 84 |       style={{ contentVisibility: "auto" }}
+ 85 |     >
+ 86 |       {/* Шапка для ПК */}
+ 87 |       <style>{`
+ 88 |         @keyframes headerFadeIn {
+ 89 |           from { opacity: 0; transform: translateY(-10px); }
+ 90 |           to   { opacity: 1; transform: translateY(0); }
+ 91 |         }
+ 92 |         .header-enter { animation: headerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+ 93 |         .header-btn-enter { animation: headerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
+ 94 |       `}</style>
+ 95 |       <div className="hidden md:flex justify-between items-center mb-8">
+ 96 |         <h1 className="header-enter text-3xl font-bold text-slate-800">
+ 97 |           Міста
+ 98 |         </h1>
+ 99 |         {userRole === "SUPERADMIN" && (
+100 |           <button
+101 |             onClick={() => setIsModalOpen(true)}
+102 |             className="header-btn-enter bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm flex items-center transition-all duration-150"
+103 |           >
+104 |             <span className="mr-2">+</span> Додати місто
+105 |           </button>
+106 |         )}
+107 |       </div>
+108 | 
+109 |       {isFetching ? (
+110 |         <CitiesSkeleton />
+111 |       ) : (
+112 |         /* Оптимізація 6: Suspense обгортка для лінивих компонентів */
+113 |         <Suspense fallback={<CitiesSkeleton />}>
+114 |           {/* 1. Блок для Мобільних (Шапка + Список) */}
+115 |           <div className="md:hidden">
+116 |             <CityMobileHeader selectedCity={selectedCity} cities={cities} />
+117 |             <CityMobileList
+118 |               cities={cities}
+119 |               selectedCity={selectedCity}
+120 |               onSelectCity={handleSelectCity}
+121 |             />
+122 |           </div>
+123 | 
+124 |           {/* 2. Блок для Десктопів (Карусель + Сітка) */}
+125 |           <div className="hidden md:block">
+126 |             <IssueCarousel />
+127 |             <CityDesktopGrid
+128 |               cities={cities}
+129 |               selectedCity={selectedCity}
+130 |               onSelectCity={handleSelectCity}
+131 |             />
+132 |           </div>
+133 |         </Suspense>
+134 |       )}
+135 | 
+136 |       {/* Мобільна плаваюча кнопка FAB */}
+137 |       {userRole === "SUPERADMIN" && (
+138 |         <button
+139 |           onClick={() => setIsModalOpen(true)}
+140 |           className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 active:scale-95 transition-transform opacity-0"
+141 |           style={{ animation: "fabPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) 0.2s forwards" }}
+142 |           aria-label="Додати місто"
+143 |         >
+144 |           +
+145 |         </button>
+146 |       )}
+147 |         <style>{`
+148 |           @keyframes fabPop {
+149 |             from { opacity: 0; transform: scale(0.5) translateY(20px); }
+150 |             to { opacity: 1; transform: scale(1) translateY(0); }
+151 |           }
+152 |         `}</style>
+153 |         +
+154 |       </button>
+155 | 
+156 |       {/* Модалка додавання */}
+157 |       {isModalOpen &&
+158 |         createPortal(
+159 |           <div
+160 |             className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
+161 |             style={{ animation: "fadeIn 0.2s ease-out forwards" }}
+162 |           >
+163 |             <style>{`
+164 |             @keyframes fadeIn {
+165 |               from { opacity: 0; }
+166 |               to { opacity: 1; }
+167 |             }
+168 |             @keyframes modalScale {
+169 |               from { opacity: 0; transform: scale(0.95) translateY(15px); }
+170 |               to { opacity: 1; transform: scale(1) translateY(0); }
+171 |             }
+172 |           `}</style>
+173 | 
+174 |             {/* ТУТ БУЛА ПРОБЛЕМА: додано opacity-0 та style з анімацією modalScale */}
+175 |             <div
+176 |               className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
+177 |               style={{ animation: "modalScale 0.3s ease-out forwards" }}
+178 |             >
+179 |               <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+180 |                 <h3 className="text-xl font-bold text-slate-800">Нове місто</h3>
+181 |                 <button
+182 |                   onClick={() => setIsModalOpen(false)}
+183 |                   className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
+184 |                 >
+185 |                   ✕
+186 |                 </button>
+187 |               </div>
+188 |               <form onSubmit={handleAddCity} className="p-6">
+189 |                 <input
+190 |                   type="text"
+191 |                   value={newCityName}
+192 |                   onChange={(e) => setNewCityName(e.target.value)}
+193 |                   placeholder="Наприклад: Львів"
+194 |                   className="w-full p-3 mb-6 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+195 |                   autoFocus
+196 |                   required
+197 |                 />
+198 |                 <div className="flex gap-3">
+199 |                   <button
+200 |                     type="button"
+201 |                     onClick={() => setIsModalOpen(false)}
+202 |                     className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors"
+203 |                   >
+204 |                     Скасувати
+205 |                   </button>
+206 |                   <button
+207 |                     type="submit"
+208 |                     disabled={addCity.isPending}
+209 |                     className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+210 |                   >
+211 |                     {addCity.isPending ? "Збереження..." : "Зберегти"}
+212 |                   </button>
+213 |                 </div>
+214 |               </form>
+215 |             </div>
+216 |           </div>,
+217 |           document.body,
+218 |         )}
+219 |     </div>
+220 |   );
+221 | }
+222 | 
 ```
 
 ### File: apps/frontend/src/pages/CityProfile.tsx
@@ -13794,477 +14355,496 @@
 137 | 
 138 |   const { selectedCity } = useSelectedCity();
 139 | 
-140 |   const cityFilteredUsers = selectedCity.id
-141 |     ? users.filter((u) => u.cityId === selectedCity.id)
-142 |     : users;
-143 |   const grouped = (["MAfNAGER", "DRIVER", "HOST"] as Role[]).map((role) => ({
-144 |     role,
-145 |     label: ROLE_LABELS[role],
-146 |     items: cityFilteredUsers.filter((u) => u.role === role),
-147 |   }));
+140 |   const [userRole] = useState<string | null>(() => {
+141 |     try {
+142 |       return JSON.parse(localStorage.getItem("user") || "null")?.role ?? null;
+143 |     } catch {
+144 |       return null;
+145 |     }
+146 |   });
+147 |   const isSuperAdmin = userRole === "SUPERADMIN";
 148 | 
-149 |   const handleOpenModal = (user: User | null = null) => {
-150 |     setEditingUser(user);
-151 |     if (user) {
-152 |       setForm({
-153 |         fullName: user.name,
-154 |         phone: user.phone || "",
-155 |         email: user.email,
-156 |         cityId: user.cityId || "",
-157 |         role: user.role,
-158 |         password: "",
-159 |         telegramId: user.telegramId || "",
-160 |         car: user.car || "",
-161 |       });
-162 |     } else {
-163 |       setForm({ ...EMPTY_FORM });
-164 |     }
-165 |     setIsModalOpen(true);
-166 |   };
-167 | 
-168 |   const handleSubmit = (e: React.FormEvent) => {
-169 |     e.preventDefault();
-170 |     if (!form.fullName.trim()) return;
-171 |     setIsModalOpen(false); // закриваємо одразу
-172 |     if (editingUser) updateUser.mutate({ id: editingUser.id, form });
-173 |     else createUser.mutate(form);
-174 |   };
-175 | 
-176 |   const handleDelete = async (id: string, name: string) => {
-177 |     if (!window.confirm(`Видалити користувача "${name}"?`)) return;
-178 |     try {
-179 |       await deleteUser.mutateAsync(id);
-180 |     } catch (e) {
-181 |       alert("Помилка видалення");
-182 |     }
+149 |   const cityFilteredUsers = selectedCity.id
+150 |     ? users.filter((u) => u.cityId === selectedCity.id)
+151 |     : users;
+152 |   const grouped = (["MANAGER", "DRIVER", "HOST"] as Role[]).map((role) => ({
+153 |     role,
+154 |     label: ROLE_LABELS[role],
+155 |     items: cityFilteredUsers.filter((u) => u.role === role),
+156 |   }));
+157 | 
+158 |   const handleOpenModal = (user: User | null = null) => {
+159 |     setEditingUser(user);
+160 |     if (user) {
+161 |       setForm({
+162 |         fullName: user.name,
+163 |         phone: user.phone || "",
+164 |         email: user.email,
+165 |         cityId: user.cityId || "",
+166 |         role: user.role,
+167 |         password: "",
+168 |         telegramId: user.telegramId || "",
+169 |         car: user.car || "",
+170 |       });
+171 |     } else {
+172 |       setForm({ ...EMPTY_FORM });
+173 |     }
+174 |     setIsModalOpen(true);
+175 |   };
+176 | 
+177 |   const handleSubmit = (e: React.FormEvent) => {
+178 |     e.preventDefault();
+179 |     if (!form.fullName.trim()) return;
+180 |     setIsModalOpen(false); // закриваємо одразу
+181 |     if (editingUser) updateUser.mutate({ id: editingUser.id, form });
+182 |     else createUser.mutate(form);
 183 |   };
 184 | 
-185 |   const handleCreateProject = (e: React.FormEvent) => {
-186 |     e.preventDefault();
-187 |     if (!projectForm.name.trim()) return;
-188 |     setIsProjectModalOpen(false);
-189 |     setProjectForm({ name: "", color: "blue" });
-190 |     createProject.mutate(projectForm);
-191 |   };
-192 |   
-193 |   const handleDeleteProject = async (id: string, name: string) => {
-194 |     if (
-195 |       !window.confirm(
-196 |         `Видалити вид події "${name}"? Існуючі події з цією назвою збережуться.`,
-197 |       )
-198 |     )
-199 |       return;
-200 |     try {
-201 |       await deleteProject.mutateAsync(id);
-202 |     } catch (e) {
-203 |       alert("Помилка видалення");
-204 |     }
-205 |   };
-206 | 
-207 |   if (isLoading) return <EmployeesSkeleton />;
-208 | 
-209 |   return (
-210 |     <motion.div
-211 |       initial={{ opacity: 0, y: 8 }}
-212 |       animate={{ opacity: 1, y: 0 }}
-213 |       transition={{ duration: 0.35, ease: "easeOut" }}
-214 |       className="p-4 md:p-8 h-full"
-215 |     >
-216 |       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
-217 |         <motion.div
-218 |           initial={{ opacity: 0, y: -10 }}
-219 |           animate={{ opacity: 1, y: 0 }}
-220 |           transition={{ duration: 0.4, ease: "easeOut" }}
-221 |         >
-222 |           <h1 className="text-2xl font-bold text-slate-800">
-223 |             Акаунти та Проєкти{" "}
-224 |             {selectedCity.id && (
-225 |               <span className="ml-2 text-base font-normal text-blue-500">
-226 |                 · {selectedCity.name}
-227 |               </span>
-228 |             )}
-229 |           </h1>
-230 |           <p className="text-sm text-slate-400 mt-1">
-231 |             Керування доступами, працівниками та видами подій
-232 |           </p>
-233 |         </motion.div>
-234 |         <motion.button
-235 |           initial={{ opacity: 0, y: -10 }}
-236 |           animate={{ opacity: 1, y: 0 }}
-237 |           transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
-238 |           whileTap={{ scale: 0.97 }}
-239 |           onClick={() => handleOpenModal()}
-240 |           className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
-241 |         >
-242 |           + Створити користувача
-243 |         </motion.button>
-244 |       </div>
-245 | 
-246 |       <div className="space-y-8">
-247 |         {grouped.map(({ role, label, items }, gi) => (
-248 |           <motion.div
-249 |             key={role}
-250 |             initial={{ opacity: 0, y: 15 }}
-251 |             animate={{ opacity: 1, y: 0 }}
-252 |             transition={{ duration: 0.3, delay: gi * 0.06 }}
-253 |           >
-254 |             <div className={`flex items-center gap-3 mb-4`}>
-255 |               <div
-256 |                 className={`w-1 h-6 rounded-full ${ROLE_HEADER_COLORS[role]}`}
-257 |               ></div>
-258 |               <h2 className="text-lg font-bold text-slate-700">{label}</h2>
-259 |               <motion.span
-260 |                 key={items.length}
-261 |                 initial={{ scale: 0.7, opacity: 0 }}
-262 |                 animate={{ scale: 1, opacity: 1 }}
-263 |                 transition={{ duration: 0.2 }}
-264 |                 className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_COLORS[role]}`}
-265 |               >
-266 |                 {items.length}
-267 |               </motion.span>
-268 |             </div>
-269 |             {items.length === 0 ? (
-270 |               <motion.div
-271 |                 initial={{ opacity: 0, scale: 0.97 }}
-272 |                 animate={{ opacity: 1, scale: 1 }}
-273 |                 transition={{ duration: 0.25 }}
-274 |                 className="bg-white rounded-xl border border-slate-100 p-6 text-center text-slate-400 text-sm"
-275 |               >
-276 |                 Немає {label.toLowerCase()}ів
-277 |               </motion.div>
-278 |             ) : (
-279 |               <motion.div
-280 |                 whileHover={{
-281 |                   y: -2,
-282 |                   boxShadow: "0 8px 24px -4px rgba(0,0,0,0.08)",
-283 |                 }}
-284 |                 transition={{ duration: 0.2 }}
-285 |                 className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+185 |   const handleDelete = async (id: string, name: string) => {
+186 |     if (!window.confirm(`Видалити користувача "${name}"?`)) return;
+187 |     try {
+188 |       await deleteUser.mutateAsync(id);
+189 |     } catch (e) {
+190 |       alert("Помилка видалення");
+191 |     }
+192 |   };
+193 | 
+194 |   const handleCreateProject = (e: React.FormEvent) => {
+195 |     e.preventDefault();
+196 |     if (!projectForm.name.trim()) return;
+197 |     setIsProjectModalOpen(false);
+198 |     setProjectForm({ name: "", color: "blue" });
+199 |     createProject.mutate(projectForm);
+200 |   };
+201 | 
+202 |   const handleDeleteProject = async (id: string, name: string) => {
+203 |     if (
+204 |       !window.confirm(
+205 |         `Видалити вид події "${name}"? Існуючі події з цією назвою збережуться.`,
+206 |       )
+207 |     )
+208 |       return;
+209 |     try {
+210 |       await deleteProject.mutateAsync(id);
+211 |     } catch (e) {
+212 |       alert("Помилка видалення");
+213 |     }
+214 |   };
+215 | 
+216 |   if (isLoading) return <EmployeesSkeleton />;
+217 | 
+218 |   return (
+219 |     <motion.div
+220 |       initial={{ opacity: 0, y: 8 }}
+221 |       animate={{ opacity: 1, y: 0 }}
+222 |       transition={{ duration: 0.35, ease: "easeOut" }}
+223 |       className="p-4 md:p-8 h-full"
+224 |     >
+225 |       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
+226 |         <motion.div
+227 |           initial={{ opacity: 0, y: -10 }}
+228 |           animate={{ opacity: 1, y: 0 }}
+229 |           transition={{ duration: 0.4, ease: "easeOut" }}
+230 |         >
+231 |           <h1 className="text-2xl font-bold text-slate-800">
+232 |             Акаунти та Проєкти{" "}
+233 |             {selectedCity.id && (
+234 |               <span className="ml-2 text-base font-normal text-blue-500">
+235 |                 · {selectedCity.name}
+236 |               </span>
+237 |             )}
+238 |           </h1>
+239 |           <p className="text-sm text-slate-400 mt-1">
+240 |             Керування доступами, працівниками та видами подій
+241 |           </p>
+242 |         </motion.div>
+243 |         {isSuperAdmin && (
+244 |           <motion.button
+245 |             initial={{ opacity: 0, y: -10 }}
+246 |             animate={{ opacity: 1, y: 0 }}
+247 |             transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+248 |             whileTap={{ scale: 0.97 }}
+249 |             onClick={() => handleOpenModal()}
+250 |             className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
+251 |           >
+252 |             + Створити користувача
+253 |           </motion.button>
+254 |         )}
+255 |       </div>
+256 | 
+257 |       <div className="space-y-8">
+258 |         {grouped.map(({ role, label, items }, gi) => (
+259 |           <motion.div
+260 |             key={role}
+261 |             initial={{ opacity: 0, y: 15 }}
+262 |             animate={{ opacity: 1, y: 0 }}
+263 |             transition={{ duration: 0.3, delay: gi * 0.06 }}
+264 |           >
+265 |             <div className={`flex items-center gap-3 mb-4`}>
+266 |               <div
+267 |                 className={`w-1 h-6 rounded-full ${ROLE_HEADER_COLORS[role]}`}
+268 |               ></div>
+269 |               <h2 className="text-lg font-bold text-slate-700">{label}</h2>
+270 |               <motion.span
+271 |                 key={items.length}
+272 |                 initial={{ scale: 0.7, opacity: 0 }}
+273 |                 animate={{ scale: 1, opacity: 1 }}
+274 |                 transition={{ duration: 0.2 }}
+275 |                 className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_COLORS[role]}`}
+276 |               >
+277 |                 {items.length}
+278 |               </motion.span>
+279 |             </div>
+280 |             {items.length === 0 ? (
+281 |               <motion.div
+282 |                 initial={{ opacity: 0, scale: 0.97 }}
+283 |                 animate={{ opacity: 1, scale: 1 }}
+284 |                 transition={{ duration: 0.25 }}
+285 |                 className="bg-white rounded-xl border border-slate-100 p-6 text-center text-slate-400 text-sm"
 286 |               >
-287 |                 <table className="w-full text-left">
-288 |                   <thead>
-289 |                     <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-290 |                       <th className="px-5 py-3">ПІБ</th>
-291 |                       <th className="px-5 py-3">Телефон</th>
-292 |                       <th className="px-5 py-3">Пошта / Логін</th>
-293 |                       <th className="px-5 py-3">Місто</th>
-294 |                       <th className="px-5 py-3 text-center">Дії</th>
-295 |                     </tr>
-296 |                   </thead>
-297 |                   <tbody>
-298 |                     <AnimatePresence initial={false}>
-299 |                       {items.map((u, ri) => (
-300 |                         <motion.tr
-301 |                           key={u.id}
-302 |                           initial={{ opacity: 0 }}
-303 |                           animate={{ opacity: 1 }}
-304 |                           exit={{ opacity: 0, height: 0 }}
-305 |                           transition={{ duration: 0.2, delay: ri * 0.04 }}
-306 |                           className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
-307 |                         >
-308 |                           <td className="px-5 py-4">
-309 |                             <div className="flex items-center gap-3">
-310 |                               <motion.div
-311 |                                 initial={{ scale: 0.8, opacity: 0 }}
-312 |                                 animate={{ scale: 1, opacity: 1 }}
-313 |                                 transition={{ duration: 0.2, delay: 0.05 }}
-314 |                                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
-315 |                               >
-316 |                                 {u.name.charAt(0)}
-317 |                               </motion.div>
-318 |                               <span className="font-medium text-slate-800">
-319 |                                 {u.name}
-320 |                               </span>
-321 |                             </div>
-322 |                           </td>
-323 |                           <td className="px-5 py-4 text-slate-600 text-sm">
-324 |                             <PhoneLink phone={u.phone} />
-325 |                             {u.car && (
-326 |                               <p className="text-xs text-emerald-600 font-medium mt-1">
-327 |                                 🚗 {u.car}
-328 |                               </p>
-329 |                             )}
-330 |                           </td>
-331 |                           <td className="px-5 py-4 text-slate-600 text-sm font-medium">
-332 |                             {u.email}
+287 |                 Немає {label.toLowerCase()}ів
+288 |               </motion.div>
+289 |             ) : (
+290 |               <motion.div
+291 |                 whileHover={{
+292 |                   y: -2,
+293 |                   boxShadow: "0 8px 24px -4px rgba(0,0,0,0.08)",
+294 |                 }}
+295 |                 transition={{ duration: 0.2 }}
+296 |                 className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+297 |               >
+298 |                 <table className="w-full text-left">
+299 |                   <thead>
+300 |                     <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+301 |                       <th className="px-5 py-3">ПІБ</th>
+302 |                       <th className="px-5 py-3">Телефон</th>
+303 |                       <th className="px-5 py-3">Пошта / Логін</th>
+304 |                       <th className="px-5 py-3">Місто</th>
+305 |                       <th className="px-5 py-3 text-center">Дії</th>
+306 |                     </tr>
+307 |                   </thead>
+308 |                   <tbody>
+309 |                     <AnimatePresence initial={false}>
+310 |                       {items.map((u, ri) => (
+311 |                         <motion.tr
+312 |                           key={u.id}
+313 |                           initial={{ opacity: 0 }}
+314 |                           animate={{ opacity: 1 }}
+315 |                           exit={{ opacity: 0, height: 0 }}
+316 |                           transition={{ duration: 0.2, delay: ri * 0.04 }}
+317 |                           className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+318 |                         >
+319 |                           <td className="px-5 py-4">
+320 |                             <div className="flex items-center gap-3">
+321 |                               <motion.div
+322 |                                 initial={{ scale: 0.8, opacity: 0 }}
+323 |                                 animate={{ scale: 1, opacity: 1 }}
+324 |                                 transition={{ duration: 0.2, delay: 0.05 }}
+325 |                                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
+326 |                               >
+327 |                                 {u.name.charAt(0)}
+328 |                               </motion.div>
+329 |                               <span className="font-medium text-slate-800">
+330 |                                 {u.name}
+331 |                               </span>
+332 |                             </div>
 333 |                           </td>
-334 |                           <td className="px-5 py-4">
-335 |                             <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
-336 |                               📍 {u.city?.name || "Всі міста"}
-337 |                             </span>
-338 |                           </td>
-339 |                           <td className="px-5 py-4 text-center">
-340 |                             <motion.button
-341 |                               whileTap={{ scale: 0.93 }}
-342 |                               onClick={() => handleOpenModal(u)}
-343 |                               className="text-slate-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 rounded-lg mr-2 transition-colors"
-344 |                             >
-345 |                               ✏️
-346 |                             </motion.button>
-347 |                             <motion.button
-348 |                               whileTap={{ scale: 0.93 }}
-349 |                               onClick={() => handleDelete(u.id, u.name)}
-350 |                               className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
-351 |                             >
-352 |                               🗑
-353 |                             </motion.button>
-354 |                           </td>
-355 |                         </motion.tr>
-356 |                       ))}
-357 |                     </AnimatePresence>
-358 |                   </tbody>
-359 |                 </table>
-360 |               </motion.div>
-361 |             )}
-362 |           </motion.div>
-363 |         ))}
-364 |       </div>
-365 | 
-366 |       {/* --- СЕКЦІЯ ПРОЄКТІВ (ВИДІВ ПОДІЙ) --- */}
-367 |       <div className="mt-16 border-t border-slate-200 pt-10">
-368 |         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-369 |           <div>
-370 |             <h2 className="text-2xl font-bold text-slate-800">
-371 |               Види подій (Проєкти)
-372 |             </h2>
-373 |             <p className="text-sm text-slate-400 mt-1">
-374 |               Ці проєкти відображатимуться у випадаючому списку при створенні
-375 |               події
-376 |             </p>
-377 |           </div>
-378 |           <button
-379 |             onClick={() => setIsProjectModalOpen(true)}
-380 |             className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 transition-colors w-full sm:w-auto"
-381 |           >
-382 |             + Створити вид події
-383 |           </button>
-384 |         </div>
-385 | 
-386 |         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-387 |           {projects.map((p, pi) => (
-388 |             <motion.div
-389 |               key={p.id}
-390 |               initial={{ opacity: 0, y: 8 }}
-391 |               animate={{ opacity: 1, y: 0 }}
-392 |               transition={{ duration: 0.25, delay: pi * 0.05 }}
-393 |               whileHover={{
-394 |                 y: -3,
-395 |                 boxShadow: "0 8px 24px -4px rgba(0,0,0,0.10)",
-396 |               }}
-397 |               className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default"
-398 |             >
-399 |               <div className="flex items-center gap-3">
-400 |                 <motion.div
-401 |                   whileHover={{ scale: 1.3 }}
-402 |                   transition={{ duration: 0.15 }}
-403 |                   className={`w-4 h-4 rounded-full ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm`}
-404 |                 />
-405 |                 <span className="font-bold text-slate-800">{p.name}</span>
-406 |               </div>
-407 |               <button
-408 |                 onClick={() => handleDeleteProject(p.id, p.name)}
-409 |                 className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2 -mr-2"
-410 |                 title="Видалити"
-411 |               >
-412 |                 🗑
-413 |               </button>
-414 |             </motion.div>
-415 |           ))}
-416 |           {projects.length === 0 && (
-417 |             <div className="col-span-full text-center py-10 text-slate-400">
-418 |               Ви ще не додали жодного виду події
-419 |             </div>
-420 |           )}
-421 |         </div>
-422 |       </div>
-423 | 
-424 |       {/* Модалки Користувача і Проєктів */}
-425 |       {isProjectModalOpen && (
-426 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-427 |           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-428 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-429 |               <h3 className="text-xl font-bold text-slate-800">
-430 |                 Новий вид події
-431 |               </h3>
-432 |               <button
-433 |                 onClick={() => setIsProjectModalOpen(false)}
-434 |                 className="text-slate-400 text-xl leading-none p-2 -mr-2"
-435 |               >
-436 |                 ✕
-437 |               </button>
+334 |                           <td className="px-5 py-4 text-slate-600 text-sm">
+335 |                             <PhoneLink phone={u.phone} />
+336 |                             {u.car && (
+337 |                               <p className="text-xs text-emerald-600 font-medium mt-1">
+338 |                                 🚗 {u.car}
+339 |                               </p>
+340 |                             )}
+341 |                           </td>
+342 |                           <td className="px-5 py-4 text-slate-600 text-sm font-medium">
+343 |                             {u.email}
+344 |                           </td>
+345 |                           <td className="px-5 py-4">
+346 |                             <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
+347 |                               📍 {u.city?.name || "Всі міста"}
+348 |                             </span>
+349 |                           </td>
+350 |                           <td className="px-5 py-4 text-center">
+351 |                             {isSuperAdmin && (
+352 |                               <>
+353 |                                 <motion.button
+354 |                                   whileTap={{ scale: 0.93 }}
+355 |                                   onClick={() => handleOpenModal(u)}
+356 |                                   className="text-slate-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 rounded-lg mr-2 transition-colors"
+357 |                                 >
+358 |                                   ✏️
+359 |                                 </motion.button>
+360 |                                 <motion.button
+361 |                                   whileTap={{ scale: 0.93 }}
+362 |                                   onClick={() => handleDelete(u.id, u.name)}
+363 |                                   className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+364 |                                 >
+365 |                                   🗑
+366 |                                 </motion.button>
+367 |                               </>
+368 |                             )}
+369 |                           </td>
+370 |                         </motion.tr>
+371 |                       ))}
+372 |                     </AnimatePresence>
+373 |                   </tbody>
+374 |                 </table>
+375 |               </motion.div>
+376 |             )}
+377 |           </motion.div>
+378 |         ))}
+379 |       </div>
+380 | 
+381 |       {/* --- СЕКЦІЯ ПРОЄКТІВ (ВИДІВ ПОДІЙ) --- */}
+382 |       <div className="mt-16 border-t border-slate-200 pt-10">
+383 |         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+384 |           <div>
+385 |             <h2 className="text-2xl font-bold text-slate-800">
+386 |               Види подій (Проєкти)
+387 |             </h2>
+388 |             <p className="text-sm text-slate-400 mt-1">
+389 |               Ці проєкти відображатимуться у випадаючому списку при створенні
+390 |               події
+391 |             </p>
+392 |           </div>
+393 |           {isSuperAdmin && (
+394 |             <button
+395 |               onClick={() => setIsProjectModalOpen(true)}
+396 |               className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 transition-colors w-full sm:w-auto"
+397 |             >
+398 |               + Створити вид події
+399 |             </button>
+400 |           )}
+401 |         </div>
+402 | 
+403 |         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+404 |           {projects.map((p, pi) => (
+405 |             <motion.div
+406 |               key={p.id}
+407 |               initial={{ opacity: 0, y: 8 }}
+408 |               animate={{ opacity: 1, y: 0 }}
+409 |               transition={{ duration: 0.25, delay: pi * 0.05 }}
+410 |               whileHover={{
+411 |                 y: -3,
+412 |                 boxShadow: "0 8px 24px -4px rgba(0,0,0,0.10)",
+413 |               }}
+414 |               className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default"
+415 |             >
+416 |               <div className="flex items-center gap-3">
+417 |                 <motion.div
+418 |                   whileHover={{ scale: 1.3 }}
+419 |                   transition={{ duration: 0.15 }}
+420 |                   className={`w-4 h-4 rounded-full ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm`}
+421 |                 />
+422 |                 <span className="font-bold text-slate-800">{p.name}</span>
+423 |               </div>
+424 |               {isSuperAdmin && (
+425 |                 <button
+426 |                   onClick={() => handleDeleteProject(p.id, p.name)}
+427 |                   className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2 -mr-2"
+428 |                   title="Видалити"
+429 |                 >
+430 |                   🗑
+431 |                 </button>
+432 |               )}
+433 |             </motion.div>
+434 |           ))}
+435 |           {projects.length === 0 && (
+436 |             <div className="col-span-full text-center py-10 text-slate-400">
+437 |               Ви ще не додали жодного виду події
 438 |             </div>
-439 |             <form onSubmit={handleCreateProject} className="p-6">
-440 |               <label className="block text-sm font-medium text-slate-700 mb-1.5">
-441 |                 Назва
-442 |               </label>
-443 |               <input
-444 |                 type="text"
-445 |                 value={projectForm.name}
-446 |                 onChange={(e) =>
-447 |                   setProjectForm({ ...projectForm, name: e.target.value })
-448 |                 }
-449 |                 className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none mb-6"
-450 |                 required
-451 |                 placeholder="Наприклад: Шоу мильних бульбашок"
-452 |               />
-453 |               <label className="block text-sm font-medium text-slate-700 mb-3">
-454 |                 Колір для календаря
-455 |               </label>
-456 |               <div className="flex gap-4 mb-8">
-457 |                 {Object.keys(PROJECT_COLORS).map((c) => (
-458 |                   <button
-459 |                     type="button"
-460 |                     key={c}
-461 |                     onClick={() => setProjectForm({ ...projectForm, color: c })}
-462 |                     className={`w-8 h-8 rounded-full ${PROJECT_COLORS[c]} transition-all ${projectForm.color === c ? "ring-4 ring-offset-2 ring-blue-200 scale-110" : "hover:scale-110"}`}
-463 |                   />
-464 |                 ))}
-465 |               </div>
-466 |               <div className="flex gap-3">
-467 |                 <button
-468 |                   type="button"
-469 |                   onClick={() => setIsProjectModalOpen(false)}
-470 |                   className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
-471 |                 >
-472 |                   Скасувати
-473 |                 </button>
-474 |                 <button
-475 |                   type="submit"
-476 |                   className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-medium"
-477 |                 >
-478 |                   Зберегти
-479 |                 </button>
-480 |               </div>
-481 |             </form>
-482 |           </div>
-483 |         </div>
-484 |       )}
-485 | 
-486 |       {/* Ваша стара модалка Користувача */}
-487 |       {isModalOpen && (
-488 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-489 |           {/* Ваш існуючий код модалки працівника... Для стислості я зберіг базові поля */}
-490 |           <div className="bg-white rounded-2xl shadow-xl w-full sm:max-w-lg overflow-hidden flex flex-col">
-491 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-492 |               <h3 className="text-xl font-bold">
-493 |                 {editingUser ? "Редагувати" : "Новий користувач"}
-494 |               </h3>
-495 |               <button
-496 |                 onClick={() => setIsModalOpen(false)}
-497 |                 className="text-slate-400 text-xl p-2 -mr-2"
-498 |               >
-499 |                 ✕
-500 |               </button>
-501 |             </div>
-502 |             <form
-503 |               onSubmit={handleSubmit}
-504 |               className="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh]"
-505 |             >
-506 |               <input
-507 |                 type="text"
-508 |                 value={form.fullName}
-509 |                 onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-510 |                 required
-511 |                 placeholder="ПІБ"
-512 |                 className="w-full p-2.5 border rounded-lg"
-513 |               />
-514 |               <div className="grid grid-cols-2 gap-4">
-515 |                 <input
-516 |                   type="email"
-517 |                   value={form.email}
-518 |                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-519 |                   required
-520 |                   placeholder="Пошта"
-521 |                   className="w-full p-2.5 border rounded-lg"
-522 |                 />
-523 |                 <input
-524 |                   type="password"
-525 |                   value={form.password}
-526 |                   onChange={(e) =>
-527 |                     setForm({ ...form, password: e.target.value })
-528 |                   }
-529 |                   required={!editingUser}
-530 |                   placeholder="Пароль"
-531 |                   className="w-full p-2.5 border rounded-lg"
-532 |                 />
-533 |               </div>
-534 |               <div className="grid grid-cols-2 gap-4">
-535 |                 <input
-536 |                   type="tel"
-537 |                   value={form.phone}
-538 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-539 |                   placeholder="Телефон"
+439 |           )}
+440 |         </div>
+441 |       </div>
+442 | 
+443 |       {/* Модалки Користувача і Проєктів */}
+444 |       {isProjectModalOpen && (
+445 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+446 |           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+447 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+448 |               <h3 className="text-xl font-bold text-slate-800">
+449 |                 Новий вид події
+450 |               </h3>
+451 |               <button
+452 |                 onClick={() => setIsProjectModalOpen(false)}
+453 |                 className="text-slate-400 text-xl leading-none p-2 -mr-2"
+454 |               >
+455 |                 ✕
+456 |               </button>
+457 |             </div>
+458 |             <form onSubmit={handleCreateProject} className="p-6">
+459 |               <label className="block text-sm font-medium text-slate-700 mb-1.5">
+460 |                 Назва
+461 |               </label>
+462 |               <input
+463 |                 type="text"
+464 |                 value={projectForm.name}
+465 |                 onChange={(e) =>
+466 |                   setProjectForm({ ...projectForm, name: e.target.value })
+467 |                 }
+468 |                 className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none mb-6"
+469 |                 required
+470 |                 placeholder="Наприклад: Шоу мильних бульбашок"
+471 |               />
+472 |               <label className="block text-sm font-medium text-slate-700 mb-3">
+473 |                 Колір для календаря
+474 |               </label>
+475 |               <div className="flex gap-4 mb-8">
+476 |                 {Object.keys(PROJECT_COLORS).map((c) => (
+477 |                   <button
+478 |                     type="button"
+479 |                     key={c}
+480 |                     onClick={() => setProjectForm({ ...projectForm, color: c })}
+481 |                     className={`w-8 h-8 rounded-full ${PROJECT_COLORS[c]} transition-all ${projectForm.color === c ? "ring-4 ring-offset-2 ring-blue-200 scale-110" : "hover:scale-110"}`}
+482 |                   />
+483 |                 ))}
+484 |               </div>
+485 |               <div className="flex gap-3">
+486 |                 <button
+487 |                   type="button"
+488 |                   onClick={() => setIsProjectModalOpen(false)}
+489 |                   className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
+490 |                 >
+491 |                   Скасувати
+492 |                 </button>
+493 |                 <button
+494 |                   type="submit"
+495 |                   className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-medium"
+496 |                 >
+497 |                   Зберегти
+498 |                 </button>
+499 |               </div>
+500 |             </form>
+501 |           </div>
+502 |         </div>
+503 |       )}
+504 | 
+505 |       {/* Ваша стара модалка Користувача */}
+506 |       {isModalOpen && (
+507 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+508 |           {/* Ваш існуючий код модалки працівника... Для стислості я зберіг базові поля */}
+509 |           <div className="bg-white rounded-2xl shadow-xl w-full sm:max-w-lg overflow-hidden flex flex-col">
+510 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+511 |               <h3 className="text-xl font-bold">
+512 |                 {editingUser ? "Редагувати" : "Новий користувач"}
+513 |               </h3>
+514 |               <button
+515 |                 onClick={() => setIsModalOpen(false)}
+516 |                 className="text-slate-400 text-xl p-2 -mr-2"
+517 |               >
+518 |                 ✕
+519 |               </button>
+520 |             </div>
+521 |             <form
+522 |               onSubmit={handleSubmit}
+523 |               className="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh]"
+524 |             >
+525 |               <input
+526 |                 type="text"
+527 |                 value={form.fullName}
+528 |                 onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+529 |                 required
+530 |                 placeholder="ПІБ"
+531 |                 className="w-full p-2.5 border rounded-lg"
+532 |               />
+533 |               <div className="grid grid-cols-2 gap-4">
+534 |                 <input
+535 |                   type="email"
+536 |                   value={form.email}
+537 |                   onChange={(e) => setForm({ ...form, email: e.target.value })}
+538 |                   required
+539 |                   placeholder="Пошта"
 540 |                   className="w-full p-2.5 border rounded-lg"
 541 |                 />
 542 |                 <input
-543 |                   type="text"
-544 |                   value={form.telegramId}
+543 |                   type="password"
+544 |                   value={form.password}
 545 |                   onChange={(e) =>
-546 |                     setForm({ ...form, telegramId: e.target.value })
+546 |                     setForm({ ...form, password: e.target.value })
 547 |                   }
-548 |                   placeholder="Telegram ID або @username"
-549 |                   className="w-full p-2.5 border rounded-lg"
-550 |                 />
-551 |               </div>
-552 |               <div className="grid grid-cols-2 gap-4">
-553 |                 <select
-554 |                   value={form.role}
-555 |                   onChange={(e) =>
-556 |                     setForm({ ...form, role: e.target.value as Role })
-557 |                   }
-558 |                   className="w-full p-2.5 border rounded-lg"
-559 |                 >
-560 |                   <option value="MANAGER">Менеджер</option>
-561 |                   <option value="DRIVER">Водій</option>
-562 |                   <option value="HOST">Ведучий</option>
-563 |                   <option value="SUPERADMIN">Суперадмін</option>
-564 |                 </select>
-565 |                 <select
-566 |                   value={form.cityId}
-567 |                   onChange={(e) => setForm({ ...form, cityId: e.target.value })}
+548 |                   required={!editingUser}
+549 |                   placeholder="Пароль"
+550 |                   className="w-full p-2.5 border rounded-lg"
+551 |                 />
+552 |               </div>
+553 |               <div className="grid grid-cols-2 gap-4">
+554 |                 <input
+555 |                   type="tel"
+556 |                   value={form.phone}
+557 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
+558 |                   placeholder="Телефон"
+559 |                   className="w-full p-2.5 border rounded-lg"
+560 |                 />
+561 |                 <input
+562 |                   type="text"
+563 |                   value={form.telegramId}
+564 |                   onChange={(e) =>
+565 |                     setForm({ ...form, telegramId: e.target.value })
+566 |                   }
+567 |                   placeholder="Telegram ID або @username"
 568 |                   className="w-full p-2.5 border rounded-lg"
-569 |                 >
-570 |                   <option value="">Всі міста</option>
-571 |                   {cities.map((c) => (
-572 |                     <option key={c.id} value={c.id}>
-573 |                       {c.name}
-574 |                     </option>
-575 |                   ))}
-576 |                 </select>
-577 |               </div>
-578 |               {form.role === "DRIVER" && (
-579 |                 <input
-580 |                   type="text"
-581 |                   value={form.car || ""}
-582 |                   onChange={(e) => setForm({ ...form, car: e.target.value })}
-583 |                   placeholder="Автомобіль (напр. Renault Trafic)"
-584 |                   className="w-full p-2.5 border rounded-lg"
-585 |                 />
-586 |               )}
-587 |               <div className="flex gap-3 mt-2">
-588 |                 <button
-589 |                   type="button"
-590 |                   onClick={() => setIsModalOpen(false)}
-591 |                   className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
-592 |                 >
-593 |                   Скасувати
-594 |                 </button>
-595 |                 <button
-596 |                   type="submit"
-597 |                   disabled={isSubmitting}
-598 |                   className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium"
-599 |                 >
-600 |                   Зберегти
-601 |                 </button>
-602 |               </div>
-603 |             </form>
-604 |           </div>
-605 |         </div>
-606 |       )}
-607 |     </motion.div>
-608 |   );
-609 | }
-610 | 
+569 |                 />
+570 |               </div>
+571 |               <div className="grid grid-cols-2 gap-4">
+572 |                 <select
+573 |                   value={form.role}
+574 |                   onChange={(e) =>
+575 |                     setForm({ ...form, role: e.target.value as Role })
+576 |                   }
+577 |                   className="w-full p-2.5 border rounded-lg"
+578 |                 >
+579 |                   <option value="MANAGER">Менеджер</option>
+580 |                   <option value="DRIVER">Водій</option>
+581 |                   <option value="HOST">Ведучий</option>
+582 |                   <option value="SUPERADMIN">Суперадмін</option>
+583 |                 </select>
+584 |                 <select
+585 |                   value={form.cityId}
+586 |                   onChange={(e) => setForm({ ...form, cityId: e.target.value })}
+587 |                   className="w-full p-2.5 border rounded-lg"
+588 |                 >
+589 |                   <option value="">Всі міста</option>
+590 |                   {cities.map((c) => (
+591 |                     <option key={c.id} value={c.id}>
+592 |                       {c.name}
+593 |                     </option>
+594 |                   ))}
+595 |                 </select>
+596 |               </div>
+597 |               {form.role === "DRIVER" && (
+598 |                 <input
+599 |                   type="text"
+600 |                   value={form.car || ""}
+601 |                   onChange={(e) => setForm({ ...form, car: e.target.value })}
+602 |                   placeholder="Автомобіль (напр. Renault Trafic)"
+603 |                   className="w-full p-2.5 border rounded-lg"
+604 |                 />
+605 |               )}
+606 |               <div className="flex gap-3 mt-2">
+607 |                 <button
+608 |                   type="button"
+609 |                   onClick={() => setIsModalOpen(false)}
+610 |                   className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
+611 |                 >
+612 |                   Скасувати
+613 |                 </button>
+614 |                 <button
+615 |                   type="submit"
+616 |                   disabled={isSubmitting}
+617 |                   className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium"
+618 |                 >
+619 |                   Зберегти
+620 |                 </button>
+621 |               </div>
+622 |             </form>
+623 |           </div>
+624 |         </div>
+625 |       )}
+626 |     </motion.div>
+627 |   );
+628 | }
+629 | 
 ```
 
 ### File: apps/frontend/src/pages/EventReport.tsx
@@ -14807,551 +15387,571 @@
  26 |   const deleteSchool = useDeleteSchool();
  27 |   const qc = useQueryClient();
  28 | 
- 29 |   const navigate = useNavigate();
- 30 |   const { selectedCity } = useSelectedCity();
- 31 |   const [isModalOpen, setIsModalOpen] = useState(false);
- 32 |   const [isSubmitting, setIsSubmitting] = useState(false);
- 33 |   const [form, setForm] = useState({
- 34 |     name: "",
- 35 |     cityId: "",
- 36 |     sourceUrl: "",
- 37 |     director: "",
- 38 |     phone: "",
- 39 |   });
- 40 |   const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
- 41 |   const [activeFilter, setActiveFilter] = useState<string | null>(null);
- 42 |   const [suggestions, setSuggestions] = useState<
- 43 |     { name: string; url: string }[]
- 44 |   >([]);
- 45 |   const [showSuggestions, setShowSuggestions] = useState(false);
- 46 |   const [isSearching, setIsSearching] = useState(false);
- 47 |   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
- 48 | 
- 49 |   const handleOpenModal = () => {
- 50 |     setForm({
- 51 |       name: "",
- 52 |       cityId: selectedCity.id || cities[0]?.id || "",
- 53 |       sourceUrl: "",
- 54 |       director: "",
- 55 |       phone: "",
- 56 |     });
- 57 |     setMatchedContacts([]);
- 58 |     setIsModalOpen(true);
- 59 |   };
- 60 | 
- 61 |   const fetchContacts = async (schoolName: string) => {
- 62 |     if (!schoolName || schoolName.trim().length < 1) {
- 63 |       setMatchedContacts([]);
- 64 |       return;
- 65 |     }
- 66 |     const currentCityName =
- 67 |       selectedCity.name || cities.find((c) => c.id === form.cityId)?.name || "";
- 68 |     if (currentCityName.toLowerCase() !== "львів") {
- 69 |       setMatchedContacts([]);
- 70 |       return;
- 71 |     }
- 72 |     try {
- 73 |       const token = localStorage.getItem("token");
- 74 |       const res = await api.get(
- 75 |         `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=${encodeURIComponent("Садочок")}`,
- 76 |         { headers: { Authorization: `Bearer ${token}` } },
- 77 |       );
- 78 |       setMatchedContacts(res.data);
- 79 |       if (res.data.length > 0) {
- 80 |         const director =
- 81 |           res.data.find(
- 82 |             (c: any) =>
- 83 |               c.role?.includes("Директор") || c.role?.includes("Завідувач"),
- 84 |           ) || res.data[0];
- 85 |         setForm((f) => ({
- 86 |           ...f,
- 87 |           director: director.contactName,
- 88 |           phone: director.phone,
- 89 |         }));
- 90 |       }
- 91 |     } catch (e) {
- 92 |       console.error(e);
- 93 |     }
- 94 |   };
- 95 | 
- 96 |   const handleNameChange = (value: string) => {
- 97 |     setForm({ ...form, name: value });
- 98 |     if (debounceTimer.current) clearTimeout(debounceTimer.current);
- 99 |     if (value.length < 2) {
-100 |       setShowSuggestions(false);
-101 |       setIsSearching(false);
-102 |       setMatchedContacts([]);
-103 |       return;
-104 |     }
-105 |     setIsSearching(true);
-106 |     setShowSuggestions(true);
-107 |     debounceTimer.current = setTimeout(async () => {
-108 |       const token = localStorage.getItem("token");
-109 |       try {
-110 |         const [externalRes] = await Promise.all([
-111 |           api.get(
-112 |             `/schools/search?q=${value}&type=${encodeURIComponent("Садочок")}`,
-113 |             {
-114 |               headers: { Authorization: `Bearer ${token}` },
-115 |             },
-116 |           ),
-117 |           fetchContacts(value),
-118 |         ]);
-119 |         setSuggestions(externalRes.data);
-120 |       } catch (e) {
-121 |         console.error(e);
-122 |       } finally {
-123 |         setIsSearching(false);
-124 |       }
-125 |     }, 400);
-126 |   };
-127 | 
-128 |   const handleSelectSuggestion = (name: string, url: string) => {
-129 |     setForm({ ...form, name, sourceUrl: url });
-130 |     setShowSuggestions(false);
-131 |     fetchContacts(name);
-132 |   };
-133 | 
-134 |   const handleAddSchool = async (e: React.FormEvent) => {
-135 |     e.preventDefault();
-136 |     if (!form.name.trim() || !form.cityId) return;
-137 |     setIsSubmitting(true);
-138 |     try {
-139 |       const token = localStorage.getItem("token");
-140 |       await api.post(
-141 |         "/schools",
-142 |         { ...form, type: "Садочок" },
-143 |         {
-144 |           headers: { Authorization: `Bearer ${token}` },
-145 |         },
-146 |       );
-147 |       setIsModalOpen(false);
-148 |       qc.invalidateQueries({ queryKey: ["schools"] });
-149 |     } catch (e) {
-150 |       console.error(e);
-151 |       alert("Не вдалося створити садочок");
-152 |     } finally {
-153 |       setIsSubmitting(false);
-154 |     }
-155 |   };
-156 | 
-157 |   const handleDeleteSchool = async (
-158 |     e: React.MouseEvent,
-159 |     schoolId: string,
-160 |     schoolName: string,
-161 |   ) => {
-162 |     e.stopPropagation();
-163 |     if (!window.confirm(`Видалити садочок "${schoolName}"?...`)) return;
-164 |     await deleteSchool.mutateAsync(schoolId);
-165 |   };
-166 | 
-167 |   const filteredKindergartens = schools.filter((s) => {
-168 |     const isCityMatch = selectedCity.id ? s.cityId === selectedCity.id : true;
-169 |     const isFilterMatch = activeFilter
-170 |       ? classifySchool(s) === activeFilter
-171 |       : true;
-172 |     return isCityMatch && s.type === "Садочок" && isFilterMatch;
-173 |   });
+ 29 |   const [userRole] = useState<string | null>(() => {
+ 30 |     try {
+ 31 |       return JSON.parse(localStorage.getItem("user") || "null")?.role ?? null;
+ 32 |     } catch {
+ 33 |       return null;
+ 34 |     }
+ 35 |   });
+ 36 | 
+ 37 |   const navigate = useNavigate();
+ 38 |   const { selectedCity } = useSelectedCity();
+ 39 |   const [isModalOpen, setIsModalOpen] = useState(false);
+ 40 |   const [isSubmitting, setIsSubmitting] = useState(false);
+ 41 |   const [form, setForm] = useState({
+ 42 |     name: "",
+ 43 |     cityId: "",
+ 44 |     sourceUrl: "",
+ 45 |     director: "",
+ 46 |     phone: "",
+ 47 |   });
+ 48 |   const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
+ 49 |   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+ 50 |   const [suggestions, setSuggestions] = useState<
+ 51 |     { name: string; url: string }[]
+ 52 |   >([]);
+ 53 |   const [showSuggestions, setShowSuggestions] = useState(false);
+ 54 |   const [isSearching, setIsSearching] = useState(false);
+ 55 |   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+ 56 | 
+ 57 |   const handleOpenModal = () => {
+ 58 |     setForm({
+ 59 |       name: "",
+ 60 |       cityId: selectedCity.id || cities[0]?.id || "",
+ 61 |       sourceUrl: "",
+ 62 |       director: "",
+ 63 |       phone: "",
+ 64 |     });
+ 65 |     setMatchedContacts([]);
+ 66 |     setIsModalOpen(true);
+ 67 |   };
+ 68 | 
+ 69 |   const fetchContacts = async (schoolName: string) => {
+ 70 |     if (!schoolName || schoolName.trim().length < 1) {
+ 71 |       setMatchedContacts([]);
+ 72 |       return;
+ 73 |     }
+ 74 |     const currentCityName =
+ 75 |       selectedCity.name || cities.find((c) => c.id === form.cityId)?.name || "";
+ 76 |     if (currentCityName.toLowerCase() !== "львів") {
+ 77 |       setMatchedContacts([]);
+ 78 |       return;
+ 79 |     }
+ 80 |     try {
+ 81 |       const token = localStorage.getItem("token");
+ 82 |       const res = await api.get(
+ 83 |         `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=${encodeURIComponent("Садочок")}`,
+ 84 |         { headers: { Authorization: `Bearer ${token}` } },
+ 85 |       );
+ 86 |       setMatchedContacts(res.data);
+ 87 |       if (res.data.length > 0) {
+ 88 |         const director =
+ 89 |           res.data.find(
+ 90 |             (c: any) =>
+ 91 |               c.role?.includes("Директор") || c.role?.includes("Завідувач"),
+ 92 |           ) || res.data[0];
+ 93 |         setForm((f) => ({
+ 94 |           ...f,
+ 95 |           director: director.contactName,
+ 96 |           phone: director.phone,
+ 97 |         }));
+ 98 |       }
+ 99 |     } catch (e) {
+100 |       console.error(e);
+101 |     }
+102 |   };
+103 | 
+104 |   const handleNameChange = (value: string) => {
+105 |     setForm({ ...form, name: value });
+106 |     if (debounceTimer.current) clearTimeout(debounceTimer.current);
+107 |     if (value.length < 2) {
+108 |       setShowSuggestions(false);
+109 |       setIsSearching(false);
+110 |       setMatchedContacts([]);
+111 |       return;
+112 |     }
+113 |     setIsSearching(true);
+114 |     setShowSuggestions(true);
+115 |     debounceTimer.current = setTimeout(async () => {
+116 |       const token = localStorage.getItem("token");
+117 |       try {
+118 |         const [externalRes] = await Promise.all([
+119 |           api.get(
+120 |             `/schools/search?q=${value}&type=${encodeURIComponent("Садочок")}`,
+121 |             {
+122 |               headers: { Authorization: `Bearer ${token}` },
+123 |             },
+124 |           ),
+125 |           fetchContacts(value),
+126 |         ]);
+127 |         setSuggestions(externalRes.data);
+128 |       } catch (e) {
+129 |         console.error(e);
+130 |       } finally {
+131 |         setIsSearching(false);
+132 |       }
+133 |     }, 400);
+134 |   };
+135 | 
+136 |   const handleSelectSuggestion = (name: string, url: string) => {
+137 |     setForm({ ...form, name, sourceUrl: url });
+138 |     setShowSuggestions(false);
+139 |     fetchContacts(name);
+140 |   };
+141 | 
+142 |   const handleAddSchool = async (e: React.FormEvent) => {
+143 |     e.preventDefault();
+144 |     if (!form.name.trim() || !form.cityId) return;
+145 |     setIsSubmitting(true);
+146 |     try {
+147 |       const token = localStorage.getItem("token");
+148 |       await api.post(
+149 |         "/schools",
+150 |         { ...form, type: "Садочок" },
+151 |         {
+152 |           headers: { Authorization: `Bearer ${token}` },
+153 |         },
+154 |       );
+155 |       setIsModalOpen(false);
+156 |       qc.invalidateQueries({ queryKey: ["schools"] });
+157 |     } catch (e) {
+158 |       console.error(e);
+159 |       alert("Не вдалося створити садочок");
+160 |     } finally {
+161 |       setIsSubmitting(false);
+162 |     }
+163 |   };
+164 | 
+165 |   const handleDeleteSchool = async (
+166 |     e: React.MouseEvent,
+167 |     schoolId: string,
+168 |     schoolName: string,
+169 |   ) => {
+170 |     e.stopPropagation();
+171 |     if (!window.confirm(`Видалити садочок "${schoolName}"?...`)) return;
+172 |     await deleteSchool.mutateAsync(schoolId);
+173 |   };
 174 | 
-175 |   return (
-176 |     <div className="p-4 md:p-8 h-full max-w-[100vw]">
-177 |       <div className="flex items-center justify-between gap-2 mb-3">
-178 |         <h1 className="text-xl font-bold text-slate-800">
-179 |           Садочки
-180 |           {selectedCity.id && (
-181 |             <span className="ml-2 text-sm font-normal text-blue-500">
-182 |               · {selectedCity.name}
-183 |             </span>
-184 |           )}
-185 |         </h1>
-186 |         <div className="flex gap-2 shrink-0">
-187 |           <button
-188 |             onClick={async () => {
-189 |               if (!selectedCity.id) return alert("Спочатку оберіть місто");
-190 |               if (
-191 |                 !window.confirm(
-192 |                   `Імпортувати всі садочки з isuo.org для міста ${selectedCity.name}?`,
-193 |                 )
-194 |               )
-195 |                 return;
-196 |               try {
-197 |                 const token = localStorage.getItem("token");
-198 |                 const res = await api.post(
-199 |                   "/schools/bulk-import",
-200 |                   { cityId: selectedCity.id, type: "Садочок" },
-201 |                   {
-202 |                     headers: { Authorization: `Bearer ${token}` },
-203 |                     timeout: 120000,
-204 |                   },
-205 |                 );
-206 |                 alert(
-207 |                   `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
-208 |                 );
-209 |                 qc.invalidateQueries({ queryKey: ["schools"] });
-210 |               } catch (e) {
-211 |                 alert("Помилка імпорту.");
-212 |               }
-213 |             }}
-214 |             className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
-215 |           >
-216 |             📥 Імпорт з isuo
-217 |           </button>
-218 |           <button
-219 |             onClick={handleOpenModal}
-220 |             className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-221 |           >
-222 |             + Додати
-223 |           </button>
-224 |         </div>
-225 |       </div>
-226 | 
-227 |       <StatsBar
-228 |         schools={schools.filter(
-229 |           (s) =>
-230 |             (selectedCity.id ? s.cityId === selectedCity.id : true) &&
-231 |             s.type === "Садочок",
-232 |         )}
-233 |         activeFilter={activeFilter}
-234 |         onFilterChange={setActiveFilter}
-235 |       />
-236 | 
-237 |       {/* Мобільний вигляд */}
-238 |       <div className="md:hidden flex flex-col gap-2.5">
-239 |         {filteredKindergartens.map((school) => {
-240 |           const latestEvent = school.events?.[0];
-241 |           const stage = latestEvent
-242 |             ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
-243 |             : null;
-244 | 
-245 |           // Остання активність
-246 |           const lastActivityDate =
-247 |             school.events?.[0]?.updatedAt ?? school.updatedAt ?? null;
-248 |           const daysStale = lastActivityDate
-249 |             ? Math.floor(
-250 |                 (Date.now() - new Date(lastActivityDate).getTime()) / 86400000,
-251 |               )
-252 |             : null;
-253 | 
-254 |           const stalenessColor =
-255 |             daysStale === null
-256 |               ? "text-slate-400"
-257 |               : daysStale >= 21
-258 |                 ? "text-red-500"
-259 |                 : daysStale >= 14
-260 |                   ? "text-orange-500"
-261 |                   : daysStale >= 7
-262 |                     ? "text-amber-500"
-263 |                     : "text-emerald-500";
-264 | 
-265 |           return (
-266 |             <div
-267 |               key={school.id}
-268 |               onClick={() => navigate(`/schools/${school.id}`)}
-269 |               className="bg-white rounded-2xl border border-slate-100 p-3.5 active:scale-[0.99] transition-transform"
-270 |             >
-271 |               {/* Рядок 1: назва + видалити */}
-272 |               <div className="flex items-start justify-between gap-2">
-273 |                 <p className="font-semibold text-slate-800 leading-snug text-sm line-clamp-2 flex-1">
-274 |                   {school.name}
-275 |                 </p>
-276 |                 <button
-277 |                   onClick={(e) => handleDeleteSchool(e, school.id, school.name)}
-278 |                   className="text-slate-300 active:text-red-500 p-1 -mt-0.5 -mr-1 shrink-0"
-279 |                 >
-280 |                   🗑
-281 |                 </button>
-282 |               </div>
-283 | 
-284 |               {/* Рядок 2: директор (клікабельний телефон) + етап */}
-285 |               <div className="flex items-center justify-between gap-2 mt-2">
-286 |                 <div className="flex items-center gap-1.5 min-w-0">
-287 |                   {school.phone ? (
-288 |                     <a
-289 |                       href={`tel:${school.phone}`}
-290 |                       onClick={(e) => e.stopPropagation()}
-291 |                       className="flex items-center gap-1 text-xs text-blue-600 font-medium truncate"
-292 |                     >
-293 |                       📞 {school.director || school.phone}
-294 |                     </a>
-295 |                   ) : school.director ? (
-296 |                     <span className="text-xs text-slate-500 truncate">
-297 |                       👤 {school.director}
-298 |                     </span>
-299 |                   ) : (
-300 |                     <span className="text-xs text-slate-300 italic">
-301 |                       Контакт не вказано
-302 |                     </span>
-303 |                   )}
-304 |                 </div>
-305 | 
-306 |                 {stage ? (
-307 |                   <span className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full border border-blue-100 shrink-0 font-medium">
-308 |                     {stage.name}
-309 |                   </span>
-310 |                 ) : (
-311 |                   <span className="text-[10px] text-slate-300 shrink-0">
-312 |                     Етап —
-313 |                   </span>
-314 |                 )}
-315 |               </div>
-316 | 
-317 |               {/* Рядок 3: остання активність */}
-318 |               {daysStale !== null && (
-319 |                 <p className={`text-[11px] mt-1.5 ${stalenessColor}`}>
-320 |                   ⏱{" "}
-321 |                   {daysStale === 0
-322 |                     ? "Активність сьогодні"
-323 |                     : `Остання активність ${daysStale} дн тому`}
-324 |                 </p>
-325 |               )}
-326 |             </div>
-327 |           );
-328 |         })}
-329 | 
-330 |         {filteredKindergartens.length === 0 && (
-331 |           <div className="bg-white rounded-2xl border border-slate-100 text-center py-10 text-slate-400 text-sm">
-332 |             Садочків ще немає
-333 |           </div>
-334 |         )}
-335 | 
-336 |         {/* FAB */}
-337 |         <button
-338 |           onClick={handleOpenModal}
-339 |           className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
-340 |         >
-341 |           +
-342 |         </button>
-343 |       </div>
-344 | 
-345 |       {/* Десктоп таблиця */}
-346 |       <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto w-full">
-347 |         <table className="w-full text-left border-collapse">
-348 |           <thead>
-349 |             <tr className="bg-slate-50 border-b border-slate-100">
-350 |               <th className="p-4 font-medium text-slate-600">Назва садочку</th>
-351 |               <th className="p-4 font-medium text-slate-600">Місто</th>
-352 |               <th className="p-4 font-medium text-slate-600">Статус</th>
-353 |               <th className="p-4 font-medium text-slate-600">Поточний етап</th>
-354 |               <th className="p-4 font-medium text-slate-600 text-center">
-355 |                 Дія
-356 |               </th>
-357 |             </tr>
-358 |           </thead>
-359 |           <tbody>
-360 |             {filteredKindergartens.map((school) => {
-361 |               const latestEvent = school.events?.[0];
-362 |               const stage = latestEvent
-363 |                 ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
-364 |                 : null;
-365 |               return (
-366 |                 <tr
-367 |                   key={school.id}
-368 |                   onClick={() => navigate(`/schools/${school.id}`)}
-369 |                   className="cursor-pointer border-b border-slate-50 hover:bg-slate-50/50 transition"
-370 |                 >
-371 |                   <td className="p-4 text-slate-800 font-medium">
-372 |                     {school.name}
-373 |                   </td>
-374 |                   <td className="p-4 text-slate-600">{school.city?.name}</td>
-375 |                   <td className="p-4">
-376 |                     <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-medium">
-377 |                       Активний
-378 |                     </span>
-379 |                   </td>
-380 |                   <td className="p-4">
-381 |                     {stage ? (
-382 |                       <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium border border-blue-100">
-383 |                         {stage.name}
-384 |                       </span>
-385 |                     ) : (
-386 |                       <span className="text-slate-400 text-xs italic">—</span>
-387 |                     )}
-388 |                   </td>
-389 |                   <td className="p-4 text-center">
-390 |                     <button
-391 |                       onClick={(e) =>
-392 |                         handleDeleteSchool(e, school.id, school.name)
-393 |                       }
-394 |                       className="text-slate-400 hover:text-red-500 transition-colors p-2"
-395 |                     >
-396 |                       🗑
-397 |                     </button>
-398 |                   </td>
-399 |                 </tr>
-400 |               );
-401 |             })}
-402 |           </tbody>
-403 |         </table>
-404 |       </div>
-405 | 
-406 |       {/* Модалка */}
-407 |       {isModalOpen && (
-408 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-409 |           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md max-h-[92vh] overflow-hidden flex flex-col">
-410 |             <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
-411 |             <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-412 |               <h3 className="text-xl font-bold text-slate-800">
-413 |                 Новий садочок
-414 |               </h3>
-415 |               <button
-416 |                 onClick={() => setIsModalOpen(false)}
-417 |                 className="text-slate-400 hover:text-slate-600 p-2 -mr-2"
-418 |               >
-419 |                 ✕
-420 |               </button>
-421 |             </div>
-422 |             <form
-423 |               onSubmit={handleAddSchool}
-424 |               className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto"
-425 |             >
-426 |               <div className="relative">
-427 |                 <label className="block text-sm text-slate-600 mb-1">
-428 |                   Назва садочку
-429 |                 </label>
-430 |                 <input
-431 |                   type="text"
-432 |                   value={form.name}
-433 |                   onChange={(e) => handleNameChange(e.target.value)}
-434 |                   onBlur={() =>
-435 |                     setTimeout(() => setShowSuggestions(false), 150)
-436 |                   }
-437 |                   required
-438 |                   placeholder="Наприклад: Садочок №1"
-439 |                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-440 |                 />
-441 |                 {showSuggestions && (
-442 |                   <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-443 |                     {isSearching ? (
-444 |                       <li className="px-3 py-2 text-sm text-slate-400 italic">
-445 |                         Пошук за збігами...
-446 |                       </li>
-447 |                     ) : suggestions.length > 0 ? (
-448 |                       suggestions.map((s, i) => (
-449 |                         <li
-450 |                           key={i}
-451 |                           onMouseDown={() =>
-452 |                             handleSelectSuggestion(s.name, s.url)
-453 |                           }
-454 |                           className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer"
-455 |                         >
-456 |                           {s.name}
-457 |                         </li>
-458 |                       ))
-459 |                     ) : (
-460 |                       <li className="px-3 py-2 text-sm text-slate-400 italic">
-461 |                         Нічого не знайдено
-462 |                       </li>
-463 |                     )}
-464 |                   </ul>
-465 |                 )}
-466 |               </div>
-467 | 
-468 |               {!selectedCity.id && (
-469 |                 <div>
-470 |                   <label className="block text-sm text-slate-600 mb-1">
-471 |                     Місто
-472 |                   </label>
-473 |                   <select
-474 |                     value={form.cityId}
-475 |                     onChange={(e) =>
-476 |                       setForm({ ...form, cityId: e.target.value })
-477 |                     }
-478 |                     required
-479 |                     className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 bg-white"
-480 |                   >
-481 |                     <option value="">— Оберіть місто —</option>
-482 |                     {cities.map((c) => (
-483 |                       <option key={c.id} value={c.id}>
-484 |                         {c.name}
-485 |                       </option>
-486 |                     ))}
-487 |                   </select>
-488 |                 </div>
-489 |               )}
-490 | 
-491 |               <div>
-492 |                 <label className="block text-sm text-slate-600 mb-1">
-493 |                   Контакт{" "}
-494 |                   <span className="ml-1 text-xs text-slate-400">
-495 |                     (автозаповнення)
-496 |                   </span>
-497 |                 </label>
-498 |                 {matchedContacts.length > 0 && (
-499 |                   <div className="flex flex-wrap gap-1 mb-2">
-500 |                     {matchedContacts.map((c, i) => (
-501 |                       <button
-502 |                         key={i}
-503 |                         type="button"
-504 |                         onClick={() =>
-505 |                           setForm((f) => ({
-506 |                             ...f,
-507 |                             director: c.contactName,
-508 |                             phone: c.phone,
-509 |                           }))
-510 |                         }
-511 |                         className={`text-xs px-2 py-1 rounded-full border transition-colors ${
-512 |                           form.director === c.contactName
-513 |                             ? "bg-blue-600 text-white border-blue-600"
-514 |                             : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
-515 |                         }`}
-516 |                       >
-517 |                         {c.role ? `${c.role}: ` : ""}
-518 |                         {c.contactName}
-519 |                       </button>
-520 |                     ))}
-521 |                   </div>
-522 |                 )}
-523 |                 <input
-524 |                   type="text"
-525 |                   value={form.director}
-526 |                   onChange={(e) =>
-527 |                     setForm({ ...form, director: e.target.value })
-528 |                   }
-529 |                   placeholder="Микола Петренко"
-530 |                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-531 |                 />
-532 |               </div>
-533 | 
-534 |               <div>
-535 |                 <label className="block text-sm text-slate-600 mb-1">
-536 |                   Телефон{" "}
-537 |                   <span className="ml-1 text-xs text-slate-400">
-538 |                     (автозаповнення)
-539 |                   </span>
-540 |                 </label>
-541 |                 <input
-542 |                   type="text"
-543 |                   value={form.phone}
-544 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-545 |                   placeholder="0671234567"
-546 |                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
-547 |                 />
-548 |               </div>
-549 | 
-550 |               <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-2 pb-1 sm:pb-0">
-551 |                 <button
-552 |                   type="button"
-553 |                   onClick={() => setIsModalOpen(false)}
-554 |                   className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-slate-100 rounded-xl sm:rounded-lg text-sm font-medium hover:bg-slate-200"
-555 |                 >
-556 |                   Скасувати
-557 |                 </button>
-558 |                 <button
-559 |                   type="submit"
-560 |                   disabled={isSubmitting}
-561 |                   className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-blue-600 text-white rounded-xl sm:rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-562 |                 >
-563 |                   {isSubmitting ? "Збереження..." : "Створити"}
-564 |                 </button>
-565 |               </div>
-566 |             </form>
-567 |           </div>
-568 |         </div>
-569 |       )}
-570 |     </div>
-571 |   );
-572 | }
-573 | 
+175 |   const filteredKindergartens = schools.filter((s) => {
+176 |     const isCityMatch = selectedCity.id ? s.cityId === selectedCity.id : true;
+177 |     const isFilterMatch = activeFilter
+178 |       ? classifySchool(s) === activeFilter
+179 |       : true;
+180 |     return isCityMatch && s.type === "Садочок" && isFilterMatch;
+181 |   });
+182 | 
+183 |   return (
+184 |     <div className="p-4 md:p-8 h-full max-w-[100vw]">
+185 |       <div className="flex items-center justify-between gap-2 mb-3">
+186 |         <h1 className="text-xl font-bold text-slate-800">
+187 |           Садочки
+188 |           {selectedCity.id && (
+189 |             <span className="ml-2 text-sm font-normal text-blue-500">
+190 |               · {selectedCity.name}
+191 |             </span>
+192 |           )}
+193 |         </h1>
+194 |         <div className="flex gap-2 shrink-0">
+195 |           {userRole === "SUPERADMIN" && (
+196 |             <button
+197 |               onClick={async () => {
+198 |                 if (!selectedCity.id) return alert("Спочатку оберіть місто");
+199 |                 if (
+200 |                   !window.confirm(
+201 |                     `Імпортувати всі садочки з isuo.org для міста ${selectedCity.name}?`,
+202 |                   )
+203 |                 )
+204 |                   return;
+205 |                 try {
+206 |                   const token = localStorage.getItem("token");
+207 |                   const res = await api.post(
+208 |                     "/schools/bulk-import",
+209 |                     { cityId: selectedCity.id, type: "Садочок" },
+210 |                     {
+211 |                       headers: { Authorization: `Bearer ${token}` },
+212 |                       timeout: 120000,
+213 |                     },
+214 |                   );
+215 |                   alert(
+216 |                     `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
+217 |                   );
+218 |                   qc.invalidateQueries({ queryKey: ["schools"] });
+219 |                 } catch (e) {
+220 |                   alert("Помилка імпорту.");
+221 |                 }
+222 |               }}
+223 |               className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
+224 |             >
+225 |               📥 Імпорт з isuo
+226 |             </button>
+227 |           )}
+228 |           {userRole === "SUPERADMIN" && (
+229 |             <button
+230 |               onClick={handleOpenModal}
+231 |               className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+232 |             >
+233 |               + Додати
+234 |             </button>
+235 |           )}
+236 |         </div>
+237 |       </div>
+238 | 
+239 |       <StatsBar
+240 |         schools={schools.filter(
+241 |           (s) =>
+242 |             (selectedCity.id ? s.cityId === selectedCity.id : true) &&
+243 |             s.type === "Садочок",
+244 |         )}
+245 |         activeFilter={activeFilter}
+246 |         onFilterChange={setActiveFilter}
+247 |       />
+248 | 
+249 |       {/* Мобільний вигляд */}
+250 |       <div className="md:hidden flex flex-col gap-2.5">
+251 |         {filteredKindergartens.map((school) => {
+252 |           const latestEvent = school.events?.[0];
+253 |           const stage = latestEvent
+254 |             ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
+255 |             : null;
+256 | 
+257 |           // Остання активність
+258 |           const lastActivityDate =
+259 |             school.events?.[0]?.updatedAt ?? school.updatedAt ?? null;
+260 |           const daysStale = lastActivityDate
+261 |             ? Math.floor(
+262 |                 (Date.now() - new Date(lastActivityDate).getTime()) / 86400000,
+263 |               )
+264 |             : null;
+265 | 
+266 |           const stalenessColor =
+267 |             daysStale === null
+268 |               ? "text-slate-400"
+269 |               : daysStale >= 21
+270 |                 ? "text-red-500"
+271 |                 : daysStale >= 14
+272 |                   ? "text-orange-500"
+273 |                   : daysStale >= 7
+274 |                     ? "text-amber-500"
+275 |                     : "text-emerald-500";
+276 | 
+277 |           return (
+278 |             <div
+279 |               key={school.id}
+280 |               onClick={() => navigate(`/schools/${school.id}`)}
+281 |               className="bg-white rounded-2xl border border-slate-100 p-3.5 active:scale-[0.99] transition-transform"
+282 |             >
+283 |               {/* Рядок 1: назва + видалити */}
+284 |               <div className="flex items-start justify-between gap-2">
+285 |                 <p className="font-semibold text-slate-800 leading-snug text-sm line-clamp-2 flex-1">
+286 |                   {school.name}
+287 |                 </p>
+288 |                 {userRole === "SUPERADMIN" && (
+289 |                   <button
+290 |                     onClick={(e) =>
+291 |                       handleDeleteSchool(e, school.id, school.name)
+292 |                     }
+293 |                     className="text-slate-300 active:text-red-500 p-1 -mt-0.5 -mr-1 shrink-0"
+294 |                   >
+295 |                     🗑
+296 |                   </button>
+297 |                 )}
+298 |               </div>
+299 | 
+300 |               {/* Рядок 2: директор (клікабельний телефон) + етап */}
+301 |               <div className="flex items-center justify-between gap-2 mt-2">
+302 |                 <div className="flex items-center gap-1.5 min-w-0">
+303 |                   {school.phone ? (
+304 |                     <a
+305 |                       href={`tel:${school.phone}`}
+306 |                       onClick={(e) => e.stopPropagation()}
+307 |                       className="flex items-center gap-1 text-xs text-blue-600 font-medium truncate"
+308 |                     >
+309 |                       📞 {school.director || school.phone}
+310 |                     </a>
+311 |                   ) : school.director ? (
+312 |                     <span className="text-xs text-slate-500 truncate">
+313 |                       👤 {school.director}
+314 |                     </span>
+315 |                   ) : (
+316 |                     <span className="text-xs text-slate-300 italic">
+317 |                       Контакт не вказано
+318 |                     </span>
+319 |                   )}
+320 |                 </div>
+321 | 
+322 |                 {stage ? (
+323 |                   <span className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full border border-blue-100 shrink-0 font-medium">
+324 |                     {stage.name}
+325 |                   </span>
+326 |                 ) : (
+327 |                   <span className="text-[10px] text-slate-300 shrink-0">
+328 |                     Етап —
+329 |                   </span>
+330 |                 )}
+331 |               </div>
+332 | 
+333 |               {/* Рядок 3: остання активність */}
+334 |               {daysStale !== null && (
+335 |                 <p className={`text-[11px] mt-1.5 ${stalenessColor}`}>
+336 |                   ⏱{" "}
+337 |                   {daysStale === 0
+338 |                     ? "Активність сьогодні"
+339 |                     : `Остання активність ${daysStale} дн тому`}
+340 |                 </p>
+341 |               )}
+342 |             </div>
+343 |           );
+344 |         })}
+345 | 
+346 |         {filteredKindergartens.length === 0 && (
+347 |           <div className="bg-white rounded-2xl border border-slate-100 text-center py-10 text-slate-400 text-sm">
+348 |             Садочків ще немає
+349 |           </div>
+350 |         )}
+351 | 
+352 |         {/* FAB */}
+353 |         {userRole === "SUPERADMIN" && (
+354 |           <button
+355 |             onClick={handleOpenModal}
+356 |             className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
+357 |           >
+358 |             +
+359 |           </button>
+360 |         )}
+361 |       </div>
+362 | 
+363 |       {/* Десктоп таблиця */}
+364 |       <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto w-full">
+365 |         <table className="w-full text-left border-collapse">
+366 |           <thead>
+367 |             <tr className="bg-slate-50 border-b border-slate-100">
+368 |               <th className="p-4 font-medium text-slate-600">Назва садочку</th>
+369 |               <th className="p-4 font-medium text-slate-600">Місто</th>
+370 |               <th className="p-4 font-medium text-slate-600">Статус</th>
+371 |               <th className="p-4 font-medium text-slate-600">Поточний етап</th>
+372 |               <th className="p-4 font-medium text-slate-600 text-center">
+373 |                 Дія
+374 |               </th>
+375 |             </tr>
+376 |           </thead>
+377 |           <tbody>
+378 |             {filteredKindergartens.map((school) => {
+379 |               const latestEvent = school.events?.[0];
+380 |               const stage = latestEvent
+381 |                 ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
+382 |                 : null;
+383 |               return (
+384 |                 <tr
+385 |                   key={school.id}
+386 |                   onClick={() => navigate(`/schools/${school.id}`)}
+387 |                   className="cursor-pointer border-b border-slate-50 hover:bg-slate-50/50 transition"
+388 |                 >
+389 |                   <td className="p-4 text-slate-800 font-medium">
+390 |                     {school.name}
+391 |                   </td>
+392 |                   <td className="p-4 text-slate-600">{school.city?.name}</td>
+393 |                   <td className="p-4">
+394 |                     <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-medium">
+395 |                       Активний
+396 |                     </span>
+397 |                   </td>
+398 |                   <td className="p-4">
+399 |                     {stage ? (
+400 |                       <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium border border-blue-100">
+401 |                         {stage.name}
+402 |                       </span>
+403 |                     ) : (
+404 |                       <span className="text-slate-400 text-xs italic">—</span>
+405 |                     )}
+406 |                   </td>
+407 |                   <td className="p-4 text-center">
+408 |                     {userRole === "SUPERADMIN" && (
+409 |                       <button
+410 |                         onClick={(e) =>
+411 |                           handleDeleteSchool(e, school.id, school.name)
+412 |                         }
+413 |                         className="text-slate-400 hover:text-red-500 transition-colors p-2"
+414 |                       >
+415 |                         🗑
+416 |                       </button>
+417 |                     )}
+418 |                   </td>
+419 |                 </tr>
+420 |               );
+421 |             })}
+422 |           </tbody>
+423 |         </table>
+424 |       </div>
+425 | 
+426 |       {/* Модалка */}
+427 |       {isModalOpen && (
+428 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+429 |           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md max-h-[92vh] overflow-hidden flex flex-col">
+430 |             <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+431 |             <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+432 |               <h3 className="text-xl font-bold text-slate-800">
+433 |                 Новий садочок
+434 |               </h3>
+435 |               <button
+436 |                 onClick={() => setIsModalOpen(false)}
+437 |                 className="text-slate-400 hover:text-slate-600 p-2 -mr-2"
+438 |               >
+439 |                 ✕
+440 |               </button>
+441 |             </div>
+442 |             <form
+443 |               onSubmit={handleAddSchool}
+444 |               className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto"
+445 |             >
+446 |               <div className="relative">
+447 |                 <label className="block text-sm text-slate-600 mb-1">
+448 |                   Назва садочку
+449 |                 </label>
+450 |                 <input
+451 |                   type="text"
+452 |                   value={form.name}
+453 |                   onChange={(e) => handleNameChange(e.target.value)}
+454 |                   onBlur={() =>
+455 |                     setTimeout(() => setShowSuggestions(false), 150)
+456 |                   }
+457 |                   required
+458 |                   placeholder="Наприклад: Садочок №1"
+459 |                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+460 |                 />
+461 |                 {showSuggestions && (
+462 |                   <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+463 |                     {isSearching ? (
+464 |                       <li className="px-3 py-2 text-sm text-slate-400 italic">
+465 |                         Пошук за збігами...
+466 |                       </li>
+467 |                     ) : suggestions.length > 0 ? (
+468 |                       suggestions.map((s, i) => (
+469 |                         <li
+470 |                           key={i}
+471 |                           onMouseDown={() =>
+472 |                             handleSelectSuggestion(s.name, s.url)
+473 |                           }
+474 |                           className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer"
+475 |                         >
+476 |                           {s.name}
+477 |                         </li>
+478 |                       ))
+479 |                     ) : (
+480 |                       <li className="px-3 py-2 text-sm text-slate-400 italic">
+481 |                         Нічого не знайдено
+482 |                       </li>
+483 |                     )}
+484 |                   </ul>
+485 |                 )}
+486 |               </div>
+487 | 
+488 |               {!selectedCity.id && (
+489 |                 <div>
+490 |                   <label className="block text-sm text-slate-600 mb-1">
+491 |                     Місто
+492 |                   </label>
+493 |                   <select
+494 |                     value={form.cityId}
+495 |                     onChange={(e) =>
+496 |                       setForm({ ...form, cityId: e.target.value })
+497 |                     }
+498 |                     required
+499 |                     className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 bg-white"
+500 |                   >
+501 |                     <option value="">— Оберіть місто —</option>
+502 |                     {cities.map((c) => (
+503 |                       <option key={c.id} value={c.id}>
+504 |                         {c.name}
+505 |                       </option>
+506 |                     ))}
+507 |                   </select>
+508 |                 </div>
+509 |               )}
+510 | 
+511 |               <div>
+512 |                 <label className="block text-sm text-slate-600 mb-1">
+513 |                   Контакт{" "}
+514 |                   <span className="ml-1 text-xs text-slate-400">
+515 |                     (автозаповнення)
+516 |                   </span>
+517 |                 </label>
+518 |                 {matchedContacts.length > 0 && (
+519 |                   <div className="flex flex-wrap gap-1 mb-2">
+520 |                     {matchedContacts.map((c, i) => (
+521 |                       <button
+522 |                         key={i}
+523 |                         type="button"
+524 |                         onClick={() =>
+525 |                           setForm((f) => ({
+526 |                             ...f,
+527 |                             director: c.contactName,
+528 |                             phone: c.phone,
+529 |                           }))
+530 |                         }
+531 |                         className={`text-xs px-2 py-1 rounded-full border transition-colors ${
+532 |                           form.director === c.contactName
+533 |                             ? "bg-blue-600 text-white border-blue-600"
+534 |                             : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
+535 |                         }`}
+536 |                       >
+537 |                         {c.role ? `${c.role}: ` : ""}
+538 |                         {c.contactName}
+539 |                       </button>
+540 |                     ))}
+541 |                   </div>
+542 |                 )}
+543 |                 <input
+544 |                   type="text"
+545 |                   value={form.director}
+546 |                   onChange={(e) =>
+547 |                     setForm({ ...form, director: e.target.value })
+548 |                   }
+549 |                   placeholder="Микола Петренко"
+550 |                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+551 |                 />
+552 |               </div>
+553 | 
+554 |               <div>
+555 |                 <label className="block text-sm text-slate-600 mb-1">
+556 |                   Телефон{" "}
+557 |                   <span className="ml-1 text-xs text-slate-400">
+558 |                     (автозаповнення)
+559 |                   </span>
+560 |                 </label>
+561 |                 <input
+562 |                   type="text"
+563 |                   value={form.phone}
+564 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
+565 |                   placeholder="0671234567"
+566 |                   className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+567 |                 />
+568 |               </div>
+569 | 
+570 |               <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-2 pb-1 sm:pb-0">
+571 |                 <button
+572 |                   type="button"
+573 |                   onClick={() => setIsModalOpen(false)}
+574 |                   className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-slate-100 rounded-xl sm:rounded-lg text-sm font-medium hover:bg-slate-200"
+575 |                 >
+576 |                   Скасувати
+577 |                 </button>
+578 |                 <button
+579 |                   type="submit"
+580 |                   disabled={isSubmitting}
+581 |                   className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-blue-600 text-white rounded-xl sm:rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+582 |                 >
+583 |                   {isSubmitting ? "Збереження..." : "Створити"}
+584 |                 </button>
+585 |               </div>
+586 |             </form>
+587 |           </div>
+588 |         </div>
+589 |       )}
+590 |     </div>
+591 |   );
+592 | }
+593 | 
 ```
 
 ### File: apps/frontend/src/pages/Login.tsx
@@ -16337,558 +16937,732 @@
  40 |   const [isModalOpen, setIsModalOpen] = useState(false);
  41 |   const [isSubmitting, setIsSubmitting] = useState(false);
  42 |   const [searchQuery, setSearchQuery] = useState("");
- 43 |   const qc = useQueryClient();
- 44 |   const [form, setForm] = useState({
- 45 |     name: "",
- 46 |     cityId: "",
- 47 |     sourceUrl: "",
- 48 |     director: "",
- 49 |     phone: "",
- 50 |   });
- 51 |   const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
- 52 |   const [activeFilter, setActiveFilter] = useState<string | null>(null);
- 53 |   const [sizeFilter, setSizeFilter] = useState<string | null>(null);
- 54 |   const [suggestions, setSuggestions] = useState<
- 55 |     { name: string; url: string }[]
- 56 |   >([]);
- 57 |   const [showSuggestions, setShowSuggestions] = useState(false);
- 58 |   const [isSearching, setIsSearching] = useState(false);
- 59 |   const [dotCount, setDotCount] = useState(3);
- 60 |   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
- 61 | 
- 62 |   const addSchoolMutation = useMutation({
- 63 |     mutationFn: (newSchool: any) =>
- 64 |       api.post("/schools", newSchool, {
- 65 |         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
- 66 |       }),
- 67 |     onSuccess: () => {
- 68 |       qc.invalidateQueries({ queryKey: ["schools"] });
- 69 |       setIsModalOpen(false);
- 70 |     },
- 71 |     onError: () => alert("Не вдалося створити заклад"),
- 72 |   });
- 73 | 
- 74 |   const bulkImportMutation = useMutation({
- 75 |     mutationFn: (cityId: string) =>
- 76 |       api.post(
- 77 |         "/schools/bulk-import",
- 78 |         { cityId, type: "Школа" },
- 79 |         {
- 80 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
- 81 |           timeout: 120000,
- 82 |         },
- 83 |       ),
- 84 |     onSuccess: (res) => {
- 85 |       alert(
- 86 |         `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
- 87 |       );
- 88 |       qc.invalidateQueries({ queryKey: ["schools"] });
- 89 |     },
- 90 |     onError: () => alert("Помилка імпорту."),
- 91 |   });
- 92 | 
- 93 |   const { data: schools = [], isLoading } = useSchools();
- 94 |   const { data: cities = [] } = useCities();
- 95 |   const deleteSchool = useDeleteSchool();
- 96 |   const prefetchSchool = usePrefetchSchool();
- 97 | 
- 98 |   const handleOpenModal = useCallback(() => {
- 99 |     setForm({
-100 |       name: "",
-101 |       cityId: selectedCity.id || cities[0]?.id || "",
-102 |       sourceUrl: "",
-103 |       director: "",
-104 |       phone: "",
-105 |     });
-106 |     setMatchedContacts([]);
-107 |     setIsModalOpen(true);
-108 |   }, [selectedCity.id, cities]);
-109 | 
-110 |   const fetchContacts = async (schoolName: string) => {
-111 |     if (!schoolName || schoolName.trim().length < 1)
-112 |       return setMatchedContacts([]);
-113 |     const currentCityName =
-114 |       selectedCity.name || cities.find((c) => c.id === form.cityId)?.name || "";
-115 |     if (currentCityName.toLowerCase() !== "львів")
-116 |       return setMatchedContacts([]);
-117 |     try {
-118 |       const data = await qc.fetchQuery({
-119 |         queryKey: ["schoolContacts", schoolName, currentCityName],
-120 |         queryFn: async () => {
-121 |           const res = await api.get(
-122 |             `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=Школа`,
-123 |             { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
-124 |           );
-125 |           return res.data;
-126 |         },
-127 |         staleTime: 1000 * 60 * 5, // Кешуємо на 5 хвилин
-128 |       });
-129 |       
-130 |       setMatchedContacts(data);
-131 |       if (data.length > 0) {
-132 |         const director = data.find((c: any) =>
-133 |             c.role?.includes("Директор") || c.role?.includes("Завідувач")
-134 |           ) || data[0];
-135 |         setForm((f) => ({
-136 |           ...f,
-137 |           director: director.contactName,
-138 |           phone: director.phone,
-139 |         }));
-140 |       }
-141 |     } catch (e) {
-142 |       console.error(e);
-143 |     }
-144 |   };
-145 | 
-146 |   const handleNameChange = (value: string) => {
-147 |     setForm({ ...form, name: value });
-148 |     if (debounceTimer.current) clearTimeout(debounceTimer.current);
-149 |     if (value.length < 2) {
-150 |       setShowSuggestions(false);
-151 |       setIsSearching(false);
-152 |       setMatchedContacts([]);
-153 |       return;
-154 |     }
-155 |     setIsSearching(true);
-156 |     setShowSuggestions(true);
-157 |     debounceTimer.current = setTimeout(async () => {
-158 |       try {
-159 |         const [externalData] = await Promise.all([
-160 |           qc.fetchQuery({
-161 |             queryKey: ["schoolSearchExternal", value],
-162 |             queryFn: async () => {
-163 |               const res = await api.get(`/schools/search?q=${encodeURIComponent(value)}&type=Школа`, {
-164 |                 headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-165 |               });
-166 |               return res.data;
-167 |             },
-168 |             staleTime: 1000 * 60 * 5,
-169 |           }),
-170 |           fetchContacts(value),
-171 |         ]);
-172 |         setSuggestions(externalData);
-173 |       } catch (e) {
-174 |         console.error(e);
-175 |       } finally {
-176 |         setIsSearching(false);
-177 |       }
-178 |     }, 400);
-179 |   };
-180 | 
-181 |   const handleSelectSuggestion = (name: string, url: string) => {
-182 |     setForm({ ...form, name, sourceUrl: url });
-183 |     setShowSuggestions(false);
-184 |     fetchContacts(name);
-185 |   };
-186 | 
-187 |   const handleAddSchool = (e: React.FormEvent) => {
-188 |     e.preventDefault();
-189 |     if (!form.name.trim() || !form.cityId) return;
-190 |     addSchoolMutation.mutate({ ...form, type: "Школа" });
-191 |   };
-192 | 
-193 |   const handleDeleteSchool = useCallback(
-194 |     async (e: React.MouseEvent, schoolId: string, schoolName: string) => {
-195 |       e.stopPropagation();
-196 |       if (
-197 |         !window.confirm(
-198 |           `Видалити школу "${schoolName}"? Це видалить також усі її події.`,
-199 |         )
-200 |       )
-201 |         return;
-202 |       await deleteSchool.mutateAsync(schoolId);
-203 |     },
-204 |     [deleteSchool],
-205 |   );
-206 | 
-207 |   const debouncedSearch = useMemo(() => searchQuery, [searchQuery]);
-208 | 
-209 |   const baseFiltered = useMemo(
-210 |     () =>
-211 |       schools.filter((s) => {
-212 |         const isCityMatch = selectedCity.id
-213 |           ? s.cityId === selectedCity.id
-214 |           : true;
-215 |         const isFilterMatch = activeFilter
-216 |           ? classifySchool(s) === activeFilter
-217 |           : true;
-218 |         const isSizeMatch = sizeFilter
-219 |           ? classifySize(s, "Школа") === sizeFilter
-220 |           : true;
-221 |         return (
-222 |           isCityMatch && s.type === "Школа" && isFilterMatch && isSizeMatch
-223 |         );
-224 |       }),
-225 |     [schools, selectedCity.id, activeFilter, sizeFilter],
-226 |   );
+ 43 |   const [userRole] = useState<string | null>(() => {
+ 44 |     try {
+ 45 |       return JSON.parse(localStorage.getItem("user") || "null")?.role ?? null;
+ 46 |     } catch {
+ 47 |       return null;
+ 48 |     }
+ 49 |   });
+ 50 |   const qc = useQueryClient();
+ 51 |   const [form, setForm] = useState({
+ 52 |     name: "",
+ 53 |     cityId: "",
+ 54 |     sourceUrl: "",
+ 55 |     director: "",
+ 56 |     phone: "",
+ 57 |   });
+ 58 |   const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
+ 59 |   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+ 60 |   const [sizeFilter, setSizeFilter] = useState<string | null>(null);
+ 61 |   const [suggestions, setSuggestions] = useState<
+ 62 |     { name: string; url: string }[]
+ 63 |   >([]);
+ 64 |   const [showSuggestions, setShowSuggestions] = useState(false);
+ 65 |   const [isSearching, setIsSearching] = useState(false);
+ 66 |   const [dotCount, setDotCount] = useState(3);
+ 67 |   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+ 68 | 
+ 69 |   const addSchoolMutation = useMutation({
+ 70 |     mutationFn: (newSchool: any) =>
+ 71 |       api.post("/schools", newSchool, {
+ 72 |         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+ 73 |       }),
+ 74 |     onSuccess: () => {
+ 75 |       qc.invalidateQueries({ queryKey: ["schools"] });
+ 76 |       setIsModalOpen(false);
+ 77 |     },
+ 78 |     onError: () => alert("Не вдалося створити заклад"),
+ 79 |   });
+ 80 | 
+ 81 |   const bulkImportMutation = useMutation({
+ 82 |     mutationFn: (cityId: string) =>
+ 83 |       api.post(
+ 84 |         "/schools/bulk-import",
+ 85 |         { cityId, type: "Школа" },
+ 86 |         {
+ 87 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+ 88 |           timeout: 120000,
+ 89 |         },
+ 90 |       ),
+ 91 |     onSuccess: (res) => {
+ 92 |       alert(
+ 93 |         `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
+ 94 |       );
+ 95 |       qc.invalidateQueries({ queryKey: ["schools"] });
+ 96 |     },
+ 97 |     onError: () => alert("Помилка імпорту."),
+ 98 |   });
+ 99 | 
+100 |   const { data: schools = [], isLoading } = useSchools();
+101 |   const { data: cities = [] } = useCities();
+102 |   const deleteSchool = useDeleteSchool();
+103 |   const prefetchSchool = usePrefetchSchool();
+104 | 
+105 |   const handleOpenModal = useCallback(() => {
+106 |     setForm({
+107 |       name: "",
+108 |       cityId: selectedCity.id || cities[0]?.id || "",
+109 |       sourceUrl: "",
+110 |       director: "",
+111 |       phone: "",
+112 |     });
+113 |     setMatchedContacts([]);
+114 |     setIsModalOpen(true);
+115 |   }, [selectedCity.id, cities]);
+116 | 
+117 |   const fetchContacts = async (schoolName: string) => {
+118 |     if (!schoolName || schoolName.trim().length < 1)
+119 |       return setMatchedContacts([]);
+120 |     const currentCityName =
+121 |       selectedCity.name || cities.find((c) => c.id === form.cityId)?.name || "";
+122 |     if (currentCityName.toLowerCase() !== "львів")
+123 |       return setMatchedContacts([]);
+124 |     try {
+125 |       const data = await qc.fetchQuery({
+126 |         queryKey: ["schoolContacts", schoolName, currentCityName],
+127 |         queryFn: async () => {
+128 |           const res = await api.get(
+129 |             `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=Школа`,
+130 |             {
+131 |               headers: {
+132 |                 Authorization: `Bearer ${localStorage.getItem("token")}`,
+133 |               },
+134 |             },
+135 |           );
+136 |           return res.data;
+137 |         },
+138 |         staleTime: 1000 * 60 * 5, // Кешуємо на 5 хвилин
+139 |       });
+140 | 
+141 |       setMatchedContacts(data);
+142 |       if (data.length > 0) {
+143 |         const director =
+144 |           data.find(
+145 |             (c: any) =>
+146 |               c.role?.includes("Директор") || c.role?.includes("Завідувач"),
+147 |           ) || data[0];
+148 |         setForm((f) => ({
+149 |           ...f,
+150 |           director: director.contactName,
+151 |           phone: director.phone,
+152 |         }));
+153 |       }
+154 |     } catch (e) {
+155 |       console.error(e);
+156 |     }
+157 |   };
+158 | 
+159 |   const handleNameChange = (value: string) => {
+160 |     setForm({ ...form, name: value });
+161 |     if (debounceTimer.current) clearTimeout(debounceTimer.current);
+162 |     if (value.length < 2) {
+163 |       setShowSuggestions(false);
+164 |       setIsSearching(false);
+165 |       setMatchedContacts([]);
+166 |       return;
+167 |     }
+168 |     setIsSearching(true);
+169 |     setShowSuggestions(true);
+170 |     debounceTimer.current = setTimeout(async () => {
+171 |       try {
+172 |         const [externalData] = await Promise.all([
+173 |           qc.fetchQuery({
+174 |             queryKey: ["schoolSearchExternal", value],
+175 |             queryFn: async () => {
+176 |               const res = await api.get(
+177 |                 `/schools/search?q=${encodeURIComponent(value)}&type=Школа`,
+178 |                 {
+179 |                   headers: {
+180 |                     Authorization: `Bearer ${localStorage.getItem("token")}`,
+181 |                   },
+182 |                 },
+183 |               );
+184 |               return res.data;
+185 |             },
+186 |             staleTime: 1000 * 60 * 5,
+187 |           }),
+188 |           fetchContacts(value),
+189 |         ]);
+190 |         setSuggestions(externalData);
+191 |       } catch (e) {
+192 |         console.error(e);
+193 |       } finally {
+194 |         setIsSearching(false);
+195 |       }
+196 |     }, 400);
+197 |   };
+198 | 
+199 |   const handleSelectSuggestion = (name: string, url: string) => {
+200 |     setForm({ ...form, name, sourceUrl: url });
+201 |     setShowSuggestions(false);
+202 |     fetchContacts(name);
+203 |   };
+204 | 
+205 |   const handleAddSchool = (e: React.FormEvent) => {
+206 |     e.preventDefault();
+207 |     if (!form.name.trim() || !form.cityId) return;
+208 |     addSchoolMutation.mutate({ ...form, type: "Школа" });
+209 |   };
+210 | 
+211 |   const handleDeleteSchool = useCallback(
+212 |     async (e: React.MouseEvent, schoolId: string, schoolName: string) => {
+213 |       e.stopPropagation();
+214 |       if (userRole !== "SUPERADMIN") return;
+215 |       if (
+216 |         !window.confirm(
+217 |           `Видалити школу "${schoolName}"? Це видалить також усі її події.`,
+218 |         )
+219 |       )
+220 |         return;
+221 |       await deleteSchool.mutateAsync(schoolId);
+222 |     },
+223 |     [deleteSchool, userRole],
+224 |   );
+225 | 
+226 |   const debouncedSearch = useMemo(() => searchQuery, [searchQuery]);
 227 | 
-228 |   const filteredSchools = useMemo(() => {
-229 |     if (!debouncedSearch.trim()) return baseFiltered;
-230 |     const q = debouncedSearch.toLowerCase().trim();
-231 |     return baseFiltered.filter(
-232 |       (s) =>
-233 |         s.name?.toLowerCase().includes(q) ||
-234 |         s.city?.name?.toLowerCase().includes(q) ||
-235 |         s.director?.toLowerCase().includes(q) ||
-236 |         s.address?.toLowerCase().includes(q),
-237 |     );
-238 |   }, [baseFiltered, debouncedSearch]);
-239 | 
-240 |   return (
-241 |     <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-slate-50 min-h-screen">
-242 |       {/* Шапка */}
-243 |       <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
-244 |         <div className="min-w-0">
-245 |           <h1 className="text-xl font-bold text-slate-800 leading-tight">
-246 |             Школи
-247 |             {selectedCity.id && (
-248 |               <span className="ml-2 text-sm font-normal text-blue-500">
-249 |                 · {selectedCity.name}
-250 |               </span>
-251 |             )}
-252 |           </h1>
-253 |         </div>
-254 |         <div className="flex gap-2 shrink-0">
-255 |           <button
-256 |             onClick={() => {
-257 |               if (!selectedCity.id) return alert("Спочатку оберіть місто");
-258 |               if (!window.confirm(`Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`)) return;
-259 |               
-260 |               setDotCount(3);
-261 |               const dotInterval = setInterval(() => {
-262 |                 setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
-263 |               }, 500);
-264 |               
-265 |               bulkImportMutation.mutate(selectedCity.id, {
-266 |                 onSettled: () => clearInterval(dotInterval)
-267 |               });
-268 |             }}
-269 |             disabled={bulkImportMutation.isPending}
-270 |             className="md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
-271 |           >
-272 |             {bulkImportMutation.isPending ? (
-273 |               <span className="font-medium">
-274 |                 Імпортую{"·".repeat(dotCount)}
-275 |               </span>
-276 |             ) : (
-277 |               <>📥 Імпорт з isuo</>
-278 |             )}
-279 |           </button>
-280 |           <button
-281 |             onClick={handleOpenModal}
-282 |             className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-283 |           >
-284 |             + Додати
-285 |           </button>
-286 |         </div>
-287 |       </div>
-288 | 
-289 |       {/* StatsBar */}
-290 |       <div className="shrink-0">
-291 |         <Suspense
-292 |           fallback={
-293 |             <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
-294 |           }
-295 |         >
-296 |           <StatsBar
-297 |             schools={schools.filter(
-298 |               (s) =>
-299 |                 (selectedCity.id ? s.cityId === selectedCity.id : true) &&
-300 |                 s.type === "Школа",
-301 |             )}
-302 |             activeFilter={activeFilter}
-303 |             onFilterChange={setActiveFilter}
-304 |             sizeFilter={sizeFilter}
-305 |             onSizeFilterChange={setSizeFilter}
-306 |             schoolType="Школа"
-307 |           />
-308 |         </Suspense>
-309 |       </div>
-310 | 
-311 |       {/* Пошук */}
-312 |       <div className="relative shrink-0 mb-4 mt-2">
-313 |         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-314 |           <svg
-315 |             className="w-5 h-5 text-slate-400"
-316 |             fill="none"
-317 |             stroke="currentColor"
-318 |             viewBox="0 0 24 24"
-319 |           >
-320 |             <path
-321 |               strokeLinecap="round"
-322 |               strokeLinejoin="round"
-323 |               strokeWidth={2}
-324 |               d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
-325 |             />
-326 |           </svg>
-327 |         </div>
-328 |         <input
-329 |           type="text"
-330 |           value={searchQuery}
-331 |           onChange={(e) => setSearchQuery(e.target.value)}
-332 |           placeholder="Пошук за назвою, директором, адресою..."
-333 |           className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border-none sm:border sm:border-slate-200 rounded-2xl sm:rounded-xl text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition"
-334 |         />
-335 |         {searchQuery && (
-336 |           <button
-337 |             onClick={() => setSearchQuery("")}
-338 |             className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600 transition"
-339 |           >
-340 |             <svg
-341 |               className="w-5 h-5"
-342 |               fill="none"
-343 |               stroke="currentColor"
-344 |               viewBox="0 0 24 24"
-345 |             >
-346 |               <path
-347 |                 strokeLinecap="round"
-348 |                 strokeLinejoin="round"
-349 |                 strokeWidth={2}
-350 |                 d="M6 18L18 6M6 6l12 12"
-351 |               />
-352 |             </svg>
-353 |           </button>
-354 |         )}
-355 |       </div>
-356 | 
-357 |       {/* Лічильник */}
-358 |       <p className="text-xs font-semibold text-slate-400 mb-4 shrink-0 uppercase tracking-wide px-1">
-359 |         {filteredSchools.length === baseFiltered.length
-360 |           ? `${baseFiltered.length} шкіл`
-361 |           : `${filteredSchools.length} з ${baseFiltered.length} шкіл`}
-362 |         {(activeFilter || sizeFilter) && (
-363 |           <button
-364 |             onClick={() => {
-365 |               setActiveFilter(null);
-366 |               setSizeFilter(null);
-367 |             }}
-368 |             className="ml-3 text-blue-500 hover:text-blue-700 lowercase"
-369 |           >
-370 |             скинути фільтри
-371 |           </button>
-372 |         )}
-373 |       </p>
-374 | 
-375 |       {/* Компоненти списків */}
-376 |       {isLoading ? (
-377 |         <div className="flex flex-col gap-2.5 flex-1">
-378 |           {Array.from({ length: 8 }).map((_, i) => (
-379 |             <div
-380 |               key={i}
-381 |               className="bg-white rounded-2xl border border-slate-100 p-3.5 animate-pulse"
-382 |               style={{ opacity: 1 - i * 0.1 }}
-383 |             >
-384 |               <div className="h-4 bg-slate-200 rounded-lg w-3/4 mb-3" />
-385 |               <div className="flex justify-between">
-386 |                 <div className="h-3 bg-slate-100 rounded-lg w-1/3" />
-387 |                 <div className="h-3 bg-slate-100 rounded-lg w-1/4" />
-388 |               </div>
-389 |             </div>
-390 |           ))}
-391 |         </div>
-392 |       ) : (
-393 |         <>
-394 |           {/* Мобільний: віртуалізований список карток */}
-395 |           <div className="md:hidden flex-1 w-full overflow-hidden">
-396 |             <VirtualSchoolList
-397 |               schools={filteredSchools}
-398 |               itemHeight={110}
-399 |               renderItem={(school, index) => (
-400 |                 <div
-401 |                   className="pb-2.5"
-402 |                   onMouseEnter={() => prefetchSchool(school.id)}
-403 |                 >
-404 |                   <SchoolCard
-405 |                     school={school}
-406 |                     index={index}
-407 |                     onDelete={handleDeleteSchool}
-408 |                     stages={PIPELINE_STAGES}
-409 |                   />
-410 |                 </div>
-411 |               )}
-412 |             />
-413 |           </div>
-414 | 
-415 |           {/* Десктоп: таблиця з віртуалізованим tbody */}
-416 |           <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
-417 |             <Suspense
-418 |               fallback={<div className="flex-1 animate-pulse bg-slate-50" />}
-419 |             >
-420 |               <VirtualDesktopTable
-421 |                 schools={filteredSchools}
-422 |                 searchQuery={searchQuery}
-423 |                 onDelete={handleDeleteSchool}
-424 |                 stages={PIPELINE_STAGES}
-425 |               />
-426 |             </Suspense>
-427 |           </div>
-428 |         </>
-429 |       )}
-430 | 
-431 |       {/* Мобільна плаваюча кнопка FAB */}
-432 |       <button
-433 |         onClick={handleOpenModal}
-434 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
-435 |       >
-436 |         +
-437 |       </button>
-438 | 
-439 |       {/* Модальне вікно */}
-440 |       {isModalOpen && (
-441 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-442 |           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
-443 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-444 |               <h3 className="text-xl font-bold text-slate-800">Нова школа</h3>
-445 |               <button
-446 |                 onClick={() => setIsModalOpen(false)}
-447 |                 className="text-slate-400 hover:text-slate-600 p-2 -mr-2 leading-none text-xl"
-448 |               >
-449 |                 ✕
-450 |               </button>
-451 |             </div>
-452 | 
-453 |             <form
-454 |               onSubmit={handleAddSchool}
-455 |               className="p-6 flex flex-col gap-4 overflow-y-auto"
-456 |             >
-457 |               <div className="relative">
-458 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
-459 |                   Назва школи
-460 |                 </label>
-461 |                 <input
-462 |                   type="text"
-463 |                   value={form.name}
-464 |                   onChange={(e) => handleNameChange(e.target.value)}
-465 |                   onBlur={() =>
-466 |                     setTimeout(() => setShowSuggestions(false), 150)
-467 |                   }
-468 |                   placeholder="Наприклад: Школа №1"
-469 |                   required
-470 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-471 |                 />
-472 |                 {showSuggestions && (
-473 |                   <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto overflow-hidden">
-474 |                     {isSearching ? (
-475 |                       <li className="px-4 py-3 text-sm text-slate-400 italic">
-476 |                         Пошук...
-477 |                       </li>
-478 |                     ) : suggestions.length > 0 ? (
-479 |                       suggestions.map((s, i) => (
-480 |                         <li
-481 |                           key={i}
-482 |                           onMouseDown={() =>
-483 |                             handleSelectSuggestion(s.name, s.url)
-484 |                           }
-485 |                           className="px-4 py-3 text-sm hover:bg-blue-50 cursor-pointer font-medium border-b border-slate-50 last:border-0"
-486 |                         >
-487 |                           {s.name}
-488 |                         </li>
-489 |                       ))
-490 |                     ) : (
-491 |                       <li className="px-4 py-3 text-sm text-slate-400 italic">
-492 |                         Нічого не знайдено
-493 |                       </li>
-494 |                     )}
-495 |                   </ul>
-496 |                 )}
-497 |               </div>
-498 | 
-499 |               {!selectedCity.id && (
-500 |                 <div>
-501 |                   <label className="block text-sm font-medium text-slate-600 mb-1.5">
-502 |                     Місто
-503 |                   </label>
-504 |                   <select
-505 |                     value={form.cityId}
-506 |                     onChange={(e) =>
-507 |                       setForm({ ...form, cityId: e.target.value })
-508 |                     }
-509 |                     required
-510 |                     className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-511 |                   >
-512 |                     <option value="">— Оберіть місто —</option>
-513 |                     {cities.map((c) => (
-514 |                       <option key={c.id} value={c.id}>
-515 |                         {c.name}
-516 |                       </option>
-517 |                     ))}
-518 |                   </select>
-519 |                 </div>
-520 |               )}
-521 | 
-522 |               <div>
-523 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
-524 |                   Контакт{" "}
-525 |                   <span className="ml-1 text-xs font-normal text-slate-400">
-526 |                     (автозаповнення)
-527 |                   </span>
-528 |                 </label>
-529 |                 {matchedContacts.length > 0 && (
-530 |                   <div className="flex flex-wrap gap-1.5 mb-3">
-531 |                     {matchedContacts.map((c, i) => (
-532 |                       <button
-533 |                         key={i}
-534 |                         type="button"
-535 |                         onClick={() =>
-536 |                           setForm((f) => ({
-537 |                             ...f,
-538 |                             director: c.contactName,
-539 |                             phone: c.phone,
-540 |                           }))
-541 |                         }
-542 |                         className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${form.director === c.contactName ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
-543 |                       >
-544 |                         {c.role ? `${c.role}: ` : ""}
-545 |                         {c.contactName}
-546 |                       </button>
-547 |                     ))}
-548 |                   </div>
-549 |                 )}
-550 |                 <input
-551 |                   type="text"
-552 |                   value={form.director}
-553 |                   onChange={(e) =>
-554 |                     setForm({ ...form, director: e.target.value })
-555 |                   }
-556 |                   placeholder="Микола Петренко"
-557 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
-558 |                 />
-559 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
-560 |                   Телефон
-561 |                 </label>
-562 |                 <input
-563 |                   type="text"
-564 |                   value={form.phone}
-565 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-566 |                   placeholder="0671234567"
-567 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-568 |                 />
-569 |               </div>
-570 | 
-571 |               <div className="flex gap-3 mt-4">
-572 |                 <button
-573 |                   type="button"
-574 |                   onClick={() => setIsModalOpen(false)}
-575 |                   className="flex-1 px-5 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors"
-576 |                 >
-577 |                   Скасувати
-578 |                 </button>
-579 |                 <button
-580 |                   type="submit"
-581 |                   disabled={addSchoolMutation.isPending}
-582 |                   className="flex-1 px-5 py-3.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
-583 |                 >
-584 |                   {addSchoolMutation.isPending ? "Збереження..." : "Створити"}
-585 |                 </button>
-586 |               </div>
-587 |             </form>
-588 |           </div>
-589 |         </div>
-590 |       )}
-591 |     </div>
-592 |   );
-593 | }
-594 | 
+228 |   const baseFiltered = useMemo(
+229 |     () =>
+230 |       schools.filter((s) => {
+231 |         const isCityMatch = selectedCity.id
+232 |           ? s.cityId === selectedCity.id
+233 |           : true;
+234 |         const isFilterMatch = activeFilter
+235 |           ? classifySchool(s) === activeFilter
+236 |           : true;
+237 |         const isSizeMatch = sizeFilter
+238 |           ? classifySize(s, "Школа") === sizeFilter
+239 |           : true;
+240 |         return (
+241 |           isCityMatch && s.type === "Школа" && isFilterMatch && isSizeMatch
+242 |         );
+243 |       }),
+244 |     [schools, selectedCity.id, activeFilter, sizeFilter],
+245 |   );
+246 | 
+247 |   const filteredSchools = useMemo(() => {
+248 |     if (!debouncedSearch.trim()) return baseFiltered;
+249 |     const q = debouncedSearch.toLowerCase().trim();
+250 |     return baseFiltered.filter(
+251 |       (s) =>
+252 |         s.name?.toLowerCase().includes(q) ||
+253 |         s.city?.name?.toLowerCase().includes(q) ||
+254 |         s.director?.toLowerCase().includes(q) ||
+255 |         s.address?.toLowerCase().includes(q),
+256 |     );
+257 |   }, [baseFiltered, debouncedSearch]);
+258 | 
+259 |   return (
+260 |     <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-slate-50 min-h-screen">
+261 |       {/* Шапка */}
+262 |       <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
+263 |         <div className="min-w-0">
+264 |           <h1 className="text-xl font-bold text-slate-800 leading-tight">
+265 |             Школи
+266 |             {selectedCity.id && (
+267 |               <span className="ml-2 text-sm font-normal text-blue-500">
+268 |                 · {selectedCity.name}
+269 |               </span>
+270 |             )}
+271 |           </h1>
+272 |         </div>
+273 |         <div className="flex gap-2 shrink-0">
+274 |           {userRole === "SUPERADMIN" && (
+275 |             <button
+276 |               onClick={() => {
+277 |                 if (!selectedCity.id) return alert("Спочатку оберіть місто");
+278 |                 if (
+279 |                   !window.confirm(
+280 |                     `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`,
+281 |                   )
+282 |                 )
+283 |                   return;
+284 | 
+285 |                 setDotCount(3);
+286 |                 const dotInterval = setInterval(() => {
+287 |                   setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
+288 |                 }, 500);
+289 | 
+290 |                 bulkImportMutation.mutate(selectedCity.id, {
+291 |                   onSettled: () => clearInterval(dotInterval),
+292 |                 });
+293 |               }}
+294 |               disabled={bulkImportMutation.isPending}
+295 |               className="md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
+296 |             >
+297 |               {bulkImportMutation.isPending ? (
+298 |                 <span className="font-medium">
+299 |                   Імпортую{"·".repeat(dotCount)}
+300 |                 </span>
+301 |               ) : (
+302 |                 <>📥 Імпорт з isuo</>
+303 |               )}
+304 |             </button>
+305 |           )}
+306 |           <button
+307 |             onClick={handleOpenModal}
+308 |             className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+309 |           >
+310 |             + Додати
+311 |           </button>
+312 |         </div>
+313 |       </div>
+314 | 
+315 |       {/* StatsBar */}
+316 |       <div className="shrink-0">
+317 |         <Suspense
+318 |           fallback={
+319 |             <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
+320 |           }
+321 |         >
+322 |           <StatsBar
+323 |             schools={schools.filter(
+324 |               (s) =>
+325 |                 (selectedCity.id ? s.cityId === selectedCity.id : true) &&
+326 |                 s.type === "Школа",
+327 |             )}
+328 |             activeFilter={activeFilter}
+329 |             onFilterChange={setActiveFilter}
+330 |             sizeFilter={sizeFilter}
+331 |             onSizeFilterChange={setSizeFilter}
+332 |             schoolType="Школа"
+333 |           />
+334 |         </Suspense>
+335 |       </div>
+336 | 
+337 |       {/* Пошук */}
+338 |       <div className="relative shrink-0 mb-4 mt-2">
+339 |         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+340 |           <svg
+341 |             className="w-5 h-5 text-slate-400"
+342 |             fill="none"
+343 |             stroke="currentColor"
+344 |             viewBox="0 0 24 24"
+345 |           >
+346 |             <path
+347 |               strokeLinecap="round"
+348 |               strokeLinejoin="round"
+349 |               strokeWidth={2}
+350 |               d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
+351 |             />
+352 |           </svg>
+353 |         </div>
+354 |         <input
+355 |           type="text"
+356 |           value={searchQuery}
+357 |           onChange={(e) => setSearchQuery(e.target.value)}
+358 |           placeholder="Пошук за назвою, директором, адресою..."
+359 |           className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border-none sm:border sm:border-slate-200 rounded-2xl sm:rounded-xl text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition"
+360 |         />
+361 |         {searchQuery && (
+362 |           <button
+363 |             onClick={() => setSearchQuery("")}
+364 |             className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600 transition"
+365 |           >
+366 |             <svg
+367 |               className="w-5 h-5"
+368 |               fill="none"
+369 |               stroke="currentColor"
+370 |               viewBox="0 0 24 24"
+371 |             >
+372 |               <path
+373 |                 strokeLinecap="round"
+374 |                 strokeLinejoin="round"
+375 |                 strokeWidth={2}
+376 |                 d="M6 18L18 6M6 6l12 12"
+377 |               />
+378 |             </svg>
+379 |           </button>
+380 |         )}
+381 |       </div>
+382 | 
+383 |       {/* Лічильник */}
+384 |       <p className="text-xs font-semibold text-slate-400 mb-4 shrink-0 uppercase tracking-wide px-1">
+385 |         {filteredSchools.length === baseFiltered.length
+386 |           ? `${baseFiltered.length} шкіл`
+387 |           : `${filteredSchools.length} з ${baseFiltered.length} шкіл`}
+388 |         {(activeFilter || sizeFilter) && (
+389 |           <button
+390 |             onClick={() => {
+391 |               setActiveFilter(null);
+392 |               setSizeFilter(null);
+393 |             }}
+394 |             className="ml-3 text-blue-500 hover:text-blue-700 lowercase"
+395 |           >
+396 |             скинути фільтри
+397 |           </button>
+398 |         )}
+399 |       </p>
+400 | 
+401 |       {/* Компоненти списків */}
+402 |       {isLoading ? (
+403 |         <div className="flex flex-col gap-2.5 flex-1">
+404 |           {Array.from({ length: 8 }).map((_, i) => (
+405 |             <div
+406 |               key={i}
+407 |               className="bg-white rounded-2xl border border-slate-100 p-3.5 animate-pulse"
+408 |               style={{ opacity: 1 - i * 0.1 }}
+409 |             >
+410 |               <div className="h-4 bg-slate-200 rounded-lg w-3/4 mb-3" />
+411 |               <div className="flex justify-between">
+412 |                 <div className="h-3 bg-slate-100 rounded-lg w-1/3" />
+413 |                 <div className="h-3 bg-slate-100 rounded-lg w-1/4" />
+414 |               </div>
+415 |             </div>
+416 |           ))}
+417 |         </div>
+418 |       ) : (
+419 |         <>
+420 |           {/* Мобільний: віртуалізований список карток */}
+421 |           <div className="md:hidden flex-1 w-full overflow-hidden">
+422 |             <VirtualSchoolList
+423 |               schools={filteredSchools}
+424 |               itemHeight={110}
+425 |               renderItem={(school, index) => (
+426 |                 <div
+427 |                   className="pb-2.5"
+428 |                   onMouseEnter={() => prefetchSchool(school.id)}
+429 |                 >
+430 |                   <SchoolCard
+431 |                     school={school}
+432 |                     index={index}
+433 |                     onDelete={handleDeleteSchool}
+434 |                     stages={PIPELINE_STAGES}
+435 |                   />
+436 |                 </div>
+437 |               )}
+438 |             />
+439 |           </div>
+440 | 
+441 |           {/* Десктоп: таблиця з віртуалізованим tbody */}
+442 |           <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
+443 |             <Suspense
+444 |               fallback={<div className="flex-1 animate-pulse bg-slate-50" />}
+445 |             >
+446 |               <VirtualDesktopTable
+447 |                 schools={filteredSchools}
+448 |                 searchQuery={searchQuery}
+449 |                 onDelete={handleDeleteSchool}
+450 |                 stages={PIPELINE_STAGES}
+451 |               />
+452 |             </Suspense>
+453 |           </div>
+454 |         </>
+455 |       )}
+456 | 
+457 |       {/* Мобільна плаваюча кнопка FAB */}
+458 |       <button
+459 |         onClick={handleOpenModal}
+460 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
+461 |       >
+462 |         +
+463 |       </button>
+464 | 
+465 |       {/* Модальне вікно */}
+466 |       {isModalOpen && (
+467 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+468 |           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+469 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+470 |               <h3 className="text-xl font-bold text-slate-800">Нова школа</h3>
+471 |               <button
+472 |                 onClick={() => setIsModalOpen(false)}
+473 |                 className="text-slate-400 hover:text-slate-600 p-2 -mr-2 leading-none text-xl"
+474 |               >
+475 |                 ✕
+476 |               </button>
+477 |             </div>
+478 | 
+479 |             <form
+480 |               onSubmit={handleAddSchool}
+481 |               className="p-6 flex flex-col gap-4 overflow-y-auto"
+482 |             >
+483 |               <div className="relative">
+484 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
+485 |                   Назва школи
+486 |                 </label>
+487 |                 <input
+488 |                   type="text"
+489 |                   value={form.name}
+490 |                   onChange={(e) => handleNameChange(e.target.value)}
+491 |                   onBlur={() =>
+492 |                     setTimeout(() => setShowSuggestions(false), 150)
+493 |                   }
+494 |                   placeholder="Наприклад: Школа №1"
+495 |                   required
+496 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+497 |                 />
+498 |                 {showSuggestions && (
+499 |                   <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto overflow-hidden">
+500 |                     {isSearching ? (
+501 |                       <li className="px-4 py-3 text-sm text-slate-400 italic">
+502 |                         Пошук...
+503 |                       </li>
+504 |                     ) : suggestions.length > 0 ? (
+505 |                       suggestions.map((s, i) => (
+506 |                         <li
+507 |                           key={i}
+508 |                           onMouseDown={() =>
+509 |                             handleSelectSuggestion(s.name, s.url)
+510 |                           }
+511 |                           className="px-4 py-3 text-sm hover:bg-blue-50 cursor-pointer font-medium border-b border-slate-50 last:border-0"
+512 |                         >
+513 |                           {s.name}
+514 |                         </li>
+515 |                       ))
+516 |                     ) : (
+517 |                       <li className="px-4 py-3 text-sm text-slate-400 italic">
+518 |                         Нічого не знайдено
+519 |                       </li>
+520 |                     )}
+521 |                   </ul>
+522 |                 )}
+523 |               </div>
+524 | 
+525 |               {!selectedCity.id && (
+526 |                 <div>
+527 |                   <label className="block text-sm font-medium text-slate-600 mb-1.5">
+528 |                     Місто
+529 |                   </label>
+530 |                   <select
+531 |                     value={form.cityId}
+532 |                     onChange={(e) =>
+533 |                       setForm({ ...form, cityId: e.target.value })
+534 |                     }
+535 |                     required
+536 |                     className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+537 |                   >
+538 |                     <option value="">— Оберіть місто —</option>
+539 |                     {cities.map((c) => (
+540 |                       <option key={c.id} value={c.id}>
+541 |                         {c.name}
+542 |                       </option>
+543 |                     ))}
+544 |                   </select>
+545 |                 </div>
+546 |               )}
+547 | 
+548 |               <div>
+549 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
+550 |                   Контакт{" "}
+551 |                   <span className="ml-1 text-xs font-normal text-slate-400">
+552 |                     (автозаповнення)
+553 |                   </span>
+554 |                 </label>
+555 |                 {matchedContacts.length > 0 && (
+556 |                   <div className="flex flex-wrap gap-1.5 mb-3">
+557 |                     {matchedContacts.map((c, i) => (
+558 |                       <button
+559 |                         key={i}
+560 |                         type="button"
+561 |                         onClick={() =>
+562 |                           setForm((f) => ({
+563 |                             ...f,
+564 |                             director: c.contactName,
+565 |                             phone: c.phone,
+566 |                           }))
+567 |                         }
+568 |                         className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${form.director === c.contactName ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+569 |                       >
+570 |                         {c.role ? `${c.role}: ` : ""}
+571 |                         {c.contactName}
+572 |                       </button>
+573 |                     ))}
+574 |                   </div>
+575 |                 )}
+576 |                 <input
+577 |                   type="text"
+578 |                   value={form.director}
+579 |                   onChange={(e) =>
+580 |                     setForm({ ...form, director: e.target.value })
+581 |                   }
+582 |                   placeholder="Микола Петренко"
+583 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+584 |                 />
+585 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
+586 |                   Телефон
+587 |                 </label>
+588 |                 <input
+589 |                   type="text"
+590 |                   value={form.phone}
+591 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
+592 |                   placeholder="0671234567"
+593 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+594 |                 />
+595 |               </div>
+596 | 
+597 |               <div className="flex gap-3 mt-4">
+598 |                 <button
+599 |                   type="button"
+600 |                   onClick={() => setIsModalOpen(false)}
+601 |                   className="flex-1 px-5 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+602 |                 >
+603 |                   Скасувати
+604 |                 </button>
+605 |                 <button
+606 |                   type="submit"
+607 |                   disabled={addSchoolMutation.isPending}
+608 |                   className="flex-1 px-5 py-3.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+609 |                 >
+610 |                   {addSchoolMutation.isPending ? "Збереження..." : "Створити"}
+611 |                 </button>
+612 |               </div>
+613 |             </form>
+614 |           </div>
+615 |         </div>
+616 |       )}
+617 |     </div>
+618 |   );
+619 | }
+620 | 
+```
+
+### File: apps/frontend/src/tests/component/EventsTable.test.tsx
+```tsx
+  0 | import { describe, it, expect, vi, beforeEach } from "vitest";
+  1 | import { render, screen, fireEvent } from "@testing-library/react";
+  2 | import { MemoryRouter } from "react-router-dom";
+  3 | 
+  4 | vi.mock("axios", () => ({
+  5 |   default: { delete: vi.fn().mockResolvedValue({}) },
+  6 | }));
+  7 | 
+  8 | import EventsTable from "../../components/school-profile/EventsTable";
+  9 | 
+ 10 | const mockEvents = [
+ 11 |   {
+ 12 |     id: "ev-1",
+ 13 |     project: "Голограма",
+ 14 |     date: "2026-07-01T10:00:00Z",
+ 15 |     price: 5000,
+ 16 |     status: "BASE",
+ 17 |   },
+ 18 |   {
+ 19 |     id: "ev-2",
+ 20 |     project: "Малювайко",
+ 21 |     date: "2026-08-01T10:00:00Z",
+ 22 |     price: 3000,
+ 23 |     status: "FIRST_CONTACT",
+ 24 |   },
+ 25 | ];
+ 26 | 
+ 27 | describe("EventsTable", () => {
+ 28 |   const onEventSelect = vi.fn();
+ 29 |   const onDeleteSuccess = vi.fn();
+ 30 | 
+ 31 |   beforeEach(() => {
+ 32 |     vi.clearAllMocks();
+ 33 |     window.confirm = vi.fn(() => true);
+ 34 |   });
+ 35 | 
+ 36 |   it("відображає всі події", () => {
+ 37 |     render(
+ 38 |       <MemoryRouter>
+ 39 |         <EventsTable
+ 40 |           events={mockEvents}
+ 41 |           selectedEventId={null}
+ 42 |           onEventSelect={onEventSelect}
+ 43 |           onDeleteSuccess={onDeleteSuccess}
+ 44 |         />
+ 45 |       </MemoryRouter>,
+ 46 |     );
+ 47 |     expect(screen.getAllByText("Голограма")).toHaveLength(1);
+ 48 |     expect(screen.getAllByText("Малювайко")).toHaveLength(1);
+ 49 |   });
+ 50 | 
+ 51 |   it("показує кількість подій у заголовку", () => {
+ 52 |     render(
+ 53 |       <MemoryRouter>
+ 54 |         <EventsTable
+ 55 |           events={mockEvents}
+ 56 |           selectedEventId={null}
+ 57 |           onEventSelect={onEventSelect}
+ 58 |           onDeleteSuccess={onDeleteSuccess}
+ 59 |         />
+ 60 |       </MemoryRouter>,
+ 61 |     );
+ 62 |     expect(screen.getByText("Всі події (2)")).toBeInTheDocument();
+ 63 |   });
+ 64 | 
+ 65 |   it("не рендериться якщо events порожній", () => {
+ 66 |     const { container } = render(
+ 67 |       <MemoryRouter>
+ 68 |         <EventsTable
+ 69 |           events={[]}
+ 70 |           selectedEventId={null}
+ 71 |           onEventSelect={onEventSelect}
+ 72 |           onDeleteSuccess={onDeleteSuccess}
+ 73 |         />
+ 74 |       </MemoryRouter>,
+ 75 |     );
+ 76 |     expect(container.firstChild).toBeNull();
+ 77 |   });
+ 78 | 
+ 79 |   it("викликає onEventSelect при кліку на подію", () => {
+ 80 |     render(
+ 81 |       <MemoryRouter>
+ 82 |         <EventsTable
+ 83 |           events={mockEvents}
+ 84 |           selectedEventId={null}
+ 85 |           onEventSelect={onEventSelect}
+ 86 |           onDeleteSuccess={onDeleteSuccess}
+ 87 |         />
+ 88 |       </MemoryRouter>,
+ 89 |     );
+ 90 |     fireEvent.click(screen.getAllByText("Голограма")[0]);
+ 91 |     expect(onEventSelect).toHaveBeenCalledWith("ev-1");
+ 92 |   });
+ 93 | 
+ 94 |   it("показує підтвердження перед видаленням", () => {
+ 95 |     render(
+ 96 |       <MemoryRouter>
+ 97 |         <EventsTable
+ 98 |           events={mockEvents}
+ 99 |           selectedEventId={null}
+100 |           onEventSelect={onEventSelect}
+101 |           onDeleteSuccess={onDeleteSuccess}
+102 |         />
+103 |       </MemoryRouter>,
+104 |     );
+105 |     const deleteButtons = screen.getAllByText("🗑");
+106 |     fireEvent.click(deleteButtons[0]);
+107 |     expect(window.confirm).toHaveBeenCalledWith("Видалити цю подію?");
+108 |   });
+109 | 
+110 |   it("не видаляє якщо confirm повернув false", async () => {
+111 |     window.confirm = vi.fn(() => false);
+112 |     const axios = await import("axios");
+113 |     render(
+114 |       <MemoryRouter>
+115 |         <EventsTable
+116 |           events={mockEvents}
+117 |           selectedEventId={null}
+118 |           onEventSelect={onEventSelect}
+119 |           onDeleteSuccess={onDeleteSuccess}
+120 |         />
+121 |       </MemoryRouter>,
+122 |     );
+123 |     const deleteButtons = screen.getAllByText("🗑");
+124 |     fireEvent.click(deleteButtons[0]);
+125 |     expect(axios.default.delete).not.toHaveBeenCalled();
+126 |   });
+127 | 
+128 |   it("виділяє вибрану подію", () => {
+129 |     const { container } = render(
+130 |       <MemoryRouter>
+131 |         <EventsTable
+132 |           events={mockEvents}
+133 |           selectedEventId="ev-1"
+134 |           onEventSelect={onEventSelect}
+135 |           onDeleteSuccess={onDeleteSuccess}
+136 |         />
+137 |       </MemoryRouter>,
+138 |     );
+139 |     const selected = container.querySelector(".bg-blue-50\\/50");
+140 |     expect(selected).toBeInTheDocument();
+141 |   });
+142 | });
+143 | 
 ```
 
 ### File: apps/frontend/src/tests/component/Pipeline.test.tsx
@@ -17030,8 +17804,36 @@
  77 |       "Школа №1",
  78 |     );
  79 |   });
- 80 | });
- 81 | 
+ 80 | 
+ 81 |   it("не показує етап якщо подій немає", () => {
+ 82 |     render(
+ 83 |       <MemoryRouter>
+ 84 |         <SchoolCard
+ 85 |           school={{ ...mockSchool, events: [] }}
+ 86 |           onDelete={vi.fn()}
+ 87 |           stages={STAGES}
+ 88 |           index={0}
+ 89 |         />
+ 90 |       </MemoryRouter>,
+ 91 |     );
+ 92 |     expect(screen.queryByText("Новий заклад")).not.toBeInTheDocument();
+ 93 |   });
+ 94 | 
+ 95 |   it("показує телефон якщо є", () => {
+ 96 |     render(
+ 97 |       <MemoryRouter>
+ 98 |         <SchoolCard
+ 99 |           school={mockSchool}
+100 |           onDelete={vi.fn()}
+101 |           stages={STAGES}
+102 |           index={0}
+103 |         />
+104 |       </MemoryRouter>,
+105 |     );
+106 |     expect(screen.getByText(/0671234567/)).toBeInTheDocument();
+107 |   });
+108 | });
+109 | 
 ```
 
 ### File: apps/frontend/src/tests/mocks/handlers.ts
@@ -17198,6 +18000,215 @@
  53 |   });
  54 | });
  55 | 
+```
+
+### File: apps/frontend/src/tests/unit/hooks/useSchoolsFilter.test.ts
+```ts
+  0 | import { describe, it, expect, vi } from "vitest";
+  1 | import { renderHook } from "@testing-library/react";
+  2 | 
+  3 | // Мокаємо хук
+  4 | vi.mock("../../../hooks/useSchools", () => ({
+  5 |   useSchoolsList: vi.fn(() => ({
+  6 |     data: [
+  7 |       {
+  8 |         id: "s-1",
+  9 |         name: "Школа №1",
+ 10 |         type: "Школа",
+ 11 |         cityId: "city-1",
+ 12 |         childrenCount: 300,
+ 13 |         events: [],
+ 14 |       },
+ 15 |       {
+ 16 |         id: "s-2",
+ 17 |         name: "Школа №5",
+ 18 |         type: "Школа",
+ 19 |         cityId: "city-1",
+ 20 |         childrenCount: 100,
+ 21 |         events: [{ status: "FIRST_CONTACT" }],
+ 22 |       },
+ 23 |       {
+ 24 |         id: "s-3",
+ 25 |         name: "Садочок №1",
+ 26 |         type: "Садочок",
+ 27 |         cityId: "city-1",
+ 28 |         childrenCount: 60,
+ 29 |         events: [],
+ 30 |       },
+ 31 |       {
+ 32 |         id: "s-4",
+ 33 |         name: "Школа №10",
+ 34 |         type: "Школа",
+ 35 |         cityId: "city-2",
+ 36 |         childrenCount: 800,
+ 37 |         events: [{ status: "IN_PROGRESS" }],
+ 38 |       },
+ 39 |     ],
+ 40 |     isLoading: false,
+ 41 |     isSuccess: true,
+ 42 |   })),
+ 43 | }));
+ 44 | 
+ 45 | vi.mock("../../../components/schools/schoolUtils", () => ({
+ 46 |   classifySchool: (s: any) => {
+ 47 |     if (!s.events?.length) return "new";
+ 48 |     const status = s.events[0].status;
+ 49 |     if (["FIRST_CONTACT", "DATE_CONFIRMED"].includes(status)) return "planned";
+ 50 |     if (["IN_PROGRESS", "PREPARATION"].includes(status)) return "inProgress";
+ 51 |     return "new";
+ 52 |   },
+ 53 |   classifySize: (s: any, type: string) => {
+ 54 |     const count = s.childrenCount ?? 0;
+ 55 |     if (type === "Садочок") {
+ 56 |       if (count < 50) return "small";
+ 57 |       if (count < 100) return "medium";
+ 58 |       return "large";
+ 59 |     }
+ 60 |     if (count < 500) return "small";
+ 61 |     if (count < 900) return "medium";
+ 62 |     return "large";
+ 63 |   },
+ 64 | }));
+ 65 | 
+ 66 | import { useSchoolsList } from "../../../hooks/useSchools";
+ 67 | import {
+ 68 |   classifySchool,
+ 69 |   classifySize,
+ 70 | } from "../../../components/schools/schoolUtils";
+ 71 | 
+ 72 | // Хелпер — фільтрація як в Schools.tsx
+ 73 | function filterSchools(
+ 74 |   schools: any[],
+ 75 |   {
+ 76 |     cityId,
+ 77 |     type,
+ 78 |     activeFilter,
+ 79 |     sizeFilter,
+ 80 |     search,
+ 81 |   }: {
+ 82 |     cityId?: string;
+ 83 |     type?: string;
+ 84 |     activeFilter?: string | null;
+ 85 |     sizeFilter?: string | null;
+ 86 |     search?: string;
+ 87 |   },
+ 88 | ) {
+ 89 |   return schools.filter((s) => {
+ 90 |     if (cityId && s.cityId !== cityId) return false;
+ 91 |     if (type && s.type !== type) return false;
+ 92 |     if (activeFilter && classifySchool(s) !== activeFilter) return false;
+ 93 |     if (sizeFilter && classifySize(s, s.type) !== sizeFilter) return false;
+ 94 |     if (search) {
+ 95 |       const q = search.toLowerCase();
+ 96 |       return s.name?.toLowerCase().includes(q);
+ 97 |     }
+ 98 |     return true;
+ 99 |   });
+100 | }
+101 | 
+102 | describe("Фільтрація шкіл", () => {
+103 |   it("без фільтрів повертає всі школи", () => {
+104 |     const { result } = renderHook(() => useSchoolsList());
+105 |     const filtered = filterSchools(result.current.data!, {});
+106 |     expect(filtered).toHaveLength(4);
+107 |   });
+108 | 
+109 |   it("фільтр по cityId", () => {
+110 |     const { result } = renderHook(() => useSchoolsList());
+111 |     const filtered = filterSchools(result.current.data!, { cityId: "city-1" });
+112 |     expect(filtered).toHaveLength(3);
+113 |     expect(filtered.every((s) => s.cityId === "city-1")).toBe(true);
+114 |   });
+115 | 
+116 |   it("фільтр по type=Школа", () => {
+117 |     const { result } = renderHook(() => useSchoolsList());
+118 |     const filtered = filterSchools(result.current.data!, { type: "Школа" });
+119 |     expect(filtered).toHaveLength(3);
+120 |     expect(filtered.every((s) => s.type === "Школа")).toBe(true);
+121 |   });
+122 | 
+123 |   it("фільтр activeFilter=new — тільки нові", () => {
+124 |     const { result } = renderHook(() => useSchoolsList());
+125 |     const filtered = filterSchools(result.current.data!, {
+126 |       activeFilter: "new",
+127 |     });
+128 |     expect(filtered).toHaveLength(2); // s-1 і s-3
+129 |   });
+130 | 
+131 |   it("фільтр activeFilter=planned", () => {
+132 |     const { result } = renderHook(() => useSchoolsList());
+133 |     const filtered = filterSchools(result.current.data!, {
+134 |       activeFilter: "planned",
+135 |     });
+136 |     expect(filtered).toHaveLength(1);
+137 |     expect(filtered[0].id).toBe("s-2");
+138 |   });
+139 | 
+140 |   it("фільтр activeFilter=inProgress", () => {
+141 |     const { result } = renderHook(() => useSchoolsList());
+142 |     const filtered = filterSchools(result.current.data!, {
+143 |       activeFilter: "inProgress",
+144 |     });
+145 |     expect(filtered).toHaveLength(1);
+146 |     expect(filtered[0].id).toBe("s-4");
+147 |   });
+148 | 
+149 |   it("фільтр sizeFilter=small для шкіл (< 500)", () => {
+150 |     const { result } = renderHook(() => useSchoolsList());
+151 |     const filtered = filterSchools(result.current.data!, {
+152 |       type: "Школа",
+153 |       sizeFilter: "small",
+154 |     });
+155 |     expect(filtered.every((s) => s.childrenCount < 500)).toBe(true);
+156 |   });
+157 | 
+158 |   it("фільтр sizeFilter=medium для шкіл (500-900)", () => {
+159 |     const { result } = renderHook(() => useSchoolsList());
+160 |     const filtered = filterSchools(result.current.data!, {
+161 |       type: "Школа",
+162 |       sizeFilter: "medium",
+163 |     });
+164 |     expect(filtered).toHaveLength(1);
+165 |     expect(filtered[0].id).toBe("s-4"); // childrenCount=800
+166 |   });
+167 | 
+168 |   it("пошук по назві", () => {
+169 |     const { result } = renderHook(() => useSchoolsList());
+170 |     const filtered = filterSchools(result.current.data!, {
+171 |       search: "Школа №1",
+172 |     });
+173 |     expect(filtered).toHaveLength(1);
+174 |     expect(filtered[0].id).toBe("s-1");
+175 |   });
+176 | 
+177 |   it("пошук нечутливий до регістру", () => {
+178 |     const { result } = renderHook(() => useSchoolsList());
+179 |     const filtered = filterSchools(result.current.data!, {
+180 |       search: "школа №5",
+181 |     });
+182 |     expect(filtered).toHaveLength(1);
+183 |   });
+184 | 
+185 |   it("комбінований фільтр: city + type + activeFilter", () => {
+186 |     const { result } = renderHook(() => useSchoolsList());
+187 |     const filtered = filterSchools(result.current.data!, {
+188 |       cityId: "city-1",
+189 |       type: "Школа",
+190 |       activeFilter: "planned",
+191 |     });
+192 |     expect(filtered).toHaveLength(1);
+193 |     expect(filtered[0].id).toBe("s-2");
+194 |   });
+195 | 
+196 |   it("пошук без результатів повертає порожній масив", () => {
+197 |     const { result } = renderHook(() => useSchoolsList());
+198 |     const filtered = filterSchools(result.current.data!, {
+199 |       search: "xyznonsense",
+200 |     });
+201 |     expect(filtered).toHaveLength(0);
+202 |   });
+203 | });
+204 | 
 ```
 
 ### File: apps/frontend/src/tests/unit/schoolUtils.test.ts

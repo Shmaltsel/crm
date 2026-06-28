@@ -7,6 +7,7 @@ import {
   Patch,
   Delete,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { SchoolsService } from './schools.service';
 import { ParserService } from './parser.service';
