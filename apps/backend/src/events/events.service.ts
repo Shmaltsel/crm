@@ -15,7 +15,7 @@ export class EventsService {
   private readonly logger = new Logger(EventsService.name);
 
   constructor(
-    private prisma: PrismaService,
+    private readonly prisma: PrismaService,
     private telegramService: TelegramService,
   ) {}
 

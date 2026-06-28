@@ -4308,79 +4308,80 @@
   6 |   Patch,
   7 |   Delete,
   8 |   Query,
-  9 | } from '@nestjs/common';
- 10 | import { SchoolsService } from './schools.service';
- 11 | import { ParserService } from './parser.service';
- 12 | import { RolesGuard } from '../auth/guards/roles.guard';
- 13 | import { Roles } from '../auth/decorators/roles.decorator';
- 14 | import { AuthGuard } from '../auth/auth.guard';
- 15 | @Controller('schools')
- 16 | @UseGuards(AuthGuard, RolesGuard)
- 17 | export class SchoolsController {
- 18 |   constructor(
- 19 |     private readonly schoolsService: SchoolsService,
- 20 |     private readonly parserService: ParserService,
- 21 |   ) {}
- 22 | 
- 23 |   @Post('bulk-import')
- 24 |   @Roles('SUPERADMIN', 'MANAGER')
- 25 |   bulkImport(@Body() body: { cityId: string; type?: string }) {
- 26 |     return this.schoolsService.bulkImport(
- 27 |       body.cityId,
- 28 |       (body.type as 'Школа' | 'Садочок') || 'Школа',
- 29 |     );
- 30 |   }
- 31 | 
- 32 |   @Get('supported-cities')
- 33 |   getSupportedCities() {
- 34 |     return this.parserService.getSupportedCities();
- 35 |   }
- 36 | 
- 37 |   @Post()
- 38 |   create(
- 39 |     @Body()
- 40 |     body: {
- 41 |       name: string;
- 42 |       type: string;
- 43 |       cityId: string;
- 44 |       sourceUrl?: string;
- 45 |     },
- 46 |   ) {
- 47 |     return this.schoolsService.create(body);
- 48 |   }
- 49 | 
- 50 |   @Get() findAll(@Query('minimal') minimal?: string) {
- 51 |     return this.schoolsService.findAll(minimal === 'true');
- 52 |   }
- 53 | 
- 54 |   // ⚠️ ВАЖЛИВО: цей маршрут МАЄ стояти ДО @Get(':id')
- 55 |   @Get('search')
- 56 |   search(@Query('q') q: string, @Query('type') type: string) {
- 57 |     return this.parserService.searchSchools(q, type);
- 58 |   }
- 59 | 
- 60 |   @Get(':id')
- 61 |   findOne(@Param('id') id: string) {
- 62 |     return this.schoolsService.findOne(id);
- 63 |   }
- 64 | 
- 65 |   @Patch(':id')
- 66 |   update(@Param('id') id: string, @Body() body: any) {
- 67 |     return this.schoolsService.update(id, body);
- 68 |   }
- 69 | 
- 70 |   @Delete(':id')
- 71 |   @Roles('SUPERADMIN')
- 72 |   remove(@Param('id') id: string) {
- 73 |     return this.schoolsService.remove(id);
- 74 |   }
- 75 | 
- 76 |   @Get('contacts/search')
- 77 |   searchContacts(@Query('q') q: string, @Query('city') city: string) {
- 78 |     return this.schoolsService.searchContacts(q, city);
- 79 |   }
- 80 | }
- 81 | 
+  9 |   UseGuards,
+ 10 | } from '@nestjs/common';
+ 11 | import { SchoolsService } from './schools.service';
+ 12 | import { ParserService } from './parser.service';
+ 13 | import { RolesGuard } from '../auth/guards/roles.guard';
+ 14 | import { Roles } from '../auth/decorators/roles.decorator';
+ 15 | import { AuthGuard } from '../auth/auth.guard';
+ 16 | @Controller('schools')
+ 17 | @UseGuards(AuthGuard, RolesGuard)
+ 18 | export class SchoolsController {
+ 19 |   constructor(
+ 20 |     private readonly schoolsService: SchoolsService,
+ 21 |     private readonly parserService: ParserService,
+ 22 |   ) {}
+ 23 | 
+ 24 |   @Post('bulk-import')
+ 25 |   @Roles('SUPERADMIN', 'MANAGER')
+ 26 |   bulkImport(@Body() body: { cityId: string; type?: string }) {
+ 27 |     return this.schoolsService.bulkImport(
+ 28 |       body.cityId,
+ 29 |       (body.type as 'Школа' | 'Садочок') || 'Школа',
+ 30 |     );
+ 31 |   }
+ 32 | 
+ 33 |   @Get('supported-cities')
+ 34 |   getSupportedCities() {
+ 35 |     return this.parserService.getSupportedCities();
+ 36 |   }
+ 37 | 
+ 38 |   @Post()
+ 39 |   create(
+ 40 |     @Body()
+ 41 |     body: {
+ 42 |       name: string;
+ 43 |       type: string;
+ 44 |       cityId: string;
+ 45 |       sourceUrl?: string;
+ 46 |     },
+ 47 |   ) {
+ 48 |     return this.schoolsService.create(body);
+ 49 |   }
+ 50 | 
+ 51 |   @Get() findAll(@Query('minimal') minimal?: string) {
+ 52 |     return this.schoolsService.findAll(minimal === 'true');
+ 53 |   }
+ 54 | 
+ 55 |   // ⚠️ ВАЖЛИВО: цей маршрут МАЄ стояти ДО @Get(':id')
+ 56 |   @Get('search')
+ 57 |   search(@Query('q') q: string, @Query('type') type: string) {
+ 58 |     return this.parserService.searchSchools(q, type);
+ 59 |   }
+ 60 | 
+ 61 |   @Get(':id')
+ 62 |   findOne(@Param('id') id: string) {
+ 63 |     return this.schoolsService.findOne(id);
+ 64 |   }
+ 65 | 
+ 66 |   @Patch(':id')
+ 67 |   update(@Param('id') id: string, @Body() body: any) {
+ 68 |     return this.schoolsService.update(id, body);
+ 69 |   }
+ 70 | 
+ 71 |   @Delete(':id')
+ 72 |   @Roles('SUPERADMIN')
+ 73 |   remove(@Param('id') id: string) {
+ 74 |     return this.schoolsService.remove(id);
+ 75 |   }
+ 76 | 
+ 77 |   @Get('contacts/search')
+ 78 |   searchContacts(@Query('q') q: string, @Query('city') city: string) {
+ 79 |     return this.schoolsService.searchContacts(q, city);
+ 80 |   }
+ 81 | }
+ 82 | 
 ```
 
 ### File: apps/backend/src/schools/schools.module.ts
@@ -13116,88 +13117,89 @@
 138 |         <button
 139 |           onClick={() => setIsModalOpen(true)}
 140 |           className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 active:scale-95 transition-transform opacity-0"
-141 |           style={{ animation: "fabPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) 0.2s forwards" }}
-142 |           aria-label="Додати місто"
-143 |         >
-144 |           +
-145 |         </button>
-146 |       )}
-147 |         <style>{`
-148 |           @keyframes fabPop {
-149 |             from { opacity: 0; transform: scale(0.5) translateY(20px); }
-150 |             to { opacity: 1; transform: scale(1) translateY(0); }
-151 |           }
-152 |         `}</style>
-153 |         +
-154 |       </button>
-155 | 
-156 |       {/* Модалка додавання */}
-157 |       {isModalOpen &&
-158 |         createPortal(
-159 |           <div
-160 |             className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
-161 |             style={{ animation: "fadeIn 0.2s ease-out forwards" }}
-162 |           >
-163 |             <style>{`
-164 |             @keyframes fadeIn {
-165 |               from { opacity: 0; }
-166 |               to { opacity: 1; }
-167 |             }
-168 |             @keyframes modalScale {
-169 |               from { opacity: 0; transform: scale(0.95) translateY(15px); }
-170 |               to { opacity: 1; transform: scale(1) translateY(0); }
-171 |             }
-172 |           `}</style>
-173 | 
-174 |             {/* ТУТ БУЛА ПРОБЛЕМА: додано opacity-0 та style з анімацією modalScale */}
-175 |             <div
-176 |               className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
-177 |               style={{ animation: "modalScale 0.3s ease-out forwards" }}
-178 |             >
-179 |               <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-180 |                 <h3 className="text-xl font-bold text-slate-800">Нове місто</h3>
-181 |                 <button
-182 |                   onClick={() => setIsModalOpen(false)}
-183 |                   className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
-184 |                 >
-185 |                   ✕
-186 |                 </button>
-187 |               </div>
-188 |               <form onSubmit={handleAddCity} className="p-6">
-189 |                 <input
-190 |                   type="text"
-191 |                   value={newCityName}
-192 |                   onChange={(e) => setNewCityName(e.target.value)}
-193 |                   placeholder="Наприклад: Львів"
-194 |                   className="w-full p-3 mb-6 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
-195 |                   autoFocus
-196 |                   required
-197 |                 />
-198 |                 <div className="flex gap-3">
-199 |                   <button
-200 |                     type="button"
-201 |                     onClick={() => setIsModalOpen(false)}
-202 |                     className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors"
-203 |                   >
-204 |                     Скасувати
-205 |                   </button>
-206 |                   <button
-207 |                     type="submit"
-208 |                     disabled={addCity.isPending}
-209 |                     className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-210 |                   >
-211 |                     {addCity.isPending ? "Збереження..." : "Зберегти"}
-212 |                   </button>
-213 |                 </div>
-214 |               </form>
-215 |             </div>
-216 |           </div>,
-217 |           document.body,
-218 |         )}
-219 |     </div>
-220 |   );
-221 | }
-222 | 
+141 |           style={{
+142 |             animation:
+143 |               "fabPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) 0.2s forwards",
+144 |           }}
+145 |           aria-label="Додати місто"
+146 |         >
+147 |           <style>{`
+148 |             @keyframes fabPop {
+149 |               from { opacity: 0; transform: scale(0.5) translateY(20px); }
+150 |               to { opacity: 1; transform: scale(1) translateY(0); }
+151 |             }
+152 |           `}</style>
+153 |           +
+154 |         </button>
+155 |       )}
+156 | 
+157 |       {/* Модалка додавання */}
+158 |       {isModalOpen &&
+159 |         createPortal(
+160 |           <div
+161 |             className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
+162 |             style={{ animation: "fadeIn 0.2s ease-out forwards" }}
+163 |           >
+164 |             <style>{`
+165 |             @keyframes fadeIn {
+166 |               from { opacity: 0; }
+167 |               to { opacity: 1; }
+168 |             }
+169 |             @keyframes modalScale {
+170 |               from { opacity: 0; transform: scale(0.95) translateY(15px); }
+171 |               to { opacity: 1; transform: scale(1) translateY(0); }
+172 |             }
+173 |           `}</style>
+174 | 
+175 |             {/* ТУТ БУЛА ПРОБЛЕМА: додано opacity-0 та style з анімацією modalScale */}
+176 |             <div
+177 |               className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
+178 |               style={{ animation: "modalScale 0.3s ease-out forwards" }}
+179 |             >
+180 |               <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+181 |                 <h3 className="text-xl font-bold text-slate-800">Нове місто</h3>
+182 |                 <button
+183 |                   onClick={() => setIsModalOpen(false)}
+184 |                   className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
+185 |                 >
+186 |                   ✕
+187 |                 </button>
+188 |               </div>
+189 |               <form onSubmit={handleAddCity} className="p-6">
+190 |                 <input
+191 |                   type="text"
+192 |                   value={newCityName}
+193 |                   onChange={(e) => setNewCityName(e.target.value)}
+194 |                   placeholder="Наприклад: Львів"
+195 |                   className="w-full p-3 mb-6 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+196 |                   autoFocus
+197 |                   required
+198 |                 />
+199 |                 <div className="flex gap-3">
+200 |                   <button
+201 |                     type="button"
+202 |                     onClick={() => setIsModalOpen(false)}
+203 |                     className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors"
+204 |                   >
+205 |                     Скасувати
+206 |                   </button>
+207 |                   <button
+208 |                     type="submit"
+209 |                     disabled={addCity.isPending}
+210 |                     className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+211 |                   >
+212 |                     {addCity.isPending ? "Збереження..." : "Зберегти"}
+213 |                   </button>
+214 |                 </div>
+215 |               </form>
+216 |             </div>
+217 |           </div>,
+218 |           document.body,
+219 |         )}
+220 |     </div>
+221 |   );
+222 | }
+223 | 
 ```
 
 ### File: apps/frontend/src/pages/CityProfile.tsx

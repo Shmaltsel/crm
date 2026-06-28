@@ -16,7 +16,7 @@ export class FinanceService {
     this.cache.set(key, { data, expiresAt: Date.now() + ttlMs });
   }
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   // ---------------------------------------------------------------------------
   // Допоміжний метод: перетворює period у dateFrom

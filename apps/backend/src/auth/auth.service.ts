@@ -11,10 +11,8 @@ export class AuthService {
   ) {}
 
   async login(email: string, pass: string) {
-    // Шукаємо користувача через Prisma (в usersService цього методу ще немає, тому звернемось до Prisma напряму)
-    const user = await this.usersService['prisma'].user.findUnique({
-      where: { email },
-    });
+    // Тепер безпечно викликаємо публічний метод з UsersService, ізолюючи БД
+    const user = await this.usersService.findByEmail(email);
 
     if (!user) {
       throw new UnauthorizedException('Невірний email або пароль');
@@ -28,10 +26,15 @@ export class AuthService {
 
     // Генеруємо "корисне навантаження" для токена
     // Було:
-// const payload = { sub: user.id, email: user.email, role: user.role };
+    // const payload = { sub: user.id, email: user.email, role: user.role };
 
-// Стало:
-    const payload = { sub: user.id, email: user.email, role: user.role, name: user.name };
+    // Стало:
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+    };
 
     return {
       access_token: await this.jwtService.signAsync(payload),
