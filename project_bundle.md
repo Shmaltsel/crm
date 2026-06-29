@@ -29,7 +29,6 @@
 │   │   │   │   ├── 20260628223725_add_expense_salary_items
 │   │   │   │   │   └── migration.sql
 │   │   │   │   └── migration_lock.toml
-│   │   │   ├── prisma.mock.ts
 │   │   │   ├── schema.prisma
 │   │   │   └── seed-admin.js
 │   │   ├── src
@@ -65,7 +64,10 @@
 │   │   │   ├── events
 │   │   │   │   ├── dto
 │   │   │   │   │   ├── create-event.dto.ts
-│   │   │   │   │   └── submit-report.dto.ts
+│   │   │   │   │   ├── reschedule-event.dto.ts
+│   │   │   │   │   ├── submit-report.dto.ts
+│   │   │   │   │   ├── update-preparation.dto.ts
+│   │   │   │   │   └── update-status.dto.ts
 │   │   │   │   ├── events-scheduler.service.ts
 │   │   │   │   ├── events.controller.spec.ts
 │   │   │   │   ├── events.controller.ts
@@ -73,6 +75,7 @@
 │   │   │   │   ├── events.service.spec.ts
 │   │   │   │   └── events.service.ts
 │   │   │   ├── finance
+│   │   │   │   ├── create-expense-item.dto.ts
 │   │   │   │   ├── finance.controller.ts
 │   │   │   │   ├── finance.module.ts
 │   │   │   │   ├── finance.service.spec.ts
@@ -83,6 +86,7 @@
 │   │   │   │   └── issues.service.ts
 │   │   │   ├── main.ts
 │   │   │   ├── prisma
+│   │   │   │   ├── prisma.mock.ts
 │   │   │   │   ├── prisma.module.ts
 │   │   │   │   ├── prisma.service.spec.ts
 │   │   │   │   └── prisma.service.ts
@@ -264,21 +268,6 @@
 ├── pnpm-workspace.yaml
 ├── project_code.txt
 └── project_code.xml
-```
-
-### File: apps/backend/prisma/prisma.mock.ts
-```ts
-  0 | import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
-  1 | import { PrismaService } from './prisma.service';
-  2 | 
-  3 | // Типізація для нашого моку, щоб автодоповнення працювало в тестах
-  4 | export type MockPrismaService = DeepMockProxy<PrismaService>;
-  5 | 
-  6 | // Функція, яка створює глибокий мок PrismaClient
-  7 | export const createPrismaMock = (): MockPrismaService => {
-  8 |   return mockDeep<PrismaService>();
-  9 | };
- 10 | 
 ```
 
 ### File: apps/backend/prisma/schema.prisma
@@ -1774,68 +1763,236 @@
 
 ### File: apps/backend/src/events/dto/create-event.dto.ts
 ```ts
-  0 | export class CreateEventDto {
-  1 |   cityId: string;
-  2 |   schoolId: string;
-  3 | 
-  4 |   project: string;
-  5 | 
-  6 |   date: string;
-  7 |   time?: string;
+  0 | import {
+  1 |   IsString,
+  2 |   IsNotEmpty,
+  3 |   IsOptional,
+  4 |   IsNumber,
+  5 |   Min,
+  6 | } from 'class-validator';
+  7 | import { Type } from 'class-transformer';
   8 | 
-  9 |   childrenPlanned?: number;
- 10 | 
- 11 |   price?: number;
- 12 | 
- 13 |   paymentMethod?: string;
- 14 | 
- 15 |   address?: string;
- 16 | 
- 17 |   contactPerson?: string;
- 18 | 
- 19 |   contactPhone?: string;
- 20 | 
- 21 |   equipment?: string;
- 22 | 
- 23 |   nextProject?: string;
- 24 | 
- 25 |   responsibleId?: string;
- 26 | }
- 27 | 
+  9 | export class CreateEventDto {
+ 10 |   @IsString()
+ 11 |   @IsNotEmpty()
+ 12 |   cityId: string;
+ 13 | 
+ 14 |   @IsString()
+ 15 |   @IsNotEmpty()
+ 16 |   schoolId: string;
+ 17 | 
+ 18 |   @IsString()
+ 19 |   @IsNotEmpty()
+ 20 |   project: string;
+ 21 | 
+ 22 |   @IsString()
+ 23 |   @IsNotEmpty()
+ 24 |   date: string;
+ 25 | 
+ 26 |   @IsOptional()
+ 27 |   @IsString()
+ 28 |   time?: string;
+ 29 | 
+ 30 |   @IsOptional()
+ 31 |   @IsNumber()
+ 32 |   @Min(0)
+ 33 |   @Type(() => Number)
+ 34 |   childrenPlanned?: number;
+ 35 | 
+ 36 |   @IsOptional()
+ 37 |   @IsNumber()
+ 38 |   @Min(0)
+ 39 |   @Type(() => Number)
+ 40 |   price?: number;
+ 41 | 
+ 42 |   @IsOptional()
+ 43 |   @IsString()
+ 44 |   paymentMethod?: string;
+ 45 | 
+ 46 |   @IsOptional()
+ 47 |   @IsString()
+ 48 |   address?: string;
+ 49 | 
+ 50 |   @IsOptional()
+ 51 |   @IsString()
+ 52 |   contactPerson?: string;
+ 53 | 
+ 54 |   @IsOptional()
+ 55 |   @IsString()
+ 56 |   contactPhone?: string;
+ 57 | 
+ 58 |   @IsOptional()
+ 59 |   @IsString()
+ 60 |   equipment?: string;
+ 61 | 
+ 62 |   @IsOptional()
+ 63 |   @IsString()
+ 64 |   nextProject?: string;
+ 65 | 
+ 66 |   @IsOptional()
+ 67 |   @IsString()
+ 68 |   responsibleId?: string;
+ 69 | }
+ 70 | 
+```
+
+### File: apps/backend/src/events/dto/reschedule-event.dto.ts
+```ts
+  0 | import { IsString, IsNotEmpty } from 'class-validator';
+  1 | 
+  2 | export class RescheduleEventDto {
+  3 |   @IsString()
+  4 |   @IsNotEmpty()
+  5 |   date: string;
+  6 | 
+  7 |   @IsString()
+  8 |   @IsNotEmpty()
+  9 |   time: string;
+ 10 | }
+ 11 | 
 ```
 
 ### File: apps/backend/src/events/dto/submit-report.dto.ts
 ```ts
-  0 | export class SubmitReportDto {
-  1 |   announcementDone: boolean;
-  2 |   materialShown: boolean;
-  3 | 
-  4 |   childrenCount: number;
-  5 |   classesCount: number;
-  6 |   privilegedCount: number;
-  7 |   showingsCount: number;
-  8 | 
-  9 |   totalSum: number;
- 10 |   schoolSum: number;
+  0 | import {
+  1 |   IsBoolean,
+  2 |   IsNumber,
+  3 |   IsOptional,
+  4 |   IsString,
+  5 |   IsArray,
+  6 |   ValidateNested,
+  7 |   Min,
+  8 |   Max,
+  9 | } from 'class-validator';
+ 10 | import { Type } from 'class-transformer';
  11 | 
- 12 |   expenses: Array<{
- 13 |     category?: string;
- 14 |     name?: string;
- 15 |     amount: number;
- 16 |   }>;
- 17 | 
- 18 |   remainderSum: number;
- 19 | 
- 20 |   rating?: number;
- 21 | 
- 22 |   salaries: Array<{
- 23 |     userId: string;
- 24 |     name: string;
- 25 |     amount: number;
- 26 |     role?: string;
- 27 |   }>;
- 28 | }
- 29 | 
+ 12 | export class ExpenseItemDto {
+ 13 |   @IsOptional()
+ 14 |   @IsString()
+ 15 |   category?: string;
+ 16 | 
+ 17 |   @IsOptional()
+ 18 |   @IsString()
+ 19 |   name?: string;
+ 20 | 
+ 21 |   @IsNumber()
+ 22 |   @Min(0)
+ 23 |   @Type(() => Number)
+ 24 |   amount: number;
+ 25 | }
+ 26 | 
+ 27 | export class SalaryItemDto {
+ 28 |   @IsString()
+ 29 |   userId: string;
+ 30 | 
+ 31 |   @IsString()
+ 32 |   name: string;
+ 33 | 
+ 34 |   @IsNumber()
+ 35 |   @Min(0)
+ 36 |   @Type(() => Number)
+ 37 |   amount: number;
+ 38 | 
+ 39 |   @IsOptional()
+ 40 |   @IsString()
+ 41 |   role?: string;
+ 42 | }
+ 43 | 
+ 44 | export class SubmitReportDto {
+ 45 |   @IsBoolean()
+ 46 |   announcementDone: boolean;
+ 47 | 
+ 48 |   @IsBoolean()
+ 49 |   materialShown: boolean;
+ 50 | 
+ 51 |   @IsNumber()
+ 52 |   @Min(0)
+ 53 |   @Type(() => Number)
+ 54 |   childrenCount: number;
+ 55 | 
+ 56 |   @IsNumber()
+ 57 |   @Min(0)
+ 58 |   @Type(() => Number)
+ 59 |   classesCount: number;
+ 60 | 
+ 61 |   @IsNumber()
+ 62 |   @Min(0)
+ 63 |   @Type(() => Number)
+ 64 |   privilegedCount: number;
+ 65 | 
+ 66 |   @IsNumber()
+ 67 |   @Min(0)
+ 68 |   @Type(() => Number)
+ 69 |   showingsCount: number;
+ 70 | 
+ 71 |   @IsNumber()
+ 72 |   @Min(0)
+ 73 |   @Type(() => Number)
+ 74 |   totalSum: number;
+ 75 | 
+ 76 |   @IsNumber()
+ 77 |   @Min(0)
+ 78 |   @Type(() => Number)
+ 79 |   schoolSum: number;
+ 80 | 
+ 81 |   @IsNumber()
+ 82 |   @Type(() => Number)
+ 83 |   remainderSum: number;
+ 84 | 
+ 85 |   @IsOptional()
+ 86 |   @IsNumber()
+ 87 |   @Min(0)
+ 88 |   @Max(5)
+ 89 |   @Type(() => Number)
+ 90 |   rating?: number;
+ 91 | 
+ 92 |   @IsArray()
+ 93 |   @ValidateNested({ each: true })
+ 94 |   @Type(() => ExpenseItemDto)
+ 95 |   expenses: ExpenseItemDto[];
+ 96 | 
+ 97 |   @IsArray()
+ 98 |   @ValidateNested({ each: true })
+ 99 |   @Type(() => SalaryItemDto)
+100 |   salaries: SalaryItemDto[];
+101 | }
+102 | 
+```
+
+### File: apps/backend/src/events/dto/update-preparation.dto.ts
+```ts
+  0 | import { IsString, IsNotEmpty } from 'class-validator';
+  1 | 
+  2 | export class UpdatePreparationDto {
+  3 |   @IsString()
+  4 |   @IsNotEmpty()
+  5 |   field: string;
+  6 | 
+  7 |   @IsString()
+  8 |   @IsNotEmpty()
+  9 |   status: string;
+ 10 | }
+ 11 | 
+```
+
+### File: apps/backend/src/events/dto/update-status.dto.ts
+```ts
+  0 | import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+  1 | 
+  2 | export class UpdateStatusDto {
+  3 |   @IsString()
+  4 |   @IsNotEmpty()
+  5 |   status: string;
+  6 | 
+  7 |   @IsString()
+  8 |   @IsNotEmpty()
+  9 |   actionName: string;
+ 10 | 
+ 11 |   @IsOptional()
+ 12 |   @IsString()
+ 13 |   comment?: string;
+ 14 | }
+ 15 | 
 ```
 
 ### File: apps/backend/src/events/events-scheduler.service.ts
@@ -1961,120 +2118,123 @@
  15 | import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
  16 | import { CreateEventDto } from './dto/create-event.dto';
  17 | import { SubmitReportDto } from './dto/submit-report.dto';
- 18 | 
- 19 | @Controller('events')
- 20 | @UseGuards(AuthGuard)
- 21 | export class EventsController {
- 22 |   constructor(private readonly eventsService: EventsService) {}
- 23 | 
- 24 |   // Список подій для поточного користувача.
- 25 |   // Для водіїв/ведучих повертаються лише ті події, де вони у складі екіпажу.
- 26 |   // Для менеджерів/адмінів — усі події.
- 27 |   @Get()
- 28 |   findAll(@CurrentUser() user: JwtUser) {
- 29 |     return this.eventsService.findAllForUser(user);
- 30 |   }
- 31 | 
- 32 |   @Post()
- 33 |   create(@Body() body: CreateEventDto, @CurrentUser() user: JwtUser) {
- 34 |     return this.eventsService.create(body, user);
- 35 |   }
- 36 | 
- 37 |   @Get('school/:schoolId')
- 38 |   findBySchool(
- 39 |     @Param('schoolId') schoolId: string,
- 40 |     @Query('minimal') minimal?: string,
- 41 |   ) {
- 42 |     return this.eventsService.findBySchool(schoolId, minimal === 'true');
- 43 |   }
- 44 | 
- 45 |   @Patch(':id/status')
- 46 |   updateStatus(
- 47 |     @Param('id') id: string,
- 48 |     @Body() body: { status: string; actionName: string; comment?: string },
- 49 |     @CurrentUser() user: JwtUser,
- 50 |   ) {
- 51 |     return this.eventsService.updateStatus(
- 52 |       id,
- 53 |       body.status,
- 54 |       body.actionName,
- 55 |       body.comment,
- 56 |       user,
- 57 |     );
- 58 |   }
- 59 | 
- 60 |   @Patch(':id/preparation')
- 61 |   updatePreparation(
- 62 |     @Param('id') id: string,
- 63 |     @Body() body: { field: string; status: string },
- 64 |   ) {
- 65 |     return this.eventsService.updatePreparationStatus(
- 66 |       id,
- 67 |       body.field,
- 68 |       body.status,
- 69 |     );
- 70 |   }
- 71 | 
- 72 |   @Post(':id/assign-crew')
- 73 |   assignCrew(
- 74 |     @Param('id') id: string,
- 75 |     @Body() body: { crewId: string }, // ЗМІНЕНО
- 76 |   ) {
- 77 |     return this.eventsService.assignCrewToEvent(id, body.crewId);
- 78 |   }
- 79 | 
- 80 |   @Post(':id/history')
- 81 |   addHistoryComment(
- 82 |     @Param('id') id: string,
- 83 |     @Body() body: { comment: string },
- 84 |     @CurrentUser() user: JwtUser,
- 85 |   ) {
- 86 |     return this.eventsService.addHistoryComment(id, body.comment, user);
- 87 |   }
- 88 | 
- 89 |   // Маршрут для оновлення коментаря
- 90 |   @Patch('history/:historyId')
- 91 |   updateHistoryComment(
- 92 |     @Param('historyId') historyId: string,
- 93 |     @Body() body: { comment: string },
- 94 |   ) {
- 95 |     return this.eventsService.updateHistoryComment(historyId, body.comment);
- 96 |   }
- 97 | 
- 98 |   @Delete(':id')
- 99 |   remove(@Param('id') id: string) {
-100 |     return this.eventsService.remove(id);
-101 |   }
-102 | 
-103 |   @Post(':id/report')
-104 |   submitReport(
-105 |     @Param('id') id: string,
-106 |     @Body() body: SubmitReportDto,
-107 |     @CurrentUser() user: JwtUser,
-108 |   ) {
-109 |     return this.eventsService.submitReport(id, body, user);
-110 |   }
-111 | 
-112 |   @Get('school/:schoolId/completed')
-113 |   findCompletedBySchool(@Param('schoolId') schoolId: string) {
-114 |     return this.eventsService.findCompletedBySchool(schoolId);
-115 |   }
-116 | 
-117 |   @Get(':id')
-118 |   findOne(@Param('id') id: string) {
-119 |     return this.eventsService.findOne(id);
-120 |   }
-121 | 
-122 |   @Patch(':id/reschedule')
-123 |   reschedule(
-124 |     @Param('id') id: string,
-125 |     @Body() body: { date: string; time: string },
-126 |     @CurrentUser() user: JwtUser,
-127 |   ) {
-128 |     return this.eventsService.rescheduleEvent(id, body.date, body.time, user);
-129 |   }
-130 | }
-131 | 
+ 18 | import { UpdateStatusDto } from './dto/update-status.dto';
+ 19 | import { UpdatePreparationDto } from './dto/update-preparation.dto';
+ 20 | import { RescheduleEventDto } from './dto/reschedule-event.dto';
+ 21 | 
+ 22 | @Controller('events')
+ 23 | @UseGuards(AuthGuard)
+ 24 | export class EventsController {
+ 25 |   constructor(private readonly eventsService: EventsService) {}
+ 26 | 
+ 27 |   // Список подій для поточного користувача.
+ 28 |   // Для водіїв/ведучих повертаються лише ті події, де вони у складі екіпажу.
+ 29 |   // Для менеджерів/адмінів — усі події.
+ 30 |   @Get()
+ 31 |   findAll(@CurrentUser() user: JwtUser) {
+ 32 |     return this.eventsService.findAllForUser(user);
+ 33 |   }
+ 34 | 
+ 35 |   @Post()
+ 36 |   create(@Body() body: CreateEventDto, @CurrentUser() user: JwtUser) {
+ 37 |     return this.eventsService.create(body, user);
+ 38 |   }
+ 39 | 
+ 40 |   @Get('school/:schoolId')
+ 41 |   findBySchool(
+ 42 |     @Param('schoolId') schoolId: string,
+ 43 |     @Query('minimal') minimal?: string,
+ 44 |   ) {
+ 45 |     return this.eventsService.findBySchool(schoolId, minimal === 'true');
+ 46 |   }
+ 47 | 
+ 48 |   @Patch(':id/status')
+ 49 |   updateStatus(
+ 50 |     @Param('id') id: string,
+ 51 |     @Body() body: UpdateStatusDto,
+ 52 |     @CurrentUser() user: JwtUser,
+ 53 |   ) {
+ 54 |     return this.eventsService.updateStatus(
+ 55 |       id,
+ 56 |       body.status,
+ 57 |       body.actionName,
+ 58 |       body.comment,
+ 59 |       user,
+ 60 |     );
+ 61 |   }
+ 62 | 
+ 63 |   @Patch(':id/preparation')
+ 64 |   updatePreparation(
+ 65 |     @Param('id') id: string,
+ 66 |     @Body() body: UpdatePreparationDto,
+ 67 |   ) {
+ 68 |     return this.eventsService.updatePreparationStatus(
+ 69 |       id,
+ 70 |       body.field,
+ 71 |       body.status,
+ 72 |     );
+ 73 |   }
+ 74 | 
+ 75 |   @Post(':id/assign-crew')
+ 76 |   assignCrew(
+ 77 |     @Param('id') id: string,
+ 78 |     @Body() body: { crewId: string }, // ЗМІНЕНО
+ 79 |   ) {
+ 80 |     return this.eventsService.assignCrewToEvent(id, body.crewId);
+ 81 |   }
+ 82 | 
+ 83 |   @Post(':id/history')
+ 84 |   addHistoryComment(
+ 85 |     @Param('id') id: string,
+ 86 |     @Body() body: { comment: string },
+ 87 |     @CurrentUser() user: JwtUser,
+ 88 |   ) {
+ 89 |     return this.eventsService.addHistoryComment(id, body.comment, user);
+ 90 |   }
+ 91 | 
+ 92 |   // Маршрут для оновлення коментаря
+ 93 |   @Patch('history/:historyId')
+ 94 |   updateHistoryComment(
+ 95 |     @Param('historyId') historyId: string,
+ 96 |     @Body() body: { comment: string },
+ 97 |   ) {
+ 98 |     return this.eventsService.updateHistoryComment(historyId, body.comment);
+ 99 |   }
+100 | 
+101 |   @Delete(':id')
+102 |   remove(@Param('id') id: string) {
+103 |     return this.eventsService.remove(id);
+104 |   }
+105 | 
+106 |   @Post(':id/report')
+107 |   submitReport(
+108 |     @Param('id') id: string,
+109 |     @Body() body: SubmitReportDto,
+110 |     @CurrentUser() user: JwtUser,
+111 |   ) {
+112 |     return this.eventsService.submitReport(id, body, user);
+113 |   }
+114 | 
+115 |   @Get('school/:schoolId/completed')
+116 |   findCompletedBySchool(@Param('schoolId') schoolId: string) {
+117 |     return this.eventsService.findCompletedBySchool(schoolId);
+118 |   }
+119 | 
+120 |   @Get(':id')
+121 |   findOne(@Param('id') id: string) {
+122 |     return this.eventsService.findOne(id);
+123 |   }
+124 | 
+125 |   @Patch(':id/reschedule')
+126 |   reschedule(
+127 |     @Param('id') id: string,
+128 |     @Body() body: RescheduleEventDto,
+129 |     @CurrentUser() user: JwtUser,
+130 |   ) {
+131 |     return this.eventsService.rescheduleEvent(id, body.date, body.time, user);
+132 |   }
+133 | }
+134 | 
 ```
 
 ### File: apps/backend/src/events/events.module.ts
@@ -2345,507 +2505,531 @@
   3 | import { Prisma } from '@prisma/client';
   4 | 
   5 | import { CreateEventDto } from './dto/create-event.dto';
-  6 | import { SubmitReportDto } from './dto/submit-report.dto';
-  7 | import { JwtUser } from '../auth/interfaces/jwt-user.interface';
-  8 | 
-  9 | /* eslint-disable @typescript-eslint/no-unsafe-assignment */
- 10 | 
- 11 | const FIELD_ROLES = ['DRIVER', 'HOST'];
+  6 | import {
+  7 |   SubmitReportDto,
+  8 |   ExpenseItemDto,
+  9 |   SalaryItemDto,
+ 10 | } from './dto/submit-report.dto';
+ 11 | import { JwtUser } from '../auth/interfaces/jwt-user.interface';
  12 | 
- 13 | @Injectable()
- 14 | export class EventsService {
- 15 |   private readonly logger = new Logger(EventsService.name);
+ 13 | /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+ 14 | 
+ 15 | const FIELD_ROLES = ['DRIVER', 'HOST'];
  16 | 
- 17 |   constructor(
- 18 |     private readonly prisma: PrismaService,
- 19 |     private telegramService: TelegramService,
- 20 |   ) {}
- 21 | 
- 22 |   // Список подій для сторінки "Події".
- 23 |   // Водій/ведучий бачить тільки події, де він призначений в екіпаж.
- 24 |   // Решта ролей (менеджер, адмін тощо) бачать усі події.
- 25 |   async findAllForUser(user: JwtUser) {
- 26 |     const isFieldStaff = FIELD_ROLES.includes(user.role);
- 27 | 
- 28 |     return this.prisma.event.findMany({
- 29 |       where: isFieldStaff
- 30 |         ? {
- 31 |             crew: {
- 32 |               OR: [{ hostId: user.sub }, { driverId: user.sub }],
- 33 |             },
- 34 |           }
- 35 |         : {},
- 36 |       include: {
- 37 |         school: { select: { id: true, name: true, type: true } },
- 38 |         city: { select: { id: true, name: true } },
- 39 |         crew: {
- 40 |           include: {
- 41 |             host: { select: { id: true, name: true } },
- 42 |             driver: { select: { id: true, name: true } },
- 43 |           },
- 44 |         },
- 45 |       },
- 46 |       orderBy: { date: 'asc' },
- 47 |     });
- 48 |   }
- 49 | 
- 50 |   // Оновлюємо метод create
- 51 |   async create(data: CreateEventDto, user: JwtUser) {
- 52 |     return this.prisma.event.create({
- 53 |       data: {
- 54 |         ...data,
- 55 |         status: 'BASE' as never,
- 56 |         date: new Date(data.date),
- 57 |         history: {
- 58 |           create: {
- 59 |             action: 'Створено подію. Етап: База',
- 60 |             userId: user.sub, // Беремо ID з токена
- 61 |             userName: user.name, // Беремо ім'я з токена
- 62 |             role: user.role, // Беремо роль з токена
- 63 |           },
- 64 |         },
- 65 |       },
- 66 |       include: { history: true },
- 67 |     });
- 68 |   }
- 69 | 
- 70 |   // Оновлюємо метод updateStatus
- 71 |   async updateStatus(
- 72 |     eventId: string,
- 73 |     newStatus: string,
- 74 |     actionName: string,
- 75 |     comment: string | undefined,
- 76 |     user: JwtUser,
- 77 |   ) {
- 78 |     return this.prisma.event.update({
- 79 |       where: { id: eventId },
- 80 |       data: {
- 81 |         status: newStatus as never,
- 82 |         history: {
- 83 |           create: {
- 84 |             action: actionName,
- 85 |             comment: comment || null,
- 86 |             userId: user.sub, // Більше ніяких 'superadmin-123'!
- 87 |             userName: user.name,
- 88 |             role: user.role,
- 89 |           },
- 90 |         },
- 91 |       },
- 92 |       include: { crew: true, history: { orderBy: { createdAt: 'desc' } } },
- 93 |     });
- 94 |   }
- 95 | 
- 96 |   // Оновлюємо статус підготовки
- 97 |   async updatePreparationStatus(
- 98 |     eventId: string,
- 99 |     field: string,
-100 |     status: string,
-101 |   ) {
-102 |     const existing = await this.prisma.eventPreparation.findUnique({
-103 |       where: { eventId },
-104 |     });
-105 | 
-106 |     if (existing) {
-107 |       return this.prisma.eventPreparation.update({
-108 |         where: { eventId },
-109 |         data: { [field]: status },
-110 |       });
-111 |     } else {
-112 |       return this.prisma.eventPreparation.create({
-113 |         data: { eventId, [field]: status },
+ 17 | @Injectable()
+ 18 | export class EventsService {
+ 19 |   private readonly logger = new Logger(EventsService.name);
+ 20 | 
+ 21 |   constructor(
+ 22 |     private readonly prisma: PrismaService,
+ 23 |     private telegramService: TelegramService,
+ 24 |   ) {}
+ 25 | 
+ 26 |   // Список подій для сторінки "Події".
+ 27 |   // Водій/ведучий бачить тільки події, де він призначений в екіпаж.
+ 28 |   // Решта ролей (менеджер, адмін тощо) бачать усі події.
+ 29 |   async findAllForUser(user: JwtUser) {
+ 30 |     const isFieldStaff = FIELD_ROLES.includes(user.role);
+ 31 | 
+ 32 |     return this.prisma.event.findMany({
+ 33 |       where: isFieldStaff
+ 34 |         ? {
+ 35 |             crew: {
+ 36 |               OR: [{ hostId: user.sub }, { driverId: user.sub }],
+ 37 |             },
+ 38 |           }
+ 39 |         : {},
+ 40 |       include: {
+ 41 |         school: { select: { id: true, name: true, type: true } },
+ 42 |         city: { select: { id: true, name: true } },
+ 43 |         crew: {
+ 44 |           include: {
+ 45 |             host: { select: { id: true, name: true } },
+ 46 |             driver: { select: { id: true, name: true } },
+ 47 |           },
+ 48 |         },
+ 49 |       },
+ 50 |       orderBy: { date: 'asc' },
+ 51 |     });
+ 52 |   }
+ 53 | 
+ 54 |   // Оновлюємо метод create
+ 55 |   async create(data: CreateEventDto, user: JwtUser) {
+ 56 |     return this.prisma.event.create({
+ 57 |       data: {
+ 58 |         ...data,
+ 59 |         status: 'BASE' as never,
+ 60 |         date: new Date(data.date),
+ 61 |         history: {
+ 62 |           create: {
+ 63 |             action: 'Створено подію. Етап: База',
+ 64 |             userId: user.sub, // Беремо ID з токена
+ 65 |             userName: user.name, // Беремо ім'я з токена
+ 66 |             role: user.role, // Беремо роль з токена
+ 67 |           },
+ 68 |         },
+ 69 |       },
+ 70 |       include: { history: true },
+ 71 |     });
+ 72 |   }
+ 73 | 
+ 74 |   // Оновлюємо метод updateStatus
+ 75 |   async updateStatus(
+ 76 |     eventId: string,
+ 77 |     newStatus: string,
+ 78 |     actionName: string,
+ 79 |     comment: string | undefined,
+ 80 |     user: JwtUser,
+ 81 |   ) {
+ 82 |     return this.prisma.event.update({
+ 83 |       where: { id: eventId },
+ 84 |       data: {
+ 85 |         status: newStatus as never,
+ 86 |         history: {
+ 87 |           create: {
+ 88 |             action: actionName,
+ 89 |             comment: comment || null,
+ 90 |             userId: user.sub, // Більше ніяких 'superadmin-123'!
+ 91 |             userName: user.name,
+ 92 |             role: user.role,
+ 93 |           },
+ 94 |         },
+ 95 |       },
+ 96 |       include: { crew: true, history: { orderBy: { createdAt: 'desc' } } },
+ 97 |     });
+ 98 |   }
+ 99 | 
+100 |   // Оновлюємо статус підготовки
+101 |   async updatePreparationStatus(
+102 |     eventId: string,
+103 |     field: string,
+104 |     status: string,
+105 |   ) {
+106 |     const existing = await this.prisma.eventPreparation.findUnique({
+107 |       where: { eventId },
+108 |     });
+109 | 
+110 |     if (existing) {
+111 |       return this.prisma.eventPreparation.update({
+112 |         where: { eventId },
+113 |         data: { [field]: status },
 114 |       });
-115 |     }
-116 |   }
-117 | 
-118 |   // --- ВСТАВЛЯЙ ОНОВЛЕНИЙ МЕТОД ТУТ ---
-119 |   async assignCrewToEvent(
-120 |     eventId: string,
-121 |     crewId: string, // ЗМІНЕНО: Тепер приймаємо тільки ID існуючого екіпажу
-122 |   ) {
-123 |     const event = await this.prisma.event.update({
-124 |       where: { id: eventId },
-125 |       data: { crewId: crewId },
-126 |       include: {
-127 |         crew: { include: { host: true, driver: true } },
-128 |         school: true,
-129 |         city: true,
-130 |         preparation: true,
-131 |         history: { orderBy: { createdAt: 'desc' } },
-132 |       },
-133 |     });
-134 | 
-135 |     const hostId = event.crew?.hostId;
-136 |     const driverId = event.crew?.driverId;
-137 | 
-138 |     const dateStr = new Date(event.date).toLocaleDateString('uk-UA', {
-139 |       day: '2-digit',
-140 |       month: 'long',
-141 |       year: 'numeric',
-142 |     });
-143 |     const timeStr = event.time ? `, ${event.time}` : '';
-144 | 
-145 |     const buildMessage = (role: 'ведучий' | 'водій') =>
-146 |       `🎯 <b>Вас призначено на подію!</b>\n\n` +
-147 |       `👤 <b>Роль:</b> ${role === 'ведучий' ? '🎙️ Ведучий' : '🚗 Водій'}\n` +
-148 |       `📅 <b>Дата:</b> ${dateStr}${timeStr}\n` +
-149 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
-150 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
-151 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
-152 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
-153 |       (event.contactPerson
-154 |         ? `👤 <b>Контакт:</b> ${event.contactPerson}\n`
-155 |         : '') +
-156 |       (event.contactPhone ? `📞 <b>Телефон:</b> ${event.contactPhone}\n` : '') +
-157 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
-158 | 
-159 |     if (hostId) {
-160 |       const hostChatId = await this.getChatIdForUser(hostId);
-161 |       this.logger.log(`[assignCrew] hostChatId resolved=${hostChatId}`);
+115 |     } else {
+116 |       return this.prisma.eventPreparation.create({
+117 |         data: { eventId, [field]: status },
+118 |       });
+119 |     }
+120 |   }
+121 | 
+122 |   // --- ВСТАВЛЯЙ ОНОВЛЕНИЙ МЕТОД ТУТ ---
+123 |   async assignCrewToEvent(
+124 |     eventId: string,
+125 |     crewId: string, // ЗМІНЕНО: Тепер приймаємо тільки ID існуючого екіпажу
+126 |   ) {
+127 |     const event = await this.prisma.event.update({
+128 |       where: { id: eventId },
+129 |       data: { crewId: crewId },
+130 |       include: {
+131 |         crew: { include: { host: true, driver: true } },
+132 |         school: true,
+133 |         city: true,
+134 |         preparation: true,
+135 |         history: { orderBy: { createdAt: 'desc' } },
+136 |       },
+137 |     });
+138 | 
+139 |     const hostId = event.crew?.hostId;
+140 |     const driverId = event.crew?.driverId;
+141 | 
+142 |     const dateStr = new Date(event.date).toLocaleDateString('uk-UA', {
+143 |       day: '2-digit',
+144 |       month: 'long',
+145 |       year: 'numeric',
+146 |     });
+147 |     const timeStr = event.time ? `, ${event.time}` : '';
+148 | 
+149 |     const buildMessage = (role: 'ведучий' | 'водій') =>
+150 |       `🎯 <b>Вас призначено на подію!</b>\n\n` +
+151 |       `👤 <b>Роль:</b> ${role === 'ведучий' ? '🎙️ Ведучий' : '🚗 Водій'}\n` +
+152 |       `📅 <b>Дата:</b> ${dateStr}${timeStr}\n` +
+153 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
+154 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
+155 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
+156 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
+157 |       (event.contactPerson
+158 |         ? `👤 <b>Контакт:</b> ${event.contactPerson}\n`
+159 |         : '') +
+160 |       (event.contactPhone ? `📞 <b>Телефон:</b> ${event.contactPhone}\n` : '') +
+161 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
 162 | 
-163 |       if (hostChatId) {
-164 |         await this.telegramService.sendMessage(
-165 |           hostChatId,
-166 |           buildMessage('ведучий'),
-167 |         );
-168 |       } else {
-169 |         this.logger.warn(
-170 |           `[assignCrew] Не вдалося надіслати повідомлення ведучому ${hostId}: chatId не знайдено (користувач не натиснув /start?)`,
+163 |     if (hostId) {
+164 |       const hostChatId = await this.getChatIdForUser(hostId);
+165 |       this.logger.log(`[assignCrew] hostChatId resolved=${hostChatId}`);
+166 | 
+167 |       if (hostChatId) {
+168 |         await this.telegramService.sendMessage(
+169 |           hostChatId,
+170 |           buildMessage('ведучий'),
 171 |         );
-172 |       }
-173 |     }
-174 | 
-175 |     if (driverId) {
-176 |       const driverChatId = await this.getChatIdForUser(driverId);
-177 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
+172 |       } else {
+173 |         this.logger.warn(
+174 |           `[assignCrew] Не вдалося надіслати повідомлення ведучому ${hostId}: chatId не знайдено (користувач не натиснув /start?)`,
+175 |         );
+176 |       }
+177 |     }
 178 | 
-179 |       if (driverChatId) {
-180 |         await this.telegramService.sendMessage(
-181 |           driverChatId,
-182 |           buildMessage('водій'),
-183 |         );
-184 |       } else {
-185 |         this.logger.warn(
-186 |           `[assignCrew] Не вдалося надіслати повідомлення водію ${driverId}: chatId не знайдено`,
+179 |     if (driverId) {
+180 |       const driverChatId = await this.getChatIdForUser(driverId);
+181 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
+182 | 
+183 |       if (driverChatId) {
+184 |         await this.telegramService.sendMessage(
+185 |           driverChatId,
+186 |           buildMessage('водій'),
 187 |         );
-188 |       }
-189 |     }
-190 | 
-191 |     if (driverId) {
-192 |       const driver = await this.prisma.user.findUnique({
-193 |         where: { id: driverId },
-194 |       });
-195 |       this.logger.log(
-196 |         `[assignCrew] driver=${JSON.stringify({ name: driver?.name, telegramId: driver?.telegramId, telegramChatId: driver?.telegramChatId })}`,
-197 |       );
-198 |       const driverChatId =
-199 |         driver?.telegramChatId ||
-200 |         (driver?.telegramId && /^\d+$/.test(driver.telegramId)
-201 |           ? driver.telegramId
-202 |           : null);
-203 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
-204 |       if (driverChatId) {
-205 |         await this.telegramService.sendMessage(
-206 |           driverChatId,
-207 |           buildMessage('водій'),
-208 |         );
-209 |       }
-210 |     }
-211 | 
-212 |     return event;
-213 |   }
-214 | 
-215 |   async rescheduleEvent(
-216 |     eventId: string,
-217 |     newDate: string,
-218 |     newTime: string,
-219 |     user: JwtUser,
-220 |   ) {
-221 |     const event = await this.prisma.event.update({
-222 |       where: { id: eventId },
-223 |       data: {
-224 |         date: new Date(newDate),
-225 |         time: newTime,
-226 |         history: {
-227 |           create: {
-228 |             action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
-229 |             userId: user.sub,
-230 |             userName: user.name,
-231 |             role: user.role,
-232 |           },
-233 |         },
-234 |       },
-235 |       include: {
-236 |         crew: { include: { host: true, driver: true } },
-237 |         school: true,
-238 |         city: true,
-239 |         history: { orderBy: { createdAt: 'desc' } },
-240 |       },
-241 |     });
-242 | 
-243 |     const dateStr = new Date(newDate).toLocaleDateString('uk-UA', {
-244 |       day: '2-digit',
-245 |       month: 'long',
-246 |       year: 'numeric',
-247 |     });
-248 |     const msg =
-249 |       `📅 <b>Подію перенесено!</b>\n\n` +
-250 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
-251 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
-252 |       `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
-253 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
-254 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
-255 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
-256 | 
-257 |     const sendTo = async (userId: string | null | undefined) => {
-258 |       if (!userId) return;
-259 |       const u = await this.prisma.user.findUnique({ where: { id: userId } });
-260 |       const chatId =
-261 |         u?.telegramChatId ||
-262 |         (u?.telegramId && /^\d+$/.test(u.telegramId) ? u.telegramId : null);
-263 |       if (chatId) await this.telegramService.sendMessage(chatId, msg);
-264 |     };
-265 | 
-266 |     await sendTo(event.crew?.hostId);
-267 |     await sendTo(event.crew?.driverId);
-268 | 
-269 |     return event;
-270 |   }
-271 | 
-272 |   async getChatIdForUser(userId: string): Promise<string | null> {
-273 |     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-274 |     if (!user) return null;
+188 |       } else {
+189 |         this.logger.warn(
+190 |           `[assignCrew] Не вдалося надіслати повідомлення водію ${driverId}: chatId не знайдено`,
+191 |         );
+192 |       }
+193 |     }
+194 | 
+195 |     if (driverId) {
+196 |       const driver = await this.prisma.user.findUnique({
+197 |         where: { id: driverId },
+198 |       });
+199 |       this.logger.log(
+200 |         `[assignCrew] driver=${JSON.stringify({ name: driver?.name, telegramId: driver?.telegramId, telegramChatId: driver?.telegramChatId })}`,
+201 |       );
+202 |       const driverChatId =
+203 |         driver?.telegramChatId ||
+204 |         (driver?.telegramId && /^\d+$/.test(driver.telegramId)
+205 |           ? driver.telegramId
+206 |           : null);
+207 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
+208 |       if (driverChatId) {
+209 |         await this.telegramService.sendMessage(
+210 |           driverChatId,
+211 |           buildMessage('водій'),
+212 |         );
+213 |       }
+214 |     }
+215 | 
+216 |     return event;
+217 |   }
+218 | 
+219 |   async rescheduleEvent(
+220 |     eventId: string,
+221 |     newDate: string,
+222 |     newTime: string,
+223 |     user: JwtUser,
+224 |   ) {
+225 |     const event = await this.prisma.event.update({
+226 |       where: { id: eventId },
+227 |       data: {
+228 |         date: new Date(newDate),
+229 |         time: newTime,
+230 |         history: {
+231 |           create: {
+232 |             action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
+233 |             userId: user.sub,
+234 |             userName: user.name,
+235 |             role: user.role,
+236 |           },
+237 |         },
+238 |       },
+239 |       include: {
+240 |         crew: { include: { host: true, driver: true } },
+241 |         school: true,
+242 |         city: true,
+243 |         history: { orderBy: { createdAt: 'desc' } },
+244 |       },
+245 |     });
+246 | 
+247 |     const dateStr = new Date(newDate).toLocaleDateString('uk-UA', {
+248 |       day: '2-digit',
+249 |       month: 'long',
+250 |       year: 'numeric',
+251 |     });
+252 |     const msg =
+253 |       `📅 <b>Подію перенесено!</b>\n\n` +
+254 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
+255 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
+256 |       `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
+257 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
+258 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
+259 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+260 | 
+261 |     const sendTo = async (userId: string | null | undefined) => {
+262 |       if (!userId) return;
+263 |       const u = await this.prisma.user.findUnique({ where: { id: userId } });
+264 |       const chatId =
+265 |         u?.telegramChatId ||
+266 |         (u?.telegramId && /^\d+$/.test(u.telegramId) ? u.telegramId : null);
+267 |       if (chatId) await this.telegramService.sendMessage(chatId, msg);
+268 |     };
+269 | 
+270 |     await sendTo(event.crew?.hostId);
+271 |     await sendTo(event.crew?.driverId);
+272 | 
+273 |     return event;
+274 |   }
 275 | 
-276 |     // Якщо користувач натиснув /start, telegramChatId буде заповнено
-277 |     if (user.telegramChatId) return user.telegramChatId;
-278 | 
-279 |     // Якщо в telegramId вбито числовий ID вручну, можна спробувати його
-280 |     if (user.telegramId && /^\d+$/.test(user.telegramId))
-281 |       return user.telegramId;
+276 |   async getChatIdForUser(userId: string): Promise<string | null> {
+277 |     const user = await this.prisma.user.findUnique({ where: { id: userId } });
+278 |     if (!user) return null;
+279 | 
+280 |     // Якщо користувач натиснув /start, telegramChatId буде заповнено
+281 |     if (user.telegramChatId) return user.telegramChatId;
 282 | 
-283 |     return null;
-284 |   }
-285 | 
-286 |   async findBySchool(schoolId: string, minimal = false) {
-287 |     if (minimal) {
-288 |       return this.prisma.event.findMany({
-289 |         where: { schoolId },
-290 |         select: {
-291 |           id: true,
-292 |           project: true,
-293 |           date: true,
-294 |           time: true,
-295 |           status: true,
-296 |           price: true,
-297 |           childrenPlanned: true,
-298 |           address: true,
-299 |           contactPerson: true,
-300 |           contactPhone: true,
-301 |           crewId: true,
-302 |           crew: {
-303 |             select: { id: true, name: true, hostId: true, driverId: true },
-304 |           },
-305 |         },
-306 |         orderBy: { date: 'desc' },
-307 |       });
-308 |     }
-309 |     return this.prisma.event.findMany({
-310 |       where: { schoolId },
-311 |       include: {
-312 |         crew: { include: { host: true, driver: true } },
-313 |         history: { orderBy: { createdAt: 'desc' } },
-314 |         preparation: true,
-315 |       },
-316 |       orderBy: { date: 'desc' },
-317 |     });
-318 |   }
-319 | 
-320 |   async updateHistoryComment(historyId: string, comment: string) {
-321 |     return this.prisma.eventHistory.update({
-322 |       where: { id: historyId },
-323 |       data: { comment: comment || null },
-324 |     });
-325 |   }
-326 | 
-327 |   async addHistoryComment(eventId: string, comment: string, user: JwtUser) {
-328 |     await this.prisma.eventHistory.create({
-329 |       data: {
-330 |         eventId,
-331 |         action: 'Коментар',
-332 |         comment,
-333 |         userId: user.sub,
-334 |         userName: user.name,
-335 |         role: user.role,
-336 |       },
-337 |     });
-338 | 
-339 |     return this.prisma.event.findUnique({
-340 |       where: { id: eventId },
-341 |       include: {
-342 |         history: { orderBy: { createdAt: 'desc' } },
-343 |       },
-344 |     });
-345 |   }
-346 | 
-347 |   // ОНОВЛЕНО: Тепер метод видалення безпечно видаляє зв'язані дані
-348 |   async remove(id: string) {
-349 |     // 1. Видаляємо історію події
-350 |     await this.prisma.eventHistory.deleteMany({
-351 |       where: { eventId: id },
-352 |     });
-353 | 
-354 |     // 2. Видаляємо підготовку події (якщо вона існує)
-355 |     await this.prisma.eventPreparation.deleteMany({
-356 |       where: { eventId: id },
-357 |     });
-358 | 
-359 |     // 3. Тепер спокійно видаляємо саму подію
-360 |     return this.prisma.event.delete({
-361 |       where: { id },
-362 |     });
-363 |   }
-364 | 
-365 |   async submitReport(
-366 |     eventId: string,
-367 |     reportData: SubmitReportDto,
-368 |     user: JwtUser,
-369 |   ) {
-370 |     // 1. Зберігаємо звіт у базу (без JSON полів)
-371 |     await this.prisma.eventReport.upsert({
-372 |       where: { eventId },
-373 |       update: {
-374 |         announcementDone: reportData.announcementDone,
-375 |         materialShown: reportData.materialShown,
-376 |         childrenCount: reportData.childrenCount,
-377 |         classesCount: reportData.classesCount,
-378 |         privilegedCount: reportData.privilegedCount,
-379 |         showingsCount: reportData.showingsCount,
-380 |         totalSum: reportData.totalSum,
-381 |         schoolSum: reportData.schoolSum,
-382 |         remainderSum: reportData.remainderSum,
-383 |         rating: reportData.rating,
-384 |       },
-385 |       create: {
-386 |         eventId,
-387 |         announcementDone: reportData.announcementDone,
-388 |         materialShown: reportData.materialShown,
-389 |         childrenCount: reportData.childrenCount,
-390 |         classesCount: reportData.classesCount,
-391 |         privilegedCount: reportData.privilegedCount,
-392 |         showingsCount: reportData.showingsCount,
-393 |         totalSum: reportData.totalSum,
-394 |         schoolSum: reportData.schoolSum,
-395 |         remainderSum: reportData.remainderSum,
-396 |         rating: reportData.rating,
-397 |       },
-398 |     });
-399 | 
-400 |     // Видаляємо старі записи витрат і зарплат
-401 |     await this.prisma.expenseItem.deleteMany({ where: { reportId: eventId } });
-402 |     await this.prisma.salaryItem.deleteMany({ where: { reportId: eventId } });
+283 |     // Якщо в telegramId вбито числовий ID вручну, можна спробувати його
+284 |     if (user.telegramId && /^\d+$/.test(user.telegramId))
+285 |       return user.telegramId;
+286 | 
+287 |     return null;
+288 |   }
+289 | 
+290 |   async findBySchool(schoolId: string, minimal = false) {
+291 |     if (minimal) {
+292 |       return this.prisma.event.findMany({
+293 |         where: { schoolId },
+294 |         select: {
+295 |           id: true,
+296 |           project: true,
+297 |           date: true,
+298 |           time: true,
+299 |           status: true,
+300 |           price: true,
+301 |           childrenPlanned: true,
+302 |           address: true,
+303 |           contactPerson: true,
+304 |           contactPhone: true,
+305 |           crewId: true,
+306 |           crew: {
+307 |             select: { id: true, name: true, hostId: true, driverId: true },
+308 |           },
+309 |         },
+310 |         orderBy: { date: 'desc' },
+311 |       });
+312 |     }
+313 |     return this.prisma.event.findMany({
+314 |       where: { schoolId },
+315 |       include: {
+316 |         crew: { include: { host: true, driver: true } },
+317 |         history: { orderBy: { createdAt: 'desc' } },
+318 |         preparation: true,
+319 |       },
+320 |       orderBy: { date: 'desc' },
+321 |     });
+322 |   }
+323 | 
+324 |   async updateHistoryComment(historyId: string, comment: string) {
+325 |     return this.prisma.eventHistory.update({
+326 |       where: { id: historyId },
+327 |       data: { comment: comment || null },
+328 |     });
+329 |   }
+330 | 
+331 |   async addHistoryComment(eventId: string, comment: string, user: JwtUser) {
+332 |     await this.prisma.eventHistory.create({
+333 |       data: {
+334 |         eventId,
+335 |         action: 'Коментар',
+336 |         comment,
+337 |         userId: user.sub,
+338 |         userName: user.name,
+339 |         role: user.role,
+340 |       },
+341 |     });
+342 | 
+343 |     return this.prisma.event.findUnique({
+344 |       where: { id: eventId },
+345 |       include: {
+346 |         history: { orderBy: { createdAt: 'desc' } },
+347 |       },
+348 |     });
+349 |   }
+350 | 
+351 |   // ОНОВЛЕНО: Тепер метод видалення безпечно видаляє зв'язані дані
+352 |   async remove(id: string) {
+353 |     // 1. Видаляємо історію події
+354 |     await this.prisma.eventHistory.deleteMany({
+355 |       where: { eventId: id },
+356 |     });
+357 | 
+358 |     // 2. Видаляємо підготовку події (якщо вона існує)
+359 |     await this.prisma.eventPreparation.deleteMany({
+360 |       where: { eventId: id },
+361 |     });
+362 | 
+363 |     // 3. Тепер спокійно видаляємо саму подію
+364 |     return this.prisma.event.delete({
+365 |       where: { id },
+366 |     });
+367 |   }
+368 | 
+369 |   async submitReport(
+370 |     eventId: string,
+371 |     reportData: SubmitReportDto,
+372 |     user: JwtUser,
+373 |   ) {
+374 |     // 1. Зберігаємо звіт у базу (без JSON полів)
+375 |     await this.prisma.eventReport.upsert({
+376 |       where: { eventId },
+377 |       update: {
+378 |         announcementDone: reportData.announcementDone,
+379 |         materialShown: reportData.materialShown,
+380 |         childrenCount: reportData.childrenCount,
+381 |         classesCount: reportData.classesCount,
+382 |         privilegedCount: reportData.privilegedCount,
+383 |         showingsCount: reportData.showingsCount,
+384 |         totalSum: reportData.totalSum,
+385 |         schoolSum: reportData.schoolSum,
+386 |         remainderSum: reportData.remainderSum,
+387 |         rating: reportData.rating,
+388 |       },
+389 |       create: {
+390 |         eventId,
+391 |         announcementDone: reportData.announcementDone,
+392 |         materialShown: reportData.materialShown,
+393 |         childrenCount: reportData.childrenCount,
+394 |         classesCount: reportData.classesCount,
+395 |         privilegedCount: reportData.privilegedCount,
+396 |         showingsCount: reportData.showingsCount,
+397 |         totalSum: reportData.totalSum,
+398 |         schoolSum: reportData.schoolSum,
+399 |         remainderSum: reportData.remainderSum,
+400 |         rating: reportData.rating,
+401 |       },
+402 |     });
 403 | 
-404 |     // Створюємо нові записи витрат
-405 |     if (reportData.expenses?.length) {
-406 |       await this.prisma.expenseItem.createMany({
-407 |         data: reportData.expenses.map((exp: any) => ({
-408 |           reportId: eventId,
-409 |           category: exp.category || 'Інше',
-410 |           name: exp.name,
-411 |           amount: new Prisma.Decimal(exp.amount || 0),
-412 |         })),
-413 |       });
-414 |     }
-415 | 
-416 |     // Створюємо нові записи зарплат + нарахування балансу
-417 |     if (reportData.salaries?.length) {
-418 |       await this.prisma.salaryItem.createMany({
-419 |         data: reportData.salaries.map((s: any) => ({
-420 |           reportId: eventId,
-421 |           userId: s.userId,
-422 |           userName: s.name,
-423 |           amount: new Prisma.Decimal(s.amount || 0),
-424 |           role: s.role,
-425 |         })),
-426 |       });
-427 | 
-428 |       await Promise.all(
-429 |         reportData.salaries
-430 |           .filter((s) => s.userId && s.amount > 0)
-431 |           .map((s) =>
-432 |             this.prisma.user.update({
-433 |               where: { id: s.userId },
-434 |               data: { balance: { increment: s.amount } },
-435 |             }),
-436 |           ),
-437 |       );
-438 |     }
-439 | 
-440 |     // 2. Оновлюємо статус події
-441 |     return this.prisma.event.update({
-442 |       where: { id: eventId },
-443 |       data: {
-444 |         status: 'REPORT' as never,
-445 |         history: {
-446 |           create: {
-447 |             action: 'Сформовано звіт. Етап: Звіт',
-448 |             userId: user.sub,
-449 |             userName: user.name,
-450 |             role: user.role,
-451 |           },
-452 |         },
-453 |       },
-454 |       include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
-455 |     });
-456 |   }
-457 | 
-458 |   async findOne(id: string) {
-459 |     return this.prisma.event.findUnique({
-460 |       where: { id },
-461 |       include: {
-462 |         school: true,
-463 |         city: true,
-464 |         crew: {
-465 |           include: {
-466 |             host: { select: { id: true, name: true } },
-467 |             driver: { select: { id: true, name: true } },
-468 |           },
-469 |         },
-470 |         report: true,
-471 |       },
-472 |     });
-473 |   }
-474 | 
-475 |   async findCompletedBySchool(schoolId: string) {
-476 |     return this.prisma.event.findMany({
-477 |       where: { schoolId, status: 'RE_SALE' },
-478 |       select: {
-479 |         id: true,
-480 |         project: true,
-481 |         date: true,
-482 |         status: true,
-483 |         price: true,
-484 |         childrenPlanned: true,
-485 |         report: {
-486 |           select: {
-487 |             childrenCount: true,
-488 |             classesCount: true,
-489 |             privilegedCount: true,
-490 |             showingsCount: true,
-491 |             totalSum: true,
-492 |             schoolSum: true,
-493 |             remainderSum: true,
-494 |             rating: true,
-495 |             expenseItems: {
-496 |               select: { category: true, name: true, amount: true },
-497 |             },
-498 |           },
-499 |         },
-500 |         history: { orderBy: { createdAt: 'asc' } },
-501 |       },
-502 |       orderBy: { date: 'desc' },
-503 |     });
-504 |   }
-505 | }
-506 | 
+404 |     // Видаляємо старі записи витрат і зарплат
+405 |     await this.prisma.expenseItem.deleteMany({ where: { reportId: eventId } });
+406 |     await this.prisma.salaryItem.deleteMany({ where: { reportId: eventId } });
+407 | 
+408 |     // Створюємо нові записи витрат
+409 |     if (reportData.expenses?.length) {
+410 |       await this.prisma.expenseItem.createMany({
+411 |         data: reportData.expenses.map((exp: ExpenseItemDto) => ({
+412 |           reportId: eventId,
+413 |           category: exp.category || 'Інше',
+414 |           name: exp.name,
+415 |           amount: new Prisma.Decimal(exp.amount || 0),
+416 |         })),
+417 |       });
+418 |     }
+419 | 
+420 |     // Створюємо нові записи зарплат + нарахування балансу
+421 |     if (reportData.salaries?.length) {
+422 |       await this.prisma.salaryItem.createMany({
+423 |         data: reportData.salaries.map((s: SalaryItemDto) => ({
+424 |           reportId: eventId,
+425 |           userId: s.userId,
+426 |           userName: s.name,
+427 |           amount: new Prisma.Decimal(s.amount || 0),
+428 |           role: s.role,
+429 |         })),
+430 |       });
+431 | 
+432 |       await Promise.all(
+433 |         reportData.salaries
+434 |           .filter((s) => s.userId && s.amount > 0)
+435 |           .map((s) =>
+436 |             this.prisma.user.update({
+437 |               where: { id: s.userId },
+438 |               data: { balance: { increment: s.amount } },
+439 |             }),
+440 |           ),
+441 |       );
+442 |     }
+443 | 
+444 |     // 2. Оновлюємо статус події
+445 |     return this.prisma.event.update({
+446 |       where: { id: eventId },
+447 |       data: {
+448 |         status: 'REPORT' as never,
+449 |         history: {
+450 |           create: {
+451 |             action: 'Сформовано звіт. Етап: Звіт',
+452 |             userId: user.sub,
+453 |             userName: user.name,
+454 |             role: user.role,
+455 |           },
+456 |         },
+457 |       },
+458 |       include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
+459 |     });
+460 |   }
+461 | 
+462 |   async findOne(id: string) {
+463 |     return this.prisma.event.findUnique({
+464 |       where: { id },
+465 |       include: {
+466 |         school: true,
+467 |         city: true,
+468 |         crew: {
+469 |           include: {
+470 |             host: { select: { id: true, name: true } },
+471 |             driver: { select: { id: true, name: true } },
+472 |           },
+473 |         },
+474 |         report: true,
+475 |       },
+476 |     });
+477 |   }
+478 | 
+479 |   async findCompletedBySchool(schoolId: string) {
+480 |     return this.prisma.event.findMany({
+481 |       where: { schoolId, status: 'RE_SALE' },
+482 |       select: {
+483 |         id: true,
+484 |         project: true,
+485 |         date: true,
+486 |         status: true,
+487 |         price: true,
+488 |         childrenPlanned: true,
+489 |         report: {
+490 |           select: {
+491 |             childrenCount: true,
+492 |             classesCount: true,
+493 |             privilegedCount: true,
+494 |             showingsCount: true,
+495 |             totalSum: true,
+496 |             schoolSum: true,
+497 |             remainderSum: true,
+498 |             rating: true,
+499 |             expenseItems: {
+500 |               select: { category: true, name: true, amount: true },
+501 |             },
+502 |           },
+503 |         },
+504 |         history: { orderBy: { createdAt: 'asc' } },
+505 |       },
+506 |       orderBy: { date: 'desc' },
+507 |     });
+508 |   }
+509 | }
+510 | 
+```
+
+### File: apps/backend/src/finance/create-expense-item.dto.ts
+```ts
+  0 | import { IsString, IsNumber, IsNotEmpty, IsPositive } from 'class-validator';
+  1 | 
+  2 | export class CreateExpenseItemDto {
+  3 |   @IsString()
+  4 |   @IsNotEmpty()
+  5 |   category: string;
+  6 | 
+  7 |   @IsNumber()
+  8 |   @IsPositive() // Гарантує, що сума витрат буде > 0
+  9 |   amount: number;
+ 10 | 
+ 11 |   @IsString()
+ 12 |   @IsNotEmpty()
+ 13 |   reportId: string;
+ 14 | }
+ 15 | 
 ```
 
 ### File: apps/backend/src/finance/finance.controller.ts
@@ -3810,13 +3994,35 @@
 ```ts
   0 | import { NestFactory } from '@nestjs/core';
   1 | import { AppModule } from './app.module';
-  2 | 
-  3 | async function bootstrap() {
-  4 |   const app = await NestFactory.create(AppModule);
-  5 |   app.enableCors();
-  6 |   await app.listen(process.env.PORT ?? 3000);
-  7 | }
-  8 | bootstrap();
+  2 | import { ValidationPipe } from '@nestjs/common';
+  3 | 
+  4 | async function bootstrap() {
+  5 |   const app = await NestFactory.create(AppModule);
+  6 |   app.enableCors();
+  7 |   app.useGlobalPipes(
+  8 |     new ValidationPipe({
+  9 |       transform: true,
+ 10 |       whitelist: true,
+ 11 |       forbidNonWhitelisted: true,
+ 12 |     }),
+ 13 |   );
+ 14 |   await app.listen(process.env.PORT ?? 3000);
+ 15 | }
+ 16 | bootstrap();
+ 17 | 
+```
+
+### File: apps/backend/src/prisma/prisma.mock.ts
+```ts
+  0 | import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
+  1 | import { PrismaService } from './prisma.service';
+  2 | // Типізація для нашого моку, щоб автодоповнення працювало в тестах
+  3 | export type MockPrismaService = DeepMockProxy<PrismaService>;
+  4 | 
+  5 | // Функція, яка створює глибокий мок PrismaClient
+  6 | export const createPrismaMock = (): MockPrismaService => {
+  7 |   return mockDeep<PrismaService>();
+  8 | };
   9 | 
 ```
 
@@ -10627,534 +10833,549 @@
   8 |   name: string;
   9 |   role: "host" | "driver";
  10 | }
- 11 | interface ReportModalProps {
- 12 |   isOpen: boolean;
- 13 |   onClose: () => void;
- 14 |   onSave: (data: any) => void;
- 15 |   schoolName: string;
- 16 |   eventType?: string;
- 17 |   eventDate?: string;
- 18 |   eventIndex?: number;
- 19 |   crew?: {
- 20 |     host?: { id: string; name: string } | null;
- 21 |     driver?: { id: string; name: string } | null;
- 22 |   };
- 23 | }
- 24 | 
- 25 | const WEEKDAY_FMT = new Intl.DateTimeFormat("uk-UA", { weekday: "long" });
- 26 | const DATE_FMT = new Intl.DateTimeFormat("uk-UA", {
- 27 |   day: "2-digit",
- 28 |   month: "2-digit",
- 29 |   year: "2-digit",
- 30 | });
- 31 | 
- 32 | function formatDate(dateStr?: string) {
- 33 |   if (!dateStr) return "—";
- 34 |   const d = new Date(dateStr);
- 35 |   if (Number.isNaN(d.getTime())) return "—";
- 36 |   return `${DATE_FMT.format(d)} ${WEEKDAY_FMT.format(d)}`;
- 37 | }
- 38 | 
- 39 | function formatMoney(value: number) {
- 40 |   return new Intl.NumberFormat("uk-UA").format(Math.round(value || 0));
- 41 | }
- 42 | 
- 43 | const Icon = {
- 44 |   Check: () => (
- 45 |     <svg
- 46 |       viewBox="0 0 24 24"
- 47 |       fill="none"
- 48 |       stroke="currentColor"
- 49 |       strokeWidth="2"
- 50 |       strokeLinecap="round"
- 51 |       strokeLinejoin="round"
- 52 |       className="w-4 h-4"
- 53 |     >
- 54 |       <path d="M9 11l3 3L22 4" />
- 55 |       <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
- 56 |     </svg>
- 57 |   ),
- 58 |   Users: () => (
- 59 |     <svg
- 60 |       viewBox="0 0 24 24"
- 61 |       fill="none"
- 62 |       stroke="currentColor"
- 63 |       strokeWidth="2"
- 64 |       strokeLinecap="round"
- 65 |       strokeLinejoin="round"
- 66 |       className="w-4 h-4"
- 67 |     >
- 68 |       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
- 69 |       <circle cx="9" cy="7" r="4" />
- 70 |       <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
- 71 |       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
- 72 |     </svg>
- 73 |   ),
- 74 |   Wallet: () => (
- 75 |     <svg
- 76 |       viewBox="0 0 24 24"
- 77 |       fill="none"
- 78 |       stroke="currentColor"
- 79 |       strokeWidth="2"
- 80 |       strokeLinecap="round"
- 81 |       strokeLinejoin="round"
- 82 |       className="w-4 h-4"
- 83 |     >
- 84 |       <path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1" />
- 85 |       <path d="M16 12h6v4h-6a2 2 0 1 1 0-4z" />
- 86 |     </svg>
- 87 |   ),
- 88 |   Star: () => (
- 89 |     <svg
- 90 |       viewBox="0 0 24 24"
- 91 |       fill="none"
- 92 |       stroke="currentColor"
- 93 |       strokeWidth="2"
- 94 |       strokeLinecap="round"
- 95 |       strokeLinejoin="round"
- 96 |       className="w-4 h-4"
- 97 |     >
- 98 |       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
- 99 |     </svg>
-100 |   ),
-101 | };
-102 | 
-103 | function IconBadge({
-104 |   color,
-105 |   children,
-106 | }: {
-107 |   color: string;
-108 |   children: React.ReactNode;
-109 | }) {
-110 |   return (
-111 |     <span
-112 |       className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center ${color}`}
-113 |     >
-114 |       {children}
-115 |     </span>
-116 |   );
-117 | }
-118 | 
-119 | function CardHeader({
-120 |   icon,
-121 |   color,
-122 |   title,
-123 | }: {
-124 |   icon: React.ReactNode;
-125 |   color: string;
-126 |   title: string;
-127 | }) {
-128 |   return (
-129 |     <div className="flex items-center gap-2.5 mb-4">
-130 |       <IconBadge color={color}>{icon}</IconBadge>
-131 |       <h4 className="text-sm font-bold text-slate-800">{title}</h4>
-132 |     </div>
-133 |   );
-134 | }
-135 | 
-136 | function Row({
-137 |   label,
-138 |   children,
-139 | }: {
-140 |   label: string;
-141 |   children: React.ReactNode;
+ 11 | export interface ReportData {
+ 12 |   announcementDone: boolean;
+ 13 |   materialShown: boolean;
+ 14 |   childrenCount: number;
+ 15 |   classesCount: number;
+ 16 |   privilegedCount: number;
+ 17 |   showingsCount: number;
+ 18 |   totalSum: number;
+ 19 |   schoolSum: number;
+ 20 |   remainderSum: number;
+ 21 |   rating: number;
+ 22 |   expenses: { name: string; amount: number }[];
+ 23 |   salaries: { userId: string; name: string; amount: number; role: string }[];
+ 24 | }
+ 25 | 
+ 26 | interface ReportModalProps {
+ 27 |   isOpen: boolean;
+ 28 |   onClose: () => void;
+ 29 |   onSave: (data: ReportData) => void;
+ 30 |   schoolName: string;
+ 31 |   eventType?: string;
+ 32 |   eventDate?: string;
+ 33 |   eventIndex?: number;
+ 34 |   crew?: {
+ 35 |     host?: { id: string; name: string } | null;
+ 36 |     driver?: { id: string; name: string } | null;
+ 37 |   };
+ 38 | }
+ 39 | 
+ 40 | const WEEKDAY_FMT = new Intl.DateTimeFormat("uk-UA", { weekday: "long" });
+ 41 | const DATE_FMT = new Intl.DateTimeFormat("uk-UA", {
+ 42 |   day: "2-digit",
+ 43 |   month: "2-digit",
+ 44 |   year: "2-digit",
+ 45 | });
+ 46 | 
+ 47 | function formatDate(dateStr?: string) {
+ 48 |   if (!dateStr) return "—";
+ 49 |   const d = new Date(dateStr);
+ 50 |   if (Number.isNaN(d.getTime())) return "—";
+ 51 |   return `${DATE_FMT.format(d)} ${WEEKDAY_FMT.format(d)}`;
+ 52 | }
+ 53 | 
+ 54 | function formatMoney(value: number) {
+ 55 |   return new Intl.NumberFormat("uk-UA").format(Math.round(value || 0));
+ 56 | }
+ 57 | 
+ 58 | const Icon = {
+ 59 |   Check: () => (
+ 60 |     <svg
+ 61 |       viewBox="0 0 24 24"
+ 62 |       fill="none"
+ 63 |       stroke="currentColor"
+ 64 |       strokeWidth="2"
+ 65 |       strokeLinecap="round"
+ 66 |       strokeLinejoin="round"
+ 67 |       className="w-4 h-4"
+ 68 |     >
+ 69 |       <path d="M9 11l3 3L22 4" />
+ 70 |       <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+ 71 |     </svg>
+ 72 |   ),
+ 73 |   Users: () => (
+ 74 |     <svg
+ 75 |       viewBox="0 0 24 24"
+ 76 |       fill="none"
+ 77 |       stroke="currentColor"
+ 78 |       strokeWidth="2"
+ 79 |       strokeLinecap="round"
+ 80 |       strokeLinejoin="round"
+ 81 |       className="w-4 h-4"
+ 82 |     >
+ 83 |       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+ 84 |       <circle cx="9" cy="7" r="4" />
+ 85 |       <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+ 86 |       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+ 87 |     </svg>
+ 88 |   ),
+ 89 |   Wallet: () => (
+ 90 |     <svg
+ 91 |       viewBox="0 0 24 24"
+ 92 |       fill="none"
+ 93 |       stroke="currentColor"
+ 94 |       strokeWidth="2"
+ 95 |       strokeLinecap="round"
+ 96 |       strokeLinejoin="round"
+ 97 |       className="w-4 h-4"
+ 98 |     >
+ 99 |       <path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1" />
+100 |       <path d="M16 12h6v4h-6a2 2 0 1 1 0-4z" />
+101 |     </svg>
+102 |   ),
+103 |   Star: () => (
+104 |     <svg
+105 |       viewBox="0 0 24 24"
+106 |       fill="none"
+107 |       stroke="currentColor"
+108 |       strokeWidth="2"
+109 |       strokeLinecap="round"
+110 |       strokeLinejoin="round"
+111 |       className="w-4 h-4"
+112 |     >
+113 |       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+114 |     </svg>
+115 |   ),
+116 | };
+117 | 
+118 | function IconBadge({
+119 |   color,
+120 |   children,
+121 | }: {
+122 |   color: string;
+123 |   children: React.ReactNode;
+124 | }) {
+125 |   return (
+126 |     <span
+127 |       className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center ${color}`}
+128 |     >
+129 |       {children}
+130 |     </span>
+131 |   );
+132 | }
+133 | 
+134 | function CardHeader({
+135 |   icon,
+136 |   color,
+137 |   title,
+138 | }: {
+139 |   icon: React.ReactNode;
+140 |   color: string;
+141 |   title: string;
 142 | }) {
 143 |   return (
-144 |     <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-145 |       <span className="text-sm text-slate-500">{label}</span>
-146 |       <div className="text-sm font-medium text-slate-800">{children}</div>
+144 |     <div className="flex items-center gap-2.5 mb-4">
+145 |       <IconBadge color={color}>{icon}</IconBadge>
+146 |       <h4 className="text-sm font-bold text-slate-800">{title}</h4>
 147 |     </div>
 148 |   );
 149 | }
 150 | 
-151 | function TogglePill({
-152 |   value,
-153 |   onChange,
+151 | function Row({
+152 |   label,
+153 |   children,
 154 | }: {
-155 |   value: boolean;
-156 |   onChange: (v: boolean) => void;
+155 |   label: string;
+156 |   children: React.ReactNode;
 157 | }) {
 158 |   return (
-159 |     <div className="flex gap-1.5">
-160 |       <button
-161 |         type="button"
-162 |         onClick={() => onChange(true)}
-163 |         className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${value ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400 hover:bg-slate-200"}`}
-164 |       >
-165 |         Так
-166 |       </button>
-167 |       <button
-168 |         type="button"
-169 |         onClick={() => onChange(false)}
-170 |         className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${!value ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-400 hover:bg-slate-200"}`}
-171 |       >
-172 |         Ні
-173 |       </button>
-174 |     </div>
-175 |   );
-176 | }
-177 | 
-178 | function NumberField({
-179 |   value,
-180 |   onChange,
-181 |   suffix,
-182 | }: {
-183 |   value: number;
-184 |   onChange: (v: number) => void;
-185 |   suffix?: string;
-186 | }) {
-187 |   return (
-188 |     <span className="inline-flex items-center gap-1">
-189 |       <input
-190 |         type="number"
-191 |         min={0}
-192 |         value={value || ""}
-193 |         onChange={(e) => onChange(+e.target.value)}
-194 |         className="w-16 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1 -mr-1"
-195 |         placeholder="0"
-196 |       />
-197 |       {suffix && <span className="text-slate-400 text-xs">{suffix}</span>}
-198 |     </span>
-199 |   );
-200 | }
-201 | 
-202 | export default function ReportModal({
-203 |   isOpen,
-204 |   onClose,
-205 |   onSave,
-206 |   schoolName,
-207 |   eventType,
-208 |   eventDate,
-209 |   eventIndex,
-210 |   crew,
-211 | }: ReportModalProps) {
-212 |   const [form, setForm] = useState({
-213 |     announcementDone: true,
-214 |     materialShown: true,
-215 |     childrenCount: 0,
-216 |     classesCount: 0,
-217 |     privilegedCount: 0,
-218 |     showingsCount: 0,
-219 |     totalSum: 0,
-220 |     schoolPercentage: 20, // <-- НОВЕ: Дефолтний % закладу
-221 |     rating: 8,
-222 |   });
-223 | 
-224 |   const [expenses, setExpenses] = useState<Expense[]>([]);
-225 |   const [newExp, setNewExp] = useState({ name: "", amount: "" });
-226 |   const [salaries, setSalaries] = useState<Record<string, number>>({});
-227 |   if (!isOpen) return null;
-228 | 
-229 |   // Динамічний розрахунок закладу на основі відсотка
-230 |   const schoolSum = (form.totalSum * form.schoolPercentage) / 100;
-231 |   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
-232 |   const remainder = form.totalSum - schoolSum - totalExpenses;
-233 | 
-234 |   const addExpense = () => {
-235 |     const amount = Number(newExp.amount);
-236 |     if (!newExp.name.trim() || !amount) return;
-237 |     setExpenses((prev) => [...prev, { name: newExp.name.trim(), amount }]);
-238 |     setNewExp({ name: "", amount: "" });
-239 |   };
-240 | 
-241 |   const removeExpense = (index: number) => {
-242 |     setExpenses((prev) => prev.filter((_, i) => i !== index));
-243 |   };
-244 | 
-245 |   // Хелпер:
-246 |   const crewMembers = [
-247 |     ...(crew?.host
-248 |       ? [
-249 |           {
-250 |             id: crew.host.id,
-251 |             name: crew.host.name,
-252 |             role: "Ведучий",
-253 |           },
-254 |         ]
-255 |       : []),
-256 |     ...(crew?.driver
-257 |       ? [
-258 |           {
-259 |             id: crew.driver.id,
-260 |             name: crew.driver.name,
-261 |             role: "Водій",
-262 |           },
-263 |         ]
-264 |       : []),
-265 |   ];
-266 | 
-267 |   const handleSave = () => {
-268 |     const salariesArr = crewMembers
-269 |       .map((m) => ({
-270 |         userId: m.id,
-271 |         name: m.name,
-272 |         amount: salaries[m.id] || 0,
-273 |         role: m.role,
-274 |       }))
-275 |       .filter((s) => s.amount > 0);
-276 | 
-277 |     onSave({
-278 |       ...form,
-279 |       expenses, // тепер підтримує category
-280 |       schoolSum,
-281 |       remainderSum: remainder,
-282 |       salaries: salariesArr,
-283 |     });
-284 |   };
-285 | 
-286 |   return (
-287 |     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-288 |       <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden">
-289 |         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
-290 | 
-291 |         {/* Header */}
-292 |         <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 bg-slate-50 flex items-start justify-between shrink-0">
-293 |           <div className="min-w-0">
-294 |             <h3 className="text-lg sm:text-xl font-bold text-slate-800 leading-tight">
-295 |               Звіт по події
-296 |             </h3>
-297 |             <p className="text-sm text-slate-500 mt-0.5 truncate">
-298 |               {schoolName}
-299 |             </p>
-300 |           </div>
-301 |           <button
-302 |             onClick={onClose}
-303 |             className="text-slate-400 hover:text-slate-600 text-lg leading-none p-2 -mr-2 shrink-0"
-304 |           >
-305 |             ✕
-306 |           </button>
-307 |         </div>
-308 | 
-309 |         {/* Body */}
-310 |         <div className="p-4 sm:p-6 overflow-y-auto bg-slate-50/50">
-311 |           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-312 |             {/* Охоплення */}
-313 |             <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
-314 |               <CardHeader
-315 |                 icon={<Icon.Users />}
-316 |                 color="bg-violet-50 text-violet-600"
-317 |                 title="Охоплення та Проведення"
-318 |               />
-319 |               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
-320 |                 <Row label="Кількість дітей">
-321 |                   <NumberField
-322 |                     value={form.childrenCount}
-323 |                     onChange={(v) => setForm({ ...form, childrenCount: v })}
-324 |                     suffix="дітей"
-325 |                   />
-326 |                 </Row>
-327 |                 <Row label="Класів">
-328 |                   <NumberField
-329 |                     value={form.classesCount}
-330 |                     onChange={(v) => setForm({ ...form, classesCount: v })}
-331 |                     suffix="кл."
-332 |                   />
-333 |                 </Row>
-334 |                 <Row label="Пільгових дітей">
-335 |                   <NumberField
-336 |                     value={form.privilegedCount}
-337 |                     onChange={(v) => setForm({ ...form, privilegedCount: v })}
-338 |                   />
-339 |                 </Row>
-340 |                 <Row label="Кількість показів">
-341 |                   <NumberField
-342 |                     value={form.showingsCount}
-343 |                     onChange={(v) => setForm({ ...form, showingsCount: v })}
-344 |                   />
-345 |                 </Row>
-346 |               </div>
-347 |             </div>
-348 | 
-349 |             {/* Фінансовий результат */}
-350 |             <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
-351 |               <CardHeader
-352 |                 icon={<Icon.Wallet />}
-353 |                 color="bg-amber-50 text-amber-600"
-354 |                 title="Фінансовий результат"
-355 |               />
-356 |               <div className="flex items-center justify-between py-2 border-b border-slate-50">
-357 |                 <span className="text-sm text-slate-500 font-medium">
-358 |                   Загальна виручка
-359 |                 </span>
-360 |                 <span className="inline-flex items-center gap-1">
-361 |                   <input
-362 |                     type="number"
-363 |                     min={0}
-364 |                     value={form.totalSum || ""}
-365 |                     onChange={(e) =>
-366 |                       setForm({ ...form, totalSum: +e.target.value })
-367 |                     }
-368 |                     className="w-28 text-right bg-transparent outline-none font-bold text-lg text-slate-800 focus:bg-blue-50 rounded px-1"
-369 |                     placeholder="0"
-370 |                   />
-371 |                   <span className="text-slate-400 text-sm">грн</span>
-372 |                 </span>
-373 |               </div>
-374 | 
-375 |               {/* НОВЕ: Змінний відсоток для закладу */}
-376 |               <div className="flex items-center justify-between py-2 border-b border-slate-50">
-377 |                 <span className="text-sm text-slate-500">Відсоток закладу</span>
-378 |                 <NumberField
-379 |                   value={form.schoolPercentage}
-380 |                   onChange={(v) => setForm({ ...form, schoolPercentage: v })}
-381 |                   suffix="%"
-382 |                 />
-383 |               </div>
-384 | 
-385 |               <Row label={`Сума закладу (${form.schoolPercentage}%)`}>
-386 |                 <span>{formatMoney(schoolSum)} грн</span>
-387 |               </Row>
-388 | 
-389 |               <div className="py-3 border-b border-slate-50">
-390 |                 <div className="flex items-center justify-between mb-2">
-391 |                   <span className="text-sm text-slate-500">
-392 |                     Додаткові витрати
-393 |                   </span>
-394 |                   <span className="text-sm font-medium text-rose-500">
-395 |                     −{formatMoney(totalExpenses)} грн
-396 |                   </span>
-397 |                 </div>
-398 |                 {expenses.length > 0 && (
-399 |                   <div className="flex flex-wrap gap-1.5 mb-2">
-400 |                     {expenses.map((exp, i) => (
-401 |                       <span
-402 |                         key={i}
-403 |                         className="inline-flex items-center gap-1.5 bg-slate-100 rounded-full pl-3 pr-1.5 py-1 text-xs"
-404 |                       >
-405 |                         <span className="text-slate-600">{exp.name}</span>
-406 |                         <span className="font-semibold text-slate-700">
-407 |                           {formatMoney(exp.amount)} грн
-408 |                         </span>
-409 |                         <button
-410 |                           onClick={() => removeExpense(i)}
-411 |                           className="text-slate-400 hover:text-rose-500 w-4 h-4 rounded-full flex items-center justify-center hover:bg-white"
-412 |                         >
-413 |                           ✕
-414 |                         </button>
-415 |                       </span>
-416 |                     ))}
-417 |                   </div>
-418 |                 )}
-419 |                 <div className="flex gap-2 mt-2">
-420 |                   <input
-421 |                     placeholder="Назва витрати"
-422 |                     value={newExp.name}
-423 |                     onChange={(e) =>
-424 |                       setNewExp({ ...newExp, name: e.target.value })
-425 |                     }
-426 |                     className="flex-1 min-w-0 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-427 |                   />
-428 |                   <input
-429 |                     type="number"
-430 |                     min={0}
-431 |                     placeholder="грн"
-432 |                     value={newExp.amount}
-433 |                     onChange={(e) =>
-434 |                       setNewExp({ ...newExp, amount: e.target.value })
-435 |                     }
-436 |                     className="w-20 sm:w-24 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-437 |                   />
-438 |                   <button
-439 |                     onClick={addExpense}
-440 |                     type="button"
-441 |                     className="px-3 shrink-0 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium text-sm"
-442 |                   >
-443 |                     +
-444 |                   </button>
-445 |                 </div>
-446 |               </div>
-447 |               <div className="flex items-center justify-between bg-emerald-50 rounded-xl px-4 py-3 mt-3">
-448 |                 <span className="text-sm font-semibold text-emerald-700">
-449 |                   Залишок ({100 - form.schoolPercentage}%)
-450 |                 </span>
-451 |                 <span className="text-lg font-bold text-emerald-700">
-452 |                   {formatMoney(remainder)} грн
-453 |                 </span>
-454 |               </div>
-455 |             </div>
-456 |             {crewMembers.length > 0 && (
-457 |               <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
-458 |                 <CardHeader
-459 |                   icon={
-460 |                     <svg
-461 |                       viewBox="0 0 24 24"
-462 |                       fill="none"
-463 |                       stroke="currentColor"
-464 |                       strokeWidth="2"
-465 |                       strokeLinecap="round"
-466 |                       strokeLinejoin="round"
-467 |                       className="w-4 h-4"
-468 |                     >
-469 |                       <circle cx="12" cy="8" r="6" />
-470 |                       <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
-471 |                     </svg>
-472 |                   }
-473 |                   color="bg-blue-50 text-blue-600"
-474 |                   title="Заробітня плата"
-475 |                 />
-476 |                 <div className="space-y-1">
-477 |                   {crewMembers.map((m) => (
-478 |                     <Row key={m.id} label={`${m.name} (${m.role})`}>
-479 |                       <span className="inline-flex items-center gap-1">
-480 |                         <input
-481 |                           type="number"
-482 |                           min={0}
-483 |                           value={salaries[m.id] || ""}
-484 |                           onChange={(e) =>
-485 |                             setSalaries((prev) => ({
-486 |                               ...prev,
-487 |                               [m.id]: +e.target.value,
-488 |                             }))
-489 |                           }
-490 |                           className="w-24 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1"
-491 |                           placeholder="0"
-492 |                         />
-493 |                         <span className="text-slate-400 text-xs">грн</span>
-494 |                       </span>
-495 |                     </Row>
-496 |                   ))}
-497 |                 </div>
-498 |                 {crewMembers.some((m) => salaries[m.id] > 0) && (
-499 |                   <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
-500 |                     <span className="text-sm font-semibold text-slate-500">
-501 |                       Разом ЗП
-502 |                     </span>
-503 |                     <span className="font-bold text-blue-600">
-504 |                       {formatMoney(
-505 |                         crewMembers.reduce(
-506 |                           (s, m) => s + (salaries[m.id] || 0),
-507 |                           0,
-508 |                         ),
-509 |                       )}{" "}
-510 |                       грн
-511 |                     </span>
-512 |                   </div>
-513 |                 )}
-514 |               </div>
-515 |             )}
-516 |           </div>
-517 |         </div>
-518 | 
-519 |         {/* Footer */}
-520 |         <div className="flex gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-white shrink-0">
-521 |           <button
-522 |             onClick={onClose}
-523 |             className="flex-1 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium py-3"
-524 |           >
-525 |             Скасувати
-526 |           </button>
-527 |           <button
-528 |             onClick={handleSave}
-529 |             className="flex-1 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 py-3"
-530 |           >
-531 |             Зберегти звіт
-532 |           </button>
-533 |         </div>
-534 |       </div>
-535 |     </div>
-536 |   );
-537 | }
-538 | 
+159 |     <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+160 |       <span className="text-sm text-slate-500">{label}</span>
+161 |       <div className="text-sm font-medium text-slate-800">{children}</div>
+162 |     </div>
+163 |   );
+164 | }
+165 | 
+166 | function TogglePill({
+167 |   value,
+168 |   onChange,
+169 | }: {
+170 |   value: boolean;
+171 |   onChange: (v: boolean) => void;
+172 | }) {
+173 |   return (
+174 |     <div className="flex gap-1.5">
+175 |       <button
+176 |         type="button"
+177 |         onClick={() => onChange(true)}
+178 |         className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${value ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400 hover:bg-slate-200"}`}
+179 |       >
+180 |         Так
+181 |       </button>
+182 |       <button
+183 |         type="button"
+184 |         onClick={() => onChange(false)}
+185 |         className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${!value ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-400 hover:bg-slate-200"}`}
+186 |       >
+187 |         Ні
+188 |       </button>
+189 |     </div>
+190 |   );
+191 | }
+192 | 
+193 | function NumberField({
+194 |   value,
+195 |   onChange,
+196 |   suffix,
+197 | }: {
+198 |   value: number;
+199 |   onChange: (v: number) => void;
+200 |   suffix?: string;
+201 | }) {
+202 |   return (
+203 |     <span className="inline-flex items-center gap-1">
+204 |       <input
+205 |         type="number"
+206 |         min={0}
+207 |         value={value || ""}
+208 |         onChange={(e) => onChange(+e.target.value)}
+209 |         className="w-16 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1 -mr-1"
+210 |         placeholder="0"
+211 |       />
+212 |       {suffix && <span className="text-slate-400 text-xs">{suffix}</span>}
+213 |     </span>
+214 |   );
+215 | }
+216 | 
+217 | export default function ReportModal({
+218 |   isOpen,
+219 |   onClose,
+220 |   onSave,
+221 |   schoolName,
+222 |   eventType,
+223 |   eventDate,
+224 |   eventIndex,
+225 |   crew,
+226 | }: ReportModalProps) {
+227 |   const [form, setForm] = useState({
+228 |     announcementDone: true,
+229 |     materialShown: true,
+230 |     childrenCount: 0,
+231 |     classesCount: 0,
+232 |     privilegedCount: 0,
+233 |     showingsCount: 0,
+234 |     totalSum: 0,
+235 |     schoolPercentage: 20, // <-- НОВЕ: Дефолтний % закладу
+236 |     rating: 8,
+237 |   });
+238 | 
+239 |   const [expenses, setExpenses] = useState<Expense[]>([]);
+240 |   const [newExp, setNewExp] = useState({ name: "", amount: "" });
+241 |   const [salaries, setSalaries] = useState<Record<string, number>>({});
+242 |   if (!isOpen) return null;
+243 | 
+244 |   // Динамічний розрахунок закладу на основі відсотка
+245 |   const schoolSum = (form.totalSum * form.schoolPercentage) / 100;
+246 |   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+247 |   const remainder = form.totalSum - schoolSum - totalExpenses;
+248 | 
+249 |   const addExpense = () => {
+250 |     const amount = Number(newExp.amount);
+251 |     if (!newExp.name.trim() || !amount) return;
+252 |     setExpenses((prev) => [...prev, { name: newExp.name.trim(), amount }]);
+253 |     setNewExp({ name: "", amount: "" });
+254 |   };
+255 | 
+256 |   const removeExpense = (index: number) => {
+257 |     setExpenses((prev) => prev.filter((_, i) => i !== index));
+258 |   };
+259 | 
+260 |   // Хелпер:
+261 |   const crewMembers = [
+262 |     ...(crew?.host
+263 |       ? [
+264 |           {
+265 |             id: crew.host.id,
+266 |             name: crew.host.name,
+267 |             role: "Ведучий",
+268 |           },
+269 |         ]
+270 |       : []),
+271 |     ...(crew?.driver
+272 |       ? [
+273 |           {
+274 |             id: crew.driver.id,
+275 |             name: crew.driver.name,
+276 |             role: "Водій",
+277 |           },
+278 |         ]
+279 |       : []),
+280 |   ];
+281 | 
+282 |   const handleSave = () => {
+283 |     const salariesArr = crewMembers
+284 |       .map((m) => ({
+285 |         userId: m.id,
+286 |         name: m.name,
+287 |         amount: salaries[m.id] || 0,
+288 |         role: m.role,
+289 |       }))
+290 |       .filter((s) => s.amount > 0);
+291 | 
+292 |     onSave({
+293 |       ...form,
+294 |       expenses, // тепер підтримує category
+295 |       schoolSum,
+296 |       remainderSum: remainder,
+297 |       salaries: salariesArr,
+298 |     });
+299 |   };
+300 | 
+301 |   return (
+302 |     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+303 |       <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden">
+304 |         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+305 | 
+306 |         {/* Header */}
+307 |         <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 bg-slate-50 flex items-start justify-between shrink-0">
+308 |           <div className="min-w-0">
+309 |             <h3 className="text-lg sm:text-xl font-bold text-slate-800 leading-tight">
+310 |               Звіт по події
+311 |             </h3>
+312 |             <p className="text-sm text-slate-500 mt-0.5 truncate">
+313 |               {schoolName}
+314 |             </p>
+315 |           </div>
+316 |           <button
+317 |             onClick={onClose}
+318 |             className="text-slate-400 hover:text-slate-600 text-lg leading-none p-2 -mr-2 shrink-0"
+319 |           >
+320 |             ✕
+321 |           </button>
+322 |         </div>
+323 | 
+324 |         {/* Body */}
+325 |         <div className="p-4 sm:p-6 overflow-y-auto bg-slate-50/50">
+326 |           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+327 |             {/* Охоплення */}
+328 |             <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+329 |               <CardHeader
+330 |                 icon={<Icon.Users />}
+331 |                 color="bg-violet-50 text-violet-600"
+332 |                 title="Охоплення та Проведення"
+333 |               />
+334 |               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+335 |                 <Row label="Кількість дітей">
+336 |                   <NumberField
+337 |                     value={form.childrenCount}
+338 |                     onChange={(v) => setForm({ ...form, childrenCount: v })}
+339 |                     suffix="дітей"
+340 |                   />
+341 |                 </Row>
+342 |                 <Row label="Класів">
+343 |                   <NumberField
+344 |                     value={form.classesCount}
+345 |                     onChange={(v) => setForm({ ...form, classesCount: v })}
+346 |                     suffix="кл."
+347 |                   />
+348 |                 </Row>
+349 |                 <Row label="Пільгових дітей">
+350 |                   <NumberField
+351 |                     value={form.privilegedCount}
+352 |                     onChange={(v) => setForm({ ...form, privilegedCount: v })}
+353 |                   />
+354 |                 </Row>
+355 |                 <Row label="Кількість показів">
+356 |                   <NumberField
+357 |                     value={form.showingsCount}
+358 |                     onChange={(v) => setForm({ ...form, showingsCount: v })}
+359 |                   />
+360 |                 </Row>
+361 |               </div>
+362 |             </div>
+363 | 
+364 |             {/* Фінансовий результат */}
+365 |             <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+366 |               <CardHeader
+367 |                 icon={<Icon.Wallet />}
+368 |                 color="bg-amber-50 text-amber-600"
+369 |                 title="Фінансовий результат"
+370 |               />
+371 |               <div className="flex items-center justify-between py-2 border-b border-slate-50">
+372 |                 <span className="text-sm text-slate-500 font-medium">
+373 |                   Загальна виручка
+374 |                 </span>
+375 |                 <span className="inline-flex items-center gap-1">
+376 |                   <input
+377 |                     type="number"
+378 |                     min={0}
+379 |                     value={form.totalSum || ""}
+380 |                     onChange={(e) =>
+381 |                       setForm({ ...form, totalSum: +e.target.value })
+382 |                     }
+383 |                     className="w-28 text-right bg-transparent outline-none font-bold text-lg text-slate-800 focus:bg-blue-50 rounded px-1"
+384 |                     placeholder="0"
+385 |                   />
+386 |                   <span className="text-slate-400 text-sm">грн</span>
+387 |                 </span>
+388 |               </div>
+389 | 
+390 |               {/* НОВЕ: Змінний відсоток для закладу */}
+391 |               <div className="flex items-center justify-between py-2 border-b border-slate-50">
+392 |                 <span className="text-sm text-slate-500">Відсоток закладу</span>
+393 |                 <NumberField
+394 |                   value={form.schoolPercentage}
+395 |                   onChange={(v) => setForm({ ...form, schoolPercentage: v })}
+396 |                   suffix="%"
+397 |                 />
+398 |               </div>
+399 | 
+400 |               <Row label={`Сума закладу (${form.schoolPercentage}%)`}>
+401 |                 <span>{formatMoney(schoolSum)} грн</span>
+402 |               </Row>
+403 | 
+404 |               <div className="py-3 border-b border-slate-50">
+405 |                 <div className="flex items-center justify-between mb-2">
+406 |                   <span className="text-sm text-slate-500">
+407 |                     Додаткові витрати
+408 |                   </span>
+409 |                   <span className="text-sm font-medium text-rose-500">
+410 |                     −{formatMoney(totalExpenses)} грн
+411 |                   </span>
+412 |                 </div>
+413 |                 {expenses.length > 0 && (
+414 |                   <div className="flex flex-wrap gap-1.5 mb-2">
+415 |                     {expenses.map((exp, i) => (
+416 |                       <span
+417 |                         key={i}
+418 |                         className="inline-flex items-center gap-1.5 bg-slate-100 rounded-full pl-3 pr-1.5 py-1 text-xs"
+419 |                       >
+420 |                         <span className="text-slate-600">{exp.name}</span>
+421 |                         <span className="font-semibold text-slate-700">
+422 |                           {formatMoney(exp.amount)} грн
+423 |                         </span>
+424 |                         <button
+425 |                           onClick={() => removeExpense(i)}
+426 |                           className="text-slate-400 hover:text-rose-500 w-4 h-4 rounded-full flex items-center justify-center hover:bg-white"
+427 |                         >
+428 |                           ✕
+429 |                         </button>
+430 |                       </span>
+431 |                     ))}
+432 |                   </div>
+433 |                 )}
+434 |                 <div className="flex gap-2 mt-2">
+435 |                   <input
+436 |                     placeholder="Назва витрати"
+437 |                     value={newExp.name}
+438 |                     onChange={(e) =>
+439 |                       setNewExp({ ...newExp, name: e.target.value })
+440 |                     }
+441 |                     className="flex-1 min-w-0 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+442 |                   />
+443 |                   <input
+444 |                     type="number"
+445 |                     min={0}
+446 |                     placeholder="грн"
+447 |                     value={newExp.amount}
+448 |                     onChange={(e) =>
+449 |                       setNewExp({ ...newExp, amount: e.target.value })
+450 |                     }
+451 |                     className="w-20 sm:w-24 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+452 |                   />
+453 |                   <button
+454 |                     onClick={addExpense}
+455 |                     type="button"
+456 |                     className="px-3 shrink-0 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium text-sm"
+457 |                   >
+458 |                     +
+459 |                   </button>
+460 |                 </div>
+461 |               </div>
+462 |               <div className="flex items-center justify-between bg-emerald-50 rounded-xl px-4 py-3 mt-3">
+463 |                 <span className="text-sm font-semibold text-emerald-700">
+464 |                   Залишок ({100 - form.schoolPercentage}%)
+465 |                 </span>
+466 |                 <span className="text-lg font-bold text-emerald-700">
+467 |                   {formatMoney(remainder)} грн
+468 |                 </span>
+469 |               </div>
+470 |             </div>
+471 |             {crewMembers.length > 0 && (
+472 |               <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+473 |                 <CardHeader
+474 |                   icon={
+475 |                     <svg
+476 |                       viewBox="0 0 24 24"
+477 |                       fill="none"
+478 |                       stroke="currentColor"
+479 |                       strokeWidth="2"
+480 |                       strokeLinecap="round"
+481 |                       strokeLinejoin="round"
+482 |                       className="w-4 h-4"
+483 |                     >
+484 |                       <circle cx="12" cy="8" r="6" />
+485 |                       <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+486 |                     </svg>
+487 |                   }
+488 |                   color="bg-blue-50 text-blue-600"
+489 |                   title="Заробітня плата"
+490 |                 />
+491 |                 <div className="space-y-1">
+492 |                   {crewMembers.map((m) => (
+493 |                     <Row key={m.id} label={`${m.name} (${m.role})`}>
+494 |                       <span className="inline-flex items-center gap-1">
+495 |                         <input
+496 |                           type="number"
+497 |                           min={0}
+498 |                           value={salaries[m.id] || ""}
+499 |                           onChange={(e) =>
+500 |                             setSalaries((prev) => ({
+501 |                               ...prev,
+502 |                               [m.id]: +e.target.value,
+503 |                             }))
+504 |                           }
+505 |                           className="w-24 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1"
+506 |                           placeholder="0"
+507 |                         />
+508 |                         <span className="text-slate-400 text-xs">грн</span>
+509 |                       </span>
+510 |                     </Row>
+511 |                   ))}
+512 |                 </div>
+513 |                 {crewMembers.some((m) => salaries[m.id] > 0) && (
+514 |                   <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
+515 |                     <span className="text-sm font-semibold text-slate-500">
+516 |                       Разом ЗП
+517 |                     </span>
+518 |                     <span className="font-bold text-blue-600">
+519 |                       {formatMoney(
+520 |                         crewMembers.reduce(
+521 |                           (s, m) => s + (salaries[m.id] || 0),
+522 |                           0,
+523 |                         ),
+524 |                       )}{" "}
+525 |                       грн
+526 |                     </span>
+527 |                   </div>
+528 |                 )}
+529 |               </div>
+530 |             )}
+531 |           </div>
+532 |         </div>
+533 | 
+534 |         {/* Footer */}
+535 |         <div className="flex gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-white shrink-0">
+536 |           <button
+537 |             onClick={onClose}
+538 |             className="flex-1 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium py-3"
+539 |           >
+540 |             Скасувати
+541 |           </button>
+542 |           <button
+543 |             onClick={handleSave}
+544 |             className="flex-1 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 py-3"
+545 |           >
+546 |             Зберегти звіт
+547 |           </button>
+548 |         </div>
+549 |       </div>
+550 |     </div>
+551 |   );
+552 | }
+553 | 
 ```
 
 ### File: apps/frontend/src/components/school-profile/modals/RescheduleModal.tsx
@@ -16213,819 +16434,826 @@
  15 | } from "../hooks/useSchoolProfile";
  16 | import { useQueryClient } from "@tanstack/react-query";
  17 | import { api } from "../config/api";
- 18 | 
- 19 | const Pipeline = lazy(() => import("../components/school-profile/Pipeline"));
- 20 | const HistoryTimeline = lazy(
- 21 |   () => import("../components/school-profile/HistoryTimeline"),
- 22 | );
- 23 | const EventDetails = lazy(
- 24 |   () => import("../components/school-profile/EventDetails"),
- 25 | );
- 26 | 
- 27 | // Імпортуємо UI компоненти
- 28 | import SchoolProfileHeader from "../components/school-profile/SchoolProfileHeader";
- 29 | const SchoolInfoCard = lazy(
- 30 |   () => import("../components/school-profile/SchoolInfoCard"),
- 31 | );
- 32 | const EventsTable = lazy(
- 33 |   () => import("../components/school-profile/EventsTable"),
- 34 | );
- 35 | const EventPreparation = lazy(
- 36 |   () => import("../components/school-profile/EventPreparation"),
- 37 | );
- 38 | const AssignedCrew = lazy(
- 39 |   () => import("../components/school-profile/AssignedCrew"),
- 40 | );
- 41 | // Імпортуємо модальні вікна
- 42 | import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
- 43 | import EventModal from "../components/school-profile/modals/EventModal";
- 44 | import CommentModal from "../components/school-profile/modals/CommentModal";
- 45 | import CrewModal from "../components/school-profile/modals/CrewModal";
- 46 | import ReportModal from "../components/school-profile/modals/ReportModal";
- 47 | 
- 48 | const PIPELINE_STAGES = [
- 49 |   { id: 1, key: "BASE", name: "Новий заклад" },
- 50 |   { id: 2, key: "FIRST_CONTACT", name: "Знайомство" },
- 51 |   { id: 3, key: "DATE_CONFIRMED", name: "Підтвердження дати" },
- 52 |   { id: 4, key: "PREPARATION", name: "Оголошення" },
- 53 |   { id: 5, key: "IN_PROGRESS", name: "Підготовка" },
- 54 |   { id: 6, key: "DONE", name: "Проведення заходу" },
- 55 |   { id: 7, key: "REPORT", name: "Звіт" },
- 56 | ];
- 57 | 
- 58 | export default function SchoolProfile() {
- 59 |   const { id } = useParams();
- 60 |   const qc = useQueryClient();
- 61 | 
- 62 |   // 1. Спочатку завантажуємо базові дані
- 63 |   const { data: schoolRaw, isLoading: schoolLoading } = useSchool(id);
- 64 |   const { data: eventsRaw = [], isLoading: eventsLoading } = useSchoolEvents(
- 65 |     id,
- 66 |     false,
- 67 |   );
- 68 | 
- 69 |   // 2. Оголошуємо стейти, які потрібні для наступних запитів
- 70 |   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
- 71 |   const [exitingEventId, setExitingEventId] = useState<string | null>(null);
- 72 | 
- 73 |   // 3. ТЕПЕР безпечно викликаємо useEventFull, оскільки selectedEventId вже існує
- 74 |   const { data: eventFull, isLoading: eventFullLoading } = useEventFull(
- 75 |     selectedEventId ?? eventsRaw[0]?.id,
- 76 |   );
- 77 | 
- 78 |   const { data: users = [] } = useUsers();
- 79 |   const { data: completedEvents = [] } = useSchoolCompletedEvents(id);
- 80 |   const [selectedReportEvent, setSelectedReportEvent] = useState<any>(null);
- 81 |   const updateStatus = useUpdateEventStatus();
- 82 |   const updatePreparation = useUpdatePreparation();
- 83 |   const assignCrewMutation = useAssignCrew();
- 84 |   const submitReportMutation = useSubmitReport();
- 85 |   const addCommentMutation = useAddComment();
- 86 |   const updateHistoryMutation = useUpdateHistoryComment();
- 87 | 
- 88 |   // 4. Формуємо schoolData
- 89 |   const schoolData = schoolRaw
- 90 |     ? {
- 91 |         id: schoolRaw.id,
- 92 |         cityId: schoolRaw.cityId,
- 93 |         name: schoolRaw.name || "",
- 94 |         type: schoolRaw.type || "Школа",
- 95 |         city: schoolRaw.city?.name || "",
- 96 |         address: schoolRaw.address || "",
- 97 |         director: schoolRaw.director || "",
- 98 |         phone: schoolRaw.phone || "",
- 99 |         email: schoolRaw.email || "",
-100 |         childrenCount: schoolRaw.childrenCount || 0,
-101 |         notes: schoolRaw.notes || "",
-102 |       }
-103 |     : {
-104 |         id: "",
-105 |         cityId: "",
-106 |         name: "",
-107 |         type: "Школа",
-108 |         city: "",
-109 |         address: "",
-110 |         director: "",
-111 |         phone: "",
-112 |         email: "",
-113 |         childrenCount: 0,
-114 |         notes: "",
-115 |       };
-116 | 
-117 |   const events = eventsRaw;
-118 | 
-119 |   // 5. Оголошуємо решту стейтів (editForm залежить від schoolData, тому він тут)
-120 |   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-121 |   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-122 |   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
-123 |   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-124 |   const [commentModal, setCommentModal] = useState({
-125 |     isOpen: false,
-126 |     mode: "pipeline",
-127 |     stepId: null as number | null,
-128 |     historyId: null as string | null,
-129 |     text: "",
-130 |   });
-131 | 
-132 |   const [editForm, setEditForm] = useState(schoolData);
-133 |   const [eventForm, setEventForm] = useState({
-134 |     project: "Голограма для школи",
-135 |     date: "",
-136 |     time: "11:00",
-137 |     childrenPlanned: "",
-138 |     price: "",
-139 |     address: "",
-140 |     contactPerson: "",
-141 |     contactPhone: "",
-142 |   });
-143 | 
-144 |   const currentEventBase = useMemo(
-145 |     () => eventsRaw.find((ev) => ev.id === selectedEventId) ?? eventsRaw[0],
-146 |     [eventsRaw, selectedEventId],
-147 |   );
-148 |   const currentEvent = useMemo(
-149 |     () =>
-150 |       eventFull?.id === currentEventBase?.id
-151 |         ? { ...currentEventBase, ...eventFull }
-152 |         : currentEventBase,
-153 |     [currentEventBase, eventFull],
-154 |   );
-155 |   const currentStageIndex = useMemo(() => {
-156 |     const idx = PIPELINE_STAGES.findIndex(
-157 |       (s) => s.key === currentEvent?.status,
-158 |     );
-159 |     return idx !== -1 ? idx : 0;
-160 |   }, [currentEvent?.status]);
-161 |   const creatorName = useMemo(
-162 |     () =>
-163 |       currentEvent?.history?.length > 0
-164 |         ? currentEvent.history[currentEvent.history.length - 1].userName
-165 |         : "Немає даних",
-166 |     [currentEvent?.history],
-167 |   );
-168 | 
-169 |   const handlePipelineClick = useCallback(
-170 |     (stepId: number) => {
-171 |       if (!currentEvent) return;
-172 |       const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-173 |       if (nextStage?.id !== stepId) return;
-174 |       if (nextStage.key === "REPORT") return setIsReportModalOpen(true);
-175 |       setCommentModal({
-176 |         isOpen: true,
-177 |         mode: "pipeline",
-178 |         stepId: nextStage.id,
-179 |         historyId: null,
-180 |         text: "",
-181 |       });
-182 |     },
-183 |     [currentEvent, currentStageIndex],
-184 |   );
-185 | 
-186 |   const handleHistoryClick = useCallback((historyItem: any) => {
-187 |     setCommentModal({
-188 |       isOpen: true,
-189 |       mode: "history",
-190 |       stepId: null,
-191 |       historyId: historyItem.id,
-192 |       text: historyItem.comment || "",
-193 |     });
-194 |   }, []);
-195 | 
-196 |   const handleAddCommentClick = useCallback(() => {
-197 |     setCommentModal({
-198 |       isOpen: true,
-199 |       mode: "add_comment",
-200 |       stepId: null,
-201 |       historyId: null,
-202 |       text: "",
-203 |     });
-204 |   }, []);
-205 | 
-206 |   const handleSaveComment = useCallback(
-207 |     async (e: React.FormEvent) => {
-208 |       e.preventDefault();
-209 |       if (commentModal.mode === "pipeline") {
-210 |         const activeStage = PIPELINE_STAGES[currentStageIndex];
-211 |         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-212 |         if (!nextStage) return;
-213 |         await updateStatus.mutateAsync({
-214 |           eventId: currentEvent.id,
-215 |           status: nextStage.key,
-216 |           actionName: `Етап пройдено: ${activeStage.name}`,
-217 |           comment: commentModal.text,
-218 |         });
-219 |         if (nextStage.key === "RE_SALE") {
-220 |           setExitingEventId(currentEvent.id);
-221 |           setTimeout(() => {
-222 |             setSelectedEventId(null);
-223 |             setExitingEventId(null);
-224 |           }, 500);
-225 |         }
-226 |       } else if (commentModal.mode === "add_comment") {
-227 |         await addCommentMutation.mutateAsync({
-228 |           eventId: currentEvent.id,
-229 |           comment: commentModal.text,
-230 |         });
-231 |       } else if (commentModal.mode === "history" && commentModal.historyId) {
-232 |         await updateHistoryMutation.mutateAsync({
-233 |           historyId: commentModal.historyId,
-234 |           comment: commentModal.text,
+ 18 | import type { Event, User, ExpenseItem, SalaryItem } from "../types";
+ 19 | import type { ReportData } from "../components/school-profile/modals/ReportModal";
+ 20 | 
+ 21 | const Pipeline = lazy(() => import("../components/school-profile/Pipeline"));
+ 22 | const HistoryTimeline = lazy(
+ 23 |   () => import("../components/school-profile/HistoryTimeline"),
+ 24 | );
+ 25 | const EventDetails = lazy(
+ 26 |   () => import("../components/school-profile/EventDetails"),
+ 27 | );
+ 28 | 
+ 29 | // Імпортуємо UI компоненти
+ 30 | import SchoolProfileHeader from "../components/school-profile/SchoolProfileHeader";
+ 31 | const SchoolInfoCard = lazy(
+ 32 |   () => import("../components/school-profile/SchoolInfoCard"),
+ 33 | );
+ 34 | const EventsTable = lazy(
+ 35 |   () => import("../components/school-profile/EventsTable"),
+ 36 | );
+ 37 | const EventPreparation = lazy(
+ 38 |   () => import("../components/school-profile/EventPreparation"),
+ 39 | );
+ 40 | const AssignedCrew = lazy(
+ 41 |   () => import("../components/school-profile/AssignedCrew"),
+ 42 | );
+ 43 | // Імпортуємо модальні вікна
+ 44 | import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
+ 45 | import EventModal from "../components/school-profile/modals/EventModal";
+ 46 | import CommentModal from "../components/school-profile/modals/CommentModal";
+ 47 | import CrewModal from "../components/school-profile/modals/CrewModal";
+ 48 | import ReportModal from "../components/school-profile/modals/ReportModal";
+ 49 | 
+ 50 | const PIPELINE_STAGES = [
+ 51 |   { id: 1, key: "BASE", name: "Новий заклад" },
+ 52 |   { id: 2, key: "FIRST_CONTACT", name: "Знайомство" },
+ 53 |   { id: 3, key: "DATE_CONFIRMED", name: "Підтвердження дати" },
+ 54 |   { id: 4, key: "PREPARATION", name: "Оголошення" },
+ 55 |   { id: 5, key: "IN_PROGRESS", name: "Підготовка" },
+ 56 |   { id: 6, key: "DONE", name: "Проведення заходу" },
+ 57 |   { id: 7, key: "REPORT", name: "Звіт" },
+ 58 | ];
+ 59 | 
+ 60 | export default function SchoolProfile() {
+ 61 |   const { id } = useParams();
+ 62 |   const qc = useQueryClient();
+ 63 | 
+ 64 |   // 1. Спочатку завантажуємо базові дані
+ 65 |   const { data: schoolRaw, isLoading: schoolLoading } = useSchool(id);
+ 66 |   const { data: eventsRaw = [], isLoading: eventsLoading } = useSchoolEvents(
+ 67 |     id,
+ 68 |     false,
+ 69 |   );
+ 70 | 
+ 71 |   // 2. Оголошуємо стейти, які потрібні для наступних запитів
+ 72 |   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+ 73 |   const [exitingEventId, setExitingEventId] = useState<string | null>(null);
+ 74 | 
+ 75 |   // 3. ТЕПЕР безпечно викликаємо useEventFull, оскільки selectedEventId вже існує
+ 76 |   const { data: eventFull, isLoading: eventFullLoading } = useEventFull(
+ 77 |     selectedEventId ?? eventsRaw[0]?.id,
+ 78 |   );
+ 79 | 
+ 80 |   const { data: users = [] } = useUsers();
+ 81 |   const { data: completedEvents = [] } = useSchoolCompletedEvents(id);
+ 82 |   const [selectedReportEvent, setSelectedReportEvent] = useState<Event | null>(
+ 83 |     null,
+ 84 |   );
+ 85 |   const updateStatus = useUpdateEventStatus();
+ 86 |   const updatePreparation = useUpdatePreparation();
+ 87 |   const assignCrewMutation = useAssignCrew();
+ 88 |   const submitReportMutation = useSubmitReport();
+ 89 |   const addCommentMutation = useAddComment();
+ 90 |   const updateHistoryMutation = useUpdateHistoryComment();
+ 91 | 
+ 92 |   // 4. Формуємо schoolData
+ 93 |   const schoolData = schoolRaw
+ 94 |     ? {
+ 95 |         id: schoolRaw.id,
+ 96 |         cityId: schoolRaw.cityId,
+ 97 |         name: schoolRaw.name || "",
+ 98 |         type: schoolRaw.type || "Школа",
+ 99 |         city: schoolRaw.city?.name || "",
+100 |         address: schoolRaw.address || "",
+101 |         director: schoolRaw.director || "",
+102 |         phone: schoolRaw.phone || "",
+103 |         email: schoolRaw.email || "",
+104 |         childrenCount: schoolRaw.childrenCount || 0,
+105 |         notes: schoolRaw.notes || "",
+106 |       }
+107 |     : {
+108 |         id: "",
+109 |         cityId: "",
+110 |         name: "",
+111 |         type: "Школа",
+112 |         city: "",
+113 |         address: "",
+114 |         director: "",
+115 |         phone: "",
+116 |         email: "",
+117 |         childrenCount: 0,
+118 |         notes: "",
+119 |       };
+120 | 
+121 |   const events = eventsRaw;
+122 | 
+123 |   // 5. Оголошуємо решту стейтів (editForm залежить від schoolData, тому він тут)
+124 |   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+125 |   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+126 |   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
+127 |   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+128 |   const [commentModal, setCommentModal] = useState({
+129 |     isOpen: false,
+130 |     mode: "pipeline",
+131 |     stepId: null as number | null,
+132 |     historyId: null as string | null,
+133 |     text: "",
+134 |   });
+135 | 
+136 |   const [editForm, setEditForm] = useState(schoolData);
+137 |   const [eventForm, setEventForm] = useState({
+138 |     project: "Голограма для школи",
+139 |     date: "",
+140 |     time: "11:00",
+141 |     childrenPlanned: "",
+142 |     price: "",
+143 |     address: "",
+144 |     contactPerson: "",
+145 |     contactPhone: "",
+146 |   });
+147 | 
+148 |   const currentEventBase = useMemo(
+149 |     () => eventsRaw.find((ev) => ev.id === selectedEventId) ?? eventsRaw[0],
+150 |     [eventsRaw, selectedEventId],
+151 |   );
+152 |   const currentEvent = useMemo(
+153 |     () =>
+154 |       eventFull?.id === currentEventBase?.id
+155 |         ? { ...currentEventBase, ...eventFull }
+156 |         : currentEventBase,
+157 |     [currentEventBase, eventFull],
+158 |   );
+159 |   const currentStageIndex = useMemo(() => {
+160 |     const idx = PIPELINE_STAGES.findIndex(
+161 |       (s) => s.key === currentEvent?.status,
+162 |     );
+163 |     return idx !== -1 ? idx : 0;
+164 |   }, [currentEvent?.status]);
+165 |   const creatorName = useMemo(
+166 |     () =>
+167 |       currentEvent?.history?.length > 0
+168 |         ? currentEvent.history[currentEvent.history.length - 1].userName
+169 |         : "Немає даних",
+170 |     [currentEvent?.history],
+171 |   );
+172 | 
+173 |   const handlePipelineClick = useCallback(
+174 |     (stepId: number) => {
+175 |       if (!currentEvent) return;
+176 |       const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+177 |       if (nextStage?.id !== stepId) return;
+178 |       if (nextStage.key === "REPORT") return setIsReportModalOpen(true);
+179 |       setCommentModal({
+180 |         isOpen: true,
+181 |         mode: "pipeline",
+182 |         stepId: nextStage.id,
+183 |         historyId: null,
+184 |         text: "",
+185 |       });
+186 |     },
+187 |     [currentEvent, currentStageIndex],
+188 |   );
+189 | 
+190 |   const handleHistoryClick = useCallback(
+191 |     (historyItem: { id: string; comment?: string }) => {
+192 |       setCommentModal({
+193 |         isOpen: true,
+194 |         mode: "history",
+195 |         stepId: null,
+196 |         historyId: historyItem.id,
+197 |         text: historyItem.comment || "",
+198 |       });
+199 |     },
+200 |     [],
+201 |   );
+202 | 
+203 |   const handleAddCommentClick = useCallback(() => {
+204 |     setCommentModal({
+205 |       isOpen: true,
+206 |       mode: "add_comment",
+207 |       stepId: null,
+208 |       historyId: null,
+209 |       text: "",
+210 |     });
+211 |   }, []);
+212 | 
+213 |   const handleSaveComment = useCallback(
+214 |     async (e: React.FormEvent) => {
+215 |       e.preventDefault();
+216 |       if (commentModal.mode === "pipeline") {
+217 |         const activeStage = PIPELINE_STAGES[currentStageIndex];
+218 |         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+219 |         if (!nextStage) return;
+220 |         await updateStatus.mutateAsync({
+221 |           eventId: currentEvent.id,
+222 |           status: nextStage.key,
+223 |           actionName: `Етап пройдено: ${activeStage.name}`,
+224 |           comment: commentModal.text,
+225 |         });
+226 |         if (nextStage.key === "RE_SALE") {
+227 |           setExitingEventId(currentEvent.id);
+228 |           setTimeout(() => {
+229 |             setSelectedEventId(null);
+230 |             setExitingEventId(null);
+231 |           }, 500);
+232 |         }
+233 |       } else if (commentModal.mode === "add_comment") {
+234 |         await addCommentMutation.mutateAsync({
 235 |           eventId: currentEvent.id,
-236 |         });
-237 |       }
-238 |       setCommentModal({
-239 |         isOpen: false,
-240 |         mode: "pipeline",
-241 |         stepId: null,
-242 |         historyId: null,
-243 |         text: "",
-244 |       });
-245 |     },
-246 |     [
-247 |       commentModal,
-248 |       currentEvent,
-249 |       currentStageIndex,
-250 |       updateStatus,
-251 |       addCommentMutation,
-252 |       updateHistoryMutation,
-253 |     ],
-254 |   );
-255 | 
-256 |   const handleSaveEvent = useCallback(
-257 |     async (e: React.FormEvent) => {
-258 |       e.preventDefault();
-259 |       try {
-260 |         const payload = {
-261 |           ...eventForm,
-262 |           schoolId: schoolData.id,
-263 |           cityId: schoolData.cityId,
-264 |           childrenPlanned: Number(eventForm.childrenPlanned),
-265 |           price: Number(eventForm.price),
-266 |         };
-267 |         const res = await api.post("/events", payload, {
-268 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-269 |         });
-270 |         setIsEventModalOpen(false);
-271 |         qc.invalidateQueries({ queryKey: ["schoolEvents", id] });
-272 |         setSelectedEventId(res.data.id);
-273 |       } catch (e) {
-274 |         console.error(e);
-275 |       }
-276 |     },
-277 |     [eventForm, schoolData, id, qc],
-278 |   );
-279 | 
-280 |   const handleSaveSchoolInfo = useCallback(
-281 |     async (e: React.FormEvent) => {
-282 |       e.preventDefault();
-283 |       try {
-284 |         await api.patch(`/schools/${id}`, editForm, {
-285 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-286 |         });
-287 |         qc.invalidateQueries({ queryKey: ["school", id] });
-288 |         setIsEditModalOpen(false);
-289 |       } catch (e) {
-290 |         console.error(e);
-291 |       }
-292 |     },
-293 |     [editForm, id, qc],
-294 |   );
-295 | 
-296 |   const handleUpdatePreparation = useCallback(
-297 |     async (field: string, status: string) => {
-298 |       if (!currentEvent) return;
-299 |       await updatePreparation.mutateAsync({
-300 |         eventId: currentEvent.id,
-301 |         field,
-302 |         status,
-303 |       });
-304 |     },
-305 |     [currentEvent, updatePreparation],
-306 |   );
-307 | 
-308 |   const handleSubmitReport = useCallback(
-309 |     async (reportData: any) => {
-310 |       if (!currentEvent) return;
-311 |       await submitReportMutation.mutateAsync({
-312 |         eventId: currentEvent.id,
-313 |         reportData,
-314 |       });
-315 |       await updateStatus.mutateAsync({
-316 |         eventId: currentEvent.id,
-317 |         status: "RE_SALE",
-318 |         actionName: "Звіт сформовано. Захід завершено.",
-319 |       });
-320 |       setExitingEventId(currentEvent.id);
-321 |       setTimeout(() => {
-322 |         setSelectedEventId(null);
-323 |         setExitingEventId(null);
-324 |       }, 500);
-325 |       setIsReportModalOpen(false);
-326 |     },
-327 |     [currentEvent, submitReportMutation, updateStatus],
-328 |   );
-329 | 
-330 |   const handleAssignCrew = useCallback(
-331 |     async (crewId: string) => {
-332 |       await assignCrewMutation.mutateAsync({
-333 |         eventId: currentEvent.id,
-334 |         crewId,
-335 |       });
-336 |       return updatePreparation.mutateAsync({
-337 |         eventId: currentEvent.id,
-338 |         field: "assignCrew",
-339 |         status: "Виконано",
-340 |       });
-341 |       setIsCrewModalOpen(false);
-342 |     },
-343 |     [currentEvent, assignCrewMutation, updatePreparation],
-344 |   );
-345 | 
-346 |   const openAddEventModal = useCallback(() => {
-347 |     setEventForm((prev) => ({
-348 |       ...prev,
-349 |       address: schoolData.address,
-350 |       contactPerson: schoolData.director,
-351 |       contactPhone: schoolData.phone,
-352 |       childrenPlanned: String(schoolData.childrenCount),
-353 |     }));
-354 |     setIsEventModalOpen(true);
-355 |   }, [schoolData]);
-356 |   const stagger = (i: number) => ({
-357 |     initial: { opacity: 0, y: 10 },
-358 |     animate: { opacity: 1, y: 0 },
-359 |     transition: { duration: 0.3, delay: 0.1 + i * 0.07, ease: "easeOut" },
-360 |   });
-361 | 
-362 |   return (
-363 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8">
-364 |       <SchoolProfileHeader
-365 |         schoolData={schoolData}
-366 |         onEdit={() => {
-367 |           setEditForm(schoolData);
-368 |           setIsEditModalOpen(true);
-369 |         }}
-370 |         onAddEvent={openAddEventModal}
-371 |       />
-372 | 
-373 |       <div className="flex flex-col xl:flex-row gap-6">
-374 |         {/* Ліва колонка */}
-375 |         <div className="w-full xl:w-80 flex flex-col gap-6">
-376 |           <motion.div {...stagger(0)}>
-377 |             <Suspense
-378 |               fallback={
-379 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-380 |               }
-381 |             >
-382 |               <SchoolInfoCard schoolData={schoolData} />
-383 |             </Suspense>
-384 |           </motion.div>
-385 | 
-386 |           <AnimatePresence>
-387 |             {currentEvent && currentStageIndex >= 1 && (
-388 |               <motion.div
-389 |                 key="responsible"
-390 |                 initial={{ opacity: 0, y: 8 }}
-391 |                 animate={{ opacity: 1, y: 0 }}
-392 |                 exit={{ opacity: 0, y: -8 }}
-393 |                 transition={{ duration: 0.25 }}
-394 |                 className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
-395 |               >
-396 |                 <h3 className="font-bold text-slate-800 mb-4">
-397 |                   Відповідальна особа
-398 |                 </h3>
-399 |                 <ul className="space-y-2 text-sm">
-400 |                   <li className="flex justify-between">
-401 |                     <span className="text-slate-500">Остання дія:</span>
-402 |                     <span className="font-medium text-blue-600">
-403 |                       {creatorName}
-404 |                     </span>
-405 |                   </li>
-406 |                 </ul>
-407 |               </motion.div>
-408 |             )}
-409 |           </AnimatePresence>
-410 | 
-411 |           <motion.div {...stagger(1)}>
-412 |             <Suspense
-413 |               fallback={
-414 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-415 |               }
-416 |             >
-417 |               <HistoryTimeline
-418 |                 currentEvent={
-419 |                   eventFullLoading ? currentEventBase : currentEvent
-420 |                 }
-421 |                 onHistoryClick={handleHistoryClick}
-422 |                 onAddCommentClick={handleAddCommentClick}
-423 |               />
-424 |             </Suspense>
-425 |           </motion.div>
-426 |         </div>
-427 | 
-428 |         {/* Права колонка */}
-429 |         <motion.div
-430 |           className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${
-431 |             exitingEventId === currentEvent?.id
-432 |               ? "opacity-0 scale-95 -translate-y-4 pointer-events-none"
-433 |               : ""
-434 |           }`}
-435 |           initial={{ opacity: 0, y: 10 }}
-436 |           animate={{ opacity: 1, y: 0 }}
-437 |           transition={{ duration: 0.3, delay: 0.15 }}
-438 |         >
-439 |           {currentEvent && (
-440 |             <Suspense
-441 |               fallback={
-442 |                 <div className="bg-white rounded-2xl h-24 animate-pulse border border-slate-100" />
-443 |               }
-444 |             >
-445 |               <Pipeline
-446 |                 currentStageIndex={currentStageIndex}
-447 |                 currentEvent={currentEvent}
-448 |                 onPipelineClick={handlePipelineClick}
-449 |                 stages={PIPELINE_STAGES}
-450 |               />
-451 |             </Suspense>
-452 |           )}
-453 | 
-454 |           <AnimatePresence>
-455 |             {currentEvent && currentStageIndex >= 4 && (
-456 |               <motion.div
-457 |                 key="preparation"
-458 |                 initial={{ opacity: 0, y: 8 }}
-459 |                 animate={{ opacity: 1, y: 0 }}
-460 |                 exit={{ opacity: 0, y: -8 }}
-461 |                 transition={{ duration: 0.25 }}
-462 |                 className="grid grid-cols-1 xl:grid-cols-2 gap-6"
-463 |               >
-464 |                 {eventFullLoading ? (
-465 |                   <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-pulse h-48" />
-466 |                 ) : (
-467 |                   <Suspense
-468 |                     fallback={
-469 |                       <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-470 |                     }
-471 |                   >
-472 |                     <EventPreparation
-473 |                       data={currentEvent.preparation || {}}
-474 |                       onUpdate={handleUpdatePreparation}
-475 |                       onOpenCrewModal={() => setIsCrewModalOpen(true)}
-476 |                     />
-477 |                   </Suspense>
-478 |                 )}
-479 |                 <Suspense
-480 |                   fallback={
-481 |                     <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-482 |                   }
-483 |                 >
-484 |                   <AssignedCrew currentEvent={currentEvent} employees={users} />
-485 |                 </Suspense>
-486 |               </motion.div>
-487 |             )}
-488 |           </AnimatePresence>
-489 | 
-490 |           <motion.div {...stagger(2)}>
-491 |             <Suspense
-492 |               fallback={
-493 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
-494 |               }
-495 |             >
-496 |               <EventDetails
-497 |                 currentEvent={currentEvent}
-498 |                 schoolName={schoolData.name}
-499 |                 cityId={schoolData.cityId}
-500 |                 onEventUpdated={() =>
-501 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
-502 |                 }
-503 |               />
-504 |             </Suspense>
-505 |           </motion.div>
-506 | 
-507 |           <motion.div {...stagger(3)}>
-508 |             <Suspense
-509 |               fallback={
-510 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
-511 |               }
-512 |             >
-513 |               <EventsTable
-514 |                 events={events}
-515 |                 selectedEventId={selectedEventId}
-516 |                 onEventSelect={setSelectedEventId}
-517 |                 onDeleteSuccess={() =>
-518 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
-519 |                 }
-520 |               />
-521 |             </Suspense>
-522 |             {completedEvents.length > 0 && (
-523 |               <motion.div {...stagger(4)}>
-524 |                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-525 |                   <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-526 |                     <h3 className="font-bold text-slate-800">
-527 |                       Завершені події ({completedEvents.length})
-528 |                     </h3>
-529 |                   </div>
-530 |                   <div className="md:hidden divide-y divide-slate-50">
-531 |                     {completedEvents.map((ev: any) => (
-532 |                       <div
-533 |                         key={ev.id}
-534 |                         onClick={() => setSelectedReportEvent(ev)}
-535 |                         className="flex items-center justify-between gap-3 p-4 active:bg-slate-50 cursor-pointer"
-536 |                       >
-537 |                         <div className="min-w-0">
-538 |                           <p className="font-medium text-blue-600 truncate">
-539 |                             {ev.project}
-540 |                           </p>
-541 |                           <p className="text-xs text-slate-400 mt-0.5">
-542 |                             {new Date(ev.date).toLocaleDateString("uk-UA")}
-543 |                           </p>
-544 |                           <p className="text-xs text-slate-500 mt-1">
-545 |                             👶{" "}
-546 |                             {ev.report?.childrenCount ||
-547 |                               ev.childrenPlanned ||
-548 |                               "—"}{" "}
-549 |                             дітей
+236 |           comment: commentModal.text,
+237 |         });
+238 |       } else if (commentModal.mode === "history" && commentModal.historyId) {
+239 |         await updateHistoryMutation.mutateAsync({
+240 |           historyId: commentModal.historyId,
+241 |           comment: commentModal.text,
+242 |           eventId: currentEvent.id,
+243 |         });
+244 |       }
+245 |       setCommentModal({
+246 |         isOpen: false,
+247 |         mode: "pipeline",
+248 |         stepId: null,
+249 |         historyId: null,
+250 |         text: "",
+251 |       });
+252 |     },
+253 |     [
+254 |       commentModal,
+255 |       currentEvent,
+256 |       currentStageIndex,
+257 |       updateStatus,
+258 |       addCommentMutation,
+259 |       updateHistoryMutation,
+260 |     ],
+261 |   );
+262 | 
+263 |   const handleSaveEvent = useCallback(
+264 |     async (e: React.FormEvent) => {
+265 |       e.preventDefault();
+266 |       try {
+267 |         const payload = {
+268 |           ...eventForm,
+269 |           schoolId: schoolData.id,
+270 |           cityId: schoolData.cityId,
+271 |           childrenPlanned: Number(eventForm.childrenPlanned),
+272 |           price: Number(eventForm.price),
+273 |         };
+274 |         const res = await api.post("/events", payload, {
+275 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+276 |         });
+277 |         setIsEventModalOpen(false);
+278 |         qc.invalidateQueries({ queryKey: ["schoolEvents", id] });
+279 |         setSelectedEventId(res.data.id);
+280 |       } catch (e) {
+281 |         console.error(e);
+282 |       }
+283 |     },
+284 |     [eventForm, schoolData, id, qc],
+285 |   );
+286 | 
+287 |   const handleSaveSchoolInfo = useCallback(
+288 |     async (e: React.FormEvent) => {
+289 |       e.preventDefault();
+290 |       try {
+291 |         await api.patch(`/schools/${id}`, editForm, {
+292 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+293 |         });
+294 |         qc.invalidateQueries({ queryKey: ["school", id] });
+295 |         setIsEditModalOpen(false);
+296 |       } catch (e) {
+297 |         console.error(e);
+298 |       }
+299 |     },
+300 |     [editForm, id, qc],
+301 |   );
+302 | 
+303 |   const handleUpdatePreparation = useCallback(
+304 |     async (field: string, status: string) => {
+305 |       if (!currentEvent) return;
+306 |       await updatePreparation.mutateAsync({
+307 |         eventId: currentEvent.id,
+308 |         field,
+309 |         status,
+310 |       });
+311 |     },
+312 |     [currentEvent, updatePreparation],
+313 |   );
+314 | 
+315 |   const handleSubmitReport = useCallback(
+316 |     async (reportData: ReportData) => {
+317 |       if (!currentEvent) return;
+318 |       await submitReportMutation.mutateAsync({
+319 |         eventId: currentEvent.id,
+320 |         reportData,
+321 |       });
+322 |       await updateStatus.mutateAsync({
+323 |         eventId: currentEvent.id,
+324 |         status: "RE_SALE",
+325 |         actionName: "Звіт сформовано. Захід завершено.",
+326 |       });
+327 |       setExitingEventId(currentEvent.id);
+328 |       setTimeout(() => {
+329 |         setSelectedEventId(null);
+330 |         setExitingEventId(null);
+331 |       }, 500);
+332 |       setIsReportModalOpen(false);
+333 |     },
+334 |     [currentEvent, submitReportMutation, updateStatus],
+335 |   );
+336 | 
+337 |   const handleAssignCrew = useCallback(
+338 |     async (crewId: string) => {
+339 |       await assignCrewMutation.mutateAsync({
+340 |         eventId: currentEvent.id,
+341 |         crewId,
+342 |       });
+343 |       return updatePreparation.mutateAsync({
+344 |         eventId: currentEvent.id,
+345 |         field: "assignCrew",
+346 |         status: "Виконано",
+347 |       });
+348 |       setIsCrewModalOpen(false);
+349 |     },
+350 |     [currentEvent, assignCrewMutation, updatePreparation],
+351 |   );
+352 | 
+353 |   const openAddEventModal = useCallback(() => {
+354 |     setEventForm((prev) => ({
+355 |       ...prev,
+356 |       address: schoolData.address,
+357 |       contactPerson: schoolData.director,
+358 |       contactPhone: schoolData.phone,
+359 |       childrenPlanned: String(schoolData.childrenCount),
+360 |     }));
+361 |     setIsEventModalOpen(true);
+362 |   }, [schoolData]);
+363 |   const stagger = (i: number) => ({
+364 |     initial: { opacity: 0, y: 10 },
+365 |     animate: { opacity: 1, y: 0 },
+366 |     transition: { duration: 0.3, delay: 0.1 + i * 0.07, ease: "easeOut" },
+367 |   });
+368 | 
+369 |   return (
+370 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8">
+371 |       <SchoolProfileHeader
+372 |         schoolData={schoolData}
+373 |         onEdit={() => {
+374 |           setEditForm(schoolData);
+375 |           setIsEditModalOpen(true);
+376 |         }}
+377 |         onAddEvent={openAddEventModal}
+378 |       />
+379 | 
+380 |       <div className="flex flex-col xl:flex-row gap-6">
+381 |         {/* Ліва колонка */}
+382 |         <div className="w-full xl:w-80 flex flex-col gap-6">
+383 |           <motion.div {...stagger(0)}>
+384 |             <Suspense
+385 |               fallback={
+386 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+387 |               }
+388 |             >
+389 |               <SchoolInfoCard schoolData={schoolData} />
+390 |             </Suspense>
+391 |           </motion.div>
+392 | 
+393 |           <AnimatePresence>
+394 |             {currentEvent && currentStageIndex >= 1 && (
+395 |               <motion.div
+396 |                 key="responsible"
+397 |                 initial={{ opacity: 0, y: 8 }}
+398 |                 animate={{ opacity: 1, y: 0 }}
+399 |                 exit={{ opacity: 0, y: -8 }}
+400 |                 transition={{ duration: 0.25 }}
+401 |                 className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
+402 |               >
+403 |                 <h3 className="font-bold text-slate-800 mb-4">
+404 |                   Відповідальна особа
+405 |                 </h3>
+406 |                 <ul className="space-y-2 text-sm">
+407 |                   <li className="flex justify-between">
+408 |                     <span className="text-slate-500">Остання дія:</span>
+409 |                     <span className="font-medium text-blue-600">
+410 |                       {creatorName}
+411 |                     </span>
+412 |                   </li>
+413 |                 </ul>
+414 |               </motion.div>
+415 |             )}
+416 |           </AnimatePresence>
+417 | 
+418 |           <motion.div {...stagger(1)}>
+419 |             <Suspense
+420 |               fallback={
+421 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+422 |               }
+423 |             >
+424 |               <HistoryTimeline
+425 |                 currentEvent={
+426 |                   eventFullLoading ? currentEventBase : currentEvent
+427 |                 }
+428 |                 onHistoryClick={handleHistoryClick}
+429 |                 onAddCommentClick={handleAddCommentClick}
+430 |               />
+431 |             </Suspense>
+432 |           </motion.div>
+433 |         </div>
+434 | 
+435 |         {/* Права колонка */}
+436 |         <motion.div
+437 |           className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${
+438 |             exitingEventId === currentEvent?.id
+439 |               ? "opacity-0 scale-95 -translate-y-4 pointer-events-none"
+440 |               : ""
+441 |           }`}
+442 |           initial={{ opacity: 0, y: 10 }}
+443 |           animate={{ opacity: 1, y: 0 }}
+444 |           transition={{ duration: 0.3, delay: 0.15 }}
+445 |         >
+446 |           {currentEvent && (
+447 |             <Suspense
+448 |               fallback={
+449 |                 <div className="bg-white rounded-2xl h-24 animate-pulse border border-slate-100" />
+450 |               }
+451 |             >
+452 |               <Pipeline
+453 |                 currentStageIndex={currentStageIndex}
+454 |                 currentEvent={currentEvent}
+455 |                 onPipelineClick={handlePipelineClick}
+456 |                 stages={PIPELINE_STAGES}
+457 |               />
+458 |             </Suspense>
+459 |           )}
+460 | 
+461 |           <AnimatePresence>
+462 |             {currentEvent && currentStageIndex >= 4 && (
+463 |               <motion.div
+464 |                 key="preparation"
+465 |                 initial={{ opacity: 0, y: 8 }}
+466 |                 animate={{ opacity: 1, y: 0 }}
+467 |                 exit={{ opacity: 0, y: -8 }}
+468 |                 transition={{ duration: 0.25 }}
+469 |                 className="grid grid-cols-1 xl:grid-cols-2 gap-6"
+470 |               >
+471 |                 {eventFullLoading ? (
+472 |                   <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-pulse h-48" />
+473 |                 ) : (
+474 |                   <Suspense
+475 |                     fallback={
+476 |                       <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+477 |                     }
+478 |                   >
+479 |                     <EventPreparation
+480 |                       data={currentEvent.preparation || {}}
+481 |                       onUpdate={handleUpdatePreparation}
+482 |                       onOpenCrewModal={() => setIsCrewModalOpen(true)}
+483 |                     />
+484 |                   </Suspense>
+485 |                 )}
+486 |                 <Suspense
+487 |                   fallback={
+488 |                     <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+489 |                   }
+490 |                 >
+491 |                   <AssignedCrew currentEvent={currentEvent} employees={users} />
+492 |                 </Suspense>
+493 |               </motion.div>
+494 |             )}
+495 |           </AnimatePresence>
+496 | 
+497 |           <motion.div {...stagger(2)}>
+498 |             <Suspense
+499 |               fallback={
+500 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
+501 |               }
+502 |             >
+503 |               <EventDetails
+504 |                 currentEvent={currentEvent}
+505 |                 schoolName={schoolData.name}
+506 |                 cityId={schoolData.cityId}
+507 |                 onEventUpdated={() =>
+508 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
+509 |                 }
+510 |               />
+511 |             </Suspense>
+512 |           </motion.div>
+513 | 
+514 |           <motion.div {...stagger(3)}>
+515 |             <Suspense
+516 |               fallback={
+517 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
+518 |               }
+519 |             >
+520 |               <EventsTable
+521 |                 events={events}
+522 |                 selectedEventId={selectedEventId}
+523 |                 onEventSelect={setSelectedEventId}
+524 |                 onDeleteSuccess={() =>
+525 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
+526 |                 }
+527 |               />
+528 |             </Suspense>
+529 |             {completedEvents.length > 0 && (
+530 |               <motion.div {...stagger(4)}>
+531 |                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+532 |                   <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+533 |                     <h3 className="font-bold text-slate-800">
+534 |                       Завершені події ({completedEvents.length})
+535 |                     </h3>
+536 |                   </div>
+537 |                   <div className="md:hidden divide-y divide-slate-50">
+538 |                     {completedEvents.map((ev: Event) => (
+539 |                       <div
+540 |                         key={ev.id}
+541 |                         onClick={() => setSelectedReportEvent(ev)}
+542 |                         className="flex items-center justify-between gap-3 p-4 active:bg-slate-50 cursor-pointer"
+543 |                       >
+544 |                         <div className="min-w-0">
+545 |                           <p className="font-medium text-blue-600 truncate">
+546 |                             {ev.project}
+547 |                           </p>
+548 |                           <p className="text-xs text-slate-400 mt-0.5">
+549 |                             {new Date(ev.date).toLocaleDateString("uk-UA")}
 550 |                           </p>
-551 |                         </div>
-552 |                         <div className="text-right shrink-0">
-553 |                           <p className="font-semibold text-slate-800 text-sm">
-554 |                             {new Intl.NumberFormat("uk-UA").format(
-555 |                               ev.report?.totalSum || ev.price || 0,
-556 |                             )}{" "}
-557 |                             грн
-558 |                           </p>
-559 |                           <p className="text-xs font-medium text-emerald-600 mt-0.5">
-560 |                             +
+551 |                           <p className="text-xs text-slate-500 mt-1">
+552 |                             👶{" "}
+553 |                             {ev.report?.childrenCount ||
+554 |                               ev.childrenPlanned ||
+555 |                               "—"}{" "}
+556 |                             дітей
+557 |                           </p>
+558 |                         </div>
+559 |                         <div className="text-right shrink-0">
+560 |                           <p className="font-semibold text-slate-800 text-sm">
 561 |                             {new Intl.NumberFormat("uk-UA").format(
-562 |                               ev.report?.remainderSum || 0,
+562 |                               ev.report?.totalSum || ev.price || 0,
 563 |                             )}{" "}
 564 |                             грн
 565 |                           </p>
-566 |                         </div>
-567 |                       </div>
-568 |                     ))}
-569 |                   </div>
-570 |                   <div className="hidden md:block overflow-x-auto">
-571 |                     <table className="w-full text-left text-sm">
-572 |                       <thead>
-573 |                         <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
-574 |                           <th className="p-4">Проєкт</th>
-575 |                           <th className="p-4">Дата</th>
-576 |                           <th className="p-4">Дітей</th>
-577 |                           <th className="p-4">Виручка</th>
-578 |                           <th className="p-4">Прибуток</th>
-579 |                         </tr>
-580 |                       </thead>
-581 |                       <tbody>
-582 |                         {completedEvents.map((ev: any) => (
-583 |                           <tr
-584 |                             key={ev.id}
-585 |                             onClick={() => setSelectedReportEvent(ev)}
-586 |                             className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
-587 |                           >
-588 |                             <td className="p-4 text-slate-700 font-medium">
-589 |                               {ev.project}
-590 |                             </td>
-591 |                             <td className="p-4 text-slate-600">
-592 |                               {new Date(ev.date).toLocaleDateString("uk-UA")}
-593 |                             </td>
-594 |                             <td className="p-4 font-medium">
-595 |                               {ev.report?.childrenCount ||
-596 |                                 ev.childrenPlanned ||
-597 |                                 "—"}
-598 |                             </td>
-599 |                             <td className="p-4 font-medium text-slate-800">
-600 |                               {new Intl.NumberFormat("uk-UA").format(
-601 |                                 ev.report?.totalSum || ev.price || 0,
-602 |                               )}{" "}
-603 |                               грн
-604 |                             </td>
-605 |                             <td className="p-4 font-medium text-emerald-600">
-606 |                               {new Intl.NumberFormat("uk-UA").format(
-607 |                                 ev.report?.remainderSum || 0,
-608 |                               )}{" "}
-609 |                               грн
-610 |                             </td>
-611 |                           </tr>
-612 |                         ))}
-613 |                       </tbody>
-614 |                     </table>
-615 |                   </div>
-616 |                 </div>
-617 |               </motion.div>
-618 |             )}
-619 |           </motion.div>
-620 |         </motion.div>
-621 |       </div>
-622 | 
-623 |       {/* Мобільна FAB */}
-624 |       <button
-625 |         onClick={openAddEventModal}
-626 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
-627 |       >
-628 |         +
-629 |       </button>
-630 | 
-631 |       {/* Модальні вікна */}
-632 |       <EditSchoolModal
-633 |         isOpen={isEditModalOpen}
-634 |         onClose={() => setIsEditModalOpen(false)}
-635 |         editForm={editForm}
-636 |         setEditForm={setEditForm}
-637 |         onSave={handleSaveSchoolInfo}
-638 |       />
-639 |       <EventModal
-640 |         isOpen={isEventModalOpen}
-641 |         onClose={() => setIsEventModalOpen(false)}
-642 |         eventForm={eventForm}
-643 |         setEventForm={setEventForm}
-644 |         onSave={handleSaveEvent}
+566 |                           <p className="text-xs font-medium text-emerald-600 mt-0.5">
+567 |                             +
+568 |                             {new Intl.NumberFormat("uk-UA").format(
+569 |                               ev.report?.remainderSum || 0,
+570 |                             )}{" "}
+571 |                             грн
+572 |                           </p>
+573 |                         </div>
+574 |                       </div>
+575 |                     ))}
+576 |                   </div>
+577 |                   <div className="hidden md:block overflow-x-auto">
+578 |                     <table className="w-full text-left text-sm">
+579 |                       <thead>
+580 |                         <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+581 |                           <th className="p-4">Проєкт</th>
+582 |                           <th className="p-4">Дата</th>
+583 |                           <th className="p-4">Дітей</th>
+584 |                           <th className="p-4">Виручка</th>
+585 |                           <th className="p-4">Прибуток</th>
+586 |                         </tr>
+587 |                       </thead>
+588 |                       <tbody>
+589 |                         {completedEvents.map((ev: any) => (
+590 |                           <tr
+591 |                             key={ev.id}
+592 |                             onClick={() => setSelectedReportEvent(ev)}
+593 |                             className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
+594 |                           >
+595 |                             <td className="p-4 text-slate-700 font-medium">
+596 |                               {ev.project}
+597 |                             </td>
+598 |                             <td className="p-4 text-slate-600">
+599 |                               {new Date(ev.date).toLocaleDateString("uk-UA")}
+600 |                             </td>
+601 |                             <td className="p-4 font-medium">
+602 |                               {ev.report?.childrenCount ||
+603 |                                 ev.childrenPlanned ||
+604 |                                 "—"}
+605 |                             </td>
+606 |                             <td className="p-4 font-medium text-slate-800">
+607 |                               {new Intl.NumberFormat("uk-UA").format(
+608 |                                 ev.report?.totalSum || ev.price || 0,
+609 |                               )}{" "}
+610 |                               грн
+611 |                             </td>
+612 |                             <td className="p-4 font-medium text-emerald-600">
+613 |                               {new Intl.NumberFormat("uk-UA").format(
+614 |                                 ev.report?.remainderSum || 0,
+615 |                               )}{" "}
+616 |                               грн
+617 |                             </td>
+618 |                           </tr>
+619 |                         ))}
+620 |                       </tbody>
+621 |                     </table>
+622 |                   </div>
+623 |                 </div>
+624 |               </motion.div>
+625 |             )}
+626 |           </motion.div>
+627 |         </motion.div>
+628 |       </div>
+629 | 
+630 |       {/* Мобільна FAB */}
+631 |       <button
+632 |         onClick={openAddEventModal}
+633 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
+634 |       >
+635 |         +
+636 |       </button>
+637 | 
+638 |       {/* Модальні вікна */}
+639 |       <EditSchoolModal
+640 |         isOpen={isEditModalOpen}
+641 |         onClose={() => setIsEditModalOpen(false)}
+642 |         editForm={editForm}
+643 |         setEditForm={setEditForm}
+644 |         onSave={handleSaveSchoolInfo}
 645 |       />
-646 |       <CommentModal
-647 |         isOpen={commentModal.isOpen}
-648 |         onClose={() => setCommentModal({ ...commentModal, isOpen: false })}
-649 |         mode={commentModal.mode}
-650 |         text={commentModal.text}
-651 |         setText={(t) => setCommentModal({ ...commentModal, text: t })}
-652 |         onSave={handleSaveComment}
-653 |       />
-654 |       <CrewModal
-655 |         isOpen={isCrewModalOpen}
-656 |         onClose={() => setIsCrewModalOpen(false)}
-657 |         city={schoolData.city}
-658 |         employees={users}
-659 |         onSave={handleAssignCrew}
+646 |       <EventModal
+647 |         isOpen={isEventModalOpen}
+648 |         onClose={() => setIsEventModalOpen(false)}
+649 |         eventForm={eventForm}
+650 |         setEventForm={setEventForm}
+651 |         onSave={handleSaveEvent}
+652 |       />
+653 |       <CommentModal
+654 |         isOpen={commentModal.isOpen}
+655 |         onClose={() => setCommentModal({ ...commentModal, isOpen: false })}
+656 |         mode={commentModal.mode}
+657 |         text={commentModal.text}
+658 |         setText={(t) => setCommentModal({ ...commentModal, text: t })}
+659 |         onSave={handleSaveComment}
 660 |       />
-661 |       <ReportModal
-662 |         isOpen={isReportModalOpen}
-663 |         onClose={() => setIsReportModalOpen(false)}
-664 |         onSave={handleSubmitReport}
-665 |         schoolName={schoolData.name}
-666 |         eventType={currentEvent?.project}
-667 |         eventDate={currentEvent?.date}
-668 |         eventIndex={
-669 |           events
-670 |             .filter((e) => e.schoolId === schoolData.id)
-671 |             .indexOf(currentEvent!) + 1
-672 |         }
-673 |         crew={
-674 |           currentEvent?.crew
-675 |             ? {
-676 |                 host: currentEvent.crew.hostId
-677 |                   ? (users.find(
-678 |                       (u: any) => u.id === currentEvent.crew.hostId,
-679 |                     ) ?? null)
-680 |                   : (currentEvent.crew.host ?? null),
-681 |                 driver: currentEvent.crew.driverId
-682 |                   ? (users.find(
-683 |                       (u: any) => u.id === currentEvent.crew.driverId,
-684 |                     ) ?? null)
-685 |                   : (currentEvent.crew.driver ?? null),
-686 |               }
-687 |             : undefined
-688 |         }
-689 |       />
-690 |       <CompletedEventModal
-691 |         isOpen={!!selectedReportEvent}
-692 |         onClose={() => setSelectedReportEvent(null)}
-693 |         event={selectedReportEvent}
-694 |       />
-695 |     </div>
-696 |   );
-697 |   function CompletedEventModal({
-698 |     isOpen,
-699 |     onClose,
-700 |     event,
-701 |   }: {
-702 |     isOpen: boolean;
-703 |     onClose: () => void;
-704 |     event: any;
-705 |   }) {
-706 |     if (!isOpen || !event) return null;
-707 |     const fmt = (n: number) =>
-708 |       new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
-709 |     const report = event.report;
-710 | 
-711 |     return (
-712 |       <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-713 |         <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
-714 |           {/* Header */}
-715 |           <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
-716 |             <div>
-717 |               <h3 className="text-xl font-bold text-slate-800">
-718 |                 Звіт: {event.project}
-719 |               </h3>
-720 |               <p className="text-sm text-slate-500 mt-1">
-721 |                 {new Date(event.date).toLocaleDateString("uk-UA")}
-722 |               </p>
-723 |             </div>
-724 |             <button
-725 |               onClick={onClose}
-726 |               className="text-slate-400 hover:text-slate-600 p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg"
-727 |             >
-728 |               ✕
-729 |             </button>
-730 |           </div>
-731 | 
-732 |           <div className="p-5 sm:p-6 flex-1 overflow-y-auto bg-slate-50/30">
-733 |             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-734 |               {/* Результати */}
-735 |               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-736 |                 <h4 className="font-bold text-slate-800 mb-4">📊 Результати</h4>
-737 |                 <div className="space-y-3 text-sm">
-738 |                   {[
-739 |                     ["Дітей (факт)", report?.childrenCount || 0],
-740 |                     ["Класів", report?.classesCount || 0],
-741 |                     ["Пільговиків", report?.privilegedCount || 0],
-742 |                     ["Сеансів", report?.showingsCount || 0],
-743 |                   ].map(([label, val]) => (
-744 |                     <div
-745 |                       key={label}
-746 |                       className="flex justify-between border-b border-slate-50 pb-2"
-747 |                     >
-748 |                       <span className="text-slate-500">{label}:</span>
-749 |                       <span className="font-medium">{val}</span>
-750 |                     </div>
-751 |                   ))}
-752 |                   <div className="flex justify-between pb-1">
-753 |                     <span className="text-slate-500">Оцінка:</span>
-754 |                     <span className="font-bold text-amber-500">
-755 |                       ⭐ {report?.rating || 0}/10
-756 |                     </span>
-757 |                   </div>
-758 |                 </div>
-759 |               </div>
-760 | 
-761 |               {/* Фінанси */}
-762 |               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-763 |                 <h4 className="font-bold text-slate-800 mb-4">💰 Фінанси</h4>
-764 |                 <div className="space-y-3 text-sm">
-765 |                   <div className="flex justify-between border-b border-slate-50 pb-2">
-766 |                     <span className="text-slate-500">Загальна виручка:</span>
-767 |                     <span className="font-bold">
-768 |                       {fmt(report?.totalSum)} грн
-769 |                     </span>
-770 |                   </div>
-771 |                   <div className="flex justify-between border-b border-slate-50 pb-2">
-772 |                     <span className="text-slate-500">На заклад:</span>
-773 |                     <span className="font-medium text-rose-500">
-774 |                       − {fmt(report?.schoolSum)} грн
-775 |                     </span>
-776 |                   </div>
-777 | 
-778 |                   {/* Витрати */}
-779 |                   {Array.isArray(report?.expenses) &&
-780 |                     report.expenses.map((exp: any, i: number) => (
-781 |                       <div
-782 |                         key={i}
-783 |                         className="flex justify-between text-xs pl-2"
-784 |                       >
-785 |                         <span className="text-slate-400">
-786 |                           — {exp.name || exp.category || "Інше"}
-787 |                         </span>
-788 |                         <span className="text-rose-500 font-medium">
-789 |                           − {fmt(exp.amount)} грн
-790 |                         </span>
-791 |                       </div>
-792 |                     ))}
-793 | 
-794 |                   <div className="flex justify-between pt-1 border-t border-slate-100">
-795 |                     <span className="font-bold text-slate-800">
-796 |                       Чистий прибуток:
-797 |                     </span>
-798 |                     <span className="font-bold text-emerald-600 text-base">
-799 |                       {fmt(report?.remainderSum)} грн
-800 |                     </span>
-801 |                   </div>
-802 |                 </div>
-803 |               </div>
-804 |             </div>
-805 | 
-806 |             {/* Зарплати */}
-807 |             {Array.isArray(report?.salaries) && report.salaries.length > 0 && (
-808 |               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mt-4">
-809 |                 <h4 className="font-bold text-slate-800 mb-4">👥 Зарплати</h4>
-810 |                 <div className="space-y-2">
-811 |                   {report.salaries.map((s: any, i: number) => (
-812 |                     <div key={i} className="flex justify-between text-sm">
-813 |                       <span>
-814 |                         {s.name} {s.role ? `(${s.role})` : ""}
-815 |                       </span>
-816 |                       <span className="font-medium text-blue-600">
-817 |                         {fmt(s.amount)} грн
-818 |                       </span>
-819 |                     </div>
-820 |                   ))}
-821 |                 </div>
-822 |               </div>
-823 |             )}
-824 |           </div>
-825 |         </div>
-826 |       </div>
-827 |     );
-828 |   }
-829 | }
-830 | 
+661 |       <CrewModal
+662 |         isOpen={isCrewModalOpen}
+663 |         onClose={() => setIsCrewModalOpen(false)}
+664 |         city={schoolData.city}
+665 |         employees={users}
+666 |         onSave={handleAssignCrew}
+667 |       />
+668 |       <ReportModal
+669 |         isOpen={isReportModalOpen}
+670 |         onClose={() => setIsReportModalOpen(false)}
+671 |         onSave={handleSubmitReport}
+672 |         schoolName={schoolData.name}
+673 |         eventType={currentEvent?.project}
+674 |         eventDate={currentEvent?.date}
+675 |         eventIndex={
+676 |           events
+677 |             .filter((e) => e.schoolId === schoolData.id)
+678 |             .indexOf(currentEvent!) + 1
+679 |         }
+680 |         crew={
+681 |           currentEvent?.crew
+682 |             ? {
+683 |                 host: currentEvent.crew.hostId
+684 |                   ? (users.find(
+685 |                       (u: User) => u.id === currentEvent.crew.hostId,
+686 |                     ) ?? null)
+687 |                   : (currentEvent.crew.host ?? null),
+688 |                 driver: currentEvent.crew.driverId
+689 |                   ? (users.find(
+690 |                       (u: User) => u.id === currentEvent.crew.driverId,
+691 |                     ) ?? null)
+692 |                   : (currentEvent.crew.driver ?? null),
+693 |               }
+694 |             : undefined
+695 |         }
+696 |       />
+697 |       <CompletedEventModal
+698 |         isOpen={!!selectedReportEvent}
+699 |         onClose={() => setSelectedReportEvent(null)}
+700 |         event={selectedReportEvent}
+701 |       />
+702 |     </div>
+703 |   );
+704 |   function CompletedEventModal({
+705 |     isOpen,
+706 |     onClose,
+707 |     event,
+708 |   }: {
+709 |     isOpen: boolean;
+710 |     onClose: () => void;
+711 |     event: Event | null;
+712 |   }) {
+713 |     if (!isOpen || !event) return null;
+714 |     const fmt = (n: number) =>
+715 |       new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+716 |     const report = event.report;
+717 | 
+718 |     return (
+719 |       <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+720 |         <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
+721 |           {/* Header */}
+722 |           <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
+723 |             <div>
+724 |               <h3 className="text-xl font-bold text-slate-800">
+725 |                 Звіт: {event.project}
+726 |               </h3>
+727 |               <p className="text-sm text-slate-500 mt-1">
+728 |                 {new Date(event.date).toLocaleDateString("uk-UA")}
+729 |               </p>
+730 |             </div>
+731 |             <button
+732 |               onClick={onClose}
+733 |               className="text-slate-400 hover:text-slate-600 p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg"
+734 |             >
+735 |               ✕
+736 |             </button>
+737 |           </div>
+738 | 
+739 |           <div className="p-5 sm:p-6 flex-1 overflow-y-auto bg-slate-50/30">
+740 |             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+741 |               {/* Результати */}
+742 |               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+743 |                 <h4 className="font-bold text-slate-800 mb-4">📊 Результати</h4>
+744 |                 <div className="space-y-3 text-sm">
+745 |                   {[
+746 |                     ["Дітей (факт)", report?.childrenCount || 0],
+747 |                     ["Класів", report?.classesCount || 0],
+748 |                     ["Пільговиків", report?.privilegedCount || 0],
+749 |                     ["Сеансів", report?.showingsCount || 0],
+750 |                   ].map(([label, val]) => (
+751 |                     <div
+752 |                       key={label}
+753 |                       className="flex justify-between border-b border-slate-50 pb-2"
+754 |                     >
+755 |                       <span className="text-slate-500">{label}:</span>
+756 |                       <span className="font-medium">{val}</span>
+757 |                     </div>
+758 |                   ))}
+759 |                   <div className="flex justify-between pb-1">
+760 |                     <span className="text-slate-500">Оцінка:</span>
+761 |                     <span className="font-bold text-amber-500">
+762 |                       ⭐ {report?.rating || 0}/10
+763 |                     </span>
+764 |                   </div>
+765 |                 </div>
+766 |               </div>
+767 | 
+768 |               {/* Фінанси */}
+769 |               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+770 |                 <h4 className="font-bold text-slate-800 mb-4">💰 Фінанси</h4>
+771 |                 <div className="space-y-3 text-sm">
+772 |                   <div className="flex justify-between border-b border-slate-50 pb-2">
+773 |                     <span className="text-slate-500">Загальна виручка:</span>
+774 |                     <span className="font-bold">
+775 |                       {fmt(report?.totalSum)} грн
+776 |                     </span>
+777 |                   </div>
+778 |                   <div className="flex justify-between border-b border-slate-50 pb-2">
+779 |                     <span className="text-slate-500">На заклад:</span>
+780 |                     <span className="font-medium text-rose-500">
+781 |                       − {fmt(report?.schoolSum)} грн
+782 |                     </span>
+783 |                   </div>
+784 | 
+785 |                   {/* Витрати */}
+786 |                   {Array.isArray(report?.expenses) &&
+787 |                     report.expenses.map((exp: ExpenseItem, i: number) => (
+788 |                       <div
+789 |                         key={i}
+790 |                         className="flex justify-between text-xs pl-2"
+791 |                       >
+792 |                         <span className="text-slate-400">
+793 |                           — {exp.name || exp.category || "Інше"}
+794 |                         </span>
+795 |                         <span className="text-rose-500 font-medium">
+796 |                           − {fmt(exp.amount)} грн
+797 |                         </span>
+798 |                       </div>
+799 |                     ))}
+800 | 
+801 |                   <div className="flex justify-between pt-1 border-t border-slate-100">
+802 |                     <span className="font-bold text-slate-800">
+803 |                       Чистий прибуток:
+804 |                     </span>
+805 |                     <span className="font-bold text-emerald-600 text-base">
+806 |                       {fmt(report?.remainderSum)} грн
+807 |                     </span>
+808 |                   </div>
+809 |                 </div>
+810 |               </div>
+811 |             </div>
+812 | 
+813 |             {/* Зарплати */}
+814 |             {Array.isArray(report?.salaries) && report.salaries.length > 0 && (
+815 |               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mt-4">
+816 |                 <h4 className="font-bold text-slate-800 mb-4">👥 Зарплати</h4>
+817 |                 <div className="space-y-2">
+818 |                   {report.salaries.map((s: SalaryItem, i: number) => (
+819 |                     <div key={i} className="flex justify-between text-sm">
+820 |                       <span>
+821 |                         {s.name} {s.role ? `(${s.role})` : ""}
+822 |                       </span>
+823 |                       <span className="font-medium text-blue-600">
+824 |                         {fmt(s.amount)} грн
+825 |                       </span>
+826 |                     </div>
+827 |                   ))}
+828 |                 </div>
+829 |               </div>
+830 |             )}
+831 |           </div>
+832 |         </div>
+833 |       </div>
+834 |     );
+835 |   }
+836 | }
+837 | 
 ```
 
 ### File: apps/frontend/src/pages/Schools.tsx

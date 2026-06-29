@@ -224,6 +224,38 @@ export function useAddComment() {
   });
 }
 
+// === НОВА МУТАЦІЯ: Оновлення школи ===
+export const useUpdateSchool = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const res = await api.patch(`/schools/${data.id}`, data);
+      return res.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["school", variables.id] });
+    },
+  });
+};
+
+// === НОВА МУТАЦІЯ: Створення події ===
+export const useCreateEvent = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: any) => {
+      const res = await api.post("/events", payload);
+      return res.data;
+    },
+    onSuccess: (newEvent, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["schoolEvents", variables.schoolId],
+      });
+    },
+  });
+};
+
 export function useUpdateHistoryComment() {
   const qc = useQueryClient();
   return useMutation({

@@ -16,6 +16,9 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 import { CreateEventDto } from './dto/create-event.dto';
 import { SubmitReportDto } from './dto/submit-report.dto';
+import { UpdateStatusDto } from './dto/update-status.dto';
+import { UpdatePreparationDto } from './dto/update-preparation.dto';
+import { RescheduleEventDto } from './dto/reschedule-event.dto';
 
 @Controller('events')
 @UseGuards(AuthGuard)
@@ -46,7 +49,7 @@ export class EventsController {
   @Patch(':id/status')
   updateStatus(
     @Param('id') id: string,
-    @Body() body: { status: string; actionName: string; comment?: string },
+    @Body() body: UpdateStatusDto,
     @CurrentUser() user: JwtUser,
   ) {
     return this.eventsService.updateStatus(
@@ -61,7 +64,7 @@ export class EventsController {
   @Patch(':id/preparation')
   updatePreparation(
     @Param('id') id: string,
-    @Body() body: { field: string; status: string },
+    @Body() body: UpdatePreparationDto,
   ) {
     return this.eventsService.updatePreparationStatus(
       id,
@@ -123,7 +126,7 @@ export class EventsController {
   @Patch(':id/reschedule')
   reschedule(
     @Param('id') id: string,
-    @Body() body: { date: string; time: string },
+    @Body() body: RescheduleEventDto,
     @CurrentUser() user: JwtUser,
   ) {
     return this.eventsService.rescheduleEvent(id, body.date, body.time, user);

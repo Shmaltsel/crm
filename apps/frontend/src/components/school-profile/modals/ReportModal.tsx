@@ -9,10 +9,25 @@ interface CrewMember {
   name: string;
   role: "host" | "driver";
 }
+export interface ReportData {
+  announcementDone: boolean;
+  materialShown: boolean;
+  childrenCount: number;
+  classesCount: number;
+  privilegedCount: number;
+  showingsCount: number;
+  totalSum: number;
+  schoolSum: number;
+  remainderSum: number;
+  rating: number;
+  expenses: { name: string; amount: number }[];
+  salaries: { userId: string; name: string; amount: number; role: string }[];
+}
+
 interface ReportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: any) => void;
+  onSave: (data: ReportData) => void;
   schoolName: string;
   eventType?: string;
   eventDate?: string;

@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { useSchoolCompletedEvents } from "../hooks/useSchoolProfile";
+
+// Hooks
 import {
   useSchool,
   useSchoolEvents,
@@ -13,10 +14,20 @@ import {
   useAddComment,
   useUpdateHistoryComment,
   useEventFull,
+  useSchoolCompletedEvents,
+  useUpdateSchool,
+  useCreateEvent,
 } from "../hooks/useSchoolProfile";
-import { useQueryClient } from "@tanstack/react-query";
-import { api } from "../config/api";
 
+// Types
+import type { Event, User } from "../types";
+import type { ReportData } from "../components/school-profile/modals/ReportModal";
+
+// Components
+import SchoolProfileHeader from "../components/school-profile/SchoolProfileHeader";
+import CompletedEventModal from "../components/school-profile/CompletedEventModal";
+
+// Lazy components
 const Pipeline = lazy(() => import("../components/school-profile/Pipeline"));
 const HistoryTimeline = lazy(
   () => import("../components/school-profile/HistoryTimeline"),
@@ -24,9 +35,6 @@ const HistoryTimeline = lazy(
 const EventDetails = lazy(
   () => import("../components/school-profile/EventDetails"),
 );
-
-// Імпортуємо UI компоненти
-import SchoolProfileHeader from "../components/school-profile/SchoolProfileHeader";
 const SchoolInfoCard = lazy(
   () => import("../components/school-profile/SchoolInfoCard"),
 );
@@ -39,7 +47,8 @@ const EventPreparation = lazy(
 const AssignedCrew = lazy(
   () => import("../components/school-profile/AssignedCrew"),
 );
-// Імпортуємо модальні вікна
+
+// Modals
 import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
 import EventModal from "../components/school-profile/modals/EventModal";
 import CommentModal from "../components/school-profile/modals/CommentModal";
@@ -54,18 +63,12 @@ const PIPELINE_STAGES = [
   { id: 5, key: "IN_PROGRESS", name: "Підготовка" },
   { id: 6, key: "DONE", name: "Проведення заходу" },
   { id: 7, key: "REPORT", name: "Звіт" },
-];
+] as const;
 
 export default function SchoolProfile() {
   const { id } = useParams();
-  const qc = useQueryClient();
 
   // 1. Спочатку завантажуємо базові дані
-  const { data: schoolRaw, isLoading: schoolLoading } = useSchool(id);
-  const { data: eventsRaw = [], isLoading: eventsLoading } = useSchoolEvents(
-    id,
-    false,
-  );
 
   // 2. Оголошуємо стейти, які потрібні для наступних запитів
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -78,7 +81,9 @@ export default function SchoolProfile() {
 
   const { data: users = [] } = useUsers();
   const { data: completedEvents = [] } = useSchoolCompletedEvents(id);
-  const [selectedReportEvent, setSelectedReportEvent] = useState<any>(null);
+  const [selectedReportEvent, setSelectedReportEvent] = useState<Event | null>(
+    null,
+  );
   const updateStatus = useUpdateEventStatus();
   const updatePreparation = useUpdatePreparation();
   const assignCrewMutation = useAssignCrew();
@@ -87,21 +92,10 @@ export default function SchoolProfile() {
   const updateHistoryMutation = useUpdateHistoryComment();
 
   // 4. Формуємо schoolData
-  const schoolData = schoolRaw
-    ? {
-        id: schoolRaw.id,
-        cityId: schoolRaw.cityId,
-        name: schoolRaw.name || "",
-        type: schoolRaw.type || "Школа",
-        city: schoolRaw.city?.name || "",
-        address: schoolRaw.address || "",
-        director: schoolRaw.director || "",
-        phone: schoolRaw.phone || "",
-        email: schoolRaw.email || "",
-        childrenCount: schoolRaw.childrenCount || 0,
-        notes: schoolRaw.notes || "",
-      }
-    : {
+  // 4. schoolData — використовуємо schoolRaw напряму
+  const schoolData = useMemo(() => {
+    if (!schoolRaw) {
+      return {
         id: "",
         cityId: "",
         name: "",
@@ -114,8 +108,22 @@ export default function SchoolProfile() {
         childrenCount: 0,
         notes: "",
       };
+    }
 
-  const events = eventsRaw;
+    return {
+      id: schoolRaw.id,
+      cityId: schoolRaw.cityId,
+      name: schoolRaw.name || "",
+      type: schoolRaw.type || "Школа",
+      city: schoolRaw.city?.name || "",
+      address: schoolRaw.address || "",
+      director: schoolRaw.director || "",
+      phone: schoolRaw.phone || "",
+      email: schoolRaw.email || "",
+      childrenCount: schoolRaw.childrenCount || 0,
+      notes: schoolRaw.notes || "",
+    };
+  }, [schoolRaw]);
 
   // 5. Оголошуємо решту стейтів (editForm залежить від schoolData, тому він тут)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -130,7 +138,19 @@ export default function SchoolProfile() {
     text: "",
   });
 
-  const [editForm, setEditForm] = useState(schoolData);
+  const [editForm, setEditForm] = useState({
+    id: "",
+    cityId: "",
+    name: "",
+    type: "Школа",
+    city: "",
+    address: "",
+    director: "",
+    phone: "",
+    email: "",
+    childrenCount: 0,
+    notes: "",
+  });
   const [eventForm, setEventForm] = useState({
     project: "Голограма для школи",
     date: "",
@@ -146,14 +166,16 @@ export default function SchoolProfile() {
     () => eventsRaw.find((ev) => ev.id === selectedEventId) ?? eventsRaw[0],
     [eventsRaw, selectedEventId],
   );
-  const currentEvent = useMemo(
-    () =>
-      eventFull?.id === currentEventBase?.id
-        ? { ...currentEventBase, ...eventFull }
-        : currentEventBase,
-    [currentEventBase, eventFull],
-  );
+
+  const currentEvent = useMemo(() => {
+    if (!currentEventBase) return null;
+    if (eventFull?.id === currentEventBase.id) {
+      return { ...currentEventBase, ...eventFull };
+    }
+    return currentEventBase;
+  }, [currentEventBase, eventFull]);
   const currentStageIndex = useMemo(() => {
+    if (!currentEvent?.status) return 0;
     const idx = PIPELINE_STAGES.findIndex(
       (s) => s.key === currentEvent?.status,
     );
@@ -184,15 +206,18 @@ export default function SchoolProfile() {
     [currentEvent, currentStageIndex],
   );
 
-  const handleHistoryClick = useCallback((historyItem: any) => {
-    setCommentModal({
-      isOpen: true,
-      mode: "history",
-      stepId: null,
-      historyId: historyItem.id,
-      text: historyItem.comment || "",
-    });
-  }, []);
+  const handleHistoryClick = useCallback(
+    (historyItem: { id: string; comment?: string }) => {
+      setCommentModal({
+        isOpen: true,
+        mode: "history",
+        stepId: null,
+        historyId: historyItem.id,
+        text: historyItem.comment || "",
+      });
+    },
+    [],
+  );
 
   const handleAddCommentClick = useCallback(() => {
     setCommentModal({
@@ -210,7 +235,8 @@ export default function SchoolProfile() {
       if (commentModal.mode === "pipeline") {
         const activeStage = PIPELINE_STAGES[currentStageIndex];
         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-        if (!nextStage) return;
+        if (!nextStage || !currentEvent) return;
+
         await updateStatus.mutateAsync({
           eventId: currentEvent.id,
           status: nextStage.key,
@@ -254,44 +280,42 @@ export default function SchoolProfile() {
     ],
   );
 
+  const updateSchoolMutation = useUpdateSchool();
+  const createEventMutation = useCreateEvent();
+
   const handleSaveEvent = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      try {
-        const payload = {
-          ...eventForm,
-          schoolId: schoolData.id,
-          cityId: schoolData.cityId,
-          childrenPlanned: Number(eventForm.childrenPlanned),
-          price: Number(eventForm.price),
-        };
-        const res = await api.post("/events", payload, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        });
-        setIsEventModalOpen(false);
-        qc.invalidateQueries({ queryKey: ["schoolEvents", id] });
-        setSelectedEventId(res.data.id);
-      } catch (e) {
-        console.error(e);
-      }
+      if (!schoolData.id) return;
+
+      const payload = {
+        ...eventForm,
+        schoolId: schoolData.id,
+        cityId: schoolData.cityId,
+        childrenPlanned: Number(eventForm.childrenPlanned) || 0,
+        price: Number(eventForm.price) || 0,
+      };
+
+      const newEvent = await createEventMutation.mutateAsync(payload);
+
+      setIsEventModalOpen(false);
+      setSelectedEventId(newEvent.id);
     },
-    [eventForm, schoolData, id, qc],
+    [eventForm, schoolData, createEventMutation],
   );
 
   const handleSaveSchoolInfo = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      try {
-        await api.patch(`/schools/${id}`, editForm, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        });
-        qc.invalidateQueries({ queryKey: ["school", id] });
-        setIsEditModalOpen(false);
-      } catch (e) {
-        console.error(e);
-      }
+      if (!id) return;
+
+      await updateSchoolMutation.mutateAsync({
+        ...editForm,
+        id, // передаємо id для PATCH
+      });
+      setIsEditModalOpen(false);
     },
-    [editForm, id, qc],
+    [editForm, id, updateSchoolMutation],
   );
 
   const handleUpdatePreparation = useCallback(
@@ -307,7 +331,7 @@ export default function SchoolProfile() {
   );
 
   const handleSubmitReport = useCallback(
-    async (reportData: any) => {
+    async (reportData: ReportData) => {
       if (!currentEvent) return;
       await submitReportMutation.mutateAsync({
         eventId: currentEvent.id,
@@ -330,15 +354,19 @@ export default function SchoolProfile() {
 
   const handleAssignCrew = useCallback(
     async (crewId: string) => {
+      if (!currentEvent) return;
+
       await assignCrewMutation.mutateAsync({
         eventId: currentEvent.id,
         crewId,
       });
-      return updatePreparation.mutateAsync({
+
+      await updatePreparation.mutateAsync({
         eventId: currentEvent.id,
         field: "assignCrew",
         status: "Виконано",
       });
+
       setIsCrewModalOpen(false);
     },
     [currentEvent, assignCrewMutation, updatePreparation],
@@ -529,7 +557,7 @@ export default function SchoolProfile() {
                     </h3>
                   </div>
                   <div className="md:hidden divide-y divide-slate-50">
-                    {completedEvents.map((ev: any) => (
+                    {completedEvents.map((ev: Event) => (
                       <div
                         key={ev.id}
                         onClick={() => setSelectedReportEvent(ev)}
@@ -669,19 +697,19 @@ export default function SchoolProfile() {
         eventIndex={
           events
             .filter((e) => e.schoolId === schoolData.id)
-            .indexOf(currentEvent!) + 1
+            .findIndex((e) => e.id === currentEvent?.id) + 1
         }
         crew={
           currentEvent?.crew
             ? {
                 host: currentEvent.crew.hostId
                   ? (users.find(
-                      (u: any) => u.id === currentEvent.crew.hostId,
+                      (u: User) => u.id === currentEvent.crew.hostId,
                     ) ?? null)
                   : (currentEvent.crew.host ?? null),
                 driver: currentEvent.crew.driverId
                   ? (users.find(
-                      (u: any) => u.id === currentEvent.crew.driverId,
+                      (u: User) => u.id === currentEvent.crew.driverId,
                     ) ?? null)
                   : (currentEvent.crew.driver ?? null),
               }
@@ -695,136 +723,4 @@ export default function SchoolProfile() {
       />
     </div>
   );
-  function CompletedEventModal({
-    isOpen,
-    onClose,
-    event,
-  }: {
-    isOpen: boolean;
-    onClose: () => void;
-    event: any;
-  }) {
-    if (!isOpen || !event) return null;
-    const fmt = (n: number) =>
-      new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
-    const report = event.report;
-
-    return (
-      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-        <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
-          {/* Header */}
-          <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
-            <div>
-              <h3 className="text-xl font-bold text-slate-800">
-                Звіт: {event.project}
-              </h3>
-              <p className="text-sm text-slate-500 mt-1">
-                {new Date(event.date).toLocaleDateString("uk-UA")}
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-slate-400 hover:text-slate-600 p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className="p-5 sm:p-6 flex-1 overflow-y-auto bg-slate-50/30">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-              {/* Результати */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-                <h4 className="font-bold text-slate-800 mb-4">📊 Результати</h4>
-                <div className="space-y-3 text-sm">
-                  {[
-                    ["Дітей (факт)", report?.childrenCount || 0],
-                    ["Класів", report?.classesCount || 0],
-                    ["Пільговиків", report?.privilegedCount || 0],
-                    ["Сеансів", report?.showingsCount || 0],
-                  ].map(([label, val]) => (
-                    <div
-                      key={label}
-                      className="flex justify-between border-b border-slate-50 pb-2"
-                    >
-                      <span className="text-slate-500">{label}:</span>
-                      <span className="font-medium">{val}</span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between pb-1">
-                    <span className="text-slate-500">Оцінка:</span>
-                    <span className="font-bold text-amber-500">
-                      ⭐ {report?.rating || 0}/10
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Фінанси */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-                <h4 className="font-bold text-slate-800 mb-4">💰 Фінанси</h4>
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between border-b border-slate-50 pb-2">
-                    <span className="text-slate-500">Загальна виручка:</span>
-                    <span className="font-bold">
-                      {fmt(report?.totalSum)} грн
-                    </span>
-                  </div>
-                  <div className="flex justify-between border-b border-slate-50 pb-2">
-                    <span className="text-slate-500">На заклад:</span>
-                    <span className="font-medium text-rose-500">
-                      − {fmt(report?.schoolSum)} грн
-                    </span>
-                  </div>
-
-                  {/* Витрати */}
-                  {Array.isArray(report?.expenses) &&
-                    report.expenses.map((exp: any, i: number) => (
-                      <div
-                        key={i}
-                        className="flex justify-between text-xs pl-2"
-                      >
-                        <span className="text-slate-400">
-                          — {exp.name || exp.category || "Інше"}
-                        </span>
-                        <span className="text-rose-500 font-medium">
-                          − {fmt(exp.amount)} грн
-                        </span>
-                      </div>
-                    ))}
-
-                  <div className="flex justify-between pt-1 border-t border-slate-100">
-                    <span className="font-bold text-slate-800">
-                      Чистий прибуток:
-                    </span>
-                    <span className="font-bold text-emerald-600 text-base">
-                      {fmt(report?.remainderSum)} грн
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Зарплати */}
-            {Array.isArray(report?.salaries) && report.salaries.length > 0 && (
-              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mt-4">
-                <h4 className="font-bold text-slate-800 mb-4">👥 Зарплати</h4>
-                <div className="space-y-2">
-                  {report.salaries.map((s: any, i: number) => (
-                    <div key={i} className="flex justify-between text-sm">
-                      <span>
-                        {s.name} {s.role ? `(${s.role})` : ""}
-                      </span>
-                      <span className="font-medium text-blue-600">
-                        {fmt(s.amount)} грн
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
 }

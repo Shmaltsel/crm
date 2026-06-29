@@ -4,7 +4,11 @@ import { TelegramService } from '../telegram/telegram.service';
 import { Prisma } from '@prisma/client';
 
 import { CreateEventDto } from './dto/create-event.dto';
-import { SubmitReportDto } from './dto/submit-report.dto';
+import {
+  SubmitReportDto,
+  ExpenseItemDto,
+  SalaryItemDto,
+} from './dto/submit-report.dto';
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -405,7 +409,7 @@ export class EventsService {
     // Створюємо нові записи витрат
     if (reportData.expenses?.length) {
       await this.prisma.expenseItem.createMany({
-        data: reportData.expenses.map((exp: any) => ({
+        data: reportData.expenses.map((exp: ExpenseItemDto) => ({
           reportId: eventId,
           category: exp.category || 'Інше',
           name: exp.name,
@@ -417,7 +421,7 @@ export class EventsService {
     // Створюємо нові записи зарплат + нарахування балансу
     if (reportData.salaries?.length) {
       await this.prisma.salaryItem.createMany({
-        data: reportData.salaries.map((s: any) => ({
+        data: reportData.salaries.map((s: SalaryItemDto) => ({
           reportId: eventId,
           userId: s.userId,
           userName: s.name,
