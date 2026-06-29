@@ -1,8 +1,7 @@
-import { useState } from "react";
 import { useSelectedCity } from "../context/CityContext";
 import { useNavigate } from "react-router-dom";
 import { useCalendarEvents, useCalendarProjects } from "../hooks/useCalendar";
-
+import { useState, useEffect } from 'react';
 interface CalendarEvent {
   id: string;
   project: string;
