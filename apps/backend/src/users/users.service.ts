@@ -1,12 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { TelegramService } from '../telegram/telegram.service';
 import { Prisma, User } from '@prisma/client';
+
 @Injectable()
 export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => TelegramService))
     private telegramService: TelegramService,
   ) {}
 
@@ -142,5 +144,18 @@ export class UsersService {
 
   async findAll() {
     return this.prisma.user.findMany();
+  }
+
+  // Новий публічний метод для TelegramService
+  async updateTelegramChatId(username: string, chatId: string) {
+    return this.prisma.user.updateMany({
+      where: {
+        telegramId: {
+          equals: username,
+          mode: 'insensitive', // пошук без урахування регістру (Svitlo != svitlo)
+        },
+      },
+      data: { telegramChatId: chatId },
+    });
   }
 }

@@ -1,13 +1,22 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import TelegramBot from 'node-telegram-bot-api';
-import { PrismaService } from '../prisma/prisma.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class TelegramService implements OnModuleInit {
   private bot: TelegramBot;
   private readonly logger = new Logger(TelegramService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @Inject(forwardRef(() => UsersService))
+    private usersService: UsersService,
+  ) {}
 
   onModuleInit() {
     const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -33,17 +42,11 @@ export class TelegramService implements OnModuleInit {
       // Нормалізуємо username: видаляємо всі "@" на випадок, якщо хтось ввів їх у CRM
       const normalizedUsername = username.toLowerCase();
 
-      // Шукаємо користувача, де telegramId співпадає з username
-      // Ми використовуємо updateMany, щоб покрити всі можливі записи
-      const result = await this.prisma.user.updateMany({
-        where: {
-          telegramId: {
-            equals: normalizedUsername,
-            mode: 'insensitive', // пошук без урахування регістру (Svitlo != svitlo)
-          },
-        },
-        data: { telegramChatId: chatId },
-      });
+      // Викликаємо публічний метод UsersService, щоб не порушувати інкапсуляцію БД
+      const result = await this.usersService.updateTelegramChatId(
+        normalizedUsername,
+        chatId
+      );
 
       if (result.count > 0) {
         this.logger.log(

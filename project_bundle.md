@@ -166,6 +166,7 @@
 │       │   │   │   └── StaffFinanceView.tsx
 │       │   │   ├── school-profile
 │       │   │   │   ├── AssignedCrew.tsx
+│       │   │   │   ├── CompletedEventModal.tsx
 │       │   │   │   ├── EventDetails.tsx
 │       │   │   │   ├── EventPreparation.tsx
 │       │   │   │   ├── EventsTable.tsx
@@ -9589,6 +9590,145 @@
  67 | 
 ```
 
+### File: apps/frontend/src/components/school-profile/CompletedEventModal.tsx
+```tsx
+  0 | import React from "react";
+  1 | import type { Event, ExpenseItem, SalaryItem } from "../../types";
+  2 | 
+  3 | interface CompletedEventModalProps {
+  4 |   isOpen: boolean;
+  5 |   onClose: () => void;
+  6 |   event: Event | null;
+  7 | }
+  8 | 
+  9 | const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
+ 10 |   isOpen,
+ 11 |   onClose,
+ 12 |   event,
+ 13 | }) => {
+ 14 |   if (!isOpen || !event) return null;
+ 15 | 
+ 16 |   const report = event.report;
+ 17 |   const fmt = (n: number | null | undefined) =>
+ 18 |     new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+ 19 | 
+ 20 |   return (
+ 21 |     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+ 22 |       <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
+ 23 |         {/* Header */}
+ 24 |         <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
+ 25 |           <div>
+ 26 |             <h3 className="text-xl font-bold text-slate-800">
+ 27 |               Звіт: {event.project}
+ 28 |             </h3>
+ 29 |             <p className="text-sm text-slate-500 mt-1">
+ 30 |               {new Date(event.date).toLocaleDateString("uk-UA")}
+ 31 |             </p>
+ 32 |           </div>
+ 33 |           <button
+ 34 |             onClick={onClose}
+ 35 |             className="text-slate-400 hover:text-slate-600 p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg"
+ 36 |           >
+ 37 |             ✕
+ 38 |           </button>
+ 39 |         </div>
+ 40 | 
+ 41 |         <div className="p-5 sm:p-6 flex-1 overflow-y-auto bg-slate-50/30">
+ 42 |           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+ 43 |             {/* Результати */}
+ 44 |             <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+ 45 |               <h4 className="font-bold text-slate-800 mb-4">📊 Результати</h4>
+ 46 |               <div className="space-y-3 text-sm">
+ 47 |                 {[
+ 48 |                   ["Дітей (факт)", report?.childrenCount || 0],
+ 49 |                   ["Класів", report?.classesCount || 0],
+ 50 |                   ["Пільговиків", report?.privilegedCount || 0],
+ 51 |                   ["Сеансів", report?.showingsCount || 0],
+ 52 |                 ].map(([label, val]) => (
+ 53 |                   <div
+ 54 |                     key={label as string}
+ 55 |                     className="flex justify-between border-b border-slate-50 pb-2"
+ 56 |                   >
+ 57 |                     <span className="text-slate-500">{label}:</span>
+ 58 |                     <span className="font-medium">{val}</span>
+ 59 |                   </div>
+ 60 |                 ))}
+ 61 |                 <div className="flex justify-between pb-1">
+ 62 |                   <span className="text-slate-500">Оцінка:</span>
+ 63 |                   <span className="font-bold text-amber-500">
+ 64 |                     ⭐ {report?.rating || 0}/10
+ 65 |                   </span>
+ 66 |                 </div>
+ 67 |               </div>
+ 68 |             </div>
+ 69 | 
+ 70 |             {/* Фінанси */}
+ 71 |             <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+ 72 |               <h4 className="font-bold text-slate-800 mb-4">💰 Фінанси</h4>
+ 73 |               <div className="space-y-3 text-sm">
+ 74 |                 <div className="flex justify-between border-b border-slate-50 pb-2">
+ 75 |                   <span className="text-slate-500">Загальна виручка:</span>
+ 76 |                   <span className="font-bold">{fmt(report?.totalSum)} грн</span>
+ 77 |                 </div>
+ 78 |                 <div className="flex justify-between border-b border-slate-50 pb-2">
+ 79 |                   <span className="text-slate-500">На заклад:</span>
+ 80 |                   <span className="font-medium text-rose-500">
+ 81 |                     − {fmt(report?.schoolSum)} грн
+ 82 |                   </span>
+ 83 |                 </div>
+ 84 | 
+ 85 |                 {Array.isArray(report?.expenses) &&
+ 86 |                   report.expenses.map((exp: ExpenseItem, i: number) => (
+ 87 |                     <div key={i} className="flex justify-between text-xs pl-2">
+ 88 |                       <span className="text-slate-400">
+ 89 |                         — {exp.name || exp.category || "Інше"}
+ 90 |                       </span>
+ 91 |                       <span className="text-rose-500 font-medium">
+ 92 |                         − {fmt(exp.amount)} грн
+ 93 |                       </span>
+ 94 |                     </div>
+ 95 |                   ))}
+ 96 | 
+ 97 |                 <div className="flex justify-between pt-1 border-t border-slate-100">
+ 98 |                   <span className="font-bold text-slate-800">
+ 99 |                     Чистий прибуток:
+100 |                   </span>
+101 |                   <span className="font-bold text-emerald-600 text-base">
+102 |                     {fmt(report?.remainderSum)} грн
+103 |                   </span>
+104 |                 </div>
+105 |               </div>
+106 |             </div>
+107 |           </div>
+108 | 
+109 |           {/* Зарплати */}
+110 |           {Array.isArray(report?.salaries) && report.salaries.length > 0 && (
+111 |             <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mt-4">
+112 |               <h4 className="font-bold text-slate-800 mb-4">👥 Зарплати</h4>
+113 |               <div className="space-y-2">
+114 |                 {report.salaries.map((s: SalaryItem, i: number) => (
+115 |                   <div key={i} className="flex justify-between text-sm">
+116 |                     <span>
+117 |                       {s.name} {s.role ? `(${s.role})` : ""}
+118 |                     </span>
+119 |                     <span className="font-medium text-blue-600">
+120 |                       {fmt(s.amount)} грн
+121 |                     </span>
+122 |                   </div>
+123 |                 ))}
+124 |               </div>
+125 |             </div>
+126 |           )}
+127 |         </div>
+128 |       </div>
+129 |     </div>
+130 |   );
+131 | };
+132 | 
+133 | export default CompletedEventModal;
+134 | 
+```
+
 ### File: apps/frontend/src/components/school-profile/EventDetails.tsx
 ```tsx
   0 | import { useState } from 'react';
@@ -12751,40 +12891,72 @@
 223 |   });
 224 | }
 225 | 
-226 | export function useUpdateHistoryComment() {
-227 |   const qc = useQueryClient();
-228 |   return useMutation({
-229 |     mutationFn: ({
-230 |       historyId,
-231 |       comment,
-232 |       eventId,
-233 |     }: {
-234 |       historyId: string;
-235 |       comment: string;
-236 |       eventId: string;
-237 |     }) =>
-238 |       api
-239 |         .patch(
-240 |           `/events/history/${historyId}`,
-241 |           { comment },
-242 |           { headers: authHeader() },
-243 |         )
-244 |         .then((r) => r.data),
-245 |     onSuccess: (_data, vars) => {
-246 |       qc.setQueryData(["eventFull", vars.eventId], (old: any) =>
-247 |         old
-248 |           ? {
-249 |               ...old,
-250 |               history: old.history?.map((h: any) =>
-251 |                 h.id === vars.historyId ? { ...h, comment: vars.comment } : h,
-252 |               ),
-253 |             }
-254 |           : old,
-255 |       );
-256 |     },
-257 |   });
-258 | }
-259 | 
+226 | // === НОВА МУТАЦІЯ: Оновлення школи ===
+227 | export const useUpdateSchool = () => {
+228 |   const queryClient = useQueryClient();
+229 | 
+230 |   return useMutation({
+231 |     mutationFn: async (data: any) => {
+232 |       const res = await api.patch(`/schools/${data.id}`, data);
+233 |       return res.data;
+234 |     },
+235 |     onSuccess: (_, variables) => {
+236 |       queryClient.invalidateQueries({ queryKey: ["school", variables.id] });
+237 |     },
+238 |   });
+239 | };
+240 | 
+241 | // === НОВА МУТАЦІЯ: Створення події ===
+242 | export const useCreateEvent = () => {
+243 |   const queryClient = useQueryClient();
+244 | 
+245 |   return useMutation({
+246 |     mutationFn: async (payload: any) => {
+247 |       const res = await api.post("/events", payload);
+248 |       return res.data;
+249 |     },
+250 |     onSuccess: (newEvent, variables) => {
+251 |       queryClient.invalidateQueries({
+252 |         queryKey: ["schoolEvents", variables.schoolId],
+253 |       });
+254 |     },
+255 |   });
+256 | };
+257 | 
+258 | export function useUpdateHistoryComment() {
+259 |   const qc = useQueryClient();
+260 |   return useMutation({
+261 |     mutationFn: ({
+262 |       historyId,
+263 |       comment,
+264 |       eventId,
+265 |     }: {
+266 |       historyId: string;
+267 |       comment: string;
+268 |       eventId: string;
+269 |     }) =>
+270 |       api
+271 |         .patch(
+272 |           `/events/history/${historyId}`,
+273 |           { comment },
+274 |           { headers: authHeader() },
+275 |         )
+276 |         .then((r) => r.data),
+277 |     onSuccess: (_data, vars) => {
+278 |       qc.setQueryData(["eventFull", vars.eventId], (old: any) =>
+279 |         old
+280 |           ? {
+281 |               ...old,
+282 |               history: old.history?.map((h: any) =>
+283 |                 h.id === vars.historyId ? { ...h, comment: vars.comment } : h,
+284 |               ),
+285 |             }
+286 |           : old,
+287 |       );
+288 |     },
+289 |   });
+290 | }
+291 | 
 ```
 
 ### File: apps/frontend/src/hooks/useSchools.ts
@@ -16419,841 +16591,730 @@
   0 | import { useState, useMemo, useCallback, lazy, Suspense } from "react";
   1 | import { useParams } from "react-router-dom";
   2 | import { motion, AnimatePresence } from "framer-motion";
-  3 | import { useSchoolCompletedEvents } from "../hooks/useSchoolProfile";
-  4 | import {
-  5 |   useSchool,
-  6 |   useSchoolEvents,
-  7 |   useUsers,
-  8 |   useUpdateEventStatus,
-  9 |   useUpdatePreparation,
- 10 |   useAssignCrew,
- 11 |   useSubmitReport,
- 12 |   useAddComment,
- 13 |   useUpdateHistoryComment,
- 14 |   useEventFull,
- 15 | } from "../hooks/useSchoolProfile";
- 16 | import { useQueryClient } from "@tanstack/react-query";
- 17 | import { api } from "../config/api";
- 18 | import type { Event, User, ExpenseItem, SalaryItem } from "../types";
- 19 | import type { ReportData } from "../components/school-profile/modals/ReportModal";
+  3 | 
+  4 | // Hooks
+  5 | import {
+  6 |   useSchool,
+  7 |   useSchoolEvents,
+  8 |   useUsers,
+  9 |   useUpdateEventStatus,
+ 10 |   useUpdatePreparation,
+ 11 |   useAssignCrew,
+ 12 |   useSubmitReport,
+ 13 |   useAddComment,
+ 14 |   useUpdateHistoryComment,
+ 15 |   useEventFull,
+ 16 |   useSchoolCompletedEvents,
+ 17 |   useUpdateSchool,
+ 18 |   useCreateEvent,
+ 19 | } from "../hooks/useSchoolProfile";
  20 | 
- 21 | const Pipeline = lazy(() => import("../components/school-profile/Pipeline"));
- 22 | const HistoryTimeline = lazy(
- 23 |   () => import("../components/school-profile/HistoryTimeline"),
- 24 | );
- 25 | const EventDetails = lazy(
- 26 |   () => import("../components/school-profile/EventDetails"),
- 27 | );
+ 21 | // Types
+ 22 | import type { Event, User } from "../types";
+ 23 | import type { ReportData } from "../components/school-profile/modals/ReportModal";
+ 24 | 
+ 25 | // Components
+ 26 | import SchoolProfileHeader from "../components/school-profile/SchoolProfileHeader";
+ 27 | import CompletedEventModal from "../components/school-profile/CompletedEventModal";
  28 | 
- 29 | // Імпортуємо UI компоненти
- 30 | import SchoolProfileHeader from "../components/school-profile/SchoolProfileHeader";
- 31 | const SchoolInfoCard = lazy(
- 32 |   () => import("../components/school-profile/SchoolInfoCard"),
+ 29 | // Lazy components
+ 30 | const Pipeline = lazy(() => import("../components/school-profile/Pipeline"));
+ 31 | const HistoryTimeline = lazy(
+ 32 |   () => import("../components/school-profile/HistoryTimeline"),
  33 | );
- 34 | const EventsTable = lazy(
- 35 |   () => import("../components/school-profile/EventsTable"),
+ 34 | const EventDetails = lazy(
+ 35 |   () => import("../components/school-profile/EventDetails"),
  36 | );
- 37 | const EventPreparation = lazy(
- 38 |   () => import("../components/school-profile/EventPreparation"),
+ 37 | const SchoolInfoCard = lazy(
+ 38 |   () => import("../components/school-profile/SchoolInfoCard"),
  39 | );
- 40 | const AssignedCrew = lazy(
- 41 |   () => import("../components/school-profile/AssignedCrew"),
+ 40 | const EventsTable = lazy(
+ 41 |   () => import("../components/school-profile/EventsTable"),
  42 | );
- 43 | // Імпортуємо модальні вікна
- 44 | import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
- 45 | import EventModal from "../components/school-profile/modals/EventModal";
- 46 | import CommentModal from "../components/school-profile/modals/CommentModal";
- 47 | import CrewModal from "../components/school-profile/modals/CrewModal";
- 48 | import ReportModal from "../components/school-profile/modals/ReportModal";
+ 43 | const EventPreparation = lazy(
+ 44 |   () => import("../components/school-profile/EventPreparation"),
+ 45 | );
+ 46 | const AssignedCrew = lazy(
+ 47 |   () => import("../components/school-profile/AssignedCrew"),
+ 48 | );
  49 | 
- 50 | const PIPELINE_STAGES = [
- 51 |   { id: 1, key: "BASE", name: "Новий заклад" },
- 52 |   { id: 2, key: "FIRST_CONTACT", name: "Знайомство" },
- 53 |   { id: 3, key: "DATE_CONFIRMED", name: "Підтвердження дати" },
- 54 |   { id: 4, key: "PREPARATION", name: "Оголошення" },
- 55 |   { id: 5, key: "IN_PROGRESS", name: "Підготовка" },
- 56 |   { id: 6, key: "DONE", name: "Проведення заходу" },
- 57 |   { id: 7, key: "REPORT", name: "Звіт" },
- 58 | ];
- 59 | 
- 60 | export default function SchoolProfile() {
- 61 |   const { id } = useParams();
- 62 |   const qc = useQueryClient();
- 63 | 
- 64 |   // 1. Спочатку завантажуємо базові дані
- 65 |   const { data: schoolRaw, isLoading: schoolLoading } = useSchool(id);
- 66 |   const { data: eventsRaw = [], isLoading: eventsLoading } = useSchoolEvents(
- 67 |     id,
- 68 |     false,
- 69 |   );
- 70 | 
- 71 |   // 2. Оголошуємо стейти, які потрібні для наступних запитів
- 72 |   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
- 73 |   const [exitingEventId, setExitingEventId] = useState<string | null>(null);
- 74 | 
- 75 |   // 3. ТЕПЕР безпечно викликаємо useEventFull, оскільки selectedEventId вже існує
- 76 |   const { data: eventFull, isLoading: eventFullLoading } = useEventFull(
- 77 |     selectedEventId ?? eventsRaw[0]?.id,
- 78 |   );
- 79 | 
- 80 |   const { data: users = [] } = useUsers();
- 81 |   const { data: completedEvents = [] } = useSchoolCompletedEvents(id);
- 82 |   const [selectedReportEvent, setSelectedReportEvent] = useState<Event | null>(
- 83 |     null,
- 84 |   );
- 85 |   const updateStatus = useUpdateEventStatus();
- 86 |   const updatePreparation = useUpdatePreparation();
- 87 |   const assignCrewMutation = useAssignCrew();
- 88 |   const submitReportMutation = useSubmitReport();
- 89 |   const addCommentMutation = useAddComment();
- 90 |   const updateHistoryMutation = useUpdateHistoryComment();
- 91 | 
- 92 |   // 4. Формуємо schoolData
- 93 |   const schoolData = schoolRaw
- 94 |     ? {
- 95 |         id: schoolRaw.id,
- 96 |         cityId: schoolRaw.cityId,
- 97 |         name: schoolRaw.name || "",
- 98 |         type: schoolRaw.type || "Школа",
- 99 |         city: schoolRaw.city?.name || "",
-100 |         address: schoolRaw.address || "",
-101 |         director: schoolRaw.director || "",
-102 |         phone: schoolRaw.phone || "",
-103 |         email: schoolRaw.email || "",
-104 |         childrenCount: schoolRaw.childrenCount || 0,
-105 |         notes: schoolRaw.notes || "",
-106 |       }
-107 |     : {
-108 |         id: "",
-109 |         cityId: "",
-110 |         name: "",
-111 |         type: "Школа",
-112 |         city: "",
-113 |         address: "",
-114 |         director: "",
-115 |         phone: "",
-116 |         email: "",
-117 |         childrenCount: 0,
-118 |         notes: "",
-119 |       };
-120 | 
-121 |   const events = eventsRaw;
-122 | 
-123 |   // 5. Оголошуємо решту стейтів (editForm залежить від schoolData, тому він тут)
-124 |   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-125 |   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-126 |   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
-127 |   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-128 |   const [commentModal, setCommentModal] = useState({
-129 |     isOpen: false,
-130 |     mode: "pipeline",
-131 |     stepId: null as number | null,
-132 |     historyId: null as string | null,
-133 |     text: "",
-134 |   });
-135 | 
-136 |   const [editForm, setEditForm] = useState(schoolData);
-137 |   const [eventForm, setEventForm] = useState({
-138 |     project: "Голограма для школи",
-139 |     date: "",
-140 |     time: "11:00",
-141 |     childrenPlanned: "",
-142 |     price: "",
-143 |     address: "",
-144 |     contactPerson: "",
-145 |     contactPhone: "",
-146 |   });
-147 | 
-148 |   const currentEventBase = useMemo(
-149 |     () => eventsRaw.find((ev) => ev.id === selectedEventId) ?? eventsRaw[0],
-150 |     [eventsRaw, selectedEventId],
-151 |   );
-152 |   const currentEvent = useMemo(
-153 |     () =>
-154 |       eventFull?.id === currentEventBase?.id
-155 |         ? { ...currentEventBase, ...eventFull }
-156 |         : currentEventBase,
-157 |     [currentEventBase, eventFull],
-158 |   );
-159 |   const currentStageIndex = useMemo(() => {
-160 |     const idx = PIPELINE_STAGES.findIndex(
-161 |       (s) => s.key === currentEvent?.status,
-162 |     );
-163 |     return idx !== -1 ? idx : 0;
-164 |   }, [currentEvent?.status]);
-165 |   const creatorName = useMemo(
-166 |     () =>
-167 |       currentEvent?.history?.length > 0
-168 |         ? currentEvent.history[currentEvent.history.length - 1].userName
-169 |         : "Немає даних",
-170 |     [currentEvent?.history],
-171 |   );
-172 | 
-173 |   const handlePipelineClick = useCallback(
-174 |     (stepId: number) => {
-175 |       if (!currentEvent) return;
-176 |       const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-177 |       if (nextStage?.id !== stepId) return;
-178 |       if (nextStage.key === "REPORT") return setIsReportModalOpen(true);
-179 |       setCommentModal({
-180 |         isOpen: true,
-181 |         mode: "pipeline",
-182 |         stepId: nextStage.id,
-183 |         historyId: null,
-184 |         text: "",
-185 |       });
-186 |     },
-187 |     [currentEvent, currentStageIndex],
-188 |   );
-189 | 
-190 |   const handleHistoryClick = useCallback(
-191 |     (historyItem: { id: string; comment?: string }) => {
-192 |       setCommentModal({
-193 |         isOpen: true,
-194 |         mode: "history",
-195 |         stepId: null,
-196 |         historyId: historyItem.id,
-197 |         text: historyItem.comment || "",
-198 |       });
-199 |     },
-200 |     [],
-201 |   );
-202 | 
-203 |   const handleAddCommentClick = useCallback(() => {
-204 |     setCommentModal({
-205 |       isOpen: true,
-206 |       mode: "add_comment",
-207 |       stepId: null,
-208 |       historyId: null,
-209 |       text: "",
-210 |     });
-211 |   }, []);
-212 | 
-213 |   const handleSaveComment = useCallback(
-214 |     async (e: React.FormEvent) => {
-215 |       e.preventDefault();
-216 |       if (commentModal.mode === "pipeline") {
-217 |         const activeStage = PIPELINE_STAGES[currentStageIndex];
-218 |         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-219 |         if (!nextStage) return;
-220 |         await updateStatus.mutateAsync({
-221 |           eventId: currentEvent.id,
-222 |           status: nextStage.key,
-223 |           actionName: `Етап пройдено: ${activeStage.name}`,
-224 |           comment: commentModal.text,
-225 |         });
-226 |         if (nextStage.key === "RE_SALE") {
-227 |           setExitingEventId(currentEvent.id);
-228 |           setTimeout(() => {
-229 |             setSelectedEventId(null);
-230 |             setExitingEventId(null);
-231 |           }, 500);
-232 |         }
-233 |       } else if (commentModal.mode === "add_comment") {
-234 |         await addCommentMutation.mutateAsync({
-235 |           eventId: currentEvent.id,
-236 |           comment: commentModal.text,
-237 |         });
-238 |       } else if (commentModal.mode === "history" && commentModal.historyId) {
-239 |         await updateHistoryMutation.mutateAsync({
-240 |           historyId: commentModal.historyId,
-241 |           comment: commentModal.text,
-242 |           eventId: currentEvent.id,
-243 |         });
-244 |       }
-245 |       setCommentModal({
-246 |         isOpen: false,
-247 |         mode: "pipeline",
-248 |         stepId: null,
-249 |         historyId: null,
-250 |         text: "",
-251 |       });
-252 |     },
-253 |     [
-254 |       commentModal,
-255 |       currentEvent,
-256 |       currentStageIndex,
-257 |       updateStatus,
-258 |       addCommentMutation,
-259 |       updateHistoryMutation,
-260 |     ],
-261 |   );
-262 | 
-263 |   const handleSaveEvent = useCallback(
-264 |     async (e: React.FormEvent) => {
-265 |       e.preventDefault();
-266 |       try {
-267 |         const payload = {
-268 |           ...eventForm,
-269 |           schoolId: schoolData.id,
-270 |           cityId: schoolData.cityId,
-271 |           childrenPlanned: Number(eventForm.childrenPlanned),
-272 |           price: Number(eventForm.price),
-273 |         };
-274 |         const res = await api.post("/events", payload, {
-275 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-276 |         });
-277 |         setIsEventModalOpen(false);
-278 |         qc.invalidateQueries({ queryKey: ["schoolEvents", id] });
-279 |         setSelectedEventId(res.data.id);
-280 |       } catch (e) {
-281 |         console.error(e);
-282 |       }
-283 |     },
-284 |     [eventForm, schoolData, id, qc],
-285 |   );
-286 | 
-287 |   const handleSaveSchoolInfo = useCallback(
-288 |     async (e: React.FormEvent) => {
-289 |       e.preventDefault();
-290 |       try {
-291 |         await api.patch(`/schools/${id}`, editForm, {
-292 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-293 |         });
-294 |         qc.invalidateQueries({ queryKey: ["school", id] });
-295 |         setIsEditModalOpen(false);
-296 |       } catch (e) {
-297 |         console.error(e);
-298 |       }
-299 |     },
-300 |     [editForm, id, qc],
-301 |   );
-302 | 
-303 |   const handleUpdatePreparation = useCallback(
-304 |     async (field: string, status: string) => {
-305 |       if (!currentEvent) return;
-306 |       await updatePreparation.mutateAsync({
-307 |         eventId: currentEvent.id,
-308 |         field,
-309 |         status,
-310 |       });
-311 |     },
-312 |     [currentEvent, updatePreparation],
-313 |   );
-314 | 
-315 |   const handleSubmitReport = useCallback(
-316 |     async (reportData: ReportData) => {
-317 |       if (!currentEvent) return;
-318 |       await submitReportMutation.mutateAsync({
-319 |         eventId: currentEvent.id,
-320 |         reportData,
-321 |       });
-322 |       await updateStatus.mutateAsync({
-323 |         eventId: currentEvent.id,
-324 |         status: "RE_SALE",
-325 |         actionName: "Звіт сформовано. Захід завершено.",
-326 |       });
-327 |       setExitingEventId(currentEvent.id);
-328 |       setTimeout(() => {
-329 |         setSelectedEventId(null);
-330 |         setExitingEventId(null);
-331 |       }, 500);
-332 |       setIsReportModalOpen(false);
-333 |     },
-334 |     [currentEvent, submitReportMutation, updateStatus],
-335 |   );
-336 | 
-337 |   const handleAssignCrew = useCallback(
-338 |     async (crewId: string) => {
-339 |       await assignCrewMutation.mutateAsync({
+ 50 | // Modals
+ 51 | import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
+ 52 | import EventModal from "../components/school-profile/modals/EventModal";
+ 53 | import CommentModal from "../components/school-profile/modals/CommentModal";
+ 54 | import CrewModal from "../components/school-profile/modals/CrewModal";
+ 55 | import ReportModal from "../components/school-profile/modals/ReportModal";
+ 56 | 
+ 57 | const PIPELINE_STAGES = [
+ 58 |   { id: 1, key: "BASE", name: "Новий заклад" },
+ 59 |   { id: 2, key: "FIRST_CONTACT", name: "Знайомство" },
+ 60 |   { id: 3, key: "DATE_CONFIRMED", name: "Підтвердження дати" },
+ 61 |   { id: 4, key: "PREPARATION", name: "Оголошення" },
+ 62 |   { id: 5, key: "IN_PROGRESS", name: "Підготовка" },
+ 63 |   { id: 6, key: "DONE", name: "Проведення заходу" },
+ 64 |   { id: 7, key: "REPORT", name: "Звіт" },
+ 65 | ] as const;
+ 66 | 
+ 67 | export default function SchoolProfile() {
+ 68 |   const { id } = useParams();
+ 69 | 
+ 70 |   // 1. Спочатку завантажуємо базові дані
+ 71 | 
+ 72 |   // 2. Оголошуємо стейти, які потрібні для наступних запитів
+ 73 |   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+ 74 |   const [exitingEventId, setExitingEventId] = useState<string | null>(null);
+ 75 | 
+ 76 |   // 3. ТЕПЕР безпечно викликаємо useEventFull, оскільки selectedEventId вже існує
+ 77 |   const { data: eventFull, isLoading: eventFullLoading } = useEventFull(
+ 78 |     selectedEventId ?? eventsRaw[0]?.id,
+ 79 |   );
+ 80 | 
+ 81 |   const { data: users = [] } = useUsers();
+ 82 |   const { data: completedEvents = [] } = useSchoolCompletedEvents(id);
+ 83 |   const [selectedReportEvent, setSelectedReportEvent] = useState<Event | null>(
+ 84 |     null,
+ 85 |   );
+ 86 |   const updateStatus = useUpdateEventStatus();
+ 87 |   const updatePreparation = useUpdatePreparation();
+ 88 |   const assignCrewMutation = useAssignCrew();
+ 89 |   const submitReportMutation = useSubmitReport();
+ 90 |   const addCommentMutation = useAddComment();
+ 91 |   const updateHistoryMutation = useUpdateHistoryComment();
+ 92 | 
+ 93 |   // 4. Формуємо schoolData
+ 94 |   // 4. schoolData — використовуємо schoolRaw напряму
+ 95 |   const schoolData = useMemo(() => {
+ 96 |     if (!schoolRaw) {
+ 97 |       return {
+ 98 |         id: "",
+ 99 |         cityId: "",
+100 |         name: "",
+101 |         type: "Школа",
+102 |         city: "",
+103 |         address: "",
+104 |         director: "",
+105 |         phone: "",
+106 |         email: "",
+107 |         childrenCount: 0,
+108 |         notes: "",
+109 |       };
+110 |     }
+111 | 
+112 |     return {
+113 |       id: schoolRaw.id,
+114 |       cityId: schoolRaw.cityId,
+115 |       name: schoolRaw.name || "",
+116 |       type: schoolRaw.type || "Школа",
+117 |       city: schoolRaw.city?.name || "",
+118 |       address: schoolRaw.address || "",
+119 |       director: schoolRaw.director || "",
+120 |       phone: schoolRaw.phone || "",
+121 |       email: schoolRaw.email || "",
+122 |       childrenCount: schoolRaw.childrenCount || 0,
+123 |       notes: schoolRaw.notes || "",
+124 |     };
+125 |   }, [schoolRaw]);
+126 | 
+127 |   // 5. Оголошуємо решту стейтів (editForm залежить від schoolData, тому він тут)
+128 |   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+129 |   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+130 |   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
+131 |   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+132 |   const [commentModal, setCommentModal] = useState({
+133 |     isOpen: false,
+134 |     mode: "pipeline",
+135 |     stepId: null as number | null,
+136 |     historyId: null as string | null,
+137 |     text: "",
+138 |   });
+139 | 
+140 |   const [editForm, setEditForm] = useState({
+141 |     id: "",
+142 |     cityId: "",
+143 |     name: "",
+144 |     type: "Школа",
+145 |     city: "",
+146 |     address: "",
+147 |     director: "",
+148 |     phone: "",
+149 |     email: "",
+150 |     childrenCount: 0,
+151 |     notes: "",
+152 |   });
+153 |   const [eventForm, setEventForm] = useState({
+154 |     project: "Голограма для школи",
+155 |     date: "",
+156 |     time: "11:00",
+157 |     childrenPlanned: "",
+158 |     price: "",
+159 |     address: "",
+160 |     contactPerson: "",
+161 |     contactPhone: "",
+162 |   });
+163 | 
+164 |   const currentEventBase = useMemo(
+165 |     () => eventsRaw.find((ev) => ev.id === selectedEventId) ?? eventsRaw[0],
+166 |     [eventsRaw, selectedEventId],
+167 |   );
+168 | 
+169 |   const currentEvent = useMemo(() => {
+170 |     if (!currentEventBase) return null;
+171 |     if (eventFull?.id === currentEventBase.id) {
+172 |       return { ...currentEventBase, ...eventFull };
+173 |     }
+174 |     return currentEventBase;
+175 |   }, [currentEventBase, eventFull]);
+176 |   const currentStageIndex = useMemo(() => {
+177 |     if (!currentEvent?.status) return 0;
+178 |     const idx = PIPELINE_STAGES.findIndex(
+179 |       (s) => s.key === currentEvent?.status,
+180 |     );
+181 |     return idx !== -1 ? idx : 0;
+182 |   }, [currentEvent?.status]);
+183 |   const creatorName = useMemo(
+184 |     () =>
+185 |       currentEvent?.history?.length > 0
+186 |         ? currentEvent.history[currentEvent.history.length - 1].userName
+187 |         : "Немає даних",
+188 |     [currentEvent?.history],
+189 |   );
+190 | 
+191 |   const handlePipelineClick = useCallback(
+192 |     (stepId: number) => {
+193 |       if (!currentEvent) return;
+194 |       const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+195 |       if (nextStage?.id !== stepId) return;
+196 |       if (nextStage.key === "REPORT") return setIsReportModalOpen(true);
+197 |       setCommentModal({
+198 |         isOpen: true,
+199 |         mode: "pipeline",
+200 |         stepId: nextStage.id,
+201 |         historyId: null,
+202 |         text: "",
+203 |       });
+204 |     },
+205 |     [currentEvent, currentStageIndex],
+206 |   );
+207 | 
+208 |   const handleHistoryClick = useCallback(
+209 |     (historyItem: { id: string; comment?: string }) => {
+210 |       setCommentModal({
+211 |         isOpen: true,
+212 |         mode: "history",
+213 |         stepId: null,
+214 |         historyId: historyItem.id,
+215 |         text: historyItem.comment || "",
+216 |       });
+217 |     },
+218 |     [],
+219 |   );
+220 | 
+221 |   const handleAddCommentClick = useCallback(() => {
+222 |     setCommentModal({
+223 |       isOpen: true,
+224 |       mode: "add_comment",
+225 |       stepId: null,
+226 |       historyId: null,
+227 |       text: "",
+228 |     });
+229 |   }, []);
+230 | 
+231 |   const handleSaveComment = useCallback(
+232 |     async (e: React.FormEvent) => {
+233 |       e.preventDefault();
+234 |       if (commentModal.mode === "pipeline") {
+235 |         const activeStage = PIPELINE_STAGES[currentStageIndex];
+236 |         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+237 |         if (!nextStage || !currentEvent) return;
+238 | 
+239 |         await updateStatus.mutateAsync({
+240 |           eventId: currentEvent.id,
+241 |           status: nextStage.key,
+242 |           actionName: `Етап пройдено: ${activeStage.name}`,
+243 |           comment: commentModal.text,
+244 |         });
+245 |         if (nextStage.key === "RE_SALE") {
+246 |           setExitingEventId(currentEvent.id);
+247 |           setTimeout(() => {
+248 |             setSelectedEventId(null);
+249 |             setExitingEventId(null);
+250 |           }, 500);
+251 |         }
+252 |       } else if (commentModal.mode === "add_comment") {
+253 |         await addCommentMutation.mutateAsync({
+254 |           eventId: currentEvent.id,
+255 |           comment: commentModal.text,
+256 |         });
+257 |       } else if (commentModal.mode === "history" && commentModal.historyId) {
+258 |         await updateHistoryMutation.mutateAsync({
+259 |           historyId: commentModal.historyId,
+260 |           comment: commentModal.text,
+261 |           eventId: currentEvent.id,
+262 |         });
+263 |       }
+264 |       setCommentModal({
+265 |         isOpen: false,
+266 |         mode: "pipeline",
+267 |         stepId: null,
+268 |         historyId: null,
+269 |         text: "",
+270 |       });
+271 |     },
+272 |     [
+273 |       commentModal,
+274 |       currentEvent,
+275 |       currentStageIndex,
+276 |       updateStatus,
+277 |       addCommentMutation,
+278 |       updateHistoryMutation,
+279 |     ],
+280 |   );
+281 | 
+282 |   const updateSchoolMutation = useUpdateSchool();
+283 |   const createEventMutation = useCreateEvent();
+284 | 
+285 |   const handleSaveEvent = useCallback(
+286 |     async (e: React.FormEvent) => {
+287 |       e.preventDefault();
+288 |       if (!schoolData.id) return;
+289 | 
+290 |       const payload = {
+291 |         ...eventForm,
+292 |         schoolId: schoolData.id,
+293 |         cityId: schoolData.cityId,
+294 |         childrenPlanned: Number(eventForm.childrenPlanned) || 0,
+295 |         price: Number(eventForm.price) || 0,
+296 |       };
+297 | 
+298 |       const newEvent = await createEventMutation.mutateAsync(payload);
+299 | 
+300 |       setIsEventModalOpen(false);
+301 |       setSelectedEventId(newEvent.id);
+302 |     },
+303 |     [eventForm, schoolData, createEventMutation],
+304 |   );
+305 | 
+306 |   const handleSaveSchoolInfo = useCallback(
+307 |     async (e: React.FormEvent) => {
+308 |       e.preventDefault();
+309 |       if (!id) return;
+310 | 
+311 |       await updateSchoolMutation.mutateAsync({
+312 |         ...editForm,
+313 |         id, // передаємо id для PATCH
+314 |       });
+315 |       setIsEditModalOpen(false);
+316 |     },
+317 |     [editForm, id, updateSchoolMutation],
+318 |   );
+319 | 
+320 |   const handleUpdatePreparation = useCallback(
+321 |     async (field: string, status: string) => {
+322 |       if (!currentEvent) return;
+323 |       await updatePreparation.mutateAsync({
+324 |         eventId: currentEvent.id,
+325 |         field,
+326 |         status,
+327 |       });
+328 |     },
+329 |     [currentEvent, updatePreparation],
+330 |   );
+331 | 
+332 |   const handleSubmitReport = useCallback(
+333 |     async (reportData: ReportData) => {
+334 |       if (!currentEvent) return;
+335 |       await submitReportMutation.mutateAsync({
+336 |         eventId: currentEvent.id,
+337 |         reportData,
+338 |       });
+339 |       await updateStatus.mutateAsync({
 340 |         eventId: currentEvent.id,
-341 |         crewId,
-342 |       });
-343 |       return updatePreparation.mutateAsync({
-344 |         eventId: currentEvent.id,
-345 |         field: "assignCrew",
-346 |         status: "Виконано",
-347 |       });
-348 |       setIsCrewModalOpen(false);
-349 |     },
-350 |     [currentEvent, assignCrewMutation, updatePreparation],
-351 |   );
-352 | 
-353 |   const openAddEventModal = useCallback(() => {
-354 |     setEventForm((prev) => ({
-355 |       ...prev,
-356 |       address: schoolData.address,
-357 |       contactPerson: schoolData.director,
-358 |       contactPhone: schoolData.phone,
-359 |       childrenPlanned: String(schoolData.childrenCount),
-360 |     }));
-361 |     setIsEventModalOpen(true);
-362 |   }, [schoolData]);
-363 |   const stagger = (i: number) => ({
-364 |     initial: { opacity: 0, y: 10 },
-365 |     animate: { opacity: 1, y: 0 },
-366 |     transition: { duration: 0.3, delay: 0.1 + i * 0.07, ease: "easeOut" },
-367 |   });
+341 |         status: "RE_SALE",
+342 |         actionName: "Звіт сформовано. Захід завершено.",
+343 |       });
+344 |       setExitingEventId(currentEvent.id);
+345 |       setTimeout(() => {
+346 |         setSelectedEventId(null);
+347 |         setExitingEventId(null);
+348 |       }, 500);
+349 |       setIsReportModalOpen(false);
+350 |     },
+351 |     [currentEvent, submitReportMutation, updateStatus],
+352 |   );
+353 | 
+354 |   const handleAssignCrew = useCallback(
+355 |     async (crewId: string) => {
+356 |       if (!currentEvent) return;
+357 | 
+358 |       await assignCrewMutation.mutateAsync({
+359 |         eventId: currentEvent.id,
+360 |         crewId,
+361 |       });
+362 | 
+363 |       await updatePreparation.mutateAsync({
+364 |         eventId: currentEvent.id,
+365 |         field: "assignCrew",
+366 |         status: "Виконано",
+367 |       });
 368 | 
-369 |   return (
-370 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8">
-371 |       <SchoolProfileHeader
-372 |         schoolData={schoolData}
-373 |         onEdit={() => {
-374 |           setEditForm(schoolData);
-375 |           setIsEditModalOpen(true);
-376 |         }}
-377 |         onAddEvent={openAddEventModal}
-378 |       />
-379 | 
-380 |       <div className="flex flex-col xl:flex-row gap-6">
-381 |         {/* Ліва колонка */}
-382 |         <div className="w-full xl:w-80 flex flex-col gap-6">
-383 |           <motion.div {...stagger(0)}>
-384 |             <Suspense
-385 |               fallback={
-386 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-387 |               }
-388 |             >
-389 |               <SchoolInfoCard schoolData={schoolData} />
-390 |             </Suspense>
-391 |           </motion.div>
-392 | 
-393 |           <AnimatePresence>
-394 |             {currentEvent && currentStageIndex >= 1 && (
-395 |               <motion.div
-396 |                 key="responsible"
-397 |                 initial={{ opacity: 0, y: 8 }}
-398 |                 animate={{ opacity: 1, y: 0 }}
-399 |                 exit={{ opacity: 0, y: -8 }}
-400 |                 transition={{ duration: 0.25 }}
-401 |                 className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
-402 |               >
-403 |                 <h3 className="font-bold text-slate-800 mb-4">
-404 |                   Відповідальна особа
-405 |                 </h3>
-406 |                 <ul className="space-y-2 text-sm">
-407 |                   <li className="flex justify-between">
-408 |                     <span className="text-slate-500">Остання дія:</span>
-409 |                     <span className="font-medium text-blue-600">
-410 |                       {creatorName}
-411 |                     </span>
-412 |                   </li>
-413 |                 </ul>
-414 |               </motion.div>
-415 |             )}
-416 |           </AnimatePresence>
-417 | 
-418 |           <motion.div {...stagger(1)}>
-419 |             <Suspense
-420 |               fallback={
-421 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-422 |               }
-423 |             >
-424 |               <HistoryTimeline
-425 |                 currentEvent={
-426 |                   eventFullLoading ? currentEventBase : currentEvent
-427 |                 }
-428 |                 onHistoryClick={handleHistoryClick}
-429 |                 onAddCommentClick={handleAddCommentClick}
-430 |               />
-431 |             </Suspense>
-432 |           </motion.div>
-433 |         </div>
-434 | 
-435 |         {/* Права колонка */}
-436 |         <motion.div
-437 |           className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${
-438 |             exitingEventId === currentEvent?.id
-439 |               ? "opacity-0 scale-95 -translate-y-4 pointer-events-none"
-440 |               : ""
-441 |           }`}
-442 |           initial={{ opacity: 0, y: 10 }}
-443 |           animate={{ opacity: 1, y: 0 }}
-444 |           transition={{ duration: 0.3, delay: 0.15 }}
-445 |         >
-446 |           {currentEvent && (
-447 |             <Suspense
-448 |               fallback={
-449 |                 <div className="bg-white rounded-2xl h-24 animate-pulse border border-slate-100" />
-450 |               }
-451 |             >
-452 |               <Pipeline
-453 |                 currentStageIndex={currentStageIndex}
-454 |                 currentEvent={currentEvent}
-455 |                 onPipelineClick={handlePipelineClick}
-456 |                 stages={PIPELINE_STAGES}
-457 |               />
-458 |             </Suspense>
-459 |           )}
-460 | 
-461 |           <AnimatePresence>
-462 |             {currentEvent && currentStageIndex >= 4 && (
-463 |               <motion.div
-464 |                 key="preparation"
-465 |                 initial={{ opacity: 0, y: 8 }}
-466 |                 animate={{ opacity: 1, y: 0 }}
-467 |                 exit={{ opacity: 0, y: -8 }}
-468 |                 transition={{ duration: 0.25 }}
-469 |                 className="grid grid-cols-1 xl:grid-cols-2 gap-6"
-470 |               >
-471 |                 {eventFullLoading ? (
-472 |                   <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-pulse h-48" />
-473 |                 ) : (
-474 |                   <Suspense
-475 |                     fallback={
-476 |                       <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-477 |                     }
-478 |                   >
-479 |                     <EventPreparation
-480 |                       data={currentEvent.preparation || {}}
-481 |                       onUpdate={handleUpdatePreparation}
-482 |                       onOpenCrewModal={() => setIsCrewModalOpen(true)}
-483 |                     />
-484 |                   </Suspense>
-485 |                 )}
-486 |                 <Suspense
-487 |                   fallback={
-488 |                     <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-489 |                   }
-490 |                 >
-491 |                   <AssignedCrew currentEvent={currentEvent} employees={users} />
-492 |                 </Suspense>
-493 |               </motion.div>
-494 |             )}
-495 |           </AnimatePresence>
-496 | 
-497 |           <motion.div {...stagger(2)}>
-498 |             <Suspense
-499 |               fallback={
-500 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
-501 |               }
-502 |             >
-503 |               <EventDetails
-504 |                 currentEvent={currentEvent}
-505 |                 schoolName={schoolData.name}
-506 |                 cityId={schoolData.cityId}
-507 |                 onEventUpdated={() =>
-508 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
-509 |                 }
-510 |               />
-511 |             </Suspense>
-512 |           </motion.div>
-513 | 
-514 |           <motion.div {...stagger(3)}>
-515 |             <Suspense
-516 |               fallback={
-517 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
-518 |               }
-519 |             >
-520 |               <EventsTable
-521 |                 events={events}
-522 |                 selectedEventId={selectedEventId}
-523 |                 onEventSelect={setSelectedEventId}
-524 |                 onDeleteSuccess={() =>
-525 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
-526 |                 }
-527 |               />
-528 |             </Suspense>
-529 |             {completedEvents.length > 0 && (
-530 |               <motion.div {...stagger(4)}>
-531 |                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-532 |                   <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-533 |                     <h3 className="font-bold text-slate-800">
-534 |                       Завершені події ({completedEvents.length})
-535 |                     </h3>
-536 |                   </div>
-537 |                   <div className="md:hidden divide-y divide-slate-50">
-538 |                     {completedEvents.map((ev: Event) => (
-539 |                       <div
-540 |                         key={ev.id}
-541 |                         onClick={() => setSelectedReportEvent(ev)}
-542 |                         className="flex items-center justify-between gap-3 p-4 active:bg-slate-50 cursor-pointer"
-543 |                       >
-544 |                         <div className="min-w-0">
-545 |                           <p className="font-medium text-blue-600 truncate">
-546 |                             {ev.project}
-547 |                           </p>
-548 |                           <p className="text-xs text-slate-400 mt-0.5">
-549 |                             {new Date(ev.date).toLocaleDateString("uk-UA")}
-550 |                           </p>
-551 |                           <p className="text-xs text-slate-500 mt-1">
-552 |                             👶{" "}
-553 |                             {ev.report?.childrenCount ||
-554 |                               ev.childrenPlanned ||
-555 |                               "—"}{" "}
-556 |                             дітей
-557 |                           </p>
-558 |                         </div>
-559 |                         <div className="text-right shrink-0">
-560 |                           <p className="font-semibold text-slate-800 text-sm">
-561 |                             {new Intl.NumberFormat("uk-UA").format(
-562 |                               ev.report?.totalSum || ev.price || 0,
-563 |                             )}{" "}
-564 |                             грн
-565 |                           </p>
-566 |                           <p className="text-xs font-medium text-emerald-600 mt-0.5">
-567 |                             +
-568 |                             {new Intl.NumberFormat("uk-UA").format(
-569 |                               ev.report?.remainderSum || 0,
-570 |                             )}{" "}
-571 |                             грн
-572 |                           </p>
-573 |                         </div>
-574 |                       </div>
-575 |                     ))}
-576 |                   </div>
-577 |                   <div className="hidden md:block overflow-x-auto">
-578 |                     <table className="w-full text-left text-sm">
-579 |                       <thead>
-580 |                         <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
-581 |                           <th className="p-4">Проєкт</th>
-582 |                           <th className="p-4">Дата</th>
-583 |                           <th className="p-4">Дітей</th>
-584 |                           <th className="p-4">Виручка</th>
-585 |                           <th className="p-4">Прибуток</th>
-586 |                         </tr>
-587 |                       </thead>
-588 |                       <tbody>
-589 |                         {completedEvents.map((ev: any) => (
-590 |                           <tr
-591 |                             key={ev.id}
-592 |                             onClick={() => setSelectedReportEvent(ev)}
-593 |                             className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
-594 |                           >
-595 |                             <td className="p-4 text-slate-700 font-medium">
-596 |                               {ev.project}
-597 |                             </td>
-598 |                             <td className="p-4 text-slate-600">
-599 |                               {new Date(ev.date).toLocaleDateString("uk-UA")}
-600 |                             </td>
-601 |                             <td className="p-4 font-medium">
-602 |                               {ev.report?.childrenCount ||
-603 |                                 ev.childrenPlanned ||
-604 |                                 "—"}
-605 |                             </td>
-606 |                             <td className="p-4 font-medium text-slate-800">
-607 |                               {new Intl.NumberFormat("uk-UA").format(
-608 |                                 ev.report?.totalSum || ev.price || 0,
-609 |                               )}{" "}
-610 |                               грн
-611 |                             </td>
-612 |                             <td className="p-4 font-medium text-emerald-600">
-613 |                               {new Intl.NumberFormat("uk-UA").format(
-614 |                                 ev.report?.remainderSum || 0,
-615 |                               )}{" "}
-616 |                               грн
-617 |                             </td>
-618 |                           </tr>
-619 |                         ))}
-620 |                       </tbody>
-621 |                     </table>
-622 |                   </div>
-623 |                 </div>
-624 |               </motion.div>
-625 |             )}
-626 |           </motion.div>
-627 |         </motion.div>
-628 |       </div>
-629 | 
-630 |       {/* Мобільна FAB */}
-631 |       <button
-632 |         onClick={openAddEventModal}
-633 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
-634 |       >
-635 |         +
-636 |       </button>
-637 | 
-638 |       {/* Модальні вікна */}
-639 |       <EditSchoolModal
-640 |         isOpen={isEditModalOpen}
-641 |         onClose={() => setIsEditModalOpen(false)}
-642 |         editForm={editForm}
-643 |         setEditForm={setEditForm}
-644 |         onSave={handleSaveSchoolInfo}
-645 |       />
-646 |       <EventModal
-647 |         isOpen={isEventModalOpen}
-648 |         onClose={() => setIsEventModalOpen(false)}
-649 |         eventForm={eventForm}
-650 |         setEventForm={setEventForm}
-651 |         onSave={handleSaveEvent}
-652 |       />
-653 |       <CommentModal
-654 |         isOpen={commentModal.isOpen}
-655 |         onClose={() => setCommentModal({ ...commentModal, isOpen: false })}
-656 |         mode={commentModal.mode}
-657 |         text={commentModal.text}
-658 |         setText={(t) => setCommentModal({ ...commentModal, text: t })}
-659 |         onSave={handleSaveComment}
-660 |       />
-661 |       <CrewModal
-662 |         isOpen={isCrewModalOpen}
-663 |         onClose={() => setIsCrewModalOpen(false)}
-664 |         city={schoolData.city}
-665 |         employees={users}
-666 |         onSave={handleAssignCrew}
-667 |       />
-668 |       <ReportModal
-669 |         isOpen={isReportModalOpen}
-670 |         onClose={() => setIsReportModalOpen(false)}
-671 |         onSave={handleSubmitReport}
-672 |         schoolName={schoolData.name}
-673 |         eventType={currentEvent?.project}
-674 |         eventDate={currentEvent?.date}
-675 |         eventIndex={
-676 |           events
-677 |             .filter((e) => e.schoolId === schoolData.id)
-678 |             .indexOf(currentEvent!) + 1
-679 |         }
-680 |         crew={
-681 |           currentEvent?.crew
-682 |             ? {
-683 |                 host: currentEvent.crew.hostId
-684 |                   ? (users.find(
-685 |                       (u: User) => u.id === currentEvent.crew.hostId,
-686 |                     ) ?? null)
-687 |                   : (currentEvent.crew.host ?? null),
-688 |                 driver: currentEvent.crew.driverId
-689 |                   ? (users.find(
-690 |                       (u: User) => u.id === currentEvent.crew.driverId,
-691 |                     ) ?? null)
-692 |                   : (currentEvent.crew.driver ?? null),
-693 |               }
-694 |             : undefined
-695 |         }
-696 |       />
-697 |       <CompletedEventModal
-698 |         isOpen={!!selectedReportEvent}
-699 |         onClose={() => setSelectedReportEvent(null)}
-700 |         event={selectedReportEvent}
-701 |       />
-702 |     </div>
-703 |   );
-704 |   function CompletedEventModal({
-705 |     isOpen,
-706 |     onClose,
-707 |     event,
-708 |   }: {
-709 |     isOpen: boolean;
-710 |     onClose: () => void;
-711 |     event: Event | null;
-712 |   }) {
-713 |     if (!isOpen || !event) return null;
-714 |     const fmt = (n: number) =>
-715 |       new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
-716 |     const report = event.report;
-717 | 
-718 |     return (
-719 |       <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-720 |         <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
-721 |           {/* Header */}
-722 |           <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
-723 |             <div>
-724 |               <h3 className="text-xl font-bold text-slate-800">
-725 |                 Звіт: {event.project}
-726 |               </h3>
-727 |               <p className="text-sm text-slate-500 mt-1">
-728 |                 {new Date(event.date).toLocaleDateString("uk-UA")}
-729 |               </p>
-730 |             </div>
-731 |             <button
-732 |               onClick={onClose}
-733 |               className="text-slate-400 hover:text-slate-600 p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg"
-734 |             >
-735 |               ✕
-736 |             </button>
-737 |           </div>
-738 | 
-739 |           <div className="p-5 sm:p-6 flex-1 overflow-y-auto bg-slate-50/30">
-740 |             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-741 |               {/* Результати */}
-742 |               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-743 |                 <h4 className="font-bold text-slate-800 mb-4">📊 Результати</h4>
-744 |                 <div className="space-y-3 text-sm">
-745 |                   {[
-746 |                     ["Дітей (факт)", report?.childrenCount || 0],
-747 |                     ["Класів", report?.classesCount || 0],
-748 |                     ["Пільговиків", report?.privilegedCount || 0],
-749 |                     ["Сеансів", report?.showingsCount || 0],
-750 |                   ].map(([label, val]) => (
-751 |                     <div
-752 |                       key={label}
-753 |                       className="flex justify-between border-b border-slate-50 pb-2"
-754 |                     >
-755 |                       <span className="text-slate-500">{label}:</span>
-756 |                       <span className="font-medium">{val}</span>
-757 |                     </div>
-758 |                   ))}
-759 |                   <div className="flex justify-between pb-1">
-760 |                     <span className="text-slate-500">Оцінка:</span>
-761 |                     <span className="font-bold text-amber-500">
-762 |                       ⭐ {report?.rating || 0}/10
-763 |                     </span>
-764 |                   </div>
-765 |                 </div>
-766 |               </div>
-767 | 
-768 |               {/* Фінанси */}
-769 |               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-770 |                 <h4 className="font-bold text-slate-800 mb-4">💰 Фінанси</h4>
-771 |                 <div className="space-y-3 text-sm">
-772 |                   <div className="flex justify-between border-b border-slate-50 pb-2">
-773 |                     <span className="text-slate-500">Загальна виручка:</span>
-774 |                     <span className="font-bold">
-775 |                       {fmt(report?.totalSum)} грн
-776 |                     </span>
-777 |                   </div>
-778 |                   <div className="flex justify-between border-b border-slate-50 pb-2">
-779 |                     <span className="text-slate-500">На заклад:</span>
-780 |                     <span className="font-medium text-rose-500">
-781 |                       − {fmt(report?.schoolSum)} грн
-782 |                     </span>
-783 |                   </div>
-784 | 
-785 |                   {/* Витрати */}
-786 |                   {Array.isArray(report?.expenses) &&
-787 |                     report.expenses.map((exp: ExpenseItem, i: number) => (
-788 |                       <div
-789 |                         key={i}
-790 |                         className="flex justify-between text-xs pl-2"
-791 |                       >
-792 |                         <span className="text-slate-400">
-793 |                           — {exp.name || exp.category || "Інше"}
-794 |                         </span>
-795 |                         <span className="text-rose-500 font-medium">
-796 |                           − {fmt(exp.amount)} грн
-797 |                         </span>
-798 |                       </div>
-799 |                     ))}
-800 | 
-801 |                   <div className="flex justify-between pt-1 border-t border-slate-100">
-802 |                     <span className="font-bold text-slate-800">
-803 |                       Чистий прибуток:
-804 |                     </span>
-805 |                     <span className="font-bold text-emerald-600 text-base">
-806 |                       {fmt(report?.remainderSum)} грн
-807 |                     </span>
-808 |                   </div>
-809 |                 </div>
-810 |               </div>
-811 |             </div>
-812 | 
-813 |             {/* Зарплати */}
-814 |             {Array.isArray(report?.salaries) && report.salaries.length > 0 && (
-815 |               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mt-4">
-816 |                 <h4 className="font-bold text-slate-800 mb-4">👥 Зарплати</h4>
-817 |                 <div className="space-y-2">
-818 |                   {report.salaries.map((s: SalaryItem, i: number) => (
-819 |                     <div key={i} className="flex justify-between text-sm">
-820 |                       <span>
-821 |                         {s.name} {s.role ? `(${s.role})` : ""}
-822 |                       </span>
-823 |                       <span className="font-medium text-blue-600">
-824 |                         {fmt(s.amount)} грн
-825 |                       </span>
-826 |                     </div>
-827 |                   ))}
-828 |                 </div>
-829 |               </div>
-830 |             )}
-831 |           </div>
-832 |         </div>
-833 |       </div>
-834 |     );
-835 |   }
-836 | }
-837 | 
+369 |       setIsCrewModalOpen(false);
+370 |     },
+371 |     [currentEvent, assignCrewMutation, updatePreparation],
+372 |   );
+373 | 
+374 |   const openAddEventModal = useCallback(() => {
+375 |     setEventForm((prev) => ({
+376 |       ...prev,
+377 |       address: schoolData.address,
+378 |       contactPerson: schoolData.director,
+379 |       contactPhone: schoolData.phone,
+380 |       childrenPlanned: String(schoolData.childrenCount),
+381 |     }));
+382 |     setIsEventModalOpen(true);
+383 |   }, [schoolData]);
+384 |   const stagger = (i: number) => ({
+385 |     initial: { opacity: 0, y: 10 },
+386 |     animate: { opacity: 1, y: 0 },
+387 |     transition: { duration: 0.3, delay: 0.1 + i * 0.07, ease: "easeOut" },
+388 |   });
+389 | 
+390 |   return (
+391 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8">
+392 |       <SchoolProfileHeader
+393 |         schoolData={schoolData}
+394 |         onEdit={() => {
+395 |           setEditForm(schoolData);
+396 |           setIsEditModalOpen(true);
+397 |         }}
+398 |         onAddEvent={openAddEventModal}
+399 |       />
+400 | 
+401 |       <div className="flex flex-col xl:flex-row gap-6">
+402 |         {/* Ліва колонка */}
+403 |         <div className="w-full xl:w-80 flex flex-col gap-6">
+404 |           <motion.div {...stagger(0)}>
+405 |             <Suspense
+406 |               fallback={
+407 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+408 |               }
+409 |             >
+410 |               <SchoolInfoCard schoolData={schoolData} />
+411 |             </Suspense>
+412 |           </motion.div>
+413 | 
+414 |           <AnimatePresence>
+415 |             {currentEvent && currentStageIndex >= 1 && (
+416 |               <motion.div
+417 |                 key="responsible"
+418 |                 initial={{ opacity: 0, y: 8 }}
+419 |                 animate={{ opacity: 1, y: 0 }}
+420 |                 exit={{ opacity: 0, y: -8 }}
+421 |                 transition={{ duration: 0.25 }}
+422 |                 className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
+423 |               >
+424 |                 <h3 className="font-bold text-slate-800 mb-4">
+425 |                   Відповідальна особа
+426 |                 </h3>
+427 |                 <ul className="space-y-2 text-sm">
+428 |                   <li className="flex justify-between">
+429 |                     <span className="text-slate-500">Остання дія:</span>
+430 |                     <span className="font-medium text-blue-600">
+431 |                       {creatorName}
+432 |                     </span>
+433 |                   </li>
+434 |                 </ul>
+435 |               </motion.div>
+436 |             )}
+437 |           </AnimatePresence>
+438 | 
+439 |           <motion.div {...stagger(1)}>
+440 |             <Suspense
+441 |               fallback={
+442 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+443 |               }
+444 |             >
+445 |               <HistoryTimeline
+446 |                 currentEvent={
+447 |                   eventFullLoading ? currentEventBase : currentEvent
+448 |                 }
+449 |                 onHistoryClick={handleHistoryClick}
+450 |                 onAddCommentClick={handleAddCommentClick}
+451 |               />
+452 |             </Suspense>
+453 |           </motion.div>
+454 |         </div>
+455 | 
+456 |         {/* Права колонка */}
+457 |         <motion.div
+458 |           className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${
+459 |             exitingEventId === currentEvent?.id
+460 |               ? "opacity-0 scale-95 -translate-y-4 pointer-events-none"
+461 |               : ""
+462 |           }`}
+463 |           initial={{ opacity: 0, y: 10 }}
+464 |           animate={{ opacity: 1, y: 0 }}
+465 |           transition={{ duration: 0.3, delay: 0.15 }}
+466 |         >
+467 |           {currentEvent && (
+468 |             <Suspense
+469 |               fallback={
+470 |                 <div className="bg-white rounded-2xl h-24 animate-pulse border border-slate-100" />
+471 |               }
+472 |             >
+473 |               <Pipeline
+474 |                 currentStageIndex={currentStageIndex}
+475 |                 currentEvent={currentEvent}
+476 |                 onPipelineClick={handlePipelineClick}
+477 |                 stages={PIPELINE_STAGES}
+478 |               />
+479 |             </Suspense>
+480 |           )}
+481 | 
+482 |           <AnimatePresence>
+483 |             {currentEvent && currentStageIndex >= 4 && (
+484 |               <motion.div
+485 |                 key="preparation"
+486 |                 initial={{ opacity: 0, y: 8 }}
+487 |                 animate={{ opacity: 1, y: 0 }}
+488 |                 exit={{ opacity: 0, y: -8 }}
+489 |                 transition={{ duration: 0.25 }}
+490 |                 className="grid grid-cols-1 xl:grid-cols-2 gap-6"
+491 |               >
+492 |                 {eventFullLoading ? (
+493 |                   <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-pulse h-48" />
+494 |                 ) : (
+495 |                   <Suspense
+496 |                     fallback={
+497 |                       <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+498 |                     }
+499 |                   >
+500 |                     <EventPreparation
+501 |                       data={currentEvent.preparation || {}}
+502 |                       onUpdate={handleUpdatePreparation}
+503 |                       onOpenCrewModal={() => setIsCrewModalOpen(true)}
+504 |                     />
+505 |                   </Suspense>
+506 |                 )}
+507 |                 <Suspense
+508 |                   fallback={
+509 |                     <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+510 |                   }
+511 |                 >
+512 |                   <AssignedCrew currentEvent={currentEvent} employees={users} />
+513 |                 </Suspense>
+514 |               </motion.div>
+515 |             )}
+516 |           </AnimatePresence>
+517 | 
+518 |           <motion.div {...stagger(2)}>
+519 |             <Suspense
+520 |               fallback={
+521 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
+522 |               }
+523 |             >
+524 |               <EventDetails
+525 |                 currentEvent={currentEvent}
+526 |                 schoolName={schoolData.name}
+527 |                 cityId={schoolData.cityId}
+528 |                 onEventUpdated={() =>
+529 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
+530 |                 }
+531 |               />
+532 |             </Suspense>
+533 |           </motion.div>
+534 | 
+535 |           <motion.div {...stagger(3)}>
+536 |             <Suspense
+537 |               fallback={
+538 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
+539 |               }
+540 |             >
+541 |               <EventsTable
+542 |                 events={events}
+543 |                 selectedEventId={selectedEventId}
+544 |                 onEventSelect={setSelectedEventId}
+545 |                 onDeleteSuccess={() =>
+546 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
+547 |                 }
+548 |               />
+549 |             </Suspense>
+550 |             {completedEvents.length > 0 && (
+551 |               <motion.div {...stagger(4)}>
+552 |                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+553 |                   <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+554 |                     <h3 className="font-bold text-slate-800">
+555 |                       Завершені події ({completedEvents.length})
+556 |                     </h3>
+557 |                   </div>
+558 |                   <div className="md:hidden divide-y divide-slate-50">
+559 |                     {completedEvents.map((ev: Event) => (
+560 |                       <div
+561 |                         key={ev.id}
+562 |                         onClick={() => setSelectedReportEvent(ev)}
+563 |                         className="flex items-center justify-between gap-3 p-4 active:bg-slate-50 cursor-pointer"
+564 |                       >
+565 |                         <div className="min-w-0">
+566 |                           <p className="font-medium text-blue-600 truncate">
+567 |                             {ev.project}
+568 |                           </p>
+569 |                           <p className="text-xs text-slate-400 mt-0.5">
+570 |                             {new Date(ev.date).toLocaleDateString("uk-UA")}
+571 |                           </p>
+572 |                           <p className="text-xs text-slate-500 mt-1">
+573 |                             👶{" "}
+574 |                             {ev.report?.childrenCount ||
+575 |                               ev.childrenPlanned ||
+576 |                               "—"}{" "}
+577 |                             дітей
+578 |                           </p>
+579 |                         </div>
+580 |                         <div className="text-right shrink-0">
+581 |                           <p className="font-semibold text-slate-800 text-sm">
+582 |                             {new Intl.NumberFormat("uk-UA").format(
+583 |                               ev.report?.totalSum || ev.price || 0,
+584 |                             )}{" "}
+585 |                             грн
+586 |                           </p>
+587 |                           <p className="text-xs font-medium text-emerald-600 mt-0.5">
+588 |                             +
+589 |                             {new Intl.NumberFormat("uk-UA").format(
+590 |                               ev.report?.remainderSum || 0,
+591 |                             )}{" "}
+592 |                             грн
+593 |                           </p>
+594 |                         </div>
+595 |                       </div>
+596 |                     ))}
+597 |                   </div>
+598 |                   <div className="hidden md:block overflow-x-auto">
+599 |                     <table className="w-full text-left text-sm">
+600 |                       <thead>
+601 |                         <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+602 |                           <th className="p-4">Проєкт</th>
+603 |                           <th className="p-4">Дата</th>
+604 |                           <th className="p-4">Дітей</th>
+605 |                           <th className="p-4">Виручка</th>
+606 |                           <th className="p-4">Прибуток</th>
+607 |                         </tr>
+608 |                       </thead>
+609 |                       <tbody>
+610 |                         {completedEvents.map((ev: any) => (
+611 |                           <tr
+612 |                             key={ev.id}
+613 |                             onClick={() => setSelectedReportEvent(ev)}
+614 |                             className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
+615 |                           >
+616 |                             <td className="p-4 text-slate-700 font-medium">
+617 |                               {ev.project}
+618 |                             </td>
+619 |                             <td className="p-4 text-slate-600">
+620 |                               {new Date(ev.date).toLocaleDateString("uk-UA")}
+621 |                             </td>
+622 |                             <td className="p-4 font-medium">
+623 |                               {ev.report?.childrenCount ||
+624 |                                 ev.childrenPlanned ||
+625 |                                 "—"}
+626 |                             </td>
+627 |                             <td className="p-4 font-medium text-slate-800">
+628 |                               {new Intl.NumberFormat("uk-UA").format(
+629 |                                 ev.report?.totalSum || ev.price || 0,
+630 |                               )}{" "}
+631 |                               грн
+632 |                             </td>
+633 |                             <td className="p-4 font-medium text-emerald-600">
+634 |                               {new Intl.NumberFormat("uk-UA").format(
+635 |                                 ev.report?.remainderSum || 0,
+636 |                               )}{" "}
+637 |                               грн
+638 |                             </td>
+639 |                           </tr>
+640 |                         ))}
+641 |                       </tbody>
+642 |                     </table>
+643 |                   </div>
+644 |                 </div>
+645 |               </motion.div>
+646 |             )}
+647 |           </motion.div>
+648 |         </motion.div>
+649 |       </div>
+650 | 
+651 |       {/* Мобільна FAB */}
+652 |       <button
+653 |         onClick={openAddEventModal}
+654 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
+655 |       >
+656 |         +
+657 |       </button>
+658 | 
+659 |       {/* Модальні вікна */}
+660 |       <EditSchoolModal
+661 |         isOpen={isEditModalOpen}
+662 |         onClose={() => setIsEditModalOpen(false)}
+663 |         editForm={editForm}
+664 |         setEditForm={setEditForm}
+665 |         onSave={handleSaveSchoolInfo}
+666 |       />
+667 |       <EventModal
+668 |         isOpen={isEventModalOpen}
+669 |         onClose={() => setIsEventModalOpen(false)}
+670 |         eventForm={eventForm}
+671 |         setEventForm={setEventForm}
+672 |         onSave={handleSaveEvent}
+673 |       />
+674 |       <CommentModal
+675 |         isOpen={commentModal.isOpen}
+676 |         onClose={() => setCommentModal({ ...commentModal, isOpen: false })}
+677 |         mode={commentModal.mode}
+678 |         text={commentModal.text}
+679 |         setText={(t) => setCommentModal({ ...commentModal, text: t })}
+680 |         onSave={handleSaveComment}
+681 |       />
+682 |       <CrewModal
+683 |         isOpen={isCrewModalOpen}
+684 |         onClose={() => setIsCrewModalOpen(false)}
+685 |         city={schoolData.city}
+686 |         employees={users}
+687 |         onSave={handleAssignCrew}
+688 |       />
+689 |       <ReportModal
+690 |         isOpen={isReportModalOpen}
+691 |         onClose={() => setIsReportModalOpen(false)}
+692 |         onSave={handleSubmitReport}
+693 |         schoolName={schoolData.name}
+694 |         eventType={currentEvent?.project}
+695 |         eventDate={currentEvent?.date}
+696 |         eventIndex={
+697 |           events
+698 |             .filter((e) => e.schoolId === schoolData.id)
+699 |             .findIndex((e) => e.id === currentEvent?.id) + 1
+700 |         }
+701 |         crew={
+702 |           currentEvent?.crew
+703 |             ? {
+704 |                 host: currentEvent.crew.hostId
+705 |                   ? (users.find(
+706 |                       (u: User) => u.id === currentEvent.crew.hostId,
+707 |                     ) ?? null)
+708 |                   : (currentEvent.crew.host ?? null),
+709 |                 driver: currentEvent.crew.driverId
+710 |                   ? (users.find(
+711 |                       (u: User) => u.id === currentEvent.crew.driverId,
+712 |                     ) ?? null)
+713 |                   : (currentEvent.crew.driver ?? null),
+714 |               }
+715 |             : undefined
+716 |         }
+717 |       />
+718 |       <CompletedEventModal
+719 |         isOpen={!!selectedReportEvent}
+720 |         onClose={() => setSelectedReportEvent(null)}
+721 |         event={selectedReportEvent}
+722 |       />
+723 |     </div>
+724 |   );
+725 | }
+726 | 
 ```
 
 ### File: apps/frontend/src/pages/Schools.tsx
