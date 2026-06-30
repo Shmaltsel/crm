@@ -5145,119 +5145,126 @@
 
 ### File: apps/backend/src/telegram/telegram.module.ts
 ```ts
-  0 | import { Module } from '@nestjs/common';
+  0 | import { Module, forwardRef } from '@nestjs/common'; // Додано forwardRef
   1 | import { TelegramService } from './telegram.service';
   2 | import { PrismaModule } from '../prisma/prisma.module';
-  3 | 
-  4 | @Module({
-  5 |   imports: [PrismaModule],
-  6 |   providers: [TelegramService],
-  7 |   exports: [TelegramService],
-  8 | })
-  9 | export class TelegramModule {}
- 10 | 
+  3 | import { UsersModule } from '../users/users.module'; // Додано імпорт UsersModule
+  4 | 
+  5 | @Module({
+  6 |   imports: [
+  7 |     PrismaModule,
+  8 |     forwardRef(() => UsersModule), // Додаємо UsersModule через forwardRef
+  9 |   ],
+ 10 |   providers: [TelegramService],
+ 11 |   exports: [TelegramService],
+ 12 | })
+ 13 | export class TelegramModule {}
+ 14 | 
 ```
 
 ### File: apps/backend/src/telegram/telegram.service.ts
 ```ts
-  0 | import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-  1 | import TelegramBot from 'node-telegram-bot-api';
-  2 | import { PrismaService } from '../prisma/prisma.service';
-  3 | 
-  4 | @Injectable()
-  5 | export class TelegramService implements OnModuleInit {
-  6 |   private bot: TelegramBot;
-  7 |   private readonly logger = new Logger(TelegramService.name);
-  8 | 
-  9 |   constructor(private prisma: PrismaService) {}
- 10 | 
- 11 |   onModuleInit() {
- 12 |     const token = process.env.TELEGRAM_BOT_TOKEN;
- 13 |     if (!token) {
- 14 |       this.logger.warn('TELEGRAM_BOT_TOKEN не задано — бот вимкнено');
- 15 |       return;
- 16 |     }
- 17 |     this.bot = new TelegramBot(token, { polling: true });
- 18 |     this.logger.log('Telegram бот ініціалізовано');
+  0 | import {
+  1 |   Injectable,
+  2 |   Logger,
+  3 |   OnModuleInit,
+  4 |   Inject,
+  5 |   forwardRef,
+  6 | } from '@nestjs/common';
+  7 | import TelegramBot from 'node-telegram-bot-api';
+  8 | import { UsersService } from '../users/users.service';
+  9 | 
+ 10 | @Injectable()
+ 11 | export class TelegramService implements OnModuleInit {
+ 12 |   private bot: TelegramBot;
+ 13 |   private readonly logger = new Logger(TelegramService.name);
+ 14 | 
+ 15 |   constructor(
+ 16 |     @Inject(forwardRef(() => UsersService))
+ 17 |     private usersService: UsersService,
+ 18 |   ) {}
  19 | 
- 20 |     this.bot.onText(/\/start/, async (msg) => {
- 21 |       const chatId = String(msg.chat.id);
- 22 |       const username = msg.from?.username; // це те, що користувач має в налаштуваннях Telegram (без @)
- 23 | 
- 24 |       if (!username) {
- 25 |         await this.bot.sendMessage(
- 26 |           chatId,
- 27 |           "⚠️ У вашому профілі Telegram не вказано username. Будь ласка, додайте його в налаштуваннях Telegram, щоб ми могли підв'язати акаунт.",
- 28 |         );
- 29 |         return;
- 30 |       }
- 31 | 
- 32 |       // Нормалізуємо username: видаляємо всі "@" на випадок, якщо хтось ввів їх у CRM
- 33 |       const normalizedUsername = username.toLowerCase();
- 34 | 
- 35 |       // Шукаємо користувача, де telegramId співпадає з username
- 36 |       // Ми використовуємо updateMany, щоб покрити всі можливі записи
- 37 |       const result = await this.prisma.user.updateMany({
- 38 |         where: {
- 39 |           telegramId: {
- 40 |             equals: normalizedUsername,
- 41 |             mode: 'insensitive', // пошук без урахування регістру (Svitlo != svitlo)
- 42 |           },
- 43 |         },
- 44 |         data: { telegramChatId: chatId },
- 45 |       });
- 46 | 
- 47 |       if (result.count > 0) {
- 48 |         this.logger.log(
- 49 |           `[/start] chatId=${chatId} username=${normalizedUsername} — успішно підв'язано`,
- 50 |         );
- 51 |         await this.bot.sendMessage(
- 52 |           chatId,
- 53 |           `✅ Вітаємо! Ваш акаунт успішно підключено до <b>Світло Знань CRM</b>.`,
- 54 |           { parse_mode: 'HTML' },
- 55 |         );
- 56 |       } else {
- 57 |         this.logger.warn(
- 58 |           `[/start] Користувача з username "${normalizedUsername}" не знайдено в CRM.`,
- 59 |         );
- 60 |         await this.bot.sendMessage(
- 61 |           chatId,
- 62 |           `❌ Акаунт не знайдено. Переконайтеся, що в CRM у вашому профілі вказано нікнейм <b>${normalizedUsername}</b> без помилок.`,
- 63 |           { parse_mode: 'HTML' },
- 64 |         );
- 65 |       }
- 66 |     });
- 67 |   }
- 68 | 
- 69 |   async sendMessage(chatId: string, text: string): Promise<void> {
- 70 |     if (!this.bot) return;
- 71 |     try {
- 72 |       await this.bot.sendMessage(chatId, text, { parse_mode: 'HTML' });
- 73 |     } catch (e: any) {
- 74 |       this.logger.error(
- 75 |         `Не вдалося надіслати повідомлення ${chatId}: ${e.message}`,
- 76 |       );
- 77 |     }
- 78 |   }
- 79 | 
- 80 |   async sendWelcome(
- 81 |     chatId: string,
- 82 |     name: string,
- 83 |     email: string,
- 84 |     password: string,
- 85 |   ): Promise<void> {
- 86 |     const text =
- 87 |       `👋 <b>Вітаємо у Світло Знань CRM!</b>\n\n` +
- 88 |       `Ваш акаунт створено.\n\n` +
- 89 |       `📧 <b>Логін:</b> <code>${email}</code>\n` +
- 90 |       `🔑 <b>Пароль:</b> <code>${password}</code>\n\n` +
- 91 |       `Увійдіть за посиланням: <a href="https://crm-tau-nine.vercel.app">crm-tau-nine.vercel.app</a>\n\n` +
- 92 |       `<i>Змініть пароль після першого входу.</i>`;
- 93 | 
- 94 |     await this.sendMessage(chatId, text);
- 95 |   }
- 96 | }
- 97 | 
+ 20 |   onModuleInit() {
+ 21 |     const token = process.env.TELEGRAM_BOT_TOKEN;
+ 22 |     if (!token) {
+ 23 |       this.logger.warn('TELEGRAM_BOT_TOKEN не задано — бот вимкнено');
+ 24 |       return;
+ 25 |     }
+ 26 |     this.bot = new TelegramBot(token, { polling: true });
+ 27 |     this.logger.log('Telegram бот ініціалізовано');
+ 28 | 
+ 29 |     this.bot.onText(/\/start/, async (msg) => {
+ 30 |       const chatId = String(msg.chat.id);
+ 31 |       const username = msg.from?.username; // це те, що користувач має в налаштуваннях Telegram (без @)
+ 32 | 
+ 33 |       if (!username) {
+ 34 |         await this.bot.sendMessage(
+ 35 |           chatId,
+ 36 |           "⚠️ У вашому профілі Telegram не вказано username. Будь ласка, додайте його в налаштуваннях Telegram, щоб ми могли підв'язати акаунт.",
+ 37 |         );
+ 38 |         return;
+ 39 |       }
+ 40 | 
+ 41 |       // Нормалізуємо username: видаляємо всі "@" на випадок, якщо хтось ввів їх у CRM
+ 42 |       const normalizedUsername = username.toLowerCase();
+ 43 | 
+ 44 |       // Викликаємо публічний метод UsersService, щоб не порушувати інкапсуляцію БД
+ 45 |       const result = await this.usersService.updateTelegramChatId(
+ 46 |         normalizedUsername,
+ 47 |         chatId
+ 48 |       );
+ 49 | 
+ 50 |       if (result.count > 0) {
+ 51 |         this.logger.log(
+ 52 |           `[/start] chatId=${chatId} username=${normalizedUsername} — успішно підв'язано`,
+ 53 |         );
+ 54 |         await this.bot.sendMessage(
+ 55 |           chatId,
+ 56 |           `✅ Вітаємо! Ваш акаунт успішно підключено до <b>Світло Знань CRM</b>.`,
+ 57 |           { parse_mode: 'HTML' },
+ 58 |         );
+ 59 |       } else {
+ 60 |         this.logger.warn(
+ 61 |           `[/start] Користувача з username "${normalizedUsername}" не знайдено в CRM.`,
+ 62 |         );
+ 63 |         await this.bot.sendMessage(
+ 64 |           chatId,
+ 65 |           `❌ Акаунт не знайдено. Переконайтеся, що в CRM у вашому профілі вказано нікнейм <b>${normalizedUsername}</b> без помилок.`,
+ 66 |           { parse_mode: 'HTML' },
+ 67 |         );
+ 68 |       }
+ 69 |     });
+ 70 |   }
+ 71 | 
+ 72 |   async sendMessage(chatId: string, text: string): Promise<void> {
+ 73 |     if (!this.bot) return;
+ 74 |     try {
+ 75 |       await this.bot.sendMessage(chatId, text, { parse_mode: 'HTML' });
+ 76 |     } catch (e: any) {
+ 77 |       this.logger.error(
+ 78 |         `Не вдалося надіслати повідомлення ${chatId}: ${e.message}`,
+ 79 |       );
+ 80 |     }
+ 81 |   }
+ 82 | 
+ 83 |   async sendWelcome(
+ 84 |     chatId: string,
+ 85 |     name: string,
+ 86 |     email: string,
+ 87 |     password: string,
+ 88 |   ): Promise<void> {
+ 89 |     const text =
+ 90 |       `👋 <b>Вітаємо у Світло Знань CRM!</b>\n\n` +
+ 91 |       `Ваш акаунт створено.\n\n` +
+ 92 |       `📧 <b>Логін:</b> <code>${email}</code>\n` +
+ 93 |       `🔑 <b>Пароль:</b> <code>${password}</code>\n\n` +
+ 94 |       `Увійдіть за посиланням: <a href="https://crm-tau-nine.vercel.app">crm-tau-nine.vercel.app</a>\n\n` +
+ 95 |       `<i>Змініть пароль після першого входу.</i>`;
+ 96 | 
+ 97 |     await this.sendMessage(chatId, text);
+ 98 |   }
+ 99 | }
+100 | 
 ```
 
 ### File: apps/backend/src/users/users.controller.spec.ts
@@ -5344,20 +5351,21 @@
 
 ### File: apps/backend/src/users/users.module.ts
 ```ts
-  0 | import { Module } from '@nestjs/common';
+  0 | import { Module, forwardRef } from '@nestjs/common'; // Додано forwardRef
   1 | import { UsersService } from './users.service';
   2 | import { UsersController } from './users.controller';
   3 | import { TelegramModule } from '../telegram/telegram.module';
   4 | import { PrismaModule } from '../prisma/prisma.module';
   5 | 
   6 | @Module({
-  7 |   imports: [TelegramModule],
-  8 |   providers: [UsersService],
-  9 |   controllers: [UsersController],
- 10 |   exports: [UsersService],
- 11 | })
- 12 | export class UsersModule {}
- 13 | 
+  7 |   // Обгортаємо TelegramModule у forwardRef
+  8 |   imports: [forwardRef(() => TelegramModule)],
+  9 |   providers: [UsersService],
+ 10 |   controllers: [UsersController],
+ 11 |   exports: [UsersService],
+ 12 | })
+ 13 | export class UsersModule {}
+ 14 | 
 ```
 
 ### File: apps/backend/src/users/users.service.spec.ts
@@ -5384,153 +5392,168 @@
 
 ### File: apps/backend/src/users/users.service.ts
 ```ts
-  0 | import { Injectable } from '@nestjs/common';
+  0 | import { Injectable, Inject, forwardRef } from '@nestjs/common';
   1 | import { PrismaService } from '../prisma/prisma.service';
   2 | import * as bcrypt from 'bcrypt';
   3 | import { TelegramService } from '../telegram/telegram.service';
   4 | import { Prisma, User } from '@prisma/client';
-  5 | @Injectable()
-  6 | export class UsersService {
-  7 |   constructor(
-  8 |     private readonly prisma: PrismaService,
-  9 |     private telegramService: TelegramService,
- 10 |   ) {}
- 11 | 
- 12 |   async findByEmail(email: string): Promise<User | null> {
- 13 |     return this.prisma.user.findUnique({
- 14 |       where: { email },
- 15 |     });
- 16 |   }
- 17 | 
- 18 |   async findById(id: string): Promise<User | null> {
- 19 |     return this.prisma.user.findUnique({
- 20 |       where: { id },
- 21 |     });
- 22 |   }
- 23 | 
- 24 |   async getAllUsers() {
- 25 |     return this.prisma.user.findMany({
- 26 |       include: {
- 27 |         city: true, // <--- Ось цей магічний рядок підтягне назву міста!
- 28 |       },
- 29 |     });
- 30 |   }
- 31 | 
- 32 |   async create(data: Prisma.UserCreateInput): Promise<User> {
- 33 |     return this.prisma.user.create({
- 34 |       data,
- 35 |     });
- 36 |   }
- 37 | 
- 38 |   async createUser(data: any) {
- 39 |     const hashedPassword = await bcrypt.hash(data.password, 10);
- 40 |     const user = await this.prisma.user.create({
- 41 |       data: {
- 42 |         name: data.fullName,
- 43 |         email: data.email,
- 44 |         phone: data.phone,
- 45 |         password: hashedPassword,
- 46 |         role: data.role,
- 47 |         cityId: data.cityId || null,
- 48 |         telegramId: data.telegramId || null,
- 49 |         car: data.car || null,
- 50 |       },
- 51 |     });
- 52 | 
- 53 |     // Надсилаємо вітальне повідомлення якщо вказано telegramId
- 54 |     if (data.password) {
- 55 |       // Шукаємо chat_id: якщо є збережений після /start — використовуємо його
- 56 |       // інакше пробуємо telegramId напряму (якщо вже числовий)
- 57 |       const chatId = user.telegramChatId || null;
- 58 | 
- 59 |       if (chatId) {
- 60 |         await this.telegramService.sendWelcome(
- 61 |           chatId,
- 62 |           data.fullName,
- 63 |           data.email,
- 64 |           data.password,
- 65 |         );
- 66 |       }
- 67 |     }
- 68 | 
- 69 |     return user;
- 70 |   }
- 71 | 
- 72 |   async updateUser(id: string, data: any) {
- 73 |     const updateData: any = {
- 74 |       name: data.fullName,
- 75 |       email: data.email,
- 76 |       phone: data.phone,
- 77 |       role: data.role,
- 78 |       cityId: data.cityId || null,
- 79 |       telegramId: data.telegramId || null,
- 80 |       car: data.car || null,
- 81 |     };
- 82 | 
- 83 |     // Якщо передано новий пароль, хешуємо його
- 84 |     if (data.password) {
- 85 |       updateData.password = await bcrypt.hash(data.password, 10);
- 86 |     }
- 87 | 
- 88 |     return this.prisma.user.update({ where: { id }, data: updateData });
- 89 |   }
- 90 | 
- 91 |   async deleteUser(id: string) {
- 92 |     return this.prisma.user.delete({ where: { id } });
- 93 |   }
- 94 | 
- 95 |   // Створення адміністратора
- 96 |   async seedAdmin() {
- 97 |     const existingAdmin = await this.prisma.user.findUnique({
- 98 |       where: { email: 'admin@crm.com' },
- 99 |     });
-100 | 
-101 |     if (existingAdmin) {
-102 |       return { message: 'Адміністратор вже існує!' };
-103 |     }
-104 | 
-105 |     const hashedPassword = await bcrypt.hash('admin123', 10);
-106 |     const admin = await this.prisma.user.create({
-107 |       data: {
-108 |         name: 'Артур Шмальцель',
-109 |         email: 'admin@crm.com',
-110 |         password: hashedPassword,
-111 |         role: 'SUPERADMIN',
-112 |       },
-113 |     });
-114 | 
-115 |     return { message: 'Суперадмін успішно створений!', user: admin };
-116 |   }
-117 | 
-118 |   // Новий метод для додавання Васі
-119 |   async seedVasya() {
-120 |     const existingVasya = await this.prisma.user.findUnique({
-121 |       where: { email: 'vasya@charisma.com' },
-122 |     });
-123 | 
-124 |     if (existingVasya) {
-125 |       return { message: 'Вася вже в базі!' };
-126 |     }
-127 | 
-128 |     const hashedPassword = await bcrypt.hash('vasya123', 10);
+  5 | 
+  6 | @Injectable()
+  7 | export class UsersService {
+  8 |   constructor(
+  9 |     private readonly prisma: PrismaService,
+ 10 |     @Inject(forwardRef(() => TelegramService))
+ 11 |     private telegramService: TelegramService,
+ 12 |   ) {}
+ 13 | 
+ 14 |   async findByEmail(email: string): Promise<User | null> {
+ 15 |     return this.prisma.user.findUnique({
+ 16 |       where: { email },
+ 17 |     });
+ 18 |   }
+ 19 | 
+ 20 |   async findById(id: string): Promise<User | null> {
+ 21 |     return this.prisma.user.findUnique({
+ 22 |       where: { id },
+ 23 |     });
+ 24 |   }
+ 25 | 
+ 26 |   async getAllUsers() {
+ 27 |     return this.prisma.user.findMany({
+ 28 |       include: {
+ 29 |         city: true, // <--- Ось цей магічний рядок підтягне назву міста!
+ 30 |       },
+ 31 |     });
+ 32 |   }
+ 33 | 
+ 34 |   async create(data: Prisma.UserCreateInput): Promise<User> {
+ 35 |     return this.prisma.user.create({
+ 36 |       data,
+ 37 |     });
+ 38 |   }
+ 39 | 
+ 40 |   async createUser(data: any) {
+ 41 |     const hashedPassword = await bcrypt.hash(data.password, 10);
+ 42 |     const user = await this.prisma.user.create({
+ 43 |       data: {
+ 44 |         name: data.fullName,
+ 45 |         email: data.email,
+ 46 |         phone: data.phone,
+ 47 |         password: hashedPassword,
+ 48 |         role: data.role,
+ 49 |         cityId: data.cityId || null,
+ 50 |         telegramId: data.telegramId || null,
+ 51 |         car: data.car || null,
+ 52 |       },
+ 53 |     });
+ 54 | 
+ 55 |     // Надсилаємо вітальне повідомлення якщо вказано telegramId
+ 56 |     if (data.password) {
+ 57 |       // Шукаємо chat_id: якщо є збережений після /start — використовуємо його
+ 58 |       // інакше пробуємо telegramId напряму (якщо вже числовий)
+ 59 |       const chatId = user.telegramChatId || null;
+ 60 | 
+ 61 |       if (chatId) {
+ 62 |         await this.telegramService.sendWelcome(
+ 63 |           chatId,
+ 64 |           data.fullName,
+ 65 |           data.email,
+ 66 |           data.password,
+ 67 |         );
+ 68 |       }
+ 69 |     }
+ 70 | 
+ 71 |     return user;
+ 72 |   }
+ 73 | 
+ 74 |   async updateUser(id: string, data: any) {
+ 75 |     const updateData: any = {
+ 76 |       name: data.fullName,
+ 77 |       email: data.email,
+ 78 |       phone: data.phone,
+ 79 |       role: data.role,
+ 80 |       cityId: data.cityId || null,
+ 81 |       telegramId: data.telegramId || null,
+ 82 |       car: data.car || null,
+ 83 |     };
+ 84 | 
+ 85 |     // Якщо передано новий пароль, хешуємо його
+ 86 |     if (data.password) {
+ 87 |       updateData.password = await bcrypt.hash(data.password, 10);
+ 88 |     }
+ 89 | 
+ 90 |     return this.prisma.user.update({ where: { id }, data: updateData });
+ 91 |   }
+ 92 | 
+ 93 |   async deleteUser(id: string) {
+ 94 |     return this.prisma.user.delete({ where: { id } });
+ 95 |   }
+ 96 | 
+ 97 |   // Створення адміністратора
+ 98 |   async seedAdmin() {
+ 99 |     const existingAdmin = await this.prisma.user.findUnique({
+100 |       where: { email: 'admin@crm.com' },
+101 |     });
+102 | 
+103 |     if (existingAdmin) {
+104 |       return { message: 'Адміністратор вже існує!' };
+105 |     }
+106 | 
+107 |     const hashedPassword = await bcrypt.hash('admin123', 10);
+108 |     const admin = await this.prisma.user.create({
+109 |       data: {
+110 |         name: 'Артур Шмальцель',
+111 |         email: 'admin@crm.com',
+112 |         password: hashedPassword,
+113 |         role: 'SUPERADMIN',
+114 |       },
+115 |     });
+116 | 
+117 |     return { message: 'Суперадмін успішно створений!', user: admin };
+118 |   }
+119 | 
+120 |   // Новий метод для додавання Васі
+121 |   async seedVasya() {
+122 |     const existingVasya = await this.prisma.user.findUnique({
+123 |       where: { email: 'vasya@charisma.com' },
+124 |     });
+125 | 
+126 |     if (existingVasya) {
+127 |       return { message: 'Вася вже в базі!' };
+128 |     }
 129 | 
-130 |     const vasya = await this.prisma.user.create({
-131 |       data: {
-132 |         name: 'Вася Харізма',
-133 |         email: 'vasya@charisma.com',
-134 |         password: hashedPassword,
-135 |         role: 'MANAGER',
-136 |       },
-137 |     });
-138 | 
-139 |     return { message: 'Вася Харізма успішно доданий!', user: vasya };
-140 |   }
-141 | 
-142 |   async findAll() {
-143 |     return this.prisma.user.findMany();
-144 |   }
-145 | }
-146 | 
+130 |     const hashedPassword = await bcrypt.hash('vasya123', 10);
+131 | 
+132 |     const vasya = await this.prisma.user.create({
+133 |       data: {
+134 |         name: 'Вася Харізма',
+135 |         email: 'vasya@charisma.com',
+136 |         password: hashedPassword,
+137 |         role: 'MANAGER',
+138 |       },
+139 |     });
+140 | 
+141 |     return { message: 'Вася Харізма успішно доданий!', user: vasya };
+142 |   }
+143 | 
+144 |   async findAll() {
+145 |     return this.prisma.user.findMany();
+146 |   }
+147 | 
+148 |   // Новий публічний метод для TelegramService
+149 |   async updateTelegramChatId(username: string, chatId: string) {
+150 |     return this.prisma.user.updateMany({
+151 |       where: {
+152 |         telegramId: {
+153 |           equals: username,
+154 |           mode: 'insensitive', // пошук без урахування регістру (Svitlo != svitlo)
+155 |         },
+156 |       },
+157 |       data: { telegramChatId: chatId },
+158 |     });
+159 |   }
+160 | }
+161 | 
 ```
 
 ### File: apps/backend/tsconfig.json
@@ -13065,451 +13088,450 @@
 
 ### File: apps/frontend/src/pages/CalendarView.tsx
 ```tsx
-  0 | import { useState } from "react";
-  1 | import { useSelectedCity } from "../context/CityContext";
-  2 | import { useNavigate } from "react-router-dom";
-  3 | import { useCalendarEvents, useCalendarProjects } from "../hooks/useCalendar";
-  4 | 
-  5 | interface CalendarEvent {
-  6 |   id: string;
-  7 |   project: string;
-  8 |   date: string;
-  9 |   time?: string;
- 10 |   status: string;
- 11 |   school?: { id: string; name: string };
- 12 |   city?: { id: string; name: string };
- 13 |   crew?: { id: string; name: string };
- 14 | }
- 15 | 
- 16 | export default function CalendarView() {
- 17 |   const { data: events = [], isLoading: eventsLoading } = useCalendarEvents();
- 18 |   const { data: projects = [] } = useCalendarProjects();
- 19 |   const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
- 20 |   const [currentDate, setCurrentDate] = useState(new Date());
- 21 |   const isLoading = eventsLoading;
- 22 |   const [selectedMobileDate, setSelectedMobileDate] = useState<Date>(
- 23 |     new Date(),
- 24 |   );
- 25 | 
- 26 |   const { selectedCity } = useSelectedCity();
- 27 |   const navigate = useNavigate();
- 28 | 
- 29 |   const [userRole, setUserRole] = useState<string>("GUEST");
- 30 |   const [filterCityId, setFilterCityId] = useState<string>("ALL");
- 31 | 
- 32 |   // Не забудьте додати стейт для проєктів на початку компонента (якщо ще не додали):
- 33 |   // const [projects, setProjects] = useState<any[]>([]);
- 34 | 
- 35 |   useEffect(() => {
- 36 |     try {
- 37 |       const token = localStorage.getItem("token");
- 38 |       if (token) {
- 39 |         const payload = JSON.parse(atob(token.split(".")[1]));
- 40 |         setUserRole(payload.role);
- 41 |         if (payload.role === "MANAGER" && selectedCity?.id) {
- 42 |           setFilterCityId(selectedCity.id);
- 43 |         }
- 44 |       }
- 45 |     } catch (e) {
- 46 |       console.error("Помилка парсингу токена", e);
- 47 |     }
- 48 |   }, [selectedCity]);
- 49 | 
- 50 |   const nextMonth = () =>
- 51 |     setCurrentDate(
- 52 |       new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1),
- 53 |     );
- 54 |   const prevMonth = () =>
- 55 |     setCurrentDate(
- 56 |       new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
- 57 |     );
- 58 |   const today = () => {
- 59 |     setCurrentDate(new Date());
- 60 |     setSelectedMobileDate(new Date());
- 61 |   };
- 62 | 
- 63 |   const getDaysInMonth = (year: number, month: number) =>
- 64 |     new Date(year, month + 1, 0).getDate();
- 65 |   const getFirstDayOfMonth = (year: number, month: number) => {
- 66 |     let day = new Date(year, month, 1).getDay();
- 67 |     return day === 0 ? 6 : day - 1;
- 68 |   };
- 69 | 
- 70 |   const year = currentDate.getFullYear();
- 71 |   const month = currentDate.getMonth();
- 72 |   const daysInMonth = getDaysInMonth(year, month);
- 73 |   const firstDay = getFirstDayOfMonth(year, month);
- 74 | 
- 75 |   const days = [];
- 76 |   for (let i = 0; i < firstDay; i++) days.push(null);
- 77 |   for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
- 78 | 
- 79 |   const filteredEvents = events.filter((ev) => {
- 80 |     if (ev.status === "RE_SALE") return false;
- 81 |     if (filterCityId !== "ALL" && ev.city?.id !== filterCityId) return false;
- 82 |     return true;
- 83 |   });
- 84 | 
- 85 |   const getEventsForDay = (date: Date) => {
- 86 |     return filteredEvents.filter((ev) => {
- 87 |       const evDate = new Date(ev.date);
- 88 |       return (
- 89 |         evDate.getFullYear() === date.getFullYear() &&
- 90 |         evDate.getMonth() === date.getMonth() &&
- 91 |         evDate.getDate() === date.getDate()
- 92 |       );
- 93 |     });
- 94 |   };
- 95 | 
- 96 |   const monthNames = [
- 97 |     "Січень",
- 98 |     "Лютий",
- 99 |     "Березень",
-100 |     "Квітень",
-101 |     "Травень",
-102 |     "Червень",
-103 |     "Липень",
-104 |     "Серпень",
-105 |     "Вересень",
-106 |     "Жовтень",
-107 |     "Листопад",
-108 |     "Грудень",
-109 |   ];
-110 | 
-111 |   // Логіка кольорів для проєктів
-112 |   const getProjectColor = (projectName: string) => {
-113 |     const proj = projects.find((p) => p.name === projectName);
-114 |     const color = proj ? proj.color : "blue";
-115 | 
-116 |     switch (color) {
-117 |       case "emerald":
-118 |         return "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200 hover:border-emerald-300";
-119 |       case "rose":
-120 |         return "bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200 hover:border-rose-300";
-121 |       case "red":
-122 |         return "bg-red-100 text-red-700 border-red-300 hover:bg-red-200 hover:border-red-400";
-123 |       case "amber":
-124 |         return "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200 hover:border-amber-300";
-125 |       case "purple":
-126 |         return "bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200 hover:border-purple-300";
-127 |       default:
-128 |         return "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300";
-129 |     }
-130 |   };
-131 | 
-132 |   if (isLoading)
-133 |     return (
-134 |       <div className="p-4 md:p-8 bg-slate-50 min-h-screen pb-24 animate-pulse">
-135 |         {/* Шапка */}
-136 |         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
-137 |           <div>
-138 |             <div className="h-8 w-52 bg-slate-200 rounded-xl mb-2" />
-139 |             <div className="h-4 w-72 bg-slate-200 rounded-lg mb-4" />
-140 |             <div className="flex gap-3 mt-4">
-141 |               {[80, 100, 90].map((w, i) => (
-142 |                 <div
-143 |                   key={i}
-144 |                   className="h-4 bg-slate-200 rounded-full"
-145 |                   style={{ width: w }}
-146 |                 />
-147 |               ))}
-148 |             </div>
-149 |           </div>
-150 |           <div className="h-10 w-48 bg-slate-200 rounded-xl" />
-151 |         </div>
-152 | 
-153 |         {/* Календар */}
-154 |         <div className="bg-white rounded-[24px] border border-slate-100 overflow-hidden">
-155 |           {/* Керування місяцем */}
-156 |           <div className="flex items-center justify-between p-5 md:p-6 border-b border-slate-100">
-157 |             <div className="h-8 w-36 bg-slate-200 rounded-xl" />
-158 |             <div className="h-10 w-44 bg-slate-200 rounded-2xl" />
-159 |           </div>
-160 | 
-161 |           {/* Дні тижня */}
-162 |           <div className="grid grid-cols-7 bg-slate-50/50">
-163 |             {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((d) => (
-164 |               <div key={d} className="py-3 flex justify-center">
-165 |                 <div className="h-3 w-6 bg-slate-200 rounded" />
-166 |               </div>
-167 |             ))}
-168 | 
-169 |             {/* Клітинки */}
-170 |             {Array.from({ length: 35 }).map((_, i) => (
-171 |               <div
-172 |                 key={i}
-173 |                 className="min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-2"
-174 |               >
-175 |                 <div className="flex justify-end mb-2">
-176 |                   <div className="w-7 h-7 rounded-full bg-slate-200" />
-177 |                 </div>
-178 |                 {i % 4 === 0 && (
-179 |                   <div className="h-5 bg-slate-100 rounded-md mb-1.5 mx-0.5" />
-180 |                 )}
-181 |                 {i % 7 === 2 && (
-182 |                   <div className="h-5 bg-slate-100 rounded-md mx-0.5" />
-183 |                 )}
-184 |               </div>
-185 |             ))}
-186 |           </div>
-187 |         </div>
-188 | 
-189 |         {/* Мобільний блок подій */}
-190 |         <div className="mt-6 md:hidden">
-191 |           <div className="h-6 w-40 bg-slate-200 rounded-lg mb-3" />
-192 |           <div className="space-y-3">
-193 |             {[1, 2].map((i) => (
-194 |               <div
-195 |                 key={i}
-196 |                 className="bg-white p-4 rounded-2xl border-l-4 border-l-slate-200 shadow-sm"
-197 |               >
-198 |                 <div className="flex justify-between mb-2">
-199 |                   <div className="h-5 w-20 bg-slate-200 rounded" />
-200 |                   <div className="h-5 w-28 bg-slate-200 rounded" />
-201 |                 </div>
-202 |                 <div className="h-5 w-48 bg-slate-200 rounded mb-1" />
-203 |                 <div className="h-4 w-36 bg-slate-200 rounded" />
-204 |               </div>
-205 |             ))}
-206 |           </div>
-207 |         </div>
-208 |       </div>
-209 |     );
-210 | 
-211 |   const selectedDayEvents = getEventsForDay(selectedMobileDate);
-212 | 
-213 |   return (
-214 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen pb-24">
-215 |       {/* Шапка календаря */}
-216 |       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
-217 |         <div>
-218 |           <h1 className="text-2xl md:text-3xl font-bold text-slate-800">
-219 |             Календар подій
-220 |           </h1>
-221 |           <p className="text-slate-500 mt-1 text-sm">
-222 |             Графік запланованих та активних заходів
-223 |           </p>
-224 | 
-225 |           {/* Легенда */}
-226 |           <div className="flex flex-wrap items-center gap-3 mt-4">
-227 |             {projects.map((p) => {
-228 |               const badgeColor =
-229 |                 {
-230 |                   blue: "bg-blue-400",
-231 |                   emerald: "bg-emerald-400",
-232 |                   rose: "bg-rose-400",
-233 |                   red: "bg-red-500",
-234 |                   amber: "bg-amber-400",
-235 |                   purple: "bg-purple-400",
-236 |                 }[p.color] || "bg-blue-400";
-237 | 
-238 |               return (
-239 |                 <span
-240 |                   key={p.id}
-241 |                   className="flex items-center gap-1.5 text-xs font-medium text-slate-600"
-242 |                 >
-243 |                   <span className={`w-3 h-3 rounded-full ${badgeColor}`}></span>{" "}
-244 |                   {p.name}
-245 |                 </span>
-246 |               );
-247 |             })}
-248 |           </div>
-249 |         </div>
-250 | 
-251 |         {userRole === "SUPERADMIN" && (
-252 |           <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 flex items-center gap-3 shrink-0">
-253 |             <span className="text-sm text-slate-500 font-medium">Місто:</span>
-254 |             <select
-255 |               value={filterCityId}
-256 |               onChange={(e) => setFilterCityId(e.target.value)}
-257 |               className="text-sm font-semibold text-slate-800 outline-none cursor-pointer bg-transparent"
-258 |             >
-259 |               <option value="ALL">🌍 Всі міста</option>
-260 |               {cities.map((c) => (
-261 |                 <option key={c.id} value={c.id}>
-262 |                   {c.name}
-263 |                 </option>
-264 |               ))}
-265 |             </select>
-266 |           </div>
-267 |         )}
-268 |       </div>
-269 | 
-270 |       <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-271 |         {/* Керування місяцями */}
-272 |         <div className="flex flex-col sm:flex-row items-center justify-between p-5 md:p-6 border-b border-slate-100 gap-4 bg-white">
-273 |           <h2 className="text-2xl font-bold text-slate-800 capitalize tracking-tight">
-274 |             {monthNames[month]}{" "}
-275 |             <span className="text-slate-400 font-medium">{year}</span>
-276 |           </h2>
-277 |           <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
-278 |             <button
-279 |               onClick={prevMonth}
-280 |               className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium"
-281 |             >
-282 |               ◀
-283 |             </button>
-284 |             <button
-285 |               onClick={today}
-286 |               className="px-4 md:px-6 py-2 bg-white rounded-xl shadow-sm text-slate-800 font-bold transition-all hover:bg-slate-50"
-287 |             >
-288 |               Сьогодні
-289 |             </button>
-290 |             <button
-291 |               onClick={nextMonth}
-292 |               className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium"
-293 |             >
-294 |               ▶
-295 |             </button>
-296 |           </div>
-297 |         </div>
-298 | 
-299 |         {/* Сітка календаря */}
-300 |         <div className="grid grid-cols-7 bg-slate-50/50">
-301 |           {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((dayName) => (
-302 |             <div
-303 |               key={dayName}
-304 |               className="py-3 text-center text-[10px] md:text-xs font-bold tracking-widest text-slate-400 uppercase border-b border-slate-100"
-305 |             >
-306 |               {dayName}
-307 |             </div>
-308 |           ))}
-309 | 
-310 |           {days.map((day, idx) => {
-311 |             const isToday =
-312 |               day && day.toDateString() === new Date().toDateString();
-313 |             const isSelected =
-314 |               day && day.toDateString() === selectedMobileDate.toDateString();
-315 |             const dayEvents = day ? getEventsForDay(day) : [];
-316 | 
-317 |             return (
-318 |               <div
-319 |                 key={idx}
-320 |                 onClick={() => day && setSelectedMobileDate(day)}
-321 |                 className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group
-322 |                   ${day ? "bg-white hover:bg-slate-50 cursor-pointer" : "bg-slate-50/30"}
-323 |                   ${isSelected ? "ring-2 ring-inset ring-blue-500/20 bg-blue-50/10" : ""}
-324 |                 `}
-325 |               >
-326 |                 {day && (
-327 |                   <>
-328 |                     <div className="flex justify-center md:justify-end mb-1.5">
-329 |                       <span
-330 |                         className={`w-7 h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-semibold transition-colors
-331 |                         ${isToday ? "bg-blue-600 text-white shadow-md" : "text-slate-500 md:group-hover:text-blue-600"}
-332 |                       `}
-333 |                       >
-334 |                         {day.getDate()}
-335 |                       </span>
-336 |                     </div>
-337 | 
-338 |                     <div className="space-y-1.5 max-h-[80px] md:max-h-[100px] overflow-y-auto custom-scrollbar pr-0.5">
-339 |                       {dayEvents.map((ev) => (
-340 |                         <div
-341 |                           key={ev.id}
-342 |                           className="relative group/event z-0 hover:z-50"
-343 |                         >
-344 |                           <button
-345 |                             onClick={(e) => {
-346 |                               e.stopPropagation(); // Щоб не спрацьовував клік по всій клітинці
-347 |                               if (ev.school)
-348 |                                 navigate(`/schools/${ev.school.id}`);
-349 |                             }}
-350 |                             className={`w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${getProjectColor(ev.project)}`}
-351 |                           >
-352 |                             {ev.time || "—"}
-353 |                           </button>
-354 | 
-355 |                           {/* Тултип (тільки для Десктопу) */}
-356 |                           <div className="hidden md:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-800 text-white p-3 rounded-xl shadow-2xl opacity-0 invisible group-hover/event:opacity-100 group-hover/event:visible transition-all duration-200 pointer-events-none">
-357 |                             <p className="font-bold text-sm mb-1 truncate">
-358 |                               {ev.school?.name || "Невідомий заклад"}
-359 |                             </p>
-360 |                             <div className="space-y-1 text-xs text-slate-300">
-361 |                               <p>
-362 |                                 <span className="text-slate-400">Проєкт:</span>{" "}
-363 |                                 {ev.project}
-364 |                               </p>
-365 |                               <p>
-366 |                                 <span className="text-slate-400">Екіпаж:</span>{" "}
-367 |                                 {ev.crew?.name || "Не призначено"}
-368 |                               </p>
-369 |                               <p>
-370 |                                 <span className="text-slate-400">Час:</span>{" "}
-371 |                                 <span className="font-bold text-white">
-372 |                                   {ev.time || "—"}
-373 |                                 </span>
-374 |                               </p>
-375 |                             </div>
-376 |                             {/* Трикутник тултипа */}
-377 |                             <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-slate-800"></div>
-378 |                           </div>
-379 |                         </div>
-380 |                       ))}
-381 |                     </div>
-382 |                   </>
-383 |                 )}
-384 |               </div>
-385 |             );
-386 |           })}
-387 |         </div>
-388 |       </div>
-389 | 
-390 |       {/* Блок подій для мобільних пристроїв (з'являється під календарем) */}
-391 |       <div className="mt-6 md:hidden">
-392 |         <h3 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
-393 |           📅 Події на{" "}
-394 |           {selectedMobileDate.toLocaleDateString("uk-UA", {
-395 |             day: "2-digit",
-396 |             month: "long",
-397 |           })}
-398 |         </h3>
-399 | 
-400 |         {selectedDayEvents.length === 0 ? (
-401 |           <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-400">
-402 |             На цей день подій не заплановано
-403 |           </div>
-404 |         ) : (
-405 |           <div className="space-y-3">
-406 |             {selectedDayEvents.map((ev) => (
-407 |               <div
-408 |                 key={ev.id}
-409 |                 onClick={() =>
-410 |                   ev.school && navigate(`/schools/${ev.school.id}`)
-411 |                 }
-412 |                 className={`bg-white p-4 rounded-2xl border-l-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer
-413 |                   ${
-414 |                     ev.project.toLowerCase().includes("голограм")
-415 |                       ? "border-l-emerald-500"
-416 |                       : ev.project.toLowerCase().includes("малювайк")
-417 |                         ? "border-l-rose-500"
-418 |                         : ev.project.toLowerCase().includes("360")
-419 |                           ? "border-l-red-500"
-420 |                           : "border-l-blue-500"
-421 |                   }
-422 |                 `}
-423 |               >
-424 |                 <div className="flex justify-between items-start mb-2">
-425 |                   <span className="text-xs font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-600">
-426 |                     🕒 {ev.time || "Не вказано"}
-427 |                   </span>
-428 |                   <span className="text-xs font-medium text-slate-500">
-429 |                     {ev.project}
-430 |                   </span>
-431 |                 </div>
-432 |                 <p className="font-bold text-slate-800">{ev.school?.name}</p>
-433 |                 <p className="text-sm text-slate-500 mt-1">
-434 |                   🚐 Екіпаж: {ev.crew?.name || "Не призначено"}
-435 |                 </p>
-436 |               </div>
-437 |             ))}
-438 |           </div>
-439 |         )}
-440 |       </div>
-441 |     </div>
-442 |   );
-443 | }
-444 | 
+  0 | import { useSelectedCity } from "../context/CityContext";
+  1 | import { useNavigate } from "react-router-dom";
+  2 | import { useCalendarEvents, useCalendarProjects } from "../hooks/useCalendar";
+  3 | import { useState, useEffect } from 'react';
+  4 | interface CalendarEvent {
+  5 |   id: string;
+  6 |   project: string;
+  7 |   date: string;
+  8 |   time?: string;
+  9 |   status: string;
+ 10 |   school?: { id: string; name: string };
+ 11 |   city?: { id: string; name: string };
+ 12 |   crew?: { id: string; name: string };
+ 13 | }
+ 14 | 
+ 15 | export default function CalendarView() {
+ 16 |   const { data: events = [], isLoading: eventsLoading } = useCalendarEvents();
+ 17 |   const { data: projects = [] } = useCalendarProjects();
+ 18 |   const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
+ 19 |   const [currentDate, setCurrentDate] = useState(new Date());
+ 20 |   const isLoading = eventsLoading;
+ 21 |   const [selectedMobileDate, setSelectedMobileDate] = useState<Date>(
+ 22 |     new Date(),
+ 23 |   );
+ 24 | 
+ 25 |   const { selectedCity } = useSelectedCity();
+ 26 |   const navigate = useNavigate();
+ 27 | 
+ 28 |   const [userRole, setUserRole] = useState<string>("GUEST");
+ 29 |   const [filterCityId, setFilterCityId] = useState<string>("ALL");
+ 30 | 
+ 31 |   // Не забудьте додати стейт для проєктів на початку компонента (якщо ще не додали):
+ 32 |   // const [projects, setProjects] = useState<any[]>([]);
+ 33 | 
+ 34 |   useEffect(() => {
+ 35 |     try {
+ 36 |       const token = localStorage.getItem("token");
+ 37 |       if (token) {
+ 38 |         const payload = JSON.parse(atob(token.split(".")[1]));
+ 39 |         setUserRole(payload.role);
+ 40 |         if (payload.role === "MANAGER" && selectedCity?.id) {
+ 41 |           setFilterCityId(selectedCity.id);
+ 42 |         }
+ 43 |       }
+ 44 |     } catch (e) {
+ 45 |       console.error("Помилка парсингу токена", e);
+ 46 |     }
+ 47 |   }, [selectedCity]);
+ 48 | 
+ 49 |   const nextMonth = () =>
+ 50 |     setCurrentDate(
+ 51 |       new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1),
+ 52 |     );
+ 53 |   const prevMonth = () =>
+ 54 |     setCurrentDate(
+ 55 |       new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
+ 56 |     );
+ 57 |   const today = () => {
+ 58 |     setCurrentDate(new Date());
+ 59 |     setSelectedMobileDate(new Date());
+ 60 |   };
+ 61 | 
+ 62 |   const getDaysInMonth = (year: number, month: number) =>
+ 63 |     new Date(year, month + 1, 0).getDate();
+ 64 |   const getFirstDayOfMonth = (year: number, month: number) => {
+ 65 |     let day = new Date(year, month, 1).getDay();
+ 66 |     return day === 0 ? 6 : day - 1;
+ 67 |   };
+ 68 | 
+ 69 |   const year = currentDate.getFullYear();
+ 70 |   const month = currentDate.getMonth();
+ 71 |   const daysInMonth = getDaysInMonth(year, month);
+ 72 |   const firstDay = getFirstDayOfMonth(year, month);
+ 73 | 
+ 74 |   const days = [];
+ 75 |   for (let i = 0; i < firstDay; i++) days.push(null);
+ 76 |   for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
+ 77 | 
+ 78 |   const filteredEvents = events.filter((ev) => {
+ 79 |     if (ev.status === "RE_SALE") return false;
+ 80 |     if (filterCityId !== "ALL" && ev.city?.id !== filterCityId) return false;
+ 81 |     return true;
+ 82 |   });
+ 83 | 
+ 84 |   const getEventsForDay = (date: Date) => {
+ 85 |     return filteredEvents.filter((ev) => {
+ 86 |       const evDate = new Date(ev.date);
+ 87 |       return (
+ 88 |         evDate.getFullYear() === date.getFullYear() &&
+ 89 |         evDate.getMonth() === date.getMonth() &&
+ 90 |         evDate.getDate() === date.getDate()
+ 91 |       );
+ 92 |     });
+ 93 |   };
+ 94 | 
+ 95 |   const monthNames = [
+ 96 |     "Січень",
+ 97 |     "Лютий",
+ 98 |     "Березень",
+ 99 |     "Квітень",
+100 |     "Травень",
+101 |     "Червень",
+102 |     "Липень",
+103 |     "Серпень",
+104 |     "Вересень",
+105 |     "Жовтень",
+106 |     "Листопад",
+107 |     "Грудень",
+108 |   ];
+109 | 
+110 |   // Логіка кольорів для проєктів
+111 |   const getProjectColor = (projectName: string) => {
+112 |     const proj = projects.find((p) => p.name === projectName);
+113 |     const color = proj ? proj.color : "blue";
+114 | 
+115 |     switch (color) {
+116 |       case "emerald":
+117 |         return "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200 hover:border-emerald-300";
+118 |       case "rose":
+119 |         return "bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200 hover:border-rose-300";
+120 |       case "red":
+121 |         return "bg-red-100 text-red-700 border-red-300 hover:bg-red-200 hover:border-red-400";
+122 |       case "amber":
+123 |         return "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200 hover:border-amber-300";
+124 |       case "purple":
+125 |         return "bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200 hover:border-purple-300";
+126 |       default:
+127 |         return "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300";
+128 |     }
+129 |   };
+130 | 
+131 |   if (isLoading)
+132 |     return (
+133 |       <div className="p-4 md:p-8 bg-slate-50 min-h-screen pb-24 animate-pulse">
+134 |         {/* Шапка */}
+135 |         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+136 |           <div>
+137 |             <div className="h-8 w-52 bg-slate-200 rounded-xl mb-2" />
+138 |             <div className="h-4 w-72 bg-slate-200 rounded-lg mb-4" />
+139 |             <div className="flex gap-3 mt-4">
+140 |               {[80, 100, 90].map((w, i) => (
+141 |                 <div
+142 |                   key={i}
+143 |                   className="h-4 bg-slate-200 rounded-full"
+144 |                   style={{ width: w }}
+145 |                 />
+146 |               ))}
+147 |             </div>
+148 |           </div>
+149 |           <div className="h-10 w-48 bg-slate-200 rounded-xl" />
+150 |         </div>
+151 | 
+152 |         {/* Календар */}
+153 |         <div className="bg-white rounded-[24px] border border-slate-100 overflow-hidden">
+154 |           {/* Керування місяцем */}
+155 |           <div className="flex items-center justify-between p-5 md:p-6 border-b border-slate-100">
+156 |             <div className="h-8 w-36 bg-slate-200 rounded-xl" />
+157 |             <div className="h-10 w-44 bg-slate-200 rounded-2xl" />
+158 |           </div>
+159 | 
+160 |           {/* Дні тижня */}
+161 |           <div className="grid grid-cols-7 bg-slate-50/50">
+162 |             {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((d) => (
+163 |               <div key={d} className="py-3 flex justify-center">
+164 |                 <div className="h-3 w-6 bg-slate-200 rounded" />
+165 |               </div>
+166 |             ))}
+167 | 
+168 |             {/* Клітинки */}
+169 |             {Array.from({ length: 35 }).map((_, i) => (
+170 |               <div
+171 |                 key={i}
+172 |                 className="min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-2"
+173 |               >
+174 |                 <div className="flex justify-end mb-2">
+175 |                   <div className="w-7 h-7 rounded-full bg-slate-200" />
+176 |                 </div>
+177 |                 {i % 4 === 0 && (
+178 |                   <div className="h-5 bg-slate-100 rounded-md mb-1.5 mx-0.5" />
+179 |                 )}
+180 |                 {i % 7 === 2 && (
+181 |                   <div className="h-5 bg-slate-100 rounded-md mx-0.5" />
+182 |                 )}
+183 |               </div>
+184 |             ))}
+185 |           </div>
+186 |         </div>
+187 | 
+188 |         {/* Мобільний блок подій */}
+189 |         <div className="mt-6 md:hidden">
+190 |           <div className="h-6 w-40 bg-slate-200 rounded-lg mb-3" />
+191 |           <div className="space-y-3">
+192 |             {[1, 2].map((i) => (
+193 |               <div
+194 |                 key={i}
+195 |                 className="bg-white p-4 rounded-2xl border-l-4 border-l-slate-200 shadow-sm"
+196 |               >
+197 |                 <div className="flex justify-between mb-2">
+198 |                   <div className="h-5 w-20 bg-slate-200 rounded" />
+199 |                   <div className="h-5 w-28 bg-slate-200 rounded" />
+200 |                 </div>
+201 |                 <div className="h-5 w-48 bg-slate-200 rounded mb-1" />
+202 |                 <div className="h-4 w-36 bg-slate-200 rounded" />
+203 |               </div>
+204 |             ))}
+205 |           </div>
+206 |         </div>
+207 |       </div>
+208 |     );
+209 | 
+210 |   const selectedDayEvents = getEventsForDay(selectedMobileDate);
+211 | 
+212 |   return (
+213 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen pb-24">
+214 |       {/* Шапка календаря */}
+215 |       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+216 |         <div>
+217 |           <h1 className="text-2xl md:text-3xl font-bold text-slate-800">
+218 |             Календар подій
+219 |           </h1>
+220 |           <p className="text-slate-500 mt-1 text-sm">
+221 |             Графік запланованих та активних заходів
+222 |           </p>
+223 | 
+224 |           {/* Легенда */}
+225 |           <div className="flex flex-wrap items-center gap-3 mt-4">
+226 |             {projects.map((p) => {
+227 |               const badgeColor =
+228 |                 {
+229 |                   blue: "bg-blue-400",
+230 |                   emerald: "bg-emerald-400",
+231 |                   rose: "bg-rose-400",
+232 |                   red: "bg-red-500",
+233 |                   amber: "bg-amber-400",
+234 |                   purple: "bg-purple-400",
+235 |                 }[p.color] || "bg-blue-400";
+236 | 
+237 |               return (
+238 |                 <span
+239 |                   key={p.id}
+240 |                   className="flex items-center gap-1.5 text-xs font-medium text-slate-600"
+241 |                 >
+242 |                   <span className={`w-3 h-3 rounded-full ${badgeColor}`}></span>{" "}
+243 |                   {p.name}
+244 |                 </span>
+245 |               );
+246 |             })}
+247 |           </div>
+248 |         </div>
+249 | 
+250 |         {userRole === "SUPERADMIN" && (
+251 |           <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 flex items-center gap-3 shrink-0">
+252 |             <span className="text-sm text-slate-500 font-medium">Місто:</span>
+253 |             <select
+254 |               value={filterCityId}
+255 |               onChange={(e) => setFilterCityId(e.target.value)}
+256 |               className="text-sm font-semibold text-slate-800 outline-none cursor-pointer bg-transparent"
+257 |             >
+258 |               <option value="ALL">🌍 Всі міста</option>
+259 |               {cities.map((c) => (
+260 |                 <option key={c.id} value={c.id}>
+261 |                   {c.name}
+262 |                 </option>
+263 |               ))}
+264 |             </select>
+265 |           </div>
+266 |         )}
+267 |       </div>
+268 | 
+269 |       <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+270 |         {/* Керування місяцями */}
+271 |         <div className="flex flex-col sm:flex-row items-center justify-between p-5 md:p-6 border-b border-slate-100 gap-4 bg-white">
+272 |           <h2 className="text-2xl font-bold text-slate-800 capitalize tracking-tight">
+273 |             {monthNames[month]}{" "}
+274 |             <span className="text-slate-400 font-medium">{year}</span>
+275 |           </h2>
+276 |           <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+277 |             <button
+278 |               onClick={prevMonth}
+279 |               className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium"
+280 |             >
+281 |               ◀
+282 |             </button>
+283 |             <button
+284 |               onClick={today}
+285 |               className="px-4 md:px-6 py-2 bg-white rounded-xl shadow-sm text-slate-800 font-bold transition-all hover:bg-slate-50"
+286 |             >
+287 |               Сьогодні
+288 |             </button>
+289 |             <button
+290 |               onClick={nextMonth}
+291 |               className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium"
+292 |             >
+293 |               ▶
+294 |             </button>
+295 |           </div>
+296 |         </div>
+297 | 
+298 |         {/* Сітка календаря */}
+299 |         <div className="grid grid-cols-7 bg-slate-50/50">
+300 |           {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((dayName) => (
+301 |             <div
+302 |               key={dayName}
+303 |               className="py-3 text-center text-[10px] md:text-xs font-bold tracking-widest text-slate-400 uppercase border-b border-slate-100"
+304 |             >
+305 |               {dayName}
+306 |             </div>
+307 |           ))}
+308 | 
+309 |           {days.map((day, idx) => {
+310 |             const isToday =
+311 |               day && day.toDateString() === new Date().toDateString();
+312 |             const isSelected =
+313 |               day && day.toDateString() === selectedMobileDate.toDateString();
+314 |             const dayEvents = day ? getEventsForDay(day) : [];
+315 | 
+316 |             return (
+317 |               <div
+318 |                 key={idx}
+319 |                 onClick={() => day && setSelectedMobileDate(day)}
+320 |                 className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group
+321 |                   ${day ? "bg-white hover:bg-slate-50 cursor-pointer" : "bg-slate-50/30"}
+322 |                   ${isSelected ? "ring-2 ring-inset ring-blue-500/20 bg-blue-50/10" : ""}
+323 |                 `}
+324 |               >
+325 |                 {day && (
+326 |                   <>
+327 |                     <div className="flex justify-center md:justify-end mb-1.5">
+328 |                       <span
+329 |                         className={`w-7 h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-semibold transition-colors
+330 |                         ${isToday ? "bg-blue-600 text-white shadow-md" : "text-slate-500 md:group-hover:text-blue-600"}
+331 |                       `}
+332 |                       >
+333 |                         {day.getDate()}
+334 |                       </span>
+335 |                     </div>
+336 | 
+337 |                     <div className="space-y-1.5 max-h-[80px] md:max-h-[100px] overflow-y-auto custom-scrollbar pr-0.5">
+338 |                       {dayEvents.map((ev) => (
+339 |                         <div
+340 |                           key={ev.id}
+341 |                           className="relative group/event z-0 hover:z-50"
+342 |                         >
+343 |                           <button
+344 |                             onClick={(e) => {
+345 |                               e.stopPropagation(); // Щоб не спрацьовував клік по всій клітинці
+346 |                               if (ev.school)
+347 |                                 navigate(`/schools/${ev.school.id}`);
+348 |                             }}
+349 |                             className={`w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${getProjectColor(ev.project)}`}
+350 |                           >
+351 |                             {ev.time || "—"}
+352 |                           </button>
+353 | 
+354 |                           {/* Тултип (тільки для Десктопу) */}
+355 |                           <div className="hidden md:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-800 text-white p-3 rounded-xl shadow-2xl opacity-0 invisible group-hover/event:opacity-100 group-hover/event:visible transition-all duration-200 pointer-events-none">
+356 |                             <p className="font-bold text-sm mb-1 truncate">
+357 |                               {ev.school?.name || "Невідомий заклад"}
+358 |                             </p>
+359 |                             <div className="space-y-1 text-xs text-slate-300">
+360 |                               <p>
+361 |                                 <span className="text-slate-400">Проєкт:</span>{" "}
+362 |                                 {ev.project}
+363 |                               </p>
+364 |                               <p>
+365 |                                 <span className="text-slate-400">Екіпаж:</span>{" "}
+366 |                                 {ev.crew?.name || "Не призначено"}
+367 |                               </p>
+368 |                               <p>
+369 |                                 <span className="text-slate-400">Час:</span>{" "}
+370 |                                 <span className="font-bold text-white">
+371 |                                   {ev.time || "—"}
+372 |                                 </span>
+373 |                               </p>
+374 |                             </div>
+375 |                             {/* Трикутник тултипа */}
+376 |                             <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-slate-800"></div>
+377 |                           </div>
+378 |                         </div>
+379 |                       ))}
+380 |                     </div>
+381 |                   </>
+382 |                 )}
+383 |               </div>
+384 |             );
+385 |           })}
+386 |         </div>
+387 |       </div>
+388 | 
+389 |       {/* Блок подій для мобільних пристроїв (з'являється під календарем) */}
+390 |       <div className="mt-6 md:hidden">
+391 |         <h3 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+392 |           📅 Події на{" "}
+393 |           {selectedMobileDate.toLocaleDateString("uk-UA", {
+394 |             day: "2-digit",
+395 |             month: "long",
+396 |           })}
+397 |         </h3>
+398 | 
+399 |         {selectedDayEvents.length === 0 ? (
+400 |           <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-400">
+401 |             На цей день подій не заплановано
+402 |           </div>
+403 |         ) : (
+404 |           <div className="space-y-3">
+405 |             {selectedDayEvents.map((ev) => (
+406 |               <div
+407 |                 key={ev.id}
+408 |                 onClick={() =>
+409 |                   ev.school && navigate(`/schools/${ev.school.id}`)
+410 |                 }
+411 |                 className={`bg-white p-4 rounded-2xl border-l-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer
+412 |                   ${
+413 |                     ev.project.toLowerCase().includes("голограм")
+414 |                       ? "border-l-emerald-500"
+415 |                       : ev.project.toLowerCase().includes("малювайк")
+416 |                         ? "border-l-rose-500"
+417 |                         : ev.project.toLowerCase().includes("360")
+418 |                           ? "border-l-red-500"
+419 |                           : "border-l-blue-500"
+420 |                   }
+421 |                 `}
+422 |               >
+423 |                 <div className="flex justify-between items-start mb-2">
+424 |                   <span className="text-xs font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-600">
+425 |                     🕒 {ev.time || "Не вказано"}
+426 |                   </span>
+427 |                   <span className="text-xs font-medium text-slate-500">
+428 |                     {ev.project}
+429 |                   </span>
+430 |                 </div>
+431 |                 <p className="font-bold text-slate-800">{ev.school?.name}</p>
+432 |                 <p className="text-sm text-slate-500 mt-1">
+433 |                   🚐 Екіпаж: {ev.crew?.name || "Не призначено"}
+434 |                 </p>
+435 |               </div>
+436 |             ))}
+437 |           </div>
+438 |         )}
+439 |       </div>
+440 |     </div>
+441 |   );
+442 | }
+443 | 
 ```
 
 ### File: apps/frontend/src/pages/Cities.tsx

@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Hooks
@@ -67,8 +68,11 @@ const PIPELINE_STAGES = [
 
 export default function SchoolProfile() {
   const { id } = useParams();
+  const qc = useQueryClient();
 
   // 1. Спочатку завантажуємо базові дані
+  const { data: schoolRaw } = useSchool(id);
+  const { data: eventsRaw = [] } = useSchoolEvents(id, false);
 
   // 2. Оголошуємо стейти, які потрібні для наступних запитів
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -371,6 +375,8 @@ export default function SchoolProfile() {
     },
     [currentEvent, assignCrewMutation, updatePreparation],
   );
+
+  const events = eventsRaw;
 
   const openAddEventModal = useCallback(() => {
     setEventForm((prev) => ({
