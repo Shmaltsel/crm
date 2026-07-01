@@ -1472,294 +1472,345 @@
 
 ### File: apps/backend/src/dashboard/dashboard.service.ts
 ```ts
-  0 | import { Injectable } from '@nestjs/common';
+  0 | import { Injectable, Logger } from '@nestjs/common';
   1 | import { Prisma } from '@prisma/client';
   2 | import { PrismaService } from '../prisma/prisma.service';
-  3 | 
-  4 | const PIPELINE_STAGES = [
-  5 |   'BASE', 'FIRST_CONTACT', 'INTERESTED', 'PRE_APPROVAL',
-  6 |   'DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS', 'DONE', 'REPORT', 'RE_SALE',
-  7 | ];
-  8 | 
-  9 | const STALE_DAYS = 7;
- 10 | 
- 11 | @Injectable()
- 12 | export class DashboardService {
- 13 |   constructor(private prisma: PrismaService) {}
- 14 | 
- 15 |   private cache = new Map<string, { data: any; ts: number }>();
- 16 |   private CACHE_TTL = 60_000; // 60 секунд
+  3 | const PIPELINE_STAGES = [
+  4 |   'BASE',
+  5 |   'FIRST_CONTACT',
+  6 |   'INTERESTED',
+  7 |   'PRE_APPROVAL',
+  8 |   'DATE_CONFIRMED',
+  9 |   'PREPARATION',
+ 10 |   'IN_PROGRESS',
+ 11 |   'DONE',
+ 12 |   'REPORT',
+ 13 |   'RE_SALE',
+ 14 | ];
+ 15 | 
+ 16 | const STALE_DAYS = 7;
  17 | 
- 18 |   async getSummary(cityId?: string, role?: string) {
- 19 |     const key = `${cityId ?? 'all'}-${role ?? 'anon'}`;
- 20 |     const cached = this.cache.get(key);
- 21 |     if (cached && Date.now() - cached.ts < this.CACHE_TTL) {
- 22 |       console.log(`[Dashboard] cache hit — ${key}`);
- 23 |       return cached.data;
- 24 |     }
- 25 | 
- 26 |     const t0 = Date.now();
- 27 |     console.log(`[Dashboard] start — cityId=${cityId ?? 'all'} role=${role}`);
- 28 | 
- 29 |     const now        = new Date();
- 30 |     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
- 31 |     const todayEnd   = new Date(todayStart);
- 32 |     todayEnd.setDate(todayEnd.getDate() + 1);
- 33 |     const upcomingEnd = new Date(todayStart);
- 34 |     upcomingEnd.setDate(upcomingEnd.getDate() + 6);
- 35 | 
- 36 |     const staleThreshold = new Date(now);
- 37 |     staleThreshold.setDate(staleThreshold.getDate() - STALE_DAYS);
- 38 | 
- 39 |     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
- 40 |     const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
- 41 | 
- 42 |     const cityFilter   = cityId ? { cityId } : {};
- 43 |     const isSuperAdmin = role === 'SUPERADMIN';
- 44 | 
- 45 |     const t1 = Date.now();
- 46 |     const [
- 47 |       todayEvents,
- 48 |       upcomingEvents,
- 49 |       funnelRows,
- 50 |       monthEvents,
- 51 |       staleSchoolsRaw,
- 52 |       recentActivity,
- 53 |     ] = await Promise.all([
- 54 | 
- 55 |       this.prisma.event.findMany({
- 56 |         where: { ...cityFilter, date: { gte: todayStart, lt: todayEnd } },
- 57 |         include: {
- 58 |           school: { select: { id: true, name: true } },
- 59 |           city:   { select: { id: true, name: true } },
- 60 |           crew: {
- 61 |             include: {
- 62 |               host:   { select: { id: true, name: true } },
- 63 |               driver: { select: { id: true, name: true } },
- 64 |             },
- 65 |           },
- 66 |         },
- 67 |         orderBy: { time: 'asc' },
- 68 |       }),
- 69 | 
- 70 |       this.prisma.event.findMany({
- 71 |         where: { ...cityFilter, date: { gte: todayEnd, lt: upcomingEnd } },
- 72 |         include: {
- 73 |           school: { select: { id: true, name: true } },
- 74 |           city:   { select: { id: true, name: true } },
- 75 |           crew: {
- 76 |             include: {
- 77 |               host:   { select: { id: true, name: true } },
- 78 |               driver: { select: { id: true, name: true } },
- 79 |             },
- 80 |           },
- 81 |         },
- 82 |         orderBy: [{ date: 'asc' }, { time: 'asc' }],
- 83 |         take: 8,
- 84 |       }),
- 85 | 
- 86 |       cityId
- 87 |         ? this.prisma.$queryRaw<{ status: string; count: bigint }[]>(Prisma.sql`
- 88 |             SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
- 89 |             FROM "School" s
- 90 |             LEFT JOIN LATERAL (
- 91 |               SELECT status FROM "Event"
- 92 |               WHERE "schoolId" = s.id
- 93 |               ORDER BY date DESC
- 94 |               LIMIT 1
- 95 |             ) e ON true
- 96 |             WHERE s."cityId" = ${cityId}
- 97 |             GROUP BY e.status
- 98 |           `)
- 99 |         : this.prisma.$queryRaw<{ status: string; count: bigint }[]>(Prisma.sql`
-100 |             SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
-101 |             FROM "School" s
-102 |             LEFT JOIN LATERAL (
-103 |               SELECT status FROM "Event"
-104 |               WHERE "schoolId" = s.id
-105 |               ORDER BY date DESC
-106 |               LIMIT 1
-107 |             ) e ON true
-108 |             GROUP BY e.status
-109 |           `),
+ 18 | interface DashboardSummary {
+ 19 |   todayEvents: unknown[];
+ 20 |   upcomingEvents: unknown[];
+ 21 |   funnel: Record<string, number>;
+ 22 |   totalSchools: number;
+ 23 |   monthlyKpi: {
+ 24 |     revenue: number;
+ 25 |     profit: number;
+ 26 |     children: number;
+ 27 |     count: number;
+ 28 |   };
+ 29 |   staleSchools: unknown[];
+ 30 |   activityFeed: unknown[];
+ 31 |   citiesStats: {
+ 32 |     cityId: string;
+ 33 |     cityName: string;
+ 34 |     schoolsCount: number;
+ 35 |     activeEvents: number;
+ 36 |     monthRevenue: number;
+ 37 |   }[];
+ 38 | }
+ 39 | 
+ 40 | @Injectable()
+ 41 | export class DashboardService {
+ 42 |   private readonly logger = new Logger(DashboardService.name);
+ 43 | 
+ 44 |   constructor(private prisma: PrismaService) {}
+ 45 | 
+ 46 |   private cache = new Map<string, { data: DashboardSummary; ts: number }>();
+ 47 |   private CACHE_TTL = 60_000; // 60 секунд
+ 48 | 
+ 49 |   async getSummary(cityId?: string, role?: string) {
+ 50 |     const key = `${cityId ?? 'all'}-${role ?? 'anon'}`;
+ 51 |     const cached = this.cache.get(key);
+ 52 |     if (cached && Date.now() - cached.ts < this.CACHE_TTL) {
+ 53 |       this.logger.debug(`cache hit — ${key}`);
+ 54 |       return cached.data;
+ 55 |     }
+ 56 | 
+ 57 |     const t0 = Date.now();
+ 58 |     this.logger.debug(`start — cityId=${cityId ?? 'all'} role=${role}`);
+ 59 | 
+ 60 |     const now = new Date();
+ 61 |     const todayStart = new Date(
+ 62 |       now.getFullYear(),
+ 63 |       now.getMonth(),
+ 64 |       now.getDate(),
+ 65 |     );
+ 66 |     const todayEnd = new Date(todayStart);
+ 67 |     todayEnd.setDate(todayEnd.getDate() + 1);
+ 68 |     const upcomingEnd = new Date(todayStart);
+ 69 |     upcomingEnd.setDate(upcomingEnd.getDate() + 6);
+ 70 | 
+ 71 |     const staleThreshold = new Date(now);
+ 72 |     staleThreshold.setDate(staleThreshold.getDate() - STALE_DAYS);
+ 73 | 
+ 74 |     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+ 75 |     const monthEnd = new Date(
+ 76 |       now.getFullYear(),
+ 77 |       now.getMonth() + 1,
+ 78 |       0,
+ 79 |       23,
+ 80 |       59,
+ 81 |       59,
+ 82 |     );
+ 83 | 
+ 84 |     const cityFilter = cityId ? { cityId } : {};
+ 85 |     const isSuperAdmin = role === 'SUPERADMIN';
+ 86 | 
+ 87 |     const t1 = Date.now();
+ 88 |     const [
+ 89 |       todayEvents,
+ 90 |       upcomingEvents,
+ 91 |       funnelRows,
+ 92 |       monthEvents,
+ 93 |       staleSchoolsRaw,
+ 94 |       recentActivity,
+ 95 |     ] = await Promise.all([
+ 96 |       this.prisma.event.findMany({
+ 97 |         where: { ...cityFilter, date: { gte: todayStart, lt: todayEnd } },
+ 98 |         include: {
+ 99 |           school: { select: { id: true, name: true } },
+100 |           city: { select: { id: true, name: true } },
+101 |           crew: {
+102 |             include: {
+103 |               host: { select: { id: true, name: true } },
+104 |               driver: { select: { id: true, name: true } },
+105 |             },
+106 |           },
+107 |         },
+108 |         orderBy: { time: 'asc' },
+109 |       }),
 110 | 
 111 |       this.prisma.event.findMany({
-112 |         where: {
-113 |           ...cityFilter,
-114 |           status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
-115 |           date:   { gte: monthStart, lte: monthEnd },
-116 |         },
-117 |         select: {
-118 |           id: true,
-119 |           report: {
-120 |             select: { totalSum: true, remainderSum: true, childrenCount: true },
+112 |         where: { ...cityFilter, date: { gte: todayEnd, lt: upcomingEnd } },
+113 |         include: {
+114 |           school: { select: { id: true, name: true } },
+115 |           city: { select: { id: true, name: true } },
+116 |           crew: {
+117 |             include: {
+118 |               host: { select: { id: true, name: true } },
+119 |               driver: { select: { id: true, name: true } },
+120 |             },
 121 |           },
 122 |         },
-123 |       }),
-124 | 
-125 |       this.prisma.school.findMany({
-126 |         where: {
-127 |           ...cityFilter,
-128 |           events: {
-129 |             some: {
-130 |               status: { notIn: ['DONE', 'REPORT', 'RE_SALE'] },
-131 |               history: { every: { createdAt: { lt: staleThreshold } } },
-132 |             },
-133 |           },
-134 |         },
-135 |         include: {
-136 |           events: {
-137 |             where: { status: { notIn: ['DONE', 'REPORT', 'RE_SALE'] } },
-138 |             orderBy: { date: 'desc' },
-139 |             take: 1,
-140 |             include: {
-141 |               history: {
-142 |                 orderBy: { createdAt: 'desc' },
-143 |                 take: 1,
-144 |                 select: { createdAt: true },
-145 |               },
-146 |             },
-147 |           },
-148 |         },
-149 |         take: 10,
-150 |       }),
+123 |         orderBy: [{ date: 'asc' }, { time: 'asc' }],
+124 |         take: 8,
+125 |       }),
+126 | 
+127 |       cityId
+128 |         ? this.prisma.$queryRaw<{ status: string; count: bigint }[]>(Prisma.sql`
+129 |             SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
+130 |             FROM "School" s
+131 |             LEFT JOIN LATERAL (
+132 |               SELECT status FROM "Event"
+133 |               WHERE "schoolId" = s.id
+134 |               ORDER BY date DESC
+135 |               LIMIT 1
+136 |             ) e ON true
+137 |             WHERE s."cityId" = ${cityId}
+138 |             GROUP BY e.status
+139 |           `)
+140 |         : this.prisma.$queryRaw<{ status: string; count: bigint }[]>(Prisma.sql`
+141 |             SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
+142 |             FROM "School" s
+143 |             LEFT JOIN LATERAL (
+144 |               SELECT status FROM "Event"
+145 |               WHERE "schoolId" = s.id
+146 |               ORDER BY date DESC
+147 |               LIMIT 1
+148 |             ) e ON true
+149 |             GROUP BY e.status
+150 |           `),
 151 | 
-152 |       this.prisma.eventHistory.findMany({
+152 |       this.prisma.event.findMany({
 153 |         where: {
-154 |           createdAt: { gte: todayStart },
-155 |           ...(cityId ? { event: { cityId } } : {}),
-156 |         },
-157 |         include: {
-158 |           event: {
-159 |             select: {
-160 |               id:     true,
-161 |               school: { select: { id: true, name: true } },
-162 |             },
-163 |           },
-164 |         },
-165 |         orderBy: { createdAt: 'desc' },
-166 |         take: 20,
-167 |       }),
-168 |     ]);
-169 |     console.log(`[Dashboard] main Promise.all: ${Date.now() - t1}ms`);
-170 | 
-171 |     let citiesStats: {
-172 |       cityId:       string;
-173 |       cityName:     string;
-174 |       schoolsCount: number;
-175 |       activeEvents: number;
-176 |       monthRevenue: number;
-177 |     }[] = [];
-178 | 
-179 |     if (isSuperAdmin) {
-180 |       const t2 = Date.now();
-181 |       const [allCities, allSchools, allActiveEvents, allMonthEvents] =
-182 |         await Promise.all([
-183 |           this.prisma.city.findMany({ select: { id: true, name: true } }),
-184 |           this.prisma.school.groupBy({ by: ['cityId'], _count: { id: true } }),
-185 |           this.prisma.event.groupBy({
-186 |             by: ['cityId'],
-187 |             where: { status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] } },
-188 |             _count: { id: true },
-189 |           }),
-190 |           this.prisma.event.findMany({
-191 |             where: {
-192 |               status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
-193 |               date:   { gte: monthStart, lte: monthEnd },
-194 |             },
-195 |             select: {
-196 |               cityId: true,
-197 |               report: { select: { totalSum: true } },
-198 |             },
-199 |           }),
-200 |         ]);
-201 |       console.log(`[Dashboard] superadmin queries: ${Date.now() - t2}ms`);
-202 | 
-203 |       const schoolsIdx = Object.fromEntries(allSchools.map(r => [r.cityId, r._count.id]));
-204 |       const activeIdx  = Object.fromEntries(allActiveEvents.map(r => [r.cityId, r._count.id]));
-205 |       const revenueIdx: Record<string, number> = {};
-206 |       for (const ev of allMonthEvents) {
-207 |         revenueIdx[ev.cityId] = (revenueIdx[ev.cityId] ?? 0) + (ev.report?.totalSum ?? 0);
-208 |       }
-209 | 
-210 |       citiesStats = allCities
-211 |         .map(city => ({
-212 |           cityId:       city.id,
-213 |           cityName:     city.name,
-214 |           schoolsCount: schoolsIdx[city.id] ?? 0,
-215 |           activeEvents: activeIdx[city.id]  ?? 0,
-216 |           monthRevenue: revenueIdx[city.id] ?? 0,
-217 |         }))
-218 |         .sort((a, b) => b.monthRevenue - a.monthRevenue);
-219 |     }
-220 | 
-221 |     const funnel: Record<string, number> = {};
-222 |     for (const stage of PIPELINE_STAGES) funnel[stage] = 0;
-223 |     let totalSchools = 0;
-224 |     for (const row of funnelRows) {
-225 |       const status = row.status ?? 'BASE';
-226 |       const count  = Number(row.count);
-227 |       if (funnel[status] !== undefined) funnel[status] += count;
-228 |       totalSchools += count;
-229 |     }
-230 | 
-231 |     const monthlyKpi = monthEvents.reduce(
-232 |       (acc, ev) => {
-233 |         acc.revenue  += ev.report?.totalSum      ?? 0;
-234 |         acc.profit   += ev.report?.remainderSum  ?? 0;
-235 |         acc.children += ev.report?.childrenCount ?? 0;
-236 |         acc.count    += 1;
-237 |         return acc;
-238 |       },
-239 |       { revenue: 0, profit: 0, children: 0, count: 0 },
-240 |     );
-241 | 
-242 |     const staleSchools = staleSchoolsRaw
-243 |       .map(school => {
-244 |         const lastHistory  = school.events[0]?.history[0];
-245 |         const lastActivity = lastHistory?.createdAt ?? null;
-246 |         const daysStale    = lastActivity
-247 |           ? Math.floor((now.getTime() - new Date(lastActivity).getTime()) / 86_400_000)
-248 |           : null;
-249 |         return {
-250 |           id:          school.id,
-251 |           name:        school.name,
-252 |           status:      school.events[0]?.status ?? null,
-253 |           lastActivity,
-254 |           daysStale,
-255 |         };
-256 |       })
-257 |       .sort((a, b) => (b.daysStale ?? 0) - (a.daysStale ?? 0));
-258 | 
-259 |     const activityFeed = recentActivity.map(h => ({
-260 |       id:         h.id,
-261 |       userName:   h.userName,
-262 |       role:       h.role,
-263 |       action:     h.action,
-264 |       comment:    h.comment,
-265 |       createdAt:  h.createdAt,
-266 |       schoolId:   h.event?.school?.id   ?? null,
-267 |       schoolName: h.event?.school?.name ?? null,
-268 |       eventId:    h.event?.id           ?? null,
-269 |     }));
-270 | 
-271 |     console.log(`[Dashboard] total: ${Date.now() - t0}ms`);
-272 | 
-273 |     const result = {
-274 |       todayEvents,
-275 |       upcomingEvents,
-276 |       funnel,
-277 |       totalSchools,
-278 |       monthlyKpi,
-279 |       staleSchools,
-280 |       activityFeed,
-281 |       citiesStats,
-282 |     };
-283 | 
-284 |     this.cache.set(key, { data: result, ts: Date.now() });
-285 |     return result;
-286 |   }
-287 | }
+154 |           ...cityFilter,
+155 |           status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
+156 |           date: { gte: monthStart, lte: monthEnd },
+157 |         },
+158 |         select: {
+159 |           id: true,
+160 |           report: {
+161 |             select: { totalSum: true, remainderSum: true, childrenCount: true },
+162 |           },
+163 |         },
+164 |       }),
+165 | 
+166 |       this.prisma.school.findMany({
+167 |         where: {
+168 |           ...cityFilter,
+169 |           events: {
+170 |             some: {
+171 |               status: { notIn: ['DONE', 'REPORT', 'RE_SALE'] },
+172 |               history: { every: { createdAt: { lt: staleThreshold } } },
+173 |             },
+174 |           },
+175 |         },
+176 |         include: {
+177 |           events: {
+178 |             where: { status: { notIn: ['DONE', 'REPORT', 'RE_SALE'] } },
+179 |             orderBy: { date: 'desc' },
+180 |             take: 1,
+181 |             include: {
+182 |               history: {
+183 |                 orderBy: { createdAt: 'desc' },
+184 |                 take: 1,
+185 |                 select: { createdAt: true },
+186 |               },
+187 |             },
+188 |           },
+189 |         },
+190 |         take: 10,
+191 |       }),
+192 | 
+193 |       this.prisma.eventHistory.findMany({
+194 |         where: {
+195 |           createdAt: { gte: todayStart },
+196 |           ...(cityId ? { event: { cityId } } : {}),
+197 |         },
+198 |         include: {
+199 |           event: {
+200 |             select: {
+201 |               id: true,
+202 |               school: { select: { id: true, name: true } },
+203 |             },
+204 |           },
+205 |         },
+206 |         orderBy: { createdAt: 'desc' },
+207 |         take: 20,
+208 |       }),
+209 |     ]);
+210 |     this.logger.debug(`main Promise.all: ${Date.now() - t1}ms`);
+211 | 
+212 |     let citiesStats: {
+213 |       cityId: string;
+214 |       cityName: string;
+215 |       schoolsCount: number;
+216 |       activeEvents: number;
+217 |       monthRevenue: number;
+218 |     }[] = [];
+219 | 
+220 |     if (isSuperAdmin) {
+221 |       const t2 = Date.now();
+222 |       const [allCities, allSchools, allActiveEvents, allMonthEvents] =
+223 |         await Promise.all([
+224 |           this.prisma.city.findMany({ select: { id: true, name: true } }),
+225 |           this.prisma.school.groupBy({ by: ['cityId'], _count: { id: true } }),
+226 |           this.prisma.event.groupBy({
+227 |             by: ['cityId'],
+228 |             where: {
+229 |               status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
+230 |             },
+231 |             _count: { id: true },
+232 |           }),
+233 |           this.prisma.event.findMany({
+234 |             where: {
+235 |               status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
+236 |               date: { gte: monthStart, lte: monthEnd },
+237 |             },
+238 |             select: {
+239 |               cityId: true,
+240 |               report: { select: { totalSum: true } },
+241 |             },
+242 |           }),
+243 |         ]);
+244 |       this.logger.debug(`superadmin queries: ${Date.now() - t2}ms`);
+245 | 
+246 |       const schoolsIdx = Object.fromEntries(
+247 |         allSchools.map((r) => [r.cityId, r._count.id]),
+248 |       );
+249 |       const activeIdx = Object.fromEntries(
+250 |         allActiveEvents.map((r) => [r.cityId, r._count.id]),
+251 |       );
+252 |       const revenueIdx: Record<string, number> = {};
+253 |       for (const ev of allMonthEvents) {
+254 |         revenueIdx[ev.cityId] =
+255 |           (revenueIdx[ev.cityId] ?? 0) + (ev.report?.totalSum ?? 0);
+256 |       }
+257 | 
+258 |       citiesStats = allCities
+259 |         .map((city) => ({
+260 |           cityId: city.id,
+261 |           cityName: city.name,
+262 |           schoolsCount: schoolsIdx[city.id] ?? 0,
+263 |           activeEvents: activeIdx[city.id] ?? 0,
+264 |           monthRevenue: revenueIdx[city.id] ?? 0,
+265 |         }))
+266 |         .sort((a, b) => b.monthRevenue - a.monthRevenue);
+267 |     }
+268 | 
+269 |     const funnel: Record<string, number> = {};
+270 |     for (const stage of PIPELINE_STAGES) funnel[stage] = 0;
+271 |     let totalSchools = 0;
+272 |     for (const row of funnelRows) {
+273 |       const status = row.status ?? 'BASE';
+274 |       const count = Number(row.count);
+275 |       if (funnel[status] !== undefined) funnel[status] += count;
+276 |       totalSchools += count;
+277 |     }
+278 | 
+279 |     const monthlyKpi = monthEvents.reduce(
+280 |       (acc, ev) => {
+281 |         acc.revenue += ev.report?.totalSum ?? 0;
+282 |         acc.profit += ev.report?.remainderSum ?? 0;
+283 |         acc.children += ev.report?.childrenCount ?? 0;
+284 |         acc.count += 1;
+285 |         return acc;
+286 |       },
+287 |       { revenue: 0, profit: 0, children: 0, count: 0 },
+288 |     );
+289 | 
+290 |     const staleSchools = staleSchoolsRaw
+291 |       .map((school) => {
+292 |         const lastHistory = school.events[0]?.history[0];
+293 |         const lastActivity = lastHistory?.createdAt ?? null;
+294 |         const daysStale = lastActivity
+295 |           ? Math.floor(
+296 |               (now.getTime() - new Date(lastActivity).getTime()) / 86_400_000,
+297 |             )
+298 |           : null;
+299 |         return {
+300 |           id: school.id,
+301 |           name: school.name,
+302 |           status: school.events[0]?.status ?? null,
+303 |           lastActivity,
+304 |           daysStale,
+305 |         };
+306 |       })
+307 |       .sort((a, b) => (b.daysStale ?? 0) - (a.daysStale ?? 0));
+308 | 
+309 |     const activityFeed = recentActivity.map((h) => ({
+310 |       id: h.id,
+311 |       userName: h.userName,
+312 |       role: h.role,
+313 |       action: h.action,
+314 |       comment: h.comment,
+315 |       createdAt: h.createdAt,
+316 |       schoolId: h.event?.school?.id ?? null,
+317 |       schoolName: h.event?.school?.name ?? null,
+318 |       eventId: h.event?.id ?? null,
+319 |     }));
+320 | 
+321 |     this.logger.debug(`total: ${Date.now() - t0}ms`);
+322 | 
+323 |     const result = {
+324 |       todayEvents,
+325 |       upcomingEvents,
+326 |       funnel,
+327 |       totalSchools,
+328 |       monthlyKpi,
+329 |       staleSchools,
+330 |       activityFeed,
+331 |       citiesStats,
+332 |     };
+333 | 
+334 |     this.cache.set(key, { data: result, ts: Date.now() });
+335 |     return result;
+336 |   }
+337 | }
+338 | 
 ```
 
 ### File: apps/backend/src/events/dto/create-event.dto.ts
@@ -16612,731 +16663,737 @@
 ```tsx
   0 | import { useState, useMemo, useCallback, lazy, Suspense } from "react";
   1 | import { useParams } from "react-router-dom";
-  2 | import { motion, AnimatePresence } from "framer-motion";
-  3 | 
-  4 | // Hooks
-  5 | import {
-  6 |   useSchool,
-  7 |   useSchoolEvents,
-  8 |   useUsers,
-  9 |   useUpdateEventStatus,
- 10 |   useUpdatePreparation,
- 11 |   useAssignCrew,
- 12 |   useSubmitReport,
- 13 |   useAddComment,
- 14 |   useUpdateHistoryComment,
- 15 |   useEventFull,
- 16 |   useSchoolCompletedEvents,
- 17 |   useUpdateSchool,
- 18 |   useCreateEvent,
- 19 | } from "../hooks/useSchoolProfile";
- 20 | 
- 21 | // Types
- 22 | import type { Event, User } from "../types";
- 23 | import type { ReportData } from "../components/school-profile/modals/ReportModal";
- 24 | 
- 25 | // Components
- 26 | import SchoolProfileHeader from "../components/school-profile/SchoolProfileHeader";
- 27 | import CompletedEventModal from "../components/school-profile/CompletedEventModal";
- 28 | 
- 29 | // Lazy components
- 30 | const Pipeline = lazy(() => import("../components/school-profile/Pipeline"));
- 31 | const HistoryTimeline = lazy(
- 32 |   () => import("../components/school-profile/HistoryTimeline"),
- 33 | );
- 34 | const EventDetails = lazy(
- 35 |   () => import("../components/school-profile/EventDetails"),
- 36 | );
- 37 | const SchoolInfoCard = lazy(
- 38 |   () => import("../components/school-profile/SchoolInfoCard"),
- 39 | );
- 40 | const EventsTable = lazy(
- 41 |   () => import("../components/school-profile/EventsTable"),
- 42 | );
- 43 | const EventPreparation = lazy(
- 44 |   () => import("../components/school-profile/EventPreparation"),
- 45 | );
- 46 | const AssignedCrew = lazy(
- 47 |   () => import("../components/school-profile/AssignedCrew"),
- 48 | );
- 49 | 
- 50 | // Modals
- 51 | import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
- 52 | import EventModal from "../components/school-profile/modals/EventModal";
- 53 | import CommentModal from "../components/school-profile/modals/CommentModal";
- 54 | import CrewModal from "../components/school-profile/modals/CrewModal";
- 55 | import ReportModal from "../components/school-profile/modals/ReportModal";
- 56 | 
- 57 | const PIPELINE_STAGES = [
- 58 |   { id: 1, key: "BASE", name: "Новий заклад" },
- 59 |   { id: 2, key: "FIRST_CONTACT", name: "Знайомство" },
- 60 |   { id: 3, key: "DATE_CONFIRMED", name: "Підтвердження дати" },
- 61 |   { id: 4, key: "PREPARATION", name: "Оголошення" },
- 62 |   { id: 5, key: "IN_PROGRESS", name: "Підготовка" },
- 63 |   { id: 6, key: "DONE", name: "Проведення заходу" },
- 64 |   { id: 7, key: "REPORT", name: "Звіт" },
- 65 | ] as const;
- 66 | 
- 67 | export default function SchoolProfile() {
- 68 |   const { id } = useParams();
- 69 | 
- 70 |   // 1. Спочатку завантажуємо базові дані
+  2 | import { useQueryClient } from "@tanstack/react-query";
+  3 | import { motion, AnimatePresence } from "framer-motion";
+  4 | 
+  5 | // Hooks
+  6 | import {
+  7 |   useSchool,
+  8 |   useSchoolEvents,
+  9 |   useUsers,
+ 10 |   useUpdateEventStatus,
+ 11 |   useUpdatePreparation,
+ 12 |   useAssignCrew,
+ 13 |   useSubmitReport,
+ 14 |   useAddComment,
+ 15 |   useUpdateHistoryComment,
+ 16 |   useEventFull,
+ 17 |   useSchoolCompletedEvents,
+ 18 |   useUpdateSchool,
+ 19 |   useCreateEvent,
+ 20 | } from "../hooks/useSchoolProfile";
+ 21 | 
+ 22 | // Types
+ 23 | import type { Event, User } from "../types";
+ 24 | import type { ReportData } from "../components/school-profile/modals/ReportModal";
+ 25 | 
+ 26 | // Components
+ 27 | import SchoolProfileHeader from "../components/school-profile/SchoolProfileHeader";
+ 28 | import CompletedEventModal from "../components/school-profile/CompletedEventModal";
+ 29 | 
+ 30 | // Lazy components
+ 31 | const Pipeline = lazy(() => import("../components/school-profile/Pipeline"));
+ 32 | const HistoryTimeline = lazy(
+ 33 |   () => import("../components/school-profile/HistoryTimeline"),
+ 34 | );
+ 35 | const EventDetails = lazy(
+ 36 |   () => import("../components/school-profile/EventDetails"),
+ 37 | );
+ 38 | const SchoolInfoCard = lazy(
+ 39 |   () => import("../components/school-profile/SchoolInfoCard"),
+ 40 | );
+ 41 | const EventsTable = lazy(
+ 42 |   () => import("../components/school-profile/EventsTable"),
+ 43 | );
+ 44 | const EventPreparation = lazy(
+ 45 |   () => import("../components/school-profile/EventPreparation"),
+ 46 | );
+ 47 | const AssignedCrew = lazy(
+ 48 |   () => import("../components/school-profile/AssignedCrew"),
+ 49 | );
+ 50 | 
+ 51 | // Modals
+ 52 | import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
+ 53 | import EventModal from "../components/school-profile/modals/EventModal";
+ 54 | import CommentModal from "../components/school-profile/modals/CommentModal";
+ 55 | import CrewModal from "../components/school-profile/modals/CrewModal";
+ 56 | import ReportModal from "../components/school-profile/modals/ReportModal";
+ 57 | 
+ 58 | const PIPELINE_STAGES = [
+ 59 |   { id: 1, key: "BASE", name: "Новий заклад" },
+ 60 |   { id: 2, key: "FIRST_CONTACT", name: "Знайомство" },
+ 61 |   { id: 3, key: "DATE_CONFIRMED", name: "Підтвердження дати" },
+ 62 |   { id: 4, key: "PREPARATION", name: "Оголошення" },
+ 63 |   { id: 5, key: "IN_PROGRESS", name: "Підготовка" },
+ 64 |   { id: 6, key: "DONE", name: "Проведення заходу" },
+ 65 |   { id: 7, key: "REPORT", name: "Звіт" },
+ 66 | ] as const;
+ 67 | 
+ 68 | export default function SchoolProfile() {
+ 69 |   const { id } = useParams();
+ 70 |   const qc = useQueryClient();
  71 | 
- 72 |   // 2. Оголошуємо стейти, які потрібні для наступних запитів
- 73 |   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
- 74 |   const [exitingEventId, setExitingEventId] = useState<string | null>(null);
+ 72 |   // 1. Спочатку завантажуємо базові дані
+ 73 |   const { data: schoolRaw } = useSchool(id);
+ 74 |   const { data: eventsRaw = [] } = useSchoolEvents(id, false);
  75 | 
- 76 |   // 3. ТЕПЕР безпечно викликаємо useEventFull, оскільки selectedEventId вже існує
- 77 |   const { data: eventFull, isLoading: eventFullLoading } = useEventFull(
- 78 |     selectedEventId ?? eventsRaw[0]?.id,
- 79 |   );
- 80 | 
- 81 |   const { data: users = [] } = useUsers();
- 82 |   const { data: completedEvents = [] } = useSchoolCompletedEvents(id);
- 83 |   const [selectedReportEvent, setSelectedReportEvent] = useState<Event | null>(
- 84 |     null,
- 85 |   );
- 86 |   const updateStatus = useUpdateEventStatus();
- 87 |   const updatePreparation = useUpdatePreparation();
- 88 |   const assignCrewMutation = useAssignCrew();
- 89 |   const submitReportMutation = useSubmitReport();
- 90 |   const addCommentMutation = useAddComment();
- 91 |   const updateHistoryMutation = useUpdateHistoryComment();
- 92 | 
- 93 |   // 4. Формуємо schoolData
- 94 |   // 4. schoolData — використовуємо schoolRaw напряму
- 95 |   const schoolData = useMemo(() => {
- 96 |     if (!schoolRaw) {
- 97 |       return {
- 98 |         id: "",
- 99 |         cityId: "",
-100 |         name: "",
-101 |         type: "Школа",
-102 |         city: "",
-103 |         address: "",
-104 |         director: "",
-105 |         phone: "",
-106 |         email: "",
-107 |         childrenCount: 0,
-108 |         notes: "",
-109 |       };
-110 |     }
-111 | 
-112 |     return {
-113 |       id: schoolRaw.id,
-114 |       cityId: schoolRaw.cityId,
-115 |       name: schoolRaw.name || "",
-116 |       type: schoolRaw.type || "Школа",
-117 |       city: schoolRaw.city?.name || "",
-118 |       address: schoolRaw.address || "",
-119 |       director: schoolRaw.director || "",
-120 |       phone: schoolRaw.phone || "",
-121 |       email: schoolRaw.email || "",
-122 |       childrenCount: schoolRaw.childrenCount || 0,
-123 |       notes: schoolRaw.notes || "",
-124 |     };
-125 |   }, [schoolRaw]);
-126 | 
-127 |   // 5. Оголошуємо решту стейтів (editForm залежить від schoolData, тому він тут)
-128 |   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-129 |   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-130 |   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
-131 |   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-132 |   const [commentModal, setCommentModal] = useState({
-133 |     isOpen: false,
-134 |     mode: "pipeline",
-135 |     stepId: null as number | null,
-136 |     historyId: null as string | null,
-137 |     text: "",
-138 |   });
-139 | 
-140 |   const [editForm, setEditForm] = useState({
-141 |     id: "",
-142 |     cityId: "",
-143 |     name: "",
-144 |     type: "Школа",
-145 |     city: "",
-146 |     address: "",
-147 |     director: "",
-148 |     phone: "",
-149 |     email: "",
-150 |     childrenCount: 0,
-151 |     notes: "",
-152 |   });
-153 |   const [eventForm, setEventForm] = useState({
-154 |     project: "Голограма для школи",
-155 |     date: "",
-156 |     time: "11:00",
-157 |     childrenPlanned: "",
-158 |     price: "",
-159 |     address: "",
-160 |     contactPerson: "",
-161 |     contactPhone: "",
-162 |   });
-163 | 
-164 |   const currentEventBase = useMemo(
-165 |     () => eventsRaw.find((ev) => ev.id === selectedEventId) ?? eventsRaw[0],
-166 |     [eventsRaw, selectedEventId],
-167 |   );
-168 | 
-169 |   const currentEvent = useMemo(() => {
-170 |     if (!currentEventBase) return null;
-171 |     if (eventFull?.id === currentEventBase.id) {
-172 |       return { ...currentEventBase, ...eventFull };
-173 |     }
-174 |     return currentEventBase;
-175 |   }, [currentEventBase, eventFull]);
-176 |   const currentStageIndex = useMemo(() => {
-177 |     if (!currentEvent?.status) return 0;
-178 |     const idx = PIPELINE_STAGES.findIndex(
-179 |       (s) => s.key === currentEvent?.status,
-180 |     );
-181 |     return idx !== -1 ? idx : 0;
-182 |   }, [currentEvent?.status]);
-183 |   const creatorName = useMemo(
-184 |     () =>
-185 |       currentEvent?.history?.length > 0
-186 |         ? currentEvent.history[currentEvent.history.length - 1].userName
-187 |         : "Немає даних",
-188 |     [currentEvent?.history],
-189 |   );
-190 | 
-191 |   const handlePipelineClick = useCallback(
-192 |     (stepId: number) => {
-193 |       if (!currentEvent) return;
-194 |       const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-195 |       if (nextStage?.id !== stepId) return;
-196 |       if (nextStage.key === "REPORT") return setIsReportModalOpen(true);
-197 |       setCommentModal({
-198 |         isOpen: true,
-199 |         mode: "pipeline",
-200 |         stepId: nextStage.id,
-201 |         historyId: null,
-202 |         text: "",
-203 |       });
-204 |     },
-205 |     [currentEvent, currentStageIndex],
-206 |   );
-207 | 
-208 |   const handleHistoryClick = useCallback(
-209 |     (historyItem: { id: string; comment?: string }) => {
-210 |       setCommentModal({
-211 |         isOpen: true,
-212 |         mode: "history",
-213 |         stepId: null,
-214 |         historyId: historyItem.id,
-215 |         text: historyItem.comment || "",
-216 |       });
-217 |     },
-218 |     [],
-219 |   );
-220 | 
-221 |   const handleAddCommentClick = useCallback(() => {
-222 |     setCommentModal({
-223 |       isOpen: true,
-224 |       mode: "add_comment",
-225 |       stepId: null,
-226 |       historyId: null,
-227 |       text: "",
-228 |     });
-229 |   }, []);
-230 | 
-231 |   const handleSaveComment = useCallback(
-232 |     async (e: React.FormEvent) => {
-233 |       e.preventDefault();
-234 |       if (commentModal.mode === "pipeline") {
-235 |         const activeStage = PIPELINE_STAGES[currentStageIndex];
-236 |         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-237 |         if (!nextStage || !currentEvent) return;
-238 | 
-239 |         await updateStatus.mutateAsync({
-240 |           eventId: currentEvent.id,
-241 |           status: nextStage.key,
-242 |           actionName: `Етап пройдено: ${activeStage.name}`,
-243 |           comment: commentModal.text,
-244 |         });
-245 |         if (nextStage.key === "RE_SALE") {
-246 |           setExitingEventId(currentEvent.id);
-247 |           setTimeout(() => {
-248 |             setSelectedEventId(null);
-249 |             setExitingEventId(null);
-250 |           }, 500);
-251 |         }
-252 |       } else if (commentModal.mode === "add_comment") {
-253 |         await addCommentMutation.mutateAsync({
-254 |           eventId: currentEvent.id,
-255 |           comment: commentModal.text,
-256 |         });
-257 |       } else if (commentModal.mode === "history" && commentModal.historyId) {
-258 |         await updateHistoryMutation.mutateAsync({
-259 |           historyId: commentModal.historyId,
-260 |           comment: commentModal.text,
-261 |           eventId: currentEvent.id,
-262 |         });
-263 |       }
-264 |       setCommentModal({
-265 |         isOpen: false,
-266 |         mode: "pipeline",
-267 |         stepId: null,
-268 |         historyId: null,
-269 |         text: "",
-270 |       });
-271 |     },
-272 |     [
-273 |       commentModal,
-274 |       currentEvent,
-275 |       currentStageIndex,
-276 |       updateStatus,
-277 |       addCommentMutation,
-278 |       updateHistoryMutation,
-279 |     ],
-280 |   );
-281 | 
-282 |   const updateSchoolMutation = useUpdateSchool();
-283 |   const createEventMutation = useCreateEvent();
-284 | 
-285 |   const handleSaveEvent = useCallback(
-286 |     async (e: React.FormEvent) => {
-287 |       e.preventDefault();
-288 |       if (!schoolData.id) return;
-289 | 
-290 |       const payload = {
-291 |         ...eventForm,
-292 |         schoolId: schoolData.id,
-293 |         cityId: schoolData.cityId,
-294 |         childrenPlanned: Number(eventForm.childrenPlanned) || 0,
-295 |         price: Number(eventForm.price) || 0,
-296 |       };
-297 | 
-298 |       const newEvent = await createEventMutation.mutateAsync(payload);
-299 | 
-300 |       setIsEventModalOpen(false);
-301 |       setSelectedEventId(newEvent.id);
-302 |     },
-303 |     [eventForm, schoolData, createEventMutation],
-304 |   );
-305 | 
-306 |   const handleSaveSchoolInfo = useCallback(
-307 |     async (e: React.FormEvent) => {
-308 |       e.preventDefault();
-309 |       if (!id) return;
-310 | 
-311 |       await updateSchoolMutation.mutateAsync({
-312 |         ...editForm,
-313 |         id, // передаємо id для PATCH
-314 |       });
-315 |       setIsEditModalOpen(false);
-316 |     },
-317 |     [editForm, id, updateSchoolMutation],
-318 |   );
-319 | 
-320 |   const handleUpdatePreparation = useCallback(
-321 |     async (field: string, status: string) => {
-322 |       if (!currentEvent) return;
-323 |       await updatePreparation.mutateAsync({
-324 |         eventId: currentEvent.id,
-325 |         field,
-326 |         status,
-327 |       });
-328 |     },
-329 |     [currentEvent, updatePreparation],
-330 |   );
-331 | 
-332 |   const handleSubmitReport = useCallback(
-333 |     async (reportData: ReportData) => {
-334 |       if (!currentEvent) return;
-335 |       await submitReportMutation.mutateAsync({
-336 |         eventId: currentEvent.id,
-337 |         reportData,
-338 |       });
-339 |       await updateStatus.mutateAsync({
+ 76 |   // 2. Оголошуємо стейти, які потрібні для наступних запитів
+ 77 |   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+ 78 |   const [exitingEventId, setExitingEventId] = useState<string | null>(null);
+ 79 | 
+ 80 |   // 3. ТЕПЕР безпечно викликаємо useEventFull, оскільки selectedEventId вже існує
+ 81 |   const { data: eventFull, isLoading: eventFullLoading } = useEventFull(
+ 82 |     selectedEventId ?? eventsRaw[0]?.id,
+ 83 |   );
+ 84 | 
+ 85 |   const { data: users = [] } = useUsers();
+ 86 |   const { data: completedEvents = [] } = useSchoolCompletedEvents(id);
+ 87 |   const [selectedReportEvent, setSelectedReportEvent] = useState<Event | null>(
+ 88 |     null,
+ 89 |   );
+ 90 |   const updateStatus = useUpdateEventStatus();
+ 91 |   const updatePreparation = useUpdatePreparation();
+ 92 |   const assignCrewMutation = useAssignCrew();
+ 93 |   const submitReportMutation = useSubmitReport();
+ 94 |   const addCommentMutation = useAddComment();
+ 95 |   const updateHistoryMutation = useUpdateHistoryComment();
+ 96 | 
+ 97 |   // 4. Формуємо schoolData
+ 98 |   // 4. schoolData — використовуємо schoolRaw напряму
+ 99 |   const schoolData = useMemo(() => {
+100 |     if (!schoolRaw) {
+101 |       return {
+102 |         id: "",
+103 |         cityId: "",
+104 |         name: "",
+105 |         type: "Школа",
+106 |         city: "",
+107 |         address: "",
+108 |         director: "",
+109 |         phone: "",
+110 |         email: "",
+111 |         childrenCount: 0,
+112 |         notes: "",
+113 |       };
+114 |     }
+115 | 
+116 |     return {
+117 |       id: schoolRaw.id,
+118 |       cityId: schoolRaw.cityId,
+119 |       name: schoolRaw.name || "",
+120 |       type: schoolRaw.type || "Школа",
+121 |       city: schoolRaw.city?.name || "",
+122 |       address: schoolRaw.address || "",
+123 |       director: schoolRaw.director || "",
+124 |       phone: schoolRaw.phone || "",
+125 |       email: schoolRaw.email || "",
+126 |       childrenCount: schoolRaw.childrenCount || 0,
+127 |       notes: schoolRaw.notes || "",
+128 |     };
+129 |   }, [schoolRaw]);
+130 | 
+131 |   // 5. Оголошуємо решту стейтів (editForm залежить від schoolData, тому він тут)
+132 |   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+133 |   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+134 |   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
+135 |   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+136 |   const [commentModal, setCommentModal] = useState({
+137 |     isOpen: false,
+138 |     mode: "pipeline",
+139 |     stepId: null as number | null,
+140 |     historyId: null as string | null,
+141 |     text: "",
+142 |   });
+143 | 
+144 |   const [editForm, setEditForm] = useState({
+145 |     id: "",
+146 |     cityId: "",
+147 |     name: "",
+148 |     type: "Школа",
+149 |     city: "",
+150 |     address: "",
+151 |     director: "",
+152 |     phone: "",
+153 |     email: "",
+154 |     childrenCount: 0,
+155 |     notes: "",
+156 |   });
+157 |   const [eventForm, setEventForm] = useState({
+158 |     project: "Голограма для школи",
+159 |     date: "",
+160 |     time: "11:00",
+161 |     childrenPlanned: "",
+162 |     price: "",
+163 |     address: "",
+164 |     contactPerson: "",
+165 |     contactPhone: "",
+166 |   });
+167 | 
+168 |   const currentEventBase = useMemo(
+169 |     () => eventsRaw.find((ev) => ev.id === selectedEventId) ?? eventsRaw[0],
+170 |     [eventsRaw, selectedEventId],
+171 |   );
+172 | 
+173 |   const currentEvent = useMemo(() => {
+174 |     if (!currentEventBase) return null;
+175 |     if (eventFull?.id === currentEventBase.id) {
+176 |       return { ...currentEventBase, ...eventFull };
+177 |     }
+178 |     return currentEventBase;
+179 |   }, [currentEventBase, eventFull]);
+180 |   const currentStageIndex = useMemo(() => {
+181 |     if (!currentEvent?.status) return 0;
+182 |     const idx = PIPELINE_STAGES.findIndex(
+183 |       (s) => s.key === currentEvent?.status,
+184 |     );
+185 |     return idx !== -1 ? idx : 0;
+186 |   }, [currentEvent?.status]);
+187 |   const creatorName = useMemo(
+188 |     () =>
+189 |       currentEvent?.history?.length > 0
+190 |         ? currentEvent.history[currentEvent.history.length - 1].userName
+191 |         : "Немає даних",
+192 |     [currentEvent?.history],
+193 |   );
+194 | 
+195 |   const handlePipelineClick = useCallback(
+196 |     (stepId: number) => {
+197 |       if (!currentEvent) return;
+198 |       const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+199 |       if (nextStage?.id !== stepId) return;
+200 |       if (nextStage.key === "REPORT") return setIsReportModalOpen(true);
+201 |       setCommentModal({
+202 |         isOpen: true,
+203 |         mode: "pipeline",
+204 |         stepId: nextStage.id,
+205 |         historyId: null,
+206 |         text: "",
+207 |       });
+208 |     },
+209 |     [currentEvent, currentStageIndex],
+210 |   );
+211 | 
+212 |   const handleHistoryClick = useCallback(
+213 |     (historyItem: { id: string; comment?: string }) => {
+214 |       setCommentModal({
+215 |         isOpen: true,
+216 |         mode: "history",
+217 |         stepId: null,
+218 |         historyId: historyItem.id,
+219 |         text: historyItem.comment || "",
+220 |       });
+221 |     },
+222 |     [],
+223 |   );
+224 | 
+225 |   const handleAddCommentClick = useCallback(() => {
+226 |     setCommentModal({
+227 |       isOpen: true,
+228 |       mode: "add_comment",
+229 |       stepId: null,
+230 |       historyId: null,
+231 |       text: "",
+232 |     });
+233 |   }, []);
+234 | 
+235 |   const handleSaveComment = useCallback(
+236 |     async (e: React.FormEvent) => {
+237 |       e.preventDefault();
+238 |       if (commentModal.mode === "pipeline") {
+239 |         const activeStage = PIPELINE_STAGES[currentStageIndex];
+240 |         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+241 |         if (!nextStage || !currentEvent) return;
+242 | 
+243 |         await updateStatus.mutateAsync({
+244 |           eventId: currentEvent.id,
+245 |           status: nextStage.key,
+246 |           actionName: `Етап пройдено: ${activeStage.name}`,
+247 |           comment: commentModal.text,
+248 |         });
+249 |         if (nextStage.key === "RE_SALE") {
+250 |           setExitingEventId(currentEvent.id);
+251 |           setTimeout(() => {
+252 |             setSelectedEventId(null);
+253 |             setExitingEventId(null);
+254 |           }, 500);
+255 |         }
+256 |       } else if (commentModal.mode === "add_comment") {
+257 |         await addCommentMutation.mutateAsync({
+258 |           eventId: currentEvent.id,
+259 |           comment: commentModal.text,
+260 |         });
+261 |       } else if (commentModal.mode === "history" && commentModal.historyId) {
+262 |         await updateHistoryMutation.mutateAsync({
+263 |           historyId: commentModal.historyId,
+264 |           comment: commentModal.text,
+265 |           eventId: currentEvent.id,
+266 |         });
+267 |       }
+268 |       setCommentModal({
+269 |         isOpen: false,
+270 |         mode: "pipeline",
+271 |         stepId: null,
+272 |         historyId: null,
+273 |         text: "",
+274 |       });
+275 |     },
+276 |     [
+277 |       commentModal,
+278 |       currentEvent,
+279 |       currentStageIndex,
+280 |       updateStatus,
+281 |       addCommentMutation,
+282 |       updateHistoryMutation,
+283 |     ],
+284 |   );
+285 | 
+286 |   const updateSchoolMutation = useUpdateSchool();
+287 |   const createEventMutation = useCreateEvent();
+288 | 
+289 |   const handleSaveEvent = useCallback(
+290 |     async (e: React.FormEvent) => {
+291 |       e.preventDefault();
+292 |       if (!schoolData.id) return;
+293 | 
+294 |       const payload = {
+295 |         ...eventForm,
+296 |         schoolId: schoolData.id,
+297 |         cityId: schoolData.cityId,
+298 |         childrenPlanned: Number(eventForm.childrenPlanned) || 0,
+299 |         price: Number(eventForm.price) || 0,
+300 |       };
+301 | 
+302 |       const newEvent = await createEventMutation.mutateAsync(payload);
+303 | 
+304 |       setIsEventModalOpen(false);
+305 |       setSelectedEventId(newEvent.id);
+306 |     },
+307 |     [eventForm, schoolData, createEventMutation],
+308 |   );
+309 | 
+310 |   const handleSaveSchoolInfo = useCallback(
+311 |     async (e: React.FormEvent) => {
+312 |       e.preventDefault();
+313 |       if (!id) return;
+314 | 
+315 |       await updateSchoolMutation.mutateAsync({
+316 |         ...editForm,
+317 |         id, // передаємо id для PATCH
+318 |       });
+319 |       setIsEditModalOpen(false);
+320 |     },
+321 |     [editForm, id, updateSchoolMutation],
+322 |   );
+323 | 
+324 |   const handleUpdatePreparation = useCallback(
+325 |     async (field: string, status: string) => {
+326 |       if (!currentEvent) return;
+327 |       await updatePreparation.mutateAsync({
+328 |         eventId: currentEvent.id,
+329 |         field,
+330 |         status,
+331 |       });
+332 |     },
+333 |     [currentEvent, updatePreparation],
+334 |   );
+335 | 
+336 |   const handleSubmitReport = useCallback(
+337 |     async (reportData: ReportData) => {
+338 |       if (!currentEvent) return;
+339 |       await submitReportMutation.mutateAsync({
 340 |         eventId: currentEvent.id,
-341 |         status: "RE_SALE",
-342 |         actionName: "Звіт сформовано. Захід завершено.",
-343 |       });
-344 |       setExitingEventId(currentEvent.id);
-345 |       setTimeout(() => {
-346 |         setSelectedEventId(null);
-347 |         setExitingEventId(null);
-348 |       }, 500);
-349 |       setIsReportModalOpen(false);
-350 |     },
-351 |     [currentEvent, submitReportMutation, updateStatus],
-352 |   );
-353 | 
-354 |   const handleAssignCrew = useCallback(
-355 |     async (crewId: string) => {
-356 |       if (!currentEvent) return;
+341 |         reportData,
+342 |       });
+343 |       await updateStatus.mutateAsync({
+344 |         eventId: currentEvent.id,
+345 |         status: "RE_SALE",
+346 |         actionName: "Звіт сформовано. Захід завершено.",
+347 |       });
+348 |       setExitingEventId(currentEvent.id);
+349 |       setTimeout(() => {
+350 |         setSelectedEventId(null);
+351 |         setExitingEventId(null);
+352 |       }, 500);
+353 |       setIsReportModalOpen(false);
+354 |     },
+355 |     [currentEvent, submitReportMutation, updateStatus],
+356 |   );
 357 | 
-358 |       await assignCrewMutation.mutateAsync({
-359 |         eventId: currentEvent.id,
-360 |         crewId,
-361 |       });
-362 | 
-363 |       await updatePreparation.mutateAsync({
-364 |         eventId: currentEvent.id,
-365 |         field: "assignCrew",
-366 |         status: "Виконано",
-367 |       });
-368 | 
-369 |       setIsCrewModalOpen(false);
-370 |     },
-371 |     [currentEvent, assignCrewMutation, updatePreparation],
-372 |   );
-373 | 
-374 |   const openAddEventModal = useCallback(() => {
-375 |     setEventForm((prev) => ({
-376 |       ...prev,
-377 |       address: schoolData.address,
-378 |       contactPerson: schoolData.director,
-379 |       contactPhone: schoolData.phone,
-380 |       childrenPlanned: String(schoolData.childrenCount),
-381 |     }));
-382 |     setIsEventModalOpen(true);
-383 |   }, [schoolData]);
-384 |   const stagger = (i: number) => ({
-385 |     initial: { opacity: 0, y: 10 },
-386 |     animate: { opacity: 1, y: 0 },
-387 |     transition: { duration: 0.3, delay: 0.1 + i * 0.07, ease: "easeOut" },
-388 |   });
-389 | 
-390 |   return (
-391 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8">
-392 |       <SchoolProfileHeader
-393 |         schoolData={schoolData}
-394 |         onEdit={() => {
-395 |           setEditForm(schoolData);
-396 |           setIsEditModalOpen(true);
-397 |         }}
-398 |         onAddEvent={openAddEventModal}
-399 |       />
-400 | 
-401 |       <div className="flex flex-col xl:flex-row gap-6">
-402 |         {/* Ліва колонка */}
-403 |         <div className="w-full xl:w-80 flex flex-col gap-6">
-404 |           <motion.div {...stagger(0)}>
-405 |             <Suspense
-406 |               fallback={
-407 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-408 |               }
-409 |             >
-410 |               <SchoolInfoCard schoolData={schoolData} />
-411 |             </Suspense>
-412 |           </motion.div>
-413 | 
-414 |           <AnimatePresence>
-415 |             {currentEvent && currentStageIndex >= 1 && (
-416 |               <motion.div
-417 |                 key="responsible"
-418 |                 initial={{ opacity: 0, y: 8 }}
-419 |                 animate={{ opacity: 1, y: 0 }}
-420 |                 exit={{ opacity: 0, y: -8 }}
-421 |                 transition={{ duration: 0.25 }}
-422 |                 className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
-423 |               >
-424 |                 <h3 className="font-bold text-slate-800 mb-4">
-425 |                   Відповідальна особа
-426 |                 </h3>
-427 |                 <ul className="space-y-2 text-sm">
-428 |                   <li className="flex justify-between">
-429 |                     <span className="text-slate-500">Остання дія:</span>
-430 |                     <span className="font-medium text-blue-600">
-431 |                       {creatorName}
-432 |                     </span>
-433 |                   </li>
-434 |                 </ul>
-435 |               </motion.div>
-436 |             )}
-437 |           </AnimatePresence>
-438 | 
-439 |           <motion.div {...stagger(1)}>
-440 |             <Suspense
-441 |               fallback={
-442 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-443 |               }
-444 |             >
-445 |               <HistoryTimeline
-446 |                 currentEvent={
-447 |                   eventFullLoading ? currentEventBase : currentEvent
-448 |                 }
-449 |                 onHistoryClick={handleHistoryClick}
-450 |                 onAddCommentClick={handleAddCommentClick}
-451 |               />
-452 |             </Suspense>
-453 |           </motion.div>
-454 |         </div>
-455 | 
-456 |         {/* Права колонка */}
-457 |         <motion.div
-458 |           className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${
-459 |             exitingEventId === currentEvent?.id
-460 |               ? "opacity-0 scale-95 -translate-y-4 pointer-events-none"
-461 |               : ""
-462 |           }`}
-463 |           initial={{ opacity: 0, y: 10 }}
-464 |           animate={{ opacity: 1, y: 0 }}
-465 |           transition={{ duration: 0.3, delay: 0.15 }}
-466 |         >
-467 |           {currentEvent && (
-468 |             <Suspense
-469 |               fallback={
-470 |                 <div className="bg-white rounded-2xl h-24 animate-pulse border border-slate-100" />
-471 |               }
-472 |             >
-473 |               <Pipeline
-474 |                 currentStageIndex={currentStageIndex}
-475 |                 currentEvent={currentEvent}
-476 |                 onPipelineClick={handlePipelineClick}
-477 |                 stages={PIPELINE_STAGES}
-478 |               />
-479 |             </Suspense>
-480 |           )}
-481 | 
-482 |           <AnimatePresence>
-483 |             {currentEvent && currentStageIndex >= 4 && (
-484 |               <motion.div
-485 |                 key="preparation"
-486 |                 initial={{ opacity: 0, y: 8 }}
-487 |                 animate={{ opacity: 1, y: 0 }}
-488 |                 exit={{ opacity: 0, y: -8 }}
-489 |                 transition={{ duration: 0.25 }}
-490 |                 className="grid grid-cols-1 xl:grid-cols-2 gap-6"
-491 |               >
-492 |                 {eventFullLoading ? (
-493 |                   <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-pulse h-48" />
-494 |                 ) : (
-495 |                   <Suspense
-496 |                     fallback={
-497 |                       <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-498 |                     }
-499 |                   >
-500 |                     <EventPreparation
-501 |                       data={currentEvent.preparation || {}}
-502 |                       onUpdate={handleUpdatePreparation}
-503 |                       onOpenCrewModal={() => setIsCrewModalOpen(true)}
-504 |                     />
-505 |                   </Suspense>
-506 |                 )}
-507 |                 <Suspense
-508 |                   fallback={
-509 |                     <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-510 |                   }
-511 |                 >
-512 |                   <AssignedCrew currentEvent={currentEvent} employees={users} />
-513 |                 </Suspense>
-514 |               </motion.div>
-515 |             )}
-516 |           </AnimatePresence>
-517 | 
-518 |           <motion.div {...stagger(2)}>
-519 |             <Suspense
-520 |               fallback={
-521 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
-522 |               }
-523 |             >
-524 |               <EventDetails
-525 |                 currentEvent={currentEvent}
-526 |                 schoolName={schoolData.name}
-527 |                 cityId={schoolData.cityId}
-528 |                 onEventUpdated={() =>
-529 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
-530 |                 }
-531 |               />
-532 |             </Suspense>
-533 |           </motion.div>
-534 | 
-535 |           <motion.div {...stagger(3)}>
-536 |             <Suspense
-537 |               fallback={
-538 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
-539 |               }
-540 |             >
-541 |               <EventsTable
-542 |                 events={events}
-543 |                 selectedEventId={selectedEventId}
-544 |                 onEventSelect={setSelectedEventId}
-545 |                 onDeleteSuccess={() =>
-546 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
-547 |                 }
-548 |               />
-549 |             </Suspense>
-550 |             {completedEvents.length > 0 && (
-551 |               <motion.div {...stagger(4)}>
-552 |                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-553 |                   <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-554 |                     <h3 className="font-bold text-slate-800">
-555 |                       Завершені події ({completedEvents.length})
-556 |                     </h3>
-557 |                   </div>
-558 |                   <div className="md:hidden divide-y divide-slate-50">
-559 |                     {completedEvents.map((ev: Event) => (
-560 |                       <div
-561 |                         key={ev.id}
-562 |                         onClick={() => setSelectedReportEvent(ev)}
-563 |                         className="flex items-center justify-between gap-3 p-4 active:bg-slate-50 cursor-pointer"
-564 |                       >
-565 |                         <div className="min-w-0">
-566 |                           <p className="font-medium text-blue-600 truncate">
-567 |                             {ev.project}
-568 |                           </p>
-569 |                           <p className="text-xs text-slate-400 mt-0.5">
-570 |                             {new Date(ev.date).toLocaleDateString("uk-UA")}
-571 |                           </p>
-572 |                           <p className="text-xs text-slate-500 mt-1">
-573 |                             👶{" "}
-574 |                             {ev.report?.childrenCount ||
-575 |                               ev.childrenPlanned ||
-576 |                               "—"}{" "}
-577 |                             дітей
-578 |                           </p>
-579 |                         </div>
-580 |                         <div className="text-right shrink-0">
-581 |                           <p className="font-semibold text-slate-800 text-sm">
-582 |                             {new Intl.NumberFormat("uk-UA").format(
-583 |                               ev.report?.totalSum || ev.price || 0,
-584 |                             )}{" "}
-585 |                             грн
-586 |                           </p>
-587 |                           <p className="text-xs font-medium text-emerald-600 mt-0.5">
-588 |                             +
-589 |                             {new Intl.NumberFormat("uk-UA").format(
-590 |                               ev.report?.remainderSum || 0,
-591 |                             )}{" "}
-592 |                             грн
-593 |                           </p>
-594 |                         </div>
-595 |                       </div>
-596 |                     ))}
-597 |                   </div>
-598 |                   <div className="hidden md:block overflow-x-auto">
-599 |                     <table className="w-full text-left text-sm">
-600 |                       <thead>
-601 |                         <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
-602 |                           <th className="p-4">Проєкт</th>
-603 |                           <th className="p-4">Дата</th>
-604 |                           <th className="p-4">Дітей</th>
-605 |                           <th className="p-4">Виручка</th>
-606 |                           <th className="p-4">Прибуток</th>
-607 |                         </tr>
-608 |                       </thead>
-609 |                       <tbody>
-610 |                         {completedEvents.map((ev: any) => (
-611 |                           <tr
-612 |                             key={ev.id}
-613 |                             onClick={() => setSelectedReportEvent(ev)}
-614 |                             className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
-615 |                           >
-616 |                             <td className="p-4 text-slate-700 font-medium">
-617 |                               {ev.project}
-618 |                             </td>
-619 |                             <td className="p-4 text-slate-600">
-620 |                               {new Date(ev.date).toLocaleDateString("uk-UA")}
-621 |                             </td>
-622 |                             <td className="p-4 font-medium">
-623 |                               {ev.report?.childrenCount ||
-624 |                                 ev.childrenPlanned ||
-625 |                                 "—"}
-626 |                             </td>
-627 |                             <td className="p-4 font-medium text-slate-800">
-628 |                               {new Intl.NumberFormat("uk-UA").format(
-629 |                                 ev.report?.totalSum || ev.price || 0,
-630 |                               )}{" "}
-631 |                               грн
+358 |   const handleAssignCrew = useCallback(
+359 |     async (crewId: string) => {
+360 |       if (!currentEvent) return;
+361 | 
+362 |       await assignCrewMutation.mutateAsync({
+363 |         eventId: currentEvent.id,
+364 |         crewId,
+365 |       });
+366 | 
+367 |       await updatePreparation.mutateAsync({
+368 |         eventId: currentEvent.id,
+369 |         field: "assignCrew",
+370 |         status: "Виконано",
+371 |       });
+372 | 
+373 |       setIsCrewModalOpen(false);
+374 |     },
+375 |     [currentEvent, assignCrewMutation, updatePreparation],
+376 |   );
+377 | 
+378 |   const events = eventsRaw;
+379 | 
+380 |   const openAddEventModal = useCallback(() => {
+381 |     setEventForm((prev) => ({
+382 |       ...prev,
+383 |       address: schoolData.address,
+384 |       contactPerson: schoolData.director,
+385 |       contactPhone: schoolData.phone,
+386 |       childrenPlanned: String(schoolData.childrenCount),
+387 |     }));
+388 |     setIsEventModalOpen(true);
+389 |   }, [schoolData]);
+390 |   const stagger = (i: number) => ({
+391 |     initial: { opacity: 0, y: 10 },
+392 |     animate: { opacity: 1, y: 0 },
+393 |     transition: { duration: 0.3, delay: 0.1 + i * 0.07, ease: "easeOut" },
+394 |   });
+395 | 
+396 |   return (
+397 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8">
+398 |       <SchoolProfileHeader
+399 |         schoolData={schoolData}
+400 |         onEdit={() => {
+401 |           setEditForm(schoolData);
+402 |           setIsEditModalOpen(true);
+403 |         }}
+404 |         onAddEvent={openAddEventModal}
+405 |       />
+406 | 
+407 |       <div className="flex flex-col xl:flex-row gap-6">
+408 |         {/* Ліва колонка */}
+409 |         <div className="w-full xl:w-80 flex flex-col gap-6">
+410 |           <motion.div {...stagger(0)}>
+411 |             <Suspense
+412 |               fallback={
+413 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+414 |               }
+415 |             >
+416 |               <SchoolInfoCard schoolData={schoolData} />
+417 |             </Suspense>
+418 |           </motion.div>
+419 | 
+420 |           <AnimatePresence>
+421 |             {currentEvent && currentStageIndex >= 1 && (
+422 |               <motion.div
+423 |                 key="responsible"
+424 |                 initial={{ opacity: 0, y: 8 }}
+425 |                 animate={{ opacity: 1, y: 0 }}
+426 |                 exit={{ opacity: 0, y: -8 }}
+427 |                 transition={{ duration: 0.25 }}
+428 |                 className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
+429 |               >
+430 |                 <h3 className="font-bold text-slate-800 mb-4">
+431 |                   Відповідальна особа
+432 |                 </h3>
+433 |                 <ul className="space-y-2 text-sm">
+434 |                   <li className="flex justify-between">
+435 |                     <span className="text-slate-500">Остання дія:</span>
+436 |                     <span className="font-medium text-blue-600">
+437 |                       {creatorName}
+438 |                     </span>
+439 |                   </li>
+440 |                 </ul>
+441 |               </motion.div>
+442 |             )}
+443 |           </AnimatePresence>
+444 | 
+445 |           <motion.div {...stagger(1)}>
+446 |             <Suspense
+447 |               fallback={
+448 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+449 |               }
+450 |             >
+451 |               <HistoryTimeline
+452 |                 currentEvent={
+453 |                   eventFullLoading ? currentEventBase : currentEvent
+454 |                 }
+455 |                 onHistoryClick={handleHistoryClick}
+456 |                 onAddCommentClick={handleAddCommentClick}
+457 |               />
+458 |             </Suspense>
+459 |           </motion.div>
+460 |         </div>
+461 | 
+462 |         {/* Права колонка */}
+463 |         <motion.div
+464 |           className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${
+465 |             exitingEventId === currentEvent?.id
+466 |               ? "opacity-0 scale-95 -translate-y-4 pointer-events-none"
+467 |               : ""
+468 |           }`}
+469 |           initial={{ opacity: 0, y: 10 }}
+470 |           animate={{ opacity: 1, y: 0 }}
+471 |           transition={{ duration: 0.3, delay: 0.15 }}
+472 |         >
+473 |           {currentEvent && (
+474 |             <Suspense
+475 |               fallback={
+476 |                 <div className="bg-white rounded-2xl h-24 animate-pulse border border-slate-100" />
+477 |               }
+478 |             >
+479 |               <Pipeline
+480 |                 currentStageIndex={currentStageIndex}
+481 |                 currentEvent={currentEvent}
+482 |                 onPipelineClick={handlePipelineClick}
+483 |                 stages={PIPELINE_STAGES}
+484 |               />
+485 |             </Suspense>
+486 |           )}
+487 | 
+488 |           <AnimatePresence>
+489 |             {currentEvent && currentStageIndex >= 4 && (
+490 |               <motion.div
+491 |                 key="preparation"
+492 |                 initial={{ opacity: 0, y: 8 }}
+493 |                 animate={{ opacity: 1, y: 0 }}
+494 |                 exit={{ opacity: 0, y: -8 }}
+495 |                 transition={{ duration: 0.25 }}
+496 |                 className="grid grid-cols-1 xl:grid-cols-2 gap-6"
+497 |               >
+498 |                 {eventFullLoading ? (
+499 |                   <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-pulse h-48" />
+500 |                 ) : (
+501 |                   <Suspense
+502 |                     fallback={
+503 |                       <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+504 |                     }
+505 |                   >
+506 |                     <EventPreparation
+507 |                       data={currentEvent.preparation || {}}
+508 |                       onUpdate={handleUpdatePreparation}
+509 |                       onOpenCrewModal={() => setIsCrewModalOpen(true)}
+510 |                     />
+511 |                   </Suspense>
+512 |                 )}
+513 |                 <Suspense
+514 |                   fallback={
+515 |                     <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+516 |                   }
+517 |                 >
+518 |                   <AssignedCrew currentEvent={currentEvent} employees={users} />
+519 |                 </Suspense>
+520 |               </motion.div>
+521 |             )}
+522 |           </AnimatePresence>
+523 | 
+524 |           <motion.div {...stagger(2)}>
+525 |             <Suspense
+526 |               fallback={
+527 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
+528 |               }
+529 |             >
+530 |               <EventDetails
+531 |                 currentEvent={currentEvent}
+532 |                 schoolName={schoolData.name}
+533 |                 cityId={schoolData.cityId}
+534 |                 onEventUpdated={() =>
+535 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
+536 |                 }
+537 |               />
+538 |             </Suspense>
+539 |           </motion.div>
+540 | 
+541 |           <motion.div {...stagger(3)}>
+542 |             <Suspense
+543 |               fallback={
+544 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
+545 |               }
+546 |             >
+547 |               <EventsTable
+548 |                 events={events}
+549 |                 selectedEventId={selectedEventId}
+550 |                 onEventSelect={setSelectedEventId}
+551 |                 onDeleteSuccess={() =>
+552 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
+553 |                 }
+554 |               />
+555 |             </Suspense>
+556 |             {completedEvents.length > 0 && (
+557 |               <motion.div {...stagger(4)}>
+558 |                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+559 |                   <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+560 |                     <h3 className="font-bold text-slate-800">
+561 |                       Завершені події ({completedEvents.length})
+562 |                     </h3>
+563 |                   </div>
+564 |                   <div className="md:hidden divide-y divide-slate-50">
+565 |                     {completedEvents.map((ev: Event) => (
+566 |                       <div
+567 |                         key={ev.id}
+568 |                         onClick={() => setSelectedReportEvent(ev)}
+569 |                         className="flex items-center justify-between gap-3 p-4 active:bg-slate-50 cursor-pointer"
+570 |                       >
+571 |                         <div className="min-w-0">
+572 |                           <p className="font-medium text-blue-600 truncate">
+573 |                             {ev.project}
+574 |                           </p>
+575 |                           <p className="text-xs text-slate-400 mt-0.5">
+576 |                             {new Date(ev.date).toLocaleDateString("uk-UA")}
+577 |                           </p>
+578 |                           <p className="text-xs text-slate-500 mt-1">
+579 |                             👶{" "}
+580 |                             {ev.report?.childrenCount ||
+581 |                               ev.childrenPlanned ||
+582 |                               "—"}{" "}
+583 |                             дітей
+584 |                           </p>
+585 |                         </div>
+586 |                         <div className="text-right shrink-0">
+587 |                           <p className="font-semibold text-slate-800 text-sm">
+588 |                             {new Intl.NumberFormat("uk-UA").format(
+589 |                               ev.report?.totalSum || ev.price || 0,
+590 |                             )}{" "}
+591 |                             грн
+592 |                           </p>
+593 |                           <p className="text-xs font-medium text-emerald-600 mt-0.5">
+594 |                             +
+595 |                             {new Intl.NumberFormat("uk-UA").format(
+596 |                               ev.report?.remainderSum || 0,
+597 |                             )}{" "}
+598 |                             грн
+599 |                           </p>
+600 |                         </div>
+601 |                       </div>
+602 |                     ))}
+603 |                   </div>
+604 |                   <div className="hidden md:block overflow-x-auto">
+605 |                     <table className="w-full text-left text-sm">
+606 |                       <thead>
+607 |                         <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+608 |                           <th className="p-4">Проєкт</th>
+609 |                           <th className="p-4">Дата</th>
+610 |                           <th className="p-4">Дітей</th>
+611 |                           <th className="p-4">Виручка</th>
+612 |                           <th className="p-4">Прибуток</th>
+613 |                         </tr>
+614 |                       </thead>
+615 |                       <tbody>
+616 |                         {completedEvents.map((ev: any) => (
+617 |                           <tr
+618 |                             key={ev.id}
+619 |                             onClick={() => setSelectedReportEvent(ev)}
+620 |                             className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
+621 |                           >
+622 |                             <td className="p-4 text-slate-700 font-medium">
+623 |                               {ev.project}
+624 |                             </td>
+625 |                             <td className="p-4 text-slate-600">
+626 |                               {new Date(ev.date).toLocaleDateString("uk-UA")}
+627 |                             </td>
+628 |                             <td className="p-4 font-medium">
+629 |                               {ev.report?.childrenCount ||
+630 |                                 ev.childrenPlanned ||
+631 |                                 "—"}
 632 |                             </td>
-633 |                             <td className="p-4 font-medium text-emerald-600">
+633 |                             <td className="p-4 font-medium text-slate-800">
 634 |                               {new Intl.NumberFormat("uk-UA").format(
-635 |                                 ev.report?.remainderSum || 0,
+635 |                                 ev.report?.totalSum || ev.price || 0,
 636 |                               )}{" "}
 637 |                               грн
 638 |                             </td>
-639 |                           </tr>
-640 |                         ))}
-641 |                       </tbody>
-642 |                     </table>
-643 |                   </div>
-644 |                 </div>
-645 |               </motion.div>
-646 |             )}
-647 |           </motion.div>
-648 |         </motion.div>
-649 |       </div>
-650 | 
-651 |       {/* Мобільна FAB */}
-652 |       <button
-653 |         onClick={openAddEventModal}
-654 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
-655 |       >
-656 |         +
-657 |       </button>
-658 | 
-659 |       {/* Модальні вікна */}
-660 |       <EditSchoolModal
-661 |         isOpen={isEditModalOpen}
-662 |         onClose={() => setIsEditModalOpen(false)}
-663 |         editForm={editForm}
-664 |         setEditForm={setEditForm}
-665 |         onSave={handleSaveSchoolInfo}
-666 |       />
-667 |       <EventModal
-668 |         isOpen={isEventModalOpen}
-669 |         onClose={() => setIsEventModalOpen(false)}
-670 |         eventForm={eventForm}
-671 |         setEventForm={setEventForm}
-672 |         onSave={handleSaveEvent}
-673 |       />
-674 |       <CommentModal
-675 |         isOpen={commentModal.isOpen}
-676 |         onClose={() => setCommentModal({ ...commentModal, isOpen: false })}
-677 |         mode={commentModal.mode}
-678 |         text={commentModal.text}
-679 |         setText={(t) => setCommentModal({ ...commentModal, text: t })}
-680 |         onSave={handleSaveComment}
-681 |       />
-682 |       <CrewModal
-683 |         isOpen={isCrewModalOpen}
-684 |         onClose={() => setIsCrewModalOpen(false)}
-685 |         city={schoolData.city}
-686 |         employees={users}
-687 |         onSave={handleAssignCrew}
-688 |       />
-689 |       <ReportModal
-690 |         isOpen={isReportModalOpen}
-691 |         onClose={() => setIsReportModalOpen(false)}
-692 |         onSave={handleSubmitReport}
-693 |         schoolName={schoolData.name}
-694 |         eventType={currentEvent?.project}
-695 |         eventDate={currentEvent?.date}
-696 |         eventIndex={
-697 |           events
-698 |             .filter((e) => e.schoolId === schoolData.id)
-699 |             .findIndex((e) => e.id === currentEvent?.id) + 1
-700 |         }
-701 |         crew={
-702 |           currentEvent?.crew
-703 |             ? {
-704 |                 host: currentEvent.crew.hostId
-705 |                   ? (users.find(
-706 |                       (u: User) => u.id === currentEvent.crew.hostId,
-707 |                     ) ?? null)
-708 |                   : (currentEvent.crew.host ?? null),
-709 |                 driver: currentEvent.crew.driverId
-710 |                   ? (users.find(
-711 |                       (u: User) => u.id === currentEvent.crew.driverId,
-712 |                     ) ?? null)
-713 |                   : (currentEvent.crew.driver ?? null),
-714 |               }
-715 |             : undefined
-716 |         }
-717 |       />
-718 |       <CompletedEventModal
-719 |         isOpen={!!selectedReportEvent}
-720 |         onClose={() => setSelectedReportEvent(null)}
-721 |         event={selectedReportEvent}
-722 |       />
-723 |     </div>
-724 |   );
-725 | }
-726 | 
+639 |                             <td className="p-4 font-medium text-emerald-600">
+640 |                               {new Intl.NumberFormat("uk-UA").format(
+641 |                                 ev.report?.remainderSum || 0,
+642 |                               )}{" "}
+643 |                               грн
+644 |                             </td>
+645 |                           </tr>
+646 |                         ))}
+647 |                       </tbody>
+648 |                     </table>
+649 |                   </div>
+650 |                 </div>
+651 |               </motion.div>
+652 |             )}
+653 |           </motion.div>
+654 |         </motion.div>
+655 |       </div>
+656 | 
+657 |       {/* Мобільна FAB */}
+658 |       <button
+659 |         onClick={openAddEventModal}
+660 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
+661 |       >
+662 |         +
+663 |       </button>
+664 | 
+665 |       {/* Модальні вікна */}
+666 |       <EditSchoolModal
+667 |         isOpen={isEditModalOpen}
+668 |         onClose={() => setIsEditModalOpen(false)}
+669 |         editForm={editForm}
+670 |         setEditForm={setEditForm}
+671 |         onSave={handleSaveSchoolInfo}
+672 |       />
+673 |       <EventModal
+674 |         isOpen={isEventModalOpen}
+675 |         onClose={() => setIsEventModalOpen(false)}
+676 |         eventForm={eventForm}
+677 |         setEventForm={setEventForm}
+678 |         onSave={handleSaveEvent}
+679 |       />
+680 |       <CommentModal
+681 |         isOpen={commentModal.isOpen}
+682 |         onClose={() => setCommentModal({ ...commentModal, isOpen: false })}
+683 |         mode={commentModal.mode}
+684 |         text={commentModal.text}
+685 |         setText={(t) => setCommentModal({ ...commentModal, text: t })}
+686 |         onSave={handleSaveComment}
+687 |       />
+688 |       <CrewModal
+689 |         isOpen={isCrewModalOpen}
+690 |         onClose={() => setIsCrewModalOpen(false)}
+691 |         city={schoolData.city}
+692 |         employees={users}
+693 |         onSave={handleAssignCrew}
+694 |       />
+695 |       <ReportModal
+696 |         isOpen={isReportModalOpen}
+697 |         onClose={() => setIsReportModalOpen(false)}
+698 |         onSave={handleSubmitReport}
+699 |         schoolName={schoolData.name}
+700 |         eventType={currentEvent?.project}
+701 |         eventDate={currentEvent?.date}
+702 |         eventIndex={
+703 |           events
+704 |             .filter((e) => e.schoolId === schoolData.id)
+705 |             .findIndex((e) => e.id === currentEvent?.id) + 1
+706 |         }
+707 |         crew={
+708 |           currentEvent?.crew
+709 |             ? {
+710 |                 host: currentEvent.crew.hostId
+711 |                   ? (users.find(
+712 |                       (u: User) => u.id === currentEvent.crew.hostId,
+713 |                     ) ?? null)
+714 |                   : (currentEvent.crew.host ?? null),
+715 |                 driver: currentEvent.crew.driverId
+716 |                   ? (users.find(
+717 |                       (u: User) => u.id === currentEvent.crew.driverId,
+718 |                     ) ?? null)
+719 |                   : (currentEvent.crew.driver ?? null),
+720 |               }
+721 |             : undefined
+722 |         }
+723 |       />
+724 |       <CompletedEventModal
+725 |         isOpen={!!selectedReportEvent}
+726 |         onClose={() => setSelectedReportEvent(null)}
+727 |         event={selectedReportEvent}
+728 |       />
+729 |     </div>
+730 |   );
+731 | }
+732 | 
 ```
 
 ### File: apps/frontend/src/pages/Schools.tsx

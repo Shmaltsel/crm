@@ -99,16 +99,6 @@ export class FinanceService {
     const totalProfit = kpiAgg._sum.remainderSum ?? 0;
     const totalEvents = kpiAgg._count.eventId ?? 0;
 
-    // -------------------------------------------------------------------------
-    // 2. Витрати по категоріях — expenses зберігається як JSON,
-    //    тому вибираємо лише одне поле без жодних include
-    // -------------------------------------------------------------------------
-    // -------------------------------------------------------------------------
-    // 2. Витрати по категоріях (тепер через реляційну таблицю ExpenseItem)
-    // -------------------------------------------------------------------------
-    // -------------------------------------------------------------------------
-    // 2. Витрати по категоріях (через нову таблицю ExpenseItem)
-    // -------------------------------------------------------------------------
     const expensesRaw = await this.prisma.expenseItem.findMany({
       where: {
         report: {
@@ -380,7 +370,7 @@ export class FinanceService {
           COALESCE(SUM(r."totalSum"), 0)::float     AS revenue,
           COUNT(e.id)::int                          AS "eventsCount"
         FROM "Event" e
-        JOIN "EventCrew"    c ON c."eventId" = e.id
+        JOIN "Crew"         c ON c.id = e."crewId"
         JOIN "User"         u ON u.id = c."hostId"
         JOIN "EventReport"  r ON r."eventId" = e.id
         WHERE e.status = 'RE_SALE'
@@ -396,7 +386,7 @@ export class FinanceService {
           COALESCE(SUM(r."totalSum"), 0)::float     AS revenue,
           COUNT(e.id)::int                          AS "eventsCount"
         FROM "Event" e
-        JOIN "EventCrew"   c ON c."eventId" = e.id
+        JOIN "Crew"        c ON c.id = e."crewId"
         JOIN "User"        u ON u.id = c."driverId"
         JOIN "EventReport" r ON r."eventId" = e.id
         WHERE e.status = 'RE_SALE'

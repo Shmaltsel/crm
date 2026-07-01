@@ -12,6 +12,8 @@ import { CitiesService } from './cities.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CreateCityDto } from './dto/create-city.dto';
+import { CreateCrewDto } from './dto/create-crew.dto';
 
 @Controller('cities')
 @UseGuards(AuthGuard, RolesGuard)
@@ -20,7 +22,7 @@ export class CitiesController {
 
   @Post()
   @Roles('SUPERADMIN')
-  create(@Body() body: { name: string }) {
+  create(@Body() body: CreateCityDto) {
     return this.citiesService.create(body.name);
   }
 
@@ -34,10 +36,7 @@ export class CitiesController {
     return this.citiesService.findOne(id);
   }
   @Post(':id/crews')
-  createCrew(
-    @Param('id') id: string,
-    @Body() body: { name: string; hostId: string; driverId: string },
-  ) {
+  createCrew(@Param('id') id: string, @Body() body: CreateCrewDto) {
     return this.citiesService.createCrew(id, body);
   }
 

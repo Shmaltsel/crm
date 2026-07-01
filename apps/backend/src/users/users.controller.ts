@@ -12,6 +12,8 @@ import { UsersService } from './users.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Controller('users')
 @UseGuards(AuthGuard, RolesGuard)
@@ -25,13 +27,13 @@ export class UsersController {
 
   @Post()
   @Roles('SUPERADMIN')
-  create(@Body() body: any) {
+  create(@Body() body: CreateUserDto) {
     return this.usersService.createUser(body);
   }
 
   @Patch(':id')
   @Roles('SUPERADMIN')
-  update(@Param('id') id: string, @Body() body: any) {
+  update(@Param('id') id: string, @Body() body: UpdateUserDto) {
     return this.usersService.updateUser(id, body);
   }
 

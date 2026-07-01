@@ -11,6 +11,7 @@ import { ProjectsService } from './projects.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CreateProjectDto } from './dto/create-project.dto';
 
 @Controller('projects')
 @UseGuards(AuthGuard, RolesGuard)
@@ -24,7 +25,7 @@ export class ProjectsController {
 
   @Post()
   @Roles('SUPERADMIN')
-  create(@Body() body: { name: string; color: string }) {
+  create(@Body() body: CreateProjectDto) {
     return this.projectsService.create(body);
   }
 

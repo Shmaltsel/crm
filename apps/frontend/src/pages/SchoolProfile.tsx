@@ -313,8 +313,9 @@ export default function SchoolProfile() {
       e.preventDefault();
       if (!id) return;
 
+      const { city, ...rest } = editForm;
       await updateSchoolMutation.mutateAsync({
-        ...editForm,
+        ...rest,
         id, // передаємо id для PATCH
       });
       setIsEditModalOpen(false);

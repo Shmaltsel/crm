@@ -19,6 +19,8 @@ import { SubmitReportDto } from './dto/submit-report.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
 import { UpdatePreparationDto } from './dto/update-preparation.dto';
 import { RescheduleEventDto } from './dto/reschedule-event.dto';
+import { AssignCrewDto } from './dto/assign-crew.dto';
+import { AddCommentDto } from './dto/add-comment.dto';
 
 @Controller('events')
 @UseGuards(AuthGuard)
@@ -74,17 +76,14 @@ export class EventsController {
   }
 
   @Post(':id/assign-crew')
-  assignCrew(
-    @Param('id') id: string,
-    @Body() body: { crewId: string }, // ЗМІНЕНО
-  ) {
+  assignCrew(@Param('id') id: string, @Body() body: AssignCrewDto) {
     return this.eventsService.assignCrewToEvent(id, body.crewId);
   }
 
   @Post(':id/history')
   addHistoryComment(
     @Param('id') id: string,
-    @Body() body: { comment: string },
+    @Body() body: AddCommentDto,
     @CurrentUser() user: JwtUser,
   ) {
     return this.eventsService.addHistoryComment(id, body.comment, user);
@@ -94,7 +93,7 @@ export class EventsController {
   @Patch('history/:historyId')
   updateHistoryComment(
     @Param('historyId') historyId: string,
-    @Body() body: { comment: string },
+    @Body() body: AddCommentDto,
   ) {
     return this.eventsService.updateHistoryComment(historyId, body.comment);
   }

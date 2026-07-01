@@ -3,6 +3,8 @@ import { FinanceService } from './finance.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+import { FinanceDashboardQueryDto } from './dto/finance-dashboard-query.dto';
+import { StaffRevenueQueryDto } from './dto/staff-revenue-query.dto';
 
 @Controller('finance')
 @UseGuards(AuthGuard)
@@ -10,17 +12,12 @@ export class FinanceController {
   constructor(private readonly financeService: FinanceService) {}
 
   @Get('dashboard')
-  getDashboard(
-    @Query('period') period: string,
-    @Query('cityId') cityId: string,
-    @Query('project') project: string,
-    @Query('minimal') minimal: string,
-  ) {
+  getDashboard(@Query() query: FinanceDashboardQueryDto) {
     return this.financeService.getDashboard({
-      period,
-      cityId,
-      project,
-      minimal: minimal === 'true',
+      period: query.period,
+      cityId: query.cityId,
+      project: query.project,
+      minimal: query.minimal === 'true',
     });
   }
 
@@ -30,10 +27,7 @@ export class FinanceController {
   }
 
   @Get('staff-revenue')
-  getStaffRevenue(
-    @Query('period') period: string,
-    @Query('cityId') cityId: string,
-  ) {
-    return this.financeService.getStaffRevenue({ period, cityId });
+  getStaffRevenue(@Query() query: StaffRevenueQueryDto) {
+    return this.financeService.getStaffRevenue(query);
   }
 }

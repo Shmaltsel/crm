@@ -179,8 +179,13 @@ export default function Employees() {
     e.preventDefault();
     if (!form.fullName.trim()) return;
     setIsModalOpen(false); // закриваємо одразу
-    if (editingUser) updateUser.mutate({ id: editingUser.id, form });
-    else createUser.mutate(form);
+    if (editingUser) {
+      const { password, ...rest } = form;
+      const payload = password.trim() ? form : rest;
+      updateUser.mutate({ id: editingUser.id, form: payload });
+    } else {
+      createUser.mutate(form);
+    }
   };
 
   const handleDelete = async (id: string, name: string) => {

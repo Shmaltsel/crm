@@ -1,6 +1,17 @@
-import { Controller, Post, Get, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { IssuesService } from './issues.service';
 import { AuthGuard } from '../auth/auth.guard';
+import { CreateIssueDto } from './dto/create-issue.dto';
+import { UpdateIssueStatusDto } from './dto/update-issue-status.dto';
 
 @Controller('issues')
 @UseGuards(AuthGuard)
@@ -8,13 +19,7 @@ export class IssuesController {
   constructor(private readonly issuesService: IssuesService) {}
 
   @Post()
-  create(@Body() body: {
-    eventId: string;
-    schoolName: string;
-    eventName: string;
-    message: string;
-    cityId: string;
-  }) {
+  create(@Body() body: CreateIssueDto) {
     return this.issuesService.create(body);
   }
 
@@ -24,7 +29,7 @@ export class IssuesController {
   }
 
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body() body: { status: string }) {
+  updateStatus(@Param('id') id: string, @Body() body: UpdateIssueStatusDto) {
     return this.issuesService.updateStatus(id, body.status);
   }
 }

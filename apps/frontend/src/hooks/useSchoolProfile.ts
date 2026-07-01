@@ -229,8 +229,8 @@ export const useUpdateSchool = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
-      const res = await api.patch(`/schools/${data.id}`, data);
+    mutationFn: async ({ id, ...payload }: any) => {
+      const res = await api.patch(`/schools/${id}`, payload);
       return res.data;
     },
     onSuccess: (_, variables) => {

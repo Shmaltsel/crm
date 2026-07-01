@@ -14,6 +14,8 @@ import { ParserService } from './parser.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { AuthGuard } from '../auth/auth.guard';
+import { CreateSchoolDto } from './dto/create-school.dto';
+import { BulkImportDto } from './dto/bulk-import.dto';
 @Controller('schools')
 @UseGuards(AuthGuard, RolesGuard)
 export class SchoolsController {
@@ -24,11 +26,8 @@ export class SchoolsController {
 
   @Post('bulk-import')
   @Roles('SUPERADMIN', 'MANAGER')
-  bulkImport(@Body() body: { cityId: string; type?: string }) {
-    return this.schoolsService.bulkImport(
-      body.cityId,
-      (body.type as 'Школа' | 'Садочок') || 'Школа',
-    );
+  bulkImport(@Body() body: BulkImportDto) {
+    return this.schoolsService.bulkImport(body.cityId, body.type || 'Школа');
   }
 
   @Get('supported-cities')
@@ -37,15 +36,7 @@ export class SchoolsController {
   }
 
   @Post()
-  create(
-    @Body()
-    body: {
-      name: string;
-      type: string;
-      cityId: string;
-      sourceUrl?: string;
-    },
-  ) {
+  create(@Body() body: CreateSchoolDto) {
     return this.schoolsService.create(body);
   }
 
@@ -65,7 +56,7 @@ export class SchoolsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() body: any) {
+  update(@Param('id') id: string, @Body() body: UpdateSchoolDto) {
     return this.schoolsService.update(id, body);
   }
 
