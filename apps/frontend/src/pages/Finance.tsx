@@ -49,12 +49,10 @@ export default function Finance() {
   const isManagerOrAdmin =
     currentUser?.role === "MANAGER" || currentUser?.role === "SUPERADMIN";
 
-  useEffect(() => {
+   useEffect(() => {
     if (isManagerOrAdmin === false) {
       api
-        .get("/finance/my-balance", {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        })
+        .get("/finance/my-balance")
         .then((r) => setMyBalance(r.data.balance))
         .catch(() => {});
     }

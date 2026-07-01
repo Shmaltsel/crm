@@ -9,6 +9,7 @@ import {
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import { CityProvider } from "./context/CityContext";
+import { api } from "./config/api";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -34,16 +35,20 @@ const PageLoader = () => (
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
-    !!localStorage.getItem("token"),
+    !!localStorage.getItem("user"),
   );
 
-  const handleLogin = (token: string) => {
-    localStorage.setItem("token", token);
+  const handleLogin = () => {
     setIsAuthenticated(true);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
+  const handleLogout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // ігноруємо — все одно чистимо локальний стан
+    }
+    localStorage.removeItem("user");
     setIsAuthenticated(false);
   };
 

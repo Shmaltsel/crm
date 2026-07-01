@@ -125,7 +125,6 @@
 │   │   │   ├── telegram
 │   │   │   │   ├── telegram.module.ts
 │   │   │   │   └── telegram.service.ts
-│   │   │   ├── tests
 │   │   │   └── users
 │   │   │       ├── dto
 │   │   │       │   ├── create-user.dto.ts
@@ -135,21 +134,24 @@
 │   │   │       ├── users.module.ts
 │   │   │       ├── users.service.spec.ts
 │   │   │       └── users.service.ts
+│   │   ├── test
+│   │   │   ├── app.e2e-spec.ts
+│   │   │   ├── auth.e2e-spec.ts
+│   │   │   ├── dashboard.e2e-spec.ts
+│   │   │   ├── events.e2e-spec.ts
+│   │   │   ├── jest-e2e.json
+│   │   │   └── schools.e2e-spec.ts
 │   │   ├── tsconfig.build.json
 │   │   └── tsconfig.json
 │   └── frontend
 │       ├── .gitignore
-│       ├── .lighthouseci
-│       │   ├── assertion-results.json
-│       │   └── links.json
 │       ├── README.md
-│       ├── e2e
-│       │   ├── login.spec.ts
-│       │   └── schools.spec.ts
 │       ├── eslint.config.js
 │       ├── index.html
 │       ├── lighthouserc.cjs
 │       ├── package.json
+│       ├── playwright-report
+│       │   └── index.html
 │       ├── playwright.config.ts
 │       ├── postcss.config.js
 │       ├── public
@@ -241,60 +243,123 @@
 │       │   │   ├── Login.tsx
 │       │   │   ├── SchoolProfile.tsx
 │       │   │   └── Schools.tsx
-│       │   ├── tests
-│       │   │   ├── component
-│       │   │   │   ├── EventReport.test.tsx
-│       │   │   │   ├── EventsTable.test.tsx
-│       │   │   │   ├── Pipeline.test.tsx
-│       │   │   │   └── SchoolCard.test.tsx
-│       │   │   ├── mocks
-│       │   │   │   ├── handlers.ts
-│       │   │   │   └── server.ts
-│       │   │   ├── setup.ts
-│       │   │   └── unit
-│       │   │       ├── formatCurrency.test.ts
-│       │   │       ├── hooks
-│       │   │       │   ├── useSchools.test.ts
-│       │   │       │   └── useSchoolsFilter.test.ts
-│       │   │       └── schoolUtils.test.ts
 │       │   ├── types
 │       │   │   └── index.ts
 │       │   └── utils
 │       │       └── formatCurrency.ts
 │       ├── tailwind.config.js
-│       ├── test-results
-│       │   ├── .playwright-artifacts-1
-│       │   │   ├── 17217611c299f72bf77bcc2d25df2999.png
-│       │   │   ├── 471289c6fb7d5e02bad4259e35a145fa.png
-│       │   │   └── ae2383d79eb0da30f9474d39295125cb.png
-│       │   ├── .playwright-artifacts-2
-│       │   │   ├── 1af7a9f669d4404ee4e0d8b482ac8fc5.png
-│       │   │   └── 3462b94410a596017c455533e1a239a0.png
-│       │   ├── .playwright-artifacts-3
-│       │   │   ├── 072ee4b80dff0e5f440c83563e2436ad.png
-│       │   │   ├── 52c3ebed38bc1245cb3147e14db188ac.png
-│       │   │   └── b1896ccf08f5fa595ba68558848297bc.png
-│       │   ├── .playwright-artifacts-5
-│       │   │   └── 76a054dd3aae71b5cd600896a4120d31.png
-│       │   ├── login-Авторизація-захищени-5797d-кена-перенаправляє-на-login
-│       │   │   ├── error-context.md
-│       │   │   └── test-failed-1.png
-│       │   └── login-Авторизація-захищени-5797d-кена-перенаправляє-на-login-retry1
-│       │       ├── error-context.md
-│       │       ├── test-failed-1.png
-│       │       └── trace.zip
 │       ├── tsconfig.app.json
 │       ├── tsconfig.json
 │       ├── tsconfig.node.json
 │       ├── vercel.json
 │       └── vite.config.ts
-├── bundle.js
 ├── collect-code.js
 ├── combined_failing_tests.md
+├── combined_final_fixes.md
+├── combined_methods_and_dto.md
 ├── package.json
 ├── packages
 │   └── shared
-└── pnpm-workspace.yaml
+├── pnpm-workspace.yaml
+```
+
+### File: apps/backend/package.json
+```json
+  0 | {
+  1 |   "name": "backend",
+  2 |   "version": "0.0.1",
+  3 |   "description": "",
+  4 |   "author": "",
+  5 |   "private": true,
+  6 |   "license": "UNLICENSED",
+  7 |   "scripts": {
+  8 |     "build": "nest build",
+  9 |     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+ 10 |     "start": "nest start",
+ 11 |     "start:dev": "nest start --watch",
+ 12 |     "start:debug": "nest start --debug --watch",
+ 13 |     "start:prod": "node dist/main",
+ 14 |     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+ 15 |     "test": "jest",
+ 16 |     "test:watch": "jest --watch",
+ 17 |     "test:cov": "jest --coverage",
+ 18 |     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+ 19 |     "test:e2e": "jest --config ./test/jest-e2e.json"
+ 20 |   },
+ 21 |   "dependencies": {
+ 22 |     "@nestjs/common": "^11.0.1",
+ 23 |     "@nestjs/core": "^11.0.1",
+ 24 |     "@nestjs/jwt": "^11.0.2",
+ 25 |     "@nestjs/passport": "^11.0.5",
+ 26 |     "@nestjs/platform-express": "^11.0.1",
+ 27 |     "@prisma/client": "6.19.0",
+ 28 |     "axios": "^1.18.0",
+ 29 |     "bcrypt": "^6.0.0",
+ 30 |     "cheerio": "^1.2.0",
+ 31 |     "class-transformer": "^0.5.1",
+ 32 |     "class-validator": "^0.15.1",
+ 33 |     "dotenv": "^17.4.2",
+ 34 |     "node-telegram-bot-api": "0.64.0",
+ 35 |     "passport": "^0.7.0",
+ 36 |     "passport-jwt": "^4.0.1",
+ 37 |     "reflect-metadata": "^0.2.2",
+ 38 |     "rxjs": "^7.8.1"
+ 39 |   },
+ 40 |   "devDependencies": {
+ 41 |     "@eslint/eslintrc": "^3.2.0",
+ 42 |     "@eslint/js": "^9.18.0",
+ 43 |     "@nestjs/cli": "^11.0.0",
+ 44 |     "@nestjs/schematics": "^11.0.0",
+ 45 |     "@nestjs/testing": "^11.0.1",
+ 46 |     "@types/bcrypt": "^6.0.0",
+ 47 |     "@types/express": "^5.0.0",
+ 48 |     "@types/jest": "^29.0.0",
+ 49 |     "@types/node": "^24.0.0",
+ 50 |     "@types/node-telegram-bot-api": "^0.64.15",
+ 51 |     "@types/passport-jwt": "^4.0.1",
+ 52 |     "@types/supertest": "^7.0.0",
+ 53 |     "eslint": "^9.18.0",
+ 54 |     "eslint-config-prettier": "^10.0.1",
+ 55 |     "eslint-plugin-prettier": "^5.2.2",
+ 56 |     "globals": "^17.0.0",
+ 57 |     "jest": "^29.0.0",
+ 58 |     "jest-mock-extended": "^3.0.0",
+ 59 |     "prettier": "^3.4.2",
+ 60 |     "prisma": "6.19.0",
+ 61 |     "source-map-support": "^0.5.21",
+ 62 |     "supertest": "^7.0.0",
+ 63 |     "ts-jest": "^29.2.5",
+ 64 |     "ts-loader": "^9.5.2",
+ 65 |     "ts-node": "^10.9.2",
+ 66 |     "tsconfig-paths": "^4.2.0",
+ 67 |     "typescript": "^5.7.3",
+ 68 |     "typescript-eslint": "^8.20.0"
+ 69 |   },
+ 70 |   "jest": {
+ 71 |     "moduleFileExtensions": [
+ 72 |       "js",
+ 73 |       "json",
+ 74 |       "ts"
+ 75 |     ],
+ 76 |     "rootDir": "src",
+ 77 |     "testRegex": ".*\\.spec\\.ts$",
+ 78 |     "transform": {
+ 79 |       "^.+\\.(t|j)s$": "ts-jest"
+ 80 |     },
+ 81 |     "collectCoverageFrom": [
+ 82 |       "**/*.(t|j)s"
+ 83 |     ],
+ 84 |     "coverageDirectory": "../coverage",
+ 85 |     "testEnvironment": "node",
+ 86 |     "moduleNameMapper": {
+ 87 |       "^src/(.*)$": "<rootDir>/$1"
+ 88 |     }
+ 89 |   },
+ 90 |   "prisma": {
+ 91 |     "schema": "prisma/schema.prisma"
+ 92 |   }
+ 93 | }
+ 94 | 
 ```
 
 ### File: apps/backend/prisma/schema.prisma
@@ -1103,17 +1168,17 @@
  50 |   }
  51 |   async createCrew(
  52 |     cityId: string,
- 53 |     data: { name: string; hostId: string; driverId: string },
+ 53 |     data: { name: string; hostId?: string; driverId?: string },
  54 |   ) {
- 55 |     const driver = await this.prisma.user.findUnique({
- 56 |       where: { id: data.driverId },
- 57 |     });
+ 55 |     const driver = data.driverId
+ 56 |       ? await this.prisma.user.findUnique({ where: { id: data.driverId } })
+ 57 |       : null;
  58 |     return this.prisma.crew.create({
  59 |       data: {
  60 |         cityId,
  61 |         name: data.name,
- 62 |         hostId: data.hostId,
- 63 |         driverId: data.driverId,
+ 62 |         hostId: data.hostId ?? null,
+ 63 |         driverId: data.driverId ?? null,
  64 |         car: driver?.car || null,
  65 |         phone: driver?.phone || null,
  66 |       },
@@ -1202,7 +1267,7 @@
 ### File: apps/backend/src/dashboard/dashboard.controller.ts
 ```ts
   0 | import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-  1 | import { DashboardService } from './dashboard.service';
+  1 | import { DashboardService, DashboardSummary } from './dashboard.service';
   2 | import { AuthGuard } from '../auth/auth.guard';
   3 | import { CurrentUser } from '../auth/decorators/current-user.decorator';
   4 | import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
@@ -1223,7 +1288,7 @@
  19 |   getSummary(
  20 |     @CurrentUser() user: JwtUser,
  21 |     @Query() query: DashboardSummaryQueryDto,
- 22 |   ) {
+ 22 |   ): Promise<DashboardSummary> {
  23 |     const effectiveCityId =
  24 |       user.role === 'SUPERADMIN' ? undefined : query.cityId;
  25 |     return this.dashboardService.getSummary(effectiveCityId, user.role);
@@ -1558,7 +1623,7 @@
  15 | 
  16 | const STALE_DAYS = 7;
  17 | 
- 18 | interface DashboardSummary {
+ 18 | export interface DashboardSummary {
  19 |   todayEvents: unknown[];
  20 |   upcomingEvents: unknown[];
  21 |   funnel: Record<string, number>;
@@ -3012,7 +3077,7 @@
 
 ### File: apps/backend/src/events/events.service.ts
 ```ts
-  0 | import { Injectable, Logger } from '@nestjs/common';
+  0 | import { Injectable, Logger, NotFoundException } from '@nestjs/common';
   1 | import { PrismaService } from '../prisma/prisma.service';
   2 | import { TelegramService } from '../telegram/telegram.service';
   3 | import { Prisma } from '@prisma/client';
@@ -3352,156 +3417,161 @@
 337 |   }
 338 | 
 339 |   async remove(id: string) {
-340 |     await this.prisma.eventHistory.deleteMany({
-341 |       where: { eventId: id },
-342 |     });
-343 | 
-344 |     await this.prisma.eventPreparation.deleteMany({
-345 |       where: { eventId: id },
-346 |     });
-347 | 
-348 |     return this.prisma.event.delete({
-349 |       where: { id },
-350 |     });
-351 |   }
-352 | 
-353 |   async submitReport(
-354 |     eventId: string,
-355 |     reportData: SubmitReportDto,
-356 |     user: JwtUser,
-357 |   ) {
-358 |     await this.prisma.eventReport.upsert({
-359 |       where: { eventId },
-360 |       update: {
-361 |         announcementDone: reportData.announcementDone,
-362 |         materialShown: reportData.materialShown,
-363 |         childrenCount: reportData.childrenCount,
-364 |         classesCount: reportData.classesCount,
-365 |         privilegedCount: reportData.privilegedCount,
-366 |         showingsCount: reportData.showingsCount,
-367 |         totalSum: reportData.totalSum,
-368 |         schoolSum: reportData.schoolSum,
-369 |         remainderSum: reportData.remainderSum,
-370 |         rating: reportData.rating,
-371 |       },
-372 |       create: {
-373 |         eventId,
-374 |         announcementDone: reportData.announcementDone,
-375 |         materialShown: reportData.materialShown,
-376 |         childrenCount: reportData.childrenCount,
-377 |         classesCount: reportData.classesCount,
-378 |         privilegedCount: reportData.privilegedCount,
-379 |         showingsCount: reportData.showingsCount,
-380 |         totalSum: reportData.totalSum,
-381 |         schoolSum: reportData.schoolSum,
-382 |         remainderSum: reportData.remainderSum,
-383 |         rating: reportData.rating,
-384 |       },
-385 |     });
-386 | 
-387 |     await this.prisma.expenseItem.deleteMany({ where: { reportId: eventId } });
-388 |     await this.prisma.salaryItem.deleteMany({ where: { reportId: eventId } });
+340 |     const exists = await this.prisma.event.findUnique({ where: { id } });
+341 |     if (!exists) throw new NotFoundException('Подію не знайдено');
+342 | 
+343 |     await this.prisma.eventHistory.deleteMany({
+344 |       where: { eventId: id },
+345 |     });
+346 | 
+347 |     await this.prisma.eventPreparation.deleteMany({
+348 |       where: { eventId: id },
+349 |     });
+350 | 
+351 |     return this.prisma.event.delete({
+352 |       where: { id },
+353 |     });
+354 |   }
+355 | 
+356 |   async submitReport(
+357 |     eventId: string,
+358 |     reportData: SubmitReportDto,
+359 |     user: JwtUser,
+360 |   ) {
+361 |     await this.prisma.eventReport.upsert({
+362 |       where: { eventId },
+363 |       update: {
+364 |         announcementDone: reportData.announcementDone,
+365 |         materialShown: reportData.materialShown,
+366 |         childrenCount: reportData.childrenCount,
+367 |         classesCount: reportData.classesCount,
+368 |         privilegedCount: reportData.privilegedCount,
+369 |         showingsCount: reportData.showingsCount,
+370 |         totalSum: reportData.totalSum,
+371 |         schoolSum: reportData.schoolSum,
+372 |         remainderSum: reportData.remainderSum,
+373 |         rating: reportData.rating,
+374 |       },
+375 |       create: {
+376 |         eventId,
+377 |         announcementDone: reportData.announcementDone,
+378 |         materialShown: reportData.materialShown,
+379 |         childrenCount: reportData.childrenCount,
+380 |         classesCount: reportData.classesCount,
+381 |         privilegedCount: reportData.privilegedCount,
+382 |         showingsCount: reportData.showingsCount,
+383 |         totalSum: reportData.totalSum,
+384 |         schoolSum: reportData.schoolSum,
+385 |         remainderSum: reportData.remainderSum,
+386 |         rating: reportData.rating,
+387 |       },
+388 |     });
 389 | 
-390 |     if (reportData.expenses?.length) {
-391 |       await this.prisma.expenseItem.createMany({
-392 |         data: reportData.expenses.map((exp: ExpenseItemDto) => ({
-393 |           reportId: eventId,
-394 |           category: exp.category || 'Інше',
-395 |           name: exp.name,
-396 |           amount: new Prisma.Decimal(exp.amount || 0),
-397 |         })),
-398 |       });
-399 |     }
-400 | 
-401 |     if (reportData.salaries?.length) {
-402 |       await this.prisma.salaryItem.createMany({
-403 |         data: reportData.salaries.map((s: SalaryItemDto) => ({
-404 |           reportId: eventId,
-405 |           userId: s.userId,
-406 |           userName: s.name,
-407 |           amount: new Prisma.Decimal(s.amount || 0),
-408 |           role: s.role,
-409 |         })),
-410 |       });
-411 | 
-412 |       await Promise.all(
-413 |         reportData.salaries
-414 |           .filter((s) => s.userId && s.amount > 0)
-415 |           .map((s) =>
-416 |             this.prisma.user.update({
-417 |               where: { id: s.userId },
-418 |               data: { balance: { increment: s.amount } },
-419 |             }),
-420 |           ),
-421 |       );
-422 |     }
-423 | 
-424 |     return this.prisma.event.update({
-425 |       where: { id: eventId },
-426 |       data: {
-427 |         status: 'REPORT' as never,
-428 |         history: {
-429 |           create: {
-430 |             action: 'Сформовано звіт. Етап: Звіт',
-431 |             userId: user.sub,
-432 |             userName: user.name,
-433 |             role: user.role,
-434 |           },
-435 |         },
-436 |       },
-437 |       include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
-438 |     });
-439 |   }
-440 | 
-441 |   async findOne(id: string) {
-442 |     return this.prisma.event.findUnique({
-443 |       where: { id },
-444 |       include: {
-445 |         school: true,
-446 |         city: true,
-447 |         crew: {
-448 |           include: {
-449 |             host: { select: { id: true, name: true } },
-450 |             driver: { select: { id: true, name: true } },
-451 |           },
-452 |         },
-453 |         report: true,
-454 |       },
-455 |     });
-456 |   }
-457 | 
-458 |   async findCompletedBySchool(schoolId: string) {
-459 |     return this.prisma.event.findMany({
-460 |       where: { schoolId, status: 'RE_SALE' },
-461 |       select: {
-462 |         id: true,
-463 |         project: true,
-464 |         date: true,
-465 |         status: true,
-466 |         price: true,
-467 |         childrenPlanned: true,
-468 |         report: {
-469 |           select: {
-470 |             childrenCount: true,
-471 |             classesCount: true,
-472 |             privilegedCount: true,
-473 |             showingsCount: true,
-474 |             totalSum: true,
-475 |             schoolSum: true,
-476 |             remainderSum: true,
-477 |             rating: true,
-478 |             expenseItems: {
-479 |               select: { category: true, name: true, amount: true },
-480 |             },
-481 |           },
-482 |         },
-483 |         history: { orderBy: { createdAt: 'asc' } },
-484 |       },
-485 |       orderBy: { date: 'desc' },
-486 |     });
-487 |   }
-488 | }
-489 | 
+390 |     await this.prisma.expenseItem.deleteMany({ where: { reportId: eventId } });
+391 |     await this.prisma.salaryItem.deleteMany({ where: { reportId: eventId } });
+392 | 
+393 |     if (reportData.expenses?.length) {
+394 |       await this.prisma.expenseItem.createMany({
+395 |         data: reportData.expenses.map((exp: ExpenseItemDto) => ({
+396 |           reportId: eventId,
+397 |           category: exp.category || 'Інше',
+398 |           name: exp.name,
+399 |           amount: new Prisma.Decimal(exp.amount || 0),
+400 |         })),
+401 |       });
+402 |     }
+403 | 
+404 |     if (reportData.salaries?.length) {
+405 |       await this.prisma.salaryItem.createMany({
+406 |         data: reportData.salaries.map((s: SalaryItemDto) => ({
+407 |           reportId: eventId,
+408 |           userId: s.userId,
+409 |           userName: s.name,
+410 |           amount: new Prisma.Decimal(s.amount || 0),
+411 |           role: s.role,
+412 |         })),
+413 |       });
+414 | 
+415 |       await Promise.all(
+416 |         reportData.salaries
+417 |           .filter((s) => s.userId && s.amount > 0)
+418 |           .map((s) =>
+419 |             this.prisma.user.update({
+420 |               where: { id: s.userId },
+421 |               data: { balance: { increment: s.amount } },
+422 |             }),
+423 |           ),
+424 |       );
+425 |     }
+426 | 
+427 |     return this.prisma.event.update({
+428 |       where: { id: eventId },
+429 |       data: {
+430 |         status: 'REPORT' as never,
+431 |         history: {
+432 |           create: {
+433 |             action: 'Сформовано звіт. Етап: Звіт',
+434 |             userId: user.sub,
+435 |             userName: user.name,
+436 |             role: user.role,
+437 |           },
+438 |         },
+439 |       },
+440 |       include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
+441 |     });
+442 |   }
+443 | 
+444 |   async findOne(id: string) {
+445 |     const event = await this.prisma.event.findUnique({
+446 |       where: { id },
+447 |       include: {
+448 |         school: true,
+449 |         city: true,
+450 |         crew: {
+451 |           include: {
+452 |             host: { select: { id: true, name: true } },
+453 |             driver: { select: { id: true, name: true } },
+454 |           },
+455 |         },
+456 |         report: true,
+457 |       },
+458 |     });
+459 |     if (!event) throw new NotFoundException('Подію не знайдено');
+460 |     return event;
+461 |   }
+462 | 
+463 |   async findCompletedBySchool(schoolId: string) {
+464 |     return this.prisma.event.findMany({
+465 |       where: { schoolId, status: 'RE_SALE' },
+466 |       select: {
+467 |         id: true,
+468 |         project: true,
+469 |         date: true,
+470 |         status: true,
+471 |         price: true,
+472 |         childrenPlanned: true,
+473 |         report: {
+474 |           select: {
+475 |             childrenCount: true,
+476 |             classesCount: true,
+477 |             privilegedCount: true,
+478 |             showingsCount: true,
+479 |             totalSum: true,
+480 |             schoolSum: true,
+481 |             remainderSum: true,
+482 |             rating: true,
+483 |             expenseItems: {
+484 |               select: { category: true, name: true, amount: true },
+485 |             },
+486 |           },
+487 |         },
+488 |         history: { orderBy: { createdAt: 'asc' } },
+489 |       },
+490 |       orderBy: { date: 'desc' },
+491 |     });
+492 |   }
+493 | }
+494 | 
 ```
 
 ### File: apps/backend/src/finance/create-expense-item.dto.ts
@@ -4721,15 +4791,17 @@
   8 |     return this.prisma.project.findMany({ orderBy: { createdAt: 'asc' } });
   9 |   }
  10 | 
- 11 |   create(data: { name: string; color: string }) {
- 12 |     return this.prisma.project.create({ data });
- 13 |   }
- 14 | 
- 15 |   remove(id: string) {
- 16 |     return this.prisma.project.delete({ where: { id } });
- 17 |   }
- 18 | }
- 19 | 
+ 11 |   create(data: { name: string; color?: string }) {
+ 12 |     return this.prisma.project.create({
+ 13 |       data: { name: data.name, color: data.color ?? '#3b82f6' },
+ 14 |     });
+ 15 |   }
+ 16 | 
+ 17 |   remove(id: string) {
+ 18 |     return this.prisma.project.delete({ where: { id } });
+ 19 |   }
+ 20 | }
+ 21 | 
 ```
 
 ### File: apps/backend/src/schools/dto/bulk-import.dto.ts
@@ -6701,83 +6773,85 @@
  19 | 
  20 |   onModuleInit() {
  21 |     const token = process.env.TELEGRAM_BOT_TOKEN;
- 22 |     if (!token) {
- 23 |       this.logger.warn('TELEGRAM_BOT_TOKEN не задано — бот вимкнено');
- 24 |       return;
- 25 |     }
- 26 |     this.bot = new TelegramBot(token, { polling: true });
- 27 |     this.logger.log('Telegram бот ініціалізовано');
- 28 | 
- 29 |     this.bot.onText(/\/start/, async (msg) => {
- 30 |       const chatId = String(msg.chat.id);
- 31 |       const username = msg.from?.username;
- 32 | 
- 33 |       if (!username) {
- 34 |         await this.bot.sendMessage(
- 35 |           chatId,
- 36 |           "⚠️ У вашому профілі Telegram не вказано username. Будь ласка, додайте його в налаштуваннях Telegram, щоб ми могли підв'язати акаунт.",
- 37 |         );
- 38 |         return;
- 39 |       }
- 40 | 
- 41 |       const normalizedUsername = username.toLowerCase();
+ 22 |     if (!token || process.env.NODE_ENV === 'test') {
+ 23 |       this.logger.warn(
+ 24 |         'TELEGRAM_BOT_TOKEN не задано або тестове середовище — бот вимкнено',
+ 25 |       );
+ 26 |       return;
+ 27 |     }
+ 28 |     this.bot = new TelegramBot(token, { polling: true });
+ 29 |     this.logger.log('Telegram бот ініціалізовано');
+ 30 | 
+ 31 |     this.bot.onText(/\/start/, async (msg) => {
+ 32 |       const chatId = String(msg.chat.id);
+ 33 |       const username = msg.from?.username;
+ 34 | 
+ 35 |       if (!username) {
+ 36 |         await this.bot.sendMessage(
+ 37 |           chatId,
+ 38 |           "⚠️ У вашому профілі Telegram не вказано username. Будь ласка, додайте його в налаштуваннях Telegram, щоб ми могли підв'язати акаунт.",
+ 39 |         );
+ 40 |         return;
+ 41 |       }
  42 | 
- 43 |       const result = await this.usersService.updateTelegramChatId(
- 44 |         normalizedUsername,
- 45 |         chatId,
- 46 |       );
- 47 | 
- 48 |       if (result.count > 0) {
- 49 |         this.logger.log(
- 50 |           `[/start] chatId=${chatId} username=${normalizedUsername} — успішно підв'язано`,
- 51 |         );
- 52 |         await this.bot.sendMessage(
- 53 |           chatId,
- 54 |           `✅ Вітаємо! Ваш акаунт успішно підключено до <b>Світло Знань CRM</b>.`,
- 55 |           { parse_mode: 'HTML' },
- 56 |         );
- 57 |       } else {
- 58 |         this.logger.warn(
- 59 |           `[/start] Користувача з username "${normalizedUsername}" не знайдено в CRM.`,
- 60 |         );
- 61 |         await this.bot.sendMessage(
- 62 |           chatId,
- 63 |           `❌ Акаунт не знайдено. Переконайтеся, що в CRM у вашому профілі вказано нікнейм <b>${normalizedUsername}</b> без помилок.`,
- 64 |           { parse_mode: 'HTML' },
- 65 |         );
- 66 |       }
- 67 |     });
- 68 |   }
- 69 | 
- 70 |   async sendMessage(chatId: string, text: string): Promise<void> {
- 71 |     if (!this.bot) return;
- 72 |     try {
- 73 |       await this.bot.sendMessage(chatId, text, { parse_mode: 'HTML' });
- 74 |     } catch (e: any) {
- 75 |       this.logger.error(
- 76 |         `Не вдалося надіслати повідомлення ${chatId}: ${e.message}`,
- 77 |       );
- 78 |     }
- 79 |   }
- 80 | 
- 81 |   async sendWelcome(
- 82 |     chatId: string,
- 83 |     name: string,
- 84 |     email: string,
- 85 |     password: string,
- 86 |   ): Promise<void> {
- 87 |     const text =
- 88 |       `👋 <b>Вітаємо у Світло Знань CRM!</b>\n\n` +
- 89 |       `Ваш акаунт створено.\n\n` +
- 90 |       `📧 <b>Логін:</b> <code>${email}</code>\n` +
- 91 |       `🔑 <b>Пароль:</b> <code>${password}</code>\n\n` +
- 92 |       `Увійдіть за посиланням: <a href="https://crm-tau-nine.vercel.app">crm-tau-nine.vercel.app</a>\n\n` +
- 93 |       `<i>Змініть пароль після першого входу.</i>`;
- 94 | 
- 95 |     await this.sendMessage(chatId, text);
- 96 |   }
- 97 | }
- 98 | 
+ 43 |       const normalizedUsername = username.toLowerCase();
+ 44 | 
+ 45 |       const result = await this.usersService.updateTelegramChatId(
+ 46 |         normalizedUsername,
+ 47 |         chatId,
+ 48 |       );
+ 49 | 
+ 50 |       if (result.count > 0) {
+ 51 |         this.logger.log(
+ 52 |           `[/start] chatId=${chatId} username=${normalizedUsername} — успішно підв'язано`,
+ 53 |         );
+ 54 |         await this.bot.sendMessage(
+ 55 |           chatId,
+ 56 |           `✅ Вітаємо! Ваш акаунт успішно підключено до <b>Світло Знань CRM</b>.`,
+ 57 |           { parse_mode: 'HTML' },
+ 58 |         );
+ 59 |       } else {
+ 60 |         this.logger.warn(
+ 61 |           `[/start] Користувача з username "${normalizedUsername}" не знайдено в CRM.`,
+ 62 |         );
+ 63 |         await this.bot.sendMessage(
+ 64 |           chatId,
+ 65 |           `❌ Акаунт не знайдено. Переконайтеся, що в CRM у вашому профілі вказано нікнейм <b>${normalizedUsername}</b> без помилок.`,
+ 66 |           { parse_mode: 'HTML' },
+ 67 |         );
+ 68 |       }
+ 69 |     });
+ 70 |   }
+ 71 | 
+ 72 |   async sendMessage(chatId: string, text: string): Promise<void> {
+ 73 |     if (!this.bot) return;
+ 74 |     try {
+ 75 |       await this.bot.sendMessage(chatId, text, { parse_mode: 'HTML' });
+ 76 |     } catch (e: any) {
+ 77 |       this.logger.error(
+ 78 |         `Не вдалося надіслати повідомлення ${chatId}: ${e.message}`,
+ 79 |       );
+ 80 |     }
+ 81 |   }
+ 82 | 
+ 83 |   async sendWelcome(
+ 84 |     chatId: string,
+ 85 |     name: string,
+ 86 |     email: string,
+ 87 |     password: string,
+ 88 |   ): Promise<void> {
+ 89 |     const text =
+ 90 |       `👋 <b>Вітаємо у Світло Знань CRM!</b>\n\n` +
+ 91 |       `Ваш акаунт створено.\n\n` +
+ 92 |       `📧 <b>Логін:</b> <code>${email}</code>\n` +
+ 93 |       `🔑 <b>Пароль:</b> <code>${password}</code>\n\n` +
+ 94 |       `Увійдіть за посиланням: <a href="https://crm-tau-nine.vercel.app">crm-tau-nine.vercel.app</a>\n\n` +
+ 95 |       `<i>Змініть пароль після першого входу.</i>`;
+ 96 | 
+ 97 |     await this.sendMessage(chatId, text);
+ 98 |   }
+ 99 | }
+100 | 
 ```
 
 ### File: apps/backend/src/users/dto/create-user.dto.ts
@@ -7087,84 +7161,690 @@
  77 |       email: data.email,
  78 |       phone: data.phone,
  79 |       role: data.role,
- 80 |       cityId: data.cityId || null,
- 81 |       telegramId: data.telegramId || null,
- 82 |       car: data.car || null,
- 83 |     };
- 84 | 
- 85 |     if (data.password) {
- 86 |       updateData.password = await bcrypt.hash(data.password, 10);
- 87 |     }
- 88 | 
- 89 |     return this.prisma.user.update({ where: { id }, data: updateData });
- 90 |   }
- 91 | 
- 92 |   async deleteUser(id: string) {
- 93 |     return this.prisma.user.delete({ where: { id } });
- 94 |   }
- 95 | 
- 96 |   async seedAdmin() {
- 97 |     const existingAdmin = await this.prisma.user.findUnique({
- 98 |       where: { email: 'admin@crm.com' },
- 99 |     });
-100 | 
-101 |     if (existingAdmin) {
-102 |       return { message: 'Адміністратор вже існує!' };
-103 |     }
-104 | 
-105 |     const hashedPassword = await bcrypt.hash('admin123', 10);
-106 |     const admin = await this.prisma.user.create({
-107 |       data: {
-108 |         name: 'Артур Шмальцель',
-109 |         email: 'admin@crm.com',
-110 |         password: hashedPassword,
-111 |         role: 'SUPERADMIN',
-112 |       },
-113 |     });
-114 | 
-115 |     return { message: 'Суперадмін успішно створений!', user: admin };
-116 |   }
-117 | 
-118 |   async seedVasya() {
-119 |     const existingVasya = await this.prisma.user.findUnique({
-120 |       where: { email: 'vasya@charisma.com' },
-121 |     });
-122 | 
-123 |     if (existingVasya) {
-124 |       return { message: 'Вася вже в базі!' };
-125 |     }
-126 | 
-127 |     const hashedPassword = await bcrypt.hash('vasya123', 10);
+ 80 |       city: data.cityId
+ 81 |         ? { connect: { id: data.cityId } }
+ 82 |         : { disconnect: true },
+ 83 |       telegramId: data.telegramId || null,
+ 84 |       car: data.car || null,
+ 85 |     };
+ 86 | 
+ 87 |     if (data.password) {
+ 88 |       updateData.password = await bcrypt.hash(data.password, 10);
+ 89 |     }
+ 90 | 
+ 91 |     return this.prisma.user.update({ where: { id }, data: updateData });
+ 92 |   }
+ 93 | 
+ 94 |   async deleteUser(id: string) {
+ 95 |     return this.prisma.user.delete({ where: { id } });
+ 96 |   }
+ 97 | 
+ 98 |   async seedAdmin() {
+ 99 |     const existingAdmin = await this.prisma.user.findUnique({
+100 |       where: { email: 'admin@crm.com' },
+101 |     });
+102 | 
+103 |     if (existingAdmin) {
+104 |       return { message: 'Адміністратор вже існує!' };
+105 |     }
+106 | 
+107 |     const hashedPassword = await bcrypt.hash('admin123', 10);
+108 |     const admin = await this.prisma.user.create({
+109 |       data: {
+110 |         name: 'Артур Шмальцель',
+111 |         email: 'admin@crm.com',
+112 |         password: hashedPassword,
+113 |         role: 'SUPERADMIN',
+114 |       },
+115 |     });
+116 | 
+117 |     return { message: 'Суперадмін успішно створений!', user: admin };
+118 |   }
+119 | 
+120 |   async seedVasya() {
+121 |     const existingVasya = await this.prisma.user.findUnique({
+122 |       where: { email: 'vasya@charisma.com' },
+123 |     });
+124 | 
+125 |     if (existingVasya) {
+126 |       return { message: 'Вася вже в базі!' };
+127 |     }
 128 | 
-129 |     const vasya = await this.prisma.user.create({
-130 |       data: {
-131 |         name: 'Вася Харізма',
-132 |         email: 'vasya@charisma.com',
-133 |         password: hashedPassword,
-134 |         role: 'MANAGER',
-135 |       },
+129 |     const hashedPassword = await bcrypt.hash('vasya123', 10);
+130 | 
+131 |     const vasya = await this.prisma.user.create({
+132 |       data: {
+133 |         name: 'Вася Харізма',
+134 |         email: 'vasya@charisma.com',
+135 |         password: hashedPassword,
+136 |         role: 'MANAGER',
+137 |       },
+138 |     });
+139 | 
+140 |     return { message: 'Вася Харізма успішно доданий!', user: vasya };
+141 |   }
+142 | 
+143 |   async findAll() {
+144 |     return this.prisma.user.findMany();
+145 |   }
+146 | 
+147 |   async updateTelegramChatId(username: string, chatId: string) {
+148 |     return this.prisma.user.updateMany({
+149 |       where: {
+150 |         telegramId: {
+151 |           equals: username,
+152 |           mode: 'insensitive',
+153 |         },
+154 |       },
+155 |       data: { telegramChatId: chatId },
+156 |     });
+157 |   }
+158 | }
+159 | 
+```
+
+### File: apps/backend/test/app.e2e-spec.ts
+```ts
+  0 | import { Test, TestingModule } from '@nestjs/testing';
+  1 | import { INestApplication } from '@nestjs/common';
+  2 | import request from 'supertest';
+  3 | import { App } from 'supertest/types';
+  4 | import { AppModule } from './../src/app.module';
+  5 | 
+  6 | describe('AppController (e2e)', () => {
+  7 |   let app: INestApplication<App>;
+  8 | 
+  9 |   beforeEach(async () => {
+ 10 |     const moduleFixture: TestingModule = await Test.createTestingModule({
+ 11 |       imports: [AppModule],
+ 12 |     }).compile();
+ 13 | 
+ 14 |     app = moduleFixture.createNestApplication();
+ 15 |     await app.init();
+ 16 |   });
+ 17 | 
+ 18 |   it('/ (GET)', () => {
+ 19 |     return request(app.getHttpServer())
+ 20 |       .get('/')
+ 21 |       .expect(200)
+ 22 |       .expect('Hello World!');
+ 23 |   });
+ 24 | 
+ 25 |   afterEach(async () => {
+ 26 |     await app.close();
+ 27 |   });
+ 28 | });
+ 29 | 
+```
+
+### File: apps/backend/test/auth.e2e-spec.ts
+```ts
+  0 | import { Test, TestingModule } from '@nestjs/testing';
+  1 | import { INestApplication } from '@nestjs/common';
+  2 | import request from 'supertest';
+  3 | import { AppModule } from '../src/app.module';
+  4 | import { ValidationPipe } from '@nestjs/common';
+  5 | 
+  6 | describe('Auth API (contract)', () => {
+  7 |   let app: INestApplication;
+  8 | 
+  9 |   beforeAll(async () => {
+ 10 |     const moduleFixture: TestingModule = await Test.createTestingModule({
+ 11 |       imports: [AppModule],
+ 12 |     }).compile();
+ 13 |     app = moduleFixture.createNestApplication();
+ 14 |     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+ 15 |     await app.init();
+ 16 |   });
+ 17 | 
+ 18 |   afterAll(async () => await app.close());
+ 19 | 
+ 20 |   describe('POST /auth/login', () => {
+ 21 |     it('повертає токен при правильних даних', async () => {
+ 22 |       const res = await request(app.getHttpServer())
+ 23 |         .post('/auth/login')
+ 24 |         .send({ email: 'admin@crm.com', password: 'admin123' })
+ 25 |         .expect(200);
+ 26 | 
+ 27 |       expect(res.body).toHaveProperty('access_token');
+ 28 |       expect(typeof res.body.access_token).toBe('string');
+ 29 |       expect(res.body.access_token.length).toBeGreaterThan(10);
+ 30 |     });
+ 31 | 
+ 32 |     it('повертає 401 при невірному паролі', async () => {
+ 33 |       await request(app.getHttpServer())
+ 34 |         .post('/auth/login')
+ 35 |         .send({ email: 'admin@crm.com', password: 'wrongpassword' })
+ 36 |         .expect(401);
+ 37 |     });
+ 38 | 
+ 39 |     it('повертає 401 при невірному email', async () => {
+ 40 |       await request(app.getHttpServer())
+ 41 |         .post('/auth/login')
+ 42 |         .send({ email: 'nobody@crm.com', password: 'admin123' })
+ 43 |         .expect(401);
+ 44 |     });
+ 45 | 
+ 46 |     it('повертає 400 без email', async () => {
+ 47 |       await request(app.getHttpServer())
+ 48 |         .post('/auth/login')
+ 49 |         .send({ password: 'admin123' })
+ 50 |         .expect(400);
+ 51 |     });
+ 52 | 
+ 53 |     it('структура відповіді відповідає контракту', async () => {
+ 54 |       const res = await request(app.getHttpServer())
+ 55 |         .post('/auth/login')
+ 56 |         .send({ email: 'admin@crm.com', password: 'admin123' })
+ 57 |         .expect(200);
+ 58 | 
+ 59 |       expect(res.body).toMatchObject({
+ 60 |         access_token: expect.any(String),
+ 61 |       });
+ 62 |     });
+ 63 |   });
+ 64 | });
+ 65 | 
+```
+
+### File: apps/backend/test/dashboard.e2e-spec.ts
+```ts
+  0 | import { Test, TestingModule } from '@nestjs/testing';
+  1 | import { INestApplication } from '@nestjs/common';
+  2 | import request from 'supertest';
+  3 | import { AppModule } from '../src/app.module';
+  4 | 
+  5 | describe('Dashboard API (contract)', () => {
+  6 |   let app: INestApplication;
+  7 |   let token: string;
+  8 | 
+  9 |   beforeAll(async () => {
+ 10 |     const moduleFixture: TestingModule = await Test.createTestingModule({
+ 11 |       imports: [AppModule],
+ 12 |     }).compile();
+ 13 |     app = moduleFixture.createNestApplication();
+ 14 |     await app.init();
+ 15 | 
+ 16 |     const loginRes = await request(app.getHttpServer())
+ 17 |       .post('/auth/login')
+ 18 |       .send({ email: 'admin@crm.com', password: 'admin123' });
+ 19 |     token = loginRes.body.access_token;
+ 20 |   });
+ 21 | 
+ 22 |   afterAll(async () => await app.close());
+ 23 | 
+ 24 |   describe('GET /dashboard/summary', () => {
+ 25 |     it('повертає summary з токеном', async () => {
+ 26 |       const res = await request(app.getHttpServer())
+ 27 |         .get('/dashboard/summary')
+ 28 |         .set('Authorization', `Bearer ${token}`)
+ 29 |         .expect(200);
+ 30 | 
+ 31 |       expect(res.body).toHaveProperty('todayEvents');
+ 32 |       expect(res.body).toHaveProperty('upcomingEvents');
+ 33 |       expect(res.body).toHaveProperty('funnel');
+ 34 |       expect(res.body).toHaveProperty('monthlyKpi');
+ 35 |       expect(res.body).toHaveProperty('staleSchools');
+ 36 |       expect(res.body).toHaveProperty('activityFeed');
+ 37 |     });
+ 38 | 
+ 39 |     it('повертає 401 без токена', async () => {
+ 40 |       await request(app.getHttpServer()).get('/dashboard/summary').expect(401);
+ 41 |     });
+ 42 | 
+ 43 |     it('funnel містить всі етапи пайплайну', async () => {
+ 44 |       const res = await request(app.getHttpServer())
+ 45 |         .get('/dashboard/summary')
+ 46 |         .set('Authorization', `Bearer ${token}`)
+ 47 |         .expect(200);
+ 48 | 
+ 49 |       const stages = [
+ 50 |         'BASE',
+ 51 |         'FIRST_CONTACT',
+ 52 |         'DATE_CONFIRMED',
+ 53 |         'PREPARATION',
+ 54 |         'IN_PROGRESS',
+ 55 |         'DONE',
+ 56 |         'REPORT',
+ 57 |         'RE_SALE',
+ 58 |       ];
+ 59 |       for (const stage of stages) {
+ 60 |         expect(res.body.funnel).toHaveProperty(stage);
+ 61 |       }
+ 62 |     });
+ 63 | 
+ 64 |     it('monthlyKpi має числові поля', async () => {
+ 65 |       const res = await request(app.getHttpServer())
+ 66 |         .get('/dashboard/summary')
+ 67 |         .set('Authorization', `Bearer ${token}`)
+ 68 |         .expect(200);
+ 69 | 
+ 70 |       const kpi = res.body.monthlyKpi;
+ 71 |       expect(typeof kpi.revenue).toBe('number');
+ 72 |       expect(typeof kpi.profit).toBe('number');
+ 73 |       expect(typeof kpi.children).toBe('number');
+ 74 |       expect(typeof kpi.count).toBe('number');
+ 75 |     });
+ 76 | 
+ 77 |     it('фільтр по cityId повертає коректний результат', async () => {
+ 78 |       const citiesRes = await request(app.getHttpServer())
+ 79 |         .get('/cities')
+ 80 |         .set('Authorization', `Bearer ${token}`);
+ 81 | 
+ 82 |       const cityId = citiesRes.body[0]?.id;
+ 83 |       if (!cityId) return;
+ 84 | 
+ 85 |       const res = await request(app.getHttpServer())
+ 86 |         .get(`/dashboard/summary?cityId=${cityId}`)
+ 87 |         .set('Authorization', `Bearer ${token}`)
+ 88 |         .expect(200);
+ 89 | 
+ 90 |       expect(res.body).toHaveProperty('funnel');
+ 91 |       expect(res.body).toHaveProperty('todayEvents');
+ 92 |     });
+ 93 | 
+ 94 |     it('todayEvents і upcomingEvents — масиви', async () => {
+ 95 |       const res = await request(app.getHttpServer())
+ 96 |         .get('/dashboard/summary')
+ 97 |         .set('Authorization', `Bearer ${token}`)
+ 98 |         .expect(200);
+ 99 | 
+100 |       expect(Array.isArray(res.body.todayEvents)).toBe(true);
+101 |       expect(Array.isArray(res.body.upcomingEvents)).toBe(true);
+102 |       expect(Array.isArray(res.body.staleSchools)).toBe(true);
+103 |       expect(Array.isArray(res.body.activityFeed)).toBe(true);
+104 |     });
+105 |   });
+106 | });
+107 | 
+```
+
+### File: apps/backend/test/events.e2e-spec.ts
+```ts
+  0 | import { Test, TestingModule } from '@nestjs/testing';
+  1 | import { INestApplication } from '@nestjs/common';
+  2 | import request from 'supertest';
+  3 | import { AppModule } from '../src/app.module';
+  4 | 
+  5 | describe('Events API (contract)', () => {
+  6 |   let app: INestApplication;
+  7 |   let token: string;
+  8 |   let createdEventId: string;
+  9 |   let schoolId: string;
+ 10 |   let cityId: string;
+ 11 | 
+ 12 |   beforeAll(async () => {
+ 13 |     const moduleFixture: TestingModule = await Test.createTestingModule({
+ 14 |       imports: [AppModule],
+ 15 |     }).compile();
+ 16 |     app = moduleFixture.createNestApplication();
+ 17 |     await app.init();
+ 18 | 
+ 19 |     const loginRes = await request(app.getHttpServer())
+ 20 |       .post('/auth/login')
+ 21 |       .send({ email: 'admin@crm.com', password: 'admin123' });
+ 22 |     token = loginRes.body.access_token;
+ 23 | 
+ 24 |     const citiesRes = await request(app.getHttpServer())
+ 25 |       .get('/cities')
+ 26 |       .set('Authorization', `Bearer ${token}`);
+ 27 |     cityId = citiesRes.body[0]?.id;
+ 28 | 
+ 29 |     if (cityId) {
+ 30 |       const schoolsRes = await request(app.getHttpServer())
+ 31 |         .get('/schools')
+ 32 |         .set('Authorization', `Bearer ${token}`);
+ 33 |       schoolId = schoolsRes.body[0]?.id;
+ 34 |     }
+ 35 |   });
+ 36 | 
+ 37 |   afterAll(async () => {
+ 38 |     if (createdEventId) {
+ 39 |       await request(app.getHttpServer())
+ 40 |         .delete(`/events/${createdEventId}`)
+ 41 |         .set('Authorization', `Bearer ${token}`);
+ 42 |     }
+ 43 |     await app.close();
+ 44 |   });
+ 45 | 
+ 46 |   describe('GET /events', () => {
+ 47 |     it('повертає список подій з токеном', async () => {
+ 48 |       const res = await request(app.getHttpServer())
+ 49 |         .get('/events')
+ 50 |         .set('Authorization', `Bearer ${token}`)
+ 51 |         .expect(200);
+ 52 |       expect(Array.isArray(res.body)).toBe(true);
+ 53 |     });
+ 54 | 
+ 55 |     it('повертає 401 без токена', async () => {
+ 56 |       await request(app.getHttpServer()).get('/events').expect(401);
+ 57 |     });
+ 58 | 
+ 59 |     it('кожна подія має обовязкові поля', async () => {
+ 60 |       const res = await request(app.getHttpServer())
+ 61 |         .get('/events')
+ 62 |         .set('Authorization', `Bearer ${token}`)
+ 63 |         .expect(200);
+ 64 | 
+ 65 |       if (res.body.length > 0) {
+ 66 |         const event = res.body[0];
+ 67 |         expect(event).toHaveProperty('id');
+ 68 |         expect(event).toHaveProperty('project');
+ 69 |         expect(event).toHaveProperty('date');
+ 70 |         expect(event).toHaveProperty('status');
+ 71 |       }
+ 72 |     });
+ 73 |   });
+ 74 | 
+ 75 |   describe('POST /events', () => {
+ 76 |     it('створює нову подію', async () => {
+ 77 |       if (!schoolId || !cityId) return;
+ 78 | 
+ 79 |       const res = await request(app.getHttpServer())
+ 80 |         .post('/events')
+ 81 |         .set('Authorization', `Bearer ${token}`)
+ 82 |         .send({
+ 83 |           project: 'Тестова подія E2E',
+ 84 |           date: '2027-01-15',
+ 85 |           time: '10:00',
+ 86 |           schoolId,
+ 87 |           cityId,
+ 88 |           childrenPlanned: 100,
+ 89 |           price: 5000,
+ 90 |           address: 'вул. Тестова 1',
+ 91 |           contactPerson: 'Тест',
+ 92 |           contactPhone: '0671234567',
+ 93 |         })
+ 94 |         .expect(201);
+ 95 | 
+ 96 |       expect(res.body).toHaveProperty('id');
+ 97 |       expect(res.body.project).toBe('Тестова подія E2E');
+ 98 |       expect(res.body.status).toBe('BASE');
+ 99 |       createdEventId = res.body.id;
+100 |     });
+101 | 
+102 |     it('повертає 401 без токена', async () => {
+103 |       await request(app.getHttpServer())
+104 |         .post('/events')
+105 |         .send({ project: 'Test' })
+106 |         .expect(401);
+107 |     });
+108 |   });
+109 | 
+110 |   describe('GET /events/:id', () => {
+111 |     it('повертає подію по id', async () => {
+112 |       if (!createdEventId) return;
+113 | 
+114 |       const res = await request(app.getHttpServer())
+115 |         .get(`/events/${createdEventId}`)
+116 |         .set('Authorization', `Bearer ${token}`)
+117 |         .expect(200);
+118 | 
+119 |       expect(res.body.id).toBe(createdEventId);
+120 |     });
+121 | 
+122 |     it('повертає 404 для неіснуючої події', async () => {
+123 |       await request(app.getHttpServer())
+124 |         .get('/events/nonexistent-id-12345')
+125 |         .set('Authorization', `Bearer ${token}`)
+126 |         .expect(404);
+127 |     });
+128 |   });
+129 | 
+130 |   describe('PATCH /events/:id/status', () => {
+131 |     it('змінює статус події', async () => {
+132 |       if (!createdEventId) return;
+133 | 
+134 |       const res = await request(app.getHttpServer())
+135 |         .patch(`/events/${createdEventId}/status`)
+136 |         .set('Authorization', `Bearer ${token}`)
+137 |         .send({
+138 |           status: 'FIRST_CONTACT',
+139 |           actionName: 'Знайомство',
+140 |           comment: 'Тестовий коментар',
+141 |         })
+142 |         .expect(200);
+143 | 
+144 |       expect(res.body.status).toBe('FIRST_CONTACT');
+145 |       expect(res.body.history).toBeDefined();
+146 |       expect(res.body.history.length).toBeGreaterThan(0);
+147 |     });
+148 |   });
+149 | 
+150 |   describe('GET /events/school/:schoolId', () => {
+151 |     it('повертає події школи', async () => {
+152 |       if (!schoolId) return;
+153 | 
+154 |       const res = await request(app.getHttpServer())
+155 |         .get(`/events/school/${schoolId}`)
+156 |         .set('Authorization', `Bearer ${token}`)
+157 |         .expect(200);
+158 | 
+159 |       expect(Array.isArray(res.body)).toBe(true);
+160 |     });
+161 | 
+162 |     it('minimal=true повертає менше полів', async () => {
+163 |       if (!schoolId) return;
+164 | 
+165 |       const fullRes = await request(app.getHttpServer())
+166 |         .get(`/events/school/${schoolId}`)
+167 |         .set('Authorization', `Bearer ${token}`);
+168 | 
+169 |       const minRes = await request(app.getHttpServer())
+170 |         .get(`/events/school/${schoolId}?minimal=true`)
+171 |         .set('Authorization', `Bearer ${token}`);
+172 | 
+173 |       if (fullRes.body.length > 0 && minRes.body.length > 0) {
+174 |         expect(minRes.body[0]).not.toHaveProperty('history');
+175 |         expect(minRes.body[0]).not.toHaveProperty('preparation');
+176 |       }
+177 |     });
+178 |   });
+179 | 
+180 |   describe('DELETE /events/:id', () => {
+181 |     it('видаляє подію', async () => {
+182 |       if (!schoolId || !cityId) return;
+183 | 
+184 |       const createRes = await request(app.getHttpServer())
+185 |         .post('/events')
+186 |         .set('Authorization', `Bearer ${token}`)
+187 |         .send({
+188 |           project: 'Подія для видалення',
+189 |           date: '2027-02-01',
+190 |           time: '11:00',
+191 |           schoolId,
+192 |           cityId,
+193 |           childrenPlanned: 50,
+194 |           price: 2000,
+195 |           address: 'вул. Тест 2',
+196 |           contactPerson: 'Тест',
+197 |           contactPhone: '0671234568',
+198 |         });
+199 | 
+200 |       const deleteId = createRes.body.id;
+201 |       if (!deleteId) return;
+202 | 
+203 |       await request(app.getHttpServer())
+204 |         .delete(`/events/${deleteId}`)
+205 |         .set('Authorization', `Bearer ${token}`)
+206 |         .expect(200);
+207 | 
+208 |       await request(app.getHttpServer())
+209 |         .get(`/events/${deleteId}`)
+210 |         .set('Authorization', `Bearer ${token}`)
+211 |         .expect(404);
+212 |     });
+213 |   });
+214 | });
+215 | 
+```
+
+### File: apps/backend/test/schools.e2e-spec.ts
+```ts
+  0 | import { Test, TestingModule } from '@nestjs/testing';
+  1 | import { INestApplication } from '@nestjs/common';
+  2 | import request from 'supertest';
+  3 | import { AppModule } from '../src/app.module';
+  4 | 
+  5 | describe('Schools API (contract)', () => {
+  6 |   let app: INestApplication;
+  7 |   let token: string;
+  8 |   let createdSchoolId: string;
+  9 |   let cityId: string;
+ 10 | 
+ 11 |   beforeAll(async () => {
+ 12 |     const moduleFixture: TestingModule = await Test.createTestingModule({
+ 13 |       imports: [AppModule],
+ 14 |     }).compile();
+ 15 |     app = moduleFixture.createNestApplication();
+ 16 |     await app.init();
+ 17 | 
+ 18 |     const loginRes = await request(app.getHttpServer())
+ 19 |       .post('/auth/login')
+ 20 |       .send({ email: 'admin@crm.com', password: 'admin123' });
+ 21 |     token = loginRes.body.access_token;
+ 22 | 
+ 23 |     const citiesRes = await request(app.getHttpServer())
+ 24 |       .get('/cities')
+ 25 |       .set('Authorization', `Bearer ${token}`);
+ 26 |     cityId = citiesRes.body[0]?.id;
+ 27 |   });
+ 28 | 
+ 29 |   afterAll(async () => {
+ 30 |     if (createdSchoolId) {
+ 31 |       await request(app.getHttpServer())
+ 32 |         .delete(`/schools/${createdSchoolId}`)
+ 33 |         .set('Authorization', `Bearer ${token}`);
+ 34 |     }
+ 35 |     await app.close();
+ 36 |   });
+ 37 | 
+ 38 |   describe('GET /schools', () => {
+ 39 |     it('повертає список шкіл', async () => {
+ 40 |       const res = await request(app.getHttpServer())
+ 41 |         .get('/schools')
+ 42 |         .set('Authorization', `Bearer ${token}`)
+ 43 |         .expect(200);
+ 44 |       expect(Array.isArray(res.body)).toBe(true);
+ 45 |     });
+ 46 | 
+ 47 |     it('minimal=true — немає include полів', async () => {
+ 48 |       const res = await request(app.getHttpServer())
+ 49 |         .get('/schools?minimal=true')
+ 50 |         .set('Authorization', `Bearer ${token}`)
+ 51 |         .expect(200);
+ 52 |       expect(Array.isArray(res.body)).toBe(true);
+ 53 |     });
+ 54 | 
+ 55 |     it('повертає 401 без токена', async () => {
+ 56 |       await request(app.getHttpServer()).get('/schools').expect(401);
+ 57 |     });
+ 58 | 
+ 59 |     it('кожна школа має обовязкові поля', async () => {
+ 60 |       const res = await request(app.getHttpServer())
+ 61 |         .get('/schools')
+ 62 |         .set('Authorization', `Bearer ${token}`)
+ 63 |         .expect(200);
+ 64 | 
+ 65 |       if (res.body.length > 0) {
+ 66 |         const school = res.body[0];
+ 67 |         expect(school).toHaveProperty('id');
+ 68 |         expect(school).toHaveProperty('name');
+ 69 |         expect(school).toHaveProperty('type');
+ 70 |         expect(school).toHaveProperty('cityId');
+ 71 |       }
+ 72 |     });
+ 73 |   });
+ 74 | 
+ 75 |   describe('POST /schools', () => {
+ 76 |     it('створює нову школу', async () => {
+ 77 |       if (!cityId) return;
+ 78 | 
+ 79 |       const res = await request(app.getHttpServer())
+ 80 |         .post('/schools')
+ 81 |         .set('Authorization', `Bearer ${token}`)
+ 82 |         .send({
+ 83 |           name: 'E2E Тестова школа',
+ 84 |           type: 'Школа',
+ 85 |           cityId,
+ 86 |           director: 'Тест Тестович',
+ 87 |           phone: '0671234567',
+ 88 |         })
+ 89 |         .expect(201);
+ 90 | 
+ 91 |       expect(res.body).toHaveProperty('id');
+ 92 |       expect(res.body.name).toBe('E2E Тестова школа');
+ 93 |       createdSchoolId = res.body.id;
+ 94 |     });
+ 95 | 
+ 96 |     it('повертає 401 без токена', async () => {
+ 97 |       await request(app.getHttpServer())
+ 98 |         .post('/schools')
+ 99 |         .send({ name: 'Test', type: 'Школа', cityId: 'city-1' })
+100 |         .expect(401);
+101 |     });
+102 |   });
+103 | 
+104 |   describe('GET /schools/:id', () => {
+105 |     it('повертає школу по id', async () => {
+106 |       if (!createdSchoolId) return;
+107 | 
+108 |       const res = await request(app.getHttpServer())
+109 |         .get(`/schools/${createdSchoolId}`)
+110 |         .set('Authorization', `Bearer ${token}`)
+111 |         .expect(200);
+112 | 
+113 |       expect(res.body.id).toBe(createdSchoolId);
+114 |       expect(res.body).toHaveProperty('city');
+115 |     });
+116 | 
+117 |     it('повертає 404 для неіснуючої школи', async () => {
+118 |       await request(app.getHttpServer())
+119 |         .get('/schools/nonexistent-id-99999')
+120 |         .set('Authorization', `Bearer ${token}`)
+121 |         .expect(404);
+122 |     });
+123 |   });
+124 | 
+125 |   describe('PATCH /schools/:id', () => {
+126 |     it('оновлює дані школи', async () => {
+127 |       if (!createdSchoolId) return;
+128 | 
+129 |       const res = await request(app.getHttpServer())
+130 |         .patch(`/schools/${createdSchoolId}`)
+131 |         .set('Authorization', `Bearer ${token}`)
+132 |         .send({ director: 'Новий Директор' })
+133 |         .expect(200);
+134 | 
+135 |       expect(res.body.director).toBe('Новий Директор');
 136 |     });
-137 | 
-138 |     return { message: 'Вася Харізма успішно доданий!', user: vasya };
-139 |   }
-140 | 
-141 |   async findAll() {
-142 |     return this.prisma.user.findMany();
-143 |   }
-144 | 
-145 |   async updateTelegramChatId(username: string, chatId: string) {
-146 |     return this.prisma.user.updateMany({
-147 |       where: {
-148 |         telegramId: {
-149 |           equals: username,
-150 |           mode: 'insensitive',
-151 |         },
-152 |       },
-153 |       data: { telegramChatId: chatId },
-154 |     });
-155 |   }
-156 | }
-157 | 
+137 |   });
+138 | 
+139 |   describe('DELETE /schools/:id', () => {
+140 |     it('видаляє школу разом з подіями', async () => {
+141 |       if (!cityId) return;
+142 | 
+143 |       const createRes = await request(app.getHttpServer())
+144 |         .post('/schools')
+145 |         .set('Authorization', `Bearer ${token}`)
+146 |         .send({ name: 'Школа для видалення E2E', type: 'Школа', cityId });
+147 | 
+148 |       const deleteId = createRes.body.id;
+149 |       if (!deleteId) return;
+150 | 
+151 |       await request(app.getHttpServer())
+152 |         .delete(`/schools/${deleteId}`)
+153 |         .set('Authorization', `Bearer ${token}`)
+154 |         .expect(200);
+155 | 
+156 |       await request(app.getHttpServer())
+157 |         .get(`/schools/${deleteId}`)
+158 |         .set('Authorization', `Bearer ${token}`)
+159 |         .expect(404);
+160 |     });
+161 |   });
+162 | });
+163 | 
 ```
 
 ### File: apps/backend/tsconfig.json
@@ -7196,192 +7876,6 @@
  24 |   }
  25 | }
  26 | 
-```
-
-### File: apps/frontend/e2e/login.spec.ts
-```ts
-  0 | import { test, expect } from "@playwright/test";
-  1 | 
-  2 | test.describe("Авторизація", () => {
-  3 |   test("успішний логін перенаправляє на /cities", async ({ page }) => {
-  4 |     await page.goto("/login");
-  5 |     await page.fill('input[type="email"]', "admin@crm.com");
-  6 |     await page.fill('input[type="password"]', "admin123");
-  7 |     await page.click('button[type="submit"]');
-  8 |     await expect(page).toHaveURL(/cities/, { timeout: 8000 });
-  9 |   });
- 10 | 
- 11 |   test("невірний пароль — залишається на /login", async ({ page }) => {
- 12 |     await page.goto("/login");
- 13 |     await page.fill('input[type="email"]', "admin@crm.com");
- 14 |     await page.fill('input[type="password"]', "wrongpassword");
- 15 |     await page.click('button[type="submit"]');
- 16 |     await expect(page).toHaveURL(/login/);
- 17 |   });
- 18 | 
- 19 |   test("невірний пароль — показує повідомлення про помилку", async ({
- 20 |     page,
- 21 |   }) => {
- 22 |     await page.goto("/login");
- 23 |     await page.fill('input[type="email"]', "admin@crm.com");
- 24 |     await page.fill('input[type="password"]', "wrongpassword");
- 25 |     await page.click('button[type="submit"]');
- 26 |     await expect(
- 27 |       page.locator("text=/невірний|помилка|неправильний/i"),
- 28 |     ).toBeVisible({ timeout: 5000 });
- 29 |   });
- 30 | 
- 31 |   test("порожній email — кнопка не відправляє форму", async ({ page }) => {
- 32 |     await page.goto("/login");
- 33 |     await page.fill('input[type="password"]', "admin123");
- 34 |     await page.click('button[type="submit"]');
- 35 |     await expect(page).toHaveURL(/login/);
- 36 |   });
- 37 | 
- 38 |   test("після логіну токен зберігається в localStorage", async ({ page }) => {
- 39 |     await page.goto("/login");
- 40 |     await page.fill('input[type="email"]', "admin@crm.com");
- 41 |     await page.fill('input[type="password"]', "admin123");
- 42 |     await page.click('button[type="submit"]');
- 43 |     await page.waitForURL(/cities/);
- 44 |     const token = await page.evaluate(() => localStorage.getItem("token"));
- 45 |     expect(token).toBeTruthy();
- 46 |   });
- 47 | 
- 48 |   test("після логауту токен видаляється", async ({ page }) => {
- 49 |     await page.goto("/login");
- 50 |     await page.fill('input[type="email"]', "admin@crm.com");
- 51 |     await page.fill('input[type="password"]', "admin123");
- 52 |     await page.click('button[type="submit"]');
- 53 |     await page.waitForURL(/cities/);
- 54 | 
- 55 |     const logoutBtn = page.locator("button", { hasText: /вийти|logout/i });
- 56 |     if (await logoutBtn.isVisible()) {
- 57 |       await logoutBtn.click();
- 58 |       const token = await page.evaluate(() => localStorage.getItem("token"));
- 59 |       expect(token).toBeNull();
- 60 |     }
- 61 |   });
- 62 | 
- 63 |   test("захищений маршрут без токена перенаправляє на /login", async ({
- 64 |     page,
- 65 |   }) => {
- 66 |     await page.evaluate(() => localStorage.removeItem("token"));
- 67 |     await page.goto("/schools");
- 68 |     await expect(page).toHaveURL(/login/);
- 69 |   });
- 70 | });
- 71 | 
-```
-
-### File: apps/frontend/e2e/schools.spec.ts
-```ts
-  0 | import { test, expect, Page } from "@playwright/test";
-  1 | 
-  2 | async function login(page: Page) {
-  3 |   await page.goto("/login");
-  4 |   await page.fill('input[type="email"]', "admin@crm.com");
-  5 |   await page.fill('input[type="password"]', "admin123");
-  6 |   await page.click('button[type="submit"]');
-  7 |   await page.waitForURL(/cities/, { timeout: 8000 });
-  8 | }
-  9 | 
- 10 | test.describe("Сторінка шкіл", () => {
- 11 |   test.beforeEach(async ({ page }) => {
- 12 |     await login(page);
- 13 |     await page.goto("/schools");
- 14 |     await page.waitForLoadState("networkidle");
- 15 |   });
- 16 | 
- 17 |   test("відображає заголовок Школи", async ({ page }) => {
- 18 |     await expect(page.locator("h1")).toContainText("Школи");
- 19 |   });
- 20 | 
- 21 |   test("відображає список шкіл", async ({ page }) => {
- 22 |     const rows = page.locator("table tbody tr, .school-row-enter");
- 23 |     await expect(rows.first()).toBeVisible({ timeout: 8000 });
- 24 |   });
- 25 | 
- 26 |   test("пошук фільтрує школи", async ({ page }) => {
- 27 |     const searchInput = page.locator('input[placeholder*="Пошук"]');
- 28 |     await expect(searchInput).toBeVisible();
- 29 | 
- 30 |     const firstSchool = page.locator("table tbody tr").first();
- 31 |     const schoolName = await firstSchool.locator("td").first().textContent();
- 32 |     const searchTerm = schoolName?.slice(0, 5) ?? "Школа";
- 33 | 
- 34 |     await searchInput.fill(searchTerm);
- 35 |     await page.waitForTimeout(300);
- 36 | 
- 37 |     const results = page.locator("table tbody tr");
- 38 |     const count = await results.count();
- 39 |     expect(count).toBeGreaterThan(0);
- 40 |   });
- 41 | 
- 42 |   test("очищення пошуку повертає всі результати", async ({ page }) => {
- 43 |     const searchInput = page.locator('input[placeholder*="Пошук"]');
- 44 |     await searchInput.fill("Школа №1");
- 45 |     await page.waitForTimeout(300);
- 46 |     const filtered = await page.locator("table tbody tr").count();
- 47 | 
- 48 |     await searchInput.fill("");
- 49 |     await page.waitForTimeout(300);
- 50 |     const all = await page.locator("table tbody tr").count();
- 51 | 
- 52 |     expect(all).toBeGreaterThanOrEqual(filtered);
- 53 |   });
- 54 | 
- 55 |   test("фільтр по статусу працює", async ({ page }) => {
- 56 |     const newFilter = page.locator("button", { hasText: "Нові" });
- 57 |     if (await newFilter.isVisible()) {
- 58 |       await newFilter.click();
- 59 |       await page.waitForTimeout(200);
- 60 |       const counter = page.locator("text=/шкіл/i");
- 61 |       await expect(counter).toBeVisible();
- 62 |     }
- 63 |   });
- 64 | 
- 65 |   test("клік на школу переходить на профіль", async ({ page }) => {
- 66 |     const firstRow = page.locator("table tbody tr").first();
- 67 |     await firstRow.click();
- 68 |     await expect(page).toHaveURL(/\/schools\/.+/, { timeout: 5000 });
- 69 |   });
- 70 | 
- 71 |   test("відображає StatsBar з лічильниками", async ({ page }) => {
- 72 |     await expect(page.locator("text=Нові")).toBeVisible();
- 73 |     await expect(page.locator("text=Заплановані")).toBeVisible();
- 74 |     await expect(page.locator("text=В роботі")).toBeVisible();
- 75 |   });
- 76 | });
- 77 | 
- 78 | test.describe("Додавання школи", () => {
- 79 |   test.beforeEach(async ({ page }) => {
- 80 |     await login(page);
- 81 |     await page.goto("/schools");
- 82 |     await page.waitForLoadState("networkidle");
- 83 |   });
- 84 | 
- 85 |   test("кнопка Додати відкриває модалку", async ({ page }) => {
- 86 |     const addBtn = page.locator("button", { hasText: /\+ Додати/i });
- 87 |     await expect(addBtn).toBeVisible();
- 88 |     await addBtn.click();
- 89 |     await expect(page.locator("text=Нова школа")).toBeVisible();
- 90 |   });
- 91 | 
- 92 |   test("модалка закривається по кнопці Скасувати", async ({ page }) => {
- 93 |     await page.locator("button", { hasText: /\+ Додати/i }).click();
- 94 |     await expect(page.locator("text=Нова школа")).toBeVisible();
- 95 |     await page.locator("button", { hasText: "Скасувати" }).click();
- 96 |     await expect(page.locator("text=Нова школа")).not.toBeVisible();
- 97 |   });
- 98 | 
- 99 |   test("форма не відправляється без назви школи", async ({ page }) => {
-100 |     await page.locator("button", { hasText: /\+ Додати/i }).click();
-101 |     await page.locator("button", { hasText: "Створити" }).click();
-102 |     await expect(page.locator("text=Нова школа")).toBeVisible();
-103 |   });
-104 | });
-105 | 
 ```
 
 ### File: apps/frontend/eslint.config.js
@@ -7416,6 +7910,74 @@
  27 | 
  28 | 
  29 | 
+```
+
+### File: apps/frontend/package.json
+```json
+  0 | {
+  1 |   "name": "frontend",
+  2 |   "private": true,
+  3 |   "version": "0.0.0",
+  4 |   "type": "module",
+  5 |   "scripts": {
+  6 |     "dev": "vite",
+  7 |     "build": "vite build",
+  8 |     "lint": "eslint .",
+  9 |     "preview": "vite preview",
+ 10 |     "test": "vitest",
+ 11 |     "test:ui": "vitest --ui",
+ 12 |     "test:run": "vitest run",
+ 13 |     "test:coverage": "vitest run --coverage",
+ 14 |     "pretest:e2e": "playwright install --with-deps chromium",
+ 15 |     "test:e2e": "playwright test",
+ 16 |     "test:e2e:ui": "playwright test --ui"
+ 17 |   },
+ 18 |   "dependencies": {
+ 19 |     "@hookform/resolvers": "^5.4.0",
+ 20 |     "@tanstack/react-query": "^5.101.0",
+ 21 |     "@tanstack/react-virtual": "^3.14.3",
+ 22 |     "axios": "^1.18.0",
+ 23 |     "framer-motion": "^12.41.0",
+ 24 |     "jwt-decode": "^4.0.0",
+ 25 |     "lucide-react": "^1.20.0",
+ 26 |     "react": "^19.2.6",
+ 27 |     "react-dom": "^19.2.6",
+ 28 |     "react-hook-form": "^7.79.0",
+ 29 |     "react-router-dom": "^7.18.0",
+ 30 |     "recharts": "^3.8.1",
+ 31 |     "zod": "^4.4.3",
+ 32 |     "zustand": "^5.0.14"
+ 33 |   },
+ 34 |   "devDependencies": {
+ 35 |     "@eslint/js": "^10.0.1",
+ 36 |     "@lhci/cli": "^0.15.1",
+ 37 |     "@playwright/test": "^1.61.1",
+ 38 |     "@testing-library/jest-dom": "^6.9.1",
+ 39 |     "@testing-library/react": "^16.3.2",
+ 40 |     "@testing-library/user-event": "^14.6.1",
+ 41 |     "@types/node": "^24.12.3",
+ 42 |     "@types/react": "^19.2.14",
+ 43 |     "@types/react-dom": "^19.2.3",
+ 44 |     "@vitejs/plugin-react": "^6.0.1",
+ 45 |     "@vitest/ui": "^4.1.9",
+ 46 |     "autoprefixer": "^10.5.0",
+ 47 |     "eslint": "^10.3.0",
+ 48 |     "eslint-plugin-react-hooks": "^7.1.1",
+ 49 |     "eslint-plugin-react-refresh": "^0.5.2",
+ 50 |     "globals": "^17.6.0",
+ 51 |     "husky": "^9.1.7",
+ 52 |     "jsdom": "^29.1.1",
+ 53 |     "msw": "^2.14.6",
+ 54 |     "postcss": "^8.5.15",
+ 55 |     "tailwindcss": "^3.4.19",
+ 56 |     "typescript": "~6.0.2",
+ 57 |     "typescript-eslint": "^8.59.2",
+ 58 |     "vite": "^8.0.12",
+ 59 |     "vite-plugin-image-optimizer": "^2.0.3",
+ 60 |     "vitest": "^4.1.9"
+ 61 |   }
+ 62 | }
+ 63 | 
 ```
 
 ### File: apps/frontend/playwright.config.ts
@@ -19629,995 +20191,6 @@
 629 | 
 ```
 
-### File: apps/frontend/src/tests/component/EventReport.test.tsx
-```tsx
-  0 | import { describe, it, expect, vi } from "vitest";
-  1 | import { render, screen } from "@testing-library/react";
-  2 | import { MemoryRouter, Routes, Route } from "react-router-dom";
-  3 | 
-  4 | const mockUseEventFull = vi.fn();
-  5 | vi.mock("../../hooks/useSchoolProfile", () => ({
-  6 |   useEventFull: (id: string | undefined) => mockUseEventFull(id),
-  7 | }));
-  8 | 
-  9 | import EventReport from "../../pages/EventReport";
- 10 | 
- 11 | function renderPage() {
- 12 |   return render(
- 13 |     <MemoryRouter initialEntries={["/events/ev-1/report"]}>
- 14 |       <Routes>
- 15 |         <Route path="/events/:eventId/report" element={<EventReport />} />
- 16 |       </Routes>
- 17 |     </MemoryRouter>,
- 18 |   );
- 19 | }
- 20 | 
- 21 | const baseEvent = {
- 22 |   id: "ev-1",
- 23 |   cityId: "city-1",
- 24 |   city: { name: "Львів" },
- 25 |   school: { name: "Школа №1" },
- 26 |   address: "вул. Тестова 1",
- 27 |   date: "2026-07-01T10:00:00Z",
- 28 |   time: "10:00",
- 29 |   project: "Голограма",
- 30 |   price: 12345,
- 31 |   childrenPlanned: 100,
- 32 |   paymentMethod: "Готівка",
- 33 |   crew: {
- 34 |     name: "Екіпаж 1",
- 35 |     host: { name: "Ведучий" },
- 36 |     driver: { name: "Водій" },
- 37 |   },
- 38 |   report: {
- 39 |     childrenCount: 95,
- 40 |     totalSum: 9800,
- 41 |     directorSatisfied: true,
- 42 |     teachersSatisfied: false,
- 43 |     hadIssues: false,
- 44 |     comment: "Все пройшло добре",
- 45 |   },
- 46 | };
- 47 | 
- 48 | describe("EventReport", () => {
- 49 |   it("показує стан завантаження", () => {
- 50 |     mockUseEventFull.mockReturnValue({
- 51 |       data: undefined,
- 52 |       isLoading: true,
- 53 |       isError: false,
- 54 |     });
- 55 |     renderPage();
- 56 |     expect(screen.getByText("Завантаження...")).toBeInTheDocument();
- 57 |   });
- 58 | 
- 59 |   it("показує 'Подію не знайдено' якщо event відсутній", () => {
- 60 |     mockUseEventFull.mockReturnValue({
- 61 |       data: undefined,
- 62 |       isLoading: false,
- 63 |       isError: false,
- 64 |     });
- 65 |     renderPage();
- 66 |     expect(screen.getByText("Подію не знайдено")).toBeInTheDocument();
- 67 |   });
- 68 | 
- 69 |   it("показує 'Подію не знайдено' при помилці запиту", () => {
- 70 |     mockUseEventFull.mockReturnValue({
- 71 |       data: undefined,
- 72 |       isLoading: false,
- 73 |       isError: true,
- 74 |     });
- 75 |     renderPage();
- 76 |     expect(screen.getByText("Подію не знайдено")).toBeInTheDocument();
- 77 |   });
- 78 | 
- 79 |   it("форматує вартість події (price) з розділювачем тисяч", () => {
- 80 |     mockUseEventFull.mockReturnValue({
- 81 |       data: baseEvent,
- 82 |       isLoading: false,
- 83 |       isError: false,
- 84 |     });
- 85 |     renderPage();
- 86 |     expect(screen.getByText("12 345 грн")).toBeInTheDocument();
- 87 |   });
- 88 | 
- 89 |   it("форматує отриману суму (report.totalSum) окремо від price", () => {
- 90 |     mockUseEventFull.mockReturnValue({
- 91 |       data: baseEvent,
- 92 |       isLoading: false,
- 93 |       isError: false,
- 94 |     });
- 95 |     renderPage();
- 96 |     expect(screen.getByText("9 800 грн")).toBeInTheDocument();
- 97 |   });
- 98 | 
- 99 |   it("форматує 0 грн, якщо totalSum дорівнює 0", () => {
-100 |     mockUseEventFull.mockReturnValue({
-101 |       data: { ...baseEvent, report: { ...baseEvent.report, totalSum: 0 } },
-102 |       isLoading: false,
-103 |       isError: false,
-104 |     });
-105 |     renderPage();
-106 |     expect(screen.getByText("0 грн")).toBeInTheDocument();
-107 |   });
-108 | 
-109 |   it("показує '—' якщо звіту ще немає (report undefined)", () => {
-110 |     mockUseEventFull.mockReturnValue({
-111 |       data: { ...baseEvent, report: undefined },
-112 |       isLoading: false,
-113 |       isError: false,
-114 |     });
-115 |     renderPage();
-116 |     expect(screen.getAllByText("—").length).toBeGreaterThan(0);
-117 |   });
-118 | 
-119 |   it("показує 'Так'/'Ні' відповідно до directorSatisfied/teachersSatisfied", () => {
-120 |     mockUseEventFull.mockReturnValue({
-121 |       data: baseEvent,
-122 |       isLoading: false,
-123 |       isError: false,
-124 |     });
-125 |     renderPage();
-126 |     expect(screen.getAllByText("Так").length).toBeGreaterThan(0);
-127 |     expect(screen.getAllByText("Ні").length).toBeGreaterThan(0);
-128 |   });
-129 | 
-130 |   it("показує коментар у лапках, якщо він є", () => {
-131 |     mockUseEventFull.mockReturnValue({
-132 |       data: baseEvent,
-133 |       isLoading: false,
-134 |       isError: false,
-135 |     });
-136 |     renderPage();
-137 |     expect(screen.getByText('"Все пройшло добре"')).toBeInTheDocument();
-138 |   });
-139 | 
-140 |   it("не показує блок 'Коментар:', якщо коментаря немає", () => {
-141 |     mockUseEventFull.mockReturnValue({
-142 |       data: {
-143 |         ...baseEvent,
-144 |         report: { ...baseEvent.report, comment: undefined },
-145 |       },
-146 |       isLoading: false,
-147 |       isError: false,
-148 |     });
-149 |     renderPage();
-150 |     expect(screen.queryByText(/Коментар:/)).not.toBeInTheDocument();
-151 |   });
-152 | 
-153 |   it("ЕDGE-CASE (задокументована поведінка): childrenPlanned=0 показується як '—', а не '0'", () => {
-154 |     // Row робить `value || "—"`, а 0 — falsy. Це може бути небажаним для UX
-155 |     // (0 запланованих дітей — валідне значення, але виглядає як «немає даних»).
-156 |     mockUseEventFull.mockReturnValue({
-157 |       data: { ...baseEvent, childrenPlanned: 0 },
-158 |       isLoading: false,
-159 |       isError: false,
-160 |     });
-161 |     renderPage();
-162 |     expect(screen.getAllByText("—").length).toBeGreaterThan(0);
-163 |   });
-164 | });
-165 | 
-```
-
-### File: apps/frontend/src/tests/component/EventsTable.test.tsx
-```tsx
-  0 | import { describe, it, expect, vi, beforeEach } from "vitest";
-  1 | import { render, screen, fireEvent } from "@testing-library/react";
-  2 | import { MemoryRouter } from "react-router-dom";
-  3 | 
-  4 | vi.mock("axios", () => ({
-  5 |   default: { delete: vi.fn().mockResolvedValue({}) },
-  6 | }));
-  7 | 
-  8 | import EventsTable from "../../components/school-profile/EventsTable";
-  9 | 
- 10 | const mockEvents = [
- 11 |   {
- 12 |     id: "ev-1",
- 13 |     project: "Голограма",
- 14 |     date: "2026-07-01T10:00:00Z",
- 15 |     price: 5000,
- 16 |     status: "BASE",
- 17 |   },
- 18 |   {
- 19 |     id: "ev-2",
- 20 |     project: "Малювайко",
- 21 |     date: "2026-08-01T10:00:00Z",
- 22 |     price: 3000,
- 23 |     status: "FIRST_CONTACT",
- 24 |   },
- 25 | ];
- 26 | 
- 27 | describe("EventsTable", () => {
- 28 |   const onEventSelect = vi.fn();
- 29 |   const onDeleteSuccess = vi.fn();
- 30 | 
- 31 |   beforeEach(() => {
- 32 |     vi.clearAllMocks();
- 33 |     window.confirm = vi.fn(() => true);
- 34 | 
- 35 |     vi.stubGlobal("localStorage", {
- 36 |       getItem: vi.fn(() => "fake-token"),
- 37 |     });
- 38 |   });
- 39 | 
- 40 |   it("відображає всі події", () => {
- 41 |     render(
- 42 |       <MemoryRouter>
- 43 |         <EventsTable
- 44 |           events={mockEvents}
- 45 |           selectedEventId={null}
- 46 |           onEventSelect={onEventSelect}
- 47 |           onDeleteSuccess={onDeleteSuccess}
- 48 |         />
- 49 |       </MemoryRouter>,
- 50 |     );
- 51 | 
- 52 |     expect(screen.getAllByText("Голограма")).toHaveLength(2);
- 53 |     expect(screen.getAllByText("Малювайко")).toHaveLength(2);
- 54 |   });
- 55 | 
- 56 |   it("показує кількість подій у заголовку", () => {
- 57 |     render(
- 58 |       <MemoryRouter>
- 59 |         <EventsTable
- 60 |           events={mockEvents}
- 61 |           selectedEventId={null}
- 62 |           onEventSelect={onEventSelect}
- 63 |           onDeleteSuccess={onDeleteSuccess}
- 64 |         />
- 65 |       </MemoryRouter>,
- 66 |     );
- 67 |     expect(screen.getByText("Всі події (2)")).toBeInTheDocument();
- 68 |   });
- 69 | 
- 70 |   it("не рендериться якщо events порожній", () => {
- 71 |     const { container } = render(
- 72 |       <MemoryRouter>
- 73 |         <EventsTable
- 74 |           events={[]}
- 75 |           selectedEventId={null}
- 76 |           onEventSelect={onEventSelect}
- 77 |           onDeleteSuccess={onDeleteSuccess}
- 78 |         />
- 79 |       </MemoryRouter>,
- 80 |     );
- 81 |     expect(container.firstChild).toBeNull();
- 82 |   });
- 83 | 
- 84 |   it("викликає onEventSelect при кліку на подію", () => {
- 85 |     render(
- 86 |       <MemoryRouter>
- 87 |         <EventsTable
- 88 |           events={mockEvents}
- 89 |           selectedEventId={null}
- 90 |           onEventSelect={onEventSelect}
- 91 |           onDeleteSuccess={onDeleteSuccess}
- 92 |         />
- 93 |       </MemoryRouter>,
- 94 |     );
- 95 |     fireEvent.click(screen.getAllByText("Голограма")[0]);
- 96 |     expect(onEventSelect).toHaveBeenCalledWith("ev-1");
- 97 |   });
- 98 | 
- 99 |   it("показує підтвердження перед видаленням", () => {
-100 |     render(
-101 |       <MemoryRouter>
-102 |         <EventsTable
-103 |           events={mockEvents}
-104 |           selectedEventId={null}
-105 |           onEventSelect={onEventSelect}
-106 |           onDeleteSuccess={onDeleteSuccess}
-107 |         />
-108 |       </MemoryRouter>,
-109 |     );
-110 |     const deleteButtons = screen.getAllByText("🗑");
-111 |     fireEvent.click(deleteButtons[0]);
-112 |     expect(window.confirm).toHaveBeenCalledWith("Видалити цю подію?");
-113 |   });
-114 | 
-115 |   it("не видаляє якщо confirm повернув false", async () => {
-116 |     window.confirm = vi.fn(() => false);
-117 |     const axios = await import("axios");
-118 |     render(
-119 |       <MemoryRouter>
-120 |         <EventsTable
-121 |           events={mockEvents}
-122 |           selectedEventId={null}
-123 |           onEventSelect={onEventSelect}
-124 |           onDeleteSuccess={onDeleteSuccess}
-125 |         />
-126 |       </MemoryRouter>,
-127 |     );
-128 |     const deleteButtons = screen.getAllByText("🗑");
-129 |     fireEvent.click(deleteButtons[0]);
-130 |     expect(axios.default.delete).not.toHaveBeenCalled();
-131 |   });
-132 | 
-133 |   it("виділяє вибрану подію", () => {
-134 |     const { container } = render(
-135 |       <MemoryRouter>
-136 |         <EventsTable
-137 |           events={mockEvents}
-138 |           selectedEventId="ev-1"
-139 |           onEventSelect={onEventSelect}
-140 |           onDeleteSuccess={onDeleteSuccess}
-141 |         />
-142 |       </MemoryRouter>,
-143 |     );
-144 |     const selected = container.querySelector(".bg-blue-50\\/50");
-145 |     expect(selected).toBeInTheDocument();
-146 |   });
-147 | });
-148 | 
-```
-
-### File: apps/frontend/src/tests/component/Pipeline.test.tsx
-```tsx
-  0 | import { describe, it, expect, vi } from "vitest";
-  1 | import { render, screen, fireEvent } from "@testing-library/react";
-  2 | import Pipeline from "../../components/school-profile/Pipeline";
-  3 | 
-  4 | const STAGES = [
-  5 |   { id: 1, key: "BASE", name: "Новий заклад" },
-  6 |   { id: 2, key: "FIRST_CONTACT", name: "Знайомство" },
-  7 |   { id: 3, key: "DATE_CONFIRMED", name: "Підтвердження дати" },
-  8 | ];
-  9 | 
- 10 | describe("Pipeline", () => {
- 11 |   it("відображає всі етапи", () => {
- 12 |     render(
- 13 |       <Pipeline
- 14 |         currentStageIndex={0}
- 15 |         currentEvent={{ id: "e1", status: "BASE" }}
- 16 |         onPipelineClick={vi.fn()}
- 17 |         stages={STAGES}
- 18 |       />,
- 19 |     );
- 20 |     expect(screen.getByText("Новий заклад")).toBeInTheDocument();
- 21 |     expect(screen.getByText("Знайомство")).toBeInTheDocument();
- 22 |   });
- 23 | 
- 24 |   it("викликає onPipelineClick для наступного етапу", () => {
- 25 |     const onClick = vi.fn();
- 26 |     render(
- 27 |       <Pipeline
- 28 |         currentStageIndex={0}
- 29 |         currentEvent={{ id: "e1", status: "BASE" }}
- 30 |         onPipelineClick={onClick}
- 31 |         stages={STAGES}
- 32 |       />,
- 33 |     );
- 34 |     fireEvent.click(screen.getByText("2"));
- 35 |     expect(onClick).toHaveBeenCalledWith(2);
- 36 |   });
- 37 | 
- 38 |   it("не викликає onClick для недоступного етапу", () => {
- 39 |     const onClick = vi.fn();
- 40 |     render(
- 41 |       <Pipeline
- 42 |         currentStageIndex={0}
- 43 |         currentEvent={{ id: "e1", status: "BASE" }}
- 44 |         onPipelineClick={onClick}
- 45 |         stages={STAGES}
- 46 |       />,
- 47 |     );
- 48 |     fireEvent.click(screen.getByText("3"));
- 49 |     expect(onClick).not.toHaveBeenCalled();
- 50 |   });
- 51 | });
- 52 | 
-```
-
-### File: apps/frontend/src/tests/component/SchoolCard.test.tsx
-```tsx
-  0 | import { describe, it, expect, vi } from "vitest";
-  1 | import { render, screen, fireEvent } from "@testing-library/react";
-  2 | import { MemoryRouter } from "react-router-dom";
-  3 | import { SchoolCard } from "../../components/schools/SchoolMobileList";
-  4 | 
-  5 | const STAGES = [
-  6 |   { key: "BASE", name: "Новий заклад" },
-  7 |   { key: "FIRST_CONTACT", name: "Знайомство" },
-  8 | ];
-  9 | 
- 10 | const mockSchool = {
- 11 |   id: "school-1",
- 12 |   name: "Школа №1",
- 13 |   director: "Іван Петренко",
- 14 |   phone: "0671234567",
- 15 |   events: [{ status: "BASE" }],
- 16 | };
- 17 | 
- 18 | describe("SchoolCard", () => {
- 19 |   it("відображає назву школи", () => {
- 20 |     render(
- 21 |       <MemoryRouter>
- 22 |         <SchoolCard
- 23 |           school={mockSchool}
- 24 |           onDelete={vi.fn()}
- 25 |           stages={STAGES}
- 26 |           index={0}
- 27 |         />
- 28 |       </MemoryRouter>,
- 29 |     );
- 30 |     expect(screen.getByText("Школа №1")).toBeInTheDocument();
- 31 |   });
- 32 | 
- 33 |   it("відображає директора", () => {
- 34 |     render(
- 35 |       <MemoryRouter>
- 36 |         <SchoolCard
- 37 |           school={mockSchool}
- 38 |           onDelete={vi.fn()}
- 39 |           stages={STAGES}
- 40 |           index={0}
- 41 |         />
- 42 |       </MemoryRouter>,
- 43 |     );
- 44 |     expect(screen.getByText(/Іван Петренко/)).toBeInTheDocument();
- 45 |   });
- 46 | 
- 47 |   it("відображає поточний етап", () => {
- 48 |     render(
- 49 |       <MemoryRouter>
- 50 |         <SchoolCard
- 51 |           school={mockSchool}
- 52 |           onDelete={vi.fn()}
- 53 |           stages={STAGES}
- 54 |           index={0}
- 55 |         />
- 56 |       </MemoryRouter>,
- 57 |     );
- 58 |     expect(screen.getByText("Новий заклад")).toBeInTheDocument();
- 59 |   });
- 60 | 
- 61 |   it("викликає onDelete при натисканні", () => {
- 62 |     const onDelete = vi.fn();
- 63 |     render(
- 64 |       <MemoryRouter>
- 65 |         <SchoolCard
- 66 |           school={mockSchool}
- 67 |           onDelete={onDelete}
- 68 |           stages={STAGES}
- 69 |           index={0}
- 70 |         />
- 71 |       </MemoryRouter>,
- 72 |     );
- 73 |     fireEvent.click(screen.getByText("🗑"));
- 74 |     expect(onDelete).toHaveBeenCalledWith(
- 75 |       expect.any(Object),
- 76 |       "school-1",
- 77 |       "Школа №1",
- 78 |     );
- 79 |   });
- 80 | 
- 81 |   it("не показує етап якщо подій немає", () => {
- 82 |     render(
- 83 |       <MemoryRouter>
- 84 |         <SchoolCard
- 85 |           school={{ ...mockSchool, events: [] }}
- 86 |           onDelete={vi.fn()}
- 87 |           stages={STAGES}
- 88 |           index={0}
- 89 |         />
- 90 |       </MemoryRouter>,
- 91 |     );
- 92 |     expect(screen.queryByText("Новий заклад")).not.toBeInTheDocument();
- 93 |   });
- 94 | 
- 95 |   it("показує телефон як посилання tel:, а видимий текст — ім'я директора (якщо воно вказане)", () => {
- 96 |     render(
- 97 |       <MemoryRouter>
- 98 |         <SchoolCard
- 99 |           school={mockSchool}
-100 |           onDelete={vi.fn()}
-101 |           stages={STAGES}
-102 |           index={0}
-103 |         />
-104 |       </MemoryRouter>,
-105 |     );
-106 |     const link = screen.getByText(/Іван Петренко/).closest("a");
-107 |     expect(link).toHaveAttribute("href", "tel:0671234567");
-108 |   });
-109 | 
-110 |   it("показує сам номер телефону як текст, якщо директор не вказаний", () => {
-111 |     render(
-112 |       <MemoryRouter>
-113 |         <SchoolCard
-114 |           school={{ ...mockSchool, director: "" }}
-115 |           onDelete={vi.fn()}
-116 |           stages={STAGES}
-117 |           index={0}
-118 |         />
-119 |       </MemoryRouter>,
-120 |     );
-121 |     expect(screen.getByText(/0671234567/)).toBeInTheDocument();
-122 |   });
-123 | });
-124 | 
-```
-
-### File: apps/frontend/src/tests/mocks/handlers.ts
-```ts
-  0 | import { http, HttpResponse } from "msw";
-  1 | 
-  2 | const BASE = "";
-  3 | 
-  4 | export const handlers = [
-  5 |   http.get(`${BASE}/cities`, () =>
-  6 |     HttpResponse.json([
-  7 |       { id: "city-1", name: "Львів", plannedEvents: 3, completedEvents: 10, schoolsCount: 50 },
-  8 |       { id: "city-2", name: "Київ", plannedEvents: 1, completedEvents: 5, schoolsCount: 30 },
-  9 |     ])
- 10 |   ),
- 11 | 
- 12 |   http.get(`${BASE}/schools`, () =>
- 13 |     HttpResponse.json([
- 14 |       { id: "school-1", name: "Школа №1", type: "Школа", cityId: "city-1", childrenCount: 300, events: [] },
- 15 |       { id: "school-2", name: "Школа №5", type: "Школа", cityId: "city-1", childrenCount: 100, events: [] },
- 16 |     ])
- 17 |   ),
- 18 | 
- 19 |   http.get(`${BASE}/schools/:id`, ({ params }) =>
- 20 |     HttpResponse.json({
- 21 |       id: params.id,
- 22 |       name: "Школа №1",
- 23 |       type: "Школа",
- 24 |       cityId: "city-1",
- 25 |       city: { id: "city-1", name: "Львів" },
- 26 |       director: "Іван Петренко",
- 27 |       phone: "0671234567",
- 28 |       address: "вул. Тестова 1",
- 29 |       childrenCount: 300,
- 30 |     })
- 31 |   ),
- 32 | 
- 33 |   http.get(`${BASE}/events/school/:schoolId`, () =>
- 34 |     HttpResponse.json([
- 35 |       {
- 36 |         id: "event-1",
- 37 |         project: "Голограма для школи",
- 38 |         date: "2026-07-01T10:00:00Z",
- 39 |         time: "10:00",
- 40 |         status: "BASE",
- 41 |         price: 5000,
- 42 |         childrenPlanned: 100,
- 43 |         address: "вул. Тестова 1",
- 44 |         contactPerson: "Іван",
- 45 |         contactPhone: "0671234567",
- 46 |       },
- 47 |     ])
- 48 |   ),
- 49 | 
- 50 |   http.get(`${BASE}/users`, () =>
- 51 |     HttpResponse.json([
- 52 |       { id: "user-1", name: "Адміністратор", email: "admin@crm.com", role: "SUPERADMIN" },
- 53 |     ])
- 54 |   ),
- 55 | 
- 56 |   http.get(`${BASE}/dashboard/summary`, () =>
- 57 |     HttpResponse.json({
- 58 |       todayEvents: [],
- 59 |       upcomingEvents: [],
- 60 |       funnel: { BASE: 10, FIRST_CONTACT: 5 },
- 61 |       totalSchools: 50,
- 62 |       monthlyKpi: { revenue: 50000, profit: 20000, children: 500, count: 10 },
- 63 |       staleSchools: [],
- 64 |       activityFeed: [],
- 65 |       citiesStats: [],
- 66 |     })
- 67 |   ),
- 68 | 
- 69 |   http.post(`${BASE}/auth/login`, () =>
- 70 |     HttpResponse.json({ access_token: "test-token" })
- 71 |   ),
- 72 | ];
-```
-
-### File: apps/frontend/src/tests/mocks/server.ts
-```ts
-  0 | import { setupServer } from "msw/node";
-  1 | import { handlers } from "./handlers";
-  2 | 
-  3 | export const server = setupServer(...handlers);
-```
-
-### File: apps/frontend/src/tests/setup.ts
-```ts
-  0 | import "@testing-library/jest-dom";
-  1 | import { afterEach, beforeAll, afterAll } from "vitest";
-  2 | import { cleanup } from "@testing-library/react";
-  3 | import { server } from "./mocks/server";
-  4 | 
-  5 | beforeAll(() => server.listen({ onUnhandledRequest: "warn" }));
-  6 | afterEach(() => {
-  7 |   cleanup();
-  8 |   server.resetHandlers();
-  9 | });
- 10 | afterAll(() => server.close());
-```
-
-### File: apps/frontend/src/tests/unit/formatCurrency.test.ts
-```ts
-  0 | import { describe, it, expect } from "vitest";
-  1 | import { formatCurrency } from "../../utils/formatCurrency";
-  2 | 
-  3 | describe("formatCurrency", () => {
-  4 |   it("форматує ціле число з розділювачем тисяч (uk-UA)", () => {
-  5 |     expect(formatCurrency(10000)).toBe("10\u00A0000");
-  6 |   });
-  7 | 
-  8 |   it("округлює дробові суми вгору/вниз коректно", () => {
-  9 |     expect(formatCurrency(9999.6)).toBe("10\u00A0000");
- 10 |     expect(formatCurrency(9999.4)).toBe("9\u00A0999");
- 11 |   });
- 12 | 
- 13 |   it("повертає 0 для undefined", () => {
- 14 |     expect(formatCurrency(undefined)).toBe("0");
- 15 |   });
- 16 | 
- 17 |   it("повертає 0 для null", () => {
- 18 |     expect(formatCurrency(null)).toBe("0");
- 19 |   });
- 20 | 
- 21 |   it("повертає 0 для NaN", () => {
- 22 |     expect(formatCurrency(NaN)).toBe("0");
- 23 |   });
- 24 | 
- 25 |   it("коректно форматує 0", () => {
- 26 |     expect(formatCurrency(0)).toBe("0");
- 27 |   });
- 28 | 
- 29 |   it("не ламається на дуже великих сумах", () => {
- 30 |     expect(formatCurrency(12345678)).toBe("12\u00A0345\u00A0678");
- 31 |   });
- 32 | 
- 33 |   it("від'ємні суми форматуються з мінусом", () => {
- 34 |     expect(formatCurrency(-500)).toBe("-500");
- 35 |   });
- 36 | });
- 37 | 
-```
-
-### File: apps/frontend/src/tests/unit/hooks/useSchools.test.ts
-```ts
-  0 | import { describe, it, expect, vi, beforeEach } from "vitest";
-  1 | import { renderHook, waitFor } from "@testing-library/react";
-  2 | import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-  3 | import { createElement } from "react";
-  4 | 
-  5 | vi.mock("../../../config/api", () => ({
-  6 |   api: {
-  7 |     get: vi.fn().mockResolvedValue({
-  8 |       data: [
-  9 |         {
- 10 |           id: "school-1",
- 11 |           name: "Школа №1",
- 12 |           type: "Школа",
- 13 |           cityId: "city-1",
- 14 |           childrenCount: 300,
- 15 |           events: [],
- 16 |         },
- 17 |         {
- 18 |           id: "school-2",
- 19 |           name: "Школа №5",
- 20 |           type: "Школа",
- 21 |           cityId: "city-1",
- 22 |           childrenCount: 100,
- 23 |           events: [],
- 24 |         },
- 25 |       ],
- 26 |     }),
- 27 |   },
- 28 | }));
- 29 | 
- 30 | import { useSchoolsList } from "../../../hooks/useSchools";
- 31 | 
- 32 | const makeWrapper = () => {
- 33 |   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
- 34 |   return ({ children }: { children: React.ReactNode }) =>
- 35 |     createElement(QueryClientProvider, { client: qc, children });
- 36 | };
- 37 | 
- 38 | describe("useSchoolsList", () => {
- 39 |   beforeEach(() => {
- 40 |     vi.stubGlobal("localStorage", { getItem: vi.fn() });
- 41 |   });
- 42 | 
- 43 |   it("повертає список шкіл", async () => {
- 44 |     const { result } = renderHook(() => useSchoolsList(), {
- 45 |       wrapper: makeWrapper(),
- 46 |     });
- 47 |     await waitFor(() => expect(result.current.isSuccess).toBe(true));
- 48 |     expect(result.current.data).toHaveLength(2);
- 49 |     expect(result.current.data?.[0].name).toBe("Школа №1");
- 50 |   });
- 51 | 
- 52 |   it("isLoading на початку", () => {
- 53 |     const { result } = renderHook(() => useSchoolsList(), {
- 54 |       wrapper: makeWrapper(),
- 55 |     });
- 56 |     expect(result.current.isLoading).toBe(true);
- 57 |   });
- 58 | });
- 59 | 
-```
-
-### File: apps/frontend/src/tests/unit/hooks/useSchoolsFilter.test.ts
-```ts
-  0 | import { describe, it, expect, vi } from "vitest";
-  1 | import { renderHook } from "@testing-library/react";
-  2 | 
-  3 | vi.mock("../../../hooks/useSchools", () => ({
-  4 |   useSchoolsList: vi.fn(() => ({
-  5 |     data: [
-  6 |       {
-  7 |         id: "s-1",
-  8 |         name: "Школа №1",
-  9 |         type: "Школа",
- 10 |         cityId: "city-1",
- 11 |         childrenCount: 300,
- 12 |         events: [],
- 13 |       },
- 14 |       {
- 15 |         id: "s-2",
- 16 |         name: "Школа №5",
- 17 |         type: "Школа",
- 18 |         cityId: "city-1",
- 19 |         childrenCount: 100,
- 20 |         events: [{ status: "FIRST_CONTACT" }],
- 21 |       },
- 22 |       {
- 23 |         id: "s-3",
- 24 |         name: "Садочок №1",
- 25 |         type: "Садочок",
- 26 |         cityId: "city-1",
- 27 |         childrenCount: 60,
- 28 |         events: [],
- 29 |       },
- 30 |       {
- 31 |         id: "s-4",
- 32 |         name: "Школа №10",
- 33 |         type: "Школа",
- 34 |         cityId: "city-2",
- 35 |         childrenCount: 800,
- 36 |         events: [{ status: "IN_PROGRESS" }],
- 37 |       },
- 38 |     ],
- 39 |     isLoading: false,
- 40 |     isSuccess: true,
- 41 |   })),
- 42 | }));
- 43 | 
- 44 | vi.mock("../../../components/schools/schoolUtils", () => ({
- 45 |   classifySchool: (s: any) => {
- 46 |     if (!s.events?.length) return "new";
- 47 |     const status = s.events[0].status;
- 48 |     if (["FIRST_CONTACT", "DATE_CONFIRMED"].includes(status)) return "planned";
- 49 |     if (["IN_PROGRESS", "PREPARATION"].includes(status)) return "inProgress";
- 50 |     return "new";
- 51 |   },
- 52 |   classifySize: (s: any, type: string) => {
- 53 |     const count = s.childrenCount ?? 0;
- 54 |     if (type === "Садочок") {
- 55 |       if (count < 50) return "small";
- 56 |       if (count < 100) return "medium";
- 57 |       return "large";
- 58 |     }
- 59 |     if (count < 500) return "small";
- 60 |     if (count < 900) return "medium";
- 61 |     return "large";
- 62 |   },
- 63 | }));
- 64 | 
- 65 | import { useSchoolsList } from "../../../hooks/useSchools";
- 66 | import {
- 67 |   classifySchool,
- 68 |   classifySize,
- 69 | } from "../../../components/schools/schoolUtils";
- 70 | 
- 71 | function filterSchools(
- 72 |   schools: any[],
- 73 |   {
- 74 |     cityId,
- 75 |     type,
- 76 |     activeFilter,
- 77 |     sizeFilter,
- 78 |     search,
- 79 |   }: {
- 80 |     cityId?: string;
- 81 |     type?: string;
- 82 |     activeFilter?: string | null;
- 83 |     sizeFilter?: string | null;
- 84 |     search?: string;
- 85 |   },
- 86 | ) {
- 87 |   return schools.filter((s) => {
- 88 |     if (cityId && s.cityId !== cityId) return false;
- 89 |     if (type && s.type !== type) return false;
- 90 |     if (activeFilter && classifySchool(s) !== activeFilter) return false;
- 91 |     if (sizeFilter && classifySize(s, s.type) !== sizeFilter) return false;
- 92 |     if (search) {
- 93 |       const q = search.toLowerCase();
- 94 |       return s.name?.toLowerCase().includes(q);
- 95 |     }
- 96 |     return true;
- 97 |   });
- 98 | }
- 99 | 
-100 | describe("Фільтрація шкіл", () => {
-101 |   it("без фільтрів повертає всі школи", () => {
-102 |     const { result } = renderHook(() => useSchoolsList());
-103 |     const filtered = filterSchools(result.current.data!, {});
-104 |     expect(filtered).toHaveLength(4);
-105 |   });
-106 | 
-107 |   it("фільтр по cityId", () => {
-108 |     const { result } = renderHook(() => useSchoolsList());
-109 |     const filtered = filterSchools(result.current.data!, { cityId: "city-1" });
-110 |     expect(filtered).toHaveLength(3);
-111 |     expect(filtered.every((s) => s.cityId === "city-1")).toBe(true);
-112 |   });
-113 | 
-114 |   it("фільтр по type=Школа", () => {
-115 |     const { result } = renderHook(() => useSchoolsList());
-116 |     const filtered = filterSchools(result.current.data!, { type: "Школа" });
-117 |     expect(filtered).toHaveLength(3);
-118 |     expect(filtered.every((s) => s.type === "Школа")).toBe(true);
-119 |   });
-120 | 
-121 |   it("фільтр activeFilter=new — тільки нові", () => {
-122 |     const { result } = renderHook(() => useSchoolsList());
-123 |     const filtered = filterSchools(result.current.data!, {
-124 |       activeFilter: "new",
-125 |     });
-126 |     expect(filtered).toHaveLength(2);
-127 |   });
-128 | 
-129 |   it("фільтр activeFilter=planned", () => {
-130 |     const { result } = renderHook(() => useSchoolsList());
-131 |     const filtered = filterSchools(result.current.data!, {
-132 |       activeFilter: "planned",
-133 |     });
-134 |     expect(filtered).toHaveLength(1);
-135 |     expect(filtered[0].id).toBe("s-2");
-136 |   });
-137 | 
-138 |   it("фільтр activeFilter=inProgress", () => {
-139 |     const { result } = renderHook(() => useSchoolsList());
-140 |     const filtered = filterSchools(result.current.data!, {
-141 |       activeFilter: "inProgress",
-142 |     });
-143 |     expect(filtered).toHaveLength(1);
-144 |     expect(filtered[0].id).toBe("s-4");
-145 |   });
-146 | 
-147 |   it("фільтр sizeFilter=small для шкіл (< 500)", () => {
-148 |     const { result } = renderHook(() => useSchoolsList());
-149 |     const filtered = filterSchools(result.current.data!, {
-150 |       type: "Школа",
-151 |       sizeFilter: "small",
-152 |     });
-153 |     expect(filtered.every((s) => s.childrenCount < 500)).toBe(true);
-154 |   });
-155 | 
-156 |   it("фільтр sizeFilter=medium для шкіл (500-900)", () => {
-157 |     const { result } = renderHook(() => useSchoolsList());
-158 |     const filtered = filterSchools(result.current.data!, {
-159 |       type: "Школа",
-160 |       sizeFilter: "medium",
-161 |     });
-162 |     expect(filtered).toHaveLength(1);
-163 |     expect(filtered[0].id).toBe("s-4");
-164 |   });
-165 | 
-166 |   it("пошук по назві (substring-пошук: 'Школа №1' збігається і з 'Школа №10')", () => {
-167 |     const { result } = renderHook(() => useSchoolsList());
-168 |     const filtered = filterSchools(result.current.data!, {
-169 |       search: "Школа №1",
-170 |     });
-171 |     expect(filtered).toHaveLength(2);
-172 |     expect(filtered.map((s) => s.id).sort()).toEqual(["s-1", "s-4"]);
-173 |   });
-174 | 
-175 |   it("пошук нечутливий до регістру", () => {
-176 |     const { result } = renderHook(() => useSchoolsList());
-177 |     const filtered = filterSchools(result.current.data!, {
-178 |       search: "школа №5",
-179 |     });
-180 |     expect(filtered).toHaveLength(1);
-181 |   });
-182 | 
-183 |   it("комбінований фільтр: city + type + activeFilter", () => {
-184 |     const { result } = renderHook(() => useSchoolsList());
-185 |     const filtered = filterSchools(result.current.data!, {
-186 |       cityId: "city-1",
-187 |       type: "Школа",
-188 |       activeFilter: "planned",
-189 |     });
-190 |     expect(filtered).toHaveLength(1);
-191 |     expect(filtered[0].id).toBe("s-2");
-192 |   });
-193 | 
-194 |   it("пошук без результатів повертає порожній масив", () => {
-195 |     const { result } = renderHook(() => useSchoolsList());
-196 |     const filtered = filterSchools(result.current.data!, {
-197 |       search: "xyznonsense",
-198 |     });
-199 |     expect(filtered).toHaveLength(0);
-200 |   });
-201 | });
-202 | 
-```
-
-### File: apps/frontend/src/tests/unit/schoolUtils.test.ts
-```ts
-  0 | import { describe, it, expect } from "vitest";
-  1 | import {
-  2 |   classifySchool,
-  3 |   classifySize,
-  4 | } from "../../components/schools/schoolUtils";
-  5 | 
-  6 | describe("classifySchool", () => {
-  7 |   it("повертає 'new' якщо немає подій", () => {
-  8 |     expect(classifySchool({ events: [] })).toBe("new");
-  9 |     expect(classifySchool({})).toBe("new");
- 10 |   });
- 11 | 
- 12 |   it("повертає 'planned' якщо остання подія FIRST_CONTACT або DATE_CONFIRMED", () => {
- 13 |     expect(classifySchool({ events: [{ status: "FIRST_CONTACT" }] })).toBe(
- 14 |       "planned",
- 15 |     );
- 16 |     expect(classifySchool({ events: [{ status: "DATE_CONFIRMED" }] })).toBe(
- 17 |       "planned",
- 18 |     );
- 19 |   });
- 20 | 
- 21 |   it("повертає 'inProgress' якщо подія в процесі", () => {
- 22 |     expect(classifySchool({ events: [{ status: "IN_PROGRESS" }] })).toBe(
- 23 |       "inProgress",
- 24 |     );
- 25 |     expect(classifySchool({ events: [{ status: "PREPARATION" }] })).toBe(
- 26 |       "inProgress",
- 27 |     );
- 28 |   });
- 29 | 
- 30 |   it("повертає 'done' якщо подія завершена", () => {
- 31 |     expect(classifySchool({ events: [{ status: "RE_SALE" }] })).toBe("done");
- 32 |   });
- 33 | });
- 34 | 
- 35 | describe("classifySize для школи", () => {
- 36 |   it("малі < 500", () => {
- 37 |     expect(classifySize({ childrenCount: 300 }, "Школа")).toBe("small");
- 38 |   });
- 39 | 
- 40 |   it("середні 500-900", () => {
- 41 |     expect(classifySize({ childrenCount: 700 }, "Школа")).toBe("medium");
- 42 |   });
- 43 | 
- 44 |   it("великі 900+", () => {
- 45 |     expect(classifySize({ childrenCount: 1000 }, "Школа")).toBe("large");
- 46 |   });
- 47 | });
- 48 | 
- 49 | describe("classifySize для садочку", () => {
- 50 |   it("малі < 50", () => {
- 51 |     expect(classifySize({ childrenCount: 30 }, "Садочок")).toBe("small");
- 52 |   });
- 53 | 
- 54 |   it("середні 50-100", () => {
- 55 |     expect(classifySize({ childrenCount: 75 }, "Садочок")).toBe("medium");
- 56 |   });
- 57 | 
- 58 |   it("великі 100+", () => {
- 59 |     expect(classifySize({ childrenCount: 120 }, "Садочок")).toBe("large");
- 60 |   });
- 61 | });
- 62 | 
-```
-
 ### File: apps/frontend/src/types/index.ts
 ```ts
   0 | export interface City {
@@ -20852,6 +20425,22 @@
  11 | 
 ```
 
+### File: apps/frontend/vercel.json
+```json
+  0 | 
+  1 | 
+  2 | {
+  3 |   "rewrites": [
+  4 |     {
+  5 |       "source": "/(.*)",
+  6 |       "destination": "/index.html"
+  7 |     }
+  8 |   ]
+  9 | }
+ 10 | 
+ 11 | 
+```
+
 ### File: apps/frontend/vite.config.ts
 ```ts
   0 | import { defineConfig } from "vite";
@@ -20883,112 +20472,71 @@
  26 | 
 ```
 
-### File: bundle.js
-```js
-  0 | const fs = require('fs');
-  1 | const path = require('path');
-  2 | 
-  3 | const outputFile = 'project_bundle.md';
-  4 | const ROOT = process.cwd();
-  5 | 
-  6 | const ignoreDirs = ['node_modules', '.git', 'dist', 'build', '.next', '.prisma', 'test', 'coverage', '.turbo', '.vercel'];
-  7 | const ignoreFiles = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', outputFile];
-  8 | const allowedExts = ['.ts', '.tsx', '.js', '.css', '.prisma'];
-  9 | const allowedNames = ['tsconfig.json', '.env.example'];
- 10 | 
- 11 | // Функція для побудови дерева папок
- 12 | function getTree(dir, prefix = '') {
- 13 |   let tree = '';
- 14 |   const files = fs.readdirSync(dir).sort();
- 15 |   files.forEach((file, index) => {
- 16 |     const isLast = index === files.length - 1;
- 17 |     const fullPath = path.join(dir, file);
- 18 |     const stat = fs.statSync(fullPath);
- 19 | 
- 20 |     if (ignoreDirs.includes(file) || ignoreFiles.includes(file)) return;
- 21 | 
- 22 |     tree += `${prefix}${isLast ? '└── ' : '├── '}${file}\n`;
- 23 |     if (stat.isDirectory()) {
- 24 |       tree += getTree(fullPath, prefix + (isLast ? '    ' : '│   '));
- 25 |     }
- 26 |   });
- 27 |   return tree;
- 28 | }
- 29 | 
- 30 | // Функція для додавання номерів рядків (починаючи з 0)
- 31 | function addLineNumbers(content) {
- 32 |   return content
- 33 |     .split('\n')
- 34 |     .map((line, i) => `${i.toString().padStart(3, ' ')} | ${line}`)
- 35 |     .join('\n');
- 36 | }
- 37 | 
- 38 | function bundle(dir) {
- 39 |   let content = '';
- 40 |   const files = fs.readdirSync(dir).sort();
- 41 | 
- 42 |   for (const file of files) {
- 43 |     const fullPath = path.join(dir, file);
- 44 |     const relPath = path.relative(ROOT, fullPath).replace(/\\/g, '/');
- 45 |     const stat = fs.statSync(fullPath);
- 46 | 
- 47 |     if (stat.isDirectory()) {
- 48 |       if (!ignoreDirs.includes(file)) content += bundle(fullPath);
- 49 |     } else {
- 50 |       const ext = path.extname(file);
- 51 |       const allowed = allowedExts.includes(ext) || allowedNames.includes(file);
- 52 |       if (allowed && !ignoreFiles.includes(file)) {
- 53 |         const raw = fs.readFileSync(fullPath, 'utf8').replace(/\r\n/g, '\n');
- 54 |         const lang = ext.slice(1);
- 55 |         content += `\n### File: ${relPath}\n\`\`\`${lang}\n${addLineNumbers(raw)}\n\`\`\`\n`;
- 56 |       }
- 57 |     }
- 58 |   }
- 59 |   return content;
- 60 | }
- 61 | 
- 62 | const header = `# Project Source Code\n\n## Structure\n\`\`\`\n${getTree('.')}\`\`\`\n`;
- 63 | fs.writeFileSync(outputFile, header + bundle('.'));
- 64 | console.log(`✅ Зібрано у Markdown з номерами рядків: ${outputFile}`);
-```
-
 ### File: collect-code.js
 ```js
   0 | const fs = require('fs');
   1 | const path = require('path');
   2 | 
-  3 | const outputFile = 'combined_failing_tests.md';
-  4 | fs.writeFileSync(outputFile, '# Файли для виправлення тестів\n\n');
+  3 | // Назва вихідного файлу
+  4 | const outputFile = 'combined_methods_and_dto.md';
   5 | 
-  6 | const filesToCollect = [
-  7 |   'apps/backend/src/finance/finance.service.ts',
-  8 |   'apps/backend/src/finance/finance.service.spec.ts',
-  9 |   'apps/backend/src/cities/cities.controller.spec.ts',
- 10 |   'apps/backend/src/events/dto/submit-report.dto.spec.ts',
- 11 |   'apps/backend/jest.config.ts', // або jest.config.js
- 12 |   'apps/backend/package.json',
- 13 |   'apps/frontend/src/components/school-profile/EventsTable.tsx',
- 14 |   'apps/frontend/src/tests/component/EventsTable.test.tsx',
- 15 |   'apps/frontend/src/hooks/useSchools.ts',
- 16 |   'apps/frontend/src/tests/unit/hooks/useSchools.test.ts'
+  6 | // Створюємо або очищуємо файл із заголовком
+  7 | fs.writeFileSync(outputFile, '# Файли DTO та сервісів для фінальних правок\n\n');
+  8 | 
+  9 | // Список файлів
+ 10 | const filesToCollect = [
+ 11 |   'apps/backend/src/cities/dto/create-crew.dto.ts',
+ 12 |   'apps/backend/src/cities/cities.service.ts',
+ 13 |   'apps/backend/src/projects/dto/create-project.dto.ts',
+ 14 |   'apps/backend/src/projects/projects.service.ts',
+ 15 |   'apps/backend/src/users/users.service.ts',
+ 16 |   'apps/backend/src/dashboard/dashboard.service.ts'
  17 | ];
  18 | 
- 19 | let collected = 0;
+ 19 | console.log('🚀 Починаю збір DTO та сервісів...\n');
  20 | 
- 21 | filesToCollect.forEach(filePath => {
- 22 |   if (!fs.existsSync(filePath)) {
- 23 |     console.warn(`[!] Не знайдено: ${filePath}`);
- 24 |     return;
- 25 |   }
- 26 |   
- 27 |   const content = fs.readFileSync(filePath, 'utf-8');
- 28 |   const ext = path.extname(filePath).replace('.', '');
- 29 |   const lang = ['ts', 'tsx'].includes(ext) ? 'typescript' : ext;
- 30 |   
- 31 |   fs.appendFileSync(outputFile, `### \`${filePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`);
- 32 |   console.log(`[+] Додано: ${filePath}`);
- 33 |   collected++;
- 34 | });
- 35 | 
- 36 | console.log(`\n✅ Готово! Зібрано ${collected} файлів у ${outputFile}`);
+ 21 | let collectedCount = 0;
+ 22 | 
+ 23 | filesToCollect.forEach(filePath => {
+ 24 |   if (!fs.existsSync(filePath)) {
+ 25 |     console.warn(`[!] Файл не знайдено: ${filePath}`);
+ 26 |     return;
+ 27 |   }
+ 28 | 
+ 29 |   const content = fs.readFileSync(filePath, 'utf-8');
+ 30 |   const ext = path.extname(filePath).replace('.', '');
+ 31 |   const lang = ['ts', 'tsx'].includes(ext) ? 'typescript' : ext;
+ 32 | 
+ 33 |   const mdBlock = `### \`${filePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`;
+ 34 |   fs.appendFileSync(outputFile, mdBlock);
+ 35 |   console.log(`[+] Додано: ${filePath}`);
+ 36 |   collectedCount++;
+ 37 | });
+ 38 | 
+ 39 | console.log(`\n✅ Готово! Зібрано ${collectedCount} файлів у ${outputFile}`);
+```
+
+### File: package.json
+```json
+  0 | {
+  1 |   "name": "CRM",
+  2 |   "private": true,
+  3 |   "scripts": {
+  4 |     "dev": "concurrently \"pnpm --filter backend start:dev\" \"pnpm --filter frontend dev\"",
+  5 |     "test": "concurrently --kill-others-on-fail \"pnpm --filter backend test\" \"pnpm --filter frontend test:run\"",
+  6 |     "test:unit": "concurrently \"pnpm --filter backend test\" \"pnpm --filter frontend test:run\"",
+  7 |     "test:e2e:backend": "pnpm --filter backend test:e2e",
+  8 |     "test:e2e:frontend": "pnpm --filter frontend test:e2e",
+  9 |     "test:e2e": "concurrently --kill-others-on-fail \"pnpm test:e2e:backend\" \"pnpm test:e2e:frontend\"",
+ 10 |     "test:all": "pnpm test:unit && pnpm test:e2e",
+ 11 |     "test:coverage": "concurrently \"pnpm --filter backend test:cov\" \"pnpm --filter frontend test:coverage\""
+ 12 |   },
+ 13 |   "devDependencies": {
+ 14 |     "concurrently": "^8.2.2"
+ 15 |   },
+ 16 |   "prisma": {
+ 17 |     "schema": "apps/backend/prisma/schema.prisma"
+ 18 |   }
+ 19 | }
+ 20 | 
 ```

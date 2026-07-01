@@ -1,11 +1,10 @@
 import { useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
-import { API_BASE_URL } from "../config/api";
+import { api } from "../config/api";
 
 interface LoginProps {
-  onLogin?: (token: string) => void;
+  onLogin?: () => void;
 }
 
 export default function Login({ onLogin }: LoginProps) {
@@ -19,15 +18,11 @@ export default function Login({ onLogin }: LoginProps) {
     setError("");
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
-        email,
-        password,
-      });
+      const response = await api.post("/auth/login", { email, password });
 
-      localStorage.setItem("token", response.data.access_token);
       localStorage.setItem("user", JSON.stringify(response.data.user));
       if (onLogin) {
-        onLogin(response.data.access_token);
+        onLogin();
       } else {
         navigate("/cities");
       }

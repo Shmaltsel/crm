@@ -36,17 +36,21 @@ test.describe("Авторизація", () => {
     await expect(page).toHaveURL(/login/);
   });
 
-  test("після логіну токен зберігається в localStorage", async ({ page }) => {
+  test("після логіну встановлюється httpOnly cookie access_token", async ({
+    page,
+  }) => {
     await page.goto("/login");
     await page.fill('input[type="email"]', "admin@crm.com");
     await page.fill('input[type="password"]', "admin123");
     await page.click('button[type="submit"]');
     await page.waitForURL(/cities/);
-    const token = await page.evaluate(() => localStorage.getItem("token"));
-    expect(token).toBeTruthy();
+    const cookies = await page.context().cookies();
+    const authCookie = cookies.find((c) => c.name === "access_token");
+    expect(authCookie).toBeTruthy();
+    expect(authCookie?.httpOnly).toBe(true);
   });
 
-  test("після логауту токен видаляється", async ({ page }) => {
+  test("після логауту cookie access_token видаляється", async ({ page }) => {
     await page.goto("/login");
     await page.fill('input[type="email"]', "admin@crm.com");
     await page.fill('input[type="password"]', "admin123");
@@ -56,16 +60,17 @@ test.describe("Авторизація", () => {
     const logoutBtn = page.locator("button", { hasText: /вийти|logout/i });
     if (await logoutBtn.isVisible()) {
       await logoutBtn.click();
-      const token = await page.evaluate(() => localStorage.getItem("token"));
-      expect(token).toBeNull();
+      const cookies = await page.context().cookies();
+      const authCookie = cookies.find((c) => c.name === "access_token");
+      expect(authCookie).toBeFalsy();
     }
   });
 
-  test("захищений маршрут без токена перенаправляє на /login", async ({
+ test("захищений маршрут без cookie перенаправляє на /login", async ({
     page,
   }) => {
     await page.goto("/schools");
-    await page.evaluate(() => localStorage.removeItem("token"));
+    await page.context().clearCookies();
     await page.goto("/schools");
     await expect(page).toHaveURL(/login/);
   });

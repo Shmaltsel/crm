@@ -20,7 +20,7 @@ model User {
   telegramId     String?
   telegramChatId String?
   car            String?
-  balance        Float        @default(0)
+  balance        Decimal      @default(0) @db.Decimal(12, 2)
   managedCities  City[]       @relation("CityManager")
   crewAsDriver   Crew[]       @relation("DriverCrew")
   crewAsHost     Crew[]       @relation("HostCrew")
