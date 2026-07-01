@@ -14,6 +14,8 @@ import { ParserService } from './parser.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { AuthGuard } from '../auth/auth.guard';
+import { OwnershipGuard } from '../auth/guards/ownership.guard';
+import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
 import { CreateSchoolDto } from './dto/create-school.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
 import { BulkImportDto } from './dto/bulk-import.dto';
@@ -57,6 +59,8 @@ export class SchoolsController {
   }
 
   @Patch(':id')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('school')
   update(@Param('id') id: string, @Body() body: UpdateSchoolDto) {
     return this.schoolsService.update(id, body);
   }

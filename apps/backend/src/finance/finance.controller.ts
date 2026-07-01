@@ -5,20 +5,40 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 import { FinanceDashboardQueryDto } from './dto/finance-dashboard-query.dto';
 import { StaffRevenueQueryDto } from './dto/staff-revenue-query.dto';
+import { PrismaService } from '../prisma/prisma.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller('finance')
 @UseGuards(AuthGuard, RolesGuard)
 export class FinanceController {
-  constructor(private readonly financeService: FinanceService) {}
+  constructor(
+    private readonly financeService: FinanceService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  private async resolveCityId(
+    user: JwtUser,
+    requestedCityId?: string,
+  ): Promise<string | undefined> {
+    if (user.role === 'SUPERADMIN') return requestedCityId;
+    const me = await this.prisma.user.findUnique({
+      where: { id: user.sub },
+      select: { cityId: true },
+    });
+    return me?.cityId ?? undefined;
+  }
 
   @Get('dashboard')
   @Roles('SUPERADMIN', 'MANAGER')
-  getDashboard(@Query() query: FinanceDashboardQueryDto) {
+  async getDashboard(
+    @Query() query: FinanceDashboardQueryDto,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const cityId = await this.resolveCityId(user, query.cityId);
     return this.financeService.getDashboard({
       period: query.period,
-      cityId: query.cityId,
+      cityId,
       project: query.project,
       minimal: query.minimal === 'true',
     });
@@ -31,7 +51,11 @@ export class FinanceController {
 
   @Get('staff-revenue')
   @Roles('SUPERADMIN', 'MANAGER')
-  getStaffRevenue(@Query() query: StaffRevenueQueryDto) {
-    return this.financeService.getStaffRevenue(query);
+  async getStaffRevenue(
+    @Query() query: StaffRevenueQueryDto,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const cityId = await this.resolveCityId(user, query.cityId);
+    return this.financeService.getStaffRevenue({ ...query, cityId });
   }
 }

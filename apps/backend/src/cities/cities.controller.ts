@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
   Delete,
   UseGuards,
@@ -14,6 +13,8 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CreateCityDto } from './dto/create-city.dto';
 import { CreateCrewDto } from './dto/create-crew.dto';
+import { OwnershipGuard } from '../auth/guards/ownership.guard';
+import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
 
 @Controller('cities')
 @UseGuards(AuthGuard, RolesGuard)
@@ -37,12 +38,16 @@ export class CitiesController {
   }
   @Post(':id/crews')
   @Roles('SUPERADMIN', 'MANAGER')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('city')
   createCrew(@Param('id') id: string, @Body() body: CreateCrewDto) {
     return this.citiesService.createCrew(id, body);
   }
 
   @Delete('crews/:crewId')
   @Roles('SUPERADMIN', 'MANAGER')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('crew')
   deleteCrew(@Param('crewId') crewId: string) {
     return this.citiesService.deleteCrew(crewId);
   }

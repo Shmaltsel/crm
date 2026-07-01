@@ -4,6 +4,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 import { IsOptional, IsString } from 'class-validator';
+import { PrismaService } from '../prisma/prisma.service';
 
 class DashboardSummaryQueryDto {
   @IsOptional()
@@ -14,15 +15,26 @@ class DashboardSummaryQueryDto {
 @Controller('dashboard')
 @UseGuards(AuthGuard)
 export class DashboardController {
-  constructor(private readonly dashboardService: DashboardService) {}
+  constructor(
+    private readonly dashboardService: DashboardService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Get('summary')
-  getSummary(
+  async getSummary(
     @CurrentUser() user: JwtUser,
     @Query() query: DashboardSummaryQueryDto,
   ): Promise<DashboardSummary> {
-    const effectiveCityId =
-      user.role === 'SUPERADMIN' ? undefined : query.cityId;
+    let effectiveCityId: string | undefined;
+    if (user.role === 'SUPERADMIN') {
+      effectiveCityId = query.cityId;
+    } else {
+      const me = await this.prisma.user.findUnique({
+        where: { id: user.sub },
+        select: { cityId: true },
+      });
+      effectiveCityId = me?.cityId ?? undefined;
+    }
     return this.dashboardService.getSummary(effectiveCityId, user.role);
   }
 }

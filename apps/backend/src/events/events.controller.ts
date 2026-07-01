@@ -22,6 +22,8 @@ import { RescheduleEventDto } from './dto/reschedule-event.dto';
 import { AssignCrewDto } from './dto/assign-crew.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { OwnershipGuard } from '../auth/guards/ownership.guard';
+import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
 
 @Controller('events')
 @UseGuards(AuthGuard, RolesGuard)
@@ -47,6 +49,8 @@ export class EventsController {
   }
 
   @Patch(':id/status')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('event')
   updateStatus(
     @Param('id') id: string,
     @Body() body: UpdateStatusDto,
@@ -62,6 +66,8 @@ export class EventsController {
   }
 
   @Patch(':id/preparation')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('event')
   updatePreparation(
     @Param('id') id: string,
     @Body() body: UpdatePreparationDto,
@@ -74,6 +80,8 @@ export class EventsController {
   }
 
   @Post(':id/assign-crew')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('event')
   assignCrew(@Param('id') id: string, @Body() body: AssignCrewDto) {
     return this.eventsService.assignCrewToEvent(id, body.crewId);
   }
@@ -96,11 +104,15 @@ export class EventsController {
   }
 
   @Delete(':id')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('event')
   remove(@Param('id') id: string) {
     return this.eventsService.remove(id);
   }
 
   @Post(':id/report')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('event')
   submitReport(
     @Param('id') id: string,
     @Body() body: SubmitReportDto,
@@ -120,6 +132,8 @@ export class EventsController {
   }
 
   @Patch(':id/reschedule')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('event')
   reschedule(
     @Param('id') id: string,
     @Body() body: RescheduleEventDto,
