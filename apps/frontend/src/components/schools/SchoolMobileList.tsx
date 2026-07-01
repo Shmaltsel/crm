@@ -1,19 +1,26 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import type { School, PipelineStage } from "../../types";
 
 interface Props {
-  schools: any[];
+  schools: School[];
   searchQuery: string;
   onDelete: (e: React.MouseEvent, id: string, name: string) => void;
-  stages: any[];
+  stages: PipelineStage[];
 }
 
-// 1. Експортуємо SchoolCard, щоб уникнути помилок при імпорті в інших файлах
-export const SchoolCard = React.memo(({ school, onDelete, stages, index = 0 }: any) => {
+interface SchoolCardProps {
+  school: School;
+  onDelete: (e: React.MouseEvent, id: string, name: string) => void;
+  stages: PipelineStage[];
+  index?: number;
+}
+
+export const SchoolCard = React.memo(({ school, onDelete, stages, index = 0 }: SchoolCardProps) => {
   const navigate = useNavigate();
   const latestEvent = school.events?.[0];
   const stage = latestEvent
-    ? stages.find((s: any) => s.key === latestEvent.status)
+    ? stages.find((s) => s.key === latestEvent.status)
     : null;
 
   return (
@@ -62,7 +69,6 @@ export const SchoolCard = React.memo(({ school, onDelete, stages, index = 0 }: a
 
 SchoolCard.displayName = "SchoolCard";
 
-// 2. Головний компонент залишається default export
 export default function SchoolMobileList({
   schools,
   searchQuery,

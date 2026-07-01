@@ -4,13 +4,14 @@ import AddressLink from "../AddressLink";
 import PhoneLink from "../PhoneLink";
 import IssueModal from "./modals/IssueModal";
 import RescheduleModal from "./modals/RescheduleModal";
+import type { Event, User } from '../../types';
 
 interface EventDetailsProps {
-  currentEvent: any;
+  currentEvent: Event | null;
   schoolName?: string;
   cityId?: string;
   onEventUpdated?: () => void;
-  employees?: any[];
+  employees?: User[];
 }
 
 export default function EventDetails({ currentEvent, schoolName, cityId, onEventUpdated, employees }: EventDetailsProps) {

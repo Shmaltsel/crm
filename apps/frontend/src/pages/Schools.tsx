@@ -15,12 +15,21 @@ import {
   classifySchool,
   classifySize,
 } from "../components/schools/schoolUtils";
+import type { SchoolContact } from "../types";
+
+interface NewSchoolPayload {
+  name: string;
+  cityId: string;
+  sourceUrl: string;
+  director: string;
+  phone: string;
+  type: string;
+}
 
 const StatsBar = lazy(() => import("../components/schools/StatsBar"));
 const VirtualDesktopTable = lazy(
   () => import("../components/schools/VirtualDesktopTable"),
 );
-// SchoolCard імпортується напряму — він легкий і потрібен одразу
 export const PIPELINE_STAGES = [
   { key: "BASE", name: "Новий заклад" },
   { key: "FIRST_CONTACT", name: "Знайомство" },
@@ -56,7 +65,7 @@ export default function Schools() {
     director: "",
     phone: "",
   });
-  const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
+  const [matchedContacts, setMatchedContacts] = useState<SchoolContact[]>([]);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [sizeFilter, setSizeFilter] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<
@@ -68,7 +77,7 @@ export default function Schools() {
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const addSchoolMutation = useMutation({
-    mutationFn: (newSchool: any) =>
+    mutationFn: (newSchool: NewSchoolPayload) =>
       api.post("/schools", newSchool, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       }),
@@ -123,10 +132,10 @@ export default function Schools() {
     if (currentCityName.toLowerCase() !== "львів")
       return setMatchedContacts([]);
     try {
-      const data = await qc.fetchQuery({
+      const data = await qc.fetchQuery<SchoolContact[]>({
         queryKey: ["schoolContacts", schoolName, currentCityName],
         queryFn: async () => {
-          const res = await api.get(
+          const res = await api.get<SchoolContact[]>(
             `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=Школа`,
             {
               headers: {
@@ -136,14 +145,14 @@ export default function Schools() {
           );
           return res.data;
         },
-        staleTime: 1000 * 60 * 5, // Кешуємо на 5 хвилин
+        staleTime: 1000 * 60 * 5, 
       });
 
       setMatchedContacts(data);
       if (data.length > 0) {
         const director =
           data.find(
-            (c: any) =>
+            (c: SchoolContact) =>
               c.role?.includes("Директор") || c.role?.includes("Завідувач"),
           ) || data[0];
         setForm((f) => ({

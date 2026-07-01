@@ -1,8 +1,9 @@
 import { memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import type { Event, EventHistory } from "../../types";
 interface HistoryTimelineProps {
-  currentEvent: any;
-  onHistoryClick: (item: any) => void;
+  currentEvent: Event | null;
+  onHistoryClick: (item: EventHistory) => void;
   onAddCommentClick: () => void;
 }
 
@@ -28,7 +29,7 @@ export default memo(function HistoryTimeline({ currentEvent, onHistoryClick, onA
       ) : (
         <div className="space-y-3 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-slate-100">
           <AnimatePresence initial={false}>
-          {currentEvent.history.map((item: any, i: number) => (
+          {currentEvent.history.map((item: EventHistory, i: number) => (
             <motion.div
               key={item.id}
               initial={{ opacity: 0, x: -8 }}

@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { TelegramService } from '../telegram/telegram.service';
 import { Prisma, User } from '@prisma/client';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -27,7 +29,7 @@ export class UsersService {
   async getAllUsers() {
     return this.prisma.user.findMany({
       include: {
-        city: true, // <--- Ось цей магічний рядок підтягне назву міста!
+        city: true,
       },
     });
   }
@@ -38,7 +40,7 @@ export class UsersService {
     });
   }
 
-  async createUser(data: any) {
+  async createUser(data: CreateUserDto) {
     const hashedPassword = await bcrypt.hash(data.password, 10);
     const user = await this.prisma.user.create({
       data: {
@@ -53,10 +55,7 @@ export class UsersService {
       },
     });
 
-    // Надсилаємо вітальне повідомлення якщо вказано telegramId
     if (data.password) {
-      // Шукаємо chat_id: якщо є збережений після /start — використовуємо його
-      // інакше пробуємо telegramId напряму (якщо вже числовий)
       const chatId = user.telegramChatId || null;
 
       if (chatId) {
@@ -72,8 +71,8 @@ export class UsersService {
     return user;
   }
 
-  async updateUser(id: string, data: any) {
-    const updateData: any = {
+  async updateUser(id: string, data: UpdateUserDto) {
+    const updateData: Prisma.UserUpdateInput = {
       name: data.fullName,
       email: data.email,
       phone: data.phone,
@@ -83,7 +82,6 @@ export class UsersService {
       car: data.car || null,
     };
 
-    // Якщо передано новий пароль, хешуємо його
     if (data.password) {
       updateData.password = await bcrypt.hash(data.password, 10);
     }
@@ -95,7 +93,6 @@ export class UsersService {
     return this.prisma.user.delete({ where: { id } });
   }
 
-  // Створення адміністратора
   async seedAdmin() {
     const existingAdmin = await this.prisma.user.findUnique({
       where: { email: 'admin@crm.com' },
@@ -118,7 +115,6 @@ export class UsersService {
     return { message: 'Суперадмін успішно створений!', user: admin };
   }
 
-  // Новий метод для додавання Васі
   async seedVasya() {
     const existingVasya = await this.prisma.user.findUnique({
       where: { email: 'vasya@charisma.com' },
@@ -146,13 +142,12 @@ export class UsersService {
     return this.prisma.user.findMany();
   }
 
-  // Новий публічний метод для TelegramService
   async updateTelegramChatId(username: string, chatId: string) {
     return this.prisma.user.updateMany({
       where: {
         telegramId: {
           equals: username,
-          mode: 'insensitive', // пошук без урахування регістру (Svitlo != svitlo)
+          mode: 'insensitive',
         },
       },
       data: { telegramChatId: chatId },

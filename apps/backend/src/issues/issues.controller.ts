@@ -12,9 +12,10 @@ import { IssuesService } from './issues.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CreateIssueDto } from './dto/create-issue.dto';
 import { UpdateIssueStatusDto } from './dto/update-issue-status.dto';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @Controller('issues')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
 export class IssuesController {
   constructor(private readonly issuesService: IssuesService) {}
 

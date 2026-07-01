@@ -1,6 +1,5 @@
 import { test, expect, Page } from "@playwright/test";
 
-// Хелпер логіну
 async function login(page: Page) {
   await page.goto("/login");
   await page.fill('input[type="email"]', "admin@crm.com");
@@ -29,13 +28,12 @@ test.describe("Сторінка шкіл", () => {
     const searchInput = page.locator('input[placeholder*="Пошук"]');
     await expect(searchInput).toBeVisible();
 
-    // Отримуємо першу назву школи
     const firstSchool = page.locator("table tbody tr").first();
     const schoolName = await firstSchool.locator("td").first().textContent();
     const searchTerm = schoolName?.slice(0, 5) ?? "Школа";
 
     await searchInput.fill(searchTerm);
-    await page.waitForTimeout(300); // debounce
+    await page.waitForTimeout(300);
 
     const results = page.locator("table tbody tr");
     const count = await results.count();
@@ -102,7 +100,6 @@ test.describe("Додавання школи", () => {
   test("форма не відправляється без назви школи", async ({ page }) => {
     await page.locator("button", { hasText: /\+ Додати/i }).click();
     await page.locator("button", { hasText: "Створити" }).click();
-    // Модалка залишається відкритою
     await expect(page.locator("text=Нова школа")).toBeVisible();
   });
 });

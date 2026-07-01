@@ -1,4 +1,3 @@
-// apps/frontend/lighthouserc.cjs
 module.exports = {
   ci: {
     collect: {
@@ -12,11 +11,10 @@ module.exports = {
       settings: {
         preset: "desktop",
         formFactor: "desktop",
-        throttlingMethod: "devtools",        // більш реалістичне тестування
+        throttlingMethod: "devtools",     
         screenEmulation: { disabled: true },
         chromeFlags: "--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage",
       },
-      // Додаємо важливі параметри для детальнішого аналізу
       skipAudits: ["redirects-http"],
     },
 
@@ -38,10 +36,8 @@ module.exports = {
       }
     },
 
-    // === НАЙВАЖЛИВІШЕ ДЛЯ ОПТИМІЗАЦІЇ ===
     options: {
-      output: ["html", "json"],           // генеруємо HTML + JSON звіт
-      // Додаємо більше деталей
+      output: ["html", "json"],
       onlyCategories: ["performance", "accessibility", "seo", "best-practices"],
     }
   }

@@ -44,11 +44,13 @@ export class UsersController {
   }
 
   @Get('seed')
+  @Roles('SUPERADMIN')
   seedAdmin() {
     return this.usersService.seedAdmin();
   }
 
   @Get('seed-vasya')
+  @Roles('SUPERADMIN')
   seedVasya() {
     return this.usersService.seedVasya();
   }

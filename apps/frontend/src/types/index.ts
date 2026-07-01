@@ -18,6 +18,58 @@ export interface School {
   childrenCount?: number;
   notes?: string;
   isHotClient?: boolean;
+  city?: { id: string; name: string };
+  events?: Event[];
+}
+
+export interface SchoolProfileData {
+  id: string;
+  cityId: string;
+  name: string;
+  type: string;
+  city: string;
+  address: string;
+  director: string;
+  phone: string;
+  email: string;
+  childrenCount: number;
+  notes: string;
+}
+
+export interface SchoolContact {
+  contactName: string;
+  phone: string;
+  role?: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface EventFormData {
+  project: string;
+  date: string;
+  time: string;
+  childrenPlanned: string;
+  price: string;
+  address: string;
+  contactPerson: string;
+  contactPhone: string;
+}
+
+export interface CreateEventPayload {
+  project: string;
+  date: string;
+  time: string;
+  childrenPlanned: number;
+  price: number;
+  address: string;
+  contactPerson: string;
+  contactPhone: string;
+  schoolId: string;
+  cityId: string;
 }
 
 export interface User {
@@ -76,6 +128,7 @@ export interface Event {
   status: string;
   childrenPlanned?: number;
   price?: number;
+  paymentMethod?: string;
   address?: string;
   contactPerson?: string;
   contactPhone?: string;
@@ -83,7 +136,8 @@ export interface Event {
   report?: EventReport;
   history?: EventHistory[];
   preparation?: EventPreparation;
-  school?: { id: string; name: string; type: string }; // ← додай це
+  school?: { id: string; name: string; type: string };
+  city?: { id: string; name: string };
 }
 
 export interface Crew {
@@ -109,7 +163,12 @@ export interface EventPreparation {
 export interface CityProfile extends City {
   events: Event[];
   crews: Crew[];
-  schools?: School[]; // ← додай це
+  schools?: School[];
+}
+
+export interface PipelineStage {
+  key: string;
+  name: string;
 }
 
 export interface IssueReport {

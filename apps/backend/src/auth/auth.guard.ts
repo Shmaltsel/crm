@@ -13,11 +13,9 @@ export class AuthGuard implements CanActivate {
     if (!token) throw new UnauthorizedException('Токен не знайдено');
 
     try {
-      // Розшифровуємо токен
       const payload = await this.jwtService.verifyAsync(token, {
         secret: process.env.JWT_SECRET || 'super-secret-key-for-dev',
       });
-      // Чіпляємо розшифровані дані до запиту
       request['user'] = payload;
     } catch {
       throw new UnauthorizedException('Недійсний токен');

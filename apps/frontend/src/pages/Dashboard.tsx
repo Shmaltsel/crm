@@ -51,7 +51,6 @@ interface DashboardSummary {
   }[];
 }
 
-// ── Skeleton компоненти ──────────────────────────────────────────────────────
 
 function SkeletonCard({ className = "" }: { className?: string }) {
   return (
@@ -128,7 +127,6 @@ function DashboardSkeleton({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   );
 }
 
-// ── Dashboard ────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
   const { selectedCity } = useSelectedCity();

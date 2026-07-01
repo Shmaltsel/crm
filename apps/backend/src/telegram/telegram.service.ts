@@ -29,7 +29,7 @@ export class TelegramService implements OnModuleInit {
 
     this.bot.onText(/\/start/, async (msg) => {
       const chatId = String(msg.chat.id);
-      const username = msg.from?.username; // це те, що користувач має в налаштуваннях Telegram (без @)
+      const username = msg.from?.username;
 
       if (!username) {
         await this.bot.sendMessage(
@@ -39,13 +39,11 @@ export class TelegramService implements OnModuleInit {
         return;
       }
 
-      // Нормалізуємо username: видаляємо всі "@" на випадок, якщо хтось ввів їх у CRM
       const normalizedUsername = username.toLowerCase();
 
-      // Викликаємо публічний метод UsersService, щоб не порушувати інкапсуляцію БД
       const result = await this.usersService.updateTelegramChatId(
         normalizedUsername,
-        chatId
+        chatId,
       );
 
       if (result.count > 0) {

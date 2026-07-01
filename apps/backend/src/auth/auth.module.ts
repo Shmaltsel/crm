@@ -10,7 +10,7 @@ import { JwtModule } from '@nestjs/jwt';
     JwtModule.register({
       global: true,
       secret: process.env.JWT_SECRET || 'super-secret-key-for-dev',
-      signOptions: { expiresIn: '7d' }, // Токен діятиме 7 днів
+      signOptions: { expiresIn: '7d' },
     }),
   ],
   providers: [AuthService],

@@ -178,7 +178,7 @@ export default function Employees() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.fullName.trim()) return;
-    setIsModalOpen(false); // закриваємо одразу
+    setIsModalOpen(false); 
     if (editingUser) {
       const { password, ...rest } = form;
       const payload = password.trim() ? form : rest;

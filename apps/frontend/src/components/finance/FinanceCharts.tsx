@@ -32,11 +32,9 @@ const PIE_COLORS = [
   "#0ea5e9",
 ];
 
-// Виносимо fmt поза компонент — це чиста функція, не потребує useMemo
 const fmt = (n: number) =>
   new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
 
-// ─── Допоміжні компоненти — всі в memo ──────────────────────────────────────
 
 const KpiCard = memo(function KpiCard({
   title,
@@ -168,7 +166,6 @@ const CustomTooltip = memo(function CustomTooltip({
   );
 });
 
-// ─── Підкомпоненти графіків — кожен в memo ───────────────────────────────────
 
 const RevenueChart = memo(function RevenueChart({
   monthly,
@@ -176,7 +173,6 @@ const RevenueChart = memo(function RevenueChart({
   monthly: any[];
 }) {
   if (!monthly?.length) return <EmptyState />;
-  // Обмежуємо до останніх 12 місяців — менше точок = швидший рендер SVG
   const data = monthly.slice(-12);
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -388,7 +384,6 @@ const TopSchools = memo(function TopSchools({
   );
 });
 
-// ─── Пропси FinanceCharts ────────────────────────────────────────────────────
 
 interface Props {
   data: any;
@@ -399,7 +394,6 @@ interface Props {
   selectedCity: any;
 }
 
-// ─── Головний компонент ──────────────────────────────────────────────────────
 
 export default memo(function FinanceCharts({
   data,
@@ -421,7 +415,6 @@ export default memo(function FinanceCharts({
     filters,
   } = data;
 
-  // useMemo — відсотки для pie chart, щоб не рахувати total в кожній ітерації рендеру
   const projectTotals = useMemo(() => {
     const total =
       byProject?.reduce((sum: number, p: any) => sum + p.value, 0) ?? 0;

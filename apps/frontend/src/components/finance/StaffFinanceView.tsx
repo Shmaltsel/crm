@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, memo } from "react";
 import { api } from "../../config/api";
 
-// Поза компонентом — не потребує useMemo
 const fmt = (n: number) =>
   new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
 
@@ -17,7 +16,6 @@ interface Props {
   selectedCity: any;
 }
 
-// ─── Підкомпоненти ────────────────────────────────────────────────────────────
 
 const BalanceCard = memo(function BalanceCard({
   myBalance,
@@ -97,7 +95,6 @@ const StaffMemberRow = memo(function StaffMemberRow({
   );
 });
 
-// ─── Головний компонент ───────────────────────────────────────────────────────
 
 export default memo(function StaffFinanceView({
   myBalance,
@@ -123,7 +120,6 @@ export default memo(function StaffFinanceView({
 
   const maxRevenue = staffData?.staff?.[0]?.revenue ?? 1;
 
-  // useMemo — розбивка по ролях, щоб не фільтрувати в рендері
   const staffByRole = useMemo(() => {
     if (!staffData?.staff) return { hosts: [], drivers: [] };
     return {

@@ -93,11 +93,26 @@ describe("SchoolCard", () => {
     expect(screen.queryByText("Новий заклад")).not.toBeInTheDocument();
   });
 
-  it("показує телефон якщо є", () => {
+  it("показує телефон як посилання tel:, а видимий текст — ім'я директора (якщо воно вказане)", () => {
     render(
       <MemoryRouter>
         <SchoolCard
           school={mockSchool}
+          onDelete={vi.fn()}
+          stages={STAGES}
+          index={0}
+        />
+      </MemoryRouter>,
+    );
+    const link = screen.getByText(/Іван Петренко/).closest("a");
+    expect(link).toHaveAttribute("href", "tel:0671234567");
+  });
+
+  it("показує сам номер телефону як текст, якщо директор не вказаний", () => {
+    render(
+      <MemoryRouter>
+        <SchoolCard
+          school={{ ...mockSchool, director: "" }}
           onDelete={vi.fn()}
           stages={STAGES}
           index={0}

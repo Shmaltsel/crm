@@ -39,18 +39,18 @@ describe('FinanceService', () => {
     });
     mockPrisma.eventReport.findMany.mockResolvedValueOnce([]);
     mockPrisma.$queryRaw
-      .mockResolvedValueOnce([]) // monthly
-      .mockResolvedValueOnce([]) // byProject
-      .mockResolvedValueOnce([]) // topCities
-      .mockResolvedValueOnce([]); // topSchools
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
     mockPrisma.event.aggregate.mockResolvedValueOnce({
       _sum: { price: 30000 },
     });
     mockPrisma.event.findMany.mockResolvedValueOnce([]);
     mockPrisma.city.findMany.mockResolvedValueOnce([]);
     mockPrisma.eventReport.findMany
-      .mockResolvedValueOnce([]) // topEvents
-      .mockResolvedValueOnce([]); // worstEvents
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
   };
 
   describe('getDashboard — KPI', () => {
@@ -139,7 +139,7 @@ describe('FinanceService', () => {
         _count: { eventId: 2 },
       });
       mockPrisma.eventReport.findMany.mockResolvedValueOnce([]);
-      mockPrisma.$queryRaw.mockResolvedValueOnce([]); // monthly
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]);
       mockPrisma.event.aggregate.mockResolvedValueOnce({
         _sum: { price: 5000 },
       });
@@ -153,7 +153,7 @@ describe('FinanceService', () => {
       expect(result).not.toHaveProperty('topSchools');
       expect(result).not.toHaveProperty('topCities');
       expect(result).not.toHaveProperty('byProject');
-      // $queryRaw має бути викликаний лише 1 раз (monthly), не 4
+
       expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
     });
   });

@@ -12,7 +12,7 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [user, setUser] = useState<UserInfo | null>(null);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // Додано стан для мобільного меню
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   useEffect(() => {
     try {
@@ -29,16 +29,19 @@ export default function Layout() {
       const raw = localStorage.getItem("user");
       if (raw) setUser(JSON.parse(raw));
     } catch {
-      // ignore
     }
   }, []);
 
   const token = localStorage.getItem("token");
   let isSuperAdmin = false;
 
+  interface DecodedToken {
+    role: string;
+  }
+
   if (token) {
     try {
-      const decoded: any = jwtDecode(token);
+      const decoded = jwtDecode<DecodedToken>(token);
       isSuperAdmin = decoded.role === "SUPERADMIN";
     } catch (error) {
       console.error("Не вдалося розкодувати токен:", error);
@@ -53,7 +56,6 @@ export default function Layout() {
     navigate("/login");
   };
 
-  // Функція для закриття меню при кліку на лінк (на мобільних)
   const handleLinkClick = () => {
     setIsMobileMenuOpen(false);
   };

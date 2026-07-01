@@ -36,6 +36,7 @@ export class CitiesController {
     return this.citiesService.findOne(id);
   }
   @Post(':id/crews')
+  @Roles('SUPERADMIN', 'MANAGER')
   createCrew(@Param('id') id: string, @Body() body: CreateCrewDto) {
     return this.citiesService.createCrew(id, body);
   }

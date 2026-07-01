@@ -1,20 +1,27 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, type NavigateFunction } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import type { School, PipelineStage } from "../../types";
 
 interface Props {
-  schools: any[];
+  schools: School[];
   searchQuery: string;
   onDelete: (e: React.MouseEvent, id: string, name: string) => void;
-  stages: any[];
+  stages: PipelineStage[];
 }
 
-// Мемоізований рядок з анімаціями
+interface SchoolRowProps {
+  school: School;
+  onDelete: (e: React.MouseEvent, id: string, name: string) => void;
+  stages: PipelineStage[];
+  navigate: NavigateFunction;
+}
+
 export const SchoolRow = React.memo(
-  ({ school, onDelete, stages, navigate }: any) => {
+  ({ school, onDelete, stages, navigate }: SchoolRowProps) => {
     const latestEvent = school.events?.[0];
     const stage = latestEvent
-      ? stages.find((s: any) => s.key === latestEvent.status)
+      ? stages.find((s) => s.key === latestEvent.status)
       : null;
 
     return (

@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 
-// Мокаємо хук
 vi.mock("../../../hooks/useSchools", () => ({
   useSchoolsList: vi.fn(() => ({
     data: [
@@ -70,7 +69,6 @@ import {
   classifySize,
 } from "../../../components/schools/schoolUtils";
 
-// Хелпер — фільтрація як в Schools.tsx
 function filterSchools(
   schools: any[],
   {
@@ -126,7 +124,7 @@ describe("Фільтрація шкіл", () => {
     const filtered = filterSchools(result.current.data!, {
       activeFilter: "new",
     });
-    expect(filtered).toHaveLength(2); // s-1 і s-3
+    expect(filtered).toHaveLength(2);
   });
 
   it("фільтр activeFilter=planned", () => {
@@ -163,16 +161,16 @@ describe("Фільтрація шкіл", () => {
       sizeFilter: "medium",
     });
     expect(filtered).toHaveLength(1);
-    expect(filtered[0].id).toBe("s-4"); // childrenCount=800
+    expect(filtered[0].id).toBe("s-4");
   });
 
-  it("пошук по назві", () => {
+  it("пошук по назві (substring-пошук: 'Школа №1' збігається і з 'Школа №10')", () => {
     const { result } = renderHook(() => useSchoolsList());
     const filtered = filterSchools(result.current.data!, {
       search: "Школа №1",
     });
-    expect(filtered).toHaveLength(1);
-    expect(filtered[0].id).toBe("s-1");
+    expect(filtered).toHaveLength(2);
+    expect(filtered.map((s) => s.id).sort()).toEqual(["s-1", "s-4"]);
   });
 
   it("пошук нечутливий до регістру", () => {

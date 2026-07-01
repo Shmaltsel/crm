@@ -18,10 +18,8 @@ export default function FunnelBar({ funnel }: Props) {
 
   const base  = funnel['BASE'] ?? 0;
   const done  = funnel['DONE'] ?? 0;
-  // Прогрес = скільки шкіл дійшло до DONE відносно бази
   const progress = base > 0 ? Math.round((done / base) * 100) : 0;
 
-  // Для mini-bar: максимум серед усіх видимих стадій
   const counts = PIPELINE_STAGES.map(s => funnel[s.key] ?? 0);
   const maxCount = Math.max(...counts, 1);
 

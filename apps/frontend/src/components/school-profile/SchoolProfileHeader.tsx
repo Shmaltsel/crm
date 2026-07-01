@@ -2,9 +2,10 @@ import { memo } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import PhoneLink from "../PhoneLink";
+import type { SchoolProfileData } from "../../types";
 
 interface Props {
-  schoolData: any;
+  schoolData: SchoolProfileData;
   onEdit: () => void;
   onAddEvent: () => void;
 }

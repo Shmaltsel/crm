@@ -3,7 +3,6 @@ import { useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Hooks
 import {
   useSchool,
   useSchoolEvents,
@@ -20,15 +19,12 @@ import {
   useCreateEvent,
 } from "../hooks/useSchoolProfile";
 
-// Types
 import type { Event, User } from "../types";
 import type { ReportData } from "../components/school-profile/modals/ReportModal";
 
-// Components
 import SchoolProfileHeader from "../components/school-profile/SchoolProfileHeader";
 import CompletedEventModal from "../components/school-profile/CompletedEventModal";
 
-// Lazy components
 const Pipeline = lazy(() => import("../components/school-profile/Pipeline"));
 const HistoryTimeline = lazy(
   () => import("../components/school-profile/HistoryTimeline"),
@@ -49,7 +45,6 @@ const AssignedCrew = lazy(
   () => import("../components/school-profile/AssignedCrew"),
 );
 
-// Modals
 import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
 import EventModal from "../components/school-profile/modals/EventModal";
 import CommentModal from "../components/school-profile/modals/CommentModal";
@@ -70,15 +65,12 @@ export default function SchoolProfile() {
   const { id } = useParams();
   const qc = useQueryClient();
 
-  // 1. Спочатку завантажуємо базові дані
   const { data: schoolRaw } = useSchool(id);
   const { data: eventsRaw = [] } = useSchoolEvents(id, false);
 
-  // 2. Оголошуємо стейти, які потрібні для наступних запитів
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [exitingEventId, setExitingEventId] = useState<string | null>(null);
 
-  // 3. ТЕПЕР безпечно викликаємо useEventFull, оскільки selectedEventId вже існує
   const { data: eventFull, isLoading: eventFullLoading } = useEventFull(
     selectedEventId ?? eventsRaw[0]?.id,
   );
@@ -95,8 +87,6 @@ export default function SchoolProfile() {
   const addCommentMutation = useAddComment();
   const updateHistoryMutation = useUpdateHistoryComment();
 
-  // 4. Формуємо schoolData
-  // 4. schoolData — використовуємо schoolRaw напряму
   const schoolData = useMemo(() => {
     if (!schoolRaw) {
       return {
@@ -129,7 +119,6 @@ export default function SchoolProfile() {
     };
   }, [schoolRaw]);
 
-  // 5. Оголошуємо решту стейтів (editForm залежить від schoolData, тому він тут)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
@@ -316,7 +305,7 @@ export default function SchoolProfile() {
       const { city, ...rest } = editForm;
       await updateSchoolMutation.mutateAsync({
         ...rest,
-        id, // передаємо id для PATCH
+        id,
       });
       setIsEditModalOpen(false);
     },

@@ -29,6 +29,5 @@ import { ProjectsModule } from './projects/projects.module';
   ],
   controllers: [AppController],
   providers: [AppService],
-  // Reflector реєструється автоматично через NestJS core, додаткова реєстрація не потрібна
 })
 export class AppModule {}

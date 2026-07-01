@@ -6,7 +6,7 @@ export class CreateExpenseItemDto {
   category: string;
 
   @IsNumber()
-  @IsPositive() // Гарантує, що сума витрат буде > 0
+  @IsPositive()
   amount: number;
 
   @IsString()

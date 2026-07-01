@@ -77,13 +77,12 @@ export default function IssueCarousel() {
         </span>
       </h2>
 
-      {/* Зверни увагу: я прибрав gap-4 і додав відступи самим елементам, щоб анімація звуження працювала ідеально */}
+      {}
       <div className="flex overflow-x-auto pb-4 -mx-1 px-1">
         {issues.map((issue) => {
           const isExiting = exitingIssueId === issue.id;
 
           return (
-            // Зовнішній контейнер керує шириною, прозорістю і відступом
             <div
               key={issue.id}
               className={`transition-all duration-500 ease-in-out overflow-hidden transform origin-left ${

@@ -1,7 +1,3 @@
-// Невеликий перевикористовуваний компонент:
-// будь-яку адресу робить клікабельною — відкриває її в Google Maps у новій вкладці.
-// Використання: <AddressLink address={event.address} />
-
 interface AddressLinkProps {
   address?: string | null;
   className?: string;
@@ -19,7 +15,6 @@ export default function AddressLink({ address, className }: AddressLinkProps) {
       href={mapsUrl}
       target="_blank"
       rel="noopener noreferrer"
-      // щоб клік по адресі не тригерив onClick батьківського рядка/картки (наприклад, навігацію)
       onClick={(e) => e.stopPropagation()}
       title="Відкрити в Google Maps"
       className={`group inline-flex items-center gap-1.5 text-slate-700 hover:text-blue-600 transition-colors ${

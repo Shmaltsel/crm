@@ -4,6 +4,6 @@ import { JwtUser } from '../interfaces/jwt-user.interface';
 export const CurrentUser = createParamDecorator(
   (data: unknown, ctx: ExecutionContext): JwtUser => {
     const request = ctx.switchToHttp().getRequest();
-    return request.user; // Тут ми вже гарантуємо, що повернеться JwtUser
+    return request.user;
   },
 );

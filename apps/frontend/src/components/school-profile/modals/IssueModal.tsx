@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { createPortal } from 'react-dom';
-import { api } from '../../../config/api';
+import { useState } from "react";
+import { createPortal } from "react-dom";
+import { api } from "../../../config/api";
 
 interface Employee {
   id: string;
@@ -19,39 +19,45 @@ interface IssueModalProps {
 }
 
 export default function IssueModal({
-  isOpen, onClose, schoolName, eventName, eventId, cityId, employees = []
+  isOpen,
+  onClose,
+  schoolName,
+  eventName,
+  eventId,
+  cityId,
+  employees = [],
 }: IssueModalProps) {
-  const [message, setMessage] = useState('');
-  const [deadline, setDeadline] = useState('');
-  const [assignedUserId, setAssignedUserId] = useState('');
+  const [message, setMessage] = useState("");
+  const [deadline, setDeadline] = useState("");
+  const [assignedUserId, setAssignedUserId] = useState("");
   const [sent, setSent] = useState(false);
 
   if (!isOpen) return null;
 
-  const assignedUser = employees.find(e => e.id === assignedUserId);
+  const assignedUser = employees.find((e) => e.id === assignedUserId);
 
   const handleSend = () => {
     if (!message.trim()) return;
     setSent(true);
-    // закриваємо через 600мс щоб користувач побачив ✓
     setTimeout(() => {
       setSent(false);
-      setMessage('');
-      setDeadline('');
-      setAssignedUserId('');
+      setMessage("");
+      setDeadline("");
+      setAssignedUserId("");
       onClose();
     }, 600);
-    // запит у фоні
-    api.post('/issues', {
-      eventId,
-      schoolName,
-      eventName,
-      message,
-      cityId,
-      deadline: deadline || undefined,
-      assignedUserId: assignedUserId || undefined,
-      assignedUserName: assignedUser?.name || undefined,
-    }).catch((e) => console.error(e));
+    api
+      .post("/issues", {
+        eventId,
+        schoolName,
+        eventName,
+        message,
+        cityId,
+        deadline: deadline || undefined,
+        assignedUserId: assignedUserId || undefined,
+        assignedUserName: assignedUser?.name || undefined,
+      })
+      .catch((e) => console.error(e));
   };
 
   return createPortal(
@@ -73,7 +79,9 @@ export default function IssueModal({
         <div className="p-5 border-b border-slate-100 flex justify-between items-start bg-slate-50 shrink-0">
           <div>
             <h3 className="text-xl font-bold text-slate-800">🚨 Запит</h3>
-            <p className="text-sm text-red-500 mt-0.5 font-medium">{schoolName}</p>
+            <p className="text-sm text-red-500 mt-0.5 font-medium">
+              {schoolName}
+            </p>
             <p className="text-xs text-slate-400 mt-0.5">{eventName}</p>
           </div>
           <button
@@ -95,7 +103,10 @@ export default function IssueModal({
 
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1.5">
-              ⏰ Дедлайн <span className="text-slate-400 font-normal">(необов'язково)</span>
+              ⏰ Дедлайн{" "}
+              <span className="text-slate-400 font-normal">
+                (необов'язково)
+              </span>
             </label>
             <input
               type="date"
@@ -109,7 +120,10 @@ export default function IssueModal({
           {employees.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1.5">
-                👤 Відповідальний <span className="text-slate-400 font-normal">(необов'язково)</span>
+                👤 Відповідальний{" "}
+                <span className="text-slate-400 font-normal">
+                  (необов'язково)
+                </span>
               </label>
               <select
                 value={assignedUserId}
@@ -117,7 +131,7 @@ export default function IssueModal({
                 className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none text-sm bg-white"
               >
                 <option value="">— Оберіть працівника —</option>
-                {employees.map(emp => (
+                {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
                     {emp.name} ({emp.role})
                   </option>
@@ -140,12 +154,12 @@ export default function IssueModal({
               disabled={sent || !message.trim()}
               className="flex-1 bg-red-600 text-white py-3 rounded-xl font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
             >
-              {sent ? '✓ Надіслано!' :  'Відправити'}
+              {sent ? "✓ Надіслано!" : "Відправити"}
             </button>
           </div>
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }

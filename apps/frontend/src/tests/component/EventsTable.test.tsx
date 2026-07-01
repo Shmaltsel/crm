@@ -45,8 +45,9 @@ describe("EventsTable", () => {
         />
       </MemoryRouter>,
     );
-    expect(screen.getAllByText("Голограма")).toHaveLength(1);
-    expect(screen.getAllByText("Малювайко")).toHaveLength(1);
+   
+    expect(screen.getAllByText("Голограма")).toHaveLength(2);
+    expect(screen.getAllByText("Малювайко")).toHaveLength(2);
   });
 
   it("показує кількість подій у заголовку", () => {

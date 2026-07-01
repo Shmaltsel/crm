@@ -24,9 +24,6 @@ export class EventsService {
     private telegramService: TelegramService,
   ) {}
 
-  // Список подій для сторінки "Події".
-  // Водій/ведучий бачить тільки події, де він призначений в екіпаж.
-  // Решта ролей (менеджер, адмін тощо) бачать усі події.
   async findAllForUser(user: JwtUser) {
     const isFieldStaff = FIELD_ROLES.includes(user.role);
 
@@ -52,7 +49,6 @@ export class EventsService {
     });
   }
 
-  // Оновлюємо метод create
   async create(data: CreateEventDto, user: JwtUser) {
     return this.prisma.event.create({
       data: {
@@ -62,9 +58,9 @@ export class EventsService {
         history: {
           create: {
             action: 'Створено подію. Етап: База',
-            userId: user.sub, // Беремо ID з токена
-            userName: user.name, // Беремо ім'я з токена
-            role: user.role, // Беремо роль з токена
+            userId: user.sub,
+            userName: user.name,
+            role: user.role,
           },
         },
       },
@@ -72,7 +68,6 @@ export class EventsService {
     });
   }
 
-  // Оновлюємо метод updateStatus
   async updateStatus(
     eventId: string,
     newStatus: string,
@@ -88,7 +83,7 @@ export class EventsService {
           create: {
             action: actionName,
             comment: comment || null,
-            userId: user.sub, // Більше ніяких 'superadmin-123'!
+            userId: user.sub,
             userName: user.name,
             role: user.role,
           },
@@ -98,7 +93,6 @@ export class EventsService {
     });
   }
 
-  // Оновлюємо статус підготовки
   async updatePreparationStatus(
     eventId: string,
     field: string,
@@ -120,11 +114,7 @@ export class EventsService {
     }
   }
 
-  // --- ВСТАВЛЯЙ ОНОВЛЕНИЙ МЕТОД ТУТ ---
-  async assignCrewToEvent(
-    eventId: string,
-    crewId: string, // ЗМІНЕНО: Тепер приймаємо тільки ID існуючого екіпажу
-  ) {
+  async assignCrewToEvent(eventId: string, crewId: string) {
     const event = await this.prisma.event.update({
       where: { id: eventId },
       data: { crewId: crewId },
@@ -278,10 +268,8 @@ export class EventsService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) return null;
 
-    // Якщо користувач натиснув /start, telegramChatId буде заповнено
     if (user.telegramChatId) return user.telegramChatId;
 
-    // Якщо в telegramId вбито числовий ID вручну, можна спробувати його
     if (user.telegramId && /^\d+$/.test(user.telegramId))
       return user.telegramId;
 
@@ -349,19 +337,15 @@ export class EventsService {
     });
   }
 
-  // ОНОВЛЕНО: Тепер метод видалення безпечно видаляє зв'язані дані
   async remove(id: string) {
-    // 1. Видаляємо історію події
     await this.prisma.eventHistory.deleteMany({
       where: { eventId: id },
     });
 
-    // 2. Видаляємо підготовку події (якщо вона існує)
     await this.prisma.eventPreparation.deleteMany({
       where: { eventId: id },
     });
 
-    // 3. Тепер спокійно видаляємо саму подію
     return this.prisma.event.delete({
       where: { id },
     });
@@ -372,7 +356,6 @@ export class EventsService {
     reportData: SubmitReportDto,
     user: JwtUser,
   ) {
-    // 1. Зберігаємо звіт у базу (без JSON полів)
     await this.prisma.eventReport.upsert({
       where: { eventId },
       update: {
@@ -402,11 +385,9 @@ export class EventsService {
       },
     });
 
-    // Видаляємо старі записи витрат і зарплат
     await this.prisma.expenseItem.deleteMany({ where: { reportId: eventId } });
     await this.prisma.salaryItem.deleteMany({ where: { reportId: eventId } });
 
-    // Створюємо нові записи витрат
     if (reportData.expenses?.length) {
       await this.prisma.expenseItem.createMany({
         data: reportData.expenses.map((exp: ExpenseItemDto) => ({
@@ -418,7 +399,6 @@ export class EventsService {
       });
     }
 
-    // Створюємо нові записи зарплат + нарахування балансу
     if (reportData.salaries?.length) {
       await this.prisma.salaryItem.createMany({
         data: reportData.salaries.map((s: SalaryItemDto) => ({
@@ -442,7 +422,6 @@ export class EventsService {
       );
     }
 
-    // 2. Оновлюємо статус події
     return this.prisma.event.update({
       where: { id: eventId },
       data: {

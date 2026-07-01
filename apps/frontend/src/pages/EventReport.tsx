@@ -1,39 +1,22 @@
-import { useState, useEffect } from "react";
+import type { ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { api } from "../config/api";
+import { useEventFull } from "../hooks/useSchoolProfile";
 import AddressLink from "../components/AddressLink";
+import { formatCurrency } from "../utils/formatCurrency";
 
 export default function EventReport() {
   const { eventId } = useParams();
-  const [event, setEvent] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetch = async () => {
-      try {
-        const res = await api.get(`/events/${eventId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setEvent(res.data);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetch();
-  }, [eventId]);
+  const { data: event, isLoading, isError } = useEventFull(eventId);
 
   if (isLoading)
     return <div className="p-8 text-slate-500">Завантаження...</div>;
-  if (!event)
+  if (isError || !event)
     return <div className="p-8 text-slate-500">Подію не знайдено</div>;
 
   const report = event.report;
   const crew = event.crew;
-  const fmt = (n: number) =>
-    new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+  const fmt = formatCurrency;
 
   return (
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
@@ -128,7 +111,7 @@ export default function EventReport() {
   );
 }
 
-function Row({ label, value }: { label: string; value: any }) {
+function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex justify-between">
       <span className="text-slate-400">{label}:</span>

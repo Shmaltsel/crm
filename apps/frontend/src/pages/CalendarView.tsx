@@ -29,8 +29,6 @@ export default function CalendarView() {
   const [userRole, setUserRole] = useState<string>("GUEST");
   const [filterCityId, setFilterCityId] = useState<string>("ALL");
 
-  // Не забудьте додати стейт для проєктів на початку компонента (якщо ще не додали):
-  // const [projects, setProjects] = useState<any[]>([]);
 
   useEffect(() => {
     try {
@@ -108,7 +106,6 @@ export default function CalendarView() {
     "Грудень",
   ];
 
-  // Логіка кольорів для проєктів
   const getProjectColor = (projectName: string) => {
     const proj = projects.find((p) => p.name === projectName);
     const color = proj ? proj.color : "blue";
@@ -343,7 +340,7 @@ export default function CalendarView() {
                         >
                           <button
                             onClick={(e) => {
-                              e.stopPropagation(); // Щоб не спрацьовував клік по всій клітинці
+                              e.stopPropagation();
                               if (ev.school)
                                 navigate(`/schools/${ev.school.id}`);
                             }}

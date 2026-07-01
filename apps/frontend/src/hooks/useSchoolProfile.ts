@@ -1,11 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../config/api";
+import type {
+  Event,
+  EventHistory,
+  User,
+  SchoolProfileData,
+  CreateEventPayload,
+} from "../types";
+import type { ReportData } from "../components/school-profile/modals/ReportModal";
 
 const authHeader = () => ({
   Authorization: `Bearer ${localStorage.getItem("token")}`,
 });
 
-// ─── Мінімальні дані школи (назва, адреса, місто) ───────────────────────────
 export function useSchool(id: string | undefined) {
   return useQuery({
     queryKey: ["school", id],
@@ -22,9 +29,12 @@ export function useSchoolCompletedEvents(schoolId: string | undefined) {
   return useQuery({
     queryKey: ["schoolCompletedEvents", schoolId],
     queryFn: async () => {
-      const res = await api.get(`/events/school/${schoolId}/completed`, {
-        headers: authHeader(),
-      });
+      const res = await api.get<Event[]>(
+        `/events/school/${schoolId}/completed`,
+        {
+          headers: authHeader(),
+        },
+      );
       return res.data;
     },
     enabled: !!schoolId,
@@ -32,7 +42,6 @@ export function useSchoolCompletedEvents(schoolId: string | undefined) {
   });
 }
 
-// ─── Мінімальний список подій (без history/preparation) ──────────────────────
 export function useSchoolEvents(schoolId: string | undefined, full = false) {
   return useQuery({
     queryKey: ["schoolEvents", schoolId, full],
@@ -40,20 +49,19 @@ export function useSchoolEvents(schoolId: string | undefined, full = false) {
       const url = full
         ? `/events/school/${schoolId}`
         : `/events/school/${schoolId}?minimal=true`;
-      const res = await api.get(url, { headers: authHeader() });
-      return res.data.filter((ev: any) => ev.status !== "RE_SALE");
+      const res = await api.get<Event[]>(url, { headers: authHeader() });
+      return res.data.filter((ev) => ev.status !== "RE_SALE");
     },
     enabled: !!schoolId,
     staleTime: 60 * 1000,
   });
 }
 
-// ─── Повні дані однієї події (lazy, при кліку) ────────────────────────────────
 export function useEventFull(eventId: string | undefined) {
   return useQuery({
     queryKey: ["eventFull", eventId],
     queryFn: async () => {
-      const res = await api.get(`/events/${eventId}`, {
+      const res = await api.get<Event>(`/events/${eventId}`, {
         headers: authHeader(),
       });
       return res.data;
@@ -63,19 +71,17 @@ export function useEventFull(eventId: string | undefined) {
   });
 }
 
-// ─── Список користувачів ────────────────────────────────────────────────────
 export function useUsers() {
   return useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      const res = await api.get("/users", { headers: authHeader() });
+      const res = await api.get<User[]>("/users", { headers: authHeader() });
       return res.data;
     },
     staleTime: 5 * 60 * 1000,
   });
 }
 
-// ─── Мутації ────────────────────────────────────────────────────────────────
 export function useUpdateEventStatus() {
   const qc = useQueryClient();
   return useMutation({
@@ -98,19 +104,19 @@ export function useUpdateEventStatus() {
         )
         .then((r) => r.data),
     onSuccess: (data, vars) => {
-      // Оновлюємо повну подію
       qc.setQueryData(["eventFull", vars.eventId], data);
-      // Оновлюємо статус в мінімальному списку без рефетчу
-      qc.setQueriesData({ queryKey: ["schoolEvents"] }, (old: any) =>
-        Array.isArray(old)
-          ? old
-              .map((ev: any) =>
-                ev.id === vars.eventId
-                  ? { ...ev, status: vars.status, ...data }
-                  : ev,
-              )
-              .filter((ev: any) => ev.status !== "RE_SALE")
-          : old,
+      qc.setQueriesData(
+        { queryKey: ["schoolEvents"] },
+        (old: Event[] | undefined) =>
+          Array.isArray(old)
+            ? old
+                .map((ev) =>
+                  ev.id === vars.eventId
+                    ? { ...ev, status: vars.status, ...data }
+                    : ev,
+                )
+                .filter((ev) => ev.status !== "RE_SALE")
+            : old,
       );
     },
   });
@@ -135,8 +141,8 @@ export function useUpdatePreparation() {
           { headers: authHeader() },
         )
         .then((r) => r.data),
-    onSuccess: (data, vars) => {
-      qc.setQueryData(["eventFull", vars.eventId], (old: any) =>
+    onSuccess: (_data, vars) => {
+      qc.setQueryData(["eventFull", vars.eventId], (old: Event | undefined) =>
         old
           ? {
               ...old,
@@ -164,15 +170,16 @@ export function useAssignCrew() {
         .then((r) => r.data),
     onSuccess: (data, vars) => {
       qc.setQueryData(["eventFull", vars.eventId], data);
-      // Оновлюємо crewId в мінімальному списку
-      qc.setQueriesData({ queryKey: ["schoolEvents"] }, (old: any) =>
-        Array.isArray(old)
-          ? old.map((ev: any) =>
-              ev.id === vars.eventId
-                ? { ...ev, crewId: vars.crewId, crew: data.crew }
-                : ev,
-            )
-          : old,
+      qc.setQueriesData(
+        { queryKey: ["schoolEvents"] },
+        (old: Event[] | undefined) =>
+          Array.isArray(old)
+            ? old.map((ev) =>
+                ev.id === vars.eventId
+                  ? { ...ev, crewId: vars.crewId, crew: data.crew }
+                  : ev,
+              )
+            : old,
       );
     },
   });
@@ -186,7 +193,7 @@ export function useSubmitReport() {
       reportData,
     }: {
       eventId: string;
-      reportData: any;
+      reportData: ReportData;
     }) =>
       api
         .post(`/events/${eventId}/report`, reportData, {
@@ -194,11 +201,10 @@ export function useSubmitReport() {
         })
         .then((r) => r.data),
     onSuccess: (_data, vars) => {
-      // Видаляємо подію зі списку (вона стане RE_SALE після статус-мутації)
-      qc.setQueriesData({ queryKey: ["schoolEvents"] }, (old: any) =>
-        Array.isArray(old)
-          ? old.filter((ev: any) => ev.id !== vars.eventId)
-          : old,
+      qc.setQueriesData(
+        { queryKey: ["schoolEvents"] },
+        (old: Event[] | undefined) =>
+          Array.isArray(old) ? old.filter((ev) => ev.id !== vars.eventId) : old,
       );
       qc.removeQueries({ queryKey: ["eventFull", vars.eventId] });
     },
@@ -217,19 +223,21 @@ export function useAddComment() {
         )
         .then((r) => r.data),
     onSuccess: (data, vars) => {
-      qc.setQueryData(["eventFull", vars.eventId], (old: any) =>
+      qc.setQueryData(["eventFull", vars.eventId], (old: Event | undefined) =>
         old ? { ...old, history: data.history } : old,
       );
     },
   });
 }
 
-// === НОВА МУТАЦІЯ: Оновлення школи ===
 export const useUpdateSchool = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...payload }: any) => {
+    mutationFn: async ({
+      id,
+      ...payload
+    }: { id: string } & Omit<SchoolProfileData, "id" | "city">) => {
       const res = await api.patch(`/schools/${id}`, payload);
       return res.data;
     },
@@ -239,16 +247,15 @@ export const useUpdateSchool = () => {
   });
 };
 
-// === НОВА МУТАЦІЯ: Створення події ===
 export const useCreateEvent = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (payload: any) => {
-      const res = await api.post("/events", payload);
+    mutationFn: async (payload: CreateEventPayload) => {
+      const res = await api.post<Event>("/events", payload);
       return res.data;
     },
-    onSuccess: (newEvent, variables) => {
+    onSuccess: (_newEvent, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["schoolEvents", variables.schoolId],
       });
@@ -276,11 +283,11 @@ export function useUpdateHistoryComment() {
         )
         .then((r) => r.data),
     onSuccess: (_data, vars) => {
-      qc.setQueryData(["eventFull", vars.eventId], (old: any) =>
+      qc.setQueryData(["eventFull", vars.eventId], (old: Event | undefined) =>
         old
           ? {
               ...old,
-              history: old.history?.map((h: any) =>
+              history: old.history?.map((h: EventHistory) =>
                 h.id === vars.historyId ? { ...h, comment: vars.comment } : h,
               ),
             }

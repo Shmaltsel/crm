@@ -32,9 +32,9 @@ const makeService = async () => {
 
 const defaultMocks = () => {
   mockPrisma.event.findMany
-    .mockResolvedValueOnce([]) // todayEvents
-    .mockResolvedValueOnce([]) // upcomingEvents
-    .mockResolvedValueOnce([]); // monthEvents
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([]);
   mockPrisma.$queryRaw.mockResolvedValueOnce([
     { status: 'BASE', count: BigInt(10) },
     { status: 'FIRST_CONTACT', count: BigInt(5) },
@@ -50,7 +50,6 @@ describe('DashboardService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     service = await makeService();
-    // Очищаємо кеш між тестами
     (service as any).cache.clear();
   });
 
@@ -66,7 +65,7 @@ describe('DashboardService', () => {
     it('totalSchools = сума всіх записів воронки', async () => {
       defaultMocks();
       const result = await service.getSummary('city-1');
-      expect(result.totalSchools).toBe(18); // 10 + 5 + 3
+      expect(result.totalSchools).toBe(18);
     });
 
     it('всі етапи пайплайну присутні у funnel', async () => {
@@ -279,8 +278,7 @@ describe('DashboardService', () => {
       defaultMocks();
       await service.getSummary('city-1');
       await service.getSummary('city-1');
-      // event.findMany має бути викликаний тільки один раз (для першого запиту)
-      expect(mockPrisma.event.findMany).toHaveBeenCalledTimes(3); // 3 = todayEvents + upcomingEvents + monthEvents
+      expect(mockPrisma.event.findMany).toHaveBeenCalledTimes(3);
     });
   });
 });

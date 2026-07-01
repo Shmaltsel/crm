@@ -2,11 +2,12 @@ import { memo } from "react";
 import AddressLink from "../AddressLink";
 import PhoneLink from "../PhoneLink";
 import { motion } from "framer-motion";
+import type { SchoolProfileData } from "../../types";
 
 export default memo(function SchoolInfoCard({
   schoolData,
 }: {
-  schoolData: any;
+  schoolData: SchoolProfileData;
 }) {
   return (
     <motion.div

@@ -21,15 +21,13 @@ import { UpdatePreparationDto } from './dto/update-preparation.dto';
 import { RescheduleEventDto } from './dto/reschedule-event.dto';
 import { AssignCrewDto } from './dto/assign-crew.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @Controller('events')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
-  // Список подій для поточного користувача.
-  // Для водіїв/ведучих повертаються лише ті події, де вони у складі екіпажу.
-  // Для менеджерів/адмінів — усі події.
   @Get()
   findAll(@CurrentUser() user: JwtUser) {
     return this.eventsService.findAllForUser(user);
@@ -89,7 +87,6 @@ export class EventsController {
     return this.eventsService.addHistoryComment(id, body.comment, user);
   }
 
-  // Маршрут для оновлення коментаря
   @Patch('history/:historyId')
   updateHistoryComment(
     @Param('historyId') historyId: string,

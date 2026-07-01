@@ -18,9 +18,6 @@ export class FinanceService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  // ---------------------------------------------------------------------------
-  // Допоміжний метод: перетворює period у dateFrom
-  // ---------------------------------------------------------------------------
   private resolveDateFrom(period?: string): Date | undefined {
     const now = new Date();
     if (period === 'month')
@@ -30,10 +27,6 @@ export class FinanceService {
     if (period === 'year') return new Date(now.getFullYear(), 0, 1);
     return undefined;
   }
-
-  // ---------------------------------------------------------------------------
-  // Допоміжний метод: будує SQL-фрагменти фільтрів для $queryRaw
-  // ---------------------------------------------------------------------------
   private buildSqlFilters({
     dateFrom,
     cityId,
@@ -50,7 +43,6 @@ export class FinanceService {
     return parts.length ? Prisma.join(parts, ' ') : Prisma.empty;
   }
 
-  // ---------------------------------------------------------------------------
   async getMyBalance(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -59,7 +51,6 @@ export class FinanceService {
     return { balance: user?.balance ?? 0, name: user?.name ?? '' };
   }
 
-  // ---------------------------------------------------------------------------
   async getDashboard({
     period,
     cityId,
@@ -78,7 +69,6 @@ export class FinanceService {
     const dateFrom = this.resolveDateFrom(period);
     const filters = this.buildSqlFilters({ dateFrom, cityId, project });
 
-    // Фільтр для Prisma ORM (де підтримується)
     const baseEventWhere: Prisma.EventWhereInput = {
       status: 'RE_SALE',
       ...(dateFrom ? { date: { gte: dateFrom } } : {}),
@@ -86,9 +76,6 @@ export class FinanceService {
       ...(project ? { project } : {}),
     };
 
-    // -------------------------------------------------------------------------
-    // 1. KPI — один агрегатний запит замість findMany + reduce
-    // -------------------------------------------------------------------------
     const kpiAgg = await this.prisma.eventReport.aggregate({
       where: { event: baseEventWhere },
       _sum: { totalSum: true, remainderSum: true },
@@ -128,10 +115,6 @@ export class FinanceService {
         value,
       }),
     );
-
-    // -------------------------------------------------------------------------
-    // 3. Графік по місяцях — агрегація в БД
-    // -------------------------------------------------------------------------
     type MonthlyRow = {
       year: number;
       month: number;
@@ -161,9 +144,6 @@ export class FinanceService {
       profit: row.profit,
     }));
 
-    // -------------------------------------------------------------------------
-    // 4. Очікувана виручка — aggregate замість findMany + reduce
-    // -------------------------------------------------------------------------
     const plannedAgg = await this.prisma.event.aggregate({
       where: {
         status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
@@ -172,10 +152,6 @@ export class FinanceService {
       _sum: { price: true },
     });
     const expectedRevenue = plannedAgg._sum.price ?? 0;
-
-    // -------------------------------------------------------------------------
-    // 5. Фільтри (проєкти + міста) — паралельно, без join
-    // -------------------------------------------------------------------------
     const [projectsRaw, cities] = await Promise.all([
       this.prisma.event.findMany({
         select: { project: true },
@@ -188,9 +164,6 @@ export class FinanceService {
       cities,
     };
 
-    // -------------------------------------------------------------------------
-    // minimal — повертаємо лише KPI + monthly + фільтри
-    // -------------------------------------------------------------------------
     if (minimal) {
       const result = {
         kpi: { totalRevenue, totalExpenses, totalProfit, totalEvents },
@@ -202,9 +175,6 @@ export class FinanceService {
       return result;
     }
 
-    // -------------------------------------------------------------------------
-    // 6. Структура доходів по проєктах
-    // -------------------------------------------------------------------------
     type ProjectRow = { project: string; value: number };
     const byProjectRows = await this.prisma.$queryRaw<ProjectRow[]>`
       SELECT
@@ -221,10 +191,6 @@ export class FinanceService {
       name: r.project,
       value: r.value,
     }));
-
-    // -------------------------------------------------------------------------
-    // 7. Топ міст
-    // -------------------------------------------------------------------------
     type CityRow = {
       cityId: string;
       name: string;
@@ -252,9 +218,6 @@ export class FinanceService {
       profit,
     }));
 
-    // -------------------------------------------------------------------------
-    // 8. Топ шкіл
-    // -------------------------------------------------------------------------
     type SchoolRow = {
       schoolId: string;
       name: string;
@@ -282,9 +245,6 @@ export class FinanceService {
       revenue,
     }));
 
-    // -------------------------------------------------------------------------
-    // 9. Топ/антитоп подій — лише потрібні поля, без масивних include
-    // -------------------------------------------------------------------------
     const eventSelect = {
       totalSum: true,
       remainderSum: true,
@@ -323,7 +283,6 @@ export class FinanceService {
     const topEvents = topEventsRaw.map(mapEvent);
     const worstEvents = worstEventsRaw.map(mapEvent);
 
-    // -------------------------------------------------------------------------
     const result = {
       kpi: { totalRevenue, totalExpenses, totalProfit, totalEvents },
       monthly,
@@ -340,7 +299,6 @@ export class FinanceService {
     return result;
   }
 
-  // ---------------------------------------------------------------------------
   async getStaffRevenue({
     period,
     cityId,
@@ -359,9 +317,7 @@ export class FinanceService {
       eventsCount: number;
     };
 
-    // Всі три запити йдуть паралельно
     const [hostRows, driverRows, totalAgg, eventsCount] = await Promise.all([
-      // Ведучі
       this.prisma.$queryRaw<StaffRow[]>`
         SELECT
           u.id,
@@ -377,7 +333,6 @@ export class FinanceService {
         ${staffFilters}
         GROUP BY u.id, u.name
       `,
-      // Водії
       this.prisma.$queryRaw<StaffRow[]>`
         SELECT
           u.id,
@@ -393,7 +348,6 @@ export class FinanceService {
         ${staffFilters}
         GROUP BY u.id, u.name
       `,
-      // Загальна виручка
       this.prisma.$queryRaw<[{ revenue: number }]>`
         SELECT COALESCE(SUM(r."totalSum"), 0)::float AS revenue
         FROM "Event" e
@@ -401,7 +355,6 @@ export class FinanceService {
         WHERE e.status = 'RE_SALE'
         ${staffFilters}
       `,
-      // Кількість унікальних подій
       this.prisma.event.count({
         where: {
           status: 'RE_SALE',

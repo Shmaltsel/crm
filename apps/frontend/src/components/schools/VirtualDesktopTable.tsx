@@ -2,12 +2,13 @@ import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { SchoolRow } from "./SchoolDesktopTable";
+import type { School, PipelineStage } from "../../types";
 
 interface Props {
-  schools: any[];
+  schools: School[];
   searchQuery: string;
   onDelete: (e: React.MouseEvent, id: string, name: string) => void;
-  stages: any[];
+  stages: PipelineStage[];
 }
 
 export default function VirtualDesktopTable({ schools, searchQuery, onDelete, stages }: Props) {
@@ -17,7 +18,7 @@ export default function VirtualDesktopTable({ schools, searchQuery, onDelete, st
   const rowVirtualizer = useVirtualizer({
     count: schools.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 57, // висота tr з padding p-4
+    estimateSize: () => 57,
     overscan: 8,
   });
 

@@ -157,7 +157,6 @@ export class ParserService {
     }
   }
 
-  // Отримати всі школи/садочки конкретного міста з isuo.org
   async getAllSchoolsForCity(
     cityName: string,
     type: 'Школа' | 'Садочок' = 'Школа',
@@ -171,7 +170,6 @@ export class ParserService {
     const baseUrl = type === 'Садочок' ? config.kindergartens : config.schools;
     const domain = config.domain;
 
-    // Використовуємо Map для зберігання об'єктів { name, url }
     const resultsMap = new Map<string, { name: string; url: string }>();
 
     for (let page = 1; page <= 20; page++) {
@@ -190,7 +188,6 @@ export class ParserService {
           const href = $(row).find('td:nth-child(2) a').attr('href');
 
           if (name && href && name !== 'Fullname') {
-            // Нормалізація для перевірки дублів
             const normalizedKey = name.toLowerCase().replace(/\s+/g, '');
 
             if (!resultsMap.has(normalizedKey)) {

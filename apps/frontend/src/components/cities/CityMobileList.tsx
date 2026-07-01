@@ -106,7 +106,6 @@ export default function CityMobileList({
             return (
               <div
                 key={city.id}
-                // Stagger: кожен рядок з'являється з зміщенням index * 50ms
                 style={{ animationDelay: `${index * 50}ms` }}
                 className={`
                   city-row-enter

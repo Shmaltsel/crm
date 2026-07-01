@@ -16,8 +16,6 @@ const CITY_PHOTOS: Record<string, string> = {
 const DEFAULT_PHOTO =
   "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80&auto=format";
 
-// ─── Одна картка міста ────────────────────────────────────────────────────────
-
 function CityCard({
   city,
   index,
@@ -32,7 +30,6 @@ function CityCard({
   const navigate = useNavigate();
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // Паралакс: фото зміщується на 4px при русі миші над карткою
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const img = imgRef.current;
     if (!img) return;
@@ -50,7 +47,6 @@ function CityCard({
 
   return (
     <div
-      // Stagger animation: кожна картка з'являється з затримкою index * 60ms
       style={{
         animationDelay: `${index * 60}ms`,
         animationFillMode: "both",
@@ -167,8 +163,6 @@ function CityCard({
   );
 }
 
-// ─── Грід ────────────────────────────────────────────────────────────────────
-
 export default function CityDesktopGrid({
   cities,
   selectedCity,
@@ -176,12 +170,8 @@ export default function CityDesktopGrid({
 }: any) {
   return (
     <>
-      {/*
-        Стиль анімації — вставляємо один раз через <style>.
-        opacity: 0 → 1  +  translateY(16px) → 0
-        Це stagger: кожна картка отримує animationDelay через inline style вище.
-      */}
-     <style>{`
+      {}
+      <style>{`
         @keyframes cityCardIn {
           from { opacity: 0; transform: translateY(20px) scale(0.97); }
           to   { opacity: 1; transform: translateY(0) scale(1); }

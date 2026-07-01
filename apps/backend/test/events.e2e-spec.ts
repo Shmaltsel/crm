@@ -22,7 +22,6 @@ describe('Events API (contract)', () => {
       .send({ email: 'admin@crm.com', password: 'admin123' });
     token = loginRes.body.access_token;
 
-    // Отримуємо перше місто і школу для тестів
     const citiesRes = await request(app.getHttpServer())
       .get('/cities')
       .set('Authorization', `Bearer ${token}`);
@@ -37,7 +36,6 @@ describe('Events API (contract)', () => {
   });
 
   afterAll(async () => {
-    // Видаляємо створену тестову подію
     if (createdEventId) {
       await request(app.getHttpServer())
         .delete(`/events/${createdEventId}`)
@@ -184,7 +182,6 @@ describe('Events API (contract)', () => {
     it('видаляє подію', async () => {
       if (!schoolId || !cityId) return;
 
-      // Створюємо окрему подію для видалення
       const createRes = await request(app.getHttpServer())
         .post('/events')
         .set('Authorization', `Bearer ${token}`)
@@ -209,7 +206,6 @@ describe('Events API (contract)', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
-      // Перевіряємо що подія видалена
       await request(app.getHttpServer())
         .get(`/events/${deleteId}`)
         .set('Authorization', `Bearer ${token}`)

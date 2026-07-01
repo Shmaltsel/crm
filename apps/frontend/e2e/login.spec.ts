@@ -47,14 +47,12 @@ test.describe("Авторизація", () => {
   });
 
   test("після логауту токен видаляється", async ({ page }) => {
-    // Логін
     await page.goto("/login");
     await page.fill('input[type="email"]', "admin@crm.com");
     await page.fill('input[type="password"]', "admin123");
     await page.click('button[type="submit"]');
     await page.waitForURL(/cities/);
 
-    // Логаут через кнопку в Layout
     const logoutBtn = page.locator("button", { hasText: /вийти|logout/i });
     if (await logoutBtn.isVisible()) {
       await logoutBtn.click();

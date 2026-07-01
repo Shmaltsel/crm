@@ -11,7 +11,6 @@ export class AuthService {
   ) {}
 
   async login(email: string, pass: string) {
-    // Тепер безпечно викликаємо публічний метод з UsersService, ізолюючи БД
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
@@ -24,11 +23,6 @@ export class AuthService {
       throw new UnauthorizedException('Невірний email або пароль');
     }
 
-    // Генеруємо "корисне навантаження" для токена
-    // Було:
-    // const payload = { sub: user.id, email: user.email, role: user.role };
-
-    // Стало:
     const payload = {
       sub: user.id,
       email: user.email,

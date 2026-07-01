@@ -48,7 +48,6 @@ export function useCreateCrew(cityId: string | undefined) {
       return { prev };
     },
     onSuccess: (data) => {
-      // Замінюємо тимчасовий запис реальним
       qc.setQueryData(["city", cityId], (old: any) =>
         old
           ? {

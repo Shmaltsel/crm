@@ -255,7 +255,6 @@ export default function Kindergartens() {
             ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
             : null;
 
-          // Остання активність
           const lastActivityDate =
             school.events?.[0]?.updatedAt ?? school.updatedAt ?? null;
           const daysStale = lastActivityDate

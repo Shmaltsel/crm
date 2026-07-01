@@ -45,7 +45,7 @@ export class DashboardService {
   constructor(private prisma: PrismaService) {}
 
   private cache = new Map<string, { data: DashboardSummary; ts: number }>();
-  private CACHE_TTL = 60_000; // 60 секунд
+  private CACHE_TTL = 60_000;
 
   async getSummary(cityId?: string, role?: string) {
     const key = `${cityId ?? 'all'}-${role ?? 'anon'}`;

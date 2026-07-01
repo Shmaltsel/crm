@@ -3,7 +3,6 @@ import { http, HttpResponse } from "msw";
 const BASE = "";
 
 export const handlers = [
-  // Cities
   http.get(`${BASE}/cities`, () =>
     HttpResponse.json([
       { id: "city-1", name: "Львів", plannedEvents: 3, completedEvents: 10, schoolsCount: 50 },
@@ -11,7 +10,6 @@ export const handlers = [
     ])
   ),
 
-  // Schools
   http.get(`${BASE}/schools`, () =>
     HttpResponse.json([
       { id: "school-1", name: "Школа №1", type: "Школа", cityId: "city-1", childrenCount: 300, events: [] },
@@ -33,7 +31,6 @@ export const handlers = [
     })
   ),
 
-  // Events
   http.get(`${BASE}/events/school/:schoolId`, () =>
     HttpResponse.json([
       {
@@ -51,14 +48,12 @@ export const handlers = [
     ])
   ),
 
-  // Users
   http.get(`${BASE}/users`, () =>
     HttpResponse.json([
       { id: "user-1", name: "Адміністратор", email: "admin@crm.com", role: "SUPERADMIN" },
     ])
   ),
 
-  // Dashboard
   http.get(`${BASE}/dashboard/summary`, () =>
     HttpResponse.json({
       todayEvents: [],
@@ -72,7 +67,6 @@ export const handlers = [
     })
   ),
 
-  // Auth
   http.post(`${BASE}/auth/login`, () =>
     HttpResponse.json({ access_token: "test-token" })
   ),

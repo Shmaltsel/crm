@@ -12,7 +12,6 @@ export class EventsSchedulerService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    // Запускаємо перевірку один раз при старті, а потім кожні 24 години
     this.scheduleDailyCheck();
   }
 
@@ -22,10 +21,8 @@ export class EventsSchedulerService implements OnModuleInit {
       await this.checkEventsForTomorrow();
     };
 
-    // Перевіряємо відразу при запуску
     check();
 
-    // Запускаємо інтервал: 24 години = 24 * 60 * 60 * 1000 мс
     setInterval(check, 24 * 60 * 60 * 1000);
   }
 

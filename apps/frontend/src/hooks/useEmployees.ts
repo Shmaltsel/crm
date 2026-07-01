@@ -1,12 +1,25 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../config/api";
+import type { User, Project } from "../types";
 
 const h = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
+
+export interface UserFormData {
+  fullName: string;
+  phone: string;
+  email: string;
+  cityId: string;
+  role: string;
+  password: string;
+  telegramId: string;
+  car: string;
+}
 
 export function useUsers() {
   return useQuery({
     queryKey: ["users"],
-    queryFn: () => api.get("/users", { headers: h() }).then((r) => r.data),
+    queryFn: () =>
+      api.get<User[]>("/users", { headers: h() }).then((r) => r.data),
     staleTime: 2 * 60 * 1000,
   });
 }
@@ -14,7 +27,8 @@ export function useUsers() {
 export function useProjects() {
   return useQuery({
     queryKey: ["projects"],
-    queryFn: () => api.get("/projects", { headers: h() }).then((r) => r.data),
+    queryFn: () =>
+      api.get<Project[]>("/projects", { headers: h() }).then((r) => r.data),
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -22,25 +36,25 @@ export function useProjects() {
 export function useCreateUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (form: any) =>
-      api.post("/users", form, { headers: h() }).then((r) => r.data),
+    mutationFn: (form: UserFormData) =>
+      api.post<User>("/users", form, { headers: h() }).then((r) => r.data),
     onMutate: async (form) => {
       await qc.cancelQueries({ queryKey: ["users"] });
-      const prev = qc.getQueryData(["users"]);
+      const prev = qc.getQueryData<User[]>(["users"]);
       const optimistic = {
         id: `temp-${Date.now()}`,
         name: form.fullName,
         ...form,
       };
-      qc.setQueryData(["users"], (old: any) =>
+      qc.setQueryData(["users"], (old: User[] | undefined) =>
         Array.isArray(old) ? [...old, optimistic] : [optimistic],
       );
       return { prev };
     },
     onSuccess: (data) => {
-      qc.setQueryData(["users"], (old: any) =>
+      qc.setQueryData(["users"], (old: User[] | undefined) =>
         Array.isArray(old)
-          ? old.map((u: any) => (u.id?.startsWith("temp-") ? data : u))
+          ? old.map((u) => (u.id?.startsWith("temp-") ? data : u))
           : [data],
       );
     },
@@ -53,24 +67,28 @@ export function useCreateUser() {
 export function useUpdateUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, form }: { id: string; form: any }) =>
-      api.patch(`/users/${id}`, form, { headers: h() }).then((r) => r.data),
+    mutationFn: ({ id, form }: { id: string; form: Partial<UserFormData> }) =>
+      api
+        .patch<User>(`/users/${id}`, form, { headers: h() })
+        .then((r) => r.data),
     onMutate: async ({ id, form }) => {
       await qc.cancelQueries({ queryKey: ["users"] });
-      const prev = qc.getQueryData(["users"]);
-      qc.setQueryData(["users"], (old: any) =>
+      const prev = qc.getQueryData<User[]>(["users"]);
+      qc.setQueryData(["users"], (old: User[] | undefined) =>
         Array.isArray(old)
-          ? old.map((u: any) =>
-              u.id === id ? { ...u, name: form.fullName, ...form } : u,
+          ? old.map((u) =>
+              u.id === id
+                ? { ...u, name: form.fullName ?? u.name, ...form }
+                : u,
             )
           : old,
       );
       return { prev };
     },
     onSuccess: (data, vars) => {
-      qc.setQueryData(["users"], (old: any) =>
+      qc.setQueryData(["users"], (old: User[] | undefined) =>
         Array.isArray(old)
-          ? old.map((u: any) => (u.id === vars.id ? { ...u, ...data } : u))
+          ? old.map((u) => (u.id === vars.id ? { ...u, ...data } : u))
           : old,
       );
     },
@@ -87,9 +105,9 @@ export function useDeleteUser() {
       api.delete(`/users/${id}`, { headers: h() }).then((r) => r.data),
     onMutate: async (id) => {
       await qc.cancelQueries({ queryKey: ["users"] });
-      const prev = qc.getQueryData(["users"]);
-      qc.setQueryData(["users"], (old: any) =>
-        Array.isArray(old) ? old.filter((u: any) => u.id !== id) : old,
+      const prev = qc.getQueryData<User[]>(["users"]);
+      qc.setQueryData(["users"], (old: User[] | undefined) =>
+        Array.isArray(old) ? old.filter((u) => u.id !== id) : old,
       );
       return { prev };
     },
@@ -103,9 +121,11 @@ export function useCreateProject() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (form: { name: string; color: string }) =>
-      api.post("/projects", form, { headers: h() }).then((r) => r.data),
+      api
+        .post<Project>("/projects", form, { headers: h() })
+        .then((r) => r.data),
     onSuccess: (data) => {
-      qc.setQueryData(["projects"], (old: any) =>
+      qc.setQueryData(["projects"], (old: Project[] | undefined) =>
         Array.isArray(old) ? [...old, data] : [data],
       );
     },
@@ -118,8 +138,8 @@ export function useDeleteProject() {
     mutationFn: (id: string) =>
       api.delete(`/projects/${id}`, { headers: h() }).then((r) => r.data),
     onSuccess: (_data, id) => {
-      qc.setQueryData(["projects"], (old: any) =>
-        Array.isArray(old) ? old.filter((p: any) => p.id !== id) : old,
+      qc.setQueryData(["projects"], (old: Project[] | undefined) =>
+        Array.isArray(old) ? old.filter((p) => p.id !== id) : old,
       );
     },
   });

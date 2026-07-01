@@ -1,9 +1,10 @@
 
 import { memo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { EventPreparation as EventPreparationData } from '../../types';
 
 interface PreparationProps {
-  data: any; 
+  data: Partial<EventPreparationData>;
   onUpdate: (field: string, status: string) => void;
   onOpenCrewModal: () => void;
 }
@@ -38,7 +39,9 @@ export default memo(function EventPreparation({ data, onUpdate, onOpenCrewModal 
     if (key === 'assignCrew') {
       onOpenCrewModal();
     } else {
-      const next = getNextStatus(optimistic[key] ?? data[key]);
+      const next = getNextStatus(
+        optimistic[key] ?? data[key as keyof EventPreparationData] ?? 'Заплановано',
+      );
       setOptimistic(prev => ({ ...prev, [key]: next }));
       onUpdate(key, next).catch(() => {
         setOptimistic(prev => ({ ...prev, [key]: data[key] }));

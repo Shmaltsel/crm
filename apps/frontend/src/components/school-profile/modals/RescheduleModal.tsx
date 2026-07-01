@@ -33,11 +33,10 @@ export default function RescheduleModal({
   if (!isOpen) return null;
 
   const handleSave = () => {
-    onClose(); // закриваємо одразу
+    onClose();
     onSuccess();
-    // запит у фоні
     api.patch(`/events/${eventId}/reschedule`, { date, time }).catch((e) => {
-      console.error('Помилка перенесення:', e);
+      console.error("Помилка перенесення:", e);
     });
   };
 

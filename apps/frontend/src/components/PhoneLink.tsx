@@ -1,8 +1,3 @@
-// Невеликий перевикористовуваний компонент:
-// будь-який номер телефону робить клікабельним — на телефоні відкриває діалер з номером,
-// на десктопі — пропонує подзвонити через застосунок, який обробляє tel: (Skype, FaceTime тощо).
-// Використання: <PhoneLink phone={crew.phone} />
-
 interface PhoneLinkProps {
   phone?: string | null;
   className?: string;
@@ -11,13 +6,11 @@ interface PhoneLinkProps {
 export default function PhoneLink({ phone, className }: PhoneLinkProps) {
   if (!phone) return <span className="text-slate-400">—</span>;
 
-  // tel: посилання працює надійніше, якщо лишити тільки цифри та "+"
   const cleaned = phone.replace(/[^\d+]/g, "");
 
   return (
     <a
       href={`tel:${cleaned}`}
-      // щоб клік по номеру не тригерив onClick батьківського рядка/картки (наприклад, навігацію)
       onClick={(e) => e.stopPropagation()}
       title="Зателефонувати"
       className={`group inline-flex items-center gap-1.5 text-slate-700 hover:text-blue-600 transition-colors ${

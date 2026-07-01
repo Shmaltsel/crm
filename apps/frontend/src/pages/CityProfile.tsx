@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { lazy, Suspense } from "react";
-const CityAnalytics = lazy(() => import("../components/city-profile/CityAnalytics"));
+const CityAnalytics = lazy(
+  () => import("../components/city-profile/CityAnalytics"),
+);
 import PhoneLink from "../components/PhoneLink";
 import type { Event, Crew, CityProfile as CityProfileType } from "../types";
 import OptimizedImage from "../components/ui/OptimizedImage";
@@ -28,14 +30,15 @@ export default function CityProfile() {
 
   const handleCreateCrew = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!crewForm.hostId || !crewForm.driverId) return alert("Оберіть ведучого та водія!");
-    setIsCreateCrewModalOpen(false); // закриваємо одразу
+    if (!crewForm.hostId || !crewForm.driverId)
+      return alert("Оберіть ведучого та водія!");
+    setIsCreateCrewModalOpen(false);
     createCrew.mutate(crewForm);
   };
 
   const handleDeleteCrew = (crewId: string) => {
     if (!window.confirm("Видалити екіпаж?")) return;
-    deleteCrew.mutate(crewId); // UI оновлюється миттєво через onMutate
+    deleteCrew.mutate(crewId);
   };
 
   if (isLoading)
@@ -46,7 +49,6 @@ export default function CityProfile() {
   const crews: Crew[] = city.crews || [];
   const manager = city.manager;
 
-  // Знаходимо вільних людей (які не закріплені за іншим екіпажем)
   const busyUserIds = crews.flatMap((c: any) => [c.hostId, c.driverId]);
   const availableHosts = users.filter(
     (u) =>
@@ -357,20 +359,17 @@ export default function CityProfile() {
                   </thead>
                   <tbody>
                     {crews.map((crew: any) => {
-                      // Знаходимо реальні об'єкти юзерів, щоб витягнути телефони
                       const hostObj = users.find((u) => u.id === crew.hostId);
                       const driverObj = users.find(
                         (u) => u.id === crew.driverId,
                       );
 
-                      // Парсимо авто (Назва та Номер)
                       const carName = crew.car
                         ? crew.car.split("(")[0].trim()
                         : "—";
                       const carPlate =
                         crew.car?.match(/\(([^)]+)\)/)?.[1] || "";
 
-                      // Рахуємо події
                       const eventsCount =
                         city.events?.filter((e: any) => e.crewId === crew.id)
                           .length || 0;
@@ -454,7 +453,11 @@ export default function CityProfile() {
       )}
 
       {activeTab === "analytics" && (
-        <Suspense fallback={<div className="bg-white rounded-2xl h-64 animate-pulse border border-slate-100" />}>
+        <Suspense
+          fallback={
+            <div className="bg-white rounded-2xl h-64 animate-pulse border border-slate-100" />
+          }
+        >
           <CityAnalytics events={completedEvents} />
         </Suspense>
       )}

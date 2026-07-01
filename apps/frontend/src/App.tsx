@@ -6,8 +6,6 @@ import {
   Navigate,
 } from "react-router-dom";
 
-// --- СТАТИЧНІ ІМПОРТИ ---
-// Ці компоненти завантажуються одразу, оскільки вони формують "скелет" додатку (меню, перевірка токена)
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import { CityProvider } from "./context/CityContext";
@@ -17,8 +15,6 @@ import ProtectedRoute from "./components/ProtectedRoute";
 const CityProfile = lazy(() => import("./pages/CityProfile"));
 const EventReport = lazy(() => import("./pages/EventReport"));
 
-// --- ДИНАМІЧНІ ІМПОРТИ (Ледаче завантаження / Code Splitting) ---
-// Ці файли будуть завантажуватись окремими шматками (chunks) ТІЛЬКИ коли користувач перейде на відповідну сторінку
 const Cities = lazy(() => import("./pages/Cities"));
 const Schools = lazy(() => import("./pages/Schools"));
 const SchoolProfile = lazy(() => import("./pages/SchoolProfile"));
@@ -28,7 +24,6 @@ const CalendarView = lazy(() => import("./pages/CalendarView"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Kindergartens = lazy(() => import("./pages/Kindergartens"));
 
-// Компонент-заглушка, який показується долі секунди, поки вантажиться JS код сторінки
 const PageLoader = () => (
   <div className="flex items-center justify-center h-full min-h-[50vh]">
     <div className="text-slate-400 font-medium animate-pulse">
@@ -38,7 +33,6 @@ const PageLoader = () => (
 );
 
 export default function App() {
-  // Базова логіка авторизації
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
     !!localStorage.getItem("token"),
   );

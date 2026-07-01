@@ -2,18 +2,19 @@
 
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { Event } from '../../types';
 
 interface EventsTableProps {
-  events: any[];
+  events: Event[];
   selectedEventId: string | null;
   onEventSelect: (id: string) => void;
-  onDeleteSuccess: () => void; // Додаємо колбек для оновлення списку
+  onDeleteSuccess: () => void;
 }
 
 export default function EventsTable({ events, selectedEventId, onEventSelect, onDeleteSuccess }: EventsTableProps) {
   
   const handleDelete = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation(); // Щоб не вибирати подію при кліку на кнопку видалення
+    e.stopPropagation();
     if (!window.confirm('Видалити цю подію?')) return;
     
     try {

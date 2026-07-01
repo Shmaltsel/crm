@@ -1,10 +1,11 @@
 import { memo } from 'react';
 import PhoneLink from '../PhoneLink';
 import { motion } from "framer-motion";
+import type { Event, User } from '../../types';
 
 interface AssignedCrewProps {
-  currentEvent: any;
-  employees: any[];
+  currentEvent: Event | null;
+  employees: User[];
 }
 
 export default memo(function AssignedCrew({ currentEvent, employees }: AssignedCrewProps) {
@@ -23,7 +24,6 @@ export default memo(function AssignedCrew({ currentEvent, employees }: AssignedC
     );
   }
 
-  // Знаходимо працівників по їхніх ID, збережених у екіпажі
   const host = (employees ?? []).find(e => e.id === crew.hostId);
   const driver = (employees ?? []).find(e => e.id === crew.driverId);
 

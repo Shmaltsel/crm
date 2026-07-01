@@ -1,22 +1,16 @@
-// apps/frontend/src/components/schools/schoolUtils.ts
+import type { School } from "../../types";
 
 const PLANNED_STAGES = ["BASE", "FIRST_CONTACT", "DATE_CONFIRMED"];
 const IN_PROGRESS_STAGES = ["PREPARATION", "IN_PROGRESS", "DONE", "REPORT"];
-
-interface School {
-  childrenCount?: number;
-  events?: any[];
-  isHotClient?: boolean;
-}
 
 export function classifySchool(
   school: School,
 ): "new" | "planned" | "inProgress" | "done" {
   const events = (school.events || []).filter(
-    (e: any) => e.status !== "RE_SALE",
+    (e) => e.status !== "RE_SALE",
   );
   if (events.length === 0) {
-    return (school.events || []).some((e: any) => e.status === "RE_SALE")
+    return (school.events || []).some((e) => e.status === "RE_SALE")
       ? "done"
       : "new";
   }

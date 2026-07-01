@@ -12,7 +12,6 @@ export class CitiesService {
   }
 
   async findAll() {
-    // 1. Отримуємо міста та їхніх менеджерів + кількість шкіл
     const cities = await this.prisma.city.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
@@ -21,19 +20,16 @@ export class CitiesService {
           select: { id: true, name: true, phone: true },
           take: 1,
         },
-        _count: { select: { schools: true } }, // <-- Додано цей рядок для підрахунку
+        _count: { select: { schools: true } },
       },
     });
 
-    // 2. Рахуємо події через швидке агрегування (SQL GROUP BY) за мілісекунди
     const eventsStats = await this.prisma.event.groupBy({
       by: ['cityId', 'status'],
       _count: { _all: true },
     });
 
-    // 3. Формуємо результат для клієнта
     return cities.map((city) => {
-      // Вибираємо статистику лише для поточного міста
       const cityStats = eventsStats.filter((stat) => stat.cityId === city.id);
 
       const completedEvents = cityStats
@@ -49,7 +45,7 @@ export class CitiesService {
         manager: city.users[0] || null,
         plannedEvents,
         completedEvents,
-        schoolsCount: city._count.schools, // <-- Віддаємо на фронтенд
+        schoolsCount: city._count.schools,
       };
     });
   }
@@ -74,7 +70,6 @@ export class CitiesService {
   }
 
   async deleteCrew(id: string) {
-    // Відв'язуємо екіпаж від подій перед видаленням, щоб не було помилок бази
     await this.prisma.event.updateMany({
       where: { crewId: id },
       data: { crewId: null },
@@ -96,7 +91,7 @@ export class CitiesService {
           include: {
             school: { select: { id: true, name: true, type: true } },
             report: true,
-            history: { orderBy: { createdAt: 'asc' } }, // ДОДАНО: підтягуємо історію пайплайну
+            history: { orderBy: { createdAt: 'asc' } },
           },
           orderBy: { date: 'desc' },
         },

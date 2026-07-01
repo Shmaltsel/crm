@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { useSelectedCity } from "../context/CityContext";
 import { useCities, useAddCity } from "../hooks/useApi";
 
-// --- ДИНАМІЧНІ ІМПОРТИ (Code Splitting) ---
 const IssueCarousel = lazy(() => import("../components/IssueCarousel"));
 const CityMobileHeader = lazy(
   () => import("../components/cities/CityMobileHeader"),
@@ -15,9 +14,6 @@ const CityDesktopGrid = lazy(
   () => import("../components/cities/CityDesktopGrid"),
 );
 
-// Оптимізація 1: Скелетне завантаження (Skeleton Screen).
-// Це повністю прибирає проблему CLS (зсув макета) і покращує LCP,
-// оскільки користувач одразу бачить структуру сторінки, а не пустий екран.
 const CitiesSkeleton = () => (
   <div className="w-full animate-pulse">
     {/* Мобільний скелетон */}
@@ -79,7 +75,6 @@ export default function Cities() {
   };
 
   return (
-    // Оптимізація 5: content-visibility
     <div
       className="p-4 md:p-8 bg-slate-50 min-h-screen"
       style={{ contentVisibility: "auto" }}

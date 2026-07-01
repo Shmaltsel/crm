@@ -1,8 +1,9 @@
 import { memo } from "react";
 import { motion } from "framer-motion";
+import type { Event } from "../../types";
 interface PipelineProps {
   currentStageIndex: number;
-  currentEvent: any;
+  currentEvent: Event | null;
   onPipelineClick: (stepId: number) => void;
   stages: Array<{ id: number; key: string; name: string }>;
 }

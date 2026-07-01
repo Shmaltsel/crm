@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { api } from "../../../config/api";
+import type { EventFormData, Project } from "../../../types";
 
 interface EventModalProps {
   isOpen: boolean;
   onClose: () => void;
-  eventForm: any;
-  setEventForm: (data: any) => void;
+  eventForm: EventFormData;
+  setEventForm: React.Dispatch<React.SetStateAction<EventFormData>>;
   onSave: (e: React.FormEvent) => void;
 }
 
@@ -16,19 +17,18 @@ export default function EventModal({
   setEventForm,
   onSave,
 }: EventModalProps) {
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
 
   useEffect(() => {
     if (isOpen) {
       api
-        .get("/projects", {
+        .get<Project[]>("/projects", {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         })
         .then((res) => {
           setProjects(res.data);
-          // Якщо поточний проєкт не вибраний, автовибираємо перший доступний
           if (!eventForm.project && res.data.length > 0) {
-            setEventForm((prev: any) => ({
+            setEventForm((prev) => ({
               ...prev,
               project: res.data[0].name,
             }));

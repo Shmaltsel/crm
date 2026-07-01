@@ -36,6 +36,7 @@ export class SchoolsController {
   }
 
   @Post()
+  @Roles('SUPERADMIN', 'MANAGER')
   create(@Body() body: CreateSchoolDto) {
     return this.schoolsService.create(body);
   }
@@ -44,7 +45,6 @@ export class SchoolsController {
     return this.schoolsService.findAll(minimal === 'true');
   }
 
-  // ⚠️ ВАЖЛИВО: цей маршрут МАЄ стояти ДО @Get(':id')
   @Get('search')
   search(@Query('q') q: string, @Query('type') type: string) {
     return this.parserService.searchSchools(q, type);

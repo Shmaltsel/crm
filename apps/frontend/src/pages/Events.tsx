@@ -59,7 +59,6 @@ const STATUS_COLORS: Record<string, string> = {
   RE_SALE: "bg-pink-50 text-pink-700",
 };
 
-// Ролі, для яких сторінка показує лише "власні" події (де вони в екіпажі)
 const FIELD_ROLES = ["DRIVER", "HOST"];
 
 function formatDate(dateStr: string) {

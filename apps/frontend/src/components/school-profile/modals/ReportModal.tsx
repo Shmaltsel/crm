@@ -233,7 +233,7 @@ export default function ReportModal({
     privilegedCount: 0,
     showingsCount: 0,
     totalSum: 0,
-    schoolPercentage: 20, // <-- НОВЕ: Дефолтний % закладу
+    schoolPercentage: 20,
     rating: 8,
   });
 
@@ -242,7 +242,6 @@ export default function ReportModal({
   const [salaries, setSalaries] = useState<Record<string, number>>({});
   if (!isOpen) return null;
 
-  // Динамічний розрахунок закладу на основі відсотка
   const schoolSum = (form.totalSum * form.schoolPercentage) / 100;
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
   const remainder = form.totalSum - schoolSum - totalExpenses;
@@ -258,7 +257,6 @@ export default function ReportModal({
     setExpenses((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Хелпер:
   const crewMembers = [
     ...(crew?.host
       ? [
@@ -292,7 +290,7 @@ export default function ReportModal({
 
     onSave({
       ...form,
-      expenses, // тепер підтримує category
+      expenses,
       schoolSum,
       remainderSum: remainder,
       salaries: salariesArr,

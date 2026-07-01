@@ -213,7 +213,7 @@ model Project {
 model ExpenseItem {
   id        String   @id @default(uuid())
   reportId  String
-  category  String // "Транспорт", "Матеріали", "Реклама" тощо
+  category  String 
   name      String?
   amount    Decimal  @db.Decimal(12, 2)
   createdAt DateTime @default(now())
@@ -229,7 +229,7 @@ model SalaryItem {
   userId    String?
   userName  String
   amount    Decimal  @db.Decimal(12, 2)
-  role      String? // "ведучий", "водій"
+  role      String? 
   createdAt DateTime @default(now())
 
   report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)

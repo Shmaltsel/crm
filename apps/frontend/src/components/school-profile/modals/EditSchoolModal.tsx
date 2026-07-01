@@ -1,10 +1,11 @@
 import React from 'react';
+import type { SchoolProfileData } from '../../../types';
 
 interface EditSchoolModalProps {
   isOpen: boolean;
   onClose: () => void;
-  editForm: any;
-  setEditForm: (data: any) => void;
+  editForm: SchoolProfileData;
+  setEditForm: React.Dispatch<React.SetStateAction<SchoolProfileData>>;
   onSave: (e: React.FormEvent) => void;
 }
 

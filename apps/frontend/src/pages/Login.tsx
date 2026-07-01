@@ -27,7 +27,7 @@ export default function Login({ onLogin }: LoginProps) {
       localStorage.setItem("token", response.data.access_token);
       localStorage.setItem("user", JSON.stringify(response.data.user));
       if (onLogin) {
-        onLogin(response.data.access_token); // оновлює isAuthenticated в App
+        onLogin(response.data.access_token);
       } else {
         navigate("/cities");
       }

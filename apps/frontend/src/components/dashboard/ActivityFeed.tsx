@@ -48,7 +48,6 @@ interface ActivityItem {
   eventId:    string | null;
 }
 
-// Група: один користувач + одна школа підряд
 interface Group {
   key:       string;
   userName:  string;
@@ -64,7 +63,7 @@ function groupItems(items: ActivityItem[]): Group[] {
   for (const item of items) {
     const last = groups[groups.length - 1];
     const sameUser   = last?.userName  === item.userName;
-    const sameSchool = last?.schoolId  === item.schoolId;  // null === null теж OK
+    const sameSchool = last?.schoolId  === item.schoolId; 
 
     if (last && sameUser && sameSchool) {
       last.actions.push({ id: item.id, action: item.action, comment: item.comment, createdAt: item.createdAt });
@@ -115,7 +114,6 @@ export default function ActivityFeed({ items }: Props) {
           <div className="flex flex-col gap-1">
             {visible.map((group) => {
               const avatarColor = ROLE_COLORS[group.role] ?? 'bg-slate-100 text-slate-600';
-              // Показуємо до 3 останніх дій у групі
               const shownActions = group.actions.slice(-3);
               const hiddenCount  = group.actions.length - shownActions.length;
               const lastTime     = formatTime(group.actions[group.actions.length - 1].createdAt);

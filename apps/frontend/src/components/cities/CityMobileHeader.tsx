@@ -4,7 +4,7 @@ import { api } from "../../config/api";
 
 interface Props {
   selectedCity: any;
-  cities: any[]; // Передаємо всі міста для статистики
+  cities: any[]; 
 }
 
 const STATUSES = ["Планується", "Виконується", "Виконано"];
@@ -70,7 +70,6 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
   const handleStatusToggle = async (issue: any) => {
     const nextStatus = getNextStatus(issue.status);
 
-    // Оптимістичне оновлення — UI реагує миттєво
     if (nextStatus === "Виконано") {
       setExitingIssueId(issue.id);
       setTimeout(() => {
@@ -94,12 +93,10 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
       );
     }
 
-    // Запит у фоні
     api
       .patch(`/issues/${issue.id}/status`, { status: nextStatus })
       .catch((e) => {
         console.error(e);
-        // Відкат при помилці
         setIssues((prev) =>
           prev.map((i) =>
             i.id === issue.id ? { ...i, status: issue.status } : i,

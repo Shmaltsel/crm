@@ -64,7 +64,6 @@ export class IssuesService {
       include: { users: { where: { role: 'MANAGER' }, take: 1 } },
     });
 
-    // Отримуємо chatId відповідального працівника
     let assigneeChatId: string | null = null;
     if (data.assignedUserId) {
       const assignee = await this.prisma.user.findUnique({
@@ -105,11 +104,9 @@ export class IssuesService {
         : '') +
       `\n\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
 
-    // Надсилаємо менеджеру міста
     if (managerChatId)
       await this.telegramService.sendMessage(managerChatId, text);
 
-    // Надсилаємо відповідальному (якщо це не той самий менеджер)
     if (assigneeChatId && assigneeChatId !== managerChatId) {
       await this.telegramService.sendMessage(assigneeChatId, text);
     }
@@ -121,11 +118,8 @@ export class IssuesService {
     return this.prisma.issueReport.findMany({
       where: {
         cityId,
-        // Одразу відсікаємо вирішені проблеми на рівні БД, щоб не вантажити мережу
         status: { not: 'Виконано' },
       },
-      // МИ ПРИБРАЛИ include: { event: ... }, бо schoolName та eventName
-      // вже збережені безпосередньо в моделі IssueReport
       orderBy: { createdAt: 'desc' },
     });
   }

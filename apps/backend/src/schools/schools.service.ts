@@ -1,7 +1,7 @@
 import { Injectable, forwardRef, Inject } from '@nestjs/common';
 import { EventsService } from '../events/events.service';
 import { ParserService } from './parser.service';
-import { PrismaService } from '../prisma/prisma.service'; // Використовуємо відносний шлях для надійності
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class SchoolsService {
@@ -24,14 +24,11 @@ export class SchoolsService {
   }) {
     const { sourceUrl, ...schoolData } = data;
 
-    // Використовуємо this.prisma замість prisma
     const newSchool = await this.prisma.school.create({
       data: schoolData,
     });
 
-    // Запускаємо парсинг у фоні
     this.parserService
-      // ДОДАЛИ data.type третім аргументом
       .parseSchoolData(data.name, sourceUrl, data.type)
       .then(async (parsed) => {
         if (!parsed) {
@@ -39,10 +36,7 @@ export class SchoolsService {
           return;
         }
 
-        // ВАЖЛИВО: оновлюємо лише ті поля, які користувач НЕ заповнив сам
-        // (наприклад, директора, обраного через автодоповнення з бази контактів).
-        // Раніше парсер безумовно перезаписував director/address/childrenCount,
-        // навіть якщо вони вже були коректно вказані вручну.
+       
         const updateData: Record<string, unknown> = {};
 
         if (!schoolData.address && parsed.address) {
@@ -62,7 +56,6 @@ export class SchoolsService {
           return;
         }
 
-        // Використовуємо this.prisma замість prisma
         await this.prisma.school.update({
           where: {
             id: newSchool.id,
@@ -94,7 +87,6 @@ export class SchoolsService {
           updatedAt: true,
           isHotClient: true,
           city: { select: { id: true, name: true } },
-          // Тільки останній евент для відображення етапу в списку
           events: {
             select: { status: true, updatedAt: true },
             orderBy: { date: 'desc' },
@@ -115,7 +107,6 @@ export class SchoolsService {
   }
 
   async findOne(id: string) {
-    // Використовуємо this.prisma
     return this.prisma.school.findUnique({
       where: {
         id,
@@ -129,7 +120,6 @@ export class SchoolsService {
   async update(id: string, data: any) {
     const { city, id: _id, createdAt, updatedAt, ...updateData } = data;
 
-    // Використовуємо this.prisma
     return this.prisma.school.update({
       where: {
         id,
@@ -139,7 +129,6 @@ export class SchoolsService {
   }
 
   async remove(id: string) {
-    // Використовуємо this.prisma
     const events = await this.prisma.event.findMany({
       where: {
         schoolId: id,
@@ -150,7 +139,6 @@ export class SchoolsService {
       await this.eventsService.remove(event.id);
     }
 
-    // Використовуємо this.prisma
     return this.prisma.school.delete({
       where: {
         id,
@@ -164,7 +152,6 @@ export class SchoolsService {
     const cityName = city || 'Львів';
     const normalizedQuery = q.toLowerCase().trim();
 
-    // Дістаємо всі контакти цього міста одним запитом
     const allContacts = await this.prisma.schoolContact.findMany({
       where: { city: cityName },
       orderBy: [{ schoolNumber: 'asc' }, { role: 'asc' }],
@@ -189,7 +176,6 @@ export class SchoolsService {
       'ім',
     ]);
 
-    // Збираємо окремі слова-токени (дозволяємо довжину від 1 символу, щоб ловити школи №1, №2)
     const tokens = normalizedQuery
       .replace(/№/g, ' ')
       .split(/\s+/)
@@ -199,24 +185,18 @@ export class SchoolsService {
     const matches = allContacts.filter((c) => {
       const num = c.schoolNumber.toLowerCase();
 
-      // 1. Точний збіг всієї фрази
       if (num === normalizedQuery) return true;
 
       const isNumeric = /^\d+$/.test(num);
 
       if (isNumeric) {
-        // 2. Якщо номер школи в базі — це просто число (напр. "15")
-        // Шукаємо точний збіг серед введених слів, щоб пошук "1" не знаходив "15" чи "21"
         if (tokens.includes(num)) return true;
       } else {
-        // 3. Якщо це текстова назва (напр. "Арніка", "Сихівський ліцей", "156/162")
         if (num.includes(normalizedQuery) || normalizedQuery.includes(num))
           return true;
-        // Для довгих назв перевіряємо, чи введено хоча б одне слово з назви (мінімум 3 літери)
         if (tokens.some((t) => t.length >= 3 && num.includes(t))) return true;
       }
 
-      // 4. Пошук за ім'ям контактної особи
       if (c.contactName.toLowerCase().includes(normalizedQuery)) return true;
 
       return false;
@@ -228,20 +208,16 @@ export class SchoolsService {
     const city = await this.prisma.city.findUnique({ where: { id: cityId } });
     if (!city) throw new Error(`Місто з id=${cityId} не знайдено`);
 
-    // 1. Отримуємо всі заклади з парсера
     const allFromParser = await this.parserService.getAllSchoolsForCity(
       city.name,
       type,
     );
 
-    // 2. Отримуємо ВСІ існуючі школи цього типу в цьому місті
     const existingSchools = await this.prisma.school.findMany({
       where: { cityId, type },
       select: { name: true },
     });
 
-    // 3. Покращена функція нормалізації
-    // Видаляє всі пробіли, символи №, лапки та переводить у нижній регістр
     const normalize = (name: string) =>
       name
         .toLowerCase()
@@ -254,7 +230,6 @@ export class SchoolsService {
       existingSchools.map((s) => normalize(s.name)),
     );
 
-    // 4. Фільтруємо ті, яких ще немає
     const toCreate = allFromParser.filter(
       (s) => !existingNames.has(normalize(s.name)),
     );
@@ -267,17 +242,14 @@ export class SchoolsService {
       };
     }
 
-    // 5. Отримуємо контакти для автозаповнення
     const contacts = await this.prisma.schoolContact.findMany({
       where: { city: city.name },
     });
 
     let created = 0;
     for (const school of toCreate) {
-      // Перевірка ще раз на випадок дублів всередині самого парсингу
       if (existingNames.has(normalize(school.name))) continue;
 
-      // Додаємо в Set, щоб уникнути дублів у межах одного циклу імпорту
       existingNames.add(normalize(school.name));
 
       const numMatch = school.name.match(/№?\s*(\d+)/);
