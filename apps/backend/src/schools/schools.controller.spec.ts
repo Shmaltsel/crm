@@ -12,10 +12,14 @@ describe('SchoolsController', () => {
       providers: [
         { provide: SchoolsService, useValue: {} },
         { provide: ParserService, useValue: {} },
-        { provide: AuthGuard, useValue: { canActivate: () => true } },
-        { provide: RolesGuard, useValue: { canActivate: () => true } },
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(RolesGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
+
     expect(module.get(SchoolsController)).toBeDefined();
   });
 });

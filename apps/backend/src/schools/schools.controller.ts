@@ -15,6 +15,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { AuthGuard } from '../auth/auth.guard';
 import { CreateSchoolDto } from './dto/create-school.dto';
+import { UpdateSchoolDto } from './dto/update-school.dto';
 import { BulkImportDto } from './dto/bulk-import.dto';
 @Controller('schools')
 @UseGuards(AuthGuard, RolesGuard)

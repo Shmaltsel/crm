@@ -64,6 +64,7 @@ test.describe("Авторизація", () => {
   test("захищений маршрут без токена перенаправляє на /login", async ({
     page,
   }) => {
+    await page.goto("/schools");
     await page.evaluate(() => localStorage.removeItem("token"));
     await page.goto("/schools");
     await expect(page).toHaveURL(/login/);

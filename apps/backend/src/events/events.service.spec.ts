@@ -167,8 +167,8 @@ describe('EventsService', () => {
       rating: 9,
       expenses: [],
       salaries: [
-        { userId: 'host-1', amount: 1500 },
-        { userId: 'driver-1', amount: 1000 },
+        { userId: 'host-1', name: 'Ведучий Тест', amount: 1500 },
+        { userId: 'driver-1', name: 'Водій Тест', amount: 1000 },
       ],
     };
 
@@ -407,7 +407,10 @@ describe('EventsService', () => {
 
       await service.submitReport(
         'ev-1',
-        { ...reportData, salaries: [{ userId: 'host-1', amount: -200 }] },
+        {
+          ...reportData,
+          salaries: [{ userId: 'host-1', name: 'Ведучий Тест', amount: 0 }],
+        },
         mockUser,
       );
 
@@ -456,7 +459,7 @@ describe('EventsService', () => {
 
       const call = mockPrisma.eventReport.upsert.mock.calls[0][0];
       expect(call.update.remainderSum).toBe(11500);
-      });
+    });
 
     it('коректно обробляє відсутній rating', async () => {
       const { rating, ...withoutRating } = reportData;

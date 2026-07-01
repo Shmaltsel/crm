@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { ValidationPipe } from '@nestjs/common';
 
 describe('Auth API (contract)', () => {
   let app: INestApplication;
@@ -11,6 +12,7 @@ describe('Auth API (contract)', () => {
       imports: [AppModule],
     }).compile();
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
     await app.init();
   });
 

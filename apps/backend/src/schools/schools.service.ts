@@ -1,4 +1,9 @@
-import { Injectable, forwardRef, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  forwardRef,
+  Inject,
+} from '@nestjs/common';
 import { EventsService } from '../events/events.service';
 import { ParserService } from './parser.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -36,7 +41,6 @@ export class SchoolsService {
           return;
         }
 
-       
         const updateData: Record<string, unknown> = {};
 
         if (!schoolData.address && parsed.address) {
@@ -107,7 +111,7 @@ export class SchoolsService {
   }
 
   async findOne(id: string) {
-    return this.prisma.school.findUnique({
+    const school = await this.prisma.school.findUnique({
       where: {
         id,
       },
@@ -115,6 +119,11 @@ export class SchoolsService {
         city: true,
       },
     });
+    if (!school) {
+      throw new NotFoundException(`Школу з ID ${id} не знайдено`);
+    }
+
+    return school;
   }
 
   async update(id: string, data: any) {

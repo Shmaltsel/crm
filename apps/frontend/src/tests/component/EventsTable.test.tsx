@@ -32,6 +32,10 @@ describe("EventsTable", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.confirm = vi.fn(() => true);
+
+    vi.stubGlobal("localStorage", {
+      getItem: vi.fn(() => "fake-token"),
+    });
   });
 
   it("відображає всі події", () => {
@@ -45,7 +49,7 @@ describe("EventsTable", () => {
         />
       </MemoryRouter>,
     );
-   
+
     expect(screen.getAllByText("Голограма")).toHaveLength(2);
     expect(screen.getAllByText("Малювайко")).toHaveLength(2);
   });

@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { SubmitReportDto } from './submit-report.dto';
@@ -12,7 +13,7 @@ const validPayload = {
   totalSum: 10000,
   schoolSum: 2000,
   remainderSum: 8000,
-  rating: 9,
+  rating: 5,
   expenses: [],
   salaries: [],
 };

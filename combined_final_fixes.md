@@ -1,3 +1,8 @@
+# Фінальні файли для виправлення E2E тестів
+
+### `apps/backend/src/events/events.service.ts`
+
+```typescript
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
@@ -492,3 +497,422 @@ export class EventsService {
     });
   }
 }
+
+```
+
+---
+
+### `apps/backend/.env`
+
+```bash
+# Environment variables declared in this file are NOT automatically loaded by Prisma.
+# Please add `import "dotenv/config";` to your `prisma.config.ts` file, or use the Prisma CLI with Bun
+# to load environment variables from .env files: https://pris.ly/prisma-config-env-vars.
+
+# Prisma supports the native connection string format for PostgreSQL, MySQL, SQLite, SQL Server, MongoDB and CockroachDB.
+# See the documentation for all the connection string options: https://pris.ly/d/connection-strings
+
+VITE_API_URL="https://crm-57qd.onrender.com"
+DATABASE_URL="postgresql://***:***@ep-raspy-wind-asvmcdtw-pooler.c-4.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+TELEGRAM_BOT_TOKEN="***
+```
+
+---
+
+### `apps/backend/test/dashboard.e2e-spec.ts`
+
+```typescript
+import { Test, TestingModule } from '@nestjs/testing';
+import { INestApplication } from '@nestjs/common';
+import request from 'supertest';
+import { AppModule } from '../src/app.module';
+
+describe('Dashboard API (contract)', () => {
+  let app: INestApplication;
+  let token: string;
+
+  beforeAll(async () => {
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+    app = moduleFixture.createNestApplication();
+    await app.init();
+
+    const loginRes = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: 'admin@crm.com', password: 'admin123' });
+    token = loginRes.body.access_token;
+  });
+
+  afterAll(async () => await app.close());
+
+  describe('GET /dashboard/summary', () => {
+    it('повертає summary з токеном', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/dashboard/summary')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(res.body).toHaveProperty('todayEvents');
+      expect(res.body).toHaveProperty('upcomingEvents');
+      expect(res.body).toHaveProperty('funnel');
+      expect(res.body).toHaveProperty('monthlyKpi');
+      expect(res.body).toHaveProperty('staleSchools');
+      expect(res.body).toHaveProperty('activityFeed');
+    });
+
+    it('повертає 401 без токена', async () => {
+      await request(app.getHttpServer()).get('/dashboard/summary').expect(401);
+    });
+
+    it('funnel містить всі етапи пайплайну', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/dashboard/summary')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const stages = [
+        'BASE',
+        'FIRST_CONTACT',
+        'DATE_CONFIRMED',
+        'PREPARATION',
+        'IN_PROGRESS',
+        'DONE',
+        'REPORT',
+        'RE_SALE',
+      ];
+      for (const stage of stages) {
+        expect(res.body.funnel).toHaveProperty(stage);
+      }
+    });
+
+    it('monthlyKpi має числові поля', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/dashboard/summary')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const kpi = res.body.monthlyKpi;
+      expect(typeof kpi.revenue).toBe('number');
+      expect(typeof kpi.profit).toBe('number');
+      expect(typeof kpi.children).toBe('number');
+      expect(typeof kpi.count).toBe('number');
+    });
+
+    it('фільтр по cityId повертає коректний результат', async () => {
+      const citiesRes = await request(app.getHttpServer())
+        .get('/cities')
+        .set('Authorization', `Bearer ${token}`);
+
+      const cityId = citiesRes.body[0]?.id;
+      if (!cityId) return;
+
+      const res = await request(app.getHttpServer())
+        .get(`/dashboard/summary?cityId=${cityId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(res.body).toHaveProperty('funnel');
+      expect(res.body).toHaveProperty('todayEvents');
+    });
+
+    it('todayEvents і upcomingEvents — масиви', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/dashboard/summary')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(Array.isArray(res.body.todayEvents)).toBe(true);
+      expect(Array.isArray(res.body.upcomingEvents)).toBe(true);
+      expect(Array.isArray(res.body.staleSchools)).toBe(true);
+      expect(Array.isArray(res.body.activityFeed)).toBe(true);
+    });
+  });
+});
+
+```
+
+---
+
+### `apps/backend/src/telegram/telegram.service.ts`
+
+```typescript
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
+import TelegramBot from 'node-telegram-bot-api';
+import { UsersService } from '../users/users.service';
+
+@Injectable()
+export class TelegramService implements OnModuleInit {
+  private bot: TelegramBot;
+  private readonly logger = new Logger(TelegramService.name);
+
+  constructor(
+    @Inject(forwardRef(() => UsersService))
+    private usersService: UsersService,
+  ) {}
+
+  onModuleInit() {
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    if (!token || process.env.NODE_ENV === 'test') {
+      this.logger.warn(
+        'TELEGRAM_BOT_TOKEN не задано або тестове середовище — бот вимкнено',
+      );
+      return;
+    }
+    this.bot = new TelegramBot(token, { polling: true });
+    this.logger.log('Telegram бот ініціалізовано');
+
+    this.bot.onText(/\/start/, async (msg) => {
+      const chatId = String(msg.chat.id);
+      const username = msg.from?.username;
+
+      if (!username) {
+        await this.bot.sendMessage(
+          chatId,
+          "⚠️ У вашому профілі Telegram не вказано username. Будь ласка, додайте його в налаштуваннях Telegram, щоб ми могли підв'язати акаунт.",
+        );
+        return;
+      }
+
+      const normalizedUsername = username.toLowerCase();
+
+      const result = await this.usersService.updateTelegramChatId(
+        normalizedUsername,
+        chatId,
+      );
+
+      if (result.count > 0) {
+        this.logger.log(
+          `[/start] chatId=${chatId} username=${normalizedUsername} — успішно підв'язано`,
+        );
+        await this.bot.sendMessage(
+          chatId,
+          `✅ Вітаємо! Ваш акаунт успішно підключено до <b>Світло Знань CRM</b>.`,
+          { parse_mode: 'HTML' },
+        );
+      } else {
+        this.logger.warn(
+          `[/start] Користувача з username "${normalizedUsername}" не знайдено в CRM.`,
+        );
+        await this.bot.sendMessage(
+          chatId,
+          `❌ Акаунт не знайдено. Переконайтеся, що в CRM у вашому профілі вказано нікнейм <b>${normalizedUsername}</b> без помилок.`,
+          { parse_mode: 'HTML' },
+        );
+      }
+    });
+  }
+
+  async sendMessage(chatId: string, text: string): Promise<void> {
+    if (!this.bot) return;
+    try {
+      await this.bot.sendMessage(chatId, text, { parse_mode: 'HTML' });
+    } catch (e: any) {
+      this.logger.error(
+        `Не вдалося надіслати повідомлення ${chatId}: ${e.message}`,
+      );
+    }
+  }
+
+  async sendWelcome(
+    chatId: string,
+    name: string,
+    email: string,
+    password: string,
+  ): Promise<void> {
+    const text =
+      `👋 <b>Вітаємо у Світло Знань CRM!</b>\n\n` +
+      `Ваш акаунт створено.\n\n` +
+      `📧 <b>Логін:</b> <code>${email}</code>\n` +
+      `🔑 <b>Пароль:</b> <code>${password}</code>\n\n` +
+      `Увійдіть за посиланням: <a href="https://crm-tau-nine.vercel.app">crm-tau-nine.vercel.app</a>\n\n` +
+      `<i>Змініть пароль після першого входу.</i>`;
+
+    await this.sendMessage(chatId, text);
+  }
+}
+
+```
+
+---
+
+### `apps/frontend/e2e/login.spec.ts`
+
+```typescript
+import { test, expect } from "@playwright/test";
+
+test.describe("Авторизація", () => {
+  test("успішний логін перенаправляє на /cities", async ({ page }) => {
+    await page.goto("/login");
+    await page.fill('input[type="email"]', "admin@crm.com");
+    await page.fill('input[type="password"]', "admin123");
+    await page.click('button[type="submit"]');
+    await expect(page).toHaveURL(/cities/, { timeout: 8000 });
+  });
+
+  test("невірний пароль — залишається на /login", async ({ page }) => {
+    await page.goto("/login");
+    await page.fill('input[type="email"]', "admin@crm.com");
+    await page.fill('input[type="password"]', "wrongpassword");
+    await page.click('button[type="submit"]');
+    await expect(page).toHaveURL(/login/);
+  });
+
+  test("невірний пароль — показує повідомлення про помилку", async ({
+    page,
+  }) => {
+    await page.goto("/login");
+    await page.fill('input[type="email"]', "admin@crm.com");
+    await page.fill('input[type="password"]', "wrongpassword");
+    await page.click('button[type="submit"]');
+    await expect(
+      page.locator("text=/невірний|помилка|неправильний/i"),
+    ).toBeVisible({ timeout: 5000 });
+  });
+
+  test("порожній email — кнопка не відправляє форму", async ({ page }) => {
+    await page.goto("/login");
+    await page.fill('input[type="password"]', "admin123");
+    await page.click('button[type="submit"]');
+    await expect(page).toHaveURL(/login/);
+  });
+
+  test("після логіну токен зберігається в localStorage", async ({ page }) => {
+    await page.goto("/login");
+    await page.fill('input[type="email"]', "admin@crm.com");
+    await page.fill('input[type="password"]', "admin123");
+    await page.click('button[type="submit"]');
+    await page.waitForURL(/cities/);
+    const token = await page.evaluate(() => localStorage.getItem("token"));
+    expect(token).toBeTruthy();
+  });
+
+  test("після логауту токен видаляється", async ({ page }) => {
+    await page.goto("/login");
+    await page.fill('input[type="email"]', "admin@crm.com");
+    await page.fill('input[type="password"]', "admin123");
+    await page.click('button[type="submit"]');
+    await page.waitForURL(/cities/);
+
+    const logoutBtn = page.locator("button", { hasText: /вийти|logout/i });
+    if (await logoutBtn.isVisible()) {
+      await logoutBtn.click();
+      const token = await page.evaluate(() => localStorage.getItem("token"));
+      expect(token).toBeNull();
+    }
+  });
+
+  test("захищений маршрут без токена перенаправляє на /login", async ({
+    page,
+  }) => {
+    await page.evaluate(() => localStorage.removeItem("token"));
+    await page.goto("/schools");
+    await expect(page).toHaveURL(/login/);
+  });
+});
+
+```
+
+---
+
+### `apps/frontend/src/pages/Login.tsx`
+
+```typescript
+import { useState } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+
+import { API_BASE_URL } from "../config/api";
+
+interface LoginProps {
+  onLogin?: (token: string) => void;
+}
+
+export default function Login({ onLogin }: LoginProps) {
+  const [email, setEmail] = useState("admin@crm.com");
+  const [password, setPassword] = useState("admin123");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    try {
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
+        email,
+        password,
+      });
+
+      localStorage.setItem("token", response.data.access_token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+      if (onLogin) {
+        onLogin(response.data.access_token);
+      } else {
+        navigate("/cities");
+      }
+    } catch {
+      setError("Невірний email або пароль");
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+      <div className="p-6 sm:p-8 bg-white rounded-2xl shadow-lg w-full max-w-sm sm:max-w-md">
+        <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
+          Вхід у CRM
+        </h1>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleLogin} className="flex flex-col gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Пароль
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            className="mt-2 bg-blue-600 text-white font-medium p-2.5 rounded-lg hover:bg-blue-700 transition"
+          >
+            Увійти
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+```
+
+---
+

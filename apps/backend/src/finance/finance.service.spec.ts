@@ -7,13 +7,31 @@ const mockPrisma = {
     aggregate: jest.fn(),
     findMany: jest.fn(),
   },
+
   event: {
     aggregate: jest.fn(),
     findMany: jest.fn(),
     count: jest.fn(),
   },
-  city: { findMany: jest.fn() },
-  user: { findUnique: jest.fn() },
+
+  expenseItem: {
+    findMany: jest.fn(),
+    aggregate: jest.fn(),
+  },
+
+  salaryItem: {
+    findMany: jest.fn(),
+    aggregate: jest.fn(),
+  },
+
+  city: {
+    findMany: jest.fn(),
+  },
+
+  user: {
+    findUnique: jest.fn(),
+  },
+
   $queryRaw: jest.fn(),
 };
 
@@ -51,6 +69,21 @@ describe('FinanceService', () => {
     mockPrisma.eventReport.findMany
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
+    mockPrisma.expenseItem.findMany.mockResolvedValueOnce([]);
+
+    mockPrisma.salaryItem.findMany.mockResolvedValueOnce([]);
+
+    mockPrisma.expenseItem.aggregate.mockResolvedValueOnce({
+      _sum: {
+        amount: 0,
+      },
+    });
+
+    mockPrisma.salaryItem.aggregate.mockResolvedValueOnce({
+      _sum: {
+        amount: 0,
+      },
+    });
   };
 
   describe('getDashboard — KPI', () => {
@@ -68,6 +101,7 @@ describe('FinanceService', () => {
         _count: { eventId: 0 },
       });
       mockPrisma.eventReport.findMany.mockResolvedValueOnce([]);
+      mockPrisma.expenseItem.findMany.mockResolvedValueOnce([]);
       mockPrisma.$queryRaw
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([])
@@ -139,6 +173,7 @@ describe('FinanceService', () => {
         _count: { eventId: 2 },
       });
       mockPrisma.eventReport.findMany.mockResolvedValueOnce([]);
+      mockPrisma.expenseItem.findMany.mockResolvedValueOnce([]);
       mockPrisma.$queryRaw.mockResolvedValueOnce([]);
       mockPrisma.event.aggregate.mockResolvedValueOnce({
         _sum: { price: 5000 },
@@ -164,14 +199,10 @@ describe('FinanceService', () => {
         _sum: { totalSum: 10000, remainderSum: 4000 },
         _count: { eventId: 2 },
       });
-      mockPrisma.eventReport.findMany.mockResolvedValueOnce([
-        {
-          expenses: [
-            { category: 'Паливо', amount: 500 },
-            { category: 'Паливо', amount: 300 },
-          ],
-        },
-        { expenses: [{ category: 'Реклама', amount: 200 }] },
+      mockPrisma.expenseItem.findMany.mockResolvedValueOnce([
+        { category: 'Паливо', amount: 500 },
+        { category: 'Паливо', amount: 300 },
+        { category: 'Реклама', amount: 200 },
       ]);
       mockPrisma.$queryRaw
         .mockResolvedValueOnce([])

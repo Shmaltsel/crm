@@ -20,8 +20,10 @@ export class TelegramService implements OnModuleInit {
 
   onModuleInit() {
     const token = process.env.TELEGRAM_BOT_TOKEN;
-    if (!token) {
-      this.logger.warn('TELEGRAM_BOT_TOKEN не задано — бот вимкнено');
+    if (!token || process.env.NODE_ENV === 'test') {
+      this.logger.warn(
+        'TELEGRAM_BOT_TOKEN не задано або тестове середовище — бот вимкнено',
+      );
       return;
     }
     this.bot = new TelegramBot(token, { polling: true });
