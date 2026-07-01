@@ -92,7 +92,7 @@ export class TelegramService implements OnModuleInit {
       `Ваш акаунт створено.\n\n` +
       `📧 <b>Логін:</b> <code>${email}</code>\n` +
       `🔑 <b>Пароль:</b> <code>${password}</code>\n\n` +
-      `Увійдіть за посиланням: <a href="https://crm-tau-nine.vercel.app">crm-tau-nine.vercel.app</a>\n\n` +
+      `Увійдіть за посиланням: <a href="https://crm-frontend-psi-sable.vercel.app">crm-frontend-psi-sable.vercel.app</a>\n\n` +
       `<i>Змініть пароль після першого входу.</i>`;
 
     await this.sendMessage(chatId, text);
