@@ -20,6 +20,8 @@ import { CreateSchoolDto } from './dto/create-school.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
 import { BulkImportDto } from './dto/bulk-import.dto';
 import { SchoolQueryDto } from './dto/school-query.dto';
+import { FindSchoolsQueryDto } from './dto/find-schools-query.dto';
+import { FindContactsQueryDto } from './dto/find-contacts-query.dto';
 @Controller('schools')
 @UseGuards(AuthGuard, RolesGuard)
 export class SchoolsController {
@@ -60,8 +62,8 @@ export class SchoolsController {
   }
 
   @Get('search')
-  search(@Query('q') q: string, @Query('type') type: string) {
-    return this.parserService.searchSchools(q, type);
+  search(@Query() query: FindSchoolsQueryDto) {
+    return this.parserService.searchSchools(query.q, query.type);
   }
 
   @Get(':id')
@@ -83,7 +85,7 @@ export class SchoolsController {
   }
 
   @Get('contacts/search')
-  searchContacts(@Query('q') q: string, @Query('city') city: string) {
-    return this.schoolsService.searchContacts(q, city);
+  searchContacts(@Query() query: FindContactsQueryDto) {
+    return this.schoolsService.searchContacts(query.q, query.city);
   }
 }

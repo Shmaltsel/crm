@@ -1,13 +1,19 @@
-import { useRef } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useRef, useEffect } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 interface VirtualSchoolListProps {
   schools: any[];
   renderItem: (school: any, index: number) => JSX.Element;
   itemHeight?: number;
+  onEndReached?: () => void;
 }
 
-export default function VirtualSchoolList({ schools, renderItem, itemHeight = 120 }: VirtualSchoolListProps) {
+export default function VirtualSchoolList({
+  schools,
+  renderItem,
+  itemHeight = 120,
+  onEndReached,
+}: VirtualSchoolListProps) {
   const parentRef = useRef<HTMLDivElement>(null);
 
   const rowVirtualizer = useVirtualizer({
@@ -17,23 +23,33 @@ export default function VirtualSchoolList({ schools, renderItem, itemHeight = 12
     overscan: 5,
   });
 
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const lastItem = virtualItems[virtualItems.length - 1];
+
+  useEffect(() => {
+    if (!onEndReached || !lastItem) return;
+    if (lastItem.index >= schools.length - 5) {
+      onEndReached();
+    }
+  }, [lastItem?.index, schools.length, onEndReached]);
+
   return (
     <div ref={parentRef} className="h-[calc(100vh-200px)] overflow-auto w-full">
       <div
         style={{
           height: `${rowVirtualizer.getTotalSize()}px`,
-          width: '100%',
-          position: 'relative',
+          width: "100%",
+          position: "relative",
         }}
       >
-        {rowVirtualizer.getVirtualItems().map((virtualRow) => (
+        {virtualItems.map((virtualRow) => (
           <div
             key={virtualRow.key}
             style={{
-              position: 'absolute',
+              position: "absolute",
               top: 0,
               left: 0,
-              width: '100%',
+              width: "100%",
               height: `${virtualRow.size}px`,
               transform: `translateY(${virtualRow.start}px)`,
             }}

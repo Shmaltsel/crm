@@ -28,6 +28,8 @@
 │   │   │   │   │   └── migration.sql
 │   │   │   │   ├── 20260628223725_add_expense_salary_items
 │   │   │   │   │   └── migration.sql
+│   │   │   │   ├── 20260701224321_balance_to_decimal
+│   │   │   │   │   └── migration.sql
 │   │   │   │   └── migration_lock.toml
 │   │   │   ├── schema.prisma
 │   │   │   └── seed-admin.js
@@ -43,12 +45,15 @@
 │   │   │   │   ├── auth.module.ts
 │   │   │   │   ├── auth.service.spec.ts
 │   │   │   │   ├── auth.service.ts
+│   │   │   │   ├── csrf.guard.ts
 │   │   │   │   ├── decorators
+│   │   │   │   │   ├── check-ownership.decorator.ts
 │   │   │   │   │   ├── current-user.decorator.ts
 │   │   │   │   │   └── roles.decorator.ts
 │   │   │   │   ├── dto
 │   │   │   │   │   └── login.dto.ts
 │   │   │   │   ├── guards
+│   │   │   │   │   ├── ownership.guard.ts
 │   │   │   │   │   └── roles.guard.ts
 │   │   │   │   └── interfaces
 │   │   │   │       └── jwt-user.interface.ts
@@ -254,9 +259,11 @@
 │       ├── vercel.json
 │       └── vite.config.ts
 ├── collect-code.js
+├── combined_auth_cors.md
 ├── combined_failing_tests.md
 ├── combined_final_fixes.md
 ├── combined_methods_and_dto.md
+├── combined_roles_controllers.md
 ├── package.json
 ├── packages
 │   └── shared
@@ -298,68 +305,70 @@
  30 |     "cheerio": "^1.2.0",
  31 |     "class-transformer": "^0.5.1",
  32 |     "class-validator": "^0.15.1",
- 33 |     "dotenv": "^17.4.2",
- 34 |     "node-telegram-bot-api": "0.64.0",
- 35 |     "passport": "^0.7.0",
- 36 |     "passport-jwt": "^4.0.1",
- 37 |     "reflect-metadata": "^0.2.2",
- 38 |     "rxjs": "^7.8.1"
- 39 |   },
- 40 |   "devDependencies": {
- 41 |     "@eslint/eslintrc": "^3.2.0",
- 42 |     "@eslint/js": "^9.18.0",
- 43 |     "@nestjs/cli": "^11.0.0",
- 44 |     "@nestjs/schematics": "^11.0.0",
- 45 |     "@nestjs/testing": "^11.0.1",
- 46 |     "@types/bcrypt": "^6.0.0",
- 47 |     "@types/express": "^5.0.0",
- 48 |     "@types/jest": "^29.0.0",
- 49 |     "@types/node": "^24.0.0",
- 50 |     "@types/node-telegram-bot-api": "^0.64.15",
- 51 |     "@types/passport-jwt": "^4.0.1",
- 52 |     "@types/supertest": "^7.0.0",
- 53 |     "eslint": "^9.18.0",
- 54 |     "eslint-config-prettier": "^10.0.1",
- 55 |     "eslint-plugin-prettier": "^5.2.2",
- 56 |     "globals": "^17.0.0",
- 57 |     "jest": "^29.0.0",
- 58 |     "jest-mock-extended": "^3.0.0",
- 59 |     "prettier": "^3.4.2",
- 60 |     "prisma": "6.19.0",
- 61 |     "source-map-support": "^0.5.21",
- 62 |     "supertest": "^7.0.0",
- 63 |     "ts-jest": "^29.2.5",
- 64 |     "ts-loader": "^9.5.2",
- 65 |     "ts-node": "^10.9.2",
- 66 |     "tsconfig-paths": "^4.2.0",
- 67 |     "typescript": "^5.7.3",
- 68 |     "typescript-eslint": "^8.20.0"
- 69 |   },
- 70 |   "jest": {
- 71 |     "moduleFileExtensions": [
- 72 |       "js",
- 73 |       "json",
- 74 |       "ts"
- 75 |     ],
- 76 |     "rootDir": "src",
- 77 |     "testRegex": ".*\\.spec\\.ts$",
- 78 |     "transform": {
- 79 |       "^.+\\.(t|j)s$": "ts-jest"
- 80 |     },
- 81 |     "collectCoverageFrom": [
- 82 |       "**/*.(t|j)s"
- 83 |     ],
- 84 |     "coverageDirectory": "../coverage",
- 85 |     "testEnvironment": "node",
- 86 |     "moduleNameMapper": {
- 87 |       "^src/(.*)$": "<rootDir>/$1"
- 88 |     }
- 89 |   },
- 90 |   "prisma": {
- 91 |     "schema": "prisma/schema.prisma"
- 92 |   }
- 93 | }
- 94 | 
+ 33 |     "cookie-parser": "^1.4.7",
+ 34 |     "dotenv": "^17.4.2",
+ 35 |     "node-telegram-bot-api": "0.64.0",
+ 36 |     "passport": "^0.7.0",
+ 37 |     "passport-jwt": "^4.0.1",
+ 38 |     "reflect-metadata": "^0.2.2",
+ 39 |     "rxjs": "^7.8.1"
+ 40 |   },
+ 41 |   "devDependencies": {
+ 42 |     "@eslint/eslintrc": "^3.2.0",
+ 43 |     "@eslint/js": "^9.18.0",
+ 44 |     "@nestjs/cli": "^11.0.0",
+ 45 |     "@nestjs/schematics": "^11.0.0",
+ 46 |     "@nestjs/testing": "^11.0.1",
+ 47 |     "@types/bcrypt": "^6.0.0",
+ 48 |     "@types/cookie-parser": "^1.4.10",
+ 49 |     "@types/express": "^5.0.0",
+ 50 |     "@types/jest": "^29.0.0",
+ 51 |     "@types/node": "^24.0.0",
+ 52 |     "@types/node-telegram-bot-api": "^0.64.15",
+ 53 |     "@types/passport-jwt": "^4.0.1",
+ 54 |     "@types/supertest": "^7.0.0",
+ 55 |     "eslint": "^9.18.0",
+ 56 |     "eslint-config-prettier": "^10.0.1",
+ 57 |     "eslint-plugin-prettier": "^5.2.2",
+ 58 |     "globals": "^17.0.0",
+ 59 |     "jest": "^29.0.0",
+ 60 |     "jest-mock-extended": "^3.0.0",
+ 61 |     "prettier": "^3.4.2",
+ 62 |     "prisma": "6.19.0",
+ 63 |     "source-map-support": "^0.5.21",
+ 64 |     "supertest": "^7.0.0",
+ 65 |     "ts-jest": "^29.2.5",
+ 66 |     "ts-loader": "^9.5.2",
+ 67 |     "ts-node": "^10.9.2",
+ 68 |     "tsconfig-paths": "^4.2.0",
+ 69 |     "typescript": "^5.7.3",
+ 70 |     "typescript-eslint": "^8.20.0"
+ 71 |   },
+ 72 |   "jest": {
+ 73 |     "moduleFileExtensions": [
+ 74 |       "js",
+ 75 |       "json",
+ 76 |       "ts"
+ 77 |     ],
+ 78 |     "rootDir": "src",
+ 79 |     "testRegex": ".*\\.spec\\.ts$",
+ 80 |     "transform": {
+ 81 |       "^.+\\.(t|j)s$": "ts-jest"
+ 82 |     },
+ 83 |     "collectCoverageFrom": [
+ 84 |       "**/*.(t|j)s"
+ 85 |     ],
+ 86 |     "coverageDirectory": "../coverage",
+ 87 |     "testEnvironment": "node",
+ 88 |     "moduleNameMapper": {
+ 89 |       "^src/(.*)$": "<rootDir>/$1"
+ 90 |     }
+ 91 |   },
+ 92 |   "prisma": {
+ 93 |     "schema": "prisma/schema.prisma"
+ 94 |   }
+ 95 | }
+ 96 | 
 ```
 
 ### File: apps/backend/prisma/schema.prisma
@@ -386,7 +395,7 @@
  19 |   telegramId     String?
  20 |   telegramChatId String?
  21 |   car            String?
- 22 |   balance        Float        @default(0)
+ 22 |   balance        Decimal      @default(0) @db.Decimal(12, 2)
  23 |   managedCities  City[]       @relation("CityManager")
  24 |   crewAsDriver   Crew[]       @relation("DriverCrew")
  25 |   crewAsHost     Crew[]       @relation("HostCrew")
@@ -773,55 +782,103 @@
 
 ### File: apps/backend/src/auth/auth.controller.ts
 ```ts
-  0 | import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
-  1 | import { AuthService } from './auth.service';
-  2 | import { LoginDto } from './dto/login.dto';
-  3 | 
-  4 | @Controller('auth')
-  5 | export class AuthController {
-  6 |   constructor(private authService: AuthService) {}
-  7 | 
-  8 |   @HttpCode(HttpStatus.OK)
-  9 |   @Post('login')
- 10 |   login(@Body() signInDto: LoginDto) {
- 11 |     return this.authService.login(signInDto.email, signInDto.password);
- 12 |   }
- 13 | }
+  0 | import {
+  1 |   Body,
+  2 |   Controller,
+  3 |   HttpCode,
+  4 |   HttpStatus,
+  5 |   Post,
+  6 |   Res,
+  7 | } from '@nestjs/common';
+  8 | import type { Response } from 'express';
+  9 | import { randomBytes } from 'crypto';
+ 10 | import { AuthService } from './auth.service';
+ 11 | import { LoginDto } from './dto/login.dto';
+ 12 | 
+ 13 | const isProd = process.env.NODE_ENV === 'production';
  14 | 
+ 15 | @Controller('auth')
+ 16 | export class AuthController {
+ 17 |   constructor(private authService: AuthService) {}
+ 18 | 
+ 19 |   @HttpCode(HttpStatus.OK)
+ 20 |   @Post('login')
+ 21 |   async login(
+ 22 |     @Body() signInDto: LoginDto,
+ 23 |     @Res({ passthrough: true }) res: Response,
+ 24 |   ) {
+ 25 |     const { access_token, user } = await this.authService.login(
+ 26 |       signInDto.email,
+ 27 |       signInDto.password,
+ 28 |     );
+ 29 |     const csrfToken = randomBytes(32).toString('hex');
+ 30 | 
+ 31 |     res.cookie('access_token', access_token, {
+ 32 |       httpOnly: true,
+ 33 |       secure: isProd,
+ 34 |       sameSite: isProd ? 'none' : 'lax',
+ 35 |       maxAge: 24 * 60 * 60 * 1000,
+ 36 |     });
+ 37 |     res.cookie('csrf_token', csrfToken, {
+ 38 |       httpOnly: false, // фронтенд має прочитати
+ 39 |       secure: isProd,
+ 40 |       sameSite: isProd ? 'none' : 'lax',
+ 41 |       maxAge: 24 * 60 * 60 * 1000,
+ 42 |     });
+ 43 | 
+ 44 |     return { user };
+ 45 |   }
+ 46 | 
+ 47 |   @HttpCode(HttpStatus.OK)
+ 48 |   @Post('logout')
+ 49 |   logout(@Res({ passthrough: true }) res: Response) {
+ 50 |     res.clearCookie('access_token');
+ 51 |     res.clearCookie('csrf_token');
+ 52 |     return { message: 'ok' };
+ 53 |   }
+ 54 | }
+ 55 | 
 ```
 
 ### File: apps/backend/src/auth/auth.guard.ts
 ```ts
-  0 | import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
-  1 | import { JwtService } from '@nestjs/jwt';
-  2 | import { Request } from 'express';
-  3 | 
-  4 | @Injectable()
-  5 | export class AuthGuard implements CanActivate {
-  6 |   constructor(private jwtService: JwtService) {}
-  7 | 
-  8 |   async canActivate(context: ExecutionContext): Promise<boolean> {
-  9 |     const request = context.switchToHttp().getRequest();
- 10 |     const token = this.extractTokenFromHeader(request);
- 11 |     
- 12 |     if (!token) throw new UnauthorizedException('Токен не знайдено');
- 13 | 
- 14 |     try {
- 15 |       const payload = await this.jwtService.verifyAsync(token, {
- 16 |         secret: process.env.JWT_SECRET || 'super-secret-key-for-dev',
- 17 |       });
- 18 |       request['user'] = payload;
- 19 |     } catch {
- 20 |       throw new UnauthorizedException('Недійсний токен');
- 21 |     }
- 22 |     return true;
- 23 |   }
- 24 | 
- 25 |   private extractTokenFromHeader(request: Request): string | undefined {
- 26 |     const [type, token] = request.headers.authorization?.split(' ') ?? [];
- 27 |     return type === 'Bearer' ? token : undefined;
+  0 | import {
+  1 |   CanActivate,
+  2 |   ExecutionContext,
+  3 |   Injectable,
+  4 |   UnauthorizedException,
+  5 | } from '@nestjs/common';
+  6 | import { JwtService } from '@nestjs/jwt';
+  7 | import { Request } from 'express';
+  8 | 
+  9 | @Injectable()
+ 10 | export class AuthGuard implements CanActivate {
+ 11 |   constructor(private jwtService: JwtService) {}
+ 12 | 
+ 13 |   async canActivate(context: ExecutionContext): Promise<boolean> {
+ 14 |     const request = context.switchToHttp().getRequest();
+ 15 |     const token = this.extractTokenFromHeader(request);
+ 16 | 
+ 17 |     if (!token) throw new UnauthorizedException('Токен не знайдено');
+ 18 | 
+ 19 |     try {
+ 20 |       const payload = await this.jwtService.verifyAsync(token, {
+ 21 |         secret: process.env.JWT_SECRET || 'super-secret-key-for-dev',
+ 22 |       });
+ 23 |       request['user'] = payload;
+ 24 |     } catch {
+ 25 |       throw new UnauthorizedException('Недійсний токен');
+ 26 |     }
+ 27 |     return true;
  28 |   }
- 29 | }
+ 29 | 
+ 30 |   private extractTokenFromHeader(request: Request): string | undefined {
+ 31 |     if (request.cookies?.access_token) return request.cookies.access_token;
+ 32 |     const [type, token] = request.headers.authorization?.split(' ') ?? [];
+ 33 |     return type === 'Bearer' ? token : undefined; // тимчасовий fallback на перехідний період
+ 34 |   }
+ 35 | }
+ 36 | 
 ```
 
 ### File: apps/backend/src/auth/auth.module.ts
@@ -918,6 +975,44 @@
  43 | 
 ```
 
+### File: apps/backend/src/auth/csrf.guard.ts
+```ts
+  0 | import {
+  1 |   CanActivate,
+  2 |   ExecutionContext,
+  3 |   ForbiddenException,
+  4 |   Injectable,
+  5 | } from '@nestjs/common';
+  6 | 
+  7 | @Injectable()
+  8 | export class CsrfGuard implements CanActivate {
+  9 |   canActivate(context: ExecutionContext): boolean {
+ 10 |     const req = context.switchToHttp().getRequest();
+ 11 |     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return true;
+ 12 | 
+ 13 |     const cookieToken = req.cookies?.csrf_token;
+ 14 |     const headerToken = req.headers['x-csrf-token'];
+ 15 |     if (!cookieToken || cookieToken !== headerToken) {
+ 16 |       throw new ForbiddenException('CSRF token invalid');
+ 17 |     }
+ 18 |     return true;
+ 19 |   }
+ 20 | }
+ 21 | 
+```
+
+### File: apps/backend/src/auth/decorators/check-ownership.decorator.ts
+```ts
+  0 | import { SetMetadata } from '@nestjs/common';
+  1 | 
+  2 | export type OwnedResourceType = 'school' | 'event' | 'city' | 'crew';
+  3 | 
+  4 | export const OWNERSHIP_KEY = 'ownershipResourceType';
+  5 | export const CheckOwnership = (resourceType: OwnedResourceType) =>
+  6 |   SetMetadata(OWNERSHIP_KEY, resourceType);
+  7 | 
+```
+
 ### File: apps/backend/src/auth/decorators/current-user.decorator.ts
 ```ts
   0 | import { createParamDecorator, ExecutionContext } from '@nestjs/common';
@@ -955,6 +1050,102 @@
   9 |   password: string;
  10 | }
  11 | 
+```
+
+### File: apps/backend/src/auth/guards/ownership.guard.ts
+```ts
+  0 | import {
+  1 |   Injectable,
+  2 |   CanActivate,
+  3 |   ExecutionContext,
+  4 |   ForbiddenException,
+  5 |   NotFoundException,
+  6 | } from '@nestjs/common';
+  7 | import { Reflector } from '@nestjs/core';
+  8 | import { PrismaService } from '../../prisma/prisma.service';
+  9 | import {
+ 10 |   OWNERSHIP_KEY,
+ 11 |   OwnedResourceType,
+ 12 | } from '../decorators/check-ownership.decorator';
+ 13 | 
+ 14 | @Injectable()
+ 15 | export class OwnershipGuard implements CanActivate {
+ 16 |   constructor(
+ 17 |     private reflector: Reflector,
+ 18 |     private prisma: PrismaService,
+ 19 |   ) {}
+ 20 | 
+ 21 |   async canActivate(context: ExecutionContext): Promise<boolean> {
+ 22 |     const resourceType = this.reflector.getAllAndOverride<OwnedResourceType>(
+ 23 |       OWNERSHIP_KEY,
+ 24 |       [context.getHandler(), context.getClass()],
+ 25 |     );
+ 26 |     if (!resourceType) return true;
+ 27 | 
+ 28 |     const request = context.switchToHttp().getRequest();
+ 29 |     const user = request.user;
+ 30 | 
+ 31 |     // SUPERADMIN бачить усе — перевірка не потрібна
+ 32 |     if (user?.role !== 'MANAGER') return true;
+ 33 | 
+ 34 |     const manager = await this.prisma.user.findUnique({
+ 35 |       where: { id: user.sub },
+ 36 |       select: { cityId: true },
+ 37 |     });
+ 38 |     if (!manager?.cityId) {
+ 39 |       throw new ForbiddenException('Менеджер не прив’язаний до міста');
+ 40 |     }
+ 41 | 
+ 42 |     const paramId: string | undefined =
+ 43 |       request.params.id ??
+ 44 |       request.params.schoolId ??
+ 45 |       request.params.eventId ??
+ 46 |       request.params.crewId;
+ 47 |     if (!paramId) return true;
+ 48 | 
+ 49 |     let resourceCityId: string | null | undefined;
+ 50 | 
+ 51 |     switch (resourceType) {
+ 52 |       case 'school': {
+ 53 |         const school = await this.prisma.school.findUnique({
+ 54 |           where: { id: paramId },
+ 55 |           select: { cityId: true },
+ 56 |         });
+ 57 |         if (!school) throw new NotFoundException('Заклад не знайдено');
+ 58 |         resourceCityId = school.cityId;
+ 59 |         break;
+ 60 |       }
+ 61 |       case 'event': {
+ 62 |         const event = await this.prisma.event.findUnique({
+ 63 |           where: { id: paramId },
+ 64 |           select: { cityId: true },
+ 65 |         });
+ 66 |         if (!event) throw new NotFoundException('Подію не знайдено');
+ 67 |         resourceCityId = event.cityId;
+ 68 |         break;
+ 69 |       }
+ 70 |       case 'crew': {
+ 71 |         const crew = await this.prisma.crew.findUnique({
+ 72 |           where: { id: paramId },
+ 73 |           select: { cityId: true },
+ 74 |         });
+ 75 |         if (!crew) throw new NotFoundException('Екіпаж не знайдено');
+ 76 |         resourceCityId = crew.cityId;
+ 77 |         break;
+ 78 |       }
+ 79 |       case 'city': {
+ 80 |         resourceCityId = paramId; // сам :id і є cityId
+ 81 |         break;
+ 82 |       }
+ 83 |     }
+ 84 | 
+ 85 |     if (resourceCityId !== manager.cityId) {
+ 86 |       throw new ForbiddenException('Немає доступу до ресурсу іншого міста');
+ 87 |     }
+ 88 |     return true;
+ 89 |   }
+ 90 | }
+ 91 | 
 ```
 
 ### File: apps/backend/src/auth/guards/roles.guard.ts
@@ -1032,51 +1223,56 @@
   2 |   Get,
   3 |   Post,
   4 |   Body,
-  5 |   Patch,
-  6 |   Param,
-  7 |   Delete,
-  8 |   UseGuards,
-  9 | } from '@nestjs/common';
- 10 | import { CitiesService } from './cities.service';
- 11 | import { AuthGuard } from '../auth/auth.guard';
- 12 | import { RolesGuard } from '../auth/guards/roles.guard';
- 13 | import { Roles } from '../auth/decorators/roles.decorator';
- 14 | import { CreateCityDto } from './dto/create-city.dto';
- 15 | import { CreateCrewDto } from './dto/create-crew.dto';
- 16 | 
- 17 | @Controller('cities')
- 18 | @UseGuards(AuthGuard, RolesGuard)
- 19 | export class CitiesController {
- 20 |   constructor(private readonly citiesService: CitiesService) {}
- 21 | 
- 22 |   @Post()
- 23 |   @Roles('SUPERADMIN')
- 24 |   create(@Body() body: CreateCityDto) {
- 25 |     return this.citiesService.create(body.name);
- 26 |   }
- 27 | 
- 28 |   @Get()
- 29 |   findAll() {
- 30 |     return this.citiesService.findAll();
- 31 |   }
- 32 | 
- 33 |   @Get(':id')
- 34 |   findOne(@Param('id') id: string) {
- 35 |     return this.citiesService.findOne(id);
- 36 |   }
- 37 |   @Post(':id/crews')
- 38 |   @Roles('SUPERADMIN', 'MANAGER')
- 39 |   createCrew(@Param('id') id: string, @Body() body: CreateCrewDto) {
- 40 |     return this.citiesService.createCrew(id, body);
- 41 |   }
- 42 | 
- 43 |   @Delete('crews/:crewId')
- 44 |   @Roles('SUPERADMIN', 'MANAGER')
- 45 |   deleteCrew(@Param('crewId') crewId: string) {
- 46 |     return this.citiesService.deleteCrew(crewId);
- 47 |   }
- 48 | }
- 49 | 
+  5 |   Param,
+  6 |   Delete,
+  7 |   UseGuards,
+  8 | } from '@nestjs/common';
+  9 | import { CitiesService } from './cities.service';
+ 10 | import { AuthGuard } from '../auth/auth.guard';
+ 11 | import { RolesGuard } from '../auth/guards/roles.guard';
+ 12 | import { Roles } from '../auth/decorators/roles.decorator';
+ 13 | import { CreateCityDto } from './dto/create-city.dto';
+ 14 | import { CreateCrewDto } from './dto/create-crew.dto';
+ 15 | import { OwnershipGuard } from '../auth/guards/ownership.guard';
+ 16 | import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
+ 17 | 
+ 18 | @Controller('cities')
+ 19 | @UseGuards(AuthGuard, RolesGuard)
+ 20 | export class CitiesController {
+ 21 |   constructor(private readonly citiesService: CitiesService) {}
+ 22 | 
+ 23 |   @Post()
+ 24 |   @Roles('SUPERADMIN')
+ 25 |   create(@Body() body: CreateCityDto) {
+ 26 |     return this.citiesService.create(body.name);
+ 27 |   }
+ 28 | 
+ 29 |   @Get()
+ 30 |   findAll() {
+ 31 |     return this.citiesService.findAll();
+ 32 |   }
+ 33 | 
+ 34 |   @Get(':id')
+ 35 |   findOne(@Param('id') id: string) {
+ 36 |     return this.citiesService.findOne(id);
+ 37 |   }
+ 38 |   @Post(':id/crews')
+ 39 |   @Roles('SUPERADMIN', 'MANAGER')
+ 40 |   @UseGuards(OwnershipGuard)
+ 41 |   @CheckOwnership('city')
+ 42 |   createCrew(@Param('id') id: string, @Body() body: CreateCrewDto) {
+ 43 |     return this.citiesService.createCrew(id, body);
+ 44 |   }
+ 45 | 
+ 46 |   @Delete('crews/:crewId')
+ 47 |   @Roles('SUPERADMIN', 'MANAGER')
+ 48 |   @UseGuards(OwnershipGuard)
+ 49 |   @CheckOwnership('crew')
+ 50 |   deleteCrew(@Param('crewId') crewId: string) {
+ 51 |     return this.citiesService.deleteCrew(crewId);
+ 52 |   }
+ 53 | }
+ 54 | 
 ```
 
 ### File: apps/backend/src/cities/cities.module.ts
@@ -1272,29 +1468,41 @@
   3 | import { CurrentUser } from '../auth/decorators/current-user.decorator';
   4 | import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
   5 | import { IsOptional, IsString } from 'class-validator';
-  6 | 
-  7 | class DashboardSummaryQueryDto {
-  8 |   @IsOptional()
-  9 |   @IsString()
- 10 |   cityId?: string;
- 11 | }
- 12 | 
- 13 | @Controller('dashboard')
- 14 | @UseGuards(AuthGuard)
- 15 | export class DashboardController {
- 16 |   constructor(private readonly dashboardService: DashboardService) {}
- 17 | 
- 18 |   @Get('summary')
- 19 |   getSummary(
- 20 |     @CurrentUser() user: JwtUser,
- 21 |     @Query() query: DashboardSummaryQueryDto,
- 22 |   ): Promise<DashboardSummary> {
- 23 |     const effectiveCityId =
- 24 |       user.role === 'SUPERADMIN' ? undefined : query.cityId;
- 25 |     return this.dashboardService.getSummary(effectiveCityId, user.role);
- 26 |   }
- 27 | }
- 28 | 
+  6 | import { PrismaService } from '../prisma/prisma.service';
+  7 | 
+  8 | class DashboardSummaryQueryDto {
+  9 |   @IsOptional()
+ 10 |   @IsString()
+ 11 |   cityId?: string;
+ 12 | }
+ 13 | 
+ 14 | @Controller('dashboard')
+ 15 | @UseGuards(AuthGuard)
+ 16 | export class DashboardController {
+ 17 |   constructor(
+ 18 |     private readonly dashboardService: DashboardService,
+ 19 |     private readonly prisma: PrismaService,
+ 20 |   ) {}
+ 21 | 
+ 22 |   @Get('summary')
+ 23 |   async getSummary(
+ 24 |     @CurrentUser() user: JwtUser,
+ 25 |     @Query() query: DashboardSummaryQueryDto,
+ 26 |   ): Promise<DashboardSummary> {
+ 27 |     let effectiveCityId: string | undefined;
+ 28 |     if (user.role === 'SUPERADMIN') {
+ 29 |       effectiveCityId = query.cityId;
+ 30 |     } else {
+ 31 |       const me = await this.prisma.user.findUnique({
+ 32 |         where: { id: user.sub },
+ 33 |         select: { cityId: true },
+ 34 |       });
+ 35 |       effectiveCityId = me?.cityId ?? undefined;
+ 36 |     }
+ 37 |     return this.dashboardService.getSummary(effectiveCityId, user.role);
+ 38 |   }
+ 39 | }
+ 40 | 
 ```
 
 ### File: apps/backend/src/dashboard/dashboard.module.ts
@@ -2439,113 +2647,127 @@
  21 | import { AssignCrewDto } from './dto/assign-crew.dto';
  22 | import { AddCommentDto } from './dto/add-comment.dto';
  23 | import { RolesGuard } from '../auth/guards/roles.guard';
- 24 | 
- 25 | @Controller('events')
- 26 | @UseGuards(AuthGuard, RolesGuard)
- 27 | export class EventsController {
- 28 |   constructor(private readonly eventsService: EventsService) {}
- 29 | 
- 30 |   @Get()
- 31 |   findAll(@CurrentUser() user: JwtUser) {
- 32 |     return this.eventsService.findAllForUser(user);
- 33 |   }
- 34 | 
- 35 |   @Post()
- 36 |   create(@Body() body: CreateEventDto, @CurrentUser() user: JwtUser) {
- 37 |     return this.eventsService.create(body, user);
- 38 |   }
- 39 | 
- 40 |   @Get('school/:schoolId')
- 41 |   findBySchool(
- 42 |     @Param('schoolId') schoolId: string,
- 43 |     @Query('minimal') minimal?: string,
- 44 |   ) {
- 45 |     return this.eventsService.findBySchool(schoolId, minimal === 'true');
- 46 |   }
- 47 | 
- 48 |   @Patch(':id/status')
- 49 |   updateStatus(
- 50 |     @Param('id') id: string,
- 51 |     @Body() body: UpdateStatusDto,
- 52 |     @CurrentUser() user: JwtUser,
- 53 |   ) {
- 54 |     return this.eventsService.updateStatus(
- 55 |       id,
- 56 |       body.status,
- 57 |       body.actionName,
- 58 |       body.comment,
- 59 |       user,
- 60 |     );
- 61 |   }
- 62 | 
- 63 |   @Patch(':id/preparation')
- 64 |   updatePreparation(
- 65 |     @Param('id') id: string,
- 66 |     @Body() body: UpdatePreparationDto,
- 67 |   ) {
- 68 |     return this.eventsService.updatePreparationStatus(
- 69 |       id,
- 70 |       body.field,
- 71 |       body.status,
- 72 |     );
- 73 |   }
- 74 | 
- 75 |   @Post(':id/assign-crew')
- 76 |   assignCrew(@Param('id') id: string, @Body() body: AssignCrewDto) {
- 77 |     return this.eventsService.assignCrewToEvent(id, body.crewId);
- 78 |   }
- 79 | 
- 80 |   @Post(':id/history')
- 81 |   addHistoryComment(
- 82 |     @Param('id') id: string,
- 83 |     @Body() body: AddCommentDto,
- 84 |     @CurrentUser() user: JwtUser,
- 85 |   ) {
- 86 |     return this.eventsService.addHistoryComment(id, body.comment, user);
- 87 |   }
- 88 | 
- 89 |   @Patch('history/:historyId')
- 90 |   updateHistoryComment(
- 91 |     @Param('historyId') historyId: string,
- 92 |     @Body() body: AddCommentDto,
+ 24 | import { OwnershipGuard } from '../auth/guards/ownership.guard';
+ 25 | import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
+ 26 | 
+ 27 | @Controller('events')
+ 28 | @UseGuards(AuthGuard, RolesGuard)
+ 29 | export class EventsController {
+ 30 |   constructor(private readonly eventsService: EventsService) {}
+ 31 | 
+ 32 |   @Get()
+ 33 |   findAll(@CurrentUser() user: JwtUser) {
+ 34 |     return this.eventsService.findAllForUser(user);
+ 35 |   }
+ 36 | 
+ 37 |   @Post()
+ 38 |   create(@Body() body: CreateEventDto, @CurrentUser() user: JwtUser) {
+ 39 |     return this.eventsService.create(body, user);
+ 40 |   }
+ 41 | 
+ 42 |   @Get('school/:schoolId')
+ 43 |   findBySchool(
+ 44 |     @Param('schoolId') schoolId: string,
+ 45 |     @Query('minimal') minimal?: string,
+ 46 |   ) {
+ 47 |     return this.eventsService.findBySchool(schoolId, minimal === 'true');
+ 48 |   }
+ 49 | 
+ 50 |   @Patch(':id/status')
+ 51 |   @UseGuards(OwnershipGuard)
+ 52 |   @CheckOwnership('event')
+ 53 |   updateStatus(
+ 54 |     @Param('id') id: string,
+ 55 |     @Body() body: UpdateStatusDto,
+ 56 |     @CurrentUser() user: JwtUser,
+ 57 |   ) {
+ 58 |     return this.eventsService.updateStatus(
+ 59 |       id,
+ 60 |       body.status,
+ 61 |       body.actionName,
+ 62 |       body.comment,
+ 63 |       user,
+ 64 |     );
+ 65 |   }
+ 66 | 
+ 67 |   @Patch(':id/preparation')
+ 68 |   @UseGuards(OwnershipGuard)
+ 69 |   @CheckOwnership('event')
+ 70 |   updatePreparation(
+ 71 |     @Param('id') id: string,
+ 72 |     @Body() body: UpdatePreparationDto,
+ 73 |   ) {
+ 74 |     return this.eventsService.updatePreparationStatus(
+ 75 |       id,
+ 76 |       body.field,
+ 77 |       body.status,
+ 78 |     );
+ 79 |   }
+ 80 | 
+ 81 |   @Post(':id/assign-crew')
+ 82 |   @UseGuards(OwnershipGuard)
+ 83 |   @CheckOwnership('event')
+ 84 |   assignCrew(@Param('id') id: string, @Body() body: AssignCrewDto) {
+ 85 |     return this.eventsService.assignCrewToEvent(id, body.crewId);
+ 86 |   }
+ 87 | 
+ 88 |   @Post(':id/history')
+ 89 |   addHistoryComment(
+ 90 |     @Param('id') id: string,
+ 91 |     @Body() body: AddCommentDto,
+ 92 |     @CurrentUser() user: JwtUser,
  93 |   ) {
- 94 |     return this.eventsService.updateHistoryComment(historyId, body.comment);
+ 94 |     return this.eventsService.addHistoryComment(id, body.comment, user);
  95 |   }
  96 | 
- 97 |   @Delete(':id')
- 98 |   remove(@Param('id') id: string) {
- 99 |     return this.eventsService.remove(id);
-100 |   }
-101 | 
-102 |   @Post(':id/report')
-103 |   submitReport(
-104 |     @Param('id') id: string,
-105 |     @Body() body: SubmitReportDto,
-106 |     @CurrentUser() user: JwtUser,
-107 |   ) {
-108 |     return this.eventsService.submitReport(id, body, user);
-109 |   }
-110 | 
-111 |   @Get('school/:schoolId/completed')
-112 |   findCompletedBySchool(@Param('schoolId') schoolId: string) {
-113 |     return this.eventsService.findCompletedBySchool(schoolId);
-114 |   }
-115 | 
-116 |   @Get(':id')
-117 |   findOne(@Param('id') id: string) {
-118 |     return this.eventsService.findOne(id);
-119 |   }
-120 | 
-121 |   @Patch(':id/reschedule')
-122 |   reschedule(
-123 |     @Param('id') id: string,
-124 |     @Body() body: RescheduleEventDto,
-125 |     @CurrentUser() user: JwtUser,
-126 |   ) {
-127 |     return this.eventsService.rescheduleEvent(id, body.date, body.time, user);
-128 |   }
-129 | }
-130 | 
+ 97 |   @Patch('history/:historyId')
+ 98 |   updateHistoryComment(
+ 99 |     @Param('historyId') historyId: string,
+100 |     @Body() body: AddCommentDto,
+101 |   ) {
+102 |     return this.eventsService.updateHistoryComment(historyId, body.comment);
+103 |   }
+104 | 
+105 |   @Delete(':id')
+106 |   @UseGuards(OwnershipGuard)
+107 |   @CheckOwnership('event')
+108 |   remove(@Param('id') id: string) {
+109 |     return this.eventsService.remove(id);
+110 |   }
+111 | 
+112 |   @Post(':id/report')
+113 |   @UseGuards(OwnershipGuard)
+114 |   @CheckOwnership('event')
+115 |   submitReport(
+116 |     @Param('id') id: string,
+117 |     @Body() body: SubmitReportDto,
+118 |     @CurrentUser() user: JwtUser,
+119 |   ) {
+120 |     return this.eventsService.submitReport(id, body, user);
+121 |   }
+122 | 
+123 |   @Get('school/:schoolId/completed')
+124 |   findCompletedBySchool(@Param('schoolId') schoolId: string) {
+125 |     return this.eventsService.findCompletedBySchool(schoolId);
+126 |   }
+127 | 
+128 |   @Get(':id')
+129 |   findOne(@Param('id') id: string) {
+130 |     return this.eventsService.findOne(id);
+131 |   }
+132 | 
+133 |   @Patch(':id/reschedule')
+134 |   @UseGuards(OwnershipGuard)
+135 |   @CheckOwnership('event')
+136 |   reschedule(
+137 |     @Param('id') id: string,
+138 |     @Body() body: RescheduleEventDto,
+139 |     @CurrentUser() user: JwtUser,
+140 |   ) {
+141 |     return this.eventsService.rescheduleEvent(id, body.date, body.time, user);
+142 |   }
+143 | }
+144 | 
 ```
 
 ### File: apps/backend/src/events/events.module.ts
@@ -3643,37 +3865,61 @@
   4 | import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
   5 | import { FinanceDashboardQueryDto } from './dto/finance-dashboard-query.dto';
   6 | import { StaffRevenueQueryDto } from './dto/staff-revenue-query.dto';
-  7 | import { RolesGuard } from '../auth/guards/roles.guard';
-  8 | import { Roles } from '../auth/decorators/roles.decorator';
-  9 | 
- 10 | @Controller('finance')
- 11 | @UseGuards(AuthGuard, RolesGuard)
- 12 | export class FinanceController {
- 13 |   constructor(private readonly financeService: FinanceService) {}
- 14 | 
- 15 |   @Get('dashboard')
- 16 |   @Roles('SUPERADMIN', 'MANAGER')
- 17 |   getDashboard(@Query() query: FinanceDashboardQueryDto) {
- 18 |     return this.financeService.getDashboard({
- 19 |       period: query.period,
- 20 |       cityId: query.cityId,
- 21 |       project: query.project,
- 22 |       minimal: query.minimal === 'true',
- 23 |     });
- 24 |   }
- 25 | 
- 26 |   @Get('my-balance')
- 27 |   getMyBalance(@CurrentUser() user: JwtUser) {
- 28 |     return this.financeService.getMyBalance(user.sub);
+  7 | import { PrismaService } from '../prisma/prisma.service';
+  8 | import { RolesGuard } from '../auth/guards/roles.guard';
+  9 | import { Roles } from '../auth/decorators/roles.decorator';
+ 10 | 
+ 11 | @Controller('finance')
+ 12 | @UseGuards(AuthGuard, RolesGuard)
+ 13 | export class FinanceController {
+ 14 |   constructor(
+ 15 |     private readonly financeService: FinanceService,
+ 16 |     private readonly prisma: PrismaService,
+ 17 |   ) {}
+ 18 | 
+ 19 |   private async resolveCityId(
+ 20 |     user: JwtUser,
+ 21 |     requestedCityId?: string,
+ 22 |   ): Promise<string | undefined> {
+ 23 |     if (user.role === 'SUPERADMIN') return requestedCityId;
+ 24 |     const me = await this.prisma.user.findUnique({
+ 25 |       where: { id: user.sub },
+ 26 |       select: { cityId: true },
+ 27 |     });
+ 28 |     return me?.cityId ?? undefined;
  29 |   }
  30 | 
- 31 |   @Get('staff-revenue')
+ 31 |   @Get('dashboard')
  32 |   @Roles('SUPERADMIN', 'MANAGER')
- 33 |   getStaffRevenue(@Query() query: StaffRevenueQueryDto) {
- 34 |     return this.financeService.getStaffRevenue(query);
- 35 |   }
- 36 | }
- 37 | 
+ 33 |   async getDashboard(
+ 34 |     @Query() query: FinanceDashboardQueryDto,
+ 35 |     @CurrentUser() user: JwtUser,
+ 36 |   ) {
+ 37 |     const cityId = await this.resolveCityId(user, query.cityId);
+ 38 |     return this.financeService.getDashboard({
+ 39 |       period: query.period,
+ 40 |       cityId,
+ 41 |       project: query.project,
+ 42 |       minimal: query.minimal === 'true',
+ 43 |     });
+ 44 |   }
+ 45 | 
+ 46 |   @Get('my-balance')
+ 47 |   getMyBalance(@CurrentUser() user: JwtUser) {
+ 48 |     return this.financeService.getMyBalance(user.sub);
+ 49 |   }
+ 50 | 
+ 51 |   @Get('staff-revenue')
+ 52 |   @Roles('SUPERADMIN', 'MANAGER')
+ 53 |   async getStaffRevenue(
+ 54 |     @Query() query: StaffRevenueQueryDto,
+ 55 |     @CurrentUser() user: JwtUser,
+ 56 |   ) {
+ 57 |     const cityId = await this.resolveCityId(user, query.cityId);
+ 58 |     return this.financeService.getStaffRevenue({ ...query, cityId });
+ 59 |   }
+ 60 | }
+ 61 | 
 ```
 
 ### File: apps/backend/src/finance/finance.module.ts
@@ -4042,7 +4288,7 @@
  47 |       where: { id: userId },
  48 |       select: { balance: true, name: true },
  49 |     });
- 50 |     return { balance: user?.balance ?? 0, name: user?.name ?? '' };
+ 50 |     return { balance: user?.balance?.toNumber() ?? 0, name: user?.name ?? '' };
  51 |   }
  52 | 
  53 |   async getDashboard({
@@ -4626,21 +4872,26 @@
   0 | import { NestFactory } from '@nestjs/core';
   1 | import { AppModule } from './app.module';
   2 | import { ValidationPipe } from '@nestjs/common';
-  3 | 
-  4 | async function bootstrap() {
-  5 |   const app = await NestFactory.create(AppModule);
-  6 |   app.enableCors();
-  7 |   app.useGlobalPipes(
-  8 |     new ValidationPipe({
-  9 |       transform: true,
- 10 |       whitelist: true,
- 11 |       forbidNonWhitelisted: true,
- 12 |     }),
- 13 |   );
- 14 |   await app.listen(process.env.PORT ?? 3000);
- 15 | }
- 16 | bootstrap();
- 17 | 
+  3 | import cookieParser from 'cookie-parser';
+  4 | 
+  5 | async function bootstrap() {
+  6 |   const app = await NestFactory.create(AppModule);
+  7 |   app.use(cookieParser());
+  8 |   app.enableCors({
+  9 |     origin: process.env.FRONTEND_URL, // напр. https://crm-tau-nine.vercel.app
+ 10 |     credentials: true,
+ 11 |   });
+ 12 |   app.useGlobalPipes(
+ 13 |     new ValidationPipe({
+ 14 |       transform: true,
+ 15 |       whitelist: true,
+ 16 |       forbidNonWhitelisted: true,
+ 17 |     }),
+ 18 |   );
+ 19 |   await app.listen(process.env.PORT ?? 3000);
+ 20 | }
+ 21 | bootstrap();
+ 22 | 
 ```
 
 ### File: apps/backend/src/prisma/prisma.mock.ts
@@ -4659,14 +4910,15 @@
 ```ts
   0 | import { Global, Module } from '@nestjs/common';
   1 | import { PrismaService } from './prisma.service';
-  2 | 
-  3 | @Global()
-  4 | @Module({
-  5 |   providers: [PrismaService],
-  6 |   exports: [PrismaService],
-  7 | })
-  8 | export class PrismaModule {}
-  9 | 
+  2 | import { OwnershipGuard } from '../auth/guards/ownership.guard';
+  3 | 
+  4 | @Global()
+  5 | @Module({
+  6 |   providers: [PrismaService, OwnershipGuard],
+  7 |   exports: [PrismaService, OwnershipGuard],
+  8 | })
+  9 | export class PrismaModule {}
+ 10 | 
 ```
 
 ### File: apps/backend/src/prisma/prisma.service.spec.ts
@@ -6248,65 +6500,69 @@
  13 | import { RolesGuard } from '../auth/guards/roles.guard';
  14 | import { Roles } from '../auth/decorators/roles.decorator';
  15 | import { AuthGuard } from '../auth/auth.guard';
- 16 | import { CreateSchoolDto } from './dto/create-school.dto';
- 17 | import { UpdateSchoolDto } from './dto/update-school.dto';
- 18 | import { BulkImportDto } from './dto/bulk-import.dto';
- 19 | @Controller('schools')
- 20 | @UseGuards(AuthGuard, RolesGuard)
- 21 | export class SchoolsController {
- 22 |   constructor(
- 23 |     private readonly schoolsService: SchoolsService,
- 24 |     private readonly parserService: ParserService,
- 25 |   ) {}
- 26 | 
- 27 |   @Post('bulk-import')
- 28 |   @Roles('SUPERADMIN', 'MANAGER')
- 29 |   bulkImport(@Body() body: BulkImportDto) {
- 30 |     return this.schoolsService.bulkImport(body.cityId, body.type || 'Школа');
- 31 |   }
- 32 | 
- 33 |   @Get('supported-cities')
- 34 |   getSupportedCities() {
- 35 |     return this.parserService.getSupportedCities();
- 36 |   }
- 37 | 
- 38 |   @Post()
- 39 |   @Roles('SUPERADMIN', 'MANAGER')
- 40 |   create(@Body() body: CreateSchoolDto) {
- 41 |     return this.schoolsService.create(body);
- 42 |   }
- 43 | 
- 44 |   @Get() findAll(@Query('minimal') minimal?: string) {
- 45 |     return this.schoolsService.findAll(minimal === 'true');
- 46 |   }
- 47 | 
- 48 |   @Get('search')
- 49 |   search(@Query('q') q: string, @Query('type') type: string) {
- 50 |     return this.parserService.searchSchools(q, type);
- 51 |   }
- 52 | 
- 53 |   @Get(':id')
- 54 |   findOne(@Param('id') id: string) {
- 55 |     return this.schoolsService.findOne(id);
- 56 |   }
- 57 | 
- 58 |   @Patch(':id')
- 59 |   update(@Param('id') id: string, @Body() body: UpdateSchoolDto) {
- 60 |     return this.schoolsService.update(id, body);
- 61 |   }
- 62 | 
- 63 |   @Delete(':id')
- 64 |   @Roles('SUPERADMIN')
- 65 |   remove(@Param('id') id: string) {
- 66 |     return this.schoolsService.remove(id);
- 67 |   }
- 68 | 
- 69 |   @Get('contacts/search')
- 70 |   searchContacts(@Query('q') q: string, @Query('city') city: string) {
- 71 |     return this.schoolsService.searchContacts(q, city);
- 72 |   }
- 73 | }
- 74 | 
+ 16 | import { OwnershipGuard } from '../auth/guards/ownership.guard';
+ 17 | import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
+ 18 | import { CreateSchoolDto } from './dto/create-school.dto';
+ 19 | import { UpdateSchoolDto } from './dto/update-school.dto';
+ 20 | import { BulkImportDto } from './dto/bulk-import.dto';
+ 21 | @Controller('schools')
+ 22 | @UseGuards(AuthGuard, RolesGuard)
+ 23 | export class SchoolsController {
+ 24 |   constructor(
+ 25 |     private readonly schoolsService: SchoolsService,
+ 26 |     private readonly parserService: ParserService,
+ 27 |   ) {}
+ 28 | 
+ 29 |   @Post('bulk-import')
+ 30 |   @Roles('SUPERADMIN', 'MANAGER')
+ 31 |   bulkImport(@Body() body: BulkImportDto) {
+ 32 |     return this.schoolsService.bulkImport(body.cityId, body.type || 'Школа');
+ 33 |   }
+ 34 | 
+ 35 |   @Get('supported-cities')
+ 36 |   getSupportedCities() {
+ 37 |     return this.parserService.getSupportedCities();
+ 38 |   }
+ 39 | 
+ 40 |   @Post()
+ 41 |   @Roles('SUPERADMIN', 'MANAGER')
+ 42 |   create(@Body() body: CreateSchoolDto) {
+ 43 |     return this.schoolsService.create(body);
+ 44 |   }
+ 45 | 
+ 46 |   @Get() findAll(@Query('minimal') minimal?: string) {
+ 47 |     return this.schoolsService.findAll(minimal === 'true');
+ 48 |   }
+ 49 | 
+ 50 |   @Get('search')
+ 51 |   search(@Query('q') q: string, @Query('type') type: string) {
+ 52 |     return this.parserService.searchSchools(q, type);
+ 53 |   }
+ 54 | 
+ 55 |   @Get(':id')
+ 56 |   findOne(@Param('id') id: string) {
+ 57 |     return this.schoolsService.findOne(id);
+ 58 |   }
+ 59 | 
+ 60 |   @Patch(':id')
+ 61 |   @UseGuards(OwnershipGuard)
+ 62 |   @CheckOwnership('school')
+ 63 |   update(@Param('id') id: string, @Body() body: UpdateSchoolDto) {
+ 64 |     return this.schoolsService.update(id, body);
+ 65 |   }
+ 66 | 
+ 67 |   @Delete(':id')
+ 68 |   @Roles('SUPERADMIN')
+ 69 |   remove(@Param('id') id: string) {
+ 70 |     return this.schoolsService.remove(id);
+ 71 |   }
+ 72 | 
+ 73 |   @Get('contacts/search')
+ 74 |   searchContacts(@Query('q') q: string, @Query('city') city: string) {
+ 75 |     return this.schoolsService.searchContacts(q, city);
+ 76 |   }
+ 77 | }
+ 78 | 
 ```
 
 ### File: apps/backend/src/schools/schools.module.ts
@@ -6845,7 +7101,7 @@
  91 |       `Ваш акаунт створено.\n\n` +
  92 |       `📧 <b>Логін:</b> <code>${email}</code>\n` +
  93 |       `🔑 <b>Пароль:</b> <code>${password}</code>\n\n` +
- 94 |       `Увійдіть за посиланням: <a href="https://crm-tau-nine.vercel.app">crm-tau-nine.vercel.app</a>\n\n` +
+ 94 |       `Увійдіть за посиланням: <a href="https://crm-frontend-psi-sable.vercel.app">crm-frontend-psi-sable.vercel.app</a>\n\n` +
  95 |       `<i>Змініть пароль після першого входу.</i>`;
  96 | 
  97 |     await this.sendMessage(chatId, text);
@@ -8224,181 +8480,186 @@
   8 | import Layout from "./components/Layout";
   9 | import Login from "./pages/Login";
  10 | import { CityProvider } from "./context/CityContext";
- 11 | 
- 12 | import ProtectedRoute from "./components/ProtectedRoute";
- 13 | 
- 14 | const CityProfile = lazy(() => import("./pages/CityProfile"));
- 15 | const EventReport = lazy(() => import("./pages/EventReport"));
- 16 | 
- 17 | const Cities = lazy(() => import("./pages/Cities"));
- 18 | const Schools = lazy(() => import("./pages/Schools"));
- 19 | const SchoolProfile = lazy(() => import("./pages/SchoolProfile"));
- 20 | const Employees = lazy(() => import("./pages/Employees"));
- 21 | const Finance = lazy(() => import("./pages/Finance"));
- 22 | const CalendarView = lazy(() => import("./pages/CalendarView"));
- 23 | const Dashboard = lazy(() => import("./pages/Dashboard"));
- 24 | const Kindergartens = lazy(() => import("./pages/Kindergartens"));
- 25 | 
- 26 | const PageLoader = () => (
- 27 |   <div className="flex items-center justify-center h-full min-h-[50vh]">
- 28 |     <div className="text-slate-400 font-medium animate-pulse">
- 29 |       Завантаження сторінки...
- 30 |     </div>
- 31 |   </div>
- 32 | );
- 33 | 
- 34 | export default function App() {
- 35 |   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
- 36 |     !!localStorage.getItem("token"),
- 37 |   );
- 38 | 
- 39 |   const handleLogin = (token: string) => {
- 40 |     localStorage.setItem("token", token);
+ 11 | import { api } from "./config/api";
+ 12 | 
+ 13 | import ProtectedRoute from "./components/ProtectedRoute";
+ 14 | 
+ 15 | const CityProfile = lazy(() => import("./pages/CityProfile"));
+ 16 | const EventReport = lazy(() => import("./pages/EventReport"));
+ 17 | 
+ 18 | const Cities = lazy(() => import("./pages/Cities"));
+ 19 | const Schools = lazy(() => import("./pages/Schools"));
+ 20 | const SchoolProfile = lazy(() => import("./pages/SchoolProfile"));
+ 21 | const Employees = lazy(() => import("./pages/Employees"));
+ 22 | const Finance = lazy(() => import("./pages/Finance"));
+ 23 | const CalendarView = lazy(() => import("./pages/CalendarView"));
+ 24 | const Dashboard = lazy(() => import("./pages/Dashboard"));
+ 25 | const Kindergartens = lazy(() => import("./pages/Kindergartens"));
+ 26 | 
+ 27 | const PageLoader = () => (
+ 28 |   <div className="flex items-center justify-center h-full min-h-[50vh]">
+ 29 |     <div className="text-slate-400 font-medium animate-pulse">
+ 30 |       Завантаження сторінки...
+ 31 |     </div>
+ 32 |   </div>
+ 33 | );
+ 34 | 
+ 35 | export default function App() {
+ 36 |   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
+ 37 |     !!localStorage.getItem("user"),
+ 38 |   );
+ 39 | 
+ 40 |   const handleLogin = () => {
  41 |     setIsAuthenticated(true);
  42 |   };
  43 | 
- 44 |   const handleLogout = () => {
- 45 |     localStorage.removeItem("token");
- 46 |     setIsAuthenticated(false);
- 47 |   };
- 48 | 
- 49 |   return (
- 50 |     <Router>
- 51 |       <CityProvider>
- 52 |         <Routes>
- 53 |           {/* Публічний маршрут: Логін */}
- 54 |           <Route
- 55 |             path="/login"
- 56 |             element={
- 57 |               !isAuthenticated ? (
- 58 |                 <Login onLogin={handleLogin} />
- 59 |               ) : (
- 60 |                 <Navigate to="/cities" replace />
- 61 |               )
- 62 |             }
- 63 |           />
- 64 | 
- 65 |           {/* Захищені маршрути (Layout відображає бокове меню) */}
- 66 |           <Route
- 67 |             path="/"
- 68 |             element={
- 69 |               isAuthenticated ? (
- 70 |                 <Layout onLogout={handleLogout} />
- 71 |               ) : (
- 72 |                 <Navigate to="/login" replace />
- 73 |               )
- 74 |             }
- 75 |           >
- 76 |             {/* Редірект з кореня на сторінку міст за замовчуванням */}
- 77 |             <Route index element={<Navigate to="/schools" replace />} />
- 78 | 
- 79 |             {/* Обгортаємо всі вкладені маршрути в Suspense. 
- 80 |               Коли React намагається відрендерити "ліниву" сторінку, він показує fallback (PageLoader), 
- 81 |               поки завантажується файл з сервера.
- 82 |             */}
- 83 |             <Route
- 84 |               path="cities"
- 85 |               element={
- 86 |                 <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
- 87 |                   <Suspense fallback={<PageLoader />}>
- 88 |                     <Cities />
- 89 |                   </Suspense>
- 90 |                 </ProtectedRoute>
- 91 |               }
- 92 |             />
- 93 | 
- 94 |             <Route
- 95 |               path="schools"
- 96 |               element={
- 97 |                 <Suspense fallback={<PageLoader />}>
- 98 |                   <Schools />
- 99 |                 </Suspense>
-100 |               }
-101 |             />
-102 | 
-103 |             <Route
-104 |               path="schools/:id"
-105 |               element={
-106 |                 <Suspense fallback={<PageLoader />}>
-107 |                   <SchoolProfile />
-108 |                 </Suspense>
-109 |               }
-110 |             />
-111 | 
-112 |             <Route
-113 |               path="employees"
-114 |               element={
-115 |                 <ProtectedRoute allowedRoles={["SUPERADMIN"]}>
-116 |                   <Suspense fallback={<PageLoader />}>
-117 |                     <Employees />
-118 |                   </Suspense>
-119 |                 </ProtectedRoute>
-120 |               }
-121 |             />
-122 | 
-123 |             <Route
-124 |               path="finance"
-125 |               element={
-126 |                 <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
-127 |                   <Suspense fallback={<PageLoader />}>
-128 |                     <Finance />
-129 |                   </Suspense>
-130 |                 </ProtectedRoute>
-131 |               }
-132 |             />
-133 | 
-134 |             <Route
-135 |               path="calendar"
-136 |               element={
-137 |                 <Suspense fallback={<PageLoader />}>
-138 |                   <CalendarView />
-139 |                 </Suspense>
-140 |               }
-141 |             />
-142 |             <Route
-143 |               path="dashboard"
-144 |               element={
-145 |                 <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
-146 |                   <Suspense fallback={<PageLoader />}>
-147 |                     <Dashboard />
-148 |                   </Suspense>
-149 |                 </ProtectedRoute>
-150 |               }
-151 |             />
-152 | 
-153 |             <Route
-154 |               path="kindergartens"
-155 |               element={
-156 |                 <Suspense fallback={<PageLoader />}>
-157 |                   <Kindergartens />
-158 |                 </Suspense>
-159 |               }
-160 |             />
-161 | 
-162 |             <Route
-163 |               path="cities/:id"
-164 |               element={
-165 |                 <Suspense fallback={<PageLoader />}>
-166 |                   <CityProfile />
-167 |                 </Suspense>
-168 |               }
-169 |             />
-170 | 
-171 |             <Route
-172 |               path="events/:id/report"
-173 |               element={
-174 |                 <Suspense fallback={<PageLoader />}>
-175 |                   <EventReport />
-176 |                 </Suspense>
-177 |               }
-178 |             />
-179 |           </Route>
-180 |         </Routes>
-181 |       </CityProvider>
-182 |     </Router>
-183 |   );
-184 | }
-185 | 
+ 44 |   const handleLogout = async () => {
+ 45 |     try {
+ 46 |       await api.post("/auth/logout");
+ 47 |     } catch {
+ 48 |       // ігноруємо — все одно чистимо локальний стан
+ 49 |     }
+ 50 |     localStorage.removeItem("user");
+ 51 |     setIsAuthenticated(false);
+ 52 |   };
+ 53 | 
+ 54 |   return (
+ 55 |     <Router>
+ 56 |       <CityProvider>
+ 57 |         <Routes>
+ 58 |           {/* Публічний маршрут: Логін */}
+ 59 |           <Route
+ 60 |             path="/login"
+ 61 |             element={
+ 62 |               !isAuthenticated ? (
+ 63 |                 <Login onLogin={handleLogin} />
+ 64 |               ) : (
+ 65 |                 <Navigate to="/cities" replace />
+ 66 |               )
+ 67 |             }
+ 68 |           />
+ 69 | 
+ 70 |           {/* Захищені маршрути (Layout відображає бокове меню) */}
+ 71 |           <Route
+ 72 |             path="/"
+ 73 |             element={
+ 74 |               isAuthenticated ? (
+ 75 |                 <Layout onLogout={handleLogout} />
+ 76 |               ) : (
+ 77 |                 <Navigate to="/login" replace />
+ 78 |               )
+ 79 |             }
+ 80 |           >
+ 81 |             {/* Редірект з кореня на сторінку міст за замовчуванням */}
+ 82 |             <Route index element={<Navigate to="/schools" replace />} />
+ 83 | 
+ 84 |             {/* Обгортаємо всі вкладені маршрути в Suspense. 
+ 85 |               Коли React намагається відрендерити "ліниву" сторінку, він показує fallback (PageLoader), 
+ 86 |               поки завантажується файл з сервера.
+ 87 |             */}
+ 88 |             <Route
+ 89 |               path="cities"
+ 90 |               element={
+ 91 |                 <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
+ 92 |                   <Suspense fallback={<PageLoader />}>
+ 93 |                     <Cities />
+ 94 |                   </Suspense>
+ 95 |                 </ProtectedRoute>
+ 96 |               }
+ 97 |             />
+ 98 | 
+ 99 |             <Route
+100 |               path="schools"
+101 |               element={
+102 |                 <Suspense fallback={<PageLoader />}>
+103 |                   <Schools />
+104 |                 </Suspense>
+105 |               }
+106 |             />
+107 | 
+108 |             <Route
+109 |               path="schools/:id"
+110 |               element={
+111 |                 <Suspense fallback={<PageLoader />}>
+112 |                   <SchoolProfile />
+113 |                 </Suspense>
+114 |               }
+115 |             />
+116 | 
+117 |             <Route
+118 |               path="employees"
+119 |               element={
+120 |                 <ProtectedRoute allowedRoles={["SUPERADMIN"]}>
+121 |                   <Suspense fallback={<PageLoader />}>
+122 |                     <Employees />
+123 |                   </Suspense>
+124 |                 </ProtectedRoute>
+125 |               }
+126 |             />
+127 | 
+128 |             <Route
+129 |               path="finance"
+130 |               element={
+131 |                 <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
+132 |                   <Suspense fallback={<PageLoader />}>
+133 |                     <Finance />
+134 |                   </Suspense>
+135 |                 </ProtectedRoute>
+136 |               }
+137 |             />
+138 | 
+139 |             <Route
+140 |               path="calendar"
+141 |               element={
+142 |                 <Suspense fallback={<PageLoader />}>
+143 |                   <CalendarView />
+144 |                 </Suspense>
+145 |               }
+146 |             />
+147 |             <Route
+148 |               path="dashboard"
+149 |               element={
+150 |                 <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
+151 |                   <Suspense fallback={<PageLoader />}>
+152 |                     <Dashboard />
+153 |                   </Suspense>
+154 |                 </ProtectedRoute>
+155 |               }
+156 |             />
+157 | 
+158 |             <Route
+159 |               path="kindergartens"
+160 |               element={
+161 |                 <Suspense fallback={<PageLoader />}>
+162 |                   <Kindergartens />
+163 |                 </Suspense>
+164 |               }
+165 |             />
+166 | 
+167 |             <Route
+168 |               path="cities/:id"
+169 |               element={
+170 |                 <Suspense fallback={<PageLoader />}>
+171 |                   <CityProfile />
+172 |                 </Suspense>
+173 |               }
+174 |             />
+175 | 
+176 |             <Route
+177 |               path="events/:id/report"
+178 |               element={
+179 |                 <Suspense fallback={<PageLoader />}>
+180 |                   <EventReport />
+181 |                 </Suspense>
+182 |               }
+183 |             />
+184 |           </Route>
+185 |         </Routes>
+186 |       </CityProvider>
+187 |     </Router>
+188 |   );
+189 | }
+190 | 
 ```
 
 ### File: apps/frontend/src/components/AddressLink.tsx
@@ -14473,18 +14734,42 @@
 
 ### File: apps/frontend/src/config/api.ts
 ```ts
-  0 | import axios from 'axios';
+  0 | import axios from "axios";
   1 | 
-  2 | export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://crm-57qd.onrender.com';
-  3 | 
-  4 | export const api = axios.create({ baseURL: API_BASE_URL });
-  5 | 
-  6 | api.interceptors.request.use(config => {
-  7 |   const token = localStorage.getItem('token');
-  8 |   if (token) config.headers.Authorization = `Bearer ${token}`;
-  9 |   return config;
- 10 | });
- 11 | 
+  2 | export const API_BASE_URL =
+  3 |   import.meta.env.VITE_API_URL || "https://crm-57qd.onrender.com";
+  4 | 
+  5 | export const api = axios.create({
+  6 |   baseURL: API_BASE_URL,
+  7 |   withCredentials: true,
+  8 | });
+  9 | 
+ 10 | function getCookie(name: string): string | null {
+ 11 |   const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
+ 12 |   return match ? match[2] : null;
+ 13 | }
+ 14 | 
+ 15 | api.interceptors.request.use((config) => {
+ 16 |   if (config.method && config.method !== "get") {
+ 17 |     const csrfToken = getCookie("csrf_token");
+ 18 |     if (csrfToken) config.headers["X-CSRF-Token"] = csrfToken;
+ 19 |   }
+ 20 |   return config;
+ 21 | });
+ 22 | 
+ 23 | api.interceptors.response.use(
+ 24 |   (res) => res,
+ 25 |   (error) => {
+ 26 |     if (error.response?.status === 401) {
+ 27 |       localStorage.removeItem("user");
+ 28 |       if (!window.location.pathname.startsWith("/login")) {
+ 29 |         window.location.href = "/login";
+ 30 |       }
+ 31 |     }
+ 32 |     return Promise.reject(error);
+ 33 |   },
+ 34 | );
+ 35 | 
 ```
 
 ### File: apps/frontend/src/context/CityContext.tsx
@@ -18090,55 +18375,53 @@
  48 |   const isManagerOrAdmin =
  49 |     currentUser?.role === "MANAGER" || currentUser?.role === "SUPERADMIN";
  50 | 
- 51 |   useEffect(() => {
+ 51 |    useEffect(() => {
  52 |     if (isManagerOrAdmin === false) {
  53 |       api
- 54 |         .get("/finance/my-balance", {
- 55 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
- 56 |         })
- 57 |         .then((r) => setMyBalance(r.data.balance))
- 58 |         .catch(() => {});
- 59 |     }
- 60 |   }, [isManagerOrAdmin]);
- 61 | 
- 62 |   const { data, isLoading } = useQuery({
- 63 |     queryKey: ["finance", selectedCity.id, period, projectFilter],
- 64 |     queryFn: async () => {
- 65 |       const params = new URLSearchParams();
- 66 |       if (period) params.set("period", period);
- 67 |       if (selectedCity?.id) params.set("cityId", selectedCity.id);
- 68 |       if (projectFilter) params.set("project", projectFilter);
- 69 |       const res = await api.get(`/finance/dashboard?${params}`);
- 70 |       return res.data;
- 71 |     },
- 72 |     enabled: !!isManagerOrAdmin,
- 73 |     staleTime: 5 * 60 * 1000,
- 74 |   });
- 75 |   
- 76 |   if (!isManagerOrAdmin) {
- 77 |     return (
- 78 |       <Suspense fallback={<FinanceSkeleton />}>
- 79 |         <StaffFinanceView myBalance={myBalance} selectedCity={selectedCity} />
- 80 |       </Suspense>
- 81 |     );
- 82 |   }
+ 54 |         .get("/finance/my-balance")
+ 55 |         .then((r) => setMyBalance(r.data.balance))
+ 56 |         .catch(() => {});
+ 57 |     }
+ 58 |   }, [isManagerOrAdmin]);
+ 59 | 
+ 60 |   const { data, isLoading } = useQuery({
+ 61 |     queryKey: ["finance", selectedCity.id, period, projectFilter],
+ 62 |     queryFn: async () => {
+ 63 |       const params = new URLSearchParams();
+ 64 |       if (period) params.set("period", period);
+ 65 |       if (selectedCity?.id) params.set("cityId", selectedCity.id);
+ 66 |       if (projectFilter) params.set("project", projectFilter);
+ 67 |       const res = await api.get(`/finance/dashboard?${params}`);
+ 68 |       return res.data;
+ 69 |     },
+ 70 |     enabled: !!isManagerOrAdmin,
+ 71 |     staleTime: 5 * 60 * 1000,
+ 72 |   });
+ 73 |   
+ 74 |   if (!isManagerOrAdmin) {
+ 75 |     return (
+ 76 |       <Suspense fallback={<FinanceSkeleton />}>
+ 77 |         <StaffFinanceView myBalance={myBalance} selectedCity={selectedCity} />
+ 78 |       </Suspense>
+ 79 |     );
+ 80 |   }
+ 81 | 
+ 82 |   if (isLoading || !data) return <FinanceSkeleton />;
  83 | 
- 84 |   if (isLoading || !data) return <FinanceSkeleton />;
- 85 | 
- 86 |   return (
- 87 |     <Suspense fallback={<FinanceSkeleton />}>
- 88 |       <FinanceCharts
- 89 |         data={data}
- 90 |         period={period}
- 91 |         setPeriod={setPeriod}
- 92 |         projectFilter={projectFilter}
- 93 |         setProjectFilter={setProjectFilter}
- 94 |         selectedCity={selectedCity}
- 95 |       />
- 96 |     </Suspense>
- 97 |   );
- 98 | }
- 99 | 
+ 84 |   return (
+ 85 |     <Suspense fallback={<FinanceSkeleton />}>
+ 86 |       <FinanceCharts
+ 87 |         data={data}
+ 88 |         period={period}
+ 89 |         setPeriod={setPeriod}
+ 90 |         projectFilter={projectFilter}
+ 91 |         setProjectFilter={setProjectFilter}
+ 92 |         selectedCity={selectedCity}
+ 93 |       />
+ 94 |     </Suspense>
+ 95 |   );
+ 96 | }
+ 97 | 
 ```
 
 ### File: apps/frontend/src/pages/Kindergartens.tsx
@@ -18741,93 +19024,88 @@
 ### File: apps/frontend/src/pages/Login.tsx
 ```tsx
   0 | import { useState } from "react";
-  1 | import axios from "axios";
-  2 | import { useNavigate } from "react-router-dom";
-  3 | 
-  4 | import { API_BASE_URL } from "../config/api";
-  5 | 
-  6 | interface LoginProps {
-  7 |   onLogin?: (token: string) => void;
-  8 | }
-  9 | 
- 10 | export default function Login({ onLogin }: LoginProps) {
- 11 |   const [email, setEmail] = useState("admin@crm.com");
- 12 |   const [password, setPassword] = useState("admin123");
- 13 |   const [error, setError] = useState("");
- 14 |   const navigate = useNavigate();
- 15 | 
- 16 |   const handleLogin = async (e: React.FormEvent) => {
- 17 |     e.preventDefault();
- 18 |     setError("");
- 19 | 
- 20 |     try {
- 21 |       const response = await axios.post(`${API_BASE_URL}/auth/login`, {
- 22 |         email,
- 23 |         password,
- 24 |       });
- 25 | 
- 26 |       localStorage.setItem("token", response.data.access_token);
- 27 |       localStorage.setItem("user", JSON.stringify(response.data.user));
- 28 |       if (onLogin) {
- 29 |         onLogin(response.data.access_token);
- 30 |       } else {
- 31 |         navigate("/cities");
- 32 |       }
- 33 |     } catch {
- 34 |       setError("Невірний email або пароль");
- 35 |     }
- 36 |   };
- 37 | 
- 38 |   return (
- 39 |     <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
- 40 |       <div className="p-6 sm:p-8 bg-white rounded-2xl shadow-lg w-full max-w-sm sm:max-w-md">
- 41 |         <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
- 42 |           Вхід у CRM
- 43 |         </h1>
- 44 | 
- 45 |         {error && (
- 46 |           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center">
- 47 |             {error}
- 48 |           </div>
- 49 |         )}
- 50 | 
- 51 |         <form onSubmit={handleLogin} className="flex flex-col gap-4">
- 52 |           <div>
- 53 |             <label className="block text-sm font-medium text-gray-700 mb-1">
- 54 |               Email
- 55 |             </label>
- 56 |             <input
- 57 |               type="email"
- 58 |               value={email}
- 59 |               onChange={(e) => setEmail(e.target.value)}
- 60 |               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
- 61 |               required
- 62 |             />
- 63 |           </div>
- 64 |           <div>
- 65 |             <label className="block text-sm font-medium text-gray-700 mb-1">
- 66 |               Пароль
- 67 |             </label>
- 68 |             <input
- 69 |               type="password"
- 70 |               value={password}
- 71 |               onChange={(e) => setPassword(e.target.value)}
- 72 |               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
- 73 |               required
- 74 |             />
- 75 |           </div>
- 76 |           <button
- 77 |             type="submit"
- 78 |             className="mt-2 bg-blue-600 text-white font-medium p-2.5 rounded-lg hover:bg-blue-700 transition"
- 79 |           >
- 80 |             Увійти
- 81 |           </button>
- 82 |         </form>
- 83 |       </div>
- 84 |     </div>
- 85 |   );
- 86 | }
- 87 | 
+  1 | import { useNavigate } from "react-router-dom";
+  2 | 
+  3 | import { api } from "../config/api";
+  4 | 
+  5 | interface LoginProps {
+  6 |   onLogin?: () => void;
+  7 | }
+  8 | 
+  9 | export default function Login({ onLogin }: LoginProps) {
+ 10 |   const [email, setEmail] = useState("admin@crm.com");
+ 11 |   const [password, setPassword] = useState("admin123");
+ 12 |   const [error, setError] = useState("");
+ 13 |   const navigate = useNavigate();
+ 14 | 
+ 15 |   const handleLogin = async (e: React.FormEvent) => {
+ 16 |     e.preventDefault();
+ 17 |     setError("");
+ 18 | 
+ 19 |     try {
+ 20 |       const response = await api.post("/auth/login", { email, password });
+ 21 | 
+ 22 |       localStorage.setItem("user", JSON.stringify(response.data.user));
+ 23 |       if (onLogin) {
+ 24 |         onLogin();
+ 25 |       } else {
+ 26 |         navigate("/cities");
+ 27 |       }
+ 28 |     } catch {
+ 29 |       setError("Невірний email або пароль");
+ 30 |     }
+ 31 |   };
+ 32 | 
+ 33 |   return (
+ 34 |     <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+ 35 |       <div className="p-6 sm:p-8 bg-white rounded-2xl shadow-lg w-full max-w-sm sm:max-w-md">
+ 36 |         <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
+ 37 |           Вхід у CRM
+ 38 |         </h1>
+ 39 | 
+ 40 |         {error && (
+ 41 |           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center">
+ 42 |             {error}
+ 43 |           </div>
+ 44 |         )}
+ 45 | 
+ 46 |         <form onSubmit={handleLogin} className="flex flex-col gap-4">
+ 47 |           <div>
+ 48 |             <label className="block text-sm font-medium text-gray-700 mb-1">
+ 49 |               Email
+ 50 |             </label>
+ 51 |             <input
+ 52 |               type="email"
+ 53 |               value={email}
+ 54 |               onChange={(e) => setEmail(e.target.value)}
+ 55 |               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+ 56 |               required
+ 57 |             />
+ 58 |           </div>
+ 59 |           <div>
+ 60 |             <label className="block text-sm font-medium text-gray-700 mb-1">
+ 61 |               Пароль
+ 62 |             </label>
+ 63 |             <input
+ 64 |               type="password"
+ 65 |               value={password}
+ 66 |               onChange={(e) => setPassword(e.target.value)}
+ 67 |               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+ 68 |               required
+ 69 |             />
+ 70 |           </div>
+ 71 |           <button
+ 72 |             type="submit"
+ 73 |             className="mt-2 bg-blue-600 text-white font-medium p-2.5 rounded-lg hover:bg-blue-700 transition"
+ 74 |           >
+ 75 |             Увійти
+ 76 |           </button>
+ 77 |         </form>
+ 78 |       </div>
+ 79 |     </div>
+ 80 |   );
+ 81 | }
+ 82 | 
 ```
 
 ### File: apps/frontend/src/pages/SchoolProfile.tsx
@@ -20477,43 +20755,41 @@
   0 | const fs = require('fs');
   1 | const path = require('path');
   2 | 
-  3 | // Назва вихідного файлу
-  4 | const outputFile = 'combined_methods_and_dto.md';
-  5 | 
-  6 | // Створюємо або очищуємо файл із заголовком
-  7 | fs.writeFileSync(outputFile, '# Файли DTO та сервісів для фінальних правок\n\n');
-  8 | 
-  9 | // Список файлів
- 10 | const filesToCollect = [
- 11 |   'apps/backend/src/cities/dto/create-crew.dto.ts',
- 12 |   'apps/backend/src/cities/cities.service.ts',
- 13 |   'apps/backend/src/projects/dto/create-project.dto.ts',
- 14 |   'apps/backend/src/projects/projects.service.ts',
- 15 |   'apps/backend/src/users/users.service.ts',
- 16 |   'apps/backend/src/dashboard/dashboard.service.ts'
- 17 | ];
+  3 | const outputFile = 'combined_roles_controllers.md';
+  4 | 
+  5 | fs.writeFileSync(outputFile, '# Файли Roles Guard та Контролерів\n\n');
+  6 | 
+  7 | const filesToCollect = [
+  8 |   'apps/backend/src/auth/guards/roles.guard.ts',
+  9 |   'apps/backend/src/auth/decorators/roles.decorator.ts',
+ 10 |   'apps/backend/src/auth/interfaces/jwt-user.interface.ts',
+ 11 |   'apps/backend/src/schools/schools.controller.ts',
+ 12 |   'apps/backend/src/events/events.controller.ts',
+ 13 |   'apps/backend/src/finance/finance.controller.ts',
+ 14 |   'apps/backend/src/cities/cities.controller.ts'
+ 15 | ];
+ 16 | 
+ 17 | let collectedCount = 0;
  18 | 
- 19 | console.log('🚀 Починаю збір DTO та сервісів...\n');
+ 19 | console.log('🚀 Починаю збір файлів Role Guard та контролерів...\n');
  20 | 
- 21 | let collectedCount = 0;
- 22 | 
- 23 | filesToCollect.forEach(filePath => {
- 24 |   if (!fs.existsSync(filePath)) {
- 25 |     console.warn(`[!] Файл не знайдено: ${filePath}`);
- 26 |     return;
- 27 |   }
- 28 | 
- 29 |   const content = fs.readFileSync(filePath, 'utf-8');
- 30 |   const ext = path.extname(filePath).replace('.', '');
- 31 |   const lang = ['ts', 'tsx'].includes(ext) ? 'typescript' : ext;
- 32 | 
- 33 |   const mdBlock = `### \`${filePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`;
- 34 |   fs.appendFileSync(outputFile, mdBlock);
- 35 |   console.log(`[+] Додано: ${filePath}`);
- 36 |   collectedCount++;
- 37 | });
- 38 | 
- 39 | console.log(`\n✅ Готово! Зібрано ${collectedCount} файлів у ${outputFile}`);
+ 21 | filesToCollect.forEach(filePath => {
+ 22 |   if (!fs.existsSync(filePath)) {
+ 23 |     console.warn(`[!] Файл не знайдено: ${filePath}`);
+ 24 |     return;
+ 25 |   }
+ 26 | 
+ 27 |   const content = fs.readFileSync(filePath, 'utf-8');
+ 28 |   const ext = path.extname(filePath).replace('.', '');
+ 29 |   const lang = ['ts', 'tsx'].includes(ext) ? 'typescript' : ext;
+ 30 | 
+ 31 |   const mdBlock = `### \`${filePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`;
+ 32 |   fs.appendFileSync(outputFile, mdBlock);
+ 33 |   console.log(`[+] Додано: ${filePath}`);
+ 34 |   collectedCount++;
+ 35 | });
+ 36 | 
+ 37 | console.log(`\n✅ Готово! Зібрано ${collectedCount} файлів у ${outputFile}`);
 ```
 
 ### File: package.json

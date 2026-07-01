@@ -1,4 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  useInfiniteQuery,
+} from "@tanstack/react-query";
 import { api } from "../config/api";
 import type { City, School } from "../types";
 
@@ -28,14 +33,52 @@ export function useAddCity() {
   });
 }
 
-export function useSchools() {
+export interface SchoolFilters {
+  search?: string;
+  cityId?: string;
+  type?: "Школа" | "Садочок";
+  stage?: "new" | "planned" | "inProgress" | "done";
+  size?: "small" | "medium" | "large";
+}
+
+interface SchoolsPage {
+  data: School[];
+  meta: {
+    totalItems: number;
+    page: number;
+    take: number;
+    pageCount: number;
+    hasNextPage: boolean;
+  };
+}
+
+export function useSchools(filters: SchoolFilters = {}) {
+  return useInfiniteQuery({
+    queryKey: ["schools", filters],
+    queryFn: ({ pageParam = 1 }) =>
+      api
+        .get<SchoolsPage>("/schools", {
+          headers: auth(),
+          params: { ...filters, page: pageParam, take: 30 },
+        })
+        .then((r) => r.data),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.hasNextPage ? lastPage.meta.page + 1 : undefined,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSchoolStats(
+  filters: Pick<SchoolFilters, "cityId" | "type" | "stage"> = {},
+) {
   return useQuery({
-    queryKey: ["schools"],
+    queryKey: ["schoolStats", filters],
     queryFn: () =>
       api
-        .get<School[]>("/schools?minimal=true", { headers: auth() })
+        .get("/schools/stats", { headers: auth(), params: filters })
         .then((r) => r.data),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000,
   });
 }
 
@@ -48,6 +91,7 @@ export function useAddSchool() {
         .then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["schools"] });
+      qc.invalidateQueries({ queryKey: ["schoolStats"] });
     },
   });
 }
@@ -57,10 +101,9 @@ export function useDeleteSchool() {
   return useMutation({
     mutationFn: (schoolId: string) =>
       api.delete(`/schools/${schoolId}`, { headers: auth() }),
-    onSuccess: (_data, schoolId) => {
-      qc.setQueryData(["schools"], (old: School[] = []) =>
-        old.filter((s) => s.id !== schoolId),
-      );
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["schools"] });
+      qc.invalidateQueries({ queryKey: ["schoolStats"] });
     },
   });
 }

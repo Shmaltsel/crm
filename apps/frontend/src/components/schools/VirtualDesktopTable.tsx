@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { SchoolRow } from "./SchoolDesktopTable";
@@ -9,9 +9,16 @@ interface Props {
   searchQuery: string;
   onDelete: (e: React.MouseEvent, id: string, name: string) => void;
   stages: PipelineStage[];
+  onEndReached?: () => void;
 }
 
-export default function VirtualDesktopTable({ schools, searchQuery, onDelete, stages }: Props) {
+export default function VirtualDesktopTable({
+  schools,
+  searchQuery,
+  onDelete,
+  stages,
+  onEndReached,
+}: Props) {
   const navigate = useNavigate();
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -21,6 +28,16 @@ export default function VirtualDesktopTable({ schools, searchQuery, onDelete, st
     estimateSize: () => 57,
     overscan: 8,
   });
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const lastItem = virtualItems[virtualItems.length - 1];
+
+  useEffect(() => {
+    if (!onEndReached || !lastItem) return;
+    if (lastItem.index >= schools.length - 5) {
+      onEndReached();
+    }
+  }, [lastItem?.index, schools.length, onEndReached]);
 
   return (
     <div ref={parentRef} className="overflow-y-auto flex-1 h-full">
@@ -35,10 +52,11 @@ export default function VirtualDesktopTable({ schools, searchQuery, onDelete, st
           </tr>
         </thead>
         <tbody>
-          {rowVirtualizer.getVirtualItems().map((virtualRow) => (
+          {virtualItems.map((virtualRow) => (
             <tr
-              key={virtualRow.key}
-              style={{ height: `${virtualRow.size}px` }}
+              style={{
+                height: `${rowVirtualizer.getTotalSize() - virtualItems.reduce((s, r) => s + r.size, 0)}px`,
+              }}
             >
               <SchoolRow
                 school={schools[virtualRow.index]}
@@ -48,7 +66,11 @@ export default function VirtualDesktopTable({ schools, searchQuery, onDelete, st
               />
             </tr>
           ))}
-          <tr style={{ height: `${rowVirtualizer.getTotalSize() - rowVirtualizer.getVirtualItems().reduce((s, r) => s + r.size, 0)}px` }}>
+          <tr
+            style={{
+              height: `${rowVirtualizer.getTotalSize() - rowVirtualizer.getVirtualItems().reduce((s, r) => s + r.size, 0)}px`,
+            }}
+          >
             <td colSpan={5} />
           </tr>
         </tbody>
@@ -56,7 +78,9 @@ export default function VirtualDesktopTable({ schools, searchQuery, onDelete, st
 
       {schools.length === 0 && (
         <div className="text-center py-16 text-slate-400 text-sm font-medium">
-          {searchQuery ? `Нічого не знайдено за «${searchQuery}»` : "Шкіл ще немає"}
+          {searchQuery
+            ? `Нічого не знайдено за «${searchQuery}»`
+            : "Шкіл ще немає"}
         </div>
       )}
     </div>

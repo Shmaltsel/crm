@@ -1,8 +1,17 @@
-import { useState, useRef, useMemo, useCallback, lazy, Suspense } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useCallback,
+  lazy,
+  Suspense,
+} from "react";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
 import {
   useSchools,
+  useSchoolStats,
   useDeleteSchool,
   usePrefetchSchool,
   useCities,
@@ -10,11 +19,6 @@ import {
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import VirtualSchoolList from "../components/VirtualSchoolList";
 import { SchoolCard } from "../components/schools/SchoolMobileList";
-
-import {
-  classifySchool,
-  classifySize,
-} from "../components/schools/schoolUtils";
 import type { SchoolContact } from "../types";
 
 interface NewSchoolPayload {
@@ -68,6 +72,7 @@ export default function Schools() {
   const [matchedContacts, setMatchedContacts] = useState<SchoolContact[]>([]);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [sizeFilter, setSizeFilter] = useState<string | null>(null);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [suggestions, setSuggestions] = useState<
     { name: string; url: string }[]
   >([]);
@@ -107,10 +112,47 @@ export default function Schools() {
     onError: () => alert("Помилка імпорту."),
   });
 
-  const { data: schools = [], isLoading } = useSchools();
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 350);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const schoolFilters = useMemo(
+    () => ({
+      search: debouncedQuery || undefined,
+      cityId: selectedCity.id || undefined,
+      type: "Школа" as const,
+      stage: (activeFilter as any) || undefined,
+      size: (sizeFilter as any) || undefined,
+    }),
+    [debouncedQuery, selectedCity.id, activeFilter, sizeFilter],
+  );
+
+  const {
+    data: schoolsPages,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useSchools(schoolFilters);
+  const { data: stats } = useSchoolStats({
+    cityId: selectedCity.id || undefined,
+    type: "Школа",
+    stage: (activeFilter as any) || undefined,
+  });
   const { data: cities = [] } = useCities();
   const deleteSchool = useDeleteSchool();
   const prefetchSchool = usePrefetchSchool();
+
+  const handleLoadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const filteredSchools = useMemo(
+    () => schoolsPages?.pages.flatMap((p) => p.data) ?? [],
+    [schoolsPages],
+  );
+  const totalItems = schoolsPages?.pages[0]?.meta.totalItems ?? 0;
 
   const handleOpenModal = useCallback(() => {
     setForm({
@@ -145,7 +187,7 @@ export default function Schools() {
           );
           return res.data;
         },
-        staleTime: 1000 * 60 * 5, 
+        staleTime: 1000 * 60 * 5,
       });
 
       setMatchedContacts(data);
@@ -233,38 +275,7 @@ export default function Schools() {
     [deleteSchool, userRole],
   );
 
-  const debouncedSearch = useMemo(() => searchQuery, [searchQuery]);
 
-  const baseFiltered = useMemo(
-    () =>
-      schools.filter((s) => {
-        const isCityMatch = selectedCity.id
-          ? s.cityId === selectedCity.id
-          : true;
-        const isFilterMatch = activeFilter
-          ? classifySchool(s) === activeFilter
-          : true;
-        const isSizeMatch = sizeFilter
-          ? classifySize(s, "Школа") === sizeFilter
-          : true;
-        return (
-          isCityMatch && s.type === "Школа" && isFilterMatch && isSizeMatch
-        );
-      }),
-    [schools, selectedCity.id, activeFilter, sizeFilter],
-  );
-
-  const filteredSchools = useMemo(() => {
-    if (!debouncedSearch.trim()) return baseFiltered;
-    const q = debouncedSearch.toLowerCase().trim();
-    return baseFiltered.filter(
-      (s) =>
-        s.name?.toLowerCase().includes(q) ||
-        s.city?.name?.toLowerCase().includes(q) ||
-        s.director?.toLowerCase().includes(q) ||
-        s.address?.toLowerCase().includes(q),
-    );
-  }, [baseFiltered, debouncedSearch]);
 
   return (
     <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-slate-50 min-h-screen">
@@ -330,11 +341,8 @@ export default function Schools() {
           }
         >
           <StatsBar
-            schools={schools.filter(
-              (s) =>
-                (selectedCity.id ? s.cityId === selectedCity.id : true) &&
-                s.type === "Школа",
-            )}
+            statusStats={stats?.statusStats ?? { new: 0, planned: 0, inProgress: 0, done: 0 }}
+            sizeStats={stats?.sizeStats ?? { small: 0, medium: 0, large: 0 }}
             activeFilter={activeFilter}
             onFilterChange={setActiveFilter}
             sizeFilter={sizeFilter}
@@ -392,9 +400,7 @@ export default function Schools() {
 
       {/* Лічильник */}
       <p className="text-xs font-semibold text-slate-400 mb-4 shrink-0 uppercase tracking-wide px-1">
-        {filteredSchools.length === baseFiltered.length
-          ? `${baseFiltered.length} шкіл`
-          : `${filteredSchools.length} з ${baseFiltered.length} шкіл`}
+        {`${filteredSchools.length} з ${totalItems} шкіл`}
         {(activeFilter || sizeFilter) && (
           <button
             onClick={() => {
@@ -432,6 +438,7 @@ export default function Schools() {
             <VirtualSchoolList
               schools={filteredSchools}
               itemHeight={110}
+              onEndReached={handleLoadMore}
               renderItem={(school, index) => (
                 <div
                   className="pb-2.5"
@@ -458,6 +465,7 @@ export default function Schools() {
                 searchQuery={searchQuery}
                 onDelete={handleDeleteSchool}
                 stages={PIPELINE_STAGES}
+                onEndReached={handleLoadMore}
               />
             </Suspense>
           </div>

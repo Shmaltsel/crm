@@ -1,14 +1,9 @@
 import React from "react";
 export { classifySchool, classifySize } from "./schoolUtils";
-import { classifySchool, classifySize } from "./schoolUtils";
-interface School {
-  id: string;
-  childrenCount?: number;
-  events?: any[];
-}
 
 interface StatsBarProps {
-  schools: School[];
+  statusStats: Record<string, number>;
+  sizeStats: Record<string, number>;
   activeFilter: string | null;
   onFilterChange: (filter: string | null) => void;
   sizeFilter: string | null;
@@ -97,33 +92,14 @@ const SIZE_ITEMS_KINDER = [
 ];
 
 export default function StatsBar({
-  schools,
+  statusStats,
   activeFilter,
   onFilterChange,
+  sizeStats,
   sizeFilter,
   onSizeFilterChange,
   schoolType = "Школа",
 }: StatsBarProps) {
-  const statusStats = schools.reduce(
-    (acc, s) => {
-      acc[classifySchool(s)]++;
-      return acc;
-    },
-    { new: 0, planned: 0, inProgress: 0, done: 0 } as Record<string, number>,
-  );
-
-  const schoolsForSize = activeFilter
-    ? schools.filter((s) => classifySchool(s) === activeFilter)
-    : schools;
-
-  const sizeStats = schoolsForSize.reduce(
-    (acc, s) => {
-      acc[classifySize(s, schoolType)]++;
-      return acc;
-    },
-    { small: 0, medium: 0, large: 0 } as Record<string, number>,
-  );
-
   const sizeItems =
     schoolType === "Садочок" ? SIZE_ITEMS_KINDER : SIZE_ITEMS_SCHOOL;
   const hasAnyFilter = activeFilter || sizeFilter;
