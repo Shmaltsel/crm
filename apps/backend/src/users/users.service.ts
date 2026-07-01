@@ -78,7 +78,9 @@ export class UsersService {
       email: data.email,
       phone: data.phone,
       role: data.role,
-      cityId: data.cityId || null,
+      city: data.cityId
+        ? { connect: { id: data.cityId } }
+        : { disconnect: true },
       telegramId: data.telegramId || null,
       car: data.car || null,
     };

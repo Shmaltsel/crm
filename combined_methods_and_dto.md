@@ -1,3 +1,364 @@
+# Файли DTO та сервісів для фінальних правок
+
+### `apps/backend/src/cities/dto/create-crew.dto.ts`
+
+```typescript
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+
+export class CreateCrewDto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  hostId?: string;
+
+  @IsOptional()
+  @IsString()
+  driverId?: string;
+}
+
+```
+
+---
+
+### `apps/backend/src/cities/cities.service.ts`
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from 'src/prisma/prisma.service';
+
+@Injectable()
+export class CitiesService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async create(name: string) {
+    return this.prisma.city.create({
+      data: { name },
+    });
+  }
+
+  async findAll() {
+    const cities = await this.prisma.city.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        users: {
+          where: { role: 'MANAGER' },
+          select: { id: true, name: true, phone: true },
+          take: 1,
+        },
+        _count: { select: { schools: true } },
+      },
+    });
+
+    const eventsStats = await this.prisma.event.groupBy({
+      by: ['cityId', 'status'],
+      _count: { _all: true },
+    });
+
+    return cities.map((city) => {
+      const cityStats = eventsStats.filter((stat) => stat.cityId === city.id);
+
+      const completedEvents = cityStats
+        .filter((s) => s.status === 'RE_SALE')
+        .reduce((sum, s) => sum + s._count._all, 0);
+
+      const plannedEvents = cityStats
+        .filter((s) => s.status !== 'RE_SALE')
+        .reduce((sum, s) => sum + s._count._all, 0);
+
+      return {
+        ...city,
+        manager: city.users[0] || null,
+        plannedEvents,
+        completedEvents,
+        schoolsCount: city._count.schools,
+      };
+    });
+  }
+  async createCrew(
+    cityId: string,
+    data: { name: string; hostId: string; driverId: string },
+  ) {
+    const driver = await this.prisma.user.findUnique({
+      where: { id: data.driverId },
+    });
+    return this.prisma.crew.create({
+      data: {
+        cityId,
+        name: data.name,
+        hostId: data.hostId,
+        driverId: data.driverId,
+        car: driver?.car || null,
+        phone: driver?.phone || null,
+      },
+      include: { host: true, driver: true },
+    });
+  }
+
+  async deleteCrew(id: string) {
+    await this.prisma.event.updateMany({
+      where: { crewId: id },
+      data: { crewId: null },
+    });
+    return this.prisma.crew.delete({ where: { id } });
+  }
+
+  async findOne(id: string) {
+    const city = await this.prisma.city.findUnique({
+      where: { id },
+      include: {
+        users: {
+          where: { role: 'MANAGER' },
+          select: { id: true, name: true, phone: true },
+          take: 1,
+        },
+        events: {
+          where: { status: 'RE_SALE' },
+          include: {
+            school: { select: { id: true, name: true, type: true } },
+            report: true,
+            history: { orderBy: { createdAt: 'asc' } },
+          },
+          orderBy: { date: 'desc' },
+        },
+        crews: {
+          include: {
+            host: { select: { id: true, name: true } },
+            driver: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
+
+    if (!city) return null;
+
+    return {
+      ...city,
+      manager: city.users[0] || null,
+    };
+  }
+}
+
+```
+
+---
+
+### `apps/backend/src/projects/dto/create-project.dto.ts`
+
+```typescript
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+
+export class CreateProjectDto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  color?: string;
+}
+
+```
+
+---
+
+### `apps/backend/src/projects/projects.service.ts`
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class ProjectsService {
+  constructor(private prisma: PrismaService) {}
+
+  findAll() {
+    return this.prisma.project.findMany({ orderBy: { createdAt: 'asc' } });
+  }
+
+  create(data: { name: string; color: string }) {
+    return this.prisma.project.create({ data });
+  }
+
+  remove(id: string) {
+    return this.prisma.project.delete({ where: { id } });
+  }
+}
+
+```
+
+---
+
+### `apps/backend/src/users/users.service.ts`
+
+```typescript
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import * as bcrypt from 'bcrypt';
+import { TelegramService } from '../telegram/telegram.service';
+import { Prisma, User } from '@prisma/client';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+
+@Injectable()
+export class UsersService {
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => TelegramService))
+    private telegramService: TelegramService,
+  ) {}
+
+  async findByEmail(email: string): Promise<User | null> {
+    if (!email) return null;
+    return this.prisma.user.findUnique({
+      where: { email },
+    });
+  }
+
+  async findById(id: string): Promise<User | null> {
+    return this.prisma.user.findUnique({
+      where: { id },
+    });
+  }
+
+  async getAllUsers() {
+    return this.prisma.user.findMany({
+      include: {
+        city: true,
+      },
+    });
+  }
+
+  async create(data: Prisma.UserCreateInput): Promise<User> {
+    return this.prisma.user.create({
+      data,
+    });
+  }
+
+  async createUser(data: CreateUserDto) {
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+    const user = await this.prisma.user.create({
+      data: {
+        name: data.fullName,
+        email: data.email,
+        phone: data.phone,
+        password: hashedPassword,
+        role: data.role,
+        cityId: data.cityId || null,
+        telegramId: data.telegramId || null,
+        car: data.car || null,
+      },
+    });
+
+    if (data.password) {
+      const chatId = user.telegramChatId || null;
+
+      if (chatId) {
+        await this.telegramService.sendWelcome(
+          chatId,
+          data.fullName,
+          data.email,
+          data.password,
+        );
+      }
+    }
+
+    return user;
+  }
+
+  async updateUser(id: string, data: UpdateUserDto) {
+    const updateData: Prisma.UserUpdateInput = {
+      name: data.fullName,
+      email: data.email,
+      phone: data.phone,
+      role: data.role,
+      cityId: data.cityId || null,
+      telegramId: data.telegramId || null,
+      car: data.car || null,
+    };
+
+    if (data.password) {
+      updateData.password = await bcrypt.hash(data.password, 10);
+    }
+
+    return this.prisma.user.update({ where: { id }, data: updateData });
+  }
+
+  async deleteUser(id: string) {
+    return this.prisma.user.delete({ where: { id } });
+  }
+
+  async seedAdmin() {
+    const existingAdmin = await this.prisma.user.findUnique({
+      where: { email: 'admin@crm.com' },
+    });
+
+    if (existingAdmin) {
+      return { message: 'Адміністратор вже існує!' };
+    }
+
+    const hashedPassword = await bcrypt.hash('admin123', 10);
+    const admin = await this.prisma.user.create({
+      data: {
+        name: 'Артур Шмальцель',
+        email: 'admin@crm.com',
+        password: hashedPassword,
+        role: 'SUPERADMIN',
+      },
+    });
+
+    return { message: 'Суперадмін успішно створений!', user: admin };
+  }
+
+  async seedVasya() {
+    const existingVasya = await this.prisma.user.findUnique({
+      where: { email: 'vasya@charisma.com' },
+    });
+
+    if (existingVasya) {
+      return { message: 'Вася вже в базі!' };
+    }
+
+    const hashedPassword = await bcrypt.hash('vasya123', 10);
+
+    const vasya = await this.prisma.user.create({
+      data: {
+        name: 'Вася Харізма',
+        email: 'vasya@charisma.com',
+        password: hashedPassword,
+        role: 'MANAGER',
+      },
+    });
+
+    return { message: 'Вася Харізма успішно доданий!', user: vasya };
+  }
+
+  async findAll() {
+    return this.prisma.user.findMany();
+  }
+
+  async updateTelegramChatId(username: string, chatId: string) {
+    return this.prisma.user.updateMany({
+      where: {
+        telegramId: {
+          equals: username,
+          mode: 'insensitive',
+        },
+      },
+      data: { telegramChatId: chatId },
+    });
+  }
+}
+
+```
+
+---
+
+### `apps/backend/src/dashboard/dashboard.service.ts`
+
+```typescript
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -16,7 +377,7 @@ const PIPELINE_STAGES = [
 
 const STALE_DAYS = 7;
 
-export interface DashboardSummary {
+interface DashboardSummary {
   todayEvents: unknown[];
   upcomingEvents: unknown[];
   funnel: Record<string, number>;
@@ -336,3 +697,8 @@ export class DashboardService {
     return result;
   }
 }
+
+```
+
+---
+

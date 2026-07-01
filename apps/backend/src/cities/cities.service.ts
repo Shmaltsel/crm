@@ -51,17 +51,17 @@ export class CitiesService {
   }
   async createCrew(
     cityId: string,
-    data: { name: string; hostId: string; driverId: string },
+    data: { name: string; hostId?: string; driverId?: string },
   ) {
-    const driver = await this.prisma.user.findUnique({
-      where: { id: data.driverId },
-    });
+    const driver = data.driverId
+      ? await this.prisma.user.findUnique({ where: { id: data.driverId } })
+      : null;
     return this.prisma.crew.create({
       data: {
         cityId,
         name: data.name,
-        hostId: data.hostId,
-        driverId: data.driverId,
+        hostId: data.hostId ?? null,
+        driverId: data.driverId ?? null,
         car: driver?.car || null,
         phone: driver?.phone || null,
       },

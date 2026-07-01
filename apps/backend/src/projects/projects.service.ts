@@ -9,8 +9,10 @@ export class ProjectsService {
     return this.prisma.project.findMany({ orderBy: { createdAt: 'asc' } });
   }
 
-  create(data: { name: string; color: string }) {
-    return this.prisma.project.create({ data });
+  create(data: { name: string; color?: string }) {
+    return this.prisma.project.create({
+      data: { name: data.name, color: data.color ?? '#3b82f6' },
+    });
   }
 
   remove(id: string) {
