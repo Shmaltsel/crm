@@ -19,6 +19,7 @@ import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
 import { CreateSchoolDto } from './dto/create-school.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
 import { BulkImportDto } from './dto/bulk-import.dto';
+import { SchoolQueryDto } from './dto/school-query.dto';
 @Controller('schools')
 @UseGuards(AuthGuard, RolesGuard)
 export class SchoolsController {
@@ -44,8 +45,18 @@ export class SchoolsController {
     return this.schoolsService.create(body);
   }
 
-  @Get() findAll(@Query('minimal') minimal?: string) {
-    return this.schoolsService.findAll(minimal === 'true');
+  @Get()
+  findAll(@Query() query: SchoolQueryDto) {
+    return this.schoolsService.findAll(query);
+  }
+
+  @Get('stats')
+  getStats(
+    @Query('cityId') cityId?: string,
+    @Query('type') type?: 'Школа' | 'Садочок',
+    @Query('stage') stage?: 'new' | 'planned' | 'inProgress' | 'done',
+  ) {
+    return this.schoolsService.getStats({ cityId, type, stage });
   }
 
   @Get('search')
