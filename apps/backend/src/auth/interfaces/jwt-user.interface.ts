@@ -1,5 +1,7 @@
+import { UserRole } from '@prisma/client';
+
 export interface JwtUser {
   sub: string;
   name: string;
-  role: string;
+  role: UserRole;
 }

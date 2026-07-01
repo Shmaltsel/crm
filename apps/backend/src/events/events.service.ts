@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, PreparationStatus } from '@prisma/client';
 
 import { CreateEventDto } from './dto/create-event.dto';
 import {
@@ -95,8 +95,11 @@ export class EventsService {
 
   async updatePreparationStatus(
     eventId: string,
-    field: string,
-    status: string,
+    field: keyof Omit<
+      Prisma.EventPreparationUncheckedCreateInput,
+      'id' | 'eventId'
+    >,
+    status: PreparationStatus,
   ) {
     const existing = await this.prisma.eventPreparation.findUnique({
       where: { eventId },

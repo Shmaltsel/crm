@@ -4,10 +4,9 @@ import {
   IsNotEmpty,
   IsOptional,
   MinLength,
-  IsIn,
+  IsEnum,
 } from 'class-validator';
-
-const ROLES = ['SUPERADMIN', 'MANAGER', 'HOST', 'DRIVER'];
+import { UserRole } from '@prisma/client';
 
 export class CreateUserDto {
   @IsString()
@@ -26,8 +25,8 @@ export class CreateUserDto {
   phone?: string;
 
   @IsOptional()
-  @IsIn(ROLES)
-  role?: string;
+  @IsEnum(UserRole)
+  role?: UserRole;
 
   @IsOptional()
   @IsString()

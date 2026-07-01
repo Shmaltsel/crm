@@ -2,7 +2,7 @@ import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { TelegramService } from '../telegram/telegram.service';
-import { Prisma, User } from '@prisma/client';
+import { Prisma, User, UserRole } from '@prisma/client';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
@@ -111,7 +111,7 @@ export class UsersService {
         name: 'Артур Шмальцель',
         email: 'admin@crm.com',
         password: hashedPassword,
-        role: 'SUPERADMIN',
+        role: UserRole.SUPERADMIN,
       },
     });
 
@@ -134,7 +134,7 @@ export class UsersService {
         name: 'Вася Харізма',
         email: 'vasya@charisma.com',
         password: hashedPassword,
-        role: 'MANAGER',
+        role: UserRole.MANAGER,
       },
     });
 

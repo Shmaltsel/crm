@@ -3,10 +3,9 @@ import {
   IsEmail,
   IsOptional,
   MinLength,
-  IsIn,
+  IsEnum,
 } from 'class-validator';
-
-const ROLES = ['SUPERADMIN', 'MANAGER', 'HOST', 'DRIVER'];
+import { UserRole } from '@prisma/client';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -27,8 +26,8 @@ export class UpdateUserDto {
   phone?: string;
 
   @IsOptional()
-  @IsIn(ROLES)
-  role?: string;
+  @IsEnum(UserRole)
+  role?: UserRole;
 
   @IsOptional()
   @IsString()

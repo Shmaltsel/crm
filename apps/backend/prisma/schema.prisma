@@ -14,7 +14,7 @@ model User {
   email          String       @unique
   phone          String?
   password       String
-  role           String       @default("MANAGER")
+  role           UserRole     @default(MANAGER)
   cityId         String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -169,14 +169,14 @@ model EventHistory {
 }
 
 model EventPreparation {
-  id               String @id @default(uuid())
-  eventId          String @unique
-  assignCrew       String @default("Заплановано")
-  bookEquipment    String @default("Заплановано")
-  prepareDocs      String @default("Заплановано")
-  prepareMaterials String @default("Заплановано")
-  remindSchool     String @default("Заплановано")
-  event            Event  @relation(fields: [eventId], references: [id])
+  id               String            @id @default(uuid())
+  eventId          String            @unique
+  assignCrew       PreparationStatus @default(PLANNED)
+  bookEquipment    PreparationStatus @default(PLANNED)
+  prepareDocs      PreparationStatus @default(PLANNED)
+  prepareMaterials PreparationStatus @default(PLANNED)
+  remindSchool     PreparationStatus @default(PLANNED)
+  event            Event             @relation(fields: [eventId], references: [id])
 }
 
 model IssueReport {
@@ -242,6 +242,19 @@ model SalaryItem {
 
   @@index([reportId])
   @@index([userId])
+}
+
+enum UserRole {
+  SUPERADMIN
+  MANAGER
+  HOST
+  DRIVER
+}
+
+enum PreparationStatus {
+  PLANNED
+  IN_PROGRESS
+  DONE
 }
 
 enum EventStatus {
