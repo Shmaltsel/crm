@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
+import { useAuth } from "../context/AuthContext";
 
 const FinanceCharts = lazy(() => import("../components/finance/FinanceCharts"));
 const StaffFinanceView = lazy(
@@ -31,20 +32,10 @@ function FinanceSkeleton() {
 
 export default function Finance() {
   const { selectedCity } = useSelectedCity();
+  const { user: currentUser } = useAuth();
   const [period, setPeriod] = useState("year");
   const [projectFilter, setProjectFilter] = useState("");
-  const [currentUser, setCurrentUser] = useState<{
-    role: string;
-    balance?: number;
-  } | null>(null);
   const [myBalance, setMyBalance] = useState<number | null>(null);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("user");
-      if (raw) setCurrentUser(JSON.parse(raw));
-    } catch {}
-  }, []);
 
   const isManagerOrAdmin =
     currentUser?.role === "MANAGER" || currentUser?.role === "SUPERADMIN";
