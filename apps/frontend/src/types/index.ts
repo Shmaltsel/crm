@@ -152,12 +152,14 @@ export interface Crew {
   phone?: string;
 }
 
+import type { PreparationStatus } from '../utils/preparationStatus';
+
 export interface EventPreparation {
-  assignCrew: string;
-  bookEquipment: string;
-  prepareDocs: string;
-  prepareMaterials: string;
-  remindSchool: string;
+  assignCrew: PreparationStatus;
+  bookEquipment: PreparationStatus;
+  prepareDocs: PreparationStatus;
+  prepareMaterials: PreparationStatus;
+  remindSchool: PreparationStatus;
 }
 
 export interface CityProfile extends City {

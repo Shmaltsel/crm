@@ -1,23 +1,22 @@
 const fs = require('fs');
 const path = require('path');
 
-const outputFile = 'combined_roles_controllers.md';
+const outputFile = 'combined_auth_users.md';
 
-fs.writeFileSync(outputFile, '# Файли Roles Guard та Контролерів\n\n');
+fs.writeFileSync(outputFile, '# Файли Auth, Users та Seeder\n\n');
 
 const filesToCollect = [
   'apps/backend/src/auth/guards/roles.guard.ts',
   'apps/backend/src/auth/decorators/roles.decorator.ts',
   'apps/backend/src/auth/interfaces/jwt-user.interface.ts',
-  'apps/backend/src/schools/schools.controller.ts',
-  'apps/backend/src/events/events.controller.ts',
-  'apps/backend/src/finance/finance.controller.ts',
-  'apps/backend/src/cities/cities.controller.ts'
+  'apps/backend/src/users/users.service.ts',
+  'apps/backend/prisma/seed-admin.js',
+  'apps/backend/src/auth/auth.service.ts'
 ];
 
 let collectedCount = 0;
 
-console.log('🚀 Починаю збір файлів Role Guard та контролерів...\n');
+console.log('🚀 Починаю збір файлів...\n');
 
 filesToCollect.forEach(filePath => {
   if (!fs.existsSync(filePath)) {
@@ -27,7 +26,8 @@ filesToCollect.forEach(filePath => {
 
   const content = fs.readFileSync(filePath, 'utf-8');
   const ext = path.extname(filePath).replace('.', '');
-  const lang = ['ts', 'tsx'].includes(ext) ? 'typescript' : ext;
+  let lang = 'typescript';
+  if (ext === 'js') lang = 'javascript';
 
   const mdBlock = `### \`${filePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`;
   fs.appendFileSync(outputFile, mdBlock);
