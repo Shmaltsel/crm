@@ -288,8 +288,14 @@ export default function ReportModal({
       }))
       .filter((s) => s.amount > 0);
 
+    const { schoolPercentage, ...formRest } = form;
+    void schoolPercentage;
+
+    const { schoolPercentage, ...formRest } = form;
+    void schoolPercentage;
+
     onSave({
-      ...form,
+      ...formRest,
       expenses,
       schoolSum,
       remainderSum: remainder,
