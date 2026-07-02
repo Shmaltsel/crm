@@ -199,7 +199,11 @@ export function useSubmitReport() {
         .post(`/events/${eventId}/report`, reportData, {
           headers: authHeader(),
         })
-        .then((r) => r.data),
+        .then((r) => r.data)
+        .catch((err) => {
+          console.error("submitReport failed:", err.response?.data ?? err);
+          throw err;
+        }),
     onSuccess: (_data, vars) => {
       qc.setQueriesData(
         { queryKey: ["schoolEvents"] },
