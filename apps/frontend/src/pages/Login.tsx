@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { api } from "../config/api";
 
@@ -11,11 +12,13 @@ export default function Login({ onLogin }: LoginProps) {
   const [email, setEmail] = useState("admin@crm.com");
   const [password, setPassword] = useState("123!PASSWORD!321");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
     try {
       const response = await api.post("/auth/login", { email, password });
@@ -28,6 +31,7 @@ export default function Login({ onLogin }: LoginProps) {
       }
     } catch {
       setError("Невірний email або пароль");
+      setIsLoading(false);
     }
   };
 
@@ -69,12 +73,40 @@ export default function Login({ onLogin }: LoginProps) {
               required
             />
           </div>
-          <button
+          <motion.button
             type="submit"
-            className="mt-2 bg-blue-600 text-white font-medium p-2.5 rounded-lg hover:bg-blue-700 transition"
+            disabled={isLoading}
+            whileTap={{ scale: 0.97 }}
+            className="mt-2 bg-blue-600 text-white font-medium p-2.5 rounded-lg hover:bg-blue-700 transition disabled:opacity-80 disabled:cursor-not-allowed flex items-center justify-center gap-2 h-[42px]"
           >
-            Увійти
-          </button>
+            <AnimatePresence mode="wait" initial={false}>
+              {isLoading ? (
+                <motion.span
+                  key="loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex items-center gap-2"
+                >
+                  <motion.span
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 0.7, repeat: Infinity, ease: "linear" }}
+                    className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full"
+                  />
+                  Вхід...
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="idle"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  Увійти
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.button>
         </form>
       </div>
     </div>
