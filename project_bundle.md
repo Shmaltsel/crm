@@ -7,10 +7,10 @@
 ├── apps
 │   ├── backend
 │   │   ├── .env
+│   │   ├── .env.example
 │   │   ├── .gitignore
 │   │   ├── .prettierrc
 │   │   ├── README.md
-│   │   ├── collect-code.js
 │   │   ├── eslint-errors.txt
 │   │   ├── eslint.config.mjs
 │   │   ├── nest-cli.json
@@ -39,6 +39,8 @@
 │   │   │   │   ├── 20260701234848_add_host_role
 │   │   │   │   │   └── migration.sql
 │   │   │   │   ├── 20260701235202_preparation_status_enum
+│   │   │   │   │   └── migration.sql
+│   │   │   │   ├── 20260702123544_add_performance_indexes
 │   │   │   │   │   └── migration.sql
 │   │   │   │   └── migration_lock.toml
 │   │   │   ├── schema.prisma
@@ -77,9 +79,17 @@
 │   │   │   │       ├── create-city.dto.ts
 │   │   │   │       └── create-crew.dto.ts
 │   │   │   ├── common
-│   │   │   │   └── dto
-│   │   │   │       ├── page-meta.dto.ts
-│   │   │   │       └── page-options.dto.ts
+│   │   │   │   ├── cache
+│   │   │   │   │   └── redis-cache.module.ts
+│   │   │   │   ├── dto
+│   │   │   │   │   ├── page-meta.dto.ts
+│   │   │   │   │   └── page-options.dto.ts
+│   │   │   │   ├── filters
+│   │   │   │   │   └── all-exceptions.filter.ts
+│   │   │   │   └── logger
+│   │   │   │       └── logger.module.ts
+│   │   │   ├── config
+│   │   │   │   └── env.validation.ts
 │   │   │   ├── dashboard
 │   │   │   │   ├── dashboard.controller.ts
 │   │   │   │   ├── dashboard.module.ts
@@ -166,6 +176,7 @@
 │   │   ├── ts-errors.txt
 │   │   ├── tsconfig.build.json
 │   │   └── tsconfig.json
+│   ├── docker-compose.yml
 │   └── frontend
 │       ├── .gitignore
 │       ├── README.md
@@ -281,46 +292,31 @@
 │       ├── tsconfig.node.json
 │       ├── vercel.json
 │       └── vite.config.ts
+├── collect-code.js
+├── combined_core_config.md
+├── combined_performance_files.md
 ├── package.json
 ├── packages
 │   └── shared
 ├── pnpm-workspace.yaml
 ```
 
-### File: apps/backend/collect-code.js
-```js
-  0 | const fs = require('fs');
-  1 | const path = require('path');
+### File: apps/backend/.env.example
+```example
+  0 | NODE_ENV=development
+  1 | PORT=3000
   2 | 
-  3 | // Шлях до папки з тестами
-  4 | const targetDir = './src';
-  5 | const outputFile = './all_tests_bundle.md';
-  6 | 
-  7 | const findTests = (dir, fileList = []) => {
-  8 |   const files = fs.readdirSync(dir);
-  9 |   files.forEach(file => {
- 10 |     const filePath = path.join(dir, file);
- 11 |     if (fs.statSync(filePath).isDirectory()) {
- 12 |       findTests(filePath, fileList);
- 13 |     } else if (file.endsWith('.spec.ts')) {
- 14 |       fileList.push(filePath);
- 15 |     }
- 16 |   });
- 17 |   return fileList;
- 18 | };
- 19 | 
- 20 | const testFiles = findTests(targetDir);
- 21 | 
- 22 | // Очищення попереднього файлу
- 23 | if (fs.existsSync(outputFile)) fs.unlinkSync(outputFile);
- 24 | 
- 25 | testFiles.forEach(filePath => {
- 26 |   const content = fs.readFileSync(filePath, 'utf8');
- 27 |   const mdBlock = `### File: ${filePath}\n\n\`\`\`typescript\n${content}\n\`\`\`\n\n---\n\n`;
- 28 |   fs.appendFileSync(outputFile, mdBlock);
- 29 | });
- 30 | 
- 31 | console.log(`✅ Зібрано ${testFiles.length} файлів тестів у ${outputFile}`);
+  3 | DATABASE_URL=postgresql://user:password@localhost:5432/db
+  4 | DIRECT_URL=postgresql://user:password@localhost:5432/db
+  5 | 
+  6 | FRONTEND_URL=http://localhost:5173
+  7 | REDIS_URL=redis://localhost:6379
+  8 | 
+  9 | TELEGRAM_BOT_TOKEN=
+ 10 | 
+ 11 | SEED_ADMIN_EMAIL=admin@example.com
+ 12 | SEED_ADMIN_PASSWORD=changeme
+ 13 | ALLOW_PROD_SEED=false
 ```
 
 ### File: apps/backend/package.json
@@ -347,82 +343,91 @@
  19 |     "test:e2e": "jest --config ./test/jest-e2e.json"
  20 |   },
  21 |   "dependencies": {
- 22 |     "@nestjs/common": "^11.0.1",
- 23 |     "@nestjs/core": "^11.0.1",
- 24 |     "@nestjs/jwt": "^11.0.2",
- 25 |     "@nestjs/passport": "^11.0.5",
- 26 |     "@nestjs/platform-express": "^11.0.1",
- 27 |     "@nestjs/throttler": "^6.5.0",
- 28 |     "@prisma/client": "6.19.0",
- 29 |     "axios": "^1.18.0",
- 30 |     "bcrypt": "^6.0.0",
- 31 |     "cheerio": "^1.2.0",
- 32 |     "class-transformer": "^0.5.1",
- 33 |     "class-validator": "^0.15.1",
- 34 |     "cookie-parser": "^1.4.7",
- 35 |     "dotenv": "^17.4.2",
- 36 |     "node-telegram-bot-api": "0.64.0",
- 37 |     "passport": "^0.7.0",
- 38 |     "passport-jwt": "^4.0.1",
- 39 |     "reflect-metadata": "^0.2.2",
- 40 |     "rxjs": "^7.8.1"
- 41 |   },
- 42 |   "devDependencies": {
- 43 |     "@eslint/eslintrc": "^3.2.0",
- 44 |     "@eslint/js": "^9.18.0",
- 45 |     "@nestjs/cli": "^11.0.0",
- 46 |     "@nestjs/schematics": "^11.0.0",
- 47 |     "@nestjs/testing": "^11.0.1",
- 48 |     "@types/bcrypt": "^6.0.0",
- 49 |     "@types/cookie-parser": "^1.4.10",
- 50 |     "@types/express": "^5.0.0",
- 51 |     "@types/jest": "^29.0.0",
- 52 |     "@types/node": "^24.0.0",
- 53 |     "@types/node-telegram-bot-api": "^0.64.15",
- 54 |     "@types/passport-jwt": "^4.0.1",
- 55 |     "@types/supertest": "^7.0.0",
- 56 |     "eslint": "^9.18.0",
- 57 |     "eslint-config-prettier": "^10.0.1",
- 58 |     "eslint-plugin-prettier": "^5.2.2",
- 59 |     "globals": "^17.0.0",
- 60 |     "jest": "^29.0.0",
- 61 |     "jest-mock-extended": "^3.0.0",
- 62 |     "prettier": "^3.4.2",
- 63 |     "prisma": "6.19.0",
- 64 |     "source-map-support": "^0.5.21",
- 65 |     "supertest": "^7.0.0",
- 66 |     "ts-jest": "^29.2.5",
- 67 |     "ts-loader": "^9.5.2",
- 68 |     "ts-node": "^10.9.2",
- 69 |     "tsconfig-paths": "^4.2.0",
- 70 |     "typescript": "^5.7.3",
- 71 |     "typescript-eslint": "^8.20.0"
- 72 |   },
- 73 |   "jest": {
- 74 |     "moduleFileExtensions": [
- 75 |       "js",
- 76 |       "json",
- 77 |       "ts"
- 78 |     ],
- 79 |     "rootDir": "src",
- 80 |     "testRegex": ".*\\.spec\\.ts$",
- 81 |     "transform": {
- 82 |       "^.+\\.(t|j)s$": "ts-jest"
- 83 |     },
- 84 |     "collectCoverageFrom": [
- 85 |       "**/*.(t|j)s"
- 86 |     ],
- 87 |     "coverageDirectory": "../coverage",
- 88 |     "testEnvironment": "node",
- 89 |     "moduleNameMapper": {
- 90 |       "^src/(.*)$": "<rootDir>/$1"
- 91 |     }
- 92 |   },
- 93 |   "prisma": {
- 94 |     "schema": "prisma/schema.prisma"
- 95 |   }
- 96 | }
- 97 | 
+ 22 |     "@nestjs/cache-manager": "^3.1.3",
+ 23 |     "@nestjs/common": "^11.0.1",
+ 24 |     "@nestjs/config": "^4.0.0",
+ 25 |     "@nestjs/core": "^11.0.1",
+ 26 |     "@nestjs/jwt": "^11.0.2",
+ 27 |     "@nestjs/passport": "^11.0.5",
+ 28 |     "@nestjs/platform-express": "^11.0.1",
+ 29 |     "@nestjs/throttler": "^6.5.0",
+ 30 |     "@prisma/client": "6.19.0",
+ 31 |     "axios": "^1.18.0",
+ 32 |     "bcrypt": "^6.0.0",
+ 33 |     "cache-manager": "^7.2.9",
+ 34 |     "cache-manager-redis-yet": "^5.1.5",
+ 35 |     "cheerio": "^1.2.0",
+ 36 |     "class-transformer": "^0.5.1",
+ 37 |     "class-validator": "^0.15.1",
+ 38 |     "cookie-parser": "^1.4.7",
+ 39 |     "dotenv": "^17.4.2",
+ 40 |     "helmet": "^8.2.0",
+ 41 |     "joi": "^18.2.3",
+ 42 |     "nestjs-pino": "^4.6.1",
+ 43 |     "node-telegram-bot-api": "0.64.0",
+ 44 |     "passport": "^0.7.0",
+ 45 |     "passport-jwt": "^4.0.1",
+ 46 |     "pino-http": "^11.0.0",
+ 47 |     "reflect-metadata": "^0.2.2",
+ 48 |     "rxjs": "^7.8.1"
+ 49 |   },
+ 50 |   "devDependencies": {
+ 51 |     "@eslint/eslintrc": "^3.2.0",
+ 52 |     "@eslint/js": "^9.18.0",
+ 53 |     "@nestjs/cli": "^11.0.0",
+ 54 |     "@nestjs/schematics": "^11.0.0",
+ 55 |     "@nestjs/testing": "^11.0.1",
+ 56 |     "@types/bcrypt": "^6.0.0",
+ 57 |     "@types/cookie-parser": "^1.4.10",
+ 58 |     "@types/express": "^5.0.0",
+ 59 |     "@types/jest": "^29.0.0",
+ 60 |     "@types/node": "^24.0.0",
+ 61 |     "@types/node-telegram-bot-api": "^0.64.15",
+ 62 |     "@types/passport-jwt": "^4.0.1",
+ 63 |     "@types/supertest": "^7.0.0",
+ 64 |     "eslint": "^9.18.0",
+ 65 |     "eslint-config-prettier": "^10.0.1",
+ 66 |     "eslint-plugin-prettier": "^5.2.2",
+ 67 |     "globals": "^17.0.0",
+ 68 |     "jest": "^29.0.0",
+ 69 |     "jest-mock-extended": "^3.0.0",
+ 70 |     "pino-pretty": "^13.0.0",
+ 71 |     "prettier": "^3.4.2",
+ 72 |     "prisma": "6.19.0",
+ 73 |     "source-map-support": "^0.5.21",
+ 74 |     "supertest": "^7.0.0",
+ 75 |     "ts-jest": "^29.2.5",
+ 76 |     "ts-loader": "^9.5.2",
+ 77 |     "ts-node": "^10.9.2",
+ 78 |     "tsconfig-paths": "^4.2.0",
+ 79 |     "typescript": "^5.7.3",
+ 80 |     "typescript-eslint": "^8.20.0"
+ 81 |   },
+ 82 |   "jest": {
+ 83 |     "moduleFileExtensions": [
+ 84 |       "js",
+ 85 |       "json",
+ 86 |       "ts"
+ 87 |     ],
+ 88 |     "rootDir": "src",
+ 89 |     "testRegex": ".*\\.spec\\.ts$",
+ 90 |     "transform": {
+ 91 |       "^.+\\.(t|j)s$": "ts-jest"
+ 92 |     },
+ 93 |     "collectCoverageFrom": [
+ 94 |       "**/*.(t|j)s"
+ 95 |     ],
+ 96 |     "coverageDirectory": "../coverage",
+ 97 |     "testEnvironment": "node",
+ 98 |     "moduleNameMapper": {
+ 99 |       "^src/(.*)$": "<rootDir>/$1"
+100 |     }
+101 |   },
+102 |   "prisma": {
+103 |     "schema": "prisma/schema.prisma"
+104 |   }
+105 | }
+106 | 
 ```
 
 ### File: apps/backend/prisma/schema.prisma
@@ -493,212 +498,216 @@
  63 |   city          City     @relation(fields: [cityId], references: [id])
  64 | 
  65 |   @@index([cityId])
- 66 | }
- 67 | 
- 68 | model Crew {
- 69 |   id        String   @id @default(uuid())
- 70 |   name      String
- 71 |   cityId    String
- 72 |   hostId    String?
- 73 |   driverId  String?
- 74 |   car       String?
- 75 |   carPlate  String?
- 76 |   phone     String?
- 77 |   isActive  Boolean  @default(true)
- 78 |   createdAt DateTime @default(now())
- 79 |   city      City     @relation(fields: [cityId], references: [id])
- 80 |   driver    User?    @relation("DriverCrew", fields: [driverId], references: [id])
- 81 |   host      User?    @relation("HostCrew", fields: [hostId], references: [id])
- 82 |   events    Event[]
- 83 | }
- 84 | 
- 85 | model Event {
- 86 |   id              String            @id @default(uuid())
- 87 |   cityId          String
- 88 |   schoolId        String
- 89 |   crewId          String?
- 90 |   project         String
- 91 |   date            DateTime
- 92 |   time            String?
- 93 |   status          EventStatus       @default(BASE)
- 94 |   childrenPlanned Int?
- 95 |   childrenActual  Int?
- 96 |   price           Float?
- 97 |   received        Float?
- 98 |   paymentMethod   String?
- 99 |   address         String?
-100 |   contactPerson   String?
-101 |   contactPhone    String?
-102 |   equipment       String?
-103 |   nextContact     DateTime?
-104 |   nextProject     String?
-105 |   responsibleId   String?
-106 |   createdAt       DateTime          @default(now())
-107 |   updatedAt       DateTime          @updatedAt
-108 |   city            City              @relation(fields: [cityId], references: [id])
-109 |   crew            Crew?             @relation(fields: [crewId], references: [id])
-110 |   school          School            @relation(fields: [schoolId], references: [id])
-111 |   history         EventHistory[]
-112 |   preparation     EventPreparation?
-113 |   report          EventReport?
-114 |   files           File[]
-115 |   issues          IssueReport[]
-116 | 
-117 |   @@index([cityId])
-118 |   @@index([status])
-119 |   @@index([schoolId])
-120 | }
-121 | 
-122 | model EventReport {
-123 |   id                String        @id @default(uuid())
-124 |   eventId           String        @unique
-125 |   directorSatisfied Boolean?
-126 |   teachersSatisfied Boolean?
-127 |   hadIssues         Boolean       @default(false)
-128 |   comment           String?
-129 |   rating            Float?
-130 |   createdAt         DateTime      @default(now())
-131 |   announcementDone  Boolean       @default(false)
-132 |   materialShown     Boolean       @default(false)
-133 |   childrenCount     Int           @default(0)
-134 |   classesCount      Int           @default(0)
-135 |   privilegedCount   Int           @default(0)
-136 |   showingsCount     Int           @default(0)
-137 |   totalSum          Float         @default(0)
-138 |   schoolSum         Float         @default(0)
-139 |   remainderSum      Float         @default(0)
-140 |   event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-141 |   photos            File[]
-142 |   expenseItems      ExpenseItem[]
-143 |   salaryItems       SalaryItem[]
-144 | }
-145 | 
-146 | model File {
-147 |   id        String       @id @default(uuid())
-148 |   name      String
-149 |   url       String
-150 |   size      Int
-151 |   eventId   String?
-152 |   reportId  String?
-153 |   createdAt DateTime     @default(now())
-154 |   event     Event?       @relation(fields: [eventId], references: [id])
-155 |   report    EventReport? @relation(fields: [reportId], references: [id])
-156 | }
-157 | 
-158 | model EventHistory {
-159 |   id        String   @id @default(uuid())
-160 |   eventId   String
-161 |   action    String
-162 |   comment   String?
-163 |   userId    String
-164 |   userName  String
-165 |   role      String
-166 |   createdAt DateTime @default(now())
-167 |   event     Event    @relation(fields: [eventId], references: [id])
-168 | }
-169 | 
-170 | model EventPreparation {
-171 |   id               String            @id @default(uuid())
-172 |   eventId          String            @unique
-173 |   assignCrew       PreparationStatus @default(PLANNED)
-174 |   bookEquipment    PreparationStatus @default(PLANNED)
-175 |   prepareDocs      PreparationStatus @default(PLANNED)
-176 |   prepareMaterials PreparationStatus @default(PLANNED)
-177 |   remindSchool     PreparationStatus @default(PLANNED)
-178 |   event            Event             @relation(fields: [eventId], references: [id])
-179 | }
-180 | 
-181 | model IssueReport {
-182 |   id               String    @id @default(uuid())
-183 |   eventId          String
-184 |   schoolName       String
-185 |   eventName        String
-186 |   message          String
-187 |   cityId           String
-188 |   status           String    @default("Планується")
-189 |   createdAt        DateTime  @default(now())
-190 |   deadline         DateTime?
-191 |   assignedUserId   String?
-192 |   assignedUserName String?
-193 |   city             City      @relation(fields: [cityId], references: [id])
-194 |   event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-195 | 
-196 |   @@index([cityId])
-197 |   @@index([eventId])
-198 | }
+ 66 |   @@index([updatedAt, cityId])
+ 67 | }
+ 68 | 
+ 69 | model Crew {
+ 70 |   id        String   @id @default(uuid())
+ 71 |   name      String
+ 72 |   cityId    String
+ 73 |   hostId    String?
+ 74 |   driverId  String?
+ 75 |   car       String?
+ 76 |   carPlate  String?
+ 77 |   phone     String?
+ 78 |   isActive  Boolean  @default(true)
+ 79 |   createdAt DateTime @default(now())
+ 80 |   city      City     @relation(fields: [cityId], references: [id])
+ 81 |   driver    User?    @relation("DriverCrew", fields: [driverId], references: [id])
+ 82 |   host      User?    @relation("HostCrew", fields: [hostId], references: [id])
+ 83 |   events    Event[]
+ 84 | }
+ 85 | 
+ 86 | model Event {
+ 87 |   id              String            @id @default(uuid())
+ 88 |   cityId          String
+ 89 |   schoolId        String
+ 90 |   crewId          String?
+ 91 |   project         String
+ 92 |   date            DateTime
+ 93 |   time            String?
+ 94 |   status          EventStatus       @default(BASE)
+ 95 |   childrenPlanned Int?
+ 96 |   childrenActual  Int?
+ 97 |   price           Float?
+ 98 |   received        Float?
+ 99 |   paymentMethod   String?
+100 |   address         String?
+101 |   contactPerson   String?
+102 |   contactPhone    String?
+103 |   equipment       String?
+104 |   nextContact     DateTime?
+105 |   nextProject     String?
+106 |   responsibleId   String?
+107 |   createdAt       DateTime          @default(now())
+108 |   updatedAt       DateTime          @updatedAt
+109 |   city            City              @relation(fields: [cityId], references: [id])
+110 |   crew            Crew?             @relation(fields: [crewId], references: [id])
+111 |   school          School            @relation(fields: [schoolId], references: [id])
+112 |   history         EventHistory[]
+113 |   preparation     EventPreparation?
+114 |   report          EventReport?
+115 |   files           File[]
+116 |   issues          IssueReport[]
+117 | 
+118 |   @@index([cityId])
+119 |   @@index([status])
+120 |   @@index([schoolId])
+121 |   @@index([date, status, cityId])
+122 | }
+123 | 
+124 | model EventReport {
+125 |   id                String        @id @default(uuid())
+126 |   eventId           String        @unique
+127 |   directorSatisfied Boolean?
+128 |   teachersSatisfied Boolean?
+129 |   hadIssues         Boolean       @default(false)
+130 |   comment           String?
+131 |   rating            Float?
+132 |   createdAt         DateTime      @default(now())
+133 |   announcementDone  Boolean       @default(false)
+134 |   materialShown     Boolean       @default(false)
+135 |   childrenCount     Int           @default(0)
+136 |   classesCount      Int           @default(0)
+137 |   privilegedCount   Int           @default(0)
+138 |   showingsCount     Int           @default(0)
+139 |   totalSum          Float         @default(0)
+140 |   schoolSum         Float         @default(0)
+141 |   remainderSum      Float         @default(0)
+142 |   event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+143 |   photos            File[]
+144 |   expenseItems      ExpenseItem[]
+145 |   salaryItems       SalaryItem[]
+146 | }
+147 | 
+148 | model File {
+149 |   id        String       @id @default(uuid())
+150 |   name      String
+151 |   url       String
+152 |   size      Int
+153 |   eventId   String?
+154 |   reportId  String?
+155 |   createdAt DateTime     @default(now())
+156 |   event     Event?       @relation(fields: [eventId], references: [id])
+157 |   report    EventReport? @relation(fields: [reportId], references: [id])
+158 | }
+159 | 
+160 | model EventHistory {
+161 |   id        String   @id @default(uuid())
+162 |   eventId   String
+163 |   action    String
+164 |   comment   String?
+165 |   userId    String
+166 |   userName  String
+167 |   role      String
+168 |   createdAt DateTime @default(now())
+169 |   event     Event    @relation(fields: [eventId], references: [id])
+170 | 
+171 |   @@index([eventId, createdAt])
+172 | }
+173 | 
+174 | model EventPreparation {
+175 |   id               String            @id @default(uuid())
+176 |   eventId          String            @unique
+177 |   assignCrew       PreparationStatus @default(PLANNED)
+178 |   bookEquipment    PreparationStatus @default(PLANNED)
+179 |   prepareDocs      PreparationStatus @default(PLANNED)
+180 |   prepareMaterials PreparationStatus @default(PLANNED)
+181 |   remindSchool     PreparationStatus @default(PLANNED)
+182 |   event            Event             @relation(fields: [eventId], references: [id])
+183 | }
+184 | 
+185 | model IssueReport {
+186 |   id               String    @id @default(uuid())
+187 |   eventId          String
+188 |   schoolName       String
+189 |   eventName        String
+190 |   message          String
+191 |   cityId           String
+192 |   status           String    @default("Планується")
+193 |   createdAt        DateTime  @default(now())
+194 |   deadline         DateTime?
+195 |   assignedUserId   String?
+196 |   assignedUserName String?
+197 |   city             City      @relation(fields: [cityId], references: [id])
+198 |   event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
 199 | 
-200 | model SchoolContact {
-201 |   id           String   @id @default(uuid())
-202 |   city         String   @default("Львів")
-203 |   schoolNumber String
-204 |   contactName  String
-205 |   phone        String
-206 |   role         String?
-207 |   createdAt    DateTime @default(now())
-208 | }
-209 | 
-210 | model Project {
-211 |   id        String   @id @default(uuid())
-212 |   name      String   @unique
-213 |   color     String   @default("blue")
-214 |   createdAt DateTime @default(now())
-215 | }
-216 | 
-217 | model ExpenseItem {
-218 |   id        String   @id @default(uuid())
-219 |   reportId  String
-220 |   category  String 
-221 |   name      String?
-222 |   amount    Decimal  @db.Decimal(12, 2)
-223 |   createdAt DateTime @default(now())
-224 | 
-225 |   report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-226 | 
-227 |   @@index([reportId])
-228 | }
-229 | 
-230 | model SalaryItem {
-231 |   id        String   @id @default(uuid())
-232 |   reportId  String
-233 |   userId    String?
-234 |   userName  String
-235 |   amount    Decimal  @db.Decimal(12, 2)
-236 |   role      String? 
-237 |   createdAt DateTime @default(now())
-238 | 
-239 |   report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-240 |   user   User?       @relation(fields: [userId], references: [id])
-241 | 
-242 |   @@index([reportId])
-243 |   @@index([userId])
-244 | }
+200 |   @@index([cityId])
+201 |   @@index([eventId])
+202 | }
+203 | 
+204 | model SchoolContact {
+205 |   id           String   @id @default(uuid())
+206 |   city         String   @default("Львів")
+207 |   schoolNumber String
+208 |   contactName  String
+209 |   phone        String
+210 |   role         String?
+211 |   createdAt    DateTime @default(now())
+212 | }
+213 | 
+214 | model Project {
+215 |   id        String   @id @default(uuid())
+216 |   name      String   @unique
+217 |   color     String   @default("blue")
+218 |   createdAt DateTime @default(now())
+219 | }
+220 | 
+221 | model ExpenseItem {
+222 |   id        String   @id @default(uuid())
+223 |   reportId  String
+224 |   category  String 
+225 |   name      String?
+226 |   amount    Decimal  @db.Decimal(12, 2)
+227 |   createdAt DateTime @default(now())
+228 | 
+229 |   report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+230 | 
+231 |   @@index([reportId])
+232 | }
+233 | 
+234 | model SalaryItem {
+235 |   id        String   @id @default(uuid())
+236 |   reportId  String
+237 |   userId    String?
+238 |   userName  String
+239 |   amount    Decimal  @db.Decimal(12, 2)
+240 |   role      String? 
+241 |   createdAt DateTime @default(now())
+242 | 
+243 |   report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+244 |   user   User?       @relation(fields: [userId], references: [id])
 245 | 
-246 | enum UserRole {
-247 |   SUPERADMIN
-248 |   MANAGER
-249 |   HOST
-250 |   DRIVER
-251 | }
-252 | 
-253 | enum PreparationStatus {
-254 |   PLANNED
-255 |   IN_PROGRESS
-256 |   DONE
-257 | }
-258 | 
-259 | enum EventStatus {
-260 |   BASE
-261 |   FIRST_CONTACT
-262 |   INTERESTED
-263 |   PRE_APPROVAL
-264 |   DATE_CONFIRMED
-265 |   PREPARATION
-266 |   IN_PROGRESS
-267 |   DONE
-268 |   REPORT
-269 |   RE_SALE
-270 | }
-271 | 
+246 |   @@index([reportId])
+247 |   @@index([userId])
+248 | }
+249 | 
+250 | enum UserRole {
+251 |   SUPERADMIN
+252 |   MANAGER
+253 |   HOST
+254 |   DRIVER
+255 | }
+256 | 
+257 | enum PreparationStatus {
+258 |   PLANNED
+259 |   IN_PROGRESS
+260 |   DONE
+261 | }
+262 | 
+263 | enum EventStatus {
+264 |   BASE
+265 |   FIRST_CONTACT
+266 |   INTERESTED
+267 |   PRE_APPROVAL
+268 |   DATE_CONFIRMED
+269 |   PREPARATION
+270 |   IN_PROGRESS
+271 |   DONE
+272 |   REPORT
+273 |   RE_SALE
+274 | }
+275 | 
 ```
 
 ### File: apps/backend/prisma/seed-admin.js
@@ -720,33 +729,43 @@
  14 |     process.exit(1);
  15 |   }
  16 | 
- 17 |   const hashedPassword = await bcrypt.hash(password, 10);
- 18 | 
- 19 |   console.log('Починаю створення адміна...');
- 20 | 
- 21 |   const admin = await prisma.user.upsert({
- 22 |     where: { email: email },
- 23 |     update: { password: hashedPassword },
- 24 |     create: {
- 25 |       name: 'Адміністратор',
- 26 |       email: email,
- 27 |       password: hashedPassword,
- 28 |       role: 'SUPERADMIN',
- 29 |     },
- 30 |   });
- 31 | 
- 32 |   console.log('Адмін успішно створений або оновлений:', admin.email);
- 33 | }
- 34 | 
- 35 | main()
- 36 |   .catch((e) => {
- 37 |     console.error('Помилка під час сідування:', e);
- 38 |     process.exit(1);
- 39 |   })
- 40 |   .finally(async () => {
- 41 |     await prisma.$disconnect();
- 42 |   });
- 43 | 
+ 17 |   if (
+ 18 |     process.env.NODE_ENV === 'production' &&
+ 19 |     process.env.ALLOW_PROD_SEED !== 'true'
+ 20 |   ) {
+ 21 |     console.error(
+ 22 |       'Сідування в production заблоковано. Встановіть ALLOW_PROD_SEED=true для підтвердження.',
+ 23 |     );
+ 24 |     process.exit(1);
+ 25 |   }
+ 26 | 
+ 27 |   const hashedPassword = await bcrypt.hash(password, 10);
+ 28 | 
+ 29 |   console.log('Починаю створення адміна...');
+ 30 | 
+ 31 |   const admin = await prisma.user.upsert({
+ 32 |     where: { email: email },
+ 33 |     update: { password: hashedPassword },
+ 34 |     create: {
+ 35 |       name: 'Адміністратор',
+ 36 |       email: email,
+ 37 |       password: hashedPassword,
+ 38 |       role: 'SUPERADMIN',
+ 39 |     },
+ 40 |   });
+ 41 | 
+ 42 |   console.log('Адмін успішно створений або оновлений:', admin.email);
+ 43 | }
+ 44 | 
+ 45 | main()
+ 46 |   .catch((e) => {
+ 47 |     console.error('Помилка під час сідування:', e);
+ 48 |     process.exit(1);
+ 49 |   })
+ 50 |   .finally(async () => {
+ 51 |     await prisma.$disconnect();
+ 52 |   });
+ 53 | 
 ```
 
 ### File: apps/backend/src/app.controller.spec.ts
@@ -798,52 +817,61 @@
   0 | import { Module } from '@nestjs/common';
   1 | import { APP_GUARD } from '@nestjs/core';
   2 | import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-  3 | import { AppController } from './app.controller';
-  4 | import { AppService } from './app.service';
-  5 | import { PrismaModule } from './prisma/prisma.module';
-  6 | import { UsersModule } from './users/users.module';
-  7 | import { AuthModule } from './auth/auth.module';
-  8 | import { EventsModule } from './events/events.module';
-  9 | import { CitiesModule } from './cities/cities.module';
- 10 | import { SchoolsModule } from './schools/schools.module';
- 11 | import { FinanceModule } from './finance/finance.module';
- 12 | import { TelegramModule } from './telegram/telegram.module';
- 13 | import { IssuesModule } from './issues/issues.module';
- 14 | import { DashboardModule } from './dashboard/dashboard.module';
- 15 | import { ProjectsModule } from './projects/projects.module';
- 16 | @Module({
- 17 |   imports: [
- 18 |     ThrottlerModule.forRoot([
- 19 |       {
- 20 |         name: 'default',
- 21 |         ttl: 60000,
- 22 |         limit: 100,
- 23 |       },
- 24 |     ]),
- 25 |     PrismaModule,
- 26 |     UsersModule,
- 27 |     AuthModule,
- 28 |     EventsModule,
- 29 |     CitiesModule,
- 30 |     SchoolsModule,
- 31 |     FinanceModule,
- 32 |     FinanceModule,
- 33 |     TelegramModule,
- 34 |     IssuesModule,
- 35 |     DashboardModule,
- 36 |     ProjectsModule,
- 37 |   ],
- 38 |   controllers: [AppController],
- 39 |   providers: [
- 40 |     AppService,
- 41 |     {
- 42 |       provide: APP_GUARD,
- 43 |       useClass: ThrottlerGuard,
- 44 |     },
- 45 |   ],
- 46 | })
- 47 | export class AppModule {}
- 48 | 
+  3 | import { ConfigModule } from '@nestjs/config';
+  4 | import { LoggerModule } from './common/logger/logger.module';
+  5 | import { RedisCacheModule } from './common/cache/redis-cache.module';
+  6 | import { envValidationSchema } from './config/env.validation';
+  7 | import { AppController } from './app.controller';
+  8 | import { AppService } from './app.service';
+  9 | import { PrismaModule } from './prisma/prisma.module';
+ 10 | import { UsersModule } from './users/users.module';
+ 11 | import { AuthModule } from './auth/auth.module';
+ 12 | import { EventsModule } from './events/events.module';
+ 13 | import { CitiesModule } from './cities/cities.module';
+ 14 | import { SchoolsModule } from './schools/schools.module';
+ 15 | import { FinanceModule } from './finance/finance.module';
+ 16 | import { TelegramModule } from './telegram/telegram.module';
+ 17 | import { IssuesModule } from './issues/issues.module';
+ 18 | import { DashboardModule } from './dashboard/dashboard.module';
+ 19 | import { ProjectsModule } from './projects/projects.module';
+ 20 | @Module({
+ 21 |   imports: [
+ 22 |     ConfigModule.forRoot({
+ 23 |       isGlobal: true,
+ 24 |       validationSchema: envValidationSchema,
+ 25 |     }),
+ 26 |     LoggerModule,
+ 27 |     RedisCacheModule,
+ 28 |     ThrottlerModule.forRoot([
+ 29 |       {
+ 30 |         name: 'default',
+ 31 |         ttl: 60000,
+ 32 |         limit: 100,
+ 33 |       },
+ 34 |     ]),
+ 35 |     PrismaModule,
+ 36 |     UsersModule,
+ 37 |     AuthModule,
+ 38 |     EventsModule,
+ 39 |     CitiesModule,
+ 40 |     SchoolsModule,
+ 41 |     FinanceModule,
+ 42 |     TelegramModule,
+ 43 |     IssuesModule,
+ 44 |     DashboardModule,
+ 45 |     ProjectsModule,
+ 46 |   ],
+ 47 |   controllers: [AppController],
+ 48 |   providers: [
+ 49 |     AppService,
+ 50 |     {
+ 51 |       provide: APP_GUARD,
+ 52 |       useClass: ThrottlerGuard,
+ 53 |     },
+ 54 |   ],
+ 55 | })
+ 56 | export class AppModule {}
+ 57 | 
 ```
 
 ### File: apps/backend/src/app.service.ts
@@ -1586,6 +1614,30 @@
  15 | 
 ```
 
+### File: apps/backend/src/common/cache/redis-cache.module.ts
+```ts
+  0 | import { Module } from '@nestjs/common';
+  1 | import { CacheModule } from '@nestjs/cache-manager';
+  2 | import { redisStore } from 'cache-manager-redis-yet';
+  3 | 
+  4 | @Module({
+  5 |   imports: [
+  6 |     CacheModule.registerAsync({
+  7 |       isGlobal: true,
+  8 |       useFactory: async () => ({
+  9 |         store: await redisStore({
+ 10 |           url: process.env.REDIS_URL ?? 'redis://localhost:6379',
+ 11 |           ttl: 60_000,
+ 12 |         }),
+ 13 |       }),
+ 14 |     }),
+ 15 |   ],
+ 16 |   exports: [CacheModule],
+ 17 | })
+ 18 | export class RedisCacheModule {}
+ 19 | 
+```
+
 ### File: apps/backend/src/common/dto/page-meta.dto.ts
 ```ts
   0 | export class PageMetaDto {
@@ -1630,6 +1682,126 @@
  19 |   }
  20 | }
  21 | 
+```
+
+### File: apps/backend/src/common/filters/all-exceptions.filter.ts
+```ts
+  0 | import {
+  1 |   ArgumentsHost,
+  2 |   Catch,
+  3 |   ExceptionFilter,
+  4 |   HttpException,
+  5 |   HttpStatus,
+  6 |   Logger,
+  7 | } from '@nestjs/common';
+  8 | import { Request, Response } from 'express';
+  9 | 
+ 10 | @Catch()
+ 11 | export class AllExceptionsFilter implements ExceptionFilter {
+ 12 |   private readonly logger = new Logger(AllExceptionsFilter.name);
+ 13 | 
+ 14 |   catch(exception: unknown, host: ArgumentsHost) {
+ 15 |     const ctx = host.switchToHttp();
+ 16 |     const response = ctx.getResponse<Response>();
+ 17 |     const request = ctx.getRequest<Request>();
+ 18 | 
+ 19 |     const isHttp = exception instanceof HttpException;
+ 20 |     const statusCode = isHttp
+ 21 |       ? exception.getStatus()
+ 22 |       : HttpStatus.INTERNAL_SERVER_ERROR;
+ 23 | 
+ 24 |     const exceptionResponse = isHttp ? exception.getResponse() : null;
+ 25 |     const message = isHttp
+ 26 |       ? typeof exceptionResponse === 'string'
+ 27 |         ? exceptionResponse
+ 28 |         : ((exceptionResponse as any)?.message ?? exception.message)
+ 29 |       : 'Internal server error';
+ 30 | 
+ 31 |     const details =
+ 32 |       isHttp && typeof exceptionResponse === 'object'
+ 33 |         ? ((exceptionResponse as any)?.error ?? undefined)
+ 34 |         : undefined;
+ 35 | 
+ 36 |     if (!isHttp) {
+ 37 |       this.logger.error(
+ 38 |         exception instanceof Error ? exception.stack : exception,
+ 39 |       );
+ 40 |     }
+ 41 | 
+ 42 |     response.status(statusCode).json({
+ 43 |       statusCode,
+ 44 |       message,
+ 45 |       timestamp: new Date().toISOString(),
+ 46 |       path: request.url,
+ 47 |       requestId: (request as any).id,
+ 48 |       ...(details ? { details } : {}),
+ 49 |     });
+ 50 |   }
+ 51 | }
+ 52 | 
+```
+
+### File: apps/backend/src/common/logger/logger.module.ts
+```ts
+  0 | import { Module } from '@nestjs/common';
+  1 | import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
+  2 | import { randomUUID } from 'crypto';
+  3 | 
+  4 | @Module({
+  5 |   imports: [
+  6 |     PinoLoggerModule.forRoot({
+  7 |       pinoHttp: {
+  8 |         genReqId: (req, res) => {
+  9 |           const existing = req.headers['x-request-id'] as string | undefined;
+ 10 |           const id = existing ?? randomUUID();
+ 11 |           res.setHeader('x-request-id', id);
+ 12 |           return id;
+ 13 |         },
+ 14 |         customProps: (req) => ({
+ 15 |           userId: (req as any).user?.sub ?? (req as any).user?.id ?? null,
+ 16 |         }),
+ 17 |         serializers: {
+ 18 |           req: (req) => ({ method: req.method, url: req.url }),
+ 19 |         },
+ 20 |         autoLogging: true,
+ 21 |         transport:
+ 22 |           process.env.NODE_ENV !== 'production'
+ 23 |             ? { target: 'pino-pretty', options: { singleLine: true } }
+ 24 |             : undefined,
+ 25 |       },
+ 26 |     }),
+ 27 |   ],
+ 28 |   exports: [PinoLoggerModule],
+ 29 | })
+ 30 | export class LoggerModule {}
+ 31 | 
+```
+
+### File: apps/backend/src/config/env.validation.ts
+```ts
+  0 | import * as Joi from 'joi';
+  1 | 
+  2 | export const envValidationSchema = Joi.object({
+  3 |   NODE_ENV: Joi.string()
+  4 |     .valid('development', 'production', 'test')
+  5 |     .default('development'),
+  6 |   PORT: Joi.number().default(3000),
+  7 |   DATABASE_URL: Joi.string().uri().required(),
+  8 |   DIRECT_URL: Joi.string().uri().optional(),
+  9 |   FRONTEND_URL: Joi.string().required(),
+ 10 |   TELEGRAM_BOT_TOKEN: Joi.string().required(),
+ 11 |   REDIS_URL: Joi.string().uri().default('redis://localhost:6379'),
+ 12 |   JWT_SECRET: Joi.string()
+ 13 |     .min(16)
+ 14 |     .when('NODE_ENV', {
+ 15 |       is: 'production',
+ 16 |       then: Joi.required(),
+ 17 |       otherwise: Joi.optional().default('super-secret-key-for-dev'),
+ 18 |     }),
+ 19 |   SEED_ADMIN_EMAIL: Joi.string().email().optional(),
+ 20 |   SEED_ADMIN_PASSWORD: Joi.string().optional(),
+ 21 | });
+ 22 | 
 ```
 
 ### File: apps/backend/src/dashboard/dashboard.controller.ts
@@ -1680,18 +1852,19 @@
 ### File: apps/backend/src/dashboard/dashboard.module.ts
 ```ts
   0 | import { Module } from '@nestjs/common';
-  1 | import { DashboardController } from './dashboard.controller';
-  2 | import { DashboardService } from './dashboard.service';
-  3 | import { PrismaModule } from '../prisma/prisma.module';
-  4 | import { AuthModule } from '../auth/auth.module';
-  5 | 
-  6 | @Module({
-  7 |   imports: [PrismaModule, AuthModule],
-  8 |   controllers: [DashboardController],
-  9 |   providers: [DashboardService],
- 10 | })
- 11 | export class DashboardModule {}
- 12 | 
+  1 | import { RedisCacheModule } from '../common/cache/redis-cache.module';
+  2 | import { DashboardController } from './dashboard.controller';
+  3 | import { DashboardService } from './dashboard.service';
+  4 | import { PrismaModule } from '../prisma/prisma.module';
+  5 | import { AuthModule } from '../auth/auth.module';
+  6 | 
+  7 | @Module({
+  8 |   imports: [PrismaModule, AuthModule, RedisCacheModule],
+  9 |   controllers: [DashboardController],
+ 10 |   providers: [DashboardService],
+ 11 | })
+ 12 | export class DashboardModule {}
+ 13 | 
 ```
 
 ### File: apps/backend/src/dashboard/dashboard.service.spec.ts
@@ -1985,377 +2158,418 @@
 
 ### File: apps/backend/src/dashboard/dashboard.service.ts
 ```ts
-  0 | import { Injectable, Logger } from '@nestjs/common';
-  1 | import { Prisma } from '@prisma/client';
-  2 | import { PrismaService } from '../prisma/prisma.service';
-  3 | const PIPELINE_STAGES = [
-  4 |   'BASE',
-  5 |   'FIRST_CONTACT',
-  6 |   'INTERESTED',
-  7 |   'PRE_APPROVAL',
-  8 |   'DATE_CONFIRMED',
-  9 |   'PREPARATION',
- 10 |   'IN_PROGRESS',
- 11 |   'DONE',
- 12 |   'REPORT',
- 13 |   'RE_SALE',
- 14 | ];
- 15 | 
- 16 | const STALE_DAYS = 7;
+  0 | import { Inject, Injectable, Logger } from '@nestjs/common';
+  1 | import { CACHE_MANAGER } from '@nestjs/cache-manager';
+  2 | import type { Cache } from 'cache-manager';
+  3 | import { Prisma } from '@prisma/client';
+  4 | import { PrismaService } from '../prisma/prisma.service';
+  5 | const PIPELINE_STAGES = [
+  6 |   'BASE',
+  7 |   'FIRST_CONTACT',
+  8 |   'INTERESTED',
+  9 |   'PRE_APPROVAL',
+ 10 |   'DATE_CONFIRMED',
+ 11 |   'PREPARATION',
+ 12 |   'IN_PROGRESS',
+ 13 |   'DONE',
+ 14 |   'REPORT',
+ 15 |   'RE_SALE',
+ 16 | ];
  17 | 
- 18 | type EventWithRelations = Prisma.EventGetPayload<{
- 19 |   include: {
- 20 |     school: { select: { id: true; name: true } };
- 21 |     city: { select: { id: true; name: true } };
- 22 |     crew: {
- 23 |       include: {
- 24 |         host: { select: { id: true; name: true } };
- 25 |         driver: { select: { id: true; name: true } };
- 26 |       };
- 27 |     };
- 28 |   };
- 29 | }>;
- 30 | 
- 31 | interface StaleSchool {
- 32 |   id: string;
- 33 |   name: string;
- 34 |   status: string | null;
- 35 |   lastActivity: Date | null;
- 36 |   daysStale: number | null;
- 37 | }
- 38 | 
- 39 | interface ActivityFeedItem {
- 40 |   id: string;
- 41 |   userName: string;
- 42 |   role: string;
- 43 |   action: string;
- 44 |   comment: string | null;
- 45 |   createdAt: Date;
- 46 |   schoolId: string | null;
- 47 |   schoolName: string | null;
- 48 |   eventId: string | null;
- 49 | }
- 50 | 
- 51 | export interface DashboardSummary {
- 52 |   todayEvents: EventWithRelations[];
- 53 |   upcomingEvents: EventWithRelations[];
- 54 |   funnel: Record<string, number>;
- 55 |   totalSchools: number;
- 56 |   monthlyKpi: {
- 57 |     revenue: number;
- 58 |     profit: number;
- 59 |     children: number;
- 60 |     count: number;
- 61 |   };
- 62 |   staleSchools: StaleSchool[];
- 63 |   activityFeed: ActivityFeedItem[];
- 64 |   citiesStats: {
- 65 |     cityId: string;
- 66 |     cityName: string;
- 67 |     schoolsCount: number;
- 68 |     activeEvents: number;
- 69 |     monthRevenue: number;
- 70 |   }[];
- 71 | }
- 72 | @Injectable()
- 73 | export class DashboardService {
- 74 |   private readonly logger = new Logger(DashboardService.name);
- 75 | 
- 76 |   constructor(private prisma: PrismaService) {}
- 77 | 
- 78 |   private cache = new Map<string, { data: DashboardSummary; ts: number }>();
- 79 |   private CACHE_TTL = 60_000;
- 80 | 
- 81 |   async getSummary(cityId?: string, role?: string) {
- 82 |     const key = `${cityId ?? 'all'}-${role ?? 'anon'}`;
- 83 |     const cached = this.cache.get(key);
- 84 |     if (cached && Date.now() - cached.ts < this.CACHE_TTL) {
- 85 |       this.logger.debug(`cache hit — ${key}`);
- 86 |       return cached.data;
- 87 |     }
- 88 | 
- 89 |     const t0 = Date.now();
- 90 |     this.logger.debug(`start — cityId=${cityId ?? 'all'} role=${role}`);
- 91 | 
- 92 |     const now = new Date();
- 93 |     const todayStart = new Date(
- 94 |       now.getFullYear(),
- 95 |       now.getMonth(),
- 96 |       now.getDate(),
- 97 |     );
- 98 |     const todayEnd = new Date(todayStart);
- 99 |     todayEnd.setDate(todayEnd.getDate() + 1);
-100 |     const upcomingEnd = new Date(todayStart);
-101 |     upcomingEnd.setDate(upcomingEnd.getDate() + 6);
+ 18 | const STALE_DAYS = 7;
+ 19 | 
+ 20 | type EventWithRelations = Prisma.EventGetPayload<{
+ 21 |   include: {
+ 22 |     school: { select: { id: true; name: true } };
+ 23 |     city: { select: { id: true; name: true } };
+ 24 |     crew: {
+ 25 |       include: {
+ 26 |         host: { select: { id: true; name: true } };
+ 27 |         driver: { select: { id: true; name: true } };
+ 28 |       };
+ 29 |     };
+ 30 |   };
+ 31 | }>;
+ 32 | 
+ 33 | interface StaleSchool {
+ 34 |   id: string;
+ 35 |   name: string;
+ 36 |   status: string | null;
+ 37 |   lastActivity: Date | null;
+ 38 |   daysStale: number | null;
+ 39 | }
+ 40 | 
+ 41 | interface ActivityFeedItem {
+ 42 |   id: string;
+ 43 |   userName: string;
+ 44 |   role: string;
+ 45 |   action: string;
+ 46 |   comment: string | null;
+ 47 |   createdAt: Date;
+ 48 |   schoolId: string | null;
+ 49 |   schoolName: string | null;
+ 50 |   eventId: string | null;
+ 51 | }
+ 52 | 
+ 53 | export interface DashboardSummary {
+ 54 |   todayEvents: EventWithRelations[];
+ 55 |   upcomingEvents: EventWithRelations[];
+ 56 |   funnel: Record<string, number>;
+ 57 |   totalSchools: number;
+ 58 |   monthlyKpi: {
+ 59 |     revenue: number;
+ 60 |     profit: number;
+ 61 |     children: number;
+ 62 |     count: number;
+ 63 |   };
+ 64 |   staleSchools: StaleSchool[];
+ 65 |   activityFeed: ActivityFeedItem[];
+ 66 |   citiesStats: {
+ 67 |     cityId: string;
+ 68 |     cityName: string;
+ 69 |     schoolsCount: number;
+ 70 |     activeEvents: number;
+ 71 |     monthRevenue: number;
+ 72 |   }[];
+ 73 | }
+ 74 | @Injectable()
+ 75 | export class DashboardService {
+ 76 |   private readonly logger = new Logger(DashboardService.name);
+ 77 |   private hits = 0;
+ 78 |   private misses = 0;
+ 79 | 
+ 80 |   constructor(
+ 81 |     private prisma: PrismaService,
+ 82 |     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+ 83 |   ) {}
+ 84 | 
+ 85 |   async getSummary(cityId?: string, role?: string): Promise<DashboardSummary> {
+ 86 |     const key = `dashboard:${cityId ?? 'all'}-${role ?? 'anon'}`;
+ 87 |     const cached = await this.cacheManager.get<DashboardSummary>(key);
+ 88 |     if (cached) {
+ 89 |       this.hits++;
+ 90 |       this.logger.debug(
+ 91 |         `cache hit — ${key} (rate=${this.hitRate().toFixed(1)}%)`,
+ 92 |       );
+ 93 |       return cached;
+ 94 |     }
+ 95 |     this.misses++;
+ 96 | 
+ 97 |     const t0 = Date.now();
+ 98 |     const now = new Date();
+ 99 |     const windows = this.buildTimeWindows(now);
+100 |     const cityFilter = cityId ? { cityId } : {};
+101 |     const isSuperAdmin = role === 'SUPERADMIN';
 102 | 
-103 |     const staleThreshold = new Date(now);
-104 |     staleThreshold.setDate(staleThreshold.getDate() - STALE_DAYS);
-105 | 
-106 |     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-107 |     const monthEnd = new Date(
-108 |       now.getFullYear(),
-109 |       now.getMonth() + 1,
-110 |       0,
-111 |       23,
-112 |       59,
-113 |       59,
-114 |     );
-115 | 
-116 |     const cityFilter = cityId ? { cityId } : {};
-117 |     const isSuperAdmin = role === 'SUPERADMIN';
-118 | 
-119 |     const t1 = Date.now();
-120 |     const [
-121 |       todayEvents,
-122 |       upcomingEvents,
-123 |       funnelRows,
-124 |       monthEvents,
-125 |       staleSchoolsRaw,
-126 |       recentActivity,
-127 |     ] = await Promise.all([
-128 |       this.prisma.event.findMany({
-129 |         where: { ...cityFilter, date: { gte: todayStart, lt: todayEnd } },
-130 |         include: {
-131 |           school: { select: { id: true, name: true } },
-132 |           city: { select: { id: true, name: true } },
-133 |           crew: {
-134 |             include: {
-135 |               host: { select: { id: true, name: true } },
-136 |               driver: { select: { id: true, name: true } },
-137 |             },
-138 |           },
-139 |         },
-140 |         orderBy: { time: 'asc' },
-141 |       }),
-142 | 
-143 |       this.prisma.event.findMany({
-144 |         where: { ...cityFilter, date: { gte: todayEnd, lt: upcomingEnd } },
-145 |         include: {
-146 |           school: { select: { id: true, name: true } },
-147 |           city: { select: { id: true, name: true } },
-148 |           crew: {
-149 |             include: {
-150 |               host: { select: { id: true, name: true } },
-151 |               driver: { select: { id: true, name: true } },
-152 |             },
-153 |           },
-154 |         },
-155 |         orderBy: [{ date: 'asc' }, { time: 'asc' }],
-156 |         take: 8,
-157 |       }),
-158 | 
-159 |       cityId
-160 |         ? this.prisma.$queryRaw<{ status: string; count: bigint }[]>(Prisma.sql`
-161 |             SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
-162 |             FROM "School" s
-163 |             LEFT JOIN LATERAL (
-164 |               SELECT status FROM "Event"
-165 |               WHERE "schoolId" = s.id
-166 |               ORDER BY date DESC
-167 |               LIMIT 1
-168 |             ) e ON true
-169 |             WHERE s."cityId" = ${cityId}
-170 |             GROUP BY e.status
-171 |           `)
-172 |         : this.prisma.$queryRaw<{ status: string; count: bigint }[]>(Prisma.sql`
-173 |             SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
-174 |             FROM "School" s
-175 |             LEFT JOIN LATERAL (
-176 |               SELECT status FROM "Event"
-177 |               WHERE "schoolId" = s.id
-178 |               ORDER BY date DESC
-179 |               LIMIT 1
-180 |             ) e ON true
-181 |             GROUP BY e.status
-182 |           `),
-183 | 
-184 |       this.prisma.event.findMany({
-185 |         where: {
-186 |           ...cityFilter,
-187 |           status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
-188 |           date: { gte: monthStart, lte: monthEnd },
-189 |         },
-190 |         select: {
-191 |           id: true,
-192 |           report: {
-193 |             select: { totalSum: true, remainderSum: true, childrenCount: true },
-194 |           },
-195 |         },
-196 |       }),
-197 | 
-198 |       this.prisma.school.findMany({
-199 |         where: {
-200 |           ...cityFilter,
-201 |           events: {
-202 |             some: {
-203 |               status: { notIn: ['DONE', 'REPORT', 'RE_SALE'] },
-204 |               history: { every: { createdAt: { lt: staleThreshold } } },
-205 |             },
-206 |           },
-207 |         },
-208 |         include: {
-209 |           events: {
-210 |             where: { status: { notIn: ['DONE', 'REPORT', 'RE_SALE'] } },
-211 |             orderBy: { date: 'desc' },
-212 |             take: 1,
-213 |             include: {
-214 |               history: {
-215 |                 orderBy: { createdAt: 'desc' },
-216 |                 take: 1,
-217 |                 select: { createdAt: true },
-218 |               },
-219 |             },
-220 |           },
-221 |         },
-222 |         take: 10,
-223 |       }),
-224 | 
-225 |       this.prisma.eventHistory.findMany({
-226 |         where: {
-227 |           createdAt: { gte: todayStart },
-228 |           ...(cityId ? { event: { cityId } } : {}),
-229 |         },
-230 |         include: {
-231 |           event: {
-232 |             select: {
-233 |               id: true,
-234 |               school: { select: { id: true, name: true } },
-235 |             },
-236 |           },
-237 |         },
-238 |         orderBy: { createdAt: 'desc' },
-239 |         take: 20,
-240 |       }),
-241 |     ]);
-242 |     this.logger.debug(`main Promise.all: ${Date.now() - t1}ms`);
-243 | 
-244 |     let citiesStats: {
-245 |       cityId: string;
-246 |       cityName: string;
-247 |       schoolsCount: number;
-248 |       activeEvents: number;
-249 |       monthRevenue: number;
-250 |     }[] = [];
-251 | 
-252 |     if (isSuperAdmin) {
-253 |       const t2 = Date.now();
-254 |       const [allCities, allSchools, allActiveEvents, allMonthEvents] =
-255 |         await Promise.all([
-256 |           this.prisma.city.findMany({ select: { id: true, name: true } }),
-257 |           this.prisma.school.groupBy({ by: ['cityId'], _count: { id: true } }),
-258 |           this.prisma.event.groupBy({
-259 |             by: ['cityId'],
-260 |             where: {
-261 |               status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
-262 |             },
-263 |             _count: { id: true },
-264 |           }),
-265 |           this.prisma.event.findMany({
-266 |             where: {
-267 |               status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
-268 |               date: { gte: monthStart, lte: monthEnd },
-269 |             },
-270 |             select: {
-271 |               cityId: true,
-272 |               report: { select: { totalSum: true } },
-273 |             },
-274 |           }),
-275 |         ]);
-276 |       this.logger.debug(`superadmin queries: ${Date.now() - t2}ms`);
-277 | 
-278 |       const schoolsIdx = Object.fromEntries(
-279 |         allSchools.map((r) => [r.cityId, r._count.id]),
-280 |       );
-281 |       const activeIdx = Object.fromEntries(
-282 |         allActiveEvents.map((r) => [r.cityId, r._count.id]),
-283 |       );
-284 |       const revenueIdx: Record<string, number> = {};
-285 |       for (const ev of allMonthEvents) {
-286 |         revenueIdx[ev.cityId] =
-287 |           (revenueIdx[ev.cityId] ?? 0) + (ev.report?.totalSum ?? 0);
-288 |       }
-289 | 
-290 |       citiesStats = allCities
-291 |         .map((city) => ({
-292 |           cityId: city.id,
-293 |           cityName: city.name,
-294 |           schoolsCount: schoolsIdx[city.id] ?? 0,
-295 |           activeEvents: activeIdx[city.id] ?? 0,
-296 |           monthRevenue: revenueIdx[city.id] ?? 0,
-297 |         }))
-298 |         .sort((a, b) => b.monthRevenue - a.monthRevenue);
-299 |     }
-300 | 
-301 |     const funnel: Record<string, number> = {};
-302 |     for (const stage of PIPELINE_STAGES) funnel[stage] = 0;
-303 |     let totalSchools = 0;
-304 |     for (const row of funnelRows) {
-305 |       const status = row.status ?? 'BASE';
-306 |       const count = Number(row.count);
-307 |       if (funnel[status] !== undefined) funnel[status] += count;
-308 |       totalSchools += count;
-309 |     }
-310 | 
-311 |     const monthlyKpi = monthEvents.reduce(
-312 |       (acc, ev) => {
-313 |         acc.revenue += ev.report?.totalSum ?? 0;
-314 |         acc.profit += ev.report?.remainderSum ?? 0;
-315 |         acc.children += ev.report?.childrenCount ?? 0;
-316 |         acc.count += 1;
-317 |         return acc;
-318 |       },
-319 |       { revenue: 0, profit: 0, children: 0, count: 0 },
-320 |     );
-321 | 
-322 |     const staleSchools = staleSchoolsRaw
-323 |       .map((school) => {
-324 |         const lastHistory = school.events[0]?.history[0];
-325 |         const lastActivity = lastHistory?.createdAt ?? null;
-326 |         const daysStale = lastActivity
-327 |           ? Math.floor(
-328 |               (now.getTime() - new Date(lastActivity).getTime()) / 86_400_000,
-329 |             )
-330 |           : null;
-331 |         return {
-332 |           id: school.id,
-333 |           name: school.name,
-334 |           status: school.events[0]?.status ?? null,
-335 |           lastActivity,
-336 |           daysStale,
-337 |         };
-338 |       })
-339 |       .sort((a, b) => (b.daysStale ?? 0) - (a.daysStale ?? 0));
-340 | 
-341 |     const activityFeed = recentActivity.map((h) => ({
-342 |       id: h.id,
-343 |       userName: h.userName,
-344 |       role: h.role,
-345 |       action: h.action,
-346 |       comment: h.comment,
-347 |       createdAt: h.createdAt,
-348 |       schoolId: h.event?.school?.id ?? null,
-349 |       schoolName: h.event?.school?.name ?? null,
-350 |       eventId: h.event?.id ?? null,
-351 |     }));
-352 | 
-353 |     this.logger.debug(`total: ${Date.now() - t0}ms`);
-354 | 
-355 |     const result = {
-356 |       todayEvents,
-357 |       upcomingEvents,
-358 |       funnel,
-359 |       totalSchools,
-360 |       monthlyKpi,
-361 |       staleSchools,
-362 |       activityFeed,
-363 |       citiesStats,
-364 |     };
-365 | 
-366 |     this.cache.set(key, { data: result, ts: Date.now() });
-367 |     return result;
-368 |   }
-369 | }
-370 | 
+103 |     const [eventsWindow, funnelStats, monthlyKpi, staleSchools, activityFeed] =
+104 |       await Promise.all([
+105 |         this.getEventsWindow(cityFilter, windows),
+106 |         this.getFunnelStats(cityId),
+107 |         this.getMonthlyKpi(cityFilter, windows),
+108 |         this.getStaleSchools(cityFilter, windows.staleThreshold, now),
+109 |         this.getActivityFeed(cityId, windows.todayStart),
+110 |       ]);
+111 | 
+112 |     const citiesStats = isSuperAdmin ? await this.getCitiesStats(windows) : [];
+113 | 
+114 |     const result: DashboardSummary = {
+115 |       ...eventsWindow,
+116 |       ...funnelStats,
+117 |       monthlyKpi,
+118 |       staleSchools,
+119 |       activityFeed,
+120 |       citiesStats,
+121 |     };
+122 | 
+123 |     this.logger.debug(`total: ${Date.now() - t0}ms`);
+124 |     await this.cacheManager.set(key, result, 60_000);
+125 |     return result;
+126 |   }
+127 | 
+128 |   private hitRate(): number {
+129 |     const total = this.hits + this.misses;
+130 |     return total === 0 ? 0 : (this.hits / total) * 100;
+131 |   }
+132 | 
+133 |   private buildTimeWindows(now: Date) {
+134 |     const todayStart = new Date(
+135 |       now.getFullYear(),
+136 |       now.getMonth(),
+137 |       now.getDate(),
+138 |     );
+139 |     const todayEnd = new Date(todayStart);
+140 |     todayEnd.setDate(todayEnd.getDate() + 1);
+141 |     const upcomingEnd = new Date(todayStart);
+142 |     upcomingEnd.setDate(upcomingEnd.getDate() + 6);
+143 |     const staleThreshold = new Date(now);
+144 |     staleThreshold.setDate(staleThreshold.getDate() - STALE_DAYS);
+145 |     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+146 |     const monthEnd = new Date(
+147 |       now.getFullYear(),
+148 |       now.getMonth() + 1,
+149 |       0,
+150 |       23,
+151 |       59,
+152 |       59,
+153 |     );
+154 |     return {
+155 |       todayStart,
+156 |       todayEnd,
+157 |       upcomingEnd,
+158 |       staleThreshold,
+159 |       monthStart,
+160 |       monthEnd,
+161 |     };
+162 |   }
+163 | 
+164 |   private eventInclude() {
+165 |     return {
+166 |       school: { select: { id: true, name: true } },
+167 |       city: { select: { id: true, name: true } },
+168 |       crew: {
+169 |         include: {
+170 |           host: { select: { id: true, name: true } },
+171 |           driver: { select: { id: true, name: true } },
+172 |         },
+173 |       },
+174 |     };
+175 |   }
+176 | 
+177 |   private async getEventsWindow(
+178 |     cityFilter: Record<string, unknown>,
+179 |     windows: ReturnType<DashboardService['buildTimeWindows']>,
+180 |   ) {
+181 |     const [todayEvents, upcomingEvents] = await Promise.all([
+182 |       this.prisma.event.findMany({
+183 |         where: {
+184 |           ...cityFilter,
+185 |           date: { gte: windows.todayStart, lt: windows.todayEnd },
+186 |         },
+187 |         include: this.eventInclude(),
+188 |         orderBy: { time: 'asc' },
+189 |       }),
+190 |       this.prisma.event.findMany({
+191 |         where: {
+192 |           ...cityFilter,
+193 |           date: { gte: windows.todayEnd, lt: windows.upcomingEnd },
+194 |         },
+195 |         include: this.eventInclude(),
+196 |         orderBy: [{ date: 'asc' }, { time: 'asc' }],
+197 |         take: 8,
+198 |       }),
+199 |     ]);
+200 |     return { todayEvents, upcomingEvents };
+201 |   }
+202 | 
+203 |   private async getFunnelStats(cityId?: string) {
+204 |     const funnelRows = cityId
+205 |       ? await this.prisma.$queryRaw<
+206 |           { status: string; count: bigint }[]
+207 |         >(Prisma.sql`
+208 |           SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
+209 |           FROM "School" s
+210 |           LEFT JOIN LATERAL (
+211 |             SELECT status FROM "Event"
+212 |             WHERE "schoolId" = s.id
+213 |             ORDER BY date DESC
+214 |             LIMIT 1
+215 |           ) e ON true
+216 |           WHERE s."cityId" = ${cityId}
+217 |           GROUP BY e.status
+218 |         `)
+219 |       : await this.prisma.$queryRaw<
+220 |           { status: string; count: bigint }[]
+221 |         >(Prisma.sql`
+222 |           SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
+223 |           FROM "School" s
+224 |           LEFT JOIN LATERAL (
+225 |             SELECT status FROM "Event"
+226 |             WHERE "schoolId" = s.id
+227 |             ORDER BY date DESC
+228 |             LIMIT 1
+229 |           ) e ON true
+230 |           GROUP BY e.status
+231 |         `);
+232 | 
+233 |     const funnel: Record<string, number> = {};
+234 |     for (const stage of PIPELINE_STAGES) funnel[stage] = 0;
+235 |     let totalSchools = 0;
+236 |     for (const row of funnelRows) {
+237 |       const status = row.status ?? 'BASE';
+238 |       const count = Number(row.count);
+239 |       if (funnel[status] !== undefined) funnel[status] += count;
+240 |       totalSchools += count;
+241 |     }
+242 |     return { funnel, totalSchools };
+243 |   }
+244 | 
+245 |   private async getMonthlyKpi(
+246 |     cityFilter: Record<string, unknown>,
+247 |     windows: ReturnType<DashboardService['buildTimeWindows']>,
+248 |   ) {
+249 |     const monthEvents = await this.prisma.event.findMany({
+250 |       where: {
+251 |         ...cityFilter,
+252 |         status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
+253 |         date: { gte: windows.monthStart, lte: windows.monthEnd },
+254 |       },
+255 |       select: {
+256 |         id: true,
+257 |         report: {
+258 |           select: { totalSum: true, remainderSum: true, childrenCount: true },
+259 |         },
+260 |       },
+261 |     });
+262 | 
+263 |     return monthEvents.reduce(
+264 |       (acc, ev) => {
+265 |         acc.revenue += ev.report?.totalSum ?? 0;
+266 |         acc.profit += ev.report?.remainderSum ?? 0;
+267 |         acc.children += ev.report?.childrenCount ?? 0;
+268 |         acc.count += 1;
+269 |         return acc;
+270 |       },
+271 |       { revenue: 0, profit: 0, children: 0, count: 0 },
+272 |     );
+273 |   }
+274 | 
+275 |   private async getStaleSchools(
+276 |     cityFilter: Record<string, unknown>,
+277 |     staleThreshold: Date,
+278 |     now: Date,
+279 |   ): Promise<StaleSchool[]> {
+280 |     const cityId = (cityFilter as { cityId?: string }).cityId;
+281 |     const cityCondition = cityId
+282 |       ? Prisma.sql`AND s."cityId" = ${cityId}`
+283 |       : Prisma.empty;
+284 | 
+285 |     const rows = await this.prisma.$queryRaw;
+286 |     {
+287 |       id: string;
+288 |       name: string;
+289 |       status: string;
+290 |       lastActivity: Date | null;
+291 |     }
+292 |     [] >
+293 |       Prisma.sql`
+294 |       SELECT s.id, s.name, latest.status, "lastHist"."createdAt" as "lastActivity"
+295 |       FROM "School" s
+296 |       JOIN LATERAL (
+297 |         SELECT id, status FROM "Event" e
+298 |         WHERE e."schoolId" = s.id AND e.status NOT IN ('DONE', 'REPORT', 'RE_SALE')
+299 |         ORDER BY e.date DESC
+300 |         LIMIT 1
+301 |       ) latest ON true
+302 |       LEFT JOIN LATERAL (
+303 |         SELECT h."createdAt" FROM "EventHistory" h
+304 |         WHERE h."eventId" = latest.id
+305 |         ORDER BY h."createdAt" DESC
+306 |         LIMIT 1
+307 |       ) "lastHist" ON true
+308 |       WHERE ("lastHist"."createdAt" IS NULL OR "lastHist"."createdAt" < ${staleThreshold})
+309 |       ${cityCondition}
+310 |       ORDER BY "lastHist"."createdAt" ASC NULLS FIRST
+311 |       LIMIT 10
+312 |     `;
+313 | 
+314 |     return rows.map((school) => {
+315 |       const daysStale = school.lastActivity
+316 |         ? Math.floor(
+317 |             (now.getTime() - new Date(school.lastActivity).getTime()) /
+318 |               86_400_000,
+319 |           )
+320 |         : null;
+321 |       return {
+322 |         id: school.id,
+323 |         name: school.name,
+324 |         status: school.status ?? null,
+325 |         lastActivity: school.lastActivity,
+326 |         daysStale,
+327 |       };
+328 |     });
+329 |   }
+330 | 
+331 |   private async getActivityFeed(cityId: string | undefined, todayStart: Date) {
+332 |     const recentActivity = await this.prisma.eventHistory.findMany({
+333 |       where: {
+334 |         createdAt: { gte: todayStart },
+335 |         ...(cityId ? { event: { cityId } } : {}),
+336 |       },
+337 |       include: {
+338 |         event: {
+339 |           select: {
+340 |             id: true,
+341 |             school: { select: { id: true, name: true } },
+342 |           },
+343 |         },
+344 |       },
+345 |       orderBy: { createdAt: 'desc' },
+346 |       take: 20,
+347 |     });
+348 | 
+349 |     return recentActivity.map((h) => ({
+350 |       id: h.id,
+351 |       userName: h.userName,
+352 |       role: h.role,
+353 |       action: h.action,
+354 |       comment: h.comment,
+355 |       createdAt: h.createdAt,
+356 |       schoolId: h.event?.school?.id ?? null,
+357 |       schoolName: h.event?.school?.name ?? null,
+358 |       eventId: h.event?.id ?? null,
+359 |     }));
+360 |   }
+361 | 
+362 |   private async getCitiesStats(
+363 |     windows: ReturnType<DashboardService['buildTimeWindows']>,
+364 |   ) {
+365 |     const [allCities, allSchools, allActiveEvents, allMonthEvents] =
+366 |       await Promise.all([
+367 |         this.prisma.city.findMany({ select: { id: true, name: true } }),
+368 |         this.prisma.school.groupBy({ by: ['cityId'], _count: { id: true } }),
+369 |         this.prisma.event.groupBy({
+370 |           by: ['cityId'],
+371 |           where: {
+372 |             status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
+373 |           },
+374 |           _count: { id: true },
+375 |         }),
+376 |         this.prisma.event.findMany({
+377 |           where: {
+378 |             status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
+379 |             date: { gte: windows.monthStart, lte: windows.monthEnd },
+380 |           },
+381 |           select: {
+382 |             cityId: true,
+383 |             report: { select: { totalSum: true } },
+384 |           },
+385 |         }),
+386 |       ]);
+387 | 
+388 |     const schoolsIdx = Object.fromEntries(
+389 |       allSchools.map((r) => [r.cityId, r._count.id]),
+390 |     );
+391 |     const activeIdx = Object.fromEntries(
+392 |       allActiveEvents.map((r) => [r.cityId, r._count.id]),
+393 |     );
+394 |     const revenueIdx: Record<string, number> = {};
+395 |     for (const ev of allMonthEvents) {
+396 |       revenueIdx[ev.cityId] =
+397 |         (revenueIdx[ev.cityId] ?? 0) + (ev.report?.totalSum ?? 0);
+398 |     }
+399 | 
+400 |     return allCities
+401 |       .map((city) => ({
+402 |         cityId: city.id,
+403 |         cityName: city.name,
+404 |         schoolsCount: schoolsIdx[city.id] ?? 0,
+405 |         activeEvents: activeIdx[city.id] ?? 0,
+406 |         monthRevenue: revenueIdx[city.id] ?? 0,
+407 |       }))
+408 |       .sort((a, b) => b.monthRevenue - a.monthRevenue);
+409 |   }
+410 | }
+411 | 
 ```
 
 ### File: apps/backend/src/events/dto/add-comment.dto.ts
@@ -5118,34 +5332,43 @@
 
 ### File: apps/backend/src/main.ts
 ```ts
-  0 | import { NestFactory } from '@nestjs/core';
+  0 | import { NestFactory, Reflector } from '@nestjs/core';
   1 | import { AppModule } from './app.module';
-  2 | import { ValidationPipe } from '@nestjs/common';
+  2 | import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
   3 | import cookieParser from 'cookie-parser';
-  4 | 
-  5 | async function bootstrap() {
-  6 |   const app = await NestFactory.create(AppModule);
-  7 |   app.use(cookieParser());
-  8 |   const allowedOrigins = (process.env.FRONTEND_URL ?? '')
-  9 |     .split(',')
- 10 |     .map((o) => o.trim())
- 11 |     .filter(Boolean);
- 12 | 
- 13 |   app.enableCors({
- 14 |     origin: allowedOrigins,
- 15 |     credentials: true,
- 16 |   });
- 17 |   app.useGlobalPipes(
- 18 |     new ValidationPipe({
- 19 |       transform: true,
- 20 |       whitelist: true,
- 21 |       forbidNonWhitelisted: true,
- 22 |     }),
- 23 |   );
- 24 |   await app.listen(process.env.PORT ?? 3000);
- 25 | }
- 26 | bootstrap();
- 27 | 
+  4 | import helmet from 'helmet';
+  5 | import { Logger } from 'nestjs-pino';
+  6 | import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+  7 | 
+  8 | async function bootstrap() {
+  9 |   const app = await NestFactory.create(AppModule, { bufferLogs: true });
+ 10 |   app.useLogger(app.get(Logger));
+ 11 |   app.use(helmet());
+ 12 |   app.use(cookieParser());
+ 13 | 
+ 14 |   const allowedOrigins = (process.env.FRONTEND_URL ?? '')
+ 15 |     .split(',')
+ 16 |     .map((o) => o.trim())
+ 17 |     .filter(Boolean);
+ 18 | 
+ 19 |   app.enableCors({
+ 20 |     origin: allowedOrigins,
+ 21 |     credentials: true,
+ 22 |   });
+ 23 |   app.useGlobalPipes(
+ 24 |     new ValidationPipe({
+ 25 |       transform: true,
+ 26 |       whitelist: true,
+ 27 |       forbidNonWhitelisted: true,
+ 28 |     }),
+ 29 |   );
+ 30 |   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+ 31 |   app.useGlobalFilters(new AllExceptionsFilter());
+ 32 | 
+ 33 |   await app.listen(process.env.PORT ?? 3000);
+ 34 | }
+ 35 | bootstrap();
+ 36 | 
 ```
 
 ### File: apps/backend/src/prisma/prisma.mock.ts
@@ -21599,6 +21822,56 @@
  24 |   },
  25 | });
  26 | 
+```
+
+### File: collect-code.js
+```js
+  0 | const fs = require("fs");
+  1 | const path = require("path");
+  2 | 
+  3 | const outputFile = "combined_performance_files.md";
+  4 | 
+  5 | fs.writeFileSync(
+  6 |   outputFile,
+  7 |   "# Файли Dashboard, Schools, Events та Prisma Schema\n\n",
+  8 | );
+  9 | 
+ 10 | const filesToCollect = [
+ 11 |   "apps/backend/src/dashboard/dashboard.service.ts",
+ 12 |   "apps/backend/src/dashboard/dashboard.module.ts",
+ 13 |   "apps/backend/src/dashboard/dashboard.controller.ts",
+ 14 |   "apps/backend/prisma/schema.prisma",
+ 15 |   "apps/backend/src/schools/schools.service.ts",
+ 16 |   "apps/backend/src/common/dto/page-meta.dto.ts",
+ 17 |   "apps/backend/src/common/dto/page-options.dto.ts",
+ 18 |   "apps/backend/src/events/events.service.ts",
+ 19 | ];
+ 20 | 
+ 21 | let collectedCount = 0;
+ 22 | 
+ 23 | console.log("🚀 Починаю збір файлів для аналізу оптимізації та пагінації...\n");
+ 24 | 
+ 25 | filesToCollect.forEach((filePath) => {
+ 26 |   if (!fs.existsSync(filePath)) {
+ 27 |     console.warn(`[!] Файл не знайдено: ${filePath}`);
+ 28 |     return;
+ 29 |   }
+ 30 | 
+ 31 |   const content = fs.readFileSync(filePath, "utf-8");
+ 32 |   const ext = path.extname(filePath).replace(".", "");
+ 33 | 
+ 34 |   let lang = ext;
+ 35 |   if (["ts", "tsx"].includes(ext)) lang = "typescript";
+ 36 |   if (ext === "prisma") lang = "prisma";
+ 37 | 
+ 38 |   const mdBlock = `### \`${filePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`;
+ 39 |   fs.appendFileSync(outputFile, mdBlock);
+ 40 |   console.log(`[+] Додано: ${filePath}`);
+ 41 |   collectedCount++;
+ 42 | });
+ 43 | 
+ 44 | console.log(`\n✅ Готово! Зібрано ${collectedCount} файлів у ${outputFile}`);
+ 45 | 
 ```
 
 ### File: package.json

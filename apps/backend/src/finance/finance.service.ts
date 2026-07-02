@@ -1,19 +1,19 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-@Injectable()
-interface FinanceKpi {
+import { Injectable } from '@nestjs/common/decorators/core/injectable.decorator';
+export interface FinanceKpi {
   totalRevenue: number;
   totalExpenses: number;
   totalProfit: number;
   totalEvents: number;
 }
 
-interface FinanceFilterOptions {
+export interface FinanceFilterOptions {
   projects: string[];
   cities: { id: string; name: string }[];
 }
 
-interface FinanceDashboardResult {
+export interface FinanceDashboardResult {
   kpi: FinanceKpi;
   monthly: { month: string; revenue: number; profit: number }[];
   expectedRevenue: number;
@@ -38,6 +38,7 @@ interface FinanceDashboardResult {
   }[];
 }
 
+@Injectable()
 export class FinanceService {
   private cache = new Map<string, { data: unknown; expiresAt: number }>();
 
@@ -86,7 +87,7 @@ export class FinanceService {
     return { balance: user?.balance?.toNumber() ?? 0, name: user?.name ?? '' };
   }
 
- async getDashboard({
+  async getDashboard({
     period,
     cityId,
     project,

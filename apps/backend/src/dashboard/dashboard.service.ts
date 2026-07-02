@@ -283,15 +283,14 @@ export class DashboardService {
       ? Prisma.sql`AND s."cityId" = ${cityId}`
       : Prisma.empty;
 
-    const rows = await this.prisma.$queryRaw;
-    {
-      id: string;
-      name: string;
-      status: string;
-      lastActivity: Date | null;
-    }
-    [] >
-      Prisma.sql`
+    const rows = await this.prisma.$queryRaw<
+      {
+        id: string;
+        name: string;
+        status: string | null;
+        lastActivity: Date | null;
+      }[]
+    >(Prisma.sql`
       SELECT s.id, s.name, latest.status, "lastHist"."createdAt" as "lastActivity"
       FROM "School" s
       JOIN LATERAL (
@@ -310,7 +309,7 @@ export class DashboardService {
       ${cityCondition}
       ORDER BY "lastHist"."createdAt" ASC NULLS FIRST
       LIMIT 10
-    `;
+    `);
 
     return rows.map((school) => {
       const daysStale = school.lastActivity
