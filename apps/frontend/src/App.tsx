@@ -92,7 +92,7 @@ function AppRoutes() {
           path="/"
           element={
             isAuthenticated ? (
-              <Layout onLogout={handleLogout} />
+              <Layout />
             ) : (
               <Navigate to="/login" replace />
             )

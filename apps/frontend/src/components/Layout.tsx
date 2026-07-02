@@ -1,62 +1,23 @@
-import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { jwtDecode } from "jwt-decode";
+import { Link, Outlet, useLocation } from "react-router-dom";
+import { useState } from "react";
 import { useSelectedCity } from "../context/CityContext";
 import { useQueryClient } from "@tanstack/react-query";
-
-interface UserInfo {
-  name: string;
-  role: string;
-}
+import { useAuth } from "../context/AuthContext";
 
 export default function Layout() {
   const location = useLocation();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [user, setUser] = useState<UserInfo | null>(null);
+  const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("user");
-      if (raw) setUserRole(JSON.parse(raw).role);
-    } catch {}
-  }, []);
 
-  const is = (roles: string[]) => !!userRole && roles.includes(userRole);
+  const is = (roles: string[]) => !!user?.role && roles.includes(user.role);
   const { selectedCity } = useSelectedCity();
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("user");
-      if (raw) setUser(JSON.parse(raw));
-    } catch {
-    }
-  }, []);
-
-  const token = localStorage.getItem("token");
-  let isSuperAdmin = false;
-
-  interface DecodedToken {
-    role: string;
-  }
-
-  if (token) {
-    try {
-      const decoded = jwtDecode<DecodedToken>(token);
-      isSuperAdmin = decoded.role === "SUPERADMIN";
-    } catch (error) {
-      console.error("Не вдалося розкодувати токен:", error);
-    }
-  }
 
   const isActive = (path: string) => location.pathname.startsWith(path);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     queryClient.clear();
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    // navigate("/login");
     window.location.href = "/login";
   };
 
@@ -191,10 +152,24 @@ export default function Layout() {
             </div>
             <button
               onClick={handleLogout}
-              className="text-slate-500 hover:text-slate-300 transition-colors text-xs ml-2 shrink-0 p-2"
+              className="flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-colors text-xs font-medium ml-2 shrink-0 px-2.5 py-2 rounded-lg"
               title="Вийти"
             >
-              ⬅️
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-4 h-4"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              Вийти
             </button>
           </div>
         </div>
