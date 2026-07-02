@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -65,7 +65,9 @@ const PIPELINE_STAGES = [
 
 export default function SchoolProfile() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const qc = useQueryClient();
+  const [isLeavingPage, setIsLeavingPage] = useState(false);
 
   const { data: schoolRaw } = useSchool(id);
   const { data: eventsRaw = [] } = useSchoolEvents(id, false);
@@ -323,12 +325,12 @@ export default function SchoolProfile() {
         eventId: currentEvent.id,
         reportData,
       });
+      setIsLeavingPage(true);
       setTimeout(() => {
-        setSelectedEventId(null);
-        setExitingEventId(null);
-      }, 500);
+        navigate("/schools");
+      }, 300);
     },
-    [currentEvent, submitReportMutation],
+    [currentEvent, submitReportMutation, navigate],
   );
 
   const handleAssignCrew = useCallback(
@@ -376,7 +378,11 @@ export default function SchoolProfile() {
   });
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8">
+    <motion.div
+      animate={{ opacity: isLeavingPage ? 0 : 1 }}
+      transition={{ duration: 0.3 }}
+      className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8"
+    >
       <SchoolProfileHeader
         schoolData={schoolData}
         onEdit={() => setIsEditModalOpen(true)}
@@ -707,6 +713,6 @@ export default function SchoolProfile() {
         onClose={() => setSelectedReportEvent(null)}
         event={selectedReportEvent}
       />
-    </div>
+    </motion.div>
   );
 }

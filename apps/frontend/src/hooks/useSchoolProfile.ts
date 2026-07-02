@@ -3,7 +3,6 @@ import { api } from "../config/api";
 import type {
   Event,
   EventHistory,
-  User,
   SchoolProfileData,
   CreateEventPayload,
 } from "../types";
@@ -71,16 +70,7 @@ export function useEventFull(eventId: string | undefined) {
   });
 }
 
-export function useUsers() {
-  return useQuery({
-    queryKey: ["users"],
-    queryFn: async () => {
-      const res = await api.get<User[]>("/users", { headers: authHeader() });
-      return res.data;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-}
+export { useUsers } from "./useEmployees";
 
 export function useUpdateEventStatus() {
   const qc = useQueryClient();
