@@ -6,8 +6,13 @@ import cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(cookieParser());
+  const allowedOrigins = (process.env.FRONTEND_URL ?? '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL, // напр. https://crm-tau-nine.vercel.app
+    origin: allowedOrigins,
     credentials: true,
   });
   app.useGlobalPipes(

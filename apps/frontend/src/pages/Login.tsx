@@ -5,10 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../config/api";
 
 const CIRCLE_VARIANTS = {
-  hidden: { clipPath: "circle(0% at 50% 50%)" },
+  hidden: { scale: 0, opacity: 1 },
   visible: {
-    clipPath: "circle(150% at 50% 50%)",
-    transition: { duration: 0.7, ease: [0.76, 0, 0.24, 1] },
+    scale: 1,
+    transition: { duration: 0.6, ease: [0.76, 0, 0.24, 1] },
   },
 };
 
@@ -60,7 +60,13 @@ export default function Login({ onLogin }: LoginProps) {
             initial="hidden"
             animate="visible"
             onAnimationComplete={proceedAfterLogin}
-            className="fixed inset-0 z-50 bg-blue-600"
+            style={{
+              width: "300vmax",
+              height: "300vmax",
+              borderRadius: "9999px",
+              willChange: "transform",
+            }}
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-blue-600"
           />
         )}
       </AnimatePresence>
