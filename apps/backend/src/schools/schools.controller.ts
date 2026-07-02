@@ -63,7 +63,7 @@ export class SchoolsController {
 
   @Get('search')
   search(@Query() query: FindSchoolsQueryDto) {
-    return this.parserService.searchSchools(query.q, query.type);
+    return this.parserService.searchSchools(query.q ?? '', query.type);
   }
 
   @Get(':id')
@@ -86,6 +86,6 @@ export class SchoolsController {
 
   @Get('contacts/search')
   searchContacts(@Query() query: FindContactsQueryDto) {
-    return this.schoolsService.searchContacts(query.q, query.city);
+    return this.schoolsService.searchContacts(query.q ?? '', query.city);
   }
 }

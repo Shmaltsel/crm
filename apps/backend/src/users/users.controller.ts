@@ -42,16 +42,4 @@ export class UsersController {
   remove(@Param('id') id: string) {
     return this.usersService.deleteUser(id);
   }
-
-  @Get('seed')
-  @Roles('SUPERADMIN')
-  seedAdmin() {
-    return this.usersService.seedAdmin();
-  }
-
-  @Get('seed-vasya')
-  @Roles('SUPERADMIN')
-  seedVasya() {
-    return this.usersService.seedVasya();
-  }
 }

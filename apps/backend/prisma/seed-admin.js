@@ -4,8 +4,16 @@ const bcrypt = require('bcrypt');
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = 'admin@crm.com';
-  const password = 'admin123';
+  const email = process.env.SEED_ADMIN_EMAIL;
+  const password = process.env.SEED_ADMIN_PASSWORD;
+
+  if (!email || !password) {
+    console.error(
+      'Помилка: SEED_ADMIN_EMAIL та SEED_ADMIN_PASSWORD мають бути задані в .env',
+    );
+    process.exit(1);
+  }
+
   const hashedPassword = await bcrypt.hash(password, 10);
 
   console.log('Починаю створення адміна...');
