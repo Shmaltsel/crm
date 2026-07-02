@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { api } from "../../../config/api";
-import type { City, CityProfile, Crew } from "../../../types";
-
+import type { City, CityProfile } from "../../../types";
+import { useQuery } from "@tanstack/react-query";
 interface CrewModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -15,23 +15,23 @@ export default function CrewModal({
   city,
   onSave,
 }: CrewModalProps) {
-  const [crews, setCrews] = useState<Crew[]>([]);
-  const [selectedCrewId, setSelectedCrewId] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: allCities = [] } = useQuery({
+    queryKey: ["cities"],
+    queryFn: () => api.get("/cities").then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    if (isOpen && city) {
-      api.get<City[]>("/cities").then((res) => {
-        const currentCity = res.data.find((c) => c.name === city);
-        if (currentCity) {
-          api.get<CityProfile>(`/cities/${currentCity.id}`).then((cityRes) => {
-            setCrews(cityRes.data.crews || []);
-            setIsLoading(false);
-          });
-        }
-      });
-    }
-  }, [isOpen, city]);
+  const currentCity = allCities.find((c: City) => c.name === city);
+  const { data: cityProfile, isLoading } = useQuery({
+    queryKey: ["cityProfile", currentCity?.id],
+    queryFn: () =>
+      api.get<CityProfile>(`/cities/${currentCity!.id}`).then((r) => r.data),
+    enabled: !!currentCity?.id && isOpen,
+    staleTime: 60 * 1000,
+  });
+
+  const crews = cityProfile?.crews || [];
+  const [selectedCrewId, setSelectedCrewId] = useState("");
 
   if (!isOpen) return null;
 
@@ -109,7 +109,7 @@ export default function CrewModal({
             <button
               onClick={() => onSave(selectedCrewId)}
               disabled={!selectedCrewId}
-              className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+              className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-opacity"
             >
               Призначити
             </button>
