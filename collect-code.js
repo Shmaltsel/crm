@@ -1,27 +1,26 @@
 const fs = require("fs");
 const path = require("path");
 
-const outputFile = "combined_performance_files.md";
+const outputFile = "combined_security_audit.md";
 
-fs.writeFileSync(
-  outputFile,
-  "# Файли Dashboard, Schools, Events та Prisma Schema\n\n",
-);
+fs.writeFileSync(outputFile, "# Файли Auth, Security та Prisma Schema\n\n");
 
 const filesToCollect = [
-  "apps/backend/src/dashboard/dashboard.service.ts",
-  "apps/backend/src/dashboard/dashboard.module.ts",
-  "apps/backend/src/dashboard/dashboard.controller.ts",
   "apps/backend/prisma/schema.prisma",
-  "apps/backend/src/schools/schools.service.ts",
-  "apps/backend/src/common/dto/page-meta.dto.ts",
-  "apps/backend/src/common/dto/page-options.dto.ts",
-  "apps/backend/src/events/events.service.ts",
+  "apps/backend/src/auth/auth.module.ts",
+  "apps/backend/src/auth/auth.service.ts",
+  "apps/backend/src/auth/auth.controller.ts",
+  "apps/backend/src/auth/auth.guard.ts",
+  "apps/backend/src/auth/interfaces/jwt-user.interface.ts",
+  "apps/backend/src/auth/dto/login.dto.ts",
+  "apps/backend/src/main.ts",
+  "apps/backend/src/app.module.ts",
+  "apps/backend/package.json",
 ];
 
 let collectedCount = 0;
 
-console.log("🚀 Починаю збір файлів для аналізу оптимізації та пагінації...\n");
+console.log("🚀 Починаю збір файлів для Security & Audit...\n");
 
 filesToCollect.forEach((filePath) => {
   if (!fs.existsSync(filePath)) {
@@ -35,6 +34,7 @@ filesToCollect.forEach((filePath) => {
   let lang = ext;
   if (["ts", "tsx"].includes(ext)) lang = "typescript";
   if (ext === "prisma") lang = "prisma";
+  if (ext === "json") lang = "json";
 
   const mdBlock = `### \`${filePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`;
   fs.appendFileSync(outputFile, mdBlock);
