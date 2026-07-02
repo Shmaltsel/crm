@@ -56,7 +56,8 @@ export default function Layout() {
     queryClient.clear();
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    navigate("/login");
+    // navigate("/login");
+    window.location.href = "/login";
   };
 
   const handleLinkClick = () => {
