@@ -12,6 +12,7 @@ import {
 import { useCities } from "../hooks/useCities";
 import PhoneLink from "../components/PhoneLink";
 import { useSelectedCity } from "../context/CityContext";
+import { useAuth } from "../context/AuthContext";
 
 type Role = "MANAGER" | "DRIVER" | "HOST" | "SUPERADMIN" | "GUEST";
 
@@ -138,14 +139,8 @@ export default function Employees() {
 
   const { selectedCity } = useSelectedCity();
 
-  const [userRole] = useState<string | null>(() => {
-    try {
-      return JSON.parse(localStorage.getItem("user") || "null")?.role ?? null;
-    } catch {
-      return null;
-    }
-  });
-  const isSuperAdmin = userRole === "SUPERADMIN";
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === "SUPERADMIN";
 
   const cityFilteredUsers = selectedCity.id
     ? users.filter((u) => u.cityId === selectedCity.id)
