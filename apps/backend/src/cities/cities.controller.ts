@@ -36,6 +36,11 @@ export class CitiesController {
   findOne(@Param('id') id: string) {
     return this.citiesService.findOne(id);
   }
+
+  @Get(':id/crews')
+  findCrews(@Param('id') id: string) {
+    return this.citiesService.findCrews(id);
+  }
   @Post(':id/crews')
   @Roles('SUPERADMIN', 'MANAGER')
   @UseGuards(OwnershipGuard)

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api } from "../../../config/api";
-import type { City, CityProfile } from "../../../types";
+import type { City, Crew } from "../../../types";
 import { useQuery } from "@tanstack/react-query";
 interface CrewModalProps {
   isOpen: boolean;
@@ -22,15 +22,13 @@ export default function CrewModal({
   });
 
   const currentCity = allCities.find((c: City) => c.name === city);
-  const { data: cityProfile, isLoading } = useQuery({
-    queryKey: ["cityProfile", currentCity?.id],
+  const { data: crews = [], isLoading } = useQuery({
+    queryKey: ["cityCrews", currentCity?.id],
     queryFn: () =>
-      api.get<CityProfile>(`/cities/${currentCity!.id}`).then((r) => r.data),
+      api.get<Crew[]>(`/cities/${currentCity!.id}/crews`).then((r) => r.data),
     enabled: !!currentCity?.id && isOpen,
     staleTime: 60 * 1000,
   });
-
-  const crews = cityProfile?.crews || [];
   const [selectedCrewId, setSelectedCrewId] = useState("");
 
   if (!isOpen) return null;

@@ -77,6 +77,16 @@ export class CitiesService {
     return this.prisma.crew.delete({ where: { id } });
   }
 
+  async findCrews(cityId: string) {
+    return this.prisma.crew.findMany({
+      where: { cityId },
+      include: {
+        host: { select: { id: true, name: true } },
+        driver: { select: { id: true, name: true } },
+      },
+    });
+  }
+
   async findOne(id: string) {
     const city = await this.prisma.city.findUnique({
       where: { id },

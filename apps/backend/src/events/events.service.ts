@@ -177,10 +177,11 @@ export class EventsService {
       this.logger.log(`[assignCrew] hostChatId resolved=${hostChatId}`);
 
       if (hostChatId) {
-        await this.telegramService.sendMessage(
-          hostChatId,
-          buildMessage('ведучий'),
-        );
+        this.telegramService
+          .sendMessage(hostChatId, buildMessage('ведучий'))
+          .catch((e) =>
+            this.logger.warn(`[assignCrew] Telegram send failed: ${e}`),
+          );
       } else {
         this.logger.warn(
           `[assignCrew] Не вдалося надіслати повідомлення ведучому ${hostId}: chatId не знайдено (користувач не натиснув /start?)`,
@@ -193,34 +194,14 @@ export class EventsService {
       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
 
       if (driverChatId) {
-        await this.telegramService.sendMessage(
-          driverChatId,
-          buildMessage('водій'),
-        );
+        this.telegramService
+          .sendMessage(driverChatId, buildMessage('водій'))
+          .catch((e) =>
+            this.logger.warn(`[assignCrew] Telegram send failed: ${e}`),
+          );
       } else {
         this.logger.warn(
           `[assignCrew] Не вдалося надіслати повідомлення водію ${driverId}: chatId не знайдено`,
-        );
-      }
-    }
-
-    if (driverId) {
-      const driver = await this.prisma.user.findUnique({
-        where: { id: driverId },
-      });
-      this.logger.log(
-        `[assignCrew] driver=${JSON.stringify({ name: driver?.name, telegramId: driver?.telegramId, telegramChatId: driver?.telegramChatId })}`,
-      );
-      const driverChatId =
-        driver?.telegramChatId ||
-        (driver?.telegramId && /^\d+$/.test(driver.telegramId)
-          ? driver.telegramId
-          : null);
-      this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
-      if (driverChatId) {
-        await this.telegramService.sendMessage(
-          driverChatId,
-          buildMessage('водій'),
         );
       }
     }
