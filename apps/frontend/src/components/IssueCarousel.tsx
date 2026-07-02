@@ -36,7 +36,24 @@ export default function IssueCarousel() {
   const updateStatusMutation = useMutation({
     mutationFn: (data: { id: string; status: string }) =>
       api.patch(`/issues/${data.id}/status`, { status: data.status }),
-    onSuccess: () => {
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ["issues", selectedCity?.id] });
+      const prev = qc.getQueryData(["issues", selectedCity?.id]);
+      qc.setQueryData(["issues", selectedCity?.id], (old: any[] | undefined) =>
+        Array.isArray(old)
+          ? old
+              .map((i) =>
+                i.id === vars.id ? { ...i, status: vars.status } : i,
+              )
+              .filter((i) => i.status !== "Виконано")
+          : old,
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["issues", selectedCity?.id], ctx.prev);
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ["issues", selectedCity?.id] });
     },
   });
@@ -88,7 +105,7 @@ export default function IssueCarousel() {
               className={`transition-all duration-500 ease-in-out overflow-hidden transform origin-left ${
                 isExiting
                   ? "w-0 min-w-0 mr-0 opacity-0 pointer-events-none"
-                 : "w-[300px] min-w-[300px] mr-4 opacity-100 shrink-0"
+                  : "w-[300px] min-w-[300px] mr-4 opacity-100 shrink-0"
               }`}
             >
               {/* Внутрішній контейнер має фіксовану ширину, щоб текст не ламався */}
