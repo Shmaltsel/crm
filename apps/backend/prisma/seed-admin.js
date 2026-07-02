@@ -8,10 +8,17 @@ async function main() {
   const email = process.env.SEED_ADMIN_EMAIL;
   const password = process.env.SEED_ADMIN_PASSWORD;
 
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   if (!email || !password) {
     console.error(
       'Помилка: SEED_ADMIN_EMAIL та SEED_ADMIN_PASSWORD мають бути задані в .env',
     );
+    process.exit(1);
+  }
+
+  if (!emailPattern.test(email)) {
+    console.error(`Помилка: SEED_ADMIN_EMAIL "${email}" не є валідним email`);
     process.exit(1);
   }
 

@@ -1,5 +1,8 @@
 import * as Joi from 'joi';
 
+const stripQuotes = (value: string) =>
+  typeof value === 'string' ? value.replace(/^["']|["']$/g, '') : value;
+
 export const envValidationSchema = Joi.object({
   NODE_ENV: Joi.string()
     .valid('development', 'production', 'test')
@@ -17,6 +20,12 @@ export const envValidationSchema = Joi.object({
       then: Joi.required(),
       otherwise: Joi.optional().default('super-secret-key-for-dev'),
     }),
-  SEED_ADMIN_EMAIL: Joi.string().email().allow('').optional(),
-  SEED_ADMIN_PASSWORD: Joi.string().allow('').optional(),
+  SEED_ADMIN_EMAIL: Joi.string()
+    .allow('')
+    .optional()
+    .custom((value) => stripQuotes(value)),
+  SEED_ADMIN_PASSWORD: Joi.string()
+    .allow('')
+    .optional()
+    .custom((value) => stripQuotes(value)),
 });
