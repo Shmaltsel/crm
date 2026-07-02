@@ -2,6 +2,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useSelectedCity } from "../context/CityContext";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface UserInfo {
   name: string;
@@ -11,6 +12,7 @@ interface UserInfo {
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<UserInfo | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -51,6 +53,7 @@ export default function Layout() {
   const isActive = (path: string) => location.pathname.startsWith(path);
 
   const handleLogout = () => {
+    queryClient.clear();
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     navigate("/login");
