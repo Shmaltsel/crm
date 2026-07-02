@@ -75,14 +75,13 @@ function AppRoutes() {
   return (
     <CityProvider>
       <Routes>
-        {/* Публічний маршрут: Логін */}
         <Route
           path="/login"
           element={
             !isAuthenticated ? (
               <Login onLogin={handleLogin} />
             ) : (
-              <Navigate to="/cities" replace />
+              <Navigate to="/dashboard" replace />
             )
           }
         />
@@ -91,15 +90,10 @@ function AppRoutes() {
         <Route
           path="/"
           element={
-            isAuthenticated ? (
-              <Layout />
-            ) : (
-              <Navigate to="/login" replace />
-            )
+            isAuthenticated ? <Layout /> : <Navigate to="/login" replace />
           }
         >
-          {/* Редірект з кореня на сторінку міст за замовчуванням */}
-          <Route index element={<Navigate to="/schools" replace />} />
+          <Route index element={<Navigate to="/dashboard" replace />} />
 
           {/* Обгортаємо всі вкладені маршрути в Suspense. 
               Коли React намагається відрендерити "ліниву" сторінку, він показує fallback (PageLoader), 

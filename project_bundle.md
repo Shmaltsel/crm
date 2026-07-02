@@ -2,6 +2,9 @@
 
 ## Structure
 ```
+├── .github
+│   └── workflows
+│       └── secrets-scan.yml
 ├── .gitignore
 ├── README.md
 ├── apps
@@ -41,6 +44,8 @@
 │   │   │   │   ├── 20260701235202_preparation_status_enum
 │   │   │   │   │   └── migration.sql
 │   │   │   │   ├── 20260702123544_add_performance_indexes
+│   │   │   │   │   └── migration.sql
+│   │   │   │   ├── 20260702175302_add_audit_log
 │   │   │   │   │   └── migration.sql
 │   │   │   │   └── migration_lock.toml
 │   │   │   ├── schema.prisma
@@ -86,6 +91,11 @@
 │   │   │   │   │   └── page-options.dto.ts
 │   │   │   │   ├── filters
 │   │   │   │   │   └── all-exceptions.filter.ts
+│   │   │   │   ├── guards
+│   │   │   │   │   └── user-throttler.guard.ts
+│   │   │   │   ├── interceptors
+│   │   │   │   │   ├── audit-log.interceptor.ts
+│   │   │   │   │   └── sanitize.interceptor.ts
 │   │   │   │   └── logger
 │   │   │   │       └── logger.module.ts
 │   │   │   ├── config
@@ -100,6 +110,7 @@
 │   │   │   │   │   ├── add-comment.dto.ts
 │   │   │   │   │   ├── assign-crew.dto.ts
 │   │   │   │   │   ├── create-event.dto.ts
+│   │   │   │   │   ├── event-query.dto.ts
 │   │   │   │   │   ├── reschedule-event.dto.ts
 │   │   │   │   │   ├── submit-report.dto.spec.ts
 │   │   │   │   │   ├── submit-report.dto.ts
@@ -293,8 +304,8 @@
 │       ├── vercel.json
 │       └── vite.config.ts
 ├── collect-code.js
-├── combined_core_config.md
 ├── combined_performance_files.md
+├── combined_security_audit.md
 ├── package.json
 ├── packages
 │   └── shared
@@ -369,65 +380,67 @@
  45 |     "passport-jwt": "^4.0.1",
  46 |     "pino-http": "^11.0.0",
  47 |     "reflect-metadata": "^0.2.2",
- 48 |     "rxjs": "^7.8.1"
- 49 |   },
- 50 |   "devDependencies": {
- 51 |     "@eslint/eslintrc": "^3.2.0",
- 52 |     "@eslint/js": "^9.18.0",
- 53 |     "@nestjs/cli": "^11.0.0",
- 54 |     "@nestjs/schematics": "^11.0.0",
- 55 |     "@nestjs/testing": "^11.0.1",
- 56 |     "@types/bcrypt": "^6.0.0",
- 57 |     "@types/cookie-parser": "^1.4.10",
- 58 |     "@types/express": "^5.0.0",
- 59 |     "@types/jest": "^29.0.0",
- 60 |     "@types/node": "^24.0.0",
- 61 |     "@types/node-telegram-bot-api": "^0.64.15",
- 62 |     "@types/passport-jwt": "^4.0.1",
- 63 |     "@types/supertest": "^7.0.0",
- 64 |     "eslint": "^9.18.0",
- 65 |     "eslint-config-prettier": "^10.0.1",
- 66 |     "eslint-plugin-prettier": "^5.2.2",
- 67 |     "globals": "^17.0.0",
- 68 |     "jest": "^29.0.0",
- 69 |     "jest-mock-extended": "^3.0.0",
- 70 |     "pino-pretty": "^13.0.0",
- 71 |     "prettier": "^3.4.2",
- 72 |     "prisma": "6.19.0",
- 73 |     "source-map-support": "^0.5.21",
- 74 |     "supertest": "^7.0.0",
- 75 |     "ts-jest": "^29.2.5",
- 76 |     "ts-loader": "^9.5.2",
- 77 |     "ts-node": "^10.9.2",
- 78 |     "tsconfig-paths": "^4.2.0",
- 79 |     "typescript": "^5.7.3",
- 80 |     "typescript-eslint": "^8.20.0"
- 81 |   },
- 82 |   "jest": {
- 83 |     "moduleFileExtensions": [
- 84 |       "js",
- 85 |       "json",
- 86 |       "ts"
- 87 |     ],
- 88 |     "rootDir": "src",
- 89 |     "testRegex": ".*\\.spec\\.ts$",
- 90 |     "transform": {
- 91 |       "^.+\\.(t|j)s$": "ts-jest"
- 92 |     },
- 93 |     "collectCoverageFrom": [
- 94 |       "**/*.(t|j)s"
- 95 |     ],
- 96 |     "coverageDirectory": "../coverage",
- 97 |     "testEnvironment": "node",
- 98 |     "moduleNameMapper": {
- 99 |       "^src/(.*)$": "<rootDir>/$1"
-100 |     }
-101 |   },
-102 |   "prisma": {
-103 |     "schema": "prisma/schema.prisma"
-104 |   }
-105 | }
-106 | 
+ 48 |     "rxjs": "^7.8.1",
+ 49 |     "@nest-lab/throttler-storage-redis": "^1.0.0",
+ 50 |     "ioredis": "^5.4.1"
+ 51 |   },
+ 52 |   "devDependencies": {
+ 53 |     "@eslint/eslintrc": "^3.2.0",
+ 54 |     "@eslint/js": "^9.18.0",
+ 55 |     "@nestjs/cli": "^11.0.0",
+ 56 |     "@nestjs/schematics": "^11.0.0",
+ 57 |     "@nestjs/testing": "^11.0.1",
+ 58 |     "@types/bcrypt": "^6.0.0",
+ 59 |     "@types/cookie-parser": "^1.4.10",
+ 60 |     "@types/express": "^5.0.0",
+ 61 |     "@types/jest": "^29.0.0",
+ 62 |     "@types/node": "^24.0.0",
+ 63 |     "@types/node-telegram-bot-api": "^0.64.15",
+ 64 |     "@types/passport-jwt": "^4.0.1",
+ 65 |     "@types/supertest": "^7.0.0",
+ 66 |     "eslint": "^9.18.0",
+ 67 |     "eslint-config-prettier": "^10.0.1",
+ 68 |     "eslint-plugin-prettier": "^5.2.2",
+ 69 |     "globals": "^17.0.0",
+ 70 |     "jest": "^29.0.0",
+ 71 |     "jest-mock-extended": "^3.0.0",
+ 72 |     "pino-pretty": "^13.0.0",
+ 73 |     "prettier": "^3.4.2",
+ 74 |     "prisma": "6.19.0",
+ 75 |     "source-map-support": "^0.5.21",
+ 76 |     "supertest": "^7.0.0",
+ 77 |     "ts-jest": "^29.2.5",
+ 78 |     "ts-loader": "^9.5.2",
+ 79 |     "ts-node": "^10.9.2",
+ 80 |     "tsconfig-paths": "^4.2.0",
+ 81 |     "typescript": "^5.7.3",
+ 82 |     "typescript-eslint": "^8.20.0"
+ 83 |   },
+ 84 |   "jest": {
+ 85 |     "moduleFileExtensions": [
+ 86 |       "js",
+ 87 |       "json",
+ 88 |       "ts"
+ 89 |     ],
+ 90 |     "rootDir": "src",
+ 91 |     "testRegex": ".*\\.spec\\.ts$",
+ 92 |     "transform": {
+ 93 |       "^.+\\.(t|j)s$": "ts-jest"
+ 94 |     },
+ 95 |     "collectCoverageFrom": [
+ 96 |       "**/*.(t|j)s"
+ 97 |     ],
+ 98 |     "coverageDirectory": "../coverage",
+ 99 |     "testEnvironment": "node",
+100 |     "moduleNameMapper": {
+101 |       "^src/(.*)$": "<rootDir>/$1"
+102 |     }
+103 |   },
+104 |   "prisma": {
+105 |     "schema": "prisma/schema.prisma"
+106 |   }
+107 | }
+108 | 
 ```
 
 ### File: apps/backend/prisma/schema.prisma
@@ -443,271 +456,303 @@
   8 | }
   9 | 
  10 | model User {
- 11 |   id             String       @id @default(uuid())
+ 11 |   id             String         @id @default(uuid())
  12 |   name           String
- 13 |   email          String       @unique
+ 13 |   email          String         @unique
  14 |   phone          String?
  15 |   password       String
- 16 |   role           UserRole     @default(MANAGER)
+ 16 |   role           UserRole       @default(MANAGER)
  17 |   cityId         String?
- 18 |   createdAt      DateTime     @default(now())
- 19 |   updatedAt      DateTime     @updatedAt
+ 18 |   createdAt      DateTime       @default(now())
+ 19 |   updatedAt      DateTime       @updatedAt
  20 |   telegramId     String?
  21 |   telegramChatId String?
  22 |   car            String?
- 23 |   balance        Decimal      @default(0) @db.Decimal(12, 2)
- 24 |   managedCities  City[]       @relation("CityManager")
- 25 |   crewAsDriver   Crew[]       @relation("DriverCrew")
- 26 |   crewAsHost     Crew[]       @relation("HostCrew")
- 27 |   city           City?        @relation(fields: [cityId], references: [id])
- 28 |   salaryItems    SalaryItem[]
- 29 | 
- 30 |   @@index([role])
- 31 |   @@index([cityId])
- 32 | }
- 33 | 
- 34 | model City {
- 35 |   id        String        @id @default(uuid())
- 36 |   name      String
- 37 |   managerId String?
- 38 |   createdAt DateTime      @default(now())
- 39 |   manager   User?         @relation("CityManager", fields: [managerId], references: [id])
- 40 |   crews     Crew[]
- 41 |   events    Event[]
- 42 |   issues    IssueReport[]
- 43 |   schools   School[]
- 44 |   users     User[]
- 45 | }
- 46 | 
- 47 | model School {
- 48 |   id            String   @id @default(uuid())
- 49 |   name          String
- 50 |   type          String
- 51 |   cityId        String
- 52 |   address       String?
- 53 |   director      String?
- 54 |   phone         String?
- 55 |   email         String?
- 56 |   notes         String?
- 57 |   childrenCount Int?
- 58 |   isHotClient   Boolean  @default(false)
- 59 |   rating        Float?
- 60 |   createdAt     DateTime @default(now())
- 61 |   updatedAt     DateTime @updatedAt
- 62 |   events        Event[]
- 63 |   city          City     @relation(fields: [cityId], references: [id])
- 64 | 
- 65 |   @@index([cityId])
- 66 |   @@index([updatedAt, cityId])
- 67 | }
- 68 | 
- 69 | model Crew {
- 70 |   id        String   @id @default(uuid())
- 71 |   name      String
- 72 |   cityId    String
- 73 |   hostId    String?
- 74 |   driverId  String?
- 75 |   car       String?
- 76 |   carPlate  String?
- 77 |   phone     String?
- 78 |   isActive  Boolean  @default(true)
- 79 |   createdAt DateTime @default(now())
- 80 |   city      City     @relation(fields: [cityId], references: [id])
- 81 |   driver    User?    @relation("DriverCrew", fields: [driverId], references: [id])
- 82 |   host      User?    @relation("HostCrew", fields: [hostId], references: [id])
- 83 |   events    Event[]
- 84 | }
- 85 | 
- 86 | model Event {
- 87 |   id              String            @id @default(uuid())
- 88 |   cityId          String
- 89 |   schoolId        String
- 90 |   crewId          String?
- 91 |   project         String
- 92 |   date            DateTime
- 93 |   time            String?
- 94 |   status          EventStatus       @default(BASE)
- 95 |   childrenPlanned Int?
- 96 |   childrenActual  Int?
- 97 |   price           Float?
- 98 |   received        Float?
- 99 |   paymentMethod   String?
-100 |   address         String?
-101 |   contactPerson   String?
-102 |   contactPhone    String?
-103 |   equipment       String?
-104 |   nextContact     DateTime?
-105 |   nextProject     String?
-106 |   responsibleId   String?
-107 |   createdAt       DateTime          @default(now())
-108 |   updatedAt       DateTime          @updatedAt
-109 |   city            City              @relation(fields: [cityId], references: [id])
-110 |   crew            Crew?             @relation(fields: [crewId], references: [id])
-111 |   school          School            @relation(fields: [schoolId], references: [id])
-112 |   history         EventHistory[]
-113 |   preparation     EventPreparation?
-114 |   report          EventReport?
-115 |   files           File[]
-116 |   issues          IssueReport[]
-117 | 
-118 |   @@index([cityId])
-119 |   @@index([status])
-120 |   @@index([schoolId])
-121 |   @@index([date, status, cityId])
-122 | }
-123 | 
-124 | model EventReport {
-125 |   id                String        @id @default(uuid())
-126 |   eventId           String        @unique
-127 |   directorSatisfied Boolean?
-128 |   teachersSatisfied Boolean?
-129 |   hadIssues         Boolean       @default(false)
-130 |   comment           String?
-131 |   rating            Float?
-132 |   createdAt         DateTime      @default(now())
-133 |   announcementDone  Boolean       @default(false)
-134 |   materialShown     Boolean       @default(false)
-135 |   childrenCount     Int           @default(0)
-136 |   classesCount      Int           @default(0)
-137 |   privilegedCount   Int           @default(0)
-138 |   showingsCount     Int           @default(0)
-139 |   totalSum          Float         @default(0)
-140 |   schoolSum         Float         @default(0)
-141 |   remainderSum      Float         @default(0)
-142 |   event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-143 |   photos            File[]
-144 |   expenseItems      ExpenseItem[]
-145 |   salaryItems       SalaryItem[]
-146 | }
-147 | 
-148 | model File {
-149 |   id        String       @id @default(uuid())
-150 |   name      String
-151 |   url       String
-152 |   size      Int
-153 |   eventId   String?
-154 |   reportId  String?
-155 |   createdAt DateTime     @default(now())
-156 |   event     Event?       @relation(fields: [eventId], references: [id])
-157 |   report    EventReport? @relation(fields: [reportId], references: [id])
-158 | }
-159 | 
-160 | model EventHistory {
-161 |   id        String   @id @default(uuid())
-162 |   eventId   String
-163 |   action    String
-164 |   comment   String?
-165 |   userId    String
-166 |   userName  String
-167 |   role      String
-168 |   createdAt DateTime @default(now())
-169 |   event     Event    @relation(fields: [eventId], references: [id])
-170 | 
-171 |   @@index([eventId, createdAt])
-172 | }
-173 | 
-174 | model EventPreparation {
-175 |   id               String            @id @default(uuid())
-176 |   eventId          String            @unique
-177 |   assignCrew       PreparationStatus @default(PLANNED)
-178 |   bookEquipment    PreparationStatus @default(PLANNED)
-179 |   prepareDocs      PreparationStatus @default(PLANNED)
-180 |   prepareMaterials PreparationStatus @default(PLANNED)
-181 |   remindSchool     PreparationStatus @default(PLANNED)
-182 |   event            Event             @relation(fields: [eventId], references: [id])
-183 | }
-184 | 
-185 | model IssueReport {
-186 |   id               String    @id @default(uuid())
-187 |   eventId          String
-188 |   schoolName       String
-189 |   eventName        String
-190 |   message          String
-191 |   cityId           String
-192 |   status           String    @default("Планується")
-193 |   createdAt        DateTime  @default(now())
-194 |   deadline         DateTime?
-195 |   assignedUserId   String?
-196 |   assignedUserName String?
-197 |   city             City      @relation(fields: [cityId], references: [id])
-198 |   event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-199 | 
-200 |   @@index([cityId])
-201 |   @@index([eventId])
-202 | }
-203 | 
-204 | model SchoolContact {
-205 |   id           String   @id @default(uuid())
-206 |   city         String   @default("Львів")
-207 |   schoolNumber String
-208 |   contactName  String
-209 |   phone        String
-210 |   role         String?
-211 |   createdAt    DateTime @default(now())
-212 | }
-213 | 
-214 | model Project {
-215 |   id        String   @id @default(uuid())
-216 |   name      String   @unique
-217 |   color     String   @default("blue")
-218 |   createdAt DateTime @default(now())
-219 | }
-220 | 
-221 | model ExpenseItem {
-222 |   id        String   @id @default(uuid())
-223 |   reportId  String
-224 |   category  String 
-225 |   name      String?
-226 |   amount    Decimal  @db.Decimal(12, 2)
-227 |   createdAt DateTime @default(now())
-228 | 
-229 |   report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-230 | 
-231 |   @@index([reportId])
-232 | }
-233 | 
-234 | model SalaryItem {
-235 |   id        String   @id @default(uuid())
-236 |   reportId  String
-237 |   userId    String?
-238 |   userName  String
-239 |   amount    Decimal  @db.Decimal(12, 2)
-240 |   role      String? 
-241 |   createdAt DateTime @default(now())
-242 | 
-243 |   report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-244 |   user   User?       @relation(fields: [userId], references: [id])
-245 | 
-246 |   @@index([reportId])
-247 |   @@index([userId])
-248 | }
-249 | 
-250 | enum UserRole {
-251 |   SUPERADMIN
-252 |   MANAGER
-253 |   HOST
-254 |   DRIVER
-255 | }
-256 | 
-257 | enum PreparationStatus {
-258 |   PLANNED
-259 |   IN_PROGRESS
-260 |   DONE
-261 | }
-262 | 
-263 | enum EventStatus {
-264 |   BASE
-265 |   FIRST_CONTACT
-266 |   INTERESTED
-267 |   PRE_APPROVAL
-268 |   DATE_CONFIRMED
-269 |   PREPARATION
-270 |   IN_PROGRESS
-271 |   DONE
-272 |   REPORT
-273 |   RE_SALE
-274 | }
-275 | 
+ 23 |   balance        Decimal        @default(0) @db.Decimal(12, 2)
+ 24 |   managedCities  City[]         @relation("CityManager")
+ 25 |   refreshTokens  RefreshToken[]
+ 26 |   crewAsDriver   Crew[]         @relation("DriverCrew")
+ 27 |   crewAsHost     Crew[]         @relation("HostCrew")
+ 28 |   city           City?          @relation(fields: [cityId], references: [id])
+ 29 |   salaryItems    SalaryItem[]
+ 30 | 
+ 31 |   @@index([role])
+ 32 |   @@index([cityId])
+ 33 | }
+ 34 | 
+ 35 | model City {
+ 36 |   id        String        @id @default(uuid())
+ 37 |   name      String
+ 38 |   managerId String?
+ 39 |   createdAt DateTime      @default(now())
+ 40 |   manager   User?         @relation("CityManager", fields: [managerId], references: [id])
+ 41 |   crews     Crew[]
+ 42 |   events    Event[]
+ 43 |   issues    IssueReport[]
+ 44 |   schools   School[]
+ 45 |   users     User[]
+ 46 | }
+ 47 | 
+ 48 | model School {
+ 49 |   id            String   @id @default(uuid())
+ 50 |   name          String
+ 51 |   type          String
+ 52 |   cityId        String
+ 53 |   address       String?
+ 54 |   director      String?
+ 55 |   phone         String?
+ 56 |   email         String?
+ 57 |   notes         String?
+ 58 |   childrenCount Int?
+ 59 |   isHotClient   Boolean  @default(false)
+ 60 |   rating        Float?
+ 61 |   createdAt     DateTime @default(now())
+ 62 |   updatedAt     DateTime @updatedAt
+ 63 |   events        Event[]
+ 64 |   city          City     @relation(fields: [cityId], references: [id])
+ 65 | 
+ 66 |   @@index([cityId])
+ 67 |   @@index([updatedAt, cityId])
+ 68 | }
+ 69 | 
+ 70 | model Crew {
+ 71 |   id        String   @id @default(uuid())
+ 72 |   name      String
+ 73 |   cityId    String
+ 74 |   hostId    String?
+ 75 |   driverId  String?
+ 76 |   car       String?
+ 77 |   carPlate  String?
+ 78 |   phone     String?
+ 79 |   isActive  Boolean  @default(true)
+ 80 |   createdAt DateTime @default(now())
+ 81 |   city      City     @relation(fields: [cityId], references: [id])
+ 82 |   driver    User?    @relation("DriverCrew", fields: [driverId], references: [id])
+ 83 |   host      User?    @relation("HostCrew", fields: [hostId], references: [id])
+ 84 |   events    Event[]
+ 85 | }
+ 86 | 
+ 87 | model Event {
+ 88 |   id              String            @id @default(uuid())
+ 89 |   cityId          String
+ 90 |   schoolId        String
+ 91 |   crewId          String?
+ 92 |   project         String
+ 93 |   date            DateTime
+ 94 |   time            String?
+ 95 |   status          EventStatus       @default(BASE)
+ 96 |   childrenPlanned Int?
+ 97 |   childrenActual  Int?
+ 98 |   price           Float?
+ 99 |   received        Float?
+100 |   paymentMethod   String?
+101 |   address         String?
+102 |   contactPerson   String?
+103 |   contactPhone    String?
+104 |   equipment       String?
+105 |   nextContact     DateTime?
+106 |   nextProject     String?
+107 |   responsibleId   String?
+108 |   createdAt       DateTime          @default(now())
+109 |   updatedAt       DateTime          @updatedAt
+110 |   city            City              @relation(fields: [cityId], references: [id])
+111 |   crew            Crew?             @relation(fields: [crewId], references: [id])
+112 |   school          School            @relation(fields: [schoolId], references: [id])
+113 |   history         EventHistory[]
+114 |   preparation     EventPreparation?
+115 |   report          EventReport?
+116 |   files           File[]
+117 |   issues          IssueReport[]
+118 | 
+119 |   @@index([cityId])
+120 |   @@index([status])
+121 |   @@index([schoolId])
+122 |   @@index([date, status, cityId])
+123 | }
+124 | 
+125 | model EventReport {
+126 |   id                String        @id @default(uuid())
+127 |   eventId           String        @unique
+128 |   directorSatisfied Boolean?
+129 |   teachersSatisfied Boolean?
+130 |   hadIssues         Boolean       @default(false)
+131 |   comment           String?
+132 |   rating            Float?
+133 |   createdAt         DateTime      @default(now())
+134 |   announcementDone  Boolean       @default(false)
+135 |   materialShown     Boolean       @default(false)
+136 |   childrenCount     Int           @default(0)
+137 |   classesCount      Int           @default(0)
+138 |   privilegedCount   Int           @default(0)
+139 |   showingsCount     Int           @default(0)
+140 |   totalSum          Float         @default(0)
+141 |   schoolSum         Float         @default(0)
+142 |   remainderSum      Float         @default(0)
+143 |   event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+144 |   photos            File[]
+145 |   expenseItems      ExpenseItem[]
+146 |   salaryItems       SalaryItem[]
+147 | }
+148 | 
+149 | model File {
+150 |   id        String       @id @default(uuid())
+151 |   name      String
+152 |   url       String
+153 |   size      Int
+154 |   eventId   String?
+155 |   reportId  String?
+156 |   createdAt DateTime     @default(now())
+157 |   event     Event?       @relation(fields: [eventId], references: [id])
+158 |   report    EventReport? @relation(fields: [reportId], references: [id])
+159 | }
+160 | 
+161 | model EventHistory {
+162 |   id        String   @id @default(uuid())
+163 |   eventId   String
+164 |   action    String
+165 |   comment   String?
+166 |   userId    String
+167 |   userName  String
+168 |   role      String
+169 |   createdAt DateTime @default(now())
+170 |   event     Event    @relation(fields: [eventId], references: [id])
+171 | 
+172 |   @@index([eventId, createdAt])
+173 | }
+174 | 
+175 | model EventPreparation {
+176 |   id               String            @id @default(uuid())
+177 |   eventId          String            @unique
+178 |   assignCrew       PreparationStatus @default(PLANNED)
+179 |   bookEquipment    PreparationStatus @default(PLANNED)
+180 |   prepareDocs      PreparationStatus @default(PLANNED)
+181 |   prepareMaterials PreparationStatus @default(PLANNED)
+182 |   remindSchool     PreparationStatus @default(PLANNED)
+183 |   event            Event             @relation(fields: [eventId], references: [id])
+184 | }
+185 | 
+186 | model IssueReport {
+187 |   id               String    @id @default(uuid())
+188 |   eventId          String
+189 |   schoolName       String
+190 |   eventName        String
+191 |   message          String
+192 |   cityId           String
+193 |   status           String    @default("Планується")
+194 |   createdAt        DateTime  @default(now())
+195 |   deadline         DateTime?
+196 |   assignedUserId   String?
+197 |   assignedUserName String?
+198 |   city             City      @relation(fields: [cityId], references: [id])
+199 |   event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+200 | 
+201 |   @@index([cityId])
+202 |   @@index([eventId])
+203 | }
+204 | 
+205 | model SchoolContact {
+206 |   id           String   @id @default(uuid())
+207 |   city         String   @default("Львів")
+208 |   schoolNumber String
+209 |   contactName  String
+210 |   phone        String
+211 |   role         String?
+212 |   createdAt    DateTime @default(now())
+213 | }
+214 | 
+215 | model Project {
+216 |   id        String   @id @default(uuid())
+217 |   name      String   @unique
+218 |   color     String   @default("blue")
+219 |   createdAt DateTime @default(now())
+220 | }
+221 | 
+222 | model ExpenseItem {
+223 |   id        String   @id @default(uuid())
+224 |   reportId  String
+225 |   category  String
+226 |   name      String?
+227 |   amount    Decimal  @db.Decimal(12, 2)
+228 |   createdAt DateTime @default(now())
+229 | 
+230 |   report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+231 | 
+232 |   @@index([reportId])
+233 | }
+234 | 
+235 | model SalaryItem {
+236 |   id        String   @id @default(uuid())
+237 |   reportId  String
+238 |   userId    String?
+239 |   userName  String
+240 |   amount    Decimal  @db.Decimal(12, 2)
+241 |   role      String?
+242 |   createdAt DateTime @default(now())
+243 | 
+244 |   report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+245 |   user   User?       @relation(fields: [userId], references: [id])
+246 | 
+247 |   @@index([reportId])
+248 |   @@index([userId])
+249 | }
+250 | 
+251 | model RefreshToken {
+252 |   id        String    @id @default(uuid())
+253 |   userId    String
+254 |   tokenHash String    @unique
+255 |   expiresAt DateTime
+256 |   revokedAt DateTime?
+257 |   createdAt DateTime  @default(now())
+258 |   userAgent String?
+259 |   ip        String?
+260 |   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+261 | 
+262 |   @@index([userId])
+263 | }
+264 | 
+265 | model AuditLog {
+266 |   id        String   @id @default(uuid())
+267 |   userId    String?
+268 |   userName  String?
+269 |   action    String
+270 |   entity    String?
+271 |   entityId  String?
+272 |   ip        String?
+273 |   userAgent String?
+274 |   metadata  Json?
+275 |   createdAt DateTime @default(now())
+276 | 
+277 |   @@index([userId])
+278 |   @@index([action, createdAt])
+279 |   @@index([entity, entityId])
+280 | }
+281 | 
+282 | enum UserRole {
+283 |   SUPERADMIN
+284 |   MANAGER
+285 |   HOST
+286 |   DRIVER
+287 | }
+288 | 
+289 | enum PreparationStatus {
+290 |   PLANNED
+291 |   IN_PROGRESS
+292 |   DONE
+293 | }
+294 | 
+295 | enum EventStatus {
+296 |   BASE
+297 |   FIRST_CONTACT
+298 |   INTERESTED
+299 |   PRE_APPROVAL
+300 |   DATE_CONFIRMED
+301 |   PREPARATION
+302 |   IN_PROGRESS
+303 |   DONE
+304 |   REPORT
+305 |   RE_SALE
+306 | }
+307 | 
 ```
 
 ### File: apps/backend/prisma/seed-admin.js
@@ -722,50 +767,57 @@
   7 |   const email = process.env.SEED_ADMIN_EMAIL;
   8 |   const password = process.env.SEED_ADMIN_PASSWORD;
   9 | 
- 10 |   if (!email || !password) {
- 11 |     console.error(
- 12 |       'Помилка: SEED_ADMIN_EMAIL та SEED_ADMIN_PASSWORD мають бути задані в .env',
- 13 |     );
- 14 |     process.exit(1);
- 15 |   }
- 16 | 
- 17 |   if (
- 18 |     process.env.NODE_ENV === 'production' &&
- 19 |     process.env.ALLOW_PROD_SEED !== 'true'
- 20 |   ) {
- 21 |     console.error(
- 22 |       'Сідування в production заблоковано. Встановіть ALLOW_PROD_SEED=true для підтвердження.',
- 23 |     );
- 24 |     process.exit(1);
- 25 |   }
- 26 | 
- 27 |   const hashedPassword = await bcrypt.hash(password, 10);
- 28 | 
- 29 |   console.log('Починаю створення адміна...');
- 30 | 
- 31 |   const admin = await prisma.user.upsert({
- 32 |     where: { email: email },
- 33 |     update: { password: hashedPassword },
- 34 |     create: {
- 35 |       name: 'Адміністратор',
- 36 |       email: email,
- 37 |       password: hashedPassword,
- 38 |       role: 'SUPERADMIN',
- 39 |     },
- 40 |   });
- 41 | 
- 42 |   console.log('Адмін успішно створений або оновлений:', admin.email);
- 43 | }
- 44 | 
- 45 | main()
- 46 |   .catch((e) => {
- 47 |     console.error('Помилка під час сідування:', e);
- 48 |     process.exit(1);
- 49 |   })
- 50 |   .finally(async () => {
- 51 |     await prisma.$disconnect();
- 52 |   });
- 53 | 
+ 10 |   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+ 11 | 
+ 12 |   if (!email || !password) {
+ 13 |     console.error(
+ 14 |       'Помилка: SEED_ADMIN_EMAIL та SEED_ADMIN_PASSWORD мають бути задані в .env',
+ 15 |     );
+ 16 |     process.exit(1);
+ 17 |   }
+ 18 | 
+ 19 |   if (!emailPattern.test(email)) {
+ 20 |     console.error(`Помилка: SEED_ADMIN_EMAIL "${email}" не є валідним email`);
+ 21 |     process.exit(1);
+ 22 |   }
+ 23 | 
+ 24 |   if (
+ 25 |     process.env.NODE_ENV === 'production' &&
+ 26 |     process.env.ALLOW_PROD_SEED !== 'true'
+ 27 |   ) {
+ 28 |     console.error(
+ 29 |       'Сідування в production заблоковано. Встановіть ALLOW_PROD_SEED=true для підтвердження.',
+ 30 |     );
+ 31 |     process.exit(1);
+ 32 |   }
+ 33 | 
+ 34 |   const hashedPassword = await bcrypt.hash(password, 10);
+ 35 | 
+ 36 |   console.log('Починаю створення адміна...');
+ 37 | 
+ 38 |   const admin = await prisma.user.upsert({
+ 39 |     where: { email: email },
+ 40 |     update: { password: hashedPassword },
+ 41 |     create: {
+ 42 |       name: 'Адміністратор',
+ 43 |       email: email,
+ 44 |       password: hashedPassword,
+ 45 |       role: 'SUPERADMIN',
+ 46 |     },
+ 47 |   });
+ 48 | 
+ 49 |   console.log('Адмін успішно створений або оновлений:', admin.email);
+ 50 | }
+ 51 | 
+ 52 | main()
+ 53 |   .catch((e) => {
+ 54 |     console.error('Помилка під час сідування:', e);
+ 55 |     process.exit(1);
+ 56 |   })
+ 57 |   .finally(async () => {
+ 58 |     await prisma.$disconnect();
+ 59 |   });
+ 60 | 
 ```
 
 ### File: apps/backend/src/app.controller.spec.ts
@@ -815,63 +867,77 @@
 ### File: apps/backend/src/app.module.ts
 ```ts
   0 | import { Module } from '@nestjs/common';
-  1 | import { APP_GUARD } from '@nestjs/core';
-  2 | import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-  3 | import { ConfigModule } from '@nestjs/config';
-  4 | import { LoggerModule } from './common/logger/logger.module';
-  5 | import { RedisCacheModule } from './common/cache/redis-cache.module';
-  6 | import { envValidationSchema } from './config/env.validation';
-  7 | import { AppController } from './app.controller';
-  8 | import { AppService } from './app.service';
-  9 | import { PrismaModule } from './prisma/prisma.module';
- 10 | import { UsersModule } from './users/users.module';
- 11 | import { AuthModule } from './auth/auth.module';
- 12 | import { EventsModule } from './events/events.module';
- 13 | import { CitiesModule } from './cities/cities.module';
- 14 | import { SchoolsModule } from './schools/schools.module';
- 15 | import { FinanceModule } from './finance/finance.module';
- 16 | import { TelegramModule } from './telegram/telegram.module';
- 17 | import { IssuesModule } from './issues/issues.module';
- 18 | import { DashboardModule } from './dashboard/dashboard.module';
- 19 | import { ProjectsModule } from './projects/projects.module';
- 20 | @Module({
- 21 |   imports: [
- 22 |     ConfigModule.forRoot({
- 23 |       isGlobal: true,
- 24 |       validationSchema: envValidationSchema,
- 25 |     }),
- 26 |     LoggerModule,
- 27 |     RedisCacheModule,
- 28 |     ThrottlerModule.forRoot([
- 29 |       {
- 30 |         name: 'default',
- 31 |         ttl: 60000,
- 32 |         limit: 100,
- 33 |       },
- 34 |     ]),
- 35 |     PrismaModule,
- 36 |     UsersModule,
- 37 |     AuthModule,
- 38 |     EventsModule,
- 39 |     CitiesModule,
- 40 |     SchoolsModule,
- 41 |     FinanceModule,
- 42 |     TelegramModule,
- 43 |     IssuesModule,
- 44 |     DashboardModule,
- 45 |     ProjectsModule,
- 46 |   ],
- 47 |   controllers: [AppController],
- 48 |   providers: [
- 49 |     AppService,
- 50 |     {
- 51 |       provide: APP_GUARD,
- 52 |       useClass: ThrottlerGuard,
- 53 |     },
- 54 |   ],
- 55 | })
- 56 | export class AppModule {}
- 57 | 
+  1 | import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+  2 | import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
+  3 | import { SanitizeInterceptor } from './common/interceptors/sanitize.interceptor';
+  4 | import { ThrottlerModule } from '@nestjs/throttler';
+  5 | import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
+  6 | import Redis from 'ioredis';
+  7 | import { UserThrottlerGuard } from './common/guards/user-throttler.guard';
+  8 | import { ConfigModule } from '@nestjs/config';
+  9 | import { LoggerModule } from './common/logger/logger.module';
+ 10 | import { RedisCacheModule } from './common/cache/redis-cache.module';
+ 11 | import { envValidationSchema } from './config/env.validation';
+ 12 | import { AppController } from './app.controller';
+ 13 | import { AppService } from './app.service';
+ 14 | import { PrismaModule } from './prisma/prisma.module';
+ 15 | import { UsersModule } from './users/users.module';
+ 16 | import { AuthModule } from './auth/auth.module';
+ 17 | import { EventsModule } from './events/events.module';
+ 18 | import { CitiesModule } from './cities/cities.module';
+ 19 | import { SchoolsModule } from './schools/schools.module';
+ 20 | import { FinanceModule } from './finance/finance.module';
+ 21 | import { TelegramModule } from './telegram/telegram.module';
+ 22 | import { IssuesModule } from './issues/issues.module';
+ 23 | import { DashboardModule } from './dashboard/dashboard.module';
+ 24 | import { ProjectsModule } from './projects/projects.module';
+ 25 | @Module({
+ 26 |   imports: [
+ 27 |     ConfigModule.forRoot({
+ 28 |       isGlobal: true,
+ 29 |       validationSchema: envValidationSchema,
+ 30 |     }),
+ 31 |     LoggerModule,
+ 32 |     RedisCacheModule,
+ 33 |     ThrottlerModule.forRootAsync({
+ 34 |       useFactory: () => ({
+ 35 |         throttlers: [{ name: 'default', ttl: 60000, limit: 100 }],
+ 36 |         storage: new ThrottlerStorageRedisService(
+ 37 |           new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379'),
+ 38 |         ),
+ 39 |       }),
+ 40 |     }),
+ 41 |     PrismaModule,
+ 42 |     UsersModule,
+ 43 |     AuthModule,
+ 44 |     EventsModule,
+ 45 |     CitiesModule,
+ 46 |     SchoolsModule,
+ 47 |     FinanceModule,
+ 48 |     TelegramModule,
+ 49 |     IssuesModule,
+ 50 |     DashboardModule,
+ 51 |     ProjectsModule,
+ 52 |   ],
+ 53 |   controllers: [AppController],
+ 54 |   providers: [
+ 55 |     AppService,
+ 56 |     {
+ 57 |       provide: APP_GUARD,
+ 58 |       useClass: UserThrottlerGuard,
+ 59 |     },
+ 60 |     {
+ 61 |       provide: APP_INTERCEPTOR,
+ 62 |       useClass: SanitizeInterceptor,
+ 63 |     },
+ 64 |     {
+ 65 |       provide: APP_INTERCEPTOR,
+ 66 |       useClass: AuditLogInterceptor,
+ 67 |     },
+ 68 |   ],
+ 69 | })
+ 70 | export class AppModule {}
+ 71 | 
 ```
 
 ### File: apps/backend/src/app.service.ts
@@ -916,78 +982,123 @@
   6 |   Post,
   7 |   Req,
   8 |   Res,
-  9 |   UseGuards,
- 10 | } from '@nestjs/common';
- 11 | import type { Request, Response } from 'express';
- 12 | import { randomBytes } from 'crypto';
- 13 | import { Throttle } from '@nestjs/throttler';
- 14 | import { AuthService } from './auth.service';
- 15 | import { AuthGuard } from './auth.guard';
- 16 | import { LoginDto } from './dto/login.dto';
- 17 | 
- 18 | const isProd = process.env.NODE_ENV === 'production';
- 19 | 
- 20 | @Controller('auth')
- 21 | export class AuthController {
- 22 |   constructor(private authService: AuthService) {}
- 23 | 
- 24 |   @Throttle({ default: { ttl: 60000, limit: 5 } })
- 25 |   @HttpCode(HttpStatus.OK)
- 26 |   @Post('login')
- 27 |   async login(
- 28 |     @Body() signInDto: LoginDto,
- 29 |     @Res({ passthrough: true }) res: Response,
- 30 |   ) {
- 31 |     const { access_token, user } = await this.authService.login(
- 32 |       signInDto.email,
- 33 |       signInDto.password,
- 34 |     );
- 35 |     const csrfToken = randomBytes(32).toString('hex');
- 36 | 
- 37 |     res.cookie('access_token', access_token, {
- 38 |       httpOnly: true,
- 39 |       secure: isProd,
- 40 |       sameSite: isProd ? 'none' : 'lax',
- 41 |       maxAge: 24 * 60 * 60 * 1000,
- 42 |     });
- 43 |     res.cookie('csrf_token', csrfToken, {
- 44 |       httpOnly: false, // фронтенд має прочитати
- 45 |       secure: isProd,
- 46 |       sameSite: isProd ? 'none' : 'lax',
- 47 |       maxAge: 24 * 60 * 60 * 1000,
- 48 |     });
- 49 | 
- 50 |     return { user };
- 51 |   }
- 52 | 
- 53 |   @UseGuards(AuthGuard)
- 54 |   @Get('me')
- 55 |   me(@Req() req: Request) {
- 56 |     const payload = req['user'] as {
- 57 |       sub: string;
- 58 |       email: string;
- 59 |       role: string;
- 60 |       name: string;
- 61 |     };
- 62 |     return {
- 63 |       user: {
- 64 |         id: payload.sub,
- 65 |         name: payload.name,
- 66 |         email: payload.email,
- 67 |         role: payload.role,
- 68 |       },
- 69 |     };
+  9 |   UnauthorizedException,
+ 10 |   UseGuards,
+ 11 | } from '@nestjs/common';
+ 12 | import type { Request, Response } from 'express';
+ 13 | import { randomBytes } from 'crypto';
+ 14 | import { Throttle } from '@nestjs/throttler';
+ 15 | import { AuthService } from './auth.service';
+ 16 | import { AuthGuard } from './auth.guard';
+ 17 | import { LoginDto } from './dto/login.dto';
+ 18 | 
+ 19 | const isProd = process.env.NODE_ENV === 'production';
+ 20 | 
+ 21 | function setAuthCookies(
+ 22 |   res: Response,
+ 23 |   accessToken: string,
+ 24 |   refreshToken: string,
+ 25 |   csrfToken: string,
+ 26 | ) {
+ 27 |   res.cookie('access_token', accessToken, {
+ 28 |     httpOnly: true,
+ 29 |     secure: isProd,
+ 30 |     sameSite: isProd ? 'none' : 'lax',
+ 31 |     maxAge: 15 * 60 * 1000,
+ 32 |   });
+ 33 |   res.cookie('refresh_token', refreshToken, {
+ 34 |     httpOnly: true,
+ 35 |     secure: isProd,
+ 36 |     sameSite: isProd ? 'none' : 'lax',
+ 37 |     path: '/auth',
+ 38 |     maxAge: 30 * 24 * 60 * 60 * 1000,
+ 39 |   });
+ 40 |   res.cookie('csrf_token', csrfToken, {
+ 41 |     httpOnly: false,
+ 42 |     secure: isProd,
+ 43 |     sameSite: isProd ? 'none' : 'lax',
+ 44 |     maxAge: 24 * 60 * 60 * 1000,
+ 45 |   });
+ 46 | }
+ 47 | 
+ 48 | @Controller('auth')
+ 49 | export class AuthController {
+ 50 |   constructor(private authService: AuthService) {}
+ 51 | 
+ 52 |   @Throttle({ default: { ttl: 60000, limit: 5 } })
+ 53 |   @HttpCode(HttpStatus.OK)
+ 54 |   @Post('login')
+ 55 |   async login(
+ 56 |     @Body() signInDto: LoginDto,
+ 57 |     @Req() req: Request,
+ 58 |     @Res({ passthrough: true }) res: Response,
+ 59 |   ) {
+ 60 |     const { access_token, refresh_token, user } = await this.authService.login(
+ 61 |       signInDto.email,
+ 62 |       signInDto.password,
+ 63 |       { ip: req.ip, userAgent: req.headers['user-agent'] },
+ 64 |     );
+ 65 |     const csrfToken = randomBytes(32).toString('hex');
+ 66 | 
+ 67 |     setAuthCookies(res, access_token, refresh_token, csrfToken);
+ 68 | 
+ 69 |     return { user };
  70 |   }
  71 | 
- 72 |   @HttpCode(HttpStatus.OK)
- 73 |   @Post('logout')
- 74 |   logout(@Res({ passthrough: true }) res: Response) {
- 75 |     res.clearCookie('access_token');
- 76 |     res.clearCookie('csrf_token');
- 77 |     return { message: 'ok' };
- 78 |   }
- 79 | }
- 80 | 
+ 72 |   @Throttle({ default: { ttl: 60000, limit: 20 } })
+ 73 |   @HttpCode(HttpStatus.OK)
+ 74 |   @Post('refresh')
+ 75 |   async refresh(
+ 76 |     @Req() req: Request,
+ 77 |     @Res({ passthrough: true }) res: Response,
+ 78 |   ) {
+ 79 |     const oldToken = req.cookies?.refresh_token;
+ 80 |     if (!oldToken) throw new UnauthorizedException('Refresh token відсутній');
+ 81 | 
+ 82 |     const { access_token, refresh_token, user } =
+ 83 |       await this.authService.refresh(oldToken, {
+ 84 |         ip: req.ip,
+ 85 |         userAgent: req.headers['user-agent'],
+ 86 |       });
+ 87 |     const csrfToken = randomBytes(32).toString('hex');
+ 88 | 
+ 89 |     setAuthCookies(res, access_token, refresh_token, csrfToken);
+ 90 | 
+ 91 |     return { user };
+ 92 |   }
+ 93 | 
+ 94 |   @UseGuards(AuthGuard)
+ 95 |   @Get('me')
+ 96 |   me(@Req() req: Request) {
+ 97 |     const payload = req['user'] as {
+ 98 |       sub: string;
+ 99 |       email: string;
+100 |       role: string;
+101 |       name: string;
+102 |     };
+103 |     return {
+104 |       user: {
+105 |         id: payload.sub,
+106 |         name: payload.name,
+107 |         email: payload.email,
+108 |         role: payload.role,
+109 |       },
+110 |     };
+111 |   }
+112 | 
+113 |   @HttpCode(HttpStatus.OK)
+114 |   @Post('logout')
+115 |   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+116 |     const refreshToken = req.cookies?.refresh_token;
+117 |     if (refreshToken) await this.authService.revokeRefreshToken(refreshToken);
+118 | 
+119 |     res.clearCookie('access_token');
+120 |     res.clearCookie('refresh_token', { path: '/auth' });
+121 |     res.clearCookie('csrf_token');
+122 |     return { message: 'ok' };
+123 |   }
+124 | }
+125 | 
 ```
 
 ### File: apps/backend/src/auth/auth.guard.ts
@@ -1013,7 +1124,7 @@
  18 | 
  19 |     try {
  20 |       const payload = await this.jwtService.verifyAsync(token, {
- 21 |         secret: process.env.JWT_SECRET || 'super-secret-key-for-dev',
+ 21 |         secret: process.env.JWT_SECRET,
  22 |       });
  23 |       request['user'] = payload;
  24 |     } catch {
@@ -1037,22 +1148,26 @@
   1 | import { AuthService } from './auth.service';
   2 | import { AuthController } from './auth.controller';
   3 | import { UsersModule } from '../users/users.module';
-  4 | import { JwtModule } from '@nestjs/jwt';
-  5 | 
-  6 | @Module({
-  7 |   imports: [
-  8 |     UsersModule,
-  9 |     JwtModule.register({
- 10 |       global: true,
- 11 |       secret: process.env.JWT_SECRET || 'super-secret-key-for-dev',
- 12 |       signOptions: { expiresIn: '7d' },
- 13 |     }),
- 14 |   ],
- 15 |   providers: [AuthService],
- 16 |   controllers: [AuthController],
- 17 | })
- 18 | export class AuthModule {}
- 19 | 
+  4 | import { PrismaModule } from '../prisma/prisma.module';
+  5 | import { JwtModule } from '@nestjs/jwt';
+  6 | 
+  7 | @Module({
+  8 |   imports: [
+  9 |     UsersModule,
+ 10 |     PrismaModule,
+ 11 |     JwtModule.registerAsync({
+ 12 |       global: true,
+ 13 |       useFactory: () => ({
+ 14 |         secret: process.env.JWT_SECRET,
+ 15 |         signOptions: { expiresIn: '15m' },
+ 16 |       }),
+ 17 |     }),
+ 18 |   ],
+ 19 |   providers: [AuthService],
+ 20 |   controllers: [AuthController],
+ 21 | })
+ 22 | export class AuthModule {}
+ 23 | 
 ```
 
 ### File: apps/backend/src/auth/auth.service.spec.ts
@@ -1082,47 +1197,129 @@
   0 | import { Injectable, UnauthorizedException } from '@nestjs/common';
   1 | import { UsersService } from '../users/users.service';
   2 | import { JwtService } from '@nestjs/jwt';
-  3 | import * as bcrypt from 'bcrypt';
-  4 | 
-  5 | @Injectable()
-  6 | export class AuthService {
-  7 |   constructor(
-  8 |     private usersService: UsersService,
-  9 |     private jwtService: JwtService,
- 10 |   ) {}
- 11 | 
- 12 |   async login(email: string, pass: string) {
- 13 |     const user = await this.usersService.findByEmail(email);
- 14 | 
- 15 |     if (!user) {
- 16 |       throw new UnauthorizedException('Невірний email або пароль');
- 17 |     }
- 18 | 
- 19 |     const isPasswordValid = await bcrypt.compare(pass, user.password);
+  3 | import { PrismaService } from '../prisma/prisma.service';
+  4 | import * as bcrypt from 'bcrypt';
+  5 | import { randomBytes, createHash } from 'crypto';
+  6 | 
+  7 | const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+  8 | 
+  9 | @Injectable()
+ 10 | export class AuthService {
+ 11 |   constructor(
+ 12 |     private usersService: UsersService,
+ 13 |     private jwtService: JwtService,
+ 14 |     private prisma: PrismaService,
+ 15 |   ) {}
+ 16 | 
+ 17 |   private hashToken(token: string): string {
+ 18 |     return createHash('sha256').update(token).digest('hex');
+ 19 |   }
  20 | 
- 21 |     if (!isPasswordValid) {
- 22 |       throw new UnauthorizedException('Невірний email або пароль');
- 23 |     }
- 24 | 
- 25 |     const payload = {
- 26 |       sub: user.id,
- 27 |       email: user.email,
- 28 |       role: user.role,
- 29 |       name: user.name,
- 30 |     };
- 31 | 
- 32 |     return {
- 33 |       access_token: await this.jwtService.signAsync(payload),
- 34 |       user: {
- 35 |         id: user.id,
- 36 |         name: user.name,
- 37 |         email: user.email,
- 38 |         role: user.role,
- 39 |       },
- 40 |     };
- 41 |   }
- 42 | }
- 43 | 
+ 21 |   private async issueRefreshToken(
+ 22 |     userId: string,
+ 23 |     meta: { ip?: string; userAgent?: string },
+ 24 |   ): Promise<string> {
+ 25 |     const token = randomBytes(64).toString('hex');
+ 26 |     await this.prisma.refreshToken.create({
+ 27 |       data: {
+ 28 |         userId,
+ 29 |         tokenHash: this.hashToken(token),
+ 30 |         expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+ 31 |         ip: meta.ip,
+ 32 |         userAgent: meta.userAgent,
+ 33 |       },
+ 34 |     });
+ 35 |     return token;
+ 36 |   }
+ 37 | 
+ 38 |   async login(
+ 39 |     email: string,
+ 40 |     pass: string,
+ 41 |     meta: { ip?: string; userAgent?: string } = {},
+ 42 |   ) {
+ 43 |     const user = await this.usersService.findByEmail(email);
+ 44 | 
+ 45 |     if (!user) {
+ 46 |       throw new UnauthorizedException('Невірний email або пароль');
+ 47 |     }
+ 48 | 
+ 49 |     const isPasswordValid = await bcrypt.compare(pass, user.password);
+ 50 | 
+ 51 |     if (!isPasswordValid) {
+ 52 |       throw new UnauthorizedException('Невірний email або пароль');
+ 53 |     }
+ 54 | 
+ 55 |     const payload = {
+ 56 |       sub: user.id,
+ 57 |       email: user.email,
+ 58 |       role: user.role,
+ 59 |       name: user.name,
+ 60 |     };
+ 61 | 
+ 62 |     const refresh_token = await this.issueRefreshToken(user.id, meta);
+ 63 | 
+ 64 |     return {
+ 65 |       access_token: await this.jwtService.signAsync(payload),
+ 66 |       refresh_token,
+ 67 |       user: {
+ 68 |         id: user.id,
+ 69 |         name: user.name,
+ 70 |         email: user.email,
+ 71 |         role: user.role,
+ 72 |       },
+ 73 |     };
+ 74 |   }
+ 75 | 
+ 76 |   async refresh(
+ 77 |     oldToken: string,
+ 78 |     meta: { ip?: string; userAgent?: string } = {},
+ 79 |   ) {
+ 80 |     const tokenHash = this.hashToken(oldToken);
+ 81 |     const stored = await this.prisma.refreshToken.findUnique({
+ 82 |       where: { tokenHash },
+ 83 |       include: { user: true },
+ 84 |     });
+ 85 | 
+ 86 |     if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
+ 87 |       throw new UnauthorizedException('Недійсний refresh token');
+ 88 |     }
+ 89 | 
+ 90 |     await this.prisma.refreshToken.update({
+ 91 |       where: { id: stored.id },
+ 92 |       data: { revokedAt: new Date() },
+ 93 |     });
+ 94 | 
+ 95 |     const payload = {
+ 96 |       sub: stored.user.id,
+ 97 |       email: stored.user.email,
+ 98 |       role: stored.user.role,
+ 99 |       name: stored.user.name,
+100 |     };
+101 | 
+102 |     const refresh_token = await this.issueRefreshToken(stored.user.id, meta);
+103 | 
+104 |     return {
+105 |       access_token: await this.jwtService.signAsync(payload),
+106 |       refresh_token,
+107 |       user: {
+108 |         id: stored.user.id,
+109 |         name: stored.user.name,
+110 |         email: stored.user.email,
+111 |         role: stored.user.role,
+112 |       },
+113 |     };
+114 |   }
+115 | 
+116 |   async revokeRefreshToken(token: string): Promise<void> {
+117 |     await this.prisma.refreshToken
+118 |       .update({
+119 |         where: { tokenHash: this.hashToken(token) },
+120 |         data: { revokedAt: new Date() },
+121 |       })
+122 |       .catch(() => undefined);
+123 |   }
+124 | }
+125 | 
 ```
 
 ### File: apps/backend/src/auth/csrf.guard.ts
@@ -1616,26 +1813,42 @@
 
 ### File: apps/backend/src/common/cache/redis-cache.module.ts
 ```ts
-  0 | import { Module } from '@nestjs/common';
+  0 | import { Logger, Module } from '@nestjs/common';
   1 | import { CacheModule } from '@nestjs/cache-manager';
   2 | import { redisStore } from 'cache-manager-redis-yet';
   3 | 
-  4 | @Module({
-  5 |   imports: [
-  6 |     CacheModule.registerAsync({
-  7 |       isGlobal: true,
-  8 |       useFactory: async () => ({
-  9 |         store: await redisStore({
- 10 |           url: process.env.REDIS_URL ?? 'redis://localhost:6379',
- 11 |           ttl: 60_000,
- 12 |         }),
- 13 |       }),
- 14 |     }),
- 15 |   ],
- 16 |   exports: [CacheModule],
- 17 | })
- 18 | export class RedisCacheModule {}
- 19 | 
+  4 | const logger = new Logger('RedisCacheModule');
+  5 | 
+  6 | @Module({
+  7 |   imports: [
+  8 |     CacheModule.registerAsync({
+  9 |       isGlobal: true,
+ 10 |       useFactory: async () => {
+ 11 |         try {
+ 12 |           const store = await redisStore({
+ 13 |             url: process.env.REDIS_URL ?? 'redis://localhost:6379',
+ 14 |             ttl: 60_000,
+ 15 |             socket: {
+ 16 |               reconnectStrategy: (retries) => Math.min(retries * 200, 5000),
+ 17 |             },
+ 18 |           });
+ 19 |           store.client.on('error', (err: Error) =>
+ 20 |             logger.warn(`Redis error: ${err.message}`),
+ 21 |           );
+ 22 |           return { store };
+ 23 |         } catch (err) {
+ 24 |           logger.warn(
+ 25 |             `Redis unavailable at boot, falling back to in-memory cache: ${(err as Error).message}`,
+ 26 |           );
+ 27 |           return {};
+ 28 |         }
+ 29 |       },
+ 30 |     }),
+ 31 |   ],
+ 32 |   exports: [CacheModule],
+ 33 | })
+ 34 | export class RedisCacheModule {}
+ 35 | 
 ```
 
 ### File: apps/backend/src/common/dto/page-meta.dto.ts
@@ -1741,6 +1954,128 @@
  52 | 
 ```
 
+### File: apps/backend/src/common/guards/user-throttler.guard.ts
+```ts
+  0 | import { Injectable } from '@nestjs/common';
+  1 | import { ThrottlerGuard } from '@nestjs/throttler';
+  2 | 
+  3 | @Injectable()
+  4 | export class UserThrottlerGuard extends ThrottlerGuard {
+  5 |   protected async getTracker(req: Record<string, any>): Promise<string> {
+  6 |     const token = req.cookies?.access_token;
+  7 |     if (token) {
+  8 |       try {
+  9 |         const payload = JSON.parse(
+ 10 |           Buffer.from(token.split('.')[1], 'base64url').toString('utf8'),
+ 11 |         ) as { sub?: string };
+ 12 |         if (payload?.sub) return `user-${payload.sub}`;
+ 13 |       } catch {
+ 14 |         return req.ip;
+ 15 |       }
+ 16 |     }
+ 17 |     return req.ip;
+ 18 |   }
+ 19 | }
+ 20 | 
+```
+
+### File: apps/backend/src/common/interceptors/audit-log.interceptor.ts
+```ts
+  0 | import {
+  1 |   CallHandler,
+  2 |   ExecutionContext,
+  3 |   Injectable,
+  4 |   Logger,
+  5 |   NestInterceptor,
+  6 | } from '@nestjs/common';
+  7 | import { Observable, tap } from 'rxjs';
+  8 | import { PrismaService } from '../../prisma/prisma.service';
+  9 | 
+ 10 | const MUTATING_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
+ 11 | const EXCLUDED_PATHS = ['/auth/login', '/auth/refresh', '/auth/logout'];
+ 12 | 
+ 13 | @Injectable()
+ 14 | export class AuditLogInterceptor implements NestInterceptor {
+ 15 |   private readonly logger = new Logger('AuditLog');
+ 16 | 
+ 17 |   constructor(private prisma: PrismaService) {}
+ 18 | 
+ 19 |   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+ 20 |     const req = context.switchToHttp().getRequest();
+ 21 | 
+ 22 |     if (
+ 23 |       !MUTATING_METHODS.has(req.method) ||
+ 24 |       EXCLUDED_PATHS.some((p) => req.path.startsWith(p))
+ 25 |     ) {
+ 26 |       return next.handle();
+ 27 |     }
+ 28 | 
+ 29 |     return next.handle().pipe(
+ 30 |       tap(() => {
+ 31 |         const user = req.user as { sub?: string; name?: string } | undefined;
+ 32 |         const [, entity, entityId] = req.path.split('/');
+ 33 |         const cleanEntityId =
+ 34 |           entityId && !entityId.includes('?') ? entityId : undefined;
+ 35 | 
+ 36 |         this.prisma.auditLog
+ 37 |           .create({
+ 38 |             data: {
+ 39 |               userId: user?.sub,
+ 40 |               userName: user?.name,
+ 41 |               action: `${req.method} ${entity ?? req.path}`,
+ 42 |               entity: entity || undefined,
+ 43 |               entityId: cleanEntityId,
+ 44 |               ip: req.ip,
+ 45 |               userAgent: req.headers['user-agent'],
+ 46 |             },
+ 47 |           })
+ 48 |           .catch((err: Error) =>
+ 49 |             this.logger.warn(`Не вдалось записати audit log: ${err.message}`),
+ 50 |           );
+ 51 |       }),
+ 52 |     );
+ 53 |   }
+ 54 | }
+ 55 | 
+```
+
+### File: apps/backend/src/common/interceptors/sanitize.interceptor.ts
+```ts
+  0 | import {
+  1 |   CallHandler,
+  2 |   ExecutionContext,
+  3 |   Injectable,
+  4 |   NestInterceptor,
+  5 | } from '@nestjs/common';
+  6 | import { Observable } from 'rxjs';
+  7 | 
+  8 | function sanitizeValue(value: unknown): unknown {
+  9 |   if (typeof value === 'string') {
+ 10 |     return value
+ 11 |       .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+ 12 |       .trim();
+ 13 |   }
+ 14 |   if (Array.isArray(value)) return value.map(sanitizeValue);
+ 15 |   if (value && typeof value === 'object') {
+ 16 |     const result: Record<string, unknown> = {};
+ 17 |     for (const [key, val] of Object.entries(value))
+ 18 |       result[key] = sanitizeValue(val);
+ 19 |     return result;
+ 20 |   }
+ 21 |   return value;
+ 22 | }
+ 23 | 
+ 24 | @Injectable()
+ 25 | export class SanitizeInterceptor implements NestInterceptor {
+ 26 |   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+ 27 |     const req = context.switchToHttp().getRequest();
+ 28 |     if (req.body) req.body = sanitizeValue(req.body);
+ 29 |     return next.handle();
+ 30 |   }
+ 31 | }
+ 32 | 
+```
+
 ### File: apps/backend/src/common/logger/logger.module.ts
 ```ts
   0 | import { Module } from '@nestjs/common';
@@ -1781,27 +2116,36 @@
 ```ts
   0 | import * as Joi from 'joi';
   1 | 
-  2 | export const envValidationSchema = Joi.object({
-  3 |   NODE_ENV: Joi.string()
-  4 |     .valid('development', 'production', 'test')
-  5 |     .default('development'),
-  6 |   PORT: Joi.number().default(3000),
-  7 |   DATABASE_URL: Joi.string().uri().required(),
-  8 |   DIRECT_URL: Joi.string().uri().optional(),
-  9 |   FRONTEND_URL: Joi.string().required(),
- 10 |   TELEGRAM_BOT_TOKEN: Joi.string().required(),
- 11 |   REDIS_URL: Joi.string().uri().default('redis://localhost:6379'),
- 12 |   JWT_SECRET: Joi.string()
- 13 |     .min(16)
- 14 |     .when('NODE_ENV', {
- 15 |       is: 'production',
- 16 |       then: Joi.required(),
- 17 |       otherwise: Joi.optional().default('super-secret-key-for-dev'),
- 18 |     }),
- 19 |   SEED_ADMIN_EMAIL: Joi.string().email().optional(),
- 20 |   SEED_ADMIN_PASSWORD: Joi.string().optional(),
- 21 | });
- 22 | 
+  2 | const stripQuotes = (value: string) =>
+  3 |   typeof value === 'string' ? value.replace(/^["']|["']$/g, '') : value;
+  4 | 
+  5 | export const envValidationSchema = Joi.object({
+  6 |   NODE_ENV: Joi.string()
+  7 |     .valid('development', 'production', 'test')
+  8 |     .default('development'),
+  9 |   PORT: Joi.number().default(3000),
+ 10 |   DATABASE_URL: Joi.string().uri().required(),
+ 11 |   DIRECT_URL: Joi.string().uri().optional(),
+ 12 |   FRONTEND_URL: Joi.string().required(),
+ 13 |   TELEGRAM_BOT_TOKEN: Joi.string().required(),
+ 14 |   REDIS_URL: Joi.string().uri().default('redis://localhost:6379'),
+ 15 |   JWT_SECRET: Joi.string()
+ 16 |     .min(16)
+ 17 |     .when('NODE_ENV', {
+ 18 |       is: 'production',
+ 19 |       then: Joi.required(),
+ 20 |       otherwise: Joi.optional().default('super-secret-key-for-dev'),
+ 21 |     }),
+ 22 |   SEED_ADMIN_EMAIL: Joi.string()
+ 23 |     .allow('')
+ 24 |     .optional()
+ 25 |     .custom((value) => stripQuotes(value)),
+ 26 |   SEED_ADMIN_PASSWORD: Joi.string()
+ 27 |     .allow('')
+ 28 |     .optional()
+ 29 |     .custom((value) => stripQuotes(value)),
+ 30 | });
+ 31 | 
 ```
 
 ### File: apps/backend/src/dashboard/dashboard.controller.ts
@@ -2670,6 +3014,28 @@
  70 | 
 ```
 
+### File: apps/backend/src/events/dto/event-query.dto.ts
+```ts
+  0 | import { Type } from 'class-transformer';
+  1 | import { IsInt, IsOptional, Max, Min } from 'class-validator';
+  2 | 
+  3 | export class EventQueryDto {
+  4 |   @Type(() => Number)
+  5 |   @IsInt()
+  6 |   @Min(1)
+  7 |   @IsOptional()
+  8 |   page?: number;
+  9 | 
+ 10 |   @Type(() => Number)
+ 11 |   @IsInt()
+ 12 |   @Min(1)
+ 13 |   @Max(100)
+ 14 |   @IsOptional()
+ 15 |   take?: number;
+ 16 | }
+ 17 | 
+```
+
 ### File: apps/backend/src/events/dto/reschedule-event.dto.ts
 ```ts
   0 | import { IsString, IsNotEmpty } from 'class-validator';
@@ -3070,128 +3436,131 @@
  20 | import { RescheduleEventDto } from './dto/reschedule-event.dto';
  21 | import { AssignCrewDto } from './dto/assign-crew.dto';
  22 | import { AddCommentDto } from './dto/add-comment.dto';
- 23 | import { RolesGuard } from '../auth/guards/roles.guard';
- 24 | import { OwnershipGuard } from '../auth/guards/ownership.guard';
- 25 | import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
- 26 | 
- 27 | @Controller('events')
- 28 | @UseGuards(AuthGuard, RolesGuard)
- 29 | export class EventsController {
- 30 |   constructor(private readonly eventsService: EventsService) {}
- 31 | 
- 32 |   @Get()
- 33 |   findAll(@CurrentUser() user: JwtUser) {
- 34 |     return this.eventsService.findAllForUser(user);
- 35 |   }
- 36 | 
- 37 |   @Post()
- 38 |   create(@Body() body: CreateEventDto, @CurrentUser() user: JwtUser) {
- 39 |     return this.eventsService.create(body, user);
- 40 |   }
- 41 | 
- 42 |   @Get('school/:schoolId')
- 43 |   findBySchool(
- 44 |     @Param('schoolId') schoolId: string,
- 45 |     @Query('minimal') minimal?: string,
- 46 |   ) {
- 47 |     return this.eventsService.findBySchool(schoolId, minimal === 'true');
- 48 |   }
- 49 | 
- 50 |   @Patch(':id/status')
- 51 |   @UseGuards(OwnershipGuard)
- 52 |   @CheckOwnership('event')
- 53 |   updateStatus(
- 54 |     @Param('id') id: string,
- 55 |     @Body() body: UpdateStatusDto,
- 56 |     @CurrentUser() user: JwtUser,
- 57 |   ) {
- 58 |     return this.eventsService.updateStatus(
- 59 |       id,
- 60 |       body.status,
- 61 |       body.actionName,
- 62 |       body.comment,
- 63 |       user,
- 64 |     );
- 65 |   }
- 66 | 
- 67 |   @Patch(':id/preparation')
- 68 |   @UseGuards(OwnershipGuard)
- 69 |   @CheckOwnership('event')
- 70 |   updatePreparation(
- 71 |     @Param('id') id: string,
- 72 |     @Body() body: UpdatePreparationDto,
- 73 |   ) {
- 74 |     return this.eventsService.updatePreparationStatus(
- 75 |       id,
- 76 |       body.field,
- 77 |       body.status,
- 78 |     );
- 79 |   }
- 80 | 
- 81 |   @Post(':id/assign-crew')
- 82 |   @UseGuards(OwnershipGuard)
- 83 |   @CheckOwnership('event')
- 84 |   assignCrew(@Param('id') id: string, @Body() body: AssignCrewDto) {
- 85 |     return this.eventsService.assignCrewToEvent(id, body.crewId);
- 86 |   }
- 87 | 
- 88 |   @Post(':id/history')
- 89 |   addHistoryComment(
- 90 |     @Param('id') id: string,
- 91 |     @Body() body: AddCommentDto,
- 92 |     @CurrentUser() user: JwtUser,
- 93 |   ) {
- 94 |     return this.eventsService.addHistoryComment(id, body.comment, user);
- 95 |   }
- 96 | 
- 97 |   @Patch('history/:historyId')
- 98 |   updateHistoryComment(
- 99 |     @Param('historyId') historyId: string,
-100 |     @Body() body: AddCommentDto,
-101 |   ) {
-102 |     return this.eventsService.updateHistoryComment(historyId, body.comment);
-103 |   }
-104 | 
-105 |   @Delete(':id')
-106 |   @UseGuards(OwnershipGuard)
-107 |   @CheckOwnership('event')
-108 |   remove(@Param('id') id: string) {
-109 |     return this.eventsService.remove(id);
-110 |   }
-111 | 
-112 |   @Post(':id/report')
-113 |   @UseGuards(OwnershipGuard)
-114 |   @CheckOwnership('event')
-115 |   submitReport(
-116 |     @Param('id') id: string,
-117 |     @Body() body: SubmitReportDto,
-118 |     @CurrentUser() user: JwtUser,
-119 |   ) {
-120 |     return this.eventsService.submitReport(id, body, user);
-121 |   }
-122 | 
-123 |   @Get('school/:schoolId/completed')
-124 |   findCompletedBySchool(@Param('schoolId') schoolId: string) {
-125 |     return this.eventsService.findCompletedBySchool(schoolId);
-126 |   }
-127 | 
-128 |   @Get(':id')
-129 |   findOne(@Param('id') id: string) {
-130 |     return this.eventsService.findOne(id);
-131 |   }
-132 | 
-133 |   @Patch(':id/reschedule')
-134 |   @UseGuards(OwnershipGuard)
-135 |   @CheckOwnership('event')
-136 |   reschedule(
-137 |     @Param('id') id: string,
-138 |     @Body() body: RescheduleEventDto,
-139 |     @CurrentUser() user: JwtUser,
-140 |   ) {
-141 |     return this.eventsService.rescheduleEvent(id, body.date, body.time, user);
-142 |   }
-143 | }
-144 | 
+ 23 | import { EventQueryDto } from './dto/event-query.dto';
+ 24 | import { Throttle } from '@nestjs/throttler';
+ 25 | import { RolesGuard } from '../auth/guards/roles.guard';
+ 26 | import { OwnershipGuard } from '../auth/guards/ownership.guard';
+ 27 | import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
+ 28 | 
+ 29 | @Controller('events')
+ 30 | @UseGuards(AuthGuard, RolesGuard)
+ 31 | export class EventsController {
+ 32 |   constructor(private readonly eventsService: EventsService) {}
+ 33 | 
+ 34 |   @Get()
+ 35 |   findAll(@CurrentUser() user: JwtUser, @Query() query: EventQueryDto) {
+ 36 |     return this.eventsService.findAllForUser(user, query);
+ 37 |   }
+ 38 | 
+ 39 |   @Post()
+ 40 |   create(@Body() body: CreateEventDto, @CurrentUser() user: JwtUser) {
+ 41 |     return this.eventsService.create(body, user);
+ 42 |   }
+ 43 | 
+ 44 |   @Get('school/:schoolId')
+ 45 |   findBySchool(
+ 46 |     @Param('schoolId') schoolId: string,
+ 47 |     @Query('minimal') minimal?: string,
+ 48 |   ) {
+ 49 |     return this.eventsService.findBySchool(schoolId, minimal === 'true');
+ 50 |   }
+ 51 | 
+ 52 |   @Patch(':id/status')
+ 53 |   @UseGuards(OwnershipGuard)
+ 54 |   @CheckOwnership('event')
+ 55 |   updateStatus(
+ 56 |     @Param('id') id: string,
+ 57 |     @Body() body: UpdateStatusDto,
+ 58 |     @CurrentUser() user: JwtUser,
+ 59 |   ) {
+ 60 |     return this.eventsService.updateStatus(
+ 61 |       id,
+ 62 |       body.status,
+ 63 |       body.actionName,
+ 64 |       body.comment,
+ 65 |       user,
+ 66 |     );
+ 67 |   }
+ 68 | 
+ 69 |   @Patch(':id/preparation')
+ 70 |   @UseGuards(OwnershipGuard)
+ 71 |   @CheckOwnership('event')
+ 72 |   updatePreparation(
+ 73 |     @Param('id') id: string,
+ 74 |     @Body() body: UpdatePreparationDto,
+ 75 |   ) {
+ 76 |     return this.eventsService.updatePreparationStatus(
+ 77 |       id,
+ 78 |       body.field,
+ 79 |       body.status,
+ 80 |     );
+ 81 |   }
+ 82 | 
+ 83 |   @Post(':id/assign-crew')
+ 84 |   @UseGuards(OwnershipGuard)
+ 85 |   @CheckOwnership('event')
+ 86 |   assignCrew(@Param('id') id: string, @Body() body: AssignCrewDto) {
+ 87 |     return this.eventsService.assignCrewToEvent(id, body.crewId);
+ 88 |   }
+ 89 | 
+ 90 |   @Post(':id/history')
+ 91 |   addHistoryComment(
+ 92 |     @Param('id') id: string,
+ 93 |     @Body() body: AddCommentDto,
+ 94 |     @CurrentUser() user: JwtUser,
+ 95 |   ) {
+ 96 |     return this.eventsService.addHistoryComment(id, body.comment, user);
+ 97 |   }
+ 98 | 
+ 99 |   @Patch('history/:historyId')
+100 |   updateHistoryComment(
+101 |     @Param('historyId') historyId: string,
+102 |     @Body() body: AddCommentDto,
+103 |   ) {
+104 |     return this.eventsService.updateHistoryComment(historyId, body.comment);
+105 |   }
+106 | 
+107 |   @Delete(':id')
+108 |   @UseGuards(OwnershipGuard)
+109 |   @CheckOwnership('event')
+110 |   remove(@Param('id') id: string) {
+111 |     return this.eventsService.remove(id);
+112 |   }
+113 | 
+114 |   @Post(':id/report')
+115 |   @Throttle({ default: { ttl: 60000, limit: 10 } })
+116 |   @UseGuards(OwnershipGuard)
+117 |   @CheckOwnership('event')
+118 |   submitReport(
+119 |     @Param('id') id: string,
+120 |     @Body() body: SubmitReportDto,
+121 |     @CurrentUser() user: JwtUser,
+122 |   ) {
+123 |     return this.eventsService.submitReport(id, body, user);
+124 |   }
+125 | 
+126 |   @Get('school/:schoolId/completed')
+127 |   findCompletedBySchool(@Param('schoolId') schoolId: string) {
+128 |     return this.eventsService.findCompletedBySchool(schoolId);
+129 |   }
+130 | 
+131 |   @Get(':id')
+132 |   findOne(@Param('id') id: string) {
+133 |     return this.eventsService.findOne(id);
+134 |   }
+135 | 
+136 |   @Patch(':id/reschedule')
+137 |   @UseGuards(OwnershipGuard)
+138 |   @CheckOwnership('event')
+139 |   reschedule(
+140 |     @Param('id') id: string,
+141 |     @Body() body: RescheduleEventDto,
+142 |     @CurrentUser() user: JwtUser,
+143 |   ) {
+144 |     return this.eventsService.rescheduleEvent(id, body.date, body.time, user);
+145 |   }
+146 | }
+147 | 
 ```
 
 ### File: apps/backend/src/events/events.module.ts
@@ -3734,493 +4103,511 @@
   8 |   ExpenseItemDto,
   9 |   SalaryItemDto,
  10 | } from './dto/submit-report.dto';
- 11 | import { JwtUser } from '../auth/interfaces/jwt-user.interface';
- 12 | 
- 13 | /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+ 11 | import { EventQueryDto } from './dto/event-query.dto';
+ 12 | import { PageMetaDto } from '../common/dto/page-meta.dto';
+ 13 | import { JwtUser } from '../auth/interfaces/jwt-user.interface';
  14 | 
- 15 | const FIELD_ROLES = ['DRIVER', 'HOST'];
+ 15 | /* eslint-disable @typescript-eslint/no-unsafe-assignment */
  16 | 
- 17 | @Injectable()
- 18 | export class EventsService {
- 19 |   private readonly logger = new Logger(EventsService.name);
- 20 | 
- 21 |   constructor(
- 22 |     private readonly prisma: PrismaService,
- 23 |     private telegramService: TelegramService,
- 24 |   ) {}
- 25 | 
- 26 |   async findAllForUser(user: JwtUser) {
- 27 |     const isFieldStaff = FIELD_ROLES.includes(user.role);
- 28 | 
- 29 |     return this.prisma.event.findMany({
- 30 |       where: isFieldStaff
- 31 |         ? {
- 32 |             crew: {
- 33 |               OR: [{ hostId: user.sub }, { driverId: user.sub }],
- 34 |             },
- 35 |           }
- 36 |         : {},
- 37 |       include: {
- 38 |         school: { select: { id: true, name: true, type: true } },
- 39 |         city: { select: { id: true, name: true } },
- 40 |         crew: {
- 41 |           include: {
- 42 |             host: { select: { id: true, name: true } },
- 43 |             driver: { select: { id: true, name: true } },
- 44 |           },
- 45 |         },
- 46 |       },
- 47 |       orderBy: { date: 'asc' },
- 48 |     });
- 49 |   }
- 50 | 
- 51 |   async create(data: CreateEventDto, user: JwtUser) {
- 52 |     return this.prisma.event.create({
- 53 |       data: {
- 54 |         ...data,
- 55 |         status: 'BASE' as never,
- 56 |         date: new Date(data.date),
- 57 |         history: {
- 58 |           create: {
- 59 |             action: 'Створено подію. Етап: База',
- 60 |             userId: user.sub,
- 61 |             userName: user.name,
- 62 |             role: user.role,
- 63 |           },
- 64 |         },
- 65 |       },
- 66 |       include: { history: true },
- 67 |     });
- 68 |   }
- 69 | 
- 70 |   async updateStatus(
- 71 |     eventId: string,
- 72 |     newStatus: string,
- 73 |     actionName: string,
- 74 |     comment: string | undefined,
- 75 |     user: JwtUser,
- 76 |   ) {
- 77 |     return this.prisma.event.update({
- 78 |       where: { id: eventId },
- 79 |       data: {
- 80 |         status: newStatus as never,
- 81 |         history: {
- 82 |           create: {
- 83 |             action: actionName,
- 84 |             comment: comment || null,
- 85 |             userId: user.sub,
- 86 |             userName: user.name,
- 87 |             role: user.role,
- 88 |           },
- 89 |         },
- 90 |       },
- 91 |       include: { crew: true, history: { orderBy: { createdAt: 'desc' } } },
- 92 |     });
- 93 |   }
- 94 | 
- 95 |   async updatePreparationStatus(
- 96 |     eventId: string,
- 97 |     field: keyof Omit<
- 98 |       Prisma.EventPreparationUncheckedCreateInput,
- 99 |       'id' | 'eventId'
-100 |     >,
-101 |     status: PreparationStatus,
-102 |   ) {
-103 |     const existing = await this.prisma.eventPreparation.findUnique({
-104 |       where: { eventId },
-105 |     });
-106 | 
-107 |     if (existing) {
-108 |       return this.prisma.eventPreparation.update({
-109 |         where: { eventId },
-110 |         data: { [field]: status },
-111 |       });
-112 |     } else {
-113 |       return this.prisma.eventPreparation.create({
-114 |         data: { eventId, [field]: status },
-115 |       });
-116 |     }
-117 |   }
-118 | 
-119 |   async assignCrewToEvent(eventId: string, crewId: string) {
-120 |     const event = await this.prisma.event.update({
-121 |       where: { id: eventId },
-122 |       data: { crewId: crewId },
-123 |       include: {
-124 |         crew: { include: { host: true, driver: true } },
-125 |         school: true,
-126 |         city: true,
-127 |         preparation: true,
-128 |         history: { orderBy: { createdAt: 'desc' } },
-129 |       },
-130 |     });
-131 | 
-132 |     const hostId = event.crew?.hostId;
-133 |     const driverId = event.crew?.driverId;
-134 | 
-135 |     const dateStr = new Date(event.date).toLocaleDateString('uk-UA', {
-136 |       day: '2-digit',
-137 |       month: 'long',
-138 |       year: 'numeric',
-139 |     });
-140 |     const timeStr = event.time ? `, ${event.time}` : '';
-141 | 
-142 |     const buildMessage = (role: 'ведучий' | 'водій') =>
-143 |       `🎯 <b>Вас призначено на подію!</b>\n\n` +
-144 |       `👤 <b>Роль:</b> ${role === 'ведучий' ? '🎙️ Ведучий' : '🚗 Водій'}\n` +
-145 |       `📅 <b>Дата:</b> ${dateStr}${timeStr}\n` +
-146 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
-147 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
-148 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
-149 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
-150 |       (event.contactPerson
-151 |         ? `👤 <b>Контакт:</b> ${event.contactPerson}\n`
-152 |         : '') +
-153 |       (event.contactPhone ? `📞 <b>Телефон:</b> ${event.contactPhone}\n` : '') +
-154 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
-155 | 
-156 |     if (hostId) {
-157 |       const hostChatId = await this.getChatIdForUser(hostId);
-158 |       this.logger.log(`[assignCrew] hostChatId resolved=${hostChatId}`);
+ 17 | const FIELD_ROLES = ['DRIVER', 'HOST'];
+ 18 | 
+ 19 | @Injectable()
+ 20 | export class EventsService {
+ 21 |   private readonly logger = new Logger(EventsService.name);
+ 22 | 
+ 23 |   constructor(
+ 24 |     private readonly prisma: PrismaService,
+ 25 |     private telegramService: TelegramService,
+ 26 |   ) {}
+ 27 | 
+ 28 |   async findAllForUser(user: JwtUser, query?: EventQueryDto) {
+ 29 |     const isFieldStaff = FIELD_ROLES.includes(user.role);
+ 30 |     const where = isFieldStaff
+ 31 |       ? { crew: { OR: [{ hostId: user.sub }, { driverId: user.sub }] } }
+ 32 |       : {};
+ 33 |     const include = {
+ 34 |       school: { select: { id: true, name: true, type: true } },
+ 35 |       city: { select: { id: true, name: true } },
+ 36 |       crew: {
+ 37 |         include: {
+ 38 |           host: { select: { id: true, name: true } },
+ 39 |           driver: { select: { id: true, name: true } },
+ 40 |         },
+ 41 |       },
+ 42 |     };
+ 43 | 
+ 44 |     if (!query?.page) {
+ 45 |       return this.prisma.event.findMany({
+ 46 |         where,
+ 47 |         include,
+ 48 |         orderBy: { date: 'asc' },
+ 49 |       });
+ 50 |     }
+ 51 | 
+ 52 |     const take = query.take ?? 20;
+ 53 |     const skip = (query.page - 1) * take;
+ 54 | 
+ 55 |     const [data, totalItems] = await Promise.all([
+ 56 |       this.prisma.event.findMany({
+ 57 |         where,
+ 58 |         include,
+ 59 |         orderBy: { date: 'asc' },
+ 60 |         skip,
+ 61 |         take,
+ 62 |       }),
+ 63 |       this.prisma.event.count({ where }),
+ 64 |     ]);
+ 65 | 
+ 66 |     return { data, meta: new PageMetaDto(totalItems, query.page, take) };
+ 67 |   }
+ 68 | 
+ 69 |   async create(data: CreateEventDto, user: JwtUser) {
+ 70 |     return this.prisma.event.create({
+ 71 |       data: {
+ 72 |         ...data,
+ 73 |         status: 'BASE' as never,
+ 74 |         date: new Date(data.date),
+ 75 |         history: {
+ 76 |           create: {
+ 77 |             action: 'Створено подію. Етап: База',
+ 78 |             userId: user.sub,
+ 79 |             userName: user.name,
+ 80 |             role: user.role,
+ 81 |           },
+ 82 |         },
+ 83 |       },
+ 84 |       include: { history: true },
+ 85 |     });
+ 86 |   }
+ 87 | 
+ 88 |   async updateStatus(
+ 89 |     eventId: string,
+ 90 |     newStatus: string,
+ 91 |     actionName: string,
+ 92 |     comment: string | undefined,
+ 93 |     user: JwtUser,
+ 94 |   ) {
+ 95 |     return this.prisma.event.update({
+ 96 |       where: { id: eventId },
+ 97 |       data: {
+ 98 |         status: newStatus as never,
+ 99 |         history: {
+100 |           create: {
+101 |             action: actionName,
+102 |             comment: comment || null,
+103 |             userId: user.sub,
+104 |             userName: user.name,
+105 |             role: user.role,
+106 |           },
+107 |         },
+108 |       },
+109 |       include: { crew: true, history: { orderBy: { createdAt: 'desc' } } },
+110 |     });
+111 |   }
+112 | 
+113 |   async updatePreparationStatus(
+114 |     eventId: string,
+115 |     field: keyof Omit<
+116 |       Prisma.EventPreparationUncheckedCreateInput,
+117 |       'id' | 'eventId'
+118 |     >,
+119 |     status: PreparationStatus,
+120 |   ) {
+121 |     const existing = await this.prisma.eventPreparation.findUnique({
+122 |       where: { eventId },
+123 |     });
+124 | 
+125 |     if (existing) {
+126 |       return this.prisma.eventPreparation.update({
+127 |         where: { eventId },
+128 |         data: { [field]: status },
+129 |       });
+130 |     } else {
+131 |       return this.prisma.eventPreparation.create({
+132 |         data: { eventId, [field]: status },
+133 |       });
+134 |     }
+135 |   }
+136 | 
+137 |   async assignCrewToEvent(eventId: string, crewId: string) {
+138 |     const event = await this.prisma.event.update({
+139 |       where: { id: eventId },
+140 |       data: { crewId: crewId },
+141 |       include: {
+142 |         crew: { include: { host: true, driver: true } },
+143 |         school: true,
+144 |         city: true,
+145 |         preparation: true,
+146 |         history: { orderBy: { createdAt: 'desc' } },
+147 |       },
+148 |     });
+149 | 
+150 |     const hostId = event.crew?.hostId;
+151 |     const driverId = event.crew?.driverId;
+152 | 
+153 |     const dateStr = new Date(event.date).toLocaleDateString('uk-UA', {
+154 |       day: '2-digit',
+155 |       month: 'long',
+156 |       year: 'numeric',
+157 |     });
+158 |     const timeStr = event.time ? `, ${event.time}` : '';
 159 | 
-160 |       if (hostChatId) {
-161 |         await this.telegramService.sendMessage(
-162 |           hostChatId,
-163 |           buildMessage('ведучий'),
-164 |         );
-165 |       } else {
-166 |         this.logger.warn(
-167 |           `[assignCrew] Не вдалося надіслати повідомлення ведучому ${hostId}: chatId не знайдено (користувач не натиснув /start?)`,
-168 |         );
-169 |       }
-170 |     }
-171 | 
-172 |     if (driverId) {
-173 |       const driverChatId = await this.getChatIdForUser(driverId);
-174 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
-175 | 
-176 |       if (driverChatId) {
-177 |         await this.telegramService.sendMessage(
-178 |           driverChatId,
-179 |           buildMessage('водій'),
-180 |         );
-181 |       } else {
-182 |         this.logger.warn(
-183 |           `[assignCrew] Не вдалося надіслати повідомлення водію ${driverId}: chatId не знайдено`,
-184 |         );
-185 |       }
-186 |     }
-187 | 
-188 |     if (driverId) {
-189 |       const driver = await this.prisma.user.findUnique({
-190 |         where: { id: driverId },
-191 |       });
-192 |       this.logger.log(
-193 |         `[assignCrew] driver=${JSON.stringify({ name: driver?.name, telegramId: driver?.telegramId, telegramChatId: driver?.telegramChatId })}`,
-194 |       );
-195 |       const driverChatId =
-196 |         driver?.telegramChatId ||
-197 |         (driver?.telegramId && /^\d+$/.test(driver.telegramId)
-198 |           ? driver.telegramId
-199 |           : null);
-200 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
-201 |       if (driverChatId) {
-202 |         await this.telegramService.sendMessage(
-203 |           driverChatId,
-204 |           buildMessage('водій'),
-205 |         );
-206 |       }
-207 |     }
-208 | 
-209 |     return event;
-210 |   }
-211 | 
-212 |   async rescheduleEvent(
-213 |     eventId: string,
-214 |     newDate: string,
-215 |     newTime: string,
-216 |     user: JwtUser,
-217 |   ) {
-218 |     const event = await this.prisma.event.update({
-219 |       where: { id: eventId },
-220 |       data: {
-221 |         date: new Date(newDate),
-222 |         time: newTime,
-223 |         history: {
-224 |           create: {
-225 |             action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
-226 |             userId: user.sub,
-227 |             userName: user.name,
-228 |             role: user.role,
-229 |           },
-230 |         },
-231 |       },
-232 |       include: {
-233 |         crew: { include: { host: true, driver: true } },
-234 |         school: true,
-235 |         city: true,
-236 |         history: { orderBy: { createdAt: 'desc' } },
-237 |       },
-238 |     });
-239 | 
-240 |     const dateStr = new Date(newDate).toLocaleDateString('uk-UA', {
-241 |       day: '2-digit',
-242 |       month: 'long',
-243 |       year: 'numeric',
-244 |     });
-245 |     const msg =
-246 |       `📅 <b>Подію перенесено!</b>\n\n` +
-247 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
-248 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
-249 |       `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
-250 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
-251 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
-252 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
-253 | 
-254 |     const sendTo = async (userId: string | null | undefined) => {
-255 |       if (!userId) return;
-256 |       const u = await this.prisma.user.findUnique({ where: { id: userId } });
-257 |       const chatId =
-258 |         u?.telegramChatId ||
-259 |         (u?.telegramId && /^\d+$/.test(u.telegramId) ? u.telegramId : null);
-260 |       if (chatId) await this.telegramService.sendMessage(chatId, msg);
-261 |     };
-262 | 
-263 |     await sendTo(event.crew?.hostId);
-264 |     await sendTo(event.crew?.driverId);
-265 | 
-266 |     return event;
-267 |   }
-268 | 
-269 |   async getChatIdForUser(userId: string): Promise<string | null> {
-270 |     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-271 |     if (!user) return null;
-272 | 
-273 |     if (user.telegramChatId) return user.telegramChatId;
-274 | 
-275 |     if (user.telegramId && /^\d+$/.test(user.telegramId))
-276 |       return user.telegramId;
-277 | 
-278 |     return null;
-279 |   }
+160 |     const buildMessage = (role: 'ведучий' | 'водій') =>
+161 |       `🎯 <b>Вас призначено на подію!</b>\n\n` +
+162 |       `👤 <b>Роль:</b> ${role === 'ведучий' ? '🎙️ Ведучий' : '🚗 Водій'}\n` +
+163 |       `📅 <b>Дата:</b> ${dateStr}${timeStr}\n` +
+164 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
+165 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
+166 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
+167 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
+168 |       (event.contactPerson
+169 |         ? `👤 <b>Контакт:</b> ${event.contactPerson}\n`
+170 |         : '') +
+171 |       (event.contactPhone ? `📞 <b>Телефон:</b> ${event.contactPhone}\n` : '') +
+172 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+173 | 
+174 |     if (hostId) {
+175 |       const hostChatId = await this.getChatIdForUser(hostId);
+176 |       this.logger.log(`[assignCrew] hostChatId resolved=${hostChatId}`);
+177 | 
+178 |       if (hostChatId) {
+179 |         await this.telegramService.sendMessage(
+180 |           hostChatId,
+181 |           buildMessage('ведучий'),
+182 |         );
+183 |       } else {
+184 |         this.logger.warn(
+185 |           `[assignCrew] Не вдалося надіслати повідомлення ведучому ${hostId}: chatId не знайдено (користувач не натиснув /start?)`,
+186 |         );
+187 |       }
+188 |     }
+189 | 
+190 |     if (driverId) {
+191 |       const driverChatId = await this.getChatIdForUser(driverId);
+192 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
+193 | 
+194 |       if (driverChatId) {
+195 |         await this.telegramService.sendMessage(
+196 |           driverChatId,
+197 |           buildMessage('водій'),
+198 |         );
+199 |       } else {
+200 |         this.logger.warn(
+201 |           `[assignCrew] Не вдалося надіслати повідомлення водію ${driverId}: chatId не знайдено`,
+202 |         );
+203 |       }
+204 |     }
+205 | 
+206 |     if (driverId) {
+207 |       const driver = await this.prisma.user.findUnique({
+208 |         where: { id: driverId },
+209 |       });
+210 |       this.logger.log(
+211 |         `[assignCrew] driver=${JSON.stringify({ name: driver?.name, telegramId: driver?.telegramId, telegramChatId: driver?.telegramChatId })}`,
+212 |       );
+213 |       const driverChatId =
+214 |         driver?.telegramChatId ||
+215 |         (driver?.telegramId && /^\d+$/.test(driver.telegramId)
+216 |           ? driver.telegramId
+217 |           : null);
+218 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
+219 |       if (driverChatId) {
+220 |         await this.telegramService.sendMessage(
+221 |           driverChatId,
+222 |           buildMessage('водій'),
+223 |         );
+224 |       }
+225 |     }
+226 | 
+227 |     return event;
+228 |   }
+229 | 
+230 |   async rescheduleEvent(
+231 |     eventId: string,
+232 |     newDate: string,
+233 |     newTime: string,
+234 |     user: JwtUser,
+235 |   ) {
+236 |     const event = await this.prisma.event.update({
+237 |       where: { id: eventId },
+238 |       data: {
+239 |         date: new Date(newDate),
+240 |         time: newTime,
+241 |         history: {
+242 |           create: {
+243 |             action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
+244 |             userId: user.sub,
+245 |             userName: user.name,
+246 |             role: user.role,
+247 |           },
+248 |         },
+249 |       },
+250 |       include: {
+251 |         crew: { include: { host: true, driver: true } },
+252 |         school: true,
+253 |         city: true,
+254 |         history: { orderBy: { createdAt: 'desc' } },
+255 |       },
+256 |     });
+257 | 
+258 |     const dateStr = new Date(newDate).toLocaleDateString('uk-UA', {
+259 |       day: '2-digit',
+260 |       month: 'long',
+261 |       year: 'numeric',
+262 |     });
+263 |     const msg =
+264 |       `📅 <b>Подію перенесено!</b>\n\n` +
+265 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
+266 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
+267 |       `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
+268 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
+269 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
+270 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+271 | 
+272 |     const sendTo = async (userId: string | null | undefined) => {
+273 |       if (!userId) return;
+274 |       const u = await this.prisma.user.findUnique({ where: { id: userId } });
+275 |       const chatId =
+276 |         u?.telegramChatId ||
+277 |         (u?.telegramId && /^\d+$/.test(u.telegramId) ? u.telegramId : null);
+278 |       if (chatId) await this.telegramService.sendMessage(chatId, msg);
+279 |     };
 280 | 
-281 |   async findBySchool(schoolId: string, minimal = false) {
-282 |     if (minimal) {
-283 |       return this.prisma.event.findMany({
-284 |         where: { schoolId },
-285 |         select: {
-286 |           id: true,
-287 |           project: true,
-288 |           date: true,
-289 |           time: true,
-290 |           status: true,
-291 |           price: true,
-292 |           childrenPlanned: true,
-293 |           address: true,
-294 |           contactPerson: true,
-295 |           contactPhone: true,
-296 |           crewId: true,
-297 |           crew: {
-298 |             select: { id: true, name: true, hostId: true, driverId: true },
-299 |           },
-300 |         },
-301 |         orderBy: { date: 'desc' },
-302 |       });
-303 |     }
-304 |     return this.prisma.event.findMany({
-305 |       where: { schoolId },
-306 |       include: {
-307 |         crew: { include: { host: true, driver: true } },
-308 |         history: { orderBy: { createdAt: 'desc' } },
-309 |         preparation: true,
-310 |       },
-311 |       orderBy: { date: 'desc' },
-312 |     });
-313 |   }
-314 | 
-315 |   async updateHistoryComment(historyId: string, comment: string) {
-316 |     return this.prisma.eventHistory.update({
-317 |       where: { id: historyId },
-318 |       data: { comment: comment || null },
-319 |     });
-320 |   }
-321 | 
-322 |   async addHistoryComment(eventId: string, comment: string, user: JwtUser) {
-323 |     await this.prisma.eventHistory.create({
-324 |       data: {
-325 |         eventId,
-326 |         action: 'Коментар',
-327 |         comment,
-328 |         userId: user.sub,
-329 |         userName: user.name,
-330 |         role: user.role,
-331 |       },
-332 |     });
-333 | 
-334 |     return this.prisma.event.findUnique({
-335 |       where: { id: eventId },
-336 |       include: {
-337 |         history: { orderBy: { createdAt: 'desc' } },
-338 |       },
-339 |     });
-340 |   }
-341 | 
-342 |   async remove(id: string) {
-343 |     const exists = await this.prisma.event.findUnique({ where: { id } });
-344 |     if (!exists) throw new NotFoundException('Подію не знайдено');
-345 | 
-346 |     await this.prisma.eventHistory.deleteMany({
-347 |       where: { eventId: id },
-348 |     });
-349 | 
-350 |     await this.prisma.eventPreparation.deleteMany({
-351 |       where: { eventId: id },
-352 |     });
-353 | 
-354 |     return this.prisma.event.delete({
-355 |       where: { id },
-356 |     });
-357 |   }
-358 | 
-359 |   async submitReport(
-360 |     eventId: string,
-361 |     reportData: SubmitReportDto,
-362 |     user: JwtUser,
-363 |   ) {
-364 |     await this.prisma.eventReport.upsert({
-365 |       where: { eventId },
-366 |       update: {
-367 |         announcementDone: reportData.announcementDone,
-368 |         materialShown: reportData.materialShown,
-369 |         childrenCount: reportData.childrenCount,
-370 |         classesCount: reportData.classesCount,
-371 |         privilegedCount: reportData.privilegedCount,
-372 |         showingsCount: reportData.showingsCount,
-373 |         totalSum: reportData.totalSum,
-374 |         schoolSum: reportData.schoolSum,
-375 |         remainderSum: reportData.remainderSum,
-376 |         rating: reportData.rating,
-377 |       },
-378 |       create: {
-379 |         eventId,
-380 |         announcementDone: reportData.announcementDone,
-381 |         materialShown: reportData.materialShown,
-382 |         childrenCount: reportData.childrenCount,
-383 |         classesCount: reportData.classesCount,
-384 |         privilegedCount: reportData.privilegedCount,
-385 |         showingsCount: reportData.showingsCount,
-386 |         totalSum: reportData.totalSum,
-387 |         schoolSum: reportData.schoolSum,
-388 |         remainderSum: reportData.remainderSum,
-389 |         rating: reportData.rating,
-390 |       },
-391 |     });
-392 | 
-393 |     await this.prisma.expenseItem.deleteMany({ where: { reportId: eventId } });
-394 |     await this.prisma.salaryItem.deleteMany({ where: { reportId: eventId } });
-395 | 
-396 |     if (reportData.expenses?.length) {
-397 |       await this.prisma.expenseItem.createMany({
-398 |         data: reportData.expenses.map((exp: ExpenseItemDto) => ({
-399 |           reportId: eventId,
-400 |           category: exp.category || 'Інше',
-401 |           name: exp.name,
-402 |           amount: new Prisma.Decimal(exp.amount || 0),
-403 |         })),
-404 |       });
-405 |     }
-406 | 
-407 |     if (reportData.salaries?.length) {
-408 |       await this.prisma.salaryItem.createMany({
-409 |         data: reportData.salaries.map((s: SalaryItemDto) => ({
-410 |           reportId: eventId,
-411 |           userId: s.userId,
-412 |           userName: s.name,
-413 |           amount: new Prisma.Decimal(s.amount || 0),
-414 |           role: s.role,
-415 |         })),
-416 |       });
-417 | 
-418 |       await Promise.all(
-419 |         reportData.salaries
-420 |           .filter((s) => s.userId && s.amount > 0)
-421 |           .map((s) =>
-422 |             this.prisma.user.update({
-423 |               where: { id: s.userId },
-424 |               data: { balance: { increment: s.amount } },
-425 |             }),
-426 |           ),
-427 |       );
-428 |     }
-429 | 
-430 |     return this.prisma.event.update({
-431 |       where: { id: eventId },
-432 |       data: {
-433 |         status: 'REPORT' as never,
-434 |         history: {
-435 |           create: {
-436 |             action: 'Сформовано звіт. Етап: Звіт',
-437 |             userId: user.sub,
-438 |             userName: user.name,
-439 |             role: user.role,
-440 |           },
-441 |         },
-442 |       },
-443 |       include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
-444 |     });
-445 |   }
-446 | 
-447 |   async findOne(id: string) {
-448 |     const event = await this.prisma.event.findUnique({
-449 |       where: { id },
-450 |       include: {
-451 |         school: true,
-452 |         city: true,
-453 |         crew: {
-454 |           include: {
-455 |             host: { select: { id: true, name: true } },
-456 |             driver: { select: { id: true, name: true } },
-457 |           },
-458 |         },
-459 |         report: true,
+281 |     await sendTo(event.crew?.hostId);
+282 |     await sendTo(event.crew?.driverId);
+283 | 
+284 |     return event;
+285 |   }
+286 | 
+287 |   async getChatIdForUser(userId: string): Promise<string | null> {
+288 |     const user = await this.prisma.user.findUnique({ where: { id: userId } });
+289 |     if (!user) return null;
+290 | 
+291 |     if (user.telegramChatId) return user.telegramChatId;
+292 | 
+293 |     if (user.telegramId && /^\d+$/.test(user.telegramId))
+294 |       return user.telegramId;
+295 | 
+296 |     return null;
+297 |   }
+298 | 
+299 |   async findBySchool(schoolId: string, minimal = false) {
+300 |     if (minimal) {
+301 |       return this.prisma.event.findMany({
+302 |         where: { schoolId },
+303 |         select: {
+304 |           id: true,
+305 |           project: true,
+306 |           date: true,
+307 |           time: true,
+308 |           status: true,
+309 |           price: true,
+310 |           childrenPlanned: true,
+311 |           address: true,
+312 |           contactPerson: true,
+313 |           contactPhone: true,
+314 |           crewId: true,
+315 |           crew: {
+316 |             select: { id: true, name: true, hostId: true, driverId: true },
+317 |           },
+318 |         },
+319 |         orderBy: { date: 'desc' },
+320 |       });
+321 |     }
+322 |     return this.prisma.event.findMany({
+323 |       where: { schoolId },
+324 |       include: {
+325 |         crew: { include: { host: true, driver: true } },
+326 |         history: { orderBy: { createdAt: 'desc' } },
+327 |         preparation: true,
+328 |       },
+329 |       orderBy: { date: 'desc' },
+330 |     });
+331 |   }
+332 | 
+333 |   async updateHistoryComment(historyId: string, comment: string) {
+334 |     return this.prisma.eventHistory.update({
+335 |       where: { id: historyId },
+336 |       data: { comment: comment || null },
+337 |     });
+338 |   }
+339 | 
+340 |   async addHistoryComment(eventId: string, comment: string, user: JwtUser) {
+341 |     await this.prisma.eventHistory.create({
+342 |       data: {
+343 |         eventId,
+344 |         action: 'Коментар',
+345 |         comment,
+346 |         userId: user.sub,
+347 |         userName: user.name,
+348 |         role: user.role,
+349 |       },
+350 |     });
+351 | 
+352 |     return this.prisma.event.findUnique({
+353 |       where: { id: eventId },
+354 |       include: {
+355 |         history: { orderBy: { createdAt: 'desc' } },
+356 |       },
+357 |     });
+358 |   }
+359 | 
+360 |   async remove(id: string) {
+361 |     const exists = await this.prisma.event.findUnique({ where: { id } });
+362 |     if (!exists) throw new NotFoundException('Подію не знайдено');
+363 | 
+364 |     await this.prisma.eventHistory.deleteMany({
+365 |       where: { eventId: id },
+366 |     });
+367 | 
+368 |     await this.prisma.eventPreparation.deleteMany({
+369 |       where: { eventId: id },
+370 |     });
+371 | 
+372 |     return this.prisma.event.delete({
+373 |       where: { id },
+374 |     });
+375 |   }
+376 | 
+377 |   async submitReport(
+378 |     eventId: string,
+379 |     reportData: SubmitReportDto,
+380 |     user: JwtUser,
+381 |   ) {
+382 |     await this.prisma.eventReport.upsert({
+383 |       where: { eventId },
+384 |       update: {
+385 |         announcementDone: reportData.announcementDone,
+386 |         materialShown: reportData.materialShown,
+387 |         childrenCount: reportData.childrenCount,
+388 |         classesCount: reportData.classesCount,
+389 |         privilegedCount: reportData.privilegedCount,
+390 |         showingsCount: reportData.showingsCount,
+391 |         totalSum: reportData.totalSum,
+392 |         schoolSum: reportData.schoolSum,
+393 |         remainderSum: reportData.remainderSum,
+394 |         rating: reportData.rating,
+395 |       },
+396 |       create: {
+397 |         eventId,
+398 |         announcementDone: reportData.announcementDone,
+399 |         materialShown: reportData.materialShown,
+400 |         childrenCount: reportData.childrenCount,
+401 |         classesCount: reportData.classesCount,
+402 |         privilegedCount: reportData.privilegedCount,
+403 |         showingsCount: reportData.showingsCount,
+404 |         totalSum: reportData.totalSum,
+405 |         schoolSum: reportData.schoolSum,
+406 |         remainderSum: reportData.remainderSum,
+407 |         rating: reportData.rating,
+408 |       },
+409 |     });
+410 | 
+411 |     await this.prisma.expenseItem.deleteMany({ where: { reportId: eventId } });
+412 |     await this.prisma.salaryItem.deleteMany({ where: { reportId: eventId } });
+413 | 
+414 |     if (reportData.expenses?.length) {
+415 |       await this.prisma.expenseItem.createMany({
+416 |         data: reportData.expenses.map((exp: ExpenseItemDto) => ({
+417 |           reportId: eventId,
+418 |           category: exp.category || 'Інше',
+419 |           name: exp.name,
+420 |           amount: new Prisma.Decimal(exp.amount || 0),
+421 |         })),
+422 |       });
+423 |     }
+424 | 
+425 |     if (reportData.salaries?.length) {
+426 |       await this.prisma.salaryItem.createMany({
+427 |         data: reportData.salaries.map((s: SalaryItemDto) => ({
+428 |           reportId: eventId,
+429 |           userId: s.userId,
+430 |           userName: s.name,
+431 |           amount: new Prisma.Decimal(s.amount || 0),
+432 |           role: s.role,
+433 |         })),
+434 |       });
+435 | 
+436 |       await Promise.all(
+437 |         reportData.salaries
+438 |           .filter((s) => s.userId && s.amount > 0)
+439 |           .map((s) =>
+440 |             this.prisma.user.update({
+441 |               where: { id: s.userId },
+442 |               data: { balance: { increment: s.amount } },
+443 |             }),
+444 |           ),
+445 |       );
+446 |     }
+447 | 
+448 |     return this.prisma.event.update({
+449 |       where: { id: eventId },
+450 |       data: {
+451 |         status: 'REPORT' as never,
+452 |         history: {
+453 |           create: {
+454 |             action: 'Сформовано звіт. Етап: Звіт',
+455 |             userId: user.sub,
+456 |             userName: user.name,
+457 |             role: user.role,
+458 |           },
+459 |         },
 460 |       },
-461 |     });
-462 |     if (!event) throw new NotFoundException('Подію не знайдено');
-463 |     return event;
-464 |   }
-465 | 
-466 |   async findCompletedBySchool(schoolId: string) {
-467 |     return this.prisma.event.findMany({
-468 |       where: { schoolId, status: 'RE_SALE' },
-469 |       select: {
-470 |         id: true,
-471 |         project: true,
-472 |         date: true,
-473 |         status: true,
-474 |         price: true,
-475 |         childrenPlanned: true,
-476 |         report: {
-477 |           select: {
-478 |             childrenCount: true,
-479 |             classesCount: true,
-480 |             privilegedCount: true,
-481 |             showingsCount: true,
-482 |             totalSum: true,
-483 |             schoolSum: true,
-484 |             remainderSum: true,
-485 |             rating: true,
-486 |             expenseItems: {
-487 |               select: { category: true, name: true, amount: true },
-488 |             },
-489 |           },
-490 |         },
-491 |         history: { orderBy: { createdAt: 'asc' } },
-492 |       },
-493 |       orderBy: { date: 'desc' },
-494 |     });
-495 |   }
-496 | }
-497 | 
+461 |       include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
+462 |     });
+463 |   }
+464 | 
+465 |   async findOne(id: string) {
+466 |     const event = await this.prisma.event.findUnique({
+467 |       where: { id },
+468 |       include: {
+469 |         school: true,
+470 |         city: true,
+471 |         crew: {
+472 |           include: {
+473 |             host: { select: { id: true, name: true } },
+474 |             driver: { select: { id: true, name: true } },
+475 |           },
+476 |         },
+477 |         report: true,
+478 |       },
+479 |     });
+480 |     if (!event) throw new NotFoundException('Подію не знайдено');
+481 |     return event;
+482 |   }
+483 | 
+484 |   async findCompletedBySchool(schoolId: string) {
+485 |     return this.prisma.event.findMany({
+486 |       where: { schoolId, status: 'RE_SALE' },
+487 |       select: {
+488 |         id: true,
+489 |         project: true,
+490 |         date: true,
+491 |         status: true,
+492 |         price: true,
+493 |         childrenPlanned: true,
+494 |         report: {
+495 |           select: {
+496 |             childrenCount: true,
+497 |             classesCount: true,
+498 |             privilegedCount: true,
+499 |             showingsCount: true,
+500 |             totalSum: true,
+501 |             schoolSum: true,
+502 |             remainderSum: true,
+503 |             rating: true,
+504 |             expenseItems: {
+505 |               select: { category: true, name: true, amount: true },
+506 |             },
+507 |           },
+508 |         },
+509 |         history: { orderBy: { createdAt: 'asc' } },
+510 |       },
+511 |       orderBy: { date: 'desc' },
+512 |     });
+513 |   }
+514 | }
+515 | 
 ```
 
 ### File: apps/backend/src/finance/create-expense-item.dto.ts
@@ -7037,85 +7424,87 @@
  10 | } from '@nestjs/common';
  11 | import { SchoolsService } from './schools.service';
  12 | import { ParserService } from './parser.service';
- 13 | import { RolesGuard } from '../auth/guards/roles.guard';
- 14 | import { Roles } from '../auth/decorators/roles.decorator';
- 15 | import { AuthGuard } from '../auth/auth.guard';
- 16 | import { OwnershipGuard } from '../auth/guards/ownership.guard';
- 17 | import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
- 18 | import { CreateSchoolDto } from './dto/create-school.dto';
- 19 | import { UpdateSchoolDto } from './dto/update-school.dto';
- 20 | import { BulkImportDto } from './dto/bulk-import.dto';
- 21 | import { SchoolQueryDto } from './dto/school-query.dto';
- 22 | import { FindSchoolsQueryDto } from './dto/find-schools-query.dto';
- 23 | import { FindContactsQueryDto } from './dto/find-contacts-query.dto';
- 24 | @Controller('schools')
- 25 | @UseGuards(AuthGuard, RolesGuard)
- 26 | export class SchoolsController {
- 27 |   constructor(
- 28 |     private readonly schoolsService: SchoolsService,
- 29 |     private readonly parserService: ParserService,
- 30 |   ) {}
- 31 | 
- 32 |   @Post('bulk-import')
- 33 |   @Roles('SUPERADMIN', 'MANAGER')
- 34 |   bulkImport(@Body() body: BulkImportDto) {
- 35 |     return this.schoolsService.bulkImport(body.cityId, body.type || 'Школа');
- 36 |   }
- 37 | 
- 38 |   @Get('supported-cities')
- 39 |   getSupportedCities() {
- 40 |     return this.parserService.getSupportedCities();
- 41 |   }
- 42 | 
- 43 |   @Post()
- 44 |   @Roles('SUPERADMIN', 'MANAGER')
- 45 |   create(@Body() body: CreateSchoolDto) {
- 46 |     return this.schoolsService.create(body);
- 47 |   }
- 48 | 
- 49 |   @Get()
- 50 |   findAll(@Query() query: SchoolQueryDto) {
- 51 |     return this.schoolsService.findAll(query);
- 52 |   }
- 53 | 
- 54 |   @Get('stats')
- 55 |   getStats(
- 56 |     @Query('cityId') cityId?: string,
- 57 |     @Query('type') type?: 'Школа' | 'Садочок',
- 58 |     @Query('stage') stage?: 'new' | 'planned' | 'inProgress' | 'done',
- 59 |   ) {
- 60 |     return this.schoolsService.getStats({ cityId, type, stage });
- 61 |   }
- 62 | 
- 63 |   @Get('search')
- 64 |   search(@Query() query: FindSchoolsQueryDto) {
- 65 |     return this.parserService.searchSchools(query.q ?? '', query.type);
- 66 |   }
- 67 | 
- 68 |   @Get(':id')
- 69 |   findOne(@Param('id') id: string) {
- 70 |     return this.schoolsService.findOne(id);
- 71 |   }
- 72 | 
- 73 |   @Patch(':id')
- 74 |   @UseGuards(OwnershipGuard)
- 75 |   @CheckOwnership('school')
- 76 |   update(@Param('id') id: string, @Body() body: UpdateSchoolDto) {
- 77 |     return this.schoolsService.update(id, body);
- 78 |   }
- 79 | 
- 80 |   @Delete(':id')
- 81 |   @Roles('SUPERADMIN')
- 82 |   remove(@Param('id') id: string) {
- 83 |     return this.schoolsService.remove(id);
- 84 |   }
- 85 | 
- 86 |   @Get('contacts/search')
- 87 |   searchContacts(@Query() query: FindContactsQueryDto) {
- 88 |     return this.schoolsService.searchContacts(query.q ?? '', query.city);
- 89 |   }
- 90 | }
- 91 | 
+ 13 | import { Throttle } from '@nestjs/throttler';
+ 14 | import { RolesGuard } from '../auth/guards/roles.guard';
+ 15 | import { Roles } from '../auth/decorators/roles.decorator';
+ 16 | import { AuthGuard } from '../auth/auth.guard';
+ 17 | import { OwnershipGuard } from '../auth/guards/ownership.guard';
+ 18 | import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
+ 19 | import { CreateSchoolDto } from './dto/create-school.dto';
+ 20 | import { UpdateSchoolDto } from './dto/update-school.dto';
+ 21 | import { BulkImportDto } from './dto/bulk-import.dto';
+ 22 | import { SchoolQueryDto } from './dto/school-query.dto';
+ 23 | import { FindSchoolsQueryDto } from './dto/find-schools-query.dto';
+ 24 | import { FindContactsQueryDto } from './dto/find-contacts-query.dto';
+ 25 | @Controller('schools')
+ 26 | @UseGuards(AuthGuard, RolesGuard)
+ 27 | export class SchoolsController {
+ 28 |   constructor(
+ 29 |     private readonly schoolsService: SchoolsService,
+ 30 |     private readonly parserService: ParserService,
+ 31 |   ) {}
+ 32 | 
+ 33 |   @Post('bulk-import')
+ 34 |   @Throttle({ default: { ttl: 300000, limit: 2 } })
+ 35 |   @Roles('SUPERADMIN', 'MANAGER')
+ 36 |   bulkImport(@Body() body: BulkImportDto) {
+ 37 |     return this.schoolsService.bulkImport(body.cityId, body.type || 'Школа');
+ 38 |   }
+ 39 | 
+ 40 |   @Get('supported-cities')
+ 41 |   getSupportedCities() {
+ 42 |     return this.parserService.getSupportedCities();
+ 43 |   }
+ 44 | 
+ 45 |   @Post()
+ 46 |   @Roles('SUPERADMIN', 'MANAGER')
+ 47 |   create(@Body() body: CreateSchoolDto) {
+ 48 |     return this.schoolsService.create(body);
+ 49 |   }
+ 50 | 
+ 51 |   @Get()
+ 52 |   findAll(@Query() query: SchoolQueryDto) {
+ 53 |     return this.schoolsService.findAll(query);
+ 54 |   }
+ 55 | 
+ 56 |   @Get('stats')
+ 57 |   getStats(
+ 58 |     @Query('cityId') cityId?: string,
+ 59 |     @Query('type') type?: 'Школа' | 'Садочок',
+ 60 |     @Query('stage') stage?: 'new' | 'planned' | 'inProgress' | 'done',
+ 61 |   ) {
+ 62 |     return this.schoolsService.getStats({ cityId, type, stage });
+ 63 |   }
+ 64 | 
+ 65 |   @Get('search')
+ 66 |   search(@Query() query: FindSchoolsQueryDto) {
+ 67 |     return this.parserService.searchSchools(query.q ?? '', query.type);
+ 68 |   }
+ 69 | 
+ 70 |   @Get(':id')
+ 71 |   findOne(@Param('id') id: string) {
+ 72 |     return this.schoolsService.findOne(id);
+ 73 |   }
+ 74 | 
+ 75 |   @Patch(':id')
+ 76 |   @UseGuards(OwnershipGuard)
+ 77 |   @CheckOwnership('school')
+ 78 |   update(@Param('id') id: string, @Body() body: UpdateSchoolDto) {
+ 79 |     return this.schoolsService.update(id, body);
+ 80 |   }
+ 81 | 
+ 82 |   @Delete(':id')
+ 83 |   @Roles('SUPERADMIN')
+ 84 |   remove(@Param('id') id: string) {
+ 85 |     return this.schoolsService.remove(id);
+ 86 |   }
+ 87 | 
+ 88 |   @Get('contacts/search')
+ 89 |   searchContacts(@Query() query: FindContactsQueryDto) {
+ 90 |     return this.schoolsService.searchContacts(query.q ?? '', query.city);
+ 91 |   }
+ 92 | }
+ 93 | 
 ```
 
 ### File: apps/backend/src/schools/schools.module.ts
@@ -7817,42 +8206,46 @@
   4 |   IsOptional,
   5 |   MinLength,
   6 |   IsEnum,
-  7 | } from 'class-validator';
-  8 | import { UserRole } from '@prisma/client';
-  9 | 
- 10 | export class CreateUserDto {
- 11 |   @IsString()
- 12 |   @IsNotEmpty()
- 13 |   fullName: string;
- 14 | 
- 15 |   @IsEmail()
- 16 |   email: string;
- 17 | 
- 18 |   @IsString()
- 19 |   @MinLength(6)
- 20 |   password: string;
- 21 | 
- 22 |   @IsOptional()
- 23 |   @IsString()
- 24 |   phone?: string;
+  7 |   Matches,
+  8 | } from 'class-validator';
+  9 | import { UserRole } from '@prisma/client';
+ 10 | 
+ 11 | export class CreateUserDto {
+ 12 |   @IsString()
+ 13 |   @IsNotEmpty()
+ 14 |   fullName: string;
+ 15 | 
+ 16 |   @IsEmail()
+ 17 |   email: string;
+ 18 | 
+ 19 |   @IsString()
+ 20 |   @MinLength(8, { message: 'Пароль має містити щонайменше 8 символів' })
+ 21 |   @Matches(/^(?=.*[a-zA-Z])(?=.*\d).+$/, {
+ 22 |     message: 'Пароль має містити хоча б одну літеру та одну цифру',
+ 23 |   })
+ 24 |   password: string;
  25 | 
  26 |   @IsOptional()
- 27 |   @IsEnum(UserRole)
- 28 |   role?: UserRole;
+ 27 |   @IsString()
+ 28 |   phone?: string;
  29 | 
  30 |   @IsOptional()
- 31 |   @IsString()
- 32 |   cityId?: string;
+ 31 |   @IsEnum(UserRole)
+ 32 |   role?: UserRole;
  33 | 
  34 |   @IsOptional()
  35 |   @IsString()
- 36 |   telegramId?: string;
+ 36 |   cityId?: string;
  37 | 
  38 |   @IsOptional()
  39 |   @IsString()
- 40 |   car?: string;
- 41 | }
- 42 | 
+ 40 |   telegramId?: string;
+ 41 | 
+ 42 |   @IsOptional()
+ 43 |   @IsString()
+ 44 |   car?: string;
+ 45 | }
+ 46 | 
 ```
 
 ### File: apps/backend/src/users/dto/update-user.dto.ts
@@ -7863,44 +8256,48 @@
   3 |   IsOptional,
   4 |   MinLength,
   5 |   IsEnum,
-  6 | } from 'class-validator';
-  7 | import { UserRole } from '@prisma/client';
-  8 | 
-  9 | export class UpdateUserDto {
- 10 |   @IsOptional()
- 11 |   @IsString()
- 12 |   fullName?: string;
- 13 | 
- 14 |   @IsOptional()
- 15 |   @IsEmail()
- 16 |   email?: string;
- 17 | 
- 18 |   @IsOptional()
- 19 |   @IsString()
- 20 |   @MinLength(6)
- 21 |   password?: string;
- 22 | 
- 23 |   @IsOptional()
- 24 |   @IsString()
- 25 |   phone?: string;
+  6 |   Matches,
+  7 | } from 'class-validator';
+  8 | import { UserRole } from '@prisma/client';
+  9 | 
+ 10 | export class UpdateUserDto {
+ 11 |   @IsOptional()
+ 12 |   @IsString()
+ 13 |   fullName?: string;
+ 14 | 
+ 15 |   @IsOptional()
+ 16 |   @IsEmail()
+ 17 |   email?: string;
+ 18 | 
+ 19 |   @IsOptional()
+ 20 |   @IsString()
+ 21 |   @MinLength(8, { message: 'Пароль має містити щонайменше 8 символів' })
+ 22 |   @Matches(/^(?=.*[a-zA-Z])(?=.*\d).+$/, {
+ 23 |     message: 'Пароль має містити хоча б одну літеру та одну цифру',
+ 24 |   })
+ 25 |   password?: string;
  26 | 
  27 |   @IsOptional()
- 28 |   @IsEnum(UserRole)
- 29 |   role?: UserRole;
+ 28 |   @IsString()
+ 29 |   phone?: string;
  30 | 
  31 |   @IsOptional()
- 32 |   @IsString()
- 33 |   cityId?: string;
+ 32 |   @IsEnum(UserRole)
+ 33 |   role?: UserRole;
  34 | 
  35 |   @IsOptional()
  36 |   @IsString()
- 37 |   telegramId?: string;
+ 37 |   cityId?: string;
  38 | 
  39 |   @IsOptional()
  40 |   @IsString()
- 41 |   car?: string;
- 42 | }
- 43 | 
+ 41 |   telegramId?: string;
+ 42 | 
+ 43 |   @IsOptional()
+ 44 |   @IsString()
+ 45 |   car?: string;
+ 46 | }
+ 47 | 
 ```
 
 ### File: apps/backend/src/users/users.controller.spec.ts
@@ -21829,40 +22226,40 @@
   0 | const fs = require("fs");
   1 | const path = require("path");
   2 | 
-  3 | const outputFile = "combined_performance_files.md";
+  3 | const outputFile = "combined_security_audit.md";
   4 | 
-  5 | fs.writeFileSync(
-  6 |   outputFile,
-  7 |   "# Файли Dashboard, Schools, Events та Prisma Schema\n\n",
-  8 | );
-  9 | 
- 10 | const filesToCollect = [
- 11 |   "apps/backend/src/dashboard/dashboard.service.ts",
- 12 |   "apps/backend/src/dashboard/dashboard.module.ts",
- 13 |   "apps/backend/src/dashboard/dashboard.controller.ts",
- 14 |   "apps/backend/prisma/schema.prisma",
- 15 |   "apps/backend/src/schools/schools.service.ts",
- 16 |   "apps/backend/src/common/dto/page-meta.dto.ts",
- 17 |   "apps/backend/src/common/dto/page-options.dto.ts",
- 18 |   "apps/backend/src/events/events.service.ts",
- 19 | ];
- 20 | 
- 21 | let collectedCount = 0;
- 22 | 
- 23 | console.log("🚀 Починаю збір файлів для аналізу оптимізації та пагінації...\n");
- 24 | 
- 25 | filesToCollect.forEach((filePath) => {
- 26 |   if (!fs.existsSync(filePath)) {
- 27 |     console.warn(`[!] Файл не знайдено: ${filePath}`);
- 28 |     return;
- 29 |   }
- 30 | 
- 31 |   const content = fs.readFileSync(filePath, "utf-8");
- 32 |   const ext = path.extname(filePath).replace(".", "");
- 33 | 
- 34 |   let lang = ext;
- 35 |   if (["ts", "tsx"].includes(ext)) lang = "typescript";
- 36 |   if (ext === "prisma") lang = "prisma";
+  5 | fs.writeFileSync(outputFile, "# Файли Auth, Security та Prisma Schema\n\n");
+  6 | 
+  7 | const filesToCollect = [
+  8 |   "apps/backend/prisma/schema.prisma",
+  9 |   "apps/backend/src/auth/auth.module.ts",
+ 10 |   "apps/backend/src/auth/auth.service.ts",
+ 11 |   "apps/backend/src/auth/auth.controller.ts",
+ 12 |   "apps/backend/src/auth/auth.guard.ts",
+ 13 |   "apps/backend/src/auth/interfaces/jwt-user.interface.ts",
+ 14 |   "apps/backend/src/auth/dto/login.dto.ts",
+ 15 |   "apps/backend/src/main.ts",
+ 16 |   "apps/backend/src/app.module.ts",
+ 17 |   "apps/backend/package.json",
+ 18 | ];
+ 19 | 
+ 20 | let collectedCount = 0;
+ 21 | 
+ 22 | console.log("🚀 Починаю збір файлів для Security & Audit...\n");
+ 23 | 
+ 24 | filesToCollect.forEach((filePath) => {
+ 25 |   if (!fs.existsSync(filePath)) {
+ 26 |     console.warn(`[!] Файл не знайдено: ${filePath}`);
+ 27 |     return;
+ 28 |   }
+ 29 | 
+ 30 |   const content = fs.readFileSync(filePath, "utf-8");
+ 31 |   const ext = path.extname(filePath).replace(".", "");
+ 32 | 
+ 33 |   let lang = ext;
+ 34 |   if (["ts", "tsx"].includes(ext)) lang = "typescript";
+ 35 |   if (ext === "prisma") lang = "prisma";
+ 36 |   if (ext === "json") lang = "json";
  37 | 
  38 |   const mdBlock = `### \`${filePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`;
  39 |   fs.appendFileSync(outputFile, mdBlock);

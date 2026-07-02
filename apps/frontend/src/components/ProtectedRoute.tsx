@@ -8,8 +8,11 @@ interface Props {
 
 export default function ProtectedRoute({ allowedRoles, children }: Props) {
   const { user } = useAuth();
-  if (!user || !allowedRoles.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />;
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  if (!allowedRoles.includes(user.role)) {
+    return <Navigate to="/schools" replace />;
   }
   return <>{children}</>;
 }
