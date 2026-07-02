@@ -9,7 +9,7 @@ interface LoginProps {
 
 export default function Login({ onLogin }: LoginProps) {
   const [email, setEmail] = useState("admin@crm.com");
-  const [password, setPassword] = useState("admin123");
+  const [password, setPassword] = useState("123!PASSWORD!321");
   const [error, setError] = useState("");
   const navigate = useNavigate();
 

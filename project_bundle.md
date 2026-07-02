@@ -30,6 +30,14 @@
 │   │   │   │   │   └── migration.sql
 │   │   │   │   ├── 20260701224321_balance_to_decimal
 │   │   │   │   │   └── migration.sql
+│   │   │   │   ├── 20260701232948_add_missing_indexes
+│   │   │   │   │   └── migration.sql
+│   │   │   │   ├── 20260701234519_user_role_enum
+│   │   │   │   │   └── migration.sql
+│   │   │   │   ├── 20260701234848_add_host_role
+│   │   │   │   │   └── migration.sql
+│   │   │   │   ├── 20260701235202_preparation_status_enum
+│   │   │   │   │   └── migration.sql
 │   │   │   │   └── migration_lock.toml
 │   │   │   ├── schema.prisma
 │   │   │   └── seed-admin.js
@@ -66,6 +74,10 @@
 │   │   │   │   └── dto
 │   │   │   │       ├── create-city.dto.ts
 │   │   │   │       └── create-crew.dto.ts
+│   │   │   ├── common
+│   │   │   │   └── dto
+│   │   │   │       ├── page-meta.dto.ts
+│   │   │   │       └── page-options.dto.ts
 │   │   │   ├── dashboard
 │   │   │   │   ├── dashboard.controller.ts
 │   │   │   │   ├── dashboard.module.ts
@@ -119,6 +131,9 @@
 │   │   │   │   ├── dto
 │   │   │   │   │   ├── bulk-import.dto.ts
 │   │   │   │   │   ├── create-school.dto.ts
+│   │   │   │   │   ├── find-contacts-query.dto.ts
+│   │   │   │   │   ├── find-schools-query.dto.ts
+│   │   │   │   │   ├── school-query.dto.ts
 │   │   │   │   │   └── update-school.dto.ts
 │   │   │   │   ├── parser.service.ts
 │   │   │   │   ├── school-contacts.seed.ts
@@ -194,6 +209,8 @@
 │       │   │   ├── finance
 │       │   │   │   ├── FinanceCharts.tsx
 │       │   │   │   └── StaffFinanceView.tsx
+│       │   │   ├── modals
+│       │   │   │   └── EventSchema.ts
 │       │   │   ├── school-profile
 │       │   │   │   ├── AssignedCrew.tsx
 │       │   │   │   ├── CompletedEventModal.tsx
@@ -209,9 +226,11 @@
 │       │   │   │       ├── CrewModal.tsx
 │       │   │   │       ├── EditSchoolModal.tsx
 │       │   │   │       ├── EventModal.tsx
+│       │   │   │       ├── EventSchema.ts
 │       │   │   │       ├── IssueModal.tsx
 │       │   │   │       ├── ReportModal.tsx
-│       │   │   │       └── RescheduleModal.tsx
+│       │   │   │       ├── RescheduleModal.tsx
+│       │   │   │       └── SchoolEditSchema.ts
 │       │   │   ├── schools
 │       │   │   │   ├── SchoolDesktopTable.tsx
 │       │   │   │   ├── SchoolMobileList.tsx
@@ -231,8 +250,7 @@
 │       │   │   ├── useCalendar.ts
 │       │   │   ├── useCities.ts
 │       │   │   ├── useEmployees.ts
-│       │   │   ├── useSchoolProfile.ts
-│       │   │   └── useSchools.ts
+│       │   │   └── useSchoolProfile.ts
 │       │   ├── index.css
 │       │   ├── main.tsx
 │       │   ├── pages
@@ -251,7 +269,8 @@
 │       │   ├── types
 │       │   │   └── index.ts
 │       │   └── utils
-│       │       └── formatCurrency.ts
+│       │       ├── formatCurrency.ts
+│       │       └── preparationStatus.ts
 │       ├── tailwind.config.js
 │       ├── tsconfig.app.json
 │       ├── tsconfig.json
@@ -260,6 +279,7 @@
 │       └── vite.config.ts
 ├── collect-code.js
 ├── combined_auth_cors.md
+├── combined_auth_users.md
 ├── combined_failing_tests.md
 ├── combined_final_fixes.md
 ├── combined_methods_and_dto.md
@@ -299,76 +319,77 @@
  24 |     "@nestjs/jwt": "^11.0.2",
  25 |     "@nestjs/passport": "^11.0.5",
  26 |     "@nestjs/platform-express": "^11.0.1",
- 27 |     "@prisma/client": "6.19.0",
- 28 |     "axios": "^1.18.0",
- 29 |     "bcrypt": "^6.0.0",
- 30 |     "cheerio": "^1.2.0",
- 31 |     "class-transformer": "^0.5.1",
- 32 |     "class-validator": "^0.15.1",
- 33 |     "cookie-parser": "^1.4.7",
- 34 |     "dotenv": "^17.4.2",
- 35 |     "node-telegram-bot-api": "0.64.0",
- 36 |     "passport": "^0.7.0",
- 37 |     "passport-jwt": "^4.0.1",
- 38 |     "reflect-metadata": "^0.2.2",
- 39 |     "rxjs": "^7.8.1"
- 40 |   },
- 41 |   "devDependencies": {
- 42 |     "@eslint/eslintrc": "^3.2.0",
- 43 |     "@eslint/js": "^9.18.0",
- 44 |     "@nestjs/cli": "^11.0.0",
- 45 |     "@nestjs/schematics": "^11.0.0",
- 46 |     "@nestjs/testing": "^11.0.1",
- 47 |     "@types/bcrypt": "^6.0.0",
- 48 |     "@types/cookie-parser": "^1.4.10",
- 49 |     "@types/express": "^5.0.0",
- 50 |     "@types/jest": "^29.0.0",
- 51 |     "@types/node": "^24.0.0",
- 52 |     "@types/node-telegram-bot-api": "^0.64.15",
- 53 |     "@types/passport-jwt": "^4.0.1",
- 54 |     "@types/supertest": "^7.0.0",
- 55 |     "eslint": "^9.18.0",
- 56 |     "eslint-config-prettier": "^10.0.1",
- 57 |     "eslint-plugin-prettier": "^5.2.2",
- 58 |     "globals": "^17.0.0",
- 59 |     "jest": "^29.0.0",
- 60 |     "jest-mock-extended": "^3.0.0",
- 61 |     "prettier": "^3.4.2",
- 62 |     "prisma": "6.19.0",
- 63 |     "source-map-support": "^0.5.21",
- 64 |     "supertest": "^7.0.0",
- 65 |     "ts-jest": "^29.2.5",
- 66 |     "ts-loader": "^9.5.2",
- 67 |     "ts-node": "^10.9.2",
- 68 |     "tsconfig-paths": "^4.2.0",
- 69 |     "typescript": "^5.7.3",
- 70 |     "typescript-eslint": "^8.20.0"
- 71 |   },
- 72 |   "jest": {
- 73 |     "moduleFileExtensions": [
- 74 |       "js",
- 75 |       "json",
- 76 |       "ts"
- 77 |     ],
- 78 |     "rootDir": "src",
- 79 |     "testRegex": ".*\\.spec\\.ts$",
- 80 |     "transform": {
- 81 |       "^.+\\.(t|j)s$": "ts-jest"
- 82 |     },
- 83 |     "collectCoverageFrom": [
- 84 |       "**/*.(t|j)s"
- 85 |     ],
- 86 |     "coverageDirectory": "../coverage",
- 87 |     "testEnvironment": "node",
- 88 |     "moduleNameMapper": {
- 89 |       "^src/(.*)$": "<rootDir>/$1"
- 90 |     }
- 91 |   },
- 92 |   "prisma": {
- 93 |     "schema": "prisma/schema.prisma"
- 94 |   }
- 95 | }
- 96 | 
+ 27 |     "@nestjs/throttler": "^6.5.0",
+ 28 |     "@prisma/client": "6.19.0",
+ 29 |     "axios": "^1.18.0",
+ 30 |     "bcrypt": "^6.0.0",
+ 31 |     "cheerio": "^1.2.0",
+ 32 |     "class-transformer": "^0.5.1",
+ 33 |     "class-validator": "^0.15.1",
+ 34 |     "cookie-parser": "^1.4.7",
+ 35 |     "dotenv": "^17.4.2",
+ 36 |     "node-telegram-bot-api": "0.64.0",
+ 37 |     "passport": "^0.7.0",
+ 38 |     "passport-jwt": "^4.0.1",
+ 39 |     "reflect-metadata": "^0.2.2",
+ 40 |     "rxjs": "^7.8.1"
+ 41 |   },
+ 42 |   "devDependencies": {
+ 43 |     "@eslint/eslintrc": "^3.2.0",
+ 44 |     "@eslint/js": "^9.18.0",
+ 45 |     "@nestjs/cli": "^11.0.0",
+ 46 |     "@nestjs/schematics": "^11.0.0",
+ 47 |     "@nestjs/testing": "^11.0.1",
+ 48 |     "@types/bcrypt": "^6.0.0",
+ 49 |     "@types/cookie-parser": "^1.4.10",
+ 50 |     "@types/express": "^5.0.0",
+ 51 |     "@types/jest": "^29.0.0",
+ 52 |     "@types/node": "^24.0.0",
+ 53 |     "@types/node-telegram-bot-api": "^0.64.15",
+ 54 |     "@types/passport-jwt": "^4.0.1",
+ 55 |     "@types/supertest": "^7.0.0",
+ 56 |     "eslint": "^9.18.0",
+ 57 |     "eslint-config-prettier": "^10.0.1",
+ 58 |     "eslint-plugin-prettier": "^5.2.2",
+ 59 |     "globals": "^17.0.0",
+ 60 |     "jest": "^29.0.0",
+ 61 |     "jest-mock-extended": "^3.0.0",
+ 62 |     "prettier": "^3.4.2",
+ 63 |     "prisma": "6.19.0",
+ 64 |     "source-map-support": "^0.5.21",
+ 65 |     "supertest": "^7.0.0",
+ 66 |     "ts-jest": "^29.2.5",
+ 67 |     "ts-loader": "^9.5.2",
+ 68 |     "ts-node": "^10.9.2",
+ 69 |     "tsconfig-paths": "^4.2.0",
+ 70 |     "typescript": "^5.7.3",
+ 71 |     "typescript-eslint": "^8.20.0"
+ 72 |   },
+ 73 |   "jest": {
+ 74 |     "moduleFileExtensions": [
+ 75 |       "js",
+ 76 |       "json",
+ 77 |       "ts"
+ 78 |     ],
+ 79 |     "rootDir": "src",
+ 80 |     "testRegex": ".*\\.spec\\.ts$",
+ 81 |     "transform": {
+ 82 |       "^.+\\.(t|j)s$": "ts-jest"
+ 83 |     },
+ 84 |     "collectCoverageFrom": [
+ 85 |       "**/*.(t|j)s"
+ 86 |     ],
+ 87 |     "coverageDirectory": "../coverage",
+ 88 |     "testEnvironment": "node",
+ 89 |     "moduleNameMapper": {
+ 90 |       "^src/(.*)$": "<rootDir>/$1"
+ 91 |     }
+ 92 |   },
+ 93 |   "prisma": {
+ 94 |     "schema": "prisma/schema.prisma"
+ 95 |   }
+ 96 | }
+ 97 | 
 ```
 
 ### File: apps/backend/prisma/schema.prisma
@@ -378,255 +399,273 @@
   2 | }
   3 | 
   4 | datasource db {
-  5 |   provider = "postgresql"
-  6 |   url      = env("DATABASE_URL")
-  7 | }
-  8 | 
-  9 | model User {
- 10 |   id             String       @id @default(uuid())
- 11 |   name           String
- 12 |   email          String       @unique
- 13 |   phone          String?
- 14 |   password       String
- 15 |   role           String       @default("MANAGER")
- 16 |   cityId         String?
- 17 |   createdAt      DateTime     @default(now())
- 18 |   updatedAt      DateTime     @updatedAt
- 19 |   telegramId     String?
- 20 |   telegramChatId String?
- 21 |   car            String?
- 22 |   balance        Decimal      @default(0) @db.Decimal(12, 2)
- 23 |   managedCities  City[]       @relation("CityManager")
- 24 |   crewAsDriver   Crew[]       @relation("DriverCrew")
- 25 |   crewAsHost     Crew[]       @relation("HostCrew")
- 26 |   city           City?        @relation(fields: [cityId], references: [id])
- 27 |   salaryItems    SalaryItem[]
- 28 | }
+  5 |   provider  = "postgresql"
+  6 |   url       = env("DATABASE_URL")
+  7 |   directUrl = env("DIRECT_URL")
+  8 | }
+  9 | 
+ 10 | model User {
+ 11 |   id             String       @id @default(uuid())
+ 12 |   name           String
+ 13 |   email          String       @unique
+ 14 |   phone          String?
+ 15 |   password       String
+ 16 |   role           UserRole     @default(MANAGER)
+ 17 |   cityId         String?
+ 18 |   createdAt      DateTime     @default(now())
+ 19 |   updatedAt      DateTime     @updatedAt
+ 20 |   telegramId     String?
+ 21 |   telegramChatId String?
+ 22 |   car            String?
+ 23 |   balance        Decimal      @default(0) @db.Decimal(12, 2)
+ 24 |   managedCities  City[]       @relation("CityManager")
+ 25 |   crewAsDriver   Crew[]       @relation("DriverCrew")
+ 26 |   crewAsHost     Crew[]       @relation("HostCrew")
+ 27 |   city           City?        @relation(fields: [cityId], references: [id])
+ 28 |   salaryItems    SalaryItem[]
  29 | 
- 30 | model City {
- 31 |   id        String        @id @default(uuid())
- 32 |   name      String
- 33 |   managerId String?
- 34 |   createdAt DateTime      @default(now())
- 35 |   manager   User?         @relation("CityManager", fields: [managerId], references: [id])
- 36 |   crews     Crew[]
- 37 |   events    Event[]
- 38 |   issues    IssueReport[]
- 39 |   schools   School[]
- 40 |   users     User[]
- 41 | }
- 42 | 
- 43 | model School {
- 44 |   id            String   @id @default(uuid())
- 45 |   name          String
- 46 |   type          String
- 47 |   cityId        String
- 48 |   address       String?
- 49 |   director      String?
- 50 |   phone         String?
- 51 |   email         String?
- 52 |   notes         String?
- 53 |   childrenCount Int?
- 54 |   isHotClient   Boolean  @default(false)
- 55 |   rating        Float?
- 56 |   createdAt     DateTime @default(now())
- 57 |   updatedAt     DateTime @updatedAt
- 58 |   events        Event[]
- 59 |   city          City     @relation(fields: [cityId], references: [id])
- 60 | 
- 61 |   @@index([cityId])
- 62 | }
- 63 | 
- 64 | model Crew {
- 65 |   id        String   @id @default(uuid())
- 66 |   name      String
- 67 |   cityId    String
- 68 |   hostId    String?
- 69 |   driverId  String?
- 70 |   car       String?
- 71 |   carPlate  String?
- 72 |   phone     String?
- 73 |   isActive  Boolean  @default(true)
- 74 |   createdAt DateTime @default(now())
- 75 |   city      City     @relation(fields: [cityId], references: [id])
- 76 |   driver    User?    @relation("DriverCrew", fields: [driverId], references: [id])
- 77 |   host      User?    @relation("HostCrew", fields: [hostId], references: [id])
- 78 |   events    Event[]
- 79 | }
- 80 | 
- 81 | model Event {
- 82 |   id              String            @id @default(uuid())
- 83 |   cityId          String
- 84 |   schoolId        String
- 85 |   crewId          String?
- 86 |   project         String
- 87 |   date            DateTime
- 88 |   time            String?
- 89 |   status          EventStatus       @default(BASE)
- 90 |   childrenPlanned Int?
- 91 |   childrenActual  Int?
- 92 |   price           Float?
- 93 |   received        Float?
- 94 |   paymentMethod   String?
- 95 |   address         String?
- 96 |   contactPerson   String?
- 97 |   contactPhone    String?
- 98 |   equipment       String?
- 99 |   nextContact     DateTime?
-100 |   nextProject     String?
-101 |   responsibleId   String?
-102 |   createdAt       DateTime          @default(now())
-103 |   updatedAt       DateTime          @updatedAt
-104 |   city            City              @relation(fields: [cityId], references: [id])
-105 |   crew            Crew?             @relation(fields: [crewId], references: [id])
-106 |   school          School            @relation(fields: [schoolId], references: [id])
-107 |   history         EventHistory[]
-108 |   preparation     EventPreparation?
-109 |   report          EventReport?
-110 |   files           File[]
-111 |   issues          IssueReport[]
-112 | 
-113 |   @@index([cityId])
-114 |   @@index([status])
-115 |   @@index([schoolId])
-116 | }
-117 | 
-118 | model EventReport {
-119 |   id                String        @id @default(uuid())
-120 |   eventId           String        @unique
-121 |   directorSatisfied Boolean?
-122 |   teachersSatisfied Boolean?
-123 |   hadIssues         Boolean       @default(false)
-124 |   comment           String?
-125 |   rating            Float?
-126 |   createdAt         DateTime      @default(now())
-127 |   announcementDone  Boolean       @default(false)
-128 |   materialShown     Boolean       @default(false)
-129 |   childrenCount     Int           @default(0)
-130 |   classesCount      Int           @default(0)
-131 |   privilegedCount   Int           @default(0)
-132 |   showingsCount     Int           @default(0)
-133 |   totalSum          Float         @default(0)
-134 |   schoolSum         Float         @default(0)
-135 |   remainderSum      Float         @default(0)
-136 |   event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-137 |   photos            File[]
-138 |   expenseItems      ExpenseItem[]
-139 |   salaryItems       SalaryItem[]
-140 | }
-141 | 
-142 | model File {
-143 |   id        String       @id @default(uuid())
-144 |   name      String
-145 |   url       String
-146 |   size      Int
-147 |   eventId   String?
-148 |   reportId  String?
-149 |   createdAt DateTime     @default(now())
-150 |   event     Event?       @relation(fields: [eventId], references: [id])
-151 |   report    EventReport? @relation(fields: [reportId], references: [id])
-152 | }
-153 | 
-154 | model EventHistory {
-155 |   id        String   @id @default(uuid())
-156 |   eventId   String
-157 |   action    String
-158 |   comment   String?
-159 |   userId    String
-160 |   userName  String
-161 |   role      String
-162 |   createdAt DateTime @default(now())
-163 |   event     Event    @relation(fields: [eventId], references: [id])
-164 | }
-165 | 
-166 | model EventPreparation {
-167 |   id               String @id @default(uuid())
-168 |   eventId          String @unique
-169 |   assignCrew       String @default("Заплановано")
-170 |   bookEquipment    String @default("Заплановано")
-171 |   prepareDocs      String @default("Заплановано")
-172 |   prepareMaterials String @default("Заплановано")
-173 |   remindSchool     String @default("Заплановано")
-174 |   event            Event  @relation(fields: [eventId], references: [id])
-175 | }
-176 | 
-177 | model IssueReport {
-178 |   id               String    @id @default(uuid())
-179 |   eventId          String
-180 |   schoolName       String
-181 |   eventName        String
-182 |   message          String
-183 |   cityId           String
-184 |   status           String    @default("Планується")
-185 |   createdAt        DateTime  @default(now())
-186 |   deadline         DateTime?
-187 |   assignedUserId   String?
-188 |   assignedUserName String?
-189 |   city             City      @relation(fields: [cityId], references: [id])
-190 |   event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-191 | 
-192 |   @@index([cityId])
-193 | }
-194 | 
-195 | model SchoolContact {
-196 |   id           String   @id @default(uuid())
-197 |   city         String   @default("Львів")
-198 |   schoolNumber String
-199 |   contactName  String
-200 |   phone        String
-201 |   role         String?
-202 |   createdAt    DateTime @default(now())
-203 | }
-204 | 
-205 | model Project {
-206 |   id        String   @id @default(uuid())
-207 |   name      String   @unique
-208 |   color     String   @default("blue")
-209 |   createdAt DateTime @default(now())
-210 | }
-211 | 
-212 | model ExpenseItem {
-213 |   id        String   @id @default(uuid())
-214 |   reportId  String
-215 |   category  String 
-216 |   name      String?
-217 |   amount    Decimal  @db.Decimal(12, 2)
-218 |   createdAt DateTime @default(now())
-219 | 
-220 |   report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-221 | 
-222 |   @@index([reportId])
-223 | }
+ 30 |   @@index([role])
+ 31 |   @@index([cityId])
+ 32 | }
+ 33 | 
+ 34 | model City {
+ 35 |   id        String        @id @default(uuid())
+ 36 |   name      String
+ 37 |   managerId String?
+ 38 |   createdAt DateTime      @default(now())
+ 39 |   manager   User?         @relation("CityManager", fields: [managerId], references: [id])
+ 40 |   crews     Crew[]
+ 41 |   events    Event[]
+ 42 |   issues    IssueReport[]
+ 43 |   schools   School[]
+ 44 |   users     User[]
+ 45 | }
+ 46 | 
+ 47 | model School {
+ 48 |   id            String   @id @default(uuid())
+ 49 |   name          String
+ 50 |   type          String
+ 51 |   cityId        String
+ 52 |   address       String?
+ 53 |   director      String?
+ 54 |   phone         String?
+ 55 |   email         String?
+ 56 |   notes         String?
+ 57 |   childrenCount Int?
+ 58 |   isHotClient   Boolean  @default(false)
+ 59 |   rating        Float?
+ 60 |   createdAt     DateTime @default(now())
+ 61 |   updatedAt     DateTime @updatedAt
+ 62 |   events        Event[]
+ 63 |   city          City     @relation(fields: [cityId], references: [id])
+ 64 | 
+ 65 |   @@index([cityId])
+ 66 | }
+ 67 | 
+ 68 | model Crew {
+ 69 |   id        String   @id @default(uuid())
+ 70 |   name      String
+ 71 |   cityId    String
+ 72 |   hostId    String?
+ 73 |   driverId  String?
+ 74 |   car       String?
+ 75 |   carPlate  String?
+ 76 |   phone     String?
+ 77 |   isActive  Boolean  @default(true)
+ 78 |   createdAt DateTime @default(now())
+ 79 |   city      City     @relation(fields: [cityId], references: [id])
+ 80 |   driver    User?    @relation("DriverCrew", fields: [driverId], references: [id])
+ 81 |   host      User?    @relation("HostCrew", fields: [hostId], references: [id])
+ 82 |   events    Event[]
+ 83 | }
+ 84 | 
+ 85 | model Event {
+ 86 |   id              String            @id @default(uuid())
+ 87 |   cityId          String
+ 88 |   schoolId        String
+ 89 |   crewId          String?
+ 90 |   project         String
+ 91 |   date            DateTime
+ 92 |   time            String?
+ 93 |   status          EventStatus       @default(BASE)
+ 94 |   childrenPlanned Int?
+ 95 |   childrenActual  Int?
+ 96 |   price           Float?
+ 97 |   received        Float?
+ 98 |   paymentMethod   String?
+ 99 |   address         String?
+100 |   contactPerson   String?
+101 |   contactPhone    String?
+102 |   equipment       String?
+103 |   nextContact     DateTime?
+104 |   nextProject     String?
+105 |   responsibleId   String?
+106 |   createdAt       DateTime          @default(now())
+107 |   updatedAt       DateTime          @updatedAt
+108 |   city            City              @relation(fields: [cityId], references: [id])
+109 |   crew            Crew?             @relation(fields: [crewId], references: [id])
+110 |   school          School            @relation(fields: [schoolId], references: [id])
+111 |   history         EventHistory[]
+112 |   preparation     EventPreparation?
+113 |   report          EventReport?
+114 |   files           File[]
+115 |   issues          IssueReport[]
+116 | 
+117 |   @@index([cityId])
+118 |   @@index([status])
+119 |   @@index([schoolId])
+120 | }
+121 | 
+122 | model EventReport {
+123 |   id                String        @id @default(uuid())
+124 |   eventId           String        @unique
+125 |   directorSatisfied Boolean?
+126 |   teachersSatisfied Boolean?
+127 |   hadIssues         Boolean       @default(false)
+128 |   comment           String?
+129 |   rating            Float?
+130 |   createdAt         DateTime      @default(now())
+131 |   announcementDone  Boolean       @default(false)
+132 |   materialShown     Boolean       @default(false)
+133 |   childrenCount     Int           @default(0)
+134 |   classesCount      Int           @default(0)
+135 |   privilegedCount   Int           @default(0)
+136 |   showingsCount     Int           @default(0)
+137 |   totalSum          Float         @default(0)
+138 |   schoolSum         Float         @default(0)
+139 |   remainderSum      Float         @default(0)
+140 |   event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+141 |   photos            File[]
+142 |   expenseItems      ExpenseItem[]
+143 |   salaryItems       SalaryItem[]
+144 | }
+145 | 
+146 | model File {
+147 |   id        String       @id @default(uuid())
+148 |   name      String
+149 |   url       String
+150 |   size      Int
+151 |   eventId   String?
+152 |   reportId  String?
+153 |   createdAt DateTime     @default(now())
+154 |   event     Event?       @relation(fields: [eventId], references: [id])
+155 |   report    EventReport? @relation(fields: [reportId], references: [id])
+156 | }
+157 | 
+158 | model EventHistory {
+159 |   id        String   @id @default(uuid())
+160 |   eventId   String
+161 |   action    String
+162 |   comment   String?
+163 |   userId    String
+164 |   userName  String
+165 |   role      String
+166 |   createdAt DateTime @default(now())
+167 |   event     Event    @relation(fields: [eventId], references: [id])
+168 | }
+169 | 
+170 | model EventPreparation {
+171 |   id               String            @id @default(uuid())
+172 |   eventId          String            @unique
+173 |   assignCrew       PreparationStatus @default(PLANNED)
+174 |   bookEquipment    PreparationStatus @default(PLANNED)
+175 |   prepareDocs      PreparationStatus @default(PLANNED)
+176 |   prepareMaterials PreparationStatus @default(PLANNED)
+177 |   remindSchool     PreparationStatus @default(PLANNED)
+178 |   event            Event             @relation(fields: [eventId], references: [id])
+179 | }
+180 | 
+181 | model IssueReport {
+182 |   id               String    @id @default(uuid())
+183 |   eventId          String
+184 |   schoolName       String
+185 |   eventName        String
+186 |   message          String
+187 |   cityId           String
+188 |   status           String    @default("Планується")
+189 |   createdAt        DateTime  @default(now())
+190 |   deadline         DateTime?
+191 |   assignedUserId   String?
+192 |   assignedUserName String?
+193 |   city             City      @relation(fields: [cityId], references: [id])
+194 |   event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+195 | 
+196 |   @@index([cityId])
+197 |   @@index([eventId])
+198 | }
+199 | 
+200 | model SchoolContact {
+201 |   id           String   @id @default(uuid())
+202 |   city         String   @default("Львів")
+203 |   schoolNumber String
+204 |   contactName  String
+205 |   phone        String
+206 |   role         String?
+207 |   createdAt    DateTime @default(now())
+208 | }
+209 | 
+210 | model Project {
+211 |   id        String   @id @default(uuid())
+212 |   name      String   @unique
+213 |   color     String   @default("blue")
+214 |   createdAt DateTime @default(now())
+215 | }
+216 | 
+217 | model ExpenseItem {
+218 |   id        String   @id @default(uuid())
+219 |   reportId  String
+220 |   category  String 
+221 |   name      String?
+222 |   amount    Decimal  @db.Decimal(12, 2)
+223 |   createdAt DateTime @default(now())
 224 | 
-225 | model SalaryItem {
-226 |   id        String   @id @default(uuid())
-227 |   reportId  String
-228 |   userId    String?
-229 |   userName  String
-230 |   amount    Decimal  @db.Decimal(12, 2)
-231 |   role      String? 
-232 |   createdAt DateTime @default(now())
-233 | 
-234 |   report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-235 |   user   User?       @relation(fields: [userId], references: [id])
-236 | 
-237 |   @@index([reportId])
-238 |   @@index([userId])
-239 | }
-240 | 
-241 | enum EventStatus {
-242 |   BASE
-243 |   FIRST_CONTACT
-244 |   INTERESTED
-245 |   PRE_APPROVAL
-246 |   DATE_CONFIRMED
-247 |   PREPARATION
-248 |   IN_PROGRESS
-249 |   DONE
-250 |   REPORT
-251 |   RE_SALE
-252 | }
-253 | 
+225 |   report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+226 | 
+227 |   @@index([reportId])
+228 | }
+229 | 
+230 | model SalaryItem {
+231 |   id        String   @id @default(uuid())
+232 |   reportId  String
+233 |   userId    String?
+234 |   userName  String
+235 |   amount    Decimal  @db.Decimal(12, 2)
+236 |   role      String? 
+237 |   createdAt DateTime @default(now())
+238 | 
+239 |   report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+240 |   user   User?       @relation(fields: [userId], references: [id])
+241 | 
+242 |   @@index([reportId])
+243 |   @@index([userId])
+244 | }
+245 | 
+246 | enum UserRole {
+247 |   SUPERADMIN
+248 |   MANAGER
+249 |   HOST
+250 |   DRIVER
+251 | }
+252 | 
+253 | enum PreparationStatus {
+254 |   PLANNED
+255 |   IN_PROGRESS
+256 |   DONE
+257 | }
+258 | 
+259 | enum EventStatus {
+260 |   BASE
+261 |   FIRST_CONTACT
+262 |   INTERESTED
+263 |   PRE_APPROVAL
+264 |   DATE_CONFIRMED
+265 |   PREPARATION
+266 |   IN_PROGRESS
+267 |   DONE
+268 |   REPORT
+269 |   RE_SALE
+270 | }
+271 | 
 ```
 
 ### File: apps/backend/prisma/seed-admin.js
@@ -637,34 +676,43 @@
   3 | const prisma = new PrismaClient();
   4 | 
   5 | async function main() {
-  6 |   const email = 'admin@crm.com';
-  7 |   const password = 'admin123';
-  8 |   const hashedPassword = await bcrypt.hash(password, 10);
-  9 | 
- 10 |   console.log('Починаю створення адміна...');
- 11 | 
- 12 |   const admin = await prisma.user.upsert({
- 13 |     where: { email: email },
- 14 |     update: { password: hashedPassword },
- 15 |     create: {
- 16 |       name: 'Адміністратор',
- 17 |       email: email,
- 18 |       password: hashedPassword,
- 19 |       role: 'SUPERADMIN',
- 20 |     },
- 21 |   });
- 22 | 
- 23 |   console.log('Адмін успішно створений або оновлений:', admin.email);
- 24 | }
- 25 | 
- 26 | main()
- 27 |   .catch((e) => {
- 28 |     console.error('Помилка під час сідування:', e);
- 29 |     process.exit(1);
- 30 |   })
- 31 |   .finally(async () => {
- 32 |     await prisma.$disconnect();
- 33 |   });
+  6 |   const email = process.env.SEED_ADMIN_EMAIL;
+  7 |   const password = process.env.SEED_ADMIN_PASSWORD;
+  8 | 
+  9 |   if (!email || !password) {
+ 10 |     console.error(
+ 11 |       'Помилка: SEED_ADMIN_EMAIL та SEED_ADMIN_PASSWORD мають бути задані в .env',
+ 12 |     );
+ 13 |     process.exit(1);
+ 14 |   }
+ 15 | 
+ 16 |   const hashedPassword = await bcrypt.hash(password, 10);
+ 17 | 
+ 18 |   console.log('Починаю створення адміна...');
+ 19 | 
+ 20 |   const admin = await prisma.user.upsert({
+ 21 |     where: { email: email },
+ 22 |     update: { password: hashedPassword },
+ 23 |     create: {
+ 24 |       name: 'Адміністратор',
+ 25 |       email: email,
+ 26 |       password: hashedPassword,
+ 27 |       role: 'SUPERADMIN',
+ 28 |     },
+ 29 |   });
+ 30 | 
+ 31 |   console.log('Адмін успішно створений або оновлений:', admin.email);
+ 32 | }
+ 33 | 
+ 34 | main()
+ 35 |   .catch((e) => {
+ 36 |     console.error('Помилка під час сідування:', e);
+ 37 |     process.exit(1);
+ 38 |   })
+ 39 |   .finally(async () => {
+ 40 |     await prisma.$disconnect();
+ 41 |   });
+ 42 | 
 ```
 
 ### File: apps/backend/src/app.controller.spec.ts
@@ -714,39 +762,54 @@
 ### File: apps/backend/src/app.module.ts
 ```ts
   0 | import { Module } from '@nestjs/common';
-  1 | import { AppController } from './app.controller';
-  2 | import { AppService } from './app.service';
-  3 | import { PrismaModule } from './prisma/prisma.module';
-  4 | import { UsersModule } from './users/users.module';
-  5 | import { AuthModule } from './auth/auth.module';
-  6 | import { EventsModule } from './events/events.module';
-  7 | import { CitiesModule } from './cities/cities.module';
-  8 | import { SchoolsModule } from './schools/schools.module';
-  9 | import { FinanceModule } from './finance/finance.module';
- 10 | import { TelegramModule } from './telegram/telegram.module';
- 11 | import { IssuesModule } from './issues/issues.module';
- 12 | import { DashboardModule } from './dashboard/dashboard.module';
- 13 | import { ProjectsModule } from './projects/projects.module';
- 14 | @Module({
- 15 |   imports: [
- 16 |     PrismaModule,
- 17 |     UsersModule,
- 18 |     AuthModule,
- 19 |     EventsModule,
- 20 |     CitiesModule,
- 21 |     SchoolsModule,
- 22 |     FinanceModule,
- 23 |     FinanceModule,
- 24 |     TelegramModule,
- 25 |     IssuesModule,
- 26 |     DashboardModule,
- 27 |     ProjectsModule,
- 28 |   ],
- 29 |   controllers: [AppController],
- 30 |   providers: [AppService],
- 31 | })
- 32 | export class AppModule {}
- 33 | 
+  1 | import { APP_GUARD } from '@nestjs/core';
+  2 | import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+  3 | import { AppController } from './app.controller';
+  4 | import { AppService } from './app.service';
+  5 | import { PrismaModule } from './prisma/prisma.module';
+  6 | import { UsersModule } from './users/users.module';
+  7 | import { AuthModule } from './auth/auth.module';
+  8 | import { EventsModule } from './events/events.module';
+  9 | import { CitiesModule } from './cities/cities.module';
+ 10 | import { SchoolsModule } from './schools/schools.module';
+ 11 | import { FinanceModule } from './finance/finance.module';
+ 12 | import { TelegramModule } from './telegram/telegram.module';
+ 13 | import { IssuesModule } from './issues/issues.module';
+ 14 | import { DashboardModule } from './dashboard/dashboard.module';
+ 15 | import { ProjectsModule } from './projects/projects.module';
+ 16 | @Module({
+ 17 |   imports: [
+ 18 |     ThrottlerModule.forRoot([
+ 19 |       {
+ 20 |         name: 'default',
+ 21 |         ttl: 60000,
+ 22 |         limit: 100,
+ 23 |       },
+ 24 |     ]),
+ 25 |     PrismaModule,
+ 26 |     UsersModule,
+ 27 |     AuthModule,
+ 28 |     EventsModule,
+ 29 |     CitiesModule,
+ 30 |     SchoolsModule,
+ 31 |     FinanceModule,
+ 32 |     FinanceModule,
+ 33 |     TelegramModule,
+ 34 |     IssuesModule,
+ 35 |     DashboardModule,
+ 36 |     ProjectsModule,
+ 37 |   ],
+ 38 |   controllers: [AppController],
+ 39 |   providers: [
+ 40 |     AppService,
+ 41 |     {
+ 42 |       provide: APP_GUARD,
+ 43 |       useClass: ThrottlerGuard,
+ 44 |     },
+ 45 |   ],
+ 46 | })
+ 47 | export class AppModule {}
+ 48 | 
 ```
 
 ### File: apps/backend/src/app.service.ts
@@ -792,52 +855,54 @@
   7 | } from '@nestjs/common';
   8 | import type { Response } from 'express';
   9 | import { randomBytes } from 'crypto';
- 10 | import { AuthService } from './auth.service';
- 11 | import { LoginDto } from './dto/login.dto';
- 12 | 
- 13 | const isProd = process.env.NODE_ENV === 'production';
- 14 | 
- 15 | @Controller('auth')
- 16 | export class AuthController {
- 17 |   constructor(private authService: AuthService) {}
- 18 | 
- 19 |   @HttpCode(HttpStatus.OK)
- 20 |   @Post('login')
- 21 |   async login(
- 22 |     @Body() signInDto: LoginDto,
- 23 |     @Res({ passthrough: true }) res: Response,
- 24 |   ) {
- 25 |     const { access_token, user } = await this.authService.login(
- 26 |       signInDto.email,
- 27 |       signInDto.password,
- 28 |     );
- 29 |     const csrfToken = randomBytes(32).toString('hex');
- 30 | 
- 31 |     res.cookie('access_token', access_token, {
- 32 |       httpOnly: true,
- 33 |       secure: isProd,
- 34 |       sameSite: isProd ? 'none' : 'lax',
- 35 |       maxAge: 24 * 60 * 60 * 1000,
- 36 |     });
- 37 |     res.cookie('csrf_token', csrfToken, {
- 38 |       httpOnly: false, // фронтенд має прочитати
- 39 |       secure: isProd,
- 40 |       sameSite: isProd ? 'none' : 'lax',
- 41 |       maxAge: 24 * 60 * 60 * 1000,
- 42 |     });
- 43 | 
- 44 |     return { user };
- 45 |   }
- 46 | 
- 47 |   @HttpCode(HttpStatus.OK)
- 48 |   @Post('logout')
- 49 |   logout(@Res({ passthrough: true }) res: Response) {
- 50 |     res.clearCookie('access_token');
- 51 |     res.clearCookie('csrf_token');
- 52 |     return { message: 'ok' };
- 53 |   }
- 54 | }
- 55 | 
+ 10 | import { Throttle } from '@nestjs/throttler';
+ 11 | import { AuthService } from './auth.service';
+ 12 | import { LoginDto } from './dto/login.dto';
+ 13 | 
+ 14 | const isProd = process.env.NODE_ENV === 'production';
+ 15 | 
+ 16 | @Controller('auth')
+ 17 | export class AuthController {
+ 18 |   constructor(private authService: AuthService) {}
+ 19 | 
+ 20 |   @Throttle({ default: { ttl: 60000, limit: 5 } })
+ 21 |   @HttpCode(HttpStatus.OK)
+ 22 |   @Post('login')
+ 23 |   async login(
+ 24 |     @Body() signInDto: LoginDto,
+ 25 |     @Res({ passthrough: true }) res: Response,
+ 26 |   ) {
+ 27 |     const { access_token, user } = await this.authService.login(
+ 28 |       signInDto.email,
+ 29 |       signInDto.password,
+ 30 |     );
+ 31 |     const csrfToken = randomBytes(32).toString('hex');
+ 32 | 
+ 33 |     res.cookie('access_token', access_token, {
+ 34 |       httpOnly: true,
+ 35 |       secure: isProd,
+ 36 |       sameSite: isProd ? 'none' : 'lax',
+ 37 |       maxAge: 24 * 60 * 60 * 1000,
+ 38 |     });
+ 39 |     res.cookie('csrf_token', csrfToken, {
+ 40 |       httpOnly: false, // фронтенд має прочитати
+ 41 |       secure: isProd,
+ 42 |       sameSite: isProd ? 'none' : 'lax',
+ 43 |       maxAge: 24 * 60 * 60 * 1000,
+ 44 |     });
+ 45 | 
+ 46 |     return { user };
+ 47 |   }
+ 48 | 
+ 49 |   @HttpCode(HttpStatus.OK)
+ 50 |   @Post('logout')
+ 51 |   logout(@Res({ passthrough: true }) res: Response) {
+ 52 |     res.clearCookie('access_token');
+ 53 |     res.clearCookie('csrf_token');
+ 54 |     return { message: 'ok' };
+ 55 |   }
+ 56 | }
+ 57 | 
 ```
 
 ### File: apps/backend/src/auth/auth.guard.ts
@@ -1030,10 +1095,11 @@
 ### File: apps/backend/src/auth/decorators/roles.decorator.ts
 ```ts
   0 | import { SetMetadata } from '@nestjs/common';
-  1 | 
-  2 | export const ROLES_KEY = 'roles';
-  3 | export const Roles = (...roles: string[]) => SetMetadata(ROLES_KEY, roles);
-  4 | 
+  1 | import { UserRole } from '@prisma/client';
+  2 | 
+  3 | export const ROLES_KEY = 'roles';
+  4 | export const Roles = (...roles: UserRole[]) => SetMetadata(ROLES_KEY, roles);
+  5 | 
 ```
 
 ### File: apps/backend/src/auth/dto/login.dto.ts
@@ -1157,37 +1223,40 @@
   4 |   ForbiddenException,
   5 | } from '@nestjs/common';
   6 | import { Reflector } from '@nestjs/core';
-  7 | import { ROLES_KEY } from '../decorators/roles.decorator';
-  8 | 
-  9 | @Injectable()
- 10 | export class RolesGuard implements CanActivate {
- 11 |   constructor(private reflector: Reflector) {}
- 12 | 
- 13 |   canActivate(context: ExecutionContext): boolean {
- 14 |     const requiredRoles = this.reflector.getAllAndOverride<string[]>(
- 15 |       ROLES_KEY,
- 16 |       [context.getHandler(), context.getClass()],
- 17 |     );
- 18 |     if (!requiredRoles) return true;
- 19 | 
- 20 |     const { user } = context.switchToHttp().getRequest();
- 21 |     if (!requiredRoles.includes(user?.role)) {
- 22 |       throw new ForbiddenException('Недостатньо прав');
- 23 |     }
- 24 |     return true;
- 25 |   }
- 26 | }
- 27 | 
+  7 | import { UserRole } from '@prisma/client';
+  8 | import { ROLES_KEY } from '../decorators/roles.decorator';
+  9 | 
+ 10 | @Injectable()
+ 11 | export class RolesGuard implements CanActivate {
+ 12 |   constructor(private reflector: Reflector) {}
+ 13 | 
+ 14 |   canActivate(context: ExecutionContext): boolean {
+ 15 |     const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(
+ 16 |       ROLES_KEY,
+ 17 |       [context.getHandler(), context.getClass()],
+ 18 |     );
+ 19 |     if (!requiredRoles) return true;
+ 20 | 
+ 21 |     const { user } = context.switchToHttp().getRequest();
+ 22 |     if (!requiredRoles.includes(user?.role)) {
+ 23 |       throw new ForbiddenException('Недостатньо прав');
+ 24 |     }
+ 25 |     return true;
+ 26 |   }
+ 27 | }
+ 28 | 
 ```
 
 ### File: apps/backend/src/auth/interfaces/jwt-user.interface.ts
 ```ts
-  0 | export interface JwtUser {
-  1 |   sub: string;
-  2 |   name: string;
-  3 |   role: string;
-  4 | }
-  5 | 
+  0 | import { UserRole } from '@prisma/client';
+  1 | 
+  2 | export interface JwtUser {
+  3 |   sub: string;
+  4 |   name: string;
+  5 |   role: UserRole;
+  6 | }
+  7 | 
 ```
 
 ### File: apps/backend/src/cities/cities.controller.spec.ts
@@ -1458,6 +1527,52 @@
  13 |   driverId?: string;
  14 | }
  15 | 
+```
+
+### File: apps/backend/src/common/dto/page-meta.dto.ts
+```ts
+  0 | export class PageMetaDto {
+  1 |   totalItems: number;
+  2 |   page: number;
+  3 |   take: number;
+  4 |   pageCount: number;
+  5 |   hasNextPage: boolean;
+  6 | 
+  7 |   constructor(totalItems: number, page: number, take: number) {
+  8 |     this.totalItems = totalItems;
+  9 |     this.page = page;
+ 10 |     this.take = take;
+ 11 |     this.pageCount = Math.ceil(totalItems / take);
+ 12 |     this.hasNextPage = page < this.pageCount;
+ 13 |   }
+ 14 | }
+ 15 | 
+```
+
+### File: apps/backend/src/common/dto/page-options.dto.ts
+```ts
+  0 | import { Type } from 'class-transformer';
+  1 | import { IsInt, Max, Min, IsOptional } from 'class-validator';
+  2 | 
+  3 | export class PageOptionsDto {
+  4 |   @Type(() => Number)
+  5 |   @IsInt()
+  6 |   @Min(1)
+  7 |   @IsOptional()
+  8 |   page: number = 1;
+  9 | 
+ 10 |   @Type(() => Number)
+ 11 |   @IsInt()
+ 12 |   @Min(1)
+ 13 |   @Max(50)
+ 14 |   @IsOptional()
+ 15 |   take: number = 10;
+ 16 | 
+ 17 |   get skip(): number {
+ 18 |     return (this.page - 1) * this.take;
+ 19 |   }
+ 20 | }
+ 21 | 
 ```
 
 ### File: apps/backend/src/dashboard/dashboard.controller.ts
@@ -2487,18 +2602,25 @@
 
 ### File: apps/backend/src/events/dto/update-preparation.dto.ts
 ```ts
-  0 | import { IsString, IsNotEmpty } from 'class-validator';
-  1 | 
-  2 | export class UpdatePreparationDto {
-  3 |   @IsString()
-  4 |   @IsNotEmpty()
-  5 |   field: string;
-  6 | 
-  7 |   @IsString()
-  8 |   @IsNotEmpty()
-  9 |   status: string;
- 10 | }
- 11 | 
+  0 | import { IsEnum, IsIn } from 'class-validator';
+  1 | import { PreparationStatus } from '@prisma/client';
+  2 | 
+  3 | const PREPARATION_FIELDS = [
+  4 |   'assignCrew',
+  5 |   'bookEquipment',
+  6 |   'prepareDocs',
+  7 |   'prepareMaterials',
+  8 |   'remindSchool',
+  9 | ] as const;
+ 10 | 
+ 11 | export class UpdatePreparationDto {
+ 12 |   @IsIn(PREPARATION_FIELDS)
+ 13 |   field: (typeof PREPARATION_FIELDS)[number];
+ 14 | 
+ 15 |   @IsEnum(PreparationStatus)
+ 16 |   status: PreparationStatus;
+ 17 | }
+ 18 | 
 ```
 
 ### File: apps/backend/src/events/dto/update-status.dto.ts
@@ -3302,7 +3424,7 @@
   0 | import { Injectable, Logger, NotFoundException } from '@nestjs/common';
   1 | import { PrismaService } from '../prisma/prisma.service';
   2 | import { TelegramService } from '../telegram/telegram.service';
-  3 | import { Prisma } from '@prisma/client';
+  3 | import { Prisma, PreparationStatus } from '@prisma/client';
   4 | 
   5 | import { CreateEventDto } from './dto/create-event.dto';
   6 | import {
@@ -3396,404 +3518,407 @@
  94 | 
  95 |   async updatePreparationStatus(
  96 |     eventId: string,
- 97 |     field: string,
- 98 |     status: string,
- 99 |   ) {
-100 |     const existing = await this.prisma.eventPreparation.findUnique({
-101 |       where: { eventId },
-102 |     });
-103 | 
-104 |     if (existing) {
-105 |       return this.prisma.eventPreparation.update({
-106 |         where: { eventId },
-107 |         data: { [field]: status },
-108 |       });
-109 |     } else {
-110 |       return this.prisma.eventPreparation.create({
-111 |         data: { eventId, [field]: status },
-112 |       });
-113 |     }
-114 |   }
-115 | 
-116 |   async assignCrewToEvent(eventId: string, crewId: string) {
-117 |     const event = await this.prisma.event.update({
-118 |       where: { id: eventId },
-119 |       data: { crewId: crewId },
-120 |       include: {
-121 |         crew: { include: { host: true, driver: true } },
-122 |         school: true,
-123 |         city: true,
-124 |         preparation: true,
-125 |         history: { orderBy: { createdAt: 'desc' } },
-126 |       },
-127 |     });
-128 | 
-129 |     const hostId = event.crew?.hostId;
-130 |     const driverId = event.crew?.driverId;
+ 97 |     field: keyof Omit<
+ 98 |       Prisma.EventPreparationUncheckedCreateInput,
+ 99 |       'id' | 'eventId'
+100 |     >,
+101 |     status: PreparationStatus,
+102 |   ) {
+103 |     const existing = await this.prisma.eventPreparation.findUnique({
+104 |       where: { eventId },
+105 |     });
+106 | 
+107 |     if (existing) {
+108 |       return this.prisma.eventPreparation.update({
+109 |         where: { eventId },
+110 |         data: { [field]: status },
+111 |       });
+112 |     } else {
+113 |       return this.prisma.eventPreparation.create({
+114 |         data: { eventId, [field]: status },
+115 |       });
+116 |     }
+117 |   }
+118 | 
+119 |   async assignCrewToEvent(eventId: string, crewId: string) {
+120 |     const event = await this.prisma.event.update({
+121 |       where: { id: eventId },
+122 |       data: { crewId: crewId },
+123 |       include: {
+124 |         crew: { include: { host: true, driver: true } },
+125 |         school: true,
+126 |         city: true,
+127 |         preparation: true,
+128 |         history: { orderBy: { createdAt: 'desc' } },
+129 |       },
+130 |     });
 131 | 
-132 |     const dateStr = new Date(event.date).toLocaleDateString('uk-UA', {
-133 |       day: '2-digit',
-134 |       month: 'long',
-135 |       year: 'numeric',
-136 |     });
-137 |     const timeStr = event.time ? `, ${event.time}` : '';
-138 | 
-139 |     const buildMessage = (role: 'ведучий' | 'водій') =>
-140 |       `🎯 <b>Вас призначено на подію!</b>\n\n` +
-141 |       `👤 <b>Роль:</b> ${role === 'ведучий' ? '🎙️ Ведучий' : '🚗 Водій'}\n` +
-142 |       `📅 <b>Дата:</b> ${dateStr}${timeStr}\n` +
-143 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
-144 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
-145 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
-146 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
-147 |       (event.contactPerson
-148 |         ? `👤 <b>Контакт:</b> ${event.contactPerson}\n`
-149 |         : '') +
-150 |       (event.contactPhone ? `📞 <b>Телефон:</b> ${event.contactPhone}\n` : '') +
-151 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
-152 | 
-153 |     if (hostId) {
-154 |       const hostChatId = await this.getChatIdForUser(hostId);
-155 |       this.logger.log(`[assignCrew] hostChatId resolved=${hostChatId}`);
-156 | 
-157 |       if (hostChatId) {
-158 |         await this.telegramService.sendMessage(
-159 |           hostChatId,
-160 |           buildMessage('ведучий'),
-161 |         );
-162 |       } else {
-163 |         this.logger.warn(
-164 |           `[assignCrew] Не вдалося надіслати повідомлення ведучому ${hostId}: chatId не знайдено (користувач не натиснув /start?)`,
-165 |         );
-166 |       }
-167 |     }
-168 | 
-169 |     if (driverId) {
-170 |       const driverChatId = await this.getChatIdForUser(driverId);
-171 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
-172 | 
-173 |       if (driverChatId) {
-174 |         await this.telegramService.sendMessage(
-175 |           driverChatId,
-176 |           buildMessage('водій'),
-177 |         );
-178 |       } else {
-179 |         this.logger.warn(
-180 |           `[assignCrew] Не вдалося надіслати повідомлення водію ${driverId}: chatId не знайдено`,
-181 |         );
-182 |       }
-183 |     }
-184 | 
-185 |     if (driverId) {
-186 |       const driver = await this.prisma.user.findUnique({
-187 |         where: { id: driverId },
-188 |       });
-189 |       this.logger.log(
-190 |         `[assignCrew] driver=${JSON.stringify({ name: driver?.name, telegramId: driver?.telegramId, telegramChatId: driver?.telegramChatId })}`,
-191 |       );
-192 |       const driverChatId =
-193 |         driver?.telegramChatId ||
-194 |         (driver?.telegramId && /^\d+$/.test(driver.telegramId)
-195 |           ? driver.telegramId
-196 |           : null);
-197 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
-198 |       if (driverChatId) {
-199 |         await this.telegramService.sendMessage(
-200 |           driverChatId,
-201 |           buildMessage('водій'),
-202 |         );
-203 |       }
-204 |     }
-205 | 
-206 |     return event;
-207 |   }
+132 |     const hostId = event.crew?.hostId;
+133 |     const driverId = event.crew?.driverId;
+134 | 
+135 |     const dateStr = new Date(event.date).toLocaleDateString('uk-UA', {
+136 |       day: '2-digit',
+137 |       month: 'long',
+138 |       year: 'numeric',
+139 |     });
+140 |     const timeStr = event.time ? `, ${event.time}` : '';
+141 | 
+142 |     const buildMessage = (role: 'ведучий' | 'водій') =>
+143 |       `🎯 <b>Вас призначено на подію!</b>\n\n` +
+144 |       `👤 <b>Роль:</b> ${role === 'ведучий' ? '🎙️ Ведучий' : '🚗 Водій'}\n` +
+145 |       `📅 <b>Дата:</b> ${dateStr}${timeStr}\n` +
+146 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
+147 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
+148 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
+149 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
+150 |       (event.contactPerson
+151 |         ? `👤 <b>Контакт:</b> ${event.contactPerson}\n`
+152 |         : '') +
+153 |       (event.contactPhone ? `📞 <b>Телефон:</b> ${event.contactPhone}\n` : '') +
+154 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+155 | 
+156 |     if (hostId) {
+157 |       const hostChatId = await this.getChatIdForUser(hostId);
+158 |       this.logger.log(`[assignCrew] hostChatId resolved=${hostChatId}`);
+159 | 
+160 |       if (hostChatId) {
+161 |         await this.telegramService.sendMessage(
+162 |           hostChatId,
+163 |           buildMessage('ведучий'),
+164 |         );
+165 |       } else {
+166 |         this.logger.warn(
+167 |           `[assignCrew] Не вдалося надіслати повідомлення ведучому ${hostId}: chatId не знайдено (користувач не натиснув /start?)`,
+168 |         );
+169 |       }
+170 |     }
+171 | 
+172 |     if (driverId) {
+173 |       const driverChatId = await this.getChatIdForUser(driverId);
+174 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
+175 | 
+176 |       if (driverChatId) {
+177 |         await this.telegramService.sendMessage(
+178 |           driverChatId,
+179 |           buildMessage('водій'),
+180 |         );
+181 |       } else {
+182 |         this.logger.warn(
+183 |           `[assignCrew] Не вдалося надіслати повідомлення водію ${driverId}: chatId не знайдено`,
+184 |         );
+185 |       }
+186 |     }
+187 | 
+188 |     if (driverId) {
+189 |       const driver = await this.prisma.user.findUnique({
+190 |         where: { id: driverId },
+191 |       });
+192 |       this.logger.log(
+193 |         `[assignCrew] driver=${JSON.stringify({ name: driver?.name, telegramId: driver?.telegramId, telegramChatId: driver?.telegramChatId })}`,
+194 |       );
+195 |       const driverChatId =
+196 |         driver?.telegramChatId ||
+197 |         (driver?.telegramId && /^\d+$/.test(driver.telegramId)
+198 |           ? driver.telegramId
+199 |           : null);
+200 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
+201 |       if (driverChatId) {
+202 |         await this.telegramService.sendMessage(
+203 |           driverChatId,
+204 |           buildMessage('водій'),
+205 |         );
+206 |       }
+207 |     }
 208 | 
-209 |   async rescheduleEvent(
-210 |     eventId: string,
-211 |     newDate: string,
-212 |     newTime: string,
-213 |     user: JwtUser,
-214 |   ) {
-215 |     const event = await this.prisma.event.update({
-216 |       where: { id: eventId },
-217 |       data: {
-218 |         date: new Date(newDate),
-219 |         time: newTime,
-220 |         history: {
-221 |           create: {
-222 |             action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
-223 |             userId: user.sub,
-224 |             userName: user.name,
-225 |             role: user.role,
-226 |           },
-227 |         },
-228 |       },
-229 |       include: {
-230 |         crew: { include: { host: true, driver: true } },
-231 |         school: true,
-232 |         city: true,
-233 |         history: { orderBy: { createdAt: 'desc' } },
-234 |       },
-235 |     });
-236 | 
-237 |     const dateStr = new Date(newDate).toLocaleDateString('uk-UA', {
-238 |       day: '2-digit',
-239 |       month: 'long',
-240 |       year: 'numeric',
-241 |     });
-242 |     const msg =
-243 |       `📅 <b>Подію перенесено!</b>\n\n` +
-244 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
-245 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
-246 |       `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
-247 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
-248 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
-249 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
-250 | 
-251 |     const sendTo = async (userId: string | null | undefined) => {
-252 |       if (!userId) return;
-253 |       const u = await this.prisma.user.findUnique({ where: { id: userId } });
-254 |       const chatId =
-255 |         u?.telegramChatId ||
-256 |         (u?.telegramId && /^\d+$/.test(u.telegramId) ? u.telegramId : null);
-257 |       if (chatId) await this.telegramService.sendMessage(chatId, msg);
-258 |     };
-259 | 
-260 |     await sendTo(event.crew?.hostId);
-261 |     await sendTo(event.crew?.driverId);
+209 |     return event;
+210 |   }
+211 | 
+212 |   async rescheduleEvent(
+213 |     eventId: string,
+214 |     newDate: string,
+215 |     newTime: string,
+216 |     user: JwtUser,
+217 |   ) {
+218 |     const event = await this.prisma.event.update({
+219 |       where: { id: eventId },
+220 |       data: {
+221 |         date: new Date(newDate),
+222 |         time: newTime,
+223 |         history: {
+224 |           create: {
+225 |             action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
+226 |             userId: user.sub,
+227 |             userName: user.name,
+228 |             role: user.role,
+229 |           },
+230 |         },
+231 |       },
+232 |       include: {
+233 |         crew: { include: { host: true, driver: true } },
+234 |         school: true,
+235 |         city: true,
+236 |         history: { orderBy: { createdAt: 'desc' } },
+237 |       },
+238 |     });
+239 | 
+240 |     const dateStr = new Date(newDate).toLocaleDateString('uk-UA', {
+241 |       day: '2-digit',
+242 |       month: 'long',
+243 |       year: 'numeric',
+244 |     });
+245 |     const msg =
+246 |       `📅 <b>Подію перенесено!</b>\n\n` +
+247 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
+248 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
+249 |       `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
+250 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
+251 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
+252 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+253 | 
+254 |     const sendTo = async (userId: string | null | undefined) => {
+255 |       if (!userId) return;
+256 |       const u = await this.prisma.user.findUnique({ where: { id: userId } });
+257 |       const chatId =
+258 |         u?.telegramChatId ||
+259 |         (u?.telegramId && /^\d+$/.test(u.telegramId) ? u.telegramId : null);
+260 |       if (chatId) await this.telegramService.sendMessage(chatId, msg);
+261 |     };
 262 | 
-263 |     return event;
-264 |   }
+263 |     await sendTo(event.crew?.hostId);
+264 |     await sendTo(event.crew?.driverId);
 265 | 
-266 |   async getChatIdForUser(userId: string): Promise<string | null> {
-267 |     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-268 |     if (!user) return null;
-269 | 
-270 |     if (user.telegramChatId) return user.telegramChatId;
-271 | 
-272 |     if (user.telegramId && /^\d+$/.test(user.telegramId))
-273 |       return user.telegramId;
+266 |     return event;
+267 |   }
+268 | 
+269 |   async getChatIdForUser(userId: string): Promise<string | null> {
+270 |     const user = await this.prisma.user.findUnique({ where: { id: userId } });
+271 |     if (!user) return null;
+272 | 
+273 |     if (user.telegramChatId) return user.telegramChatId;
 274 | 
-275 |     return null;
-276 |   }
+275 |     if (user.telegramId && /^\d+$/.test(user.telegramId))
+276 |       return user.telegramId;
 277 | 
-278 |   async findBySchool(schoolId: string, minimal = false) {
-279 |     if (minimal) {
-280 |       return this.prisma.event.findMany({
-281 |         where: { schoolId },
-282 |         select: {
-283 |           id: true,
-284 |           project: true,
-285 |           date: true,
-286 |           time: true,
-287 |           status: true,
-288 |           price: true,
-289 |           childrenPlanned: true,
-290 |           address: true,
-291 |           contactPerson: true,
-292 |           contactPhone: true,
-293 |           crewId: true,
-294 |           crew: {
-295 |             select: { id: true, name: true, hostId: true, driverId: true },
-296 |           },
-297 |         },
-298 |         orderBy: { date: 'desc' },
-299 |       });
-300 |     }
-301 |     return this.prisma.event.findMany({
-302 |       where: { schoolId },
-303 |       include: {
-304 |         crew: { include: { host: true, driver: true } },
-305 |         history: { orderBy: { createdAt: 'desc' } },
-306 |         preparation: true,
-307 |       },
-308 |       orderBy: { date: 'desc' },
-309 |     });
-310 |   }
-311 | 
-312 |   async updateHistoryComment(historyId: string, comment: string) {
-313 |     return this.prisma.eventHistory.update({
-314 |       where: { id: historyId },
-315 |       data: { comment: comment || null },
-316 |     });
-317 |   }
-318 | 
-319 |   async addHistoryComment(eventId: string, comment: string, user: JwtUser) {
-320 |     await this.prisma.eventHistory.create({
-321 |       data: {
-322 |         eventId,
-323 |         action: 'Коментар',
-324 |         comment,
-325 |         userId: user.sub,
-326 |         userName: user.name,
-327 |         role: user.role,
-328 |       },
-329 |     });
-330 | 
-331 |     return this.prisma.event.findUnique({
-332 |       where: { id: eventId },
-333 |       include: {
-334 |         history: { orderBy: { createdAt: 'desc' } },
-335 |       },
-336 |     });
-337 |   }
-338 | 
-339 |   async remove(id: string) {
-340 |     const exists = await this.prisma.event.findUnique({ where: { id } });
-341 |     if (!exists) throw new NotFoundException('Подію не знайдено');
-342 | 
-343 |     await this.prisma.eventHistory.deleteMany({
-344 |       where: { eventId: id },
-345 |     });
-346 | 
-347 |     await this.prisma.eventPreparation.deleteMany({
-348 |       where: { eventId: id },
-349 |     });
-350 | 
-351 |     return this.prisma.event.delete({
-352 |       where: { id },
-353 |     });
-354 |   }
-355 | 
-356 |   async submitReport(
-357 |     eventId: string,
-358 |     reportData: SubmitReportDto,
-359 |     user: JwtUser,
-360 |   ) {
-361 |     await this.prisma.eventReport.upsert({
-362 |       where: { eventId },
-363 |       update: {
-364 |         announcementDone: reportData.announcementDone,
-365 |         materialShown: reportData.materialShown,
-366 |         childrenCount: reportData.childrenCount,
-367 |         classesCount: reportData.classesCount,
-368 |         privilegedCount: reportData.privilegedCount,
-369 |         showingsCount: reportData.showingsCount,
-370 |         totalSum: reportData.totalSum,
-371 |         schoolSum: reportData.schoolSum,
-372 |         remainderSum: reportData.remainderSum,
-373 |         rating: reportData.rating,
-374 |       },
-375 |       create: {
-376 |         eventId,
-377 |         announcementDone: reportData.announcementDone,
-378 |         materialShown: reportData.materialShown,
-379 |         childrenCount: reportData.childrenCount,
-380 |         classesCount: reportData.classesCount,
-381 |         privilegedCount: reportData.privilegedCount,
-382 |         showingsCount: reportData.showingsCount,
-383 |         totalSum: reportData.totalSum,
-384 |         schoolSum: reportData.schoolSum,
-385 |         remainderSum: reportData.remainderSum,
-386 |         rating: reportData.rating,
-387 |       },
-388 |     });
-389 | 
-390 |     await this.prisma.expenseItem.deleteMany({ where: { reportId: eventId } });
-391 |     await this.prisma.salaryItem.deleteMany({ where: { reportId: eventId } });
+278 |     return null;
+279 |   }
+280 | 
+281 |   async findBySchool(schoolId: string, minimal = false) {
+282 |     if (minimal) {
+283 |       return this.prisma.event.findMany({
+284 |         where: { schoolId },
+285 |         select: {
+286 |           id: true,
+287 |           project: true,
+288 |           date: true,
+289 |           time: true,
+290 |           status: true,
+291 |           price: true,
+292 |           childrenPlanned: true,
+293 |           address: true,
+294 |           contactPerson: true,
+295 |           contactPhone: true,
+296 |           crewId: true,
+297 |           crew: {
+298 |             select: { id: true, name: true, hostId: true, driverId: true },
+299 |           },
+300 |         },
+301 |         orderBy: { date: 'desc' },
+302 |       });
+303 |     }
+304 |     return this.prisma.event.findMany({
+305 |       where: { schoolId },
+306 |       include: {
+307 |         crew: { include: { host: true, driver: true } },
+308 |         history: { orderBy: { createdAt: 'desc' } },
+309 |         preparation: true,
+310 |       },
+311 |       orderBy: { date: 'desc' },
+312 |     });
+313 |   }
+314 | 
+315 |   async updateHistoryComment(historyId: string, comment: string) {
+316 |     return this.prisma.eventHistory.update({
+317 |       where: { id: historyId },
+318 |       data: { comment: comment || null },
+319 |     });
+320 |   }
+321 | 
+322 |   async addHistoryComment(eventId: string, comment: string, user: JwtUser) {
+323 |     await this.prisma.eventHistory.create({
+324 |       data: {
+325 |         eventId,
+326 |         action: 'Коментар',
+327 |         comment,
+328 |         userId: user.sub,
+329 |         userName: user.name,
+330 |         role: user.role,
+331 |       },
+332 |     });
+333 | 
+334 |     return this.prisma.event.findUnique({
+335 |       where: { id: eventId },
+336 |       include: {
+337 |         history: { orderBy: { createdAt: 'desc' } },
+338 |       },
+339 |     });
+340 |   }
+341 | 
+342 |   async remove(id: string) {
+343 |     const exists = await this.prisma.event.findUnique({ where: { id } });
+344 |     if (!exists) throw new NotFoundException('Подію не знайдено');
+345 | 
+346 |     await this.prisma.eventHistory.deleteMany({
+347 |       where: { eventId: id },
+348 |     });
+349 | 
+350 |     await this.prisma.eventPreparation.deleteMany({
+351 |       where: { eventId: id },
+352 |     });
+353 | 
+354 |     return this.prisma.event.delete({
+355 |       where: { id },
+356 |     });
+357 |   }
+358 | 
+359 |   async submitReport(
+360 |     eventId: string,
+361 |     reportData: SubmitReportDto,
+362 |     user: JwtUser,
+363 |   ) {
+364 |     await this.prisma.eventReport.upsert({
+365 |       where: { eventId },
+366 |       update: {
+367 |         announcementDone: reportData.announcementDone,
+368 |         materialShown: reportData.materialShown,
+369 |         childrenCount: reportData.childrenCount,
+370 |         classesCount: reportData.classesCount,
+371 |         privilegedCount: reportData.privilegedCount,
+372 |         showingsCount: reportData.showingsCount,
+373 |         totalSum: reportData.totalSum,
+374 |         schoolSum: reportData.schoolSum,
+375 |         remainderSum: reportData.remainderSum,
+376 |         rating: reportData.rating,
+377 |       },
+378 |       create: {
+379 |         eventId,
+380 |         announcementDone: reportData.announcementDone,
+381 |         materialShown: reportData.materialShown,
+382 |         childrenCount: reportData.childrenCount,
+383 |         classesCount: reportData.classesCount,
+384 |         privilegedCount: reportData.privilegedCount,
+385 |         showingsCount: reportData.showingsCount,
+386 |         totalSum: reportData.totalSum,
+387 |         schoolSum: reportData.schoolSum,
+388 |         remainderSum: reportData.remainderSum,
+389 |         rating: reportData.rating,
+390 |       },
+391 |     });
 392 | 
-393 |     if (reportData.expenses?.length) {
-394 |       await this.prisma.expenseItem.createMany({
-395 |         data: reportData.expenses.map((exp: ExpenseItemDto) => ({
-396 |           reportId: eventId,
-397 |           category: exp.category || 'Інше',
-398 |           name: exp.name,
-399 |           amount: new Prisma.Decimal(exp.amount || 0),
-400 |         })),
-401 |       });
-402 |     }
-403 | 
-404 |     if (reportData.salaries?.length) {
-405 |       await this.prisma.salaryItem.createMany({
-406 |         data: reportData.salaries.map((s: SalaryItemDto) => ({
-407 |           reportId: eventId,
-408 |           userId: s.userId,
-409 |           userName: s.name,
-410 |           amount: new Prisma.Decimal(s.amount || 0),
-411 |           role: s.role,
-412 |         })),
-413 |       });
-414 | 
-415 |       await Promise.all(
-416 |         reportData.salaries
-417 |           .filter((s) => s.userId && s.amount > 0)
-418 |           .map((s) =>
-419 |             this.prisma.user.update({
-420 |               where: { id: s.userId },
-421 |               data: { balance: { increment: s.amount } },
-422 |             }),
-423 |           ),
-424 |       );
-425 |     }
-426 | 
-427 |     return this.prisma.event.update({
-428 |       where: { id: eventId },
-429 |       data: {
-430 |         status: 'REPORT' as never,
-431 |         history: {
-432 |           create: {
-433 |             action: 'Сформовано звіт. Етап: Звіт',
-434 |             userId: user.sub,
-435 |             userName: user.name,
-436 |             role: user.role,
-437 |           },
-438 |         },
-439 |       },
-440 |       include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
-441 |     });
-442 |   }
-443 | 
-444 |   async findOne(id: string) {
-445 |     const event = await this.prisma.event.findUnique({
-446 |       where: { id },
-447 |       include: {
-448 |         school: true,
-449 |         city: true,
-450 |         crew: {
-451 |           include: {
-452 |             host: { select: { id: true, name: true } },
-453 |             driver: { select: { id: true, name: true } },
-454 |           },
-455 |         },
-456 |         report: true,
-457 |       },
-458 |     });
-459 |     if (!event) throw new NotFoundException('Подію не знайдено');
-460 |     return event;
-461 |   }
-462 | 
-463 |   async findCompletedBySchool(schoolId: string) {
-464 |     return this.prisma.event.findMany({
-465 |       where: { schoolId, status: 'RE_SALE' },
-466 |       select: {
-467 |         id: true,
-468 |         project: true,
-469 |         date: true,
-470 |         status: true,
-471 |         price: true,
-472 |         childrenPlanned: true,
-473 |         report: {
-474 |           select: {
-475 |             childrenCount: true,
-476 |             classesCount: true,
-477 |             privilegedCount: true,
-478 |             showingsCount: true,
-479 |             totalSum: true,
-480 |             schoolSum: true,
-481 |             remainderSum: true,
-482 |             rating: true,
-483 |             expenseItems: {
-484 |               select: { category: true, name: true, amount: true },
-485 |             },
-486 |           },
-487 |         },
-488 |         history: { orderBy: { createdAt: 'asc' } },
-489 |       },
-490 |       orderBy: { date: 'desc' },
-491 |     });
-492 |   }
-493 | }
-494 | 
+393 |     await this.prisma.expenseItem.deleteMany({ where: { reportId: eventId } });
+394 |     await this.prisma.salaryItem.deleteMany({ where: { reportId: eventId } });
+395 | 
+396 |     if (reportData.expenses?.length) {
+397 |       await this.prisma.expenseItem.createMany({
+398 |         data: reportData.expenses.map((exp: ExpenseItemDto) => ({
+399 |           reportId: eventId,
+400 |           category: exp.category || 'Інше',
+401 |           name: exp.name,
+402 |           amount: new Prisma.Decimal(exp.amount || 0),
+403 |         })),
+404 |       });
+405 |     }
+406 | 
+407 |     if (reportData.salaries?.length) {
+408 |       await this.prisma.salaryItem.createMany({
+409 |         data: reportData.salaries.map((s: SalaryItemDto) => ({
+410 |           reportId: eventId,
+411 |           userId: s.userId,
+412 |           userName: s.name,
+413 |           amount: new Prisma.Decimal(s.amount || 0),
+414 |           role: s.role,
+415 |         })),
+416 |       });
+417 | 
+418 |       await Promise.all(
+419 |         reportData.salaries
+420 |           .filter((s) => s.userId && s.amount > 0)
+421 |           .map((s) =>
+422 |             this.prisma.user.update({
+423 |               where: { id: s.userId },
+424 |               data: { balance: { increment: s.amount } },
+425 |             }),
+426 |           ),
+427 |       );
+428 |     }
+429 | 
+430 |     return this.prisma.event.update({
+431 |       where: { id: eventId },
+432 |       data: {
+433 |         status: 'REPORT' as never,
+434 |         history: {
+435 |           create: {
+436 |             action: 'Сформовано звіт. Етап: Звіт',
+437 |             userId: user.sub,
+438 |             userName: user.name,
+439 |             role: user.role,
+440 |           },
+441 |         },
+442 |       },
+443 |       include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
+444 |     });
+445 |   }
+446 | 
+447 |   async findOne(id: string) {
+448 |     const event = await this.prisma.event.findUnique({
+449 |       where: { id },
+450 |       include: {
+451 |         school: true,
+452 |         city: true,
+453 |         crew: {
+454 |           include: {
+455 |             host: { select: { id: true, name: true } },
+456 |             driver: { select: { id: true, name: true } },
+457 |           },
+458 |         },
+459 |         report: true,
+460 |       },
+461 |     });
+462 |     if (!event) throw new NotFoundException('Подію не знайдено');
+463 |     return event;
+464 |   }
+465 | 
+466 |   async findCompletedBySchool(schoolId: string) {
+467 |     return this.prisma.event.findMany({
+468 |       where: { schoolId, status: 'RE_SALE' },
+469 |       select: {
+470 |         id: true,
+471 |         project: true,
+472 |         date: true,
+473 |         status: true,
+474 |         price: true,
+475 |         childrenPlanned: true,
+476 |         report: {
+477 |           select: {
+478 |             childrenCount: true,
+479 |             classesCount: true,
+480 |             privilegedCount: true,
+481 |             showingsCount: true,
+482 |             totalSum: true,
+483 |             schoolSum: true,
+484 |             remainderSum: true,
+485 |             rating: true,
+486 |             expenseItems: {
+487 |               select: { category: true, name: true, amount: true },
+488 |             },
+489 |           },
+490 |         },
+491 |         history: { orderBy: { createdAt: 'asc' } },
+492 |       },
+493 |       orderBy: { date: 'desc' },
+494 |     });
+495 |   }
+496 | }
+497 | 
 ```
 
 ### File: apps/backend/src/finance/create-expense-item.dto.ts
@@ -5094,6 +5219,69 @@
  17 |   sourceUrl?: string;
  18 | }
  19 | 
+```
+
+### File: apps/backend/src/schools/dto/find-contacts-query.dto.ts
+```ts
+  0 | import { IsOptional, IsString, MinLength } from 'class-validator';
+  1 | 
+  2 | export class FindContactsQueryDto {
+  3 |   @IsOptional()
+  4 |   @IsString()
+  5 |   @MinLength(1)
+  6 |   q?: string;
+  7 | 
+  8 |   @IsOptional()
+  9 |   @IsString()
+ 10 |   city?: string;
+ 11 | }
+ 12 | 
+```
+
+### File: apps/backend/src/schools/dto/find-schools-query.dto.ts
+```ts
+  0 | import { IsOptional, IsString, MinLength, IsIn } from 'class-validator';
+  1 | 
+  2 | export class FindSchoolsQueryDto {
+  3 |   @IsOptional()
+  4 |   @IsString()
+  5 |   @MinLength(2)
+  6 |   q?: string;
+  7 | 
+  8 |   @IsOptional()
+  9 |   @IsIn(['Школа', 'Садочок'])
+ 10 |   type?: 'Школа' | 'Садочок';
+ 11 | }
+ 12 | 
+```
+
+### File: apps/backend/src/schools/dto/school-query.dto.ts
+```ts
+  0 | import { IsOptional, IsIn, IsString } from 'class-validator';
+  1 | import { PageOptionsDto } from '../../common/dto/page-options.dto';
+  2 | 
+  3 | export class SchoolQueryDto extends PageOptionsDto {
+  4 |   @IsOptional()
+  5 |   @IsString()
+  6 |   search?: string;
+  7 | 
+  8 |   @IsOptional()
+  9 |   @IsString()
+ 10 |   cityId?: string;
+ 11 | 
+ 12 |   @IsOptional()
+ 13 |   @IsIn(['Школа', 'Садочок'])
+ 14 |   type?: 'Школа' | 'Садочок';
+ 15 | 
+ 16 |   @IsOptional()
+ 17 |   @IsIn(['new', 'planned', 'inProgress', 'done'])
+ 18 |   stage?: 'new' | 'planned' | 'inProgress' | 'done';
+ 19 | 
+ 20 |   @IsOptional()
+ 21 |   @IsIn(['small', 'medium', 'large'])
+ 22 |   size?: 'small' | 'medium' | 'large';
+ 23 | }
+ 24 | 
 ```
 
 ### File: apps/backend/src/schools/dto/update-school.dto.ts
@@ -6505,64 +6693,77 @@
  18 | import { CreateSchoolDto } from './dto/create-school.dto';
  19 | import { UpdateSchoolDto } from './dto/update-school.dto';
  20 | import { BulkImportDto } from './dto/bulk-import.dto';
- 21 | @Controller('schools')
- 22 | @UseGuards(AuthGuard, RolesGuard)
- 23 | export class SchoolsController {
- 24 |   constructor(
- 25 |     private readonly schoolsService: SchoolsService,
- 26 |     private readonly parserService: ParserService,
- 27 |   ) {}
- 28 | 
- 29 |   @Post('bulk-import')
- 30 |   @Roles('SUPERADMIN', 'MANAGER')
- 31 |   bulkImport(@Body() body: BulkImportDto) {
- 32 |     return this.schoolsService.bulkImport(body.cityId, body.type || 'Школа');
- 33 |   }
- 34 | 
- 35 |   @Get('supported-cities')
- 36 |   getSupportedCities() {
- 37 |     return this.parserService.getSupportedCities();
- 38 |   }
- 39 | 
- 40 |   @Post()
- 41 |   @Roles('SUPERADMIN', 'MANAGER')
- 42 |   create(@Body() body: CreateSchoolDto) {
- 43 |     return this.schoolsService.create(body);
- 44 |   }
- 45 | 
- 46 |   @Get() findAll(@Query('minimal') minimal?: string) {
- 47 |     return this.schoolsService.findAll(minimal === 'true');
- 48 |   }
- 49 | 
- 50 |   @Get('search')
- 51 |   search(@Query('q') q: string, @Query('type') type: string) {
- 52 |     return this.parserService.searchSchools(q, type);
- 53 |   }
- 54 | 
- 55 |   @Get(':id')
- 56 |   findOne(@Param('id') id: string) {
- 57 |     return this.schoolsService.findOne(id);
- 58 |   }
- 59 | 
- 60 |   @Patch(':id')
- 61 |   @UseGuards(OwnershipGuard)
- 62 |   @CheckOwnership('school')
- 63 |   update(@Param('id') id: string, @Body() body: UpdateSchoolDto) {
- 64 |     return this.schoolsService.update(id, body);
- 65 |   }
- 66 | 
- 67 |   @Delete(':id')
- 68 |   @Roles('SUPERADMIN')
- 69 |   remove(@Param('id') id: string) {
- 70 |     return this.schoolsService.remove(id);
+ 21 | import { SchoolQueryDto } from './dto/school-query.dto';
+ 22 | import { FindSchoolsQueryDto } from './dto/find-schools-query.dto';
+ 23 | import { FindContactsQueryDto } from './dto/find-contacts-query.dto';
+ 24 | @Controller('schools')
+ 25 | @UseGuards(AuthGuard, RolesGuard)
+ 26 | export class SchoolsController {
+ 27 |   constructor(
+ 28 |     private readonly schoolsService: SchoolsService,
+ 29 |     private readonly parserService: ParserService,
+ 30 |   ) {}
+ 31 | 
+ 32 |   @Post('bulk-import')
+ 33 |   @Roles('SUPERADMIN', 'MANAGER')
+ 34 |   bulkImport(@Body() body: BulkImportDto) {
+ 35 |     return this.schoolsService.bulkImport(body.cityId, body.type || 'Школа');
+ 36 |   }
+ 37 | 
+ 38 |   @Get('supported-cities')
+ 39 |   getSupportedCities() {
+ 40 |     return this.parserService.getSupportedCities();
+ 41 |   }
+ 42 | 
+ 43 |   @Post()
+ 44 |   @Roles('SUPERADMIN', 'MANAGER')
+ 45 |   create(@Body() body: CreateSchoolDto) {
+ 46 |     return this.schoolsService.create(body);
+ 47 |   }
+ 48 | 
+ 49 |   @Get()
+ 50 |   findAll(@Query() query: SchoolQueryDto) {
+ 51 |     return this.schoolsService.findAll(query);
+ 52 |   }
+ 53 | 
+ 54 |   @Get('stats')
+ 55 |   getStats(
+ 56 |     @Query('cityId') cityId?: string,
+ 57 |     @Query('type') type?: 'Школа' | 'Садочок',
+ 58 |     @Query('stage') stage?: 'new' | 'planned' | 'inProgress' | 'done',
+ 59 |   ) {
+ 60 |     return this.schoolsService.getStats({ cityId, type, stage });
+ 61 |   }
+ 62 | 
+ 63 |   @Get('search')
+ 64 |   search(@Query() query: FindSchoolsQueryDto) {
+ 65 |     return this.parserService.searchSchools(query.q ?? '', query.type);
+ 66 |   }
+ 67 | 
+ 68 |   @Get(':id')
+ 69 |   findOne(@Param('id') id: string) {
+ 70 |     return this.schoolsService.findOne(id);
  71 |   }
  72 | 
- 73 |   @Get('contacts/search')
- 74 |   searchContacts(@Query('q') q: string, @Query('city') city: string) {
- 75 |     return this.schoolsService.searchContacts(q, city);
- 76 |   }
- 77 | }
- 78 | 
+ 73 |   @Patch(':id')
+ 74 |   @UseGuards(OwnershipGuard)
+ 75 |   @CheckOwnership('school')
+ 76 |   update(@Param('id') id: string, @Body() body: UpdateSchoolDto) {
+ 77 |     return this.schoolsService.update(id, body);
+ 78 |   }
+ 79 | 
+ 80 |   @Delete(':id')
+ 81 |   @Roles('SUPERADMIN')
+ 82 |   remove(@Param('id') id: string) {
+ 83 |     return this.schoolsService.remove(id);
+ 84 |   }
+ 85 | 
+ 86 |   @Get('contacts/search')
+ 87 |   searchContacts(@Query() query: FindContactsQueryDto) {
+ 88 |     return this.schoolsService.searchContacts(query.q ?? '', query.city);
+ 89 |   }
+ 90 | }
+ 91 | 
 ```
 
 ### File: apps/backend/src/schools/schools.module.ts
@@ -6688,305 +6889,450 @@
   3 |   forwardRef,
   4 |   Inject,
   5 | } from '@nestjs/common';
-  6 | import { EventsService } from '../events/events.service';
-  7 | import { ParserService } from './parser.service';
-  8 | import { PrismaService } from '../prisma/prisma.service';
-  9 | 
- 10 | @Injectable()
- 11 | export class SchoolsService {
- 12 |   constructor(
- 13 |     @Inject(forwardRef(() => EventsService))
- 14 |     private readonly eventsService: EventsService,
- 15 |     private readonly parserService: ParserService,
- 16 |     private readonly prisma: PrismaService,
- 17 |   ) {}
- 18 | 
- 19 |   async create(data: {
- 20 |     name: string;
- 21 |     type: string;
- 22 |     cityId: string;
- 23 |     sourceUrl?: string;
- 24 |     director?: string;
- 25 |     phone?: string;
- 26 |     address?: string;
- 27 |     childrenCount?: number;
- 28 |   }) {
- 29 |     const { sourceUrl, ...schoolData } = data;
- 30 | 
- 31 |     const newSchool = await this.prisma.school.create({
- 32 |       data: schoolData,
- 33 |     });
- 34 | 
- 35 |     this.parserService
- 36 |       .parseSchoolData(data.name, sourceUrl, data.type)
- 37 |       .then(async (parsed) => {
- 38 |         if (!parsed) {
- 39 |           console.log(`Не вдалося знайти дані для закладу: ${data.name}`);
- 40 |           return;
- 41 |         }
- 42 | 
- 43 |         const updateData: Record<string, unknown> = {};
- 44 | 
- 45 |         if (!schoolData.address && parsed.address) {
- 46 |           updateData.address = parsed.address;
+  6 | import { Prisma } from '@prisma/client';
+  7 | import { EventsService } from '../events/events.service';
+  8 | import { ParserService } from './parser.service';
+  9 | import { PrismaService } from '../prisma/prisma.service';
+ 10 | import { PageMetaDto } from '../common/dto/page-meta.dto';
+ 11 | import { SchoolQueryDto } from './dto/school-query.dto';
+ 12 | 
+ 13 | const PLANNED_STAGES = ['BASE', 'FIRST_CONTACT', 'DATE_CONFIRMED'];
+ 14 | const IN_PROGRESS_STAGES = ['PREPARATION', 'IN_PROGRESS', 'DONE', 'REPORT'];
+ 15 | 
+ 16 | @Injectable()
+ 17 | export class SchoolsService {
+ 18 |   constructor(
+ 19 |     @Inject(forwardRef(() => EventsService))
+ 20 |     private readonly eventsService: EventsService,
+ 21 |     private readonly parserService: ParserService,
+ 22 |     private readonly prisma: PrismaService,
+ 23 |   ) {}
+ 24 | 
+ 25 |   async create(data: {
+ 26 |     name: string;
+ 27 |     type: string;
+ 28 |     cityId: string;
+ 29 |     sourceUrl?: string;
+ 30 |     director?: string;
+ 31 |     phone?: string;
+ 32 |     address?: string;
+ 33 |     childrenCount?: number;
+ 34 |   }) {
+ 35 |     const { sourceUrl, ...schoolData } = data;
+ 36 | 
+ 37 |     const newSchool = await this.prisma.school.create({
+ 38 |       data: schoolData,
+ 39 |     });
+ 40 | 
+ 41 |     this.parserService
+ 42 |       .parseSchoolData(data.name, sourceUrl, data.type)
+ 43 |       .then(async (parsed) => {
+ 44 |         if (!parsed) {
+ 45 |           console.log(`Не вдалося знайти дані для закладу: ${data.name}`);
+ 46 |           return;
  47 |         }
- 48 |         if (!schoolData.director && parsed.director) {
- 49 |           updateData.director = parsed.director;
- 50 |         }
- 51 |         if (!schoolData.childrenCount && parsed.childrenCount) {
- 52 |           updateData.childrenCount = parsed.childrenCount;
+ 48 | 
+ 49 |         const updateData: Record<string, unknown> = {};
+ 50 | 
+ 51 |         if (!schoolData.address && parsed.address) {
+ 52 |           updateData.address = parsed.address;
  53 |         }
- 54 | 
- 55 |         if (Object.keys(updateData).length === 0) {
- 56 |           console.log(
- 57 |             `Дані школи "${data.name}" вже заповнені користувачем — пропускаємо оновлення з парсингу`,
- 58 |           );
- 59 |           return;
- 60 |         }
- 61 | 
- 62 |         await this.prisma.school.update({
- 63 |           where: {
- 64 |             id: newSchool.id,
- 65 |           },
- 66 |           data: updateData,
- 67 |         });
- 68 | 
- 69 |         console.log(`Дані школи "${data.name}" успішно оновлені`);
- 70 |       })
- 71 |       .catch((error) => {
- 72 |         console.error('Помилка оновлення даних школи:', error);
- 73 |       });
+ 54 |         if (!schoolData.director && parsed.director) {
+ 55 |           updateData.director = parsed.director;
+ 56 |         }
+ 57 |         if (!schoolData.childrenCount && parsed.childrenCount) {
+ 58 |           updateData.childrenCount = parsed.childrenCount;
+ 59 |         }
+ 60 | 
+ 61 |         if (Object.keys(updateData).length === 0) {
+ 62 |           console.log(
+ 63 |             `Дані школи "${data.name}" вже заповнені користувачем — пропускаємо оновлення з парсингу`,
+ 64 |           );
+ 65 |           return;
+ 66 |         }
+ 67 | 
+ 68 |         await this.prisma.school.update({
+ 69 |           where: {
+ 70 |             id: newSchool.id,
+ 71 |           },
+ 72 |           data: updateData,
+ 73 |         });
  74 | 
- 75 |     return newSchool;
- 76 |   }
- 77 | 
- 78 |   async findAll(minimal = false) {
- 79 |     if (minimal) {
- 80 |       return this.prisma.school.findMany({
- 81 |         select: {
- 82 |           id: true,
- 83 |           name: true,
- 84 |           type: true,
- 85 |           cityId: true,
- 86 |           director: true,
- 87 |           phone: true,
- 88 |           address: true,
- 89 |           childrenCount: true,
- 90 |           updatedAt: true,
- 91 |           isHotClient: true,
- 92 |           city: { select: { id: true, name: true } },
- 93 |           events: {
- 94 |             select: { status: true, updatedAt: true },
- 95 |             orderBy: { date: 'desc' },
- 96 |             take: 1,
- 97 |           },
- 98 |         },
- 99 |         orderBy: { createdAt: 'desc' },
-100 |       });
+ 75 |         console.log(`Дані школи "${data.name}" успішно оновлені`);
+ 76 |       })
+ 77 |       .catch((error) => {
+ 78 |         console.error('Помилка оновлення даних школи:', error);
+ 79 |       });
+ 80 | 
+ 81 |     return newSchool;
+ 82 |   }
+ 83 | 
+ 84 |   private buildFilters(
+ 85 |     query: Pick<
+ 86 |       SchoolQueryDto,
+ 87 |       'search' | 'cityId' | 'type' | 'stage' | 'size'
+ 88 |     >,
+ 89 |   ): Prisma.Sql[] {
+ 90 |     const { search, cityId, type, stage, size } = query;
+ 91 |     const conditions: Prisma.Sql[] = [];
+ 92 | 
+ 93 |     if (search) {
+ 94 |       const like = `%${search}%`;
+ 95 |       conditions.push(
+ 96 |         Prisma.sql`(s.name ILIKE ${like} OR s.director ILIKE ${like} OR s.address ILIKE ${like})`,
+ 97 |       );
+ 98 |     }
+ 99 |     if (cityId) {
+100 |       conditions.push(Prisma.sql`s."cityId" = ${cityId}`);
 101 |     }
-102 | 
-103 |     return this.prisma.school.findMany({
-104 |       include: {
-105 |         city: true,
-106 |         events: { orderBy: { date: 'desc' }, take: 1 },
-107 |       },
-108 |       orderBy: { createdAt: 'desc' },
-109 |     });
-110 |   }
+102 |     if (type) {
+103 |       conditions.push(Prisma.sql`s.type = ${type}`);
+104 |     }
+105 |     if (stage) {
+106 |       conditions.push(this.stageCondition(stage));
+107 |     }
+108 |     if (size) {
+109 |       conditions.push(this.sizeCondition(size));
+110 |     }
 111 | 
-112 |   async findOne(id: string) {
-113 |     const school = await this.prisma.school.findUnique({
-114 |       where: {
-115 |         id,
-116 |       },
-117 |       include: {
-118 |         city: true,
-119 |       },
-120 |     });
-121 |     if (!school) {
-122 |       throw new NotFoundException(`Школу з ID ${id} не знайдено`);
-123 |     }
-124 | 
-125 |     return school;
+112 |     return conditions;
+113 |   }
+114 | 
+115 |   private sizeCaseSql(): Prisma.Sql {
+116 |     return Prisma.sql`
+117 |       CASE
+118 |         WHEN s.type = 'Садочок' AND COALESCE(s."childrenCount", 0) < 50 THEN 'small'
+119 |         WHEN s.type = 'Садочок' AND COALESCE(s."childrenCount", 0) < 100 THEN 'medium'
+120 |         WHEN s.type = 'Садочок' THEN 'large'
+121 |         WHEN COALESCE(s."childrenCount", 0) < 500 THEN 'small'
+122 |         WHEN COALESCE(s."childrenCount", 0) < 900 THEN 'medium'
+123 |         ELSE 'large'
+124 |       END
+125 |     `;
 126 |   }
 127 | 
-128 |   async update(id: string, data: any) {
-129 |     const { city, id: _id, createdAt, updatedAt, ...updateData } = data;
-130 | 
-131 |     return this.prisma.school.update({
-132 |       where: {
-133 |         id,
-134 |       },
-135 |       data: updateData,
-136 |     });
-137 |   }
-138 | 
-139 |   async remove(id: string) {
-140 |     const events = await this.prisma.event.findMany({
-141 |       where: {
-142 |         schoolId: id,
-143 |       },
-144 |     });
-145 | 
-146 |     for (const event of events) {
-147 |       await this.eventsService.remove(event.id);
-148 |     }
-149 | 
-150 |     return this.prisma.school.delete({
-151 |       where: {
-152 |         id,
-153 |       },
-154 |     });
-155 |   }
-156 | 
-157 |   async searchContacts(q: string, city?: string) {
-158 |     if (!q || q.trim().length < 1) return [];
-159 | 
-160 |     const cityName = city || 'Львів';
-161 |     const normalizedQuery = q.toLowerCase().trim();
-162 | 
-163 |     const allContacts = await this.prisma.schoolContact.findMany({
-164 |       where: { city: cityName },
-165 |       orderBy: [{ schoolNumber: 'asc' }, { role: 'asc' }],
-166 |     });
-167 | 
-168 |     const STOP_WORDS = new Set([
-169 |       'школа',
-170 |       'школи',
-171 |       'садочок',
-172 |       'садок',
-173 |       'дитсадок',
-174 |       'днз',
-175 |       'ліцей',
-176 |       'гімназія',
-177 |       'зош',
-178 |       'центр',
-179 |       'розвитку',
-180 |       'комунальний',
-181 |       'заклад',
-182 |       'освіти',
-183 |       'імені',
-184 |       'ім',
-185 |     ]);
-186 | 
-187 |     const tokens = normalizedQuery
-188 |       .replace(/№/g, ' ')
-189 |       .split(/\s+/)
-190 |       .map((t) => t.replace(/[^\wа-яіїєґ0-9]/gi, ''))
-191 |       .filter((t) => t.length > 0 && !STOP_WORDS.has(t));
-192 | 
-193 |     const matches = allContacts.filter((c) => {
-194 |       const num = c.schoolNumber.toLowerCase();
+128 |   private stageCondition(stage: string): Prisma.Sql {
+129 |     switch (stage) {
+130 |       case 'planned':
+131 |         return Prisma.sql`latest.status::text IN (${Prisma.join(PLANNED_STAGES)})`;
+132 |       case 'inProgress':
+133 |         return Prisma.sql`latest.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})`;
+134 |       case 'done':
+135 |         return Prisma.sql`latest.status::text = 'RE_SALE'`;
+136 |       default:
+137 |         return Prisma.sql`(latest.status IS NULL OR latest.status::text IN ('INTERESTED','PRE_APPROVAL'))`;
+138 |     }
+139 |   }
+140 | 
+141 |   private sizeCondition(size: string): Prisma.Sql {
+142 |     return Prisma.sql`(${this.sizeCaseSql()}) = ${size}`;
+143 |   }
+144 | 
+145 |   private mapRow(row: any) {
+146 |     const { city_id, city_name, latestStatus, ...school } = row;
+147 |     return {
+148 |       ...school,
+149 |       city: city_id ? { id: city_id, name: city_name } : null,
+150 |       events: latestStatus ? [{ status: latestStatus }] : [],
+151 |     };
+152 |   }
+153 | 
+154 |   async findAll(query: SchoolQueryDto) {
+155 |     const { skip, take, page } = query;
+156 |     const conditions = this.buildFilters(query);
+157 |     const whereClause = conditions.length
+158 |       ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`
+159 |       : Prisma.empty;
+160 | 
+161 |     const baseFrom = Prisma.sql`
+162 |       FROM "School" s
+163 |       LEFT JOIN "City" c ON c.id = s."cityId"
+164 |       LEFT JOIN LATERAL (
+165 |         SELECT e.status FROM "Event" e
+166 |         WHERE e."schoolId" = s.id
+167 |         ORDER BY e.date DESC
+168 |         LIMIT 1
+169 |       ) latest ON true
+170 |     `;
+171 | 
+172 |     const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+173 |       SELECT s.*, c.id as city_id, c.name as city_name, latest.status as "latestStatus"
+174 |       ${baseFrom}
+175 |       ${whereClause}
+176 |       ORDER BY s."createdAt" DESC
+177 |       OFFSET ${skip} LIMIT ${take}
+178 |     `);
+179 | 
+180 |     const countRows = await this.prisma.$queryRaw<
+181 |       { count: bigint }[]
+182 |     >(Prisma.sql`
+183 |       SELECT COUNT(*)::bigint as count
+184 |       ${baseFrom}
+185 |       ${whereClause}
+186 |     `);
+187 | 
+188 |     const totalItems = Number(countRows[0].count);
+189 | 
+190 |     return {
+191 |       data: rows.map((r) => this.mapRow(r)),
+192 |       meta: new PageMetaDto(totalItems, page, take),
+193 |     };
+194 |   }
 195 | 
-196 |       if (num === normalizedQuery) return true;
-197 | 
-198 |       const isNumeric = /^\d+$/.test(num);
-199 | 
-200 |       if (isNumeric) {
-201 |         if (tokens.includes(num)) return true;
-202 |       } else {
-203 |         if (num.includes(normalizedQuery) || normalizedQuery.includes(num))
-204 |           return true;
-205 |         if (tokens.some((t) => t.length >= 3 && num.includes(t))) return true;
-206 |       }
-207 | 
-208 |       if (c.contactName.toLowerCase().includes(normalizedQuery)) return true;
-209 | 
-210 |       return false;
-211 |     });
-212 | 
-213 |     return matches.slice(0, 10);
-214 |   }
-215 |   async bulkImport(cityId: string, type: 'Школа' | 'Садочок' = 'Школа') {
-216 |     const city = await this.prisma.city.findUnique({ where: { id: cityId } });
-217 |     if (!city) throw new Error(`Місто з id=${cityId} не знайдено`);
-218 | 
-219 |     const allFromParser = await this.parserService.getAllSchoolsForCity(
-220 |       city.name,
-221 |       type,
-222 |     );
+196 |   async getStats(query: Pick<SchoolQueryDto, 'cityId' | 'type' | 'stage'>) {
+197 |     const baseConditions = this.buildFilters({
+198 |       cityId: query.cityId,
+199 |       type: query.type,
+200 |     });
+201 |     const baseWhere = baseConditions.length
+202 |       ? Prisma.sql`WHERE ${Prisma.join(baseConditions, ' AND ')}`
+203 |       : Prisma.empty;
+204 | 
+205 |     const sizeConditions = this.buildFilters({
+206 |       cityId: query.cityId,
+207 |       type: query.type,
+208 |       stage: query.stage,
+209 |     });
+210 |     const sizeWhere = sizeConditions.length
+211 |       ? Prisma.sql`WHERE ${Prisma.join(sizeConditions, ' AND ')}`
+212 |       : Prisma.empty;
+213 | 
+214 |     const baseFrom = Prisma.sql`
+215 |       FROM "School" s
+216 |       LEFT JOIN LATERAL (
+217 |         SELECT e.status FROM "Event" e
+218 |         WHERE e."schoolId" = s.id
+219 |         ORDER BY e.date DESC
+220 |         LIMIT 1
+221 |       ) latest ON true
+222 |     `;
 223 | 
-224 |     const existingSchools = await this.prisma.school.findMany({
-225 |       where: { cityId, type },
-226 |       select: { name: true },
-227 |     });
-228 | 
-229 |     const normalize = (name: string) =>
-230 |       name
-231 |         .toLowerCase()
-232 |         .replace(/№/g, '')
-233 |         .replace(/["'«»]/g, '')
-234 |         .replace(/\s+/g, '')
-235 |         .trim();
-236 | 
-237 |     const existingNames = new Set(
-238 |       existingSchools.map((s) => normalize(s.name)),
-239 |     );
-240 | 
-241 |     const toCreate = allFromParser.filter(
-242 |       (s) => !existingNames.has(normalize(s.name)),
-243 |     );
-244 | 
-245 |     if (toCreate.length === 0) {
-246 |       return {
-247 |         total: allFromParser.length,
-248 |         created: 0,
-249 |         skipped: allFromParser.length,
-250 |       };
-251 |     }
-252 | 
-253 |     const contacts = await this.prisma.schoolContact.findMany({
-254 |       where: { city: city.name },
-255 |     });
+224 |     const [statusRows, sizeRows] = await Promise.all([
+225 |       this.prisma.$queryRaw<{ stage: string; count: bigint }[]>(Prisma.sql`
+226 |         SELECT
+227 |           CASE
+228 |             WHEN latest.status::text IN (${Prisma.join(PLANNED_STAGES)}) THEN 'planned'
+229 |             WHEN latest.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)}) THEN 'inProgress'
+230 |             WHEN latest.status::text = 'RE_SALE' THEN 'done'
+231 |             ELSE 'new'
+232 |           END as stage,
+233 |           COUNT(*)::bigint as count
+234 |         ${baseFrom}
+235 |         ${baseWhere}
+236 |         GROUP BY stage
+237 |       `),
+238 |       this.prisma.$queryRaw<{ size: string; count: bigint }[]>(Prisma.sql`
+239 |         SELECT
+240 |           ${this.sizeCaseSql()} as size,
+241 |           COUNT(*)::bigint as count
+242 |         ${baseFrom}
+243 |         ${sizeWhere}
+244 |         GROUP BY size
+245 |       `),
+246 |     ]);
+247 | 
+248 |     const statusStats = { new: 0, planned: 0, inProgress: 0, done: 0 };
+249 |     for (const row of statusRows) statusStats[row.stage] = Number(row.count);
+250 | 
+251 |     const sizeStats = { small: 0, medium: 0, large: 0 };
+252 |     for (const row of sizeRows) sizeStats[row.size] = Number(row.count);
+253 | 
+254 |     return { statusStats, sizeStats };
+255 |   }
 256 | 
-257 |     let created = 0;
-258 |     for (const school of toCreate) {
-259 |       if (existingNames.has(normalize(school.name))) continue;
-260 | 
-261 |       existingNames.add(normalize(school.name));
-262 | 
-263 |       const numMatch = school.name.match(/№?\s*(\d+)/);
-264 |       const num = numMatch?.[1];
-265 |       const matchedContacts = num
-266 |         ? contacts.filter((c) => c.schoolNumber === num)
-267 |         : contacts.filter((c) => {
-268 |             const normSchool = normalize(school.name);
-269 |             const normContact = normalize(c.schoolNumber);
-270 |             return (
-271 |               normSchool.includes(normContact) ||
-272 |               normContact.includes(normSchool)
-273 |             );
-274 |           });
+257 |   async findOne(id: string) {
+258 |     const school = await this.prisma.school.findUnique({
+259 |       where: {
+260 |         id,
+261 |       },
+262 |       include: {
+263 |         city: true,
+264 |       },
+265 |     });
+266 |     if (!school) {
+267 |       throw new NotFoundException(`Школу з ID ${id} не знайдено`);
+268 |     }
+269 | 
+270 |     return school;
+271 |   }
+272 | 
+273 |   async update(id: string, data: any) {
+274 |     const { city, id: _id, createdAt, updatedAt, ...updateData } = data;
 275 | 
-276 |       const director =
-277 |         matchedContacts.find(
-278 |           (c) => c.role?.includes('Директор') || c.role?.includes('Завідувач'),
-279 |         ) || matchedContacts[0];
-280 | 
-281 |       try {
-282 |         await this.create({
-283 |           name: school.name,
-284 |           type,
-285 |           cityId,
-286 |           sourceUrl: school.url,
-287 |           director: director?.contactName || '',
-288 |           phone: director?.phone || '',
-289 |         });
-290 |         created++;
-291 |       } catch (e) {
-292 |         console.error(`Помилка створення ${school.name}:`, e);
-293 |       }
-294 |     }
-295 | 
-296 |     return {
-297 |       city: city.name,
-298 |       total: allFromParser.length,
-299 |       created,
-300 |       skipped: allFromParser.length - created,
-301 |     };
-302 |   }
-303 | }
+276 |     return this.prisma.school.update({
+277 |       where: {
+278 |         id,
+279 |       },
+280 |       data: updateData,
+281 |     });
+282 |   }
+283 | 
+284 |   async remove(id: string) {
+285 |     const events = await this.prisma.event.findMany({
+286 |       where: {
+287 |         schoolId: id,
+288 |       },
+289 |     });
+290 | 
+291 |     for (const event of events) {
+292 |       await this.eventsService.remove(event.id);
+293 |     }
+294 | 
+295 |     return this.prisma.school.delete({
+296 |       where: {
+297 |         id,
+298 |       },
+299 |     });
+300 |   }
+301 | 
+302 |   async searchContacts(q: string, city?: string) {
+303 |     if (!q || q.trim().length < 1) return [];
 304 | 
+305 |     const cityName = city || 'Львів';
+306 |     const normalizedQuery = q.toLowerCase().trim();
+307 | 
+308 |     const allContacts = await this.prisma.schoolContact.findMany({
+309 |       where: { city: cityName },
+310 |       orderBy: [{ schoolNumber: 'asc' }, { role: 'asc' }],
+311 |     });
+312 | 
+313 |     const STOP_WORDS = new Set([
+314 |       'школа',
+315 |       'школи',
+316 |       'садочок',
+317 |       'садок',
+318 |       'дитсадок',
+319 |       'днз',
+320 |       'ліцей',
+321 |       'гімназія',
+322 |       'зош',
+323 |       'центр',
+324 |       'розвитку',
+325 |       'комунальний',
+326 |       'заклад',
+327 |       'освіти',
+328 |       'імені',
+329 |       'ім',
+330 |     ]);
+331 | 
+332 |     const tokens = normalizedQuery
+333 |       .replace(/№/g, ' ')
+334 |       .split(/\s+/)
+335 |       .map((t) => t.replace(/[^\wа-яіїєґ0-9]/gi, ''))
+336 |       .filter((t) => t.length > 0 && !STOP_WORDS.has(t));
+337 | 
+338 |     const matches = allContacts.filter((c) => {
+339 |       const num = c.schoolNumber.toLowerCase();
+340 | 
+341 |       if (num === normalizedQuery) return true;
+342 | 
+343 |       const isNumeric = /^\d+$/.test(num);
+344 | 
+345 |       if (isNumeric) {
+346 |         if (tokens.includes(num)) return true;
+347 |       } else {
+348 |         if (num.includes(normalizedQuery) || normalizedQuery.includes(num))
+349 |           return true;
+350 |         if (tokens.some((t) => t.length >= 3 && num.includes(t))) return true;
+351 |       }
+352 | 
+353 |       if (c.contactName.toLowerCase().includes(normalizedQuery)) return true;
+354 | 
+355 |       return false;
+356 |     });
+357 | 
+358 |     return matches.slice(0, 10);
+359 |   }
+360 |   async bulkImport(cityId: string, type: 'Школа' | 'Садочок' = 'Школа') {
+361 |     const city = await this.prisma.city.findUnique({ where: { id: cityId } });
+362 |     if (!city) throw new Error(`Місто з id=${cityId} не знайдено`);
+363 | 
+364 |     const allFromParser = await this.parserService.getAllSchoolsForCity(
+365 |       city.name,
+366 |       type,
+367 |     );
+368 | 
+369 |     const existingSchools = await this.prisma.school.findMany({
+370 |       where: { cityId, type },
+371 |       select: { name: true },
+372 |     });
+373 | 
+374 |     const normalize = (name: string) =>
+375 |       name
+376 |         .toLowerCase()
+377 |         .replace(/№/g, '')
+378 |         .replace(/["'«»]/g, '')
+379 |         .replace(/\s+/g, '')
+380 |         .trim();
+381 | 
+382 |     const existingNames = new Set(
+383 |       existingSchools.map((s) => normalize(s.name)),
+384 |     );
+385 | 
+386 |     const toCreate = allFromParser.filter(
+387 |       (s) => !existingNames.has(normalize(s.name)),
+388 |     );
+389 | 
+390 |     if (toCreate.length === 0) {
+391 |       return {
+392 |         total: allFromParser.length,
+393 |         created: 0,
+394 |         skipped: allFromParser.length,
+395 |       };
+396 |     }
+397 | 
+398 |     const contacts = await this.prisma.schoolContact.findMany({
+399 |       where: { city: city.name },
+400 |     });
+401 | 
+402 |     let created = 0;
+403 |     for (const school of toCreate) {
+404 |       if (existingNames.has(normalize(school.name))) continue;
+405 | 
+406 |       existingNames.add(normalize(school.name));
+407 | 
+408 |       const numMatch = school.name.match(/№?\s*(\d+)/);
+409 |       const num = numMatch?.[1];
+410 |       const matchedContacts = num
+411 |         ? contacts.filter((c) => c.schoolNumber === num)
+412 |         : contacts.filter((c) => {
+413 |             const normSchool = normalize(school.name);
+414 |             const normContact = normalize(c.schoolNumber);
+415 |             return (
+416 |               normSchool.includes(normContact) ||
+417 |               normContact.includes(normSchool)
+418 |             );
+419 |           });
+420 | 
+421 |       const director =
+422 |         matchedContacts.find(
+423 |           (c) => c.role?.includes('Директор') || c.role?.includes('Завідувач'),
+424 |         ) || matchedContacts[0];
+425 | 
+426 |       try {
+427 |         await this.create({
+428 |           name: school.name,
+429 |           type,
+430 |           cityId,
+431 |           sourceUrl: school.url,
+432 |           director: director?.contactName || '',
+433 |           phone: director?.phone || '',
+434 |         });
+435 |         created++;
+436 |       } catch (e) {
+437 |         console.error(`Помилка створення ${school.name}:`, e);
+438 |       }
+439 |     }
+440 | 
+441 |     return {
+442 |       city: city.name,
+443 |       total: allFromParser.length,
+444 |       created,
+445 |       skipped: allFromParser.length - created,
+446 |     };
+447 |   }
+448 | }
+449 | 
 ```
 
 ### File: apps/backend/src/telegram/telegram.module.ts
@@ -7118,30 +7464,77 @@
   3 |   IsNotEmpty,
   4 |   IsOptional,
   5 |   MinLength,
-  6 |   IsIn,
+  6 |   IsEnum,
   7 | } from 'class-validator';
+  8 | import { UserRole } from '@prisma/client';
+  9 | 
+ 10 | export class CreateUserDto {
+ 11 |   @IsString()
+ 12 |   @IsNotEmpty()
+ 13 |   fullName: string;
+ 14 | 
+ 15 |   @IsEmail()
+ 16 |   email: string;
+ 17 | 
+ 18 |   @IsString()
+ 19 |   @MinLength(6)
+ 20 |   password: string;
+ 21 | 
+ 22 |   @IsOptional()
+ 23 |   @IsString()
+ 24 |   phone?: string;
+ 25 | 
+ 26 |   @IsOptional()
+ 27 |   @IsEnum(UserRole)
+ 28 |   role?: UserRole;
+ 29 | 
+ 30 |   @IsOptional()
+ 31 |   @IsString()
+ 32 |   cityId?: string;
+ 33 | 
+ 34 |   @IsOptional()
+ 35 |   @IsString()
+ 36 |   telegramId?: string;
+ 37 | 
+ 38 |   @IsOptional()
+ 39 |   @IsString()
+ 40 |   car?: string;
+ 41 | }
+ 42 | 
+```
+
+### File: apps/backend/src/users/dto/update-user.dto.ts
+```ts
+  0 | import {
+  1 |   IsString,
+  2 |   IsEmail,
+  3 |   IsOptional,
+  4 |   MinLength,
+  5 |   IsEnum,
+  6 | } from 'class-validator';
+  7 | import { UserRole } from '@prisma/client';
   8 | 
-  9 | const ROLES = ['SUPERADMIN', 'MANAGER', 'HOST', 'DRIVER'];
- 10 | 
- 11 | export class CreateUserDto {
- 12 |   @IsString()
- 13 |   @IsNotEmpty()
- 14 |   fullName: string;
- 15 | 
- 16 |   @IsEmail()
- 17 |   email: string;
- 18 | 
+  9 | export class UpdateUserDto {
+ 10 |   @IsOptional()
+ 11 |   @IsString()
+ 12 |   fullName?: string;
+ 13 | 
+ 14 |   @IsOptional()
+ 15 |   @IsEmail()
+ 16 |   email?: string;
+ 17 | 
+ 18 |   @IsOptional()
  19 |   @IsString()
  20 |   @MinLength(6)
- 21 |   password: string;
+ 21 |   password?: string;
  22 | 
  23 |   @IsOptional()
  24 |   @IsString()
  25 |   phone?: string;
  26 | 
  27 |   @IsOptional()
- 28 |   @IsIn(ROLES)
- 29 |   role?: string;
+ 28 |   @IsEnum(UserRole)
+ 29 |   role?: UserRole;
  30 | 
  31 |   @IsOptional()
  32 |   @IsString()
@@ -7156,55 +7549,6 @@
  41 |   car?: string;
  42 | }
  43 | 
-```
-
-### File: apps/backend/src/users/dto/update-user.dto.ts
-```ts
-  0 | import {
-  1 |   IsString,
-  2 |   IsEmail,
-  3 |   IsOptional,
-  4 |   MinLength,
-  5 |   IsIn,
-  6 | } from 'class-validator';
-  7 | 
-  8 | const ROLES = ['SUPERADMIN', 'MANAGER', 'HOST', 'DRIVER'];
-  9 | 
- 10 | export class UpdateUserDto {
- 11 |   @IsOptional()
- 12 |   @IsString()
- 13 |   fullName?: string;
- 14 | 
- 15 |   @IsOptional()
- 16 |   @IsEmail()
- 17 |   email?: string;
- 18 | 
- 19 |   @IsOptional()
- 20 |   @IsString()
- 21 |   @MinLength(6)
- 22 |   password?: string;
- 23 | 
- 24 |   @IsOptional()
- 25 |   @IsString()
- 26 |   phone?: string;
- 27 | 
- 28 |   @IsOptional()
- 29 |   @IsIn(ROLES)
- 30 |   role?: string;
- 31 | 
- 32 |   @IsOptional()
- 33 |   @IsString()
- 34 |   cityId?: string;
- 35 | 
- 36 |   @IsOptional()
- 37 |   @IsString()
- 38 |   telegramId?: string;
- 39 | 
- 40 |   @IsOptional()
- 41 |   @IsString()
- 42 |   car?: string;
- 43 | }
- 44 | 
 ```
 
 ### File: apps/backend/src/users/users.controller.spec.ts
@@ -7279,20 +7623,8 @@
  41 |   remove(@Param('id') id: string) {
  42 |     return this.usersService.deleteUser(id);
  43 |   }
- 44 | 
- 45 |   @Get('seed')
- 46 |   @Roles('SUPERADMIN')
- 47 |   seedAdmin() {
- 48 |     return this.usersService.seedAdmin();
- 49 |   }
- 50 | 
- 51 |   @Get('seed-vasya')
- 52 |   @Roles('SUPERADMIN')
- 53 |   seedVasya() {
- 54 |     return this.usersService.seedVasya();
- 55 |   }
- 56 | }
- 57 | 
+ 44 | }
+ 45 | 
 ```
 
 ### File: apps/backend/src/users/users.module.ts
@@ -7435,68 +7767,23 @@
  95 |     return this.prisma.user.delete({ where: { id } });
  96 |   }
  97 | 
- 98 |   async seedAdmin() {
- 99 |     const existingAdmin = await this.prisma.user.findUnique({
-100 |       where: { email: 'admin@crm.com' },
-101 |     });
-102 | 
-103 |     if (existingAdmin) {
-104 |       return { message: 'Адміністратор вже існує!' };
-105 |     }
-106 | 
-107 |     const hashedPassword = await bcrypt.hash('admin123', 10);
-108 |     const admin = await this.prisma.user.create({
-109 |       data: {
-110 |         name: 'Артур Шмальцель',
-111 |         email: 'admin@crm.com',
-112 |         password: hashedPassword,
-113 |         role: 'SUPERADMIN',
-114 |       },
-115 |     });
-116 | 
-117 |     return { message: 'Суперадмін успішно створений!', user: admin };
-118 |   }
-119 | 
-120 |   async seedVasya() {
-121 |     const existingVasya = await this.prisma.user.findUnique({
-122 |       where: { email: 'vasya@charisma.com' },
-123 |     });
-124 | 
-125 |     if (existingVasya) {
-126 |       return { message: 'Вася вже в базі!' };
-127 |     }
-128 | 
-129 |     const hashedPassword = await bcrypt.hash('vasya123', 10);
-130 | 
-131 |     const vasya = await this.prisma.user.create({
-132 |       data: {
-133 |         name: 'Вася Харізма',
-134 |         email: 'vasya@charisma.com',
-135 |         password: hashedPassword,
-136 |         role: 'MANAGER',
-137 |       },
-138 |     });
-139 | 
-140 |     return { message: 'Вася Харізма успішно доданий!', user: vasya };
-141 |   }
-142 | 
-143 |   async findAll() {
-144 |     return this.prisma.user.findMany();
-145 |   }
-146 | 
-147 |   async updateTelegramChatId(username: string, chatId: string) {
-148 |     return this.prisma.user.updateMany({
-149 |       where: {
-150 |         telegramId: {
-151 |           equals: username,
-152 |           mode: 'insensitive',
-153 |         },
-154 |       },
-155 |       data: { telegramChatId: chatId },
-156 |     });
-157 |   }
-158 | }
-159 | 
+ 98 |   async findAll() {
+ 99 |     return this.prisma.user.findMany();
+100 |   }
+101 | 
+102 |   async updateTelegramChatId(username: string, chatId: string) {
+103 |     return this.prisma.user.updateMany({
+104 |       where: {
+105 |         telegramId: {
+106 |           equals: username,
+107 |           mode: 'insensitive',
+108 |         },
+109 |       },
+110 |       data: { telegramChatId: chatId },
+111 |     });
+112 |   }
+113 | }
+114 | 
 ```
 
 ### File: apps/backend/test/app.e2e-spec.ts
@@ -9130,53 +9417,70 @@
 
 ### File: apps/frontend/src/components/VirtualSchoolList.tsx
 ```tsx
-  0 | import { useRef } from 'react';
-  1 | import { useVirtualizer } from '@tanstack/react-virtual';
+  0 | import { useRef, useEffect } from "react";
+  1 | import { useVirtualizer } from "@tanstack/react-virtual";
   2 | 
   3 | interface VirtualSchoolListProps {
   4 |   schools: any[];
   5 |   renderItem: (school: any, index: number) => JSX.Element;
   6 |   itemHeight?: number;
-  7 | }
-  8 | 
-  9 | export default function VirtualSchoolList({ schools, renderItem, itemHeight = 120 }: VirtualSchoolListProps) {
- 10 |   const parentRef = useRef<HTMLDivElement>(null);
- 11 | 
- 12 |   const rowVirtualizer = useVirtualizer({
- 13 |     count: schools.length,
- 14 |     getScrollElement: () => parentRef.current,
- 15 |     estimateSize: () => itemHeight,
- 16 |     overscan: 5,
- 17 |   });
- 18 | 
- 19 |   return (
- 20 |     <div ref={parentRef} className="h-[calc(100vh-200px)] overflow-auto w-full">
- 21 |       <div
- 22 |         style={{
- 23 |           height: `${rowVirtualizer.getTotalSize()}px`,
- 24 |           width: '100%',
- 25 |           position: 'relative',
- 26 |         }}
- 27 |       >
- 28 |         {rowVirtualizer.getVirtualItems().map((virtualRow) => (
- 29 |           <div
- 30 |             key={virtualRow.key}
- 31 |             style={{
- 32 |               position: 'absolute',
- 33 |               top: 0,
- 34 |               left: 0,
- 35 |               width: '100%',
- 36 |               height: `${virtualRow.size}px`,
- 37 |               transform: `translateY(${virtualRow.start}px)`,
- 38 |             }}
- 39 |           >
- 40 |             {renderItem(schools[virtualRow.index], virtualRow.index)}
- 41 |           </div>
- 42 |         ))}
- 43 |       </div>
- 44 |     </div>
- 45 |   );
- 46 | }
+  7 |   onEndReached?: () => void;
+  8 | }
+  9 | 
+ 10 | export default function VirtualSchoolList({
+ 11 |   schools,
+ 12 |   renderItem,
+ 13 |   itemHeight = 120,
+ 14 |   onEndReached,
+ 15 | }: VirtualSchoolListProps) {
+ 16 |   const parentRef = useRef<HTMLDivElement>(null);
+ 17 | 
+ 18 |   const rowVirtualizer = useVirtualizer({
+ 19 |     count: schools.length,
+ 20 |     getScrollElement: () => parentRef.current,
+ 21 |     estimateSize: () => itemHeight,
+ 22 |     overscan: 5,
+ 23 |   });
+ 24 | 
+ 25 |   const virtualItems = rowVirtualizer.getVirtualItems();
+ 26 |   const lastItem = virtualItems[virtualItems.length - 1];
+ 27 | 
+ 28 |   useEffect(() => {
+ 29 |     if (!onEndReached || !lastItem) return;
+ 30 |     if (lastItem.index >= schools.length - 5) {
+ 31 |       onEndReached();
+ 32 |     }
+ 33 |   }, [lastItem?.index, schools.length, onEndReached]);
+ 34 | 
+ 35 |   return (
+ 36 |     <div ref={parentRef} className="h-[calc(100vh-200px)] overflow-auto w-full">
+ 37 |       <div
+ 38 |         style={{
+ 39 |           height: `${rowVirtualizer.getTotalSize()}px`,
+ 40 |           width: "100%",
+ 41 |           position: "relative",
+ 42 |         }}
+ 43 |       >
+ 44 |         {virtualItems.map((virtualRow) => (
+ 45 |           <div
+ 46 |             key={virtualRow.key}
+ 47 |             style={{
+ 48 |               position: "absolute",
+ 49 |               top: 0,
+ 50 |               left: 0,
+ 51 |               width: "100%",
+ 52 |               height: `${virtualRow.size}px`,
+ 53 |               transform: `translateY(${virtualRow.start}px)`,
+ 54 |             }}
+ 55 |           >
+ 56 |             {renderItem(schools[virtualRow.index], virtualRow.index)}
+ 57 |           </div>
+ 58 |         ))}
+ 59 |       </div>
+ 60 |     </div>
+ 61 |   );
+ 62 | }
+ 63 | 
 ```
 
 ### File: apps/frontend/src/components/cities/CityDesktopGrid.tsx
@@ -11948,6 +12252,31 @@
 258 | 
 ```
 
+### File: apps/frontend/src/components/modals/EventSchema.ts
+```ts
+  0 | import { z } from "zod";
+  1 | 
+  2 | export const eventSchema = z.object({
+  3 |   project: z.string().min(1, "Оберіть вид події"),
+  4 |   date: z.string().min(1, "Вкажіть дату"),
+  5 |   time: z.string().min(1, "Вкажіть час"),
+  6 |   childrenPlanned: z
+  7 |     .string()
+  8 |     .min(1, "Вкажіть кількість дітей")
+  9 |     .refine((v) => Number(v) > 0, "Має бути більше нуля"),
+ 10 |   price: z
+ 11 |     .string()
+ 12 |     .min(1, "Вкажіть вартість")
+ 13 |     .refine((v) => Number(v) >= 0, "Некоректна вартість"),
+ 14 |   address: z.string().optional().default(""),
+ 15 |   contactPerson: z.string().optional().default(""),
+ 16 |   contactPhone: z.string().optional().default(""),
+ 17 | });
+ 18 | 
+ 19 | export type EventFormValues = z.infer<typeof eventSchema>;
+ 20 | 
+```
+
 ### File: apps/frontend/src/components/school-profile/AssignedCrew.tsx
 ```tsx
   0 | import { memo } from 'react';
@@ -12309,96 +12638,106 @@
 
 ### File: apps/frontend/src/components/school-profile/EventPreparation.tsx
 ```tsx
-  0 | 
-  1 | import { memo, useState } from 'react';
-  2 | import { motion, AnimatePresence } from 'framer-motion';
-  3 | import type { EventPreparation as EventPreparationData } from '../../types';
-  4 | 
-  5 | interface PreparationProps {
-  6 |   data: Partial<EventPreparationData>;
-  7 |   onUpdate: (field: string, status: string) => void;
-  8 |   onOpenCrewModal: () => void;
-  9 | }
- 10 | 
- 11 | const STATUSES = ['Заплановано', 'В процесі', 'Виконано'];
- 12 | 
- 13 | const getNextStatus = (current: string) => {
- 14 |   const idx = STATUSES.indexOf(current || 'Заплановано');
- 15 |   return STATUSES[(idx + 1) % STATUSES.length];
- 16 | };
- 17 | 
- 18 | export default memo(function EventPreparation({ data, onUpdate, onOpenCrewModal }: PreparationProps) {
- 19 |   const [optimistic, setOptimistic] = useState<Record<string, string>>({});
- 20 | 
- 21 |   const tasks = [
- 22 |     { key: 'assignCrew', label: 'Призначити екіпаж' },
- 23 |     { key: 'bookEquipment', label: 'Забронювати обладнання' },
- 24 |     { key: 'prepareDocs', label: 'Підготувати документи' },
- 25 |     { key: 'prepareMaterials', label: 'Підготувати матеріали' },
- 26 |     { key: 'remindSchool', label: 'Нагадати школі про подію' },
- 27 |   ];
- 28 | 
- 29 |   const getStatusColor = (status: string) => {
- 30 |     switch (status) {
- 31 |       case 'Виконано': return 'bg-emerald-50 text-emerald-600 border border-emerald-200';
- 32 |       case 'В процесі': return 'bg-orange-50 text-orange-600 border border-orange-200';
- 33 |       default: return 'bg-blue-50 text-blue-600 border border-blue-200';
- 34 |     }
- 35 |   };
- 36 | 
- 37 |   const handleTaskClick = (key: string) => {
- 38 |     if (key === 'assignCrew') {
- 39 |       onOpenCrewModal();
- 40 |     } else {
- 41 |       const next = getNextStatus(
- 42 |         optimistic[key] ?? data[key as keyof EventPreparationData] ?? 'Заплановано',
- 43 |       );
- 44 |       setOptimistic(prev => ({ ...prev, [key]: next }));
- 45 |       onUpdate(key, next).catch(() => {
- 46 |         setOptimistic(prev => ({ ...prev, [key]: data[key] }));
- 47 |       });
- 48 |     }
- 49 |   };
- 50 | 
- 51 |   return (
- 52 |     <motion.div
- 53 |       whileHover={{ y: -2, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.08)" }}
- 54 |       transition={{ duration: 0.2 }}
- 55 |       className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
- 56 |     >
- 57 |       <h3 className="font-bold text-slate-800 mb-4 border-b pb-3 border-slate-100">Підготовка до події</h3>
- 58 |       <div className="space-y-3 text-sm">
- 59 |         {tasks.map((task) => {
- 60 |           const currentStatus = optimistic[task.key] ?? data[task.key] ?? 'Заплановано';
- 61 |           return (
- 62 |             <motion.div
- 63 |               key={task.key}
- 64 |               whileTap={{ scale: 0.98 }}
- 65 |               className="flex justify-between items-center cursor-pointer group hover:bg-slate-50 p-2 -mx-2 rounded-lg transition-colors"
- 66 |               onClick={() => handleTaskClick(task.key)}
- 67 |             >
- 68 |               <span className="text-slate-700 font-medium select-none">{task.label}</span>
- 69 |               <AnimatePresence mode="wait">
- 70 |                 <motion.span
- 71 |                   key={currentStatus}
- 72 |                   initial={{ opacity: 0, scale: 0.85 }}
- 73 |                   animate={{ opacity: 1, scale: 1 }}
- 74 |                   exit={{ opacity: 0, scale: 0.85 }}
- 75 |                   transition={{ duration: 0.15 }}
- 76 |                   className={`px-2.5 py-1 rounded-full text-xs font-bold select-none ${getStatusColor(currentStatus)}`}
- 77 |                 >
- 78 |                   {currentStatus}
- 79 |                 </motion.span>
- 80 |               </AnimatePresence>
- 81 |             </motion.div>
- 82 |           );
- 83 |         })}
- 84 |       </div>
- 85 |     </motion.div>
- 86 |   );
- 87 | });
- 88 | 
- 89 | 
+  0 | import { memo, useState } from "react";
+  1 | import { motion, AnimatePresence } from "framer-motion";
+  2 | import type { EventPreparation as EventPreparationData } from "../../types";
+  3 | import {
+  4 |   PREPARATION_STATUS_LABELS,
+  5 |   getNextPreparationStatus,
+  6 |   type PreparationStatus,
+  7 | } from "../../utils/preparationStatus";
+  8 | 
+  9 | interface PreparationProps {
+ 10 |   data: Partial<EventPreparationData>;
+ 11 |   onUpdate: (field: string, status: PreparationStatus) => void;
+ 12 |   onOpenCrewModal: () => void;
+ 13 | }
+ 14 | 
+ 15 | export default memo(function EventPreparation({
+ 16 |   data,
+ 17 |   onUpdate,
+ 18 |   onOpenCrewModal,
+ 19 | }: PreparationProps) {
+ 20 |   const [optimistic, setOptimistic] = useState<Record<string, string>>({});
+ 21 | 
+ 22 |   const tasks = [
+ 23 |     { key: "assignCrew", label: "Призначити екіпаж" },
+ 24 |     { key: "bookEquipment", label: "Забронювати обладнання" },
+ 25 |     { key: "prepareDocs", label: "Підготувати документи" },
+ 26 |     { key: "prepareMaterials", label: "Підготувати матеріали" },
+ 27 |     { key: "remindSchool", label: "Нагадати школі про подію" },
+ 28 |   ];
+ 29 | 
+ 30 |   const getStatusColor = (status: PreparationStatus) => {
+ 31 |     switch (status) {
+ 32 |       case "DONE":
+ 33 |         return "bg-emerald-50 text-emerald-600 border border-emerald-200";
+ 34 |       case "IN_PROGRESS":
+ 35 |         return "bg-orange-50 text-orange-600 border border-orange-200";
+ 36 |       default:
+ 37 |         return "bg-blue-50 text-blue-600 border border-blue-200";
+ 38 |     }
+ 39 |   };
+ 40 | 
+ 41 |   const handleTaskClick = (key: string) => {
+ 42 |     if (key === "assignCrew") {
+ 43 |       onOpenCrewModal();
+ 44 |     } else {
+ 45 |       const current = (optimistic[key] ??
+ 46 |         data[key as keyof EventPreparationData] ??
+ 47 |         "PLANNED") as PreparationStatus;
+ 48 |       const next = getNextPreparationStatus(current);
+ 49 |       setOptimistic((prev) => ({ ...prev, [key]: next }));
+ 50 |       onUpdate(key, next).catch(() => {
+ 51 |         setOptimistic((prev) => ({ ...prev, [key]: data[key] }));
+ 52 |       });
+ 53 |     }
+ 54 |   };
+ 55 | 
+ 56 |   return (
+ 57 |     <motion.div
+ 58 |       whileHover={{ y: -2, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.08)" }}
+ 59 |       transition={{ duration: 0.2 }}
+ 60 |       className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
+ 61 |     >
+ 62 |       <h3 className="font-bold text-slate-800 mb-4 border-b pb-3 border-slate-100">
+ 63 |         Підготовка до події
+ 64 |       </h3>
+ 65 |       <div className="space-y-3 text-sm">
+ 66 |         {tasks.map((task) => {
+ 67 |           const currentStatus = (optimistic[task.key] ??
+ 68 |             data[task.key as keyof EventPreparationData] ??
+ 69 |             "PLANNED") as PreparationStatus;
+ 70 |           return (
+ 71 |             <motion.div
+ 72 |               key={task.key}
+ 73 |               whileTap={{ scale: 0.98 }}
+ 74 |               className="flex justify-between items-center cursor-pointer group hover:bg-slate-50 p-2 -mx-2 rounded-lg transition-colors"
+ 75 |               onClick={() => handleTaskClick(task.key)}
+ 76 |             >
+ 77 |               <span className="text-slate-700 font-medium select-none">
+ 78 |                 {task.label}
+ 79 |               </span>
+ 80 |               <AnimatePresence mode="wait">
+ 81 |                 <motion.span
+ 82 |                   key={currentStatus}
+ 83 |                   initial={{ opacity: 0, scale: 0.85 }}
+ 84 |                   animate={{ opacity: 1, scale: 1 }}
+ 85 |                   exit={{ opacity: 0, scale: 0.85 }}
+ 86 |                   transition={{ duration: 0.15 }}
+ 87 |                   className={`px-2.5 py-1 rounded-full text-xs font-bold select-none ${getStatusColor(currentStatus)}`}
+ 88 |                 >
+ 89 |                   {PREPARATION_STATUS_LABELS[currentStatus]}
+ 90 |                 </motion.span>
+ 91 |               </AnimatePresence>
+ 92 |             </motion.div>
+ 93 |           );
+ 94 |         })}
+ 95 |       </div>
+ 96 |     </motion.div>
+ 97 |   );
+ 98 | });
+ 99 | 
 ```
 
 ### File: apps/frontend/src/components/school-profile/EventsTable.tsx
@@ -13006,282 +13345,409 @@
 
 ### File: apps/frontend/src/components/school-profile/modals/EditSchoolModal.tsx
 ```tsx
-  0 | import React from 'react';
-  1 | import type { SchoolProfileData } from '../../../types';
-  2 | 
-  3 | interface EditSchoolModalProps {
-  4 |   isOpen: boolean;
-  5 |   onClose: () => void;
-  6 |   editForm: SchoolProfileData;
-  7 |   setEditForm: React.Dispatch<React.SetStateAction<SchoolProfileData>>;
-  8 |   onSave: (e: React.FormEvent) => void;
-  9 | }
- 10 | 
- 11 | export default function EditSchoolModal({ isOpen, onClose, editForm, setEditForm, onSave }: EditSchoolModalProps) {
- 12 |   if (!isOpen) return null;
- 13 | 
- 14 |   return (
- 15 |     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
- 16 |       {/* Bottom-sheet на мобільному, центрований діалог на десктопі */}
- 17 |       <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl overflow-hidden max-h-[92vh] flex flex-col">
- 18 |         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
- 19 | 
- 20 |         {/* Шапка не зжимається (shrink-0) */}
- 21 |         <div className="p-5 sm:p-6 border-b flex justify-between items-center bg-slate-50 shrink-0">
- 22 |           <h3 className="text-xl font-bold">Редагування</h3>
- 23 |           <button onClick={onClose} className="text-slate-400 p-2 -mr-2">✕</button>
- 24 |         </div>
- 25 | 
- 26 |         {/* Форма скролиться (overflow-y-auto) */}
- 27 |         <form onSubmit={onSave} className="p-5 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-4">
- 28 |           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
- 29 |             <div>
- 30 |               <label className="block text-sm mb-1">Тип</label>
- 31 |               <select value={editForm.type} onChange={e => setEditForm({...editForm, type: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500">
- 32 |                 <option>Школа</option>
- 33 |                 <option>Садочок</option>
- 34 |               </select>
- 35 |             </div>
- 36 |             <div className="sm:col-span-2">
- 37 |               <label className="block text-sm mb-1">Адреса</label>
- 38 |               <input type="text" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" />
- 39 |             </div>
- 40 |             <div>
- 41 |               <label className="block text-sm mb-1">Контакт</label>
- 42 |               <input type="text" value={editForm.director} onChange={e => setEditForm({...editForm, director: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" />
- 43 |             </div>
- 44 |             <div>
- 45 |               <label className="block text-sm mb-1">Телефон</label>
- 46 |               <input type="text" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" />
- 47 |             </div>
- 48 |             <div>
- 49 |               <label className="block text-sm mb-1">Email</label>
- 50 |               <input type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" />
- 51 |             </div>
- 52 |             <div>
- 53 |               <label className="block text-sm mb-1">Дітей</label>
- 54 |               <input type="number" value={editForm.childrenCount || ''} onChange={e => setEditForm({...editForm, childrenCount: Number(e.target.value)})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500" />
- 55 |             </div>
- 56 |           </div>
- 57 |           
- 58 |           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 shrink-0 pt-4 border-t border-slate-100 pb-1 sm:pb-0">
- 59 |             <button type="button" onClick={onClose} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-slate-100 hover:bg-slate-200 font-medium rounded-xl transition-colors">Скасувати</button>
- 60 |             <button type="submit" className="w-full sm:w-auto bg-blue-600 text-white px-5 py-3 sm:py-2.5 font-medium rounded-xl hover:bg-blue-700 transition-colors">Зберегти</button>
- 61 |           </div>
- 62 |         </form>
- 63 |       </div>
- 64 |     </div>
- 65 |   );
- 66 | }
- 67 | 
+  0 | import { useEffect } from "react";
+  1 | import { useForm } from "react-hook-form";
+  2 | import { zodResolver } from "@hookform/resolvers/zod";
+  3 | import {
+  4 |   schoolEditSchema,
+  5 |   type SchoolEditFormValues,
+  6 | } from "./SchoolEditSchema";
+  7 | 
+  8 | interface EditSchoolModalProps {
+  9 |   isOpen: boolean;
+ 10 |   onClose: () => void;
+ 11 |   defaultValues: SchoolEditFormValues;
+ 12 |   onSave: (data: SchoolEditFormValues) => void;
+ 13 | }
+ 14 | 
+ 15 | export default function EditSchoolModal({
+ 16 |   isOpen,
+ 17 |   onClose,
+ 18 |   defaultValues,
+ 19 |   onSave,
+ 20 | }: EditSchoolModalProps) {
+ 21 |   const {
+ 22 |     register,
+ 23 |     handleSubmit,
+ 24 |     reset,
+ 25 |     formState: { errors, isSubmitting },
+ 26 |   } = useForm<SchoolEditFormValues>({
+ 27 |     resolver: zodResolver(schoolEditSchema),
+ 28 |     defaultValues,
+ 29 |   });
+ 30 | 
+ 31 |   useEffect(() => {
+ 32 |     if (isOpen) reset(defaultValues);
+ 33 |     // eslint-disable-next-line react-hooks/exhaustive-deps
+ 34 |   }, [isOpen]);
+ 35 | 
+ 36 |   if (!isOpen) return null;
+ 37 | 
+ 38 |   return (
+ 39 |     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+ 40 |       {/* Bottom-sheet на мобільному, центрований діалог на десктопі */}
+ 41 |       <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl overflow-hidden max-h-[92vh] flex flex-col">
+ 42 |         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+ 43 | 
+ 44 |         {/* Шапка не зжимається (shrink-0) */}
+ 45 |         <div className="p-5 sm:p-6 border-b flex justify-between items-center bg-slate-50 shrink-0">
+ 46 |           <h3 className="text-xl font-bold">Редагування</h3>
+ 47 |           <button onClick={onClose} className="text-slate-400 p-2 -mr-2">
+ 48 |             ✕
+ 49 |           </button>
+ 50 |         </div>
+ 51 | 
+ 52 |         {/* Форма скролиться (overflow-y-auto) */}
+ 53 |         <form
+ 54 |           onSubmit={handleSubmit(onSave)}
+ 55 |           className="p-5 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-4"
+ 56 |         >
+ 57 |           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+ 58 |             <div>
+ 59 |               <label className="block text-sm mb-1">Тип</label>
+ 60 |               <select
+ 61 |                 {...register("type")}
+ 62 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+ 63 |               >
+ 64 |                 <option>Школа</option>
+ 65 |                 <option>Садочок</option>
+ 66 |               </select>
+ 67 |             </div>
+ 68 |             <div className="sm:col-span-2">
+ 69 |               <label className="block text-sm mb-1">Адреса</label>
+ 70 |               <input
+ 71 |                 type="text"
+ 72 |                 {...register("address")}
+ 73 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+ 74 |               />
+ 75 |             </div>
+ 76 |             <div>
+ 77 |               <label className="block text-sm mb-1">Контакт</label>
+ 78 |               <input
+ 79 |                 type="text"
+ 80 |                 {...register("director")}
+ 81 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+ 82 |               />
+ 83 |             </div>
+ 84 |             <div>
+ 85 |               <label className="block text-sm mb-1">Телефон</label>
+ 86 |               <input
+ 87 |                 type="text"
+ 88 |                 {...register("phone")}
+ 89 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+ 90 |               />
+ 91 |             </div>
+ 92 |             <div>
+ 93 |               <label className="block text-sm mb-1">Email</label>
+ 94 |               <input
+ 95 |                 type="email"
+ 96 |                 {...register("email")}
+ 97 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+ 98 |               />
+ 99 |               {errors.email && (
+100 |                 <p className="text-xs text-red-500 mt-1">
+101 |                   {errors.email.message}
+102 |                 </p>
+103 |               )}
+104 |             </div>
+105 |             <div>
+106 |               <label className="block text-sm mb-1">Дітей</label>
+107 |               <input
+108 |                 type="number"
+109 |                 {...register("childrenCount")}
+110 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+111 |               />
+112 |               {errors.childrenCount && (
+113 |                 <p className="text-xs text-red-500 mt-1">
+114 |                   {errors.childrenCount.message}
+115 |                 </p>
+116 |               )}
+117 |             </div>
+118 |           </div>
+119 | 
+120 |           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 shrink-0 pt-4 border-t border-slate-100 pb-1 sm:pb-0">
+121 |             <button
+122 |               type="button"
+123 |               onClick={onClose}
+124 |               className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-slate-100 hover:bg-slate-200 font-medium rounded-xl transition-colors"
+125 |             >
+126 |               Скасувати
+127 |             </button>
+128 |             <button
+129 |               type="submit"
+130 |               disabled={isSubmitting}
+131 |               className="w-full sm:w-auto bg-blue-600 text-white px-5 py-3 sm:py-2.5 font-medium rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
+132 |             >
+133 |               Зберегти
+134 |             </button>
+135 |           </div>
+136 |         </form>
+137 |       </div>
+138 |     </div>
+139 |   );
+140 | }
+141 | 
 ```
 
 ### File: apps/frontend/src/components/school-profile/modals/EventModal.tsx
 ```tsx
-  0 | import React, { useState, useEffect } from "react";
-  1 | import { api } from "../../../config/api";
-  2 | import type { EventFormData, Project } from "../../../types";
-  3 | 
-  4 | interface EventModalProps {
-  5 |   isOpen: boolean;
-  6 |   onClose: () => void;
-  7 |   eventForm: EventFormData;
-  8 |   setEventForm: React.Dispatch<React.SetStateAction<EventFormData>>;
-  9 |   onSave: (e: React.FormEvent) => void;
- 10 | }
- 11 | 
- 12 | export default function EventModal({
- 13 |   isOpen,
- 14 |   onClose,
- 15 |   eventForm,
- 16 |   setEventForm,
- 17 |   onSave,
- 18 | }: EventModalProps) {
- 19 |   const [projects, setProjects] = useState<Project[]>([]);
+  0 | import { useState, useEffect } from "react";
+  1 | import { useForm } from "react-hook-form";
+  2 | import { zodResolver } from "@hookform/resolvers/zod";
+  3 | import { api } from "../../../config/api";
+  4 | import type { Project } from "../../../types";
+  5 | import { eventSchema, type EventFormValues } from "./EventSchema";
+  6 | 
+  7 | interface EventModalProps {
+  8 |   isOpen: boolean;
+  9 |   onClose: () => void;
+ 10 |   defaultValues?: Partial<EventFormValues>;
+ 11 |   onSave: (data: EventFormValues) => void;
+ 12 | }
+ 13 | 
+ 14 | export default function EventModal({
+ 15 |   isOpen,
+ 16 |   onClose,
+ 17 |   defaultValues,
+ 18 |   onSave,
+ 19 | }: EventModalProps) {
+ 20 |   const [projects, setProjects] = useState<Project[]>([]);
+ 21 | 
+ 22 |   const {
+ 23 |     register,
+ 24 |     handleSubmit,
+ 25 |     reset,
+ 26 |     setValue,
+ 27 |     watch,
+ 28 |     formState: { errors, isSubmitting },
+ 29 |   } = useForm<EventFormValues>({
+ 30 |     resolver: zodResolver(eventSchema),
+ 31 |     defaultValues: {
+ 32 |       project: "",
+ 33 |       date: "",
+ 34 |       time: "",
+ 35 |       childrenPlanned: "",
+ 36 |       price: "",
+ 37 |       address: "",
+ 38 |       contactPerson: "",
+ 39 |       contactPhone: "",
+ 40 |       ...defaultValues,
+ 41 |     },
+ 42 |   });
+ 43 | 
+ 44 |   const currentProject = watch("project");
+ 45 | 
+ 46 |   useEffect(() => {
+ 47 |     if (isOpen) {
+ 48 |       reset({
+ 49 |         project: "",
+ 50 |         date: "",
+ 51 |         time: "",
+ 52 |         childrenPlanned: "",
+ 53 |         price: "",
+ 54 |         address: "",
+ 55 |         contactPerson: "",
+ 56 |         contactPhone: "",
+ 57 |         ...defaultValues,
+ 58 |       });
+ 59 |       api
+ 60 |         .get<Project[]>("/projects", {
+ 61 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+ 62 |         })
+ 63 |         .then((res) => {
+ 64 |           setProjects(res.data);
+ 65 |           if (!defaultValues?.project && res.data.length > 0) {
+ 66 |             setValue("project", res.data[0].name);
+ 67 |           }
+ 68 |         })
+ 69 |         .catch(console.error);
+ 70 |     }
+ 71 |     // eslint-disable-next-line react-hooks/exhaustive-deps
+ 72 |   }, [isOpen]);
+ 73 | 
+ 74 |   if (!isOpen) return null;
+ 75 | 
+ 76 |   return (
+ 77 |     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+ 78 |       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[92vh] flex flex-col">
+ 79 |         <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
+ 80 |           <h3 className="text-xl font-bold text-slate-800">Нова подія</h3>
+ 81 |           <button
+ 82 |             onClick={onClose}
+ 83 |             className="text-slate-400 hover:text-slate-600 p-2 -mr-2 text-xl leading-none"
+ 84 |           >
+ 85 |             ✕
+ 86 |           </button>
+ 87 |         </div>
+ 88 |         <form
+ 89 |           onSubmit={handleSubmit(onSave)}
+ 90 |           className="p-5 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-4"
+ 91 |         >
+ 92 |           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+ 93 |             <div className="sm:col-span-2">
+ 94 |               <label className="block text-sm mb-1 text-slate-600">
+ 95 |                 Проєкт (Вид події)
+ 96 |               </label>
+ 97 |               <select
+ 98 |                 {...register("project")}
+ 99 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+100 |               >
+101 |                 <option value="" disabled>
+102 |                   Оберіть вид події
+103 |                 </option>
+104 |                 {projects.length > 0 ? (
+105 |                   projects.map((p) => (
+106 |                     <option key={p.id} value={p.name}>
+107 |                       {p.name}
+108 |                     </option>
+109 |                   ))
+110 |                 ) : (
+111 |                   <>
+112 |                     <option>Голограма для школи</option>
+113 |                     <option>360° шоу</option>
+114 |                   </>
+115 |                 )}
+116 |               </select>
+117 |               {errors.project && (
+118 |                 <p className="text-xs text-red-500 mt-1">
+119 |                   {errors.project.message}
+120 |                 </p>
+121 |               )}
+122 |             </div>
+123 |             <div>
+124 |               <label className="block text-sm mb-1 text-slate-600">Дата</label>
+125 |               <input
+126 |                 type="date"
+127 |                 {...register("date")}
+128 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+129 |               />
+130 |               {errors.date && (
+131 |                 <p className="text-xs text-red-500 mt-1">
+132 |                   {errors.date.message}
+133 |                 </p>
+134 |               )}
+135 |             </div>
+136 |             <div>
+137 |               <label className="block text-sm mb-1 text-slate-600">Час</label>
+138 |               <input
+139 |                 type="time"
+140 |                 {...register("time")}
+141 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+142 |               />
+143 |               {errors.time && (
+144 |                 <p className="text-xs text-red-500 mt-1">
+145 |                   {errors.time.message}
+146 |                 </p>
+147 |               )}
+148 |             </div>
+149 |             <div>
+150 |               <label className="block text-sm mb-1 text-slate-600">
+151 |                 Дітей (план)
+152 |               </label>
+153 |               <input
+154 |                 type="number"
+155 |                 {...register("childrenPlanned")}
+156 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+157 |               />
+158 |               {errors.childrenPlanned && (
+159 |                 <p className="text-xs text-red-500 mt-1">
+160 |                   {errors.childrenPlanned.message}
+161 |                 </p>
+162 |               )}
+163 |             </div>
+164 |             <div>
+165 |               <label className="block text-sm mb-1 text-slate-600">
+166 |                 Вартість
+167 |               </label>
+168 |               <input
+169 |                 type="number"
+170 |                 {...register("price")}
+171 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+172 |               />
+173 |               {errors.price && (
+174 |                 <p className="text-xs text-red-500 mt-1">
+175 |                   {errors.price.message}
+176 |                 </p>
+177 |               )}
+178 |             </div>
+179 |             <div className="sm:col-span-2">
+180 |               <label className="block text-sm mb-1 text-slate-600">
+181 |                 Адреса
+182 |               </label>
+183 |               <input
+184 |                 type="text"
+185 |                 {...register("address")}
+186 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+187 |               />
+188 |             </div>
+189 |             <div>
+190 |               <label className="block text-sm mb-1 text-slate-600">
+191 |                 Контактна особа
+192 |               </label>
+193 |               <input
+194 |                 type="text"
+195 |                 {...register("contactPerson")}
+196 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+197 |               />
+198 |             </div>
+199 |             <div>
+200 |               <label className="block text-sm mb-1 text-slate-600">
+201 |                 Телефон
+202 |               </label>
+203 |               <input
+204 |                 type="text"
+205 |                 {...register("contactPhone")}
+206 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+207 |               />
+208 |             </div>
+209 |           </div>
+210 |           <div className="flex gap-3 mt-4 shrink-0 pt-4 border-t border-slate-100 pb-1">
+211 |             <button
+212 |               type="button"
+213 |               onClick={onClose}
+214 |               className="w-full sm:w-auto px-5 py-3 bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium rounded-xl transition-colors"
+215 |             >
+216 |               Скасувати
+217 |             </button>
+218 |             <button
+219 |               type="submit"
+220 |               disabled={isSubmitting}
+221 |               className="w-full sm:w-auto px-5 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
+222 |             >
+223 |               Створити
+224 |             </button>
+225 |           </div>
+226 |         </form>
+227 |       </div>
+228 |     </div>
+229 |   );
+230 | }
+231 | 
+```
+
+### File: apps/frontend/src/components/school-profile/modals/EventSchema.ts
+```ts
+  0 | import { z } from "zod";
+  1 | 
+  2 | export const eventSchema = z.object({
+  3 |   project: z.string().min(1, "Оберіть вид події"),
+  4 |   date: z.string().min(1, "Вкажіть дату"),
+  5 |   time: z.string().min(1, "Вкажіть час"),
+  6 |   childrenPlanned: z
+  7 |     .string()
+  8 |     .min(1, "Вкажіть кількість дітей")
+  9 |     .refine((v) => Number(v) > 0, "Має бути більше нуля"),
+ 10 |   price: z
+ 11 |     .string()
+ 12 |     .min(1, "Вкажіть вартість")
+ 13 |     .refine((v) => Number(v) >= 0, "Некоректна вартість"),
+ 14 |   address: z.string().optional().default(""),
+ 15 |   contactPerson: z.string().optional().default(""),
+ 16 |   contactPhone: z.string().optional().default(""),
+ 17 | });
+ 18 | 
+ 19 | export type EventFormValues = z.infer<typeof eventSchema>;
  20 | 
- 21 |   useEffect(() => {
- 22 |     if (isOpen) {
- 23 |       api
- 24 |         .get<Project[]>("/projects", {
- 25 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
- 26 |         })
- 27 |         .then((res) => {
- 28 |           setProjects(res.data);
- 29 |           if (!eventForm.project && res.data.length > 0) {
- 30 |             setEventForm((prev) => ({
- 31 |               ...prev,
- 32 |               project: res.data[0].name,
- 33 |             }));
- 34 |           }
- 35 |         })
- 36 |         .catch(console.error);
- 37 |     }
- 38 |   }, [isOpen]);
- 39 | 
- 40 |   if (!isOpen) return null;
- 41 | 
- 42 |   return (
- 43 |     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
- 44 |       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[92vh] flex flex-col">
- 45 |         <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
- 46 |           <h3 className="text-xl font-bold text-slate-800">Нова подія</h3>
- 47 |           <button
- 48 |             onClick={onClose}
- 49 |             className="text-slate-400 hover:text-slate-600 p-2 -mr-2 text-xl leading-none"
- 50 |           >
- 51 |             ✕
- 52 |           </button>
- 53 |         </div>
- 54 |         <form
- 55 |           onSubmit={onSave}
- 56 |           className="p-5 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-4"
- 57 |         >
- 58 |           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
- 59 |             <div className="sm:col-span-2">
- 60 |               <label className="block text-sm mb-1 text-slate-600">
- 61 |                 Проєкт (Вид події)
- 62 |               </label>
- 63 |               <select
- 64 |                 value={eventForm.project}
- 65 |                 onChange={(e) =>
- 66 |                   setEventForm({ ...eventForm, project: e.target.value })
- 67 |                 }
- 68 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
- 69 |                 required
- 70 |               >
- 71 |                 <option value="" disabled>
- 72 |                   Оберіть вид події
- 73 |                 </option>
- 74 |                 {projects.length > 0 ? (
- 75 |                   projects.map((p) => (
- 76 |                     <option key={p.id} value={p.name}>
- 77 |                       {p.name}
- 78 |                     </option>
- 79 |                   ))
- 80 |                 ) : (
- 81 |                   <>
- 82 |                     <option>Голограма для школи</option>
- 83 |                     <option>360° шоу</option>
- 84 |                   </>
- 85 |                 )}
- 86 |               </select>
- 87 |             </div>
- 88 |             <div>
- 89 |               <label className="block text-sm mb-1 text-slate-600">Дата</label>
- 90 |               <input
- 91 |                 type="date"
- 92 |                 value={eventForm.date}
- 93 |                 onChange={(e) =>
- 94 |                   setEventForm({ ...eventForm, date: e.target.value })
- 95 |                 }
- 96 |                 required
- 97 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
- 98 |               />
- 99 |             </div>
-100 |             <div>
-101 |               <label className="block text-sm mb-1 text-slate-600">Час</label>
-102 |               <input
-103 |                 type="time"
-104 |                 value={eventForm.time}
-105 |                 onChange={(e) =>
-106 |                   setEventForm({ ...eventForm, time: e.target.value })
-107 |                 }
-108 |                 required
-109 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
-110 |               />
-111 |             </div>
-112 |             <div>
-113 |               <label className="block text-sm mb-1 text-slate-600">
-114 |                 Дітей (план)
-115 |               </label>
-116 |               <input
-117 |                 type="number"
-118 |                 value={eventForm.childrenPlanned}
-119 |                 onChange={(e) =>
-120 |                   setEventForm({
-121 |                     ...eventForm,
-122 |                     childrenPlanned: e.target.value,
-123 |                   })
-124 |                 }
-125 |                 required
-126 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
-127 |               />
-128 |             </div>
-129 |             <div>
-130 |               <label className="block text-sm mb-1 text-slate-600">
-131 |                 Вартість
-132 |               </label>
-133 |               <input
-134 |                 type="number"
-135 |                 value={eventForm.price}
-136 |                 onChange={(e) =>
-137 |                   setEventForm({ ...eventForm, price: e.target.value })
-138 |                 }
-139 |                 required
-140 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
-141 |               />
-142 |             </div>
-143 |             <div className="sm:col-span-2">
-144 |               <label className="block text-sm mb-1 text-slate-600">
-145 |                 Адреса
-146 |               </label>
-147 |               <input
-148 |                 type="text"
-149 |                 value={eventForm.address}
-150 |                 onChange={(e) =>
-151 |                   setEventForm({ ...eventForm, address: e.target.value })
-152 |                 }
-153 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
-154 |               />
-155 |             </div>
-156 |             <div>
-157 |               <label className="block text-sm mb-1 text-slate-600">
-158 |                 Контактна особа
-159 |               </label>
-160 |               <input
-161 |                 type="text"
-162 |                 value={eventForm.contactPerson}
-163 |                 onChange={(e) =>
-164 |                   setEventForm({ ...eventForm, contactPerson: e.target.value })
-165 |                 }
-166 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
-167 |               />
-168 |             </div>
-169 |             <div>
-170 |               <label className="block text-sm mb-1 text-slate-600">
-171 |                 Телефон
-172 |               </label>
-173 |               <input
-174 |                 type="text"
-175 |                 value={eventForm.contactPhone}
-176 |                 onChange={(e) =>
-177 |                   setEventForm({ ...eventForm, contactPhone: e.target.value })
-178 |                 }
-179 |                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
-180 |               />
-181 |             </div>
-182 |           </div>
-183 |           <div className="flex gap-3 mt-4 shrink-0 pt-4 border-t border-slate-100 pb-1">
-184 |             <button
-185 |               type="button"
-186 |               onClick={onClose}
-187 |               className="w-full sm:w-auto px-5 py-3 bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium rounded-xl transition-colors"
-188 |             >
-189 |               Скасувати
-190 |             </button>
-191 |             <button
-192 |               type="submit"
-193 |               className="w-full sm:w-auto px-5 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
-194 |             >
-195 |               Створити
-196 |             </button>
-197 |           </div>
-198 |         </form>
-199 |       </div>
-200 |     </div>
-201 |   );
-202 | }
-203 | 
 ```
 
 ### File: apps/frontend/src/components/school-profile/modals/IssueModal.tsx
@@ -14128,6 +14594,29 @@
 113 | 
 ```
 
+### File: apps/frontend/src/components/school-profile/modals/SchoolEditSchema.ts
+```ts
+  0 | import { z } from "zod";
+  1 | 
+  2 | export const schoolEditSchema = z.object({
+  3 |   type: z.enum(["Школа", "Садочок"]),
+  4 |   address: z.string().optional().default(""),
+  5 |   director: z.string().optional().default(""),
+  6 |   phone: z.string().optional().default(""),
+  7 |   email: z
+  8 |     .union([z.literal(""), z.string().email("Некоректний email")])
+  9 |     .optional(),
+ 10 |   childrenCount: z
+ 11 |     .string()
+ 12 |     .optional()
+ 13 |     .default("")
+ 14 |     .refine((v) => v === "" || Number(v) >= 0, "Некоректна кількість"),
+ 15 | });
+ 16 | 
+ 17 | export type SchoolEditFormValues = z.infer<typeof schoolEditSchema>;
+ 18 | 
+```
+
 ### File: apps/frontend/src/components/schools/SchoolDesktopTable.tsx
 ```tsx
   0 | import React from "react";
@@ -14369,215 +14858,191 @@
 ```tsx
   0 | import React from "react";
   1 | export { classifySchool, classifySize } from "./schoolUtils";
-  2 | import { classifySchool, classifySize } from "./schoolUtils";
-  3 | interface School {
-  4 |   id: string;
-  5 |   childrenCount?: number;
-  6 |   events?: any[];
-  7 | }
-  8 | 
-  9 | interface StatsBarProps {
- 10 |   schools: School[];
- 11 |   activeFilter: string | null;
- 12 |   onFilterChange: (filter: string | null) => void;
- 13 |   sizeFilter: string | null;
- 14 |   onSizeFilterChange: (filter: string | null) => void;
- 15 |   schoolType?: "Школа" | "Садочок";
- 16 | }
- 17 | 
- 18 | 
- 19 | const STATUS_ITEMS = [
- 20 |   {
- 21 |     key: "new",
- 22 |     label: "Нові",
- 23 |     dot: "bg-slate-400",
- 24 |     active: "bg-slate-800 text-white",
- 25 |     inactive: "text-slate-600",
- 26 |   },
- 27 |   {
- 28 |     key: "planned",
- 29 |     label: "Заплановані",
- 30 |     dot: "bg-amber-400",
- 31 |     active: "bg-amber-500 text-white",
- 32 |     inactive: "text-amber-600",
- 33 |   },
- 34 |   {
- 35 |     key: "inProgress",
- 36 |     label: "В роботі",
- 37 |     dot: "bg-blue-500",
- 38 |     active: "bg-blue-600 text-white",
- 39 |     inactive: "text-blue-600",
- 40 |   },
- 41 |   {
- 42 |     key: "done",
- 43 |     label: "Проведені",
- 44 |     dot: "bg-emerald-500",
- 45 |     active: "bg-emerald-600 text-white",
- 46 |     inactive: "text-emerald-600",
- 47 |   },
- 48 | ];
- 49 | 
- 50 | const SIZE_ITEMS_SCHOOL = [
- 51 |   {
- 52 |     key: "small",
- 53 |     label: "Малі",
- 54 |     sublabel: "< 150",
- 55 |     active: "bg-violet-600 text-white",
- 56 |     inactive: "text-violet-600",
- 57 |   },
- 58 |   {
- 59 |     key: "medium",
- 60 |     label: "Середні",
- 61 |     sublabel: "150–500",
- 62 |     active: "bg-violet-600 text-white",
- 63 |     inactive: "text-violet-600",
- 64 |   },
- 65 |   {
- 66 |     key: "large",
- 67 |     label: "Великі",
- 68 |     sublabel: "500+",
- 69 |     active: "bg-violet-600 text-white",
- 70 |     inactive: "text-violet-600",
- 71 |   },
- 72 | ];
- 73 | 
- 74 | const SIZE_ITEMS_KINDER = [
- 75 |   {
- 76 |     key: "small",
- 77 |     label: "Малі",
- 78 |     sublabel: "< 50",
- 79 |     active: "bg-violet-600 text-white",
- 80 |     inactive: "text-violet-600",
- 81 |   },
- 82 |   {
- 83 |     key: "medium",
- 84 |     label: "Середні",
- 85 |     sublabel: "50–100",
- 86 |     active: "bg-violet-600 text-white",
- 87 |     inactive: "text-violet-600",
- 88 |   },
- 89 |   {
- 90 |     key: "large",
- 91 |     label: "Великі",
- 92 |     sublabel: "100+",
- 93 |     active: "bg-violet-600 text-white",
- 94 |     inactive: "text-violet-600",
- 95 |   },
- 96 | ];
- 97 | 
- 98 | export default function StatsBar({
- 99 |   schools,
-100 |   activeFilter,
-101 |   onFilterChange,
-102 |   sizeFilter,
-103 |   onSizeFilterChange,
-104 |   schoolType = "Школа",
-105 | }: StatsBarProps) {
-106 |   const statusStats = schools.reduce(
-107 |     (acc, s) => {
-108 |       acc[classifySchool(s)]++;
-109 |       return acc;
-110 |     },
-111 |     { new: 0, planned: 0, inProgress: 0, done: 0 } as Record<string, number>,
-112 |   );
-113 | 
-114 |   const schoolsForSize = activeFilter
-115 |     ? schools.filter((s) => classifySchool(s) === activeFilter)
-116 |     : schools;
-117 | 
-118 |   const sizeStats = schoolsForSize.reduce(
-119 |     (acc, s) => {
-120 |       acc[classifySize(s, schoolType)]++;
-121 |       return acc;
-122 |     },
-123 |     { small: 0, medium: 0, large: 0 } as Record<string, number>,
-124 |   );
-125 | 
-126 |   const sizeItems =
-127 |     schoolType === "Садочок" ? SIZE_ITEMS_KINDER : SIZE_ITEMS_SCHOOL;
-128 |   const hasAnyFilter = activeFilter || sizeFilter;
-129 | 
-130 |   return (
-131 |     <div className="flex flex-col gap-2 mb-4">
-132 |       {/* Рядок 1: статус */}
-133 |       <div className="flex items-center bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-134 |         {STATUS_ITEMS.map((item, i) => {
-135 |           const isActive = activeFilter === item.key;
-136 |           return (
-137 |             <React.Fragment key={item.key}>
-138 |               {i > 0 && <div className="w-px h-8 bg-slate-100 shrink-0" />}
-139 |               <button
-140 |                 onClick={() => onFilterChange(isActive ? null : item.key)}
-141 |                 className={`flex-1 flex flex-col items-center py-2.5 px-1 transition-colors min-w-0 ${
-142 |                   isActive
-143 |                     ? item.active
-144 |                     : `bg-white ${item.inactive} hover:bg-slate-50`
-145 |                 }`}
-146 |               >
-147 |                 <span className="text-base font-bold tabular-nums leading-none">
-148 |                   {statusStats[item.key] ?? 0}
-149 |                 </span>
-150 |                 <span className="text-[10px] mt-1 leading-none opacity-80 truncate w-full text-center">
-151 |                   {item.label}
-152 |                 </span>
-153 |               </button>
-154 |             </React.Fragment>
-155 |           );
-156 |         })}
-157 |         {activeFilter && (
-158 |           <button
-159 |             onClick={() => onFilterChange(null)}
-160 |             className="px-3 text-slate-400 hover:text-slate-600 text-lg shrink-0 border-l border-slate-100 self-stretch flex items-center"
-161 |           >
-162 |             ✕
-163 |           </button>
-164 |         )}
-165 |       </div>
-166 | 
-167 |       {/* Рядок 2: розмір */}
-168 |       <div className="flex items-center bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-169 |         {sizeItems.map((item, i) => {
-170 |           const isActive = sizeFilter === item.key;
-171 |           return (
-172 |             <React.Fragment key={item.key}>
-173 |               {i > 0 && <div className="w-px h-8 bg-slate-100 shrink-0" />}
-174 |               <button
-175 |                 onClick={() => onSizeFilterChange(isActive ? null : item.key)}
-176 |                 className={`flex-1 flex flex-col items-center py-2.5 px-1 transition-colors min-w-0 ${
-177 |                   isActive
-178 |                     ? item.active
-179 |                     : `bg-white ${item.inactive} hover:bg-slate-50`
-180 |                 }`}
-181 |               >
-182 |                 <span className="text-base font-bold tabular-nums leading-none">
-183 |                   {sizeStats[item.key] ?? 0}
-184 |                 </span>
-185 |                 <span className="text-[10px] mt-1 leading-none opacity-80 truncate w-full text-center">
-186 |                   {item.label}
-187 |                   <span className="opacity-60 ml-0.5">{item.sublabel}</span>
-188 |                 </span>
-189 |               </button>
-190 |             </React.Fragment>
-191 |           );
-192 |         })}
-193 |         {sizeFilter && (
-194 |           <button
-195 |             onClick={() => onSizeFilterChange(null)}
-196 |             className="px-3 text-slate-400 hover:text-slate-600 text-lg shrink-0 border-l border-slate-100 self-stretch flex items-center"
-197 |           >
-198 |             ✕
-199 |           </button>
-200 |         )}
-201 |       </div>
-202 |     </div>
-203 |   );
-204 | }
-205 | 
+  2 | 
+  3 | interface StatsBarProps {
+  4 |   statusStats: Record<string, number>;
+  5 |   sizeStats: Record<string, number>;
+  6 |   activeFilter: string | null;
+  7 |   onFilterChange: (filter: string | null) => void;
+  8 |   sizeFilter: string | null;
+  9 |   onSizeFilterChange: (filter: string | null) => void;
+ 10 |   schoolType?: "Школа" | "Садочок";
+ 11 | }
+ 12 | 
+ 13 | 
+ 14 | const STATUS_ITEMS = [
+ 15 |   {
+ 16 |     key: "new",
+ 17 |     label: "Нові",
+ 18 |     dot: "bg-slate-400",
+ 19 |     active: "bg-slate-800 text-white",
+ 20 |     inactive: "text-slate-600",
+ 21 |   },
+ 22 |   {
+ 23 |     key: "planned",
+ 24 |     label: "Заплановані",
+ 25 |     dot: "bg-amber-400",
+ 26 |     active: "bg-amber-500 text-white",
+ 27 |     inactive: "text-amber-600",
+ 28 |   },
+ 29 |   {
+ 30 |     key: "inProgress",
+ 31 |     label: "В роботі",
+ 32 |     dot: "bg-blue-500",
+ 33 |     active: "bg-blue-600 text-white",
+ 34 |     inactive: "text-blue-600",
+ 35 |   },
+ 36 |   {
+ 37 |     key: "done",
+ 38 |     label: "Проведені",
+ 39 |     dot: "bg-emerald-500",
+ 40 |     active: "bg-emerald-600 text-white",
+ 41 |     inactive: "text-emerald-600",
+ 42 |   },
+ 43 | ];
+ 44 | 
+ 45 | const SIZE_ITEMS_SCHOOL = [
+ 46 |   {
+ 47 |     key: "small",
+ 48 |     label: "Малі",
+ 49 |     sublabel: "< 150",
+ 50 |     active: "bg-violet-600 text-white",
+ 51 |     inactive: "text-violet-600",
+ 52 |   },
+ 53 |   {
+ 54 |     key: "medium",
+ 55 |     label: "Середні",
+ 56 |     sublabel: "150–500",
+ 57 |     active: "bg-violet-600 text-white",
+ 58 |     inactive: "text-violet-600",
+ 59 |   },
+ 60 |   {
+ 61 |     key: "large",
+ 62 |     label: "Великі",
+ 63 |     sublabel: "500+",
+ 64 |     active: "bg-violet-600 text-white",
+ 65 |     inactive: "text-violet-600",
+ 66 |   },
+ 67 | ];
+ 68 | 
+ 69 | const SIZE_ITEMS_KINDER = [
+ 70 |   {
+ 71 |     key: "small",
+ 72 |     label: "Малі",
+ 73 |     sublabel: "< 50",
+ 74 |     active: "bg-violet-600 text-white",
+ 75 |     inactive: "text-violet-600",
+ 76 |   },
+ 77 |   {
+ 78 |     key: "medium",
+ 79 |     label: "Середні",
+ 80 |     sublabel: "50–100",
+ 81 |     active: "bg-violet-600 text-white",
+ 82 |     inactive: "text-violet-600",
+ 83 |   },
+ 84 |   {
+ 85 |     key: "large",
+ 86 |     label: "Великі",
+ 87 |     sublabel: "100+",
+ 88 |     active: "bg-violet-600 text-white",
+ 89 |     inactive: "text-violet-600",
+ 90 |   },
+ 91 | ];
+ 92 | 
+ 93 | export default function StatsBar({
+ 94 |   statusStats,
+ 95 |   activeFilter,
+ 96 |   onFilterChange,
+ 97 |   sizeStats,
+ 98 |   sizeFilter,
+ 99 |   onSizeFilterChange,
+100 |   schoolType = "Школа",
+101 | }: StatsBarProps) {
+102 |   const sizeItems =
+103 |     schoolType === "Садочок" ? SIZE_ITEMS_KINDER : SIZE_ITEMS_SCHOOL;
+104 |   const hasAnyFilter = activeFilter || sizeFilter;
+105 | 
+106 |   return (
+107 |     <div className="flex flex-col gap-2 mb-4">
+108 |       {/* Рядок 1: статус */}
+109 |       <div className="flex items-center bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+110 |         {STATUS_ITEMS.map((item, i) => {
+111 |           const isActive = activeFilter === item.key;
+112 |           return (
+113 |             <React.Fragment key={item.key}>
+114 |               {i > 0 && <div className="w-px h-8 bg-slate-100 shrink-0" />}
+115 |               <button
+116 |                 onClick={() => onFilterChange(isActive ? null : item.key)}
+117 |                 className={`flex-1 flex flex-col items-center py-2.5 px-1 transition-colors min-w-0 ${
+118 |                   isActive
+119 |                     ? item.active
+120 |                     : `bg-white ${item.inactive} hover:bg-slate-50`
+121 |                 }`}
+122 |               >
+123 |                 <span className="text-base font-bold tabular-nums leading-none">
+124 |                   {statusStats[item.key] ?? 0}
+125 |                 </span>
+126 |                 <span className="text-[10px] mt-1 leading-none opacity-80 truncate w-full text-center">
+127 |                   {item.label}
+128 |                 </span>
+129 |               </button>
+130 |             </React.Fragment>
+131 |           );
+132 |         })}
+133 |         {activeFilter && (
+134 |           <button
+135 |             onClick={() => onFilterChange(null)}
+136 |             className="px-3 text-slate-400 hover:text-slate-600 text-lg shrink-0 border-l border-slate-100 self-stretch flex items-center"
+137 |           >
+138 |             ✕
+139 |           </button>
+140 |         )}
+141 |       </div>
+142 | 
+143 |       {/* Рядок 2: розмір */}
+144 |       <div className="flex items-center bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+145 |         {sizeItems.map((item, i) => {
+146 |           const isActive = sizeFilter === item.key;
+147 |           return (
+148 |             <React.Fragment key={item.key}>
+149 |               {i > 0 && <div className="w-px h-8 bg-slate-100 shrink-0" />}
+150 |               <button
+151 |                 onClick={() => onSizeFilterChange(isActive ? null : item.key)}
+152 |                 className={`flex-1 flex flex-col items-center py-2.5 px-1 transition-colors min-w-0 ${
+153 |                   isActive
+154 |                     ? item.active
+155 |                     : `bg-white ${item.inactive} hover:bg-slate-50`
+156 |                 }`}
+157 |               >
+158 |                 <span className="text-base font-bold tabular-nums leading-none">
+159 |                   {sizeStats[item.key] ?? 0}
+160 |                 </span>
+161 |                 <span className="text-[10px] mt-1 leading-none opacity-80 truncate w-full text-center">
+162 |                   {item.label}
+163 |                   <span className="opacity-60 ml-0.5">{item.sublabel}</span>
+164 |                 </span>
+165 |               </button>
+166 |             </React.Fragment>
+167 |           );
+168 |         })}
+169 |         {sizeFilter && (
+170 |           <button
+171 |             onClick={() => onSizeFilterChange(null)}
+172 |             className="px-3 text-slate-400 hover:text-slate-600 text-lg shrink-0 border-l border-slate-100 self-stretch flex items-center"
+173 |           >
+174 |             ✕
+175 |           </button>
+176 |         )}
+177 |       </div>
+178 |     </div>
+179 |   );
+180 | }
+181 | 
 ```
 
 ### File: apps/frontend/src/components/schools/VirtualDesktopTable.tsx
 ```tsx
-  0 | import { useRef } from "react";
+  0 | import { useRef, useEffect } from "react";
   1 | import { useNavigate } from "react-router-dom";
   2 | import { useVirtualizer } from "@tanstack/react-virtual";
   3 | import { SchoolRow } from "./SchoolDesktopTable";
@@ -14588,59 +15053,84 @@
   8 |   searchQuery: string;
   9 |   onDelete: (e: React.MouseEvent, id: string, name: string) => void;
  10 |   stages: PipelineStage[];
- 11 | }
- 12 | 
- 13 | export default function VirtualDesktopTable({ schools, searchQuery, onDelete, stages }: Props) {
- 14 |   const navigate = useNavigate();
- 15 |   const parentRef = useRef<HTMLDivElement>(null);
- 16 | 
- 17 |   const rowVirtualizer = useVirtualizer({
- 18 |     count: schools.length,
- 19 |     getScrollElement: () => parentRef.current,
- 20 |     estimateSize: () => 57,
- 21 |     overscan: 8,
- 22 |   });
+ 11 |   onEndReached?: () => void;
+ 12 | }
+ 13 | 
+ 14 | export default function VirtualDesktopTable({
+ 15 |   schools,
+ 16 |   searchQuery,
+ 17 |   onDelete,
+ 18 |   stages,
+ 19 |   onEndReached,
+ 20 | }: Props) {
+ 21 |   const navigate = useNavigate();
+ 22 |   const parentRef = useRef<HTMLDivElement>(null);
  23 | 
- 24 |   return (
- 25 |     <div ref={parentRef} className="overflow-y-auto flex-1 h-full">
- 26 |       <table className="w-full text-left border-collapse">
- 27 |         <thead className="sticky top-0 z-10 bg-slate-50">
- 28 |           <tr className="border-b border-slate-100">
- 29 |             <th className="p-4 font-medium text-slate-600">Назва школи</th>
- 30 |             <th className="p-4 font-medium text-slate-600">Місто</th>
- 31 |             <th className="p-4 font-medium text-slate-600">Статус</th>
- 32 |             <th className="p-4 font-medium text-slate-600">Поточний етап</th>
- 33 |             <th className="p-4 font-medium text-slate-600 text-center">Дія</th>
- 34 |           </tr>
- 35 |         </thead>
- 36 |         <tbody>
- 37 |           {rowVirtualizer.getVirtualItems().map((virtualRow) => (
- 38 |             <tr
- 39 |               key={virtualRow.key}
- 40 |               style={{ height: `${virtualRow.size}px` }}
- 41 |             >
- 42 |               <SchoolRow
- 43 |                 school={schools[virtualRow.index]}
- 44 |                 onDelete={onDelete}
- 45 |                 stages={stages}
- 46 |                 navigate={navigate}
- 47 |               />
- 48 |             </tr>
- 49 |           ))}
- 50 |           <tr style={{ height: `${rowVirtualizer.getTotalSize() - rowVirtualizer.getVirtualItems().reduce((s, r) => s + r.size, 0)}px` }}>
- 51 |             <td colSpan={5} />
- 52 |           </tr>
- 53 |         </tbody>
- 54 |       </table>
- 55 | 
- 56 |       {schools.length === 0 && (
- 57 |         <div className="text-center py-16 text-slate-400 text-sm font-medium">
- 58 |           {searchQuery ? `Нічого не знайдено за «${searchQuery}»` : "Шкіл ще немає"}
- 59 |         </div>
- 60 |       )}
- 61 |     </div>
- 62 |   );
- 63 | }
+ 24 |   const rowVirtualizer = useVirtualizer({
+ 25 |     count: schools.length,
+ 26 |     getScrollElement: () => parentRef.current,
+ 27 |     estimateSize: () => 57,
+ 28 |     overscan: 8,
+ 29 |   });
+ 30 | 
+ 31 |   const virtualItems = rowVirtualizer.getVirtualItems();
+ 32 |   const lastItem = virtualItems[virtualItems.length - 1];
+ 33 | 
+ 34 |   useEffect(() => {
+ 35 |     if (!onEndReached || !lastItem) return;
+ 36 |     if (lastItem.index >= schools.length - 5) {
+ 37 |       onEndReached();
+ 38 |     }
+ 39 |   }, [lastItem?.index, schools.length, onEndReached]);
+ 40 | 
+ 41 |   return (
+ 42 |     <div ref={parentRef} className="overflow-y-auto flex-1 h-full">
+ 43 |       <table className="w-full text-left border-collapse">
+ 44 |         <thead className="sticky top-0 z-10 bg-slate-50">
+ 45 |           <tr className="border-b border-slate-100">
+ 46 |             <th className="p-4 font-medium text-slate-600">Назва школи</th>
+ 47 |             <th className="p-4 font-medium text-slate-600">Місто</th>
+ 48 |             <th className="p-4 font-medium text-slate-600">Статус</th>
+ 49 |             <th className="p-4 font-medium text-slate-600">Поточний етап</th>
+ 50 |             <th className="p-4 font-medium text-slate-600 text-center">Дія</th>
+ 51 |           </tr>
+ 52 |         </thead>
+ 53 |         <tbody>
+ 54 |           {virtualItems.map((virtualRow) => (
+ 55 |             <tr
+ 56 |               style={{
+ 57 |                 height: `${rowVirtualizer.getTotalSize() - virtualItems.reduce((s, r) => s + r.size, 0)}px`,
+ 58 |               }}
+ 59 |             >
+ 60 |               <SchoolRow
+ 61 |                 school={schools[virtualRow.index]}
+ 62 |                 onDelete={onDelete}
+ 63 |                 stages={stages}
+ 64 |                 navigate={navigate}
+ 65 |               />
+ 66 |             </tr>
+ 67 |           ))}
+ 68 |           <tr
+ 69 |             style={{
+ 70 |               height: `${rowVirtualizer.getTotalSize() - rowVirtualizer.getVirtualItems().reduce((s, r) => s + r.size, 0)}px`,
+ 71 |             }}
+ 72 |           >
+ 73 |             <td colSpan={5} />
+ 74 |           </tr>
+ 75 |         </tbody>
+ 76 |       </table>
+ 77 | 
+ 78 |       {schools.length === 0 && (
+ 79 |         <div className="text-center py-16 text-slate-400 text-sm font-medium">
+ 80 |           {searchQuery
+ 81 |             ? `Нічого не знайдено за «${searchQuery}»`
+ 82 |             : "Шкіл ще немає"}
+ 83 |         </div>
+ 84 |       )}
+ 85 |     </div>
+ 86 |   );
+ 87 | }
+ 88 | 
 ```
 
 ### File: apps/frontend/src/components/schools/schoolUtils.ts
@@ -14823,95 +15313,138 @@
 
 ### File: apps/frontend/src/hooks/useApi.ts
 ```ts
-  0 | import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-  1 | import { api } from "../config/api";
-  2 | import type { City, School } from "../types";
-  3 | 
-  4 | const auth = () => ({
-  5 |   Authorization: `Bearer ${localStorage.getItem("token")}`,
-  6 | });
-  7 | 
-  8 | export function useCities() {
-  9 |   return useQuery({
- 10 |     queryKey: ["cities"],
- 11 |     queryFn: () =>
- 12 |       api.get<City[]>("/cities", { headers: auth() }).then((r) => r.data),
- 13 |     staleTime: 5 * 60 * 1000,
- 14 |   });
- 15 | }
- 16 | 
- 17 | export function useAddCity() {
- 18 |   const qc = useQueryClient();
- 19 |   return useMutation({
- 20 |     mutationFn: (name: string) =>
- 21 |       api
- 22 |         .post<City>("/cities", { name }, { headers: auth() })
- 23 |         .then((r) => r.data),
- 24 |     onSuccess: (newCity) => {
- 25 |       qc.setQueryData(["cities"], (old: City[] = []) => [newCity, ...old]);
- 26 |     },
- 27 |   });
- 28 | }
- 29 | 
- 30 | export function useSchools() {
- 31 |   return useQuery({
- 32 |     queryKey: ["schools"],
- 33 |     queryFn: () =>
- 34 |       api
- 35 |         .get<School[]>("/schools?minimal=true", { headers: auth() })
- 36 |         .then((r) => r.data),
- 37 |     staleTime: 5 * 60 * 1000,
- 38 |   });
- 39 | }
- 40 | 
- 41 | export function useAddSchool() {
- 42 |   const qc = useQueryClient();
- 43 |   return useMutation({
- 44 |     mutationFn: (data: Partial<School>) =>
- 45 |       api
- 46 |         .post<School>("/schools", data, { headers: auth() })
- 47 |         .then((r) => r.data),
- 48 |     onSuccess: () => {
- 49 |       qc.invalidateQueries({ queryKey: ["schools"] });
- 50 |     },
- 51 |   });
+  0 | import {
+  1 |   useQuery,
+  2 |   useMutation,
+  3 |   useQueryClient,
+  4 |   useInfiniteQuery,
+  5 | } from "@tanstack/react-query";
+  6 | import { api } from "../config/api";
+  7 | import type { City, School } from "../types";
+  8 | 
+  9 | const auth = () => ({
+ 10 |   Authorization: `Bearer ${localStorage.getItem("token")}`,
+ 11 | });
+ 12 | 
+ 13 | export function useCities() {
+ 14 |   return useQuery({
+ 15 |     queryKey: ["cities"],
+ 16 |     queryFn: () =>
+ 17 |       api.get<City[]>("/cities", { headers: auth() }).then((r) => r.data),
+ 18 |     staleTime: 5 * 60 * 1000,
+ 19 |   });
+ 20 | }
+ 21 | 
+ 22 | export function useAddCity() {
+ 23 |   const qc = useQueryClient();
+ 24 |   return useMutation({
+ 25 |     mutationFn: (name: string) =>
+ 26 |       api
+ 27 |         .post<City>("/cities", { name }, { headers: auth() })
+ 28 |         .then((r) => r.data),
+ 29 |     onSuccess: (newCity) => {
+ 30 |       qc.setQueryData(["cities"], (old: City[] = []) => [newCity, ...old]);
+ 31 |     },
+ 32 |   });
+ 33 | }
+ 34 | 
+ 35 | export interface SchoolFilters {
+ 36 |   search?: string;
+ 37 |   cityId?: string;
+ 38 |   type?: "Школа" | "Садочок";
+ 39 |   stage?: "new" | "planned" | "inProgress" | "done";
+ 40 |   size?: "small" | "medium" | "large";
+ 41 | }
+ 42 | 
+ 43 | interface SchoolsPage {
+ 44 |   data: School[];
+ 45 |   meta: {
+ 46 |     totalItems: number;
+ 47 |     page: number;
+ 48 |     take: number;
+ 49 |     pageCount: number;
+ 50 |     hasNextPage: boolean;
+ 51 |   };
  52 | }
  53 | 
- 54 | export function useDeleteSchool() {
- 55 |   const qc = useQueryClient();
- 56 |   return useMutation({
- 57 |     mutationFn: (schoolId: string) =>
- 58 |       api.delete(`/schools/${schoolId}`, { headers: auth() }),
- 59 |     onSuccess: (_data, schoolId) => {
- 60 |       qc.setQueryData(["schools"], (old: School[] = []) =>
- 61 |         old.filter((s) => s.id !== schoolId),
- 62 |       );
- 63 |     },
- 64 |   });
- 65 | }
- 66 | 
- 67 | export function useEvents() {
- 68 |   return useQuery({
- 69 |     queryKey: ["events"],
- 70 |     queryFn: () => api.get("/events", { headers: auth() }).then((r) => r.data),
- 71 |     staleTime: 2 * 60 * 1000,
- 72 |   });
- 73 | }
- 74 | 
- 75 | export function usePrefetchSchool() {
- 76 |   const qc = useQueryClient();
- 77 |   return (schoolId: string) => {
- 78 |     qc.prefetchQuery({
- 79 |       queryKey: ["school", schoolId],
- 80 |       queryFn: () =>
- 81 |         api
- 82 |           .get<School>(`/schools/${schoolId}`, { headers: auth() })
- 83 |           .then((r) => r.data),
- 84 |       staleTime: 2 * 60 * 1000,
- 85 |     });
- 86 |   };
- 87 | }
- 88 | 
+ 54 | export function useSchools(filters: SchoolFilters = {}) {
+ 55 |   return useInfiniteQuery({
+ 56 |     queryKey: ["schools", filters],
+ 57 |     queryFn: ({ pageParam = 1 }) =>
+ 58 |       api
+ 59 |         .get<SchoolsPage>("/schools", {
+ 60 |           headers: auth(),
+ 61 |           params: { ...filters, page: pageParam, take: 30 },
+ 62 |         })
+ 63 |         .then((r) => r.data),
+ 64 |     initialPageParam: 1,
+ 65 |     getNextPageParam: (lastPage) =>
+ 66 |       lastPage.meta.hasNextPage ? lastPage.meta.page + 1 : undefined,
+ 67 |     staleTime: 5 * 60 * 1000,
+ 68 |   });
+ 69 | }
+ 70 | 
+ 71 | export function useSchoolStats(
+ 72 |   filters: Pick<SchoolFilters, "cityId" | "type" | "stage"> = {},
+ 73 | ) {
+ 74 |   return useQuery({
+ 75 |     queryKey: ["schoolStats", filters],
+ 76 |     queryFn: () =>
+ 77 |       api
+ 78 |         .get("/schools/stats", { headers: auth(), params: filters })
+ 79 |         .then((r) => r.data),
+ 80 |     staleTime: 2 * 60 * 1000,
+ 81 |   });
+ 82 | }
+ 83 | 
+ 84 | export function useAddSchool() {
+ 85 |   const qc = useQueryClient();
+ 86 |   return useMutation({
+ 87 |     mutationFn: (data: Partial<School>) =>
+ 88 |       api
+ 89 |         .post<School>("/schools", data, { headers: auth() })
+ 90 |         .then((r) => r.data),
+ 91 |     onSuccess: () => {
+ 92 |       qc.invalidateQueries({ queryKey: ["schools"] });
+ 93 |       qc.invalidateQueries({ queryKey: ["schoolStats"] });
+ 94 |     },
+ 95 |   });
+ 96 | }
+ 97 | 
+ 98 | export function useDeleteSchool() {
+ 99 |   const qc = useQueryClient();
+100 |   return useMutation({
+101 |     mutationFn: (schoolId: string) =>
+102 |       api.delete(`/schools/${schoolId}`, { headers: auth() }),
+103 |     onSuccess: () => {
+104 |       qc.invalidateQueries({ queryKey: ["schools"] });
+105 |       qc.invalidateQueries({ queryKey: ["schoolStats"] });
+106 |     },
+107 |   });
+108 | }
+109 | 
+110 | export function useEvents() {
+111 |   return useQuery({
+112 |     queryKey: ["events"],
+113 |     queryFn: () => api.get("/events", { headers: auth() }).then((r) => r.data),
+114 |     staleTime: 2 * 60 * 1000,
+115 |   });
+116 | }
+117 | 
+118 | export function usePrefetchSchool() {
+119 |   const qc = useQueryClient();
+120 |   return (schoolId: string) => {
+121 |     qc.prefetchQuery({
+122 |       queryKey: ["school", schoolId],
+123 |       queryFn: () =>
+124 |         api
+125 |           .get<School>(`/schools/${schoolId}`, { headers: auth() })
+126 |           .then((r) => r.data),
+127 |       staleTime: 2 * 60 * 1000,
+128 |     });
+129 |   };
+130 | }
+131 | 
 ```
 
 ### File: apps/frontend/src/hooks/useAuth.ts
@@ -15508,53 +16041,6 @@
 296 |   });
 297 | }
 298 | 
-```
-
-### File: apps/frontend/src/hooks/useSchools.ts
-```ts
-  0 | import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-  1 | import { api } from "../config/api";
-  2 | 
-  3 | const h = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
-  4 | 
-  5 | export function useSchoolsList() {
-  6 |   return useQuery({
-  7 |     queryKey: ["schools"],
-  8 |     queryFn: () =>
-  9 |       api.get("/schools?minimal=true", { headers: h() }).then(r => r.data),
- 10 |     staleTime: 2 * 60 * 1000,
- 11 |   });
- 12 | }
- 13 | 
- 14 | export function useCreateSchool() {
- 15 |   const qc = useQueryClient();
- 16 |   return useMutation({
- 17 |     mutationFn: (form: any) =>
- 18 |       api.post("/schools", { ...form, type: "Школа" }, { headers: h() }).then(r => r.data),
- 19 |     onSuccess: () => qc.invalidateQueries({ queryKey: ["schools"] }),
- 20 |   });
- 21 | }
- 22 | 
- 23 | export function useDeleteSchool() {
- 24 |   const qc = useQueryClient();
- 25 |   return useMutation({
- 26 |     mutationFn: (id: string) =>
- 27 |       api.delete(`/schools/${id}`, { headers: h() }).then(r => r.data),
- 28 |     onSuccess: () => qc.invalidateQueries({ queryKey: ["schools"] }),
- 29 |   });
- 30 | }
- 31 | 
- 32 | export function useBulkImport() {
- 33 |   const qc = useQueryClient();
- 34 |   return useMutation({
- 35 |     mutationFn: ({ cityId, type }: { cityId: string; type: string }) =>
- 36 |       api.post("/schools/bulk-import", { cityId, type }, {
- 37 |         headers: h(),
- 38 |         timeout: 120000,
- 39 |       }).then(r => r.data),
- 40 |     onSuccess: () => qc.invalidateQueries({ queryKey: ["schools"] }),
- 41 |   });
- 42 | }
 ```
 
 ### File: apps/frontend/src/index.css
@@ -19160,1313 +19646,1311 @@
  47 | import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
  48 | import EventModal from "../components/school-profile/modals/EventModal";
  49 | import CommentModal from "../components/school-profile/modals/CommentModal";
- 50 | import CrewModal from "../components/school-profile/modals/CrewModal";
- 51 | import ReportModal from "../components/school-profile/modals/ReportModal";
- 52 | 
- 53 | const PIPELINE_STAGES = [
- 54 |   { id: 1, key: "BASE", name: "Новий заклад" },
- 55 |   { id: 2, key: "FIRST_CONTACT", name: "Знайомство" },
- 56 |   { id: 3, key: "DATE_CONFIRMED", name: "Підтвердження дати" },
- 57 |   { id: 4, key: "PREPARATION", name: "Оголошення" },
- 58 |   { id: 5, key: "IN_PROGRESS", name: "Підготовка" },
- 59 |   { id: 6, key: "DONE", name: "Проведення заходу" },
- 60 |   { id: 7, key: "REPORT", name: "Звіт" },
- 61 | ] as const;
- 62 | 
- 63 | export default function SchoolProfile() {
- 64 |   const { id } = useParams();
- 65 |   const qc = useQueryClient();
- 66 | 
- 67 |   const { data: schoolRaw } = useSchool(id);
- 68 |   const { data: eventsRaw = [] } = useSchoolEvents(id, false);
- 69 | 
- 70 |   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
- 71 |   const [exitingEventId, setExitingEventId] = useState<string | null>(null);
- 72 | 
- 73 |   const { data: eventFull, isLoading: eventFullLoading } = useEventFull(
- 74 |     selectedEventId ?? eventsRaw[0]?.id,
- 75 |   );
- 76 | 
- 77 |   const { data: users = [] } = useUsers();
- 78 |   const { data: completedEvents = [] } = useSchoolCompletedEvents(id);
- 79 |   const [selectedReportEvent, setSelectedReportEvent] = useState<Event | null>(
- 80 |     null,
- 81 |   );
- 82 |   const updateStatus = useUpdateEventStatus();
- 83 |   const updatePreparation = useUpdatePreparation();
- 84 |   const assignCrewMutation = useAssignCrew();
- 85 |   const submitReportMutation = useSubmitReport();
- 86 |   const addCommentMutation = useAddComment();
- 87 |   const updateHistoryMutation = useUpdateHistoryComment();
- 88 | 
- 89 |   const schoolData = useMemo(() => {
- 90 |     if (!schoolRaw) {
- 91 |       return {
- 92 |         id: "",
- 93 |         cityId: "",
- 94 |         name: "",
- 95 |         type: "Школа",
- 96 |         city: "",
- 97 |         address: "",
- 98 |         director: "",
- 99 |         phone: "",
-100 |         email: "",
-101 |         childrenCount: 0,
-102 |         notes: "",
-103 |       };
-104 |     }
-105 | 
-106 |     return {
-107 |       id: schoolRaw.id,
-108 |       cityId: schoolRaw.cityId,
-109 |       name: schoolRaw.name || "",
-110 |       type: schoolRaw.type || "Школа",
-111 |       city: schoolRaw.city?.name || "",
-112 |       address: schoolRaw.address || "",
-113 |       director: schoolRaw.director || "",
-114 |       phone: schoolRaw.phone || "",
-115 |       email: schoolRaw.email || "",
-116 |       childrenCount: schoolRaw.childrenCount || 0,
-117 |       notes: schoolRaw.notes || "",
-118 |     };
-119 |   }, [schoolRaw]);
-120 | 
-121 |   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-122 |   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-123 |   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
-124 |   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-125 |   const [commentModal, setCommentModal] = useState({
-126 |     isOpen: false,
-127 |     mode: "pipeline",
-128 |     stepId: null as number | null,
-129 |     historyId: null as string | null,
-130 |     text: "",
-131 |   });
-132 | 
-133 |   const [editForm, setEditForm] = useState({
-134 |     id: "",
-135 |     cityId: "",
-136 |     name: "",
-137 |     type: "Школа",
-138 |     city: "",
-139 |     address: "",
-140 |     director: "",
-141 |     phone: "",
-142 |     email: "",
-143 |     childrenCount: 0,
-144 |     notes: "",
-145 |   });
-146 |   const [eventForm, setEventForm] = useState({
-147 |     project: "Голограма для школи",
-148 |     date: "",
-149 |     time: "11:00",
-150 |     childrenPlanned: "",
-151 |     price: "",
-152 |     address: "",
-153 |     contactPerson: "",
-154 |     contactPhone: "",
-155 |   });
-156 | 
-157 |   const currentEventBase = useMemo(
-158 |     () => eventsRaw.find((ev) => ev.id === selectedEventId) ?? eventsRaw[0],
-159 |     [eventsRaw, selectedEventId],
+ 50 | import type { EventFormValues } from "../components/school-profile/modals/EventSchema";
+ 51 | import type { SchoolEditFormValues } from "../components/school-profile/modals/SchoolEditSchema";
+ 52 | import CrewModal from "../components/school-profile/modals/CrewModal";
+ 53 | import ReportModal from "../components/school-profile/modals/ReportModal";
+ 54 | 
+ 55 | const PIPELINE_STAGES = [
+ 56 |   { id: 1, key: "BASE", name: "Новий заклад" },
+ 57 |   { id: 2, key: "FIRST_CONTACT", name: "Знайомство" },
+ 58 |   { id: 3, key: "DATE_CONFIRMED", name: "Підтвердження дати" },
+ 59 |   { id: 4, key: "PREPARATION", name: "Оголошення" },
+ 60 |   { id: 5, key: "IN_PROGRESS", name: "Підготовка" },
+ 61 |   { id: 6, key: "DONE", name: "Проведення заходу" },
+ 62 |   { id: 7, key: "REPORT", name: "Звіт" },
+ 63 | ] as const;
+ 64 | 
+ 65 | export default function SchoolProfile() {
+ 66 |   const { id } = useParams();
+ 67 |   const qc = useQueryClient();
+ 68 | 
+ 69 |   const { data: schoolRaw } = useSchool(id);
+ 70 |   const { data: eventsRaw = [] } = useSchoolEvents(id, false);
+ 71 | 
+ 72 |   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+ 73 |   const [exitingEventId, setExitingEventId] = useState<string | null>(null);
+ 74 | 
+ 75 |   const { data: eventFull, isLoading: eventFullLoading } = useEventFull(
+ 76 |     selectedEventId ?? eventsRaw[0]?.id,
+ 77 |   );
+ 78 | 
+ 79 |   const { data: users = [] } = useUsers();
+ 80 |   const { data: completedEvents = [] } = useSchoolCompletedEvents(id);
+ 81 |   const [selectedReportEvent, setSelectedReportEvent] = useState<Event | null>(
+ 82 |     null,
+ 83 |   );
+ 84 |   const updateStatus = useUpdateEventStatus();
+ 85 |   const updatePreparation = useUpdatePreparation();
+ 86 |   const assignCrewMutation = useAssignCrew();
+ 87 |   const submitReportMutation = useSubmitReport();
+ 88 |   const addCommentMutation = useAddComment();
+ 89 |   const updateHistoryMutation = useUpdateHistoryComment();
+ 90 | 
+ 91 |   const schoolData = useMemo(() => {
+ 92 |     if (!schoolRaw) {
+ 93 |       return {
+ 94 |         id: "",
+ 95 |         cityId: "",
+ 96 |         name: "",
+ 97 |         type: "Школа",
+ 98 |         city: "",
+ 99 |         address: "",
+100 |         director: "",
+101 |         phone: "",
+102 |         email: "",
+103 |         childrenCount: 0,
+104 |         notes: "",
+105 |       };
+106 |     }
+107 | 
+108 |     return {
+109 |       id: schoolRaw.id,
+110 |       cityId: schoolRaw.cityId,
+111 |       name: schoolRaw.name || "",
+112 |       type: schoolRaw.type || "Школа",
+113 |       city: schoolRaw.city?.name || "",
+114 |       address: schoolRaw.address || "",
+115 |       director: schoolRaw.director || "",
+116 |       phone: schoolRaw.phone || "",
+117 |       email: schoolRaw.email || "",
+118 |       childrenCount: schoolRaw.childrenCount || 0,
+119 |       notes: schoolRaw.notes || "",
+120 |     };
+121 |   }, [schoolRaw]);
+122 | 
+123 |   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+124 |   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+125 |   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
+126 |   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+127 |   const [commentModal, setCommentModal] = useState({
+128 |     isOpen: false,
+129 |     mode: "pipeline",
+130 |     stepId: null as number | null,
+131 |     historyId: null as string | null,
+132 |     text: "",
+133 |   });
+134 | 
+135 |   const currentEventBase = useMemo(
+136 |     () => eventsRaw.find((ev) => ev.id === selectedEventId) ?? eventsRaw[0],
+137 |     [eventsRaw, selectedEventId],
+138 |   );
+139 | 
+140 |   const currentEvent = useMemo(() => {
+141 |     if (!currentEventBase) return null;
+142 |     if (eventFull?.id === currentEventBase.id) {
+143 |       return { ...currentEventBase, ...eventFull };
+144 |     }
+145 |     return currentEventBase;
+146 |   }, [currentEventBase, eventFull]);
+147 |   const currentStageIndex = useMemo(() => {
+148 |     if (!currentEvent?.status) return 0;
+149 |     const idx = PIPELINE_STAGES.findIndex(
+150 |       (s) => s.key === currentEvent?.status,
+151 |     );
+152 |     return idx !== -1 ? idx : 0;
+153 |   }, [currentEvent?.status]);
+154 |   const creatorName = useMemo(
+155 |     () =>
+156 |       currentEvent?.history?.length > 0
+157 |         ? currentEvent.history[currentEvent.history.length - 1].userName
+158 |         : "Немає даних",
+159 |     [currentEvent?.history],
 160 |   );
 161 | 
-162 |   const currentEvent = useMemo(() => {
-163 |     if (!currentEventBase) return null;
-164 |     if (eventFull?.id === currentEventBase.id) {
-165 |       return { ...currentEventBase, ...eventFull };
-166 |     }
-167 |     return currentEventBase;
-168 |   }, [currentEventBase, eventFull]);
-169 |   const currentStageIndex = useMemo(() => {
-170 |     if (!currentEvent?.status) return 0;
-171 |     const idx = PIPELINE_STAGES.findIndex(
-172 |       (s) => s.key === currentEvent?.status,
-173 |     );
-174 |     return idx !== -1 ? idx : 0;
-175 |   }, [currentEvent?.status]);
-176 |   const creatorName = useMemo(
-177 |     () =>
-178 |       currentEvent?.history?.length > 0
-179 |         ? currentEvent.history[currentEvent.history.length - 1].userName
-180 |         : "Немає даних",
-181 |     [currentEvent?.history],
-182 |   );
-183 | 
-184 |   const handlePipelineClick = useCallback(
-185 |     (stepId: number) => {
-186 |       if (!currentEvent) return;
-187 |       const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-188 |       if (nextStage?.id !== stepId) return;
-189 |       if (nextStage.key === "REPORT") return setIsReportModalOpen(true);
-190 |       setCommentModal({
-191 |         isOpen: true,
-192 |         mode: "pipeline",
-193 |         stepId: nextStage.id,
-194 |         historyId: null,
-195 |         text: "",
-196 |       });
-197 |     },
-198 |     [currentEvent, currentStageIndex],
-199 |   );
-200 | 
-201 |   const handleHistoryClick = useCallback(
-202 |     (historyItem: { id: string; comment?: string }) => {
-203 |       setCommentModal({
-204 |         isOpen: true,
-205 |         mode: "history",
-206 |         stepId: null,
-207 |         historyId: historyItem.id,
-208 |         text: historyItem.comment || "",
-209 |       });
-210 |     },
-211 |     [],
-212 |   );
-213 | 
-214 |   const handleAddCommentClick = useCallback(() => {
-215 |     setCommentModal({
-216 |       isOpen: true,
-217 |       mode: "add_comment",
-218 |       stepId: null,
-219 |       historyId: null,
-220 |       text: "",
-221 |     });
-222 |   }, []);
-223 | 
-224 |   const handleSaveComment = useCallback(
-225 |     async (e: React.FormEvent) => {
-226 |       e.preventDefault();
-227 |       if (commentModal.mode === "pipeline") {
-228 |         const activeStage = PIPELINE_STAGES[currentStageIndex];
-229 |         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-230 |         if (!nextStage || !currentEvent) return;
-231 | 
-232 |         await updateStatus.mutateAsync({
-233 |           eventId: currentEvent.id,
-234 |           status: nextStage.key,
-235 |           actionName: `Етап пройдено: ${activeStage.name}`,
-236 |           comment: commentModal.text,
-237 |         });
-238 |         if (nextStage.key === "RE_SALE") {
-239 |           setExitingEventId(currentEvent.id);
-240 |           setTimeout(() => {
-241 |             setSelectedEventId(null);
-242 |             setExitingEventId(null);
-243 |           }, 500);
-244 |         }
-245 |       } else if (commentModal.mode === "add_comment") {
-246 |         await addCommentMutation.mutateAsync({
-247 |           eventId: currentEvent.id,
-248 |           comment: commentModal.text,
-249 |         });
-250 |       } else if (commentModal.mode === "history" && commentModal.historyId) {
-251 |         await updateHistoryMutation.mutateAsync({
-252 |           historyId: commentModal.historyId,
-253 |           comment: commentModal.text,
-254 |           eventId: currentEvent.id,
-255 |         });
-256 |       }
-257 |       setCommentModal({
-258 |         isOpen: false,
-259 |         mode: "pipeline",
-260 |         stepId: null,
-261 |         historyId: null,
-262 |         text: "",
-263 |       });
-264 |     },
-265 |     [
-266 |       commentModal,
-267 |       currentEvent,
-268 |       currentStageIndex,
-269 |       updateStatus,
-270 |       addCommentMutation,
-271 |       updateHistoryMutation,
-272 |     ],
-273 |   );
-274 | 
-275 |   const updateSchoolMutation = useUpdateSchool();
-276 |   const createEventMutation = useCreateEvent();
-277 | 
-278 |   const handleSaveEvent = useCallback(
-279 |     async (e: React.FormEvent) => {
-280 |       e.preventDefault();
-281 |       if (!schoolData.id) return;
-282 | 
-283 |       const payload = {
-284 |         ...eventForm,
-285 |         schoolId: schoolData.id,
-286 |         cityId: schoolData.cityId,
-287 |         childrenPlanned: Number(eventForm.childrenPlanned) || 0,
-288 |         price: Number(eventForm.price) || 0,
-289 |       };
-290 | 
-291 |       const newEvent = await createEventMutation.mutateAsync(payload);
-292 | 
-293 |       setIsEventModalOpen(false);
-294 |       setSelectedEventId(newEvent.id);
-295 |     },
-296 |     [eventForm, schoolData, createEventMutation],
-297 |   );
-298 | 
-299 |   const handleSaveSchoolInfo = useCallback(
-300 |     async (e: React.FormEvent) => {
-301 |       e.preventDefault();
-302 |       if (!id) return;
+162 |   const handlePipelineClick = useCallback(
+163 |     (stepId: number) => {
+164 |       if (!currentEvent) return;
+165 |       const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+166 |       if (nextStage?.id !== stepId) return;
+167 |       if (nextStage.key === "REPORT") return setIsReportModalOpen(true);
+168 |       setCommentModal({
+169 |         isOpen: true,
+170 |         mode: "pipeline",
+171 |         stepId: nextStage.id,
+172 |         historyId: null,
+173 |         text: "",
+174 |       });
+175 |     },
+176 |     [currentEvent, currentStageIndex],
+177 |   );
+178 | 
+179 |   const handleHistoryClick = useCallback(
+180 |     (historyItem: { id: string; comment?: string }) => {
+181 |       setCommentModal({
+182 |         isOpen: true,
+183 |         mode: "history",
+184 |         stepId: null,
+185 |         historyId: historyItem.id,
+186 |         text: historyItem.comment || "",
+187 |       });
+188 |     },
+189 |     [],
+190 |   );
+191 | 
+192 |   const handleAddCommentClick = useCallback(() => {
+193 |     setCommentModal({
+194 |       isOpen: true,
+195 |       mode: "add_comment",
+196 |       stepId: null,
+197 |       historyId: null,
+198 |       text: "",
+199 |     });
+200 |   }, []);
+201 | 
+202 |   const handleSaveComment = useCallback(
+203 |     async (e: React.FormEvent) => {
+204 |       e.preventDefault();
+205 |       if (commentModal.mode === "pipeline") {
+206 |         const activeStage = PIPELINE_STAGES[currentStageIndex];
+207 |         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+208 |         if (!nextStage || !currentEvent) return;
+209 | 
+210 |         await updateStatus.mutateAsync({
+211 |           eventId: currentEvent.id,
+212 |           status: nextStage.key,
+213 |           actionName: `Етап пройдено: ${activeStage.name}`,
+214 |           comment: commentModal.text,
+215 |         });
+216 |         if (nextStage.key === "RE_SALE") {
+217 |           setExitingEventId(currentEvent.id);
+218 |           setTimeout(() => {
+219 |             setSelectedEventId(null);
+220 |             setExitingEventId(null);
+221 |           }, 500);
+222 |         }
+223 |       } else if (commentModal.mode === "add_comment") {
+224 |         await addCommentMutation.mutateAsync({
+225 |           eventId: currentEvent.id,
+226 |           comment: commentModal.text,
+227 |         });
+228 |       } else if (commentModal.mode === "history" && commentModal.historyId) {
+229 |         await updateHistoryMutation.mutateAsync({
+230 |           historyId: commentModal.historyId,
+231 |           comment: commentModal.text,
+232 |           eventId: currentEvent.id,
+233 |         });
+234 |       }
+235 |       setCommentModal({
+236 |         isOpen: false,
+237 |         mode: "pipeline",
+238 |         stepId: null,
+239 |         historyId: null,
+240 |         text: "",
+241 |       });
+242 |     },
+243 |     [
+244 |       commentModal,
+245 |       currentEvent,
+246 |       currentStageIndex,
+247 |       updateStatus,
+248 |       addCommentMutation,
+249 |       updateHistoryMutation,
+250 |     ],
+251 |   );
+252 | 
+253 |   const updateSchoolMutation = useUpdateSchool();
+254 |   const createEventMutation = useCreateEvent();
+255 | 
+256 |   const handleSaveEvent = useCallback(
+257 |     async (data: EventFormValues) => {
+258 |       if (!schoolData.id) return;
+259 | 
+260 |       const payload = {
+261 |         ...data,
+262 |         schoolId: schoolData.id,
+263 |         cityId: schoolData.cityId,
+264 |         childrenPlanned: Number(data.childrenPlanned) || 0,
+265 |         price: Number(data.price) || 0,
+266 |       };
+267 | 
+268 |       const newEvent = await createEventMutation.mutateAsync(payload);
+269 | 
+270 |       setIsEventModalOpen(false);
+271 |       setSelectedEventId(newEvent.id);
+272 |     },
+273 |     [schoolData, createEventMutation],
+274 |   );
+275 | 
+276 |   const handleSaveSchoolInfo = useCallback(
+277 |     async (data: SchoolEditFormValues) => {
+278 |       if (!id) return;
+279 | 
+280 |       await updateSchoolMutation.mutateAsync({
+281 |         ...data,
+282 |         childrenCount: Number(data.childrenCount) || 0,
+283 |         id,
+284 |       });
+285 |       setIsEditModalOpen(false);
+286 |     },
+287 |     [id, updateSchoolMutation],
+288 |   );
+289 | 
+290 |   const editDefaultValues = useMemo<SchoolEditFormValues>(
+291 |     () => ({
+292 |       type: (schoolData.type as "Школа" | "Садочок") || "Школа",
+293 |       address: schoolData.address,
+294 |       director: schoolData.director,
+295 |       phone: schoolData.phone,
+296 |       email: schoolData.email,
+297 |       childrenCount: schoolData.childrenCount
+298 |         ? String(schoolData.childrenCount)
+299 |         : "",
+300 |     }),
+301 |     [schoolData],
+302 |   );
 303 | 
-304 |       const { city, ...rest } = editForm;
-305 |       await updateSchoolMutation.mutateAsync({
-306 |         ...rest,
-307 |         id,
-308 |       });
-309 |       setIsEditModalOpen(false);
-310 |     },
-311 |     [editForm, id, updateSchoolMutation],
-312 |   );
-313 | 
-314 |   const handleUpdatePreparation = useCallback(
-315 |     async (field: string, status: string) => {
-316 |       if (!currentEvent) return;
-317 |       await updatePreparation.mutateAsync({
-318 |         eventId: currentEvent.id,
-319 |         field,
-320 |         status,
-321 |       });
-322 |     },
-323 |     [currentEvent, updatePreparation],
-324 |   );
-325 | 
-326 |   const handleSubmitReport = useCallback(
-327 |     async (reportData: ReportData) => {
-328 |       if (!currentEvent) return;
-329 |       await submitReportMutation.mutateAsync({
-330 |         eventId: currentEvent.id,
-331 |         reportData,
-332 |       });
-333 |       await updateStatus.mutateAsync({
-334 |         eventId: currentEvent.id,
-335 |         status: "RE_SALE",
-336 |         actionName: "Звіт сформовано. Захід завершено.",
-337 |       });
-338 |       setExitingEventId(currentEvent.id);
-339 |       setTimeout(() => {
-340 |         setSelectedEventId(null);
-341 |         setExitingEventId(null);
-342 |       }, 500);
-343 |       setIsReportModalOpen(false);
-344 |     },
-345 |     [currentEvent, submitReportMutation, updateStatus],
-346 |   );
-347 | 
-348 |   const handleAssignCrew = useCallback(
-349 |     async (crewId: string) => {
-350 |       if (!currentEvent) return;
-351 | 
-352 |       await assignCrewMutation.mutateAsync({
-353 |         eventId: currentEvent.id,
-354 |         crewId,
-355 |       });
-356 | 
-357 |       await updatePreparation.mutateAsync({
-358 |         eventId: currentEvent.id,
-359 |         field: "assignCrew",
-360 |         status: "Виконано",
-361 |       });
-362 | 
-363 |       setIsCrewModalOpen(false);
-364 |     },
-365 |     [currentEvent, assignCrewMutation, updatePreparation],
-366 |   );
-367 | 
-368 |   const events = eventsRaw;
-369 | 
-370 |   const openAddEventModal = useCallback(() => {
-371 |     setEventForm((prev) => ({
-372 |       ...prev,
-373 |       address: schoolData.address,
-374 |       contactPerson: schoolData.director,
-375 |       contactPhone: schoolData.phone,
-376 |       childrenPlanned: String(schoolData.childrenCount),
-377 |     }));
-378 |     setIsEventModalOpen(true);
-379 |   }, [schoolData]);
-380 |   const stagger = (i: number) => ({
-381 |     initial: { opacity: 0, y: 10 },
-382 |     animate: { opacity: 1, y: 0 },
-383 |     transition: { duration: 0.3, delay: 0.1 + i * 0.07, ease: "easeOut" },
-384 |   });
-385 | 
-386 |   return (
-387 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8">
-388 |       <SchoolProfileHeader
-389 |         schoolData={schoolData}
-390 |         onEdit={() => {
-391 |           setEditForm(schoolData);
-392 |           setIsEditModalOpen(true);
-393 |         }}
-394 |         onAddEvent={openAddEventModal}
-395 |       />
-396 | 
-397 |       <div className="flex flex-col xl:flex-row gap-6">
-398 |         {/* Ліва колонка */}
-399 |         <div className="w-full xl:w-80 flex flex-col gap-6">
-400 |           <motion.div {...stagger(0)}>
-401 |             <Suspense
-402 |               fallback={
-403 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-404 |               }
-405 |             >
-406 |               <SchoolInfoCard schoolData={schoolData} />
-407 |             </Suspense>
-408 |           </motion.div>
-409 | 
-410 |           <AnimatePresence>
-411 |             {currentEvent && currentStageIndex >= 1 && (
-412 |               <motion.div
-413 |                 key="responsible"
-414 |                 initial={{ opacity: 0, y: 8 }}
-415 |                 animate={{ opacity: 1, y: 0 }}
-416 |                 exit={{ opacity: 0, y: -8 }}
-417 |                 transition={{ duration: 0.25 }}
-418 |                 className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
-419 |               >
-420 |                 <h3 className="font-bold text-slate-800 mb-4">
-421 |                   Відповідальна особа
-422 |                 </h3>
-423 |                 <ul className="space-y-2 text-sm">
-424 |                   <li className="flex justify-between">
-425 |                     <span className="text-slate-500">Остання дія:</span>
-426 |                     <span className="font-medium text-blue-600">
-427 |                       {creatorName}
-428 |                     </span>
-429 |                   </li>
-430 |                 </ul>
-431 |               </motion.div>
-432 |             )}
-433 |           </AnimatePresence>
-434 | 
-435 |           <motion.div {...stagger(1)}>
-436 |             <Suspense
-437 |               fallback={
-438 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-439 |               }
-440 |             >
-441 |               <HistoryTimeline
-442 |                 currentEvent={
-443 |                   eventFullLoading ? currentEventBase : currentEvent
-444 |                 }
-445 |                 onHistoryClick={handleHistoryClick}
-446 |                 onAddCommentClick={handleAddCommentClick}
-447 |               />
-448 |             </Suspense>
-449 |           </motion.div>
-450 |         </div>
-451 | 
-452 |         {/* Права колонка */}
-453 |         <motion.div
-454 |           className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${
-455 |             exitingEventId === currentEvent?.id
-456 |               ? "opacity-0 scale-95 -translate-y-4 pointer-events-none"
-457 |               : ""
-458 |           }`}
-459 |           initial={{ opacity: 0, y: 10 }}
-460 |           animate={{ opacity: 1, y: 0 }}
-461 |           transition={{ duration: 0.3, delay: 0.15 }}
-462 |         >
-463 |           {currentEvent && (
-464 |             <Suspense
-465 |               fallback={
-466 |                 <div className="bg-white rounded-2xl h-24 animate-pulse border border-slate-100" />
-467 |               }
-468 |             >
-469 |               <Pipeline
-470 |                 currentStageIndex={currentStageIndex}
-471 |                 currentEvent={currentEvent}
-472 |                 onPipelineClick={handlePipelineClick}
-473 |                 stages={PIPELINE_STAGES}
-474 |               />
-475 |             </Suspense>
-476 |           )}
-477 | 
-478 |           <AnimatePresence>
-479 |             {currentEvent && currentStageIndex >= 4 && (
-480 |               <motion.div
-481 |                 key="preparation"
-482 |                 initial={{ opacity: 0, y: 8 }}
-483 |                 animate={{ opacity: 1, y: 0 }}
-484 |                 exit={{ opacity: 0, y: -8 }}
-485 |                 transition={{ duration: 0.25 }}
-486 |                 className="grid grid-cols-1 xl:grid-cols-2 gap-6"
-487 |               >
-488 |                 {eventFullLoading ? (
-489 |                   <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-pulse h-48" />
-490 |                 ) : (
-491 |                   <Suspense
-492 |                     fallback={
-493 |                       <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-494 |                     }
-495 |                   >
-496 |                     <EventPreparation
-497 |                       data={currentEvent.preparation || {}}
-498 |                       onUpdate={handleUpdatePreparation}
-499 |                       onOpenCrewModal={() => setIsCrewModalOpen(true)}
-500 |                     />
-501 |                   </Suspense>
-502 |                 )}
-503 |                 <Suspense
-504 |                   fallback={
-505 |                     <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-506 |                   }
-507 |                 >
-508 |                   <AssignedCrew currentEvent={currentEvent} employees={users} />
-509 |                 </Suspense>
-510 |               </motion.div>
-511 |             )}
-512 |           </AnimatePresence>
-513 | 
-514 |           <motion.div {...stagger(2)}>
-515 |             <Suspense
-516 |               fallback={
-517 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
-518 |               }
-519 |             >
-520 |               <EventDetails
-521 |                 currentEvent={currentEvent}
-522 |                 schoolName={schoolData.name}
-523 |                 cityId={schoolData.cityId}
-524 |                 onEventUpdated={() =>
-525 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
-526 |                 }
-527 |               />
-528 |             </Suspense>
-529 |           </motion.div>
-530 | 
-531 |           <motion.div {...stagger(3)}>
-532 |             <Suspense
-533 |               fallback={
-534 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
-535 |               }
-536 |             >
-537 |               <EventsTable
-538 |                 events={events}
-539 |                 selectedEventId={selectedEventId}
-540 |                 onEventSelect={setSelectedEventId}
-541 |                 onDeleteSuccess={() =>
-542 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
-543 |                 }
-544 |               />
-545 |             </Suspense>
-546 |             {completedEvents.length > 0 && (
-547 |               <motion.div {...stagger(4)}>
-548 |                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-549 |                   <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-550 |                     <h3 className="font-bold text-slate-800">
-551 |                       Завершені події ({completedEvents.length})
-552 |                     </h3>
-553 |                   </div>
-554 |                   <div className="md:hidden divide-y divide-slate-50">
-555 |                     {completedEvents.map((ev: Event) => (
-556 |                       <div
-557 |                         key={ev.id}
-558 |                         onClick={() => setSelectedReportEvent(ev)}
-559 |                         className="flex items-center justify-between gap-3 p-4 active:bg-slate-50 cursor-pointer"
-560 |                       >
-561 |                         <div className="min-w-0">
-562 |                           <p className="font-medium text-blue-600 truncate">
-563 |                             {ev.project}
-564 |                           </p>
-565 |                           <p className="text-xs text-slate-400 mt-0.5">
-566 |                             {new Date(ev.date).toLocaleDateString("uk-UA")}
-567 |                           </p>
-568 |                           <p className="text-xs text-slate-500 mt-1">
-569 |                             👶{" "}
-570 |                             {ev.report?.childrenCount ||
-571 |                               ev.childrenPlanned ||
-572 |                               "—"}{" "}
-573 |                             дітей
+304 |   const handleUpdatePreparation = useCallback(
+305 |     async (field: string, status: "PLANNED" | "IN_PROGRESS" | "DONE") => {
+306 |       if (!currentEvent) return;
+307 |       await updatePreparation.mutateAsync({
+308 |         eventId: currentEvent.id,
+309 |         field,
+310 |         status,
+311 |       });
+312 |     },
+313 |     [currentEvent, updatePreparation],
+314 |   );
+315 | 
+316 |   const handleSubmitReport = useCallback(
+317 |     async (reportData: ReportData) => {
+318 |       if (!currentEvent) return;
+319 |       await submitReportMutation.mutateAsync({
+320 |         eventId: currentEvent.id,
+321 |         reportData,
+322 |       });
+323 |       await updateStatus.mutateAsync({
+324 |         eventId: currentEvent.id,
+325 |         status: "RE_SALE",
+326 |         actionName: "Звіт сформовано. Захід завершено.",
+327 |       });
+328 |       setExitingEventId(currentEvent.id);
+329 |       setTimeout(() => {
+330 |         setSelectedEventId(null);
+331 |         setExitingEventId(null);
+332 |       }, 500);
+333 |       setIsReportModalOpen(false);
+334 |     },
+335 |     [currentEvent, submitReportMutation, updateStatus],
+336 |   );
+337 | 
+338 |   const handleAssignCrew = useCallback(
+339 |     async (crewId: string) => {
+340 |       if (!currentEvent) return;
+341 | 
+342 |       await assignCrewMutation.mutateAsync({
+343 |         eventId: currentEvent.id,
+344 |         crewId,
+345 |       });
+346 | 
+347 |       await updatePreparation.mutateAsync({
+348 |         eventId: currentEvent.id,
+349 |         field: "assignCrew",
+350 |         status: "DONE",
+351 |       });
+352 | 
+353 |       setIsCrewModalOpen(false);
+354 |     },
+355 |     [currentEvent, assignCrewMutation, updatePreparation],
+356 |   );
+357 | 
+358 |   const events = eventsRaw;
+359 | 
+360 |   const openAddEventModal = useCallback(() => {
+361 |     setIsEventModalOpen(true);
+362 |   }, []);
+363 | 
+364 |   const eventDefaultValues = useMemo<Partial<EventFormValues>>(
+365 |     () => ({
+366 |       project: "Голограма для школи",
+367 |       time: "11:00",
+368 |       address: schoolData.address,
+369 |       contactPerson: schoolData.director,
+370 |       contactPhone: schoolData.phone,
+371 |       childrenPlanned: String(schoolData.childrenCount),
+372 |     }),
+373 |     [schoolData],
+374 |   );
+375 |   const stagger = (i: number) => ({
+376 |     initial: { opacity: 0, y: 10 },
+377 |     animate: { opacity: 1, y: 0 },
+378 |     transition: { duration: 0.3, delay: 0.1 + i * 0.07, ease: "easeOut" },
+379 |   });
+380 | 
+381 |   return (
+382 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8">
+383 |       <SchoolProfileHeader
+384 |         schoolData={schoolData}
+385 |         onEdit={() => setIsEditModalOpen(true)}
+386 |         onAddEvent={openAddEventModal}
+387 |       />
+388 | 
+389 |       <div className="flex flex-col xl:flex-row gap-6">
+390 |         {/* Ліва колонка */}
+391 |         <div className="w-full xl:w-80 flex flex-col gap-6">
+392 |           <motion.div {...stagger(0)}>
+393 |             <Suspense
+394 |               fallback={
+395 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+396 |               }
+397 |             >
+398 |               <SchoolInfoCard schoolData={schoolData} />
+399 |             </Suspense>
+400 |           </motion.div>
+401 | 
+402 |           <AnimatePresence>
+403 |             {currentEvent && currentStageIndex >= 1 && (
+404 |               <motion.div
+405 |                 key="responsible"
+406 |                 initial={{ opacity: 0, y: 8 }}
+407 |                 animate={{ opacity: 1, y: 0 }}
+408 |                 exit={{ opacity: 0, y: -8 }}
+409 |                 transition={{ duration: 0.25 }}
+410 |                 className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
+411 |               >
+412 |                 <h3 className="font-bold text-slate-800 mb-4">
+413 |                   Відповідальна особа
+414 |                 </h3>
+415 |                 <ul className="space-y-2 text-sm">
+416 |                   <li className="flex justify-between">
+417 |                     <span className="text-slate-500">Остання дія:</span>
+418 |                     <span className="font-medium text-blue-600">
+419 |                       {creatorName}
+420 |                     </span>
+421 |                   </li>
+422 |                 </ul>
+423 |               </motion.div>
+424 |             )}
+425 |           </AnimatePresence>
+426 | 
+427 |           <motion.div {...stagger(1)}>
+428 |             <Suspense
+429 |               fallback={
+430 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+431 |               }
+432 |             >
+433 |               <HistoryTimeline
+434 |                 currentEvent={
+435 |                   eventFullLoading ? currentEventBase : currentEvent
+436 |                 }
+437 |                 onHistoryClick={handleHistoryClick}
+438 |                 onAddCommentClick={handleAddCommentClick}
+439 |               />
+440 |             </Suspense>
+441 |           </motion.div>
+442 |         </div>
+443 | 
+444 |         {/* Права колонка */}
+445 |         <motion.div
+446 |           className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${
+447 |             exitingEventId === currentEvent?.id
+448 |               ? "opacity-0 scale-95 -translate-y-4 pointer-events-none"
+449 |               : ""
+450 |           }`}
+451 |           initial={{ opacity: 0, y: 10 }}
+452 |           animate={{ opacity: 1, y: 0 }}
+453 |           transition={{ duration: 0.3, delay: 0.15 }}
+454 |         >
+455 |           {currentEvent && (
+456 |             <Suspense
+457 |               fallback={
+458 |                 <div className="bg-white rounded-2xl h-24 animate-pulse border border-slate-100" />
+459 |               }
+460 |             >
+461 |               <Pipeline
+462 |                 currentStageIndex={currentStageIndex}
+463 |                 currentEvent={currentEvent}
+464 |                 onPipelineClick={handlePipelineClick}
+465 |                 stages={PIPELINE_STAGES}
+466 |               />
+467 |             </Suspense>
+468 |           )}
+469 | 
+470 |           <AnimatePresence>
+471 |             {currentEvent && currentStageIndex >= 4 && (
+472 |               <motion.div
+473 |                 key="preparation"
+474 |                 initial={{ opacity: 0, y: 8 }}
+475 |                 animate={{ opacity: 1, y: 0 }}
+476 |                 exit={{ opacity: 0, y: -8 }}
+477 |                 transition={{ duration: 0.25 }}
+478 |                 className="grid grid-cols-1 xl:grid-cols-2 gap-6"
+479 |               >
+480 |                 {eventFullLoading ? (
+481 |                   <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-pulse h-48" />
+482 |                 ) : (
+483 |                   <Suspense
+484 |                     fallback={
+485 |                       <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+486 |                     }
+487 |                   >
+488 |                     <EventPreparation
+489 |                       data={currentEvent.preparation || {}}
+490 |                       onUpdate={handleUpdatePreparation}
+491 |                       onOpenCrewModal={() => setIsCrewModalOpen(true)}
+492 |                     />
+493 |                   </Suspense>
+494 |                 )}
+495 |                 <Suspense
+496 |                   fallback={
+497 |                     <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+498 |                   }
+499 |                 >
+500 |                   <AssignedCrew currentEvent={currentEvent} employees={users} />
+501 |                 </Suspense>
+502 |               </motion.div>
+503 |             )}
+504 |           </AnimatePresence>
+505 | 
+506 |           <motion.div {...stagger(2)}>
+507 |             <Suspense
+508 |               fallback={
+509 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
+510 |               }
+511 |             >
+512 |               <EventDetails
+513 |                 currentEvent={currentEvent}
+514 |                 schoolName={schoolData.name}
+515 |                 cityId={schoolData.cityId}
+516 |                 onEventUpdated={() =>
+517 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
+518 |                 }
+519 |               />
+520 |             </Suspense>
+521 |           </motion.div>
+522 | 
+523 |           <motion.div {...stagger(3)}>
+524 |             <Suspense
+525 |               fallback={
+526 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
+527 |               }
+528 |             >
+529 |               <EventsTable
+530 |                 events={events}
+531 |                 selectedEventId={selectedEventId}
+532 |                 onEventSelect={setSelectedEventId}
+533 |                 onDeleteSuccess={() =>
+534 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
+535 |                 }
+536 |               />
+537 |             </Suspense>
+538 |             {completedEvents.length > 0 && (
+539 |               <motion.div {...stagger(4)}>
+540 |                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+541 |                   <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+542 |                     <h3 className="font-bold text-slate-800">
+543 |                       Завершені події ({completedEvents.length})
+544 |                     </h3>
+545 |                   </div>
+546 |                   <div className="md:hidden divide-y divide-slate-50">
+547 |                     {completedEvents.map((ev: Event) => (
+548 |                       <div
+549 |                         key={ev.id}
+550 |                         onClick={() => setSelectedReportEvent(ev)}
+551 |                         className="flex items-center justify-between gap-3 p-4 active:bg-slate-50 cursor-pointer"
+552 |                       >
+553 |                         <div className="min-w-0">
+554 |                           <p className="font-medium text-blue-600 truncate">
+555 |                             {ev.project}
+556 |                           </p>
+557 |                           <p className="text-xs text-slate-400 mt-0.5">
+558 |                             {new Date(ev.date).toLocaleDateString("uk-UA")}
+559 |                           </p>
+560 |                           <p className="text-xs text-slate-500 mt-1">
+561 |                             👶{" "}
+562 |                             {ev.report?.childrenCount ||
+563 |                               ev.childrenPlanned ||
+564 |                               "—"}{" "}
+565 |                             дітей
+566 |                           </p>
+567 |                         </div>
+568 |                         <div className="text-right shrink-0">
+569 |                           <p className="font-semibold text-slate-800 text-sm">
+570 |                             {new Intl.NumberFormat("uk-UA").format(
+571 |                               ev.report?.totalSum || ev.price || 0,
+572 |                             )}{" "}
+573 |                             грн
 574 |                           </p>
-575 |                         </div>
-576 |                         <div className="text-right shrink-0">
-577 |                           <p className="font-semibold text-slate-800 text-sm">
-578 |                             {new Intl.NumberFormat("uk-UA").format(
-579 |                               ev.report?.totalSum || ev.price || 0,
-580 |                             )}{" "}
-581 |                             грн
-582 |                           </p>
-583 |                           <p className="text-xs font-medium text-emerald-600 mt-0.5">
-584 |                             +
-585 |                             {new Intl.NumberFormat("uk-UA").format(
-586 |                               ev.report?.remainderSum || 0,
-587 |                             )}{" "}
-588 |                             грн
-589 |                           </p>
-590 |                         </div>
-591 |                       </div>
-592 |                     ))}
-593 |                   </div>
-594 |                   <div className="hidden md:block overflow-x-auto">
-595 |                     <table className="w-full text-left text-sm">
-596 |                       <thead>
-597 |                         <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
-598 |                           <th className="p-4">Проєкт</th>
-599 |                           <th className="p-4">Дата</th>
-600 |                           <th className="p-4">Дітей</th>
-601 |                           <th className="p-4">Виручка</th>
-602 |                           <th className="p-4">Прибуток</th>
-603 |                         </tr>
-604 |                       </thead>
-605 |                       <tbody>
-606 |                         {completedEvents.map((ev: any) => (
-607 |                           <tr
-608 |                             key={ev.id}
-609 |                             onClick={() => setSelectedReportEvent(ev)}
-610 |                             className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
-611 |                           >
-612 |                             <td className="p-4 text-slate-700 font-medium">
-613 |                               {ev.project}
+575 |                           <p className="text-xs font-medium text-emerald-600 mt-0.5">
+576 |                             +
+577 |                             {new Intl.NumberFormat("uk-UA").format(
+578 |                               ev.report?.remainderSum || 0,
+579 |                             )}{" "}
+580 |                             грн
+581 |                           </p>
+582 |                         </div>
+583 |                       </div>
+584 |                     ))}
+585 |                   </div>
+586 |                   <div className="hidden md:block overflow-x-auto">
+587 |                     <table className="w-full text-left text-sm">
+588 |                       <thead>
+589 |                         <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+590 |                           <th className="p-4">Проєкт</th>
+591 |                           <th className="p-4">Дата</th>
+592 |                           <th className="p-4">Дітей</th>
+593 |                           <th className="p-4">Виручка</th>
+594 |                           <th className="p-4">Прибуток</th>
+595 |                         </tr>
+596 |                       </thead>
+597 |                       <tbody>
+598 |                         {completedEvents.map((ev: any) => (
+599 |                           <tr
+600 |                             key={ev.id}
+601 |                             onClick={() => setSelectedReportEvent(ev)}
+602 |                             className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
+603 |                           >
+604 |                             <td className="p-4 text-slate-700 font-medium">
+605 |                               {ev.project}
+606 |                             </td>
+607 |                             <td className="p-4 text-slate-600">
+608 |                               {new Date(ev.date).toLocaleDateString("uk-UA")}
+609 |                             </td>
+610 |                             <td className="p-4 font-medium">
+611 |                               {ev.report?.childrenCount ||
+612 |                                 ev.childrenPlanned ||
+613 |                                 "—"}
 614 |                             </td>
-615 |                             <td className="p-4 text-slate-600">
-616 |                               {new Date(ev.date).toLocaleDateString("uk-UA")}
-617 |                             </td>
-618 |                             <td className="p-4 font-medium">
-619 |                               {ev.report?.childrenCount ||
-620 |                                 ev.childrenPlanned ||
-621 |                                 "—"}
-622 |                             </td>
-623 |                             <td className="p-4 font-medium text-slate-800">
-624 |                               {new Intl.NumberFormat("uk-UA").format(
-625 |                                 ev.report?.totalSum || ev.price || 0,
-626 |                               )}{" "}
-627 |                               грн
-628 |                             </td>
-629 |                             <td className="p-4 font-medium text-emerald-600">
-630 |                               {new Intl.NumberFormat("uk-UA").format(
-631 |                                 ev.report?.remainderSum || 0,
-632 |                               )}{" "}
-633 |                               грн
-634 |                             </td>
-635 |                           </tr>
-636 |                         ))}
-637 |                       </tbody>
-638 |                     </table>
-639 |                   </div>
-640 |                 </div>
-641 |               </motion.div>
-642 |             )}
-643 |           </motion.div>
-644 |         </motion.div>
-645 |       </div>
+615 |                             <td className="p-4 font-medium text-slate-800">
+616 |                               {new Intl.NumberFormat("uk-UA").format(
+617 |                                 ev.report?.totalSum || ev.price || 0,
+618 |                               )}{" "}
+619 |                               грн
+620 |                             </td>
+621 |                             <td className="p-4 font-medium text-emerald-600">
+622 |                               {new Intl.NumberFormat("uk-UA").format(
+623 |                                 ev.report?.remainderSum || 0,
+624 |                               )}{" "}
+625 |                               грн
+626 |                             </td>
+627 |                           </tr>
+628 |                         ))}
+629 |                       </tbody>
+630 |                     </table>
+631 |                   </div>
+632 |                 </div>
+633 |               </motion.div>
+634 |             )}
+635 |           </motion.div>
+636 |         </motion.div>
+637 |       </div>
+638 | 
+639 |       {/* Мобільна FAB */}
+640 |       <button
+641 |         onClick={openAddEventModal}
+642 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
+643 |       >
+644 |         +
+645 |       </button>
 646 | 
-647 |       {/* Мобільна FAB */}
-648 |       <button
-649 |         onClick={openAddEventModal}
-650 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
-651 |       >
-652 |         +
-653 |       </button>
-654 | 
-655 |       {/* Модальні вікна */}
-656 |       <EditSchoolModal
-657 |         isOpen={isEditModalOpen}
-658 |         onClose={() => setIsEditModalOpen(false)}
-659 |         editForm={editForm}
-660 |         setEditForm={setEditForm}
-661 |         onSave={handleSaveSchoolInfo}
-662 |       />
-663 |       <EventModal
-664 |         isOpen={isEventModalOpen}
-665 |         onClose={() => setIsEventModalOpen(false)}
-666 |         eventForm={eventForm}
-667 |         setEventForm={setEventForm}
-668 |         onSave={handleSaveEvent}
-669 |       />
-670 |       <CommentModal
-671 |         isOpen={commentModal.isOpen}
-672 |         onClose={() => setCommentModal({ ...commentModal, isOpen: false })}
-673 |         mode={commentModal.mode}
-674 |         text={commentModal.text}
-675 |         setText={(t) => setCommentModal({ ...commentModal, text: t })}
-676 |         onSave={handleSaveComment}
-677 |       />
-678 |       <CrewModal
-679 |         isOpen={isCrewModalOpen}
-680 |         onClose={() => setIsCrewModalOpen(false)}
-681 |         city={schoolData.city}
-682 |         employees={users}
-683 |         onSave={handleAssignCrew}
-684 |       />
-685 |       <ReportModal
-686 |         isOpen={isReportModalOpen}
-687 |         onClose={() => setIsReportModalOpen(false)}
-688 |         onSave={handleSubmitReport}
-689 |         schoolName={schoolData.name}
-690 |         eventType={currentEvent?.project}
-691 |         eventDate={currentEvent?.date}
-692 |         eventIndex={
-693 |           events
-694 |             .filter((e) => e.schoolId === schoolData.id)
-695 |             .findIndex((e) => e.id === currentEvent?.id) + 1
-696 |         }
-697 |         crew={
-698 |           currentEvent?.crew
-699 |             ? {
-700 |                 host: currentEvent.crew.hostId
-701 |                   ? (users.find(
-702 |                       (u: User) => u.id === currentEvent.crew.hostId,
-703 |                     ) ?? null)
-704 |                   : (currentEvent.crew.host ?? null),
-705 |                 driver: currentEvent.crew.driverId
-706 |                   ? (users.find(
-707 |                       (u: User) => u.id === currentEvent.crew.driverId,
-708 |                     ) ?? null)
-709 |                   : (currentEvent.crew.driver ?? null),
-710 |               }
-711 |             : undefined
-712 |         }
-713 |       />
-714 |       <CompletedEventModal
-715 |         isOpen={!!selectedReportEvent}
-716 |         onClose={() => setSelectedReportEvent(null)}
-717 |         event={selectedReportEvent}
-718 |       />
-719 |     </div>
-720 |   );
-721 | }
-722 | 
+647 |       {/* Модальні вікна */}
+648 |       <EditSchoolModal
+649 |         isOpen={isEditModalOpen}
+650 |         onClose={() => setIsEditModalOpen(false)}
+651 |         defaultValues={editDefaultValues}
+652 |         onSave={handleSaveSchoolInfo}
+653 |       />
+654 |       <EventModal
+655 |         isOpen={isEventModalOpen}
+656 |         onClose={() => setIsEventModalOpen(false)}
+657 |         defaultValues={eventDefaultValues}
+658 |         onSave={handleSaveEvent}
+659 |       />
+660 |       <CommentModal
+661 |         isOpen={commentModal.isOpen}
+662 |         onClose={() => setCommentModal({ ...commentModal, isOpen: false })}
+663 |         mode={commentModal.mode}
+664 |         text={commentModal.text}
+665 |         setText={(t) => setCommentModal({ ...commentModal, text: t })}
+666 |         onSave={handleSaveComment}
+667 |       />
+668 |       <CrewModal
+669 |         isOpen={isCrewModalOpen}
+670 |         onClose={() => setIsCrewModalOpen(false)}
+671 |         city={schoolData.city}
+672 |         employees={users}
+673 |         onSave={handleAssignCrew}
+674 |       />
+675 |       <ReportModal
+676 |         isOpen={isReportModalOpen}
+677 |         onClose={() => setIsReportModalOpen(false)}
+678 |         onSave={handleSubmitReport}
+679 |         schoolName={schoolData.name}
+680 |         eventType={currentEvent?.project}
+681 |         eventDate={currentEvent?.date}
+682 |         eventIndex={
+683 |           events
+684 |             .filter((e) => e.schoolId === schoolData.id)
+685 |             .findIndex((e) => e.id === currentEvent?.id) + 1
+686 |         }
+687 |         crew={
+688 |           currentEvent?.crew
+689 |             ? {
+690 |                 host: currentEvent.crew.hostId
+691 |                   ? (users.find(
+692 |                       (u: User) => u.id === currentEvent.crew.hostId,
+693 |                     ) ?? null)
+694 |                   : (currentEvent.crew.host ?? null),
+695 |                 driver: currentEvent.crew.driverId
+696 |                   ? (users.find(
+697 |                       (u: User) => u.id === currentEvent.crew.driverId,
+698 |                     ) ?? null)
+699 |                   : (currentEvent.crew.driver ?? null),
+700 |               }
+701 |             : undefined
+702 |         }
+703 |       />
+704 |       <CompletedEventModal
+705 |         isOpen={!!selectedReportEvent}
+706 |         onClose={() => setSelectedReportEvent(null)}
+707 |         event={selectedReportEvent}
+708 |       />
+709 |     </div>
+710 |   );
+711 | }
+712 | 
 ```
 
 ### File: apps/frontend/src/pages/Schools.tsx
 ```tsx
-  0 | import { useState, useRef, useMemo, useCallback, lazy, Suspense } from "react";
-  1 | import { api } from "../config/api";
-  2 | import { useSelectedCity } from "../context/CityContext";
-  3 | import {
-  4 |   useSchools,
-  5 |   useDeleteSchool,
-  6 |   usePrefetchSchool,
-  7 |   useCities,
-  8 | } from "../hooks/useApi";
-  9 | import { useQueryClient, useMutation } from "@tanstack/react-query";
- 10 | import VirtualSchoolList from "../components/VirtualSchoolList";
- 11 | import { SchoolCard } from "../components/schools/SchoolMobileList";
- 12 | 
- 13 | import {
- 14 |   classifySchool,
- 15 |   classifySize,
- 16 | } from "../components/schools/schoolUtils";
- 17 | import type { SchoolContact } from "../types";
- 18 | 
- 19 | interface NewSchoolPayload {
- 20 |   name: string;
- 21 |   cityId: string;
- 22 |   sourceUrl: string;
- 23 |   director: string;
- 24 |   phone: string;
- 25 |   type: string;
- 26 | }
- 27 | 
- 28 | const StatsBar = lazy(() => import("../components/schools/StatsBar"));
- 29 | const VirtualDesktopTable = lazy(
- 30 |   () => import("../components/schools/VirtualDesktopTable"),
- 31 | );
- 32 | export const PIPELINE_STAGES = [
- 33 |   { key: "BASE", name: "Новий заклад" },
- 34 |   { key: "FIRST_CONTACT", name: "Знайомство" },
- 35 |   { key: "DATE_CONFIRMED", name: "Підтвердження дати" },
- 36 |   { key: "PREPARATION", name: "Оголошення" },
- 37 |   { key: "IN_PROGRESS", name: "Підготовка" },
- 38 |   { key: "DONE", name: "Проведення заходу" },
- 39 |   { key: "REPORT", name: "Звіт" },
- 40 | ];
- 41 | 
- 42 | interface City {
- 43 |   id: string;
- 44 |   name: string;
- 45 | }
- 46 | 
- 47 | export default function Schools() {
- 48 |   const { selectedCity } = useSelectedCity();
- 49 |   const [isModalOpen, setIsModalOpen] = useState(false);
- 50 |   const [isSubmitting, setIsSubmitting] = useState(false);
- 51 |   const [searchQuery, setSearchQuery] = useState("");
- 52 |   const [userRole] = useState<string | null>(() => {
- 53 |     try {
- 54 |       return JSON.parse(localStorage.getItem("user") || "null")?.role ?? null;
- 55 |     } catch {
- 56 |       return null;
- 57 |     }
- 58 |   });
- 59 |   const qc = useQueryClient();
- 60 |   const [form, setForm] = useState({
- 61 |     name: "",
- 62 |     cityId: "",
- 63 |     sourceUrl: "",
- 64 |     director: "",
- 65 |     phone: "",
- 66 |   });
- 67 |   const [matchedContacts, setMatchedContacts] = useState<SchoolContact[]>([]);
- 68 |   const [activeFilter, setActiveFilter] = useState<string | null>(null);
- 69 |   const [sizeFilter, setSizeFilter] = useState<string | null>(null);
- 70 |   const [suggestions, setSuggestions] = useState<
- 71 |     { name: string; url: string }[]
- 72 |   >([]);
- 73 |   const [showSuggestions, setShowSuggestions] = useState(false);
- 74 |   const [isSearching, setIsSearching] = useState(false);
- 75 |   const [dotCount, setDotCount] = useState(3);
- 76 |   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
- 77 | 
- 78 |   const addSchoolMutation = useMutation({
- 79 |     mutationFn: (newSchool: NewSchoolPayload) =>
- 80 |       api.post("/schools", newSchool, {
- 81 |         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
- 82 |       }),
- 83 |     onSuccess: () => {
- 84 |       qc.invalidateQueries({ queryKey: ["schools"] });
- 85 |       setIsModalOpen(false);
- 86 |     },
- 87 |     onError: () => alert("Не вдалося створити заклад"),
- 88 |   });
- 89 | 
- 90 |   const bulkImportMutation = useMutation({
- 91 |     mutationFn: (cityId: string) =>
- 92 |       api.post(
- 93 |         "/schools/bulk-import",
- 94 |         { cityId, type: "Школа" },
- 95 |         {
- 96 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
- 97 |           timeout: 120000,
- 98 |         },
- 99 |       ),
-100 |     onSuccess: (res) => {
-101 |       alert(
-102 |         `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
-103 |       );
-104 |       qc.invalidateQueries({ queryKey: ["schools"] });
-105 |     },
-106 |     onError: () => alert("Помилка імпорту."),
-107 |   });
-108 | 
-109 |   const { data: schools = [], isLoading } = useSchools();
-110 |   const { data: cities = [] } = useCities();
-111 |   const deleteSchool = useDeleteSchool();
-112 |   const prefetchSchool = usePrefetchSchool();
+  0 | import {
+  1 |   useState,
+  2 |   useRef,
+  3 |   useEffect,
+  4 |   useMemo,
+  5 |   useCallback,
+  6 |   lazy,
+  7 |   Suspense,
+  8 | } from "react";
+  9 | import { api } from "../config/api";
+ 10 | import { useSelectedCity } from "../context/CityContext";
+ 11 | import {
+ 12 |   useSchools,
+ 13 |   useSchoolStats,
+ 14 |   useDeleteSchool,
+ 15 |   usePrefetchSchool,
+ 16 |   useCities,
+ 17 | } from "../hooks/useApi";
+ 18 | import { useQueryClient, useMutation } from "@tanstack/react-query";
+ 19 | import VirtualSchoolList from "../components/VirtualSchoolList";
+ 20 | import { SchoolCard } from "../components/schools/SchoolMobileList";
+ 21 | import type { SchoolContact } from "../types";
+ 22 | 
+ 23 | interface NewSchoolPayload {
+ 24 |   name: string;
+ 25 |   cityId: string;
+ 26 |   sourceUrl: string;
+ 27 |   director: string;
+ 28 |   phone: string;
+ 29 |   type: string;
+ 30 | }
+ 31 | 
+ 32 | const StatsBar = lazy(() => import("../components/schools/StatsBar"));
+ 33 | const VirtualDesktopTable = lazy(
+ 34 |   () => import("../components/schools/VirtualDesktopTable"),
+ 35 | );
+ 36 | export const PIPELINE_STAGES = [
+ 37 |   { key: "BASE", name: "Новий заклад" },
+ 38 |   { key: "FIRST_CONTACT", name: "Знайомство" },
+ 39 |   { key: "DATE_CONFIRMED", name: "Підтвердження дати" },
+ 40 |   { key: "PREPARATION", name: "Оголошення" },
+ 41 |   { key: "IN_PROGRESS", name: "Підготовка" },
+ 42 |   { key: "DONE", name: "Проведення заходу" },
+ 43 |   { key: "REPORT", name: "Звіт" },
+ 44 | ];
+ 45 | 
+ 46 | interface City {
+ 47 |   id: string;
+ 48 |   name: string;
+ 49 | }
+ 50 | 
+ 51 | export default function Schools() {
+ 52 |   const { selectedCity } = useSelectedCity();
+ 53 |   const [isModalOpen, setIsModalOpen] = useState(false);
+ 54 |   const [isSubmitting, setIsSubmitting] = useState(false);
+ 55 |   const [searchQuery, setSearchQuery] = useState("");
+ 56 |   const [userRole] = useState<string | null>(() => {
+ 57 |     try {
+ 58 |       return JSON.parse(localStorage.getItem("user") || "null")?.role ?? null;
+ 59 |     } catch {
+ 60 |       return null;
+ 61 |     }
+ 62 |   });
+ 63 |   const qc = useQueryClient();
+ 64 |   const [form, setForm] = useState({
+ 65 |     name: "",
+ 66 |     cityId: "",
+ 67 |     sourceUrl: "",
+ 68 |     director: "",
+ 69 |     phone: "",
+ 70 |   });
+ 71 |   const [matchedContacts, setMatchedContacts] = useState<SchoolContact[]>([]);
+ 72 |   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+ 73 |   const [sizeFilter, setSizeFilter] = useState<string | null>(null);
+ 74 |   const [debouncedQuery, setDebouncedQuery] = useState("");
+ 75 |   const [suggestions, setSuggestions] = useState<
+ 76 |     { name: string; url: string }[]
+ 77 |   >([]);
+ 78 |   const [showSuggestions, setShowSuggestions] = useState(false);
+ 79 |   const [isSearching, setIsSearching] = useState(false);
+ 80 |   const [dotCount, setDotCount] = useState(3);
+ 81 |   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+ 82 | 
+ 83 |   const addSchoolMutation = useMutation({
+ 84 |     mutationFn: (newSchool: NewSchoolPayload) =>
+ 85 |       api.post("/schools", newSchool, {
+ 86 |         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+ 87 |       }),
+ 88 |     onSuccess: () => {
+ 89 |       qc.invalidateQueries({ queryKey: ["schools"] });
+ 90 |       setIsModalOpen(false);
+ 91 |     },
+ 92 |     onError: () => alert("Не вдалося створити заклад"),
+ 93 |   });
+ 94 | 
+ 95 |   const bulkImportMutation = useMutation({
+ 96 |     mutationFn: (cityId: string) =>
+ 97 |       api.post(
+ 98 |         "/schools/bulk-import",
+ 99 |         { cityId, type: "Школа" },
+100 |         {
+101 |           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+102 |           timeout: 120000,
+103 |         },
+104 |       ),
+105 |     onSuccess: (res) => {
+106 |       alert(
+107 |         `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
+108 |       );
+109 |       qc.invalidateQueries({ queryKey: ["schools"] });
+110 |     },
+111 |     onError: () => alert("Помилка імпорту."),
+112 |   });
 113 | 
-114 |   const handleOpenModal = useCallback(() => {
-115 |     setForm({
-116 |       name: "",
-117 |       cityId: selectedCity.id || cities[0]?.id || "",
-118 |       sourceUrl: "",
-119 |       director: "",
-120 |       phone: "",
-121 |     });
-122 |     setMatchedContacts([]);
-123 |     setIsModalOpen(true);
-124 |   }, [selectedCity.id, cities]);
-125 | 
-126 |   const fetchContacts = async (schoolName: string) => {
-127 |     if (!schoolName || schoolName.trim().length < 1)
-128 |       return setMatchedContacts([]);
-129 |     const currentCityName =
-130 |       selectedCity.name || cities.find((c) => c.id === form.cityId)?.name || "";
-131 |     if (currentCityName.toLowerCase() !== "львів")
-132 |       return setMatchedContacts([]);
-133 |     try {
-134 |       const data = await qc.fetchQuery<SchoolContact[]>({
-135 |         queryKey: ["schoolContacts", schoolName, currentCityName],
-136 |         queryFn: async () => {
-137 |           const res = await api.get<SchoolContact[]>(
-138 |             `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=Школа`,
-139 |             {
-140 |               headers: {
-141 |                 Authorization: `Bearer ${localStorage.getItem("token")}`,
-142 |               },
-143 |             },
-144 |           );
-145 |           return res.data;
-146 |         },
-147 |         staleTime: 1000 * 60 * 5, 
-148 |       });
+114 |   useEffect(() => {
+115 |     const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 350);
+116 |     return () => clearTimeout(t);
+117 |   }, [searchQuery]);
+118 | 
+119 |   const schoolFilters = useMemo(
+120 |     () => ({
+121 |       search: debouncedQuery || undefined,
+122 |       cityId: selectedCity.id || undefined,
+123 |       type: "Школа" as const,
+124 |       stage: (activeFilter as any) || undefined,
+125 |       size: (sizeFilter as any) || undefined,
+126 |     }),
+127 |     [debouncedQuery, selectedCity.id, activeFilter, sizeFilter],
+128 |   );
+129 | 
+130 |   const {
+131 |     data: schoolsPages,
+132 |     isLoading,
+133 |     fetchNextPage,
+134 |     hasNextPage,
+135 |     isFetchingNextPage,
+136 |   } = useSchools(schoolFilters);
+137 |   const { data: stats } = useSchoolStats({
+138 |     cityId: selectedCity.id || undefined,
+139 |     type: "Школа",
+140 |     stage: (activeFilter as any) || undefined,
+141 |   });
+142 |   const { data: cities = [] } = useCities();
+143 |   const deleteSchool = useDeleteSchool();
+144 |   const prefetchSchool = usePrefetchSchool();
+145 | 
+146 |   const handleLoadMore = useCallback(() => {
+147 |     if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+148 |   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 149 | 
-150 |       setMatchedContacts(data);
-151 |       if (data.length > 0) {
-152 |         const director =
-153 |           data.find(
-154 |             (c: SchoolContact) =>
-155 |               c.role?.includes("Директор") || c.role?.includes("Завідувач"),
-156 |           ) || data[0];
-157 |         setForm((f) => ({
-158 |           ...f,
-159 |           director: director.contactName,
-160 |           phone: director.phone,
-161 |         }));
-162 |       }
-163 |     } catch (e) {
-164 |       console.error(e);
-165 |     }
-166 |   };
+150 |   const filteredSchools = useMemo(
+151 |     () => schoolsPages?.pages.flatMap((p) => p.data) ?? [],
+152 |     [schoolsPages],
+153 |   );
+154 |   const totalItems = schoolsPages?.pages[0]?.meta.totalItems ?? 0;
+155 | 
+156 |   const handleOpenModal = useCallback(() => {
+157 |     setForm({
+158 |       name: "",
+159 |       cityId: selectedCity.id || cities[0]?.id || "",
+160 |       sourceUrl: "",
+161 |       director: "",
+162 |       phone: "",
+163 |     });
+164 |     setMatchedContacts([]);
+165 |     setIsModalOpen(true);
+166 |   }, [selectedCity.id, cities]);
 167 | 
-168 |   const handleNameChange = (value: string) => {
-169 |     setForm({ ...form, name: value });
-170 |     if (debounceTimer.current) clearTimeout(debounceTimer.current);
-171 |     if (value.length < 2) {
-172 |       setShowSuggestions(false);
-173 |       setIsSearching(false);
-174 |       setMatchedContacts([]);
-175 |       return;
-176 |     }
-177 |     setIsSearching(true);
-178 |     setShowSuggestions(true);
-179 |     debounceTimer.current = setTimeout(async () => {
-180 |       try {
-181 |         const [externalData] = await Promise.all([
-182 |           qc.fetchQuery({
-183 |             queryKey: ["schoolSearchExternal", value],
-184 |             queryFn: async () => {
-185 |               const res = await api.get(
-186 |                 `/schools/search?q=${encodeURIComponent(value)}&type=Школа`,
-187 |                 {
-188 |                   headers: {
-189 |                     Authorization: `Bearer ${localStorage.getItem("token")}`,
-190 |                   },
-191 |                 },
-192 |               );
-193 |               return res.data;
-194 |             },
-195 |             staleTime: 1000 * 60 * 5,
-196 |           }),
-197 |           fetchContacts(value),
-198 |         ]);
-199 |         setSuggestions(externalData);
-200 |       } catch (e) {
-201 |         console.error(e);
-202 |       } finally {
-203 |         setIsSearching(false);
+168 |   const fetchContacts = async (schoolName: string) => {
+169 |     if (!schoolName || schoolName.trim().length < 1)
+170 |       return setMatchedContacts([]);
+171 |     const currentCityName =
+172 |       selectedCity.name || cities.find((c) => c.id === form.cityId)?.name || "";
+173 |     if (currentCityName.toLowerCase() !== "львів")
+174 |       return setMatchedContacts([]);
+175 |     try {
+176 |       const data = await qc.fetchQuery<SchoolContact[]>({
+177 |         queryKey: ["schoolContacts", schoolName, currentCityName],
+178 |         queryFn: async () => {
+179 |           const res = await api.get<SchoolContact[]>(
+180 |             `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=Школа`,
+181 |             {
+182 |               headers: {
+183 |                 Authorization: `Bearer ${localStorage.getItem("token")}`,
+184 |               },
+185 |             },
+186 |           );
+187 |           return res.data;
+188 |         },
+189 |         staleTime: 1000 * 60 * 5,
+190 |       });
+191 | 
+192 |       setMatchedContacts(data);
+193 |       if (data.length > 0) {
+194 |         const director =
+195 |           data.find(
+196 |             (c: SchoolContact) =>
+197 |               c.role?.includes("Директор") || c.role?.includes("Завідувач"),
+198 |           ) || data[0];
+199 |         setForm((f) => ({
+200 |           ...f,
+201 |           director: director.contactName,
+202 |           phone: director.phone,
+203 |         }));
 204 |       }
-205 |     }, 400);
-206 |   };
-207 | 
-208 |   const handleSelectSuggestion = (name: string, url: string) => {
-209 |     setForm({ ...form, name, sourceUrl: url });
-210 |     setShowSuggestions(false);
-211 |     fetchContacts(name);
-212 |   };
-213 | 
-214 |   const handleAddSchool = (e: React.FormEvent) => {
-215 |     e.preventDefault();
-216 |     if (!form.name.trim() || !form.cityId) return;
-217 |     addSchoolMutation.mutate({ ...form, type: "Школа" });
-218 |   };
-219 | 
-220 |   const handleDeleteSchool = useCallback(
-221 |     async (e: React.MouseEvent, schoolId: string, schoolName: string) => {
-222 |       e.stopPropagation();
-223 |       if (userRole !== "SUPERADMIN") return;
-224 |       if (
-225 |         !window.confirm(
-226 |           `Видалити школу "${schoolName}"? Це видалить також усі її події.`,
-227 |         )
-228 |       )
-229 |         return;
-230 |       await deleteSchool.mutateAsync(schoolId);
-231 |     },
-232 |     [deleteSchool, userRole],
-233 |   );
-234 | 
-235 |   const debouncedSearch = useMemo(() => searchQuery, [searchQuery]);
-236 | 
-237 |   const baseFiltered = useMemo(
-238 |     () =>
-239 |       schools.filter((s) => {
-240 |         const isCityMatch = selectedCity.id
-241 |           ? s.cityId === selectedCity.id
-242 |           : true;
-243 |         const isFilterMatch = activeFilter
-244 |           ? classifySchool(s) === activeFilter
-245 |           : true;
-246 |         const isSizeMatch = sizeFilter
-247 |           ? classifySize(s, "Школа") === sizeFilter
-248 |           : true;
-249 |         return (
-250 |           isCityMatch && s.type === "Школа" && isFilterMatch && isSizeMatch
-251 |         );
-252 |       }),
-253 |     [schools, selectedCity.id, activeFilter, sizeFilter],
-254 |   );
+205 |     } catch (e) {
+206 |       console.error(e);
+207 |     }
+208 |   };
+209 | 
+210 |   const handleNameChange = (value: string) => {
+211 |     setForm({ ...form, name: value });
+212 |     if (debounceTimer.current) clearTimeout(debounceTimer.current);
+213 |     if (value.length < 2) {
+214 |       setShowSuggestions(false);
+215 |       setIsSearching(false);
+216 |       setMatchedContacts([]);
+217 |       return;
+218 |     }
+219 |     setIsSearching(true);
+220 |     setShowSuggestions(true);
+221 |     debounceTimer.current = setTimeout(async () => {
+222 |       try {
+223 |         const [externalData] = await Promise.all([
+224 |           qc.fetchQuery({
+225 |             queryKey: ["schoolSearchExternal", value],
+226 |             queryFn: async () => {
+227 |               const res = await api.get(
+228 |                 `/schools/search?q=${encodeURIComponent(value)}&type=Школа`,
+229 |                 {
+230 |                   headers: {
+231 |                     Authorization: `Bearer ${localStorage.getItem("token")}`,
+232 |                   },
+233 |                 },
+234 |               );
+235 |               return res.data;
+236 |             },
+237 |             staleTime: 1000 * 60 * 5,
+238 |           }),
+239 |           fetchContacts(value),
+240 |         ]);
+241 |         setSuggestions(externalData);
+242 |       } catch (e) {
+243 |         console.error(e);
+244 |       } finally {
+245 |         setIsSearching(false);
+246 |       }
+247 |     }, 400);
+248 |   };
+249 | 
+250 |   const handleSelectSuggestion = (name: string, url: string) => {
+251 |     setForm({ ...form, name, sourceUrl: url });
+252 |     setShowSuggestions(false);
+253 |     fetchContacts(name);
+254 |   };
 255 | 
-256 |   const filteredSchools = useMemo(() => {
-257 |     if (!debouncedSearch.trim()) return baseFiltered;
-258 |     const q = debouncedSearch.toLowerCase().trim();
-259 |     return baseFiltered.filter(
-260 |       (s) =>
-261 |         s.name?.toLowerCase().includes(q) ||
-262 |         s.city?.name?.toLowerCase().includes(q) ||
-263 |         s.director?.toLowerCase().includes(q) ||
-264 |         s.address?.toLowerCase().includes(q),
-265 |     );
-266 |   }, [baseFiltered, debouncedSearch]);
-267 | 
-268 |   return (
-269 |     <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-slate-50 min-h-screen">
-270 |       {/* Шапка */}
-271 |       <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
-272 |         <div className="min-w-0">
-273 |           <h1 className="text-xl font-bold text-slate-800 leading-tight">
-274 |             Школи
-275 |             {selectedCity.id && (
-276 |               <span className="ml-2 text-sm font-normal text-blue-500">
-277 |                 · {selectedCity.name}
-278 |               </span>
-279 |             )}
-280 |           </h1>
-281 |         </div>
-282 |         <div className="flex gap-2 shrink-0">
-283 |           {userRole === "SUPERADMIN" && (
-284 |             <button
-285 |               onClick={() => {
-286 |                 if (!selectedCity.id) return alert("Спочатку оберіть місто");
-287 |                 if (
-288 |                   !window.confirm(
-289 |                     `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`,
-290 |                   )
-291 |                 )
-292 |                   return;
-293 | 
-294 |                 setDotCount(3);
-295 |                 const dotInterval = setInterval(() => {
-296 |                   setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
-297 |                 }, 500);
-298 | 
-299 |                 bulkImportMutation.mutate(selectedCity.id, {
-300 |                   onSettled: () => clearInterval(dotInterval),
-301 |                 });
-302 |               }}
-303 |               disabled={bulkImportMutation.isPending}
-304 |               className="md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
-305 |             >
-306 |               {bulkImportMutation.isPending ? (
-307 |                 <span className="font-medium">
-308 |                   Імпортую{"·".repeat(dotCount)}
-309 |                 </span>
-310 |               ) : (
-311 |                 <>📥 Імпорт з isuo</>
-312 |               )}
-313 |             </button>
-314 |           )}
-315 |           <button
-316 |             onClick={handleOpenModal}
-317 |             className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-318 |           >
-319 |             + Додати
-320 |           </button>
-321 |         </div>
-322 |       </div>
-323 | 
-324 |       {/* StatsBar */}
-325 |       <div className="shrink-0">
-326 |         <Suspense
-327 |           fallback={
-328 |             <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
-329 |           }
-330 |         >
-331 |           <StatsBar
-332 |             schools={schools.filter(
-333 |               (s) =>
-334 |                 (selectedCity.id ? s.cityId === selectedCity.id : true) &&
-335 |                 s.type === "Школа",
-336 |             )}
-337 |             activeFilter={activeFilter}
-338 |             onFilterChange={setActiveFilter}
-339 |             sizeFilter={sizeFilter}
-340 |             onSizeFilterChange={setSizeFilter}
-341 |             schoolType="Школа"
-342 |           />
-343 |         </Suspense>
-344 |       </div>
-345 | 
-346 |       {/* Пошук */}
-347 |       <div className="relative shrink-0 mb-4 mt-2">
-348 |         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-349 |           <svg
-350 |             className="w-5 h-5 text-slate-400"
-351 |             fill="none"
-352 |             stroke="currentColor"
-353 |             viewBox="0 0 24 24"
-354 |           >
-355 |             <path
-356 |               strokeLinecap="round"
-357 |               strokeLinejoin="round"
-358 |               strokeWidth={2}
-359 |               d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
-360 |             />
-361 |           </svg>
-362 |         </div>
-363 |         <input
-364 |           type="text"
-365 |           value={searchQuery}
-366 |           onChange={(e) => setSearchQuery(e.target.value)}
-367 |           placeholder="Пошук за назвою, директором, адресою..."
-368 |           className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border-none sm:border sm:border-slate-200 rounded-2xl sm:rounded-xl text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition"
-369 |         />
-370 |         {searchQuery && (
-371 |           <button
-372 |             onClick={() => setSearchQuery("")}
-373 |             className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600 transition"
-374 |           >
-375 |             <svg
-376 |               className="w-5 h-5"
-377 |               fill="none"
-378 |               stroke="currentColor"
-379 |               viewBox="0 0 24 24"
-380 |             >
-381 |               <path
-382 |                 strokeLinecap="round"
-383 |                 strokeLinejoin="round"
-384 |                 strokeWidth={2}
-385 |                 d="M6 18L18 6M6 6l12 12"
-386 |               />
-387 |             </svg>
-388 |           </button>
-389 |         )}
-390 |       </div>
-391 | 
-392 |       {/* Лічильник */}
-393 |       <p className="text-xs font-semibold text-slate-400 mb-4 shrink-0 uppercase tracking-wide px-1">
-394 |         {filteredSchools.length === baseFiltered.length
-395 |           ? `${baseFiltered.length} шкіл`
-396 |           : `${filteredSchools.length} з ${baseFiltered.length} шкіл`}
-397 |         {(activeFilter || sizeFilter) && (
-398 |           <button
-399 |             onClick={() => {
-400 |               setActiveFilter(null);
-401 |               setSizeFilter(null);
-402 |             }}
-403 |             className="ml-3 text-blue-500 hover:text-blue-700 lowercase"
-404 |           >
-405 |             скинути фільтри
-406 |           </button>
-407 |         )}
-408 |       </p>
-409 | 
-410 |       {/* Компоненти списків */}
-411 |       {isLoading ? (
-412 |         <div className="flex flex-col gap-2.5 flex-1">
-413 |           {Array.from({ length: 8 }).map((_, i) => (
-414 |             <div
-415 |               key={i}
-416 |               className="bg-white rounded-2xl border border-slate-100 p-3.5 animate-pulse"
-417 |               style={{ opacity: 1 - i * 0.1 }}
-418 |             >
-419 |               <div className="h-4 bg-slate-200 rounded-lg w-3/4 mb-3" />
-420 |               <div className="flex justify-between">
-421 |                 <div className="h-3 bg-slate-100 rounded-lg w-1/3" />
-422 |                 <div className="h-3 bg-slate-100 rounded-lg w-1/4" />
-423 |               </div>
-424 |             </div>
-425 |           ))}
-426 |         </div>
-427 |       ) : (
-428 |         <>
-429 |           {/* Мобільний: віртуалізований список карток */}
-430 |           <div className="md:hidden flex-1 w-full overflow-hidden">
-431 |             <VirtualSchoolList
-432 |               schools={filteredSchools}
-433 |               itemHeight={110}
-434 |               renderItem={(school, index) => (
-435 |                 <div
-436 |                   className="pb-2.5"
-437 |                   onMouseEnter={() => prefetchSchool(school.id)}
-438 |                 >
-439 |                   <SchoolCard
-440 |                     school={school}
-441 |                     index={index}
-442 |                     onDelete={handleDeleteSchool}
-443 |                     stages={PIPELINE_STAGES}
-444 |                   />
-445 |                 </div>
-446 |               )}
-447 |             />
-448 |           </div>
-449 | 
-450 |           {/* Десктоп: таблиця з віртуалізованим tbody */}
-451 |           <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
-452 |             <Suspense
-453 |               fallback={<div className="flex-1 animate-pulse bg-slate-50" />}
-454 |             >
-455 |               <VirtualDesktopTable
-456 |                 schools={filteredSchools}
-457 |                 searchQuery={searchQuery}
-458 |                 onDelete={handleDeleteSchool}
-459 |                 stages={PIPELINE_STAGES}
-460 |               />
-461 |             </Suspense>
-462 |           </div>
-463 |         </>
-464 |       )}
-465 | 
-466 |       {/* Мобільна плаваюча кнопка FAB */}
-467 |       <button
-468 |         onClick={handleOpenModal}
-469 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
-470 |       >
-471 |         +
-472 |       </button>
+256 |   const handleAddSchool = (e: React.FormEvent) => {
+257 |     e.preventDefault();
+258 |     if (!form.name.trim() || !form.cityId) return;
+259 |     addSchoolMutation.mutate({ ...form, type: "Школа" });
+260 |   };
+261 | 
+262 |   const handleDeleteSchool = useCallback(
+263 |     async (e: React.MouseEvent, schoolId: string, schoolName: string) => {
+264 |       e.stopPropagation();
+265 |       if (userRole !== "SUPERADMIN") return;
+266 |       if (
+267 |         !window.confirm(
+268 |           `Видалити школу "${schoolName}"? Це видалить також усі її події.`,
+269 |         )
+270 |       )
+271 |         return;
+272 |       await deleteSchool.mutateAsync(schoolId);
+273 |     },
+274 |     [deleteSchool, userRole],
+275 |   );
+276 | 
+277 | 
+278 | 
+279 |   return (
+280 |     <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-slate-50 min-h-screen">
+281 |       {/* Шапка */}
+282 |       <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
+283 |         <div className="min-w-0">
+284 |           <h1 className="text-xl font-bold text-slate-800 leading-tight">
+285 |             Школи
+286 |             {selectedCity.id && (
+287 |               <span className="ml-2 text-sm font-normal text-blue-500">
+288 |                 · {selectedCity.name}
+289 |               </span>
+290 |             )}
+291 |           </h1>
+292 |         </div>
+293 |         <div className="flex gap-2 shrink-0">
+294 |           {userRole === "SUPERADMIN" && (
+295 |             <button
+296 |               onClick={() => {
+297 |                 if (!selectedCity.id) return alert("Спочатку оберіть місто");
+298 |                 if (
+299 |                   !window.confirm(
+300 |                     `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`,
+301 |                   )
+302 |                 )
+303 |                   return;
+304 | 
+305 |                 setDotCount(3);
+306 |                 const dotInterval = setInterval(() => {
+307 |                   setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
+308 |                 }, 500);
+309 | 
+310 |                 bulkImportMutation.mutate(selectedCity.id, {
+311 |                   onSettled: () => clearInterval(dotInterval),
+312 |                 });
+313 |               }}
+314 |               disabled={bulkImportMutation.isPending}
+315 |               className="md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
+316 |             >
+317 |               {bulkImportMutation.isPending ? (
+318 |                 <span className="font-medium">
+319 |                   Імпортую{"·".repeat(dotCount)}
+320 |                 </span>
+321 |               ) : (
+322 |                 <>📥 Імпорт з isuo</>
+323 |               )}
+324 |             </button>
+325 |           )}
+326 |           <button
+327 |             onClick={handleOpenModal}
+328 |             className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+329 |           >
+330 |             + Додати
+331 |           </button>
+332 |         </div>
+333 |       </div>
+334 | 
+335 |       {/* StatsBar */}
+336 |       <div className="shrink-0">
+337 |         <Suspense
+338 |           fallback={
+339 |             <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
+340 |           }
+341 |         >
+342 |           <StatsBar
+343 |             statusStats={stats?.statusStats ?? { new: 0, planned: 0, inProgress: 0, done: 0 }}
+344 |             sizeStats={stats?.sizeStats ?? { small: 0, medium: 0, large: 0 }}
+345 |             activeFilter={activeFilter}
+346 |             onFilterChange={setActiveFilter}
+347 |             sizeFilter={sizeFilter}
+348 |             onSizeFilterChange={setSizeFilter}
+349 |             schoolType="Школа"
+350 |           />
+351 |         </Suspense>
+352 |       </div>
+353 | 
+354 |       {/* Пошук */}
+355 |       <div className="relative shrink-0 mb-4 mt-2">
+356 |         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+357 |           <svg
+358 |             className="w-5 h-5 text-slate-400"
+359 |             fill="none"
+360 |             stroke="currentColor"
+361 |             viewBox="0 0 24 24"
+362 |           >
+363 |             <path
+364 |               strokeLinecap="round"
+365 |               strokeLinejoin="round"
+366 |               strokeWidth={2}
+367 |               d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
+368 |             />
+369 |           </svg>
+370 |         </div>
+371 |         <input
+372 |           type="text"
+373 |           value={searchQuery}
+374 |           onChange={(e) => setSearchQuery(e.target.value)}
+375 |           placeholder="Пошук за назвою, директором, адресою..."
+376 |           className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border-none sm:border sm:border-slate-200 rounded-2xl sm:rounded-xl text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition"
+377 |         />
+378 |         {searchQuery && (
+379 |           <button
+380 |             onClick={() => setSearchQuery("")}
+381 |             className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600 transition"
+382 |           >
+383 |             <svg
+384 |               className="w-5 h-5"
+385 |               fill="none"
+386 |               stroke="currentColor"
+387 |               viewBox="0 0 24 24"
+388 |             >
+389 |               <path
+390 |                 strokeLinecap="round"
+391 |                 strokeLinejoin="round"
+392 |                 strokeWidth={2}
+393 |                 d="M6 18L18 6M6 6l12 12"
+394 |               />
+395 |             </svg>
+396 |           </button>
+397 |         )}
+398 |       </div>
+399 | 
+400 |       {/* Лічильник */}
+401 |       <p className="text-xs font-semibold text-slate-400 mb-4 shrink-0 uppercase tracking-wide px-1">
+402 |         {`${filteredSchools.length} з ${totalItems} шкіл`}
+403 |         {(activeFilter || sizeFilter) && (
+404 |           <button
+405 |             onClick={() => {
+406 |               setActiveFilter(null);
+407 |               setSizeFilter(null);
+408 |             }}
+409 |             className="ml-3 text-blue-500 hover:text-blue-700 lowercase"
+410 |           >
+411 |             скинути фільтри
+412 |           </button>
+413 |         )}
+414 |       </p>
+415 | 
+416 |       {/* Компоненти списків */}
+417 |       {isLoading ? (
+418 |         <div className="flex flex-col gap-2.5 flex-1">
+419 |           {Array.from({ length: 8 }).map((_, i) => (
+420 |             <div
+421 |               key={i}
+422 |               className="bg-white rounded-2xl border border-slate-100 p-3.5 animate-pulse"
+423 |               style={{ opacity: 1 - i * 0.1 }}
+424 |             >
+425 |               <div className="h-4 bg-slate-200 rounded-lg w-3/4 mb-3" />
+426 |               <div className="flex justify-between">
+427 |                 <div className="h-3 bg-slate-100 rounded-lg w-1/3" />
+428 |                 <div className="h-3 bg-slate-100 rounded-lg w-1/4" />
+429 |               </div>
+430 |             </div>
+431 |           ))}
+432 |         </div>
+433 |       ) : (
+434 |         <>
+435 |           {/* Мобільний: віртуалізований список карток */}
+436 |           <div className="md:hidden flex-1 w-full overflow-hidden">
+437 |             <VirtualSchoolList
+438 |               schools={filteredSchools}
+439 |               itemHeight={110}
+440 |               onEndReached={handleLoadMore}
+441 |               renderItem={(school, index) => (
+442 |                 <div
+443 |                   className="pb-2.5"
+444 |                   onMouseEnter={() => prefetchSchool(school.id)}
+445 |                 >
+446 |                   <SchoolCard
+447 |                     school={school}
+448 |                     index={index}
+449 |                     onDelete={handleDeleteSchool}
+450 |                     stages={PIPELINE_STAGES}
+451 |                   />
+452 |                 </div>
+453 |               )}
+454 |             />
+455 |           </div>
+456 | 
+457 |           {/* Десктоп: таблиця з віртуалізованим tbody */}
+458 |           <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
+459 |             <Suspense
+460 |               fallback={<div className="flex-1 animate-pulse bg-slate-50" />}
+461 |             >
+462 |               <VirtualDesktopTable
+463 |                 schools={filteredSchools}
+464 |                 searchQuery={searchQuery}
+465 |                 onDelete={handleDeleteSchool}
+466 |                 stages={PIPELINE_STAGES}
+467 |                 onEndReached={handleLoadMore}
+468 |               />
+469 |             </Suspense>
+470 |           </div>
+471 |         </>
+472 |       )}
 473 | 
-474 |       {/* Модальне вікно */}
-475 |       {isModalOpen && (
-476 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-477 |           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
-478 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-479 |               <h3 className="text-xl font-bold text-slate-800">Нова школа</h3>
-480 |               <button
-481 |                 onClick={() => setIsModalOpen(false)}
-482 |                 className="text-slate-400 hover:text-slate-600 p-2 -mr-2 leading-none text-xl"
-483 |               >
-484 |                 ✕
-485 |               </button>
-486 |             </div>
-487 | 
-488 |             <form
-489 |               onSubmit={handleAddSchool}
-490 |               className="p-6 flex flex-col gap-4 overflow-y-auto"
-491 |             >
-492 |               <div className="relative">
-493 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
-494 |                   Назва школи
-495 |                 </label>
-496 |                 <input
-497 |                   type="text"
-498 |                   value={form.name}
-499 |                   onChange={(e) => handleNameChange(e.target.value)}
-500 |                   onBlur={() =>
-501 |                     setTimeout(() => setShowSuggestions(false), 150)
-502 |                   }
-503 |                   placeholder="Наприклад: Школа №1"
-504 |                   required
-505 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-506 |                 />
-507 |                 {showSuggestions && (
-508 |                   <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto overflow-hidden">
-509 |                     {isSearching ? (
-510 |                       <li className="px-4 py-3 text-sm text-slate-400 italic">
-511 |                         Пошук...
-512 |                       </li>
-513 |                     ) : suggestions.length > 0 ? (
-514 |                       suggestions.map((s, i) => (
-515 |                         <li
-516 |                           key={i}
-517 |                           onMouseDown={() =>
-518 |                             handleSelectSuggestion(s.name, s.url)
-519 |                           }
-520 |                           className="px-4 py-3 text-sm hover:bg-blue-50 cursor-pointer font-medium border-b border-slate-50 last:border-0"
-521 |                         >
-522 |                           {s.name}
-523 |                         </li>
-524 |                       ))
-525 |                     ) : (
-526 |                       <li className="px-4 py-3 text-sm text-slate-400 italic">
-527 |                         Нічого не знайдено
-528 |                       </li>
-529 |                     )}
-530 |                   </ul>
-531 |                 )}
-532 |               </div>
-533 | 
-534 |               {!selectedCity.id && (
-535 |                 <div>
-536 |                   <label className="block text-sm font-medium text-slate-600 mb-1.5">
-537 |                     Місто
-538 |                   </label>
-539 |                   <select
-540 |                     value={form.cityId}
-541 |                     onChange={(e) =>
-542 |                       setForm({ ...form, cityId: e.target.value })
-543 |                     }
-544 |                     required
-545 |                     className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-546 |                   >
-547 |                     <option value="">— Оберіть місто —</option>
-548 |                     {cities.map((c) => (
-549 |                       <option key={c.id} value={c.id}>
-550 |                         {c.name}
-551 |                       </option>
-552 |                     ))}
-553 |                   </select>
-554 |                 </div>
-555 |               )}
-556 | 
-557 |               <div>
-558 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
-559 |                   Контакт{" "}
-560 |                   <span className="ml-1 text-xs font-normal text-slate-400">
-561 |                     (автозаповнення)
-562 |                   </span>
-563 |                 </label>
-564 |                 {matchedContacts.length > 0 && (
-565 |                   <div className="flex flex-wrap gap-1.5 mb-3">
-566 |                     {matchedContacts.map((c, i) => (
-567 |                       <button
-568 |                         key={i}
-569 |                         type="button"
-570 |                         onClick={() =>
-571 |                           setForm((f) => ({
-572 |                             ...f,
-573 |                             director: c.contactName,
-574 |                             phone: c.phone,
-575 |                           }))
-576 |                         }
-577 |                         className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${form.director === c.contactName ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
-578 |                       >
-579 |                         {c.role ? `${c.role}: ` : ""}
-580 |                         {c.contactName}
-581 |                       </button>
-582 |                     ))}
-583 |                   </div>
-584 |                 )}
-585 |                 <input
-586 |                   type="text"
-587 |                   value={form.director}
-588 |                   onChange={(e) =>
-589 |                     setForm({ ...form, director: e.target.value })
-590 |                   }
-591 |                   placeholder="Микола Петренко"
-592 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
-593 |                 />
-594 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
-595 |                   Телефон
-596 |                 </label>
-597 |                 <input
-598 |                   type="text"
-599 |                   value={form.phone}
-600 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-601 |                   placeholder="0671234567"
-602 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-603 |                 />
-604 |               </div>
-605 | 
-606 |               <div className="flex gap-3 mt-4">
-607 |                 <button
-608 |                   type="button"
-609 |                   onClick={() => setIsModalOpen(false)}
-610 |                   className="flex-1 px-5 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors"
-611 |                 >
-612 |                   Скасувати
-613 |                 </button>
-614 |                 <button
-615 |                   type="submit"
-616 |                   disabled={addSchoolMutation.isPending}
-617 |                   className="flex-1 px-5 py-3.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
-618 |                 >
-619 |                   {addSchoolMutation.isPending ? "Збереження..." : "Створити"}
-620 |                 </button>
-621 |               </div>
-622 |             </form>
-623 |           </div>
-624 |         </div>
-625 |       )}
-626 |     </div>
-627 |   );
-628 | }
-629 | 
+474 |       {/* Мобільна плаваюча кнопка FAB */}
+475 |       <button
+476 |         onClick={handleOpenModal}
+477 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
+478 |       >
+479 |         +
+480 |       </button>
+481 | 
+482 |       {/* Модальне вікно */}
+483 |       {isModalOpen && (
+484 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+485 |           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+486 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+487 |               <h3 className="text-xl font-bold text-slate-800">Нова школа</h3>
+488 |               <button
+489 |                 onClick={() => setIsModalOpen(false)}
+490 |                 className="text-slate-400 hover:text-slate-600 p-2 -mr-2 leading-none text-xl"
+491 |               >
+492 |                 ✕
+493 |               </button>
+494 |             </div>
+495 | 
+496 |             <form
+497 |               onSubmit={handleAddSchool}
+498 |               className="p-6 flex flex-col gap-4 overflow-y-auto"
+499 |             >
+500 |               <div className="relative">
+501 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
+502 |                   Назва школи
+503 |                 </label>
+504 |                 <input
+505 |                   type="text"
+506 |                   value={form.name}
+507 |                   onChange={(e) => handleNameChange(e.target.value)}
+508 |                   onBlur={() =>
+509 |                     setTimeout(() => setShowSuggestions(false), 150)
+510 |                   }
+511 |                   placeholder="Наприклад: Школа №1"
+512 |                   required
+513 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+514 |                 />
+515 |                 {showSuggestions && (
+516 |                   <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto overflow-hidden">
+517 |                     {isSearching ? (
+518 |                       <li className="px-4 py-3 text-sm text-slate-400 italic">
+519 |                         Пошук...
+520 |                       </li>
+521 |                     ) : suggestions.length > 0 ? (
+522 |                       suggestions.map((s, i) => (
+523 |                         <li
+524 |                           key={i}
+525 |                           onMouseDown={() =>
+526 |                             handleSelectSuggestion(s.name, s.url)
+527 |                           }
+528 |                           className="px-4 py-3 text-sm hover:bg-blue-50 cursor-pointer font-medium border-b border-slate-50 last:border-0"
+529 |                         >
+530 |                           {s.name}
+531 |                         </li>
+532 |                       ))
+533 |                     ) : (
+534 |                       <li className="px-4 py-3 text-sm text-slate-400 italic">
+535 |                         Нічого не знайдено
+536 |                       </li>
+537 |                     )}
+538 |                   </ul>
+539 |                 )}
+540 |               </div>
+541 | 
+542 |               {!selectedCity.id && (
+543 |                 <div>
+544 |                   <label className="block text-sm font-medium text-slate-600 mb-1.5">
+545 |                     Місто
+546 |                   </label>
+547 |                   <select
+548 |                     value={form.cityId}
+549 |                     onChange={(e) =>
+550 |                       setForm({ ...form, cityId: e.target.value })
+551 |                     }
+552 |                     required
+553 |                     className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+554 |                   >
+555 |                     <option value="">— Оберіть місто —</option>
+556 |                     {cities.map((c) => (
+557 |                       <option key={c.id} value={c.id}>
+558 |                         {c.name}
+559 |                       </option>
+560 |                     ))}
+561 |                   </select>
+562 |                 </div>
+563 |               )}
+564 | 
+565 |               <div>
+566 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
+567 |                   Контакт{" "}
+568 |                   <span className="ml-1 text-xs font-normal text-slate-400">
+569 |                     (автозаповнення)
+570 |                   </span>
+571 |                 </label>
+572 |                 {matchedContacts.length > 0 && (
+573 |                   <div className="flex flex-wrap gap-1.5 mb-3">
+574 |                     {matchedContacts.map((c, i) => (
+575 |                       <button
+576 |                         key={i}
+577 |                         type="button"
+578 |                         onClick={() =>
+579 |                           setForm((f) => ({
+580 |                             ...f,
+581 |                             director: c.contactName,
+582 |                             phone: c.phone,
+583 |                           }))
+584 |                         }
+585 |                         className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${form.director === c.contactName ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+586 |                       >
+587 |                         {c.role ? `${c.role}: ` : ""}
+588 |                         {c.contactName}
+589 |                       </button>
+590 |                     ))}
+591 |                   </div>
+592 |                 )}
+593 |                 <input
+594 |                   type="text"
+595 |                   value={form.director}
+596 |                   onChange={(e) =>
+597 |                     setForm({ ...form, director: e.target.value })
+598 |                   }
+599 |                   placeholder="Микола Петренко"
+600 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+601 |                 />
+602 |                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
+603 |                   Телефон
+604 |                 </label>
+605 |                 <input
+606 |                   type="text"
+607 |                   value={form.phone}
+608 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
+609 |                   placeholder="0671234567"
+610 |                   className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+611 |                 />
+612 |               </div>
+613 | 
+614 |               <div className="flex gap-3 mt-4">
+615 |                 <button
+616 |                   type="button"
+617 |                   onClick={() => setIsModalOpen(false)}
+618 |                   className="flex-1 px-5 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+619 |                 >
+620 |                   Скасувати
+621 |                 </button>
+622 |                 <button
+623 |                   type="submit"
+624 |                   disabled={addSchoolMutation.isPending}
+625 |                   className="flex-1 px-5 py-3.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+626 |                 >
+627 |                   {addSchoolMutation.isPending ? "Збереження..." : "Створити"}
+628 |                 </button>
+629 |               </div>
+630 |             </form>
+631 |           </div>
+632 |         </div>
+633 |       )}
+634 |     </div>
+635 |   );
+636 | }
+637 | 
 ```
 
 ### File: apps/frontend/src/types/index.ts
@@ -20625,36 +21109,38 @@
 151 |   phone?: string;
 152 | }
 153 | 
-154 | export interface EventPreparation {
-155 |   assignCrew: string;
-156 |   bookEquipment: string;
-157 |   prepareDocs: string;
-158 |   prepareMaterials: string;
-159 |   remindSchool: string;
-160 | }
-161 | 
-162 | export interface CityProfile extends City {
-163 |   events: Event[];
-164 |   crews: Crew[];
-165 |   schools?: School[];
-166 | }
-167 | 
-168 | export interface PipelineStage {
-169 |   key: string;
-170 |   name: string;
-171 | }
-172 | 
-173 | export interface IssueReport {
-174 |   id: string;
-175 |   eventId: string;
-176 |   schoolName: string;
-177 |   eventName: string;
-178 |   message: string;
-179 |   cityId: string;
-180 |   status: string;
-181 |   createdAt: string;
-182 | }
-183 | 
+154 | import type { PreparationStatus } from '../utils/preparationStatus';
+155 | 
+156 | export interface EventPreparation {
+157 |   assignCrew: PreparationStatus;
+158 |   bookEquipment: PreparationStatus;
+159 |   prepareDocs: PreparationStatus;
+160 |   prepareMaterials: PreparationStatus;
+161 |   remindSchool: PreparationStatus;
+162 | }
+163 | 
+164 | export interface CityProfile extends City {
+165 |   events: Event[];
+166 |   crews: Crew[];
+167 |   schools?: School[];
+168 | }
+169 | 
+170 | export interface PipelineStage {
+171 |   key: string;
+172 |   name: string;
+173 | }
+174 | 
+175 | export interface IssueReport {
+176 |   id: string;
+177 |   eventId: string;
+178 |   schoolName: string;
+179 |   eventName: string;
+180 |   message: string;
+181 |   cityId: string;
+182 |   status: string;
+183 |   createdAt: string;
+184 | }
+185 | 
 ```
 
 ### File: apps/frontend/src/utils/formatCurrency.ts
@@ -20666,6 +21152,31 @@
   4 | export function formatCurrency(amount: number | null | undefined): string {
   5 |   return new Intl.NumberFormat("uk-UA").format(Math.round(amount || 0));
   6 | }
+```
+
+### File: apps/frontend/src/utils/preparationStatus.ts
+```ts
+  0 | export type PreparationStatus = "PLANNED" | "IN_PROGRESS" | "DONE";
+  1 | 
+  2 | export const PREPARATION_STATUS_ORDER: PreparationStatus[] = [
+  3 |   "PLANNED",
+  4 |   "IN_PROGRESS",
+  5 |   "DONE",
+  6 | ];
+  7 | 
+  8 | export const PREPARATION_STATUS_LABELS: Record<PreparationStatus, string> = {
+  9 |   PLANNED: "Заплановано",
+ 10 |   IN_PROGRESS: "В процесі",
+ 11 |   DONE: "Виконано",
+ 12 | };
+ 13 | 
+ 14 | export function getNextPreparationStatus(
+ 15 |   current: PreparationStatus,
+ 16 | ): PreparationStatus {
+ 17 |   const idx = PREPARATION_STATUS_ORDER.indexOf(current || "PLANNED");
+ 18 |   return PREPARATION_STATUS_ORDER[(idx + 1) % PREPARATION_STATUS_ORDER.length];
+ 19 | }
+ 20 | 
 ```
 
 ### File: apps/frontend/tailwind.config.js
@@ -20755,33 +21266,33 @@
   0 | const fs = require('fs');
   1 | const path = require('path');
   2 | 
-  3 | const outputFile = 'combined_roles_controllers.md';
+  3 | const outputFile = 'combined_auth_users.md';
   4 | 
-  5 | fs.writeFileSync(outputFile, '# Файли Roles Guard та Контролерів\n\n');
+  5 | fs.writeFileSync(outputFile, '# Файли Auth, Users та Seeder\n\n');
   6 | 
   7 | const filesToCollect = [
   8 |   'apps/backend/src/auth/guards/roles.guard.ts',
   9 |   'apps/backend/src/auth/decorators/roles.decorator.ts',
  10 |   'apps/backend/src/auth/interfaces/jwt-user.interface.ts',
- 11 |   'apps/backend/src/schools/schools.controller.ts',
- 12 |   'apps/backend/src/events/events.controller.ts',
- 13 |   'apps/backend/src/finance/finance.controller.ts',
- 14 |   'apps/backend/src/cities/cities.controller.ts'
- 15 | ];
- 16 | 
- 17 | let collectedCount = 0;
- 18 | 
- 19 | console.log('🚀 Починаю збір файлів Role Guard та контролерів...\n');
- 20 | 
- 21 | filesToCollect.forEach(filePath => {
- 22 |   if (!fs.existsSync(filePath)) {
- 23 |     console.warn(`[!] Файл не знайдено: ${filePath}`);
- 24 |     return;
- 25 |   }
- 26 | 
- 27 |   const content = fs.readFileSync(filePath, 'utf-8');
- 28 |   const ext = path.extname(filePath).replace('.', '');
- 29 |   const lang = ['ts', 'tsx'].includes(ext) ? 'typescript' : ext;
+ 11 |   'apps/backend/src/users/users.service.ts',
+ 12 |   'apps/backend/prisma/seed-admin.js',
+ 13 |   'apps/backend/src/auth/auth.service.ts'
+ 14 | ];
+ 15 | 
+ 16 | let collectedCount = 0;
+ 17 | 
+ 18 | console.log('🚀 Починаю збір файлів...\n');
+ 19 | 
+ 20 | filesToCollect.forEach(filePath => {
+ 21 |   if (!fs.existsSync(filePath)) {
+ 22 |     console.warn(`[!] Файл не знайдено: ${filePath}`);
+ 23 |     return;
+ 24 |   }
+ 25 | 
+ 26 |   const content = fs.readFileSync(filePath, 'utf-8');
+ 27 |   const ext = path.extname(filePath).replace('.', '');
+ 28 |   let lang = 'typescript';
+ 29 |   if (ext === 'js') lang = 'javascript';
  30 | 
  31 |   const mdBlock = `### \`${filePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`;
  32 |   fs.appendFileSync(outputFile, mdBlock);

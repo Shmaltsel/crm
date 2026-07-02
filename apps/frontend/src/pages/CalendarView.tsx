@@ -339,11 +339,11 @@ export default function CalendarView() {
                           className="relative group/event z-0 hover:z-50"
                         >
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (ev.school)
-                                navigate(`/schools/${ev.school.id}`);
-                            }}
+                            // onClick={(e) => {
+                            //   e.stopPropagation();
+                            //   if (ev.school)
+                            //     navigate(`/schools/${ev.school.id}`);
+                            // }}
                             className={`w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${getProjectColor(ev.project)}`}
                           >
                             {ev.time || "—"}
