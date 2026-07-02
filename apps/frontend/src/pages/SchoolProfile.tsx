@@ -397,7 +397,9 @@ export default function SchoolProfile() {
           </motion.div>
 
           <AnimatePresence>
-            {currentEvent && currentStageIndex >= 1 && (
+            {currentEvent &&
+              currentStageIndex >= 1 &&
+              exitingEventId !== currentEvent.id && (
               <motion.div
                 key="responsible"
                 initial={{ opacity: 0, y: 8 }}
@@ -465,7 +467,9 @@ export default function SchoolProfile() {
           )}
 
           <AnimatePresence>
-            {currentEvent && currentStageIndex >= 4 && (
+            {currentEvent &&
+              currentStageIndex >= 4 &&
+              exitingEventId !== currentEvent.id && (
               <motion.div
                 key="preparation"
                 initial={{ opacity: 0, y: 8 }}

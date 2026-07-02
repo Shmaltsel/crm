@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Expense {
   name: string;
@@ -240,7 +241,6 @@ export default function ReportModal({
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [newExp, setNewExp] = useState({ name: "", amount: "" });
   const [salaries, setSalaries] = useState<Record<string, number>>({});
-  if (!isOpen) return null;
 
   const schoolSum = (form.totalSum * form.schoolPercentage) / 100;
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
@@ -301,8 +301,22 @@ export default function ReportModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25 }}
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 24, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 24, scale: 0.97 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden"
+          >
         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
 
         {/* Header */}
@@ -548,7 +562,9 @@ export default function ReportModal({
             Зберегти звіт
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
