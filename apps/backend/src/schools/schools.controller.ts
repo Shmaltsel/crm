@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { SchoolsService } from './schools.service';
 import { ParserService } from './parser.service';
+import { Throttle } from '@nestjs/throttler';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { AuthGuard } from '../auth/auth.guard';
@@ -31,6 +32,7 @@ export class SchoolsController {
   ) {}
 
   @Post('bulk-import')
+  @Throttle({ default: { ttl: 300000, limit: 2 } })
   @Roles('SUPERADMIN', 'MANAGER')
   bulkImport(@Body() body: BulkImportDto) {
     return this.schoolsService.bulkImport(body.cityId, body.type || 'Школа');
