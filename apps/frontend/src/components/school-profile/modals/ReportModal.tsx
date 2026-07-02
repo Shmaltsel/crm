@@ -291,9 +291,6 @@ export default function ReportModal({
     const { schoolPercentage, ...formRest } = form;
     void schoolPercentage;
 
-    const { schoolPercentage, ...formRest } = form;
-    void schoolPercentage;
-
     onSave({
       ...formRest,
       expenses,
