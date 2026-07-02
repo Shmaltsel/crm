@@ -18,7 +18,6 @@ export default function Layout() {
   const handleLogout = async () => {
     await logout();
     queryClient.clear();
-    window.location.href = "/login";
   };
 
   const handleLinkClick = () => {
