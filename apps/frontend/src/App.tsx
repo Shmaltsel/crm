@@ -35,7 +35,7 @@ const PageLoader = () => (
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
-    !!localStorage.getItem("user"),
+    !!localStorage.getItem("user") && !!localStorage.getItem("token"),
   );
 
   const handleLogin = () => {
@@ -45,11 +45,16 @@ export default function App() {
   const handleLogout = async () => {
     try {
       await api.post("/auth/logout");
-    } catch {
-      // ігноруємо — все одно чистимо локальний стан
+    } catch (e) {
+      console.error("Logout error", e);
     }
+
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
+
     setIsAuthenticated(false);
+
+    window.location.replace("/login");
   };
 
   return (
