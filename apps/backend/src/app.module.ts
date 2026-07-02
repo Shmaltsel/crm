@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
+import Redis from 'ioredis';
+import { UserThrottlerGuard } from './common/guards/user-throttler.guard';
 import { ConfigModule } from '@nestjs/config';
 import { LoggerModule } from './common/logger/logger.module';
 import { RedisCacheModule } from './common/cache/redis-cache.module';
@@ -26,13 +30,14 @@ import { ProjectsModule } from './projects/projects.module';
     }),
     LoggerModule,
     RedisCacheModule,
-    ThrottlerModule.forRoot([
-      {
-        name: 'default',
-        ttl: 60000,
-        limit: 100,
-      },
-    ]),
+    ThrottlerModule.forRootAsync({
+      useFactory: () => ({
+        throttlers: [{ name: 'default', ttl: 60000, limit: 100 }],
+        storage: new ThrottlerStorageRedisService(
+          new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379'),
+        ),
+      }),
+    }),
     PrismaModule,
     UsersModule,
     AuthModule,
@@ -50,7 +55,11 @@ import { ProjectsModule } from './projects/projects.module';
     AppService,
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: UserThrottlerGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditLogInterceptor,
     },
   ],
 })

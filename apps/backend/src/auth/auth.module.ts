@@ -7,10 +7,12 @@ import { JwtModule } from '@nestjs/jwt';
 @Module({
   imports: [
     UsersModule,
-    JwtModule.register({
+    JwtModule.registerAsync({
       global: true,
-      secret: process.env.JWT_SECRET || 'super-secret-key-for-dev',
-      signOptions: { expiresIn: '7d' },
+      useFactory: () => ({
+        secret: process.env.JWT_SECRET,
+        signOptions: { expiresIn: '15m' },
+      }),
     }),
   ],
   providers: [AuthService],
