@@ -21,6 +21,7 @@ import { UpdatePreparationDto } from './dto/update-preparation.dto';
 import { RescheduleEventDto } from './dto/reschedule-event.dto';
 import { AssignCrewDto } from './dto/assign-crew.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
+import { EventQueryDto } from './dto/event-query.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { OwnershipGuard } from '../auth/guards/ownership.guard';
 import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
@@ -31,8 +32,8 @@ export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
   @Get()
-  findAll(@CurrentUser() user: JwtUser) {
-    return this.eventsService.findAllForUser(user);
+  findAll(@CurrentUser() user: JwtUser, @Query() query: EventQueryDto) {
+    return this.eventsService.findAllForUser(user, query);
   }
 
   @Post()

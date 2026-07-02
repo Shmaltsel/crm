@@ -17,6 +17,6 @@ export const envValidationSchema = Joi.object({
       then: Joi.required(),
       otherwise: Joi.optional().default('super-secret-key-for-dev'),
     }),
-  SEED_ADMIN_EMAIL: Joi.string().email().optional(),
-  SEED_ADMIN_PASSWORD: Joi.string().optional(),
+  SEED_ADMIN_EMAIL: Joi.string().email().allow('').optional(),
+  SEED_ADMIN_PASSWORD: Joi.string().allow('').optional(),
 });

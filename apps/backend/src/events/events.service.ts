@@ -9,6 +9,8 @@ import {
   ExpenseItemDto,
   SalaryItemDto,
 } from './dto/submit-report.dto';
+import { EventQueryDto } from './dto/event-query.dto';
+import { PageMetaDto } from '../common/dto/page-meta.dto';
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -24,29 +26,45 @@ export class EventsService {
     private telegramService: TelegramService,
   ) {}
 
-  async findAllForUser(user: JwtUser) {
+  async findAllForUser(user: JwtUser, query?: EventQueryDto) {
     const isFieldStaff = FIELD_ROLES.includes(user.role);
-
-    return this.prisma.event.findMany({
-      where: isFieldStaff
-        ? {
-            crew: {
-              OR: [{ hostId: user.sub }, { driverId: user.sub }],
-            },
-          }
-        : {},
-      include: {
-        school: { select: { id: true, name: true, type: true } },
-        city: { select: { id: true, name: true } },
-        crew: {
-          include: {
-            host: { select: { id: true, name: true } },
-            driver: { select: { id: true, name: true } },
-          },
+    const where = isFieldStaff
+      ? { crew: { OR: [{ hostId: user.sub }, { driverId: user.sub }] } }
+      : {};
+    const include = {
+      school: { select: { id: true, name: true, type: true } },
+      city: { select: { id: true, name: true } },
+      crew: {
+        include: {
+          host: { select: { id: true, name: true } },
+          driver: { select: { id: true, name: true } },
         },
       },
-      orderBy: { date: 'asc' },
-    });
+    };
+
+    if (!query?.page) {
+      return this.prisma.event.findMany({
+        where,
+        include,
+        orderBy: { date: 'asc' },
+      });
+    }
+
+    const take = query.take ?? 20;
+    const skip = (query.page - 1) * take;
+
+    const [data, totalItems] = await Promise.all([
+      this.prisma.event.findMany({
+        where,
+        include,
+        orderBy: { date: 'asc' },
+        skip,
+        take,
+      }),
+      this.prisma.event.count({ where }),
+    ]);
+
+    return { data, meta: new PageMetaDto(totalItems, query.page, take) };
   }
 
   async create(data: CreateEventDto, user: JwtUser) {
