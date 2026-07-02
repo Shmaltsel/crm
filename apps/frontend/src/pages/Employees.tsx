@@ -152,6 +152,7 @@ export default function Employees() {
   }));
 
   const handleOpenModal = (user: User | null = null) => {
+    setFormError("");
     setEditingUser(user);
     if (user) {
       setForm({
@@ -170,16 +171,28 @@ export default function Employees() {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [formError, setFormError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.fullName.trim()) return;
-    setIsModalOpen(false);
-    if (editingUser) {
-      const { password, ...rest } = form;
-      const payload = password.trim() ? form : rest;
-      updateUser.mutate({ id: editingUser.id, form: payload });
-    } else {
-      createUser.mutate(form);
+    setFormError("");
+    try {
+      if (editingUser) {
+        const { password, ...rest } = form;
+        const payload = password.trim() ? form : rest;
+        await updateUser.mutateAsync({ id: editingUser.id, form: payload });
+      } else {
+        await createUser.mutateAsync(form);
+      }
+      setIsModalOpen(false);
+    } catch (err: any) {
+      const messages = err?.response?.data?.message;
+      setFormError(
+        Array.isArray(messages)
+          ? messages.join(", ")
+          : messages || "Помилка збереження",
+      );
     }
   };
 
@@ -582,6 +595,11 @@ export default function Employees() {
               onSubmit={handleSubmit}
               className="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh]"
             >
+              {formError && (
+                <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">
+                  {formError}
+                </div>
+              )}
               <input
                 type="text"
                 value={form.fullName}
@@ -606,7 +624,8 @@ export default function Employees() {
                     setForm({ ...form, password: e.target.value })
                   }
                   required={!editingUser}
-                  placeholder="Пароль"
+                  placeholder="Пароль (мін. 8 симв., літера+цифра)"
+                  minLength={8}
                   className="w-full p-2.5 border rounded-lg"
                 />
               </div>
