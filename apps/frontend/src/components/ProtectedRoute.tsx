@@ -1,22 +1,14 @@
 import { Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 interface Props {
   allowedRoles: string[];
   children: React.ReactNode;
 }
 
-function getCurrentUserRole(): string | null {
-  try {
-    const raw = localStorage.getItem("user");
-    return raw ? JSON.parse(raw).role : null;
-  } catch {
-    return null;
-  }
-}
-
 export default function ProtectedRoute({ allowedRoles, children }: Props) {
-  const role = getCurrentUserRole();
-  if (!role || !allowedRoles.includes(role)) {
+  const { user } = useAuth();
+  if (!user || !allowedRoles.includes(user.role)) {
     return <Navigate to="/dashboard" replace />;
   }
   return <>{children}</>;

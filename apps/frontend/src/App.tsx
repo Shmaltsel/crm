@@ -26,6 +26,7 @@ import {
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import { CityProvider } from "./context/CityContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { api } from "./config/api";
 
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -50,13 +51,12 @@ const PageLoader = () => (
   </div>
 );
 
-export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
-    !!localStorage.getItem("user") && !!localStorage.getItem("token"),
-  );
+function AppRoutes() {
+  const { user, loading, setUser } = useAuth();
+  const isAuthenticated = !!user;
 
-  const handleLogin = () => {
-    setIsAuthenticated(true);
+  const handleLogin = (loggedInUser: any) => {
+    setUser(loggedInUser);
   };
 
   const handleLogout = async () => {
@@ -66,147 +66,152 @@ export default function App() {
       console.error("Logout error", e);
     }
 
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
-
-    setIsAuthenticated(false);
-
+    setUser(null);
     window.location.replace("/login");
   };
 
+  if (loading) return <PageLoader />;
+
   return (
-    <Router>
-      <CityProvider>
-        <Routes>
-          {/* Публічний маршрут: Логін */}
-          <Route
-            path="/login"
-            element={
-              !isAuthenticated ? (
-                <Login onLogin={handleLogin} />
-              ) : (
-                <Navigate to="/cities" replace />
-              )
-            }
-          />
+    <CityProvider>
+      <Routes>
+        {/* Публічний маршрут: Логін */}
+        <Route
+          path="/login"
+          element={
+            !isAuthenticated ? (
+              <Login onLogin={handleLogin} />
+            ) : (
+              <Navigate to="/cities" replace />
+            )
+          }
+        />
 
-          {/* Захищені маршрути (Layout відображає бокове меню) */}
-          <Route
-            path="/"
-            element={
-              isAuthenticated ? (
-                <Layout onLogout={handleLogout} />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          >
-            {/* Редірект з кореня на сторінку міст за замовчуванням */}
-            <Route index element={<Navigate to="/schools" replace />} />
+        {/* Захищені маршрути (Layout відображає бокове меню) */}
+        <Route
+          path="/"
+          element={
+            isAuthenticated ? (
+              <Layout onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        >
+          {/* Редірект з кореня на сторінку міст за замовчуванням */}
+          <Route index element={<Navigate to="/schools" replace />} />
 
-            {/* Обгортаємо всі вкладені маршрути в Suspense. 
+          {/* Обгортаємо всі вкладені маршрути в Suspense. 
               Коли React намагається відрендерити "ліниву" сторінку, він показує fallback (PageLoader), 
               поки завантажується файл з сервера.
             */}
-            <Route
-              path="cities"
-              element={
-                <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
-                  <Suspense fallback={<PageLoader />}>
-                    <Cities />
-                  </Suspense>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="schools"
-              element={
+          <Route
+            path="cities"
+            element={
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
                 <Suspense fallback={<PageLoader />}>
-                  <Schools />
+                  <Cities />
                 </Suspense>
-              }
-            />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route
-              path="schools/:id"
-              element={
+          <Route
+            path="schools"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <Schools />
+              </Suspense>
+            }
+          />
+
+          <Route
+            path="schools/:id"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <SchoolProfile />
+              </Suspense>
+            }
+          />
+
+          <Route
+            path="employees"
+            element={
+              <ProtectedRoute allowedRoles={["SUPERADMIN"]}>
                 <Suspense fallback={<PageLoader />}>
-                  <SchoolProfile />
+                  <Employees />
                 </Suspense>
-              }
-            />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route
-              path="employees"
-              element={
-                <ProtectedRoute allowedRoles={["SUPERADMIN"]}>
-                  <Suspense fallback={<PageLoader />}>
-                    <Employees />
-                  </Suspense>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="finance"
-              element={
-                <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
-                  <Suspense fallback={<PageLoader />}>
-                    <Finance />
-                  </Suspense>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="calendar"
-              element={
+          <Route
+            path="finance"
+            element={
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
                 <Suspense fallback={<PageLoader />}>
-                  <CalendarView />
+                  <Finance />
                 </Suspense>
-              }
-            />
-            <Route
-              path="dashboard"
-              element={
-                <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
-                  <Suspense fallback={<PageLoader />}>
-                    <Dashboard />
-                  </Suspense>
-                </ProtectedRoute>
-              }
-            />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route
-              path="kindergartens"
-              element={
+          <Route
+            path="calendar"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <CalendarView />
+              </Suspense>
+            }
+          />
+          <Route
+            path="dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
                 <Suspense fallback={<PageLoader />}>
-                  <Kindergartens />
+                  <Dashboard />
                 </Suspense>
-              }
-            />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route
-              path="cities/:id"
-              element={
-                <Suspense fallback={<PageLoader />}>
-                  <CityProfile />
-                </Suspense>
-              }
-            />
+          <Route
+            path="kindergartens"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <Kindergartens />
+              </Suspense>
+            }
+          />
 
-            <Route
-              path="events/:id/report"
-              element={
-                <Suspense fallback={<PageLoader />}>
-                  <EventReport />
-                </Suspense>
-              }
-            />
-          </Route>
-        </Routes>
-      </CityProvider>
+          <Route
+            path="cities/:id"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <CityProfile />
+              </Suspense>
+            }
+          />
+
+          <Route
+            path="events/:id/report"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <EventReport />
+              </Suspense>
+            }
+          />
+        </Route>
+      </Routes>
+    </CityProvider>
+  );
+}
+export default function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
     </Router>
   );
 }

@@ -1,15 +1,19 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
+  Req,
   Res,
+  UseGuards,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { randomBytes } from 'crypto';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
+import { AuthGuard } from './auth.guard';
 import { LoginDto } from './dto/login.dto';
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -45,6 +49,25 @@ export class AuthController {
     });
 
     return { user };
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('me')
+  me(@Req() req: Request) {
+    const payload = req['user'] as {
+      sub: string;
+      email: string;
+      role: string;
+      name: string;
+    };
+    return {
+      user: {
+        id: payload.sub,
+        name: payload.name,
+        email: payload.email,
+        role: payload.role,
+      },
+    };
   }
 
   @HttpCode(HttpStatus.OK)

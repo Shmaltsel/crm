@@ -12,8 +12,15 @@ const CIRCLE_VARIANTS = {
   },
 };
 
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
 interface LoginProps {
-  onLogin?: () => void;
+  onLogin?: (user: User) => void;
 }
 
 export default function Login({ onLogin }: LoginProps) {
@@ -25,9 +32,11 @@ export default function Login({ onLogin }: LoginProps) {
   const [shake, setShake] = useState(false);
   const navigate = useNavigate();
 
+  const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
+
   const proceedAfterLogin = () => {
-    if (onLogin) {
-      onLogin();
+    if (onLogin && loggedInUser) {
+      onLogin(loggedInUser);
     } else {
       navigate("/cities");
     }
@@ -41,7 +50,7 @@ export default function Login({ onLogin }: LoginProps) {
     try {
       const response = await api.post("/auth/login", { email, password });
 
-      localStorage.setItem("user", JSON.stringify(response.data.user));
+      setLoggedInUser(response.data.user);
       setIsTransitioning(true);
     } catch {
       setError("Невірний email або пароль");
