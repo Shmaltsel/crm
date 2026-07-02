@@ -92,10 +92,18 @@ export class SchoolsService {
     const conditions: Prisma.Sql[] = [];
 
     if (search) {
-      const like = `%${search}%`;
-      conditions.push(
-        Prisma.sql`(s.name ILIKE ${like} OR s.director ILIKE ${like} OR s.address ILIKE ${like})`,
-      );
+      const trimmed = search.trim();
+      const isNumeric = /^\d+$/.test(trimmed);
+
+      if (isNumeric) {
+        const numberBoundary = `%№${trimmed}%`;
+        const numberWord = `% ${trimmed}%`;
+        conditions.push(
+          Prisma.sql`(s.name ILIKE ${numberBoundary} OR s.name ILIKE ${numberWord} OR s.name ILIKE ${trimmed + '%'})`,
+        );
+      } else {
+        conditions.push(Prisma.sql`s.name ILIKE ${`%${trimmed}%`}`);
+      }
     }
     if (cityId) {
       conditions.push(Prisma.sql`s."cityId" = ${cityId}`);
