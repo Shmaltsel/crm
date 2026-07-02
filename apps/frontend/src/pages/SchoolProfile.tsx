@@ -317,41 +317,37 @@ export default function SchoolProfile() {
   const handleSubmitReport = useCallback(
     async (reportData: ReportData) => {
       if (!currentEvent) return;
+      setIsReportModalOpen(false);
+      setExitingEventId(currentEvent.id);
       await submitReportMutation.mutateAsync({
         eventId: currentEvent.id,
         reportData,
       });
-      await updateStatus.mutateAsync({
-        eventId: currentEvent.id,
-        status: "RE_SALE",
-        actionName: "Звіт сформовано. Захід завершено.",
-      });
-      setExitingEventId(currentEvent.id);
       setTimeout(() => {
         setSelectedEventId(null);
         setExitingEventId(null);
       }, 500);
-      setIsReportModalOpen(false);
     },
-    [currentEvent, submitReportMutation, updateStatus],
+    [currentEvent, submitReportMutation],
   );
 
   const handleAssignCrew = useCallback(
     async (crewId: string) => {
       if (!currentEvent) return;
 
-      await assignCrewMutation.mutateAsync({
-        eventId: currentEvent.id,
-        crewId,
-      });
-
-      await updatePreparation.mutateAsync({
-        eventId: currentEvent.id,
-        field: "assignCrew",
-        status: "DONE",
-      });
-
       setIsCrewModalOpen(false);
+
+      await Promise.all([
+        assignCrewMutation.mutateAsync({
+          eventId: currentEvent.id,
+          crewId,
+        }),
+        updatePreparation.mutateAsync({
+          eventId: currentEvent.id,
+          field: "assignCrew",
+          status: "DONE",
+        }),
+      ]);
     },
     [currentEvent, assignCrewMutation, updatePreparation],
   );

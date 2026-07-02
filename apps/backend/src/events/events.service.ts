@@ -430,10 +430,10 @@ export class EventsService {
     return this.prisma.event.update({
       where: { id: eventId },
       data: {
-        status: 'REPORT' as never,
+        status: 'RE_SALE' as never,
         history: {
           create: {
-            action: 'Сформовано звіт. Етап: Звіт',
+            action: 'Сформовано звіт. Захід завершено.',
             userId: user.sub,
             userName: user.name,
             role: user.role,
