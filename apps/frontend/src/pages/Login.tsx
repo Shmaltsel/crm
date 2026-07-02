@@ -4,6 +4,14 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { api } from "../config/api";
 
+const CIRCLE_VARIANTS = {
+  hidden: { clipPath: "circle(0% at 50% 50%)" },
+  visible: {
+    clipPath: "circle(150% at 50% 50%)",
+    transition: { duration: 0.7, ease: [0.76, 0, 0.24, 1] },
+  },
+};
+
 interface LoginProps {
   onLogin?: () => void;
 }
@@ -13,7 +21,17 @@ export default function Login({ onLogin }: LoginProps) {
   const [password, setPassword] = useState("123!PASSWORD!321");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [shake, setShake] = useState(false);
   const navigate = useNavigate();
+
+  const proceedAfterLogin = () => {
+    if (onLogin) {
+      onLogin();
+    } else {
+      navigate("/cities");
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,28 +42,51 @@ export default function Login({ onLogin }: LoginProps) {
       const response = await api.post("/auth/login", { email, password });
 
       localStorage.setItem("user", JSON.stringify(response.data.user));
-      if (onLogin) {
-        onLogin();
-      } else {
-        navigate("/cities");
-      }
+      setIsTransitioning(true);
     } catch {
       setError("Невірний email або пароль");
       setIsLoading(false);
+      setShake(true);
+      setTimeout(() => setShake(false), 400);
     }
   };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
-      <div className="p-6 sm:p-8 bg-white rounded-2xl shadow-lg w-full max-w-sm sm:max-w-md">
+      <AnimatePresence>
+        {isTransitioning && (
+          <motion.div
+            variants={CIRCLE_VARIANTS}
+            initial="hidden"
+            animate="visible"
+            onAnimationComplete={proceedAfterLogin}
+            className="fixed inset-0 z-50 bg-blue-600"
+          />
+        )}
+      </AnimatePresence>
+      <motion.div
+        animate={
+          isTransitioning
+            ? { opacity: 0, scale: 0.97 }
+            : shake
+              ? { x: [-10, 10, -10, 10, 0], opacity: 1, scale: 1 }
+              : { opacity: 1, scale: 1 }
+        }
+        transition={{ duration: 0.4 }}
+        className="p-6 sm:p-8 bg-white rounded-2xl shadow-lg w-full max-w-sm sm:max-w-md"
+      >
         <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
           Вхід у CRM
         </h1>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center"
+          >
             {error}
-          </div>
+          </motion.div>
         )}
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
@@ -90,7 +131,11 @@ export default function Login({ onLogin }: LoginProps) {
                 >
                   <motion.span
                     animate={{ rotate: 360 }}
-                    transition={{ duration: 0.7, repeat: Infinity, ease: "linear" }}
+                    transition={{
+                      duration: 0.7,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
                     className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full"
                   />
                   Вхід...
@@ -108,7 +153,7 @@ export default function Login({ onLogin }: LoginProps) {
             </AnimatePresence>
           </motion.button>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }
