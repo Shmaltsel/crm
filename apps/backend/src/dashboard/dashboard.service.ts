@@ -16,9 +16,42 @@ const PIPELINE_STAGES = [
 
 const STALE_DAYS = 7;
 
+type EventWithRelations = Prisma.EventGetPayload<{
+  include: {
+    school: { select: { id: true; name: true } };
+    city: { select: { id: true; name: true } };
+    crew: {
+      include: {
+        host: { select: { id: true; name: true } };
+        driver: { select: { id: true; name: true } };
+      };
+    };
+  };
+}>;
+
+interface StaleSchool {
+  id: string;
+  name: string;
+  status: string | null;
+  lastActivity: Date | null;
+  daysStale: number | null;
+}
+
+interface ActivityFeedItem {
+  id: string;
+  userName: string;
+  role: string;
+  action: string;
+  comment: string | null;
+  createdAt: Date;
+  schoolId: string | null;
+  schoolName: string | null;
+  eventId: string | null;
+}
+
 export interface DashboardSummary {
-  todayEvents: unknown[];
-  upcomingEvents: unknown[];
+  todayEvents: EventWithRelations[];
+  upcomingEvents: EventWithRelations[];
   funnel: Record<string, number>;
   totalSchools: number;
   monthlyKpi: {
@@ -27,8 +60,8 @@ export interface DashboardSummary {
     children: number;
     count: number;
   };
-  staleSchools: unknown[];
-  activityFeed: unknown[];
+  staleSchools: StaleSchool[];
+  activityFeed: ActivityFeedItem[];
   citiesStats: {
     cityId: string;
     cityName: string;
@@ -37,7 +70,6 @@ export interface DashboardSummary {
     monthRevenue: number;
   }[];
 }
-
 @Injectable()
 export class DashboardService {
   private readonly logger = new Logger(DashboardService.name);

@@ -15,6 +15,16 @@ async function main() {
     process.exit(1);
   }
 
+  if (
+    process.env.NODE_ENV === 'production' &&
+    process.env.ALLOW_PROD_SEED !== 'true'
+  ) {
+    console.error(
+      'Сідування в production заблоковано. Встановіть ALLOW_PROD_SEED=true для підтвердження.',
+    );
+    process.exit(1);
+  }
+
   const hashedPassword = await bcrypt.hash(password, 10);
 
   console.log('Починаю створення адміна...');

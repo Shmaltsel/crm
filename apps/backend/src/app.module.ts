@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ConfigModule } from '@nestjs/config';
+import { LoggerModule } from './common/logger/logger.module';
+import { envValidationSchema } from './config/env.validation';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -16,6 +19,11 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { ProjectsModule } from './projects/projects.module';
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validationSchema: envValidationSchema,
+    }),
+    LoggerModule,
     ThrottlerModule.forRoot([
       {
         name: 'default',
@@ -29,7 +37,6 @@ import { ProjectsModule } from './projects/projects.module';
     EventsModule,
     CitiesModule,
     SchoolsModule,
-    FinanceModule,
     FinanceModule,
     TelegramModule,
     IssuesModule,

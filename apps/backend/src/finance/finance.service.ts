@@ -1,10 +1,45 @@
-import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-
 @Injectable()
+interface FinanceKpi {
+  totalRevenue: number;
+  totalExpenses: number;
+  totalProfit: number;
+  totalEvents: number;
+}
+
+interface FinanceFilterOptions {
+  projects: string[];
+  cities: { id: string; name: string }[];
+}
+
+interface FinanceDashboardResult {
+  kpi: FinanceKpi;
+  monthly: { month: string; revenue: number; profit: number }[];
+  expectedRevenue: number;
+  filters: FinanceFilterOptions;
+  byProject?: { name: string; value: number }[];
+  byExpenseCategory?: { name: string; value: number }[];
+  topCities?: { name: string; revenue: number; profit: number }[];
+  topSchools?: { name: string; count: number; revenue: number }[];
+  topEvents?: {
+    id: string;
+    date: Date;
+    school: string;
+    profit: number;
+    revenue: number;
+  }[];
+  worstEvents?: {
+    id: string;
+    date: Date;
+    school: string;
+    profit: number;
+    revenue: number;
+  }[];
+}
+
 export class FinanceService {
-  private cache = new Map<string, { data: any; expiresAt: number }>();
+  private cache = new Map<string, { data: unknown; expiresAt: number }>();
 
   private getCached<T>(key: string): T | null {
     const entry = this.cache.get(key);
@@ -12,7 +47,7 @@ export class FinanceService {
     return entry.data as T;
   }
 
-  private setCached(key: string, data: any, ttlMs = 5 * 60 * 1000) {
+  private setCached(key: string, data: unknown, ttlMs = 5 * 60 * 1000) {
     this.cache.set(key, { data, expiresAt: Date.now() + ttlMs });
   }
 
@@ -51,7 +86,7 @@ export class FinanceService {
     return { balance: user?.balance?.toNumber() ?? 0, name: user?.name ?? '' };
   }
 
-  async getDashboard({
+ async getDashboard({
     period,
     cityId,
     project,
@@ -61,9 +96,9 @@ export class FinanceService {
     cityId?: string;
     project?: string;
     minimal?: boolean;
-  }) {
+  }): Promise<FinanceDashboardResult> {
     const cacheKey = `finance:${cityId}:${period}:${project}:${minimal}`;
-    const cached = this.getCached(cacheKey);
+    const cached = this.getCached<FinanceDashboardResult>(cacheKey);
     if (cached) return cached;
 
     const dateFrom = this.resolveDateFrom(period);

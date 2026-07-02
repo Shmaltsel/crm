@@ -10,6 +10,8 @@
 │   │   ├── .gitignore
 │   │   ├── .prettierrc
 │   │   ├── README.md
+│   │   ├── collect-code.js
+│   │   ├── eslint-errors.txt
 │   │   ├── eslint.config.mjs
 │   │   ├── nest-cli.json
 │   │   ├── package.json
@@ -161,6 +163,7 @@
 │   │   │   ├── events.e2e-spec.ts
 │   │   │   ├── jest-e2e.json
 │   │   │   └── schools.e2e-spec.ts
+│   │   ├── ts-errors.txt
 │   │   ├── tsconfig.build.json
 │   │   └── tsconfig.json
 │   └── frontend
@@ -243,6 +246,7 @@
 │       │   ├── config
 │       │   │   └── api.ts
 │       │   ├── context
+│       │   │   ├── AuthContext.tsx
 │       │   │   └── CityContext.tsx
 │       │   ├── hooks
 │       │   │   ├── useApi.ts
@@ -277,17 +281,46 @@
 │       ├── tsconfig.node.json
 │       ├── vercel.json
 │       └── vite.config.ts
-├── collect-code.js
-├── combined_auth_cors.md
-├── combined_auth_users.md
-├── combined_failing_tests.md
-├── combined_final_fixes.md
-├── combined_methods_and_dto.md
-├── combined_roles_controllers.md
 ├── package.json
 ├── packages
 │   └── shared
 ├── pnpm-workspace.yaml
+```
+
+### File: apps/backend/collect-code.js
+```js
+  0 | const fs = require('fs');
+  1 | const path = require('path');
+  2 | 
+  3 | // Шлях до папки з тестами
+  4 | const targetDir = './src';
+  5 | const outputFile = './all_tests_bundle.md';
+  6 | 
+  7 | const findTests = (dir, fileList = []) => {
+  8 |   const files = fs.readdirSync(dir);
+  9 |   files.forEach(file => {
+ 10 |     const filePath = path.join(dir, file);
+ 11 |     if (fs.statSync(filePath).isDirectory()) {
+ 12 |       findTests(filePath, fileList);
+ 13 |     } else if (file.endsWith('.spec.ts')) {
+ 14 |       fileList.push(filePath);
+ 15 |     }
+ 16 |   });
+ 17 |   return fileList;
+ 18 | };
+ 19 | 
+ 20 | const testFiles = findTests(targetDir);
+ 21 | 
+ 22 | // Очищення попереднього файлу
+ 23 | if (fs.existsSync(outputFile)) fs.unlinkSync(outputFile);
+ 24 | 
+ 25 | testFiles.forEach(filePath => {
+ 26 |   const content = fs.readFileSync(filePath, 'utf8');
+ 27 |   const mdBlock = `### File: ${filePath}\n\n\`\`\`typescript\n${content}\n\`\`\`\n\n---\n\n`;
+ 28 |   fs.appendFileSync(outputFile, mdBlock);
+ 29 | });
+ 30 | 
+ 31 | console.log(`✅ Зібрано ${testFiles.length} файлів тестів у ${outputFile}`);
 ```
 
 ### File: apps/backend/package.json
@@ -670,49 +703,50 @@
 
 ### File: apps/backend/prisma/seed-admin.js
 ```js
-  0 | const { PrismaClient } = require('@prisma/client');
-  1 | const bcrypt = require('bcrypt');
-  2 | 
-  3 | const prisma = new PrismaClient();
-  4 | 
-  5 | async function main() {
-  6 |   const email = process.env.SEED_ADMIN_EMAIL;
-  7 |   const password = process.env.SEED_ADMIN_PASSWORD;
-  8 | 
-  9 |   if (!email || !password) {
- 10 |     console.error(
- 11 |       'Помилка: SEED_ADMIN_EMAIL та SEED_ADMIN_PASSWORD мають бути задані в .env',
- 12 |     );
- 13 |     process.exit(1);
- 14 |   }
- 15 | 
- 16 |   const hashedPassword = await bcrypt.hash(password, 10);
- 17 | 
- 18 |   console.log('Починаю створення адміна...');
- 19 | 
- 20 |   const admin = await prisma.user.upsert({
- 21 |     where: { email: email },
- 22 |     update: { password: hashedPassword },
- 23 |     create: {
- 24 |       name: 'Адміністратор',
- 25 |       email: email,
- 26 |       password: hashedPassword,
- 27 |       role: 'SUPERADMIN',
- 28 |     },
- 29 |   });
- 30 | 
- 31 |   console.log('Адмін успішно створений або оновлений:', admin.email);
- 32 | }
- 33 | 
- 34 | main()
- 35 |   .catch((e) => {
- 36 |     console.error('Помилка під час сідування:', e);
- 37 |     process.exit(1);
- 38 |   })
- 39 |   .finally(async () => {
- 40 |     await prisma.$disconnect();
- 41 |   });
- 42 | 
+  0 | require('dotenv').config();
+  1 | const { PrismaClient } = require('@prisma/client');
+  2 | const bcrypt = require('bcrypt');
+  3 | 
+  4 | const prisma = new PrismaClient();
+  5 | 
+  6 | async function main() {
+  7 |   const email = process.env.SEED_ADMIN_EMAIL;
+  8 |   const password = process.env.SEED_ADMIN_PASSWORD;
+  9 | 
+ 10 |   if (!email || !password) {
+ 11 |     console.error(
+ 12 |       'Помилка: SEED_ADMIN_EMAIL та SEED_ADMIN_PASSWORD мають бути задані в .env',
+ 13 |     );
+ 14 |     process.exit(1);
+ 15 |   }
+ 16 | 
+ 17 |   const hashedPassword = await bcrypt.hash(password, 10);
+ 18 | 
+ 19 |   console.log('Починаю створення адміна...');
+ 20 | 
+ 21 |   const admin = await prisma.user.upsert({
+ 22 |     where: { email: email },
+ 23 |     update: { password: hashedPassword },
+ 24 |     create: {
+ 25 |       name: 'Адміністратор',
+ 26 |       email: email,
+ 27 |       password: hashedPassword,
+ 28 |       role: 'SUPERADMIN',
+ 29 |     },
+ 30 |   });
+ 31 | 
+ 32 |   console.log('Адмін успішно створений або оновлений:', admin.email);
+ 33 | }
+ 34 | 
+ 35 | main()
+ 36 |   .catch((e) => {
+ 37 |     console.error('Помилка під час сідування:', e);
+ 38 |     process.exit(1);
+ 39 |   })
+ 40 |   .finally(async () => {
+ 41 |     await prisma.$disconnect();
+ 42 |   });
+ 43 | 
 ```
 
 ### File: apps/backend/src/app.controller.spec.ts
@@ -848,61 +882,84 @@
   0 | import {
   1 |   Body,
   2 |   Controller,
-  3 |   HttpCode,
-  4 |   HttpStatus,
-  5 |   Post,
-  6 |   Res,
-  7 | } from '@nestjs/common';
-  8 | import type { Response } from 'express';
-  9 | import { randomBytes } from 'crypto';
- 10 | import { Throttle } from '@nestjs/throttler';
- 11 | import { AuthService } from './auth.service';
- 12 | import { LoginDto } from './dto/login.dto';
- 13 | 
- 14 | const isProd = process.env.NODE_ENV === 'production';
- 15 | 
- 16 | @Controller('auth')
- 17 | export class AuthController {
- 18 |   constructor(private authService: AuthService) {}
+  3 |   Get,
+  4 |   HttpCode,
+  5 |   HttpStatus,
+  6 |   Post,
+  7 |   Req,
+  8 |   Res,
+  9 |   UseGuards,
+ 10 | } from '@nestjs/common';
+ 11 | import type { Request, Response } from 'express';
+ 12 | import { randomBytes } from 'crypto';
+ 13 | import { Throttle } from '@nestjs/throttler';
+ 14 | import { AuthService } from './auth.service';
+ 15 | import { AuthGuard } from './auth.guard';
+ 16 | import { LoginDto } from './dto/login.dto';
+ 17 | 
+ 18 | const isProd = process.env.NODE_ENV === 'production';
  19 | 
- 20 |   @Throttle({ default: { ttl: 60000, limit: 5 } })
- 21 |   @HttpCode(HttpStatus.OK)
- 22 |   @Post('login')
- 23 |   async login(
- 24 |     @Body() signInDto: LoginDto,
- 25 |     @Res({ passthrough: true }) res: Response,
- 26 |   ) {
- 27 |     const { access_token, user } = await this.authService.login(
- 28 |       signInDto.email,
- 29 |       signInDto.password,
- 30 |     );
- 31 |     const csrfToken = randomBytes(32).toString('hex');
- 32 | 
- 33 |     res.cookie('access_token', access_token, {
- 34 |       httpOnly: true,
- 35 |       secure: isProd,
- 36 |       sameSite: isProd ? 'none' : 'lax',
- 37 |       maxAge: 24 * 60 * 60 * 1000,
- 38 |     });
- 39 |     res.cookie('csrf_token', csrfToken, {
- 40 |       httpOnly: false, // фронтенд має прочитати
- 41 |       secure: isProd,
- 42 |       sameSite: isProd ? 'none' : 'lax',
- 43 |       maxAge: 24 * 60 * 60 * 1000,
- 44 |     });
- 45 | 
- 46 |     return { user };
- 47 |   }
- 48 | 
- 49 |   @HttpCode(HttpStatus.OK)
- 50 |   @Post('logout')
- 51 |   logout(@Res({ passthrough: true }) res: Response) {
- 52 |     res.clearCookie('access_token');
- 53 |     res.clearCookie('csrf_token');
- 54 |     return { message: 'ok' };
- 55 |   }
- 56 | }
- 57 | 
+ 20 | @Controller('auth')
+ 21 | export class AuthController {
+ 22 |   constructor(private authService: AuthService) {}
+ 23 | 
+ 24 |   @Throttle({ default: { ttl: 60000, limit: 5 } })
+ 25 |   @HttpCode(HttpStatus.OK)
+ 26 |   @Post('login')
+ 27 |   async login(
+ 28 |     @Body() signInDto: LoginDto,
+ 29 |     @Res({ passthrough: true }) res: Response,
+ 30 |   ) {
+ 31 |     const { access_token, user } = await this.authService.login(
+ 32 |       signInDto.email,
+ 33 |       signInDto.password,
+ 34 |     );
+ 35 |     const csrfToken = randomBytes(32).toString('hex');
+ 36 | 
+ 37 |     res.cookie('access_token', access_token, {
+ 38 |       httpOnly: true,
+ 39 |       secure: isProd,
+ 40 |       sameSite: isProd ? 'none' : 'lax',
+ 41 |       maxAge: 24 * 60 * 60 * 1000,
+ 42 |     });
+ 43 |     res.cookie('csrf_token', csrfToken, {
+ 44 |       httpOnly: false, // фронтенд має прочитати
+ 45 |       secure: isProd,
+ 46 |       sameSite: isProd ? 'none' : 'lax',
+ 47 |       maxAge: 24 * 60 * 60 * 1000,
+ 48 |     });
+ 49 | 
+ 50 |     return { user };
+ 51 |   }
+ 52 | 
+ 53 |   @UseGuards(AuthGuard)
+ 54 |   @Get('me')
+ 55 |   me(@Req() req: Request) {
+ 56 |     const payload = req['user'] as {
+ 57 |       sub: string;
+ 58 |       email: string;
+ 59 |       role: string;
+ 60 |       name: string;
+ 61 |     };
+ 62 |     return {
+ 63 |       user: {
+ 64 |         id: payload.sub,
+ 65 |         name: payload.name,
+ 66 |         email: payload.email,
+ 67 |         role: payload.role,
+ 68 |       },
+ 69 |     };
+ 70 |   }
+ 71 | 
+ 72 |   @HttpCode(HttpStatus.OK)
+ 73 |   @Post('logout')
+ 74 |   logout(@Res({ passthrough: true }) res: Response) {
+ 75 |     res.clearCookie('access_token');
+ 76 |     res.clearCookie('csrf_token');
+ 77 |     return { message: 'ok' };
+ 78 |   }
+ 79 | }
+ 80 | 
 ```
 
 ### File: apps/backend/src/auth/auth.guard.ts
@@ -1946,327 +2003,359 @@
  15 | 
  16 | const STALE_DAYS = 7;
  17 | 
- 18 | export interface DashboardSummary {
- 19 |   todayEvents: unknown[];
- 20 |   upcomingEvents: unknown[];
- 21 |   funnel: Record<string, number>;
- 22 |   totalSchools: number;
- 23 |   monthlyKpi: {
- 24 |     revenue: number;
- 25 |     profit: number;
- 26 |     children: number;
- 27 |     count: number;
+ 18 | type EventWithRelations = Prisma.EventGetPayload<{
+ 19 |   include: {
+ 20 |     school: { select: { id: true; name: true } };
+ 21 |     city: { select: { id: true; name: true } };
+ 22 |     crew: {
+ 23 |       include: {
+ 24 |         host: { select: { id: true; name: true } };
+ 25 |         driver: { select: { id: true; name: true } };
+ 26 |       };
+ 27 |     };
  28 |   };
- 29 |   staleSchools: unknown[];
- 30 |   activityFeed: unknown[];
- 31 |   citiesStats: {
- 32 |     cityId: string;
- 33 |     cityName: string;
- 34 |     schoolsCount: number;
- 35 |     activeEvents: number;
- 36 |     monthRevenue: number;
- 37 |   }[];
- 38 | }
- 39 | 
- 40 | @Injectable()
- 41 | export class DashboardService {
- 42 |   private readonly logger = new Logger(DashboardService.name);
- 43 | 
- 44 |   constructor(private prisma: PrismaService) {}
- 45 | 
- 46 |   private cache = new Map<string, { data: DashboardSummary; ts: number }>();
- 47 |   private CACHE_TTL = 60_000;
- 48 | 
- 49 |   async getSummary(cityId?: string, role?: string) {
- 50 |     const key = `${cityId ?? 'all'}-${role ?? 'anon'}`;
- 51 |     const cached = this.cache.get(key);
- 52 |     if (cached && Date.now() - cached.ts < this.CACHE_TTL) {
- 53 |       this.logger.debug(`cache hit — ${key}`);
- 54 |       return cached.data;
- 55 |     }
- 56 | 
- 57 |     const t0 = Date.now();
- 58 |     this.logger.debug(`start — cityId=${cityId ?? 'all'} role=${role}`);
- 59 | 
- 60 |     const now = new Date();
- 61 |     const todayStart = new Date(
- 62 |       now.getFullYear(),
- 63 |       now.getMonth(),
- 64 |       now.getDate(),
- 65 |     );
- 66 |     const todayEnd = new Date(todayStart);
- 67 |     todayEnd.setDate(todayEnd.getDate() + 1);
- 68 |     const upcomingEnd = new Date(todayStart);
- 69 |     upcomingEnd.setDate(upcomingEnd.getDate() + 6);
- 70 | 
- 71 |     const staleThreshold = new Date(now);
- 72 |     staleThreshold.setDate(staleThreshold.getDate() - STALE_DAYS);
- 73 | 
- 74 |     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
- 75 |     const monthEnd = new Date(
- 76 |       now.getFullYear(),
- 77 |       now.getMonth() + 1,
- 78 |       0,
- 79 |       23,
- 80 |       59,
- 81 |       59,
- 82 |     );
- 83 | 
- 84 |     const cityFilter = cityId ? { cityId } : {};
- 85 |     const isSuperAdmin = role === 'SUPERADMIN';
- 86 | 
- 87 |     const t1 = Date.now();
- 88 |     const [
- 89 |       todayEvents,
- 90 |       upcomingEvents,
- 91 |       funnelRows,
- 92 |       monthEvents,
- 93 |       staleSchoolsRaw,
- 94 |       recentActivity,
- 95 |     ] = await Promise.all([
- 96 |       this.prisma.event.findMany({
- 97 |         where: { ...cityFilter, date: { gte: todayStart, lt: todayEnd } },
- 98 |         include: {
- 99 |           school: { select: { id: true, name: true } },
-100 |           city: { select: { id: true, name: true } },
-101 |           crew: {
-102 |             include: {
-103 |               host: { select: { id: true, name: true } },
-104 |               driver: { select: { id: true, name: true } },
-105 |             },
-106 |           },
-107 |         },
-108 |         orderBy: { time: 'asc' },
-109 |       }),
-110 | 
-111 |       this.prisma.event.findMany({
-112 |         where: { ...cityFilter, date: { gte: todayEnd, lt: upcomingEnd } },
-113 |         include: {
-114 |           school: { select: { id: true, name: true } },
-115 |           city: { select: { id: true, name: true } },
-116 |           crew: {
-117 |             include: {
-118 |               host: { select: { id: true, name: true } },
-119 |               driver: { select: { id: true, name: true } },
-120 |             },
-121 |           },
-122 |         },
-123 |         orderBy: [{ date: 'asc' }, { time: 'asc' }],
-124 |         take: 8,
-125 |       }),
-126 | 
-127 |       cityId
-128 |         ? this.prisma.$queryRaw<{ status: string; count: bigint }[]>(Prisma.sql`
-129 |             SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
-130 |             FROM "School" s
-131 |             LEFT JOIN LATERAL (
-132 |               SELECT status FROM "Event"
-133 |               WHERE "schoolId" = s.id
-134 |               ORDER BY date DESC
-135 |               LIMIT 1
-136 |             ) e ON true
-137 |             WHERE s."cityId" = ${cityId}
-138 |             GROUP BY e.status
-139 |           `)
-140 |         : this.prisma.$queryRaw<{ status: string; count: bigint }[]>(Prisma.sql`
-141 |             SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
-142 |             FROM "School" s
-143 |             LEFT JOIN LATERAL (
-144 |               SELECT status FROM "Event"
-145 |               WHERE "schoolId" = s.id
-146 |               ORDER BY date DESC
-147 |               LIMIT 1
-148 |             ) e ON true
-149 |             GROUP BY e.status
-150 |           `),
-151 | 
-152 |       this.prisma.event.findMany({
-153 |         where: {
-154 |           ...cityFilter,
-155 |           status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
-156 |           date: { gte: monthStart, lte: monthEnd },
-157 |         },
-158 |         select: {
-159 |           id: true,
-160 |           report: {
-161 |             select: { totalSum: true, remainderSum: true, childrenCount: true },
-162 |           },
-163 |         },
-164 |       }),
-165 | 
-166 |       this.prisma.school.findMany({
-167 |         where: {
-168 |           ...cityFilter,
-169 |           events: {
-170 |             some: {
-171 |               status: { notIn: ['DONE', 'REPORT', 'RE_SALE'] },
-172 |               history: { every: { createdAt: { lt: staleThreshold } } },
-173 |             },
-174 |           },
-175 |         },
-176 |         include: {
-177 |           events: {
-178 |             where: { status: { notIn: ['DONE', 'REPORT', 'RE_SALE'] } },
-179 |             orderBy: { date: 'desc' },
-180 |             take: 1,
-181 |             include: {
-182 |               history: {
-183 |                 orderBy: { createdAt: 'desc' },
-184 |                 take: 1,
-185 |                 select: { createdAt: true },
-186 |               },
-187 |             },
-188 |           },
+ 29 | }>;
+ 30 | 
+ 31 | interface StaleSchool {
+ 32 |   id: string;
+ 33 |   name: string;
+ 34 |   status: string | null;
+ 35 |   lastActivity: Date | null;
+ 36 |   daysStale: number | null;
+ 37 | }
+ 38 | 
+ 39 | interface ActivityFeedItem {
+ 40 |   id: string;
+ 41 |   userName: string;
+ 42 |   role: string;
+ 43 |   action: string;
+ 44 |   comment: string | null;
+ 45 |   createdAt: Date;
+ 46 |   schoolId: string | null;
+ 47 |   schoolName: string | null;
+ 48 |   eventId: string | null;
+ 49 | }
+ 50 | 
+ 51 | export interface DashboardSummary {
+ 52 |   todayEvents: EventWithRelations[];
+ 53 |   upcomingEvents: EventWithRelations[];
+ 54 |   funnel: Record<string, number>;
+ 55 |   totalSchools: number;
+ 56 |   monthlyKpi: {
+ 57 |     revenue: number;
+ 58 |     profit: number;
+ 59 |     children: number;
+ 60 |     count: number;
+ 61 |   };
+ 62 |   staleSchools: StaleSchool[];
+ 63 |   activityFeed: ActivityFeedItem[];
+ 64 |   citiesStats: {
+ 65 |     cityId: string;
+ 66 |     cityName: string;
+ 67 |     schoolsCount: number;
+ 68 |     activeEvents: number;
+ 69 |     monthRevenue: number;
+ 70 |   }[];
+ 71 | }
+ 72 | @Injectable()
+ 73 | export class DashboardService {
+ 74 |   private readonly logger = new Logger(DashboardService.name);
+ 75 | 
+ 76 |   constructor(private prisma: PrismaService) {}
+ 77 | 
+ 78 |   private cache = new Map<string, { data: DashboardSummary; ts: number }>();
+ 79 |   private CACHE_TTL = 60_000;
+ 80 | 
+ 81 |   async getSummary(cityId?: string, role?: string) {
+ 82 |     const key = `${cityId ?? 'all'}-${role ?? 'anon'}`;
+ 83 |     const cached = this.cache.get(key);
+ 84 |     if (cached && Date.now() - cached.ts < this.CACHE_TTL) {
+ 85 |       this.logger.debug(`cache hit — ${key}`);
+ 86 |       return cached.data;
+ 87 |     }
+ 88 | 
+ 89 |     const t0 = Date.now();
+ 90 |     this.logger.debug(`start — cityId=${cityId ?? 'all'} role=${role}`);
+ 91 | 
+ 92 |     const now = new Date();
+ 93 |     const todayStart = new Date(
+ 94 |       now.getFullYear(),
+ 95 |       now.getMonth(),
+ 96 |       now.getDate(),
+ 97 |     );
+ 98 |     const todayEnd = new Date(todayStart);
+ 99 |     todayEnd.setDate(todayEnd.getDate() + 1);
+100 |     const upcomingEnd = new Date(todayStart);
+101 |     upcomingEnd.setDate(upcomingEnd.getDate() + 6);
+102 | 
+103 |     const staleThreshold = new Date(now);
+104 |     staleThreshold.setDate(staleThreshold.getDate() - STALE_DAYS);
+105 | 
+106 |     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+107 |     const monthEnd = new Date(
+108 |       now.getFullYear(),
+109 |       now.getMonth() + 1,
+110 |       0,
+111 |       23,
+112 |       59,
+113 |       59,
+114 |     );
+115 | 
+116 |     const cityFilter = cityId ? { cityId } : {};
+117 |     const isSuperAdmin = role === 'SUPERADMIN';
+118 | 
+119 |     const t1 = Date.now();
+120 |     const [
+121 |       todayEvents,
+122 |       upcomingEvents,
+123 |       funnelRows,
+124 |       monthEvents,
+125 |       staleSchoolsRaw,
+126 |       recentActivity,
+127 |     ] = await Promise.all([
+128 |       this.prisma.event.findMany({
+129 |         where: { ...cityFilter, date: { gte: todayStart, lt: todayEnd } },
+130 |         include: {
+131 |           school: { select: { id: true, name: true } },
+132 |           city: { select: { id: true, name: true } },
+133 |           crew: {
+134 |             include: {
+135 |               host: { select: { id: true, name: true } },
+136 |               driver: { select: { id: true, name: true } },
+137 |             },
+138 |           },
+139 |         },
+140 |         orderBy: { time: 'asc' },
+141 |       }),
+142 | 
+143 |       this.prisma.event.findMany({
+144 |         where: { ...cityFilter, date: { gte: todayEnd, lt: upcomingEnd } },
+145 |         include: {
+146 |           school: { select: { id: true, name: true } },
+147 |           city: { select: { id: true, name: true } },
+148 |           crew: {
+149 |             include: {
+150 |               host: { select: { id: true, name: true } },
+151 |               driver: { select: { id: true, name: true } },
+152 |             },
+153 |           },
+154 |         },
+155 |         orderBy: [{ date: 'asc' }, { time: 'asc' }],
+156 |         take: 8,
+157 |       }),
+158 | 
+159 |       cityId
+160 |         ? this.prisma.$queryRaw<{ status: string; count: bigint }[]>(Prisma.sql`
+161 |             SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
+162 |             FROM "School" s
+163 |             LEFT JOIN LATERAL (
+164 |               SELECT status FROM "Event"
+165 |               WHERE "schoolId" = s.id
+166 |               ORDER BY date DESC
+167 |               LIMIT 1
+168 |             ) e ON true
+169 |             WHERE s."cityId" = ${cityId}
+170 |             GROUP BY e.status
+171 |           `)
+172 |         : this.prisma.$queryRaw<{ status: string; count: bigint }[]>(Prisma.sql`
+173 |             SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
+174 |             FROM "School" s
+175 |             LEFT JOIN LATERAL (
+176 |               SELECT status FROM "Event"
+177 |               WHERE "schoolId" = s.id
+178 |               ORDER BY date DESC
+179 |               LIMIT 1
+180 |             ) e ON true
+181 |             GROUP BY e.status
+182 |           `),
+183 | 
+184 |       this.prisma.event.findMany({
+185 |         where: {
+186 |           ...cityFilter,
+187 |           status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
+188 |           date: { gte: monthStart, lte: monthEnd },
 189 |         },
-190 |         take: 10,
-191 |       }),
-192 | 
-193 |       this.prisma.eventHistory.findMany({
-194 |         where: {
-195 |           createdAt: { gte: todayStart },
-196 |           ...(cityId ? { event: { cityId } } : {}),
-197 |         },
-198 |         include: {
-199 |           event: {
-200 |             select: {
-201 |               id: true,
-202 |               school: { select: { id: true, name: true } },
-203 |             },
-204 |           },
-205 |         },
-206 |         orderBy: { createdAt: 'desc' },
-207 |         take: 20,
-208 |       }),
-209 |     ]);
-210 |     this.logger.debug(`main Promise.all: ${Date.now() - t1}ms`);
-211 | 
-212 |     let citiesStats: {
-213 |       cityId: string;
-214 |       cityName: string;
-215 |       schoolsCount: number;
-216 |       activeEvents: number;
-217 |       monthRevenue: number;
-218 |     }[] = [];
-219 | 
-220 |     if (isSuperAdmin) {
-221 |       const t2 = Date.now();
-222 |       const [allCities, allSchools, allActiveEvents, allMonthEvents] =
-223 |         await Promise.all([
-224 |           this.prisma.city.findMany({ select: { id: true, name: true } }),
-225 |           this.prisma.school.groupBy({ by: ['cityId'], _count: { id: true } }),
-226 |           this.prisma.event.groupBy({
-227 |             by: ['cityId'],
-228 |             where: {
-229 |               status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
-230 |             },
-231 |             _count: { id: true },
-232 |           }),
-233 |           this.prisma.event.findMany({
-234 |             where: {
-235 |               status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
-236 |               date: { gte: monthStart, lte: monthEnd },
-237 |             },
-238 |             select: {
-239 |               cityId: true,
-240 |               report: { select: { totalSum: true } },
-241 |             },
-242 |           }),
-243 |         ]);
-244 |       this.logger.debug(`superadmin queries: ${Date.now() - t2}ms`);
-245 | 
-246 |       const schoolsIdx = Object.fromEntries(
-247 |         allSchools.map((r) => [r.cityId, r._count.id]),
-248 |       );
-249 |       const activeIdx = Object.fromEntries(
-250 |         allActiveEvents.map((r) => [r.cityId, r._count.id]),
-251 |       );
-252 |       const revenueIdx: Record<string, number> = {};
-253 |       for (const ev of allMonthEvents) {
-254 |         revenueIdx[ev.cityId] =
-255 |           (revenueIdx[ev.cityId] ?? 0) + (ev.report?.totalSum ?? 0);
-256 |       }
-257 | 
-258 |       citiesStats = allCities
-259 |         .map((city) => ({
-260 |           cityId: city.id,
-261 |           cityName: city.name,
-262 |           schoolsCount: schoolsIdx[city.id] ?? 0,
-263 |           activeEvents: activeIdx[city.id] ?? 0,
-264 |           monthRevenue: revenueIdx[city.id] ?? 0,
-265 |         }))
-266 |         .sort((a, b) => b.monthRevenue - a.monthRevenue);
-267 |     }
-268 | 
-269 |     const funnel: Record<string, number> = {};
-270 |     for (const stage of PIPELINE_STAGES) funnel[stage] = 0;
-271 |     let totalSchools = 0;
-272 |     for (const row of funnelRows) {
-273 |       const status = row.status ?? 'BASE';
-274 |       const count = Number(row.count);
-275 |       if (funnel[status] !== undefined) funnel[status] += count;
-276 |       totalSchools += count;
-277 |     }
-278 | 
-279 |     const monthlyKpi = monthEvents.reduce(
-280 |       (acc, ev) => {
-281 |         acc.revenue += ev.report?.totalSum ?? 0;
-282 |         acc.profit += ev.report?.remainderSum ?? 0;
-283 |         acc.children += ev.report?.childrenCount ?? 0;
-284 |         acc.count += 1;
-285 |         return acc;
-286 |       },
-287 |       { revenue: 0, profit: 0, children: 0, count: 0 },
-288 |     );
+190 |         select: {
+191 |           id: true,
+192 |           report: {
+193 |             select: { totalSum: true, remainderSum: true, childrenCount: true },
+194 |           },
+195 |         },
+196 |       }),
+197 | 
+198 |       this.prisma.school.findMany({
+199 |         where: {
+200 |           ...cityFilter,
+201 |           events: {
+202 |             some: {
+203 |               status: { notIn: ['DONE', 'REPORT', 'RE_SALE'] },
+204 |               history: { every: { createdAt: { lt: staleThreshold } } },
+205 |             },
+206 |           },
+207 |         },
+208 |         include: {
+209 |           events: {
+210 |             where: { status: { notIn: ['DONE', 'REPORT', 'RE_SALE'] } },
+211 |             orderBy: { date: 'desc' },
+212 |             take: 1,
+213 |             include: {
+214 |               history: {
+215 |                 orderBy: { createdAt: 'desc' },
+216 |                 take: 1,
+217 |                 select: { createdAt: true },
+218 |               },
+219 |             },
+220 |           },
+221 |         },
+222 |         take: 10,
+223 |       }),
+224 | 
+225 |       this.prisma.eventHistory.findMany({
+226 |         where: {
+227 |           createdAt: { gte: todayStart },
+228 |           ...(cityId ? { event: { cityId } } : {}),
+229 |         },
+230 |         include: {
+231 |           event: {
+232 |             select: {
+233 |               id: true,
+234 |               school: { select: { id: true, name: true } },
+235 |             },
+236 |           },
+237 |         },
+238 |         orderBy: { createdAt: 'desc' },
+239 |         take: 20,
+240 |       }),
+241 |     ]);
+242 |     this.logger.debug(`main Promise.all: ${Date.now() - t1}ms`);
+243 | 
+244 |     let citiesStats: {
+245 |       cityId: string;
+246 |       cityName: string;
+247 |       schoolsCount: number;
+248 |       activeEvents: number;
+249 |       monthRevenue: number;
+250 |     }[] = [];
+251 | 
+252 |     if (isSuperAdmin) {
+253 |       const t2 = Date.now();
+254 |       const [allCities, allSchools, allActiveEvents, allMonthEvents] =
+255 |         await Promise.all([
+256 |           this.prisma.city.findMany({ select: { id: true, name: true } }),
+257 |           this.prisma.school.groupBy({ by: ['cityId'], _count: { id: true } }),
+258 |           this.prisma.event.groupBy({
+259 |             by: ['cityId'],
+260 |             where: {
+261 |               status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
+262 |             },
+263 |             _count: { id: true },
+264 |           }),
+265 |           this.prisma.event.findMany({
+266 |             where: {
+267 |               status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
+268 |               date: { gte: monthStart, lte: monthEnd },
+269 |             },
+270 |             select: {
+271 |               cityId: true,
+272 |               report: { select: { totalSum: true } },
+273 |             },
+274 |           }),
+275 |         ]);
+276 |       this.logger.debug(`superadmin queries: ${Date.now() - t2}ms`);
+277 | 
+278 |       const schoolsIdx = Object.fromEntries(
+279 |         allSchools.map((r) => [r.cityId, r._count.id]),
+280 |       );
+281 |       const activeIdx = Object.fromEntries(
+282 |         allActiveEvents.map((r) => [r.cityId, r._count.id]),
+283 |       );
+284 |       const revenueIdx: Record<string, number> = {};
+285 |       for (const ev of allMonthEvents) {
+286 |         revenueIdx[ev.cityId] =
+287 |           (revenueIdx[ev.cityId] ?? 0) + (ev.report?.totalSum ?? 0);
+288 |       }
 289 | 
-290 |     const staleSchools = staleSchoolsRaw
-291 |       .map((school) => {
-292 |         const lastHistory = school.events[0]?.history[0];
-293 |         const lastActivity = lastHistory?.createdAt ?? null;
-294 |         const daysStale = lastActivity
-295 |           ? Math.floor(
-296 |               (now.getTime() - new Date(lastActivity).getTime()) / 86_400_000,
-297 |             )
-298 |           : null;
-299 |         return {
-300 |           id: school.id,
-301 |           name: school.name,
-302 |           status: school.events[0]?.status ?? null,
-303 |           lastActivity,
-304 |           daysStale,
-305 |         };
-306 |       })
-307 |       .sort((a, b) => (b.daysStale ?? 0) - (a.daysStale ?? 0));
-308 | 
-309 |     const activityFeed = recentActivity.map((h) => ({
-310 |       id: h.id,
-311 |       userName: h.userName,
-312 |       role: h.role,
-313 |       action: h.action,
-314 |       comment: h.comment,
-315 |       createdAt: h.createdAt,
-316 |       schoolId: h.event?.school?.id ?? null,
-317 |       schoolName: h.event?.school?.name ?? null,
-318 |       eventId: h.event?.id ?? null,
-319 |     }));
-320 | 
-321 |     this.logger.debug(`total: ${Date.now() - t0}ms`);
-322 | 
-323 |     const result = {
-324 |       todayEvents,
-325 |       upcomingEvents,
-326 |       funnel,
-327 |       totalSchools,
-328 |       monthlyKpi,
-329 |       staleSchools,
-330 |       activityFeed,
-331 |       citiesStats,
-332 |     };
-333 | 
-334 |     this.cache.set(key, { data: result, ts: Date.now() });
-335 |     return result;
-336 |   }
-337 | }
-338 | 
+290 |       citiesStats = allCities
+291 |         .map((city) => ({
+292 |           cityId: city.id,
+293 |           cityName: city.name,
+294 |           schoolsCount: schoolsIdx[city.id] ?? 0,
+295 |           activeEvents: activeIdx[city.id] ?? 0,
+296 |           monthRevenue: revenueIdx[city.id] ?? 0,
+297 |         }))
+298 |         .sort((a, b) => b.monthRevenue - a.monthRevenue);
+299 |     }
+300 | 
+301 |     const funnel: Record<string, number> = {};
+302 |     for (const stage of PIPELINE_STAGES) funnel[stage] = 0;
+303 |     let totalSchools = 0;
+304 |     for (const row of funnelRows) {
+305 |       const status = row.status ?? 'BASE';
+306 |       const count = Number(row.count);
+307 |       if (funnel[status] !== undefined) funnel[status] += count;
+308 |       totalSchools += count;
+309 |     }
+310 | 
+311 |     const monthlyKpi = monthEvents.reduce(
+312 |       (acc, ev) => {
+313 |         acc.revenue += ev.report?.totalSum ?? 0;
+314 |         acc.profit += ev.report?.remainderSum ?? 0;
+315 |         acc.children += ev.report?.childrenCount ?? 0;
+316 |         acc.count += 1;
+317 |         return acc;
+318 |       },
+319 |       { revenue: 0, profit: 0, children: 0, count: 0 },
+320 |     );
+321 | 
+322 |     const staleSchools = staleSchoolsRaw
+323 |       .map((school) => {
+324 |         const lastHistory = school.events[0]?.history[0];
+325 |         const lastActivity = lastHistory?.createdAt ?? null;
+326 |         const daysStale = lastActivity
+327 |           ? Math.floor(
+328 |               (now.getTime() - new Date(lastActivity).getTime()) / 86_400_000,
+329 |             )
+330 |           : null;
+331 |         return {
+332 |           id: school.id,
+333 |           name: school.name,
+334 |           status: school.events[0]?.status ?? null,
+335 |           lastActivity,
+336 |           daysStale,
+337 |         };
+338 |       })
+339 |       .sort((a, b) => (b.daysStale ?? 0) - (a.daysStale ?? 0));
+340 | 
+341 |     const activityFeed = recentActivity.map((h) => ({
+342 |       id: h.id,
+343 |       userName: h.userName,
+344 |       role: h.role,
+345 |       action: h.action,
+346 |       comment: h.comment,
+347 |       createdAt: h.createdAt,
+348 |       schoolId: h.event?.school?.id ?? null,
+349 |       schoolName: h.event?.school?.name ?? null,
+350 |       eventId: h.event?.id ?? null,
+351 |     }));
+352 | 
+353 |     this.logger.debug(`total: ${Date.now() - t0}ms`);
+354 | 
+355 |     const result = {
+356 |       todayEvents,
+357 |       upcomingEvents,
+358 |       funnel,
+359 |       totalSchools,
+360 |       monthlyKpi,
+361 |       staleSchools,
+362 |       activityFeed,
+363 |       citiesStats,
+364 |     };
+365 | 
+366 |     this.cache.set(key, { data: result, ts: Date.now() });
+367 |     return result;
+368 |   }
+369 | }
+370 | 
 ```
 
 ### File: apps/backend/src/events/dto/add-comment.dto.ts
@@ -4363,381 +4452,416 @@
 
 ### File: apps/backend/src/finance/finance.service.ts
 ```ts
-  0 | import { Injectable } from '@nestjs/common';
-  1 | import { Prisma } from '@prisma/client';
-  2 | import { PrismaService } from '../prisma/prisma.service';
-  3 | 
-  4 | @Injectable()
-  5 | export class FinanceService {
-  6 |   private cache = new Map<string, { data: any; expiresAt: number }>();
-  7 | 
-  8 |   private getCached<T>(key: string): T | null {
-  9 |     const entry = this.cache.get(key);
- 10 |     if (!entry || Date.now() > entry.expiresAt) return null;
- 11 |     return entry.data as T;
- 12 |   }
- 13 | 
- 14 |   private setCached(key: string, data: any, ttlMs = 5 * 60 * 1000) {
- 15 |     this.cache.set(key, { data, expiresAt: Date.now() + ttlMs });
- 16 |   }
- 17 | 
- 18 |   constructor(private readonly prisma: PrismaService) {}
- 19 | 
- 20 |   private resolveDateFrom(period?: string): Date | undefined {
- 21 |     const now = new Date();
- 22 |     if (period === 'month')
- 23 |       return new Date(now.getFullYear(), now.getMonth(), 1);
- 24 |     if (period === 'quarter')
- 25 |       return new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
- 26 |     if (period === 'year') return new Date(now.getFullYear(), 0, 1);
- 27 |     return undefined;
- 28 |   }
- 29 |   private buildSqlFilters({
- 30 |     dateFrom,
- 31 |     cityId,
- 32 |     project,
- 33 |   }: {
- 34 |     dateFrom?: Date;
- 35 |     cityId?: string;
- 36 |     project?: string;
- 37 |   }): Prisma.Sql {
- 38 |     const parts: Prisma.Sql[] = [];
- 39 |     if (dateFrom) parts.push(Prisma.sql`AND e.date >= ${dateFrom}`);
- 40 |     if (cityId) parts.push(Prisma.sql`AND e."cityId" = ${cityId}`);
- 41 |     if (project) parts.push(Prisma.sql`AND e.project  = ${project}`);
- 42 |     return parts.length ? Prisma.join(parts, ' ') : Prisma.empty;
- 43 |   }
- 44 | 
- 45 |   async getMyBalance(userId: string) {
- 46 |     const user = await this.prisma.user.findUnique({
- 47 |       where: { id: userId },
- 48 |       select: { balance: true, name: true },
- 49 |     });
- 50 |     return { balance: user?.balance?.toNumber() ?? 0, name: user?.name ?? '' };
+  0 | import { Prisma } from '@prisma/client';
+  1 | import { PrismaService } from '../prisma/prisma.service';
+  2 | @Injectable()
+  3 | interface FinanceKpi {
+  4 |   totalRevenue: number;
+  5 |   totalExpenses: number;
+  6 |   totalProfit: number;
+  7 |   totalEvents: number;
+  8 | }
+  9 | 
+ 10 | interface FinanceFilterOptions {
+ 11 |   projects: string[];
+ 12 |   cities: { id: string; name: string }[];
+ 13 | }
+ 14 | 
+ 15 | interface FinanceDashboardResult {
+ 16 |   kpi: FinanceKpi;
+ 17 |   monthly: { month: string; revenue: number; profit: number }[];
+ 18 |   expectedRevenue: number;
+ 19 |   filters: FinanceFilterOptions;
+ 20 |   byProject?: { name: string; value: number }[];
+ 21 |   byExpenseCategory?: { name: string; value: number }[];
+ 22 |   topCities?: { name: string; revenue: number; profit: number }[];
+ 23 |   topSchools?: { name: string; count: number; revenue: number }[];
+ 24 |   topEvents?: {
+ 25 |     id: string;
+ 26 |     date: Date;
+ 27 |     school: string;
+ 28 |     profit: number;
+ 29 |     revenue: number;
+ 30 |   }[];
+ 31 |   worstEvents?: {
+ 32 |     id: string;
+ 33 |     date: Date;
+ 34 |     school: string;
+ 35 |     profit: number;
+ 36 |     revenue: number;
+ 37 |   }[];
+ 38 | }
+ 39 | 
+ 40 | export class FinanceService {
+ 41 |   private cache = new Map<string, { data: unknown; expiresAt: number }>();
+ 42 | 
+ 43 |   private getCached<T>(key: string): T | null {
+ 44 |     const entry = this.cache.get(key);
+ 45 |     if (!entry || Date.now() > entry.expiresAt) return null;
+ 46 |     return entry.data as T;
+ 47 |   }
+ 48 | 
+ 49 |   private setCached(key: string, data: unknown, ttlMs = 5 * 60 * 1000) {
+ 50 |     this.cache.set(key, { data, expiresAt: Date.now() + ttlMs });
  51 |   }
  52 | 
- 53 |   async getDashboard({
- 54 |     period,
- 55 |     cityId,
- 56 |     project,
- 57 |     minimal = false,
- 58 |   }: {
- 59 |     period?: string;
- 60 |     cityId?: string;
- 61 |     project?: string;
- 62 |     minimal?: boolean;
- 63 |   }) {
- 64 |     const cacheKey = `finance:${cityId}:${period}:${project}:${minimal}`;
- 65 |     const cached = this.getCached(cacheKey);
- 66 |     if (cached) return cached;
- 67 | 
- 68 |     const dateFrom = this.resolveDateFrom(period);
- 69 |     const filters = this.buildSqlFilters({ dateFrom, cityId, project });
- 70 | 
- 71 |     const baseEventWhere: Prisma.EventWhereInput = {
- 72 |       status: 'RE_SALE',
- 73 |       ...(dateFrom ? { date: { gte: dateFrom } } : {}),
- 74 |       ...(cityId ? { cityId } : {}),
- 75 |       ...(project ? { project } : {}),
- 76 |     };
- 77 | 
- 78 |     const kpiAgg = await this.prisma.eventReport.aggregate({
- 79 |       where: { event: baseEventWhere },
- 80 |       _sum: { totalSum: true, remainderSum: true },
- 81 |       _count: { eventId: true },
- 82 |     });
- 83 | 
- 84 |     const totalRevenue = kpiAgg._sum.totalSum ?? 0;
- 85 |     const totalProfit = kpiAgg._sum.remainderSum ?? 0;
- 86 |     const totalEvents = kpiAgg._count.eventId ?? 0;
+ 53 |   constructor(private readonly prisma: PrismaService) {}
+ 54 | 
+ 55 |   private resolveDateFrom(period?: string): Date | undefined {
+ 56 |     const now = new Date();
+ 57 |     if (period === 'month')
+ 58 |       return new Date(now.getFullYear(), now.getMonth(), 1);
+ 59 |     if (period === 'quarter')
+ 60 |       return new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+ 61 |     if (period === 'year') return new Date(now.getFullYear(), 0, 1);
+ 62 |     return undefined;
+ 63 |   }
+ 64 |   private buildSqlFilters({
+ 65 |     dateFrom,
+ 66 |     cityId,
+ 67 |     project,
+ 68 |   }: {
+ 69 |     dateFrom?: Date;
+ 70 |     cityId?: string;
+ 71 |     project?: string;
+ 72 |   }): Prisma.Sql {
+ 73 |     const parts: Prisma.Sql[] = [];
+ 74 |     if (dateFrom) parts.push(Prisma.sql`AND e.date >= ${dateFrom}`);
+ 75 |     if (cityId) parts.push(Prisma.sql`AND e."cityId" = ${cityId}`);
+ 76 |     if (project) parts.push(Prisma.sql`AND e.project  = ${project}`);
+ 77 |     return parts.length ? Prisma.join(parts, ' ') : Prisma.empty;
+ 78 |   }
+ 79 | 
+ 80 |   async getMyBalance(userId: string) {
+ 81 |     const user = await this.prisma.user.findUnique({
+ 82 |       where: { id: userId },
+ 83 |       select: { balance: true, name: true },
+ 84 |     });
+ 85 |     return { balance: user?.balance?.toNumber() ?? 0, name: user?.name ?? '' };
+ 86 |   }
  87 | 
- 88 |     const expensesRaw = await this.prisma.expenseItem.findMany({
- 89 |       where: {
- 90 |         report: {
- 91 |           event: baseEventWhere,
- 92 |         },
- 93 |       },
- 94 |       select: {
- 95 |         category: true,
- 96 |         name: true,
- 97 |         amount: true,
- 98 |       },
- 99 |     });
-100 | 
-101 |     const expCatMap: Record<string, number> = {};
-102 |     let totalExpenses = 0;
-103 | 
-104 |     for (const exp of expensesRaw) {
-105 |       const cat: string = exp.category || exp.name || 'Інше';
-106 |       const amt: number = Number(exp.amount) || 0;
-107 |       expCatMap[cat] = (expCatMap[cat] ?? 0) + amt;
-108 |       totalExpenses += amt;
-109 |     }
-110 | 
-111 |     const byExpenseCategory = Object.entries(expCatMap).map(
-112 |       ([name, value]) => ({
-113 |         name,
-114 |         value,
-115 |       }),
-116 |     );
-117 |     type MonthlyRow = {
-118 |       year: number;
-119 |       month: number;
-120 |       revenue: number;
-121 |       profit: number;
-122 |     };
-123 |     const monthlyRaw = await this.prisma.$queryRaw<MonthlyRow[]>`
-124 |       SELECT
-125 |         EXTRACT(YEAR  FROM e.date)::int                   AS year,
-126 |         EXTRACT(MONTH FROM e.date)::int                   AS month,
-127 |         COALESCE(SUM(r."totalSum"),      0)::float        AS revenue,
-128 |         COALESCE(SUM(r."remainderSum"),  0)::float        AS profit
-129 |       FROM "Event" e
-130 |       JOIN "EventReport" r ON r."eventId" = e.id
-131 |       WHERE e.status = 'RE_SALE'
-132 |       ${filters}
-133 |       GROUP BY year, month
-134 |       ORDER BY year, month
-135 |     `;
-136 | 
-137 |     const monthly = monthlyRaw.map((row) => ({
-138 |       month: new Date(row.year, row.month - 1, 1).toLocaleString('uk-UA', {
-139 |         month: 'short',
-140 |         year: '2-digit',
-141 |       }),
-142 |       revenue: row.revenue,
-143 |       profit: row.profit,
-144 |     }));
+ 88 |  async getDashboard({
+ 89 |     period,
+ 90 |     cityId,
+ 91 |     project,
+ 92 |     minimal = false,
+ 93 |   }: {
+ 94 |     period?: string;
+ 95 |     cityId?: string;
+ 96 |     project?: string;
+ 97 |     minimal?: boolean;
+ 98 |   }): Promise<FinanceDashboardResult> {
+ 99 |     const cacheKey = `finance:${cityId}:${period}:${project}:${minimal}`;
+100 |     const cached = this.getCached<FinanceDashboardResult>(cacheKey);
+101 |     if (cached) return cached;
+102 | 
+103 |     const dateFrom = this.resolveDateFrom(period);
+104 |     const filters = this.buildSqlFilters({ dateFrom, cityId, project });
+105 | 
+106 |     const baseEventWhere: Prisma.EventWhereInput = {
+107 |       status: 'RE_SALE',
+108 |       ...(dateFrom ? { date: { gte: dateFrom } } : {}),
+109 |       ...(cityId ? { cityId } : {}),
+110 |       ...(project ? { project } : {}),
+111 |     };
+112 | 
+113 |     const kpiAgg = await this.prisma.eventReport.aggregate({
+114 |       where: { event: baseEventWhere },
+115 |       _sum: { totalSum: true, remainderSum: true },
+116 |       _count: { eventId: true },
+117 |     });
+118 | 
+119 |     const totalRevenue = kpiAgg._sum.totalSum ?? 0;
+120 |     const totalProfit = kpiAgg._sum.remainderSum ?? 0;
+121 |     const totalEvents = kpiAgg._count.eventId ?? 0;
+122 | 
+123 |     const expensesRaw = await this.prisma.expenseItem.findMany({
+124 |       where: {
+125 |         report: {
+126 |           event: baseEventWhere,
+127 |         },
+128 |       },
+129 |       select: {
+130 |         category: true,
+131 |         name: true,
+132 |         amount: true,
+133 |       },
+134 |     });
+135 | 
+136 |     const expCatMap: Record<string, number> = {};
+137 |     let totalExpenses = 0;
+138 | 
+139 |     for (const exp of expensesRaw) {
+140 |       const cat: string = exp.category || exp.name || 'Інше';
+141 |       const amt: number = Number(exp.amount) || 0;
+142 |       expCatMap[cat] = (expCatMap[cat] ?? 0) + amt;
+143 |       totalExpenses += amt;
+144 |     }
 145 | 
-146 |     const plannedAgg = await this.prisma.event.aggregate({
-147 |       where: {
-148 |         status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
-149 |         ...(cityId ? { cityId } : {}),
-150 |       },
-151 |       _sum: { price: true },
-152 |     });
-153 |     const expectedRevenue = plannedAgg._sum.price ?? 0;
-154 |     const [projectsRaw, cities] = await Promise.all([
-155 |       this.prisma.event.findMany({
-156 |         select: { project: true },
-157 |         distinct: ['project'],
-158 |       }),
-159 |       this.prisma.city.findMany({ select: { id: true, name: true } }),
-160 |     ]);
-161 |     const filterOptions = {
-162 |       projects: projectsRaw.map((p) => p.project).filter(Boolean),
-163 |       cities,
-164 |     };
-165 | 
-166 |     if (minimal) {
-167 |       const result = {
-168 |         kpi: { totalRevenue, totalExpenses, totalProfit, totalEvents },
-169 |         monthly,
-170 |         expectedRevenue,
-171 |         filters: filterOptions,
-172 |       };
-173 |       this.setCached(cacheKey, result);
-174 |       return result;
-175 |     }
-176 | 
-177 |     type ProjectRow = { project: string; value: number };
-178 |     const byProjectRows = await this.prisma.$queryRaw<ProjectRow[]>`
-179 |       SELECT
-180 |         COALESCE(e.project, 'Інше')              AS project,
-181 |         COALESCE(SUM(r."totalSum"), 0)::float    AS value
-182 |       FROM "Event" e
-183 |       JOIN "EventReport" r ON r."eventId" = e.id
-184 |       WHERE e.status = 'RE_SALE'
-185 |       ${filters}
-186 |       GROUP BY e.project
-187 |       ORDER BY value DESC
-188 |     `;
-189 |     const byProject = byProjectRows.map((r) => ({
-190 |       name: r.project,
-191 |       value: r.value,
-192 |     }));
-193 |     type CityRow = {
-194 |       cityId: string;
-195 |       name: string;
-196 |       revenue: number;
-197 |       profit: number;
-198 |     };
-199 |     const topCitiesRows = await this.prisma.$queryRaw<CityRow[]>`
-200 |       SELECT
-201 |         e."cityId",
-202 |         COALESCE(c.name, '—')                    AS name,
-203 |         COALESCE(SUM(r."totalSum"),     0)::float AS revenue,
-204 |         COALESCE(SUM(r."remainderSum"), 0)::float AS profit
-205 |       FROM "Event" e
-206 |       JOIN "EventReport" r ON r."eventId" = e.id
-207 |       LEFT JOIN "City" c   ON c.id = e."cityId"
-208 |       WHERE e.status = 'RE_SALE'
-209 |       ${filters}
-210 |       GROUP BY e."cityId", c.name
-211 |       ORDER BY revenue DESC
-212 |       LIMIT 5
-213 |     `;
-214 |     const topCities = topCitiesRows.map(({ name, revenue, profit }) => ({
-215 |       name,
-216 |       revenue,
-217 |       profit,
-218 |     }));
-219 | 
-220 |     type SchoolRow = {
-221 |       schoolId: string;
-222 |       name: string;
-223 |       count: number;
-224 |       revenue: number;
-225 |     };
-226 |     const topSchoolsRows = await this.prisma.$queryRaw<SchoolRow[]>`
-227 |       SELECT
-228 |         e."schoolId",
-229 |         COALESCE(s.name, '—')                    AS name,
-230 |         COUNT(e.id)::int                         AS count,
-231 |         COALESCE(SUM(r."totalSum"), 0)::float    AS revenue
-232 |       FROM "Event" e
-233 |       JOIN "EventReport" r ON r."eventId" = e.id
-234 |       LEFT JOIN "School" s ON s.id = e."schoolId"
-235 |       WHERE e.status = 'RE_SALE'
-236 |       ${filters}
-237 |       GROUP BY e."schoolId", s.name
-238 |       ORDER BY revenue DESC
-239 |       LIMIT 5
-240 |     `;
-241 |     const topSchools = topSchoolsRows.map(({ name, count, revenue }) => ({
-242 |       name,
-243 |       count,
-244 |       revenue,
-245 |     }));
-246 | 
-247 |     const eventSelect = {
-248 |       totalSum: true,
-249 |       remainderSum: true,
-250 |       event: {
-251 |         select: {
-252 |           id: true,
-253 |           date: true,
-254 |           school: { select: { name: true } },
-255 |         },
-256 |       },
-257 |     } satisfies Prisma.EventReportSelect;
-258 | 
-259 |     const [topEventsRaw, worstEventsRaw] = await Promise.all([
-260 |       this.prisma.eventReport.findMany({
-261 |         where: { event: baseEventWhere },
-262 |         select: eventSelect,
-263 |         orderBy: { remainderSum: 'desc' },
-264 |         take: 5,
-265 |       }),
-266 |       this.prisma.eventReport.findMany({
-267 |         where: { event: baseEventWhere },
-268 |         select: eventSelect,
-269 |         orderBy: { remainderSum: 'asc' },
-270 |         take: 5,
-271 |       }),
-272 |     ]);
-273 | 
-274 |     const mapEvent = (r: (typeof topEventsRaw)[number]) => ({
-275 |       id: r.event.id,
-276 |       date: r.event.date,
-277 |       school: r.event.school?.name ?? '—',
-278 |       profit: r.remainderSum ?? 0,
-279 |       revenue: r.totalSum ?? 0,
-280 |     });
+146 |     const byExpenseCategory = Object.entries(expCatMap).map(
+147 |       ([name, value]) => ({
+148 |         name,
+149 |         value,
+150 |       }),
+151 |     );
+152 |     type MonthlyRow = {
+153 |       year: number;
+154 |       month: number;
+155 |       revenue: number;
+156 |       profit: number;
+157 |     };
+158 |     const monthlyRaw = await this.prisma.$queryRaw<MonthlyRow[]>`
+159 |       SELECT
+160 |         EXTRACT(YEAR  FROM e.date)::int                   AS year,
+161 |         EXTRACT(MONTH FROM e.date)::int                   AS month,
+162 |         COALESCE(SUM(r."totalSum"),      0)::float        AS revenue,
+163 |         COALESCE(SUM(r."remainderSum"),  0)::float        AS profit
+164 |       FROM "Event" e
+165 |       JOIN "EventReport" r ON r."eventId" = e.id
+166 |       WHERE e.status = 'RE_SALE'
+167 |       ${filters}
+168 |       GROUP BY year, month
+169 |       ORDER BY year, month
+170 |     `;
+171 | 
+172 |     const monthly = monthlyRaw.map((row) => ({
+173 |       month: new Date(row.year, row.month - 1, 1).toLocaleString('uk-UA', {
+174 |         month: 'short',
+175 |         year: '2-digit',
+176 |       }),
+177 |       revenue: row.revenue,
+178 |       profit: row.profit,
+179 |     }));
+180 | 
+181 |     const plannedAgg = await this.prisma.event.aggregate({
+182 |       where: {
+183 |         status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
+184 |         ...(cityId ? { cityId } : {}),
+185 |       },
+186 |       _sum: { price: true },
+187 |     });
+188 |     const expectedRevenue = plannedAgg._sum.price ?? 0;
+189 |     const [projectsRaw, cities] = await Promise.all([
+190 |       this.prisma.event.findMany({
+191 |         select: { project: true },
+192 |         distinct: ['project'],
+193 |       }),
+194 |       this.prisma.city.findMany({ select: { id: true, name: true } }),
+195 |     ]);
+196 |     const filterOptions = {
+197 |       projects: projectsRaw.map((p) => p.project).filter(Boolean),
+198 |       cities,
+199 |     };
+200 | 
+201 |     if (minimal) {
+202 |       const result = {
+203 |         kpi: { totalRevenue, totalExpenses, totalProfit, totalEvents },
+204 |         monthly,
+205 |         expectedRevenue,
+206 |         filters: filterOptions,
+207 |       };
+208 |       this.setCached(cacheKey, result);
+209 |       return result;
+210 |     }
+211 | 
+212 |     type ProjectRow = { project: string; value: number };
+213 |     const byProjectRows = await this.prisma.$queryRaw<ProjectRow[]>`
+214 |       SELECT
+215 |         COALESCE(e.project, 'Інше')              AS project,
+216 |         COALESCE(SUM(r."totalSum"), 0)::float    AS value
+217 |       FROM "Event" e
+218 |       JOIN "EventReport" r ON r."eventId" = e.id
+219 |       WHERE e.status = 'RE_SALE'
+220 |       ${filters}
+221 |       GROUP BY e.project
+222 |       ORDER BY value DESC
+223 |     `;
+224 |     const byProject = byProjectRows.map((r) => ({
+225 |       name: r.project,
+226 |       value: r.value,
+227 |     }));
+228 |     type CityRow = {
+229 |       cityId: string;
+230 |       name: string;
+231 |       revenue: number;
+232 |       profit: number;
+233 |     };
+234 |     const topCitiesRows = await this.prisma.$queryRaw<CityRow[]>`
+235 |       SELECT
+236 |         e."cityId",
+237 |         COALESCE(c.name, '—')                    AS name,
+238 |         COALESCE(SUM(r."totalSum"),     0)::float AS revenue,
+239 |         COALESCE(SUM(r."remainderSum"), 0)::float AS profit
+240 |       FROM "Event" e
+241 |       JOIN "EventReport" r ON r."eventId" = e.id
+242 |       LEFT JOIN "City" c   ON c.id = e."cityId"
+243 |       WHERE e.status = 'RE_SALE'
+244 |       ${filters}
+245 |       GROUP BY e."cityId", c.name
+246 |       ORDER BY revenue DESC
+247 |       LIMIT 5
+248 |     `;
+249 |     const topCities = topCitiesRows.map(({ name, revenue, profit }) => ({
+250 |       name,
+251 |       revenue,
+252 |       profit,
+253 |     }));
+254 | 
+255 |     type SchoolRow = {
+256 |       schoolId: string;
+257 |       name: string;
+258 |       count: number;
+259 |       revenue: number;
+260 |     };
+261 |     const topSchoolsRows = await this.prisma.$queryRaw<SchoolRow[]>`
+262 |       SELECT
+263 |         e."schoolId",
+264 |         COALESCE(s.name, '—')                    AS name,
+265 |         COUNT(e.id)::int                         AS count,
+266 |         COALESCE(SUM(r."totalSum"), 0)::float    AS revenue
+267 |       FROM "Event" e
+268 |       JOIN "EventReport" r ON r."eventId" = e.id
+269 |       LEFT JOIN "School" s ON s.id = e."schoolId"
+270 |       WHERE e.status = 'RE_SALE'
+271 |       ${filters}
+272 |       GROUP BY e."schoolId", s.name
+273 |       ORDER BY revenue DESC
+274 |       LIMIT 5
+275 |     `;
+276 |     const topSchools = topSchoolsRows.map(({ name, count, revenue }) => ({
+277 |       name,
+278 |       count,
+279 |       revenue,
+280 |     }));
 281 | 
-282 |     const topEvents = topEventsRaw.map(mapEvent);
-283 |     const worstEvents = worstEventsRaw.map(mapEvent);
-284 | 
-285 |     const result = {
-286 |       kpi: { totalRevenue, totalExpenses, totalProfit, totalEvents },
-287 |       monthly,
-288 |       byProject,
-289 |       byExpenseCategory,
-290 |       topCities,
-291 |       topSchools,
-292 |       topEvents,
-293 |       worstEvents,
-294 |       expectedRevenue,
-295 |       filters: filterOptions,
-296 |     };
-297 |     this.setCached(cacheKey, result);
-298 |     return result;
-299 |   }
-300 | 
-301 |   async getStaffRevenue({
-302 |     period,
-303 |     cityId,
-304 |   }: {
-305 |     period?: string;
-306 |     cityId?: string;
-307 |   }) {
-308 |     const dateFrom = this.resolveDateFrom(period);
-309 |     const staffFilters = this.buildSqlFilters({ dateFrom, cityId });
-310 | 
-311 |     type StaffRow = {
-312 |       id: string;
-313 |       name: string;
-314 |       role: 'HOST' | 'DRIVER';
-315 |       revenue: number;
-316 |       eventsCount: number;
-317 |     };
-318 | 
-319 |     const [hostRows, driverRows, totalAgg, eventsCount] = await Promise.all([
-320 |       this.prisma.$queryRaw<StaffRow[]>`
-321 |         SELECT
-322 |           u.id,
-323 |           u.name,
-324 |           'HOST'::text                              AS role,
-325 |           COALESCE(SUM(r."totalSum"), 0)::float     AS revenue,
-326 |           COUNT(e.id)::int                          AS "eventsCount"
-327 |         FROM "Event" e
-328 |         JOIN "Crew"         c ON c.id = e."crewId"
-329 |         JOIN "User"         u ON u.id = c."hostId"
-330 |         JOIN "EventReport"  r ON r."eventId" = e.id
-331 |         WHERE e.status = 'RE_SALE'
-332 |         ${staffFilters}
-333 |         GROUP BY u.id, u.name
-334 |       `,
-335 |       this.prisma.$queryRaw<StaffRow[]>`
-336 |         SELECT
-337 |           u.id,
-338 |           u.name,
-339 |           'DRIVER'::text                            AS role,
-340 |           COALESCE(SUM(r."totalSum"), 0)::float     AS revenue,
-341 |           COUNT(e.id)::int                          AS "eventsCount"
-342 |         FROM "Event" e
-343 |         JOIN "Crew"        c ON c.id = e."crewId"
-344 |         JOIN "User"        u ON u.id = c."driverId"
-345 |         JOIN "EventReport" r ON r."eventId" = e.id
-346 |         WHERE e.status = 'RE_SALE'
-347 |         ${staffFilters}
-348 |         GROUP BY u.id, u.name
-349 |       `,
-350 |       this.prisma.$queryRaw<[{ revenue: number }]>`
-351 |         SELECT COALESCE(SUM(r."totalSum"), 0)::float AS revenue
-352 |         FROM "Event" e
-353 |         JOIN "EventReport" r ON r."eventId" = e.id
-354 |         WHERE e.status = 'RE_SALE'
-355 |         ${staffFilters}
-356 |       `,
-357 |       this.prisma.event.count({
-358 |         where: {
-359 |           status: 'RE_SALE',
-360 |           ...(dateFrom ? { date: { gte: dateFrom } } : {}),
-361 |           ...(cityId ? { cityId } : {}),
-362 |         },
-363 |       }),
-364 |     ]);
-365 | 
-366 |     const staff = [...hostRows, ...driverRows].sort(
-367 |       (a, b) => b.revenue - a.revenue,
-368 |     );
-369 |     const totalRevenue = totalAgg[0]?.revenue ?? 0;
-370 | 
-371 |     return { staff, totalRevenue, eventsCount };
-372 |   }
-373 | }
-374 | 
+282 |     const eventSelect = {
+283 |       totalSum: true,
+284 |       remainderSum: true,
+285 |       event: {
+286 |         select: {
+287 |           id: true,
+288 |           date: true,
+289 |           school: { select: { name: true } },
+290 |         },
+291 |       },
+292 |     } satisfies Prisma.EventReportSelect;
+293 | 
+294 |     const [topEventsRaw, worstEventsRaw] = await Promise.all([
+295 |       this.prisma.eventReport.findMany({
+296 |         where: { event: baseEventWhere },
+297 |         select: eventSelect,
+298 |         orderBy: { remainderSum: 'desc' },
+299 |         take: 5,
+300 |       }),
+301 |       this.prisma.eventReport.findMany({
+302 |         where: { event: baseEventWhere },
+303 |         select: eventSelect,
+304 |         orderBy: { remainderSum: 'asc' },
+305 |         take: 5,
+306 |       }),
+307 |     ]);
+308 | 
+309 |     const mapEvent = (r: (typeof topEventsRaw)[number]) => ({
+310 |       id: r.event.id,
+311 |       date: r.event.date,
+312 |       school: r.event.school?.name ?? '—',
+313 |       profit: r.remainderSum ?? 0,
+314 |       revenue: r.totalSum ?? 0,
+315 |     });
+316 | 
+317 |     const topEvents = topEventsRaw.map(mapEvent);
+318 |     const worstEvents = worstEventsRaw.map(mapEvent);
+319 | 
+320 |     const result = {
+321 |       kpi: { totalRevenue, totalExpenses, totalProfit, totalEvents },
+322 |       monthly,
+323 |       byProject,
+324 |       byExpenseCategory,
+325 |       topCities,
+326 |       topSchools,
+327 |       topEvents,
+328 |       worstEvents,
+329 |       expectedRevenue,
+330 |       filters: filterOptions,
+331 |     };
+332 |     this.setCached(cacheKey, result);
+333 |     return result;
+334 |   }
+335 | 
+336 |   async getStaffRevenue({
+337 |     period,
+338 |     cityId,
+339 |   }: {
+340 |     period?: string;
+341 |     cityId?: string;
+342 |   }) {
+343 |     const dateFrom = this.resolveDateFrom(period);
+344 |     const staffFilters = this.buildSqlFilters({ dateFrom, cityId });
+345 | 
+346 |     type StaffRow = {
+347 |       id: string;
+348 |       name: string;
+349 |       role: 'HOST' | 'DRIVER';
+350 |       revenue: number;
+351 |       eventsCount: number;
+352 |     };
+353 | 
+354 |     const [hostRows, driverRows, totalAgg, eventsCount] = await Promise.all([
+355 |       this.prisma.$queryRaw<StaffRow[]>`
+356 |         SELECT
+357 |           u.id,
+358 |           u.name,
+359 |           'HOST'::text                              AS role,
+360 |           COALESCE(SUM(r."totalSum"), 0)::float     AS revenue,
+361 |           COUNT(e.id)::int                          AS "eventsCount"
+362 |         FROM "Event" e
+363 |         JOIN "Crew"         c ON c.id = e."crewId"
+364 |         JOIN "User"         u ON u.id = c."hostId"
+365 |         JOIN "EventReport"  r ON r."eventId" = e.id
+366 |         WHERE e.status = 'RE_SALE'
+367 |         ${staffFilters}
+368 |         GROUP BY u.id, u.name
+369 |       `,
+370 |       this.prisma.$queryRaw<StaffRow[]>`
+371 |         SELECT
+372 |           u.id,
+373 |           u.name,
+374 |           'DRIVER'::text                            AS role,
+375 |           COALESCE(SUM(r."totalSum"), 0)::float     AS revenue,
+376 |           COUNT(e.id)::int                          AS "eventsCount"
+377 |         FROM "Event" e
+378 |         JOIN "Crew"        c ON c.id = e."crewId"
+379 |         JOIN "User"        u ON u.id = c."driverId"
+380 |         JOIN "EventReport" r ON r."eventId" = e.id
+381 |         WHERE e.status = 'RE_SALE'
+382 |         ${staffFilters}
+383 |         GROUP BY u.id, u.name
+384 |       `,
+385 |       this.prisma.$queryRaw<[{ revenue: number }]>`
+386 |         SELECT COALESCE(SUM(r."totalSum"), 0)::float AS revenue
+387 |         FROM "Event" e
+388 |         JOIN "EventReport" r ON r."eventId" = e.id
+389 |         WHERE e.status = 'RE_SALE'
+390 |         ${staffFilters}
+391 |       `,
+392 |       this.prisma.event.count({
+393 |         where: {
+394 |           status: 'RE_SALE',
+395 |           ...(dateFrom ? { date: { gte: dateFrom } } : {}),
+396 |           ...(cityId ? { cityId } : {}),
+397 |         },
+398 |       }),
+399 |     ]);
+400 | 
+401 |     const staff = [...hostRows, ...driverRows].sort(
+402 |       (a, b) => b.revenue - a.revenue,
+403 |     );
+404 |     const totalRevenue = totalAgg[0]?.revenue ?? 0;
+405 | 
+406 |     return { staff, totalRevenue, eventsCount };
+407 |   }
+408 | }
+409 | 
 ```
 
 ### File: apps/backend/src/issues/dto/create-issue.dto.ts
@@ -5002,21 +5126,26 @@
   5 | async function bootstrap() {
   6 |   const app = await NestFactory.create(AppModule);
   7 |   app.use(cookieParser());
-  8 |   app.enableCors({
-  9 |     origin: process.env.FRONTEND_URL, // напр. https://crm-tau-nine.vercel.app
- 10 |     credentials: true,
- 11 |   });
- 12 |   app.useGlobalPipes(
- 13 |     new ValidationPipe({
- 14 |       transform: true,
- 15 |       whitelist: true,
- 16 |       forbidNonWhitelisted: true,
- 17 |     }),
- 18 |   );
- 19 |   await app.listen(process.env.PORT ?? 3000);
- 20 | }
- 21 | bootstrap();
- 22 | 
+  8 |   const allowedOrigins = (process.env.FRONTEND_URL ?? '')
+  9 |     .split(',')
+ 10 |     .map((o) => o.trim())
+ 11 |     .filter(Boolean);
+ 12 | 
+ 13 |   app.enableCors({
+ 14 |     origin: allowedOrigins,
+ 15 |     credentials: true,
+ 16 |   });
+ 17 |   app.useGlobalPipes(
+ 18 |     new ValidationPipe({
+ 19 |       transform: true,
+ 20 |       whitelist: true,
+ 21 |       forbidNonWhitelisted: true,
+ 22 |     }),
+ 23 |   );
+ 24 |   await app.listen(process.env.PORT ?? 3000);
+ 25 | }
+ 26 | bootstrap();
+ 27 | 
 ```
 
 ### File: apps/backend/src/prisma/prisma.mock.ts
@@ -8757,196 +8886,223 @@
 ### File: apps/frontend/src/App.tsx
 ```tsx
   0 | import React, { useState, Suspense, lazy } from "react";
-  1 | import {
-  2 |   BrowserRouter as Router,
-  3 |   Routes,
-  4 |   Route,
-  5 |   Navigate,
-  6 | } from "react-router-dom";
-  7 | 
-  8 | import Layout from "./components/Layout";
-  9 | import Login from "./pages/Login";
- 10 | import { CityProvider } from "./context/CityContext";
- 11 | import { api } from "./config/api";
- 12 | 
- 13 | import ProtectedRoute from "./components/ProtectedRoute";
- 14 | 
- 15 | const CityProfile = lazy(() => import("./pages/CityProfile"));
- 16 | const EventReport = lazy(() => import("./pages/EventReport"));
- 17 | 
- 18 | const Cities = lazy(() => import("./pages/Cities"));
- 19 | const Schools = lazy(() => import("./pages/Schools"));
- 20 | const SchoolProfile = lazy(() => import("./pages/SchoolProfile"));
- 21 | const Employees = lazy(() => import("./pages/Employees"));
- 22 | const Finance = lazy(() => import("./pages/Finance"));
- 23 | const CalendarView = lazy(() => import("./pages/CalendarView"));
- 24 | const Dashboard = lazy(() => import("./pages/Dashboard"));
- 25 | const Kindergartens = lazy(() => import("./pages/Kindergartens"));
- 26 | 
- 27 | const PageLoader = () => (
- 28 |   <div className="flex items-center justify-center h-full min-h-[50vh]">
- 29 |     <div className="text-slate-400 font-medium animate-pulse">
- 30 |       Завантаження сторінки...
- 31 |     </div>
- 32 |   </div>
- 33 | );
- 34 | 
- 35 | export default function App() {
- 36 |   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
- 37 |     !!localStorage.getItem("user"),
- 38 |   );
- 39 | 
- 40 |   const handleLogin = () => {
- 41 |     setIsAuthenticated(true);
- 42 |   };
- 43 | 
- 44 |   const handleLogout = async () => {
- 45 |     try {
- 46 |       await api.post("/auth/logout");
- 47 |     } catch {
- 48 |       // ігноруємо — все одно чистимо локальний стан
- 49 |     }
- 50 |     localStorage.removeItem("user");
- 51 |     setIsAuthenticated(false);
- 52 |   };
- 53 | 
- 54 |   return (
- 55 |     <Router>
- 56 |       <CityProvider>
- 57 |         <Routes>
- 58 |           {/* Публічний маршрут: Логін */}
- 59 |           <Route
- 60 |             path="/login"
- 61 |             element={
- 62 |               !isAuthenticated ? (
- 63 |                 <Login onLogin={handleLogin} />
- 64 |               ) : (
- 65 |                 <Navigate to="/cities" replace />
- 66 |               )
- 67 |             }
- 68 |           />
- 69 | 
- 70 |           {/* Захищені маршрути (Layout відображає бокове меню) */}
- 71 |           <Route
- 72 |             path="/"
- 73 |             element={
- 74 |               isAuthenticated ? (
- 75 |                 <Layout onLogout={handleLogout} />
- 76 |               ) : (
- 77 |                 <Navigate to="/login" replace />
- 78 |               )
- 79 |             }
- 80 |           >
- 81 |             {/* Редірект з кореня на сторінку міст за замовчуванням */}
- 82 |             <Route index element={<Navigate to="/schools" replace />} />
- 83 | 
- 84 |             {/* Обгортаємо всі вкладені маршрути в Suspense. 
- 85 |               Коли React намагається відрендерити "ліниву" сторінку, він показує fallback (PageLoader), 
- 86 |               поки завантажується файл з сервера.
- 87 |             */}
- 88 |             <Route
- 89 |               path="cities"
- 90 |               element={
- 91 |                 <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
- 92 |                   <Suspense fallback={<PageLoader />}>
- 93 |                     <Cities />
- 94 |                   </Suspense>
- 95 |                 </ProtectedRoute>
- 96 |               }
- 97 |             />
- 98 | 
- 99 |             <Route
-100 |               path="schools"
-101 |               element={
-102 |                 <Suspense fallback={<PageLoader />}>
-103 |                   <Schools />
-104 |                 </Suspense>
-105 |               }
-106 |             />
-107 | 
-108 |             <Route
-109 |               path="schools/:id"
-110 |               element={
+  1 | 
+  2 | function lazyWithRetry(factory: () => Promise<any>) {
+  3 |   return lazy(async () => {
+  4 |     try {
+  5 |       return await factory();
+  6 |     } catch (err) {
+  7 |       const key = "chunk-reload-ts";
+  8 |       const last = Number(sessionStorage.getItem(key) || 0);
+  9 |       if (Date.now() - last > 10000) {
+ 10 |         sessionStorage.setItem(key, String(Date.now()));
+ 11 |         window.location.reload();
+ 12 |         return new Promise(() => {});
+ 13 |       }
+ 14 |       throw err;
+ 15 |     }
+ 16 |   });
+ 17 | }
+ 18 | import {
+ 19 |   BrowserRouter as Router,
+ 20 |   Routes,
+ 21 |   Route,
+ 22 |   Navigate,
+ 23 | } from "react-router-dom";
+ 24 | 
+ 25 | import Layout from "./components/Layout";
+ 26 | import Login from "./pages/Login";
+ 27 | import { CityProvider } from "./context/CityContext";
+ 28 | import { AuthProvider, useAuth } from "./context/AuthContext";
+ 29 | import { api } from "./config/api";
+ 30 | 
+ 31 | import ProtectedRoute from "./components/ProtectedRoute";
+ 32 | 
+ 33 | const CityProfile = lazyWithRetry(() => import("./pages/CityProfile"));
+ 34 | const EventReport = lazyWithRetry(() => import("./pages/EventReport"));
+ 35 | 
+ 36 | const Cities = lazyWithRetry(() => import("./pages/Cities"));
+ 37 | const Schools = lazyWithRetry(() => import("./pages/Schools"));
+ 38 | const SchoolProfile = lazyWithRetry(() => import("./pages/SchoolProfile"));
+ 39 | const Employees = lazyWithRetry(() => import("./pages/Employees"));
+ 40 | const Finance = lazyWithRetry(() => import("./pages/Finance"));
+ 41 | const CalendarView = lazyWithRetry(() => import("./pages/CalendarView"));
+ 42 | const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
+ 43 | const Kindergartens = lazyWithRetry(() => import("./pages/Kindergartens"));
+ 44 | 
+ 45 | const PageLoader = () => (
+ 46 |   <div className="flex items-center justify-center h-full min-h-[50vh]">
+ 47 |     <div className="text-slate-400 font-medium animate-pulse">
+ 48 |       Завантаження сторінки...
+ 49 |     </div>
+ 50 |   </div>
+ 51 | );
+ 52 | 
+ 53 | function AppRoutes() {
+ 54 |   const { user, loading, setUser } = useAuth();
+ 55 |   const isAuthenticated = !!user;
+ 56 | 
+ 57 |   const handleLogin = (loggedInUser: any) => {
+ 58 |     setUser(loggedInUser);
+ 59 |   };
+ 60 | 
+ 61 |   const handleLogout = async () => {
+ 62 |     try {
+ 63 |       await api.post("/auth/logout");
+ 64 |     } catch (e) {
+ 65 |       console.error("Logout error", e);
+ 66 |     }
+ 67 | 
+ 68 |     setUser(null);
+ 69 |     window.location.replace("/login");
+ 70 |   };
+ 71 | 
+ 72 |   if (loading) return <PageLoader />;
+ 73 | 
+ 74 |   return (
+ 75 |     <CityProvider>
+ 76 |       <Routes>
+ 77 |         {/* Публічний маршрут: Логін */}
+ 78 |         <Route
+ 79 |           path="/login"
+ 80 |           element={
+ 81 |             !isAuthenticated ? (
+ 82 |               <Login onLogin={handleLogin} />
+ 83 |             ) : (
+ 84 |               <Navigate to="/cities" replace />
+ 85 |             )
+ 86 |           }
+ 87 |         />
+ 88 | 
+ 89 |         {/* Захищені маршрути (Layout відображає бокове меню) */}
+ 90 |         <Route
+ 91 |           path="/"
+ 92 |           element={
+ 93 |             isAuthenticated ? (
+ 94 |               <Layout />
+ 95 |             ) : (
+ 96 |               <Navigate to="/login" replace />
+ 97 |             )
+ 98 |           }
+ 99 |         >
+100 |           {/* Редірект з кореня на сторінку міст за замовчуванням */}
+101 |           <Route index element={<Navigate to="/schools" replace />} />
+102 | 
+103 |           {/* Обгортаємо всі вкладені маршрути в Suspense. 
+104 |               Коли React намагається відрендерити "ліниву" сторінку, він показує fallback (PageLoader), 
+105 |               поки завантажується файл з сервера.
+106 |             */}
+107 |           <Route
+108 |             path="cities"
+109 |             element={
+110 |               <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
 111 |                 <Suspense fallback={<PageLoader />}>
-112 |                   <SchoolProfile />
+112 |                   <Cities />
 113 |                 </Suspense>
-114 |               }
-115 |             />
-116 | 
-117 |             <Route
-118 |               path="employees"
-119 |               element={
-120 |                 <ProtectedRoute allowedRoles={["SUPERADMIN"]}>
-121 |                   <Suspense fallback={<PageLoader />}>
-122 |                     <Employees />
-123 |                   </Suspense>
-124 |                 </ProtectedRoute>
-125 |               }
-126 |             />
-127 | 
-128 |             <Route
-129 |               path="finance"
-130 |               element={
-131 |                 <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
-132 |                   <Suspense fallback={<PageLoader />}>
-133 |                     <Finance />
-134 |                   </Suspense>
-135 |                 </ProtectedRoute>
-136 |               }
-137 |             />
-138 | 
-139 |             <Route
-140 |               path="calendar"
-141 |               element={
-142 |                 <Suspense fallback={<PageLoader />}>
-143 |                   <CalendarView />
-144 |                 </Suspense>
-145 |               }
-146 |             />
-147 |             <Route
-148 |               path="dashboard"
-149 |               element={
-150 |                 <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
-151 |                   <Suspense fallback={<PageLoader />}>
-152 |                     <Dashboard />
-153 |                   </Suspense>
-154 |                 </ProtectedRoute>
-155 |               }
-156 |             />
+114 |               </ProtectedRoute>
+115 |             }
+116 |           />
+117 | 
+118 |           <Route
+119 |             path="schools"
+120 |             element={
+121 |               <Suspense fallback={<PageLoader />}>
+122 |                 <Schools />
+123 |               </Suspense>
+124 |             }
+125 |           />
+126 | 
+127 |           <Route
+128 |             path="schools/:id"
+129 |             element={
+130 |               <Suspense fallback={<PageLoader />}>
+131 |                 <SchoolProfile />
+132 |               </Suspense>
+133 |             }
+134 |           />
+135 | 
+136 |           <Route
+137 |             path="employees"
+138 |             element={
+139 |               <ProtectedRoute allowedRoles={["SUPERADMIN"]}>
+140 |                 <Suspense fallback={<PageLoader />}>
+141 |                   <Employees />
+142 |                 </Suspense>
+143 |               </ProtectedRoute>
+144 |             }
+145 |           />
+146 | 
+147 |           <Route
+148 |             path="finance"
+149 |             element={
+150 |               <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
+151 |                 <Suspense fallback={<PageLoader />}>
+152 |                   <Finance />
+153 |                 </Suspense>
+154 |               </ProtectedRoute>
+155 |             }
+156 |           />
 157 | 
-158 |             <Route
-159 |               path="kindergartens"
-160 |               element={
-161 |                 <Suspense fallback={<PageLoader />}>
-162 |                   <Kindergartens />
-163 |                 </Suspense>
-164 |               }
-165 |             />
-166 | 
-167 |             <Route
-168 |               path="cities/:id"
-169 |               element={
+158 |           <Route
+159 |             path="calendar"
+160 |             element={
+161 |               <Suspense fallback={<PageLoader />}>
+162 |                 <CalendarView />
+163 |               </Suspense>
+164 |             }
+165 |           />
+166 |           <Route
+167 |             path="dashboard"
+168 |             element={
+169 |               <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
 170 |                 <Suspense fallback={<PageLoader />}>
-171 |                   <CityProfile />
+171 |                   <Dashboard />
 172 |                 </Suspense>
-173 |               }
-174 |             />
-175 | 
-176 |             <Route
-177 |               path="events/:id/report"
-178 |               element={
-179 |                 <Suspense fallback={<PageLoader />}>
-180 |                   <EventReport />
-181 |                 </Suspense>
-182 |               }
-183 |             />
-184 |           </Route>
-185 |         </Routes>
-186 |       </CityProvider>
-187 |     </Router>
-188 |   );
-189 | }
-190 | 
+173 |               </ProtectedRoute>
+174 |             }
+175 |           />
+176 | 
+177 |           <Route
+178 |             path="kindergartens"
+179 |             element={
+180 |               <Suspense fallback={<PageLoader />}>
+181 |                 <Kindergartens />
+182 |               </Suspense>
+183 |             }
+184 |           />
+185 | 
+186 |           <Route
+187 |             path="cities/:id"
+188 |             element={
+189 |               <Suspense fallback={<PageLoader />}>
+190 |                 <CityProfile />
+191 |               </Suspense>
+192 |             }
+193 |           />
+194 | 
+195 |           <Route
+196 |             path="events/:id/report"
+197 |             element={
+198 |               <Suspense fallback={<PageLoader />}>
+199 |                 <EventReport />
+200 |               </Suspense>
+201 |             }
+202 |           />
+203 |         </Route>
+204 |       </Routes>
+205 |     </CityProvider>
+206 |   );
+207 | }
+208 | export default function App() {
+209 |   return (
+210 |     <Router>
+211 |       <AuthProvider>
+212 |         <AppRoutes />
+213 |       </AuthProvider>
+214 |     </Router>
+215 |   );
+216 | }
+217 | 
 ```
 
 ### File: apps/frontend/src/components/AddressLink.tsx
@@ -9137,212 +9293,191 @@
 
 ### File: apps/frontend/src/components/Layout.tsx
 ```tsx
-  0 | import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-  1 | import { useEffect, useState } from "react";
-  2 | import { jwtDecode } from "jwt-decode";
-  3 | import { useSelectedCity } from "../context/CityContext";
-  4 | 
-  5 | interface UserInfo {
-  6 |   name: string;
-  7 |   role: string;
-  8 | }
-  9 | 
- 10 | export default function Layout() {
- 11 |   const location = useLocation();
- 12 |   const navigate = useNavigate();
- 13 |   const [user, setUser] = useState<UserInfo | null>(null);
- 14 |   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
- 15 |   const [userRole, setUserRole] = useState<string | null>(null);
- 16 |   useEffect(() => {
- 17 |     try {
- 18 |       const raw = localStorage.getItem("user");
- 19 |       if (raw) setUserRole(JSON.parse(raw).role);
- 20 |     } catch {}
- 21 |   }, []);
+  0 | import { Link, Outlet, useLocation } from "react-router-dom";
+  1 | import { useState } from "react";
+  2 | import { useSelectedCity } from "../context/CityContext";
+  3 | import { useQueryClient } from "@tanstack/react-query";
+  4 | import { useAuth } from "../context/AuthContext";
+  5 | 
+  6 | export default function Layout() {
+  7 |   const location = useLocation();
+  8 |   const queryClient = useQueryClient();
+  9 |   const { user, logout } = useAuth();
+ 10 |   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+ 11 | 
+ 12 |   const is = (roles: string[]) => !!user?.role && roles.includes(user.role);
+ 13 |   const { selectedCity } = useSelectedCity();
+ 14 | 
+ 15 |   const isActive = (path: string) => location.pathname.startsWith(path);
+ 16 | 
+ 17 |   const handleLogout = async () => {
+ 18 |     await logout();
+ 19 |     queryClient.clear();
+ 20 |     window.location.href = "/login";
+ 21 |   };
  22 | 
- 23 |   const is = (roles: string[]) => !!userRole && roles.includes(userRole);
- 24 |   const { selectedCity } = useSelectedCity();
- 25 | 
- 26 |   useEffect(() => {
- 27 |     try {
- 28 |       const raw = localStorage.getItem("user");
- 29 |       if (raw) setUser(JSON.parse(raw));
- 30 |     } catch {
- 31 |     }
- 32 |   }, []);
- 33 | 
- 34 |   const token = localStorage.getItem("token");
- 35 |   let isSuperAdmin = false;
- 36 | 
- 37 |   interface DecodedToken {
- 38 |     role: string;
- 39 |   }
- 40 | 
- 41 |   if (token) {
- 42 |     try {
- 43 |       const decoded = jwtDecode<DecodedToken>(token);
- 44 |       isSuperAdmin = decoded.role === "SUPERADMIN";
- 45 |     } catch (error) {
- 46 |       console.error("Не вдалося розкодувати токен:", error);
- 47 |     }
- 48 |   }
- 49 | 
- 50 |   const isActive = (path: string) => location.pathname.startsWith(path);
- 51 | 
- 52 |   const handleLogout = () => {
- 53 |     localStorage.removeItem("token");
- 54 |     localStorage.removeItem("user");
- 55 |     navigate("/login");
- 56 |   };
- 57 | 
- 58 |   const handleLinkClick = () => {
- 59 |     setIsMobileMenuOpen(false);
- 60 |   };
- 61 | 
- 62 |   return (
- 63 |     <div className="flex h-screen bg-slate-50 font-sans">
- 64 |       {/* Мобільний хедер (видно тільки на малих екранах) */}
- 65 |       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0B1527] text-white flex items-center justify-between px-4 z-40">
- 66 |         <div className="flex items-center gap-2">
- 67 |           <span className="text-xl">🎓</span>
- 68 |           <span className="font-semibold tracking-wider text-sm">
- 69 |             СВІТЛО ЗНАНЬ
- 70 |           </span>
- 71 |           <span className="text-xs text-blue-300 ml-1">
- 72 |             · {selectedCity.name}
- 73 |           </span>
- 74 |         </div>
- 75 |         <button
- 76 |           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
- 77 |           className="p-2 focus:outline-none"
- 78 |         >
- 79 |           {/* Проста іконка гамбургера / хрестика */}
- 80 |           <span className="text-2xl">{isMobileMenuOpen ? "✕" : "☰"}</span>
- 81 |         </button>
- 82 |       </div>
- 83 | 
- 84 |       {/* Оверлей для мобільного меню (затемнення фону) */}
- 85 |       {isMobileMenuOpen && (
- 86 |         <div
- 87 |           className="md:hidden fixed inset-0 bg-slate-900/50 z-40"
- 88 |           onClick={() => setIsMobileMenuOpen(false)}
- 89 |         />
- 90 |       )}
- 91 | 
- 92 |       {/* Сайдбар */}
- 93 |       <aside
- 94 |         className={`
- 95 |         fixed inset-y-0 left-0 z-50 w-64 bg-[#0B1527] text-white flex flex-col transition-transform duration-300 ease-in-out
- 96 |         md:relative md:translate-x-0
- 97 |         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
- 98 |       `}
- 99 |       >
-100 |         <div className="p-6 flex flex-col items-center border-b border-slate-700/50 hidden md:flex">
-101 |           <div className="w-16 h-16 bg-blue-500 rounded-full mb-3 flex items-center justify-center text-2xl">
-102 |             🎓
-103 |           </div>
-104 |           <h2 className="text-sm font-semibold tracking-wider">СВІТЛО ЗНАНЬ</h2>
-105 |           <p className="text-xs text-blue-300 mt-1 tracking-wide">
-106 |             📍 {selectedCity.name}
-107 |           </p>
-108 |         </div>
-109 | 
-110 |         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto mt-16 md:mt-0">
-111 |           {is(["SUPERADMIN", "MANAGER"]) && (
-112 |             <Link
-113 |               to="/dashboard"
-114 |               onClick={handleLinkClick}
-115 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/dashboard") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-116 |             >
-117 |               <span className="mr-3">🏠</span> Дашборд
-118 |             </Link>
-119 |           )}
-120 |           {is(["SUPERADMIN", "MANAGER"]) && (
-121 |             <Link
-122 |               to="/cities"
-123 |               onClick={handleLinkClick}
-124 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/cities") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-125 |             >
-126 |               <span className="mr-3">📍</span> Міста
-127 |             </Link>
-128 |           )}
-129 |           <Link
-130 |             to="/schools"
-131 |             onClick={handleLinkClick}
-132 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/schools") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-133 |           >
-134 |             <span className="mr-3">🏫</span> Школи
-135 |           </Link>
+ 23 |   const handleLinkClick = () => {
+ 24 |     setIsMobileMenuOpen(false);
+ 25 |   };
+ 26 | 
+ 27 |   return (
+ 28 |     <div className="flex h-screen bg-slate-50 font-sans">
+ 29 |       {/* Мобільний хедер (видно тільки на малих екранах) */}
+ 30 |       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0B1527] text-white flex items-center justify-between px-4 z-40">
+ 31 |         <div className="flex items-center gap-2">
+ 32 |           <span className="text-xl">🎓</span>
+ 33 |           <span className="font-semibold tracking-wider text-sm">
+ 34 |             СВІТЛО ЗНАНЬ
+ 35 |           </span>
+ 36 |           <span className="text-xs text-blue-300 ml-1">
+ 37 |             · {selectedCity.name}
+ 38 |           </span>
+ 39 |         </div>
+ 40 |         <button
+ 41 |           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+ 42 |           className="p-2 focus:outline-none"
+ 43 |         >
+ 44 |           {/* Проста іконка гамбургера / хрестика */}
+ 45 |           <span className="text-2xl">{isMobileMenuOpen ? "✕" : "☰"}</span>
+ 46 |         </button>
+ 47 |       </div>
+ 48 | 
+ 49 |       {/* Оверлей для мобільного меню (затемнення фону) */}
+ 50 |       {isMobileMenuOpen && (
+ 51 |         <div
+ 52 |           className="md:hidden fixed inset-0 bg-slate-900/50 z-40"
+ 53 |           onClick={() => setIsMobileMenuOpen(false)}
+ 54 |         />
+ 55 |       )}
+ 56 | 
+ 57 |       {/* Сайдбар */}
+ 58 |       <aside
+ 59 |         className={`
+ 60 |         fixed inset-y-0 left-0 z-50 w-64 bg-[#0B1527] text-white flex flex-col transition-transform duration-300 ease-in-out
+ 61 |         md:relative md:translate-x-0
+ 62 |         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
+ 63 |       `}
+ 64 |       >
+ 65 |         <div className="p-6 flex flex-col items-center border-b border-slate-700/50 hidden md:flex">
+ 66 |           <div className="w-16 h-16 bg-blue-500 rounded-full mb-3 flex items-center justify-center text-2xl">
+ 67 |             🎓
+ 68 |           </div>
+ 69 |           <h2 className="text-sm font-semibold tracking-wider">СВІТЛО ЗНАНЬ</h2>
+ 70 |           <p className="text-xs text-blue-300 mt-1 tracking-wide">
+ 71 |             📍 {selectedCity.name}
+ 72 |           </p>
+ 73 |         </div>
+ 74 | 
+ 75 |         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto mt-16 md:mt-0">
+ 76 |           {is(["SUPERADMIN", "MANAGER"]) && (
+ 77 |             <Link
+ 78 |               to="/dashboard"
+ 79 |               onClick={handleLinkClick}
+ 80 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/dashboard") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+ 81 |             >
+ 82 |               <span className="mr-3">🏠</span> Дашборд
+ 83 |             </Link>
+ 84 |           )}
+ 85 |           {is(["SUPERADMIN", "MANAGER"]) && (
+ 86 |             <Link
+ 87 |               to="/cities"
+ 88 |               onClick={handleLinkClick}
+ 89 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/cities") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+ 90 |             >
+ 91 |               <span className="mr-3">📍</span> Міста
+ 92 |             </Link>
+ 93 |           )}
+ 94 |           <Link
+ 95 |             to="/schools"
+ 96 |             onClick={handleLinkClick}
+ 97 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/schools") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+ 98 |           >
+ 99 |             <span className="mr-3">🏫</span> Школи
+100 |           </Link>
+101 | 
+102 |           {/* ДОДАЛИ НОВИЙ ПУНКТ "САДОЧКИ" */}
+103 |           <Link
+104 |             to="/kindergartens"
+105 |             onClick={handleLinkClick}
+106 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/kindergartens") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+107 |           >
+108 |             <span className="mr-3">🧸</span> Садочки
+109 |           </Link>
+110 |           {is(["SUPERADMIN", "MANAGER"]) && (
+111 |             <Link
+112 |               to="/finance"
+113 |               onClick={handleLinkClick}
+114 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/finance") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+115 |             >
+116 |               <span className="mr-3">💰</span> Фінанси
+117 |             </Link>
+118 |           )}
+119 |           <Link
+120 |             to="/calendar"
+121 |             onClick={handleLinkClick}
+122 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/calendar") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+123 |           >
+124 |             <span className="mr-3">📆</span> Календар
+125 |           </Link>
+126 |           {is(["SUPERADMIN"]) && (
+127 |             <Link
+128 |               to="/employees"
+129 |               onClick={handleLinkClick}
+130 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/employees") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+131 |             >
+132 |               <span className="mr-3">👥</span> Працівники
+133 |             </Link>
+134 |           )}
+135 |         </nav>
 136 | 
-137 |           {/* ДОДАЛИ НОВИЙ ПУНКТ "САДОЧКИ" */}
-138 |           <Link
-139 |             to="/kindergartens"
-140 |             onClick={handleLinkClick}
-141 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/kindergartens") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-142 |           >
-143 |             <span className="mr-3">🧸</span> Садочки
-144 |           </Link>
-145 |           {is(["SUPERADMIN", "MANAGER"]) && (
-146 |             <Link
-147 |               to="/finance"
-148 |               onClick={handleLinkClick}
-149 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/finance") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-150 |             >
-151 |               <span className="mr-3">💰</span> Фінанси
-152 |             </Link>
-153 |           )}
-154 |           <Link
-155 |             to="/calendar"
-156 |             onClick={handleLinkClick}
-157 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/calendar") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-158 |           >
-159 |             <span className="mr-3">📆</span> Календар
-160 |           </Link>
-161 |           {is(["SUPERADMIN"]) && (
-162 |             <Link
-163 |               to="/employees"
-164 |               onClick={handleLinkClick}
-165 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/employees") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-166 |             >
-167 |               <span className="mr-3">👥</span> Працівники
-168 |             </Link>
-169 |           )}
-170 |         </nav>
-171 | 
-172 |         <div className="p-4 border-t border-slate-700/50 pb-8 md:pb-4">
-173 |           <div className="flex items-center px-4 py-2 text-slate-300 justify-between">
-174 |             <div className="flex items-center">
-175 |               <div className="w-8 h-8 bg-slate-600 rounded-full mr-3 flex items-center justify-center text-xs font-bold">
-176 |                 {user?.name?.charAt(0) ?? "?"}
-177 |               </div>
-178 |               <div className="text-sm truncate max-w-[120px]">
-179 |                 <p className="font-medium text-white truncate">
-180 |                   {user?.name ?? "Користувач"}
-181 |                 </p>
-182 |                 <p className="text-xs text-slate-400 truncate">
-183 |                   {user?.role ?? ""}
-184 |                 </p>
-185 |               </div>
-186 |             </div>
-187 |             <button
-188 |               onClick={handleLogout}
-189 |               className="text-slate-500 hover:text-slate-300 transition-colors text-xs ml-2 shrink-0 p-2"
-190 |               title="Вийти"
-191 |             >
-192 |               ⬅️
-193 |             </button>
-194 |           </div>
-195 |         </div>
-196 |       </aside>
-197 | 
-198 |       {/* Головна область */}
-199 |       <main className="flex-1 overflow-y-auto mt-16 md:mt-0 relative w-full">
-200 |         <Outlet />
-201 |       </main>
-202 |     </div>
-203 |   );
-204 | }
-205 | 
+137 |         <div className="p-4 border-t border-slate-700/50 pb-8 md:pb-4">
+138 |           <div className="flex items-center px-4 py-2 text-slate-300 justify-between">
+139 |             <div className="flex items-center">
+140 |               <div className="w-8 h-8 bg-slate-600 rounded-full mr-3 flex items-center justify-center text-xs font-bold">
+141 |                 {user?.name?.charAt(0) ?? "?"}
+142 |               </div>
+143 |               <div className="text-sm truncate max-w-[120px]">
+144 |                 <p className="font-medium text-white truncate">
+145 |                   {user?.name ?? "Користувач"}
+146 |                 </p>
+147 |                 <p className="text-xs text-slate-400 truncate">
+148 |                   {user?.role ?? ""}
+149 |                 </p>
+150 |               </div>
+151 |             </div>
+152 |             <button
+153 |               onClick={handleLogout}
+154 |               className="flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-colors text-xs font-medium ml-2 shrink-0 px-2.5 py-2 rounded-lg"
+155 |               title="Вийти"
+156 |             >
+157 |               <svg
+158 |                 xmlns="http://www.w3.org/2000/svg"
+159 |                 viewBox="0 0 24 24"
+160 |                 fill="none"
+161 |                 stroke="currentColor"
+162 |                 strokeWidth="2"
+163 |                 strokeLinecap="round"
+164 |                 strokeLinejoin="round"
+165 |                 className="w-4 h-4"
+166 |               >
+167 |                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+168 |                 <polyline points="16 17 21 12 16 7" />
+169 |                 <line x1="21" y1="12" x2="9" y2="12" />
+170 |               </svg>
+171 |               Вийти
+172 |             </button>
+173 |           </div>
+174 |         </div>
+175 |       </aside>
+176 | 
+177 |       {/* Головна область */}
+178 |       <main className="flex-1 overflow-y-auto mt-16 md:mt-0 relative w-full">
+179 |         <Outlet />
+180 |       </main>
+181 |     </div>
+182 |   );
+183 | }
+184 | 
 ```
 
 ### File: apps/frontend/src/components/PhoneLink.tsx
@@ -9390,29 +9525,21 @@
 ### File: apps/frontend/src/components/ProtectedRoute.tsx
 ```tsx
   0 | import { Navigate } from "react-router-dom";
-  1 | 
-  2 | interface Props {
-  3 |   allowedRoles: string[];
-  4 |   children: React.ReactNode;
-  5 | }
-  6 | 
-  7 | function getCurrentUserRole(): string | null {
-  8 |   try {
-  9 |     const raw = localStorage.getItem("user");
- 10 |     return raw ? JSON.parse(raw).role : null;
- 11 |   } catch {
- 12 |     return null;
- 13 |   }
+  1 | import { useAuth } from "../context/AuthContext";
+  2 | 
+  3 | interface Props {
+  4 |   allowedRoles: string[];
+  5 |   children: React.ReactNode;
+  6 | }
+  7 | 
+  8 | export default function ProtectedRoute({ allowedRoles, children }: Props) {
+  9 |   const { user } = useAuth();
+ 10 |   if (!user || !allowedRoles.includes(user.role)) {
+ 11 |     return <Navigate to="/dashboard" replace />;
+ 12 |   }
+ 13 |   return <>{children}</>;
  14 | }
  15 | 
- 16 | export default function ProtectedRoute({ allowedRoles, children }: Props) {
- 17 |   const role = getCurrentUserRole();
- 18 |   if (!role || !allowedRoles.includes(role)) {
- 19 |     return <Navigate to="/dashboard" replace />;
- 20 |   }
- 21 |   return <>{children}</>;
- 22 | }
- 23 | 
 ```
 
 ### File: apps/frontend/src/components/VirtualSchoolList.tsx
@@ -15262,6 +15389,68 @@
  35 | 
 ```
 
+### File: apps/frontend/src/context/AuthContext.tsx
+```tsx
+  0 | import {
+  1 |   createContext,
+  2 |   useContext,
+  3 |   useEffect,
+  4 |   useState,
+  5 |   ReactNode,
+  6 | } from "react";
+  7 | import { api } from "../config/api";
+  8 | 
+  9 | interface User {
+ 10 |   id: string;
+ 11 |   name: string;
+ 12 |   email: string;
+ 13 |   role: string;
+ 14 | }
+ 15 | 
+ 16 | interface AuthContextValue {
+ 17 |   user: User | null;
+ 18 |   loading: boolean;
+ 19 |   setUser: (user: User | null) => void;
+ 20 |   logout: () => Promise<void>;
+ 21 | }
+ 22 | const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+ 23 | 
+ 24 | export function AuthProvider({ children }: { children: ReactNode }) {
+ 25 |   const [user, setUser] = useState<User | null>(null);
+ 26 |   const [loading, setLoading] = useState(true);
+ 27 | 
+ 28 |   useEffect(() => {
+ 29 |     api
+ 30 |       .get("/auth/me")
+ 31 |       .then((res) => setUser(res.data.user))
+ 32 |       .catch(() => setUser(null))
+ 33 |       .finally(() => setLoading(false));
+ 34 |   }, []);
+ 35 | 
+ 36 |   const logout = async () => {
+ 37 |     try {
+ 38 |       await api.post("/auth/logout");
+ 39 |     } catch (e) {
+ 40 |       console.error("Logout error", e);
+ 41 |     }
+ 42 |     setUser(null);
+ 43 |   };
+ 44 | 
+ 45 |   return (
+ 46 |     <AuthContext.Provider value={{ user, loading, setUser, logout }}>
+ 47 |       {children}
+ 48 |     </AuthContext.Provider>
+ 49 |   );
+ 50 | }
+ 51 | 
+ 52 | export function useAuth() {
+ 53 |   const ctx = useContext(AuthContext);
+ 54 |   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+ 55 |   return ctx;
+ 56 | }
+ 57 | 
+```
+
 ### File: apps/frontend/src/context/CityContext.tsx
 ```tsx
   0 | import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -16443,11 +16632,11 @@
 338 |                           className="relative group/event z-0 hover:z-50"
 339 |                         >
 340 |                           <button
-341 |                             onClick={(e) => {
-342 |                               e.stopPropagation();
-343 |                               if (ev.school)
-344 |                                 navigate(`/schools/${ev.school.id}`);
-345 |                             }}
+341 |                             // onClick={(e) => {
+342 |                             //   e.stopPropagation();
+343 |                             //   if (ev.school)
+344 |                             //     navigate(`/schools/${ev.school.id}`);
+345 |                             // }}
 346 |                             className={`w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${getProjectColor(ev.project)}`}
 347 |                           >
 348 |                             {ev.time || "—"}
@@ -17964,7 +18153,7 @@
 177 |   const handleSubmit = (e: React.FormEvent) => {
 178 |     e.preventDefault();
 179 |     if (!form.fullName.trim()) return;
-180 |     setIsModalOpen(false); 
+180 |     setIsModalOpen(false);
 181 |     if (editingUser) {
 182 |       const { password, ...rest } = form;
 183 |       const payload = password.trim() ? form : rest;
@@ -18087,338 +18276,397 @@
 300 |                 transition={{ duration: 0.2 }}
 301 |                 className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
 302 |               >
-303 |                 <table className="w-full text-left">
-304 |                   <thead>
-305 |                     <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-306 |                       <th className="px-5 py-3">ПІБ</th>
-307 |                       <th className="px-5 py-3">Телефон</th>
-308 |                       <th className="px-5 py-3">Пошта / Логін</th>
-309 |                       <th className="px-5 py-3">Місто</th>
-310 |                       <th className="px-5 py-3 text-center">Дії</th>
-311 |                     </tr>
-312 |                   </thead>
-313 |                   <tbody>
-314 |                     <AnimatePresence initial={false}>
-315 |                       {items.map((u, ri) => (
-316 |                         <motion.tr
-317 |                           key={u.id}
-318 |                           initial={{ opacity: 0 }}
-319 |                           animate={{ opacity: 1 }}
-320 |                           exit={{ opacity: 0, height: 0 }}
-321 |                           transition={{ duration: 0.2, delay: ri * 0.04 }}
-322 |                           className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
-323 |                         >
-324 |                           <td className="px-5 py-4">
-325 |                             <div className="flex items-center gap-3">
-326 |                               <motion.div
-327 |                                 initial={{ scale: 0.8, opacity: 0 }}
-328 |                                 animate={{ scale: 1, opacity: 1 }}
-329 |                                 transition={{ duration: 0.2, delay: 0.05 }}
-330 |                                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
+303 |                 <div className="sm:hidden divide-y divide-slate-50">
+304 |                   <AnimatePresence initial={false}>
+305 |                     {items.map((u, ri) => (
+306 |                       <motion.div
+307 |                         key={u.id}
+308 |                         initial={{ opacity: 0 }}
+309 |                         animate={{ opacity: 1 }}
+310 |                         exit={{ opacity: 0, height: 0 }}
+311 |                         transition={{ duration: 0.2, delay: ri * 0.04 }}
+312 |                         className="p-4 flex flex-col gap-2"
+313 |                       >
+314 |                         <div className="flex items-center justify-between">
+315 |                           <div className="flex items-center gap-3">
+316 |                             <div
+317 |                               className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
+318 |                             >
+319 |                               {u.name.charAt(0)}
+320 |                             </div>
+321 |                             <span className="font-medium text-slate-800">
+322 |                               {u.name}
+323 |                             </span>
+324 |                           </div>
+325 |                           {isSuperAdmin && (
+326 |                             <div className="flex items-center gap-1 shrink-0">
+327 |                               <motion.button
+328 |                                 whileTap={{ scale: 0.93 }}
+329 |                                 onClick={() => handleOpenModal(u)}
+330 |                                 className="text-slate-400 hover:text-blue-500 p-2 hover:bg-blue-50 rounded-lg"
 331 |                               >
-332 |                                 {u.name.charAt(0)}
-333 |                               </motion.div>
-334 |                               <span className="font-medium text-slate-800">
-335 |                                 {u.name}
-336 |                               </span>
-337 |                             </div>
-338 |                           </td>
-339 |                           <td className="px-5 py-4 text-slate-600 text-sm">
-340 |                             <PhoneLink phone={u.phone} />
-341 |                             {u.car && (
-342 |                               <p className="text-xs text-emerald-600 font-medium mt-1">
-343 |                                 🚗 {u.car}
-344 |                               </p>
-345 |                             )}
-346 |                           </td>
-347 |                           <td className="px-5 py-4 text-slate-600 text-sm font-medium">
-348 |                             {u.email}
-349 |                           </td>
-350 |                           <td className="px-5 py-4">
-351 |                             <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
-352 |                               📍 {u.city?.name || "Всі міста"}
-353 |                             </span>
-354 |                           </td>
-355 |                           <td className="px-5 py-4 text-center">
-356 |                             {isSuperAdmin && (
-357 |                               <>
-358 |                                 <motion.button
-359 |                                   whileTap={{ scale: 0.93 }}
-360 |                                   onClick={() => handleOpenModal(u)}
-361 |                                   className="text-slate-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 rounded-lg mr-2 transition-colors"
-362 |                                 >
-363 |                                   ✏️
-364 |                                 </motion.button>
-365 |                                 <motion.button
-366 |                                   whileTap={{ scale: 0.93 }}
-367 |                                   onClick={() => handleDelete(u.id, u.name)}
-368 |                                   className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
-369 |                                 >
-370 |                                   🗑
-371 |                                 </motion.button>
-372 |                               </>
-373 |                             )}
-374 |                           </td>
-375 |                         </motion.tr>
-376 |                       ))}
-377 |                     </AnimatePresence>
-378 |                   </tbody>
-379 |                 </table>
-380 |               </motion.div>
-381 |             )}
-382 |           </motion.div>
-383 |         ))}
-384 |       </div>
-385 | 
-386 |       {/* --- СЕКЦІЯ ПРОЄКТІВ (ВИДІВ ПОДІЙ) --- */}
-387 |       <div className="mt-16 border-t border-slate-200 pt-10">
-388 |         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-389 |           <div>
-390 |             <h2 className="text-2xl font-bold text-slate-800">
-391 |               Види подій (Проєкти)
-392 |             </h2>
-393 |             <p className="text-sm text-slate-400 mt-1">
-394 |               Ці проєкти відображатимуться у випадаючому списку при створенні
-395 |               події
-396 |             </p>
-397 |           </div>
-398 |           {isSuperAdmin && (
-399 |             <button
-400 |               onClick={() => setIsProjectModalOpen(true)}
-401 |               className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 transition-colors w-full sm:w-auto"
-402 |             >
-403 |               + Створити вид події
-404 |             </button>
-405 |           )}
-406 |         </div>
-407 | 
-408 |         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-409 |           {projects.map((p, pi) => (
-410 |             <motion.div
-411 |               key={p.id}
-412 |               initial={{ opacity: 0, y: 8 }}
-413 |               animate={{ opacity: 1, y: 0 }}
-414 |               transition={{ duration: 0.25, delay: pi * 0.05 }}
-415 |               whileHover={{
-416 |                 y: -3,
-417 |                 boxShadow: "0 8px 24px -4px rgba(0,0,0,0.10)",
-418 |               }}
-419 |               className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default"
-420 |             >
-421 |               <div className="flex items-center gap-3">
-422 |                 <motion.div
-423 |                   whileHover={{ scale: 1.3 }}
-424 |                   transition={{ duration: 0.15 }}
-425 |                   className={`w-4 h-4 rounded-full ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm`}
-426 |                 />
-427 |                 <span className="font-bold text-slate-800">{p.name}</span>
-428 |               </div>
-429 |               {isSuperAdmin && (
-430 |                 <button
-431 |                   onClick={() => handleDeleteProject(p.id, p.name)}
-432 |                   className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2 -mr-2"
-433 |                   title="Видалити"
-434 |                 >
-435 |                   🗑
-436 |                 </button>
-437 |               )}
-438 |             </motion.div>
-439 |           ))}
-440 |           {projects.length === 0 && (
-441 |             <div className="col-span-full text-center py-10 text-slate-400">
-442 |               Ви ще не додали жодного виду події
-443 |             </div>
-444 |           )}
-445 |         </div>
-446 |       </div>
-447 | 
-448 |       {/* Модалки Користувача і Проєктів */}
-449 |       {isProjectModalOpen && (
-450 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-451 |           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-452 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-453 |               <h3 className="text-xl font-bold text-slate-800">
-454 |                 Новий вид події
-455 |               </h3>
-456 |               <button
-457 |                 onClick={() => setIsProjectModalOpen(false)}
-458 |                 className="text-slate-400 text-xl leading-none p-2 -mr-2"
-459 |               >
-460 |                 ✕
-461 |               </button>
-462 |             </div>
-463 |             <form onSubmit={handleCreateProject} className="p-6">
-464 |               <label className="block text-sm font-medium text-slate-700 mb-1.5">
-465 |                 Назва
-466 |               </label>
-467 |               <input
-468 |                 type="text"
-469 |                 value={projectForm.name}
-470 |                 onChange={(e) =>
-471 |                   setProjectForm({ ...projectForm, name: e.target.value })
-472 |                 }
-473 |                 className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none mb-6"
-474 |                 required
-475 |                 placeholder="Наприклад: Шоу мильних бульбашок"
-476 |               />
-477 |               <label className="block text-sm font-medium text-slate-700 mb-3">
-478 |                 Колір для календаря
-479 |               </label>
-480 |               <div className="flex gap-4 mb-8">
-481 |                 {Object.keys(PROJECT_COLORS).map((c) => (
-482 |                   <button
-483 |                     type="button"
-484 |                     key={c}
-485 |                     onClick={() => setProjectForm({ ...projectForm, color: c })}
-486 |                     className={`w-8 h-8 rounded-full ${PROJECT_COLORS[c]} transition-all ${projectForm.color === c ? "ring-4 ring-offset-2 ring-blue-200 scale-110" : "hover:scale-110"}`}
-487 |                   />
-488 |                 ))}
-489 |               </div>
-490 |               <div className="flex gap-3">
-491 |                 <button
-492 |                   type="button"
-493 |                   onClick={() => setIsProjectModalOpen(false)}
-494 |                   className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
-495 |                 >
-496 |                   Скасувати
-497 |                 </button>
-498 |                 <button
-499 |                   type="submit"
-500 |                   className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-medium"
-501 |                 >
-502 |                   Зберегти
-503 |                 </button>
-504 |               </div>
-505 |             </form>
-506 |           </div>
-507 |         </div>
-508 |       )}
-509 | 
-510 |       {/* Ваша стара модалка Користувача */}
-511 |       {isModalOpen && (
-512 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-513 |           {/* Ваш існуючий код модалки працівника... Для стислості я зберіг базові поля */}
-514 |           <div className="bg-white rounded-2xl shadow-xl w-full sm:max-w-lg overflow-hidden flex flex-col">
-515 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-516 |               <h3 className="text-xl font-bold">
-517 |                 {editingUser ? "Редагувати" : "Новий користувач"}
-518 |               </h3>
-519 |               <button
-520 |                 onClick={() => setIsModalOpen(false)}
-521 |                 className="text-slate-400 text-xl p-2 -mr-2"
-522 |               >
-523 |                 ✕
-524 |               </button>
-525 |             </div>
-526 |             <form
-527 |               onSubmit={handleSubmit}
-528 |               className="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh]"
-529 |             >
-530 |               <input
-531 |                 type="text"
-532 |                 value={form.fullName}
-533 |                 onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-534 |                 required
-535 |                 placeholder="ПІБ"
-536 |                 className="w-full p-2.5 border rounded-lg"
-537 |               />
-538 |               <div className="grid grid-cols-2 gap-4">
-539 |                 <input
-540 |                   type="email"
-541 |                   value={form.email}
-542 |                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-543 |                   required
-544 |                   placeholder="Пошта"
-545 |                   className="w-full p-2.5 border rounded-lg"
-546 |                 />
-547 |                 <input
-548 |                   type="password"
-549 |                   value={form.password}
-550 |                   onChange={(e) =>
-551 |                     setForm({ ...form, password: e.target.value })
-552 |                   }
-553 |                   required={!editingUser}
-554 |                   placeholder="Пароль"
-555 |                   className="w-full p-2.5 border rounded-lg"
-556 |                 />
-557 |               </div>
-558 |               <div className="grid grid-cols-2 gap-4">
-559 |                 <input
-560 |                   type="tel"
-561 |                   value={form.phone}
-562 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-563 |                   placeholder="Телефон"
-564 |                   className="w-full p-2.5 border rounded-lg"
-565 |                 />
-566 |                 <input
-567 |                   type="text"
-568 |                   value={form.telegramId}
-569 |                   onChange={(e) =>
-570 |                     setForm({ ...form, telegramId: e.target.value })
-571 |                   }
-572 |                   placeholder="Telegram ID або @username"
-573 |                   className="w-full p-2.5 border rounded-lg"
-574 |                 />
-575 |               </div>
-576 |               <div className="grid grid-cols-2 gap-4">
-577 |                 <select
-578 |                   value={form.role}
-579 |                   onChange={(e) =>
-580 |                     setForm({ ...form, role: e.target.value as Role })
-581 |                   }
-582 |                   className="w-full p-2.5 border rounded-lg"
-583 |                 >
-584 |                   <option value="MANAGER">Менеджер</option>
-585 |                   <option value="DRIVER">Водій</option>
-586 |                   <option value="HOST">Ведучий</option>
-587 |                   <option value="SUPERADMIN">Суперадмін</option>
-588 |                 </select>
-589 |                 <select
-590 |                   value={form.cityId}
-591 |                   onChange={(e) => setForm({ ...form, cityId: e.target.value })}
-592 |                   className="w-full p-2.5 border rounded-lg"
-593 |                 >
-594 |                   <option value="">Всі міста</option>
-595 |                   {cities.map((c) => (
-596 |                     <option key={c.id} value={c.id}>
-597 |                       {c.name}
-598 |                     </option>
-599 |                   ))}
-600 |                 </select>
-601 |               </div>
-602 |               {form.role === "DRIVER" && (
-603 |                 <input
-604 |                   type="text"
-605 |                   value={form.car || ""}
-606 |                   onChange={(e) => setForm({ ...form, car: e.target.value })}
-607 |                   placeholder="Автомобіль (напр. Renault Trafic)"
-608 |                   className="w-full p-2.5 border rounded-lg"
-609 |                 />
-610 |               )}
-611 |               <div className="flex gap-3 mt-2">
-612 |                 <button
-613 |                   type="button"
-614 |                   onClick={() => setIsModalOpen(false)}
-615 |                   className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
-616 |                 >
-617 |                   Скасувати
-618 |                 </button>
-619 |                 <button
-620 |                   type="submit"
-621 |                   disabled={isSubmitting}
-622 |                   className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium"
-623 |                 >
-624 |                   Зберегти
-625 |                 </button>
-626 |               </div>
-627 |             </form>
-628 |           </div>
-629 |         </div>
-630 |       )}
-631 |     </motion.div>
-632 |   );
-633 | }
-634 | 
+332 |                                 ✏️
+333 |                               </motion.button>
+334 |                               <motion.button
+335 |                                 whileTap={{ scale: 0.93 }}
+336 |                                 onClick={() => handleDelete(u.id, u.name)}
+337 |                                 className="text-slate-400 hover:text-red-500 p-2 hover:bg-red-50 rounded-lg"
+338 |                               >
+339 |                                 🗑
+340 |                               </motion.button>
+341 |                             </div>
+342 |                           )}
+343 |                         </div>
+344 |                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 pl-11">
+345 |                           <PhoneLink phone={u.phone} />
+346 |                           <span>{u.email}</span>
+347 |                         </div>
+348 |                         <div className="flex items-center gap-2 pl-11">
+349 |                           <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
+350 |                             📍 {u.city?.name || "Всі міста"}
+351 |                           </span>
+352 |                           {u.car && (
+353 |                             <span className="text-xs text-emerald-600 font-medium">
+354 |                               🚗 {u.car}
+355 |                             </span>
+356 |                           )}
+357 |                         </div>
+358 |                       </motion.div>
+359 |                     ))}
+360 |                   </AnimatePresence>
+361 |                 </div>
+362 |                 <table className="w-full text-left hidden sm:table">
+363 |                   <thead>
+364 |                     <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+365 |                       <th className="px-5 py-3">ПІБ</th>
+366 |                       <th className="px-5 py-3">Телефон</th>
+367 |                       <th className="px-5 py-3">Пошта / Логін</th>
+368 |                       <th className="px-5 py-3">Місто</th>
+369 |                       <th className="px-5 py-3 text-center">Дії</th>
+370 |                     </tr>
+371 |                   </thead>
+372 |                   <tbody>
+373 |                     <AnimatePresence initial={false}>
+374 |                       {items.map((u, ri) => (
+375 |                         <motion.tr
+376 |                           key={u.id}
+377 |                           initial={{ opacity: 0 }}
+378 |                           animate={{ opacity: 1 }}
+379 |                           exit={{ opacity: 0, height: 0 }}
+380 |                           transition={{ duration: 0.2, delay: ri * 0.04 }}
+381 |                           className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+382 |                         >
+383 |                           <td className="px-5 py-4">
+384 |                             <div className="flex items-center gap-3">
+385 |                               <motion.div
+386 |                                 initial={{ scale: 0.8, opacity: 0 }}
+387 |                                 animate={{ scale: 1, opacity: 1 }}
+388 |                                 transition={{ duration: 0.2, delay: 0.05 }}
+389 |                                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
+390 |                               >
+391 |                                 {u.name.charAt(0)}
+392 |                               </motion.div>
+393 |                               <span className="font-medium text-slate-800">
+394 |                                 {u.name}
+395 |                               </span>
+396 |                             </div>
+397 |                           </td>
+398 |                           <td className="px-5 py-4 text-slate-600 text-sm">
+399 |                             <PhoneLink phone={u.phone} />
+400 |                             {u.car && (
+401 |                               <p className="text-xs text-emerald-600 font-medium mt-1">
+402 |                                 🚗 {u.car}
+403 |                               </p>
+404 |                             )}
+405 |                           </td>
+406 |                           <td className="px-5 py-4 text-slate-600 text-sm font-medium">
+407 |                             {u.email}
+408 |                           </td>
+409 |                           <td className="px-5 py-4">
+410 |                             <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
+411 |                               📍 {u.city?.name || "Всі міста"}
+412 |                             </span>
+413 |                           </td>
+414 |                           <td className="px-5 py-4 text-center">
+415 |                             {isSuperAdmin && (
+416 |                               <>
+417 |                                 <motion.button
+418 |                                   whileTap={{ scale: 0.93 }}
+419 |                                   onClick={() => handleOpenModal(u)}
+420 |                                   className="text-slate-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 rounded-lg mr-2 transition-colors"
+421 |                                 >
+422 |                                   ✏️
+423 |                                 </motion.button>
+424 |                                 <motion.button
+425 |                                   whileTap={{ scale: 0.93 }}
+426 |                                   onClick={() => handleDelete(u.id, u.name)}
+427 |                                   className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+428 |                                 >
+429 |                                   🗑
+430 |                                 </motion.button>
+431 |                               </>
+432 |                             )}
+433 |                           </td>
+434 |                         </motion.tr>
+435 |                       ))}
+436 |                     </AnimatePresence>
+437 |                   </tbody>
+438 |                 </table>
+439 |               </motion.div>
+440 |             )}
+441 |           </motion.div>
+442 |         ))}
+443 |       </div>
+444 | 
+445 |       {/* --- СЕКЦІЯ ПРОЄКТІВ (ВИДІВ ПОДІЙ) --- */}
+446 |       <div className="mt-16 border-t border-slate-200 pt-10">
+447 |         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+448 |           <div>
+449 |             <h2 className="text-2xl font-bold text-slate-800">
+450 |               Види подій (Проєкти)
+451 |             </h2>
+452 |             <p className="text-sm text-slate-400 mt-1">
+453 |               Ці проєкти відображатимуться у випадаючому списку при створенні
+454 |               події
+455 |             </p>
+456 |           </div>
+457 |           {isSuperAdmin && (
+458 |             <button
+459 |               onClick={() => setIsProjectModalOpen(true)}
+460 |               className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 transition-colors w-full sm:w-auto"
+461 |             >
+462 |               + Створити вид події
+463 |             </button>
+464 |           )}
+465 |         </div>
+466 | 
+467 |         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+468 |           {projects.map((p, pi) => (
+469 |             <motion.div
+470 |               key={p.id}
+471 |               initial={{ opacity: 0, y: 8 }}
+472 |               animate={{ opacity: 1, y: 0 }}
+473 |               transition={{ duration: 0.25, delay: pi * 0.05 }}
+474 |               whileHover={{
+475 |                 y: -3,
+476 |                 boxShadow: "0 8px 24px -4px rgba(0,0,0,0.10)",
+477 |               }}
+478 |               className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default"
+479 |             >
+480 |               <div className="flex items-center gap-3">
+481 |                 <motion.div
+482 |                   whileHover={{ scale: 1.3 }}
+483 |                   transition={{ duration: 0.15 }}
+484 |                   className={`w-4 h-4 rounded-full ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm`}
+485 |                 />
+486 |                 <span className="font-bold text-slate-800">{p.name}</span>
+487 |               </div>
+488 |               {isSuperAdmin && (
+489 |                 <button
+490 |                   onClick={() => handleDeleteProject(p.id, p.name)}
+491 |                   className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2 -mr-2"
+492 |                   title="Видалити"
+493 |                 >
+494 |                   🗑
+495 |                 </button>
+496 |               )}
+497 |             </motion.div>
+498 |           ))}
+499 |           {projects.length === 0 && (
+500 |             <div className="col-span-full text-center py-10 text-slate-400">
+501 |               Ви ще не додали жодного виду події
+502 |             </div>
+503 |           )}
+504 |         </div>
+505 |       </div>
+506 | 
+507 |       {/* Модалки Користувача і Проєктів */}
+508 |       {isProjectModalOpen && (
+509 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+510 |           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+511 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+512 |               <h3 className="text-xl font-bold text-slate-800">
+513 |                 Новий вид події
+514 |               </h3>
+515 |               <button
+516 |                 onClick={() => setIsProjectModalOpen(false)}
+517 |                 className="text-slate-400 text-xl leading-none p-2 -mr-2"
+518 |               >
+519 |                 ✕
+520 |               </button>
+521 |             </div>
+522 |             <form onSubmit={handleCreateProject} className="p-6">
+523 |               <label className="block text-sm font-medium text-slate-700 mb-1.5">
+524 |                 Назва
+525 |               </label>
+526 |               <input
+527 |                 type="text"
+528 |                 value={projectForm.name}
+529 |                 onChange={(e) =>
+530 |                   setProjectForm({ ...projectForm, name: e.target.value })
+531 |                 }
+532 |                 className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none mb-6"
+533 |                 required
+534 |                 placeholder="Наприклад: Шоу мильних бульбашок"
+535 |               />
+536 |               <label className="block text-sm font-medium text-slate-700 mb-3">
+537 |                 Колір для календаря
+538 |               </label>
+539 |               <div className="flex gap-4 mb-8">
+540 |                 {Object.keys(PROJECT_COLORS).map((c) => (
+541 |                   <button
+542 |                     type="button"
+543 |                     key={c}
+544 |                     onClick={() => setProjectForm({ ...projectForm, color: c })}
+545 |                     className={`w-8 h-8 rounded-full ${PROJECT_COLORS[c]} transition-all ${projectForm.color === c ? "ring-4 ring-offset-2 ring-blue-200 scale-110" : "hover:scale-110"}`}
+546 |                   />
+547 |                 ))}
+548 |               </div>
+549 |               <div className="flex gap-3">
+550 |                 <button
+551 |                   type="button"
+552 |                   onClick={() => setIsProjectModalOpen(false)}
+553 |                   className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
+554 |                 >
+555 |                   Скасувати
+556 |                 </button>
+557 |                 <button
+558 |                   type="submit"
+559 |                   className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-medium"
+560 |                 >
+561 |                   Зберегти
+562 |                 </button>
+563 |               </div>
+564 |             </form>
+565 |           </div>
+566 |         </div>
+567 |       )}
+568 | 
+569 |       {/* Ваша стара модалка Користувача */}
+570 |       {isModalOpen && (
+571 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+572 |           {/* Ваш існуючий код модалки працівника... Для стислості я зберіг базові поля */}
+573 |           <div className="bg-white rounded-2xl shadow-xl w-full sm:max-w-lg overflow-hidden flex flex-col">
+574 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+575 |               <h3 className="text-xl font-bold">
+576 |                 {editingUser ? "Редагувати" : "Новий користувач"}
+577 |               </h3>
+578 |               <button
+579 |                 onClick={() => setIsModalOpen(false)}
+580 |                 className="text-slate-400 text-xl p-2 -mr-2"
+581 |               >
+582 |                 ✕
+583 |               </button>
+584 |             </div>
+585 |             <form
+586 |               onSubmit={handleSubmit}
+587 |               className="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh]"
+588 |             >
+589 |               <input
+590 |                 type="text"
+591 |                 value={form.fullName}
+592 |                 onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+593 |                 required
+594 |                 placeholder="ПІБ"
+595 |                 className="w-full p-2.5 border rounded-lg"
+596 |               />
+597 |               <div className="grid grid-cols-2 gap-4">
+598 |                 <input
+599 |                   type="email"
+600 |                   value={form.email}
+601 |                   onChange={(e) => setForm({ ...form, email: e.target.value })}
+602 |                   required
+603 |                   placeholder="Пошта"
+604 |                   className="w-full p-2.5 border rounded-lg"
+605 |                 />
+606 |                 <input
+607 |                   type="password"
+608 |                   value={form.password}
+609 |                   onChange={(e) =>
+610 |                     setForm({ ...form, password: e.target.value })
+611 |                   }
+612 |                   required={!editingUser}
+613 |                   placeholder="Пароль"
+614 |                   className="w-full p-2.5 border rounded-lg"
+615 |                 />
+616 |               </div>
+617 |               <div className="grid grid-cols-2 gap-4">
+618 |                 <input
+619 |                   type="tel"
+620 |                   value={form.phone}
+621 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
+622 |                   placeholder="Телефон"
+623 |                   className="w-full p-2.5 border rounded-lg"
+624 |                 />
+625 |                 <input
+626 |                   type="text"
+627 |                   value={form.telegramId}
+628 |                   onChange={(e) =>
+629 |                     setForm({ ...form, telegramId: e.target.value })
+630 |                   }
+631 |                   placeholder="Telegram ID або @username"
+632 |                   className="w-full p-2.5 border rounded-lg"
+633 |                 />
+634 |               </div>
+635 |               <div className="grid grid-cols-2 gap-4">
+636 |                 <select
+637 |                   value={form.role}
+638 |                   onChange={(e) =>
+639 |                     setForm({ ...form, role: e.target.value as Role })
+640 |                   }
+641 |                   className="w-full p-2.5 border rounded-lg"
+642 |                 >
+643 |                   <option value="MANAGER">Менеджер</option>
+644 |                   <option value="DRIVER">Водій</option>
+645 |                   <option value="HOST">Ведучий</option>
+646 |                   <option value="SUPERADMIN">Суперадмін</option>
+647 |                 </select>
+648 |                 <select
+649 |                   value={form.cityId}
+650 |                   onChange={(e) => setForm({ ...form, cityId: e.target.value })}
+651 |                   className="w-full p-2.5 border rounded-lg"
+652 |                 >
+653 |                   <option value="">Всі міста</option>
+654 |                   {cities.map((c) => (
+655 |                     <option key={c.id} value={c.id}>
+656 |                       {c.name}
+657 |                     </option>
+658 |                   ))}
+659 |                 </select>
+660 |               </div>
+661 |               {form.role === "DRIVER" && (
+662 |                 <input
+663 |                   type="text"
+664 |                   value={form.car || ""}
+665 |                   onChange={(e) => setForm({ ...form, car: e.target.value })}
+666 |                   placeholder="Автомобіль (напр. Renault Trafic)"
+667 |                   className="w-full p-2.5 border rounded-lg"
+668 |                 />
+669 |               )}
+670 |               <div className="flex gap-3 mt-2">
+671 |                 <button
+672 |                   type="button"
+673 |                   onClick={() => setIsModalOpen(false)}
+674 |                   className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
+675 |                 >
+676 |                   Скасувати
+677 |                 </button>
+678 |                 <button
+679 |                   type="submit"
+680 |                   disabled={isSubmitting}
+681 |                   className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium"
+682 |                 >
+683 |                   Зберегти
+684 |                 </button>
+685 |               </div>
+686 |             </form>
+687 |           </div>
+688 |         </div>
+689 |       )}
+690 |     </motion.div>
+691 |   );
+692 | }
+693 | 
 ```
 
 ### File: apps/frontend/src/pages/EventReport.tsx
@@ -19511,87 +19759,179 @@
 ```tsx
   0 | import { useState } from "react";
   1 | import { useNavigate } from "react-router-dom";
-  2 | 
-  3 | import { api } from "../config/api";
-  4 | 
-  5 | interface LoginProps {
-  6 |   onLogin?: () => void;
-  7 | }
-  8 | 
-  9 | export default function Login({ onLogin }: LoginProps) {
- 10 |   const [email, setEmail] = useState("admin@crm.com");
- 11 |   const [password, setPassword] = useState("admin123");
- 12 |   const [error, setError] = useState("");
- 13 |   const navigate = useNavigate();
- 14 | 
- 15 |   const handleLogin = async (e: React.FormEvent) => {
- 16 |     e.preventDefault();
- 17 |     setError("");
- 18 | 
- 19 |     try {
- 20 |       const response = await api.post("/auth/login", { email, password });
- 21 | 
- 22 |       localStorage.setItem("user", JSON.stringify(response.data.user));
- 23 |       if (onLogin) {
- 24 |         onLogin();
- 25 |       } else {
- 26 |         navigate("/cities");
- 27 |       }
- 28 |     } catch {
- 29 |       setError("Невірний email або пароль");
- 30 |     }
- 31 |   };
- 32 | 
- 33 |   return (
- 34 |     <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
- 35 |       <div className="p-6 sm:p-8 bg-white rounded-2xl shadow-lg w-full max-w-sm sm:max-w-md">
- 36 |         <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
- 37 |           Вхід у CRM
- 38 |         </h1>
- 39 | 
- 40 |         {error && (
- 41 |           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center">
- 42 |             {error}
- 43 |           </div>
- 44 |         )}
- 45 | 
- 46 |         <form onSubmit={handleLogin} className="flex flex-col gap-4">
- 47 |           <div>
- 48 |             <label className="block text-sm font-medium text-gray-700 mb-1">
- 49 |               Email
- 50 |             </label>
- 51 |             <input
- 52 |               type="email"
- 53 |               value={email}
- 54 |               onChange={(e) => setEmail(e.target.value)}
- 55 |               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
- 56 |               required
- 57 |             />
- 58 |           </div>
- 59 |           <div>
- 60 |             <label className="block text-sm font-medium text-gray-700 mb-1">
- 61 |               Пароль
- 62 |             </label>
- 63 |             <input
- 64 |               type="password"
- 65 |               value={password}
- 66 |               onChange={(e) => setPassword(e.target.value)}
- 67 |               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
- 68 |               required
- 69 |             />
- 70 |           </div>
- 71 |           <button
- 72 |             type="submit"
- 73 |             className="mt-2 bg-blue-600 text-white font-medium p-2.5 rounded-lg hover:bg-blue-700 transition"
- 74 |           >
- 75 |             Увійти
- 76 |           </button>
- 77 |         </form>
- 78 |       </div>
- 79 |     </div>
- 80 |   );
- 81 | }
- 82 | 
+  2 | import { motion, AnimatePresence } from "framer-motion";
+  3 | 
+  4 | import { api } from "../config/api";
+  5 | 
+  6 | const CIRCLE_VARIANTS = {
+  7 |   hidden: { scale: 0, opacity: 1 },
+  8 |   visible: {
+  9 |     scale: 1,
+ 10 |     transition: { duration: 0.6, ease: [0.76, 0, 0.24, 1] },
+ 11 |   },
+ 12 | };
+ 13 | 
+ 14 | interface User {
+ 15 |   id: string;
+ 16 |   name: string;
+ 17 |   email: string;
+ 18 |   role: string;
+ 19 | }
+ 20 | 
+ 21 | interface LoginProps {
+ 22 |   onLogin?: (user: User) => void;
+ 23 | }
+ 24 | 
+ 25 | export default function Login({ onLogin }: LoginProps) {
+ 26 |   const [email, setEmail] = useState("admin@crm.com");
+ 27 |   const [password, setPassword] = useState("123!PASSWORD!321");
+ 28 |   const [error, setError] = useState("");
+ 29 |   const [isLoading, setIsLoading] = useState(false);
+ 30 |   const [isTransitioning, setIsTransitioning] = useState(false);
+ 31 |   const [shake, setShake] = useState(false);
+ 32 |   const navigate = useNavigate();
+ 33 | 
+ 34 |   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
+ 35 | 
+ 36 |   const proceedAfterLogin = () => {
+ 37 |     if (onLogin && loggedInUser) {
+ 38 |       onLogin(loggedInUser);
+ 39 |     } else {
+ 40 |       navigate("/cities");
+ 41 |     }
+ 42 |   };
+ 43 | 
+ 44 |   const handleLogin = async (e: React.FormEvent) => {
+ 45 |     e.preventDefault();
+ 46 |     setError("");
+ 47 |     setIsLoading(true);
+ 48 | 
+ 49 |     try {
+ 50 |       const response = await api.post("/auth/login", { email, password });
+ 51 | 
+ 52 |       setLoggedInUser(response.data.user);
+ 53 |       setIsTransitioning(true);
+ 54 |     } catch {
+ 55 |       setError("Невірний email або пароль");
+ 56 |       setIsLoading(false);
+ 57 |       setShake(true);
+ 58 |       setTimeout(() => setShake(false), 400);
+ 59 |     }
+ 60 |   };
+ 61 | 
+ 62 |   return (
+ 63 |     <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+ 64 |       <AnimatePresence>
+ 65 |         {isTransitioning && (
+ 66 |           <motion.div
+ 67 |             variants={CIRCLE_VARIANTS}
+ 68 |             initial="hidden"
+ 69 |             animate="visible"
+ 70 |             onAnimationComplete={proceedAfterLogin}
+ 71 |             style={{
+ 72 |               width: "300vmax",
+ 73 |               height: "300vmax",
+ 74 |               borderRadius: "9999px",
+ 75 |               willChange: "transform",
+ 76 |             }}
+ 77 |             className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-blue-600"
+ 78 |           />
+ 79 |         )}
+ 80 |       </AnimatePresence>
+ 81 |       <motion.div
+ 82 |         animate={
+ 83 |           isTransitioning
+ 84 |             ? { opacity: 0, scale: 0.97 }
+ 85 |             : shake
+ 86 |               ? { x: [-10, 10, -10, 10, 0], opacity: 1, scale: 1 }
+ 87 |               : { opacity: 1, scale: 1 }
+ 88 |         }
+ 89 |         transition={{ duration: 0.4 }}
+ 90 |         className="p-6 sm:p-8 bg-white rounded-2xl shadow-lg w-full max-w-sm sm:max-w-md"
+ 91 |       >
+ 92 |         <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
+ 93 |           Вхід у CRM
+ 94 |         </h1>
+ 95 | 
+ 96 |         {error && (
+ 97 |           <motion.div
+ 98 |             initial={{ opacity: 0, y: -10 }}
+ 99 |             animate={{ opacity: 1, y: 0 }}
+100 |             className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center"
+101 |           >
+102 |             {error}
+103 |           </motion.div>
+104 |         )}
+105 | 
+106 |         <form onSubmit={handleLogin} className="flex flex-col gap-4">
+107 |           <div>
+108 |             <label className="block text-sm font-medium text-gray-700 mb-1">
+109 |               Email
+110 |             </label>
+111 |             <input
+112 |               type="email"
+113 |               value={email}
+114 |               onChange={(e) => setEmail(e.target.value)}
+115 |               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+116 |               required
+117 |             />
+118 |           </div>
+119 |           <div>
+120 |             <label className="block text-sm font-medium text-gray-700 mb-1">
+121 |               Пароль
+122 |             </label>
+123 |             <input
+124 |               type="password"
+125 |               value={password}
+126 |               onChange={(e) => setPassword(e.target.value)}
+127 |               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+128 |               required
+129 |             />
+130 |           </div>
+131 |           <motion.button
+132 |             type="submit"
+133 |             disabled={isLoading}
+134 |             whileTap={{ scale: 0.97 }}
+135 |             className="mt-2 bg-blue-600 text-white font-medium p-2.5 rounded-lg hover:bg-blue-700 transition disabled:opacity-80 disabled:cursor-not-allowed flex items-center justify-center gap-2 h-[42px]"
+136 |           >
+137 |             <AnimatePresence mode="wait" initial={false}>
+138 |               {isLoading ? (
+139 |                 <motion.span
+140 |                   key="loading"
+141 |                   initial={{ opacity: 0 }}
+142 |                   animate={{ opacity: 1 }}
+143 |                   exit={{ opacity: 0 }}
+144 |                   className="flex items-center gap-2"
+145 |                 >
+146 |                   <motion.span
+147 |                     animate={{ rotate: 360 }}
+148 |                     transition={{
+149 |                       duration: 0.7,
+150 |                       repeat: Infinity,
+151 |                       ease: "linear",
+152 |                     }}
+153 |                     className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full"
+154 |                   />
+155 |                   Вхід...
+156 |                 </motion.span>
+157 |               ) : (
+158 |                 <motion.span
+159 |                   key="idle"
+160 |                   initial={{ opacity: 0 }}
+161 |                   animate={{ opacity: 1 }}
+162 |                   exit={{ opacity: 0 }}
+163 |                 >
+164 |                   Увійти
+165 |                 </motion.span>
+166 |               )}
+167 |             </AnimatePresence>
+168 |           </motion.button>
+169 |         </form>
+170 |       </motion.div>
+171 |     </div>
+172 |   );
+173 | }
+174 | 
 ```
 
 ### File: apps/frontend/src/pages/SchoolProfile.tsx
@@ -21259,48 +21599,6 @@
  24 |   },
  25 | });
  26 | 
-```
-
-### File: collect-code.js
-```js
-  0 | const fs = require('fs');
-  1 | const path = require('path');
-  2 | 
-  3 | const outputFile = 'combined_auth_users.md';
-  4 | 
-  5 | fs.writeFileSync(outputFile, '# Файли Auth, Users та Seeder\n\n');
-  6 | 
-  7 | const filesToCollect = [
-  8 |   'apps/backend/src/auth/guards/roles.guard.ts',
-  9 |   'apps/backend/src/auth/decorators/roles.decorator.ts',
- 10 |   'apps/backend/src/auth/interfaces/jwt-user.interface.ts',
- 11 |   'apps/backend/src/users/users.service.ts',
- 12 |   'apps/backend/prisma/seed-admin.js',
- 13 |   'apps/backend/src/auth/auth.service.ts'
- 14 | ];
- 15 | 
- 16 | let collectedCount = 0;
- 17 | 
- 18 | console.log('🚀 Починаю збір файлів...\n');
- 19 | 
- 20 | filesToCollect.forEach(filePath => {
- 21 |   if (!fs.existsSync(filePath)) {
- 22 |     console.warn(`[!] Файл не знайдено: ${filePath}`);
- 23 |     return;
- 24 |   }
- 25 | 
- 26 |   const content = fs.readFileSync(filePath, 'utf-8');
- 27 |   const ext = path.extname(filePath).replace('.', '');
- 28 |   let lang = 'typescript';
- 29 |   if (ext === 'js') lang = 'javascript';
- 30 | 
- 31 |   const mdBlock = `### \`${filePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`;
- 32 |   fs.appendFileSync(outputFile, mdBlock);
- 33 |   console.log(`[+] Додано: ${filePath}`);
- 34 |   collectedCount++;
- 35 | });
- 36 | 
- 37 | console.log(`\n✅ Готово! Зібрано ${collectedCount} файлів у ${outputFile}`);
 ```
 
 ### File: package.json
