@@ -1,4 +1,21 @@
 import React, { useState, Suspense, lazy } from "react";
+
+function lazyWithRetry(factory: () => Promise<any>) {
+  return lazy(async () => {
+    try {
+      return await factory();
+    } catch (err) {
+      const key = "chunk-reload-ts";
+      const last = Number(sessionStorage.getItem(key) || 0);
+      if (Date.now() - last > 10000) {
+        sessionStorage.setItem(key, String(Date.now()));
+        window.location.reload();
+        return new Promise(() => {});
+      }
+      throw err;
+    }
+  });
+}
 import {
   BrowserRouter as Router,
   Routes,
@@ -13,17 +30,17 @@ import { api } from "./config/api";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
-const CityProfile = lazy(() => import("./pages/CityProfile"));
-const EventReport = lazy(() => import("./pages/EventReport"));
+const CityProfile = lazyWithRetry(() => import("./pages/CityProfile"));
+const EventReport = lazyWithRetry(() => import("./pages/EventReport"));
 
-const Cities = lazy(() => import("./pages/Cities"));
-const Schools = lazy(() => import("./pages/Schools"));
-const SchoolProfile = lazy(() => import("./pages/SchoolProfile"));
-const Employees = lazy(() => import("./pages/Employees"));
-const Finance = lazy(() => import("./pages/Finance"));
-const CalendarView = lazy(() => import("./pages/CalendarView"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Kindergartens = lazy(() => import("./pages/Kindergartens"));
+const Cities = lazyWithRetry(() => import("./pages/Cities"));
+const Schools = lazyWithRetry(() => import("./pages/Schools"));
+const SchoolProfile = lazyWithRetry(() => import("./pages/SchoolProfile"));
+const Employees = lazyWithRetry(() => import("./pages/Employees"));
+const Finance = lazyWithRetry(() => import("./pages/Finance"));
+const CalendarView = lazyWithRetry(() => import("./pages/CalendarView"));
+const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
+const Kindergartens = lazyWithRetry(() => import("./pages/Kindergartens"));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center h-full min-h-[50vh]">
