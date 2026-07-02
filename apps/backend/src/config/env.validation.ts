@@ -9,6 +9,7 @@ export const envValidationSchema = Joi.object({
   DIRECT_URL: Joi.string().uri().optional(),
   FRONTEND_URL: Joi.string().required(),
   TELEGRAM_BOT_TOKEN: Joi.string().required(),
+  REDIS_URL: Joi.string().uri().default('redis://localhost:6379'),
   JWT_SECRET: Joi.string()
     .min(16)
     .when('NODE_ENV', {

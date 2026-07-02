@@ -64,6 +64,7 @@ model School {
   city          City     @relation(fields: [cityId], references: [id])
 
   @@index([cityId])
+  @@index([updatedAt, cityId])
 }
 
 model Crew {
@@ -118,6 +119,7 @@ model Event {
   @@index([cityId])
   @@index([status])
   @@index([schoolId])
+  @@index([date, status, cityId])
 }
 
 model EventReport {
@@ -166,6 +168,8 @@ model EventHistory {
   role      String
   createdAt DateTime @default(now())
   event     Event    @relation(fields: [eventId], references: [id])
+
+  @@index([eventId, createdAt])
 }
 
 model EventPreparation {

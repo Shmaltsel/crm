@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ConfigModule } from '@nestjs/config';
 import { LoggerModule } from './common/logger/logger.module';
+import { RedisCacheModule } from './common/cache/redis-cache.module';
 import { envValidationSchema } from './config/env.validation';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -24,6 +25,7 @@ import { ProjectsModule } from './projects/projects.module';
       validationSchema: envValidationSchema,
     }),
     LoggerModule,
+    RedisCacheModule,
     ThrottlerModule.forRoot([
       {
         name: 'default',
