@@ -1,41 +1,75 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { api } from "../../../config/api";
-import type { EventFormData, Project } from "../../../types";
+import type { Project } from "../../../types";
+import { eventSchema, type EventFormValues } from "./EventSchema";
 
 interface EventModalProps {
   isOpen: boolean;
   onClose: () => void;
-  eventForm: EventFormData;
-  setEventForm: React.Dispatch<React.SetStateAction<EventFormData>>;
-  onSave: (e: React.FormEvent) => void;
+  defaultValues?: Partial<EventFormValues>;
+  onSave: (data: EventFormValues) => void;
 }
 
 export default function EventModal({
   isOpen,
   onClose,
-  eventForm,
-  setEventForm,
+  defaultValues,
   onSave,
 }: EventModalProps) {
   const [projects, setProjects] = useState<Project[]>([]);
 
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<EventFormValues>({
+    resolver: zodResolver(eventSchema),
+    defaultValues: {
+      project: "",
+      date: "",
+      time: "",
+      childrenPlanned: "",
+      price: "",
+      address: "",
+      contactPerson: "",
+      contactPhone: "",
+      ...defaultValues,
+    },
+  });
+
+  const currentProject = watch("project");
+
   useEffect(() => {
     if (isOpen) {
+      reset({
+        project: "",
+        date: "",
+        time: "",
+        childrenPlanned: "",
+        price: "",
+        address: "",
+        contactPerson: "",
+        contactPhone: "",
+        ...defaultValues,
+      });
       api
         .get<Project[]>("/projects", {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         })
         .then((res) => {
           setProjects(res.data);
-          if (!eventForm.project && res.data.length > 0) {
-            setEventForm((prev) => ({
-              ...prev,
-              project: res.data[0].name,
-            }));
+          if (!defaultValues?.project && res.data.length > 0) {
+            setValue("project", res.data[0].name);
           }
         })
         .catch(console.error);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -53,7 +87,7 @@ export default function EventModal({
           </button>
         </div>
         <form
-          onSubmit={onSave}
+          onSubmit={handleSubmit(onSave)}
           className="p-5 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-4"
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -62,12 +96,8 @@ export default function EventModal({
                 Проєкт (Вид події)
               </label>
               <select
-                value={eventForm.project}
-                onChange={(e) =>
-                  setEventForm({ ...eventForm, project: e.target.value })
-                }
+                {...register("project")}
                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
-                required
               >
                 <option value="" disabled>
                   Оберіть вид події
@@ -85,30 +115,37 @@ export default function EventModal({
                   </>
                 )}
               </select>
+              {errors.project && (
+                <p className="text-xs text-red-500 mt-1">
+                  {errors.project.message}
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm mb-1 text-slate-600">Дата</label>
               <input
                 type="date"
-                value={eventForm.date}
-                onChange={(e) =>
-                  setEventForm({ ...eventForm, date: e.target.value })
-                }
-                required
+                {...register("date")}
                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
               />
+              {errors.date && (
+                <p className="text-xs text-red-500 mt-1">
+                  {errors.date.message}
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm mb-1 text-slate-600">Час</label>
               <input
                 type="time"
-                value={eventForm.time}
-                onChange={(e) =>
-                  setEventForm({ ...eventForm, time: e.target.value })
-                }
-                required
+                {...register("time")}
                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
               />
+              {errors.time && (
+                <p className="text-xs text-red-500 mt-1">
+                  {errors.time.message}
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm mb-1 text-slate-600">
@@ -116,16 +153,14 @@ export default function EventModal({
               </label>
               <input
                 type="number"
-                value={eventForm.childrenPlanned}
-                onChange={(e) =>
-                  setEventForm({
-                    ...eventForm,
-                    childrenPlanned: e.target.value,
-                  })
-                }
-                required
+                {...register("childrenPlanned")}
                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
               />
+              {errors.childrenPlanned && (
+                <p className="text-xs text-red-500 mt-1">
+                  {errors.childrenPlanned.message}
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm mb-1 text-slate-600">
@@ -133,13 +168,14 @@ export default function EventModal({
               </label>
               <input
                 type="number"
-                value={eventForm.price}
-                onChange={(e) =>
-                  setEventForm({ ...eventForm, price: e.target.value })
-                }
-                required
+                {...register("price")}
                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
               />
+              {errors.price && (
+                <p className="text-xs text-red-500 mt-1">
+                  {errors.price.message}
+                </p>
+              )}
             </div>
             <div className="sm:col-span-2">
               <label className="block text-sm mb-1 text-slate-600">
@@ -147,10 +183,7 @@ export default function EventModal({
               </label>
               <input
                 type="text"
-                value={eventForm.address}
-                onChange={(e) =>
-                  setEventForm({ ...eventForm, address: e.target.value })
-                }
+                {...register("address")}
                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -160,10 +193,7 @@ export default function EventModal({
               </label>
               <input
                 type="text"
-                value={eventForm.contactPerson}
-                onChange={(e) =>
-                  setEventForm({ ...eventForm, contactPerson: e.target.value })
-                }
+                {...register("contactPerson")}
                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -173,10 +203,7 @@ export default function EventModal({
               </label>
               <input
                 type="text"
-                value={eventForm.contactPhone}
-                onChange={(e) =>
-                  setEventForm({ ...eventForm, contactPhone: e.target.value })
-                }
+                {...register("contactPhone")}
                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -191,7 +218,8 @@ export default function EventModal({
             </button>
             <button
               type="submit"
-              className="w-full sm:w-auto px-5 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
+              disabled={isSubmitting}
+              className="w-full sm:w-auto px-5 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
               Створити
             </button>

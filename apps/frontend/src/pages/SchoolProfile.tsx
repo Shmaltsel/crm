@@ -48,6 +48,8 @@ const AssignedCrew = lazy(
 import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
 import EventModal from "../components/school-profile/modals/EventModal";
 import CommentModal from "../components/school-profile/modals/CommentModal";
+import type { EventFormValues } from "../components/school-profile/modals/EventSchema";
+import type { SchoolEditFormValues } from "../components/school-profile/modals/SchoolEditSchema";
 import CrewModal from "../components/school-profile/modals/CrewModal";
 import ReportModal from "../components/school-profile/modals/ReportModal";
 
@@ -129,30 +131,6 @@ export default function SchoolProfile() {
     stepId: null as number | null,
     historyId: null as string | null,
     text: "",
-  });
-
-  const [editForm, setEditForm] = useState({
-    id: "",
-    cityId: "",
-    name: "",
-    type: "Школа",
-    city: "",
-    address: "",
-    director: "",
-    phone: "",
-    email: "",
-    childrenCount: 0,
-    notes: "",
-  });
-  const [eventForm, setEventForm] = useState({
-    project: "Голограма для школи",
-    date: "",
-    time: "11:00",
-    childrenPlanned: "",
-    price: "",
-    address: "",
-    contactPerson: "",
-    contactPhone: "",
   });
 
   const currentEventBase = useMemo(
@@ -277,16 +255,15 @@ export default function SchoolProfile() {
   const createEventMutation = useCreateEvent();
 
   const handleSaveEvent = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
+    async (data: EventFormValues) => {
       if (!schoolData.id) return;
 
       const payload = {
-        ...eventForm,
+        ...data,
         schoolId: schoolData.id,
         cityId: schoolData.cityId,
-        childrenPlanned: Number(eventForm.childrenPlanned) || 0,
-        price: Number(eventForm.price) || 0,
+        childrenPlanned: Number(data.childrenPlanned) || 0,
+        price: Number(data.price) || 0,
       };
 
       const newEvent = await createEventMutation.mutateAsync(payload);
@@ -294,26 +271,39 @@ export default function SchoolProfile() {
       setIsEventModalOpen(false);
       setSelectedEventId(newEvent.id);
     },
-    [eventForm, schoolData, createEventMutation],
+    [schoolData, createEventMutation],
   );
 
   const handleSaveSchoolInfo = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
+    async (data: SchoolEditFormValues) => {
       if (!id) return;
 
-      const { city, ...rest } = editForm;
       await updateSchoolMutation.mutateAsync({
-        ...rest,
+        ...data,
+        childrenCount: Number(data.childrenCount) || 0,
         id,
       });
       setIsEditModalOpen(false);
     },
-    [editForm, id, updateSchoolMutation],
+    [id, updateSchoolMutation],
+  );
+
+  const editDefaultValues = useMemo<SchoolEditFormValues>(
+    () => ({
+      type: (schoolData.type as "Школа" | "Садочок") || "Школа",
+      address: schoolData.address,
+      director: schoolData.director,
+      phone: schoolData.phone,
+      email: schoolData.email,
+      childrenCount: schoolData.childrenCount
+        ? String(schoolData.childrenCount)
+        : "",
+    }),
+    [schoolData],
   );
 
   const handleUpdatePreparation = useCallback(
-    async (field: string, status: string) => {
+    async (field: string, status: "PLANNED" | "IN_PROGRESS" | "DONE") => {
       if (!currentEvent) return;
       await updatePreparation.mutateAsync({
         eventId: currentEvent.id,
@@ -358,7 +348,7 @@ export default function SchoolProfile() {
       await updatePreparation.mutateAsync({
         eventId: currentEvent.id,
         field: "assignCrew",
-        status: "Виконано",
+        status: "DONE",
       });
 
       setIsCrewModalOpen(false);
@@ -369,15 +359,20 @@ export default function SchoolProfile() {
   const events = eventsRaw;
 
   const openAddEventModal = useCallback(() => {
-    setEventForm((prev) => ({
-      ...prev,
+    setIsEventModalOpen(true);
+  }, []);
+
+  const eventDefaultValues = useMemo<Partial<EventFormValues>>(
+    () => ({
+      project: "Голограма для школи",
+      time: "11:00",
       address: schoolData.address,
       contactPerson: schoolData.director,
       contactPhone: schoolData.phone,
       childrenPlanned: String(schoolData.childrenCount),
-    }));
-    setIsEventModalOpen(true);
-  }, [schoolData]);
+    }),
+    [schoolData],
+  );
   const stagger = (i: number) => ({
     initial: { opacity: 0, y: 10 },
     animate: { opacity: 1, y: 0 },
@@ -388,10 +383,7 @@ export default function SchoolProfile() {
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8">
       <SchoolProfileHeader
         schoolData={schoolData}
-        onEdit={() => {
-          setEditForm(schoolData);
-          setIsEditModalOpen(true);
-        }}
+        onEdit={() => setIsEditModalOpen(true)}
         onAddEvent={openAddEventModal}
       />
 
@@ -657,15 +649,13 @@ export default function SchoolProfile() {
       <EditSchoolModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
-        editForm={editForm}
-        setEditForm={setEditForm}
+        defaultValues={editDefaultValues}
         onSave={handleSaveSchoolInfo}
       />
       <EventModal
         isOpen={isEventModalOpen}
         onClose={() => setIsEventModalOpen(false)}
-        eventForm={eventForm}
-        setEventForm={setEventForm}
+        defaultValues={eventDefaultValues}
         onSave={handleSaveEvent}
       />
       <CommentModal
