@@ -178,7 +178,7 @@ export default function Employees() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.fullName.trim()) return;
-    setIsModalOpen(false); 
+    setIsModalOpen(false);
     if (editingUser) {
       const { password, ...rest } = form;
       const payload = password.trim() ? form : rest;
@@ -301,7 +301,66 @@ export default function Employees() {
                 transition={{ duration: 0.2 }}
                 className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
               >
-                <table className="w-full text-left">
+                <div className="sm:hidden divide-y divide-slate-50">
+                  <AnimatePresence initial={false}>
+                    {items.map((u, ri) => (
+                      <motion.div
+                        key={u.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2, delay: ri * 0.04 }}
+                        className="p-4 flex flex-col gap-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
+                            >
+                              {u.name.charAt(0)}
+                            </div>
+                            <span className="font-medium text-slate-800">
+                              {u.name}
+                            </span>
+                          </div>
+                          {isSuperAdmin && (
+                            <div className="flex items-center gap-1 shrink-0">
+                              <motion.button
+                                whileTap={{ scale: 0.93 }}
+                                onClick={() => handleOpenModal(u)}
+                                className="text-slate-400 hover:text-blue-500 p-2 hover:bg-blue-50 rounded-lg"
+                              >
+                                ✏️
+                              </motion.button>
+                              <motion.button
+                                whileTap={{ scale: 0.93 }}
+                                onClick={() => handleDelete(u.id, u.name)}
+                                className="text-slate-400 hover:text-red-500 p-2 hover:bg-red-50 rounded-lg"
+                              >
+                                🗑
+                              </motion.button>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 pl-11">
+                          <PhoneLink phone={u.phone} />
+                          <span>{u.email}</span>
+                        </div>
+                        <div className="flex items-center gap-2 pl-11">
+                          <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
+                            📍 {u.city?.name || "Всі міста"}
+                          </span>
+                          {u.car && (
+                            <span className="text-xs text-emerald-600 font-medium">
+                              🚗 {u.car}
+                            </span>
+                          )}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+                <table className="w-full text-left hidden sm:table">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       <th className="px-5 py-3">ПІБ</th>
