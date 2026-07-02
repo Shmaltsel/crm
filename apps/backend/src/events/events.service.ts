@@ -361,7 +361,7 @@ export class EventsService {
     reportData: SubmitReportDto,
     user: JwtUser,
   ) {
-    await this.prisma.eventReport.upsert({
+    const report = await this.prisma.eventReport.upsert({
       where: { eventId },
       update: {
         announcementDone: reportData.announcementDone,
@@ -390,13 +390,15 @@ export class EventsService {
       },
     });
 
-    await this.prisma.expenseItem.deleteMany({ where: { reportId: eventId } });
-    await this.prisma.salaryItem.deleteMany({ where: { reportId: eventId } });
+    await this.prisma.expenseItem.deleteMany({
+      where: { reportId: report.id },
+    });
+    await this.prisma.salaryItem.deleteMany({ where: { reportId: report.id } });
 
     if (reportData.expenses?.length) {
       await this.prisma.expenseItem.createMany({
         data: reportData.expenses.map((exp: ExpenseItemDto) => ({
-          reportId: eventId,
+          reportId: report.id,
           category: exp.category || 'Інше',
           name: exp.name,
           amount: new Prisma.Decimal(exp.amount || 0),
@@ -405,16 +407,6 @@ export class EventsService {
     }
 
     if (reportData.salaries?.length) {
-      await this.prisma.salaryItem.createMany({
-        data: reportData.salaries.map((s: SalaryItemDto) => ({
-          reportId: eventId,
-          userId: s.userId,
-          userName: s.name,
-          amount: new Prisma.Decimal(s.amount || 0),
-          role: s.role,
-        })),
-      });
-
       await Promise.all(
         reportData.salaries
           .filter((s) => s.userId && s.amount > 0)

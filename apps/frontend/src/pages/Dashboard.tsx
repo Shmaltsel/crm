@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../context/AuthContext";
 const IssueCarousel = lazy(() => import("../components/IssueCarousel"));
 const FunnelBar = lazy(() => import("../components/dashboard/FunnelBar"));
 const TodayEvents = lazy(() => import("../components/dashboard/TodayEvents"));
