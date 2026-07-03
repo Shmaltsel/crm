@@ -1,4 +1,6 @@
 import { Injectable, HttpStatus, forwardRef, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { AppException } from '../common/exceptions/app.exception';
 import { Prisma } from '@prisma/client';
 import { EventsService } from '../events/events.service';
@@ -17,6 +19,7 @@ export class SchoolsService {
     private readonly eventsService: EventsService,
     private readonly parserService: ParserService,
     private readonly prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   async create(data: {
@@ -260,6 +263,10 @@ export class SchoolsService {
   }
 
   async findOne(id: string) {
+    const key = `school:${id}`;
+    const cached = await this.cacheManager.get(key);
+    if (cached) return cached;
+
     const school = await this.prisma.school.findUnique({
       where: {
         id,
@@ -272,18 +279,21 @@ export class SchoolsService {
       throw new AppException('SCHOOL_NOT_FOUND', HttpStatus.NOT_FOUND);
     }
 
+    await this.cacheManager.set(key, school, 15_000);
     return school;
   }
 
   async update(id: string, data: any) {
     const { city, id: _id, createdAt, updatedAt, ...updateData } = data;
 
-    return this.prisma.school.update({
+    const updated = await this.prisma.school.update({
       where: {
         id,
       },
       data: updateData,
     });
+    await this.cacheManager.del(`school:${id}`);
+    return updated;
   }
 
   async remove(id: string) {
@@ -297,11 +307,13 @@ export class SchoolsService {
       await this.eventsService.remove(event.id);
     }
 
-    return this.prisma.school.delete({
+    const deleted = await this.prisma.school.delete({
       where: {
         id,
       },
     });
+    await this.cacheManager.del(`school:${id}`);
+    return deleted;
   }
 
   async searchContacts(q: string, city?: string) {

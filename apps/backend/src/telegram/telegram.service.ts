@@ -32,6 +32,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
+    this.redis.on('error', (err: Error) =>
+      this.logger.warn(`Redis lock connection error: ${err.message}`),
+    );
+
     const token = process.env.TELEGRAM_BOT_TOKEN;
     if (!token || process.env.NODE_ENV === 'test') {
       this.logger.warn(
@@ -52,13 +56,22 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async tryBecomeLeader(token: string) {
-    const acquired = await this.redis.set(
-      LOCK_KEY,
-      this.instanceId,
-      'PX',
-      LOCK_TTL_MS,
-      'NX',
-    );
+    let acquired: string | null;
+    try {
+      acquired = await this.redis.set(
+        LOCK_KEY,
+        this.instanceId,
+        'PX',
+        LOCK_TTL_MS,
+        'NX',
+      );
+    } catch (e) {
+      this.logger.warn(
+        `Не вдалося отримати lock, повторю пізніше: ${(e as Error).message}`,
+      );
+      this.retryTimer = setTimeout(() => this.tryBecomeLeader(token), RETRY_MS);
+      return;
+    }
     if (!acquired) {
       this.retryTimer = setTimeout(() => this.tryBecomeLeader(token), RETRY_MS);
       return;
@@ -112,12 +125,11 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         `[/start] Користувача з username "${normalizedUsername}" не знайдено в CRM.`,
       );
       await this.bot.sendMessage(
-          chatId,
-          `❌ Акаунт не знайдено. Переконайтеся, що в CRM у вашому профілі вказано нікнейм <b>${normalizedUsername}</b> без помилок.`,
-          { parse_mode: 'HTML' },
-        );
-      }
-    });
+        chatId,
+        `❌ Акаунт не знайдено. Переконайтеся, що в CRM у вашому профілі вказано нікнейм <b>${normalizedUsername}</b> без помилок.`,
+        { parse_mode: 'HTML' },
+      );
+    }
   }
 
   async sendMessage(chatId: string, text: string): Promise<void> {

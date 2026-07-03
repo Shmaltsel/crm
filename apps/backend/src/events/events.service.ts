@@ -1,4 +1,6 @@
-import { Injectable, Logger, HttpStatus } from '@nestjs/common';
+import { Injectable, Logger, HttpStatus, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { AppException } from '../common/exceptions/app.exception';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
@@ -8,7 +10,7 @@ import { CreateEventDto } from './dto/create-event.dto';
 import {
   SubmitReportDto,
   ExpenseItemDto,
-  SalaryItemDto
+  SalaryItemDto,
 } from './dto/submit-report.dto';
 import { EventQueryDto } from './dto/event-query.dto';
 import { PageMetaDto } from '../common/dto/page-meta.dto';
@@ -21,10 +23,12 @@ const FIELD_ROLES = ['DRIVER', 'HOST'];
 @Injectable()
 export class EventsService {
   private readonly logger = new Logger(EventsService.name);
+  private readonly pendingSchoolEvents = new Map<string, Promise<unknown>>();
 
   constructor(
     private readonly prisma: PrismaService,
     private telegramService: TelegramService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   async findAllForUser(user: JwtUser, query?: EventQueryDto) {
@@ -69,7 +73,7 @@ export class EventsService {
   }
 
   async create(data: CreateEventDto, user: JwtUser) {
-    return this.prisma.event.create({
+    const event = await this.prisma.event.create({
       data: {
         ...data,
         status: 'BASE' as never,
@@ -85,6 +89,15 @@ export class EventsService {
       },
       include: { history: true },
     });
+    await this.invalidateSchoolEventsCache(event.schoolId);
+    return event;
+  }
+
+  private async invalidateSchoolEventsCache(schoolId: string) {
+    await Promise.all([
+      this.cacheManager.del(`events:school:${schoolId}:minimal`),
+      this.cacheManager.del(`events:school:${schoolId}:full`),
+    ]);
   }
 
   async updateStatus(
@@ -94,7 +107,7 @@ export class EventsService {
     comment: string | undefined,
     user: JwtUser,
   ) {
-    return this.prisma.event.update({
+    const event = await this.prisma.event.update({
       where: { id: eventId },
       data: {
         status: newStatus as never,
@@ -110,6 +123,8 @@ export class EventsService {
       },
       include: { crew: true, history: { orderBy: { createdAt: 'desc' } } },
     });
+    await this.invalidateSchoolEventsCache(event.schoolId);
+    return event;
   }
 
   async updatePreparationStatus(
@@ -120,20 +135,18 @@ export class EventsService {
     >,
     status: PreparationStatus,
   ) {
-    const existing = await this.prisma.eventPreparation.findUnique({
+    const result = await this.prisma.eventPreparation.upsert({
       where: { eventId },
+      update: { [field]: status },
+      create: { eventId, [field]: status },
     });
 
-    if (existing) {
-      return this.prisma.eventPreparation.update({
-        where: { eventId },
-        data: { [field]: status },
-      });
-    } else {
-      return this.prisma.eventPreparation.create({
-        data: { eventId, [field]: status },
-      });
-    }
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { schoolId: true },
+    });
+    if (event) await this.invalidateSchoolEventsCache(event.schoolId);
+    return result;
   }
 
   async assignCrewToEvent(eventId: string, crewId: string) {
@@ -207,6 +220,7 @@ export class EventsService {
       }
     }
 
+    await this.invalidateSchoolEventsCache(event.schoolId);
     return event;
   }
 
@@ -264,6 +278,7 @@ export class EventsService {
     await sendTo(event.crew?.hostId);
     await sendTo(event.crew?.driverId);
 
+    await this.invalidateSchoolEventsCache(event.schoolId);
     return event;
   }
 
@@ -280,8 +295,30 @@ export class EventsService {
   }
 
   async findBySchool(schoolId: string, minimal = false) {
+    const key = `events:school:${schoolId}:${minimal ? 'minimal' : 'full'}`;
+    const cached = await this.cacheManager.get(key);
+    if (cached) return cached;
+
+    const existing = this.pendingSchoolEvents.get(key);
+    if (existing) return existing;
+
+    const compute = this.computeBySchool(key, schoolId, minimal);
+    this.pendingSchoolEvents.set(key, compute);
+    try {
+      return await compute;
+    } finally {
+      this.pendingSchoolEvents.delete(key);
+    }
+  }
+
+  private async computeBySchool(
+    key: string,
+    schoolId: string,
+    minimal: boolean,
+  ) {
+    let result;
     if (minimal) {
-      return this.prisma.event.findMany({
+      result = await this.prisma.event.findMany({
         where: { schoolId },
         select: {
           id: true,
@@ -301,23 +338,30 @@ export class EventsService {
         },
         orderBy: { date: 'desc' },
       });
+    } else {
+      result = await this.prisma.event.findMany({
+        where: { schoolId },
+        include: {
+          crew: { include: { host: true, driver: true } },
+          history: { orderBy: { createdAt: 'desc' } },
+          preparation: true,
+        },
+        orderBy: { date: 'desc' },
+      });
     }
-    return this.prisma.event.findMany({
-      where: { schoolId },
-      include: {
-        crew: { include: { host: true, driver: true } },
-        history: { orderBy: { createdAt: 'desc' } },
-        preparation: true,
-      },
-      orderBy: { date: 'desc' },
-    });
+
+    await this.cacheManager.set(key, result, 15_000);
+    return result;
   }
 
   async updateHistoryComment(historyId: string, comment: string) {
-    return this.prisma.eventHistory.update({
+    const history = await this.prisma.eventHistory.update({
       where: { id: historyId },
       data: { comment: comment || null },
+      include: { event: { select: { schoolId: true } } },
     });
+    await this.invalidateSchoolEventsCache(history.event.schoolId);
+    return history;
   }
 
   async addHistoryComment(eventId: string, comment: string, user: JwtUser) {
@@ -332,12 +376,14 @@ export class EventsService {
       },
     });
 
-    return this.prisma.event.findUnique({
+    const event = await this.prisma.event.findUnique({
       where: { id: eventId },
       include: {
         history: { orderBy: { createdAt: 'desc' } },
       },
     });
+    if (event) await this.invalidateSchoolEventsCache(event.schoolId);
+    return event;
   }
 
   async remove(id: string) {
@@ -353,9 +399,11 @@ export class EventsService {
       where: { eventId: id },
     });
 
-    return this.prisma.event.delete({
+    const deleted = await this.prisma.event.delete({
       where: { id },
     });
+    await this.invalidateSchoolEventsCache(exists.schoolId);
+    return deleted;
   }
 
   async submitReport(
@@ -421,7 +469,7 @@ export class EventsService {
       );
     }
 
-    return this.prisma.event.update({
+    const event = await this.prisma.event.update({
       where: { id: eventId },
       data: {
         status: 'RE_SALE' as never,
@@ -436,6 +484,8 @@ export class EventsService {
       },
       include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
     });
+    await this.invalidateSchoolEventsCache(event.schoolId);
+    return event;
   }
 
   async findOne(id: string) {
