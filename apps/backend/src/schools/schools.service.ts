@@ -1,9 +1,5 @@
-import {
-  Injectable,
-  NotFoundException,
-  forwardRef,
-  Inject,
-} from '@nestjs/common';
+import { Injectable, HttpStatus, forwardRef, Inject } from '@nestjs/common';
+import { AppException } from '../common/exceptions/app.exception';
 import { Prisma } from '@prisma/client';
 import { EventsService } from '../events/events.service';
 import { ParserService } from './parser.service';
@@ -273,7 +269,7 @@ export class SchoolsService {
       },
     });
     if (!school) {
-      throw new NotFoundException(`Школу з ID ${id} не знайдено`);
+      throw new AppException('SCHOOL_NOT_FOUND', HttpStatus.NOT_FOUND);
     }
 
     return school;
@@ -368,7 +364,7 @@ export class SchoolsService {
   }
   async bulkImport(cityId: string, type: 'Школа' | 'Садочок' = 'Школа') {
     const city = await this.prisma.city.findUnique({ where: { id: cityId } });
-    if (!city) throw new Error(`Місто з id=${cityId} не знайдено`);
+    if (!city) throw new AppException('CITY_NOT_FOUND', HttpStatus.NOT_FOUND);
 
     const allFromParser = await this.parserService.getAllSchoolsForCity(
       city.name,

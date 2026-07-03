@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
 import { SanitizeInterceptor } from './common/interceptors/sanitize.interceptor';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -23,8 +23,18 @@ import { TelegramModule } from './telegram/telegram.module';
 import { IssuesModule } from './issues/issues.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ProjectsModule } from './projects/projects.module';
+import { HealthModule } from './health/health.module';
+import { MetricsModule } from './metrics/metrics.module';
+import { FeatureFlagsModule } from './common/feature-flags/feature-flags.module';
+import { I18nModule } from './common/i18n/i18n.module';
+import { LocalizedValidationPipe } from './common/pipes/localized-validation.pipe';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 @Module({
   imports: [
+    HealthModule,
+    MetricsModule,
+    FeatureFlagsModule,
+    I18nModule,
     ConfigModule.forRoot({
       isGlobal: true,
       validationSchema: envValidationSchema,
@@ -35,7 +45,12 @@ import { ProjectsModule } from './projects/projects.module';
       useFactory: () => ({
         throttlers: [{ name: 'default', ttl: 60000, limit: 100 }],
         storage: new ThrottlerStorageRedisService(
-          new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379'),
+          new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
+            maxRetriesPerRequest: 1,
+            connectTimeout: 3000,
+            retryStrategy: (times) =>
+              times > 3 ? null : Math.min(times * 200, 2000),
+          }),
         ),
       }),
     }),
@@ -54,6 +69,11 @@ import { ProjectsModule } from './projects/projects.module';
   controllers: [AppController],
   providers: [
     AppService,
+    AllExceptionsFilter,
+    {
+      provide: APP_PIPE,
+      useClass: LocalizedValidationPipe,
+    },
     {
       provide: APP_GUARD,
       useClass: UserThrottlerGuard,

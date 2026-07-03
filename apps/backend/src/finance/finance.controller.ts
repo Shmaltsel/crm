@@ -1,4 +1,5 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
 import { FinanceService } from './finance.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -9,6 +10,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 
+@ApiTags('Finance')
+@ApiCookieAuth('access_token')
 @Controller('finance')
 @UseGuards(AuthGuard, RolesGuard)
 export class FinanceController {
@@ -29,6 +32,7 @@ export class FinanceController {
     return me?.cityId ?? undefined;
   }
 
+  @ApiOperation({ summary: 'Фінансовий дашборд (KPI, динаміка, топ)' })
   @Get('dashboard')
   @Roles('SUPERADMIN', 'MANAGER')
   async getDashboard(
@@ -44,11 +48,13 @@ export class FinanceController {
     });
   }
 
+  @ApiOperation({ summary: 'Баланс поточного користувача' })
   @Get('my-balance')
   getMyBalance(@CurrentUser() user: JwtUser) {
     return this.financeService.getMyBalance(user.sub);
   }
 
+  @ApiOperation({ summary: 'Виручка по співробітниках' })
   @Get('staff-revenue')
   @Roles('SUPERADMIN', 'MANAGER')
   async getStaffRevenue(

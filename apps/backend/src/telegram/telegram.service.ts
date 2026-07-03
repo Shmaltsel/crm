@@ -2,16 +2,29 @@ import {
   Injectable,
   Logger,
   OnModuleInit,
+  OnModuleDestroy,
   Inject,
   forwardRef,
 } from '@nestjs/common';
 import TelegramBot from 'node-telegram-bot-api';
+import Redis from 'ioredis';
+import { randomUUID } from 'crypto';
 import { UsersService } from '../users/users.service';
 
+const LOCK_KEY = 'telegram:bot:leader';
+const LOCK_TTL_MS = 15_000;
+const RETRY_MS = 5_000;
+
 @Injectable()
-export class TelegramService implements OnModuleInit {
+export class TelegramService implements OnModuleInit, OnModuleDestroy {
   private bot: TelegramBot;
   private readonly logger = new Logger(TelegramService.name);
+  private readonly instanceId = randomUUID();
+  private readonly redis = new Redis(
+    process.env.REDIS_URL ?? 'redis://localhost:6379',
+  );
+  private lockTimer?: NodeJS.Timeout;
+  private retryTimer?: NodeJS.Timeout;
 
   constructor(
     @Inject(forwardRef(() => UsersService))
@@ -26,42 +39,79 @@ export class TelegramService implements OnModuleInit {
       );
       return;
     }
+    void this.tryBecomeLeader(token);
+  }
+
+  async onModuleDestroy() {
+    clearTimeout(this.retryTimer);
+    clearInterval(this.lockTimer);
+    if (this.bot) await this.bot.stopPolling();
+    const current = await this.redis.get(LOCK_KEY);
+    if (current === this.instanceId) await this.redis.del(LOCK_KEY);
+    this.redis.disconnect();
+  }
+
+  private async tryBecomeLeader(token: string) {
+    const acquired = await this.redis.set(
+      LOCK_KEY,
+      this.instanceId,
+      'PX',
+      LOCK_TTL_MS,
+      'NX',
+    );
+    if (!acquired) {
+      this.retryTimer = setTimeout(() => this.tryBecomeLeader(token), RETRY_MS);
+      return;
+    }
+
     this.bot = new TelegramBot(token, { polling: true });
-    this.logger.log('Telegram бот ініціалізовано');
-
-    this.bot.onText(/\/start/, async (msg) => {
-      const chatId = String(msg.chat.id);
-      const username = msg.from?.username;
-
-      if (!username) {
-        await this.bot.sendMessage(
-          chatId,
-          "⚠️ У вашому профілі Telegram не вказано username. Будь ласка, додайте його в налаштуваннях Telegram, щоб ми могли підв'язати акаунт.",
+    this.logger.log(`Telegram бот ініціалізовано (leader=${this.instanceId})`);
+    this.lockTimer = setInterval(() => {
+      this.redis
+        .set(LOCK_KEY, this.instanceId, 'PX', LOCK_TTL_MS, 'XX')
+        .catch((e: Error) =>
+          this.logger.warn(`Не вдалося продовжити lock: ${e.message}`),
         );
-        return;
-      }
+    }, LOCK_TTL_MS / 3);
 
-      const normalizedUsername = username.toLowerCase();
+    this.bot.onText(/\/start/, (msg) => {
+      void this.handleStartCommand(msg);
+    });
+  }
 
-      const result = await this.usersService.updateTelegramChatId(
-        normalizedUsername,
+  private async handleStartCommand(msg: TelegramBot.Message): Promise<void> {
+    const chatId = String(msg.chat.id);
+    const username = msg.from?.username;
+
+    if (!username) {
+      await this.bot.sendMessage(
         chatId,
+        "⚠️ У вашому профілі Telegram не вказано username. Будь ласка, додайте його в налаштуваннях Telegram, щоб ми могли підв'язати акаунт.",
       );
+      return;
+    }
 
-      if (result.count > 0) {
-        this.logger.log(
-          `[/start] chatId=${chatId} username=${normalizedUsername} — успішно підв'язано`,
-        );
-        await this.bot.sendMessage(
-          chatId,
-          `✅ Вітаємо! Ваш акаунт успішно підключено до <b>Світло Знань CRM</b>.`,
-          { parse_mode: 'HTML' },
-        );
-      } else {
-        this.logger.warn(
-          `[/start] Користувача з username "${normalizedUsername}" не знайдено в CRM.`,
-        );
-        await this.bot.sendMessage(
+    const normalizedUsername = username.toLowerCase();
+
+    const result = await this.usersService.updateTelegramChatId(
+      normalizedUsername,
+      chatId,
+    );
+
+    if (result.count > 0) {
+      this.logger.log(
+        `[/start] chatId=${chatId} username=${normalizedUsername} — успішно підв'язано`,
+      );
+      await this.bot.sendMessage(
+        chatId,
+        `✅ Вітаємо! Ваш акаунт успішно підключено до <b>Світло Знань CRM</b>.`,
+        { parse_mode: 'HTML' },
+      );
+    } else {
+      this.logger.warn(
+        `[/start] Користувача з username "${normalizedUsername}" не знайдено в CRM.`,
+      );
+      await this.bot.sendMessage(
           chatId,
           `❌ Акаунт не знайдено. Переконайтеся, що в CRM у вашому профілі вказано нікнейм <b>${normalizedUsername}</b> без помилок.`,
           { parse_mode: 'HTML' },

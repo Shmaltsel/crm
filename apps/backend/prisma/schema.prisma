@@ -120,6 +120,7 @@ model Event {
   @@index([cityId])
   @@index([status])
   @@index([schoolId])
+  @@index([schoolId, date])
   @@index([date, status, cityId])
 }
 

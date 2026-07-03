@@ -1,8 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { ExecutionContext, Injectable, Logger } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
 @Injectable()
 export class UserThrottlerGuard extends ThrottlerGuard {
+  private readonly logger = new Logger(UserThrottlerGuard.name);
+  private lastWarnAt = 0;
+
   protected async getTracker(req: Record<string, any>): Promise<string> {
     const token = req.cookies?.access_token;
     if (token) {
@@ -16,5 +19,20 @@ export class UserThrottlerGuard extends ThrottlerGuard {
       }
     }
     return req.ip;
+  }
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    try {
+      return await super.canActivate(context);
+    } catch (e) {
+      const now = Date.now();
+      if (now - this.lastWarnAt > 10_000) {
+        this.logger.warn(
+          `Throttler storage unavailable, allowing request: ${e.message}`,
+        );
+        this.lastWarnAt = now;
+      }
+      return true;
+    }
   }
 }

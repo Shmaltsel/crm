@@ -1,4 +1,5 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, HttpStatus } from '@nestjs/common';
+import { AppException } from '../common/exceptions/app.exception';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -44,13 +45,13 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
-      throw new UnauthorizedException('Невірний email або пароль');
+      throw new AppException('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
     }
 
     const isPasswordValid = await bcrypt.compare(pass, user.password);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Невірний email або пароль');
+      throw new AppException('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
     }
 
     const payload = {
@@ -85,7 +86,7 @@ export class AuthService {
     });
 
     if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
-      throw new UnauthorizedException('Недійсний refresh token');
+      throw new AppException('INVALID_REFRESH_TOKEN', HttpStatus.UNAUTHORIZED);
     }
 
     await this.prisma.refreshToken.update({

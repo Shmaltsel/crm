@@ -10,6 +10,7 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
 import { EventsService } from './events.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -27,16 +28,20 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { OwnershipGuard } from '../auth/guards/ownership.guard';
 import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
 
+@ApiTags('Events')
+@ApiCookieAuth('access_token')
 @Controller('events')
 @UseGuards(AuthGuard, RolesGuard)
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
+  @ApiOperation({ summary: 'Список подій для поточного користувача' })
   @Get()
   findAll(@CurrentUser() user: JwtUser, @Query() query: EventQueryDto) {
     return this.eventsService.findAllForUser(user, query);
   }
 
+  @ApiOperation({ summary: 'Створити подію' })
   @Post()
   create(@Body() body: CreateEventDto, @CurrentUser() user: JwtUser) {
     return this.eventsService.create(body, user);

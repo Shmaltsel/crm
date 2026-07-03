@@ -1,30 +1,27 @@
 const fs = require("fs");
 const path = require("path");
 
-const outputFile = "combined_security_audit.md";
+const outputFile = "telegram_audit.md";
+fs.writeFileSync(outputFile, "# Аудит: Telegram Bot та Запуск\n\n");
 
-fs.writeFileSync(outputFile, "# Файли Auth, Security та Prisma Schema\n\n");
-
+// Точкові файли, які нам потрібні
 const filesToCollect = [
-  "apps/backend/prisma/schema.prisma",
-  "apps/backend/src/auth/auth.module.ts",
-  "apps/backend/src/auth/auth.service.ts",
-  "apps/backend/src/auth/auth.controller.ts",
-  "apps/backend/src/auth/auth.guard.ts",
-  "apps/backend/src/auth/interfaces/jwt-user.interface.ts",
-  "apps/backend/src/auth/dto/login.dto.ts",
+  "apps/backend/src/telegram/telegram.module.ts",
+  "apps/backend/src/telegram/telegram.service.ts",
   "apps/backend/src/main.ts",
-  "apps/backend/src/app.module.ts",
   "apps/backend/package.json",
+  "package.json", // root package.json
+  "Procfile",
+  "railway.json",
+  "render.yaml"
 ];
 
 let collectedCount = 0;
-
-console.log("🚀 Починаю збір файлів для Security & Audit...\n");
+console.log("🚀 Починаю збір файлів для Telegram аудиту...\n");
 
 filesToCollect.forEach((filePath) => {
   if (!fs.existsSync(filePath)) {
-    console.warn(`[!] Файл не знайдено: ${filePath}`);
+    console.warn(`[!] Файл не знайдено (це нормально для конфігів деплою, пропускаю): ${filePath}`);
     return;
   }
 
@@ -33,13 +30,15 @@ filesToCollect.forEach((filePath) => {
 
   let lang = ext;
   if (["ts", "tsx"].includes(ext)) lang = "typescript";
-  if (ext === "prisma") lang = "prisma";
+  if (ext === "md") lang = "markdown";
   if (ext === "json") lang = "json";
+  if (ext === "yaml" || ext === "yml") lang = "yaml";
+  if (filePath === "Procfile") lang = "text";
 
   const mdBlock = `### \`${filePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`;
   fs.appendFileSync(outputFile, mdBlock);
-  console.log(`[+] Додано: ${filePath}`);
+  console.log(`[+] Додано вміст: ${filePath}`);
   collectedCount++;
 });
 
-console.log(`\n✅ Готово! Зібрано ${collectedCount} файлів у ${outputFile}`);
+console.log(`\n✅ Готово! Зібрано файлів: ${collectedCount}. Результати збережено у ${outputFile}`);

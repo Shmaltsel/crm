@@ -1,4 +1,5 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, HttpStatus } from '@nestjs/common';
+import { AppException } from '../common/exceptions/app.exception';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { Prisma, PreparationStatus } from '@prisma/client';
@@ -7,7 +8,7 @@ import { CreateEventDto } from './dto/create-event.dto';
 import {
   SubmitReportDto,
   ExpenseItemDto,
-  SalaryItemDto,
+  SalaryItemDto
 } from './dto/submit-report.dto';
 import { EventQueryDto } from './dto/event-query.dto';
 import { PageMetaDto } from '../common/dto/page-meta.dto';
@@ -341,7 +342,8 @@ export class EventsService {
 
   async remove(id: string) {
     const exists = await this.prisma.event.findUnique({ where: { id } });
-    if (!exists) throw new NotFoundException('Подію не знайдено');
+    if (!exists)
+      throw new AppException('EVENT_NOT_FOUND', HttpStatus.NOT_FOUND);
 
     await this.prisma.eventHistory.deleteMany({
       where: { eventId: id },
@@ -451,7 +453,7 @@ export class EventsService {
         report: true,
       },
     });
-    if (!event) throw new NotFoundException('Подію не знайдено');
+    if (!event) throw new AppException('EVENT_NOT_FOUND', HttpStatus.NOT_FOUND);
     return event;
   }
 

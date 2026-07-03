@@ -8,6 +8,7 @@
 ├── .gitignore
 ├── README.md
 ├── apps
+│   ├── Dockerfile
 │   ├── backend
 │   │   ├── .env
 │   │   ├── .env.example
@@ -49,7 +50,8 @@
 │   │   │   │   │   └── migration.sql
 │   │   │   │   └── migration_lock.toml
 │   │   │   ├── schema.prisma
-│   │   │   └── seed-admin.js
+│   │   │   ├── seed-admin.js
+│   │   │   └── seed-demo.js
 │   │   ├── src
 │   │   │   ├── app.controller.spec.ts
 │   │   │   ├── app.controller.ts
@@ -89,6 +91,9 @@
 │   │   │   │   ├── dto
 │   │   │   │   │   ├── page-meta.dto.ts
 │   │   │   │   │   └── page-options.dto.ts
+│   │   │   │   ├── feature-flags
+│   │   │   │   │   ├── feature-flags.module.ts
+│   │   │   │   │   └── feature-flags.service.ts
 │   │   │   │   ├── filters
 │   │   │   │   │   └── all-exceptions.filter.ts
 │   │   │   │   ├── guards
@@ -131,6 +136,13 @@
 │   │   │   │   ├── finance.module.ts
 │   │   │   │   ├── finance.service.spec.ts
 │   │   │   │   └── finance.service.ts
+│   │   │   ├── health
+│   │   │   │   ├── health.controller.ts
+│   │   │   │   ├── health.module.ts
+│   │   │   │   ├── indicators
+│   │   │   │   │   └── redis.health.ts
+│   │   │   │   └── redis.health.ts
+│   │   │   ├── instrument.ts
 │   │   │   ├── issues
 │   │   │   │   ├── dto
 │   │   │   │   │   ├── create-issue.dto.ts
@@ -139,6 +151,11 @@
 │   │   │   │   ├── issues.module.ts
 │   │   │   │   └── issues.service.ts
 │   │   │   ├── main.ts
+│   │   │   ├── metrics
+│   │   │   │   ├── metrics.controller.ts
+│   │   │   │   ├── metrics.interceptor.ts
+│   │   │   │   ├── metrics.module.ts
+│   │   │   │   └── metrics.service.ts
 │   │   │   ├── prisma
 │   │   │   │   ├── prisma.mock.ts
 │   │   │   │   ├── prisma.module.ts
@@ -272,7 +289,6 @@
 │       │   │   └── CityContext.tsx
 │       │   ├── hooks
 │       │   │   ├── useApi.ts
-│       │   │   ├── useAuth.ts
 │       │   │   ├── useCalendar.ts
 │       │   │   ├── useCities.ts
 │       │   │   ├── useEmployees.ts
@@ -303,13 +319,25 @@
 │       ├── tsconfig.node.json
 │       ├── vercel.json
 │       └── vite.config.ts
+├── backups
+│   ├── backup_20260703_033507.dump
+│   └── backup_20260703_034354.dump
 ├── collect-code.js
 ├── combined_performance_files.md
 ├── combined_security_audit.md
+├── combined_setup_audit.md
+├── combined_swagger_seed_audit.md
+├── doc
+│   ├── doc-filelist.js
+│   ├── doc-script.js
+│   └── doc-style.css
 ├── package.json
 ├── packages
 │   └── shared
 ├── pnpm-workspace.yaml
+└── scripts
+    ├── backup.sh
+    └── restore.sh
 ```
 
 ### File: apps/backend/.env.example
@@ -327,7 +355,8 @@
  10 | 
  11 | SEED_ADMIN_EMAIL=admin@example.com
  12 | SEED_ADMIN_PASSWORD=changeme
- 13 | ALLOW_PROD_SEED=false
+ 13 | ALLOW_PROD_SEED=***
+ 14 | SENTRY_DSN=***
 ```
 
 ### File: apps/backend/package.json
@@ -351,96 +380,102 @@
  16 |     "test:watch": "jest --watch",
  17 |     "test:cov": "jest --coverage",
  18 |     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
- 19 |     "test:e2e": "jest --config ./test/jest-e2e.json"
- 20 |   },
- 21 |   "dependencies": {
- 22 |     "@nestjs/cache-manager": "^3.1.3",
- 23 |     "@nestjs/common": "^11.0.1",
- 24 |     "@nestjs/config": "^4.0.0",
- 25 |     "@nestjs/core": "^11.0.1",
- 26 |     "@nestjs/jwt": "^11.0.2",
- 27 |     "@nestjs/passport": "^11.0.5",
- 28 |     "@nestjs/platform-express": "^11.0.1",
- 29 |     "@nestjs/throttler": "^6.5.0",
- 30 |     "@prisma/client": "6.19.0",
- 31 |     "axios": "^1.18.0",
- 32 |     "bcrypt": "^6.0.0",
- 33 |     "cache-manager": "^7.2.9",
- 34 |     "cache-manager-redis-yet": "^5.1.5",
- 35 |     "cheerio": "^1.2.0",
- 36 |     "class-transformer": "^0.5.1",
- 37 |     "class-validator": "^0.15.1",
- 38 |     "cookie-parser": "^1.4.7",
- 39 |     "dotenv": "^17.4.2",
- 40 |     "helmet": "^8.2.0",
- 41 |     "joi": "^18.2.3",
- 42 |     "nestjs-pino": "^4.6.1",
- 43 |     "node-telegram-bot-api": "0.64.0",
- 44 |     "passport": "^0.7.0",
- 45 |     "passport-jwt": "^4.0.1",
- 46 |     "pino-http": "^11.0.0",
- 47 |     "reflect-metadata": "^0.2.2",
- 48 |     "rxjs": "^7.8.1",
- 49 |     "@nest-lab/throttler-storage-redis": "^1.0.0",
- 50 |     "ioredis": "^5.4.1"
- 51 |   },
- 52 |   "devDependencies": {
- 53 |     "@eslint/eslintrc": "^3.2.0",
- 54 |     "@eslint/js": "^9.18.0",
- 55 |     "@nestjs/cli": "^11.0.0",
- 56 |     "@nestjs/schematics": "^11.0.0",
- 57 |     "@nestjs/testing": "^11.0.1",
- 58 |     "@types/bcrypt": "^6.0.0",
- 59 |     "@types/cookie-parser": "^1.4.10",
- 60 |     "@types/express": "^5.0.0",
- 61 |     "@types/jest": "^29.0.0",
- 62 |     "@types/node": "^24.0.0",
- 63 |     "@types/node-telegram-bot-api": "^0.64.15",
- 64 |     "@types/passport-jwt": "^4.0.1",
- 65 |     "@types/supertest": "^7.0.0",
- 66 |     "eslint": "^9.18.0",
- 67 |     "eslint-config-prettier": "^10.0.1",
- 68 |     "eslint-plugin-prettier": "^5.2.2",
- 69 |     "globals": "^17.0.0",
- 70 |     "jest": "^29.0.0",
- 71 |     "jest-mock-extended": "^3.0.0",
- 72 |     "pino-pretty": "^13.0.0",
- 73 |     "prettier": "^3.4.2",
- 74 |     "prisma": "6.19.0",
- 75 |     "source-map-support": "^0.5.21",
- 76 |     "supertest": "^7.0.0",
- 77 |     "ts-jest": "^29.2.5",
- 78 |     "ts-loader": "^9.5.2",
- 79 |     "ts-node": "^10.9.2",
- 80 |     "tsconfig-paths": "^4.2.0",
- 81 |     "typescript": "^5.7.3",
- 82 |     "typescript-eslint": "^8.20.0"
- 83 |   },
- 84 |   "jest": {
- 85 |     "moduleFileExtensions": [
- 86 |       "js",
- 87 |       "json",
- 88 |       "ts"
- 89 |     ],
- 90 |     "rootDir": "src",
- 91 |     "testRegex": ".*\\.spec\\.ts$",
- 92 |     "transform": {
- 93 |       "^.+\\.(t|j)s$": "ts-jest"
- 94 |     },
- 95 |     "collectCoverageFrom": [
- 96 |       "**/*.(t|j)s"
- 97 |     ],
- 98 |     "coverageDirectory": "../coverage",
- 99 |     "testEnvironment": "node",
-100 |     "moduleNameMapper": {
-101 |       "^src/(.*)$": "<rootDir>/$1"
-102 |     }
-103 |   },
-104 |   "prisma": {
-105 |     "schema": "prisma/schema.prisma"
-106 |   }
-107 | }
-108 | 
+ 19 |     "test:e2e": "jest --config ./test/jest-e2e.json",
+ 20 |     "seed:demo": "node prisma/seed-demo.js"
+ 21 |   },
+ 22 |   "dependencies": {
+ 23 |     "@nest-lab/throttler-storage-redis": "^1.0.0",
+ 24 |     "@nestjs/cache-manager": "^3.1.3",
+ 25 |     "@nestjs/common": "^11.0.1",
+ 26 |     "@nestjs/config": "^4.0.0",
+ 27 |     "@nestjs/core": "^11.0.1",
+ 28 |     "@nestjs/jwt": "^11.0.2",
+ 29 |     "@nestjs/passport": "^11.0.5",
+ 30 |     "@nestjs/platform-express": "^11.0.1",
+ 31 |     "@nestjs/swagger": "^11.4.5",
+ 32 |     "@nestjs/terminus": "^11.1.1",
+ 33 |     "@nestjs/throttler": "^6.5.0",
+ 34 |     "@prisma/client": "6.19.0",
+ 35 |     "@sentry/nestjs": "^9.47.1",
+ 36 |     "@sentry/profiling-node": "^9.47.1",
+ 37 |     "axios": "^1.18.0",
+ 38 |     "bcrypt": "^6.0.0",
+ 39 |     "cache-manager": "^7.2.9",
+ 40 |     "cache-manager-redis-yet": "^5.1.5",
+ 41 |     "cheerio": "^1.2.0",
+ 42 |     "class-transformer": "^0.5.1",
+ 43 |     "class-validator": "^0.15.1",
+ 44 |     "cookie-parser": "^1.4.7",
+ 45 |     "dotenv": "^17.4.2",
+ 46 |     "helmet": "^8.2.0",
+ 47 |     "ioredis": "^5.4.1",
+ 48 |     "joi": "^18.2.3",
+ 49 |     "nestjs-pino": "^4.6.1",
+ 50 |     "node-telegram-bot-api": "0.64.0",
+ 51 |     "passport": "^0.7.0",
+ 52 |     "passport-jwt": "^4.0.1",
+ 53 |     "pino-http": "^11.0.0",
+ 54 |     "prom-client": "^15.1.3",
+ 55 |     "reflect-metadata": "^0.2.2",
+ 56 |     "rxjs": "^7.8.1"
+ 57 |   },
+ 58 |   "devDependencies": {
+ 59 |     "@eslint/eslintrc": "^3.2.0",
+ 60 |     "@eslint/js": "^9.18.0",
+ 61 |     "@nestjs/cli": "^11.0.0",
+ 62 |     "@nestjs/schematics": "^11.0.0",
+ 63 |     "@nestjs/testing": "^11.0.1",
+ 64 |     "@types/bcrypt": "^6.0.0",
+ 65 |     "@types/cookie-parser": "^1.4.10",
+ 66 |     "@types/express": "^5.0.0",
+ 67 |     "@types/jest": "^29.0.0",
+ 68 |     "@types/node": "^24.0.0",
+ 69 |     "@types/node-telegram-bot-api": "^0.64.15",
+ 70 |     "@types/passport-jwt": "^4.0.1",
+ 71 |     "@types/supertest": "^7.0.0",
+ 72 |     "eslint": "^9.18.0",
+ 73 |     "eslint-config-prettier": "^10.0.1",
+ 74 |     "eslint-plugin-prettier": "^5.2.2",
+ 75 |     "globals": "^17.0.0",
+ 76 |     "jest": "^29.0.0",
+ 77 |     "jest-mock-extended": "^3.0.0",
+ 78 |     "pino-pretty": "^13.0.0",
+ 79 |     "prettier": "^3.4.2",
+ 80 |     "prisma": "6.19.0",
+ 81 |     "source-map-support": "^0.5.21",
+ 82 |     "supertest": "^7.0.0",
+ 83 |     "ts-jest": "^29.2.5",
+ 84 |     "ts-loader": "^9.5.2",
+ 85 |     "ts-node": "^10.9.2",
+ 86 |     "tsconfig-paths": "^4.2.0",
+ 87 |     "typescript": "^5.7.3",
+ 88 |     "typescript-eslint": "^8.20.0"
+ 89 |   },
+ 90 |   "jest": {
+ 91 |     "moduleFileExtensions": [
+ 92 |       "js",
+ 93 |       "json",
+ 94 |       "ts"
+ 95 |     ],
+ 96 |     "rootDir": "src",
+ 97 |     "testRegex": ".*\\.spec\\.ts$",
+ 98 |     "transform": {
+ 99 |       "^.+\\.(t|j)s$": "ts-jest"
+100 |     },
+101 |     "collectCoverageFrom": [
+102 |       "**/*.(t|j)s"
+103 |     ],
+104 |     "coverageDirectory": "../coverage",
+105 |     "testEnvironment": "node",
+106 |     "moduleNameMapper": {
+107 |       "^src/(.*)$": "<rootDir>/$1"
+108 |     }
+109 |   },
+110 |   "prisma": {
+111 |     "schema": "prisma/schema.prisma"
+112 |   }
+113 | }
+114 | 
 ```
 
 ### File: apps/backend/prisma/schema.prisma
@@ -820,6 +855,266 @@
  60 | 
 ```
 
+### File: apps/backend/prisma/seed-demo.js
+```js
+  0 | require('dotenv').config();
+  1 | const { PrismaClient } = require('@prisma/client');
+  2 | const bcrypt = require('bcrypt');
+  3 | 
+  4 | const prisma = new PrismaClient();
+  5 | 
+  6 | const DEMO_CITY_NAME = 'Демо Місто';
+  7 | 
+  8 | async function cleanupDemoData() {
+  9 |   const existingCity = await prisma.city.findFirst({ where: { name: DEMO_CITY_NAME } });
+ 10 |   if (!existingCity) return;
+ 11 | 
+ 12 |   console.log('Знайдено попередні demo-дані, очищую...');
+ 13 |   const events = await prisma.event.findMany({ where: { cityId: existingCity.id }, select: { id: true } });
+ 14 |   const eventIds = events.map((e) => e.id);
+ 15 | 
+ 16 |   await prisma.eventHistory.deleteMany({ where: { eventId: { in: eventIds } } });
+ 17 |   await prisma.eventPreparation.deleteMany({ where: { eventId: { in: eventIds } } });
+ 18 |   await prisma.issueReport.deleteMany({ where: { eventId: { in: eventIds } } });
+ 19 |   await prisma.file.deleteMany({ where: { eventId: { in: eventIds } } });
+ 20 |   await prisma.eventReport.deleteMany({ where: { eventId: { in: eventIds } } });
+ 21 |   await prisma.event.deleteMany({ where: { cityId: existingCity.id } });
+ 22 |   await prisma.crew.deleteMany({ where: { cityId: existingCity.id } });
+ 23 |   await prisma.school.deleteMany({ where: { cityId: existingCity.id } });
+ 24 | 
+ 25 |   const demoUsers = await prisma.user.findMany({ where: { cityId: existingCity.id }, select: { id: true } });
+ 26 |   await prisma.user.deleteMany({ where: { id: { in: demoUsers.map((u) => u.id) } } });
+ 27 | 
+ 28 |   await prisma.city.delete({ where: { id: existingCity.id } });
+ 29 |   console.log('Очищено.');
+ 30 | }
+ 31 | 
+ 32 | async function main() {
+ 33 |   if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PROD_SEED !== 'true') {
+ 34 |     console.error('Demo-seed в production заблоковано. Встановіть ALLOW_PROD_SEED=true для підтвердження.');
+ 35 |     process.exit(1);
+ 36 |   }
+ 37 | 
+ 38 |   await cleanupDemoData();
+ 39 | 
+ 40 |   console.log('Створюю demo-місто...');
+ 41 |   const city = await prisma.city.create({ data: { name: DEMO_CITY_NAME } });
+ 42 | 
+ 43 |   const demoPassword = await bcrypt.hash('Demo!Pass123', 10);
+ 44 | 
+ 45 |   const manager = await prisma.user.create({
+ 46 |     data: {
+ 47 |       name: 'Марія Демчук',
+ 48 |       email: 'demo.manager@svitlo-znan.app',
+ 49 |       password: demoPassword,
+ 50 |       role: 'MANAGER',
+ 51 |       cityId: city.id,
+ 52 |       phone: '+380671112233',
+ 53 |     },
+ 54 |   });
+ 55 | 
+ 56 |   const host = await prisma.user.create({
+ 57 |     data: {
+ 58 |       name: 'Олег Ведучий',
+ 59 |       email: 'demo.host@svitlo-znan.app',
+ 60 |       password: demoPassword,
+ 61 |       role: 'HOST',
+ 62 |       cityId: city.id,
+ 63 |       phone: '+380671112234',
+ 64 |     },
+ 65 |   });
+ 66 | 
+ 67 |   const driver = await prisma.user.create({
+ 68 |     data: {
+ 69 |       name: 'Ігор Водій',
+ 70 |       email: 'demo.driver@svitlo-znan.app',
+ 71 |       password: demoPassword,
+ 72 |       role: 'DRIVER',
+ 73 |       cityId: city.id,
+ 74 |       phone: '+380671112235',
+ 75 |       car: 'Volkswagen Transporter',
+ 76 |     },
+ 77 |   });
+ 78 | 
+ 79 |   await prisma.city.update({ where: { id: city.id }, data: { managerId: manager.id } });
+ 80 | 
+ 81 |   console.log('Створюю школи...');
+ 82 |   const schools = await Promise.all([
+ 83 |     prisma.school.create({
+ 84 |       data: {
+ 85 |         name: 'Ліцей №5',
+ 86 |         type: 'school',
+ 87 |         cityId: city.id,
+ 88 |         address: 'вул. Шевченка, 10',
+ 89 |         director: 'Наталія Іванівна',
+ 90 |         phone: '+380321234567',
+ 91 |         email: 'lyceum5@example.com',
+ 92 |         childrenCount: 320,
+ 93 |         isHotClient: true,
+ 94 |         rating: 4.8,
+ 95 |       },
+ 96 |     }),
+ 97 |     prisma.school.create({
+ 98 |       data: {
+ 99 |         name: 'Дитячий садок «Сонечко»',
+100 |         type: 'kindergarten',
+101 |         cityId: city.id,
+102 |         address: 'вул. Франка, 22',
+103 |         director: 'Оксана Петрівна',
+104 |         phone: '+380321234568',
+105 |         childrenCount: 90,
+106 |         rating: 4.5,
+107 |       },
+108 |     }),
+109 |     prisma.school.create({
+110 |       data: {
+111 |         name: 'Гімназія «Львів\'янка»',
+112 |         type: 'school',
+113 |         cityId: city.id,
+114 |         address: 'вул. Городоцька, 5',
+115 |         director: 'Андрій Богданович',
+116 |         phone: '+380321234569',
+117 |         childrenCount: 210,
+118 |       },
+119 |     }),
+120 |   ]);
+121 | 
+122 |   console.log('Створюю екіпаж...');
+123 |   const crew = await prisma.crew.create({
+124 |     data: {
+125 |       name: 'Екіпаж №1',
+126 |       cityId: city.id,
+127 |       hostId: host.id,
+128 |       driverId: driver.id,
+129 |       car: 'Volkswagen Transporter',
+130 |       carPlate: 'BC1234AA',
+131 |       phone: '+380671112235',
+132 |     },
+133 |   });
+134 | 
+135 |   const project = await prisma.project.upsert({
+136 |     where: { name: 'Голографічне шоу «Космос»' },
+137 |     update: {},
+138 |     create: { name: 'Голографічне шоу «Космос»', color: 'blue' },
+139 |   });
+140 | 
+141 |   console.log('Створюю події на різних стадіях pipeline...');
+142 | 
+143 |   await prisma.event.create({
+144 |     data: {
+145 |       cityId: city.id,
+146 |       schoolId: schools[0].id,
+147 |       project: project.name,
+148 |       date: new Date(Date.now() + 20 * 86400000),
+149 |       status: 'FIRST_CONTACT',
+150 |       childrenPlanned: 120,
+151 |       contactPerson: 'Наталія Іванівна',
+152 |       contactPhone: '+380321234567',
+153 |     },
+154 |   });
+155 | 
+156 |   await prisma.event.create({
+157 |     data: {
+158 |       cityId: city.id,
+159 |       schoolId: schools[1].id,
+160 |       project: project.name,
+161 |       date: new Date(Date.now() + 10 * 86400000),
+162 |       status: 'DATE_CONFIRMED',
+163 |       crewId: crew.id,
+164 |       childrenPlanned: 60,
+165 |       price: 8000,
+166 |       contactPerson: 'Оксана Петрівна',
+167 |       contactPhone: '+380321234568',
+168 |     },
+169 |   });
+170 | 
+171 |   const preparingEvent = await prisma.event.create({
+172 |     data: {
+173 |       cityId: city.id,
+174 |       schoolId: schools[2].id,
+175 |       project: project.name,
+176 |       date: new Date(Date.now() + 5 * 86400000),
+177 |       status: 'PREPARATION',
+178 |       crewId: crew.id,
+179 |       childrenPlanned: 150,
+180 |       price: 15000,
+181 |       responsibleId: manager.id,
+182 |     },
+183 |   });
+184 |   await prisma.eventPreparation.create({
+185 |     data: {
+186 |       eventId: preparingEvent.id,
+187 |       assignCrew: 'DONE',
+188 |       bookEquipment: 'DONE',
+189 |       prepareMaterials: 'IN_PROGRESS',
+190 |     },
+191 |   });
+192 | 
+193 |   const completedEvent = await prisma.event.create({
+194 |     data: {
+195 |       cityId: city.id,
+196 |       schoolId: schools[0].id,
+197 |       project: project.name,
+198 |       date: new Date(Date.now() - 15 * 86400000),
+199 |       status: 'REPORT',
+200 |       crewId: crew.id,
+201 |       childrenPlanned: 100,
+202 |       childrenActual: 98,
+203 |       price: 12000,
+204 |       received: 12000,
+205 |     },
+206 |   });
+207 |   await prisma.eventReport.create({
+208 |     data: {
+209 |       eventId: completedEvent.id,
+210 |       directorSatisfied: true,
+211 |       teachersSatisfied: true,
+212 |       rating: 5,
+213 |       childrenCount: 98,
+214 |       classesCount: 5,
+215 |       totalSum: 12000,
+216 |       schoolSum: 12000,
+217 |       remainderSum: 0,
+218 |       expenseItems: {
+219 |         create: [{ category: 'Пальне', name: 'Заправка авто', amount: 800 }],
+220 |       },
+221 |       salaryItems: {
+222 |         create: [
+223 |           { userId: host.id, userName: host.name, amount: 2500, role: 'HOST' },
+224 |           { userId: driver.id, userName: driver.name, amount: 1500, role: 'DRIVER' },
+225 |         ],
+226 |       },
+227 |     },
+228 |   });
+229 | 
+230 |   await prisma.eventHistory.create({
+231 |     data: {
+232 |       eventId: completedEvent.id,
+233 |       action: 'Подію завершено',
+234 |       comment: 'Захід пройшов успішно, школа задоволена',
+235 |       userId: manager.id,
+236 |       userName: manager.name,
+237 |       role: 'MANAGER',
+238 |     },
+239 |   });
+240 | 
+241 |   console.log('\n✅ Demo-дані створено!');
+242 |   console.log(`Місто: ${DEMO_CITY_NAME}`);
+243 |   console.log(`Менеджер: ${manager.email} / Demo!Pass123`);
+244 |   console.log(`Ведучий: ${host.email} / Demo!Pass123`);
+245 |   console.log(`Водій: ${driver.email} / Demo!Pass123`);
+246 | }
+247 | 
+248 | main()
+249 |   .catch((e) => {
+250 |     console.error('Помилка під час demo-seed:', e);
+251 |     process.exit(1);
+252 |   })
+253 |   .finally(async () => {
+254 |     await prisma.$disconnect();
+255 |   });
+```
+
 ### File: apps/backend/src/app.controller.spec.ts
 ```ts
   0 | import { Test, TestingModule } from '@nestjs/testing';
@@ -891,53 +1186,64 @@
  22 | import { IssuesModule } from './issues/issues.module';
  23 | import { DashboardModule } from './dashboard/dashboard.module';
  24 | import { ProjectsModule } from './projects/projects.module';
- 25 | @Module({
- 26 |   imports: [
- 27 |     ConfigModule.forRoot({
- 28 |       isGlobal: true,
- 29 |       validationSchema: envValidationSchema,
- 30 |     }),
- 31 |     LoggerModule,
- 32 |     RedisCacheModule,
- 33 |     ThrottlerModule.forRootAsync({
- 34 |       useFactory: () => ({
- 35 |         throttlers: [{ name: 'default', ttl: 60000, limit: 100 }],
- 36 |         storage: new ThrottlerStorageRedisService(
- 37 |           new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379'),
- 38 |         ),
- 39 |       }),
- 40 |     }),
- 41 |     PrismaModule,
- 42 |     UsersModule,
- 43 |     AuthModule,
- 44 |     EventsModule,
- 45 |     CitiesModule,
- 46 |     SchoolsModule,
- 47 |     FinanceModule,
- 48 |     TelegramModule,
- 49 |     IssuesModule,
- 50 |     DashboardModule,
- 51 |     ProjectsModule,
- 52 |   ],
- 53 |   controllers: [AppController],
- 54 |   providers: [
- 55 |     AppService,
- 56 |     {
- 57 |       provide: APP_GUARD,
- 58 |       useClass: UserThrottlerGuard,
- 59 |     },
- 60 |     {
- 61 |       provide: APP_INTERCEPTOR,
- 62 |       useClass: SanitizeInterceptor,
- 63 |     },
- 64 |     {
- 65 |       provide: APP_INTERCEPTOR,
- 66 |       useClass: AuditLogInterceptor,
- 67 |     },
- 68 |   ],
- 69 | })
- 70 | export class AppModule {}
- 71 | 
+ 25 | import { HealthModule } from './health/health.module';
+ 26 | import { MetricsModule } from './metrics/metrics.module';
+ 27 | import { FeatureFlagsModule } from './common/feature-flags/feature-flags.module';
+ 28 | @Module({
+ 29 |   imports: [
+ 30 |     HealthModule,
+ 31 |     MetricsModule,
+ 32 |     FeatureFlagsModule,
+ 33 |     ConfigModule.forRoot({
+ 34 |       isGlobal: true,
+ 35 |       validationSchema: envValidationSchema,
+ 36 |     }),
+ 37 |     LoggerModule,
+ 38 |     RedisCacheModule,
+ 39 |     ThrottlerModule.forRootAsync({
+ 40 |       useFactory: () => ({
+ 41 |         throttlers: [{ name: 'default', ttl: 60000, limit: 100 }],
+ 42 |         storage: new ThrottlerStorageRedisService(
+ 43 |           new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
+ 44 |             maxRetriesPerRequest: 1,
+ 45 |             connectTimeout: 3000,
+ 46 |             retryStrategy: (times) =>
+ 47 |               times > 3 ? null : Math.min(times * 200, 2000),
+ 48 |           }),
+ 49 |         ),
+ 50 |       }),
+ 51 |     }),
+ 52 |     PrismaModule,
+ 53 |     UsersModule,
+ 54 |     AuthModule,
+ 55 |     EventsModule,
+ 56 |     CitiesModule,
+ 57 |     SchoolsModule,
+ 58 |     FinanceModule,
+ 59 |     TelegramModule,
+ 60 |     IssuesModule,
+ 61 |     DashboardModule,
+ 62 |     ProjectsModule,
+ 63 |   ],
+ 64 |   controllers: [AppController],
+ 65 |   providers: [
+ 66 |     AppService,
+ 67 |     {
+ 68 |       provide: APP_GUARD,
+ 69 |       useClass: UserThrottlerGuard,
+ 70 |     },
+ 71 |     {
+ 72 |       provide: APP_INTERCEPTOR,
+ 73 |       useClass: SanitizeInterceptor,
+ 74 |     },
+ 75 |     {
+ 76 |       provide: APP_INTERCEPTOR,
+ 77 |       useClass: AuditLogInterceptor,
+ 78 |     },
+ 79 |   ],
+ 80 | })
+ 81 | export class AppModule {}
+ 82 | 
 ```
 
 ### File: apps/backend/src/app.service.ts
@@ -1520,13 +1826,16 @@
  19 |     if (!requiredRoles) return true;
  20 | 
  21 |     const { user } = context.switchToHttp().getRequest();
- 22 |     if (!requiredRoles.includes(user?.role)) {
- 23 |       throw new ForbiddenException('Недостатньо прав');
+ 22 |     if (user?.role === UserRole.SUPERADMIN) {
+ 23 |       return true;
  24 |     }
- 25 |     return true;
- 26 |   }
- 27 | }
- 28 | 
+ 25 |     if (!requiredRoles.includes(user?.role)) {
+ 26 |       throw new ForbiddenException('Недостатньо прав');
+ 27 |     }
+ 28 |     return true;
+ 29 |   }
+ 30 | }
+ 31 | 
 ```
 
 ### File: apps/backend/src/auth/interfaces/jwt-user.interface.ts
@@ -1607,23 +1916,28 @@
  35 |   findOne(@Param('id') id: string) {
  36 |     return this.citiesService.findOne(id);
  37 |   }
- 38 |   @Post(':id/crews')
- 39 |   @Roles('SUPERADMIN', 'MANAGER')
- 40 |   @UseGuards(OwnershipGuard)
- 41 |   @CheckOwnership('city')
- 42 |   createCrew(@Param('id') id: string, @Body() body: CreateCrewDto) {
- 43 |     return this.citiesService.createCrew(id, body);
- 44 |   }
- 45 | 
- 46 |   @Delete('crews/:crewId')
- 47 |   @Roles('SUPERADMIN', 'MANAGER')
- 48 |   @UseGuards(OwnershipGuard)
- 49 |   @CheckOwnership('crew')
- 50 |   deleteCrew(@Param('crewId') crewId: string) {
- 51 |     return this.citiesService.deleteCrew(crewId);
- 52 |   }
- 53 | }
- 54 | 
+ 38 | 
+ 39 |   @Get(':id/crews')
+ 40 |   findCrews(@Param('id') id: string) {
+ 41 |     return this.citiesService.findCrews(id);
+ 42 |   }
+ 43 |   @Post(':id/crews')
+ 44 |   @Roles('SUPERADMIN', 'MANAGER')
+ 45 |   @UseGuards(OwnershipGuard)
+ 46 |   @CheckOwnership('city')
+ 47 |   createCrew(@Param('id') id: string, @Body() body: CreateCrewDto) {
+ 48 |     return this.citiesService.createCrew(id, body);
+ 49 |   }
+ 50 | 
+ 51 |   @Delete('crews/:crewId')
+ 52 |   @Roles('SUPERADMIN', 'MANAGER')
+ 53 |   @UseGuards(OwnershipGuard)
+ 54 |   @CheckOwnership('crew')
+ 55 |   deleteCrew(@Param('crewId') crewId: string) {
+ 56 |     return this.citiesService.deleteCrew(crewId);
+ 57 |   }
+ 58 | }
+ 59 | 
 ```
 
 ### File: apps/backend/src/cities/cities.module.ts
@@ -1741,42 +2055,52 @@
  76 |     return this.prisma.crew.delete({ where: { id } });
  77 |   }
  78 | 
- 79 |   async findOne(id: string) {
- 80 |     const city = await this.prisma.city.findUnique({
- 81 |       where: { id },
+ 79 |   async findCrews(cityId: string) {
+ 80 |     return this.prisma.crew.findMany({
+ 81 |       where: { cityId },
  82 |       include: {
- 83 |         users: {
- 84 |           where: { role: 'MANAGER' },
- 85 |           select: { id: true, name: true, phone: true },
- 86 |           take: 1,
- 87 |         },
- 88 |         events: {
- 89 |           where: { status: 'RE_SALE' },
- 90 |           include: {
- 91 |             school: { select: { id: true, name: true, type: true } },
- 92 |             report: true,
- 93 |             history: { orderBy: { createdAt: 'asc' } },
- 94 |           },
- 95 |           orderBy: { date: 'desc' },
- 96 |         },
- 97 |         crews: {
- 98 |           include: {
- 99 |             host: { select: { id: true, name: true } },
-100 |             driver: { select: { id: true, name: true } },
-101 |           },
-102 |         },
-103 |       },
-104 |     });
-105 | 
-106 |     if (!city) return null;
-107 | 
-108 |     return {
-109 |       ...city,
-110 |       manager: city.users[0] || null,
-111 |     };
-112 |   }
-113 | }
-114 | 
+ 83 |         host: { select: { id: true, name: true } },
+ 84 |         driver: { select: { id: true, name: true } },
+ 85 |       },
+ 86 |     });
+ 87 |   }
+ 88 | 
+ 89 |   async findOne(id: string) {
+ 90 |     const city = await this.prisma.city.findUnique({
+ 91 |       where: { id },
+ 92 |       include: {
+ 93 |         users: {
+ 94 |           where: { role: 'MANAGER' },
+ 95 |           select: { id: true, name: true, phone: true },
+ 96 |           take: 1,
+ 97 |         },
+ 98 |         events: {
+ 99 |           where: { status: 'RE_SALE' },
+100 |           include: {
+101 |             school: { select: { id: true, name: true, type: true } },
+102 |             report: true,
+103 |             history: { orderBy: { createdAt: 'asc' } },
+104 |           },
+105 |           orderBy: { date: 'desc' },
+106 |         },
+107 |         crews: {
+108 |           include: {
+109 |             host: { select: { id: true, name: true } },
+110 |             driver: { select: { id: true, name: true } },
+111 |           },
+112 |         },
+113 |       },
+114 |     });
+115 | 
+116 |     if (!city) return null;
+117 | 
+118 |     return {
+119 |       ...city,
+120 |       manager: city.users[0] || null,
+121 |     };
+122 |   }
+123 | }
+124 | 
 ```
 
 ### File: apps/backend/src/cities/dto/create-city.dto.ts
@@ -1897,6 +2221,60 @@
  21 | 
 ```
 
+### File: apps/backend/src/common/feature-flags/feature-flags.module.ts
+```ts
+  0 | import { Global, Module } from '@nestjs/common';
+  1 | import { FeatureFlagsService } from './feature-flags.service';
+  2 | 
+  3 | @Global()
+  4 | @Module({
+  5 |   providers: [FeatureFlagsService],
+  6 |   exports: [FeatureFlagsService],
+  7 | })
+  8 | export class FeatureFlagsModule {}
+  9 | 
+```
+
+### File: apps/backend/src/common/feature-flags/feature-flags.service.ts
+```ts
+  0 | import { Injectable } from '@nestjs/common';
+  1 | 
+  2 | export type FeatureFlag =
+  3 |   | 'TELEGRAM_NOTIFICATIONS'
+  4 |   | 'AUTO_SCHOOL_IMPORT'
+  5 |   | 'FINANCE_MODULE'
+  6 |   | 'DASHBOARD_FORECASTING';
+  7 | 
+  8 | const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
+  9 |   TELEGRAM_NOTIFICATIONS: true,
+ 10 |   AUTO_SCHOOL_IMPORT: true,
+ 11 |   FINANCE_MODULE: true,
+ 12 |   DASHBOARD_FORECASTING: false,
+ 13 | };
+ 14 | 
+ 15 | @Injectable()
+ 16 | export class FeatureFlagsService {
+ 17 |   private flags: Record<FeatureFlag, boolean>;
+ 18 | 
+ 19 |   constructor() {
+ 20 |     this.flags = { ...DEFAULT_FLAGS };
+ 21 |     for (const key of Object.keys(DEFAULT_FLAGS) as FeatureFlag[]) {
+ 22 |       const envVal = process.env[`FEATURE_${key}`];
+ 23 |       if (envVal !== undefined) this.flags[key] = envVal === 'true';
+ 24 |     }
+ 25 |   }
+ 26 | 
+ 27 |   isEnabled(flag: FeatureFlag): boolean {
+ 28 |     return this.flags[flag];
+ 29 |   }
+ 30 | 
+ 31 |   getAll(): Record<FeatureFlag, boolean> {
+ 32 |     return { ...this.flags };
+ 33 |   }
+ 34 | }
+ 35 | 
+```
+
 ### File: apps/backend/src/common/filters/all-exceptions.filter.ts
 ```ts
   0 | import {
@@ -1908,75 +2286,92 @@
   6 |   Logger,
   7 | } from '@nestjs/common';
   8 | import { Request, Response } from 'express';
-  9 | 
- 10 | @Catch()
- 11 | export class AllExceptionsFilter implements ExceptionFilter {
- 12 |   private readonly logger = new Logger(AllExceptionsFilter.name);
- 13 | 
- 14 |   catch(exception: unknown, host: ArgumentsHost) {
- 15 |     const ctx = host.switchToHttp();
- 16 |     const response = ctx.getResponse<Response>();
- 17 |     const request = ctx.getRequest<Request>();
- 18 | 
- 19 |     const isHttp = exception instanceof HttpException;
- 20 |     const statusCode = isHttp
- 21 |       ? exception.getStatus()
- 22 |       : HttpStatus.INTERNAL_SERVER_ERROR;
- 23 | 
- 24 |     const exceptionResponse = isHttp ? exception.getResponse() : null;
- 25 |     const message = isHttp
- 26 |       ? typeof exceptionResponse === 'string'
- 27 |         ? exceptionResponse
- 28 |         : ((exceptionResponse as any)?.message ?? exception.message)
- 29 |       : 'Internal server error';
- 30 | 
- 31 |     const details =
- 32 |       isHttp && typeof exceptionResponse === 'object'
- 33 |         ? ((exceptionResponse as any)?.error ?? undefined)
- 34 |         : undefined;
- 35 | 
- 36 |     if (!isHttp) {
- 37 |       this.logger.error(
- 38 |         exception instanceof Error ? exception.stack : exception,
- 39 |       );
- 40 |     }
- 41 | 
- 42 |     response.status(statusCode).json({
- 43 |       statusCode,
- 44 |       message,
- 45 |       timestamp: new Date().toISOString(),
- 46 |       path: request.url,
- 47 |       requestId: (request as any).id,
- 48 |       ...(details ? { details } : {}),
- 49 |     });
- 50 |   }
- 51 | }
- 52 | 
+  9 | import * as Sentry from '@sentry/nestjs';
+ 10 | 
+ 11 | @Catch()
+ 12 | export class AllExceptionsFilter implements ExceptionFilter {
+ 13 |   private readonly logger = new Logger(AllExceptionsFilter.name);
+ 14 | 
+ 15 |   catch(exception: unknown, host: ArgumentsHost) {
+ 16 |     const ctx = host.switchToHttp();
+ 17 |     const response = ctx.getResponse<Response>();
+ 18 |     const request = ctx.getRequest<Request>();
+ 19 | 
+ 20 |     const isHttp = exception instanceof HttpException;
+ 21 |     const statusCode = isHttp
+ 22 |       ? exception.getStatus()
+ 23 |       : HttpStatus.INTERNAL_SERVER_ERROR;
+ 24 | 
+ 25 |     const exceptionResponse = isHttp ? exception.getResponse() : null;
+ 26 |     const message = isHttp
+ 27 |       ? typeof exceptionResponse === 'string'
+ 28 |         ? exceptionResponse
+ 29 |         : ((exceptionResponse as any)?.message ?? exception.message)
+ 30 |       : 'Internal server error';
+ 31 | 
+ 32 |     const details =
+ 33 |       isHttp && typeof exceptionResponse === 'object'
+ 34 |         ? ((exceptionResponse as any)?.error ?? undefined)
+ 35 |         : undefined;
+ 36 | 
+ 37 |     if (!isHttp) {
+ 38 |       this.logger.error(
+ 39 |         exception instanceof Error ? exception.stack : exception,
+ 40 |       );
+ 41 |       Sentry.captureException(exception);
+ 42 |     } else if (statusCode >= 500) {
+ 43 |       Sentry.captureException(exception);
+ 44 |     }
+ 45 | 
+ 46 |     response.status(statusCode).json({
+ 47 |       statusCode,
+ 48 |       message,
+ 49 |       timestamp: new Date().toISOString(),
+ 50 |       path: request.url,
+ 51 |       requestId: (request as any).id,
+ 52 |       ...(details ? { details } : {}),
+ 53 |     });
+ 54 |   }
+ 55 | }
+ 56 | 
 ```
 
 ### File: apps/backend/src/common/guards/user-throttler.guard.ts
 ```ts
-  0 | import { Injectable } from '@nestjs/common';
+  0 | import { ExecutionContext, Injectable, Logger } from '@nestjs/common';
   1 | import { ThrottlerGuard } from '@nestjs/throttler';
   2 | 
   3 | @Injectable()
   4 | export class UserThrottlerGuard extends ThrottlerGuard {
-  5 |   protected async getTracker(req: Record<string, any>): Promise<string> {
-  6 |     const token = req.cookies?.access_token;
-  7 |     if (token) {
-  8 |       try {
-  9 |         const payload = JSON.parse(
- 10 |           Buffer.from(token.split('.')[1], 'base64url').toString('utf8'),
- 11 |         ) as { sub?: string };
- 12 |         if (payload?.sub) return `user-${payload.sub}`;
- 13 |       } catch {
- 14 |         return req.ip;
- 15 |       }
- 16 |     }
- 17 |     return req.ip;
- 18 |   }
- 19 | }
- 20 | 
+  5 |   private readonly logger = new Logger(UserThrottlerGuard.name);
+  6 | 
+  7 |   protected async getTracker(req: Record<string, any>): Promise<string> {
+  8 |     const token = req.cookies?.access_token;
+  9 |     if (token) {
+ 10 |       try {
+ 11 |         const payload = JSON.parse(
+ 12 |           Buffer.from(token.split('.')[1], 'base64url').toString('utf8'),
+ 13 |         ) as { sub?: string };
+ 14 |         if (payload?.sub) return `user-${payload.sub}`;
+ 15 |       } catch {
+ 16 |         return req.ip;
+ 17 |       }
+ 18 |     }
+ 19 |     return req.ip;
+ 20 |   }
+ 21 | 
+ 22 |   async canActivate(context: ExecutionContext): Promise<boolean> {
+ 23 |     try {
+ 24 |       return await super.canActivate(context);
+ 25 |     } catch (e) {
+ 26 |       this.logger.warn(
+ 27 |         `Throttler storage unavailable, allowing request: ${e.message}`,
+ 28 |       );
+ 29 |       return true;
+ 30 |     }
+ 31 |   }
+ 32 | }
+ 33 | 
 ```
 
 ### File: apps/backend/src/common/interceptors/audit-log.interceptor.ts
@@ -2949,69 +3344,96 @@
   5 |   Min,
   6 | } from 'class-validator';
   7 | import { Type } from 'class-transformer';
-  8 | 
-  9 | export class CreateEventDto {
- 10 |   @IsString()
- 11 |   @IsNotEmpty()
- 12 |   cityId: string;
- 13 | 
- 14 |   @IsString()
- 15 |   @IsNotEmpty()
- 16 |   schoolId: string;
- 17 | 
- 18 |   @IsString()
- 19 |   @IsNotEmpty()
- 20 |   project: string;
- 21 | 
- 22 |   @IsString()
- 23 |   @IsNotEmpty()
- 24 |   date: string;
- 25 | 
- 26 |   @IsOptional()
- 27 |   @IsString()
- 28 |   time?: string;
- 29 | 
- 30 |   @IsOptional()
- 31 |   @IsNumber()
- 32 |   @Min(0)
- 33 |   @Type(() => Number)
- 34 |   childrenPlanned?: number;
- 35 | 
- 36 |   @IsOptional()
- 37 |   @IsNumber()
- 38 |   @Min(0)
- 39 |   @Type(() => Number)
- 40 |   price?: number;
- 41 | 
- 42 |   @IsOptional()
- 43 |   @IsString()
- 44 |   paymentMethod?: string;
- 45 | 
+  8 | import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+  9 | 
+ 10 | export class CreateEventDto {
+ 11 |   @ApiProperty({
+ 12 |     example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+ 13 |     description: 'ID міста',
+ 14 |   })
+ 15 |   @IsString()
+ 16 |   @IsNotEmpty()
+ 17 |   cityId: string;
+ 18 | 
+ 19 |   @ApiProperty({
+ 20 |     example: 'f9e8d7c6-b5a4-3210-fedc-ba9876543210',
+ 21 |     description: 'ID школи',
+ 22 |   })
+ 23 |   @IsString()
+ 24 |   @IsNotEmpty()
+ 25 |   schoolId: string;
+ 26 | 
+ 27 |   @ApiProperty({ example: 'Голографічне шоу «Космос»' })
+ 28 |   @IsString()
+ 29 |   @IsNotEmpty()
+ 30 |   project: string;
+ 31 | 
+ 32 |   @ApiProperty({
+ 33 |     example: '2026-09-15',
+ 34 |     description: 'Дата у форматі YYYY-MM-DD',
+ 35 |   })
+ 36 |   @IsString()
+ 37 |   @IsNotEmpty()
+ 38 |   date: string;
+ 39 | 
+ 40 |   @ApiPropertyOptional({ example: '14:30' })
+ 41 |   @IsOptional()
+ 42 |   @IsString()
+ 43 |   time?: string;
+ 44 | 
+ 45 |   @ApiPropertyOptional({ example: 120, minimum: 0 })
  46 |   @IsOptional()
- 47 |   @IsString()
- 48 |   address?: string;
- 49 | 
- 50 |   @IsOptional()
- 51 |   @IsString()
- 52 |   contactPerson?: string;
- 53 | 
- 54 |   @IsOptional()
- 55 |   @IsString()
- 56 |   contactPhone?: string;
- 57 | 
- 58 |   @IsOptional()
- 59 |   @IsString()
- 60 |   equipment?: string;
- 61 | 
- 62 |   @IsOptional()
- 63 |   @IsString()
- 64 |   nextProject?: string;
- 65 | 
- 66 |   @IsOptional()
- 67 |   @IsString()
- 68 |   responsibleId?: string;
- 69 | }
- 70 | 
+ 47 |   @IsNumber()
+ 48 |   @Min(0)
+ 49 |   @Type(() => Number)
+ 50 |   childrenPlanned?: number;
+ 51 | 
+ 52 |   @ApiPropertyOptional({ example: 15000, minimum: 0 })
+ 53 |   @IsOptional()
+ 54 |   @IsNumber()
+ 55 |   @Min(0)
+ 56 |   @Type(() => Number)
+ 57 |   price?: number;
+ 58 | 
+ 59 |   @ApiPropertyOptional({ example: 'card', enum: ['cash', 'card', 'invoice'] })
+ 60 |   @IsOptional()
+ 61 |   @IsString()
+ 62 |   paymentMethod?: string;
+ 63 | 
+ 64 |   @ApiPropertyOptional({ example: 'м. Львів, вул. Шевченка 10' })
+ 65 |   @IsOptional()
+ 66 |   @IsString()
+ 67 |   address?: string;
+ 68 | 
+ 69 |   @ApiPropertyOptional({ example: 'Олена Ковальчук' })
+ 70 |   @IsOptional()
+ 71 |   @IsString()
+ 72 |   contactPerson?: string;
+ 73 | 
+ 74 |   @ApiPropertyOptional({ example: '+380671234567' })
+ 75 |   @IsOptional()
+ 76 |   @IsString()
+ 77 |   contactPhone?: string;
+ 78 | 
+ 79 |   @ApiPropertyOptional({ example: 'Проєктор, генератор туману' })
+ 80 |   @IsOptional()
+ 81 |   @IsString()
+ 82 |   equipment?: string;
+ 83 | 
+ 84 |   @ApiPropertyOptional({ example: 'Голографічне шоу «Динозаври»' })
+ 85 |   @IsOptional()
+ 86 |   @IsString()
+ 87 |   nextProject?: string;
+ 88 | 
+ 89 |   @ApiPropertyOptional({
+ 90 |     example: 'a1b2c3d4-...',
+ 91 |     description: 'ID відповідального менеджера',
+ 92 |   })
+ 93 |   @IsOptional()
+ 94 |   @IsString()
+ 95 |   responsibleId?: string;
+ 96 | }
+ 97 | 
 ```
 
 ### File: apps/backend/src/events/dto/event-query.dto.ts
@@ -3251,7 +3673,7 @@
  85 |   @IsOptional()
  86 |   @IsNumber()
  87 |   @Min(0)
- 88 |   @Max(5)
+ 88 |   @Max(10)
  89 |   @Type(() => Number)
  90 |   rating?: number;
  91 | 
@@ -3425,142 +3847,147 @@
   9 |   UseGuards,
  10 |   Request,
  11 | } from '@nestjs/common';
- 12 | import { EventsService } from './events.service';
- 13 | import { AuthGuard } from '../auth/auth.guard';
- 14 | import { CurrentUser } from '../auth/decorators/current-user.decorator';
- 15 | import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
- 16 | import { CreateEventDto } from './dto/create-event.dto';
- 17 | import { SubmitReportDto } from './dto/submit-report.dto';
- 18 | import { UpdateStatusDto } from './dto/update-status.dto';
- 19 | import { UpdatePreparationDto } from './dto/update-preparation.dto';
- 20 | import { RescheduleEventDto } from './dto/reschedule-event.dto';
- 21 | import { AssignCrewDto } from './dto/assign-crew.dto';
- 22 | import { AddCommentDto } from './dto/add-comment.dto';
- 23 | import { EventQueryDto } from './dto/event-query.dto';
- 24 | import { Throttle } from '@nestjs/throttler';
- 25 | import { RolesGuard } from '../auth/guards/roles.guard';
- 26 | import { OwnershipGuard } from '../auth/guards/ownership.guard';
- 27 | import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
- 28 | 
- 29 | @Controller('events')
- 30 | @UseGuards(AuthGuard, RolesGuard)
- 31 | export class EventsController {
- 32 |   constructor(private readonly eventsService: EventsService) {}
- 33 | 
- 34 |   @Get()
- 35 |   findAll(@CurrentUser() user: JwtUser, @Query() query: EventQueryDto) {
- 36 |     return this.eventsService.findAllForUser(user, query);
- 37 |   }
- 38 | 
- 39 |   @Post()
- 40 |   create(@Body() body: CreateEventDto, @CurrentUser() user: JwtUser) {
- 41 |     return this.eventsService.create(body, user);
- 42 |   }
- 43 | 
- 44 |   @Get('school/:schoolId')
- 45 |   findBySchool(
- 46 |     @Param('schoolId') schoolId: string,
- 47 |     @Query('minimal') minimal?: string,
- 48 |   ) {
- 49 |     return this.eventsService.findBySchool(schoolId, minimal === 'true');
- 50 |   }
- 51 | 
- 52 |   @Patch(':id/status')
- 53 |   @UseGuards(OwnershipGuard)
- 54 |   @CheckOwnership('event')
- 55 |   updateStatus(
- 56 |     @Param('id') id: string,
- 57 |     @Body() body: UpdateStatusDto,
- 58 |     @CurrentUser() user: JwtUser,
- 59 |   ) {
- 60 |     return this.eventsService.updateStatus(
- 61 |       id,
- 62 |       body.status,
- 63 |       body.actionName,
- 64 |       body.comment,
- 65 |       user,
- 66 |     );
- 67 |   }
- 68 | 
- 69 |   @Patch(':id/preparation')
- 70 |   @UseGuards(OwnershipGuard)
- 71 |   @CheckOwnership('event')
- 72 |   updatePreparation(
- 73 |     @Param('id') id: string,
- 74 |     @Body() body: UpdatePreparationDto,
- 75 |   ) {
- 76 |     return this.eventsService.updatePreparationStatus(
- 77 |       id,
- 78 |       body.field,
- 79 |       body.status,
- 80 |     );
- 81 |   }
- 82 | 
- 83 |   @Post(':id/assign-crew')
- 84 |   @UseGuards(OwnershipGuard)
- 85 |   @CheckOwnership('event')
- 86 |   assignCrew(@Param('id') id: string, @Body() body: AssignCrewDto) {
- 87 |     return this.eventsService.assignCrewToEvent(id, body.crewId);
- 88 |   }
- 89 | 
- 90 |   @Post(':id/history')
- 91 |   addHistoryComment(
- 92 |     @Param('id') id: string,
- 93 |     @Body() body: AddCommentDto,
- 94 |     @CurrentUser() user: JwtUser,
- 95 |   ) {
- 96 |     return this.eventsService.addHistoryComment(id, body.comment, user);
- 97 |   }
- 98 | 
- 99 |   @Patch('history/:historyId')
-100 |   updateHistoryComment(
-101 |     @Param('historyId') historyId: string,
-102 |     @Body() body: AddCommentDto,
-103 |   ) {
-104 |     return this.eventsService.updateHistoryComment(historyId, body.comment);
-105 |   }
-106 | 
-107 |   @Delete(':id')
-108 |   @UseGuards(OwnershipGuard)
-109 |   @CheckOwnership('event')
-110 |   remove(@Param('id') id: string) {
-111 |     return this.eventsService.remove(id);
-112 |   }
-113 | 
-114 |   @Post(':id/report')
-115 |   @Throttle({ default: { ttl: 60000, limit: 10 } })
-116 |   @UseGuards(OwnershipGuard)
-117 |   @CheckOwnership('event')
-118 |   submitReport(
-119 |     @Param('id') id: string,
-120 |     @Body() body: SubmitReportDto,
-121 |     @CurrentUser() user: JwtUser,
-122 |   ) {
-123 |     return this.eventsService.submitReport(id, body, user);
-124 |   }
-125 | 
-126 |   @Get('school/:schoolId/completed')
-127 |   findCompletedBySchool(@Param('schoolId') schoolId: string) {
-128 |     return this.eventsService.findCompletedBySchool(schoolId);
+ 12 | import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
+ 13 | import { EventsService } from './events.service';
+ 14 | import { AuthGuard } from '../auth/auth.guard';
+ 15 | import { CurrentUser } from '../auth/decorators/current-user.decorator';
+ 16 | import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+ 17 | import { CreateEventDto } from './dto/create-event.dto';
+ 18 | import { SubmitReportDto } from './dto/submit-report.dto';
+ 19 | import { UpdateStatusDto } from './dto/update-status.dto';
+ 20 | import { UpdatePreparationDto } from './dto/update-preparation.dto';
+ 21 | import { RescheduleEventDto } from './dto/reschedule-event.dto';
+ 22 | import { AssignCrewDto } from './dto/assign-crew.dto';
+ 23 | import { AddCommentDto } from './dto/add-comment.dto';
+ 24 | import { EventQueryDto } from './dto/event-query.dto';
+ 25 | import { Throttle } from '@nestjs/throttler';
+ 26 | import { RolesGuard } from '../auth/guards/roles.guard';
+ 27 | import { OwnershipGuard } from '../auth/guards/ownership.guard';
+ 28 | import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
+ 29 | 
+ 30 | @ApiTags('Events')
+ 31 | @ApiCookieAuth('access_token')
+ 32 | @Controller('events')
+ 33 | @UseGuards(AuthGuard, RolesGuard)
+ 34 | export class EventsController {
+ 35 |   constructor(private readonly eventsService: EventsService) {}
+ 36 | 
+ 37 |   @ApiOperation({ summary: 'Список подій для поточного користувача' })
+ 38 |   @Get()
+ 39 |   findAll(@CurrentUser() user: JwtUser, @Query() query: EventQueryDto) {
+ 40 |     return this.eventsService.findAllForUser(user, query);
+ 41 |   }
+ 42 | 
+ 43 |   @ApiOperation({ summary: 'Створити подію' })
+ 44 |   @Post()
+ 45 |   create(@Body() body: CreateEventDto, @CurrentUser() user: JwtUser) {
+ 46 |     return this.eventsService.create(body, user);
+ 47 |   }
+ 48 | 
+ 49 |   @Get('school/:schoolId')
+ 50 |   findBySchool(
+ 51 |     @Param('schoolId') schoolId: string,
+ 52 |     @Query('minimal') minimal?: string,
+ 53 |   ) {
+ 54 |     return this.eventsService.findBySchool(schoolId, minimal === 'true');
+ 55 |   }
+ 56 | 
+ 57 |   @Patch(':id/status')
+ 58 |   @UseGuards(OwnershipGuard)
+ 59 |   @CheckOwnership('event')
+ 60 |   updateStatus(
+ 61 |     @Param('id') id: string,
+ 62 |     @Body() body: UpdateStatusDto,
+ 63 |     @CurrentUser() user: JwtUser,
+ 64 |   ) {
+ 65 |     return this.eventsService.updateStatus(
+ 66 |       id,
+ 67 |       body.status,
+ 68 |       body.actionName,
+ 69 |       body.comment,
+ 70 |       user,
+ 71 |     );
+ 72 |   }
+ 73 | 
+ 74 |   @Patch(':id/preparation')
+ 75 |   @UseGuards(OwnershipGuard)
+ 76 |   @CheckOwnership('event')
+ 77 |   updatePreparation(
+ 78 |     @Param('id') id: string,
+ 79 |     @Body() body: UpdatePreparationDto,
+ 80 |   ) {
+ 81 |     return this.eventsService.updatePreparationStatus(
+ 82 |       id,
+ 83 |       body.field,
+ 84 |       body.status,
+ 85 |     );
+ 86 |   }
+ 87 | 
+ 88 |   @Post(':id/assign-crew')
+ 89 |   @UseGuards(OwnershipGuard)
+ 90 |   @CheckOwnership('event')
+ 91 |   assignCrew(@Param('id') id: string, @Body() body: AssignCrewDto) {
+ 92 |     return this.eventsService.assignCrewToEvent(id, body.crewId);
+ 93 |   }
+ 94 | 
+ 95 |   @Post(':id/history')
+ 96 |   addHistoryComment(
+ 97 |     @Param('id') id: string,
+ 98 |     @Body() body: AddCommentDto,
+ 99 |     @CurrentUser() user: JwtUser,
+100 |   ) {
+101 |     return this.eventsService.addHistoryComment(id, body.comment, user);
+102 |   }
+103 | 
+104 |   @Patch('history/:historyId')
+105 |   updateHistoryComment(
+106 |     @Param('historyId') historyId: string,
+107 |     @Body() body: AddCommentDto,
+108 |   ) {
+109 |     return this.eventsService.updateHistoryComment(historyId, body.comment);
+110 |   }
+111 | 
+112 |   @Delete(':id')
+113 |   @UseGuards(OwnershipGuard)
+114 |   @CheckOwnership('event')
+115 |   remove(@Param('id') id: string) {
+116 |     return this.eventsService.remove(id);
+117 |   }
+118 | 
+119 |   @Post(':id/report')
+120 |   @Throttle({ default: { ttl: 60000, limit: 10 } })
+121 |   @UseGuards(OwnershipGuard)
+122 |   @CheckOwnership('event')
+123 |   submitReport(
+124 |     @Param('id') id: string,
+125 |     @Body() body: SubmitReportDto,
+126 |     @CurrentUser() user: JwtUser,
+127 |   ) {
+128 |     return this.eventsService.submitReport(id, body, user);
 129 |   }
 130 | 
-131 |   @Get(':id')
-132 |   findOne(@Param('id') id: string) {
-133 |     return this.eventsService.findOne(id);
+131 |   @Get('school/:schoolId/completed')
+132 |   findCompletedBySchool(@Param('schoolId') schoolId: string) {
+133 |     return this.eventsService.findCompletedBySchool(schoolId);
 134 |   }
 135 | 
-136 |   @Patch(':id/reschedule')
-137 |   @UseGuards(OwnershipGuard)
-138 |   @CheckOwnership('event')
-139 |   reschedule(
-140 |     @Param('id') id: string,
-141 |     @Body() body: RescheduleEventDto,
-142 |     @CurrentUser() user: JwtUser,
-143 |   ) {
-144 |     return this.eventsService.rescheduleEvent(id, body.date, body.time, user);
-145 |   }
-146 | }
-147 | 
+136 |   @Get(':id')
+137 |   findOne(@Param('id') id: string) {
+138 |     return this.eventsService.findOne(id);
+139 |   }
+140 | 
+141 |   @Patch(':id/reschedule')
+142 |   @UseGuards(OwnershipGuard)
+143 |   @CheckOwnership('event')
+144 |   reschedule(
+145 |     @Param('id') id: string,
+146 |     @Body() body: RescheduleEventDto,
+147 |     @CurrentUser() user: JwtUser,
+148 |   ) {
+149 |     return this.eventsService.rescheduleEvent(id, body.date, body.time, user);
+150 |   }
+151 | }
+152 | 
 ```
 
 ### File: apps/backend/src/events/events.module.ts
@@ -4271,343 +4698,316 @@
 176 |       this.logger.log(`[assignCrew] hostChatId resolved=${hostChatId}`);
 177 | 
 178 |       if (hostChatId) {
-179 |         await this.telegramService.sendMessage(
-180 |           hostChatId,
-181 |           buildMessage('ведучий'),
-182 |         );
-183 |       } else {
-184 |         this.logger.warn(
-185 |           `[assignCrew] Не вдалося надіслати повідомлення ведучому ${hostId}: chatId не знайдено (користувач не натиснув /start?)`,
-186 |         );
-187 |       }
-188 |     }
-189 | 
-190 |     if (driverId) {
-191 |       const driverChatId = await this.getChatIdForUser(driverId);
-192 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
-193 | 
-194 |       if (driverChatId) {
-195 |         await this.telegramService.sendMessage(
-196 |           driverChatId,
-197 |           buildMessage('водій'),
-198 |         );
-199 |       } else {
-200 |         this.logger.warn(
-201 |           `[assignCrew] Не вдалося надіслати повідомлення водію ${driverId}: chatId не знайдено`,
-202 |         );
-203 |       }
-204 |     }
-205 | 
-206 |     if (driverId) {
-207 |       const driver = await this.prisma.user.findUnique({
-208 |         where: { id: driverId },
-209 |       });
-210 |       this.logger.log(
-211 |         `[assignCrew] driver=${JSON.stringify({ name: driver?.name, telegramId: driver?.telegramId, telegramChatId: driver?.telegramChatId })}`,
-212 |       );
-213 |       const driverChatId =
-214 |         driver?.telegramChatId ||
-215 |         (driver?.telegramId && /^\d+$/.test(driver.telegramId)
-216 |           ? driver.telegramId
-217 |           : null);
-218 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
-219 |       if (driverChatId) {
-220 |         await this.telegramService.sendMessage(
-221 |           driverChatId,
-222 |           buildMessage('водій'),
-223 |         );
-224 |       }
-225 |     }
-226 | 
-227 |     return event;
-228 |   }
-229 | 
-230 |   async rescheduleEvent(
-231 |     eventId: string,
-232 |     newDate: string,
-233 |     newTime: string,
-234 |     user: JwtUser,
-235 |   ) {
-236 |     const event = await this.prisma.event.update({
-237 |       where: { id: eventId },
-238 |       data: {
-239 |         date: new Date(newDate),
-240 |         time: newTime,
-241 |         history: {
-242 |           create: {
-243 |             action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
-244 |             userId: user.sub,
-245 |             userName: user.name,
-246 |             role: user.role,
-247 |           },
-248 |         },
-249 |       },
-250 |       include: {
-251 |         crew: { include: { host: true, driver: true } },
-252 |         school: true,
-253 |         city: true,
-254 |         history: { orderBy: { createdAt: 'desc' } },
-255 |       },
-256 |     });
-257 | 
-258 |     const dateStr = new Date(newDate).toLocaleDateString('uk-UA', {
-259 |       day: '2-digit',
-260 |       month: 'long',
-261 |       year: 'numeric',
-262 |     });
-263 |     const msg =
-264 |       `📅 <b>Подію перенесено!</b>\n\n` +
-265 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
-266 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
-267 |       `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
-268 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
-269 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
-270 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+179 |         this.telegramService
+180 |           .sendMessage(hostChatId, buildMessage('ведучий'))
+181 |           .catch((e) =>
+182 |             this.logger.warn(`[assignCrew] Telegram send failed: ${e}`),
+183 |           );
+184 |       } else {
+185 |         this.logger.warn(
+186 |           `[assignCrew] Не вдалося надіслати повідомлення ведучому ${hostId}: chatId не знайдено (користувач не натиснув /start?)`,
+187 |         );
+188 |       }
+189 |     }
+190 | 
+191 |     if (driverId) {
+192 |       const driverChatId = await this.getChatIdForUser(driverId);
+193 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
+194 | 
+195 |       if (driverChatId) {
+196 |         this.telegramService
+197 |           .sendMessage(driverChatId, buildMessage('водій'))
+198 |           .catch((e) =>
+199 |             this.logger.warn(`[assignCrew] Telegram send failed: ${e}`),
+200 |           );
+201 |       } else {
+202 |         this.logger.warn(
+203 |           `[assignCrew] Не вдалося надіслати повідомлення водію ${driverId}: chatId не знайдено`,
+204 |         );
+205 |       }
+206 |     }
+207 | 
+208 |     return event;
+209 |   }
+210 | 
+211 |   async rescheduleEvent(
+212 |     eventId: string,
+213 |     newDate: string,
+214 |     newTime: string,
+215 |     user: JwtUser,
+216 |   ) {
+217 |     const event = await this.prisma.event.update({
+218 |       where: { id: eventId },
+219 |       data: {
+220 |         date: new Date(newDate),
+221 |         time: newTime,
+222 |         history: {
+223 |           create: {
+224 |             action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
+225 |             userId: user.sub,
+226 |             userName: user.name,
+227 |             role: user.role,
+228 |           },
+229 |         },
+230 |       },
+231 |       include: {
+232 |         crew: { include: { host: true, driver: true } },
+233 |         school: true,
+234 |         city: true,
+235 |         history: { orderBy: { createdAt: 'desc' } },
+236 |       },
+237 |     });
+238 | 
+239 |     const dateStr = new Date(newDate).toLocaleDateString('uk-UA', {
+240 |       day: '2-digit',
+241 |       month: 'long',
+242 |       year: 'numeric',
+243 |     });
+244 |     const msg =
+245 |       `📅 <b>Подію перенесено!</b>\n\n` +
+246 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
+247 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
+248 |       `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
+249 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
+250 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
+251 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+252 | 
+253 |     const sendTo = async (userId: string | null | undefined) => {
+254 |       if (!userId) return;
+255 |       const u = await this.prisma.user.findUnique({ where: { id: userId } });
+256 |       const chatId =
+257 |         u?.telegramChatId ||
+258 |         (u?.telegramId && /^\d+$/.test(u.telegramId) ? u.telegramId : null);
+259 |       if (chatId) await this.telegramService.sendMessage(chatId, msg);
+260 |     };
+261 | 
+262 |     await sendTo(event.crew?.hostId);
+263 |     await sendTo(event.crew?.driverId);
+264 | 
+265 |     return event;
+266 |   }
+267 | 
+268 |   async getChatIdForUser(userId: string): Promise<string | null> {
+269 |     const user = await this.prisma.user.findUnique({ where: { id: userId } });
+270 |     if (!user) return null;
 271 | 
-272 |     const sendTo = async (userId: string | null | undefined) => {
-273 |       if (!userId) return;
-274 |       const u = await this.prisma.user.findUnique({ where: { id: userId } });
-275 |       const chatId =
-276 |         u?.telegramChatId ||
-277 |         (u?.telegramId && /^\d+$/.test(u.telegramId) ? u.telegramId : null);
-278 |       if (chatId) await this.telegramService.sendMessage(chatId, msg);
-279 |     };
-280 | 
-281 |     await sendTo(event.crew?.hostId);
-282 |     await sendTo(event.crew?.driverId);
-283 | 
-284 |     return event;
-285 |   }
-286 | 
-287 |   async getChatIdForUser(userId: string): Promise<string | null> {
-288 |     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-289 |     if (!user) return null;
-290 | 
-291 |     if (user.telegramChatId) return user.telegramChatId;
-292 | 
-293 |     if (user.telegramId && /^\d+$/.test(user.telegramId))
-294 |       return user.telegramId;
-295 | 
-296 |     return null;
-297 |   }
-298 | 
-299 |   async findBySchool(schoolId: string, minimal = false) {
-300 |     if (minimal) {
-301 |       return this.prisma.event.findMany({
-302 |         where: { schoolId },
-303 |         select: {
-304 |           id: true,
-305 |           project: true,
-306 |           date: true,
-307 |           time: true,
-308 |           status: true,
-309 |           price: true,
-310 |           childrenPlanned: true,
-311 |           address: true,
-312 |           contactPerson: true,
-313 |           contactPhone: true,
-314 |           crewId: true,
-315 |           crew: {
-316 |             select: { id: true, name: true, hostId: true, driverId: true },
-317 |           },
-318 |         },
-319 |         orderBy: { date: 'desc' },
-320 |       });
-321 |     }
-322 |     return this.prisma.event.findMany({
-323 |       where: { schoolId },
-324 |       include: {
-325 |         crew: { include: { host: true, driver: true } },
-326 |         history: { orderBy: { createdAt: 'desc' } },
-327 |         preparation: true,
-328 |       },
-329 |       orderBy: { date: 'desc' },
-330 |     });
-331 |   }
+272 |     if (user.telegramChatId) return user.telegramChatId;
+273 | 
+274 |     if (user.telegramId && /^\d+$/.test(user.telegramId))
+275 |       return user.telegramId;
+276 | 
+277 |     return null;
+278 |   }
+279 | 
+280 |   async findBySchool(schoolId: string, minimal = false) {
+281 |     if (minimal) {
+282 |       return this.prisma.event.findMany({
+283 |         where: { schoolId },
+284 |         select: {
+285 |           id: true,
+286 |           project: true,
+287 |           date: true,
+288 |           time: true,
+289 |           status: true,
+290 |           price: true,
+291 |           childrenPlanned: true,
+292 |           address: true,
+293 |           contactPerson: true,
+294 |           contactPhone: true,
+295 |           crewId: true,
+296 |           crew: {
+297 |             select: { id: true, name: true, hostId: true, driverId: true },
+298 |           },
+299 |         },
+300 |         orderBy: { date: 'desc' },
+301 |       });
+302 |     }
+303 |     return this.prisma.event.findMany({
+304 |       where: { schoolId },
+305 |       include: {
+306 |         crew: { include: { host: true, driver: true } },
+307 |         history: { orderBy: { createdAt: 'desc' } },
+308 |         preparation: true,
+309 |       },
+310 |       orderBy: { date: 'desc' },
+311 |     });
+312 |   }
+313 | 
+314 |   async updateHistoryComment(historyId: string, comment: string) {
+315 |     return this.prisma.eventHistory.update({
+316 |       where: { id: historyId },
+317 |       data: { comment: comment || null },
+318 |     });
+319 |   }
+320 | 
+321 |   async addHistoryComment(eventId: string, comment: string, user: JwtUser) {
+322 |     await this.prisma.eventHistory.create({
+323 |       data: {
+324 |         eventId,
+325 |         action: 'Коментар',
+326 |         comment,
+327 |         userId: user.sub,
+328 |         userName: user.name,
+329 |         role: user.role,
+330 |       },
+331 |     });
 332 | 
-333 |   async updateHistoryComment(historyId: string, comment: string) {
-334 |     return this.prisma.eventHistory.update({
-335 |       where: { id: historyId },
-336 |       data: { comment: comment || null },
-337 |     });
-338 |   }
-339 | 
-340 |   async addHistoryComment(eventId: string, comment: string, user: JwtUser) {
-341 |     await this.prisma.eventHistory.create({
-342 |       data: {
-343 |         eventId,
-344 |         action: 'Коментар',
-345 |         comment,
-346 |         userId: user.sub,
-347 |         userName: user.name,
-348 |         role: user.role,
-349 |       },
-350 |     });
-351 | 
-352 |     return this.prisma.event.findUnique({
-353 |       where: { id: eventId },
-354 |       include: {
-355 |         history: { orderBy: { createdAt: 'desc' } },
-356 |       },
-357 |     });
-358 |   }
-359 | 
-360 |   async remove(id: string) {
-361 |     const exists = await this.prisma.event.findUnique({ where: { id } });
-362 |     if (!exists) throw new NotFoundException('Подію не знайдено');
-363 | 
-364 |     await this.prisma.eventHistory.deleteMany({
-365 |       where: { eventId: id },
-366 |     });
-367 | 
-368 |     await this.prisma.eventPreparation.deleteMany({
-369 |       where: { eventId: id },
-370 |     });
-371 | 
-372 |     return this.prisma.event.delete({
-373 |       where: { id },
-374 |     });
-375 |   }
-376 | 
-377 |   async submitReport(
-378 |     eventId: string,
-379 |     reportData: SubmitReportDto,
-380 |     user: JwtUser,
-381 |   ) {
-382 |     await this.prisma.eventReport.upsert({
-383 |       where: { eventId },
-384 |       update: {
-385 |         announcementDone: reportData.announcementDone,
-386 |         materialShown: reportData.materialShown,
-387 |         childrenCount: reportData.childrenCount,
-388 |         classesCount: reportData.classesCount,
-389 |         privilegedCount: reportData.privilegedCount,
-390 |         showingsCount: reportData.showingsCount,
-391 |         totalSum: reportData.totalSum,
-392 |         schoolSum: reportData.schoolSum,
-393 |         remainderSum: reportData.remainderSum,
-394 |         rating: reportData.rating,
-395 |       },
-396 |       create: {
-397 |         eventId,
-398 |         announcementDone: reportData.announcementDone,
-399 |         materialShown: reportData.materialShown,
-400 |         childrenCount: reportData.childrenCount,
-401 |         classesCount: reportData.classesCount,
-402 |         privilegedCount: reportData.privilegedCount,
-403 |         showingsCount: reportData.showingsCount,
-404 |         totalSum: reportData.totalSum,
-405 |         schoolSum: reportData.schoolSum,
-406 |         remainderSum: reportData.remainderSum,
-407 |         rating: reportData.rating,
-408 |       },
-409 |     });
-410 | 
-411 |     await this.prisma.expenseItem.deleteMany({ where: { reportId: eventId } });
-412 |     await this.prisma.salaryItem.deleteMany({ where: { reportId: eventId } });
-413 | 
-414 |     if (reportData.expenses?.length) {
-415 |       await this.prisma.expenseItem.createMany({
-416 |         data: reportData.expenses.map((exp: ExpenseItemDto) => ({
-417 |           reportId: eventId,
-418 |           category: exp.category || 'Інше',
-419 |           name: exp.name,
-420 |           amount: new Prisma.Decimal(exp.amount || 0),
-421 |         })),
-422 |       });
-423 |     }
-424 | 
-425 |     if (reportData.salaries?.length) {
-426 |       await this.prisma.salaryItem.createMany({
-427 |         data: reportData.salaries.map((s: SalaryItemDto) => ({
-428 |           reportId: eventId,
-429 |           userId: s.userId,
-430 |           userName: s.name,
-431 |           amount: new Prisma.Decimal(s.amount || 0),
-432 |           role: s.role,
-433 |         })),
-434 |       });
-435 | 
-436 |       await Promise.all(
-437 |         reportData.salaries
-438 |           .filter((s) => s.userId && s.amount > 0)
-439 |           .map((s) =>
-440 |             this.prisma.user.update({
-441 |               where: { id: s.userId },
-442 |               data: { balance: { increment: s.amount } },
-443 |             }),
-444 |           ),
-445 |       );
-446 |     }
-447 | 
-448 |     return this.prisma.event.update({
-449 |       where: { id: eventId },
-450 |       data: {
-451 |         status: 'REPORT' as never,
-452 |         history: {
-453 |           create: {
-454 |             action: 'Сформовано звіт. Етап: Звіт',
-455 |             userId: user.sub,
-456 |             userName: user.name,
-457 |             role: user.role,
-458 |           },
-459 |         },
-460 |       },
-461 |       include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
-462 |     });
-463 |   }
-464 | 
-465 |   async findOne(id: string) {
-466 |     const event = await this.prisma.event.findUnique({
-467 |       where: { id },
-468 |       include: {
-469 |         school: true,
-470 |         city: true,
-471 |         crew: {
-472 |           include: {
-473 |             host: { select: { id: true, name: true } },
-474 |             driver: { select: { id: true, name: true } },
-475 |           },
-476 |         },
-477 |         report: true,
-478 |       },
-479 |     });
-480 |     if (!event) throw new NotFoundException('Подію не знайдено');
-481 |     return event;
-482 |   }
-483 | 
-484 |   async findCompletedBySchool(schoolId: string) {
-485 |     return this.prisma.event.findMany({
-486 |       where: { schoolId, status: 'RE_SALE' },
-487 |       select: {
-488 |         id: true,
-489 |         project: true,
-490 |         date: true,
-491 |         status: true,
-492 |         price: true,
-493 |         childrenPlanned: true,
-494 |         report: {
-495 |           select: {
-496 |             childrenCount: true,
-497 |             classesCount: true,
-498 |             privilegedCount: true,
-499 |             showingsCount: true,
-500 |             totalSum: true,
-501 |             schoolSum: true,
-502 |             remainderSum: true,
-503 |             rating: true,
-504 |             expenseItems: {
-505 |               select: { category: true, name: true, amount: true },
-506 |             },
-507 |           },
-508 |         },
-509 |         history: { orderBy: { createdAt: 'asc' } },
-510 |       },
-511 |       orderBy: { date: 'desc' },
-512 |     });
-513 |   }
-514 | }
-515 | 
+333 |     return this.prisma.event.findUnique({
+334 |       where: { id: eventId },
+335 |       include: {
+336 |         history: { orderBy: { createdAt: 'desc' } },
+337 |       },
+338 |     });
+339 |   }
+340 | 
+341 |   async remove(id: string) {
+342 |     const exists = await this.prisma.event.findUnique({ where: { id } });
+343 |     if (!exists) throw new NotFoundException('Подію не знайдено');
+344 | 
+345 |     await this.prisma.eventHistory.deleteMany({
+346 |       where: { eventId: id },
+347 |     });
+348 | 
+349 |     await this.prisma.eventPreparation.deleteMany({
+350 |       where: { eventId: id },
+351 |     });
+352 | 
+353 |     return this.prisma.event.delete({
+354 |       where: { id },
+355 |     });
+356 |   }
+357 | 
+358 |   async submitReport(
+359 |     eventId: string,
+360 |     reportData: SubmitReportDto,
+361 |     user: JwtUser,
+362 |   ) {
+363 |     const report = await this.prisma.eventReport.upsert({
+364 |       where: { eventId },
+365 |       update: {
+366 |         announcementDone: reportData.announcementDone,
+367 |         materialShown: reportData.materialShown,
+368 |         childrenCount: reportData.childrenCount,
+369 |         classesCount: reportData.classesCount,
+370 |         privilegedCount: reportData.privilegedCount,
+371 |         showingsCount: reportData.showingsCount,
+372 |         totalSum: reportData.totalSum,
+373 |         schoolSum: reportData.schoolSum,
+374 |         remainderSum: reportData.remainderSum,
+375 |         rating: reportData.rating,
+376 |       },
+377 |       create: {
+378 |         eventId,
+379 |         announcementDone: reportData.announcementDone,
+380 |         materialShown: reportData.materialShown,
+381 |         childrenCount: reportData.childrenCount,
+382 |         classesCount: reportData.classesCount,
+383 |         privilegedCount: reportData.privilegedCount,
+384 |         showingsCount: reportData.showingsCount,
+385 |         totalSum: reportData.totalSum,
+386 |         schoolSum: reportData.schoolSum,
+387 |         remainderSum: reportData.remainderSum,
+388 |         rating: reportData.rating,
+389 |       },
+390 |     });
+391 | 
+392 |     await this.prisma.expenseItem.deleteMany({
+393 |       where: { reportId: report.id },
+394 |     });
+395 |     await this.prisma.salaryItem.deleteMany({ where: { reportId: report.id } });
+396 | 
+397 |     if (reportData.expenses?.length) {
+398 |       await this.prisma.expenseItem.createMany({
+399 |         data: reportData.expenses.map((exp: ExpenseItemDto) => ({
+400 |           reportId: report.id,
+401 |           category: exp.category || 'Інше',
+402 |           name: exp.name,
+403 |           amount: new Prisma.Decimal(exp.amount || 0),
+404 |         })),
+405 |       });
+406 |     }
+407 | 
+408 |     if (reportData.salaries?.length) {
+409 |       await Promise.all(
+410 |         reportData.salaries
+411 |           .filter((s) => s.userId && s.amount > 0)
+412 |           .map((s) =>
+413 |             this.prisma.user.update({
+414 |               where: { id: s.userId },
+415 |               data: { balance: { increment: s.amount } },
+416 |             }),
+417 |           ),
+418 |       );
+419 |     }
+420 | 
+421 |     return this.prisma.event.update({
+422 |       where: { id: eventId },
+423 |       data: {
+424 |         status: 'RE_SALE' as never,
+425 |         history: {
+426 |           create: {
+427 |             action: 'Сформовано звіт. Захід завершено.',
+428 |             userId: user.sub,
+429 |             userName: user.name,
+430 |             role: user.role,
+431 |           },
+432 |         },
+433 |       },
+434 |       include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
+435 |     });
+436 |   }
+437 | 
+438 |   async findOne(id: string) {
+439 |     const event = await this.prisma.event.findUnique({
+440 |       where: { id },
+441 |       include: {
+442 |         school: true,
+443 |         city: true,
+444 |         crew: {
+445 |           include: {
+446 |             host: { select: { id: true, name: true } },
+447 |             driver: { select: { id: true, name: true } },
+448 |           },
+449 |         },
+450 |         report: true,
+451 |       },
+452 |     });
+453 |     if (!event) throw new NotFoundException('Подію не знайдено');
+454 |     return event;
+455 |   }
+456 | 
+457 |   async findCompletedBySchool(schoolId: string) {
+458 |     return this.prisma.event.findMany({
+459 |       where: { schoolId, status: 'RE_SALE' },
+460 |       select: {
+461 |         id: true,
+462 |         project: true,
+463 |         date: true,
+464 |         status: true,
+465 |         price: true,
+466 |         childrenPlanned: true,
+467 |         report: {
+468 |           select: {
+469 |             childrenCount: true,
+470 |             classesCount: true,
+471 |             privilegedCount: true,
+472 |             showingsCount: true,
+473 |             totalSum: true,
+474 |             schoolSum: true,
+475 |             remainderSum: true,
+476 |             rating: true,
+477 |             expenseItems: {
+478 |               select: { category: true, name: true, amount: true },
+479 |             },
+480 |           },
+481 |         },
+482 |         history: { orderBy: { createdAt: 'asc' } },
+483 |       },
+484 |       orderBy: { date: 'desc' },
+485 |     });
+486 |   }
+487 | }
+488 | 
 ```
 
 ### File: apps/backend/src/finance/create-expense-item.dto.ts
@@ -5465,6 +5865,144 @@
 410 | 
 ```
 
+### File: apps/backend/src/health/health.controller.ts
+```ts
+  0 | import { Controller, Get } from '@nestjs/common';
+  1 | import {
+  2 |   HealthCheck,
+  3 |   HealthCheckService,
+  4 |   PrismaHealthIndicator,
+  5 | } from '@nestjs/terminus';
+  6 | import { PrismaService } from '../prisma/prisma.service';
+  7 | import { RedisHealthIndicator } from './indicators/redis.health';
+  8 | 
+  9 | @Controller('.well-known/health')
+ 10 | export class HealthController {
+ 11 |   constructor(
+ 12 |     private health: HealthCheckService,
+ 13 |     private prismaIndicator: PrismaHealthIndicator,
+ 14 |     private redisIndicator: RedisHealthIndicator,
+ 15 |     private prisma: PrismaService,
+ 16 |   ) {}
+ 17 | 
+ 18 |   @Get()
+ 19 |   @HealthCheck()
+ 20 |   check() {
+ 21 |     return this.health.check([
+ 22 |       () => this.prismaIndicator.pingCheck('database', this.prisma),
+ 23 |       () => this.redisIndicator.isHealthy('redis'),
+ 24 |     ]);
+ 25 |   }
+ 26 | }
+ 27 | 
+```
+
+### File: apps/backend/src/health/health.module.ts
+```ts
+  0 | import { Module } from '@nestjs/common';
+  1 | import { TerminusModule } from '@nestjs/terminus';
+  2 | import { PrismaModule } from '../prisma/prisma.module';
+  3 | import { HealthController } from './health.controller';
+  4 | import { RedisHealthIndicator } from './indicators/redis.health';
+  5 | 
+  6 | @Module({
+  7 |   imports: [TerminusModule, PrismaModule],
+  8 |   controllers: [HealthController],
+  9 |   providers: [RedisHealthIndicator],
+ 10 | })
+ 11 | export class HealthModule {}
+ 12 | 
+```
+
+### File: apps/backend/src/health/indicators/redis.health.ts
+```ts
+  0 | import { Injectable } from '@nestjs/common';
+  1 | import {
+  2 |   HealthIndicator,
+  3 |   HealthIndicatorResult,
+  4 |   HealthCheckError,
+  5 | } from '@nestjs/terminus';
+  6 | import Redis from 'ioredis';
+  7 | 
+  8 | @Injectable()
+  9 | export class RedisHealthIndicator extends HealthIndicator {
+ 10 |   private client = new Redis(
+ 11 |     process.env.REDIS_URL ?? 'redis://localhost:6379',
+ 12 |     {
+ 13 |       lazyConnect: true,
+ 14 |       maxRetriesPerRequest: 1,
+ 15 |     },
+ 16 |   );
+ 17 | 
+ 18 |   async isHealthy(key: string): Promise<HealthIndicatorResult> {
+ 19 |     try {
+ 20 |       if (this.client.status !== 'ready') await this.client.connect();
+ 21 |       await this.client.ping();
+ 22 |       return this.getStatus(key, true);
+ 23 |     } catch (e) {
+ 24 |       throw new HealthCheckError(
+ 25 |         'Redis check failed',
+ 26 |         this.getStatus(key, false, { message: e.message }),
+ 27 |       );
+ 28 |     }
+ 29 |   }
+ 30 | }
+ 31 | 
+```
+
+### File: apps/backend/src/health/redis.health.ts
+```ts
+  0 | import { Injectable } from '@nestjs/common';
+  1 | import {
+  2 |   HealthIndicator,
+  3 |   HealthIndicatorResult,
+  4 |   HealthCheckError,
+  5 | } from '@nestjs/terminus';
+  6 | import Redis from 'ioredis';
+  7 | 
+  8 | @Injectable()
+  9 | export class RedisHealthIndicator extends HealthIndicator {
+ 10 |   private client = new Redis(
+ 11 |     process.env.REDIS_URL ?? 'redis://localhost:6379',
+ 12 |     {
+ 13 |       lazyConnect: true,
+ 14 |       maxRetriesPerRequest: 1,
+ 15 |       connectTimeout: 3000,
+ 16 |       retryStrategy: () => null,
+ 17 |     },
+ 18 |   );
+ 19 | 
+ 20 |   async isHealthy(key: string): Promise<HealthIndicatorResult> {
+ 21 |     try {
+ 22 |       if (this.client.status !== 'ready') await this.client.connect();
+ 23 |       await this.client.ping();
+ 24 |       return this.getStatus(key, true);
+ 25 |     } catch (e) {
+ 26 |       throw new HealthCheckError(
+ 27 |         'Redis check failed',
+ 28 |         this.getStatus(key, false, { message: e.message }),
+ 29 |       );
+ 30 |     }
+ 31 |   }
+ 32 | }
+ 33 | 
+```
+
+### File: apps/backend/src/instrument.ts
+```ts
+  0 | import * as Sentry from '@sentry/nestjs';
+  1 | import { nodeProfilingIntegration } from '@sentry/profiling-node';
+  2 | 
+  3 | Sentry.init({
+  4 |   dsn: process.env.SENTRY_DSN,
+  5 |   environment: process.env.NODE_ENV,
+  6 |   integrations: [nodeProfilingIntegration()],
+  7 |   tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.2 : 1.0,
+  8 |   profilesSampleRate: process.env.NODE_ENV === 'production' ? 0.2 : 1.0,
+  9 | });
+ 10 | 
+```
+
 ### File: apps/backend/src/issues/dto/create-issue.dto.ts
 ```ts
   0 | import {
@@ -5719,43 +6257,176 @@
 
 ### File: apps/backend/src/main.ts
 ```ts
-  0 | import { NestFactory, Reflector } from '@nestjs/core';
-  1 | import { AppModule } from './app.module';
-  2 | import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
-  3 | import cookieParser from 'cookie-parser';
-  4 | import helmet from 'helmet';
-  5 | import { Logger } from 'nestjs-pino';
-  6 | import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-  7 | 
-  8 | async function bootstrap() {
-  9 |   const app = await NestFactory.create(AppModule, { bufferLogs: true });
- 10 |   app.useLogger(app.get(Logger));
- 11 |   app.use(helmet());
- 12 |   app.use(cookieParser());
+  0 | import './instrument';
+  1 | import { NestFactory, Reflector } from '@nestjs/core';
+  2 | import { AppModule } from './app.module';
+  3 | import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+  4 | import cookieParser from 'cookie-parser';
+  5 | import helmet from 'helmet';
+  6 | import { Logger } from 'nestjs-pino';
+  7 | import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+  8 | import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+  9 | 
+ 10 | async function bootstrap() {
+ 11 |   const app = await NestFactory.create(AppModule, { bufferLogs: true });
+ 12 |   app.useLogger(app.get(Logger));
+ 13 |   app.use(helmet());
+ 14 |   app.use(cookieParser());
+ 15 | 
+ 16 |   const allowedOrigins = (process.env.FRONTEND_URL ?? '')
+ 17 |     .split(',')
+ 18 |     .map((o) => o.trim())
+ 19 |     .filter(Boolean);
+ 20 | 
+ 21 |   app.enableCors({
+ 22 |     origin: allowedOrigins,
+ 23 |     credentials: true,
+ 24 |   });
+ 25 |   app.useGlobalPipes(
+ 26 |     new ValidationPipe({
+ 27 |       transform: true,
+ 28 |       whitelist: true,
+ 29 |       forbidNonWhitelisted: true,
+ 30 |     }),
+ 31 |   );
+ 32 |   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+ 33 |   app.useGlobalFilters(new AllExceptionsFilter());
+ 34 | 
+ 35 |   if (process.env.NODE_ENV !== 'production') {
+ 36 |     const config = new DocumentBuilder()
+ 37 |       .setTitle('CRM «Світло Знань» API')
+ 38 |       .setDescription(
+ 39 |         'Система управління освітніми заходами у школах та садочках',
+ 40 |       )
+ 41 |       .setVersion('1.0')
+ 42 |       .addCookieAuth('access_token')
+ 43 |       .build();
+ 44 |     const document = SwaggerModule.createDocument(app, config);
+ 45 |     SwaggerModule.setup('docs', app, document);
+ 46 | 
+ 47 |     app.getHttpAdapter().get('/docs-json', (req, res) => res.json(document));
+ 48 |     app.getHttpAdapter().get('/docs/redoc', (req, res) => {
+ 49 |       res.type('html').send(`<!DOCTYPE html>
+ 50 | <html><head><title>CRM API Docs</title>
+ 51 | <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+ 52 | <style>body{margin:0;padding:0}</style></head>
+ 53 | <body><redoc spec-url="/docs-json"></redoc>
+ 54 | <script src="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"></script>
+ 55 | </body></html>`);
+ 56 |     });
+ 57 |   }
+ 58 | 
+ 59 |   await app.listen(process.env.PORT ?? 3000);
+ 60 | }
+ 61 | bootstrap();
+ 62 | 
+```
+
+### File: apps/backend/src/metrics/metrics.controller.ts
+```ts
+  0 | import { Controller, Get, Header } from '@nestjs/common';
+  1 | import { MetricsService } from './metrics.service';
+  2 | 
+  3 | @Controller('metrics')
+  4 | export class MetricsController {
+  5 |   constructor(private metrics: MetricsService) {}
+  6 | 
+  7 |   @Get()
+  8 |   @Header('Content-Type', 'text/plain')
+  9 |   async getMetrics() {
+ 10 |     return this.metrics.getMetrics();
+ 11 |   }
+ 12 | }
  13 | 
- 14 |   const allowedOrigins = (process.env.FRONTEND_URL ?? '')
- 15 |     .split(',')
- 16 |     .map((o) => o.trim())
- 17 |     .filter(Boolean);
- 18 | 
- 19 |   app.enableCors({
- 20 |     origin: allowedOrigins,
- 21 |     credentials: true,
- 22 |   });
- 23 |   app.useGlobalPipes(
- 24 |     new ValidationPipe({
- 25 |       transform: true,
- 26 |       whitelist: true,
- 27 |       forbidNonWhitelisted: true,
- 28 |     }),
- 29 |   );
- 30 |   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
- 31 |   app.useGlobalFilters(new AllExceptionsFilter());
- 32 | 
- 33 |   await app.listen(process.env.PORT ?? 3000);
- 34 | }
- 35 | bootstrap();
- 36 | 
+```
+
+### File: apps/backend/src/metrics/metrics.interceptor.ts
+```ts
+  0 | import {
+  1 |   CallHandler,
+  2 |   ExecutionContext,
+  3 |   Injectable,
+  4 |   NestInterceptor,
+  5 | } from '@nestjs/common';
+  6 | import { tap } from 'rxjs/operators';
+  7 | import { httpRequestDuration } from './metrics.service';
+  8 | 
+  9 | @Injectable()
+ 10 | export class MetricsInterceptor implements NestInterceptor {
+ 11 |   intercept(context: ExecutionContext, next: CallHandler) {
+ 12 |     const req = context.switchToHttp().getRequest();
+ 13 |     const res = context.switchToHttp().getResponse();
+ 14 |     const start = process.hrtime.bigint();
+ 15 | 
+ 16 |     return next.handle().pipe(
+ 17 |       tap(() => {
+ 18 |         const durationSec = Number(process.hrtime.bigint() - start) / 1e9;
+ 19 |         const route = req.route?.path ?? req.url;
+ 20 |         httpRequestDuration.observe(
+ 21 |           { method: req.method, route, status_code: res.statusCode },
+ 22 |           durationSec,
+ 23 |         );
+ 24 |       }),
+ 25 |     );
+ 26 |   }
+ 27 | }
+ 28 | 
+```
+
+### File: apps/backend/src/metrics/metrics.module.ts
+```ts
+  0 | import { Global, Module } from '@nestjs/common';
+  1 | import { APP_INTERCEPTOR } from '@nestjs/core';
+  2 | import { MetricsController } from './metrics.controller';
+  3 | import { MetricsService } from './metrics.service';
+  4 | import { MetricsInterceptor } from './metrics.interceptor';
+  5 | 
+  6 | @Global()
+  7 | @Module({
+  8 |   controllers: [MetricsController],
+  9 |   providers: [
+ 10 |     MetricsService,
+ 11 |     { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
+ 12 |   ],
+ 13 |   exports: [MetricsService],
+ 14 | })
+ 15 | export class MetricsModule {}
+```
+
+### File: apps/backend/src/metrics/metrics.service.ts
+```ts
+  0 | import { Injectable } from '@nestjs/common';
+  1 | import { Registry, Histogram, collectDefaultMetrics } from 'prom-client';
+  2 | 
+  3 | export const registry = new Registry();
+  4 | collectDefaultMetrics({ register: registry });
+  5 | 
+  6 | export const httpRequestDuration = new Histogram({
+  7 |   name: 'http_request_duration_seconds',
+  8 |   help: 'HTTP request duration',
+  9 |   labelNames: ['method', 'route', 'status_code'],
+ 10 |   buckets: [0.05, 0.1, 0.3, 0.5, 1, 2, 5],
+ 11 |   registers: [registry],
+ 12 | });
+ 13 | 
+ 14 | export const dbQueryDuration = new Histogram({
+ 15 |   name: 'db_query_duration_seconds',
+ 16 |   help: 'Prisma query duration',
+ 17 |   labelNames: ['model', 'action'],
+ 18 |   buckets: [0.01, 0.05, 0.1, 0.3, 0.5, 1, 2],
+ 19 |   registers: [registry],
+ 20 | });
+ 21 | 
+ 22 | @Injectable()
+ 23 | export class MetricsService {
+ 24 |   getMetrics() {
+ 25 |     return registry.metrics();
+ 26 |   }
+ 27 |   getContentType() {
+ 28 |     return registry.contentType;
+ 29 |   }
+ 30 | }
+ 31 | 
 ```
 
 ### File: apps/backend/src/prisma/prisma.mock.ts
@@ -5819,7 +6490,6 @@
   6 |     await this.$connect();
   7 |   }
   8 | }
-  9 | 
 ```
 
 ### File: apps/backend/src/projects/dto/create-project.dto.ts
@@ -7718,362 +8388,370 @@
  91 |     const conditions: Prisma.Sql[] = [];
  92 | 
  93 |     if (search) {
- 94 |       const like = `%${search}%`;
- 95 |       conditions.push(
- 96 |         Prisma.sql`(s.name ILIKE ${like} OR s.director ILIKE ${like} OR s.address ILIKE ${like})`,
- 97 |       );
- 98 |     }
- 99 |     if (cityId) {
-100 |       conditions.push(Prisma.sql`s."cityId" = ${cityId}`);
-101 |     }
-102 |     if (type) {
-103 |       conditions.push(Prisma.sql`s.type = ${type}`);
-104 |     }
-105 |     if (stage) {
-106 |       conditions.push(this.stageCondition(stage));
-107 |     }
-108 |     if (size) {
-109 |       conditions.push(this.sizeCondition(size));
-110 |     }
-111 | 
-112 |     return conditions;
-113 |   }
-114 | 
-115 |   private sizeCaseSql(): Prisma.Sql {
-116 |     return Prisma.sql`
-117 |       CASE
-118 |         WHEN s.type = 'Садочок' AND COALESCE(s."childrenCount", 0) < 50 THEN 'small'
-119 |         WHEN s.type = 'Садочок' AND COALESCE(s."childrenCount", 0) < 100 THEN 'medium'
-120 |         WHEN s.type = 'Садочок' THEN 'large'
-121 |         WHEN COALESCE(s."childrenCount", 0) < 500 THEN 'small'
-122 |         WHEN COALESCE(s."childrenCount", 0) < 900 THEN 'medium'
-123 |         ELSE 'large'
-124 |       END
-125 |     `;
-126 |   }
-127 | 
-128 |   private stageCondition(stage: string): Prisma.Sql {
-129 |     switch (stage) {
-130 |       case 'planned':
-131 |         return Prisma.sql`latest.status::text IN (${Prisma.join(PLANNED_STAGES)})`;
-132 |       case 'inProgress':
-133 |         return Prisma.sql`latest.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})`;
-134 |       case 'done':
-135 |         return Prisma.sql`latest.status::text = 'RE_SALE'`;
-136 |       default:
-137 |         return Prisma.sql`(latest.status IS NULL OR latest.status::text IN ('INTERESTED','PRE_APPROVAL'))`;
-138 |     }
-139 |   }
-140 | 
-141 |   private sizeCondition(size: string): Prisma.Sql {
-142 |     return Prisma.sql`(${this.sizeCaseSql()}) = ${size}`;
-143 |   }
-144 | 
-145 |   private mapRow(row: any) {
-146 |     const { city_id, city_name, latestStatus, ...school } = row;
-147 |     return {
-148 |       ...school,
-149 |       city: city_id ? { id: city_id, name: city_name } : null,
-150 |       events: latestStatus ? [{ status: latestStatus }] : [],
-151 |     };
-152 |   }
-153 | 
-154 |   async findAll(query: SchoolQueryDto) {
-155 |     const { skip, take, page } = query;
-156 |     const conditions = this.buildFilters(query);
-157 |     const whereClause = conditions.length
-158 |       ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`
-159 |       : Prisma.empty;
-160 | 
-161 |     const baseFrom = Prisma.sql`
-162 |       FROM "School" s
-163 |       LEFT JOIN "City" c ON c.id = s."cityId"
-164 |       LEFT JOIN LATERAL (
-165 |         SELECT e.status FROM "Event" e
-166 |         WHERE e."schoolId" = s.id
-167 |         ORDER BY e.date DESC
-168 |         LIMIT 1
-169 |       ) latest ON true
-170 |     `;
-171 | 
-172 |     const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
-173 |       SELECT s.*, c.id as city_id, c.name as city_name, latest.status as "latestStatus"
-174 |       ${baseFrom}
-175 |       ${whereClause}
-176 |       ORDER BY s."createdAt" DESC
-177 |       OFFSET ${skip} LIMIT ${take}
-178 |     `);
+ 94 |       const trimmed = search.trim();
+ 95 |       const isNumeric = /^\d+$/.test(trimmed);
+ 96 | 
+ 97 |       if (isNumeric) {
+ 98 |         const numberBoundary = `%№${trimmed}%`;
+ 99 |         const numberWord = `% ${trimmed}%`;
+100 |         conditions.push(
+101 |           Prisma.sql`(s.name ILIKE ${numberBoundary} OR s.name ILIKE ${numberWord} OR s.name ILIKE ${trimmed + '%'})`,
+102 |         );
+103 |       } else {
+104 |         conditions.push(Prisma.sql`s.name ILIKE ${`%${trimmed}%`}`);
+105 |       }
+106 |     }
+107 |     if (cityId) {
+108 |       conditions.push(Prisma.sql`s."cityId" = ${cityId}`);
+109 |     }
+110 |     if (type) {
+111 |       conditions.push(Prisma.sql`s.type = ${type}`);
+112 |     }
+113 |     if (stage) {
+114 |       conditions.push(this.stageCondition(stage));
+115 |     }
+116 |     if (size) {
+117 |       conditions.push(this.sizeCondition(size));
+118 |     }
+119 | 
+120 |     return conditions;
+121 |   }
+122 | 
+123 |   private sizeCaseSql(): Prisma.Sql {
+124 |     return Prisma.sql`
+125 |       CASE
+126 |         WHEN s.type = 'Садочок' AND COALESCE(s."childrenCount", 0) < 50 THEN 'small'
+127 |         WHEN s.type = 'Садочок' AND COALESCE(s."childrenCount", 0) < 100 THEN 'medium'
+128 |         WHEN s.type = 'Садочок' THEN 'large'
+129 |         WHEN COALESCE(s."childrenCount", 0) < 500 THEN 'small'
+130 |         WHEN COALESCE(s."childrenCount", 0) < 900 THEN 'medium'
+131 |         ELSE 'large'
+132 |       END
+133 |     `;
+134 |   }
+135 | 
+136 |   private stageCondition(stage: string): Prisma.Sql {
+137 |     switch (stage) {
+138 |       case 'planned':
+139 |         return Prisma.sql`latest.status::text IN (${Prisma.join(PLANNED_STAGES)})`;
+140 |       case 'inProgress':
+141 |         return Prisma.sql`latest.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})`;
+142 |       case 'done':
+143 |         return Prisma.sql`latest.status::text = 'RE_SALE'`;
+144 |       default:
+145 |         return Prisma.sql`(latest.status IS NULL OR latest.status::text IN ('INTERESTED','PRE_APPROVAL'))`;
+146 |     }
+147 |   }
+148 | 
+149 |   private sizeCondition(size: string): Prisma.Sql {
+150 |     return Prisma.sql`(${this.sizeCaseSql()}) = ${size}`;
+151 |   }
+152 | 
+153 |   private mapRow(row: any) {
+154 |     const { city_id, city_name, latestStatus, ...school } = row;
+155 |     return {
+156 |       ...school,
+157 |       city: city_id ? { id: city_id, name: city_name } : null,
+158 |       events: latestStatus ? [{ status: latestStatus }] : [],
+159 |     };
+160 |   }
+161 | 
+162 |   async findAll(query: SchoolQueryDto) {
+163 |     const { skip, take, page } = query;
+164 |     const conditions = this.buildFilters(query);
+165 |     const whereClause = conditions.length
+166 |       ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`
+167 |       : Prisma.empty;
+168 | 
+169 |     const baseFrom = Prisma.sql`
+170 |       FROM "School" s
+171 |       LEFT JOIN "City" c ON c.id = s."cityId"
+172 |       LEFT JOIN LATERAL (
+173 |         SELECT e.status FROM "Event" e
+174 |         WHERE e."schoolId" = s.id
+175 |         ORDER BY e.date DESC
+176 |         LIMIT 1
+177 |       ) latest ON true
+178 |     `;
 179 | 
-180 |     const countRows = await this.prisma.$queryRaw<
-181 |       { count: bigint }[]
-182 |     >(Prisma.sql`
-183 |       SELECT COUNT(*)::bigint as count
-184 |       ${baseFrom}
-185 |       ${whereClause}
+180 |     const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+181 |       SELECT s.*, c.id as city_id, c.name as city_name, latest.status as "latestStatus"
+182 |       ${baseFrom}
+183 |       ${whereClause}
+184 |       ORDER BY s."createdAt" DESC
+185 |       OFFSET ${skip} LIMIT ${take}
 186 |     `);
 187 | 
-188 |     const totalItems = Number(countRows[0].count);
-189 | 
-190 |     return {
-191 |       data: rows.map((r) => this.mapRow(r)),
-192 |       meta: new PageMetaDto(totalItems, page, take),
-193 |     };
-194 |   }
+188 |     const countRows = await this.prisma.$queryRaw<
+189 |       { count: bigint }[]
+190 |     >(Prisma.sql`
+191 |       SELECT COUNT(*)::bigint as count
+192 |       ${baseFrom}
+193 |       ${whereClause}
+194 |     `);
 195 | 
-196 |   async getStats(query: Pick<SchoolQueryDto, 'cityId' | 'type' | 'stage'>) {
-197 |     const baseConditions = this.buildFilters({
-198 |       cityId: query.cityId,
-199 |       type: query.type,
-200 |     });
-201 |     const baseWhere = baseConditions.length
-202 |       ? Prisma.sql`WHERE ${Prisma.join(baseConditions, ' AND ')}`
-203 |       : Prisma.empty;
-204 | 
-205 |     const sizeConditions = this.buildFilters({
+196 |     const totalItems = Number(countRows[0].count);
+197 | 
+198 |     return {
+199 |       data: rows.map((r) => this.mapRow(r)),
+200 |       meta: new PageMetaDto(totalItems, page, take),
+201 |     };
+202 |   }
+203 | 
+204 |   async getStats(query: Pick<SchoolQueryDto, 'cityId' | 'type' | 'stage'>) {
+205 |     const baseConditions = this.buildFilters({
 206 |       cityId: query.cityId,
 207 |       type: query.type,
-208 |       stage: query.stage,
-209 |     });
-210 |     const sizeWhere = sizeConditions.length
-211 |       ? Prisma.sql`WHERE ${Prisma.join(sizeConditions, ' AND ')}`
-212 |       : Prisma.empty;
-213 | 
-214 |     const baseFrom = Prisma.sql`
-215 |       FROM "School" s
-216 |       LEFT JOIN LATERAL (
-217 |         SELECT e.status FROM "Event" e
-218 |         WHERE e."schoolId" = s.id
-219 |         ORDER BY e.date DESC
-220 |         LIMIT 1
-221 |       ) latest ON true
-222 |     `;
-223 | 
-224 |     const [statusRows, sizeRows] = await Promise.all([
-225 |       this.prisma.$queryRaw<{ stage: string; count: bigint }[]>(Prisma.sql`
-226 |         SELECT
-227 |           CASE
-228 |             WHEN latest.status::text IN (${Prisma.join(PLANNED_STAGES)}) THEN 'planned'
-229 |             WHEN latest.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)}) THEN 'inProgress'
-230 |             WHEN latest.status::text = 'RE_SALE' THEN 'done'
-231 |             ELSE 'new'
-232 |           END as stage,
-233 |           COUNT(*)::bigint as count
-234 |         ${baseFrom}
-235 |         ${baseWhere}
-236 |         GROUP BY stage
-237 |       `),
-238 |       this.prisma.$queryRaw<{ size: string; count: bigint }[]>(Prisma.sql`
-239 |         SELECT
-240 |           ${this.sizeCaseSql()} as size,
+208 |     });
+209 |     const baseWhere = baseConditions.length
+210 |       ? Prisma.sql`WHERE ${Prisma.join(baseConditions, ' AND ')}`
+211 |       : Prisma.empty;
+212 | 
+213 |     const sizeConditions = this.buildFilters({
+214 |       cityId: query.cityId,
+215 |       type: query.type,
+216 |       stage: query.stage,
+217 |     });
+218 |     const sizeWhere = sizeConditions.length
+219 |       ? Prisma.sql`WHERE ${Prisma.join(sizeConditions, ' AND ')}`
+220 |       : Prisma.empty;
+221 | 
+222 |     const baseFrom = Prisma.sql`
+223 |       FROM "School" s
+224 |       LEFT JOIN LATERAL (
+225 |         SELECT e.status FROM "Event" e
+226 |         WHERE e."schoolId" = s.id
+227 |         ORDER BY e.date DESC
+228 |         LIMIT 1
+229 |       ) latest ON true
+230 |     `;
+231 | 
+232 |     const [statusRows, sizeRows] = await Promise.all([
+233 |       this.prisma.$queryRaw<{ stage: string; count: bigint }[]>(Prisma.sql`
+234 |         SELECT
+235 |           CASE
+236 |             WHEN latest.status::text IN (${Prisma.join(PLANNED_STAGES)}) THEN 'planned'
+237 |             WHEN latest.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)}) THEN 'inProgress'
+238 |             WHEN latest.status::text = 'RE_SALE' THEN 'done'
+239 |             ELSE 'new'
+240 |           END as stage,
 241 |           COUNT(*)::bigint as count
 242 |         ${baseFrom}
-243 |         ${sizeWhere}
-244 |         GROUP BY size
+243 |         ${baseWhere}
+244 |         GROUP BY stage
 245 |       `),
-246 |     ]);
-247 | 
-248 |     const statusStats = { new: 0, planned: 0, inProgress: 0, done: 0 };
-249 |     for (const row of statusRows) statusStats[row.stage] = Number(row.count);
-250 | 
-251 |     const sizeStats = { small: 0, medium: 0, large: 0 };
-252 |     for (const row of sizeRows) sizeStats[row.size] = Number(row.count);
-253 | 
-254 |     return { statusStats, sizeStats };
-255 |   }
-256 | 
-257 |   async findOne(id: string) {
-258 |     const school = await this.prisma.school.findUnique({
-259 |       where: {
-260 |         id,
-261 |       },
-262 |       include: {
-263 |         city: true,
-264 |       },
-265 |     });
-266 |     if (!school) {
-267 |       throw new NotFoundException(`Школу з ID ${id} не знайдено`);
-268 |     }
-269 | 
-270 |     return school;
-271 |   }
-272 | 
-273 |   async update(id: string, data: any) {
-274 |     const { city, id: _id, createdAt, updatedAt, ...updateData } = data;
-275 | 
-276 |     return this.prisma.school.update({
-277 |       where: {
-278 |         id,
-279 |       },
-280 |       data: updateData,
-281 |     });
-282 |   }
+246 |       this.prisma.$queryRaw<{ size: string; count: bigint }[]>(Prisma.sql`
+247 |         SELECT
+248 |           ${this.sizeCaseSql()} as size,
+249 |           COUNT(*)::bigint as count
+250 |         ${baseFrom}
+251 |         ${sizeWhere}
+252 |         GROUP BY size
+253 |       `),
+254 |     ]);
+255 | 
+256 |     const statusStats = { new: 0, planned: 0, inProgress: 0, done: 0 };
+257 |     for (const row of statusRows) statusStats[row.stage] = Number(row.count);
+258 | 
+259 |     const sizeStats = { small: 0, medium: 0, large: 0 };
+260 |     for (const row of sizeRows) sizeStats[row.size] = Number(row.count);
+261 | 
+262 |     return { statusStats, sizeStats };
+263 |   }
+264 | 
+265 |   async findOne(id: string) {
+266 |     const school = await this.prisma.school.findUnique({
+267 |       where: {
+268 |         id,
+269 |       },
+270 |       include: {
+271 |         city: true,
+272 |       },
+273 |     });
+274 |     if (!school) {
+275 |       throw new NotFoundException(`Школу з ID ${id} не знайдено`);
+276 |     }
+277 | 
+278 |     return school;
+279 |   }
+280 | 
+281 |   async update(id: string, data: any) {
+282 |     const { city, id: _id, createdAt, updatedAt, ...updateData } = data;
 283 | 
-284 |   async remove(id: string) {
-285 |     const events = await this.prisma.event.findMany({
-286 |       where: {
-287 |         schoolId: id,
-288 |       },
+284 |     return this.prisma.school.update({
+285 |       where: {
+286 |         id,
+287 |       },
+288 |       data: updateData,
 289 |     });
-290 | 
-291 |     for (const event of events) {
-292 |       await this.eventsService.remove(event.id);
-293 |     }
-294 | 
-295 |     return this.prisma.school.delete({
-296 |       where: {
-297 |         id,
-298 |       },
-299 |     });
-300 |   }
-301 | 
-302 |   async searchContacts(q: string, city?: string) {
-303 |     if (!q || q.trim().length < 1) return [];
-304 | 
-305 |     const cityName = city || 'Львів';
-306 |     const normalizedQuery = q.toLowerCase().trim();
-307 | 
-308 |     const allContacts = await this.prisma.schoolContact.findMany({
-309 |       where: { city: cityName },
-310 |       orderBy: [{ schoolNumber: 'asc' }, { role: 'asc' }],
-311 |     });
+290 |   }
+291 | 
+292 |   async remove(id: string) {
+293 |     const events = await this.prisma.event.findMany({
+294 |       where: {
+295 |         schoolId: id,
+296 |       },
+297 |     });
+298 | 
+299 |     for (const event of events) {
+300 |       await this.eventsService.remove(event.id);
+301 |     }
+302 | 
+303 |     return this.prisma.school.delete({
+304 |       where: {
+305 |         id,
+306 |       },
+307 |     });
+308 |   }
+309 | 
+310 |   async searchContacts(q: string, city?: string) {
+311 |     if (!q || q.trim().length < 1) return [];
 312 | 
-313 |     const STOP_WORDS = new Set([
-314 |       'школа',
-315 |       'школи',
-316 |       'садочок',
-317 |       'садок',
-318 |       'дитсадок',
-319 |       'днз',
-320 |       'ліцей',
-321 |       'гімназія',
-322 |       'зош',
-323 |       'центр',
-324 |       'розвитку',
-325 |       'комунальний',
-326 |       'заклад',
-327 |       'освіти',
-328 |       'імені',
-329 |       'ім',
-330 |     ]);
-331 | 
-332 |     const tokens = normalizedQuery
-333 |       .replace(/№/g, ' ')
-334 |       .split(/\s+/)
-335 |       .map((t) => t.replace(/[^\wа-яіїєґ0-9]/gi, ''))
-336 |       .filter((t) => t.length > 0 && !STOP_WORDS.has(t));
-337 | 
-338 |     const matches = allContacts.filter((c) => {
-339 |       const num = c.schoolNumber.toLowerCase();
-340 | 
-341 |       if (num === normalizedQuery) return true;
-342 | 
-343 |       const isNumeric = /^\d+$/.test(num);
-344 | 
-345 |       if (isNumeric) {
-346 |         if (tokens.includes(num)) return true;
-347 |       } else {
-348 |         if (num.includes(normalizedQuery) || normalizedQuery.includes(num))
-349 |           return true;
-350 |         if (tokens.some((t) => t.length >= 3 && num.includes(t))) return true;
-351 |       }
+313 |     const cityName = city || 'Львів';
+314 |     const normalizedQuery = q.toLowerCase().trim();
+315 | 
+316 |     const allContacts = await this.prisma.schoolContact.findMany({
+317 |       where: { city: cityName },
+318 |       orderBy: [{ schoolNumber: 'asc' }, { role: 'asc' }],
+319 |     });
+320 | 
+321 |     const STOP_WORDS = new Set([
+322 |       'школа',
+323 |       'школи',
+324 |       'садочок',
+325 |       'садок',
+326 |       'дитсадок',
+327 |       'днз',
+328 |       'ліцей',
+329 |       'гімназія',
+330 |       'зош',
+331 |       'центр',
+332 |       'розвитку',
+333 |       'комунальний',
+334 |       'заклад',
+335 |       'освіти',
+336 |       'імені',
+337 |       'ім',
+338 |     ]);
+339 | 
+340 |     const tokens = normalizedQuery
+341 |       .replace(/№/g, ' ')
+342 |       .split(/\s+/)
+343 |       .map((t) => t.replace(/[^\wа-яіїєґ0-9]/gi, ''))
+344 |       .filter((t) => t.length > 0 && !STOP_WORDS.has(t));
+345 | 
+346 |     const matches = allContacts.filter((c) => {
+347 |       const num = c.schoolNumber.toLowerCase();
+348 | 
+349 |       if (num === normalizedQuery) return true;
+350 | 
+351 |       const isNumeric = /^\d+$/.test(num);
 352 | 
-353 |       if (c.contactName.toLowerCase().includes(normalizedQuery)) return true;
-354 | 
-355 |       return false;
-356 |     });
-357 | 
-358 |     return matches.slice(0, 10);
-359 |   }
-360 |   async bulkImport(cityId: string, type: 'Школа' | 'Садочок' = 'Школа') {
-361 |     const city = await this.prisma.city.findUnique({ where: { id: cityId } });
-362 |     if (!city) throw new Error(`Місто з id=${cityId} не знайдено`);
-363 | 
-364 |     const allFromParser = await this.parserService.getAllSchoolsForCity(
-365 |       city.name,
-366 |       type,
-367 |     );
-368 | 
-369 |     const existingSchools = await this.prisma.school.findMany({
-370 |       where: { cityId, type },
-371 |       select: { name: true },
-372 |     });
-373 | 
-374 |     const normalize = (name: string) =>
-375 |       name
-376 |         .toLowerCase()
-377 |         .replace(/№/g, '')
-378 |         .replace(/["'«»]/g, '')
-379 |         .replace(/\s+/g, '')
-380 |         .trim();
+353 |       if (isNumeric) {
+354 |         if (tokens.includes(num)) return true;
+355 |       } else {
+356 |         if (num.includes(normalizedQuery) || normalizedQuery.includes(num))
+357 |           return true;
+358 |         if (tokens.some((t) => t.length >= 3 && num.includes(t))) return true;
+359 |       }
+360 | 
+361 |       if (c.contactName.toLowerCase().includes(normalizedQuery)) return true;
+362 | 
+363 |       return false;
+364 |     });
+365 | 
+366 |     return matches.slice(0, 10);
+367 |   }
+368 |   async bulkImport(cityId: string, type: 'Школа' | 'Садочок' = 'Школа') {
+369 |     const city = await this.prisma.city.findUnique({ where: { id: cityId } });
+370 |     if (!city) throw new Error(`Місто з id=${cityId} не знайдено`);
+371 | 
+372 |     const allFromParser = await this.parserService.getAllSchoolsForCity(
+373 |       city.name,
+374 |       type,
+375 |     );
+376 | 
+377 |     const existingSchools = await this.prisma.school.findMany({
+378 |       where: { cityId, type },
+379 |       select: { name: true },
+380 |     });
 381 | 
-382 |     const existingNames = new Set(
-383 |       existingSchools.map((s) => normalize(s.name)),
-384 |     );
-385 | 
-386 |     const toCreate = allFromParser.filter(
-387 |       (s) => !existingNames.has(normalize(s.name)),
-388 |     );
+382 |     const normalize = (name: string) =>
+383 |       name
+384 |         .toLowerCase()
+385 |         .replace(/№/g, '')
+386 |         .replace(/["'«»]/g, '')
+387 |         .replace(/\s+/g, '')
+388 |         .trim();
 389 | 
-390 |     if (toCreate.length === 0) {
-391 |       return {
-392 |         total: allFromParser.length,
-393 |         created: 0,
-394 |         skipped: allFromParser.length,
-395 |       };
-396 |     }
+390 |     const existingNames = new Set(
+391 |       existingSchools.map((s) => normalize(s.name)),
+392 |     );
+393 | 
+394 |     const toCreate = allFromParser.filter(
+395 |       (s) => !existingNames.has(normalize(s.name)),
+396 |     );
 397 | 
-398 |     const contacts = await this.prisma.schoolContact.findMany({
-399 |       where: { city: city.name },
-400 |     });
-401 | 
-402 |     let created = 0;
-403 |     for (const school of toCreate) {
-404 |       if (existingNames.has(normalize(school.name))) continue;
+398 |     if (toCreate.length === 0) {
+399 |       return {
+400 |         total: allFromParser.length,
+401 |         created: 0,
+402 |         skipped: allFromParser.length,
+403 |       };
+404 |     }
 405 | 
-406 |       existingNames.add(normalize(school.name));
-407 | 
-408 |       const numMatch = school.name.match(/№?\s*(\d+)/);
-409 |       const num = numMatch?.[1];
-410 |       const matchedContacts = num
-411 |         ? contacts.filter((c) => c.schoolNumber === num)
-412 |         : contacts.filter((c) => {
-413 |             const normSchool = normalize(school.name);
-414 |             const normContact = normalize(c.schoolNumber);
-415 |             return (
-416 |               normSchool.includes(normContact) ||
-417 |               normContact.includes(normSchool)
-418 |             );
-419 |           });
-420 | 
-421 |       const director =
-422 |         matchedContacts.find(
-423 |           (c) => c.role?.includes('Директор') || c.role?.includes('Завідувач'),
-424 |         ) || matchedContacts[0];
-425 | 
-426 |       try {
-427 |         await this.create({
-428 |           name: school.name,
-429 |           type,
-430 |           cityId,
-431 |           sourceUrl: school.url,
-432 |           director: director?.contactName || '',
-433 |           phone: director?.phone || '',
-434 |         });
-435 |         created++;
-436 |       } catch (e) {
-437 |         console.error(`Помилка створення ${school.name}:`, e);
-438 |       }
-439 |     }
-440 | 
-441 |     return {
-442 |       city: city.name,
-443 |       total: allFromParser.length,
-444 |       created,
-445 |       skipped: allFromParser.length - created,
-446 |     };
-447 |   }
-448 | }
-449 | 
+406 |     const contacts = await this.prisma.schoolContact.findMany({
+407 |       where: { city: city.name },
+408 |     });
+409 | 
+410 |     let created = 0;
+411 |     for (const school of toCreate) {
+412 |       if (existingNames.has(normalize(school.name))) continue;
+413 | 
+414 |       existingNames.add(normalize(school.name));
+415 | 
+416 |       const numMatch = school.name.match(/№?\s*(\d+)/);
+417 |       const num = numMatch?.[1];
+418 |       const matchedContacts = num
+419 |         ? contacts.filter((c) => c.schoolNumber === num)
+420 |         : contacts.filter((c) => {
+421 |             const normSchool = normalize(school.name);
+422 |             const normContact = normalize(c.schoolNumber);
+423 |             return (
+424 |               normSchool.includes(normContact) ||
+425 |               normContact.includes(normSchool)
+426 |             );
+427 |           });
+428 | 
+429 |       const director =
+430 |         matchedContacts.find(
+431 |           (c) => c.role?.includes('Директор') || c.role?.includes('Завідувач'),
+432 |         ) || matchedContacts[0];
+433 | 
+434 |       try {
+435 |         await this.create({
+436 |           name: school.name,
+437 |           type,
+438 |           cityId,
+439 |           sourceUrl: school.url,
+440 |           director: director?.contactName || '',
+441 |           phone: director?.phone || '',
+442 |         });
+443 |         created++;
+444 |       } catch (e) {
+445 |         console.error(`Помилка створення ${school.name}:`, e);
+446 |       }
+447 |     }
+448 | 
+449 |     return {
+450 |       city: city.name,
+451 |       total: allFromParser.length,
+452 |       created,
+453 |       skipped: allFromParser.length - created,
+454 |     };
+455 |   }
+456 | }
+457 | 
 ```
 
 ### File: apps/backend/src/telegram/telegram.module.ts
@@ -9582,147 +10260,141 @@
  74 |   return (
  75 |     <CityProvider>
  76 |       <Routes>
- 77 |         {/* Публічний маршрут: Логін */}
- 78 |         <Route
- 79 |           path="/login"
- 80 |           element={
- 81 |             !isAuthenticated ? (
- 82 |               <Login onLogin={handleLogin} />
- 83 |             ) : (
- 84 |               <Navigate to="/cities" replace />
- 85 |             )
- 86 |           }
- 87 |         />
- 88 | 
- 89 |         {/* Захищені маршрути (Layout відображає бокове меню) */}
- 90 |         <Route
- 91 |           path="/"
- 92 |           element={
- 93 |             isAuthenticated ? (
- 94 |               <Layout />
- 95 |             ) : (
- 96 |               <Navigate to="/login" replace />
- 97 |             )
- 98 |           }
- 99 |         >
-100 |           {/* Редірект з кореня на сторінку міст за замовчуванням */}
-101 |           <Route index element={<Navigate to="/schools" replace />} />
-102 | 
-103 |           {/* Обгортаємо всі вкладені маршрути в Suspense. 
-104 |               Коли React намагається відрендерити "ліниву" сторінку, він показує fallback (PageLoader), 
-105 |               поки завантажується файл з сервера.
-106 |             */}
-107 |           <Route
-108 |             path="cities"
-109 |             element={
-110 |               <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
-111 |                 <Suspense fallback={<PageLoader />}>
-112 |                   <Cities />
-113 |                 </Suspense>
-114 |               </ProtectedRoute>
-115 |             }
-116 |           />
-117 | 
-118 |           <Route
-119 |             path="schools"
-120 |             element={
-121 |               <Suspense fallback={<PageLoader />}>
-122 |                 <Schools />
-123 |               </Suspense>
-124 |             }
-125 |           />
-126 | 
-127 |           <Route
-128 |             path="schools/:id"
-129 |             element={
-130 |               <Suspense fallback={<PageLoader />}>
-131 |                 <SchoolProfile />
-132 |               </Suspense>
-133 |             }
-134 |           />
-135 | 
-136 |           <Route
-137 |             path="employees"
-138 |             element={
-139 |               <ProtectedRoute allowedRoles={["SUPERADMIN"]}>
-140 |                 <Suspense fallback={<PageLoader />}>
-141 |                   <Employees />
-142 |                 </Suspense>
-143 |               </ProtectedRoute>
-144 |             }
-145 |           />
-146 | 
-147 |           <Route
-148 |             path="finance"
-149 |             element={
-150 |               <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
-151 |                 <Suspense fallback={<PageLoader />}>
-152 |                   <Finance />
-153 |                 </Suspense>
-154 |               </ProtectedRoute>
-155 |             }
-156 |           />
-157 | 
-158 |           <Route
-159 |             path="calendar"
-160 |             element={
-161 |               <Suspense fallback={<PageLoader />}>
-162 |                 <CalendarView />
-163 |               </Suspense>
-164 |             }
-165 |           />
-166 |           <Route
-167 |             path="dashboard"
-168 |             element={
-169 |               <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
-170 |                 <Suspense fallback={<PageLoader />}>
-171 |                   <Dashboard />
-172 |                 </Suspense>
-173 |               </ProtectedRoute>
-174 |             }
-175 |           />
-176 | 
-177 |           <Route
-178 |             path="kindergartens"
-179 |             element={
-180 |               <Suspense fallback={<PageLoader />}>
-181 |                 <Kindergartens />
-182 |               </Suspense>
-183 |             }
-184 |           />
-185 | 
-186 |           <Route
-187 |             path="cities/:id"
-188 |             element={
-189 |               <Suspense fallback={<PageLoader />}>
-190 |                 <CityProfile />
-191 |               </Suspense>
-192 |             }
-193 |           />
-194 | 
-195 |           <Route
-196 |             path="events/:id/report"
-197 |             element={
-198 |               <Suspense fallback={<PageLoader />}>
-199 |                 <EventReport />
-200 |               </Suspense>
-201 |             }
-202 |           />
-203 |         </Route>
-204 |       </Routes>
-205 |     </CityProvider>
-206 |   );
-207 | }
-208 | export default function App() {
-209 |   return (
-210 |     <Router>
-211 |       <AuthProvider>
-212 |         <AppRoutes />
-213 |       </AuthProvider>
-214 |     </Router>
-215 |   );
-216 | }
-217 | 
+ 77 |         <Route
+ 78 |           path="/login"
+ 79 |           element={
+ 80 |             !isAuthenticated ? (
+ 81 |               <Login onLogin={handleLogin} />
+ 82 |             ) : (
+ 83 |               <Navigate to="/dashboard" replace />
+ 84 |             )
+ 85 |           }
+ 86 |         />
+ 87 | 
+ 88 |         {/* Захищені маршрути (Layout відображає бокове меню) */}
+ 89 |         <Route
+ 90 |           path="/"
+ 91 |           element={
+ 92 |             isAuthenticated ? <Layout /> : <Navigate to="/login" replace />
+ 93 |           }
+ 94 |         >
+ 95 |           <Route index element={<Navigate to="/dashboard" replace />} />
+ 96 | 
+ 97 |           {/* Обгортаємо всі вкладені маршрути в Suspense. 
+ 98 |               Коли React намагається відрендерити "ліниву" сторінку, він показує fallback (PageLoader), 
+ 99 |               поки завантажується файл з сервера.
+100 |             */}
+101 |           <Route
+102 |             path="cities"
+103 |             element={
+104 |               <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
+105 |                 <Suspense fallback={<PageLoader />}>
+106 |                   <Cities />
+107 |                 </Suspense>
+108 |               </ProtectedRoute>
+109 |             }
+110 |           />
+111 | 
+112 |           <Route
+113 |             path="schools"
+114 |             element={
+115 |               <Suspense fallback={<PageLoader />}>
+116 |                 <Schools />
+117 |               </Suspense>
+118 |             }
+119 |           />
+120 | 
+121 |           <Route
+122 |             path="schools/:id"
+123 |             element={
+124 |               <Suspense fallback={<PageLoader />}>
+125 |                 <SchoolProfile />
+126 |               </Suspense>
+127 |             }
+128 |           />
+129 | 
+130 |           <Route
+131 |             path="employees"
+132 |             element={
+133 |               <ProtectedRoute allowedRoles={["SUPERADMIN"]}>
+134 |                 <Suspense fallback={<PageLoader />}>
+135 |                   <Employees />
+136 |                 </Suspense>
+137 |               </ProtectedRoute>
+138 |             }
+139 |           />
+140 | 
+141 |           <Route
+142 |             path="finance"
+143 |             element={
+144 |               <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
+145 |                 <Suspense fallback={<PageLoader />}>
+146 |                   <Finance />
+147 |                 </Suspense>
+148 |               </ProtectedRoute>
+149 |             }
+150 |           />
+151 | 
+152 |           <Route
+153 |             path="calendar"
+154 |             element={
+155 |               <Suspense fallback={<PageLoader />}>
+156 |                 <CalendarView />
+157 |               </Suspense>
+158 |             }
+159 |           />
+160 |           <Route
+161 |             path="dashboard"
+162 |             element={
+163 |               <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
+164 |                 <Suspense fallback={<PageLoader />}>
+165 |                   <Dashboard />
+166 |                 </Suspense>
+167 |               </ProtectedRoute>
+168 |             }
+169 |           />
+170 | 
+171 |           <Route
+172 |             path="kindergartens"
+173 |             element={
+174 |               <Suspense fallback={<PageLoader />}>
+175 |                 <Kindergartens />
+176 |               </Suspense>
+177 |             }
+178 |           />
+179 | 
+180 |           <Route
+181 |             path="cities/:id"
+182 |             element={
+183 |               <Suspense fallback={<PageLoader />}>
+184 |                 <CityProfile />
+185 |               </Suspense>
+186 |             }
+187 |           />
+188 | 
+189 |           <Route
+190 |             path="events/:id/report"
+191 |             element={
+192 |               <Suspense fallback={<PageLoader />}>
+193 |                 <EventReport />
+194 |               </Suspense>
+195 |             }
+196 |           />
+197 |         </Route>
+198 |       </Routes>
+199 |     </CityProvider>
+200 |   );
+201 | }
+202 | export default function App() {
+203 |   return (
+204 |     <Router>
+205 |       <AuthProvider>
+206 |         <AppRoutes />
+207 |       </AuthProvider>
+208 |     </Router>
+209 |   );
+210 | }
+211 | 
 ```
 
 ### File: apps/frontend/src/components/AddressLink.tsx
@@ -9817,98 +10489,115 @@
  35 |   const updateStatusMutation = useMutation({
  36 |     mutationFn: (data: { id: string; status: string }) =>
  37 |       api.patch(`/issues/${data.id}/status`, { status: data.status }),
- 38 |     onSuccess: () => {
- 39 |       qc.invalidateQueries({ queryKey: ["issues", selectedCity?.id] });
- 40 |     },
- 41 |   });
- 42 | 
- 43 |   const handleStatusToggle = (issue: any) => {
- 44 |     const nextStatus = getNextStatus(issue.status);
- 45 | 
- 46 |     if (nextStatus === "Виконано") {
- 47 |       setExitingIssueId(issue.id);
- 48 |       setTimeout(() => {
- 49 |         updateStatusMutation.mutate({ id: issue.id, status: nextStatus });
- 50 |         setExitingIssueId(null);
- 51 |       }, 500);
- 52 |     } else {
- 53 |       updateStatusMutation.mutate({ id: issue.id, status: nextStatus });
- 54 |     }
- 55 |   };
- 56 | 
- 57 |   if (issues.length === 0) return null;
- 58 | 
- 59 |   return (
- 60 |     <div className="mb-6 animate-[slideDown_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards]">
- 61 |       <style>{`
- 62 |         @keyframes slideDown {
- 63 |           from { opacity: 0; transform: translateY(-15px); }
- 64 |           to { opacity: 1; transform: translateY(0); }
- 65 |         }
- 66 |         @keyframes slideUp {
- 67 |           from { opacity: 1; transform: translateY(0); }
- 68 |           to { opacity: 0; transform: translateY(-10px); }
- 69 |         }
- 70 |       `}</style>
- 71 | 
- 72 |       <h2 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
- 73 |         🚨 <span>Активні проблеми</span>
- 74 |         <span className="text-sm font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
- 75 |           {issues.length}
- 76 |         </span>
- 77 |       </h2>
- 78 | 
- 79 |       {}
- 80 |       <div className="flex overflow-x-auto pb-4 -mx-1 px-1">
- 81 |         {issues.map((issue) => {
- 82 |           const isExiting = exitingIssueId === issue.id;
- 83 | 
- 84 |           return (
- 85 |             <div
- 86 |               key={issue.id}
- 87 |               className={`transition-all duration-500 ease-in-out overflow-hidden transform origin-left ${
- 88 |                 isExiting
- 89 |                   ? "w-0 min-w-0 mr-0 opacity-0 pointer-events-none"
- 90 |                  : "w-[300px] min-w-[300px] mr-4 opacity-100 shrink-0"
- 91 |               }`}
- 92 |             >
- 93 |               {/* Внутрішній контейнер має фіксовану ширину, щоб текст не ламався */}
- 94 |               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-red-500 p-5 flex flex-col gap-3 w-[300px]">
- 95 |                 <div>
- 96 |                   <p className="text-xs text-slate-400 mb-1">
- 97 |                     {new Date(issue.createdAt).toLocaleDateString("uk-UA", {
- 98 |                       day: "2-digit",
- 99 |                       month: "2-digit",
-100 |                       year: "numeric",
-101 |                       hour: "2-digit",
-102 |                       minute: "2-digit",
-103 |                     })}
-104 |                   </p>
-105 |                   <p className="font-bold text-slate-800 text-sm">
-106 |                     {issue.schoolName}
-107 |                   </p>
-108 |                   <p className="text-xs text-slate-500">{issue.eventName}</p>
-109 |                 </div>
-110 | 
-111 |                 <p className="text-sm text-slate-700 bg-slate-50 rounded-xl p-3 italic leading-relaxed">
-112 |                   "{issue.message}"
-113 |                 </p>
-114 | 
-115 |                 <button
-116 |                   onClick={() => handleStatusToggle(issue)}
-117 |                   className={`text-xs font-bold px-3 py-2 rounded-lg border transition-colors text-left ${STATUS_STYLES[issue.status] || STATUS_STYLES["Планується"]}`}
-118 |                 >
-119 |                   ● {issue.status} → натисни щоб змінити
-120 |                 </button>
-121 |               </div>
-122 |             </div>
-123 |           );
-124 |         })}
-125 |       </div>
-126 |     </div>
-127 |   );
-128 | }
-129 | 
+ 38 |     onMutate: async (vars) => {
+ 39 |       await qc.cancelQueries({ queryKey: ["issues", selectedCity?.id] });
+ 40 |       const prev = qc.getQueryData(["issues", selectedCity?.id]);
+ 41 |       qc.setQueryData(["issues", selectedCity?.id], (old: any[] | undefined) =>
+ 42 |         Array.isArray(old)
+ 43 |           ? old
+ 44 |               .map((i) =>
+ 45 |                 i.id === vars.id ? { ...i, status: vars.status } : i,
+ 46 |               )
+ 47 |               .filter((i) => i.status !== "Виконано")
+ 48 |           : old,
+ 49 |       );
+ 50 |       return { prev };
+ 51 |     },
+ 52 |     onError: (_err, _vars, ctx) => {
+ 53 |       if (ctx?.prev) qc.setQueryData(["issues", selectedCity?.id], ctx.prev);
+ 54 |     },
+ 55 |     onSettled: () => {
+ 56 |       qc.invalidateQueries({ queryKey: ["issues", selectedCity?.id] });
+ 57 |     },
+ 58 |   });
+ 59 | 
+ 60 |   const handleStatusToggle = (issue: any) => {
+ 61 |     const nextStatus = getNextStatus(issue.status);
+ 62 | 
+ 63 |     if (nextStatus === "Виконано") {
+ 64 |       setExitingIssueId(issue.id);
+ 65 |       setTimeout(() => {
+ 66 |         updateStatusMutation.mutate({ id: issue.id, status: nextStatus });
+ 67 |         setExitingIssueId(null);
+ 68 |       }, 500);
+ 69 |     } else {
+ 70 |       updateStatusMutation.mutate({ id: issue.id, status: nextStatus });
+ 71 |     }
+ 72 |   };
+ 73 | 
+ 74 |   if (issues.length === 0) return null;
+ 75 | 
+ 76 |   return (
+ 77 |     <div className="mb-6 animate-[slideDown_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards]">
+ 78 |       <style>{`
+ 79 |         @keyframes slideDown {
+ 80 |           from { opacity: 0; transform: translateY(-15px); }
+ 81 |           to { opacity: 1; transform: translateY(0); }
+ 82 |         }
+ 83 |         @keyframes slideUp {
+ 84 |           from { opacity: 1; transform: translateY(0); }
+ 85 |           to { opacity: 0; transform: translateY(-10px); }
+ 86 |         }
+ 87 |       `}</style>
+ 88 | 
+ 89 |       <h2 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+ 90 |         🚨 <span>Активні проблеми</span>
+ 91 |         <span className="text-sm font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
+ 92 |           {issues.length}
+ 93 |         </span>
+ 94 |       </h2>
+ 95 | 
+ 96 |       {}
+ 97 |       <div className="flex overflow-x-auto pb-4 -mx-1 px-1">
+ 98 |         {issues.map((issue) => {
+ 99 |           const isExiting = exitingIssueId === issue.id;
+100 | 
+101 |           return (
+102 |             <div
+103 |               key={issue.id}
+104 |               className={`transition-all duration-500 ease-in-out overflow-hidden transform origin-left ${
+105 |                 isExiting
+106 |                   ? "w-0 min-w-0 mr-0 opacity-0 pointer-events-none"
+107 |                   : "w-[300px] min-w-[300px] mr-4 opacity-100 shrink-0"
+108 |               }`}
+109 |             >
+110 |               {/* Внутрішній контейнер має фіксовану ширину, щоб текст не ламався */}
+111 |               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-red-500 p-5 flex flex-col gap-3 w-[300px]">
+112 |                 <div>
+113 |                   <p className="text-xs text-slate-400 mb-1">
+114 |                     {new Date(issue.createdAt).toLocaleDateString("uk-UA", {
+115 |                       day: "2-digit",
+116 |                       month: "2-digit",
+117 |                       year: "numeric",
+118 |                       hour: "2-digit",
+119 |                       minute: "2-digit",
+120 |                     })}
+121 |                   </p>
+122 |                   <p className="font-bold text-slate-800 text-sm">
+123 |                     {issue.schoolName}
+124 |                   </p>
+125 |                   <p className="text-xs text-slate-500">{issue.eventName}</p>
+126 |                 </div>
+127 | 
+128 |                 <p className="text-sm text-slate-700 bg-slate-50 rounded-xl p-3 italic leading-relaxed">
+129 |                   "{issue.message}"
+130 |                 </p>
+131 | 
+132 |                 <button
+133 |                   onClick={() => handleStatusToggle(issue)}
+134 |                   className={`text-xs font-bold px-3 py-2 rounded-lg border transition-colors text-left ${STATUS_STYLES[issue.status] || STATUS_STYLES["Планується"]}`}
+135 |                 >
+136 |                   ● {issue.status} → натисни щоб змінити
+137 |                 </button>
+138 |               </div>
+139 |             </div>
+140 |           );
+141 |         })}
+142 |       </div>
+143 |     </div>
+144 |   );
+145 | }
+146 | 
 ```
 
 ### File: apps/frontend/src/components/Layout.tsx
@@ -9933,171 +10622,170 @@
  17 |   const handleLogout = async () => {
  18 |     await logout();
  19 |     queryClient.clear();
- 20 |     window.location.href = "/login";
- 21 |   };
- 22 | 
- 23 |   const handleLinkClick = () => {
- 24 |     setIsMobileMenuOpen(false);
- 25 |   };
- 26 | 
- 27 |   return (
- 28 |     <div className="flex h-screen bg-slate-50 font-sans">
- 29 |       {/* Мобільний хедер (видно тільки на малих екранах) */}
- 30 |       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0B1527] text-white flex items-center justify-between px-4 z-40">
- 31 |         <div className="flex items-center gap-2">
- 32 |           <span className="text-xl">🎓</span>
- 33 |           <span className="font-semibold tracking-wider text-sm">
- 34 |             СВІТЛО ЗНАНЬ
- 35 |           </span>
- 36 |           <span className="text-xs text-blue-300 ml-1">
- 37 |             · {selectedCity.name}
- 38 |           </span>
- 39 |         </div>
- 40 |         <button
- 41 |           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
- 42 |           className="p-2 focus:outline-none"
- 43 |         >
- 44 |           {/* Проста іконка гамбургера / хрестика */}
- 45 |           <span className="text-2xl">{isMobileMenuOpen ? "✕" : "☰"}</span>
- 46 |         </button>
- 47 |       </div>
- 48 | 
- 49 |       {/* Оверлей для мобільного меню (затемнення фону) */}
- 50 |       {isMobileMenuOpen && (
- 51 |         <div
- 52 |           className="md:hidden fixed inset-0 bg-slate-900/50 z-40"
- 53 |           onClick={() => setIsMobileMenuOpen(false)}
- 54 |         />
- 55 |       )}
- 56 | 
- 57 |       {/* Сайдбар */}
- 58 |       <aside
- 59 |         className={`
- 60 |         fixed inset-y-0 left-0 z-50 w-64 bg-[#0B1527] text-white flex flex-col transition-transform duration-300 ease-in-out
- 61 |         md:relative md:translate-x-0
- 62 |         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
- 63 |       `}
- 64 |       >
- 65 |         <div className="p-6 flex flex-col items-center border-b border-slate-700/50 hidden md:flex">
- 66 |           <div className="w-16 h-16 bg-blue-500 rounded-full mb-3 flex items-center justify-center text-2xl">
- 67 |             🎓
- 68 |           </div>
- 69 |           <h2 className="text-sm font-semibold tracking-wider">СВІТЛО ЗНАНЬ</h2>
- 70 |           <p className="text-xs text-blue-300 mt-1 tracking-wide">
- 71 |             📍 {selectedCity.name}
- 72 |           </p>
- 73 |         </div>
- 74 | 
- 75 |         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto mt-16 md:mt-0">
- 76 |           {is(["SUPERADMIN", "MANAGER"]) && (
- 77 |             <Link
- 78 |               to="/dashboard"
- 79 |               onClick={handleLinkClick}
- 80 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/dashboard") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
- 81 |             >
- 82 |               <span className="mr-3">🏠</span> Дашборд
- 83 |             </Link>
- 84 |           )}
- 85 |           {is(["SUPERADMIN", "MANAGER"]) && (
- 86 |             <Link
- 87 |               to="/cities"
- 88 |               onClick={handleLinkClick}
- 89 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/cities") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
- 90 |             >
- 91 |               <span className="mr-3">📍</span> Міста
- 92 |             </Link>
- 93 |           )}
- 94 |           <Link
- 95 |             to="/schools"
- 96 |             onClick={handleLinkClick}
- 97 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/schools") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
- 98 |           >
- 99 |             <span className="mr-3">🏫</span> Школи
-100 |           </Link>
-101 | 
-102 |           {/* ДОДАЛИ НОВИЙ ПУНКТ "САДОЧКИ" */}
-103 |           <Link
-104 |             to="/kindergartens"
-105 |             onClick={handleLinkClick}
-106 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/kindergartens") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-107 |           >
-108 |             <span className="mr-3">🧸</span> Садочки
-109 |           </Link>
-110 |           {is(["SUPERADMIN", "MANAGER"]) && (
-111 |             <Link
-112 |               to="/finance"
-113 |               onClick={handleLinkClick}
-114 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/finance") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-115 |             >
-116 |               <span className="mr-3">💰</span> Фінанси
-117 |             </Link>
-118 |           )}
-119 |           <Link
-120 |             to="/calendar"
-121 |             onClick={handleLinkClick}
-122 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/calendar") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-123 |           >
-124 |             <span className="mr-3">📆</span> Календар
-125 |           </Link>
-126 |           {is(["SUPERADMIN"]) && (
-127 |             <Link
-128 |               to="/employees"
-129 |               onClick={handleLinkClick}
-130 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/employees") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-131 |             >
-132 |               <span className="mr-3">👥</span> Працівники
-133 |             </Link>
-134 |           )}
-135 |         </nav>
-136 | 
-137 |         <div className="p-4 border-t border-slate-700/50 pb-8 md:pb-4">
-138 |           <div className="flex items-center px-4 py-2 text-slate-300 justify-between">
-139 |             <div className="flex items-center">
-140 |               <div className="w-8 h-8 bg-slate-600 rounded-full mr-3 flex items-center justify-center text-xs font-bold">
-141 |                 {user?.name?.charAt(0) ?? "?"}
-142 |               </div>
-143 |               <div className="text-sm truncate max-w-[120px]">
-144 |                 <p className="font-medium text-white truncate">
-145 |                   {user?.name ?? "Користувач"}
-146 |                 </p>
-147 |                 <p className="text-xs text-slate-400 truncate">
-148 |                   {user?.role ?? ""}
-149 |                 </p>
-150 |               </div>
-151 |             </div>
-152 |             <button
-153 |               onClick={handleLogout}
-154 |               className="flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-colors text-xs font-medium ml-2 shrink-0 px-2.5 py-2 rounded-lg"
-155 |               title="Вийти"
-156 |             >
-157 |               <svg
-158 |                 xmlns="http://www.w3.org/2000/svg"
-159 |                 viewBox="0 0 24 24"
-160 |                 fill="none"
-161 |                 stroke="currentColor"
-162 |                 strokeWidth="2"
-163 |                 strokeLinecap="round"
-164 |                 strokeLinejoin="round"
-165 |                 className="w-4 h-4"
-166 |               >
-167 |                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-168 |                 <polyline points="16 17 21 12 16 7" />
-169 |                 <line x1="21" y1="12" x2="9" y2="12" />
-170 |               </svg>
-171 |               Вийти
-172 |             </button>
-173 |           </div>
-174 |         </div>
-175 |       </aside>
-176 | 
-177 |       {/* Головна область */}
-178 |       <main className="flex-1 overflow-y-auto mt-16 md:mt-0 relative w-full">
-179 |         <Outlet />
-180 |       </main>
-181 |     </div>
-182 |   );
-183 | }
-184 | 
+ 20 |   };
+ 21 | 
+ 22 |   const handleLinkClick = () => {
+ 23 |     setIsMobileMenuOpen(false);
+ 24 |   };
+ 25 | 
+ 26 |   return (
+ 27 |     <div className="flex h-screen bg-slate-50 font-sans">
+ 28 |       {/* Мобільний хедер (видно тільки на малих екранах) */}
+ 29 |       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0B1527] text-white flex items-center justify-between px-4 z-40">
+ 30 |         <div className="flex items-center gap-2">
+ 31 |           <span className="text-xl">🎓</span>
+ 32 |           <span className="font-semibold tracking-wider text-sm">
+ 33 |             СВІТЛО ЗНАНЬ
+ 34 |           </span>
+ 35 |           <span className="text-xs text-blue-300 ml-1">
+ 36 |             · {selectedCity.name}
+ 37 |           </span>
+ 38 |         </div>
+ 39 |         <button
+ 40 |           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+ 41 |           className="p-2 focus:outline-none"
+ 42 |         >
+ 43 |           {/* Проста іконка гамбургера / хрестика */}
+ 44 |           <span className="text-2xl">{isMobileMenuOpen ? "✕" : "☰"}</span>
+ 45 |         </button>
+ 46 |       </div>
+ 47 | 
+ 48 |       {/* Оверлей для мобільного меню (затемнення фону) */}
+ 49 |       {isMobileMenuOpen && (
+ 50 |         <div
+ 51 |           className="md:hidden fixed inset-0 bg-slate-900/50 z-40"
+ 52 |           onClick={() => setIsMobileMenuOpen(false)}
+ 53 |         />
+ 54 |       )}
+ 55 | 
+ 56 |       {/* Сайдбар */}
+ 57 |       <aside
+ 58 |         className={`
+ 59 |         fixed inset-y-0 left-0 z-50 w-64 bg-[#0B1527] text-white flex flex-col transition-transform duration-300 ease-in-out
+ 60 |         md:relative md:translate-x-0
+ 61 |         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
+ 62 |       `}
+ 63 |       >
+ 64 |         <div className="p-6 flex flex-col items-center border-b border-slate-700/50 hidden md:flex">
+ 65 |           <div className="w-16 h-16 bg-blue-500 rounded-full mb-3 flex items-center justify-center text-2xl">
+ 66 |             🎓
+ 67 |           </div>
+ 68 |           <h2 className="text-sm font-semibold tracking-wider">СВІТЛО ЗНАНЬ</h2>
+ 69 |           <p className="text-xs text-blue-300 mt-1 tracking-wide">
+ 70 |             📍 {selectedCity.name}
+ 71 |           </p>
+ 72 |         </div>
+ 73 | 
+ 74 |         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto mt-16 md:mt-0">
+ 75 |           {is(["SUPERADMIN", "MANAGER"]) && (
+ 76 |             <Link
+ 77 |               to="/dashboard"
+ 78 |               onClick={handleLinkClick}
+ 79 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/dashboard") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+ 80 |             >
+ 81 |               <span className="mr-3">🏠</span> Дашборд
+ 82 |             </Link>
+ 83 |           )}
+ 84 |           {is(["SUPERADMIN", "MANAGER"]) && (
+ 85 |             <Link
+ 86 |               to="/cities"
+ 87 |               onClick={handleLinkClick}
+ 88 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/cities") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+ 89 |             >
+ 90 |               <span className="mr-3">📍</span> Міста
+ 91 |             </Link>
+ 92 |           )}
+ 93 |           <Link
+ 94 |             to="/schools"
+ 95 |             onClick={handleLinkClick}
+ 96 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/schools") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+ 97 |           >
+ 98 |             <span className="mr-3">🏫</span> Школи
+ 99 |           </Link>
+100 | 
+101 |           {/* ДОДАЛИ НОВИЙ ПУНКТ "САДОЧКИ" */}
+102 |           <Link
+103 |             to="/kindergartens"
+104 |             onClick={handleLinkClick}
+105 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/kindergartens") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+106 |           >
+107 |             <span className="mr-3">🧸</span> Садочки
+108 |           </Link>
+109 |           {is(["SUPERADMIN", "MANAGER"]) && (
+110 |             <Link
+111 |               to="/finance"
+112 |               onClick={handleLinkClick}
+113 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/finance") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+114 |             >
+115 |               <span className="mr-3">💰</span> Фінанси
+116 |             </Link>
+117 |           )}
+118 |           <Link
+119 |             to="/calendar"
+120 |             onClick={handleLinkClick}
+121 |             className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/calendar") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+122 |           >
+123 |             <span className="mr-3">📆</span> Календар
+124 |           </Link>
+125 |           {is(["SUPERADMIN"]) && (
+126 |             <Link
+127 |               to="/employees"
+128 |               onClick={handleLinkClick}
+129 |               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/employees") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+130 |             >
+131 |               <span className="mr-3">👥</span> Працівники
+132 |             </Link>
+133 |           )}
+134 |         </nav>
+135 | 
+136 |         <div className="p-4 border-t border-slate-700/50 pb-8 md:pb-4">
+137 |           <div className="flex items-center px-4 py-2 text-slate-300 justify-between">
+138 |             <div className="flex items-center">
+139 |               <div className="w-8 h-8 bg-slate-600 rounded-full mr-3 flex items-center justify-center text-xs font-bold">
+140 |                 {user?.name?.charAt(0) ?? "?"}
+141 |               </div>
+142 |               <div className="text-sm truncate max-w-[120px]">
+143 |                 <p className="font-medium text-white truncate">
+144 |                   {user?.name ?? "Користувач"}
+145 |                 </p>
+146 |                 <p className="text-xs text-slate-400 truncate">
+147 |                   {user?.role ?? ""}
+148 |                 </p>
+149 |               </div>
+150 |             </div>
+151 |             <button
+152 |               onClick={handleLogout}
+153 |               className="flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-colors text-xs font-medium ml-2 shrink-0 px-2.5 py-2 rounded-lg"
+154 |               title="Вийти"
+155 |             >
+156 |               <svg
+157 |                 xmlns="http://www.w3.org/2000/svg"
+158 |                 viewBox="0 0 24 24"
+159 |                 fill="none"
+160 |                 stroke="currentColor"
+161 |                 strokeWidth="2"
+162 |                 strokeLinecap="round"
+163 |                 strokeLinejoin="round"
+164 |                 className="w-4 h-4"
+165 |               >
+166 |                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+167 |                 <polyline points="16 17 21 12 16 7" />
+168 |                 <line x1="21" y1="12" x2="9" y2="12" />
+169 |               </svg>
+170 |               Вийти
+171 |             </button>
+172 |           </div>
+173 |         </div>
+174 |       </aside>
+175 | 
+176 |       {/* Головна область */}
+177 |       <main className="flex-1 overflow-y-auto mt-16 md:mt-0 relative w-full">
+178 |         <Outlet />
+179 |       </main>
+180 |     </div>
+181 |   );
+182 | }
+183 | 
 ```
 
 ### File: apps/frontend/src/components/PhoneLink.tsx
@@ -10154,12 +10842,15 @@
   7 | 
   8 | export default function ProtectedRoute({ allowedRoles, children }: Props) {
   9 |   const { user } = useAuth();
- 10 |   if (!user || !allowedRoles.includes(user.role)) {
- 11 |     return <Navigate to="/dashboard" replace />;
+ 10 |   if (!user) {
+ 11 |     return <Navigate to="/login" replace />;
  12 |   }
- 13 |   return <>{children}</>;
- 14 | }
- 15 | 
+ 13 |   if (!allowedRoles.includes(user.role)) {
+ 14 |     return <Navigate to="/schools" replace />;
+ 15 |   }
+ 16 |   return <>{children}</>;
+ 17 | }
+ 18 | 
 ```
 
 ### File: apps/frontend/src/components/VirtualSchoolList.tsx
@@ -13966,10 +14657,10 @@
 
 ### File: apps/frontend/src/components/school-profile/modals/CrewModal.tsx
 ```tsx
-  0 | import { useState, useEffect } from "react";
+  0 | import { useState } from "react";
   1 | import { api } from "../../../config/api";
-  2 | import type { City, CityProfile, Crew } from "../../../types";
-  3 | 
+  2 | import type { City, Crew } from "../../../types";
+  3 | import { useQuery } from "@tanstack/react-query";
   4 | interface CrewModalProps {
   5 |   isOpen: boolean;
   6 |   onClose: () => void;
@@ -13983,111 +14674,109 @@
  14 |   city,
  15 |   onSave,
  16 | }: CrewModalProps) {
- 17 |   const [crews, setCrews] = useState<Crew[]>([]);
- 18 |   const [selectedCrewId, setSelectedCrewId] = useState("");
- 19 |   const [isLoading, setIsLoading] = useState(true);
- 20 | 
- 21 |   useEffect(() => {
- 22 |     if (isOpen && city) {
- 23 |       api.get<City[]>("/cities").then((res) => {
- 24 |         const currentCity = res.data.find((c) => c.name === city);
- 25 |         if (currentCity) {
- 26 |           api.get<CityProfile>(`/cities/${currentCity.id}`).then((cityRes) => {
- 27 |             setCrews(cityRes.data.crews || []);
- 28 |             setIsLoading(false);
- 29 |           });
- 30 |         }
- 31 |       });
- 32 |     }
- 33 |   }, [isOpen, city]);
+ 17 |   const { data: allCities = [] } = useQuery({
+ 18 |     queryKey: ["cities"],
+ 19 |     queryFn: () => api.get("/cities").then((r) => r.data),
+ 20 |     staleTime: 5 * 60 * 1000,
+ 21 |   });
+ 22 | 
+ 23 |   const currentCity = allCities.find((c: City) => c.name === city);
+ 24 |   const { data: crews = [], isLoading } = useQuery({
+ 25 |     queryKey: ["cityCrews", currentCity?.id],
+ 26 |     queryFn: () =>
+ 27 |       api.get<Crew[]>(`/cities/${currentCity!.id}/crews`).then((r) => r.data),
+ 28 |     enabled: !!currentCity?.id && isOpen,
+ 29 |     staleTime: 60 * 1000,
+ 30 |   });
+ 31 |   const [selectedCrewId, setSelectedCrewId] = useState("");
+ 32 | 
+ 33 |   if (!isOpen) return null;
  34 | 
- 35 |   if (!isOpen) return null;
- 36 | 
- 37 |   return (
- 38 |     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
- 39 |       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
- 40 |         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
- 41 |           <h3 className="text-xl font-bold text-slate-800">
- 42 |             Призначити екіпаж
- 43 |           </h3>
- 44 |           <button
- 45 |             onClick={onClose}
- 46 |             className="text-slate-400 hover:text-slate-600"
- 47 |           >
- 48 |             ✕
- 49 |           </button>
- 50 |         </div>
- 51 | 
- 52 |         <div className="p-6">
- 53 |           {isLoading ? (
- 54 |             <p className="text-slate-500 text-center py-4">Завантаження...</p>
- 55 |           ) : crews.length === 0 ? (
- 56 |             <div className="text-center py-4">
- 57 |               <p className="text-slate-500">
- 58 |                 У цьому місті ще немає сформованих екіпажів.
- 59 |               </p>
- 60 |               <p className="text-sm mt-2 text-blue-600">
- 61 |                 Створіть екіпаж у вкладці міста!
- 62 |               </p>
- 63 |             </div>
- 64 |           ) : (
- 65 |             <div className="space-y-4">
- 66 |               <label className="block text-sm font-medium text-slate-700">
- 67 |                 Оберіть готовий екіпаж
- 68 |               </label>
- 69 |               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
- 70 |                 {crews.map((crew) => (
- 71 |                   <label
- 72 |                     key={crew.id}
- 73 |                     className={`flex items-start p-3 rounded-xl border cursor-pointer transition-all ${selectedCrewId === crew.id ? "border-blue-500 bg-blue-50/50 ring-1 ring-blue-500" : "border-slate-200 hover:border-blue-300"}`}
- 74 |                   >
- 75 |                     <input
- 76 |                       type="radio"
- 77 |                       name="crew"
- 78 |                       value={crew.id}
- 79 |                       checked={selectedCrewId === crew.id}
- 80 |                       onChange={() => setSelectedCrewId(crew.id)}
- 81 |                       className="mt-1 mr-3 text-blue-600 focus:ring-blue-500"
- 82 |                     />
- 83 |                     <div>
- 84 |                       <p className="font-bold text-slate-800">{crew.name}</p>
- 85 |                       <p className="text-xs text-slate-500 mt-1">
- 86 |                         🎙️ {crew.host?.name || "—"} | 🚗{" "}
- 87 |                         {crew.driver?.name || "—"}
- 88 |                       </p>
- 89 |                       {crew.car && (
- 90 |                         <p className="text-xs text-emerald-600 mt-0.5">
- 91 |                           Авто: {crew.car}
- 92 |                         </p>
- 93 |                       )}
- 94 |                     </div>
- 95 |                   </label>
- 96 |                 ))}
- 97 |               </div>
- 98 |             </div>
- 99 |           )}
-100 | 
-101 |           <div className="flex gap-3 mt-6">
-102 |             <button
-103 |               onClick={onClose}
-104 |               className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200"
-105 |             >
-106 |               Скасувати
-107 |             </button>
-108 |             <button
-109 |               onClick={() => onSave(selectedCrewId)}
-110 |               disabled={!selectedCrewId}
-111 |               className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-112 |             >
-113 |               Призначити
-114 |             </button>
-115 |           </div>
-116 |         </div>
-117 |       </div>
-118 |     </div>
-119 |   );
-120 | }
-121 | 
+ 35 |   return (
+ 36 |     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+ 37 |       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+ 38 |         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+ 39 |           <h3 className="text-xl font-bold text-slate-800">
+ 40 |             Призначити екіпаж
+ 41 |           </h3>
+ 42 |           <button
+ 43 |             onClick={onClose}
+ 44 |             className="text-slate-400 hover:text-slate-600"
+ 45 |           >
+ 46 |             ✕
+ 47 |           </button>
+ 48 |         </div>
+ 49 | 
+ 50 |         <div className="p-6">
+ 51 |           {isLoading ? (
+ 52 |             <p className="text-slate-500 text-center py-4">Завантаження...</p>
+ 53 |           ) : crews.length === 0 ? (
+ 54 |             <div className="text-center py-4">
+ 55 |               <p className="text-slate-500">
+ 56 |                 У цьому місті ще немає сформованих екіпажів.
+ 57 |               </p>
+ 58 |               <p className="text-sm mt-2 text-blue-600">
+ 59 |                 Створіть екіпаж у вкладці міста!
+ 60 |               </p>
+ 61 |             </div>
+ 62 |           ) : (
+ 63 |             <div className="space-y-4">
+ 64 |               <label className="block text-sm font-medium text-slate-700">
+ 65 |                 Оберіть готовий екіпаж
+ 66 |               </label>
+ 67 |               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+ 68 |                 {crews.map((crew) => (
+ 69 |                   <label
+ 70 |                     key={crew.id}
+ 71 |                     className={`flex items-start p-3 rounded-xl border cursor-pointer transition-all ${selectedCrewId === crew.id ? "border-blue-500 bg-blue-50/50 ring-1 ring-blue-500" : "border-slate-200 hover:border-blue-300"}`}
+ 72 |                   >
+ 73 |                     <input
+ 74 |                       type="radio"
+ 75 |                       name="crew"
+ 76 |                       value={crew.id}
+ 77 |                       checked={selectedCrewId === crew.id}
+ 78 |                       onChange={() => setSelectedCrewId(crew.id)}
+ 79 |                       className="mt-1 mr-3 text-blue-600 focus:ring-blue-500"
+ 80 |                     />
+ 81 |                     <div>
+ 82 |                       <p className="font-bold text-slate-800">{crew.name}</p>
+ 83 |                       <p className="text-xs text-slate-500 mt-1">
+ 84 |                         🎙️ {crew.host?.name || "—"} | 🚗{" "}
+ 85 |                         {crew.driver?.name || "—"}
+ 86 |                       </p>
+ 87 |                       {crew.car && (
+ 88 |                         <p className="text-xs text-emerald-600 mt-0.5">
+ 89 |                           Авто: {crew.car}
+ 90 |                         </p>
+ 91 |                       )}
+ 92 |                     </div>
+ 93 |                   </label>
+ 94 |                 ))}
+ 95 |               </div>
+ 96 |             </div>
+ 97 |           )}
+ 98 | 
+ 99 |           <div className="flex gap-3 mt-6">
+100 |             <button
+101 |               onClick={onClose}
+102 |               className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200"
+103 |             >
+104 |               Скасувати
+105 |             </button>
+106 |             <button
+107 |               onClick={() => onSave(selectedCrewId)}
+108 |               disabled={!selectedCrewId}
+109 |               className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-opacity"
+110 |             >
+111 |               Призначити
+112 |             </button>
+113 |           </div>
+114 |         </div>
+115 |       </div>
+116 |     </div>
+117 |   );
+118 | }
+119 | 
 ```
 
 ### File: apps/frontend/src/components/school-profile/modals/EditSchoolModal.tsx
@@ -14670,248 +15359,248 @@
 ### File: apps/frontend/src/components/school-profile/modals/ReportModal.tsx
 ```tsx
   0 | import React, { useState } from "react";
-  1 | 
-  2 | interface Expense {
-  3 |   name: string;
-  4 |   amount: number;
-  5 | }
-  6 | interface CrewMember {
-  7 |   id: string;
-  8 |   name: string;
-  9 |   role: "host" | "driver";
- 10 | }
- 11 | export interface ReportData {
- 12 |   announcementDone: boolean;
- 13 |   materialShown: boolean;
- 14 |   childrenCount: number;
- 15 |   classesCount: number;
- 16 |   privilegedCount: number;
- 17 |   showingsCount: number;
- 18 |   totalSum: number;
- 19 |   schoolSum: number;
- 20 |   remainderSum: number;
- 21 |   rating: number;
- 22 |   expenses: { name: string; amount: number }[];
- 23 |   salaries: { userId: string; name: string; amount: number; role: string }[];
- 24 | }
- 25 | 
- 26 | interface ReportModalProps {
- 27 |   isOpen: boolean;
- 28 |   onClose: () => void;
- 29 |   onSave: (data: ReportData) => void;
- 30 |   schoolName: string;
- 31 |   eventType?: string;
- 32 |   eventDate?: string;
- 33 |   eventIndex?: number;
- 34 |   crew?: {
- 35 |     host?: { id: string; name: string } | null;
- 36 |     driver?: { id: string; name: string } | null;
- 37 |   };
- 38 | }
- 39 | 
- 40 | const WEEKDAY_FMT = new Intl.DateTimeFormat("uk-UA", { weekday: "long" });
- 41 | const DATE_FMT = new Intl.DateTimeFormat("uk-UA", {
- 42 |   day: "2-digit",
- 43 |   month: "2-digit",
- 44 |   year: "2-digit",
- 45 | });
- 46 | 
- 47 | function formatDate(dateStr?: string) {
- 48 |   if (!dateStr) return "—";
- 49 |   const d = new Date(dateStr);
- 50 |   if (Number.isNaN(d.getTime())) return "—";
- 51 |   return `${DATE_FMT.format(d)} ${WEEKDAY_FMT.format(d)}`;
- 52 | }
- 53 | 
- 54 | function formatMoney(value: number) {
- 55 |   return new Intl.NumberFormat("uk-UA").format(Math.round(value || 0));
- 56 | }
- 57 | 
- 58 | const Icon = {
- 59 |   Check: () => (
- 60 |     <svg
- 61 |       viewBox="0 0 24 24"
- 62 |       fill="none"
- 63 |       stroke="currentColor"
- 64 |       strokeWidth="2"
- 65 |       strokeLinecap="round"
- 66 |       strokeLinejoin="round"
- 67 |       className="w-4 h-4"
- 68 |     >
- 69 |       <path d="M9 11l3 3L22 4" />
- 70 |       <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
- 71 |     </svg>
- 72 |   ),
- 73 |   Users: () => (
- 74 |     <svg
- 75 |       viewBox="0 0 24 24"
- 76 |       fill="none"
- 77 |       stroke="currentColor"
- 78 |       strokeWidth="2"
- 79 |       strokeLinecap="round"
- 80 |       strokeLinejoin="round"
- 81 |       className="w-4 h-4"
- 82 |     >
- 83 |       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
- 84 |       <circle cx="9" cy="7" r="4" />
- 85 |       <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
- 86 |       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
- 87 |     </svg>
- 88 |   ),
- 89 |   Wallet: () => (
- 90 |     <svg
- 91 |       viewBox="0 0 24 24"
- 92 |       fill="none"
- 93 |       stroke="currentColor"
- 94 |       strokeWidth="2"
- 95 |       strokeLinecap="round"
- 96 |       strokeLinejoin="round"
- 97 |       className="w-4 h-4"
- 98 |     >
- 99 |       <path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1" />
-100 |       <path d="M16 12h6v4h-6a2 2 0 1 1 0-4z" />
-101 |     </svg>
-102 |   ),
-103 |   Star: () => (
-104 |     <svg
-105 |       viewBox="0 0 24 24"
-106 |       fill="none"
-107 |       stroke="currentColor"
-108 |       strokeWidth="2"
-109 |       strokeLinecap="round"
-110 |       strokeLinejoin="round"
-111 |       className="w-4 h-4"
-112 |     >
-113 |       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-114 |     </svg>
-115 |   ),
-116 | };
-117 | 
-118 | function IconBadge({
-119 |   color,
-120 |   children,
-121 | }: {
-122 |   color: string;
-123 |   children: React.ReactNode;
-124 | }) {
-125 |   return (
-126 |     <span
-127 |       className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center ${color}`}
-128 |     >
-129 |       {children}
-130 |     </span>
-131 |   );
-132 | }
-133 | 
-134 | function CardHeader({
-135 |   icon,
-136 |   color,
-137 |   title,
-138 | }: {
-139 |   icon: React.ReactNode;
-140 |   color: string;
-141 |   title: string;
-142 | }) {
-143 |   return (
-144 |     <div className="flex items-center gap-2.5 mb-4">
-145 |       <IconBadge color={color}>{icon}</IconBadge>
-146 |       <h4 className="text-sm font-bold text-slate-800">{title}</h4>
-147 |     </div>
-148 |   );
-149 | }
-150 | 
-151 | function Row({
-152 |   label,
-153 |   children,
-154 | }: {
-155 |   label: string;
-156 |   children: React.ReactNode;
-157 | }) {
-158 |   return (
-159 |     <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-160 |       <span className="text-sm text-slate-500">{label}</span>
-161 |       <div className="text-sm font-medium text-slate-800">{children}</div>
-162 |     </div>
-163 |   );
-164 | }
-165 | 
-166 | function TogglePill({
-167 |   value,
-168 |   onChange,
-169 | }: {
-170 |   value: boolean;
-171 |   onChange: (v: boolean) => void;
-172 | }) {
-173 |   return (
-174 |     <div className="flex gap-1.5">
-175 |       <button
-176 |         type="button"
-177 |         onClick={() => onChange(true)}
-178 |         className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${value ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400 hover:bg-slate-200"}`}
-179 |       >
-180 |         Так
-181 |       </button>
-182 |       <button
-183 |         type="button"
-184 |         onClick={() => onChange(false)}
-185 |         className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${!value ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-400 hover:bg-slate-200"}`}
-186 |       >
-187 |         Ні
-188 |       </button>
-189 |     </div>
-190 |   );
-191 | }
-192 | 
-193 | function NumberField({
-194 |   value,
-195 |   onChange,
-196 |   suffix,
-197 | }: {
-198 |   value: number;
-199 |   onChange: (v: number) => void;
-200 |   suffix?: string;
-201 | }) {
-202 |   return (
-203 |     <span className="inline-flex items-center gap-1">
-204 |       <input
-205 |         type="number"
-206 |         min={0}
-207 |         value={value || ""}
-208 |         onChange={(e) => onChange(+e.target.value)}
-209 |         className="w-16 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1 -mr-1"
-210 |         placeholder="0"
-211 |       />
-212 |       {suffix && <span className="text-slate-400 text-xs">{suffix}</span>}
-213 |     </span>
-214 |   );
-215 | }
-216 | 
-217 | export default function ReportModal({
-218 |   isOpen,
-219 |   onClose,
-220 |   onSave,
-221 |   schoolName,
-222 |   eventType,
-223 |   eventDate,
-224 |   eventIndex,
-225 |   crew,
-226 | }: ReportModalProps) {
-227 |   const [form, setForm] = useState({
-228 |     announcementDone: true,
-229 |     materialShown: true,
-230 |     childrenCount: 0,
-231 |     classesCount: 0,
-232 |     privilegedCount: 0,
-233 |     showingsCount: 0,
-234 |     totalSum: 0,
-235 |     schoolPercentage: 20,
-236 |     rating: 8,
-237 |   });
-238 | 
-239 |   const [expenses, setExpenses] = useState<Expense[]>([]);
-240 |   const [newExp, setNewExp] = useState({ name: "", amount: "" });
-241 |   const [salaries, setSalaries] = useState<Record<string, number>>({});
-242 |   if (!isOpen) return null;
+  1 | import { motion, AnimatePresence } from "framer-motion";
+  2 | 
+  3 | interface Expense {
+  4 |   name: string;
+  5 |   amount: number;
+  6 | }
+  7 | interface CrewMember {
+  8 |   id: string;
+  9 |   name: string;
+ 10 |   role: "host" | "driver";
+ 11 | }
+ 12 | export interface ReportData {
+ 13 |   announcementDone: boolean;
+ 14 |   materialShown: boolean;
+ 15 |   childrenCount: number;
+ 16 |   classesCount: number;
+ 17 |   privilegedCount: number;
+ 18 |   showingsCount: number;
+ 19 |   totalSum: number;
+ 20 |   schoolSum: number;
+ 21 |   remainderSum: number;
+ 22 |   rating: number;
+ 23 |   expenses: { name: string; amount: number }[];
+ 24 |   salaries: { userId: string; name: string; amount: number; role: string }[];
+ 25 | }
+ 26 | 
+ 27 | interface ReportModalProps {
+ 28 |   isOpen: boolean;
+ 29 |   onClose: () => void;
+ 30 |   onSave: (data: ReportData) => void;
+ 31 |   schoolName: string;
+ 32 |   eventType?: string;
+ 33 |   eventDate?: string;
+ 34 |   eventIndex?: number;
+ 35 |   crew?: {
+ 36 |     host?: { id: string; name: string } | null;
+ 37 |     driver?: { id: string; name: string } | null;
+ 38 |   };
+ 39 | }
+ 40 | 
+ 41 | const WEEKDAY_FMT = new Intl.DateTimeFormat("uk-UA", { weekday: "long" });
+ 42 | const DATE_FMT = new Intl.DateTimeFormat("uk-UA", {
+ 43 |   day: "2-digit",
+ 44 |   month: "2-digit",
+ 45 |   year: "2-digit",
+ 46 | });
+ 47 | 
+ 48 | function formatDate(dateStr?: string) {
+ 49 |   if (!dateStr) return "—";
+ 50 |   const d = new Date(dateStr);
+ 51 |   if (Number.isNaN(d.getTime())) return "—";
+ 52 |   return `${DATE_FMT.format(d)} ${WEEKDAY_FMT.format(d)}`;
+ 53 | }
+ 54 | 
+ 55 | function formatMoney(value: number) {
+ 56 |   return new Intl.NumberFormat("uk-UA").format(Math.round(value || 0));
+ 57 | }
+ 58 | 
+ 59 | const Icon = {
+ 60 |   Check: () => (
+ 61 |     <svg
+ 62 |       viewBox="0 0 24 24"
+ 63 |       fill="none"
+ 64 |       stroke="currentColor"
+ 65 |       strokeWidth="2"
+ 66 |       strokeLinecap="round"
+ 67 |       strokeLinejoin="round"
+ 68 |       className="w-4 h-4"
+ 69 |     >
+ 70 |       <path d="M9 11l3 3L22 4" />
+ 71 |       <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+ 72 |     </svg>
+ 73 |   ),
+ 74 |   Users: () => (
+ 75 |     <svg
+ 76 |       viewBox="0 0 24 24"
+ 77 |       fill="none"
+ 78 |       stroke="currentColor"
+ 79 |       strokeWidth="2"
+ 80 |       strokeLinecap="round"
+ 81 |       strokeLinejoin="round"
+ 82 |       className="w-4 h-4"
+ 83 |     >
+ 84 |       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+ 85 |       <circle cx="9" cy="7" r="4" />
+ 86 |       <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+ 87 |       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+ 88 |     </svg>
+ 89 |   ),
+ 90 |   Wallet: () => (
+ 91 |     <svg
+ 92 |       viewBox="0 0 24 24"
+ 93 |       fill="none"
+ 94 |       stroke="currentColor"
+ 95 |       strokeWidth="2"
+ 96 |       strokeLinecap="round"
+ 97 |       strokeLinejoin="round"
+ 98 |       className="w-4 h-4"
+ 99 |     >
+100 |       <path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1" />
+101 |       <path d="M16 12h6v4h-6a2 2 0 1 1 0-4z" />
+102 |     </svg>
+103 |   ),
+104 |   Star: () => (
+105 |     <svg
+106 |       viewBox="0 0 24 24"
+107 |       fill="none"
+108 |       stroke="currentColor"
+109 |       strokeWidth="2"
+110 |       strokeLinecap="round"
+111 |       strokeLinejoin="round"
+112 |       className="w-4 h-4"
+113 |     >
+114 |       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+115 |     </svg>
+116 |   ),
+117 | };
+118 | 
+119 | function IconBadge({
+120 |   color,
+121 |   children,
+122 | }: {
+123 |   color: string;
+124 |   children: React.ReactNode;
+125 | }) {
+126 |   return (
+127 |     <span
+128 |       className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center ${color}`}
+129 |     >
+130 |       {children}
+131 |     </span>
+132 |   );
+133 | }
+134 | 
+135 | function CardHeader({
+136 |   icon,
+137 |   color,
+138 |   title,
+139 | }: {
+140 |   icon: React.ReactNode;
+141 |   color: string;
+142 |   title: string;
+143 | }) {
+144 |   return (
+145 |     <div className="flex items-center gap-2.5 mb-4">
+146 |       <IconBadge color={color}>{icon}</IconBadge>
+147 |       <h4 className="text-sm font-bold text-slate-800">{title}</h4>
+148 |     </div>
+149 |   );
+150 | }
+151 | 
+152 | function Row({
+153 |   label,
+154 |   children,
+155 | }: {
+156 |   label: string;
+157 |   children: React.ReactNode;
+158 | }) {
+159 |   return (
+160 |     <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+161 |       <span className="text-sm text-slate-500">{label}</span>
+162 |       <div className="text-sm font-medium text-slate-800">{children}</div>
+163 |     </div>
+164 |   );
+165 | }
+166 | 
+167 | function TogglePill({
+168 |   value,
+169 |   onChange,
+170 | }: {
+171 |   value: boolean;
+172 |   onChange: (v: boolean) => void;
+173 | }) {
+174 |   return (
+175 |     <div className="flex gap-1.5">
+176 |       <button
+177 |         type="button"
+178 |         onClick={() => onChange(true)}
+179 |         className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${value ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400 hover:bg-slate-200"}`}
+180 |       >
+181 |         Так
+182 |       </button>
+183 |       <button
+184 |         type="button"
+185 |         onClick={() => onChange(false)}
+186 |         className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${!value ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-400 hover:bg-slate-200"}`}
+187 |       >
+188 |         Ні
+189 |       </button>
+190 |     </div>
+191 |   );
+192 | }
+193 | 
+194 | function NumberField({
+195 |   value,
+196 |   onChange,
+197 |   suffix,
+198 | }: {
+199 |   value: number;
+200 |   onChange: (v: number) => void;
+201 |   suffix?: string;
+202 | }) {
+203 |   return (
+204 |     <span className="inline-flex items-center gap-1">
+205 |       <input
+206 |         type="number"
+207 |         min={0}
+208 |         value={value || ""}
+209 |         onChange={(e) => onChange(+e.target.value)}
+210 |         className="w-16 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1 -mr-1"
+211 |         placeholder="0"
+212 |       />
+213 |       {suffix && <span className="text-slate-400 text-xs">{suffix}</span>}
+214 |     </span>
+215 |   );
+216 | }
+217 | 
+218 | export default function ReportModal({
+219 |   isOpen,
+220 |   onClose,
+221 |   onSave,
+222 |   schoolName,
+223 |   eventType,
+224 |   eventDate,
+225 |   eventIndex,
+226 |   crew,
+227 | }: ReportModalProps) {
+228 |   const [form, setForm] = useState({
+229 |     announcementDone: true,
+230 |     materialShown: true,
+231 |     childrenCount: 0,
+232 |     classesCount: 0,
+233 |     privilegedCount: 0,
+234 |     showingsCount: 0,
+235 |     totalSum: 0,
+236 |     schoolPercentage: 20,
+237 |     rating: 8,
+238 |   });
+239 | 
+240 |   const [expenses, setExpenses] = useState<Expense[]>([]);
+241 |   const [newExp, setNewExp] = useState({ name: "", amount: "" });
+242 |   const [salaries, setSalaries] = useState<Record<string, number>>({});
 243 | 
 244 |   const schoolSum = (form.totalSum * form.schoolPercentage) / 100;
 245 |   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
@@ -14959,268 +15648,287 @@
 287 |       }))
 288 |       .filter((s) => s.amount > 0);
 289 | 
-290 |     onSave({
-291 |       ...form,
-292 |       expenses,
-293 |       schoolSum,
-294 |       remainderSum: remainder,
-295 |       salaries: salariesArr,
-296 |     });
-297 |   };
-298 | 
-299 |   return (
-300 |     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-301 |       <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden">
-302 |         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
-303 | 
-304 |         {/* Header */}
-305 |         <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 bg-slate-50 flex items-start justify-between shrink-0">
-306 |           <div className="min-w-0">
-307 |             <h3 className="text-lg sm:text-xl font-bold text-slate-800 leading-tight">
-308 |               Звіт по події
-309 |             </h3>
-310 |             <p className="text-sm text-slate-500 mt-0.5 truncate">
-311 |               {schoolName}
-312 |             </p>
-313 |           </div>
-314 |           <button
-315 |             onClick={onClose}
-316 |             className="text-slate-400 hover:text-slate-600 text-lg leading-none p-2 -mr-2 shrink-0"
-317 |           >
-318 |             ✕
-319 |           </button>
-320 |         </div>
-321 | 
-322 |         {/* Body */}
-323 |         <div className="p-4 sm:p-6 overflow-y-auto bg-slate-50/50">
-324 |           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-325 |             {/* Охоплення */}
-326 |             <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
-327 |               <CardHeader
-328 |                 icon={<Icon.Users />}
-329 |                 color="bg-violet-50 text-violet-600"
-330 |                 title="Охоплення та Проведення"
-331 |               />
-332 |               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
-333 |                 <Row label="Кількість дітей">
-334 |                   <NumberField
-335 |                     value={form.childrenCount}
-336 |                     onChange={(v) => setForm({ ...form, childrenCount: v })}
-337 |                     suffix="дітей"
-338 |                   />
-339 |                 </Row>
-340 |                 <Row label="Класів">
-341 |                   <NumberField
-342 |                     value={form.classesCount}
-343 |                     onChange={(v) => setForm({ ...form, classesCount: v })}
-344 |                     suffix="кл."
-345 |                   />
-346 |                 </Row>
-347 |                 <Row label="Пільгових дітей">
-348 |                   <NumberField
-349 |                     value={form.privilegedCount}
-350 |                     onChange={(v) => setForm({ ...form, privilegedCount: v })}
-351 |                   />
-352 |                 </Row>
-353 |                 <Row label="Кількість показів">
-354 |                   <NumberField
-355 |                     value={form.showingsCount}
-356 |                     onChange={(v) => setForm({ ...form, showingsCount: v })}
-357 |                   />
-358 |                 </Row>
-359 |               </div>
-360 |             </div>
-361 | 
-362 |             {/* Фінансовий результат */}
-363 |             <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
-364 |               <CardHeader
-365 |                 icon={<Icon.Wallet />}
-366 |                 color="bg-amber-50 text-amber-600"
-367 |                 title="Фінансовий результат"
-368 |               />
-369 |               <div className="flex items-center justify-between py-2 border-b border-slate-50">
-370 |                 <span className="text-sm text-slate-500 font-medium">
-371 |                   Загальна виручка
-372 |                 </span>
-373 |                 <span className="inline-flex items-center gap-1">
-374 |                   <input
-375 |                     type="number"
-376 |                     min={0}
-377 |                     value={form.totalSum || ""}
-378 |                     onChange={(e) =>
-379 |                       setForm({ ...form, totalSum: +e.target.value })
-380 |                     }
-381 |                     className="w-28 text-right bg-transparent outline-none font-bold text-lg text-slate-800 focus:bg-blue-50 rounded px-1"
-382 |                     placeholder="0"
-383 |                   />
-384 |                   <span className="text-slate-400 text-sm">грн</span>
-385 |                 </span>
-386 |               </div>
-387 | 
-388 |               {/* НОВЕ: Змінний відсоток для закладу */}
-389 |               <div className="flex items-center justify-between py-2 border-b border-slate-50">
-390 |                 <span className="text-sm text-slate-500">Відсоток закладу</span>
-391 |                 <NumberField
-392 |                   value={form.schoolPercentage}
-393 |                   onChange={(v) => setForm({ ...form, schoolPercentage: v })}
-394 |                   suffix="%"
-395 |                 />
-396 |               </div>
-397 | 
-398 |               <Row label={`Сума закладу (${form.schoolPercentage}%)`}>
-399 |                 <span>{formatMoney(schoolSum)} грн</span>
-400 |               </Row>
-401 | 
-402 |               <div className="py-3 border-b border-slate-50">
-403 |                 <div className="flex items-center justify-between mb-2">
-404 |                   <span className="text-sm text-slate-500">
-405 |                     Додаткові витрати
-406 |                   </span>
-407 |                   <span className="text-sm font-medium text-rose-500">
-408 |                     −{formatMoney(totalExpenses)} грн
-409 |                   </span>
-410 |                 </div>
-411 |                 {expenses.length > 0 && (
-412 |                   <div className="flex flex-wrap gap-1.5 mb-2">
-413 |                     {expenses.map((exp, i) => (
-414 |                       <span
-415 |                         key={i}
-416 |                         className="inline-flex items-center gap-1.5 bg-slate-100 rounded-full pl-3 pr-1.5 py-1 text-xs"
-417 |                       >
-418 |                         <span className="text-slate-600">{exp.name}</span>
-419 |                         <span className="font-semibold text-slate-700">
-420 |                           {formatMoney(exp.amount)} грн
-421 |                         </span>
-422 |                         <button
-423 |                           onClick={() => removeExpense(i)}
-424 |                           className="text-slate-400 hover:text-rose-500 w-4 h-4 rounded-full flex items-center justify-center hover:bg-white"
-425 |                         >
-426 |                           ✕
-427 |                         </button>
-428 |                       </span>
-429 |                     ))}
-430 |                   </div>
-431 |                 )}
-432 |                 <div className="flex gap-2 mt-2">
-433 |                   <input
-434 |                     placeholder="Назва витрати"
-435 |                     value={newExp.name}
-436 |                     onChange={(e) =>
-437 |                       setNewExp({ ...newExp, name: e.target.value })
-438 |                     }
-439 |                     className="flex-1 min-w-0 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-440 |                   />
-441 |                   <input
-442 |                     type="number"
-443 |                     min={0}
-444 |                     placeholder="грн"
-445 |                     value={newExp.amount}
-446 |                     onChange={(e) =>
-447 |                       setNewExp({ ...newExp, amount: e.target.value })
-448 |                     }
-449 |                     className="w-20 sm:w-24 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-450 |                   />
-451 |                   <button
-452 |                     onClick={addExpense}
-453 |                     type="button"
-454 |                     className="px-3 shrink-0 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium text-sm"
-455 |                   >
-456 |                     +
-457 |                   </button>
-458 |                 </div>
-459 |               </div>
-460 |               <div className="flex items-center justify-between bg-emerald-50 rounded-xl px-4 py-3 mt-3">
-461 |                 <span className="text-sm font-semibold text-emerald-700">
-462 |                   Залишок ({100 - form.schoolPercentage}%)
-463 |                 </span>
-464 |                 <span className="text-lg font-bold text-emerald-700">
-465 |                   {formatMoney(remainder)} грн
-466 |                 </span>
-467 |               </div>
-468 |             </div>
-469 |             {crewMembers.length > 0 && (
-470 |               <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
-471 |                 <CardHeader
-472 |                   icon={
-473 |                     <svg
-474 |                       viewBox="0 0 24 24"
-475 |                       fill="none"
-476 |                       stroke="currentColor"
-477 |                       strokeWidth="2"
-478 |                       strokeLinecap="round"
-479 |                       strokeLinejoin="round"
-480 |                       className="w-4 h-4"
-481 |                     >
-482 |                       <circle cx="12" cy="8" r="6" />
-483 |                       <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
-484 |                     </svg>
-485 |                   }
-486 |                   color="bg-blue-50 text-blue-600"
-487 |                   title="Заробітня плата"
-488 |                 />
-489 |                 <div className="space-y-1">
-490 |                   {crewMembers.map((m) => (
-491 |                     <Row key={m.id} label={`${m.name} (${m.role})`}>
-492 |                       <span className="inline-flex items-center gap-1">
-493 |                         <input
-494 |                           type="number"
-495 |                           min={0}
-496 |                           value={salaries[m.id] || ""}
-497 |                           onChange={(e) =>
-498 |                             setSalaries((prev) => ({
-499 |                               ...prev,
-500 |                               [m.id]: +e.target.value,
-501 |                             }))
-502 |                           }
-503 |                           className="w-24 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1"
-504 |                           placeholder="0"
-505 |                         />
-506 |                         <span className="text-slate-400 text-xs">грн</span>
-507 |                       </span>
-508 |                     </Row>
-509 |                   ))}
-510 |                 </div>
-511 |                 {crewMembers.some((m) => salaries[m.id] > 0) && (
-512 |                   <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
-513 |                     <span className="text-sm font-semibold text-slate-500">
-514 |                       Разом ЗП
-515 |                     </span>
-516 |                     <span className="font-bold text-blue-600">
-517 |                       {formatMoney(
-518 |                         crewMembers.reduce(
-519 |                           (s, m) => s + (salaries[m.id] || 0),
-520 |                           0,
-521 |                         ),
-522 |                       )}{" "}
-523 |                       грн
-524 |                     </span>
-525 |                   </div>
-526 |                 )}
-527 |               </div>
-528 |             )}
-529 |           </div>
-530 |         </div>
-531 | 
-532 |         {/* Footer */}
-533 |         <div className="flex gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-white shrink-0">
-534 |           <button
-535 |             onClick={onClose}
-536 |             className="flex-1 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium py-3"
-537 |           >
-538 |             Скасувати
-539 |           </button>
-540 |           <button
-541 |             onClick={handleSave}
-542 |             className="flex-1 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 py-3"
-543 |           >
-544 |             Зберегти звіт
-545 |           </button>
-546 |         </div>
-547 |       </div>
-548 |     </div>
-549 |   );
-550 | }
-551 | 
+290 |     const { schoolPercentage, ...formRest } = form;
+291 |     void schoolPercentage;
+292 | 
+293 |     onSave({
+294 |       ...formRest,
+295 |       expenses,
+296 |       schoolSum,
+297 |       remainderSum: remainder,
+298 |       salaries: salariesArr,
+299 |     });
+300 |   };
+301 | 
+302 |   return (
+303 |     <AnimatePresence>
+304 |       {isOpen && (
+305 |         <motion.div
+306 |           initial={{ opacity: 0 }}
+307 |           animate={{ opacity: 1 }}
+308 |           exit={{ opacity: 0 }}
+309 |           transition={{ duration: 0.25 }}
+310 |           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+311 |         >
+312 |           <motion.div
+313 |             initial={{ opacity: 0, y: 24, scale: 0.97 }}
+314 |             animate={{ opacity: 1, y: 0, scale: 1 }}
+315 |             exit={{ opacity: 0, y: 24, scale: 0.97 }}
+316 |             transition={{ duration: 0.25, ease: "easeOut" }}
+317 |             className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden"
+318 |           >
+319 |         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+320 | 
+321 |         {/* Header */}
+322 |         <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 bg-slate-50 flex items-start justify-between shrink-0">
+323 |           <div className="min-w-0">
+324 |             <h3 className="text-lg sm:text-xl font-bold text-slate-800 leading-tight">
+325 |               Звіт по події
+326 |             </h3>
+327 |             <p className="text-sm text-slate-500 mt-0.5 truncate">
+328 |               {schoolName}
+329 |             </p>
+330 |           </div>
+331 |           <button
+332 |             onClick={onClose}
+333 |             className="text-slate-400 hover:text-slate-600 text-lg leading-none p-2 -mr-2 shrink-0"
+334 |           >
+335 |             ✕
+336 |           </button>
+337 |         </div>
+338 | 
+339 |         {/* Body */}
+340 |         <div className="p-4 sm:p-6 overflow-y-auto bg-slate-50/50">
+341 |           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+342 |             {/* Охоплення */}
+343 |             <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+344 |               <CardHeader
+345 |                 icon={<Icon.Users />}
+346 |                 color="bg-violet-50 text-violet-600"
+347 |                 title="Охоплення та Проведення"
+348 |               />
+349 |               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+350 |                 <Row label="Кількість дітей">
+351 |                   <NumberField
+352 |                     value={form.childrenCount}
+353 |                     onChange={(v) => setForm({ ...form, childrenCount: v })}
+354 |                     suffix="дітей"
+355 |                   />
+356 |                 </Row>
+357 |                 <Row label="Класів">
+358 |                   <NumberField
+359 |                     value={form.classesCount}
+360 |                     onChange={(v) => setForm({ ...form, classesCount: v })}
+361 |                     suffix="кл."
+362 |                   />
+363 |                 </Row>
+364 |                 <Row label="Пільгових дітей">
+365 |                   <NumberField
+366 |                     value={form.privilegedCount}
+367 |                     onChange={(v) => setForm({ ...form, privilegedCount: v })}
+368 |                   />
+369 |                 </Row>
+370 |                 <Row label="Кількість показів">
+371 |                   <NumberField
+372 |                     value={form.showingsCount}
+373 |                     onChange={(v) => setForm({ ...form, showingsCount: v })}
+374 |                   />
+375 |                 </Row>
+376 |               </div>
+377 |             </div>
+378 | 
+379 |             {/* Фінансовий результат */}
+380 |             <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+381 |               <CardHeader
+382 |                 icon={<Icon.Wallet />}
+383 |                 color="bg-amber-50 text-amber-600"
+384 |                 title="Фінансовий результат"
+385 |               />
+386 |               <div className="flex items-center justify-between py-2 border-b border-slate-50">
+387 |                 <span className="text-sm text-slate-500 font-medium">
+388 |                   Загальна виручка
+389 |                 </span>
+390 |                 <span className="inline-flex items-center gap-1">
+391 |                   <input
+392 |                     type="number"
+393 |                     min={0}
+394 |                     value={form.totalSum || ""}
+395 |                     onChange={(e) =>
+396 |                       setForm({ ...form, totalSum: +e.target.value })
+397 |                     }
+398 |                     className="w-28 text-right bg-transparent outline-none font-bold text-lg text-slate-800 focus:bg-blue-50 rounded px-1"
+399 |                     placeholder="0"
+400 |                   />
+401 |                   <span className="text-slate-400 text-sm">грн</span>
+402 |                 </span>
+403 |               </div>
+404 | 
+405 |               {/* НОВЕ: Змінний відсоток для закладу */}
+406 |               <div className="flex items-center justify-between py-2 border-b border-slate-50">
+407 |                 <span className="text-sm text-slate-500">Відсоток закладу</span>
+408 |                 <NumberField
+409 |                   value={form.schoolPercentage}
+410 |                   onChange={(v) => setForm({ ...form, schoolPercentage: v })}
+411 |                   suffix="%"
+412 |                 />
+413 |               </div>
+414 | 
+415 |               <Row label={`Сума закладу (${form.schoolPercentage}%)`}>
+416 |                 <span>{formatMoney(schoolSum)} грн</span>
+417 |               </Row>
+418 | 
+419 |               <div className="py-3 border-b border-slate-50">
+420 |                 <div className="flex items-center justify-between mb-2">
+421 |                   <span className="text-sm text-slate-500">
+422 |                     Додаткові витрати
+423 |                   </span>
+424 |                   <span className="text-sm font-medium text-rose-500">
+425 |                     −{formatMoney(totalExpenses)} грн
+426 |                   </span>
+427 |                 </div>
+428 |                 {expenses.length > 0 && (
+429 |                   <div className="flex flex-wrap gap-1.5 mb-2">
+430 |                     {expenses.map((exp, i) => (
+431 |                       <span
+432 |                         key={i}
+433 |                         className="inline-flex items-center gap-1.5 bg-slate-100 rounded-full pl-3 pr-1.5 py-1 text-xs"
+434 |                       >
+435 |                         <span className="text-slate-600">{exp.name}</span>
+436 |                         <span className="font-semibold text-slate-700">
+437 |                           {formatMoney(exp.amount)} грн
+438 |                         </span>
+439 |                         <button
+440 |                           onClick={() => removeExpense(i)}
+441 |                           className="text-slate-400 hover:text-rose-500 w-4 h-4 rounded-full flex items-center justify-center hover:bg-white"
+442 |                         >
+443 |                           ✕
+444 |                         </button>
+445 |                       </span>
+446 |                     ))}
+447 |                   </div>
+448 |                 )}
+449 |                 <div className="flex gap-2 mt-2">
+450 |                   <input
+451 |                     placeholder="Назва витрати"
+452 |                     value={newExp.name}
+453 |                     onChange={(e) =>
+454 |                       setNewExp({ ...newExp, name: e.target.value })
+455 |                     }
+456 |                     className="flex-1 min-w-0 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+457 |                   />
+458 |                   <input
+459 |                     type="number"
+460 |                     min={0}
+461 |                     placeholder="грн"
+462 |                     value={newExp.amount}
+463 |                     onChange={(e) =>
+464 |                       setNewExp({ ...newExp, amount: e.target.value })
+465 |                     }
+466 |                     className="w-20 sm:w-24 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+467 |                   />
+468 |                   <button
+469 |                     onClick={addExpense}
+470 |                     type="button"
+471 |                     className="px-3 shrink-0 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium text-sm"
+472 |                   >
+473 |                     +
+474 |                   </button>
+475 |                 </div>
+476 |               </div>
+477 |               <div className="flex items-center justify-between bg-emerald-50 rounded-xl px-4 py-3 mt-3">
+478 |                 <span className="text-sm font-semibold text-emerald-700">
+479 |                   Залишок ({100 - form.schoolPercentage}%)
+480 |                 </span>
+481 |                 <span className="text-lg font-bold text-emerald-700">
+482 |                   {formatMoney(remainder)} грн
+483 |                 </span>
+484 |               </div>
+485 |             </div>
+486 |             {crewMembers.length > 0 && (
+487 |               <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+488 |                 <CardHeader
+489 |                   icon={
+490 |                     <svg
+491 |                       viewBox="0 0 24 24"
+492 |                       fill="none"
+493 |                       stroke="currentColor"
+494 |                       strokeWidth="2"
+495 |                       strokeLinecap="round"
+496 |                       strokeLinejoin="round"
+497 |                       className="w-4 h-4"
+498 |                     >
+499 |                       <circle cx="12" cy="8" r="6" />
+500 |                       <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+501 |                     </svg>
+502 |                   }
+503 |                   color="bg-blue-50 text-blue-600"
+504 |                   title="Заробітня плата"
+505 |                 />
+506 |                 <div className="space-y-1">
+507 |                   {crewMembers.map((m) => (
+508 |                     <Row key={m.id} label={`${m.name} (${m.role})`}>
+509 |                       <span className="inline-flex items-center gap-1">
+510 |                         <input
+511 |                           type="number"
+512 |                           min={0}
+513 |                           value={salaries[m.id] || ""}
+514 |                           onChange={(e) =>
+515 |                             setSalaries((prev) => ({
+516 |                               ...prev,
+517 |                               [m.id]: +e.target.value,
+518 |                             }))
+519 |                           }
+520 |                           className="w-24 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1"
+521 |                           placeholder="0"
+522 |                         />
+523 |                         <span className="text-slate-400 text-xs">грн</span>
+524 |                       </span>
+525 |                     </Row>
+526 |                   ))}
+527 |                 </div>
+528 |                 {crewMembers.some((m) => salaries[m.id] > 0) && (
+529 |                   <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
+530 |                     <span className="text-sm font-semibold text-slate-500">
+531 |                       Разом ЗП
+532 |                     </span>
+533 |                     <span className="font-bold text-blue-600">
+534 |                       {formatMoney(
+535 |                         crewMembers.reduce(
+536 |                           (s, m) => s + (salaries[m.id] || 0),
+537 |                           0,
+538 |                         ),
+539 |                       )}{" "}
+540 |                       грн
+541 |                     </span>
+542 |                   </div>
+543 |                 )}
+544 |               </div>
+545 |             )}
+546 |           </div>
+547 |         </div>
+548 | 
+549 |         {/* Footer */}
+550 |         <div className="flex gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-white shrink-0">
+551 |           <button
+552 |             onClick={onClose}
+553 |             className="flex-1 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium py-3"
+554 |           >
+555 |             Скасувати
+556 |           </button>
+557 |           <button
+558 |             onClick={handleSave}
+559 |             className="flex-1 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 py-3"
+560 |           >
+561 |             Зберегти звіт
+562 |           </button>
+563 |         </div>
+564 |       </motion.div>
+565 |         </motion.div>
+566 |       )}
+567 |     </AnimatePresence>
+568 |   );
+569 | }
+570 | 
 ```
 
 ### File: apps/frontend/src/components/school-profile/modals/RescheduleModal.tsx
@@ -15997,16 +16705,10 @@
  23 | api.interceptors.response.use(
  24 |   (res) => res,
  25 |   (error) => {
- 26 |     if (error.response?.status === 401) {
- 27 |       localStorage.removeItem("user");
- 28 |       if (!window.location.pathname.startsWith("/login")) {
- 29 |         window.location.href = "/login";
- 30 |       }
- 31 |     }
- 32 |     return Promise.reject(error);
- 33 |   },
- 34 | );
- 35 | 
+ 26 |     return Promise.reject(error);
+ 27 |   },
+ 28 | );
+ 29 | 
 ```
 
 ### File: apps/frontend/src/context/AuthContext.tsx
@@ -16254,31 +16956,6 @@
 129 |   };
 130 | }
 131 | 
-```
-
-### File: apps/frontend/src/hooks/useAuth.ts
-```ts
-  0 | import { useEffect, useState } from 'react';
-  1 | import { useNavigate } from 'react-router-dom';
-  2 | 
-  3 | export function useAuth() {
-  4 |   const navigate = useNavigate();
-  5 |   const [user, setUser] = useState<{ id: string; name: string; role: string } | null>(null);
-  6 | 
-  7 |   useEffect(() => {
-  8 |     const raw = localStorage.getItem('user');
-  9 |     if (!raw) { navigate('/login'); return; }
- 10 |     try { setUser(JSON.parse(raw)); } catch { navigate('/login'); }
- 11 |   }, [navigate]);
- 12 | 
- 13 |   const logout = () => {
- 14 |     localStorage.removeItem('token');
- 15 |     localStorage.removeItem('user');
- 16 |     navigate('/login');
- 17 |   };
- 18 | 
- 19 |   return { user, logout };
- 20 | }
 ```
 
 ### File: apps/frontend/src/hooks/useCalendar.ts
@@ -16556,300 +17233,294 @@
   2 | import type {
   3 |   Event,
   4 |   EventHistory,
-  5 |   User,
-  6 |   SchoolProfileData,
-  7 |   CreateEventPayload,
-  8 | } from "../types";
-  9 | import type { ReportData } from "../components/school-profile/modals/ReportModal";
- 10 | 
- 11 | const authHeader = () => ({
- 12 |   Authorization: `Bearer ${localStorage.getItem("token")}`,
- 13 | });
- 14 | 
- 15 | export function useSchool(id: string | undefined) {
- 16 |   return useQuery({
- 17 |     queryKey: ["school", id],
- 18 |     queryFn: async () => {
- 19 |       const res = await api.get(`/schools/${id}`, { headers: authHeader() });
- 20 |       return res.data;
- 21 |     },
- 22 |     enabled: !!id,
- 23 |     staleTime: 2 * 60 * 1000,
- 24 |   });
- 25 | }
- 26 | 
- 27 | export function useSchoolCompletedEvents(schoolId: string | undefined) {
- 28 |   return useQuery({
- 29 |     queryKey: ["schoolCompletedEvents", schoolId],
- 30 |     queryFn: async () => {
- 31 |       const res = await api.get<Event[]>(
- 32 |         `/events/school/${schoolId}/completed`,
- 33 |         {
- 34 |           headers: authHeader(),
- 35 |         },
- 36 |       );
- 37 |       return res.data;
- 38 |     },
- 39 |     enabled: !!schoolId,
- 40 |     staleTime: 2 * 60 * 1000,
- 41 |   });
- 42 | }
- 43 | 
- 44 | export function useSchoolEvents(schoolId: string | undefined, full = false) {
- 45 |   return useQuery({
- 46 |     queryKey: ["schoolEvents", schoolId, full],
- 47 |     queryFn: async () => {
- 48 |       const url = full
- 49 |         ? `/events/school/${schoolId}`
- 50 |         : `/events/school/${schoolId}?minimal=true`;
- 51 |       const res = await api.get<Event[]>(url, { headers: authHeader() });
- 52 |       return res.data.filter((ev) => ev.status !== "RE_SALE");
- 53 |     },
- 54 |     enabled: !!schoolId,
- 55 |     staleTime: 60 * 1000,
- 56 |   });
- 57 | }
- 58 | 
- 59 | export function useEventFull(eventId: string | undefined) {
- 60 |   return useQuery({
- 61 |     queryKey: ["eventFull", eventId],
- 62 |     queryFn: async () => {
- 63 |       const res = await api.get<Event>(`/events/${eventId}`, {
- 64 |         headers: authHeader(),
- 65 |       });
- 66 |       return res.data;
- 67 |     },
- 68 |     enabled: !!eventId,
- 69 |     staleTime: 30 * 1000,
- 70 |   });
- 71 | }
- 72 | 
- 73 | export function useUsers() {
- 74 |   return useQuery({
- 75 |     queryKey: ["users"],
- 76 |     queryFn: async () => {
- 77 |       const res = await api.get<User[]>("/users", { headers: authHeader() });
- 78 |       return res.data;
- 79 |     },
- 80 |     staleTime: 5 * 60 * 1000,
- 81 |   });
- 82 | }
- 83 | 
- 84 | export function useUpdateEventStatus() {
- 85 |   const qc = useQueryClient();
- 86 |   return useMutation({
- 87 |     mutationFn: ({
- 88 |       eventId,
- 89 |       status,
- 90 |       actionName,
- 91 |       comment,
- 92 |     }: {
- 93 |       eventId: string;
- 94 |       status: string;
- 95 |       actionName: string;
- 96 |       comment?: string;
- 97 |     }) =>
- 98 |       api
- 99 |         .patch(
-100 |           `/events/${eventId}/status`,
-101 |           { status, actionName, comment },
-102 |           { headers: authHeader() },
-103 |         )
-104 |         .then((r) => r.data),
-105 |     onSuccess: (data, vars) => {
-106 |       qc.setQueryData(["eventFull", vars.eventId], data);
-107 |       qc.setQueriesData(
-108 |         { queryKey: ["schoolEvents"] },
-109 |         (old: Event[] | undefined) =>
-110 |           Array.isArray(old)
-111 |             ? old
-112 |                 .map((ev) =>
-113 |                   ev.id === vars.eventId
-114 |                     ? { ...ev, status: vars.status, ...data }
-115 |                     : ev,
-116 |                 )
-117 |                 .filter((ev) => ev.status !== "RE_SALE")
-118 |             : old,
-119 |       );
-120 |     },
-121 |   });
-122 | }
-123 | 
-124 | export function useUpdatePreparation() {
-125 |   const qc = useQueryClient();
-126 |   return useMutation({
-127 |     mutationFn: ({
-128 |       eventId,
-129 |       field,
-130 |       status,
-131 |     }: {
-132 |       eventId: string;
-133 |       field: string;
-134 |       status: string;
-135 |     }) =>
-136 |       api
-137 |         .patch(
-138 |           `/events/${eventId}/preparation`,
-139 |           { field, status },
-140 |           { headers: authHeader() },
-141 |         )
-142 |         .then((r) => r.data),
-143 |     onSuccess: (_data, vars) => {
-144 |       qc.setQueryData(["eventFull", vars.eventId], (old: Event | undefined) =>
-145 |         old
-146 |           ? {
-147 |               ...old,
-148 |               preparation: {
-149 |                 ...(old.preparation || {}),
-150 |                 [vars.field]: vars.status,
-151 |               },
-152 |             }
-153 |           : old,
-154 |       );
-155 |     },
-156 |   });
-157 | }
-158 | 
-159 | export function useAssignCrew() {
-160 |   const qc = useQueryClient();
-161 |   return useMutation({
-162 |     mutationFn: ({ eventId, crewId }: { eventId: string; crewId: string }) =>
-163 |       api
-164 |         .post(
-165 |           `/events/${eventId}/assign-crew`,
-166 |           { crewId },
-167 |           { headers: authHeader() },
-168 |         )
-169 |         .then((r) => r.data),
-170 |     onSuccess: (data, vars) => {
-171 |       qc.setQueryData(["eventFull", vars.eventId], data);
-172 |       qc.setQueriesData(
-173 |         { queryKey: ["schoolEvents"] },
-174 |         (old: Event[] | undefined) =>
-175 |           Array.isArray(old)
-176 |             ? old.map((ev) =>
-177 |                 ev.id === vars.eventId
-178 |                   ? { ...ev, crewId: vars.crewId, crew: data.crew }
-179 |                   : ev,
-180 |               )
-181 |             : old,
-182 |       );
-183 |     },
-184 |   });
-185 | }
-186 | 
-187 | export function useSubmitReport() {
-188 |   const qc = useQueryClient();
-189 |   return useMutation({
-190 |     mutationFn: ({
-191 |       eventId,
-192 |       reportData,
-193 |     }: {
-194 |       eventId: string;
-195 |       reportData: ReportData;
-196 |     }) =>
-197 |       api
-198 |         .post(`/events/${eventId}/report`, reportData, {
-199 |           headers: authHeader(),
-200 |         })
-201 |         .then((r) => r.data),
-202 |     onSuccess: (_data, vars) => {
-203 |       qc.setQueriesData(
-204 |         { queryKey: ["schoolEvents"] },
-205 |         (old: Event[] | undefined) =>
-206 |           Array.isArray(old) ? old.filter((ev) => ev.id !== vars.eventId) : old,
-207 |       );
-208 |       qc.removeQueries({ queryKey: ["eventFull", vars.eventId] });
-209 |     },
-210 |   });
-211 | }
-212 | 
-213 | export function useAddComment() {
-214 |   const qc = useQueryClient();
-215 |   return useMutation({
-216 |     mutationFn: ({ eventId, comment }: { eventId: string; comment: string }) =>
-217 |       api
-218 |         .post(
-219 |           `/events/${eventId}/history`,
-220 |           { comment },
-221 |           { headers: authHeader() },
-222 |         )
-223 |         .then((r) => r.data),
-224 |     onSuccess: (data, vars) => {
-225 |       qc.setQueryData(["eventFull", vars.eventId], (old: Event | undefined) =>
-226 |         old ? { ...old, history: data.history } : old,
-227 |       );
-228 |     },
-229 |   });
-230 | }
-231 | 
-232 | export const useUpdateSchool = () => {
-233 |   const queryClient = useQueryClient();
-234 | 
-235 |   return useMutation({
-236 |     mutationFn: async ({
-237 |       id,
-238 |       ...payload
-239 |     }: { id: string } & Omit<SchoolProfileData, "id" | "city">) => {
-240 |       const res = await api.patch(`/schools/${id}`, payload);
-241 |       return res.data;
-242 |     },
-243 |     onSuccess: (_, variables) => {
-244 |       queryClient.invalidateQueries({ queryKey: ["school", variables.id] });
-245 |     },
-246 |   });
-247 | };
-248 | 
-249 | export const useCreateEvent = () => {
-250 |   const queryClient = useQueryClient();
-251 | 
-252 |   return useMutation({
-253 |     mutationFn: async (payload: CreateEventPayload) => {
-254 |       const res = await api.post<Event>("/events", payload);
-255 |       return res.data;
-256 |     },
-257 |     onSuccess: (_newEvent, variables) => {
-258 |       queryClient.invalidateQueries({
-259 |         queryKey: ["schoolEvents", variables.schoolId],
-260 |       });
-261 |     },
-262 |   });
-263 | };
-264 | 
-265 | export function useUpdateHistoryComment() {
-266 |   const qc = useQueryClient();
-267 |   return useMutation({
-268 |     mutationFn: ({
-269 |       historyId,
-270 |       comment,
-271 |       eventId,
-272 |     }: {
-273 |       historyId: string;
-274 |       comment: string;
-275 |       eventId: string;
-276 |     }) =>
-277 |       api
-278 |         .patch(
-279 |           `/events/history/${historyId}`,
-280 |           { comment },
-281 |           { headers: authHeader() },
-282 |         )
-283 |         .then((r) => r.data),
-284 |     onSuccess: (_data, vars) => {
-285 |       qc.setQueryData(["eventFull", vars.eventId], (old: Event | undefined) =>
-286 |         old
-287 |           ? {
-288 |               ...old,
-289 |               history: old.history?.map((h: EventHistory) =>
-290 |                 h.id === vars.historyId ? { ...h, comment: vars.comment } : h,
-291 |               ),
-292 |             }
-293 |           : old,
-294 |       );
-295 |     },
-296 |   });
-297 | }
-298 | 
+  5 |   SchoolProfileData,
+  6 |   CreateEventPayload,
+  7 | } from "../types";
+  8 | import type { ReportData } from "../components/school-profile/modals/ReportModal";
+  9 | 
+ 10 | const authHeader = () => ({
+ 11 |   Authorization: `Bearer ${localStorage.getItem("token")}`,
+ 12 | });
+ 13 | 
+ 14 | export function useSchool(id: string | undefined) {
+ 15 |   return useQuery({
+ 16 |     queryKey: ["school", id],
+ 17 |     queryFn: async () => {
+ 18 |       const res = await api.get(`/schools/${id}`, { headers: authHeader() });
+ 19 |       return res.data;
+ 20 |     },
+ 21 |     enabled: !!id,
+ 22 |     staleTime: 2 * 60 * 1000,
+ 23 |   });
+ 24 | }
+ 25 | 
+ 26 | export function useSchoolCompletedEvents(schoolId: string | undefined) {
+ 27 |   return useQuery({
+ 28 |     queryKey: ["schoolCompletedEvents", schoolId],
+ 29 |     queryFn: async () => {
+ 30 |       const res = await api.get<Event[]>(
+ 31 |         `/events/school/${schoolId}/completed`,
+ 32 |         {
+ 33 |           headers: authHeader(),
+ 34 |         },
+ 35 |       );
+ 36 |       return res.data;
+ 37 |     },
+ 38 |     enabled: !!schoolId,
+ 39 |     staleTime: 2 * 60 * 1000,
+ 40 |   });
+ 41 | }
+ 42 | 
+ 43 | export function useSchoolEvents(schoolId: string | undefined, full = false) {
+ 44 |   return useQuery({
+ 45 |     queryKey: ["schoolEvents", schoolId, full],
+ 46 |     queryFn: async () => {
+ 47 |       const url = full
+ 48 |         ? `/events/school/${schoolId}`
+ 49 |         : `/events/school/${schoolId}?minimal=true`;
+ 50 |       const res = await api.get<Event[]>(url, { headers: authHeader() });
+ 51 |       return res.data.filter((ev) => ev.status !== "RE_SALE");
+ 52 |     },
+ 53 |     enabled: !!schoolId,
+ 54 |     staleTime: 60 * 1000,
+ 55 |   });
+ 56 | }
+ 57 | 
+ 58 | export function useEventFull(eventId: string | undefined) {
+ 59 |   return useQuery({
+ 60 |     queryKey: ["eventFull", eventId],
+ 61 |     queryFn: async () => {
+ 62 |       const res = await api.get<Event>(`/events/${eventId}`, {
+ 63 |         headers: authHeader(),
+ 64 |       });
+ 65 |       return res.data;
+ 66 |     },
+ 67 |     enabled: !!eventId,
+ 68 |     staleTime: 30 * 1000,
+ 69 |   });
+ 70 | }
+ 71 | 
+ 72 | export { useUsers } from "./useEmployees";
+ 73 | 
+ 74 | export function useUpdateEventStatus() {
+ 75 |   const qc = useQueryClient();
+ 76 |   return useMutation({
+ 77 |     mutationFn: ({
+ 78 |       eventId,
+ 79 |       status,
+ 80 |       actionName,
+ 81 |       comment,
+ 82 |     }: {
+ 83 |       eventId: string;
+ 84 |       status: string;
+ 85 |       actionName: string;
+ 86 |       comment?: string;
+ 87 |     }) =>
+ 88 |       api
+ 89 |         .patch(
+ 90 |           `/events/${eventId}/status`,
+ 91 |           { status, actionName, comment },
+ 92 |           { headers: authHeader() },
+ 93 |         )
+ 94 |         .then((r) => r.data),
+ 95 |     onSuccess: (data, vars) => {
+ 96 |       qc.setQueryData(["eventFull", vars.eventId], data);
+ 97 |       qc.setQueriesData(
+ 98 |         { queryKey: ["schoolEvents"] },
+ 99 |         (old: Event[] | undefined) =>
+100 |           Array.isArray(old)
+101 |             ? old
+102 |                 .map((ev) =>
+103 |                   ev.id === vars.eventId
+104 |                     ? { ...ev, status: vars.status, ...data }
+105 |                     : ev,
+106 |                 )
+107 |                 .filter((ev) => ev.status !== "RE_SALE")
+108 |             : old,
+109 |       );
+110 |     },
+111 |   });
+112 | }
+113 | 
+114 | export function useUpdatePreparation() {
+115 |   const qc = useQueryClient();
+116 |   return useMutation({
+117 |     mutationFn: ({
+118 |       eventId,
+119 |       field,
+120 |       status,
+121 |     }: {
+122 |       eventId: string;
+123 |       field: string;
+124 |       status: string;
+125 |     }) =>
+126 |       api
+127 |         .patch(
+128 |           `/events/${eventId}/preparation`,
+129 |           { field, status },
+130 |           { headers: authHeader() },
+131 |         )
+132 |         .then((r) => r.data),
+133 |     onSuccess: (_data, vars) => {
+134 |       qc.setQueryData(["eventFull", vars.eventId], (old: Event | undefined) =>
+135 |         old
+136 |           ? {
+137 |               ...old,
+138 |               preparation: {
+139 |                 ...(old.preparation || {}),
+140 |                 [vars.field]: vars.status,
+141 |               },
+142 |             }
+143 |           : old,
+144 |       );
+145 |     },
+146 |   });
+147 | }
+148 | 
+149 | export function useAssignCrew() {
+150 |   const qc = useQueryClient();
+151 |   return useMutation({
+152 |     mutationFn: ({ eventId, crewId }: { eventId: string; crewId: string }) =>
+153 |       api
+154 |         .post(
+155 |           `/events/${eventId}/assign-crew`,
+156 |           { crewId },
+157 |           { headers: authHeader() },
+158 |         )
+159 |         .then((r) => r.data),
+160 |     onSuccess: (data, vars) => {
+161 |       qc.setQueryData(["eventFull", vars.eventId], data);
+162 |       qc.setQueriesData(
+163 |         { queryKey: ["schoolEvents"] },
+164 |         (old: Event[] | undefined) =>
+165 |           Array.isArray(old)
+166 |             ? old.map((ev) =>
+167 |                 ev.id === vars.eventId
+168 |                   ? { ...ev, crewId: vars.crewId, crew: data.crew }
+169 |                   : ev,
+170 |               )
+171 |             : old,
+172 |       );
+173 |     },
+174 |   });
+175 | }
+176 | 
+177 | export function useSubmitReport() {
+178 |   const qc = useQueryClient();
+179 |   return useMutation({
+180 |     mutationFn: ({
+181 |       eventId,
+182 |       reportData,
+183 |     }: {
+184 |       eventId: string;
+185 |       reportData: ReportData;
+186 |     }) =>
+187 |       api
+188 |         .post(`/events/${eventId}/report`, reportData, {
+189 |           headers: authHeader(),
+190 |         })
+191 |         .then((r) => r.data)
+192 |         .catch((err) => {
+193 |           console.error("submitReport failed:", err.response?.data ?? err);
+194 |           throw err;
+195 |         }),
+196 |     onSuccess: (_data, vars) => {
+197 |       qc.setQueriesData(
+198 |         { queryKey: ["schoolEvents"] },
+199 |         (old: Event[] | undefined) =>
+200 |           Array.isArray(old) ? old.filter((ev) => ev.id !== vars.eventId) : old,
+201 |       );
+202 |       qc.removeQueries({ queryKey: ["eventFull", vars.eventId] });
+203 |     },
+204 |   });
+205 | }
+206 | 
+207 | export function useAddComment() {
+208 |   const qc = useQueryClient();
+209 |   return useMutation({
+210 |     mutationFn: ({ eventId, comment }: { eventId: string; comment: string }) =>
+211 |       api
+212 |         .post(
+213 |           `/events/${eventId}/history`,
+214 |           { comment },
+215 |           { headers: authHeader() },
+216 |         )
+217 |         .then((r) => r.data),
+218 |     onSuccess: (data, vars) => {
+219 |       qc.setQueryData(["eventFull", vars.eventId], (old: Event | undefined) =>
+220 |         old ? { ...old, history: data.history } : old,
+221 |       );
+222 |     },
+223 |   });
+224 | }
+225 | 
+226 | export const useUpdateSchool = () => {
+227 |   const queryClient = useQueryClient();
+228 | 
+229 |   return useMutation({
+230 |     mutationFn: async ({
+231 |       id,
+232 |       ...payload
+233 |     }: { id: string } & Omit<SchoolProfileData, "id" | "city">) => {
+234 |       const res = await api.patch(`/schools/${id}`, payload);
+235 |       return res.data;
+236 |     },
+237 |     onSuccess: (_, variables) => {
+238 |       queryClient.invalidateQueries({ queryKey: ["school", variables.id] });
+239 |     },
+240 |   });
+241 | };
+242 | 
+243 | export const useCreateEvent = () => {
+244 |   const queryClient = useQueryClient();
+245 | 
+246 |   return useMutation({
+247 |     mutationFn: async (payload: CreateEventPayload) => {
+248 |       const res = await api.post<Event>("/events", payload);
+249 |       return res.data;
+250 |     },
+251 |     onSuccess: (_newEvent, variables) => {
+252 |       queryClient.invalidateQueries({
+253 |         queryKey: ["schoolEvents", variables.schoolId],
+254 |       });
+255 |     },
+256 |   });
+257 | };
+258 | 
+259 | export function useUpdateHistoryComment() {
+260 |   const qc = useQueryClient();
+261 |   return useMutation({
+262 |     mutationFn: ({
+263 |       historyId,
+264 |       comment,
+265 |       eventId,
+266 |     }: {
+267 |       historyId: string;
+268 |       comment: string;
+269 |       eventId: string;
+270 |     }) =>
+271 |       api
+272 |         .patch(
+273 |           `/events/history/${historyId}`,
+274 |           { comment },
+275 |           { headers: authHeader() },
+276 |         )
+277 |         .then((r) => r.data),
+278 |     onSuccess: (_data, vars) => {
+279 |       qc.setQueryData(["eventFull", vars.eventId], (old: Event | undefined) =>
+280 |         old
+281 |           ? {
+282 |               ...old,
+283 |               history: old.history?.map((h: EventHistory) =>
+284 |                 h.id === vars.historyId ? { ...h, comment: vars.comment } : h,
+285 |               ),
+286 |             }
+287 |           : old,
+288 |       );
+289 |     },
+290 |   });
+291 | }
+292 | 
 ```
 
 ### File: apps/frontend/src/index.css
@@ -18346,7 +19017,7 @@
   2 | import { useQuery } from "@tanstack/react-query";
   3 | import { api } from "../config/api";
   4 | import { useSelectedCity } from "../context/CityContext";
-  5 | import { useAuth } from "../hooks/useAuth";
+  5 | import { useAuth } from "../context/AuthContext";
   6 | const IssueCarousel = lazy(() => import("../components/IssueCarousel"));
   7 | const FunnelBar = lazy(() => import("../components/dashboard/FunnelBar"));
   8 | const TodayEvents = lazy(() => import("../components/dashboard/TodayEvents"));
@@ -18607,686 +19278,700 @@
  11 | import { useCities } from "../hooks/useCities";
  12 | import PhoneLink from "../components/PhoneLink";
  13 | import { useSelectedCity } from "../context/CityContext";
- 14 | 
- 15 | type Role = "MANAGER" | "DRIVER" | "HOST" | "SUPERADMIN" | "GUEST";
- 16 | 
- 17 | interface City {
- 18 |   id: string;
- 19 |   name: string;
- 20 | }
- 21 | interface User {
- 22 |   id: string;
- 23 |   name: string;
- 24 |   phone: string | null;
- 25 |   email: string;
- 26 |   cityId: string | null;
- 27 |   city?: City;
- 28 |   role: Role;
- 29 |   telegramId?: string | null;
- 30 |   car?: string | null;
- 31 | }
- 32 | interface Project {
- 33 |   id: string;
- 34 |   name: string;
- 35 |   color: string;
- 36 | }
- 37 | 
- 38 | const ROLE_LABELS: Record<string, string> = {
- 39 |   MANAGER: "Менеджер",
- 40 |   DRIVER: "Водій",
- 41 |   HOST: "Ведучий",
- 42 |   SUPERADMIN: "Суперадмін",
- 43 |   GUEST: "Гість",
- 44 | };
- 45 | const ROLE_COLORS: Record<string, string> = {
- 46 |   MANAGER: "bg-blue-50 text-blue-700 border-blue-200",
- 47 |   DRIVER: "bg-emerald-50 text-emerald-700 border-emerald-200",
- 48 |   HOST: "bg-violet-50 text-violet-700 border-violet-200",
- 49 | };
- 50 | const ROLE_HEADER_COLORS: Record<string, string> = {
- 51 |   MANAGER: "bg-blue-600",
- 52 |   DRIVER: "bg-emerald-600",
- 53 |   HOST: "bg-violet-600",
- 54 | };
- 55 | const EMPTY_FORM = {
- 56 |   fullName: "",
- 57 |   phone: "",
- 58 |   email: "",
- 59 |   cityId: "",
- 60 |   role: "MANAGER" as Role,
- 61 |   password: "",
- 62 |   telegramId: "",
- 63 |   car: "",
- 64 | };
- 65 | 
- 66 | const PROJECT_COLORS: Record<string, string> = {
- 67 |   blue: "bg-blue-500",
- 68 |   emerald: "bg-emerald-500",
- 69 |   rose: "bg-rose-500",
- 70 |   red: "bg-red-500",
- 71 |   amber: "bg-amber-500",
- 72 |   purple: "bg-purple-500",
- 73 | };
- 74 | 
- 75 | function EmployeesSkeleton() {
- 76 |   return (
- 77 |     <div className="p-4 md:p-8 animate-pulse">
- 78 |       <div className="flex justify-between items-center mb-8">
- 79 |         <div>
- 80 |           <div className="h-7 w-56 bg-slate-200 rounded-lg mb-2" />
- 81 |           <div className="h-4 w-72 bg-slate-100 rounded" />
- 82 |         </div>
- 83 |         <div className="h-10 w-44 bg-slate-200 rounded-lg" />
- 84 |       </div>
- 85 |       {["Менеджери", "Водії", "Ведучі"].map((label) => (
- 86 |         <div key={label} className="mb-8">
- 87 |           <div className="flex items-center gap-3 mb-4">
- 88 |             <div className="w-1 h-6 bg-slate-200 rounded-full" />
- 89 |             <div className="h-5 w-24 bg-slate-200 rounded" />
- 90 |             <div className="h-5 w-8 bg-slate-100 rounded-full" />
- 91 |           </div>
- 92 |           <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
- 93 |             <div className="bg-slate-50 border-b border-slate-100 px-5 py-3 flex gap-8">
- 94 |               {["w-24", "w-20", "w-28", "w-16", "w-12"].map((w, i) => (
- 95 |                 <div key={i} className={`h-3 ${w} bg-slate-200 rounded`} />
- 96 |               ))}
- 97 |             </div>
- 98 |             {[1, 2].map((i) => (
- 99 |               <div
-100 |                 key={i}
-101 |                 className="flex items-center gap-8 px-5 py-4 border-b border-slate-50"
-102 |               >
-103 |                 <div className="flex items-center gap-3">
-104 |                   <div className="w-8 h-8 rounded-full bg-slate-200" />
-105 |                   <div className="h-4 w-28 bg-slate-200 rounded" />
-106 |                 </div>
-107 |                 <div className="h-4 w-20 bg-slate-100 rounded" />
-108 |                 <div className="h-4 w-36 bg-slate-100 rounded" />
-109 |                 <div className="h-6 w-20 bg-slate-100 rounded-full" />
-110 |               </div>
-111 |             ))}
-112 |           </div>
-113 |         </div>
-114 |       ))}
-115 |     </div>
-116 |   );
-117 | }
-118 | 
-119 | export default function Employees() {
-120 |   const { data: users = [], isLoading: usersLoading } = useUsers();
-121 |   const { data: cities = [] } = useCities();
-122 |   const { data: projects = [], isLoading: projectsLoading } = useProjects();
-123 |   const createUser = useCreateUser();
-124 |   const updateUser = useUpdateUser();
-125 |   const deleteUser = useDeleteUser();
-126 |   const createProject = useCreateProject();
-127 |   const deleteProject = useDeleteProject();
-128 | 
-129 |   const isLoading = usersLoading;
-130 |   const [isModalOpen, setIsModalOpen] = useState(false);
-131 |   const [editingUser, setEditingUser] = useState<User | null>(null);
-132 |   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
-133 |   const [isSubmitting, setIsSubmitting] = useState(false);
-134 | 
-135 |   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
-136 |   const [projectForm, setProjectForm] = useState({ name: "", color: "blue" });
-137 | 
-138 |   const { selectedCity } = useSelectedCity();
-139 | 
-140 |   const [userRole] = useState<string | null>(() => {
-141 |     try {
-142 |       return JSON.parse(localStorage.getItem("user") || "null")?.role ?? null;
-143 |     } catch {
-144 |       return null;
-145 |     }
-146 |   });
-147 |   const isSuperAdmin = userRole === "SUPERADMIN";
-148 | 
-149 |   const cityFilteredUsers = selectedCity.id
-150 |     ? users.filter((u) => u.cityId === selectedCity.id)
-151 |     : users;
-152 |   const grouped = (["MANAGER", "DRIVER", "HOST"] as Role[]).map((role) => ({
-153 |     role,
-154 |     label: ROLE_LABELS[role],
-155 |     items: cityFilteredUsers.filter((u) => u.role === role),
-156 |   }));
-157 | 
-158 |   const handleOpenModal = (user: User | null = null) => {
-159 |     setEditingUser(user);
-160 |     if (user) {
-161 |       setForm({
-162 |         fullName: user.name,
-163 |         phone: user.phone || "",
-164 |         email: user.email,
-165 |         cityId: user.cityId || "",
-166 |         role: user.role,
-167 |         password: "",
-168 |         telegramId: user.telegramId || "",
-169 |         car: user.car || "",
-170 |       });
-171 |     } else {
-172 |       setForm({ ...EMPTY_FORM });
-173 |     }
-174 |     setIsModalOpen(true);
-175 |   };
-176 | 
-177 |   const handleSubmit = (e: React.FormEvent) => {
-178 |     e.preventDefault();
-179 |     if (!form.fullName.trim()) return;
-180 |     setIsModalOpen(false);
-181 |     if (editingUser) {
-182 |       const { password, ...rest } = form;
-183 |       const payload = password.trim() ? form : rest;
-184 |       updateUser.mutate({ id: editingUser.id, form: payload });
-185 |     } else {
-186 |       createUser.mutate(form);
-187 |     }
-188 |   };
-189 | 
-190 |   const handleDelete = async (id: string, name: string) => {
-191 |     if (!window.confirm(`Видалити користувача "${name}"?`)) return;
-192 |     try {
-193 |       await deleteUser.mutateAsync(id);
-194 |     } catch (e) {
-195 |       alert("Помилка видалення");
-196 |     }
-197 |   };
-198 | 
-199 |   const handleCreateProject = (e: React.FormEvent) => {
-200 |     e.preventDefault();
-201 |     if (!projectForm.name.trim()) return;
-202 |     setIsProjectModalOpen(false);
-203 |     setProjectForm({ name: "", color: "blue" });
-204 |     createProject.mutate(projectForm);
+ 14 | import { useAuth } from "../context/AuthContext";
+ 15 | 
+ 16 | type Role = "MANAGER" | "DRIVER" | "HOST" | "SUPERADMIN" | "GUEST";
+ 17 | 
+ 18 | interface City {
+ 19 |   id: string;
+ 20 |   name: string;
+ 21 | }
+ 22 | interface User {
+ 23 |   id: string;
+ 24 |   name: string;
+ 25 |   phone: string | null;
+ 26 |   email: string;
+ 27 |   cityId: string | null;
+ 28 |   city?: City;
+ 29 |   role: Role;
+ 30 |   telegramId?: string | null;
+ 31 |   car?: string | null;
+ 32 | }
+ 33 | interface Project {
+ 34 |   id: string;
+ 35 |   name: string;
+ 36 |   color: string;
+ 37 | }
+ 38 | 
+ 39 | const ROLE_LABELS: Record<string, string> = {
+ 40 |   MANAGER: "Менеджер",
+ 41 |   DRIVER: "Водій",
+ 42 |   HOST: "Ведучий",
+ 43 |   SUPERADMIN: "Суперадмін",
+ 44 |   GUEST: "Гість",
+ 45 | };
+ 46 | const ROLE_COLORS: Record<string, string> = {
+ 47 |   MANAGER: "bg-blue-50 text-blue-700 border-blue-200",
+ 48 |   DRIVER: "bg-emerald-50 text-emerald-700 border-emerald-200",
+ 49 |   HOST: "bg-violet-50 text-violet-700 border-violet-200",
+ 50 | };
+ 51 | const ROLE_HEADER_COLORS: Record<string, string> = {
+ 52 |   MANAGER: "bg-blue-600",
+ 53 |   DRIVER: "bg-emerald-600",
+ 54 |   HOST: "bg-violet-600",
+ 55 | };
+ 56 | const EMPTY_FORM = {
+ 57 |   fullName: "",
+ 58 |   phone: "",
+ 59 |   email: "",
+ 60 |   cityId: "",
+ 61 |   role: "MANAGER" as Role,
+ 62 |   password: "",
+ 63 |   telegramId: "",
+ 64 |   car: "",
+ 65 | };
+ 66 | 
+ 67 | const PROJECT_COLORS: Record<string, string> = {
+ 68 |   blue: "bg-blue-500",
+ 69 |   emerald: "bg-emerald-500",
+ 70 |   rose: "bg-rose-500",
+ 71 |   red: "bg-red-500",
+ 72 |   amber: "bg-amber-500",
+ 73 |   purple: "bg-purple-500",
+ 74 | };
+ 75 | 
+ 76 | function EmployeesSkeleton() {
+ 77 |   return (
+ 78 |     <div className="p-4 md:p-8 animate-pulse">
+ 79 |       <div className="flex justify-between items-center mb-8">
+ 80 |         <div>
+ 81 |           <div className="h-7 w-56 bg-slate-200 rounded-lg mb-2" />
+ 82 |           <div className="h-4 w-72 bg-slate-100 rounded" />
+ 83 |         </div>
+ 84 |         <div className="h-10 w-44 bg-slate-200 rounded-lg" />
+ 85 |       </div>
+ 86 |       {["Менеджери", "Водії", "Ведучі"].map((label) => (
+ 87 |         <div key={label} className="mb-8">
+ 88 |           <div className="flex items-center gap-3 mb-4">
+ 89 |             <div className="w-1 h-6 bg-slate-200 rounded-full" />
+ 90 |             <div className="h-5 w-24 bg-slate-200 rounded" />
+ 91 |             <div className="h-5 w-8 bg-slate-100 rounded-full" />
+ 92 |           </div>
+ 93 |           <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+ 94 |             <div className="bg-slate-50 border-b border-slate-100 px-5 py-3 flex gap-8">
+ 95 |               {["w-24", "w-20", "w-28", "w-16", "w-12"].map((w, i) => (
+ 96 |                 <div key={i} className={`h-3 ${w} bg-slate-200 rounded`} />
+ 97 |               ))}
+ 98 |             </div>
+ 99 |             {[1, 2].map((i) => (
+100 |               <div
+101 |                 key={i}
+102 |                 className="flex items-center gap-8 px-5 py-4 border-b border-slate-50"
+103 |               >
+104 |                 <div className="flex items-center gap-3">
+105 |                   <div className="w-8 h-8 rounded-full bg-slate-200" />
+106 |                   <div className="h-4 w-28 bg-slate-200 rounded" />
+107 |                 </div>
+108 |                 <div className="h-4 w-20 bg-slate-100 rounded" />
+109 |                 <div className="h-4 w-36 bg-slate-100 rounded" />
+110 |                 <div className="h-6 w-20 bg-slate-100 rounded-full" />
+111 |               </div>
+112 |             ))}
+113 |           </div>
+114 |         </div>
+115 |       ))}
+116 |     </div>
+117 |   );
+118 | }
+119 | 
+120 | export default function Employees() {
+121 |   const { data: users = [], isLoading: usersLoading } = useUsers();
+122 |   const { data: cities = [] } = useCities();
+123 |   const { data: projects = [], isLoading: projectsLoading } = useProjects();
+124 |   const createUser = useCreateUser();
+125 |   const updateUser = useUpdateUser();
+126 |   const deleteUser = useDeleteUser();
+127 |   const createProject = useCreateProject();
+128 |   const deleteProject = useDeleteProject();
+129 | 
+130 |   const isLoading = usersLoading;
+131 |   const [isModalOpen, setIsModalOpen] = useState(false);
+132 |   const [editingUser, setEditingUser] = useState<User | null>(null);
+133 |   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
+134 |   const [isSubmitting, setIsSubmitting] = useState(false);
+135 | 
+136 |   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+137 |   const [projectForm, setProjectForm] = useState({ name: "", color: "blue" });
+138 | 
+139 |   const { selectedCity } = useSelectedCity();
+140 | 
+141 |   const { user } = useAuth();
+142 |   const isSuperAdmin = user?.role === "SUPERADMIN";
+143 | 
+144 |   const cityFilteredUsers = selectedCity.id
+145 |     ? users.filter((u) => u.cityId === selectedCity.id)
+146 |     : users;
+147 |   const grouped = (["MANAGER", "DRIVER", "HOST"] as Role[]).map((role) => ({
+148 |     role,
+149 |     label: ROLE_LABELS[role],
+150 |     items: cityFilteredUsers.filter((u) => u.role === role),
+151 |   }));
+152 | 
+153 |   const handleOpenModal = (user: User | null = null) => {
+154 |     setFormError("");
+155 |     setEditingUser(user);
+156 |     if (user) {
+157 |       setForm({
+158 |         fullName: user.name,
+159 |         phone: user.phone || "",
+160 |         email: user.email,
+161 |         cityId: user.cityId || "",
+162 |         role: user.role,
+163 |         password: "",
+164 |         telegramId: user.telegramId || "",
+165 |         car: user.car || "",
+166 |       });
+167 |     } else {
+168 |       setForm({ ...EMPTY_FORM });
+169 |     }
+170 |     setIsModalOpen(true);
+171 |   };
+172 | 
+173 |   const [formError, setFormError] = useState("");
+174 | 
+175 |   const handleSubmit = async (e: React.FormEvent) => {
+176 |     e.preventDefault();
+177 |     if (!form.fullName.trim()) return;
+178 |     setFormError("");
+179 |     try {
+180 |       if (editingUser) {
+181 |         const { password, ...rest } = form;
+182 |         const payload = password.trim() ? form : rest;
+183 |         await updateUser.mutateAsync({ id: editingUser.id, form: payload });
+184 |       } else {
+185 |         await createUser.mutateAsync(form);
+186 |       }
+187 |       setIsModalOpen(false);
+188 |     } catch (err: any) {
+189 |       const messages = err?.response?.data?.message;
+190 |       setFormError(
+191 |         Array.isArray(messages)
+192 |           ? messages.join(", ")
+193 |           : messages || "Помилка збереження",
+194 |       );
+195 |     }
+196 |   };
+197 | 
+198 |   const handleDelete = async (id: string, name: string) => {
+199 |     if (!window.confirm(`Видалити користувача "${name}"?`)) return;
+200 |     try {
+201 |       await deleteUser.mutateAsync(id);
+202 |     } catch (e) {
+203 |       alert("Помилка видалення");
+204 |     }
 205 |   };
 206 | 
-207 |   const handleDeleteProject = async (id: string, name: string) => {
-208 |     if (
-209 |       !window.confirm(
-210 |         `Видалити вид події "${name}"? Існуючі події з цією назвою збережуться.`,
-211 |       )
-212 |     )
-213 |       return;
-214 |     try {
-215 |       await deleteProject.mutateAsync(id);
-216 |     } catch (e) {
-217 |       alert("Помилка видалення");
-218 |     }
-219 |   };
-220 | 
-221 |   if (isLoading) return <EmployeesSkeleton />;
-222 | 
-223 |   return (
-224 |     <motion.div
-225 |       initial={{ opacity: 0, y: 8 }}
-226 |       animate={{ opacity: 1, y: 0 }}
-227 |       transition={{ duration: 0.35, ease: "easeOut" }}
-228 |       className="p-4 md:p-8 h-full"
-229 |     >
-230 |       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
-231 |         <motion.div
-232 |           initial={{ opacity: 0, y: -10 }}
-233 |           animate={{ opacity: 1, y: 0 }}
-234 |           transition={{ duration: 0.4, ease: "easeOut" }}
-235 |         >
-236 |           <h1 className="text-2xl font-bold text-slate-800">
-237 |             Акаунти та Проєкти{" "}
-238 |             {selectedCity.id && (
-239 |               <span className="ml-2 text-base font-normal text-blue-500">
-240 |                 · {selectedCity.name}
-241 |               </span>
-242 |             )}
-243 |           </h1>
-244 |           <p className="text-sm text-slate-400 mt-1">
-245 |             Керування доступами, працівниками та видами подій
-246 |           </p>
-247 |         </motion.div>
-248 |         {isSuperAdmin && (
-249 |           <motion.button
-250 |             initial={{ opacity: 0, y: -10 }}
-251 |             animate={{ opacity: 1, y: 0 }}
-252 |             transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
-253 |             whileTap={{ scale: 0.97 }}
-254 |             onClick={() => handleOpenModal()}
-255 |             className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
-256 |           >
-257 |             + Створити користувача
-258 |           </motion.button>
-259 |         )}
-260 |       </div>
-261 | 
-262 |       <div className="space-y-8">
-263 |         {grouped.map(({ role, label, items }, gi) => (
-264 |           <motion.div
-265 |             key={role}
-266 |             initial={{ opacity: 0, y: 15 }}
-267 |             animate={{ opacity: 1, y: 0 }}
-268 |             transition={{ duration: 0.3, delay: gi * 0.06 }}
-269 |           >
-270 |             <div className={`flex items-center gap-3 mb-4`}>
-271 |               <div
-272 |                 className={`w-1 h-6 rounded-full ${ROLE_HEADER_COLORS[role]}`}
-273 |               ></div>
-274 |               <h2 className="text-lg font-bold text-slate-700">{label}</h2>
-275 |               <motion.span
-276 |                 key={items.length}
-277 |                 initial={{ scale: 0.7, opacity: 0 }}
-278 |                 animate={{ scale: 1, opacity: 1 }}
-279 |                 transition={{ duration: 0.2 }}
-280 |                 className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_COLORS[role]}`}
-281 |               >
-282 |                 {items.length}
-283 |               </motion.span>
-284 |             </div>
-285 |             {items.length === 0 ? (
-286 |               <motion.div
-287 |                 initial={{ opacity: 0, scale: 0.97 }}
-288 |                 animate={{ opacity: 1, scale: 1 }}
-289 |                 transition={{ duration: 0.25 }}
-290 |                 className="bg-white rounded-xl border border-slate-100 p-6 text-center text-slate-400 text-sm"
-291 |               >
-292 |                 Немає {label.toLowerCase()}ів
-293 |               </motion.div>
-294 |             ) : (
-295 |               <motion.div
-296 |                 whileHover={{
-297 |                   y: -2,
-298 |                   boxShadow: "0 8px 24px -4px rgba(0,0,0,0.08)",
-299 |                 }}
-300 |                 transition={{ duration: 0.2 }}
-301 |                 className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
-302 |               >
-303 |                 <div className="sm:hidden divide-y divide-slate-50">
-304 |                   <AnimatePresence initial={false}>
-305 |                     {items.map((u, ri) => (
-306 |                       <motion.div
-307 |                         key={u.id}
-308 |                         initial={{ opacity: 0 }}
-309 |                         animate={{ opacity: 1 }}
-310 |                         exit={{ opacity: 0, height: 0 }}
-311 |                         transition={{ duration: 0.2, delay: ri * 0.04 }}
-312 |                         className="p-4 flex flex-col gap-2"
-313 |                       >
-314 |                         <div className="flex items-center justify-between">
-315 |                           <div className="flex items-center gap-3">
-316 |                             <div
-317 |                               className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
-318 |                             >
-319 |                               {u.name.charAt(0)}
-320 |                             </div>
-321 |                             <span className="font-medium text-slate-800">
-322 |                               {u.name}
-323 |                             </span>
-324 |                           </div>
-325 |                           {isSuperAdmin && (
-326 |                             <div className="flex items-center gap-1 shrink-0">
-327 |                               <motion.button
-328 |                                 whileTap={{ scale: 0.93 }}
-329 |                                 onClick={() => handleOpenModal(u)}
-330 |                                 className="text-slate-400 hover:text-blue-500 p-2 hover:bg-blue-50 rounded-lg"
-331 |                               >
-332 |                                 ✏️
-333 |                               </motion.button>
-334 |                               <motion.button
-335 |                                 whileTap={{ scale: 0.93 }}
-336 |                                 onClick={() => handleDelete(u.id, u.name)}
-337 |                                 className="text-slate-400 hover:text-red-500 p-2 hover:bg-red-50 rounded-lg"
-338 |                               >
-339 |                                 🗑
-340 |                               </motion.button>
-341 |                             </div>
-342 |                           )}
-343 |                         </div>
-344 |                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 pl-11">
-345 |                           <PhoneLink phone={u.phone} />
-346 |                           <span>{u.email}</span>
-347 |                         </div>
-348 |                         <div className="flex items-center gap-2 pl-11">
-349 |                           <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
-350 |                             📍 {u.city?.name || "Всі міста"}
-351 |                           </span>
-352 |                           {u.car && (
-353 |                             <span className="text-xs text-emerald-600 font-medium">
-354 |                               🚗 {u.car}
-355 |                             </span>
-356 |                           )}
-357 |                         </div>
-358 |                       </motion.div>
-359 |                     ))}
-360 |                   </AnimatePresence>
-361 |                 </div>
-362 |                 <table className="w-full text-left hidden sm:table">
-363 |                   <thead>
-364 |                     <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-365 |                       <th className="px-5 py-3">ПІБ</th>
-366 |                       <th className="px-5 py-3">Телефон</th>
-367 |                       <th className="px-5 py-3">Пошта / Логін</th>
-368 |                       <th className="px-5 py-3">Місто</th>
-369 |                       <th className="px-5 py-3 text-center">Дії</th>
-370 |                     </tr>
-371 |                   </thead>
-372 |                   <tbody>
-373 |                     <AnimatePresence initial={false}>
-374 |                       {items.map((u, ri) => (
-375 |                         <motion.tr
-376 |                           key={u.id}
-377 |                           initial={{ opacity: 0 }}
-378 |                           animate={{ opacity: 1 }}
-379 |                           exit={{ opacity: 0, height: 0 }}
-380 |                           transition={{ duration: 0.2, delay: ri * 0.04 }}
-381 |                           className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
-382 |                         >
-383 |                           <td className="px-5 py-4">
-384 |                             <div className="flex items-center gap-3">
-385 |                               <motion.div
-386 |                                 initial={{ scale: 0.8, opacity: 0 }}
-387 |                                 animate={{ scale: 1, opacity: 1 }}
-388 |                                 transition={{ duration: 0.2, delay: 0.05 }}
-389 |                                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
-390 |                               >
-391 |                                 {u.name.charAt(0)}
-392 |                               </motion.div>
-393 |                               <span className="font-medium text-slate-800">
-394 |                                 {u.name}
-395 |                               </span>
-396 |                             </div>
-397 |                           </td>
-398 |                           <td className="px-5 py-4 text-slate-600 text-sm">
-399 |                             <PhoneLink phone={u.phone} />
-400 |                             {u.car && (
-401 |                               <p className="text-xs text-emerald-600 font-medium mt-1">
-402 |                                 🚗 {u.car}
-403 |                               </p>
-404 |                             )}
+207 |   const handleCreateProject = (e: React.FormEvent) => {
+208 |     e.preventDefault();
+209 |     if (!projectForm.name.trim()) return;
+210 |     setIsProjectModalOpen(false);
+211 |     setProjectForm({ name: "", color: "blue" });
+212 |     createProject.mutate(projectForm);
+213 |   };
+214 | 
+215 |   const handleDeleteProject = async (id: string, name: string) => {
+216 |     if (
+217 |       !window.confirm(
+218 |         `Видалити вид події "${name}"? Існуючі події з цією назвою збережуться.`,
+219 |       )
+220 |     )
+221 |       return;
+222 |     try {
+223 |       await deleteProject.mutateAsync(id);
+224 |     } catch (e) {
+225 |       alert("Помилка видалення");
+226 |     }
+227 |   };
+228 | 
+229 |   if (isLoading) return <EmployeesSkeleton />;
+230 | 
+231 |   return (
+232 |     <motion.div
+233 |       initial={{ opacity: 0, y: 8 }}
+234 |       animate={{ opacity: 1, y: 0 }}
+235 |       transition={{ duration: 0.35, ease: "easeOut" }}
+236 |       className="p-4 md:p-8 h-full"
+237 |     >
+238 |       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
+239 |         <motion.div
+240 |           initial={{ opacity: 0, y: -10 }}
+241 |           animate={{ opacity: 1, y: 0 }}
+242 |           transition={{ duration: 0.4, ease: "easeOut" }}
+243 |         >
+244 |           <h1 className="text-2xl font-bold text-slate-800">
+245 |             Акаунти та Проєкти{" "}
+246 |             {selectedCity.id && (
+247 |               <span className="ml-2 text-base font-normal text-blue-500">
+248 |                 · {selectedCity.name}
+249 |               </span>
+250 |             )}
+251 |           </h1>
+252 |           <p className="text-sm text-slate-400 mt-1">
+253 |             Керування доступами, працівниками та видами подій
+254 |           </p>
+255 |         </motion.div>
+256 |         {isSuperAdmin && (
+257 |           <motion.button
+258 |             initial={{ opacity: 0, y: -10 }}
+259 |             animate={{ opacity: 1, y: 0 }}
+260 |             transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+261 |             whileTap={{ scale: 0.97 }}
+262 |             onClick={() => handleOpenModal()}
+263 |             className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
+264 |           >
+265 |             + Створити користувача
+266 |           </motion.button>
+267 |         )}
+268 |       </div>
+269 | 
+270 |       <div className="space-y-8">
+271 |         {grouped.map(({ role, label, items }, gi) => (
+272 |           <motion.div
+273 |             key={role}
+274 |             initial={{ opacity: 0, y: 15 }}
+275 |             animate={{ opacity: 1, y: 0 }}
+276 |             transition={{ duration: 0.3, delay: gi * 0.06 }}
+277 |           >
+278 |             <div className={`flex items-center gap-3 mb-4`}>
+279 |               <div
+280 |                 className={`w-1 h-6 rounded-full ${ROLE_HEADER_COLORS[role]}`}
+281 |               ></div>
+282 |               <h2 className="text-lg font-bold text-slate-700">{label}</h2>
+283 |               <motion.span
+284 |                 key={items.length}
+285 |                 initial={{ scale: 0.7, opacity: 0 }}
+286 |                 animate={{ scale: 1, opacity: 1 }}
+287 |                 transition={{ duration: 0.2 }}
+288 |                 className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_COLORS[role]}`}
+289 |               >
+290 |                 {items.length}
+291 |               </motion.span>
+292 |             </div>
+293 |             {items.length === 0 ? (
+294 |               <motion.div
+295 |                 initial={{ opacity: 0, scale: 0.97 }}
+296 |                 animate={{ opacity: 1, scale: 1 }}
+297 |                 transition={{ duration: 0.25 }}
+298 |                 className="bg-white rounded-xl border border-slate-100 p-6 text-center text-slate-400 text-sm"
+299 |               >
+300 |                 Немає {label.toLowerCase()}ів
+301 |               </motion.div>
+302 |             ) : (
+303 |               <motion.div
+304 |                 whileHover={{
+305 |                   y: -2,
+306 |                   boxShadow: "0 8px 24px -4px rgba(0,0,0,0.08)",
+307 |                 }}
+308 |                 transition={{ duration: 0.2 }}
+309 |                 className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+310 |               >
+311 |                 <div className="sm:hidden divide-y divide-slate-50">
+312 |                   <AnimatePresence initial={false}>
+313 |                     {items.map((u, ri) => (
+314 |                       <motion.div
+315 |                         key={u.id}
+316 |                         initial={{ opacity: 0 }}
+317 |                         animate={{ opacity: 1 }}
+318 |                         exit={{ opacity: 0, height: 0 }}
+319 |                         transition={{ duration: 0.2, delay: ri * 0.04 }}
+320 |                         className="p-4 flex flex-col gap-2"
+321 |                       >
+322 |                         <div className="flex items-center justify-between">
+323 |                           <div className="flex items-center gap-3">
+324 |                             <div
+325 |                               className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
+326 |                             >
+327 |                               {u.name.charAt(0)}
+328 |                             </div>
+329 |                             <span className="font-medium text-slate-800">
+330 |                               {u.name}
+331 |                             </span>
+332 |                           </div>
+333 |                           {isSuperAdmin && (
+334 |                             <div className="flex items-center gap-1 shrink-0">
+335 |                               <motion.button
+336 |                                 whileTap={{ scale: 0.93 }}
+337 |                                 onClick={() => handleOpenModal(u)}
+338 |                                 className="text-slate-400 hover:text-blue-500 p-2 hover:bg-blue-50 rounded-lg"
+339 |                               >
+340 |                                 ✏️
+341 |                               </motion.button>
+342 |                               <motion.button
+343 |                                 whileTap={{ scale: 0.93 }}
+344 |                                 onClick={() => handleDelete(u.id, u.name)}
+345 |                                 className="text-slate-400 hover:text-red-500 p-2 hover:bg-red-50 rounded-lg"
+346 |                               >
+347 |                                 🗑
+348 |                               </motion.button>
+349 |                             </div>
+350 |                           )}
+351 |                         </div>
+352 |                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 pl-11">
+353 |                           <PhoneLink phone={u.phone} />
+354 |                           <span>{u.email}</span>
+355 |                         </div>
+356 |                         <div className="flex items-center gap-2 pl-11">
+357 |                           <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
+358 |                             📍 {u.city?.name || "Всі міста"}
+359 |                           </span>
+360 |                           {u.car && (
+361 |                             <span className="text-xs text-emerald-600 font-medium">
+362 |                               🚗 {u.car}
+363 |                             </span>
+364 |                           )}
+365 |                         </div>
+366 |                       </motion.div>
+367 |                     ))}
+368 |                   </AnimatePresence>
+369 |                 </div>
+370 |                 <table className="w-full text-left hidden sm:table">
+371 |                   <thead>
+372 |                     <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+373 |                       <th className="px-5 py-3">ПІБ</th>
+374 |                       <th className="px-5 py-3">Телефон</th>
+375 |                       <th className="px-5 py-3">Пошта / Логін</th>
+376 |                       <th className="px-5 py-3">Місто</th>
+377 |                       <th className="px-5 py-3 text-center">Дії</th>
+378 |                     </tr>
+379 |                   </thead>
+380 |                   <tbody>
+381 |                     <AnimatePresence initial={false}>
+382 |                       {items.map((u, ri) => (
+383 |                         <motion.tr
+384 |                           key={u.id}
+385 |                           initial={{ opacity: 0 }}
+386 |                           animate={{ opacity: 1 }}
+387 |                           exit={{ opacity: 0, height: 0 }}
+388 |                           transition={{ duration: 0.2, delay: ri * 0.04 }}
+389 |                           className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+390 |                         >
+391 |                           <td className="px-5 py-4">
+392 |                             <div className="flex items-center gap-3">
+393 |                               <motion.div
+394 |                                 initial={{ scale: 0.8, opacity: 0 }}
+395 |                                 animate={{ scale: 1, opacity: 1 }}
+396 |                                 transition={{ duration: 0.2, delay: 0.05 }}
+397 |                                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
+398 |                               >
+399 |                                 {u.name.charAt(0)}
+400 |                               </motion.div>
+401 |                               <span className="font-medium text-slate-800">
+402 |                                 {u.name}
+403 |                               </span>
+404 |                             </div>
 405 |                           </td>
-406 |                           <td className="px-5 py-4 text-slate-600 text-sm font-medium">
-407 |                             {u.email}
-408 |                           </td>
-409 |                           <td className="px-5 py-4">
-410 |                             <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
-411 |                               📍 {u.city?.name || "Всі міста"}
-412 |                             </span>
+406 |                           <td className="px-5 py-4 text-slate-600 text-sm">
+407 |                             <PhoneLink phone={u.phone} />
+408 |                             {u.car && (
+409 |                               <p className="text-xs text-emerald-600 font-medium mt-1">
+410 |                                 🚗 {u.car}
+411 |                               </p>
+412 |                             )}
 413 |                           </td>
-414 |                           <td className="px-5 py-4 text-center">
-415 |                             {isSuperAdmin && (
-416 |                               <>
-417 |                                 <motion.button
-418 |                                   whileTap={{ scale: 0.93 }}
-419 |                                   onClick={() => handleOpenModal(u)}
-420 |                                   className="text-slate-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 rounded-lg mr-2 transition-colors"
-421 |                                 >
-422 |                                   ✏️
-423 |                                 </motion.button>
-424 |                                 <motion.button
-425 |                                   whileTap={{ scale: 0.93 }}
-426 |                                   onClick={() => handleDelete(u.id, u.name)}
-427 |                                   className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
-428 |                                 >
-429 |                                   🗑
-430 |                                 </motion.button>
-431 |                               </>
-432 |                             )}
-433 |                           </td>
-434 |                         </motion.tr>
-435 |                       ))}
-436 |                     </AnimatePresence>
-437 |                   </tbody>
-438 |                 </table>
-439 |               </motion.div>
-440 |             )}
-441 |           </motion.div>
-442 |         ))}
-443 |       </div>
-444 | 
-445 |       {/* --- СЕКЦІЯ ПРОЄКТІВ (ВИДІВ ПОДІЙ) --- */}
-446 |       <div className="mt-16 border-t border-slate-200 pt-10">
-447 |         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-448 |           <div>
-449 |             <h2 className="text-2xl font-bold text-slate-800">
-450 |               Види подій (Проєкти)
-451 |             </h2>
-452 |             <p className="text-sm text-slate-400 mt-1">
-453 |               Ці проєкти відображатимуться у випадаючому списку при створенні
-454 |               події
-455 |             </p>
-456 |           </div>
-457 |           {isSuperAdmin && (
-458 |             <button
-459 |               onClick={() => setIsProjectModalOpen(true)}
-460 |               className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 transition-colors w-full sm:w-auto"
-461 |             >
-462 |               + Створити вид події
-463 |             </button>
-464 |           )}
-465 |         </div>
-466 | 
-467 |         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-468 |           {projects.map((p, pi) => (
-469 |             <motion.div
-470 |               key={p.id}
-471 |               initial={{ opacity: 0, y: 8 }}
-472 |               animate={{ opacity: 1, y: 0 }}
-473 |               transition={{ duration: 0.25, delay: pi * 0.05 }}
-474 |               whileHover={{
-475 |                 y: -3,
-476 |                 boxShadow: "0 8px 24px -4px rgba(0,0,0,0.10)",
-477 |               }}
-478 |               className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default"
-479 |             >
-480 |               <div className="flex items-center gap-3">
-481 |                 <motion.div
-482 |                   whileHover={{ scale: 1.3 }}
-483 |                   transition={{ duration: 0.15 }}
-484 |                   className={`w-4 h-4 rounded-full ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm`}
-485 |                 />
-486 |                 <span className="font-bold text-slate-800">{p.name}</span>
-487 |               </div>
-488 |               {isSuperAdmin && (
-489 |                 <button
-490 |                   onClick={() => handleDeleteProject(p.id, p.name)}
-491 |                   className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2 -mr-2"
-492 |                   title="Видалити"
-493 |                 >
-494 |                   🗑
-495 |                 </button>
-496 |               )}
-497 |             </motion.div>
-498 |           ))}
-499 |           {projects.length === 0 && (
-500 |             <div className="col-span-full text-center py-10 text-slate-400">
-501 |               Ви ще не додали жодного виду події
-502 |             </div>
-503 |           )}
-504 |         </div>
-505 |       </div>
-506 | 
-507 |       {/* Модалки Користувача і Проєктів */}
-508 |       {isProjectModalOpen && (
-509 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-510 |           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-511 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-512 |               <h3 className="text-xl font-bold text-slate-800">
-513 |                 Новий вид події
-514 |               </h3>
-515 |               <button
-516 |                 onClick={() => setIsProjectModalOpen(false)}
-517 |                 className="text-slate-400 text-xl leading-none p-2 -mr-2"
-518 |               >
-519 |                 ✕
-520 |               </button>
-521 |             </div>
-522 |             <form onSubmit={handleCreateProject} className="p-6">
-523 |               <label className="block text-sm font-medium text-slate-700 mb-1.5">
-524 |                 Назва
-525 |               </label>
-526 |               <input
-527 |                 type="text"
-528 |                 value={projectForm.name}
-529 |                 onChange={(e) =>
-530 |                   setProjectForm({ ...projectForm, name: e.target.value })
-531 |                 }
-532 |                 className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none mb-6"
-533 |                 required
-534 |                 placeholder="Наприклад: Шоу мильних бульбашок"
-535 |               />
-536 |               <label className="block text-sm font-medium text-slate-700 mb-3">
-537 |                 Колір для календаря
-538 |               </label>
-539 |               <div className="flex gap-4 mb-8">
-540 |                 {Object.keys(PROJECT_COLORS).map((c) => (
-541 |                   <button
-542 |                     type="button"
-543 |                     key={c}
-544 |                     onClick={() => setProjectForm({ ...projectForm, color: c })}
-545 |                     className={`w-8 h-8 rounded-full ${PROJECT_COLORS[c]} transition-all ${projectForm.color === c ? "ring-4 ring-offset-2 ring-blue-200 scale-110" : "hover:scale-110"}`}
-546 |                   />
-547 |                 ))}
-548 |               </div>
-549 |               <div className="flex gap-3">
-550 |                 <button
-551 |                   type="button"
-552 |                   onClick={() => setIsProjectModalOpen(false)}
-553 |                   className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
-554 |                 >
-555 |                   Скасувати
-556 |                 </button>
-557 |                 <button
-558 |                   type="submit"
-559 |                   className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-medium"
-560 |                 >
-561 |                   Зберегти
-562 |                 </button>
-563 |               </div>
-564 |             </form>
-565 |           </div>
-566 |         </div>
-567 |       )}
-568 | 
-569 |       {/* Ваша стара модалка Користувача */}
-570 |       {isModalOpen && (
-571 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-572 |           {/* Ваш існуючий код модалки працівника... Для стислості я зберіг базові поля */}
-573 |           <div className="bg-white rounded-2xl shadow-xl w-full sm:max-w-lg overflow-hidden flex flex-col">
-574 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-575 |               <h3 className="text-xl font-bold">
-576 |                 {editingUser ? "Редагувати" : "Новий користувач"}
-577 |               </h3>
-578 |               <button
-579 |                 onClick={() => setIsModalOpen(false)}
-580 |                 className="text-slate-400 text-xl p-2 -mr-2"
-581 |               >
-582 |                 ✕
-583 |               </button>
-584 |             </div>
-585 |             <form
-586 |               onSubmit={handleSubmit}
-587 |               className="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh]"
-588 |             >
-589 |               <input
-590 |                 type="text"
-591 |                 value={form.fullName}
-592 |                 onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-593 |                 required
-594 |                 placeholder="ПІБ"
-595 |                 className="w-full p-2.5 border rounded-lg"
-596 |               />
-597 |               <div className="grid grid-cols-2 gap-4">
-598 |                 <input
-599 |                   type="email"
-600 |                   value={form.email}
-601 |                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-602 |                   required
-603 |                   placeholder="Пошта"
-604 |                   className="w-full p-2.5 border rounded-lg"
-605 |                 />
-606 |                 <input
-607 |                   type="password"
-608 |                   value={form.password}
-609 |                   onChange={(e) =>
-610 |                     setForm({ ...form, password: e.target.value })
-611 |                   }
-612 |                   required={!editingUser}
-613 |                   placeholder="Пароль"
-614 |                   className="w-full p-2.5 border rounded-lg"
-615 |                 />
-616 |               </div>
-617 |               <div className="grid grid-cols-2 gap-4">
-618 |                 <input
-619 |                   type="tel"
-620 |                   value={form.phone}
-621 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-622 |                   placeholder="Телефон"
-623 |                   className="w-full p-2.5 border rounded-lg"
-624 |                 />
-625 |                 <input
-626 |                   type="text"
-627 |                   value={form.telegramId}
-628 |                   onChange={(e) =>
-629 |                     setForm({ ...form, telegramId: e.target.value })
-630 |                   }
-631 |                   placeholder="Telegram ID або @username"
-632 |                   className="w-full p-2.5 border rounded-lg"
-633 |                 />
-634 |               </div>
-635 |               <div className="grid grid-cols-2 gap-4">
-636 |                 <select
-637 |                   value={form.role}
-638 |                   onChange={(e) =>
-639 |                     setForm({ ...form, role: e.target.value as Role })
-640 |                   }
-641 |                   className="w-full p-2.5 border rounded-lg"
-642 |                 >
-643 |                   <option value="MANAGER">Менеджер</option>
-644 |                   <option value="DRIVER">Водій</option>
-645 |                   <option value="HOST">Ведучий</option>
-646 |                   <option value="SUPERADMIN">Суперадмін</option>
-647 |                 </select>
-648 |                 <select
-649 |                   value={form.cityId}
-650 |                   onChange={(e) => setForm({ ...form, cityId: e.target.value })}
-651 |                   className="w-full p-2.5 border rounded-lg"
-652 |                 >
-653 |                   <option value="">Всі міста</option>
-654 |                   {cities.map((c) => (
-655 |                     <option key={c.id} value={c.id}>
-656 |                       {c.name}
-657 |                     </option>
-658 |                   ))}
-659 |                 </select>
-660 |               </div>
-661 |               {form.role === "DRIVER" && (
-662 |                 <input
-663 |                   type="text"
-664 |                   value={form.car || ""}
-665 |                   onChange={(e) => setForm({ ...form, car: e.target.value })}
-666 |                   placeholder="Автомобіль (напр. Renault Trafic)"
-667 |                   className="w-full p-2.5 border rounded-lg"
-668 |                 />
-669 |               )}
-670 |               <div className="flex gap-3 mt-2">
-671 |                 <button
-672 |                   type="button"
-673 |                   onClick={() => setIsModalOpen(false)}
-674 |                   className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
-675 |                 >
-676 |                   Скасувати
-677 |                 </button>
-678 |                 <button
-679 |                   type="submit"
-680 |                   disabled={isSubmitting}
-681 |                   className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium"
-682 |                 >
-683 |                   Зберегти
-684 |                 </button>
-685 |               </div>
-686 |             </form>
-687 |           </div>
-688 |         </div>
-689 |       )}
-690 |     </motion.div>
-691 |   );
-692 | }
-693 | 
+414 |                           <td className="px-5 py-4 text-slate-600 text-sm font-medium">
+415 |                             {u.email}
+416 |                           </td>
+417 |                           <td className="px-5 py-4">
+418 |                             <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
+419 |                               📍 {u.city?.name || "Всі міста"}
+420 |                             </span>
+421 |                           </td>
+422 |                           <td className="px-5 py-4 text-center">
+423 |                             {isSuperAdmin && (
+424 |                               <>
+425 |                                 <motion.button
+426 |                                   whileTap={{ scale: 0.93 }}
+427 |                                   onClick={() => handleOpenModal(u)}
+428 |                                   className="text-slate-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 rounded-lg mr-2 transition-colors"
+429 |                                 >
+430 |                                   ✏️
+431 |                                 </motion.button>
+432 |                                 <motion.button
+433 |                                   whileTap={{ scale: 0.93 }}
+434 |                                   onClick={() => handleDelete(u.id, u.name)}
+435 |                                   className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+436 |                                 >
+437 |                                   🗑
+438 |                                 </motion.button>
+439 |                               </>
+440 |                             )}
+441 |                           </td>
+442 |                         </motion.tr>
+443 |                       ))}
+444 |                     </AnimatePresence>
+445 |                   </tbody>
+446 |                 </table>
+447 |               </motion.div>
+448 |             )}
+449 |           </motion.div>
+450 |         ))}
+451 |       </div>
+452 | 
+453 |       {/* --- СЕКЦІЯ ПРОЄКТІВ (ВИДІВ ПОДІЙ) --- */}
+454 |       <div className="mt-16 border-t border-slate-200 pt-10">
+455 |         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+456 |           <div>
+457 |             <h2 className="text-2xl font-bold text-slate-800">
+458 |               Види подій (Проєкти)
+459 |             </h2>
+460 |             <p className="text-sm text-slate-400 mt-1">
+461 |               Ці проєкти відображатимуться у випадаючому списку при створенні
+462 |               події
+463 |             </p>
+464 |           </div>
+465 |           {isSuperAdmin && (
+466 |             <button
+467 |               onClick={() => setIsProjectModalOpen(true)}
+468 |               className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 transition-colors w-full sm:w-auto"
+469 |             >
+470 |               + Створити вид події
+471 |             </button>
+472 |           )}
+473 |         </div>
+474 | 
+475 |         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+476 |           {projects.map((p, pi) => (
+477 |             <motion.div
+478 |               key={p.id}
+479 |               initial={{ opacity: 0, y: 8 }}
+480 |               animate={{ opacity: 1, y: 0 }}
+481 |               transition={{ duration: 0.25, delay: pi * 0.05 }}
+482 |               whileHover={{
+483 |                 y: -3,
+484 |                 boxShadow: "0 8px 24px -4px rgba(0,0,0,0.10)",
+485 |               }}
+486 |               className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default"
+487 |             >
+488 |               <div className="flex items-center gap-3">
+489 |                 <motion.div
+490 |                   whileHover={{ scale: 1.3 }}
+491 |                   transition={{ duration: 0.15 }}
+492 |                   className={`w-4 h-4 rounded-full ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm`}
+493 |                 />
+494 |                 <span className="font-bold text-slate-800">{p.name}</span>
+495 |               </div>
+496 |               {isSuperAdmin && (
+497 |                 <button
+498 |                   onClick={() => handleDeleteProject(p.id, p.name)}
+499 |                   className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2 -mr-2"
+500 |                   title="Видалити"
+501 |                 >
+502 |                   🗑
+503 |                 </button>
+504 |               )}
+505 |             </motion.div>
+506 |           ))}
+507 |           {projects.length === 0 && (
+508 |             <div className="col-span-full text-center py-10 text-slate-400">
+509 |               Ви ще не додали жодного виду події
+510 |             </div>
+511 |           )}
+512 |         </div>
+513 |       </div>
+514 | 
+515 |       {/* Модалки Користувача і Проєктів */}
+516 |       {isProjectModalOpen && (
+517 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+518 |           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+519 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+520 |               <h3 className="text-xl font-bold text-slate-800">
+521 |                 Новий вид події
+522 |               </h3>
+523 |               <button
+524 |                 onClick={() => setIsProjectModalOpen(false)}
+525 |                 className="text-slate-400 text-xl leading-none p-2 -mr-2"
+526 |               >
+527 |                 ✕
+528 |               </button>
+529 |             </div>
+530 |             <form onSubmit={handleCreateProject} className="p-6">
+531 |               <label className="block text-sm font-medium text-slate-700 mb-1.5">
+532 |                 Назва
+533 |               </label>
+534 |               <input
+535 |                 type="text"
+536 |                 value={projectForm.name}
+537 |                 onChange={(e) =>
+538 |                   setProjectForm({ ...projectForm, name: e.target.value })
+539 |                 }
+540 |                 className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none mb-6"
+541 |                 required
+542 |                 placeholder="Наприклад: Шоу мильних бульбашок"
+543 |               />
+544 |               <label className="block text-sm font-medium text-slate-700 mb-3">
+545 |                 Колір для календаря
+546 |               </label>
+547 |               <div className="flex gap-4 mb-8">
+548 |                 {Object.keys(PROJECT_COLORS).map((c) => (
+549 |                   <button
+550 |                     type="button"
+551 |                     key={c}
+552 |                     onClick={() => setProjectForm({ ...projectForm, color: c })}
+553 |                     className={`w-8 h-8 rounded-full ${PROJECT_COLORS[c]} transition-all ${projectForm.color === c ? "ring-4 ring-offset-2 ring-blue-200 scale-110" : "hover:scale-110"}`}
+554 |                   />
+555 |                 ))}
+556 |               </div>
+557 |               <div className="flex gap-3">
+558 |                 <button
+559 |                   type="button"
+560 |                   onClick={() => setIsProjectModalOpen(false)}
+561 |                   className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
+562 |                 >
+563 |                   Скасувати
+564 |                 </button>
+565 |                 <button
+566 |                   type="submit"
+567 |                   className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-medium"
+568 |                 >
+569 |                   Зберегти
+570 |                 </button>
+571 |               </div>
+572 |             </form>
+573 |           </div>
+574 |         </div>
+575 |       )}
+576 | 
+577 |       {/* Ваша стара модалка Користувача */}
+578 |       {isModalOpen && (
+579 |         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+580 |           {/* Ваш існуючий код модалки працівника... Для стислості я зберіг базові поля */}
+581 |           <div className="bg-white rounded-2xl shadow-xl w-full sm:max-w-lg overflow-hidden flex flex-col">
+582 |             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+583 |               <h3 className="text-xl font-bold">
+584 |                 {editingUser ? "Редагувати" : "Новий користувач"}
+585 |               </h3>
+586 |               <button
+587 |                 onClick={() => setIsModalOpen(false)}
+588 |                 className="text-slate-400 text-xl p-2 -mr-2"
+589 |               >
+590 |                 ✕
+591 |               </button>
+592 |             </div>
+593 |             <form
+594 |               onSubmit={handleSubmit}
+595 |               className="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh]"
+596 |             >
+597 |               {formError && (
+598 |                 <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">
+599 |                   {formError}
+600 |                 </div>
+601 |               )}
+602 |               <input
+603 |                 type="text"
+604 |                 value={form.fullName}
+605 |                 onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+606 |                 required
+607 |                 placeholder="ПІБ"
+608 |                 className="w-full p-2.5 border rounded-lg"
+609 |               />
+610 |               <div className="grid grid-cols-2 gap-4">
+611 |                 <input
+612 |                   type="email"
+613 |                   value={form.email}
+614 |                   onChange={(e) => setForm({ ...form, email: e.target.value })}
+615 |                   required
+616 |                   placeholder="Пошта"
+617 |                   className="w-full p-2.5 border rounded-lg"
+618 |                 />
+619 |                 <input
+620 |                   type="password"
+621 |                   value={form.password}
+622 |                   onChange={(e) =>
+623 |                     setForm({ ...form, password: e.target.value })
+624 |                   }
+625 |                   required={!editingUser}
+626 |                   placeholder="Пароль (мін. 8 симв., літера+цифра)"
+627 |                   minLength={8}
+628 |                   className="w-full p-2.5 border rounded-lg"
+629 |                 />
+630 |               </div>
+631 |               <div className="grid grid-cols-2 gap-4">
+632 |                 <input
+633 |                   type="tel"
+634 |                   value={form.phone}
+635 |                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
+636 |                   placeholder="Телефон"
+637 |                   className="w-full p-2.5 border rounded-lg"
+638 |                 />
+639 |                 <input
+640 |                   type="text"
+641 |                   value={form.telegramId}
+642 |                   onChange={(e) =>
+643 |                     setForm({ ...form, telegramId: e.target.value })
+644 |                   }
+645 |                   placeholder="Telegram ID або @username"
+646 |                   className="w-full p-2.5 border rounded-lg"
+647 |                 />
+648 |               </div>
+649 |               <div className="grid grid-cols-2 gap-4">
+650 |                 <select
+651 |                   value={form.role}
+652 |                   onChange={(e) =>
+653 |                     setForm({ ...form, role: e.target.value as Role })
+654 |                   }
+655 |                   className="w-full p-2.5 border rounded-lg"
+656 |                 >
+657 |                   <option value="MANAGER">Менеджер</option>
+658 |                   <option value="DRIVER">Водій</option>
+659 |                   <option value="HOST">Ведучий</option>
+660 |                   <option value="SUPERADMIN">Суперадмін</option>
+661 |                 </select>
+662 |                 <select
+663 |                   value={form.cityId}
+664 |                   onChange={(e) => setForm({ ...form, cityId: e.target.value })}
+665 |                   className="w-full p-2.5 border rounded-lg"
+666 |                 >
+667 |                   <option value="">Всі міста</option>
+668 |                   {cities.map((c) => (
+669 |                     <option key={c.id} value={c.id}>
+670 |                       {c.name}
+671 |                     </option>
+672 |                   ))}
+673 |                 </select>
+674 |               </div>
+675 |               {form.role === "DRIVER" && (
+676 |                 <input
+677 |                   type="text"
+678 |                   value={form.car || ""}
+679 |                   onChange={(e) => setForm({ ...form, car: e.target.value })}
+680 |                   placeholder="Автомобіль (напр. Renault Trafic)"
+681 |                   className="w-full p-2.5 border rounded-lg"
+682 |                 />
+683 |               )}
+684 |               <div className="flex gap-3 mt-2">
+685 |                 <button
+686 |                   type="button"
+687 |                   onClick={() => setIsModalOpen(false)}
+688 |                   className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
+689 |                 >
+690 |                   Скасувати
+691 |                 </button>
+692 |                 <button
+693 |                   type="submit"
+694 |                   disabled={isSubmitting}
+695 |                   className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium"
+696 |                 >
+697 |                   Зберегти
+698 |                 </button>
+699 |               </div>
+700 |             </form>
+701 |           </div>
+702 |         </div>
+703 |       )}
+704 |     </motion.div>
+705 |   );
+706 | }
+707 | 
 ```
 
 ### File: apps/frontend/src/pages/EventReport.tsx
@@ -19682,100 +20367,91 @@
   1 | import { useQuery } from "@tanstack/react-query";
   2 | import { api } from "../config/api";
   3 | import { useSelectedCity } from "../context/CityContext";
-  4 | 
-  5 | const FinanceCharts = lazy(() => import("../components/finance/FinanceCharts"));
-  6 | const StaffFinanceView = lazy(
-  7 |   () => import("../components/finance/StaffFinanceView"),
-  8 | );
-  9 | 
- 10 | function FinanceSkeleton() {
- 11 |   return (
- 12 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen flex flex-col gap-4 animate-pulse">
- 13 |       <div className="h-8 bg-slate-200 rounded-xl w-48" />
- 14 |       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
- 15 |         {Array.from({ length: 4 }).map((_, i) => (
- 16 |           <div
- 17 |             key={i}
- 18 |             className="h-24 bg-white rounded-2xl border border-slate-100"
- 19 |           />
- 20 |         ))}
- 21 |       </div>
- 22 |       <div className="h-64 bg-white rounded-2xl border border-slate-100" />
- 23 |       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
- 24 |         <div className="h-48 bg-white rounded-2xl border border-slate-100" />
+  4 | import { useAuth } from "../context/AuthContext";
+  5 | 
+  6 | const FinanceCharts = lazy(() => import("../components/finance/FinanceCharts"));
+  7 | const StaffFinanceView = lazy(
+  8 |   () => import("../components/finance/StaffFinanceView"),
+  9 | );
+ 10 | 
+ 11 | function FinanceSkeleton() {
+ 12 |   return (
+ 13 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen flex flex-col gap-4 animate-pulse">
+ 14 |       <div className="h-8 bg-slate-200 rounded-xl w-48" />
+ 15 |       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+ 16 |         {Array.from({ length: 4 }).map((_, i) => (
+ 17 |           <div
+ 18 |             key={i}
+ 19 |             className="h-24 bg-white rounded-2xl border border-slate-100"
+ 20 |           />
+ 21 |         ))}
+ 22 |       </div>
+ 23 |       <div className="h-64 bg-white rounded-2xl border border-slate-100" />
+ 24 |       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
  25 |         <div className="h-48 bg-white rounded-2xl border border-slate-100" />
- 26 |       </div>
- 27 |     </div>
- 28 |   );
- 29 | }
- 30 | 
- 31 | export default function Finance() {
- 32 |   const { selectedCity } = useSelectedCity();
- 33 |   const [period, setPeriod] = useState("year");
- 34 |   const [projectFilter, setProjectFilter] = useState("");
- 35 |   const [currentUser, setCurrentUser] = useState<{
- 36 |     role: string;
- 37 |     balance?: number;
- 38 |   } | null>(null);
- 39 |   const [myBalance, setMyBalance] = useState<number | null>(null);
- 40 | 
- 41 |   useEffect(() => {
- 42 |     try {
- 43 |       const raw = localStorage.getItem("user");
- 44 |       if (raw) setCurrentUser(JSON.parse(raw));
- 45 |     } catch {}
- 46 |   }, []);
- 47 | 
- 48 |   const isManagerOrAdmin =
- 49 |     currentUser?.role === "MANAGER" || currentUser?.role === "SUPERADMIN";
+ 26 |         <div className="h-48 bg-white rounded-2xl border border-slate-100" />
+ 27 |       </div>
+ 28 |     </div>
+ 29 |   );
+ 30 | }
+ 31 | 
+ 32 | export default function Finance() {
+ 33 |   const { selectedCity } = useSelectedCity();
+ 34 |   const { user: currentUser } = useAuth();
+ 35 |   const [period, setPeriod] = useState("year");
+ 36 |   const [projectFilter, setProjectFilter] = useState("");
+ 37 |   const [myBalance, setMyBalance] = useState<number | null>(null);
+ 38 | 
+ 39 |   const isManagerOrAdmin =
+ 40 |     currentUser?.role === "MANAGER" || currentUser?.role === "SUPERADMIN";
+ 41 | 
+ 42 |    useEffect(() => {
+ 43 |     if (isManagerOrAdmin === false) {
+ 44 |       api
+ 45 |         .get("/finance/my-balance")
+ 46 |         .then((r) => setMyBalance(r.data.balance))
+ 47 |         .catch(() => {});
+ 48 |     }
+ 49 |   }, [isManagerOrAdmin]);
  50 | 
- 51 |    useEffect(() => {
- 52 |     if (isManagerOrAdmin === false) {
- 53 |       api
- 54 |         .get("/finance/my-balance")
- 55 |         .then((r) => setMyBalance(r.data.balance))
- 56 |         .catch(() => {});
- 57 |     }
- 58 |   }, [isManagerOrAdmin]);
- 59 | 
- 60 |   const { data, isLoading } = useQuery({
- 61 |     queryKey: ["finance", selectedCity.id, period, projectFilter],
- 62 |     queryFn: async () => {
- 63 |       const params = new URLSearchParams();
- 64 |       if (period) params.set("period", period);
- 65 |       if (selectedCity?.id) params.set("cityId", selectedCity.id);
- 66 |       if (projectFilter) params.set("project", projectFilter);
- 67 |       const res = await api.get(`/finance/dashboard?${params}`);
- 68 |       return res.data;
- 69 |     },
- 70 |     enabled: !!isManagerOrAdmin,
- 71 |     staleTime: 5 * 60 * 1000,
- 72 |   });
- 73 |   
- 74 |   if (!isManagerOrAdmin) {
- 75 |     return (
- 76 |       <Suspense fallback={<FinanceSkeleton />}>
- 77 |         <StaffFinanceView myBalance={myBalance} selectedCity={selectedCity} />
- 78 |       </Suspense>
- 79 |     );
- 80 |   }
- 81 | 
- 82 |   if (isLoading || !data) return <FinanceSkeleton />;
- 83 | 
- 84 |   return (
- 85 |     <Suspense fallback={<FinanceSkeleton />}>
- 86 |       <FinanceCharts
- 87 |         data={data}
- 88 |         period={period}
- 89 |         setPeriod={setPeriod}
- 90 |         projectFilter={projectFilter}
- 91 |         setProjectFilter={setProjectFilter}
- 92 |         selectedCity={selectedCity}
- 93 |       />
- 94 |     </Suspense>
- 95 |   );
- 96 | }
- 97 | 
+ 51 |   const { data, isLoading } = useQuery({
+ 52 |     queryKey: ["finance", selectedCity.id, period, projectFilter],
+ 53 |     queryFn: async () => {
+ 54 |       const params = new URLSearchParams();
+ 55 |       if (period) params.set("period", period);
+ 56 |       if (selectedCity?.id) params.set("cityId", selectedCity.id);
+ 57 |       if (projectFilter) params.set("project", projectFilter);
+ 58 |       const res = await api.get(`/finance/dashboard?${params}`);
+ 59 |       return res.data;
+ 60 |     },
+ 61 |     enabled: !!isManagerOrAdmin,
+ 62 |     staleTime: 5 * 60 * 1000,
+ 63 |   });
+ 64 |   
+ 65 |   if (!isManagerOrAdmin) {
+ 66 |     return (
+ 67 |       <Suspense fallback={<FinanceSkeleton />}>
+ 68 |         <StaffFinanceView myBalance={myBalance} selectedCity={selectedCity} />
+ 69 |       </Suspense>
+ 70 |     );
+ 71 |   }
+ 72 | 
+ 73 |   if (isLoading || !data) return <FinanceSkeleton />;
+ 74 | 
+ 75 |   return (
+ 76 |     <Suspense fallback={<FinanceSkeleton />}>
+ 77 |       <FinanceCharts
+ 78 |         data={data}
+ 79 |         period={period}
+ 80 |         setPeriod={setPeriod}
+ 81 |         projectFilter={projectFilter}
+ 82 |         setProjectFilter={setProjectFilter}
+ 83 |         selectedCity={selectedCity}
+ 84 |       />
+ 85 |     </Suspense>
+ 86 |   );
+ 87 | }
+ 88 | 
 ```
 
 ### File: apps/frontend/src/pages/Kindergartens.tsx
@@ -20557,7 +21233,7 @@
 ### File: apps/frontend/src/pages/SchoolProfile.tsx
 ```tsx
   0 | import { useState, useMemo, useCallback, lazy, Suspense } from "react";
-  1 | import { useParams } from "react-router-dom";
+  1 | import { useParams, useNavigate } from "react-router-dom";
   2 | import { useQueryClient } from "@tanstack/react-query";
   3 | import { motion, AnimatePresence } from "framer-motion";
   4 | 
@@ -20623,652 +21299,658 @@
  64 | 
  65 | export default function SchoolProfile() {
  66 |   const { id } = useParams();
- 67 |   const qc = useQueryClient();
- 68 | 
- 69 |   const { data: schoolRaw } = useSchool(id);
- 70 |   const { data: eventsRaw = [] } = useSchoolEvents(id, false);
- 71 | 
- 72 |   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
- 73 |   const [exitingEventId, setExitingEventId] = useState<string | null>(null);
- 74 | 
- 75 |   const { data: eventFull, isLoading: eventFullLoading } = useEventFull(
- 76 |     selectedEventId ?? eventsRaw[0]?.id,
- 77 |   );
- 78 | 
- 79 |   const { data: users = [] } = useUsers();
- 80 |   const { data: completedEvents = [] } = useSchoolCompletedEvents(id);
- 81 |   const [selectedReportEvent, setSelectedReportEvent] = useState<Event | null>(
- 82 |     null,
- 83 |   );
- 84 |   const updateStatus = useUpdateEventStatus();
- 85 |   const updatePreparation = useUpdatePreparation();
- 86 |   const assignCrewMutation = useAssignCrew();
- 87 |   const submitReportMutation = useSubmitReport();
- 88 |   const addCommentMutation = useAddComment();
- 89 |   const updateHistoryMutation = useUpdateHistoryComment();
- 90 | 
- 91 |   const schoolData = useMemo(() => {
- 92 |     if (!schoolRaw) {
- 93 |       return {
- 94 |         id: "",
- 95 |         cityId: "",
- 96 |         name: "",
- 97 |         type: "Школа",
- 98 |         city: "",
- 99 |         address: "",
-100 |         director: "",
-101 |         phone: "",
-102 |         email: "",
-103 |         childrenCount: 0,
-104 |         notes: "",
-105 |       };
-106 |     }
-107 | 
-108 |     return {
-109 |       id: schoolRaw.id,
-110 |       cityId: schoolRaw.cityId,
-111 |       name: schoolRaw.name || "",
-112 |       type: schoolRaw.type || "Школа",
-113 |       city: schoolRaw.city?.name || "",
-114 |       address: schoolRaw.address || "",
-115 |       director: schoolRaw.director || "",
-116 |       phone: schoolRaw.phone || "",
-117 |       email: schoolRaw.email || "",
-118 |       childrenCount: schoolRaw.childrenCount || 0,
-119 |       notes: schoolRaw.notes || "",
-120 |     };
-121 |   }, [schoolRaw]);
-122 | 
-123 |   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-124 |   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-125 |   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
-126 |   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-127 |   const [commentModal, setCommentModal] = useState({
-128 |     isOpen: false,
-129 |     mode: "pipeline",
-130 |     stepId: null as number | null,
-131 |     historyId: null as string | null,
-132 |     text: "",
-133 |   });
-134 | 
-135 |   const currentEventBase = useMemo(
-136 |     () => eventsRaw.find((ev) => ev.id === selectedEventId) ?? eventsRaw[0],
-137 |     [eventsRaw, selectedEventId],
-138 |   );
-139 | 
-140 |   const currentEvent = useMemo(() => {
-141 |     if (!currentEventBase) return null;
-142 |     if (eventFull?.id === currentEventBase.id) {
-143 |       return { ...currentEventBase, ...eventFull };
-144 |     }
-145 |     return currentEventBase;
-146 |   }, [currentEventBase, eventFull]);
-147 |   const currentStageIndex = useMemo(() => {
-148 |     if (!currentEvent?.status) return 0;
-149 |     const idx = PIPELINE_STAGES.findIndex(
-150 |       (s) => s.key === currentEvent?.status,
-151 |     );
-152 |     return idx !== -1 ? idx : 0;
-153 |   }, [currentEvent?.status]);
-154 |   const creatorName = useMemo(
-155 |     () =>
-156 |       currentEvent?.history?.length > 0
-157 |         ? currentEvent.history[currentEvent.history.length - 1].userName
-158 |         : "Немає даних",
-159 |     [currentEvent?.history],
-160 |   );
-161 | 
-162 |   const handlePipelineClick = useCallback(
-163 |     (stepId: number) => {
-164 |       if (!currentEvent) return;
-165 |       const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-166 |       if (nextStage?.id !== stepId) return;
-167 |       if (nextStage.key === "REPORT") return setIsReportModalOpen(true);
-168 |       setCommentModal({
-169 |         isOpen: true,
-170 |         mode: "pipeline",
-171 |         stepId: nextStage.id,
-172 |         historyId: null,
-173 |         text: "",
-174 |       });
-175 |     },
-176 |     [currentEvent, currentStageIndex],
-177 |   );
-178 | 
-179 |   const handleHistoryClick = useCallback(
-180 |     (historyItem: { id: string; comment?: string }) => {
-181 |       setCommentModal({
-182 |         isOpen: true,
-183 |         mode: "history",
-184 |         stepId: null,
-185 |         historyId: historyItem.id,
-186 |         text: historyItem.comment || "",
-187 |       });
-188 |     },
-189 |     [],
-190 |   );
-191 | 
-192 |   const handleAddCommentClick = useCallback(() => {
-193 |     setCommentModal({
-194 |       isOpen: true,
-195 |       mode: "add_comment",
-196 |       stepId: null,
-197 |       historyId: null,
-198 |       text: "",
-199 |     });
-200 |   }, []);
-201 | 
-202 |   const handleSaveComment = useCallback(
-203 |     async (e: React.FormEvent) => {
-204 |       e.preventDefault();
-205 |       if (commentModal.mode === "pipeline") {
-206 |         const activeStage = PIPELINE_STAGES[currentStageIndex];
-207 |         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
-208 |         if (!nextStage || !currentEvent) return;
-209 | 
-210 |         await updateStatus.mutateAsync({
-211 |           eventId: currentEvent.id,
-212 |           status: nextStage.key,
-213 |           actionName: `Етап пройдено: ${activeStage.name}`,
-214 |           comment: commentModal.text,
-215 |         });
-216 |         if (nextStage.key === "RE_SALE") {
-217 |           setExitingEventId(currentEvent.id);
-218 |           setTimeout(() => {
-219 |             setSelectedEventId(null);
-220 |             setExitingEventId(null);
-221 |           }, 500);
-222 |         }
-223 |       } else if (commentModal.mode === "add_comment") {
-224 |         await addCommentMutation.mutateAsync({
-225 |           eventId: currentEvent.id,
-226 |           comment: commentModal.text,
-227 |         });
-228 |       } else if (commentModal.mode === "history" && commentModal.historyId) {
-229 |         await updateHistoryMutation.mutateAsync({
-230 |           historyId: commentModal.historyId,
-231 |           comment: commentModal.text,
-232 |           eventId: currentEvent.id,
-233 |         });
-234 |       }
-235 |       setCommentModal({
-236 |         isOpen: false,
-237 |         mode: "pipeline",
-238 |         stepId: null,
-239 |         historyId: null,
-240 |         text: "",
-241 |       });
-242 |     },
-243 |     [
-244 |       commentModal,
-245 |       currentEvent,
-246 |       currentStageIndex,
-247 |       updateStatus,
-248 |       addCommentMutation,
-249 |       updateHistoryMutation,
-250 |     ],
-251 |   );
-252 | 
-253 |   const updateSchoolMutation = useUpdateSchool();
-254 |   const createEventMutation = useCreateEvent();
-255 | 
-256 |   const handleSaveEvent = useCallback(
-257 |     async (data: EventFormValues) => {
-258 |       if (!schoolData.id) return;
-259 | 
-260 |       const payload = {
-261 |         ...data,
-262 |         schoolId: schoolData.id,
-263 |         cityId: schoolData.cityId,
-264 |         childrenPlanned: Number(data.childrenPlanned) || 0,
-265 |         price: Number(data.price) || 0,
-266 |       };
-267 | 
-268 |       const newEvent = await createEventMutation.mutateAsync(payload);
+ 67 |   const navigate = useNavigate();
+ 68 |   const qc = useQueryClient();
+ 69 |   const [isLeavingPage, setIsLeavingPage] = useState(false);
+ 70 | 
+ 71 |   const { data: schoolRaw } = useSchool(id);
+ 72 |   const { data: eventsRaw = [] } = useSchoolEvents(id, false);
+ 73 | 
+ 74 |   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+ 75 |   const [exitingEventId, setExitingEventId] = useState<string | null>(null);
+ 76 | 
+ 77 |   const { data: eventFull, isLoading: eventFullLoading } = useEventFull(
+ 78 |     selectedEventId ?? eventsRaw[0]?.id,
+ 79 |   );
+ 80 | 
+ 81 |   const { data: users = [] } = useUsers();
+ 82 |   const { data: completedEvents = [] } = useSchoolCompletedEvents(id);
+ 83 |   const [selectedReportEvent, setSelectedReportEvent] = useState<Event | null>(
+ 84 |     null,
+ 85 |   );
+ 86 |   const updateStatus = useUpdateEventStatus();
+ 87 |   const updatePreparation = useUpdatePreparation();
+ 88 |   const assignCrewMutation = useAssignCrew();
+ 89 |   const submitReportMutation = useSubmitReport();
+ 90 |   const addCommentMutation = useAddComment();
+ 91 |   const updateHistoryMutation = useUpdateHistoryComment();
+ 92 | 
+ 93 |   const schoolData = useMemo(() => {
+ 94 |     if (!schoolRaw) {
+ 95 |       return {
+ 96 |         id: "",
+ 97 |         cityId: "",
+ 98 |         name: "",
+ 99 |         type: "Школа",
+100 |         city: "",
+101 |         address: "",
+102 |         director: "",
+103 |         phone: "",
+104 |         email: "",
+105 |         childrenCount: 0,
+106 |         notes: "",
+107 |       };
+108 |     }
+109 | 
+110 |     return {
+111 |       id: schoolRaw.id,
+112 |       cityId: schoolRaw.cityId,
+113 |       name: schoolRaw.name || "",
+114 |       type: schoolRaw.type || "Школа",
+115 |       city: schoolRaw.city?.name || "",
+116 |       address: schoolRaw.address || "",
+117 |       director: schoolRaw.director || "",
+118 |       phone: schoolRaw.phone || "",
+119 |       email: schoolRaw.email || "",
+120 |       childrenCount: schoolRaw.childrenCount || 0,
+121 |       notes: schoolRaw.notes || "",
+122 |     };
+123 |   }, [schoolRaw]);
+124 | 
+125 |   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+126 |   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+127 |   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
+128 |   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+129 |   const [commentModal, setCommentModal] = useState({
+130 |     isOpen: false,
+131 |     mode: "pipeline",
+132 |     stepId: null as number | null,
+133 |     historyId: null as string | null,
+134 |     text: "",
+135 |   });
+136 | 
+137 |   const currentEventBase = useMemo(
+138 |     () => eventsRaw.find((ev) => ev.id === selectedEventId) ?? eventsRaw[0],
+139 |     [eventsRaw, selectedEventId],
+140 |   );
+141 | 
+142 |   const currentEvent = useMemo(() => {
+143 |     if (!currentEventBase) return null;
+144 |     if (eventFull?.id === currentEventBase.id) {
+145 |       return { ...currentEventBase, ...eventFull };
+146 |     }
+147 |     return currentEventBase;
+148 |   }, [currentEventBase, eventFull]);
+149 |   const currentStageIndex = useMemo(() => {
+150 |     if (!currentEvent?.status) return 0;
+151 |     const idx = PIPELINE_STAGES.findIndex(
+152 |       (s) => s.key === currentEvent?.status,
+153 |     );
+154 |     return idx !== -1 ? idx : 0;
+155 |   }, [currentEvent?.status]);
+156 |   const creatorName = useMemo(
+157 |     () =>
+158 |       currentEvent?.history?.length > 0
+159 |         ? currentEvent.history[currentEvent.history.length - 1].userName
+160 |         : "Немає даних",
+161 |     [currentEvent?.history],
+162 |   );
+163 | 
+164 |   const handlePipelineClick = useCallback(
+165 |     (stepId: number) => {
+166 |       if (!currentEvent) return;
+167 |       const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+168 |       if (nextStage?.id !== stepId) return;
+169 |       if (nextStage.key === "REPORT") return setIsReportModalOpen(true);
+170 |       setCommentModal({
+171 |         isOpen: true,
+172 |         mode: "pipeline",
+173 |         stepId: nextStage.id,
+174 |         historyId: null,
+175 |         text: "",
+176 |       });
+177 |     },
+178 |     [currentEvent, currentStageIndex],
+179 |   );
+180 | 
+181 |   const handleHistoryClick = useCallback(
+182 |     (historyItem: { id: string; comment?: string }) => {
+183 |       setCommentModal({
+184 |         isOpen: true,
+185 |         mode: "history",
+186 |         stepId: null,
+187 |         historyId: historyItem.id,
+188 |         text: historyItem.comment || "",
+189 |       });
+190 |     },
+191 |     [],
+192 |   );
+193 | 
+194 |   const handleAddCommentClick = useCallback(() => {
+195 |     setCommentModal({
+196 |       isOpen: true,
+197 |       mode: "add_comment",
+198 |       stepId: null,
+199 |       historyId: null,
+200 |       text: "",
+201 |     });
+202 |   }, []);
+203 | 
+204 |   const handleSaveComment = useCallback(
+205 |     async (e: React.FormEvent) => {
+206 |       e.preventDefault();
+207 |       if (commentModal.mode === "pipeline") {
+208 |         const activeStage = PIPELINE_STAGES[currentStageIndex];
+209 |         const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+210 |         if (!nextStage || !currentEvent) return;
+211 | 
+212 |         await updateStatus.mutateAsync({
+213 |           eventId: currentEvent.id,
+214 |           status: nextStage.key,
+215 |           actionName: `Етап пройдено: ${activeStage.name}`,
+216 |           comment: commentModal.text,
+217 |         });
+218 |         if (nextStage.key === "RE_SALE") {
+219 |           setExitingEventId(currentEvent.id);
+220 |           setTimeout(() => {
+221 |             setSelectedEventId(null);
+222 |             setExitingEventId(null);
+223 |           }, 500);
+224 |         }
+225 |       } else if (commentModal.mode === "add_comment") {
+226 |         await addCommentMutation.mutateAsync({
+227 |           eventId: currentEvent.id,
+228 |           comment: commentModal.text,
+229 |         });
+230 |       } else if (commentModal.mode === "history" && commentModal.historyId) {
+231 |         await updateHistoryMutation.mutateAsync({
+232 |           historyId: commentModal.historyId,
+233 |           comment: commentModal.text,
+234 |           eventId: currentEvent.id,
+235 |         });
+236 |       }
+237 |       setCommentModal({
+238 |         isOpen: false,
+239 |         mode: "pipeline",
+240 |         stepId: null,
+241 |         historyId: null,
+242 |         text: "",
+243 |       });
+244 |     },
+245 |     [
+246 |       commentModal,
+247 |       currentEvent,
+248 |       currentStageIndex,
+249 |       updateStatus,
+250 |       addCommentMutation,
+251 |       updateHistoryMutation,
+252 |     ],
+253 |   );
+254 | 
+255 |   const updateSchoolMutation = useUpdateSchool();
+256 |   const createEventMutation = useCreateEvent();
+257 | 
+258 |   const handleSaveEvent = useCallback(
+259 |     async (data: EventFormValues) => {
+260 |       if (!schoolData.id) return;
+261 | 
+262 |       const payload = {
+263 |         ...data,
+264 |         schoolId: schoolData.id,
+265 |         cityId: schoolData.cityId,
+266 |         childrenPlanned: Number(data.childrenPlanned) || 0,
+267 |         price: Number(data.price) || 0,
+268 |       };
 269 | 
-270 |       setIsEventModalOpen(false);
-271 |       setSelectedEventId(newEvent.id);
-272 |     },
-273 |     [schoolData, createEventMutation],
-274 |   );
-275 | 
-276 |   const handleSaveSchoolInfo = useCallback(
-277 |     async (data: SchoolEditFormValues) => {
-278 |       if (!id) return;
-279 | 
-280 |       await updateSchoolMutation.mutateAsync({
-281 |         ...data,
-282 |         childrenCount: Number(data.childrenCount) || 0,
-283 |         id,
-284 |       });
-285 |       setIsEditModalOpen(false);
-286 |     },
-287 |     [id, updateSchoolMutation],
-288 |   );
-289 | 
-290 |   const editDefaultValues = useMemo<SchoolEditFormValues>(
-291 |     () => ({
-292 |       type: (schoolData.type as "Школа" | "Садочок") || "Школа",
-293 |       address: schoolData.address,
-294 |       director: schoolData.director,
-295 |       phone: schoolData.phone,
-296 |       email: schoolData.email,
-297 |       childrenCount: schoolData.childrenCount
-298 |         ? String(schoolData.childrenCount)
-299 |         : "",
-300 |     }),
-301 |     [schoolData],
-302 |   );
-303 | 
-304 |   const handleUpdatePreparation = useCallback(
-305 |     async (field: string, status: "PLANNED" | "IN_PROGRESS" | "DONE") => {
-306 |       if (!currentEvent) return;
-307 |       await updatePreparation.mutateAsync({
-308 |         eventId: currentEvent.id,
-309 |         field,
-310 |         status,
-311 |       });
-312 |     },
-313 |     [currentEvent, updatePreparation],
-314 |   );
-315 | 
-316 |   const handleSubmitReport = useCallback(
-317 |     async (reportData: ReportData) => {
-318 |       if (!currentEvent) return;
-319 |       await submitReportMutation.mutateAsync({
-320 |         eventId: currentEvent.id,
-321 |         reportData,
-322 |       });
-323 |       await updateStatus.mutateAsync({
+270 |       const newEvent = await createEventMutation.mutateAsync(payload);
+271 | 
+272 |       setIsEventModalOpen(false);
+273 |       setSelectedEventId(newEvent.id);
+274 |     },
+275 |     [schoolData, createEventMutation],
+276 |   );
+277 | 
+278 |   const handleSaveSchoolInfo = useCallback(
+279 |     async (data: SchoolEditFormValues) => {
+280 |       if (!id) return;
+281 | 
+282 |       await updateSchoolMutation.mutateAsync({
+283 |         ...data,
+284 |         childrenCount: Number(data.childrenCount) || 0,
+285 |         id,
+286 |       });
+287 |       setIsEditModalOpen(false);
+288 |     },
+289 |     [id, updateSchoolMutation],
+290 |   );
+291 | 
+292 |   const editDefaultValues = useMemo<SchoolEditFormValues>(
+293 |     () => ({
+294 |       type: (schoolData.type as "Школа" | "Садочок") || "Школа",
+295 |       address: schoolData.address,
+296 |       director: schoolData.director,
+297 |       phone: schoolData.phone,
+298 |       email: schoolData.email,
+299 |       childrenCount: schoolData.childrenCount
+300 |         ? String(schoolData.childrenCount)
+301 |         : "",
+302 |     }),
+303 |     [schoolData],
+304 |   );
+305 | 
+306 |   const handleUpdatePreparation = useCallback(
+307 |     async (field: string, status: "PLANNED" | "IN_PROGRESS" | "DONE") => {
+308 |       if (!currentEvent) return;
+309 |       await updatePreparation.mutateAsync({
+310 |         eventId: currentEvent.id,
+311 |         field,
+312 |         status,
+313 |       });
+314 |     },
+315 |     [currentEvent, updatePreparation],
+316 |   );
+317 | 
+318 |   const handleSubmitReport = useCallback(
+319 |     async (reportData: ReportData) => {
+320 |       if (!currentEvent) return;
+321 |       setIsReportModalOpen(false);
+322 |       setExitingEventId(currentEvent.id);
+323 |       await submitReportMutation.mutateAsync({
 324 |         eventId: currentEvent.id,
-325 |         status: "RE_SALE",
-326 |         actionName: "Звіт сформовано. Захід завершено.",
-327 |       });
-328 |       setExitingEventId(currentEvent.id);
-329 |       setTimeout(() => {
-330 |         setSelectedEventId(null);
-331 |         setExitingEventId(null);
-332 |       }, 500);
-333 |       setIsReportModalOpen(false);
-334 |     },
-335 |     [currentEvent, submitReportMutation, updateStatus],
-336 |   );
-337 | 
-338 |   const handleAssignCrew = useCallback(
-339 |     async (crewId: string) => {
-340 |       if (!currentEvent) return;
-341 | 
-342 |       await assignCrewMutation.mutateAsync({
-343 |         eventId: currentEvent.id,
-344 |         crewId,
-345 |       });
-346 | 
-347 |       await updatePreparation.mutateAsync({
-348 |         eventId: currentEvent.id,
-349 |         field: "assignCrew",
-350 |         status: "DONE",
-351 |       });
-352 | 
-353 |       setIsCrewModalOpen(false);
-354 |     },
-355 |     [currentEvent, assignCrewMutation, updatePreparation],
-356 |   );
+325 |         reportData,
+326 |       });
+327 |       setIsLeavingPage(true);
+328 |       setTimeout(() => {
+329 |         navigate("/schools");
+330 |       }, 300);
+331 |     },
+332 |     [currentEvent, submitReportMutation, navigate],
+333 |   );
+334 | 
+335 |   const handleAssignCrew = useCallback(
+336 |     async (crewId: string) => {
+337 |       if (!currentEvent) return;
+338 | 
+339 |       setIsCrewModalOpen(false);
+340 | 
+341 |       await Promise.all([
+342 |         assignCrewMutation.mutateAsync({
+343 |           eventId: currentEvent.id,
+344 |           crewId,
+345 |         }),
+346 |         updatePreparation.mutateAsync({
+347 |           eventId: currentEvent.id,
+348 |           field: "assignCrew",
+349 |           status: "DONE",
+350 |         }),
+351 |       ]);
+352 |     },
+353 |     [currentEvent, assignCrewMutation, updatePreparation],
+354 |   );
+355 | 
+356 |   const events = eventsRaw;
 357 | 
-358 |   const events = eventsRaw;
-359 | 
-360 |   const openAddEventModal = useCallback(() => {
-361 |     setIsEventModalOpen(true);
-362 |   }, []);
-363 | 
-364 |   const eventDefaultValues = useMemo<Partial<EventFormValues>>(
-365 |     () => ({
-366 |       project: "Голограма для школи",
-367 |       time: "11:00",
-368 |       address: schoolData.address,
-369 |       contactPerson: schoolData.director,
-370 |       contactPhone: schoolData.phone,
-371 |       childrenPlanned: String(schoolData.childrenCount),
-372 |     }),
-373 |     [schoolData],
-374 |   );
-375 |   const stagger = (i: number) => ({
-376 |     initial: { opacity: 0, y: 10 },
-377 |     animate: { opacity: 1, y: 0 },
-378 |     transition: { duration: 0.3, delay: 0.1 + i * 0.07, ease: "easeOut" },
-379 |   });
-380 | 
-381 |   return (
-382 |     <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8">
-383 |       <SchoolProfileHeader
-384 |         schoolData={schoolData}
-385 |         onEdit={() => setIsEditModalOpen(true)}
-386 |         onAddEvent={openAddEventModal}
-387 |       />
-388 | 
-389 |       <div className="flex flex-col xl:flex-row gap-6">
-390 |         {/* Ліва колонка */}
-391 |         <div className="w-full xl:w-80 flex flex-col gap-6">
-392 |           <motion.div {...stagger(0)}>
-393 |             <Suspense
-394 |               fallback={
-395 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-396 |               }
-397 |             >
-398 |               <SchoolInfoCard schoolData={schoolData} />
-399 |             </Suspense>
-400 |           </motion.div>
-401 | 
-402 |           <AnimatePresence>
-403 |             {currentEvent && currentStageIndex >= 1 && (
-404 |               <motion.div
-405 |                 key="responsible"
-406 |                 initial={{ opacity: 0, y: 8 }}
-407 |                 animate={{ opacity: 1, y: 0 }}
-408 |                 exit={{ opacity: 0, y: -8 }}
-409 |                 transition={{ duration: 0.25 }}
-410 |                 className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
-411 |               >
-412 |                 <h3 className="font-bold text-slate-800 mb-4">
-413 |                   Відповідальна особа
-414 |                 </h3>
-415 |                 <ul className="space-y-2 text-sm">
-416 |                   <li className="flex justify-between">
-417 |                     <span className="text-slate-500">Остання дія:</span>
-418 |                     <span className="font-medium text-blue-600">
-419 |                       {creatorName}
-420 |                     </span>
-421 |                   </li>
-422 |                 </ul>
-423 |               </motion.div>
-424 |             )}
-425 |           </AnimatePresence>
-426 | 
-427 |           <motion.div {...stagger(1)}>
-428 |             <Suspense
-429 |               fallback={
-430 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-431 |               }
-432 |             >
-433 |               <HistoryTimeline
-434 |                 currentEvent={
-435 |                   eventFullLoading ? currentEventBase : currentEvent
-436 |                 }
-437 |                 onHistoryClick={handleHistoryClick}
-438 |                 onAddCommentClick={handleAddCommentClick}
-439 |               />
-440 |             </Suspense>
-441 |           </motion.div>
-442 |         </div>
-443 | 
-444 |         {/* Права колонка */}
-445 |         <motion.div
-446 |           className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${
-447 |             exitingEventId === currentEvent?.id
-448 |               ? "opacity-0 scale-95 -translate-y-4 pointer-events-none"
-449 |               : ""
-450 |           }`}
-451 |           initial={{ opacity: 0, y: 10 }}
-452 |           animate={{ opacity: 1, y: 0 }}
-453 |           transition={{ duration: 0.3, delay: 0.15 }}
-454 |         >
-455 |           {currentEvent && (
-456 |             <Suspense
-457 |               fallback={
-458 |                 <div className="bg-white rounded-2xl h-24 animate-pulse border border-slate-100" />
-459 |               }
-460 |             >
-461 |               <Pipeline
-462 |                 currentStageIndex={currentStageIndex}
-463 |                 currentEvent={currentEvent}
-464 |                 onPipelineClick={handlePipelineClick}
-465 |                 stages={PIPELINE_STAGES}
-466 |               />
-467 |             </Suspense>
-468 |           )}
-469 | 
-470 |           <AnimatePresence>
-471 |             {currentEvent && currentStageIndex >= 4 && (
-472 |               <motion.div
-473 |                 key="preparation"
-474 |                 initial={{ opacity: 0, y: 8 }}
-475 |                 animate={{ opacity: 1, y: 0 }}
-476 |                 exit={{ opacity: 0, y: -8 }}
-477 |                 transition={{ duration: 0.25 }}
-478 |                 className="grid grid-cols-1 xl:grid-cols-2 gap-6"
-479 |               >
-480 |                 {eventFullLoading ? (
-481 |                   <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-pulse h-48" />
-482 |                 ) : (
-483 |                   <Suspense
-484 |                     fallback={
-485 |                       <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-486 |                     }
-487 |                   >
-488 |                     <EventPreparation
-489 |                       data={currentEvent.preparation || {}}
-490 |                       onUpdate={handleUpdatePreparation}
-491 |                       onOpenCrewModal={() => setIsCrewModalOpen(true)}
-492 |                     />
-493 |                   </Suspense>
-494 |                 )}
-495 |                 <Suspense
-496 |                   fallback={
-497 |                     <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
-498 |                   }
-499 |                 >
-500 |                   <AssignedCrew currentEvent={currentEvent} employees={users} />
-501 |                 </Suspense>
-502 |               </motion.div>
-503 |             )}
-504 |           </AnimatePresence>
-505 | 
-506 |           <motion.div {...stagger(2)}>
-507 |             <Suspense
-508 |               fallback={
-509 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
-510 |               }
-511 |             >
-512 |               <EventDetails
-513 |                 currentEvent={currentEvent}
-514 |                 schoolName={schoolData.name}
-515 |                 cityId={schoolData.cityId}
-516 |                 onEventUpdated={() =>
-517 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
-518 |                 }
-519 |               />
-520 |             </Suspense>
-521 |           </motion.div>
-522 | 
-523 |           <motion.div {...stagger(3)}>
-524 |             <Suspense
-525 |               fallback={
-526 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
-527 |               }
-528 |             >
-529 |               <EventsTable
-530 |                 events={events}
-531 |                 selectedEventId={selectedEventId}
-532 |                 onEventSelect={setSelectedEventId}
-533 |                 onDeleteSuccess={() =>
-534 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
-535 |                 }
-536 |               />
-537 |             </Suspense>
-538 |             {completedEvents.length > 0 && (
-539 |               <motion.div {...stagger(4)}>
-540 |                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-541 |                   <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-542 |                     <h3 className="font-bold text-slate-800">
-543 |                       Завершені події ({completedEvents.length})
-544 |                     </h3>
-545 |                   </div>
-546 |                   <div className="md:hidden divide-y divide-slate-50">
-547 |                     {completedEvents.map((ev: Event) => (
-548 |                       <div
-549 |                         key={ev.id}
-550 |                         onClick={() => setSelectedReportEvent(ev)}
-551 |                         className="flex items-center justify-between gap-3 p-4 active:bg-slate-50 cursor-pointer"
-552 |                       >
-553 |                         <div className="min-w-0">
-554 |                           <p className="font-medium text-blue-600 truncate">
-555 |                             {ev.project}
-556 |                           </p>
-557 |                           <p className="text-xs text-slate-400 mt-0.5">
-558 |                             {new Date(ev.date).toLocaleDateString("uk-UA")}
-559 |                           </p>
-560 |                           <p className="text-xs text-slate-500 mt-1">
-561 |                             👶{" "}
-562 |                             {ev.report?.childrenCount ||
-563 |                               ev.childrenPlanned ||
-564 |                               "—"}{" "}
-565 |                             дітей
-566 |                           </p>
-567 |                         </div>
-568 |                         <div className="text-right shrink-0">
-569 |                           <p className="font-semibold text-slate-800 text-sm">
-570 |                             {new Intl.NumberFormat("uk-UA").format(
-571 |                               ev.report?.totalSum || ev.price || 0,
-572 |                             )}{" "}
-573 |                             грн
-574 |                           </p>
-575 |                           <p className="text-xs font-medium text-emerald-600 mt-0.5">
-576 |                             +
-577 |                             {new Intl.NumberFormat("uk-UA").format(
-578 |                               ev.report?.remainderSum || 0,
-579 |                             )}{" "}
-580 |                             грн
-581 |                           </p>
-582 |                         </div>
-583 |                       </div>
-584 |                     ))}
-585 |                   </div>
-586 |                   <div className="hidden md:block overflow-x-auto">
-587 |                     <table className="w-full text-left text-sm">
-588 |                       <thead>
-589 |                         <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
-590 |                           <th className="p-4">Проєкт</th>
-591 |                           <th className="p-4">Дата</th>
-592 |                           <th className="p-4">Дітей</th>
-593 |                           <th className="p-4">Виручка</th>
-594 |                           <th className="p-4">Прибуток</th>
-595 |                         </tr>
-596 |                       </thead>
-597 |                       <tbody>
-598 |                         {completedEvents.map((ev: any) => (
-599 |                           <tr
-600 |                             key={ev.id}
-601 |                             onClick={() => setSelectedReportEvent(ev)}
-602 |                             className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
-603 |                           >
-604 |                             <td className="p-4 text-slate-700 font-medium">
-605 |                               {ev.project}
-606 |                             </td>
-607 |                             <td className="p-4 text-slate-600">
-608 |                               {new Date(ev.date).toLocaleDateString("uk-UA")}
-609 |                             </td>
-610 |                             <td className="p-4 font-medium">
-611 |                               {ev.report?.childrenCount ||
-612 |                                 ev.childrenPlanned ||
-613 |                                 "—"}
-614 |                             </td>
-615 |                             <td className="p-4 font-medium text-slate-800">
-616 |                               {new Intl.NumberFormat("uk-UA").format(
-617 |                                 ev.report?.totalSum || ev.price || 0,
-618 |                               )}{" "}
-619 |                               грн
+358 |   const openAddEventModal = useCallback(() => {
+359 |     setIsEventModalOpen(true);
+360 |   }, []);
+361 | 
+362 |   const eventDefaultValues = useMemo<Partial<EventFormValues>>(
+363 |     () => ({
+364 |       project: "Голограма для школи",
+365 |       time: "11:00",
+366 |       address: schoolData.address,
+367 |       contactPerson: schoolData.director,
+368 |       contactPhone: schoolData.phone,
+369 |       childrenPlanned: String(schoolData.childrenCount),
+370 |     }),
+371 |     [schoolData],
+372 |   );
+373 |   const stagger = (i: number) => ({
+374 |     initial: { opacity: 0, y: 10 },
+375 |     animate: { opacity: 1, y: 0 },
+376 |     transition: { duration: 0.3, delay: 0.1 + i * 0.07, ease: "easeOut" },
+377 |   });
+378 | 
+379 |   return (
+380 |     <motion.div
+381 |       animate={{ opacity: isLeavingPage ? 0 : 1 }}
+382 |       transition={{ duration: 0.3 }}
+383 |       className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8"
+384 |     >
+385 |       <SchoolProfileHeader
+386 |         schoolData={schoolData}
+387 |         onEdit={() => setIsEditModalOpen(true)}
+388 |         onAddEvent={openAddEventModal}
+389 |       />
+390 | 
+391 |       <div className="flex flex-col xl:flex-row gap-6">
+392 |         {/* Ліва колонка */}
+393 |         <div className="w-full xl:w-80 flex flex-col gap-6">
+394 |           <motion.div {...stagger(0)}>
+395 |             <Suspense
+396 |               fallback={
+397 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+398 |               }
+399 |             >
+400 |               <SchoolInfoCard schoolData={schoolData} />
+401 |             </Suspense>
+402 |           </motion.div>
+403 | 
+404 |           <AnimatePresence>
+405 |             {currentEvent &&
+406 |               currentStageIndex >= 1 &&
+407 |               exitingEventId !== currentEvent.id && (
+408 |               <motion.div
+409 |                 key="responsible"
+410 |                 initial={{ opacity: 0, y: 8 }}
+411 |                 animate={{ opacity: 1, y: 0 }}
+412 |                 exit={{ opacity: 0, y: -8 }}
+413 |                 transition={{ duration: 0.25 }}
+414 |                 className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
+415 |               >
+416 |                 <h3 className="font-bold text-slate-800 mb-4">
+417 |                   Відповідальна особа
+418 |                 </h3>
+419 |                 <ul className="space-y-2 text-sm">
+420 |                   <li className="flex justify-between">
+421 |                     <span className="text-slate-500">Остання дія:</span>
+422 |                     <span className="font-medium text-blue-600">
+423 |                       {creatorName}
+424 |                     </span>
+425 |                   </li>
+426 |                 </ul>
+427 |               </motion.div>
+428 |             )}
+429 |           </AnimatePresence>
+430 | 
+431 |           <motion.div {...stagger(1)}>
+432 |             <Suspense
+433 |               fallback={
+434 |                 <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+435 |               }
+436 |             >
+437 |               <HistoryTimeline
+438 |                 currentEvent={
+439 |                   eventFullLoading ? currentEventBase : currentEvent
+440 |                 }
+441 |                 onHistoryClick={handleHistoryClick}
+442 |                 onAddCommentClick={handleAddCommentClick}
+443 |               />
+444 |             </Suspense>
+445 |           </motion.div>
+446 |         </div>
+447 | 
+448 |         {/* Права колонка */}
+449 |         <motion.div
+450 |           className={`flex-1 flex flex-col gap-6 transition-all duration-500 ease-in-out transform origin-top ${
+451 |             exitingEventId === currentEvent?.id
+452 |               ? "opacity-0 scale-95 -translate-y-4 pointer-events-none"
+453 |               : ""
+454 |           }`}
+455 |           initial={{ opacity: 0, y: 10 }}
+456 |           animate={{ opacity: 1, y: 0 }}
+457 |           transition={{ duration: 0.3, delay: 0.15 }}
+458 |         >
+459 |           {currentEvent && (
+460 |             <Suspense
+461 |               fallback={
+462 |                 <div className="bg-white rounded-2xl h-24 animate-pulse border border-slate-100" />
+463 |               }
+464 |             >
+465 |               <Pipeline
+466 |                 currentStageIndex={currentStageIndex}
+467 |                 currentEvent={currentEvent}
+468 |                 onPipelineClick={handlePipelineClick}
+469 |                 stages={PIPELINE_STAGES}
+470 |               />
+471 |             </Suspense>
+472 |           )}
+473 | 
+474 |           <AnimatePresence>
+475 |             {currentEvent &&
+476 |               currentStageIndex >= 4 &&
+477 |               exitingEventId !== currentEvent.id && (
+478 |               <motion.div
+479 |                 key="preparation"
+480 |                 initial={{ opacity: 0, y: 8 }}
+481 |                 animate={{ opacity: 1, y: 0 }}
+482 |                 exit={{ opacity: 0, y: -8 }}
+483 |                 transition={{ duration: 0.25 }}
+484 |                 className="grid grid-cols-1 xl:grid-cols-2 gap-6"
+485 |               >
+486 |                 {eventFullLoading ? (
+487 |                   <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-pulse h-48" />
+488 |                 ) : (
+489 |                   <Suspense
+490 |                     fallback={
+491 |                       <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+492 |                     }
+493 |                   >
+494 |                     <EventPreparation
+495 |                       data={currentEvent.preparation || {}}
+496 |                       onUpdate={handleUpdatePreparation}
+497 |                       onOpenCrewModal={() => setIsCrewModalOpen(true)}
+498 |                     />
+499 |                   </Suspense>
+500 |                 )}
+501 |                 <Suspense
+502 |                   fallback={
+503 |                     <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+504 |                   }
+505 |                 >
+506 |                   <AssignedCrew currentEvent={currentEvent} employees={users} />
+507 |                 </Suspense>
+508 |               </motion.div>
+509 |             )}
+510 |           </AnimatePresence>
+511 | 
+512 |           <motion.div {...stagger(2)}>
+513 |             <Suspense
+514 |               fallback={
+515 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
+516 |               }
+517 |             >
+518 |               <EventDetails
+519 |                 currentEvent={currentEvent}
+520 |                 schoolName={schoolData.name}
+521 |                 cityId={schoolData.cityId}
+522 |                 onEventUpdated={() =>
+523 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
+524 |                 }
+525 |               />
+526 |             </Suspense>
+527 |           </motion.div>
+528 | 
+529 |           <motion.div {...stagger(3)}>
+530 |             <Suspense
+531 |               fallback={
+532 |                 <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
+533 |               }
+534 |             >
+535 |               <EventsTable
+536 |                 events={events}
+537 |                 selectedEventId={selectedEventId}
+538 |                 onEventSelect={setSelectedEventId}
+539 |                 onDeleteSuccess={() =>
+540 |                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
+541 |                 }
+542 |               />
+543 |             </Suspense>
+544 |             {completedEvents.length > 0 && (
+545 |               <motion.div {...stagger(4)}>
+546 |                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+547 |                   <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+548 |                     <h3 className="font-bold text-slate-800">
+549 |                       Завершені події ({completedEvents.length})
+550 |                     </h3>
+551 |                   </div>
+552 |                   <div className="md:hidden divide-y divide-slate-50">
+553 |                     {completedEvents.map((ev: Event) => (
+554 |                       <div
+555 |                         key={ev.id}
+556 |                         onClick={() => setSelectedReportEvent(ev)}
+557 |                         className="flex items-center justify-between gap-3 p-4 active:bg-slate-50 cursor-pointer"
+558 |                       >
+559 |                         <div className="min-w-0">
+560 |                           <p className="font-medium text-blue-600 truncate">
+561 |                             {ev.project}
+562 |                           </p>
+563 |                           <p className="text-xs text-slate-400 mt-0.5">
+564 |                             {new Date(ev.date).toLocaleDateString("uk-UA")}
+565 |                           </p>
+566 |                           <p className="text-xs text-slate-500 mt-1">
+567 |                             👶{" "}
+568 |                             {ev.report?.childrenCount ||
+569 |                               ev.childrenPlanned ||
+570 |                               "—"}{" "}
+571 |                             дітей
+572 |                           </p>
+573 |                         </div>
+574 |                         <div className="text-right shrink-0">
+575 |                           <p className="font-semibold text-slate-800 text-sm">
+576 |                             {new Intl.NumberFormat("uk-UA").format(
+577 |                               ev.report?.totalSum || ev.price || 0,
+578 |                             )}{" "}
+579 |                             грн
+580 |                           </p>
+581 |                           <p className="text-xs font-medium text-emerald-600 mt-0.5">
+582 |                             +
+583 |                             {new Intl.NumberFormat("uk-UA").format(
+584 |                               ev.report?.remainderSum || 0,
+585 |                             )}{" "}
+586 |                             грн
+587 |                           </p>
+588 |                         </div>
+589 |                       </div>
+590 |                     ))}
+591 |                   </div>
+592 |                   <div className="hidden md:block overflow-x-auto">
+593 |                     <table className="w-full text-left text-sm">
+594 |                       <thead>
+595 |                         <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+596 |                           <th className="p-4">Проєкт</th>
+597 |                           <th className="p-4">Дата</th>
+598 |                           <th className="p-4">Дітей</th>
+599 |                           <th className="p-4">Виручка</th>
+600 |                           <th className="p-4">Прибуток</th>
+601 |                         </tr>
+602 |                       </thead>
+603 |                       <tbody>
+604 |                         {completedEvents.map((ev: any) => (
+605 |                           <tr
+606 |                             key={ev.id}
+607 |                             onClick={() => setSelectedReportEvent(ev)}
+608 |                             className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
+609 |                           >
+610 |                             <td className="p-4 text-slate-700 font-medium">
+611 |                               {ev.project}
+612 |                             </td>
+613 |                             <td className="p-4 text-slate-600">
+614 |                               {new Date(ev.date).toLocaleDateString("uk-UA")}
+615 |                             </td>
+616 |                             <td className="p-4 font-medium">
+617 |                               {ev.report?.childrenCount ||
+618 |                                 ev.childrenPlanned ||
+619 |                                 "—"}
 620 |                             </td>
-621 |                             <td className="p-4 font-medium text-emerald-600">
+621 |                             <td className="p-4 font-medium text-slate-800">
 622 |                               {new Intl.NumberFormat("uk-UA").format(
-623 |                                 ev.report?.remainderSum || 0,
+623 |                                 ev.report?.totalSum || ev.price || 0,
 624 |                               )}{" "}
 625 |                               грн
 626 |                             </td>
-627 |                           </tr>
-628 |                         ))}
-629 |                       </tbody>
-630 |                     </table>
-631 |                   </div>
-632 |                 </div>
-633 |               </motion.div>
-634 |             )}
-635 |           </motion.div>
-636 |         </motion.div>
-637 |       </div>
-638 | 
-639 |       {/* Мобільна FAB */}
-640 |       <button
-641 |         onClick={openAddEventModal}
-642 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
-643 |       >
-644 |         +
-645 |       </button>
-646 | 
-647 |       {/* Модальні вікна */}
-648 |       <EditSchoolModal
-649 |         isOpen={isEditModalOpen}
-650 |         onClose={() => setIsEditModalOpen(false)}
-651 |         defaultValues={editDefaultValues}
-652 |         onSave={handleSaveSchoolInfo}
-653 |       />
-654 |       <EventModal
-655 |         isOpen={isEventModalOpen}
-656 |         onClose={() => setIsEventModalOpen(false)}
-657 |         defaultValues={eventDefaultValues}
-658 |         onSave={handleSaveEvent}
+627 |                             <td className="p-4 font-medium text-emerald-600">
+628 |                               {new Intl.NumberFormat("uk-UA").format(
+629 |                                 ev.report?.remainderSum || 0,
+630 |                               )}{" "}
+631 |                               грн
+632 |                             </td>
+633 |                           </tr>
+634 |                         ))}
+635 |                       </tbody>
+636 |                     </table>
+637 |                   </div>
+638 |                 </div>
+639 |               </motion.div>
+640 |             )}
+641 |           </motion.div>
+642 |         </motion.div>
+643 |       </div>
+644 | 
+645 |       {/* Мобільна FAB */}
+646 |       <button
+647 |         onClick={openAddEventModal}
+648 |         className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
+649 |       >
+650 |         +
+651 |       </button>
+652 | 
+653 |       {/* Модальні вікна */}
+654 |       <EditSchoolModal
+655 |         isOpen={isEditModalOpen}
+656 |         onClose={() => setIsEditModalOpen(false)}
+657 |         defaultValues={editDefaultValues}
+658 |         onSave={handleSaveSchoolInfo}
 659 |       />
-660 |       <CommentModal
-661 |         isOpen={commentModal.isOpen}
-662 |         onClose={() => setCommentModal({ ...commentModal, isOpen: false })}
-663 |         mode={commentModal.mode}
-664 |         text={commentModal.text}
-665 |         setText={(t) => setCommentModal({ ...commentModal, text: t })}
-666 |         onSave={handleSaveComment}
-667 |       />
-668 |       <CrewModal
-669 |         isOpen={isCrewModalOpen}
-670 |         onClose={() => setIsCrewModalOpen(false)}
-671 |         city={schoolData.city}
-672 |         employees={users}
-673 |         onSave={handleAssignCrew}
-674 |       />
-675 |       <ReportModal
-676 |         isOpen={isReportModalOpen}
-677 |         onClose={() => setIsReportModalOpen(false)}
-678 |         onSave={handleSubmitReport}
-679 |         schoolName={schoolData.name}
-680 |         eventType={currentEvent?.project}
-681 |         eventDate={currentEvent?.date}
-682 |         eventIndex={
-683 |           events
-684 |             .filter((e) => e.schoolId === schoolData.id)
-685 |             .findIndex((e) => e.id === currentEvent?.id) + 1
-686 |         }
-687 |         crew={
-688 |           currentEvent?.crew
-689 |             ? {
-690 |                 host: currentEvent.crew.hostId
-691 |                   ? (users.find(
-692 |                       (u: User) => u.id === currentEvent.crew.hostId,
-693 |                     ) ?? null)
-694 |                   : (currentEvent.crew.host ?? null),
-695 |                 driver: currentEvent.crew.driverId
-696 |                   ? (users.find(
-697 |                       (u: User) => u.id === currentEvent.crew.driverId,
-698 |                     ) ?? null)
-699 |                   : (currentEvent.crew.driver ?? null),
-700 |               }
-701 |             : undefined
-702 |         }
-703 |       />
-704 |       <CompletedEventModal
-705 |         isOpen={!!selectedReportEvent}
-706 |         onClose={() => setSelectedReportEvent(null)}
-707 |         event={selectedReportEvent}
-708 |       />
-709 |     </div>
-710 |   );
-711 | }
-712 | 
+660 |       <EventModal
+661 |         isOpen={isEventModalOpen}
+662 |         onClose={() => setIsEventModalOpen(false)}
+663 |         defaultValues={eventDefaultValues}
+664 |         onSave={handleSaveEvent}
+665 |       />
+666 |       <CommentModal
+667 |         isOpen={commentModal.isOpen}
+668 |         onClose={() => setCommentModal({ ...commentModal, isOpen: false })}
+669 |         mode={commentModal.mode}
+670 |         text={commentModal.text}
+671 |         setText={(t) => setCommentModal({ ...commentModal, text: t })}
+672 |         onSave={handleSaveComment}
+673 |       />
+674 |       <CrewModal
+675 |         isOpen={isCrewModalOpen}
+676 |         onClose={() => setIsCrewModalOpen(false)}
+677 |         city={schoolData.city}
+678 |         employees={users}
+679 |         onSave={handleAssignCrew}
+680 |       />
+681 |       <ReportModal
+682 |         isOpen={isReportModalOpen}
+683 |         onClose={() => setIsReportModalOpen(false)}
+684 |         onSave={handleSubmitReport}
+685 |         schoolName={schoolData.name}
+686 |         eventType={currentEvent?.project}
+687 |         eventDate={currentEvent?.date}
+688 |         eventIndex={
+689 |           events
+690 |             .filter((e) => e.schoolId === schoolData.id)
+691 |             .findIndex((e) => e.id === currentEvent?.id) + 1
+692 |         }
+693 |         crew={
+694 |           currentEvent?.crew
+695 |             ? {
+696 |                 host: currentEvent.crew.hostId
+697 |                   ? (users.find(
+698 |                       (u: User) => u.id === currentEvent.crew.hostId,
+699 |                     ) ?? null)
+700 |                   : (currentEvent.crew.host ?? null),
+701 |                 driver: currentEvent.crew.driverId
+702 |                   ? (users.find(
+703 |                       (u: User) => u.id === currentEvent.crew.driverId,
+704 |                     ) ?? null)
+705 |                   : (currentEvent.crew.driver ?? null),
+706 |               }
+707 |             : undefined
+708 |         }
+709 |       />
+710 |       <CompletedEventModal
+711 |         isOpen={!!selectedReportEvent}
+712 |         onClose={() => setSelectedReportEvent(null)}
+713 |         event={selectedReportEvent}
+714 |       />
+715 |     </motion.div>
+716 |   );
+717 | }
+718 | 
 ```
 
 ### File: apps/frontend/src/pages/Schools.tsx
@@ -21648,7 +22330,7 @@
 372 |           type="text"
 373 |           value={searchQuery}
 374 |           onChange={(e) => setSearchQuery(e.target.value)}
-375 |           placeholder="Пошук за назвою, директором, адресою..."
+375 |           placeholder="Пошук за назвою школи..."
 376 |           className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border-none sm:border sm:border-slate-200 rounded-2xl sm:rounded-xl text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition"
 377 |         />
 378 |         {searchQuery && (
@@ -22226,49 +22908,731 @@
   0 | const fs = require("fs");
   1 | const path = require("path");
   2 | 
-  3 | const outputFile = "combined_security_audit.md";
-  4 | 
-  5 | fs.writeFileSync(outputFile, "# Файли Auth, Security та Prisma Schema\n\n");
-  6 | 
-  7 | const filesToCollect = [
-  8 |   "apps/backend/prisma/schema.prisma",
-  9 |   "apps/backend/src/auth/auth.module.ts",
- 10 |   "apps/backend/src/auth/auth.service.ts",
- 11 |   "apps/backend/src/auth/auth.controller.ts",
- 12 |   "apps/backend/src/auth/auth.guard.ts",
- 13 |   "apps/backend/src/auth/interfaces/jwt-user.interface.ts",
- 14 |   "apps/backend/src/auth/dto/login.dto.ts",
- 15 |   "apps/backend/src/main.ts",
- 16 |   "apps/backend/src/app.module.ts",
- 17 |   "apps/backend/package.json",
- 18 | ];
- 19 | 
- 20 | let collectedCount = 0;
- 21 | 
- 22 | console.log("🚀 Починаю збір файлів для Security & Audit...\n");
- 23 | 
- 24 | filesToCollect.forEach((filePath) => {
- 25 |   if (!fs.existsSync(filePath)) {
- 26 |     console.warn(`[!] Файл не знайдено: ${filePath}`);
- 27 |     return;
- 28 |   }
- 29 | 
- 30 |   const content = fs.readFileSync(filePath, "utf-8");
- 31 |   const ext = path.extname(filePath).replace(".", "");
- 32 | 
- 33 |   let lang = ext;
- 34 |   if (["ts", "tsx"].includes(ext)) lang = "typescript";
- 35 |   if (ext === "prisma") lang = "prisma";
- 36 |   if (ext === "json") lang = "json";
- 37 | 
- 38 |   const mdBlock = `### \`${filePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`;
- 39 |   fs.appendFileSync(outputFile, mdBlock);
- 40 |   console.log(`[+] Додано: ${filePath}`);
- 41 |   collectedCount++;
- 42 | });
- 43 | 
- 44 | console.log(`\n✅ Готово! Зібрано ${collectedCount} файлів у ${outputFile}`);
- 45 | 
+  3 | // Назва вихідного файлу для результатів аудиту
+  4 | const outputFile = "combined_swagger_seed_audit.md";
+  5 | 
+  6 | fs.writeFileSync(outputFile, "# Аудит: Swagger, Seed, README та Контролери\n\n");
+  7 | 
+  8 | // 1. Конкретні файли для повного збору коду
+  9 | const filesToCollect = [
+ 10 |   "README.md",
+ 11 |   "collect-code.js",
+ 12 |   "apps/backend/prisma/seed-admin.js",
+ 13 |   "apps/backend/src/events/events.controller.ts",
+ 14 |   "apps/backend/src/events/dto/create-event.dto.ts"
+ 15 | ];
+ 16 | 
+ 17 | let collectedCount = 0;
+ 18 | 
+ 19 | console.log("🚀 Починаю збір специфічних файлів та аналіз контролерів...\n");
+ 20 | 
+ 21 | // Збір вмісту визначених файлів
+ 22 | filesToCollect.forEach((filePath) => {
+ 23 |   if (!fs.existsSync(filePath)) {
+ 24 |     console.warn(`[!] Файл не знайдено (пропускаю): ${filePath}`);
+ 25 |     return;
+ 26 |   }
+ 27 | 
+ 28 |   const content = fs.readFileSync(filePath, "utf-8");
+ 29 |   const ext = path.extname(filePath).replace(".", "");
+ 30 | 
+ 31 |   let lang = ext;
+ 32 |   if (["ts", "tsx"].includes(ext)) lang = "typescript";
+ 33 |   if (ext === "md") lang = "markdown";
+ 34 |   if (ext === "js") lang = "javascript";
+ 35 | 
+ 36 |   const mdBlock = `### \`${filePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`;
+ 37 |   fs.appendFileSync(outputFile, mdBlock);
+ 38 |   console.log(`[+] Додано вміст: ${filePath}`);
+ 39 |   collectedCount++;
+ 40 | });
+ 41 | 
+ 42 | // 2. Функція для рекурсивного пошуку всіх *.controller.ts (тільки назви/шляхи)
+ 43 | function findAllControllers(dir, fileList = []) {
+ 44 |   if (!fs.existsSync(dir)) return fileList;
+ 45 |   
+ 46 |   const files = fs.readdirSync(dir);
+ 47 |   
+ 48 |   files.forEach((file) => {
+ 49 |     const filePath = path.join(dir, file);
+ 50 |     const stat = fs.statSync(filePath);
+ 51 |     
+ 52 |     // Якщо це папка — скануємо рекурсивно, якщо контролер — додаємо у список
+ 53 |     if (stat.isDirectory()) {
+ 54 |       findAllControllers(filePath, fileList);
+ 55 |     } else if (file.endsWith(".controller.ts")) {
+ 56 |       // Замінюємо зворотні слеші на прямі (актуально для Windows)
+ 57 |       fileList.push(filePath.replace(/\\/g, "/"));
+ 58 |     }
+ 59 |   });
+ 60 |   
+ 61 |   return fileList;
+ 62 | }
+ 63 | 
+ 64 | console.log("\n🔍 Сканую директорію apps/backend/src на наявність контролерів...");
+ 65 | const backendSrcPath = path.join("apps", "backend", "src");
+ 66 | const allControllers = findAllControllers(backendSrcPath);
+ 67 | 
+ 68 | // Формуємо блок зі списком усіх контролерів (без їхнього вмісту)
+ 69 | let controllersMd = "### 📋 Список усіх модулів-контролерів (для оцінки Swagger Tags)\n\n";
+ 70 | controllersMd += `Загалом знайдено контролерів: **${allControllers.length}**\n\n\`\`\`text\n`;
+ 71 | 
+ 72 | allControllers.forEach((controllerPath) => {
+ 73 |   controllersMd += `${controllerPath}\n`;
+ 74 | });
+ 75 | 
+ 76 | controllersMd += `\`\`\`\n\n---\n\n`;
+ 77 | 
+ 78 | fs.appendFileSync(outputFile, controllersMd);
+ 79 | console.log(`[+] Згенеровано список з ${allControllers.length} контролерів.`);
+ 80 | 
+ 81 | console.log(`\n✅ Готово! Результати збережено у ${outputFile}`);
+```
+
+### File: doc/doc-filelist.js
+```js
+  0 | var tree={};
+```
+
+### File: doc/doc-script.js
+```js
+  0 | // # res/script.js
+  1 | //
+  2 | // This is the script file that gets copied into the output. It mainly manages the display
+  3 | // of the folder tree. The idea of this script file is to be minimal and standalone. So
+  4 | // that means no jQuery.
+  5 | 
+  6 | // Use localStorage to store data about the tree's state: whether or not
+  7 | // the tree is visible and which directories are expanded. Unless the state
+  8 | var sidebarVisible = (window.localStorage && window.localStorage.docker_showSidebar) ?
+  9 |                         window.localStorage.docker_showSidebar == 'yes' :
+ 10 |                         defaultSidebar;
+ 11 | 
+ 12 | /**
+ 13 |  * ## makeTree
+ 14 |  *
+ 15 |  * Consructs the folder tree view
+ 16 |  *
+ 17 |  * @param {object} treeData Folder structure as in [queueFile](../src/docker.js.html#docker.prototype.queuefile)
+ 18 |  * @param {string} root Path from current file to root (ie `'../../'` etc.)
+ 19 |  * @param {string} filename The current file name
+ 20 |  */
+ 21 | function makeTree(treeData, root, filename) {
+ 22 |   var treeNode = document.getElementById('tree');
+ 23 |   var treeHandle = document.getElementById('sidebar-toggle');
+ 24 |   treeHandle.addEventListener('click', toggleTree, false);
+ 25 | 
+ 26 |   // Build the html and add it to the container.
+ 27 |   treeNode.innerHTML = nodeHtml('', treeData, '', root);
+ 28 | 
+ 29 |   // Root folder (whole tree) should always be open
+ 30 |   treeNode.childNodes[0].className += ' open';
+ 31 | 
+ 32 |   // Attach click event handler
+ 33 |   treeNode.addEventListener('click', nodeClicked, false);
+ 34 | 
+ 35 |   if (sidebarVisible) document.body.className += ' sidebar';
+ 36 | 
+ 37 |   // Restore scroll position from localStorage if set. And attach scroll handler
+ 38 |   if (window.localStorage && window.localStorage.docker_treeScroll) treeNode.scrollTop = window.localStorage.docker_treeScroll;
+ 39 |   treeNode.onscroll = treeScrolled;
+ 40 | 
+ 41 |   // Only set a class to allow CSS transitions after the tree state has been painted
+ 42 |   setTimeout(function() { document.body.className += ' slidey'; }, 100);
+ 43 | }
+ 44 | 
+ 45 | /**
+ 46 |  * ## treeScrolled
+ 47 |  *
+ 48 |  * Called when the tree is scrolled. Stores the scroll position in localStorage
+ 49 |  * so it can be restored on the next pageview.
+ 50 |  */
+ 51 | function treeScrolled() {
+ 52 |   var tree = document.getElementById('tree');
+ 53 |   if (window.localStorage) window.localStorage.docker_treeScroll = tree.scrollTop;
+ 54 | }
+ 55 | 
+ 56 | /**
+ 57 |  * ## nodeClicked
+ 58 |  *
+ 59 |  * Called when a directory is clicked. Toggles open state of the directory
+ 60 |  *
+ 61 |  * @param {Event} e The click event
+ 62 |  */
+ 63 | function nodeClicked(e) {
+ 64 |   // Find the target
+ 65 |   var t = e.target;
+ 66 | 
+ 67 |   // If the click target is actually a file (rather than a directory), ignore it
+ 68 |   if (t.tagName.toLowerCase() !== 'div' || t.className === 'children') return;
+ 69 | 
+ 70 |   // Recurse upwards until we find the actual directory node
+ 71 |   while (t && t.className.substring(0, 3) != 'dir') t = t.parentNode;
+ 72 | 
+ 73 |   // If we're at the root node, then do nothing (we don't allow collapsing of the whole tree)
+ 74 |   if (!t || t.parentNode.id == 'tree') return;
+ 75 | 
+ 76 |   // Find the path and toggle the state, saving the state in the localStorage variable
+ 77 |   var path = t.getAttribute('rel');
+ 78 |   if (t.className.indexOf('open') !== -1) {
+ 79 |     t.className = t.className.replace(/\s*open/g, '');
+ 80 |     if (window.localStorage) window.localStorage.removeItem('docker_openPath:' + path);
+ 81 |   } else {
+ 82 |     t.className += ' open';
+ 83 |     if (window.localStorage) window.localStorage['docker_openPath:' + path] = 'yes';
+ 84 |   }
+ 85 | }
+ 86 | 
+ 87 | 
+ 88 | /**
+ 89 |  * ## nodeHtml
+ 90 |  *
+ 91 |  * Constructs the markup for a directory in the tree
+ 92 |  *
+ 93 |  * @param {string} nodename The node name.
+ 94 |  * @param {object} node Node object of same format as whole tree.
+ 95 |  * @param {string} path The path form the base to this node
+ 96 |  * @param {string} root Relative path from current page to root
+ 97 |  */
+ 98 | function nodeHtml(nodename, node, path, root) {
+ 99 |   // Firstly, figure out whether or not the directory is expanded from localStorage
+100 |   var isOpen = window.localStorage && window.localStorage['docker_openPath:' + path] == 'yes';
+101 |   var out = '<div class="dir' + (isOpen ? ' open' : '') + '" rel="' + path + '">';
+102 |   out += '<div class="nodename">' + nodename + '</div>';
+103 |   out += '<div class="children">';
+104 | 
+105 |   // Loop through all child directories first
+106 |   if (node.dirs) {
+107 |     var dirs = [];
+108 |     for (var i in node.dirs) {
+109 |       if (node.dirs.hasOwnProperty(i)) dirs.push({ name: i, html: nodeHtml(i, node.dirs[i], path + i + '/', root) });
+110 |     }
+111 |     // Have to store them in an array first and then sort them alphabetically here
+112 |     dirs.sort(function(a, b) { return (a.name > b.name) ? 1 : (a.name == b.name) ? 0 : -1; });
+113 | 
+114 |     for (var k = 0; k < dirs.length; k += 1) out += dirs[k].html;
+115 |   }
+116 | 
+117 |   // Now loop through all the child files alphabetically
+118 |   if (node.files) {
+119 |     node.files.sort();
+120 |     for (var j = 0; j < node.files.length; j += 1) {
+121 |       out += '<a class="file" href="' + root + path + node.files[j] + '.html">' + node.files[j] + '</a>';
+122 |     }
+123 |   }
+124 | 
+125 |   // Close things off
+126 |   out += '</div></div>';
+127 | 
+128 |   return out;
+129 | }
+130 | 
+131 | /**
+132 |  * ## toggleTree
+133 |  *
+134 |  * Toggles the visibility of the folder tree
+135 |  */
+136 | function toggleTree() {
+137 |   // Do the actual toggling by modifying the class on the body element. That way we can get some nice CSS transitions going.
+138 |   if (sidebarVisible) {
+139 |     document.body.className = document.body.className.replace(/\s*sidebar/g, '');
+140 |     sidebarVisible = false;
+141 |   } else {
+142 |     document.body.className += ' sidebar';
+143 |     sidebarVisible = true;
+144 |   }
+145 |   if (window.localStorage) {
+146 |     if (sidebarVisible) {
+147 |       window.localStorage.docker_showSidebar = 'yes';
+148 |     } else {
+149 |       window.localStorage.docker_showSidebar = 'no';
+150 |     }
+151 |   }
+152 | }
+153 | 
+154 | /**
+155 |  * ## wireUpTabs
+156 |  *
+157 |  * Wires up events on the sidebar tabe
+158 |  */
+159 | function wireUpTabs() {
+160 |   var tabEl = document.getElementById('sidebar_switch');
+161 |   var children = tabEl.childNodes;
+162 | 
+163 |   // Each tab has a class corresponding of the id of its tab pane
+164 |   for (var i = 0, l = children.length; i < l; i += 1) {
+165 |     // Ignore text nodes
+166 |     if (children[i].nodeType !== 1) continue;
+167 |     children[i].addEventListener('click', function(c) {
+168 |       return function() { switchTab(c); };
+169 |     }(children[i].className));
+170 |   }
+171 | }
+172 | 
+173 | /**
+174 |  * ## switchTab
+175 |  *
+176 |  * Switches tabs in the sidebar
+177 |  *
+178 |  * @param {string} tab The ID of the tab to switch to
+179 |  */
+180 | function switchTab(tab) {
+181 |   var tabEl = document.getElementById('sidebar_switch');
+182 |   var children = tabEl.childNodes;
+183 | 
+184 |   // Easiest way to go through tabs without any kind of selector is just to look at the tab bar
+185 |   for (var i = 0, l = children.length; i < l; i += 1) {
+186 |     // Ignore text nodes
+187 |     if (children[i].nodeType !== 1) continue;
+188 | 
+189 |     // Figure out what tab pane this tab button corresponts to
+190 |     var t = children[i].className.replace(/\s.*$/, '');
+191 |     if (t === tab) {
+192 |       // Show the tab pane, select the tab button
+193 |       document.getElementById(t).style.display = 'block';
+194 |       if (children[i].className.indexOf('selected') === -1) children[i].className += ' selected';
+195 |     } else {
+196 |       // Hide the tab pane, deselect the tab button
+197 |       document.getElementById(t).style.display = 'none';
+198 |       children[i].className = children[i].className.replace(/\sselected/, '');
+199 |     }
+200 |   }
+201 | 
+202 |   // Store the last open tab in localStorage
+203 |   if (window.localStorage) window.localStorage.docker_sidebarTab = tab;
+204 | }
+205 | 
+206 | /**
+207 |  * ## window.onload
+208 |  *
+209 |  * When the document is ready, make the sidebar and all that jazz
+210 |  */
+211 | (function(init) {
+212 |   if (window.addEventListener) {
+213 |     window.addEventListener('DOMContentLoaded', init);
+214 |   } else { // IE8 and below
+215 |     window.onload = init;
+216 |   }
+217 | }(function() {
+218 |   makeTree(tree, relativeDir, thisFile);
+219 |   wireUpTabs();
+220 | 
+221 |   // Switch to the last viewed sidebar tab if stored, otherwise default to folder tree
+222 |   if (window.localStorage && window.localStorage.docker_sidebarTab) {
+223 |     switchTab(window.localStorage.docker_sidebarTab);
+224 |   } else {
+225 |     switchTab('tree');
+226 |   }
+227 | }));
+228 | 
+```
+
+### File: doc/doc-style.css
+```css
+  0 | /*
+  1 | 
+  2 | Original highlight.js style (c) Ivan Sagalaev <maniac@softwaremaniacs.org>
+  3 | 
+  4 | */
+  5 | .hljs {
+  6 |   display: block;
+  7 |   overflow-x: auto;
+  8 |   padding: 0.5em;
+  9 |   background: #F0F0F0;
+ 10 | }
+ 11 | /* Base color: saturation 0; */
+ 12 | .hljs,
+ 13 | .hljs-subst {
+ 14 |   color: #444;
+ 15 | }
+ 16 | .hljs-comment {
+ 17 |   color: #888888;
+ 18 | }
+ 19 | .hljs-keyword,
+ 20 | .hljs-attribute,
+ 21 | .hljs-selector-tag,
+ 22 | .hljs-meta-keyword,
+ 23 | .hljs-doctag,
+ 24 | .hljs-name {
+ 25 |   font-weight: bold;
+ 26 | }
+ 27 | /* User color: hue: 0 */
+ 28 | .hljs-type,
+ 29 | .hljs-string,
+ 30 | .hljs-number,
+ 31 | .hljs-selector-id,
+ 32 | .hljs-selector-class,
+ 33 | .hljs-quote,
+ 34 | .hljs-template-tag,
+ 35 | .hljs-deletion {
+ 36 |   color: #880000;
+ 37 | }
+ 38 | .hljs-title,
+ 39 | .hljs-section {
+ 40 |   color: #880000;
+ 41 |   font-weight: bold;
+ 42 | }
+ 43 | .hljs-regexp,
+ 44 | .hljs-symbol,
+ 45 | .hljs-variable,
+ 46 | .hljs-template-variable,
+ 47 | .hljs-link,
+ 48 | .hljs-selector-attr,
+ 49 | .hljs-selector-pseudo {
+ 50 |   color: #BC6060;
+ 51 | }
+ 52 | /* Language color: hue: 90; */
+ 53 | .hljs-literal {
+ 54 |   color: #78A960;
+ 55 | }
+ 56 | .hljs-built_in,
+ 57 | .hljs-bullet,
+ 58 | .hljs-code,
+ 59 | .hljs-addition {
+ 60 |   color: #397300;
+ 61 | }
+ 62 | /* Meta color: hue: 200 */
+ 63 | .hljs-meta {
+ 64 |   color: #1f7199;
+ 65 | }
+ 66 | .hljs-meta-string {
+ 67 |   color: #4d99bf;
+ 68 | }
+ 69 | /* Misc effects */
+ 70 | .hljs-emphasis {
+ 71 |   font-style: italic;
+ 72 | }
+ 73 | .hljs-strong {
+ 74 |   font-weight: bold;
+ 75 | }
+ 76 | body {
+ 77 |   font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, FreeSerif, serif;
+ 78 |   font-size: 15px;
+ 79 |   line-height: 22px;
+ 80 |   margin: 0;
+ 81 |   padding: 0;
+ 82 |   background: #ffffff;
+ 83 |   color: #4d4d4d;
+ 84 | }
+ 85 | p,
+ 86 | h1,
+ 87 | h2,
+ 88 | h3,
+ 89 | h4,
+ 90 | h5,
+ 91 | h6 {
+ 92 |   margin: 0 0 15px 0;
+ 93 | }
+ 94 | h1 {
+ 95 |   margin-top: 40px;
+ 96 | }
+ 97 | a {
+ 98 |   color: #880000;
+ 99 | }
+100 | a:visited {
+101 |   color: #880000;
+102 | }
+103 | #tree,
+104 | #headings {
+105 |   position: absolute;
+106 |   top: 30px;
+107 |   left: 0;
+108 |   bottom: 0;
+109 |   width: 290px;
+110 |   padding: 10px 0;
+111 |   overflow: auto;
+112 | }
+113 | #sidebar_wrapper {
+114 |   position: fixed;
+115 |   top: 0;
+116 |   left: 0;
+117 |   bottom: 0;
+118 |   width: 0;
+119 |   overflow: hidden;
+120 |   background: #e7e7e7;
+121 | }
+122 | #sidebar_switch {
+123 |   position: absolute;
+124 |   top: 0;
+125 |   left: 0;
+126 |   width: 290px;
+127 |   height: 29px;
+128 |   border-bottom: 1px solid;
+129 |   background: #e2e2e2;
+130 |   border-bottom-color: #d6d6d6;
+131 | }
+132 | #sidebar_switch span {
+133 |   display: block;
+134 |   float: left;
+135 |   width: 50%;
+136 |   text-align: center;
+137 |   line-height: 29px;
+138 |   cursor: pointer;
+139 |   color: #4b4b4b;
+140 | }
+141 | #sidebar_switch span:hover {
+142 |   background: #e7e7e7;
+143 | }
+144 | #sidebar_switch .selected {
+145 |   font-weight: bold;
+146 |   background: #ededed;
+147 |   color: #444;
+148 | }
+149 | .slidey #sidebar_wrapper {
+150 |   -webkit-transition: width 250ms linear;
+151 |   -moz-transition: width 250ms linear;
+152 |   -ms-transition: width 250ms linear;
+153 |   -o-transition: width 250ms linear;
+154 |   transition: width 250ms linear;
+155 | }
+156 | .sidebar #sidebar_wrapper {
+157 |   width: 290px;
+158 | }
+159 | #tree .nodename {
+160 |   text-indent: 12px;
+161 |   background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAg0lEQVQYlWNIS0tbAcSK////Z8CHGTIzM7+mp6d/ASouwqswKyvrO1DRfyg+CcRaxCgE4Z9A3AjEbIQUgjHQOQvwKgS6+ffChQt3AiUDcCqsra29d/v27R6ghCVWN2ZnZ/9YuXLlRqBAPBALYvVMR0fHmQcPHrQBOUZ4gwfqFj5CAQ4Al6wLIYDwo9QAAAAASUVORK5CYII=");
+162 |   background-repeat: no-repeat;
+163 |   background-position: left center;
+164 |   cursor: pointer;
+165 | }
+166 | #tree .open > .nodename {
+167 |   background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAlElEQVQYlWNIS0tbCsT/8eCN////Z2B49OhRfHZ29jdsioDiP27evJkNVggkONeuXbscm8Jly5atA8rzwRSCsG5DQ8MtZEU1NTUPgOLGUHm4QgaQFVlZWT9BijIzM39fuHChDCaHohBkBdCq9SCF8+bN2wHkC+FSCMLGkyZNOvb9+3dbNHEMhSDsDsRMxCjEiolWCADeUBHgU/IGQQAAAABJRU5ErkJggg==");
+168 |   background-position: left 7px;
+169 | }
+170 | #tree .dir,
+171 | #tree .file {
+172 |   position: relative;
+173 |   min-height: 20px;
+174 |   line-height: 20px;
+175 |   padding-left: 12px;
+176 | }
+177 | #tree .dir > .children,
+178 | #tree .file > .children {
+179 |   display: none;
+180 | }
+181 | #tree .dir.open > .children,
+182 | #tree .file.open > .children {
+183 |   display: block;
+184 | }
+185 | #tree .file {
+186 |   padding-left: 24px;
+187 |   display: block;
+188 |   text-decoration: none;
+189 |   color: #444;
+190 | }
+191 | #tree > .dir {
+192 |   padding-left: 0;
+193 | }
+194 | #headings .heading a {
+195 |   text-decoration: none;
+196 |   padding-left: 10px;
+197 |   display: block;
+198 |   color: #444;
+199 | }
+200 | #headings .h1 {
+201 |   padding-left: 0;
+202 |   margin-top: 10px;
+203 |   font-size: 1.3em;
+204 | }
+205 | #headings .h2 {
+206 |   padding-left: 10px;
+207 |   margin-top: 8px;
+208 |   font-size: 1.1em;
+209 | }
+210 | #headings .h3 {
+211 |   padding-left: 20px;
+212 |   margin-top: 5px;
+213 |   font-size: 1em;
+214 | }
+215 | #headings .h4 {
+216 |   padding-left: 30px;
+217 |   margin-top: 3px;
+218 |   font-size: 0.9em;
+219 | }
+220 | #headings .h5 {
+221 |   padding-left: 40px;
+222 |   margin-top: 1px;
+223 |   font-size: 0.8em;
+224 | }
+225 | #headings .h6 {
+226 |   padding-left: 50px;
+227 |   font-size: 0.75em;
+228 | }
+229 | #sidebar-toggle {
+230 |   position: fixed;
+231 |   top: 0;
+232 |   left: 0;
+233 |   width: 5px;
+234 |   bottom: 0;
+235 |   z-index: 2;
+236 |   cursor: pointer;
+237 |   background: #dfdfdf;
+238 | }
+239 | #sidebar-toggle:hover {
+240 |   width: 10px;
+241 |   background: #d6d6d6;
+242 | }
+243 | .slidey #sidebar-toggle,
+244 | .slidey #container {
+245 |   -webkit-transition: all 250ms linear;
+246 |   -moz-transition: all 250ms linear;
+247 |   -ms-transition: all 250ms linear;
+248 |   -o-transition: all 250ms linear;
+249 |   transition: all 250ms linear;
+250 | }
+251 | .sidebar #sidebar-toggle {
+252 |   left: 290px;
+253 | }
+254 | #container {
+255 |   position: fixed;
+256 |   left: 5px;
+257 |   right: 0;
+258 |   top: 0;
+259 |   bottom: 0;
+260 |   overflow: auto;
+261 | }
+262 | .sidebar #container {
+263 |   left: 295px;
+264 | }
+265 | .no-sidebar #sidebar_wrapper,
+266 | .no-sidebar #sidebar-toggle {
+267 |   display: none;
+268 | }
+269 | .no-sidebar #container {
+270 |   left: 0;
+271 | }
+272 | #page {
+273 |   padding-top: 40px;
+274 | }
+275 | table td {
+276 |   border: 0;
+277 |   outline: 0;
+278 | }
+279 | .docs.markdown {
+280 |   padding: 10px 50px;
+281 | }
+282 | td.docs {
+283 |   max-width: 450px;
+284 |   min-width: 450px;
+285 |   min-height: 5px;
+286 |   padding: 10px 25px 1px 50px;
+287 |   overflow-x: hidden;
+288 |   vertical-align: top;
+289 |   text-align: left;
+290 | }
+291 | .docs pre {
+292 |   margin: 15px 0 15px;
+293 |   padding: 5px;
+294 |   padding-left: 10px;
+295 |   border: 1px solid #d6d6d6;
+296 |   background: #F0F0F0;
+297 |   font-size: 12px;
+298 |   overflow: auto;
+299 | }
+300 | .docs pre.code_stats {
+301 |   font-size: 60%;
+302 | }
+303 | .docs p tt,
+304 | .docs li tt,
+305 | .docs p code,
+306 | .docs li code {
+307 |   border: 1px solid #d6d6d6;
+308 |   font-size: 12px;
+309 |   padding: 0 0.2em;
+310 |   background: #e7e7e7;
+311 | }
+312 | .dox {
+313 |   border-top: 1px solid #dddddd;
+314 |   padding-top: 10px;
+315 |   padding-bottom: 10px;
+316 | }
+317 | .dox .details {
+318 |   padding: 10px;
+319 |   background: #F0F0F0;
+320 |   border: 1px solid #d6d6d6;
+321 |   margin-bottom: 10px;
+322 | }
+323 | .dox .dox_tag_title {
+324 |   font-weight: bold;
+325 | }
+326 | .dox .dox_tag_detail {
+327 |   margin-left: 10px;
+328 | }
+329 | .dox .dox_tag_detail span {
+330 |   margin-right: 5px;
+331 | }
+332 | .dox .dox_type {
+333 |   font-style: italic;
+334 | }
+335 | .dox .dox_tag_name {
+336 |   font-weight: bold;
+337 | }
+338 | .pilwrap {
+339 |   position: relative;
+340 |   padding-top: 1px;
+341 | }
+342 | .pilwrap .pilcrow {
+343 |   font: 12px Arial;
+344 |   text-decoration: none;
+345 |   color: #454545;
+346 |   position: absolute;
+347 |   left: -20px;
+348 |   padding: 1px 2px;
+349 |   opacity: 0;
+350 |   -webkit-transition: opacity 0.2s linear;
+351 |   -moz-transition: opacity 0.2s linear;
+352 |   -ms-transition: opacity 0.2s linear;
+353 |   -o-transition: opacity 0.2s linear;
+354 |   transition: opacity 0.2s linear;
+355 |   color: #555555;
+356 | }
+357 | .pilwrap .pilcrow:before {
+358 |   content: '\b6';
+359 | }
+360 | .pilwrap:hover .pilcrow {
+361 |   opacity: 1;
+362 | }
+363 | td.code {
+364 |   padding: 8px 15px 8px 25px;
+365 |   width: 100%;
+366 |   vertical-align: top;
+367 |   border-left: 1px solid #d6d6d6;
+368 |   background: #F0F0F0;
+369 | }
+370 | .background {
+371 |   border-left: 1px solid #d6d6d6;
+372 |   position: absolute;
+373 |   z-index: -1;
+374 |   top: 0;
+375 |   right: 0;
+376 |   bottom: 0;
+377 |   left: 525px;
+378 |   background: #F0F0F0;
+379 | }
+380 | pre,
+381 | tt,
+382 | code {
+383 |   font-size: 12px;
+384 |   line-height: 18px;
+385 |   font-family: Menlo, Monaco, Consolas, "Lucida Console", monospace;
+386 |   margin: 0;
+387 |   padding: 0;
+388 |   white-space: pre-wrap;
+389 |   background: #F0F0F0;
+390 | }
+391 | .line-num {
+392 |   display: inline-block;
+393 |   width: 50px;
+394 |   text-align: right;
+395 |   opacity: 0.3;
+396 |   margin-left: -20px;
+397 |   text-decoration: none;
+398 |   color: #888888;
+399 | }
+400 | .line-num:before {
+401 |   content: attr(data-line);
+402 | }
+403 | 
 ```
 
 ### File: package.json

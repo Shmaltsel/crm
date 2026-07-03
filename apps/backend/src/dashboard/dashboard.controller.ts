@@ -1,4 +1,10 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiCookieAuth,
+  ApiPropertyOptional,
+} from '@nestjs/swagger';
 import { DashboardService, DashboardSummary } from './dashboard.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -7,11 +13,14 @@ import { IsOptional, IsString } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
 
 class DashboardSummaryQueryDto {
+  @ApiPropertyOptional({ example: 'a1b2c3d4-...' })
   @IsOptional()
   @IsString()
   cityId?: string;
 }
 
+@ApiTags('Dashboard')
+@ApiCookieAuth('access_token')
 @Controller('dashboard')
 @UseGuards(AuthGuard)
 export class DashboardController {
@@ -20,6 +29,7 @@ export class DashboardController {
     private readonly prisma: PrismaService,
   ) {}
 
+  @ApiOperation({ summary: 'Загальна аналітика для дашборда' })
   @Get('summary')
   async getSummary(
     @CurrentUser() user: JwtUser,

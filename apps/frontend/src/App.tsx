@@ -30,6 +30,8 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { api } from "./config/api";
 
 import ProtectedRoute from "./components/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
+import NotFound from "./pages/NotFound";
 
 const CityProfile = lazyWithRetry(() => import("./pages/CityProfile"));
 const EventReport = lazyWithRetry(() => import("./pages/EventReport"));
@@ -196,16 +198,20 @@ function AppRoutes() {
             }
           />
         </Route>
+
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </CityProvider>
   );
 }
 export default function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </Router>
+    </ErrorBoundary>
   );
 }

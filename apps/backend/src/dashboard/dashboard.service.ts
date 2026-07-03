@@ -77,6 +77,7 @@ export class DashboardService {
   private readonly logger = new Logger(DashboardService.name);
   private hits = 0;
   private misses = 0;
+  private pending = new Map<string, Promise<DashboardSummary>>();
 
   constructor(
     private prisma: PrismaService,
@@ -95,6 +96,23 @@ export class DashboardService {
     }
     this.misses++;
 
+    const existing = this.pending.get(key);
+    if (existing) return existing;
+
+    const compute = this.computeSummary(key, cityId, role);
+    this.pending.set(key, compute);
+    try {
+      return await compute;
+    } finally {
+      this.pending.delete(key);
+    }
+  }
+
+  private async computeSummary(
+    key: string,
+    cityId?: string,
+    role?: string,
+  ): Promise<DashboardSummary> {
     const t0 = Date.now();
     const now = new Date();
     const windows = this.buildTimeWindows(now);

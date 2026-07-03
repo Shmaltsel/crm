@@ -13,6 +13,7 @@ import {
 import type { Request, Response } from 'express';
 import { randomBytes } from 'crypto';
 import { Throttle } from '@nestjs/throttler';
+import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './auth.guard';
 import { LoginDto } from './dto/login.dto';
@@ -46,10 +47,12 @@ function setAuthCookies(
   });
 }
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  @ApiOperation({ summary: 'Увійти в систему' })
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   @HttpCode(HttpStatus.OK)
   @Post('login')
@@ -70,6 +73,7 @@ export class AuthController {
     return { user };
   }
 
+  @ApiOperation({ summary: 'Оновити access token' })
   @Throttle({ default: { ttl: 60000, limit: 20 } })
   @HttpCode(HttpStatus.OK)
   @Post('refresh')
@@ -92,6 +96,8 @@ export class AuthController {
     return { user };
   }
 
+  @ApiOperation({ summary: 'Отримати дані поточного користувача' })
+  @ApiCookieAuth('access_token')
   @UseGuards(AuthGuard)
   @Get('me')
   me(@Req() req: Request) {
@@ -111,6 +117,7 @@ export class AuthController {
     };
   }
 
+  @ApiOperation({ summary: 'Вийти з системи' })
   @HttpCode(HttpStatus.OK)
   @Post('logout')
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
