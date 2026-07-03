@@ -14,11 +14,11 @@ export const envValidationSchema = Joi.object({
   TELEGRAM_BOT_TOKEN: Joi.string().required(),
   REDIS_URL: Joi.string().uri().default('redis://localhost:6379'),
   JWT_SECRET: Joi.string()
-    .min(16)
+    .min(32)
     .when('NODE_ENV', {
-      is: 'production',
-      then: Joi.required(),
-      otherwise: Joi.optional().default('super-secret-key-for-dev'),
+      is: 'test',
+      then: Joi.optional().default('test-only-secret-do-not-use-elsewhere'),
+      otherwise: Joi.required(),
     }),
   SEED_ADMIN_EMAIL: Joi.string()
     .allow('')

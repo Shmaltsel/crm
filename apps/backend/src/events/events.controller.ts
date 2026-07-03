@@ -111,6 +111,7 @@ export class EventsController {
   }
 
   @Delete(':id')
+  @Roles('SUPERADMIN', 'MANAGER')
   @UseGuards(OwnershipGuard)
   @CheckOwnership('event')
   remove(@Param('id') id: string) {

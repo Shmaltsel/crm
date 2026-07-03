@@ -30,7 +30,35 @@ export class OwnershipGuard implements CanActivate {
     const user = request.user;
 
     // SUPERADMIN бачить усе — перевірка не потрібна
-    if (user?.role !== 'MANAGER') return true;
+    if (user?.role === 'SUPERADMIN') return true;
+
+    const paramId: string | undefined =
+      request.params.id ??
+      request.params.schoolId ??
+      request.params.eventId ??
+      request.params.crewId;
+    if (!paramId) return true;
+
+    if (user?.role === 'HOST' || user?.role === 'DRIVER') {
+      if (resourceType !== 'event') {
+        throw new ForbiddenException('Немає доступу до цього типу ресурсу');
+      }
+      const event = await this.prisma.event.findUnique({
+        where: { id: paramId },
+        select: { crew: { select: { hostId: true, driverId: true } } },
+      });
+      if (!event) throw new NotFoundException('Подію не знайдено');
+      const isAssigned =
+        event.crew?.hostId === user.sub || event.crew?.driverId === user.sub;
+      if (!isAssigned) {
+        throw new ForbiddenException('Немає доступу до цієї події');
+      }
+      return true;
+    }
+
+    if (user?.role !== 'MANAGER') {
+      throw new ForbiddenException('Немає доступу до ресурсу');
+    }
 
     const manager = await this.prisma.user.findUnique({
       where: { id: user.sub },
@@ -39,13 +67,6 @@ export class OwnershipGuard implements CanActivate {
     if (!manager?.cityId) {
       throw new ForbiddenException('Менеджер не прив’язаний до міста');
     }
-
-    const paramId: string | undefined =
-      request.params.id ??
-      request.params.schoolId ??
-      request.params.eventId ??
-      request.params.crewId;
-    if (!paramId) return true;
 
     let resourceCityId: string | null | undefined;
 
