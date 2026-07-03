@@ -1,0 +1,94 @@
+[
+  {
+    "path": "apps/backend/.env",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/backend/.env.example",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/backend/.gitignore",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/backend/.prettierrc",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/backend/coverage",
+    "reason": "ignored directory"
+  },
+  {
+    "path": "apps/backend/dist",
+    "reason": "ignored directory"
+  },
+  {
+    "path": "apps/backend/eslint-errors.txt",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/backend/node_modules",
+    "reason": "ignored directory"
+  },
+  {
+    "path": "apps/backend/prisma/dev.db",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/backend/prisma/migrations/migration_lock.toml",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/backend/src/tests",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/backend/ts-errors.txt",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/Dockerfile",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/frontend/.gitignore",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/frontend/.lighthouseci",
+    "reason": "ignored directory"
+  },
+  {
+    "path": "apps/frontend/node_modules",
+    "reason": "ignored directory"
+  },
+  {
+    "path": "apps/frontend/public/favicon.svg",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/frontend/public/icons.svg",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/frontend/public/robots.txt",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/frontend/src/assets/hero.png",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/frontend/src/assets/react.svg",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/frontend/src/assets/vite.svg",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/frontend/test-results",
+    "reason": "ignored directory"
+  }
+]

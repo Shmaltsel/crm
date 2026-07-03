@@ -1,0 +1,29 @@
+{
+  "mode": "audit",
+  "generatedAt": "2026-07-03T22:45:32.845Z",
+  "totals": {
+    "files": 243,
+    "lines": 24127,
+    "estimatedTokens": 327595,
+    "bundles": 5
+  },
+  "byExtension": {
+    ".mjs": 1,
+    ".json": 10,
+    ".sql": 14,
+    ".prisma": 1,
+    ".js": 5,
+    ".md": 2,
+    ".ts": 139,
+    ".yml": 1,
+    ".html": 2,
+    ".cjs": 1,
+    ".css": 2,
+    ".tsx": 63,
+    ".sh": 2
+  },
+  "byRootFolder": {
+    "apps": 241,
+    "scripts": 2
+  }
+}

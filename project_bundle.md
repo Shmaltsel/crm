@@ -48,6 +48,8 @@
 │   │   │   │   │   └── migration.sql
 │   │   │   │   ├── 20260702175302_add_audit_log
 │   │   │   │   │   └── migration.sql
+│   │   │   │   ├── 20260703211958_event_school_id_date_index
+│   │   │   │   │   └── migration.sql
 │   │   │   │   └── migration_lock.toml
 │   │   │   ├── schema.prisma
 │   │   │   ├── seed-admin.js
@@ -91,6 +93,8 @@
 │   │   │   │   ├── dto
 │   │   │   │   │   ├── page-meta.dto.ts
 │   │   │   │   │   └── page-options.dto.ts
+│   │   │   │   ├── exceptions
+│   │   │   │   │   └── app.exception.ts
 │   │   │   │   ├── feature-flags
 │   │   │   │   │   ├── feature-flags.module.ts
 │   │   │   │   │   └── feature-flags.service.ts
@@ -98,11 +102,17 @@
 │   │   │   │   │   └── all-exceptions.filter.ts
 │   │   │   │   ├── guards
 │   │   │   │   │   └── user-throttler.guard.ts
+│   │   │   │   ├── i18n
+│   │   │   │   │   ├── i18n.module.ts
+│   │   │   │   │   ├── i18n.service.ts
+│   │   │   │   │   └── messages.ts
 │   │   │   │   ├── interceptors
 │   │   │   │   │   ├── audit-log.interceptor.ts
 │   │   │   │   │   └── sanitize.interceptor.ts
-│   │   │   │   └── logger
-│   │   │   │       └── logger.module.ts
+│   │   │   │   ├── logger
+│   │   │   │   │   └── logger.module.ts
+│   │   │   │   └── pipes
+│   │   │   │       └── localized-validation.pipe.ts
 │   │   │   ├── config
 │   │   │   │   └── env.validation.ts
 │   │   │   ├── dashboard
@@ -229,6 +239,7 @@
 │       │   │   └── vite.svg
 │       │   ├── components
 │       │   │   ├── AddressLink.tsx
+│       │   │   ├── ErrorBoundary.tsx
 │       │   │   ├── IssueCarousel.tsx
 │       │   │   ├── Layout.tsx
 │       │   │   ├── PhoneLink.tsx
@@ -306,6 +317,7 @@
 │       │   │   ├── Finance.tsx
 │       │   │   ├── Kindergartens.tsx
 │       │   │   ├── Login.tsx
+│       │   │   ├── NotFound.tsx
 │       │   │   ├── SchoolProfile.tsx
 │       │   │   └── Schools.tsx
 │       │   ├── types
@@ -323,21 +335,23 @@
 │   ├── backup_20260703_033507.dump
 │   └── backup_20260703_034354.dump
 ├── collect-code.js
-├── combined_performance_files.md
-├── combined_security_audit.md
-├── combined_setup_audit.md
-├── combined_swagger_seed_audit.md
+├── controllers_dtos_audit.md
 ├── doc
 │   ├── doc-filelist.js
 │   ├── doc-script.js
 │   └── doc-style.css
+├── load-tests
+│   ├── dashboard.js
+│   └── school-profile.js
 ├── package.json
 ├── packages
 │   └── shared
 ├── pnpm-workspace.yaml
-└── scripts
-    ├── backup.sh
-    └── restore.sh
+├── scripts
+│   ├── backup.sh
+│   └── restore.sh
+├── structure.txt
+└── telegram_audit.md
 ```
 
 ### File: apps/backend/.env.example
@@ -602,192 +616,193 @@
 119 |   @@index([cityId])
 120 |   @@index([status])
 121 |   @@index([schoolId])
-122 |   @@index([date, status, cityId])
-123 | }
-124 | 
-125 | model EventReport {
-126 |   id                String        @id @default(uuid())
-127 |   eventId           String        @unique
-128 |   directorSatisfied Boolean?
-129 |   teachersSatisfied Boolean?
-130 |   hadIssues         Boolean       @default(false)
-131 |   comment           String?
-132 |   rating            Float?
-133 |   createdAt         DateTime      @default(now())
-134 |   announcementDone  Boolean       @default(false)
-135 |   materialShown     Boolean       @default(false)
-136 |   childrenCount     Int           @default(0)
-137 |   classesCount      Int           @default(0)
-138 |   privilegedCount   Int           @default(0)
-139 |   showingsCount     Int           @default(0)
-140 |   totalSum          Float         @default(0)
-141 |   schoolSum         Float         @default(0)
-142 |   remainderSum      Float         @default(0)
-143 |   event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-144 |   photos            File[]
-145 |   expenseItems      ExpenseItem[]
-146 |   salaryItems       SalaryItem[]
-147 | }
-148 | 
-149 | model File {
-150 |   id        String       @id @default(uuid())
-151 |   name      String
-152 |   url       String
-153 |   size      Int
-154 |   eventId   String?
-155 |   reportId  String?
-156 |   createdAt DateTime     @default(now())
-157 |   event     Event?       @relation(fields: [eventId], references: [id])
-158 |   report    EventReport? @relation(fields: [reportId], references: [id])
-159 | }
-160 | 
-161 | model EventHistory {
-162 |   id        String   @id @default(uuid())
-163 |   eventId   String
-164 |   action    String
-165 |   comment   String?
-166 |   userId    String
-167 |   userName  String
-168 |   role      String
-169 |   createdAt DateTime @default(now())
-170 |   event     Event    @relation(fields: [eventId], references: [id])
-171 | 
-172 |   @@index([eventId, createdAt])
-173 | }
-174 | 
-175 | model EventPreparation {
-176 |   id               String            @id @default(uuid())
-177 |   eventId          String            @unique
-178 |   assignCrew       PreparationStatus @default(PLANNED)
-179 |   bookEquipment    PreparationStatus @default(PLANNED)
-180 |   prepareDocs      PreparationStatus @default(PLANNED)
-181 |   prepareMaterials PreparationStatus @default(PLANNED)
-182 |   remindSchool     PreparationStatus @default(PLANNED)
-183 |   event            Event             @relation(fields: [eventId], references: [id])
-184 | }
-185 | 
-186 | model IssueReport {
-187 |   id               String    @id @default(uuid())
-188 |   eventId          String
-189 |   schoolName       String
-190 |   eventName        String
-191 |   message          String
-192 |   cityId           String
-193 |   status           String    @default("Планується")
-194 |   createdAt        DateTime  @default(now())
-195 |   deadline         DateTime?
-196 |   assignedUserId   String?
-197 |   assignedUserName String?
-198 |   city             City      @relation(fields: [cityId], references: [id])
-199 |   event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-200 | 
-201 |   @@index([cityId])
-202 |   @@index([eventId])
-203 | }
-204 | 
-205 | model SchoolContact {
-206 |   id           String   @id @default(uuid())
-207 |   city         String   @default("Львів")
-208 |   schoolNumber String
-209 |   contactName  String
-210 |   phone        String
-211 |   role         String?
-212 |   createdAt    DateTime @default(now())
-213 | }
-214 | 
-215 | model Project {
-216 |   id        String   @id @default(uuid())
-217 |   name      String   @unique
-218 |   color     String   @default("blue")
-219 |   createdAt DateTime @default(now())
-220 | }
-221 | 
-222 | model ExpenseItem {
-223 |   id        String   @id @default(uuid())
-224 |   reportId  String
-225 |   category  String
-226 |   name      String?
-227 |   amount    Decimal  @db.Decimal(12, 2)
-228 |   createdAt DateTime @default(now())
-229 | 
-230 |   report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-231 | 
-232 |   @@index([reportId])
-233 | }
-234 | 
-235 | model SalaryItem {
-236 |   id        String   @id @default(uuid())
-237 |   reportId  String
-238 |   userId    String?
-239 |   userName  String
-240 |   amount    Decimal  @db.Decimal(12, 2)
-241 |   role      String?
-242 |   createdAt DateTime @default(now())
-243 | 
-244 |   report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-245 |   user   User?       @relation(fields: [userId], references: [id])
-246 | 
-247 |   @@index([reportId])
-248 |   @@index([userId])
-249 | }
-250 | 
-251 | model RefreshToken {
-252 |   id        String    @id @default(uuid())
-253 |   userId    String
-254 |   tokenHash String    @unique
-255 |   expiresAt DateTime
-256 |   revokedAt DateTime?
-257 |   createdAt DateTime  @default(now())
-258 |   userAgent String?
-259 |   ip        String?
-260 |   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-261 | 
-262 |   @@index([userId])
-263 | }
-264 | 
-265 | model AuditLog {
-266 |   id        String   @id @default(uuid())
-267 |   userId    String?
-268 |   userName  String?
-269 |   action    String
-270 |   entity    String?
-271 |   entityId  String?
-272 |   ip        String?
-273 |   userAgent String?
-274 |   metadata  Json?
-275 |   createdAt DateTime @default(now())
-276 | 
-277 |   @@index([userId])
-278 |   @@index([action, createdAt])
-279 |   @@index([entity, entityId])
-280 | }
-281 | 
-282 | enum UserRole {
-283 |   SUPERADMIN
-284 |   MANAGER
-285 |   HOST
-286 |   DRIVER
-287 | }
-288 | 
-289 | enum PreparationStatus {
-290 |   PLANNED
-291 |   IN_PROGRESS
-292 |   DONE
-293 | }
-294 | 
-295 | enum EventStatus {
-296 |   BASE
-297 |   FIRST_CONTACT
-298 |   INTERESTED
-299 |   PRE_APPROVAL
-300 |   DATE_CONFIRMED
-301 |   PREPARATION
-302 |   IN_PROGRESS
-303 |   DONE
-304 |   REPORT
-305 |   RE_SALE
-306 | }
-307 | 
+122 |   @@index([schoolId, date])
+123 |   @@index([date, status, cityId])
+124 | }
+125 | 
+126 | model EventReport {
+127 |   id                String        @id @default(uuid())
+128 |   eventId           String        @unique
+129 |   directorSatisfied Boolean?
+130 |   teachersSatisfied Boolean?
+131 |   hadIssues         Boolean       @default(false)
+132 |   comment           String?
+133 |   rating            Float?
+134 |   createdAt         DateTime      @default(now())
+135 |   announcementDone  Boolean       @default(false)
+136 |   materialShown     Boolean       @default(false)
+137 |   childrenCount     Int           @default(0)
+138 |   classesCount      Int           @default(0)
+139 |   privilegedCount   Int           @default(0)
+140 |   showingsCount     Int           @default(0)
+141 |   totalSum          Float         @default(0)
+142 |   schoolSum         Float         @default(0)
+143 |   remainderSum      Float         @default(0)
+144 |   event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+145 |   photos            File[]
+146 |   expenseItems      ExpenseItem[]
+147 |   salaryItems       SalaryItem[]
+148 | }
+149 | 
+150 | model File {
+151 |   id        String       @id @default(uuid())
+152 |   name      String
+153 |   url       String
+154 |   size      Int
+155 |   eventId   String?
+156 |   reportId  String?
+157 |   createdAt DateTime     @default(now())
+158 |   event     Event?       @relation(fields: [eventId], references: [id])
+159 |   report    EventReport? @relation(fields: [reportId], references: [id])
+160 | }
+161 | 
+162 | model EventHistory {
+163 |   id        String   @id @default(uuid())
+164 |   eventId   String
+165 |   action    String
+166 |   comment   String?
+167 |   userId    String
+168 |   userName  String
+169 |   role      String
+170 |   createdAt DateTime @default(now())
+171 |   event     Event    @relation(fields: [eventId], references: [id])
+172 | 
+173 |   @@index([eventId, createdAt])
+174 | }
+175 | 
+176 | model EventPreparation {
+177 |   id               String            @id @default(uuid())
+178 |   eventId          String            @unique
+179 |   assignCrew       PreparationStatus @default(PLANNED)
+180 |   bookEquipment    PreparationStatus @default(PLANNED)
+181 |   prepareDocs      PreparationStatus @default(PLANNED)
+182 |   prepareMaterials PreparationStatus @default(PLANNED)
+183 |   remindSchool     PreparationStatus @default(PLANNED)
+184 |   event            Event             @relation(fields: [eventId], references: [id])
+185 | }
+186 | 
+187 | model IssueReport {
+188 |   id               String    @id @default(uuid())
+189 |   eventId          String
+190 |   schoolName       String
+191 |   eventName        String
+192 |   message          String
+193 |   cityId           String
+194 |   status           String    @default("Планується")
+195 |   createdAt        DateTime  @default(now())
+196 |   deadline         DateTime?
+197 |   assignedUserId   String?
+198 |   assignedUserName String?
+199 |   city             City      @relation(fields: [cityId], references: [id])
+200 |   event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+201 | 
+202 |   @@index([cityId])
+203 |   @@index([eventId])
+204 | }
+205 | 
+206 | model SchoolContact {
+207 |   id           String   @id @default(uuid())
+208 |   city         String   @default("Львів")
+209 |   schoolNumber String
+210 |   contactName  String
+211 |   phone        String
+212 |   role         String?
+213 |   createdAt    DateTime @default(now())
+214 | }
+215 | 
+216 | model Project {
+217 |   id        String   @id @default(uuid())
+218 |   name      String   @unique
+219 |   color     String   @default("blue")
+220 |   createdAt DateTime @default(now())
+221 | }
+222 | 
+223 | model ExpenseItem {
+224 |   id        String   @id @default(uuid())
+225 |   reportId  String
+226 |   category  String
+227 |   name      String?
+228 |   amount    Decimal  @db.Decimal(12, 2)
+229 |   createdAt DateTime @default(now())
+230 | 
+231 |   report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+232 | 
+233 |   @@index([reportId])
+234 | }
+235 | 
+236 | model SalaryItem {
+237 |   id        String   @id @default(uuid())
+238 |   reportId  String
+239 |   userId    String?
+240 |   userName  String
+241 |   amount    Decimal  @db.Decimal(12, 2)
+242 |   role      String?
+243 |   createdAt DateTime @default(now())
+244 | 
+245 |   report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+246 |   user   User?       @relation(fields: [userId], references: [id])
+247 | 
+248 |   @@index([reportId])
+249 |   @@index([userId])
+250 | }
+251 | 
+252 | model RefreshToken {
+253 |   id        String    @id @default(uuid())
+254 |   userId    String
+255 |   tokenHash String    @unique
+256 |   expiresAt DateTime
+257 |   revokedAt DateTime?
+258 |   createdAt DateTime  @default(now())
+259 |   userAgent String?
+260 |   ip        String?
+261 |   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+262 | 
+263 |   @@index([userId])
+264 | }
+265 | 
+266 | model AuditLog {
+267 |   id        String   @id @default(uuid())
+268 |   userId    String?
+269 |   userName  String?
+270 |   action    String
+271 |   entity    String?
+272 |   entityId  String?
+273 |   ip        String?
+274 |   userAgent String?
+275 |   metadata  Json?
+276 |   createdAt DateTime @default(now())
+277 | 
+278 |   @@index([userId])
+279 |   @@index([action, createdAt])
+280 |   @@index([entity, entityId])
+281 | }
+282 | 
+283 | enum UserRole {
+284 |   SUPERADMIN
+285 |   MANAGER
+286 |   HOST
+287 |   DRIVER
+288 | }
+289 | 
+290 | enum PreparationStatus {
+291 |   PLANNED
+292 |   IN_PROGRESS
+293 |   DONE
+294 | }
+295 | 
+296 | enum EventStatus {
+297 |   BASE
+298 |   FIRST_CONTACT
+299 |   INTERESTED
+300 |   PRE_APPROVAL
+301 |   DATE_CONFIRMED
+302 |   PREPARATION
+303 |   IN_PROGRESS
+304 |   DONE
+305 |   REPORT
+306 |   RE_SALE
+307 | }
+308 | 
 ```
 
 ### File: apps/backend/prisma/seed-admin.js
@@ -866,253 +881,295 @@
   6 | const DEMO_CITY_NAME = 'Демо Місто';
   7 | 
   8 | async function cleanupDemoData() {
-  9 |   const existingCity = await prisma.city.findFirst({ where: { name: DEMO_CITY_NAME } });
- 10 |   if (!existingCity) return;
- 11 | 
- 12 |   console.log('Знайдено попередні demo-дані, очищую...');
- 13 |   const events = await prisma.event.findMany({ where: { cityId: existingCity.id }, select: { id: true } });
- 14 |   const eventIds = events.map((e) => e.id);
- 15 | 
- 16 |   await prisma.eventHistory.deleteMany({ where: { eventId: { in: eventIds } } });
- 17 |   await prisma.eventPreparation.deleteMany({ where: { eventId: { in: eventIds } } });
- 18 |   await prisma.issueReport.deleteMany({ where: { eventId: { in: eventIds } } });
- 19 |   await prisma.file.deleteMany({ where: { eventId: { in: eventIds } } });
- 20 |   await prisma.eventReport.deleteMany({ where: { eventId: { in: eventIds } } });
- 21 |   await prisma.event.deleteMany({ where: { cityId: existingCity.id } });
- 22 |   await prisma.crew.deleteMany({ where: { cityId: existingCity.id } });
- 23 |   await prisma.school.deleteMany({ where: { cityId: existingCity.id } });
- 24 | 
- 25 |   const demoUsers = await prisma.user.findMany({ where: { cityId: existingCity.id }, select: { id: true } });
- 26 |   await prisma.user.deleteMany({ where: { id: { in: demoUsers.map((u) => u.id) } } });
- 27 | 
- 28 |   await prisma.city.delete({ where: { id: existingCity.id } });
- 29 |   console.log('Очищено.');
- 30 | }
- 31 | 
- 32 | async function main() {
- 33 |   if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PROD_SEED !== 'true') {
- 34 |     console.error('Demo-seed в production заблоковано. Встановіть ALLOW_PROD_SEED=true для підтвердження.');
- 35 |     process.exit(1);
- 36 |   }
- 37 | 
- 38 |   await cleanupDemoData();
- 39 | 
- 40 |   console.log('Створюю demo-місто...');
- 41 |   const city = await prisma.city.create({ data: { name: DEMO_CITY_NAME } });
- 42 | 
- 43 |   const demoPassword = await bcrypt.hash('Demo!Pass123', 10);
- 44 | 
- 45 |   const manager = await prisma.user.create({
- 46 |     data: {
- 47 |       name: 'Марія Демчук',
- 48 |       email: 'demo.manager@svitlo-znan.app',
- 49 |       password: demoPassword,
- 50 |       role: 'MANAGER',
- 51 |       cityId: city.id,
- 52 |       phone: '+380671112233',
- 53 |     },
- 54 |   });
- 55 | 
- 56 |   const host = await prisma.user.create({
- 57 |     data: {
- 58 |       name: 'Олег Ведучий',
- 59 |       email: 'demo.host@svitlo-znan.app',
- 60 |       password: demoPassword,
- 61 |       role: 'HOST',
- 62 |       cityId: city.id,
- 63 |       phone: '+380671112234',
- 64 |     },
- 65 |   });
- 66 | 
- 67 |   const driver = await prisma.user.create({
- 68 |     data: {
- 69 |       name: 'Ігор Водій',
- 70 |       email: 'demo.driver@svitlo-znan.app',
- 71 |       password: demoPassword,
- 72 |       role: 'DRIVER',
- 73 |       cityId: city.id,
- 74 |       phone: '+380671112235',
- 75 |       car: 'Volkswagen Transporter',
- 76 |     },
- 77 |   });
- 78 | 
- 79 |   await prisma.city.update({ where: { id: city.id }, data: { managerId: manager.id } });
- 80 | 
- 81 |   console.log('Створюю школи...');
- 82 |   const schools = await Promise.all([
- 83 |     prisma.school.create({
- 84 |       data: {
- 85 |         name: 'Ліцей №5',
- 86 |         type: 'school',
- 87 |         cityId: city.id,
- 88 |         address: 'вул. Шевченка, 10',
- 89 |         director: 'Наталія Іванівна',
- 90 |         phone: '+380321234567',
- 91 |         email: 'lyceum5@example.com',
- 92 |         childrenCount: 320,
- 93 |         isHotClient: true,
- 94 |         rating: 4.8,
- 95 |       },
- 96 |     }),
- 97 |     prisma.school.create({
- 98 |       data: {
- 99 |         name: 'Дитячий садок «Сонечко»',
-100 |         type: 'kindergarten',
-101 |         cityId: city.id,
-102 |         address: 'вул. Франка, 22',
-103 |         director: 'Оксана Петрівна',
-104 |         phone: '+380321234568',
-105 |         childrenCount: 90,
-106 |         rating: 4.5,
-107 |       },
-108 |     }),
-109 |     prisma.school.create({
-110 |       data: {
-111 |         name: 'Гімназія «Львів\'янка»',
-112 |         type: 'school',
-113 |         cityId: city.id,
-114 |         address: 'вул. Городоцька, 5',
-115 |         director: 'Андрій Богданович',
-116 |         phone: '+380321234569',
-117 |         childrenCount: 210,
-118 |       },
-119 |     }),
-120 |   ]);
-121 | 
-122 |   console.log('Створюю екіпаж...');
-123 |   const crew = await prisma.crew.create({
-124 |     data: {
-125 |       name: 'Екіпаж №1',
-126 |       cityId: city.id,
-127 |       hostId: host.id,
-128 |       driverId: driver.id,
-129 |       car: 'Volkswagen Transporter',
-130 |       carPlate: 'BC1234AA',
-131 |       phone: '+380671112235',
-132 |     },
-133 |   });
-134 | 
-135 |   const project = await prisma.project.upsert({
-136 |     where: { name: 'Голографічне шоу «Космос»' },
-137 |     update: {},
-138 |     create: { name: 'Голографічне шоу «Космос»', color: 'blue' },
-139 |   });
-140 | 
-141 |   console.log('Створюю події на різних стадіях pipeline...');
-142 | 
-143 |   await prisma.event.create({
-144 |     data: {
-145 |       cityId: city.id,
-146 |       schoolId: schools[0].id,
-147 |       project: project.name,
-148 |       date: new Date(Date.now() + 20 * 86400000),
-149 |       status: 'FIRST_CONTACT',
-150 |       childrenPlanned: 120,
-151 |       contactPerson: 'Наталія Іванівна',
-152 |       contactPhone: '+380321234567',
-153 |     },
-154 |   });
-155 | 
-156 |   await prisma.event.create({
-157 |     data: {
-158 |       cityId: city.id,
-159 |       schoolId: schools[1].id,
-160 |       project: project.name,
-161 |       date: new Date(Date.now() + 10 * 86400000),
-162 |       status: 'DATE_CONFIRMED',
-163 |       crewId: crew.id,
-164 |       childrenPlanned: 60,
-165 |       price: 8000,
-166 |       contactPerson: 'Оксана Петрівна',
-167 |       contactPhone: '+380321234568',
+  9 |   const existingCity = await prisma.city.findFirst({
+ 10 |     where: { name: DEMO_CITY_NAME },
+ 11 |   });
+ 12 |   if (!existingCity) return;
+ 13 | 
+ 14 |   console.log('Знайдено попередні demo-дані, очищую...');
+ 15 |   const events = await prisma.event.findMany({
+ 16 |     where: { cityId: existingCity.id },
+ 17 |     select: { id: true },
+ 18 |   });
+ 19 |   const eventIds = events.map((e) => e.id);
+ 20 | 
+ 21 |   await prisma.eventHistory.deleteMany({
+ 22 |     where: { eventId: { in: eventIds } },
+ 23 |   });
+ 24 |   await prisma.eventPreparation.deleteMany({
+ 25 |     where: { eventId: { in: eventIds } },
+ 26 |   });
+ 27 |   await prisma.issueReport.deleteMany({ where: { eventId: { in: eventIds } } });
+ 28 |   await prisma.file.deleteMany({ where: { eventId: { in: eventIds } } });
+ 29 |   await prisma.eventReport.deleteMany({ where: { eventId: { in: eventIds } } });
+ 30 |   await prisma.event.deleteMany({ where: { cityId: existingCity.id } });
+ 31 |   await prisma.crew.deleteMany({ where: { cityId: existingCity.id } });
+ 32 |   await prisma.school.deleteMany({ where: { cityId: existingCity.id } });
+ 33 | 
+ 34 |   const demoUsers = await prisma.user.findMany({
+ 35 |     where: { cityId: existingCity.id },
+ 36 |     select: { id: true },
+ 37 |   });
+ 38 |   await prisma.user.deleteMany({
+ 39 |     where: { id: { in: demoUsers.map((u) => u.id) } },
+ 40 |   });
+ 41 | 
+ 42 |   await prisma.city.delete({ where: { id: existingCity.id } });
+ 43 |   console.log('Очищено.');
+ 44 | }
+ 45 | 
+ 46 | async function main() {
+ 47 |   if (
+ 48 |     process.env.NODE_ENV === 'production' &&
+ 49 |     process.env.ALLOW_PROD_SEED !== 'true'
+ 50 |   ) {
+ 51 |     console.error(
+ 52 |       'Demo-seed в production заблоковано. Встановіть ALLOW_PROD_SEED=true для підтвердження.',
+ 53 |     );
+ 54 |     process.exit(1);
+ 55 |   }
+ 56 | 
+ 57 |   await cleanupDemoData();
+ 58 | 
+ 59 |   console.log('Створюю demo-місто...');
+ 60 |   const city = await prisma.city.create({ data: { name: DEMO_CITY_NAME } });
+ 61 | 
+ 62 |   const demoPassword = await bcrypt.hash('Demo!Pass123', 10);
+ 63 | 
+ 64 |   const manager = await prisma.user.create({
+ 65 |     data: {
+ 66 |       name: 'Марія Демчук',
+ 67 |       email: 'demo.manager@svitlo-znan.app',
+ 68 |       password: demoPassword,
+ 69 |       role: 'MANAGER',
+ 70 |       cityId: city.id,
+ 71 |       phone: '+380671112233',
+ 72 |     },
+ 73 |   });
+ 74 | 
+ 75 |   const loadTestUsers = await Promise.all(
+ 76 |     Array.from({ length: 10 }, (_, i) =>
+ 77 |       prisma.user.create({
+ 78 |         data: {
+ 79 |           name: `Load Test User ${i + 1}`,
+ 80 |           email: `loadtest${i + 1}@svitlo-znan.app`,
+ 81 |           password: demoPassword,
+ 82 |           role: 'MANAGER',
+ 83 |           cityId: city.id,
+ 84 |         },
+ 85 |       }),
+ 86 |     ),
+ 87 |   );
+ 88 | 
+ 89 |   const host = await prisma.user.create({
+ 90 |     data: {
+ 91 |       name: 'Олег Ведучий',
+ 92 |       email: 'demo.host@svitlo-znan.app',
+ 93 |       password: demoPassword,
+ 94 |       role: 'HOST',
+ 95 |       cityId: city.id,
+ 96 |       phone: '+380671112234',
+ 97 |     },
+ 98 |   });
+ 99 | 
+100 |   const driver = await prisma.user.create({
+101 |     data: {
+102 |       name: 'Ігор Водій',
+103 |       email: 'demo.driver@svitlo-znan.app',
+104 |       password: demoPassword,
+105 |       role: 'DRIVER',
+106 |       cityId: city.id,
+107 |       phone: '+380671112235',
+108 |       car: 'Volkswagen Transporter',
+109 |     },
+110 |   });
+111 | 
+112 |   await prisma.city.update({
+113 |     where: { id: city.id },
+114 |     data: { managerId: manager.id },
+115 |   });
+116 | 
+117 |   console.log('Створюю школи...');
+118 |   const schools = await Promise.all([
+119 |     prisma.school.create({
+120 |       data: {
+121 |         name: 'Ліцей №5',
+122 |         type: 'school',
+123 |         cityId: city.id,
+124 |         address: 'вул. Шевченка, 10',
+125 |         director: 'Наталія Іванівна',
+126 |         phone: '+380321234567',
+127 |         email: 'lyceum5@example.com',
+128 |         childrenCount: 320,
+129 |         isHotClient: true,
+130 |         rating: 4.8,
+131 |       },
+132 |     }),
+133 |     prisma.school.create({
+134 |       data: {
+135 |         name: 'Дитячий садок «Сонечко»',
+136 |         type: 'kindergarten',
+137 |         cityId: city.id,
+138 |         address: 'вул. Франка, 22',
+139 |         director: 'Оксана Петрівна',
+140 |         phone: '+380321234568',
+141 |         childrenCount: 90,
+142 |         rating: 4.5,
+143 |       },
+144 |     }),
+145 |     prisma.school.create({
+146 |       data: {
+147 |         name: "Гімназія «Львів'янка»",
+148 |         type: 'school',
+149 |         cityId: city.id,
+150 |         address: 'вул. Городоцька, 5',
+151 |         director: 'Андрій Богданович',
+152 |         phone: '+380321234569',
+153 |         childrenCount: 210,
+154 |       },
+155 |     }),
+156 |   ]);
+157 | 
+158 |   console.log('Створюю екіпаж...');
+159 |   const crew = await prisma.crew.create({
+160 |     data: {
+161 |       name: 'Екіпаж №1',
+162 |       cityId: city.id,
+163 |       hostId: host.id,
+164 |       driverId: driver.id,
+165 |       car: 'Volkswagen Transporter',
+166 |       carPlate: 'BC1234AA',
+167 |       phone: '+380671112235',
 168 |     },
 169 |   });
 170 | 
-171 |   const preparingEvent = await prisma.event.create({
-172 |     data: {
-173 |       cityId: city.id,
-174 |       schoolId: schools[2].id,
-175 |       project: project.name,
-176 |       date: new Date(Date.now() + 5 * 86400000),
-177 |       status: 'PREPARATION',
-178 |       crewId: crew.id,
-179 |       childrenPlanned: 150,
-180 |       price: 15000,
-181 |       responsibleId: manager.id,
-182 |     },
-183 |   });
-184 |   await prisma.eventPreparation.create({
-185 |     data: {
-186 |       eventId: preparingEvent.id,
-187 |       assignCrew: 'DONE',
-188 |       bookEquipment: 'DONE',
-189 |       prepareMaterials: 'IN_PROGRESS',
-190 |     },
-191 |   });
-192 | 
-193 |   const completedEvent = await prisma.event.create({
-194 |     data: {
-195 |       cityId: city.id,
-196 |       schoolId: schools[0].id,
-197 |       project: project.name,
-198 |       date: new Date(Date.now() - 15 * 86400000),
-199 |       status: 'REPORT',
-200 |       crewId: crew.id,
-201 |       childrenPlanned: 100,
-202 |       childrenActual: 98,
-203 |       price: 12000,
-204 |       received: 12000,
-205 |     },
-206 |   });
-207 |   await prisma.eventReport.create({
+171 |   const project = await prisma.project.upsert({
+172 |     where: { name: 'Голографічне шоу «Космос»' },
+173 |     update: {},
+174 |     create: { name: 'Голографічне шоу «Космос»', color: 'blue' },
+175 |   });
+176 | 
+177 |   console.log('Створюю події на різних стадіях pipeline...');
+178 | 
+179 |   await prisma.event.create({
+180 |     data: {
+181 |       cityId: city.id,
+182 |       schoolId: schools[0].id,
+183 |       project: project.name,
+184 |       date: new Date(Date.now() + 20 * 86400000),
+185 |       status: 'FIRST_CONTACT',
+186 |       childrenPlanned: 120,
+187 |       contactPerson: 'Наталія Іванівна',
+188 |       contactPhone: '+380321234567',
+189 |     },
+190 |   });
+191 | 
+192 |   await prisma.event.create({
+193 |     data: {
+194 |       cityId: city.id,
+195 |       schoolId: schools[1].id,
+196 |       project: project.name,
+197 |       date: new Date(Date.now() + 10 * 86400000),
+198 |       status: 'DATE_CONFIRMED',
+199 |       crewId: crew.id,
+200 |       childrenPlanned: 60,
+201 |       price: 8000,
+202 |       contactPerson: 'Оксана Петрівна',
+203 |       contactPhone: '+380321234568',
+204 |     },
+205 |   });
+206 | 
+207 |   const preparingEvent = await prisma.event.create({
 208 |     data: {
-209 |       eventId: completedEvent.id,
-210 |       directorSatisfied: true,
-211 |       teachersSatisfied: true,
-212 |       rating: 5,
-213 |       childrenCount: 98,
-214 |       classesCount: 5,
-215 |       totalSum: 12000,
-216 |       schoolSum: 12000,
-217 |       remainderSum: 0,
-218 |       expenseItems: {
-219 |         create: [{ category: 'Пальне', name: 'Заправка авто', amount: 800 }],
-220 |       },
-221 |       salaryItems: {
-222 |         create: [
-223 |           { userId: host.id, userName: host.name, amount: 2500, role: 'HOST' },
-224 |           { userId: driver.id, userName: driver.name, amount: 1500, role: 'DRIVER' },
-225 |         ],
-226 |       },
-227 |     },
-228 |   });
-229 | 
-230 |   await prisma.eventHistory.create({
-231 |     data: {
-232 |       eventId: completedEvent.id,
-233 |       action: 'Подію завершено',
-234 |       comment: 'Захід пройшов успішно, школа задоволена',
-235 |       userId: manager.id,
-236 |       userName: manager.name,
-237 |       role: 'MANAGER',
-238 |     },
-239 |   });
-240 | 
-241 |   console.log('\n✅ Demo-дані створено!');
-242 |   console.log(`Місто: ${DEMO_CITY_NAME}`);
-243 |   console.log(`Менеджер: ${manager.email} / Demo!Pass123`);
-244 |   console.log(`Ведучий: ${host.email} / Demo!Pass123`);
-245 |   console.log(`Водій: ${driver.email} / Demo!Pass123`);
-246 | }
-247 | 
-248 | main()
-249 |   .catch((e) => {
-250 |     console.error('Помилка під час demo-seed:', e);
-251 |     process.exit(1);
-252 |   })
-253 |   .finally(async () => {
-254 |     await prisma.$disconnect();
-255 |   });
+209 |       cityId: city.id,
+210 |       schoolId: schools[2].id,
+211 |       project: project.name,
+212 |       date: new Date(Date.now() + 5 * 86400000),
+213 |       status: 'PREPARATION',
+214 |       crewId: crew.id,
+215 |       childrenPlanned: 150,
+216 |       price: 15000,
+217 |       responsibleId: manager.id,
+218 |     },
+219 |   });
+220 |   await prisma.eventPreparation.create({
+221 |     data: {
+222 |       eventId: preparingEvent.id,
+223 |       assignCrew: 'DONE',
+224 |       bookEquipment: 'DONE',
+225 |       prepareMaterials: 'IN_PROGRESS',
+226 |     },
+227 |   });
+228 | 
+229 |   const completedEvent = await prisma.event.create({
+230 |     data: {
+231 |       cityId: city.id,
+232 |       schoolId: schools[0].id,
+233 |       project: project.name,
+234 |       date: new Date(Date.now() - 15 * 86400000),
+235 |       status: 'REPORT',
+236 |       crewId: crew.id,
+237 |       childrenPlanned: 100,
+238 |       childrenActual: 98,
+239 |       price: 12000,
+240 |       received: 12000,
+241 |     },
+242 |   });
+243 |   await prisma.eventReport.create({
+244 |     data: {
+245 |       eventId: completedEvent.id,
+246 |       directorSatisfied: true,
+247 |       teachersSatisfied: true,
+248 |       rating: 5,
+249 |       childrenCount: 98,
+250 |       classesCount: 5,
+251 |       totalSum: 12000,
+252 |       schoolSum: 12000,
+253 |       remainderSum: 0,
+254 |       expenseItems: {
+255 |         create: [{ category: 'Пальне', name: 'Заправка авто', amount: 800 }],
+256 |       },
+257 |       salaryItems: {
+258 |         create: [
+259 |           { userId: host.id, userName: host.name, amount: 2500, role: 'HOST' },
+260 |           {
+261 |             userId: driver.id,
+262 |             userName: driver.name,
+263 |             amount: 1500,
+264 |             role: 'DRIVER',
+265 |           },
+266 |         ],
+267 |       },
+268 |     },
+269 |   });
+270 | 
+271 |   await prisma.eventHistory.create({
+272 |     data: {
+273 |       eventId: completedEvent.id,
+274 |       action: 'Подію завершено',
+275 |       comment: 'Захід пройшов успішно, школа задоволена',
+276 |       userId: manager.id,
+277 |       userName: manager.name,
+278 |       role: 'MANAGER',
+279 |     },
+280 |   });
+281 | 
+282 |   console.log('\n✅ Demo-дані створено!');
+283 |   console.log(`Місто: ${DEMO_CITY_NAME}`);
+284 |   console.log(`Менеджер: ${manager.email} / Demo!Pass123`);
+285 |   console.log(`Ведучий: ${host.email} / Demo!Pass123`);
+286 |   console.log(`Водій: ${driver.email} / Demo!Pass123`);
+287 | }
+288 | 
+289 | main()
+290 |   .catch((e) => {
+291 |     console.error('Помилка під час demo-seed:', e);
+292 |     process.exit(1);
+293 |   })
+294 |   .finally(async () => {
+295 |     await prisma.$disconnect();
+296 |   });
+297 | 
 ```
 
 ### File: apps/backend/src/app.controller.spec.ts
@@ -1162,7 +1219,7 @@
 ### File: apps/backend/src/app.module.ts
 ```ts
   0 | import { Module } from '@nestjs/common';
-  1 | import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+  1 | import { APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
   2 | import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
   3 | import { SanitizeInterceptor } from './common/interceptors/sanitize.interceptor';
   4 | import { ThrottlerModule } from '@nestjs/throttler';
@@ -1189,61 +1246,70 @@
  25 | import { HealthModule } from './health/health.module';
  26 | import { MetricsModule } from './metrics/metrics.module';
  27 | import { FeatureFlagsModule } from './common/feature-flags/feature-flags.module';
- 28 | @Module({
- 29 |   imports: [
- 30 |     HealthModule,
- 31 |     MetricsModule,
- 32 |     FeatureFlagsModule,
- 33 |     ConfigModule.forRoot({
- 34 |       isGlobal: true,
- 35 |       validationSchema: envValidationSchema,
- 36 |     }),
- 37 |     LoggerModule,
- 38 |     RedisCacheModule,
- 39 |     ThrottlerModule.forRootAsync({
- 40 |       useFactory: () => ({
- 41 |         throttlers: [{ name: 'default', ttl: 60000, limit: 100 }],
- 42 |         storage: new ThrottlerStorageRedisService(
- 43 |           new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
- 44 |             maxRetriesPerRequest: 1,
- 45 |             connectTimeout: 3000,
- 46 |             retryStrategy: (times) =>
- 47 |               times > 3 ? null : Math.min(times * 200, 2000),
- 48 |           }),
- 49 |         ),
- 50 |       }),
- 51 |     }),
- 52 |     PrismaModule,
- 53 |     UsersModule,
- 54 |     AuthModule,
- 55 |     EventsModule,
- 56 |     CitiesModule,
- 57 |     SchoolsModule,
- 58 |     FinanceModule,
- 59 |     TelegramModule,
- 60 |     IssuesModule,
- 61 |     DashboardModule,
- 62 |     ProjectsModule,
- 63 |   ],
- 64 |   controllers: [AppController],
- 65 |   providers: [
- 66 |     AppService,
- 67 |     {
- 68 |       provide: APP_GUARD,
- 69 |       useClass: UserThrottlerGuard,
- 70 |     },
- 71 |     {
- 72 |       provide: APP_INTERCEPTOR,
- 73 |       useClass: SanitizeInterceptor,
- 74 |     },
- 75 |     {
- 76 |       provide: APP_INTERCEPTOR,
- 77 |       useClass: AuditLogInterceptor,
- 78 |     },
- 79 |   ],
- 80 | })
- 81 | export class AppModule {}
- 82 | 
+ 28 | import { I18nModule } from './common/i18n/i18n.module';
+ 29 | import { LocalizedValidationPipe } from './common/pipes/localized-validation.pipe';
+ 30 | import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+ 31 | @Module({
+ 32 |   imports: [
+ 33 |     HealthModule,
+ 34 |     MetricsModule,
+ 35 |     FeatureFlagsModule,
+ 36 |     I18nModule,
+ 37 |     ConfigModule.forRoot({
+ 38 |       isGlobal: true,
+ 39 |       validationSchema: envValidationSchema,
+ 40 |     }),
+ 41 |     LoggerModule,
+ 42 |     RedisCacheModule,
+ 43 |     ThrottlerModule.forRootAsync({
+ 44 |       useFactory: () => ({
+ 45 |         throttlers: [{ name: 'default', ttl: 60000, limit: 100 }],
+ 46 |         storage: new ThrottlerStorageRedisService(
+ 47 |           new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
+ 48 |             maxRetriesPerRequest: 1,
+ 49 |             connectTimeout: 3000,
+ 50 |             retryStrategy: (times) =>
+ 51 |               times > 3 ? null : Math.min(times * 200, 2000),
+ 52 |           }),
+ 53 |         ),
+ 54 |       }),
+ 55 |     }),
+ 56 |     PrismaModule,
+ 57 |     UsersModule,
+ 58 |     AuthModule,
+ 59 |     EventsModule,
+ 60 |     CitiesModule,
+ 61 |     SchoolsModule,
+ 62 |     FinanceModule,
+ 63 |     TelegramModule,
+ 64 |     IssuesModule,
+ 65 |     DashboardModule,
+ 66 |     ProjectsModule,
+ 67 |   ],
+ 68 |   controllers: [AppController],
+ 69 |   providers: [
+ 70 |     AppService,
+ 71 |     AllExceptionsFilter,
+ 72 |     {
+ 73 |       provide: APP_PIPE,
+ 74 |       useClass: LocalizedValidationPipe,
+ 75 |     },
+ 76 |     {
+ 77 |       provide: APP_GUARD,
+ 78 |       useClass: UserThrottlerGuard,
+ 79 |     },
+ 80 |     {
+ 81 |       provide: APP_INTERCEPTOR,
+ 82 |       useClass: SanitizeInterceptor,
+ 83 |     },
+ 84 |     {
+ 85 |       provide: APP_INTERCEPTOR,
+ 86 |       useClass: AuditLogInterceptor,
+ 87 |     },
+ 88 |   ],
+ 89 | })
+ 90 | export class AppModule {}
+ 91 | 
 ```
 
 ### File: apps/backend/src/app.service.ts
@@ -1294,117 +1360,124 @@
  12 | import type { Request, Response } from 'express';
  13 | import { randomBytes } from 'crypto';
  14 | import { Throttle } from '@nestjs/throttler';
- 15 | import { AuthService } from './auth.service';
- 16 | import { AuthGuard } from './auth.guard';
- 17 | import { LoginDto } from './dto/login.dto';
- 18 | 
- 19 | const isProd = process.env.NODE_ENV === 'production';
- 20 | 
- 21 | function setAuthCookies(
- 22 |   res: Response,
- 23 |   accessToken: string,
- 24 |   refreshToken: string,
- 25 |   csrfToken: string,
- 26 | ) {
- 27 |   res.cookie('access_token', accessToken, {
- 28 |     httpOnly: true,
- 29 |     secure: isProd,
- 30 |     sameSite: isProd ? 'none' : 'lax',
- 31 |     maxAge: 15 * 60 * 1000,
- 32 |   });
- 33 |   res.cookie('refresh_token', refreshToken, {
- 34 |     httpOnly: true,
- 35 |     secure: isProd,
- 36 |     sameSite: isProd ? 'none' : 'lax',
- 37 |     path: '/auth',
- 38 |     maxAge: 30 * 24 * 60 * 60 * 1000,
- 39 |   });
- 40 |   res.cookie('csrf_token', csrfToken, {
- 41 |     httpOnly: false,
- 42 |     secure: isProd,
- 43 |     sameSite: isProd ? 'none' : 'lax',
- 44 |     maxAge: 24 * 60 * 60 * 1000,
- 45 |   });
- 46 | }
- 47 | 
- 48 | @Controller('auth')
- 49 | export class AuthController {
- 50 |   constructor(private authService: AuthService) {}
- 51 | 
- 52 |   @Throttle({ default: { ttl: 60000, limit: 5 } })
- 53 |   @HttpCode(HttpStatus.OK)
- 54 |   @Post('login')
- 55 |   async login(
- 56 |     @Body() signInDto: LoginDto,
- 57 |     @Req() req: Request,
- 58 |     @Res({ passthrough: true }) res: Response,
- 59 |   ) {
- 60 |     const { access_token, refresh_token, user } = await this.authService.login(
- 61 |       signInDto.email,
- 62 |       signInDto.password,
- 63 |       { ip: req.ip, userAgent: req.headers['user-agent'] },
- 64 |     );
- 65 |     const csrfToken = randomBytes(32).toString('hex');
- 66 | 
- 67 |     setAuthCookies(res, access_token, refresh_token, csrfToken);
- 68 | 
- 69 |     return { user };
- 70 |   }
+ 15 | import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
+ 16 | import { AuthService } from './auth.service';
+ 17 | import { AuthGuard } from './auth.guard';
+ 18 | import { LoginDto } from './dto/login.dto';
+ 19 | 
+ 20 | const isProd = process.env.NODE_ENV === 'production';
+ 21 | 
+ 22 | function setAuthCookies(
+ 23 |   res: Response,
+ 24 |   accessToken: string,
+ 25 |   refreshToken: string,
+ 26 |   csrfToken: string,
+ 27 | ) {
+ 28 |   res.cookie('access_token', accessToken, {
+ 29 |     httpOnly: true,
+ 30 |     secure: isProd,
+ 31 |     sameSite: isProd ? 'none' : 'lax',
+ 32 |     maxAge: 15 * 60 * 1000,
+ 33 |   });
+ 34 |   res.cookie('refresh_token', refreshToken, {
+ 35 |     httpOnly: true,
+ 36 |     secure: isProd,
+ 37 |     sameSite: isProd ? 'none' : 'lax',
+ 38 |     path: '/auth',
+ 39 |     maxAge: 30 * 24 * 60 * 60 * 1000,
+ 40 |   });
+ 41 |   res.cookie('csrf_token', csrfToken, {
+ 42 |     httpOnly: false,
+ 43 |     secure: isProd,
+ 44 |     sameSite: isProd ? 'none' : 'lax',
+ 45 |     maxAge: 24 * 60 * 60 * 1000,
+ 46 |   });
+ 47 | }
+ 48 | 
+ 49 | @ApiTags('Auth')
+ 50 | @Controller('auth')
+ 51 | export class AuthController {
+ 52 |   constructor(private authService: AuthService) {}
+ 53 | 
+ 54 |   @ApiOperation({ summary: 'Увійти в систему' })
+ 55 |   @Throttle({ default: { ttl: 60000, limit: 5 } })
+ 56 |   @HttpCode(HttpStatus.OK)
+ 57 |   @Post('login')
+ 58 |   async login(
+ 59 |     @Body() signInDto: LoginDto,
+ 60 |     @Req() req: Request,
+ 61 |     @Res({ passthrough: true }) res: Response,
+ 62 |   ) {
+ 63 |     const { access_token, refresh_token, user } = await this.authService.login(
+ 64 |       signInDto.email,
+ 65 |       signInDto.password,
+ 66 |       { ip: req.ip, userAgent: req.headers['user-agent'] },
+ 67 |     );
+ 68 |     const csrfToken = randomBytes(32).toString('hex');
+ 69 | 
+ 70 |     setAuthCookies(res, access_token, refresh_token, csrfToken);
  71 | 
- 72 |   @Throttle({ default: { ttl: 60000, limit: 20 } })
- 73 |   @HttpCode(HttpStatus.OK)
- 74 |   @Post('refresh')
- 75 |   async refresh(
- 76 |     @Req() req: Request,
- 77 |     @Res({ passthrough: true }) res: Response,
- 78 |   ) {
- 79 |     const oldToken = req.cookies?.refresh_token;
- 80 |     if (!oldToken) throw new UnauthorizedException('Refresh token відсутній');
- 81 | 
- 82 |     const { access_token, refresh_token, user } =
- 83 |       await this.authService.refresh(oldToken, {
- 84 |         ip: req.ip,
- 85 |         userAgent: req.headers['user-agent'],
- 86 |       });
- 87 |     const csrfToken = randomBytes(32).toString('hex');
- 88 | 
- 89 |     setAuthCookies(res, access_token, refresh_token, csrfToken);
- 90 | 
- 91 |     return { user };
- 92 |   }
- 93 | 
- 94 |   @UseGuards(AuthGuard)
- 95 |   @Get('me')
- 96 |   me(@Req() req: Request) {
- 97 |     const payload = req['user'] as {
- 98 |       sub: string;
- 99 |       email: string;
-100 |       role: string;
-101 |       name: string;
-102 |     };
-103 |     return {
-104 |       user: {
-105 |         id: payload.sub,
-106 |         name: payload.name,
-107 |         email: payload.email,
-108 |         role: payload.role,
-109 |       },
-110 |     };
-111 |   }
-112 | 
-113 |   @HttpCode(HttpStatus.OK)
-114 |   @Post('logout')
-115 |   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-116 |     const refreshToken = req.cookies?.refresh_token;
-117 |     if (refreshToken) await this.authService.revokeRefreshToken(refreshToken);
+ 72 |     return { user };
+ 73 |   }
+ 74 | 
+ 75 |   @ApiOperation({ summary: 'Оновити access token' })
+ 76 |   @Throttle({ default: { ttl: 60000, limit: 20 } })
+ 77 |   @HttpCode(HttpStatus.OK)
+ 78 |   @Post('refresh')
+ 79 |   async refresh(
+ 80 |     @Req() req: Request,
+ 81 |     @Res({ passthrough: true }) res: Response,
+ 82 |   ) {
+ 83 |     const oldToken = req.cookies?.refresh_token;
+ 84 |     if (!oldToken) throw new UnauthorizedException('Refresh token відсутній');
+ 85 | 
+ 86 |     const { access_token, refresh_token, user } =
+ 87 |       await this.authService.refresh(oldToken, {
+ 88 |         ip: req.ip,
+ 89 |         userAgent: req.headers['user-agent'],
+ 90 |       });
+ 91 |     const csrfToken = randomBytes(32).toString('hex');
+ 92 | 
+ 93 |     setAuthCookies(res, access_token, refresh_token, csrfToken);
+ 94 | 
+ 95 |     return { user };
+ 96 |   }
+ 97 | 
+ 98 |   @ApiOperation({ summary: 'Отримати дані поточного користувача' })
+ 99 |   @ApiCookieAuth('access_token')
+100 |   @UseGuards(AuthGuard)
+101 |   @Get('me')
+102 |   me(@Req() req: Request) {
+103 |     const payload = req['user'] as {
+104 |       sub: string;
+105 |       email: string;
+106 |       role: string;
+107 |       name: string;
+108 |     };
+109 |     return {
+110 |       user: {
+111 |         id: payload.sub,
+112 |         name: payload.name,
+113 |         email: payload.email,
+114 |         role: payload.role,
+115 |       },
+116 |     };
+117 |   }
 118 | 
-119 |     res.clearCookie('access_token');
-120 |     res.clearCookie('refresh_token', { path: '/auth' });
-121 |     res.clearCookie('csrf_token');
-122 |     return { message: 'ok' };
-123 |   }
-124 | }
+119 |   @ApiOperation({ summary: 'Вийти з системи' })
+120 |   @HttpCode(HttpStatus.OK)
+121 |   @Post('logout')
+122 |   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+123 |     const refreshToken = req.cookies?.refresh_token;
+124 |     if (refreshToken) await this.authService.revokeRefreshToken(refreshToken);
 125 | 
+126 |     res.clearCookie('access_token');
+127 |     res.clearCookie('refresh_token', { path: '/auth' });
+128 |     res.clearCookie('csrf_token');
+129 |     return { message: 'ok' };
+130 |   }
+131 | }
+132 | 
 ```
 
 ### File: apps/backend/src/auth/auth.guard.ts
@@ -1500,132 +1573,133 @@
 
 ### File: apps/backend/src/auth/auth.service.ts
 ```ts
-  0 | import { Injectable, UnauthorizedException } from '@nestjs/common';
-  1 | import { UsersService } from '../users/users.service';
-  2 | import { JwtService } from '@nestjs/jwt';
-  3 | import { PrismaService } from '../prisma/prisma.service';
-  4 | import * as bcrypt from 'bcrypt';
-  5 | import { randomBytes, createHash } from 'crypto';
-  6 | 
-  7 | const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-  8 | 
-  9 | @Injectable()
- 10 | export class AuthService {
- 11 |   constructor(
- 12 |     private usersService: UsersService,
- 13 |     private jwtService: JwtService,
- 14 |     private prisma: PrismaService,
- 15 |   ) {}
- 16 | 
- 17 |   private hashToken(token: string): string {
- 18 |     return createHash('sha256').update(token).digest('hex');
- 19 |   }
- 20 | 
- 21 |   private async issueRefreshToken(
- 22 |     userId: string,
- 23 |     meta: { ip?: string; userAgent?: string },
- 24 |   ): Promise<string> {
- 25 |     const token = randomBytes(64).toString('hex');
- 26 |     await this.prisma.refreshToken.create({
- 27 |       data: {
- 28 |         userId,
- 29 |         tokenHash: this.hashToken(token),
- 30 |         expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
- 31 |         ip: meta.ip,
- 32 |         userAgent: meta.userAgent,
- 33 |       },
- 34 |     });
- 35 |     return token;
- 36 |   }
- 37 | 
- 38 |   async login(
- 39 |     email: string,
- 40 |     pass: string,
- 41 |     meta: { ip?: string; userAgent?: string } = {},
- 42 |   ) {
- 43 |     const user = await this.usersService.findByEmail(email);
- 44 | 
- 45 |     if (!user) {
- 46 |       throw new UnauthorizedException('Невірний email або пароль');
- 47 |     }
- 48 | 
- 49 |     const isPasswordValid = await bcrypt.compare(pass, user.password);
- 50 | 
- 51 |     if (!isPasswordValid) {
- 52 |       throw new UnauthorizedException('Невірний email або пароль');
- 53 |     }
- 54 | 
- 55 |     const payload = {
- 56 |       sub: user.id,
- 57 |       email: user.email,
- 58 |       role: user.role,
- 59 |       name: user.name,
- 60 |     };
- 61 | 
- 62 |     const refresh_token = await this.issueRefreshToken(user.id, meta);
- 63 | 
- 64 |     return {
- 65 |       access_token: await this.jwtService.signAsync(payload),
- 66 |       refresh_token,
- 67 |       user: {
- 68 |         id: user.id,
- 69 |         name: user.name,
- 70 |         email: user.email,
- 71 |         role: user.role,
- 72 |       },
- 73 |     };
- 74 |   }
- 75 | 
- 76 |   async refresh(
- 77 |     oldToken: string,
- 78 |     meta: { ip?: string; userAgent?: string } = {},
- 79 |   ) {
- 80 |     const tokenHash = this.hashToken(oldToken);
- 81 |     const stored = await this.prisma.refreshToken.findUnique({
- 82 |       where: { tokenHash },
- 83 |       include: { user: true },
- 84 |     });
- 85 | 
- 86 |     if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
- 87 |       throw new UnauthorizedException('Недійсний refresh token');
- 88 |     }
- 89 | 
- 90 |     await this.prisma.refreshToken.update({
- 91 |       where: { id: stored.id },
- 92 |       data: { revokedAt: new Date() },
- 93 |     });
- 94 | 
- 95 |     const payload = {
- 96 |       sub: stored.user.id,
- 97 |       email: stored.user.email,
- 98 |       role: stored.user.role,
- 99 |       name: stored.user.name,
-100 |     };
-101 | 
-102 |     const refresh_token = await this.issueRefreshToken(stored.user.id, meta);
-103 | 
-104 |     return {
-105 |       access_token: await this.jwtService.signAsync(payload),
-106 |       refresh_token,
-107 |       user: {
-108 |         id: stored.user.id,
-109 |         name: stored.user.name,
-110 |         email: stored.user.email,
-111 |         role: stored.user.role,
-112 |       },
-113 |     };
-114 |   }
-115 | 
-116 |   async revokeRefreshToken(token: string): Promise<void> {
-117 |     await this.prisma.refreshToken
-118 |       .update({
-119 |         where: { tokenHash: this.hashToken(token) },
-120 |         data: { revokedAt: new Date() },
-121 |       })
-122 |       .catch(() => undefined);
-123 |   }
-124 | }
-125 | 
+  0 | import { Injectable, HttpStatus } from '@nestjs/common';
+  1 | import { AppException } from '../common/exceptions/app.exception';
+  2 | import { UsersService } from '../users/users.service';
+  3 | import { JwtService } from '@nestjs/jwt';
+  4 | import { PrismaService } from '../prisma/prisma.service';
+  5 | import * as bcrypt from 'bcrypt';
+  6 | import { randomBytes, createHash } from 'crypto';
+  7 | 
+  8 | const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+  9 | 
+ 10 | @Injectable()
+ 11 | export class AuthService {
+ 12 |   constructor(
+ 13 |     private usersService: UsersService,
+ 14 |     private jwtService: JwtService,
+ 15 |     private prisma: PrismaService,
+ 16 |   ) {}
+ 17 | 
+ 18 |   private hashToken(token: string): string {
+ 19 |     return createHash('sha256').update(token).digest('hex');
+ 20 |   }
+ 21 | 
+ 22 |   private async issueRefreshToken(
+ 23 |     userId: string,
+ 24 |     meta: { ip?: string; userAgent?: string },
+ 25 |   ): Promise<string> {
+ 26 |     const token = randomBytes(64).toString('hex');
+ 27 |     await this.prisma.refreshToken.create({
+ 28 |       data: {
+ 29 |         userId,
+ 30 |         tokenHash: this.hashToken(token),
+ 31 |         expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+ 32 |         ip: meta.ip,
+ 33 |         userAgent: meta.userAgent,
+ 34 |       },
+ 35 |     });
+ 36 |     return token;
+ 37 |   }
+ 38 | 
+ 39 |   async login(
+ 40 |     email: string,
+ 41 |     pass: string,
+ 42 |     meta: { ip?: string; userAgent?: string } = {},
+ 43 |   ) {
+ 44 |     const user = await this.usersService.findByEmail(email);
+ 45 | 
+ 46 |     if (!user) {
+ 47 |       throw new AppException('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
+ 48 |     }
+ 49 | 
+ 50 |     const isPasswordValid = await bcrypt.compare(pass, user.password);
+ 51 | 
+ 52 |     if (!isPasswordValid) {
+ 53 |       throw new AppException('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
+ 54 |     }
+ 55 | 
+ 56 |     const payload = {
+ 57 |       sub: user.id,
+ 58 |       email: user.email,
+ 59 |       role: user.role,
+ 60 |       name: user.name,
+ 61 |     };
+ 62 | 
+ 63 |     const refresh_token = await this.issueRefreshToken(user.id, meta);
+ 64 | 
+ 65 |     return {
+ 66 |       access_token: await this.jwtService.signAsync(payload),
+ 67 |       refresh_token,
+ 68 |       user: {
+ 69 |         id: user.id,
+ 70 |         name: user.name,
+ 71 |         email: user.email,
+ 72 |         role: user.role,
+ 73 |       },
+ 74 |     };
+ 75 |   }
+ 76 | 
+ 77 |   async refresh(
+ 78 |     oldToken: string,
+ 79 |     meta: { ip?: string; userAgent?: string } = {},
+ 80 |   ) {
+ 81 |     const tokenHash = this.hashToken(oldToken);
+ 82 |     const stored = await this.prisma.refreshToken.findUnique({
+ 83 |       where: { tokenHash },
+ 84 |       include: { user: true },
+ 85 |     });
+ 86 | 
+ 87 |     if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
+ 88 |       throw new AppException('INVALID_REFRESH_TOKEN', HttpStatus.UNAUTHORIZED);
+ 89 |     }
+ 90 | 
+ 91 |     await this.prisma.refreshToken.update({
+ 92 |       where: { id: stored.id },
+ 93 |       data: { revokedAt: new Date() },
+ 94 |     });
+ 95 | 
+ 96 |     const payload = {
+ 97 |       sub: stored.user.id,
+ 98 |       email: stored.user.email,
+ 99 |       role: stored.user.role,
+100 |       name: stored.user.name,
+101 |     };
+102 | 
+103 |     const refresh_token = await this.issueRefreshToken(stored.user.id, meta);
+104 | 
+105 |     return {
+106 |       access_token: await this.jwtService.signAsync(payload),
+107 |       refresh_token,
+108 |       user: {
+109 |         id: stored.user.id,
+110 |         name: stored.user.name,
+111 |         email: stored.user.email,
+112 |         role: stored.user.role,
+113 |       },
+114 |     };
+115 |   }
+116 | 
+117 |   async revokeRefreshToken(token: string): Promise<void> {
+118 |     await this.prisma.refreshToken
+119 |       .update({
+120 |         where: { tokenHash: this.hashToken(token) },
+121 |         data: { revokedAt: new Date() },
+122 |       })
+123 |       .catch(() => undefined);
+124 |   }
+125 | }
+126 | 
 ```
 
 ### File: apps/backend/src/auth/csrf.guard.ts
@@ -1693,17 +1767,20 @@
 ### File: apps/backend/src/auth/dto/login.dto.ts
 ```ts
   0 | import { IsEmail, IsString, IsNotEmpty, MinLength } from 'class-validator';
-  1 | 
-  2 | export class LoginDto {
-  3 |   @IsEmail()
-  4 |   email: string;
-  5 | 
-  6 |   @IsString()
-  7 |   @IsNotEmpty()
-  8 |   @MinLength(6)
-  9 |   password: string;
- 10 | }
- 11 | 
+  1 | import { ApiProperty } from '@nestjs/swagger';
+  2 | 
+  3 | export class LoginDto {
+  4 |   @ApiProperty({ example: 'admin@svitlo-znan.app' })
+  5 |   @IsEmail()
+  6 |   email: string;
+  7 | 
+  8 |   @ApiProperty({ example: 'SecurePassword123!', minLength: 6 })
+  9 |   @IsString()
+ 10 |   @IsNotEmpty()
+ 11 |   @MinLength(6)
+ 12 |   password: string;
+ 13 | }
+ 14 | 
 ```
 
 ### File: apps/backend/src/auth/guards/ownership.guard.ts
@@ -1740,66 +1817,87 @@
  29 |     const user = request.user;
  30 | 
  31 |     // SUPERADMIN бачить усе — перевірка не потрібна
- 32 |     if (user?.role !== 'MANAGER') return true;
+ 32 |     if (user?.role === 'SUPERADMIN') return true;
  33 | 
- 34 |     const manager = await this.prisma.user.findUnique({
- 35 |       where: { id: user.sub },
- 36 |       select: { cityId: true },
- 37 |     });
- 38 |     if (!manager?.cityId) {
- 39 |       throw new ForbiddenException('Менеджер не прив’язаний до міста');
- 40 |     }
- 41 | 
- 42 |     const paramId: string | undefined =
- 43 |       request.params.id ??
- 44 |       request.params.schoolId ??
- 45 |       request.params.eventId ??
- 46 |       request.params.crewId;
- 47 |     if (!paramId) return true;
- 48 | 
- 49 |     let resourceCityId: string | null | undefined;
- 50 | 
- 51 |     switch (resourceType) {
- 52 |       case 'school': {
- 53 |         const school = await this.prisma.school.findUnique({
- 54 |           where: { id: paramId },
- 55 |           select: { cityId: true },
- 56 |         });
- 57 |         if (!school) throw new NotFoundException('Заклад не знайдено');
- 58 |         resourceCityId = school.cityId;
- 59 |         break;
- 60 |       }
- 61 |       case 'event': {
- 62 |         const event = await this.prisma.event.findUnique({
- 63 |           where: { id: paramId },
- 64 |           select: { cityId: true },
- 65 |         });
- 66 |         if (!event) throw new NotFoundException('Подію не знайдено');
- 67 |         resourceCityId = event.cityId;
- 68 |         break;
- 69 |       }
- 70 |       case 'crew': {
- 71 |         const crew = await this.prisma.crew.findUnique({
- 72 |           where: { id: paramId },
- 73 |           select: { cityId: true },
- 74 |         });
- 75 |         if (!crew) throw new NotFoundException('Екіпаж не знайдено');
- 76 |         resourceCityId = crew.cityId;
- 77 |         break;
- 78 |       }
- 79 |       case 'city': {
- 80 |         resourceCityId = paramId; // сам :id і є cityId
- 81 |         break;
- 82 |       }
- 83 |     }
- 84 | 
- 85 |     if (resourceCityId !== manager.cityId) {
- 86 |       throw new ForbiddenException('Немає доступу до ресурсу іншого міста');
- 87 |     }
- 88 |     return true;
- 89 |   }
- 90 | }
- 91 | 
+ 34 |     const paramId: string | undefined =
+ 35 |       request.params.id ??
+ 36 |       request.params.schoolId ??
+ 37 |       request.params.eventId ??
+ 38 |       request.params.crewId;
+ 39 |     if (!paramId) return true;
+ 40 | 
+ 41 |     if (user?.role === 'HOST' || user?.role === 'DRIVER') {
+ 42 |       if (resourceType !== 'event') {
+ 43 |         throw new ForbiddenException('Немає доступу до цього типу ресурсу');
+ 44 |       }
+ 45 |       const event = await this.prisma.event.findUnique({
+ 46 |         where: { id: paramId },
+ 47 |         select: { crew: { select: { hostId: true, driverId: true } } },
+ 48 |       });
+ 49 |       if (!event) throw new NotFoundException('Подію не знайдено');
+ 50 |       const isAssigned =
+ 51 |         event.crew?.hostId === user.sub || event.crew?.driverId === user.sub;
+ 52 |       if (!isAssigned) {
+ 53 |         throw new ForbiddenException('Немає доступу до цієї події');
+ 54 |       }
+ 55 |       return true;
+ 56 |     }
+ 57 | 
+ 58 |     if (user?.role !== 'MANAGER') {
+ 59 |       throw new ForbiddenException('Немає доступу до ресурсу');
+ 60 |     }
+ 61 | 
+ 62 |     const manager = await this.prisma.user.findUnique({
+ 63 |       where: { id: user.sub },
+ 64 |       select: { cityId: true },
+ 65 |     });
+ 66 |     if (!manager?.cityId) {
+ 67 |       throw new ForbiddenException('Менеджер не прив’язаний до міста');
+ 68 |     }
+ 69 | 
+ 70 |     let resourceCityId: string | null | undefined;
+ 71 | 
+ 72 |     switch (resourceType) {
+ 73 |       case 'school': {
+ 74 |         const school = await this.prisma.school.findUnique({
+ 75 |           where: { id: paramId },
+ 76 |           select: { cityId: true },
+ 77 |         });
+ 78 |         if (!school) throw new NotFoundException('Заклад не знайдено');
+ 79 |         resourceCityId = school.cityId;
+ 80 |         break;
+ 81 |       }
+ 82 |       case 'event': {
+ 83 |         const event = await this.prisma.event.findUnique({
+ 84 |           where: { id: paramId },
+ 85 |           select: { cityId: true },
+ 86 |         });
+ 87 |         if (!event) throw new NotFoundException('Подію не знайдено');
+ 88 |         resourceCityId = event.cityId;
+ 89 |         break;
+ 90 |       }
+ 91 |       case 'crew': {
+ 92 |         const crew = await this.prisma.crew.findUnique({
+ 93 |           where: { id: paramId },
+ 94 |           select: { cityId: true },
+ 95 |         });
+ 96 |         if (!crew) throw new NotFoundException('Екіпаж не знайдено');
+ 97 |         resourceCityId = crew.cityId;
+ 98 |         break;
+ 99 |       }
+100 |       case 'city': {
+101 |         resourceCityId = paramId; // сам :id і є cityId
+102 |         break;
+103 |       }
+104 |     }
+105 | 
+106 |     if (resourceCityId !== manager.cityId) {
+107 |       throw new ForbiddenException('Немає доступу до ресурсу іншого міста');
+108 |     }
+109 |     return true;
+110 |   }
+111 | }
+112 | 
 ```
 
 ### File: apps/backend/src/auth/guards/roles.guard.ts
@@ -1887,57 +1985,67 @@
   6 |   Delete,
   7 |   UseGuards,
   8 | } from '@nestjs/common';
-  9 | import { CitiesService } from './cities.service';
- 10 | import { AuthGuard } from '../auth/auth.guard';
- 11 | import { RolesGuard } from '../auth/guards/roles.guard';
- 12 | import { Roles } from '../auth/decorators/roles.decorator';
- 13 | import { CreateCityDto } from './dto/create-city.dto';
- 14 | import { CreateCrewDto } from './dto/create-crew.dto';
- 15 | import { OwnershipGuard } from '../auth/guards/ownership.guard';
- 16 | import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
- 17 | 
- 18 | @Controller('cities')
- 19 | @UseGuards(AuthGuard, RolesGuard)
- 20 | export class CitiesController {
- 21 |   constructor(private readonly citiesService: CitiesService) {}
- 22 | 
- 23 |   @Post()
- 24 |   @Roles('SUPERADMIN')
- 25 |   create(@Body() body: CreateCityDto) {
- 26 |     return this.citiesService.create(body.name);
- 27 |   }
- 28 | 
- 29 |   @Get()
- 30 |   findAll() {
- 31 |     return this.citiesService.findAll();
- 32 |   }
- 33 | 
- 34 |   @Get(':id')
- 35 |   findOne(@Param('id') id: string) {
- 36 |     return this.citiesService.findOne(id);
+  9 | import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
+ 10 | import { CitiesService } from './cities.service';
+ 11 | import { AuthGuard } from '../auth/auth.guard';
+ 12 | import { RolesGuard } from '../auth/guards/roles.guard';
+ 13 | import { Roles } from '../auth/decorators/roles.decorator';
+ 14 | import { CreateCityDto } from './dto/create-city.dto';
+ 15 | import { CreateCrewDto } from './dto/create-crew.dto';
+ 16 | import { OwnershipGuard } from '../auth/guards/ownership.guard';
+ 17 | import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
+ 18 | 
+ 19 | @ApiTags('Cities')
+ 20 | @ApiCookieAuth('access_token')
+ 21 | @Controller('cities')
+ 22 | @UseGuards(AuthGuard, RolesGuard)
+ 23 | export class CitiesController {
+ 24 |   constructor(private readonly citiesService: CitiesService) {}
+ 25 | 
+ 26 |   @ApiOperation({ summary: 'Створити місто' })
+ 27 |   @Post()
+ 28 |   @Roles('SUPERADMIN')
+ 29 |   create(@Body() body: CreateCityDto) {
+ 30 |     return this.citiesService.create(body.name);
+ 31 |   }
+ 32 | 
+ 33 |   @ApiOperation({ summary: 'Список міст зі статистикою' })
+ 34 |   @Get()
+ 35 |   findAll() {
+ 36 |     return this.citiesService.findAll();
  37 |   }
  38 | 
- 39 |   @Get(':id/crews')
- 40 |   findCrews(@Param('id') id: string) {
- 41 |     return this.citiesService.findCrews(id);
- 42 |   }
- 43 |   @Post(':id/crews')
- 44 |   @Roles('SUPERADMIN', 'MANAGER')
- 45 |   @UseGuards(OwnershipGuard)
- 46 |   @CheckOwnership('city')
- 47 |   createCrew(@Param('id') id: string, @Body() body: CreateCrewDto) {
- 48 |     return this.citiesService.createCrew(id, body);
+ 39 |   @ApiOperation({ summary: 'Отримати місто за ID' })
+ 40 |   @Get(':id')
+ 41 |   findOne(@Param('id') id: string) {
+ 42 |     return this.citiesService.findOne(id);
+ 43 |   }
+ 44 | 
+ 45 |   @ApiOperation({ summary: 'Список екіпажів міста' })
+ 46 |   @Get(':id/crews')
+ 47 |   findCrews(@Param('id') id: string) {
+ 48 |     return this.citiesService.findCrews(id);
  49 |   }
  50 | 
- 51 |   @Delete('crews/:crewId')
- 52 |   @Roles('SUPERADMIN', 'MANAGER')
- 53 |   @UseGuards(OwnershipGuard)
- 54 |   @CheckOwnership('crew')
- 55 |   deleteCrew(@Param('crewId') crewId: string) {
- 56 |     return this.citiesService.deleteCrew(crewId);
- 57 |   }
- 58 | }
+ 51 |   @ApiOperation({ summary: 'Створити екіпаж у місті' })
+ 52 |   @Post(':id/crews')
+ 53 |   @Roles('SUPERADMIN', 'MANAGER')
+ 54 |   @UseGuards(OwnershipGuard)
+ 55 |   @CheckOwnership('city')
+ 56 |   createCrew(@Param('id') id: string, @Body() body: CreateCrewDto) {
+ 57 |     return this.citiesService.createCrew(id, body);
+ 58 |   }
  59 | 
+ 60 |   @ApiOperation({ summary: 'Видалити екіпаж' })
+ 61 |   @Delete('crews/:crewId')
+ 62 |   @Roles('SUPERADMIN', 'MANAGER')
+ 63 |   @UseGuards(OwnershipGuard)
+ 64 |   @CheckOwnership('crew')
+ 65 |   deleteCrew(@Param('crewId') crewId: string) {
+ 66 |     return this.citiesService.deleteCrew(crewId);
+ 67 |   }
+ 68 | }
+ 69 | 
 ```
 
 ### File: apps/backend/src/cities/cities.module.ts
@@ -2106,33 +2214,39 @@
 ### File: apps/backend/src/cities/dto/create-city.dto.ts
 ```ts
   0 | import { IsString, IsNotEmpty } from 'class-validator';
-  1 | 
-  2 | export class CreateCityDto {
-  3 |   @IsString()
-  4 |   @IsNotEmpty()
-  5 |   name: string;
-  6 | }
-  7 | 
+  1 | import { ApiProperty } from '@nestjs/swagger';
+  2 | 
+  3 | export class CreateCityDto {
+  4 |   @ApiProperty({ example: 'Львів' })
+  5 |   @IsString()
+  6 |   @IsNotEmpty()
+  7 |   name: string;
+  8 | }
+  9 | 
 ```
 
 ### File: apps/backend/src/cities/dto/create-crew.dto.ts
 ```ts
   0 | import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
-  1 | 
-  2 | export class CreateCrewDto {
-  3 |   @IsString()
-  4 |   @IsNotEmpty()
-  5 |   name: string;
-  6 | 
-  7 |   @IsOptional()
-  8 |   @IsString()
-  9 |   hostId?: string;
- 10 | 
- 11 |   @IsOptional()
- 12 |   @IsString()
- 13 |   driverId?: string;
- 14 | }
- 15 | 
+  1 | import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+  2 | 
+  3 | export class CreateCrewDto {
+  4 |   @ApiProperty({ example: 'Екіпаж №1' })
+  5 |   @IsString()
+  6 |   @IsNotEmpty()
+  7 |   name: string;
+  8 | 
+  9 |   @ApiPropertyOptional({ example: 'a1b2c3d4-...' })
+ 10 |   @IsOptional()
+ 11 |   @IsString()
+ 12 |   hostId?: string;
+ 13 | 
+ 14 |   @ApiPropertyOptional({ example: 'f9e8d7c6-...' })
+ 15 |   @IsOptional()
+ 16 |   @IsString()
+ 17 |   driverId?: string;
+ 18 | }
+ 19 | 
 ```
 
 ### File: apps/backend/src/common/cache/redis-cache.module.ts
@@ -2221,6 +2335,22 @@
  21 | 
 ```
 
+### File: apps/backend/src/common/exceptions/app.exception.ts
+```ts
+  0 | import { HttpException, HttpStatus } from '@nestjs/common';
+  1 | import { MessageKey } from '../i18n/messages';
+  2 | 
+  3 | export class AppException extends HttpException {
+  4 |   constructor(
+  5 |     public readonly messageKey: MessageKey,
+  6 |     status: HttpStatus = HttpStatus.BAD_REQUEST,
+  7 |   ) {
+  8 |     super(messageKey, status);
+  9 |   }
+ 10 | }
+ 11 | 
+```
+
 ### File: apps/backend/src/common/feature-flags/feature-flags.module.ts
 ```ts
   0 | import { Global, Module } from '@nestjs/common';
@@ -2287,53 +2417,69 @@
   7 | } from '@nestjs/common';
   8 | import { Request, Response } from 'express';
   9 | import * as Sentry from '@sentry/nestjs';
- 10 | 
- 11 | @Catch()
- 12 | export class AllExceptionsFilter implements ExceptionFilter {
- 13 |   private readonly logger = new Logger(AllExceptionsFilter.name);
- 14 | 
- 15 |   catch(exception: unknown, host: ArgumentsHost) {
- 16 |     const ctx = host.switchToHttp();
- 17 |     const response = ctx.getResponse<Response>();
- 18 |     const request = ctx.getRequest<Request>();
- 19 | 
- 20 |     const isHttp = exception instanceof HttpException;
- 21 |     const statusCode = isHttp
- 22 |       ? exception.getStatus()
- 23 |       : HttpStatus.INTERNAL_SERVER_ERROR;
+ 10 | import { I18nService } from '../i18n/i18n.service';
+ 11 | import { AppException } from '../exceptions/app.exception';
+ 12 | 
+ 13 | @Catch()
+ 14 | export class AllExceptionsFilter implements ExceptionFilter {
+ 15 |   private readonly logger = new Logger(AllExceptionsFilter.name);
+ 16 | 
+ 17 |   constructor(private readonly i18n: I18nService) {}
+ 18 | 
+ 19 |   catch(exception: unknown, host: ArgumentsHost) {
+ 20 |     const ctx = host.switchToHttp();
+ 21 |     const response = ctx.getResponse<Response>();
+ 22 |     const request = ctx.getRequest<Request>();
+ 23 |     const lang = this.i18n.detectLang(request.headers['accept-language']);
  24 | 
- 25 |     const exceptionResponse = isHttp ? exception.getResponse() : null;
- 26 |     const message = isHttp
- 27 |       ? typeof exceptionResponse === 'string'
- 28 |         ? exceptionResponse
- 29 |         : ((exceptionResponse as any)?.message ?? exception.message)
- 30 |       : 'Internal server error';
- 31 | 
- 32 |     const details =
- 33 |       isHttp && typeof exceptionResponse === 'object'
- 34 |         ? ((exceptionResponse as any)?.error ?? undefined)
- 35 |         : undefined;
- 36 | 
- 37 |     if (!isHttp) {
- 38 |       this.logger.error(
- 39 |         exception instanceof Error ? exception.stack : exception,
- 40 |       );
- 41 |       Sentry.captureException(exception);
- 42 |     } else if (statusCode >= 500) {
- 43 |       Sentry.captureException(exception);
- 44 |     }
- 45 | 
- 46 |     response.status(statusCode).json({
- 47 |       statusCode,
- 48 |       message,
- 49 |       timestamp: new Date().toISOString(),
- 50 |       path: request.url,
- 51 |       requestId: (request as any).id,
- 52 |       ...(details ? { details } : {}),
- 53 |     });
- 54 |   }
- 55 | }
- 56 | 
+ 25 |     const isHttp = exception instanceof HttpException;
+ 26 |     const statusCode = isHttp
+ 27 |       ? exception.getStatus()
+ 28 |       : HttpStatus.INTERNAL_SERVER_ERROR;
+ 29 | 
+ 30 |     let message: unknown;
+ 31 |     if (exception instanceof AppException) {
+ 32 |       message = this.i18n.translate(exception.messageKey, lang);
+ 33 |     } else if (isHttp) {
+ 34 |       const exceptionResponse = exception.getResponse();
+ 35 |       message =
+ 36 |         typeof exceptionResponse === 'string'
+ 37 |           ? exceptionResponse
+ 38 |           : ((exceptionResponse as any)?.message ?? exception.message);
+ 39 |     } else {
+ 40 |       message = this.i18n.translate('INTERNAL_ERROR', lang);
+ 41 |     }
+ 42 | 
+ 43 |     const exceptionResponse =
+ 44 |       isHttp && !(exception instanceof AppException)
+ 45 |         ? exception.getResponse()
+ 46 |         : null;
+ 47 | 
+ 48 |     const details =
+ 49 |       isHttp && typeof exceptionResponse === 'object'
+ 50 |         ? ((exceptionResponse as any)?.error ?? undefined)
+ 51 |         : undefined;
+ 52 | 
+ 53 |     if (!isHttp) {
+ 54 |       this.logger.error(
+ 55 |         exception instanceof Error ? exception.stack : exception,
+ 56 |       );
+ 57 |       Sentry.captureException(exception);
+ 58 |     } else if (statusCode >= 500) {
+ 59 |       Sentry.captureException(exception);
+ 60 |     }
+ 61 | 
+ 62 |     response.status(statusCode).json({
+ 63 |       statusCode,
+ 64 |       message,
+ 65 |       timestamp: new Date().toISOString(),
+ 66 |       path: request.url,
+ 67 |       requestId: (request as any).id,
+ 68 |       ...(details ? { details } : {}),
+ 69 |     });
+ 70 |   }
+ 71 | }
+ 72 | 
 ```
 
 ### File: apps/backend/src/common/guards/user-throttler.guard.ts
@@ -2344,34 +2490,102 @@
   3 | @Injectable()
   4 | export class UserThrottlerGuard extends ThrottlerGuard {
   5 |   private readonly logger = new Logger(UserThrottlerGuard.name);
-  6 | 
-  7 |   protected async getTracker(req: Record<string, any>): Promise<string> {
-  8 |     const token = req.cookies?.access_token;
-  9 |     if (token) {
- 10 |       try {
- 11 |         const payload = JSON.parse(
- 12 |           Buffer.from(token.split('.')[1], 'base64url').toString('utf8'),
- 13 |         ) as { sub?: string };
- 14 |         if (payload?.sub) return `user-${payload.sub}`;
- 15 |       } catch {
- 16 |         return req.ip;
- 17 |       }
- 18 |     }
- 19 |     return req.ip;
- 20 |   }
+  6 |   private lastWarnAt = 0;
+  7 | 
+  8 |   protected async getTracker(req: Record<string, any>): Promise<string> {
+  9 |     const token = req.cookies?.access_token;
+ 10 |     if (token) {
+ 11 |       try {
+ 12 |         const payload = JSON.parse(
+ 13 |           Buffer.from(token.split('.')[1], 'base64url').toString('utf8'),
+ 14 |         ) as { sub?: string };
+ 15 |         if (payload?.sub) return `user-${payload.sub}`;
+ 16 |       } catch {
+ 17 |         return req.ip;
+ 18 |       }
+ 19 |     }
+ 20 |     return req.ip;
+ 21 |   }
+ 22 | 
+ 23 |   async canActivate(context: ExecutionContext): Promise<boolean> {
+ 24 |     try {
+ 25 |       return await super.canActivate(context);
+ 26 |     } catch (e) {
+ 27 |       const now = Date.now();
+ 28 |       if (now - this.lastWarnAt > 10_000) {
+ 29 |         this.logger.warn(
+ 30 |           `Throttler storage unavailable, allowing request: ${e.message}`,
+ 31 |         );
+ 32 |         this.lastWarnAt = now;
+ 33 |       }
+ 34 |       return true;
+ 35 |     }
+ 36 |   }
+ 37 | }
+ 38 | 
+```
+
+### File: apps/backend/src/common/i18n/i18n.module.ts
+```ts
+  0 | import { Global, Module } from '@nestjs/common';
+  1 | import { I18nService } from './i18n.service';
+  2 | 
+  3 | @Global()
+  4 | @Module({
+  5 |   providers: [I18nService],
+  6 |   exports: [I18nService],
+  7 | })
+  8 | export class I18nModule {}
+  9 | 
+```
+
+### File: apps/backend/src/common/i18n/i18n.service.ts
+```ts
+  0 | import { Injectable } from '@nestjs/common';
+  1 | import { MESSAGES, MessageKey } from './messages';
+  2 | 
+  3 | export type Lang = 'uk' | 'en';
+  4 | 
+  5 | @Injectable()
+  6 | export class I18nService {
+  7 |   translate(key: MessageKey, lang: Lang = 'uk'): string {
+  8 |     return MESSAGES[key]?.[lang] ?? MESSAGES[key]?.uk ?? key;
+  9 |   }
+ 10 | 
+ 11 |   detectLang(acceptLanguage?: string): Lang {
+ 12 |     if (acceptLanguage?.toLowerCase().startsWith('en')) return 'en';
+ 13 |     return 'uk';
+ 14 |   }
+ 15 | }
+ 16 | 
+```
+
+### File: apps/backend/src/common/i18n/messages.ts
+```ts
+  0 | export const MESSAGES = {
+  1 |   EVENT_NOT_FOUND: { uk: 'Подію не знайдено', en: 'Event not found' },
+  2 |   SCHOOL_NOT_FOUND: { uk: 'Школу не знайдено', en: 'School not found' },
+  3 |   CITY_NOT_FOUND: { uk: 'Місто не знайдено', en: 'City not found' },
+  4 |   INVALID_CREDENTIALS: {
+  5 |     uk: 'Невірний email або пароль',
+  6 |     en: 'Invalid email or password',
+  7 |   },
+  8 |   INVALID_REFRESH_TOKEN: {
+  9 |     uk: 'Недійсний refresh token',
+ 10 |     en: 'Invalid refresh token',
+ 11 |   },
+ 12 |   INTERNAL_ERROR: {
+ 13 |     uk: 'Внутрішня помилка сервера',
+ 14 |     en: 'Internal server error',
+ 15 |   },
+ 16 |   SERVICE_UNAVAILABLE: {
+ 17 |     uk: 'Сервіс тимчасово недоступний',
+ 18 |     en: 'Service temporarily unavailable',
+ 19 |   },
+ 20 | } as const;
  21 | 
- 22 |   async canActivate(context: ExecutionContext): Promise<boolean> {
- 23 |     try {
- 24 |       return await super.canActivate(context);
- 25 |     } catch (e) {
- 26 |       this.logger.warn(
- 27 |         `Throttler storage unavailable, allowing request: ${e.message}`,
- 28 |       );
- 29 |       return true;
- 30 |     }
- 31 |   }
- 32 | }
- 33 | 
+ 22 | export type MessageKey = keyof typeof MESSAGES;
+ 23 | 
 ```
 
 ### File: apps/backend/src/common/interceptors/audit-log.interceptor.ts
@@ -2507,6 +2721,81 @@
  31 | 
 ```
 
+### File: apps/backend/src/common/pipes/localized-validation.pipe.ts
+```ts
+  0 | import {
+  1 |   Inject,
+  2 |   Injectable,
+  3 |   Scope,
+  4 |   BadRequestException,
+  5 |   ValidationPipe,
+  6 |   ValidationError,
+  7 | } from '@nestjs/common';
+  8 | import { REQUEST } from '@nestjs/core';
+  9 | import type { Request } from 'express';
+ 10 | import { I18nService, Lang } from '../i18n/i18n.service';
+ 11 | 
+ 12 | const CONSTRAINT_LABELS: Record<string, { uk: string; en: string }> = {
+ 13 |   isNotEmpty: { uk: "Поле обов'язкове", en: 'This field is required' },
+ 14 |   isString: { uk: 'Має бути текстом', en: 'Must be a string' },
+ 15 |   isNumber: { uk: 'Має бути числом', en: 'Must be a number' },
+ 16 |   isEmail: { uk: 'Некоректний email', en: 'Invalid email' },
+ 17 |   isBoolean: { uk: 'Має бути true/false', en: 'Must be true/false' },
+ 18 |   isDateString: { uk: 'Некоректна дата', en: 'Invalid date' },
+ 19 |   min: { uk: 'Значення занадто мале', en: 'Value is too small' },
+ 20 |   max: { uk: 'Значення занадто велике', en: 'Value is too large' },
+ 21 |   minLength: { uk: 'Занадто короткий текст', en: 'Text is too short' },
+ 22 |   maxLength: { uk: 'Занадто довгий текст', en: 'Text is too long' },
+ 23 |   whitelistValidation: {
+ 24 |     uk: 'Зайве поле у запиті',
+ 25 |     en: 'Unexpected field in request',
+ 26 |   },
+ 27 | };
+ 28 | 
+ 29 | @Injectable({ scope: Scope.REQUEST })
+ 30 | export class LocalizedValidationPipe extends ValidationPipe {
+ 31 |   constructor(
+ 32 |     @Inject(REQUEST) private readonly request: Request,
+ 33 |     private readonly i18n: I18nService,
+ 34 |   ) {
+ 35 |     super({
+ 36 |       transform: true,
+ 37 |       whitelist: true,
+ 38 |       forbidNonWhitelisted: true,
+ 39 |       exceptionFactory: (errors: ValidationError[]) => {
+ 40 |         const lang: Lang = this.i18n.detectLang(
+ 41 |           this.request?.headers?.['accept-language'],
+ 42 |         );
+ 43 |         const message = errors.flatMap((err) => this.formatError(err, lang));
+ 44 |         return new BadRequestException({
+ 45 |           statusCode: 400,
+ 46 |           error: lang === 'en' ? 'Validation failed' : 'Помилка валідації',
+ 47 |           message,
+ 48 |         });
+ 49 |       },
+ 50 |     });
+ 51 |   }
+ 52 | 
+ 53 |   private formatError(error: ValidationError, lang: Lang): string[] {
+ 54 |     const messages: string[] = [];
+ 55 |     if (error.constraints) {
+ 56 |       for (const key of Object.keys(error.constraints)) {
+ 57 |         const label = CONSTRAINT_LABELS[key];
+ 58 |         const text = label ? label[lang] : error.constraints[key];
+ 59 |         messages.push(`${error.property}: ${text}`);
+ 60 |       }
+ 61 |     }
+ 62 |     if (error.children?.length) {
+ 63 |       for (const child of error.children) {
+ 64 |         messages.push(...this.formatError(child, lang));
+ 65 |       }
+ 66 |     }
+ 67 |     return messages;
+ 68 |   }
+ 69 | }
+ 70 | 
+```
+
 ### File: apps/backend/src/config/env.validation.ts
 ```ts
   0 | import * as Joi from 'joi';
@@ -2525,11 +2814,11 @@
  13 |   TELEGRAM_BOT_TOKEN: Joi.string().required(),
  14 |   REDIS_URL: Joi.string().uri().default('redis://localhost:6379'),
  15 |   JWT_SECRET: Joi.string()
- 16 |     .min(16)
+ 16 |     .min(32)
  17 |     .when('NODE_ENV', {
- 18 |       is: 'production',
- 19 |       then: Joi.required(),
- 20 |       otherwise: Joi.optional().default('super-secret-key-for-dev'),
+ 18 |       is: 'test',
+ 19 |       then: Joi.optional().default('test-only-secret-do-not-use-elsewhere'),
+ 20 |       otherwise: Joi.required(),
  21 |     }),
  22 |   SEED_ADMIN_EMAIL: Joi.string()
  23 |     .allow('')
@@ -2546,46 +2835,56 @@
 ### File: apps/backend/src/dashboard/dashboard.controller.ts
 ```ts
   0 | import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-  1 | import { DashboardService, DashboardSummary } from './dashboard.service';
-  2 | import { AuthGuard } from '../auth/auth.guard';
-  3 | import { CurrentUser } from '../auth/decorators/current-user.decorator';
-  4 | import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
-  5 | import { IsOptional, IsString } from 'class-validator';
-  6 | import { PrismaService } from '../prisma/prisma.service';
-  7 | 
-  8 | class DashboardSummaryQueryDto {
-  9 |   @IsOptional()
- 10 |   @IsString()
- 11 |   cityId?: string;
- 12 | }
+  1 | import {
+  2 |   ApiTags,
+  3 |   ApiOperation,
+  4 |   ApiCookieAuth,
+  5 |   ApiPropertyOptional,
+  6 | } from '@nestjs/swagger';
+  7 | import { DashboardService, DashboardSummary } from './dashboard.service';
+  8 | import { AuthGuard } from '../auth/auth.guard';
+  9 | import { CurrentUser } from '../auth/decorators/current-user.decorator';
+ 10 | import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+ 11 | import { IsOptional, IsString } from 'class-validator';
+ 12 | import { PrismaService } from '../prisma/prisma.service';
  13 | 
- 14 | @Controller('dashboard')
- 15 | @UseGuards(AuthGuard)
- 16 | export class DashboardController {
- 17 |   constructor(
- 18 |     private readonly dashboardService: DashboardService,
- 19 |     private readonly prisma: PrismaService,
- 20 |   ) {}
- 21 | 
- 22 |   @Get('summary')
- 23 |   async getSummary(
- 24 |     @CurrentUser() user: JwtUser,
- 25 |     @Query() query: DashboardSummaryQueryDto,
- 26 |   ): Promise<DashboardSummary> {
- 27 |     let effectiveCityId: string | undefined;
- 28 |     if (user.role === 'SUPERADMIN') {
- 29 |       effectiveCityId = query.cityId;
- 30 |     } else {
- 31 |       const me = await this.prisma.user.findUnique({
- 32 |         where: { id: user.sub },
- 33 |         select: { cityId: true },
- 34 |       });
- 35 |       effectiveCityId = me?.cityId ?? undefined;
- 36 |     }
- 37 |     return this.dashboardService.getSummary(effectiveCityId, user.role);
- 38 |   }
- 39 | }
- 40 | 
+ 14 | class DashboardSummaryQueryDto {
+ 15 |   @ApiPropertyOptional({ example: 'a1b2c3d4-...' })
+ 16 |   @IsOptional()
+ 17 |   @IsString()
+ 18 |   cityId?: string;
+ 19 | }
+ 20 | 
+ 21 | @ApiTags('Dashboard')
+ 22 | @ApiCookieAuth('access_token')
+ 23 | @Controller('dashboard')
+ 24 | @UseGuards(AuthGuard)
+ 25 | export class DashboardController {
+ 26 |   constructor(
+ 27 |     private readonly dashboardService: DashboardService,
+ 28 |     private readonly prisma: PrismaService,
+ 29 |   ) {}
+ 30 | 
+ 31 |   @ApiOperation({ summary: 'Загальна аналітика для дашборда' })
+ 32 |   @Get('summary')
+ 33 |   async getSummary(
+ 34 |     @CurrentUser() user: JwtUser,
+ 35 |     @Query() query: DashboardSummaryQueryDto,
+ 36 |   ): Promise<DashboardSummary> {
+ 37 |     let effectiveCityId: string | undefined;
+ 38 |     if (user.role === 'SUPERADMIN') {
+ 39 |       effectiveCityId = query.cityId;
+ 40 |     } else {
+ 41 |       const me = await this.prisma.user.findUnique({
+ 42 |         where: { id: user.sub },
+ 43 |         select: { cityId: true },
+ 44 |       });
+ 45 |       effectiveCityId = me?.cityId ?? undefined;
+ 46 |     }
+ 47 |     return this.dashboardService.getSummary(effectiveCityId, user.role);
+ 48 |   }
+ 49 | }
+ 50 | 
 ```
 
 ### File: apps/backend/src/dashboard/dashboard.module.ts
@@ -2976,338 +3275,356 @@
  76 |   private readonly logger = new Logger(DashboardService.name);
  77 |   private hits = 0;
  78 |   private misses = 0;
- 79 | 
- 80 |   constructor(
- 81 |     private prisma: PrismaService,
- 82 |     @Inject(CACHE_MANAGER) private cacheManager: Cache,
- 83 |   ) {}
- 84 | 
- 85 |   async getSummary(cityId?: string, role?: string): Promise<DashboardSummary> {
- 86 |     const key = `dashboard:${cityId ?? 'all'}-${role ?? 'anon'}`;
- 87 |     const cached = await this.cacheManager.get<DashboardSummary>(key);
- 88 |     if (cached) {
- 89 |       this.hits++;
- 90 |       this.logger.debug(
- 91 |         `cache hit — ${key} (rate=${this.hitRate().toFixed(1)}%)`,
- 92 |       );
- 93 |       return cached;
- 94 |     }
- 95 |     this.misses++;
- 96 | 
- 97 |     const t0 = Date.now();
- 98 |     const now = new Date();
- 99 |     const windows = this.buildTimeWindows(now);
-100 |     const cityFilter = cityId ? { cityId } : {};
-101 |     const isSuperAdmin = role === 'SUPERADMIN';
-102 | 
-103 |     const [eventsWindow, funnelStats, monthlyKpi, staleSchools, activityFeed] =
-104 |       await Promise.all([
-105 |         this.getEventsWindow(cityFilter, windows),
-106 |         this.getFunnelStats(cityId),
-107 |         this.getMonthlyKpi(cityFilter, windows),
-108 |         this.getStaleSchools(cityFilter, windows.staleThreshold, now),
-109 |         this.getActivityFeed(cityId, windows.todayStart),
-110 |       ]);
-111 | 
-112 |     const citiesStats = isSuperAdmin ? await this.getCitiesStats(windows) : [];
-113 | 
-114 |     const result: DashboardSummary = {
-115 |       ...eventsWindow,
-116 |       ...funnelStats,
-117 |       monthlyKpi,
-118 |       staleSchools,
-119 |       activityFeed,
-120 |       citiesStats,
-121 |     };
-122 | 
-123 |     this.logger.debug(`total: ${Date.now() - t0}ms`);
-124 |     await this.cacheManager.set(key, result, 60_000);
-125 |     return result;
-126 |   }
-127 | 
-128 |   private hitRate(): number {
-129 |     const total = this.hits + this.misses;
-130 |     return total === 0 ? 0 : (this.hits / total) * 100;
-131 |   }
-132 | 
-133 |   private buildTimeWindows(now: Date) {
-134 |     const todayStart = new Date(
-135 |       now.getFullYear(),
-136 |       now.getMonth(),
-137 |       now.getDate(),
-138 |     );
-139 |     const todayEnd = new Date(todayStart);
-140 |     todayEnd.setDate(todayEnd.getDate() + 1);
-141 |     const upcomingEnd = new Date(todayStart);
-142 |     upcomingEnd.setDate(upcomingEnd.getDate() + 6);
-143 |     const staleThreshold = new Date(now);
-144 |     staleThreshold.setDate(staleThreshold.getDate() - STALE_DAYS);
-145 |     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-146 |     const monthEnd = new Date(
-147 |       now.getFullYear(),
-148 |       now.getMonth() + 1,
-149 |       0,
-150 |       23,
-151 |       59,
-152 |       59,
-153 |     );
-154 |     return {
-155 |       todayStart,
-156 |       todayEnd,
-157 |       upcomingEnd,
-158 |       staleThreshold,
-159 |       monthStart,
-160 |       monthEnd,
-161 |     };
-162 |   }
-163 | 
-164 |   private eventInclude() {
-165 |     return {
-166 |       school: { select: { id: true, name: true } },
-167 |       city: { select: { id: true, name: true } },
-168 |       crew: {
-169 |         include: {
-170 |           host: { select: { id: true, name: true } },
-171 |           driver: { select: { id: true, name: true } },
-172 |         },
-173 |       },
-174 |     };
-175 |   }
-176 | 
-177 |   private async getEventsWindow(
-178 |     cityFilter: Record<string, unknown>,
-179 |     windows: ReturnType<DashboardService['buildTimeWindows']>,
-180 |   ) {
-181 |     const [todayEvents, upcomingEvents] = await Promise.all([
-182 |       this.prisma.event.findMany({
-183 |         where: {
-184 |           ...cityFilter,
-185 |           date: { gte: windows.todayStart, lt: windows.todayEnd },
-186 |         },
-187 |         include: this.eventInclude(),
-188 |         orderBy: { time: 'asc' },
-189 |       }),
-190 |       this.prisma.event.findMany({
-191 |         where: {
-192 |           ...cityFilter,
-193 |           date: { gte: windows.todayEnd, lt: windows.upcomingEnd },
-194 |         },
-195 |         include: this.eventInclude(),
-196 |         orderBy: [{ date: 'asc' }, { time: 'asc' }],
-197 |         take: 8,
-198 |       }),
-199 |     ]);
-200 |     return { todayEvents, upcomingEvents };
-201 |   }
-202 | 
-203 |   private async getFunnelStats(cityId?: string) {
-204 |     const funnelRows = cityId
-205 |       ? await this.prisma.$queryRaw<
-206 |           { status: string; count: bigint }[]
-207 |         >(Prisma.sql`
-208 |           SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
-209 |           FROM "School" s
-210 |           LEFT JOIN LATERAL (
-211 |             SELECT status FROM "Event"
-212 |             WHERE "schoolId" = s.id
-213 |             ORDER BY date DESC
-214 |             LIMIT 1
-215 |           ) e ON true
-216 |           WHERE s."cityId" = ${cityId}
-217 |           GROUP BY e.status
-218 |         `)
-219 |       : await this.prisma.$queryRaw<
-220 |           { status: string; count: bigint }[]
-221 |         >(Prisma.sql`
-222 |           SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
-223 |           FROM "School" s
-224 |           LEFT JOIN LATERAL (
-225 |             SELECT status FROM "Event"
-226 |             WHERE "schoolId" = s.id
-227 |             ORDER BY date DESC
-228 |             LIMIT 1
-229 |           ) e ON true
-230 |           GROUP BY e.status
-231 |         `);
-232 | 
-233 |     const funnel: Record<string, number> = {};
-234 |     for (const stage of PIPELINE_STAGES) funnel[stage] = 0;
-235 |     let totalSchools = 0;
-236 |     for (const row of funnelRows) {
-237 |       const status = row.status ?? 'BASE';
-238 |       const count = Number(row.count);
-239 |       if (funnel[status] !== undefined) funnel[status] += count;
-240 |       totalSchools += count;
-241 |     }
-242 |     return { funnel, totalSchools };
-243 |   }
-244 | 
-245 |   private async getMonthlyKpi(
-246 |     cityFilter: Record<string, unknown>,
-247 |     windows: ReturnType<DashboardService['buildTimeWindows']>,
-248 |   ) {
-249 |     const monthEvents = await this.prisma.event.findMany({
-250 |       where: {
-251 |         ...cityFilter,
-252 |         status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
-253 |         date: { gte: windows.monthStart, lte: windows.monthEnd },
-254 |       },
-255 |       select: {
-256 |         id: true,
-257 |         report: {
-258 |           select: { totalSum: true, remainderSum: true, childrenCount: true },
-259 |         },
-260 |       },
-261 |     });
+ 79 |   private pending = new Map<string, Promise<DashboardSummary>>();
+ 80 | 
+ 81 |   constructor(
+ 82 |     private prisma: PrismaService,
+ 83 |     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+ 84 |   ) {}
+ 85 | 
+ 86 |   async getSummary(cityId?: string, role?: string): Promise<DashboardSummary> {
+ 87 |     const key = `dashboard:${cityId ?? 'all'}-${role ?? 'anon'}`;
+ 88 |     const cached = await this.cacheManager.get<DashboardSummary>(key);
+ 89 |     if (cached) {
+ 90 |       this.hits++;
+ 91 |       this.logger.debug(
+ 92 |         `cache hit — ${key} (rate=${this.hitRate().toFixed(1)}%)`,
+ 93 |       );
+ 94 |       return cached;
+ 95 |     }
+ 96 |     this.misses++;
+ 97 | 
+ 98 |     const existing = this.pending.get(key);
+ 99 |     if (existing) return existing;
+100 | 
+101 |     const compute = this.computeSummary(key, cityId, role);
+102 |     this.pending.set(key, compute);
+103 |     try {
+104 |       return await compute;
+105 |     } finally {
+106 |       this.pending.delete(key);
+107 |     }
+108 |   }
+109 | 
+110 |   private async computeSummary(
+111 |     key: string,
+112 |     cityId?: string,
+113 |     role?: string,
+114 |   ): Promise<DashboardSummary> {
+115 |     const t0 = Date.now();
+116 |     const now = new Date();
+117 |     const windows = this.buildTimeWindows(now);
+118 |     const cityFilter = cityId ? { cityId } : {};
+119 |     const isSuperAdmin = role === 'SUPERADMIN';
+120 | 
+121 |     const [eventsWindow, funnelStats, monthlyKpi, staleSchools, activityFeed] =
+122 |       await Promise.all([
+123 |         this.getEventsWindow(cityFilter, windows),
+124 |         this.getFunnelStats(cityId),
+125 |         this.getMonthlyKpi(cityFilter, windows),
+126 |         this.getStaleSchools(cityFilter, windows.staleThreshold, now),
+127 |         this.getActivityFeed(cityId, windows.todayStart),
+128 |       ]);
+129 | 
+130 |     const citiesStats = isSuperAdmin ? await this.getCitiesStats(windows) : [];
+131 | 
+132 |     const result: DashboardSummary = {
+133 |       ...eventsWindow,
+134 |       ...funnelStats,
+135 |       monthlyKpi,
+136 |       staleSchools,
+137 |       activityFeed,
+138 |       citiesStats,
+139 |     };
+140 | 
+141 |     this.logger.debug(`total: ${Date.now() - t0}ms`);
+142 |     await this.cacheManager.set(key, result, 60_000);
+143 |     return result;
+144 |   }
+145 | 
+146 |   private hitRate(): number {
+147 |     const total = this.hits + this.misses;
+148 |     return total === 0 ? 0 : (this.hits / total) * 100;
+149 |   }
+150 | 
+151 |   private buildTimeWindows(now: Date) {
+152 |     const todayStart = new Date(
+153 |       now.getFullYear(),
+154 |       now.getMonth(),
+155 |       now.getDate(),
+156 |     );
+157 |     const todayEnd = new Date(todayStart);
+158 |     todayEnd.setDate(todayEnd.getDate() + 1);
+159 |     const upcomingEnd = new Date(todayStart);
+160 |     upcomingEnd.setDate(upcomingEnd.getDate() + 6);
+161 |     const staleThreshold = new Date(now);
+162 |     staleThreshold.setDate(staleThreshold.getDate() - STALE_DAYS);
+163 |     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+164 |     const monthEnd = new Date(
+165 |       now.getFullYear(),
+166 |       now.getMonth() + 1,
+167 |       0,
+168 |       23,
+169 |       59,
+170 |       59,
+171 |     );
+172 |     return {
+173 |       todayStart,
+174 |       todayEnd,
+175 |       upcomingEnd,
+176 |       staleThreshold,
+177 |       monthStart,
+178 |       monthEnd,
+179 |     };
+180 |   }
+181 | 
+182 |   private eventInclude() {
+183 |     return {
+184 |       school: { select: { id: true, name: true } },
+185 |       city: { select: { id: true, name: true } },
+186 |       crew: {
+187 |         include: {
+188 |           host: { select: { id: true, name: true } },
+189 |           driver: { select: { id: true, name: true } },
+190 |         },
+191 |       },
+192 |     };
+193 |   }
+194 | 
+195 |   private async getEventsWindow(
+196 |     cityFilter: Record<string, unknown>,
+197 |     windows: ReturnType<DashboardService['buildTimeWindows']>,
+198 |   ) {
+199 |     const [todayEvents, upcomingEvents] = await Promise.all([
+200 |       this.prisma.event.findMany({
+201 |         where: {
+202 |           ...cityFilter,
+203 |           date: { gte: windows.todayStart, lt: windows.todayEnd },
+204 |         },
+205 |         include: this.eventInclude(),
+206 |         orderBy: { time: 'asc' },
+207 |       }),
+208 |       this.prisma.event.findMany({
+209 |         where: {
+210 |           ...cityFilter,
+211 |           date: { gte: windows.todayEnd, lt: windows.upcomingEnd },
+212 |         },
+213 |         include: this.eventInclude(),
+214 |         orderBy: [{ date: 'asc' }, { time: 'asc' }],
+215 |         take: 8,
+216 |       }),
+217 |     ]);
+218 |     return { todayEvents, upcomingEvents };
+219 |   }
+220 | 
+221 |   private async getFunnelStats(cityId?: string) {
+222 |     const funnelRows = cityId
+223 |       ? await this.prisma.$queryRaw<
+224 |           { status: string; count: bigint }[]
+225 |         >(Prisma.sql`
+226 |           SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
+227 |           FROM "School" s
+228 |           LEFT JOIN LATERAL (
+229 |             SELECT status FROM "Event"
+230 |             WHERE "schoolId" = s.id
+231 |             ORDER BY date DESC
+232 |             LIMIT 1
+233 |           ) e ON true
+234 |           WHERE s."cityId" = ${cityId}
+235 |           GROUP BY e.status
+236 |         `)
+237 |       : await this.prisma.$queryRaw<
+238 |           { status: string; count: bigint }[]
+239 |         >(Prisma.sql`
+240 |           SELECT COALESCE(e.status::text, 'BASE') as status, COUNT(*) as count
+241 |           FROM "School" s
+242 |           LEFT JOIN LATERAL (
+243 |             SELECT status FROM "Event"
+244 |             WHERE "schoolId" = s.id
+245 |             ORDER BY date DESC
+246 |             LIMIT 1
+247 |           ) e ON true
+248 |           GROUP BY e.status
+249 |         `);
+250 | 
+251 |     const funnel: Record<string, number> = {};
+252 |     for (const stage of PIPELINE_STAGES) funnel[stage] = 0;
+253 |     let totalSchools = 0;
+254 |     for (const row of funnelRows) {
+255 |       const status = row.status ?? 'BASE';
+256 |       const count = Number(row.count);
+257 |       if (funnel[status] !== undefined) funnel[status] += count;
+258 |       totalSchools += count;
+259 |     }
+260 |     return { funnel, totalSchools };
+261 |   }
 262 | 
-263 |     return monthEvents.reduce(
-264 |       (acc, ev) => {
-265 |         acc.revenue += ev.report?.totalSum ?? 0;
-266 |         acc.profit += ev.report?.remainderSum ?? 0;
-267 |         acc.children += ev.report?.childrenCount ?? 0;
-268 |         acc.count += 1;
-269 |         return acc;
-270 |       },
-271 |       { revenue: 0, profit: 0, children: 0, count: 0 },
-272 |     );
-273 |   }
-274 | 
-275 |   private async getStaleSchools(
-276 |     cityFilter: Record<string, unknown>,
-277 |     staleThreshold: Date,
-278 |     now: Date,
-279 |   ): Promise<StaleSchool[]> {
-280 |     const cityId = (cityFilter as { cityId?: string }).cityId;
-281 |     const cityCondition = cityId
-282 |       ? Prisma.sql`AND s."cityId" = ${cityId}`
-283 |       : Prisma.empty;
-284 | 
-285 |     const rows = await this.prisma.$queryRaw<
-286 |       {
-287 |         id: string;
-288 |         name: string;
-289 |         status: string | null;
-290 |         lastActivity: Date | null;
-291 |       }[]
-292 |     >(Prisma.sql`
-293 |       SELECT s.id, s.name, latest.status, "lastHist"."createdAt" as "lastActivity"
-294 |       FROM "School" s
-295 |       JOIN LATERAL (
-296 |         SELECT id, status FROM "Event" e
-297 |         WHERE e."schoolId" = s.id AND e.status NOT IN ('DONE', 'REPORT', 'RE_SALE')
-298 |         ORDER BY e.date DESC
-299 |         LIMIT 1
-300 |       ) latest ON true
-301 |       LEFT JOIN LATERAL (
-302 |         SELECT h."createdAt" FROM "EventHistory" h
-303 |         WHERE h."eventId" = latest.id
-304 |         ORDER BY h."createdAt" DESC
-305 |         LIMIT 1
-306 |       ) "lastHist" ON true
-307 |       WHERE ("lastHist"."createdAt" IS NULL OR "lastHist"."createdAt" < ${staleThreshold})
-308 |       ${cityCondition}
-309 |       ORDER BY "lastHist"."createdAt" ASC NULLS FIRST
-310 |       LIMIT 10
-311 |     `);
-312 | 
-313 |     return rows.map((school) => {
-314 |       const daysStale = school.lastActivity
-315 |         ? Math.floor(
-316 |             (now.getTime() - new Date(school.lastActivity).getTime()) /
-317 |               86_400_000,
-318 |           )
-319 |         : null;
-320 |       return {
-321 |         id: school.id,
-322 |         name: school.name,
-323 |         status: school.status ?? null,
-324 |         lastActivity: school.lastActivity,
-325 |         daysStale,
-326 |       };
-327 |     });
-328 |   }
-329 | 
-330 |   private async getActivityFeed(cityId: string | undefined, todayStart: Date) {
-331 |     const recentActivity = await this.prisma.eventHistory.findMany({
-332 |       where: {
-333 |         createdAt: { gte: todayStart },
-334 |         ...(cityId ? { event: { cityId } } : {}),
-335 |       },
-336 |       include: {
-337 |         event: {
-338 |           select: {
-339 |             id: true,
-340 |             school: { select: { id: true, name: true } },
-341 |           },
-342 |         },
-343 |       },
-344 |       orderBy: { createdAt: 'desc' },
-345 |       take: 20,
-346 |     });
+263 |   private async getMonthlyKpi(
+264 |     cityFilter: Record<string, unknown>,
+265 |     windows: ReturnType<DashboardService['buildTimeWindows']>,
+266 |   ) {
+267 |     const monthEvents = await this.prisma.event.findMany({
+268 |       where: {
+269 |         ...cityFilter,
+270 |         status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
+271 |         date: { gte: windows.monthStart, lte: windows.monthEnd },
+272 |       },
+273 |       select: {
+274 |         id: true,
+275 |         report: {
+276 |           select: { totalSum: true, remainderSum: true, childrenCount: true },
+277 |         },
+278 |       },
+279 |     });
+280 | 
+281 |     return monthEvents.reduce(
+282 |       (acc, ev) => {
+283 |         acc.revenue += ev.report?.totalSum ?? 0;
+284 |         acc.profit += ev.report?.remainderSum ?? 0;
+285 |         acc.children += ev.report?.childrenCount ?? 0;
+286 |         acc.count += 1;
+287 |         return acc;
+288 |       },
+289 |       { revenue: 0, profit: 0, children: 0, count: 0 },
+290 |     );
+291 |   }
+292 | 
+293 |   private async getStaleSchools(
+294 |     cityFilter: Record<string, unknown>,
+295 |     staleThreshold: Date,
+296 |     now: Date,
+297 |   ): Promise<StaleSchool[]> {
+298 |     const cityId = (cityFilter as { cityId?: string }).cityId;
+299 |     const cityCondition = cityId
+300 |       ? Prisma.sql`AND s."cityId" = ${cityId}`
+301 |       : Prisma.empty;
+302 | 
+303 |     const rows = await this.prisma.$queryRaw<
+304 |       {
+305 |         id: string;
+306 |         name: string;
+307 |         status: string | null;
+308 |         lastActivity: Date | null;
+309 |       }[]
+310 |     >(Prisma.sql`
+311 |       SELECT s.id, s.name, latest.status, "lastHist"."createdAt" as "lastActivity"
+312 |       FROM "School" s
+313 |       JOIN LATERAL (
+314 |         SELECT id, status FROM "Event" e
+315 |         WHERE e."schoolId" = s.id AND e.status NOT IN ('DONE', 'REPORT', 'RE_SALE')
+316 |         ORDER BY e.date DESC
+317 |         LIMIT 1
+318 |       ) latest ON true
+319 |       LEFT JOIN LATERAL (
+320 |         SELECT h."createdAt" FROM "EventHistory" h
+321 |         WHERE h."eventId" = latest.id
+322 |         ORDER BY h."createdAt" DESC
+323 |         LIMIT 1
+324 |       ) "lastHist" ON true
+325 |       WHERE ("lastHist"."createdAt" IS NULL OR "lastHist"."createdAt" < ${staleThreshold})
+326 |       ${cityCondition}
+327 |       ORDER BY "lastHist"."createdAt" ASC NULLS FIRST
+328 |       LIMIT 10
+329 |     `);
+330 | 
+331 |     return rows.map((school) => {
+332 |       const daysStale = school.lastActivity
+333 |         ? Math.floor(
+334 |             (now.getTime() - new Date(school.lastActivity).getTime()) /
+335 |               86_400_000,
+336 |           )
+337 |         : null;
+338 |       return {
+339 |         id: school.id,
+340 |         name: school.name,
+341 |         status: school.status ?? null,
+342 |         lastActivity: school.lastActivity,
+343 |         daysStale,
+344 |       };
+345 |     });
+346 |   }
 347 | 
-348 |     return recentActivity.map((h) => ({
-349 |       id: h.id,
-350 |       userName: h.userName,
-351 |       role: h.role,
-352 |       action: h.action,
-353 |       comment: h.comment,
-354 |       createdAt: h.createdAt,
-355 |       schoolId: h.event?.school?.id ?? null,
-356 |       schoolName: h.event?.school?.name ?? null,
-357 |       eventId: h.event?.id ?? null,
-358 |     }));
-359 |   }
-360 | 
-361 |   private async getCitiesStats(
-362 |     windows: ReturnType<DashboardService['buildTimeWindows']>,
-363 |   ) {
-364 |     const [allCities, allSchools, allActiveEvents, allMonthEvents] =
-365 |       await Promise.all([
-366 |         this.prisma.city.findMany({ select: { id: true, name: true } }),
-367 |         this.prisma.school.groupBy({ by: ['cityId'], _count: { id: true } }),
-368 |         this.prisma.event.groupBy({
-369 |           by: ['cityId'],
-370 |           where: {
-371 |             status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
-372 |           },
-373 |           _count: { id: true },
-374 |         }),
-375 |         this.prisma.event.findMany({
-376 |           where: {
-377 |             status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
-378 |             date: { gte: windows.monthStart, lte: windows.monthEnd },
-379 |           },
-380 |           select: {
-381 |             cityId: true,
-382 |             report: { select: { totalSum: true } },
-383 |           },
-384 |         }),
-385 |       ]);
-386 | 
-387 |     const schoolsIdx = Object.fromEntries(
-388 |       allSchools.map((r) => [r.cityId, r._count.id]),
-389 |     );
-390 |     const activeIdx = Object.fromEntries(
-391 |       allActiveEvents.map((r) => [r.cityId, r._count.id]),
-392 |     );
-393 |     const revenueIdx: Record<string, number> = {};
-394 |     for (const ev of allMonthEvents) {
-395 |       revenueIdx[ev.cityId] =
-396 |         (revenueIdx[ev.cityId] ?? 0) + (ev.report?.totalSum ?? 0);
-397 |     }
-398 | 
-399 |     return allCities
-400 |       .map((city) => ({
-401 |         cityId: city.id,
-402 |         cityName: city.name,
-403 |         schoolsCount: schoolsIdx[city.id] ?? 0,
-404 |         activeEvents: activeIdx[city.id] ?? 0,
-405 |         monthRevenue: revenueIdx[city.id] ?? 0,
-406 |       }))
-407 |       .sort((a, b) => b.monthRevenue - a.monthRevenue);
-408 |   }
-409 | }
-410 | 
+348 |   private async getActivityFeed(cityId: string | undefined, todayStart: Date) {
+349 |     const recentActivity = await this.prisma.eventHistory.findMany({
+350 |       where: {
+351 |         createdAt: { gte: todayStart },
+352 |         ...(cityId ? { event: { cityId } } : {}),
+353 |       },
+354 |       include: {
+355 |         event: {
+356 |           select: {
+357 |             id: true,
+358 |             school: { select: { id: true, name: true } },
+359 |           },
+360 |         },
+361 |       },
+362 |       orderBy: { createdAt: 'desc' },
+363 |       take: 20,
+364 |     });
+365 | 
+366 |     return recentActivity.map((h) => ({
+367 |       id: h.id,
+368 |       userName: h.userName,
+369 |       role: h.role,
+370 |       action: h.action,
+371 |       comment: h.comment,
+372 |       createdAt: h.createdAt,
+373 |       schoolId: h.event?.school?.id ?? null,
+374 |       schoolName: h.event?.school?.name ?? null,
+375 |       eventId: h.event?.id ?? null,
+376 |     }));
+377 |   }
+378 | 
+379 |   private async getCitiesStats(
+380 |     windows: ReturnType<DashboardService['buildTimeWindows']>,
+381 |   ) {
+382 |     const [allCities, allSchools, allActiveEvents, allMonthEvents] =
+383 |       await Promise.all([
+384 |         this.prisma.city.findMany({ select: { id: true, name: true } }),
+385 |         this.prisma.school.groupBy({ by: ['cityId'], _count: { id: true } }),
+386 |         this.prisma.event.groupBy({
+387 |           by: ['cityId'],
+388 |           where: {
+389 |             status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
+390 |           },
+391 |           _count: { id: true },
+392 |         }),
+393 |         this.prisma.event.findMany({
+394 |           where: {
+395 |             status: { in: ['DONE', 'REPORT', 'RE_SALE'] },
+396 |             date: { gte: windows.monthStart, lte: windows.monthEnd },
+397 |           },
+398 |           select: {
+399 |             cityId: true,
+400 |             report: { select: { totalSum: true } },
+401 |           },
+402 |         }),
+403 |       ]);
+404 | 
+405 |     const schoolsIdx = Object.fromEntries(
+406 |       allSchools.map((r) => [r.cityId, r._count.id]),
+407 |     );
+408 |     const activeIdx = Object.fromEntries(
+409 |       allActiveEvents.map((r) => [r.cityId, r._count.id]),
+410 |     );
+411 |     const revenueIdx: Record<string, number> = {};
+412 |     for (const ev of allMonthEvents) {
+413 |       revenueIdx[ev.cityId] =
+414 |         (revenueIdx[ev.cityId] ?? 0) + (ev.report?.totalSum ?? 0);
+415 |     }
+416 | 
+417 |     return allCities
+418 |       .map((city) => ({
+419 |         cityId: city.id,
+420 |         cityName: city.name,
+421 |         schoolsCount: schoolsIdx[city.id] ?? 0,
+422 |         activeEvents: activeIdx[city.id] ?? 0,
+423 |         monthRevenue: revenueIdx[city.id] ?? 0,
+424 |       }))
+425 |       .sort((a, b) => b.monthRevenue - a.monthRevenue);
+426 |   }
+427 | }
+428 | 
 ```
 
 ### File: apps/backend/src/events/dto/add-comment.dto.ts
@@ -3864,130 +4181,132 @@
  26 | import { RolesGuard } from '../auth/guards/roles.guard';
  27 | import { OwnershipGuard } from '../auth/guards/ownership.guard';
  28 | import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
- 29 | 
- 30 | @ApiTags('Events')
- 31 | @ApiCookieAuth('access_token')
- 32 | @Controller('events')
- 33 | @UseGuards(AuthGuard, RolesGuard)
- 34 | export class EventsController {
- 35 |   constructor(private readonly eventsService: EventsService) {}
- 36 | 
- 37 |   @ApiOperation({ summary: 'Список подій для поточного користувача' })
- 38 |   @Get()
- 39 |   findAll(@CurrentUser() user: JwtUser, @Query() query: EventQueryDto) {
- 40 |     return this.eventsService.findAllForUser(user, query);
- 41 |   }
- 42 | 
- 43 |   @ApiOperation({ summary: 'Створити подію' })
- 44 |   @Post()
- 45 |   create(@Body() body: CreateEventDto, @CurrentUser() user: JwtUser) {
- 46 |     return this.eventsService.create(body, user);
- 47 |   }
- 48 | 
- 49 |   @Get('school/:schoolId')
- 50 |   findBySchool(
- 51 |     @Param('schoolId') schoolId: string,
- 52 |     @Query('minimal') minimal?: string,
- 53 |   ) {
- 54 |     return this.eventsService.findBySchool(schoolId, minimal === 'true');
- 55 |   }
- 56 | 
- 57 |   @Patch(':id/status')
- 58 |   @UseGuards(OwnershipGuard)
- 59 |   @CheckOwnership('event')
- 60 |   updateStatus(
- 61 |     @Param('id') id: string,
- 62 |     @Body() body: UpdateStatusDto,
- 63 |     @CurrentUser() user: JwtUser,
- 64 |   ) {
- 65 |     return this.eventsService.updateStatus(
- 66 |       id,
- 67 |       body.status,
- 68 |       body.actionName,
- 69 |       body.comment,
- 70 |       user,
- 71 |     );
- 72 |   }
- 73 | 
- 74 |   @Patch(':id/preparation')
- 75 |   @UseGuards(OwnershipGuard)
- 76 |   @CheckOwnership('event')
- 77 |   updatePreparation(
- 78 |     @Param('id') id: string,
- 79 |     @Body() body: UpdatePreparationDto,
- 80 |   ) {
- 81 |     return this.eventsService.updatePreparationStatus(
- 82 |       id,
- 83 |       body.field,
- 84 |       body.status,
- 85 |     );
- 86 |   }
- 87 | 
- 88 |   @Post(':id/assign-crew')
- 89 |   @UseGuards(OwnershipGuard)
- 90 |   @CheckOwnership('event')
- 91 |   assignCrew(@Param('id') id: string, @Body() body: AssignCrewDto) {
- 92 |     return this.eventsService.assignCrewToEvent(id, body.crewId);
- 93 |   }
- 94 | 
- 95 |   @Post(':id/history')
- 96 |   addHistoryComment(
- 97 |     @Param('id') id: string,
- 98 |     @Body() body: AddCommentDto,
- 99 |     @CurrentUser() user: JwtUser,
-100 |   ) {
-101 |     return this.eventsService.addHistoryComment(id, body.comment, user);
-102 |   }
-103 | 
-104 |   @Patch('history/:historyId')
-105 |   updateHistoryComment(
-106 |     @Param('historyId') historyId: string,
-107 |     @Body() body: AddCommentDto,
-108 |   ) {
-109 |     return this.eventsService.updateHistoryComment(historyId, body.comment);
-110 |   }
-111 | 
-112 |   @Delete(':id')
-113 |   @UseGuards(OwnershipGuard)
-114 |   @CheckOwnership('event')
-115 |   remove(@Param('id') id: string) {
-116 |     return this.eventsService.remove(id);
-117 |   }
-118 | 
-119 |   @Post(':id/report')
-120 |   @Throttle({ default: { ttl: 60000, limit: 10 } })
-121 |   @UseGuards(OwnershipGuard)
-122 |   @CheckOwnership('event')
-123 |   submitReport(
-124 |     @Param('id') id: string,
-125 |     @Body() body: SubmitReportDto,
-126 |     @CurrentUser() user: JwtUser,
-127 |   ) {
-128 |     return this.eventsService.submitReport(id, body, user);
-129 |   }
-130 | 
-131 |   @Get('school/:schoolId/completed')
-132 |   findCompletedBySchool(@Param('schoolId') schoolId: string) {
-133 |     return this.eventsService.findCompletedBySchool(schoolId);
-134 |   }
-135 | 
-136 |   @Get(':id')
-137 |   findOne(@Param('id') id: string) {
-138 |     return this.eventsService.findOne(id);
-139 |   }
-140 | 
-141 |   @Patch(':id/reschedule')
-142 |   @UseGuards(OwnershipGuard)
-143 |   @CheckOwnership('event')
-144 |   reschedule(
-145 |     @Param('id') id: string,
-146 |     @Body() body: RescheduleEventDto,
-147 |     @CurrentUser() user: JwtUser,
-148 |   ) {
-149 |     return this.eventsService.rescheduleEvent(id, body.date, body.time, user);
-150 |   }
-151 | }
-152 | 
+ 29 | import { Roles } from '../auth/decorators/roles.decorator';
+ 30 | 
+ 31 | @ApiTags('Events')
+ 32 | @ApiCookieAuth('access_token')
+ 33 | @Controller('events')
+ 34 | @UseGuards(AuthGuard, RolesGuard)
+ 35 | export class EventsController {
+ 36 |   constructor(private readonly eventsService: EventsService) {}
+ 37 | 
+ 38 |   @ApiOperation({ summary: 'Список подій для поточного користувача' })
+ 39 |   @Get()
+ 40 |   findAll(@CurrentUser() user: JwtUser, @Query() query: EventQueryDto) {
+ 41 |     return this.eventsService.findAllForUser(user, query);
+ 42 |   }
+ 43 | 
+ 44 |   @ApiOperation({ summary: 'Створити подію' })
+ 45 |   @Post()
+ 46 |   create(@Body() body: CreateEventDto, @CurrentUser() user: JwtUser) {
+ 47 |     return this.eventsService.create(body, user);
+ 48 |   }
+ 49 | 
+ 50 |   @Get('school/:schoolId')
+ 51 |   findBySchool(
+ 52 |     @Param('schoolId') schoolId: string,
+ 53 |     @Query('minimal') minimal?: string,
+ 54 |   ) {
+ 55 |     return this.eventsService.findBySchool(schoolId, minimal === 'true');
+ 56 |   }
+ 57 | 
+ 58 |   @Patch(':id/status')
+ 59 |   @UseGuards(OwnershipGuard)
+ 60 |   @CheckOwnership('event')
+ 61 |   updateStatus(
+ 62 |     @Param('id') id: string,
+ 63 |     @Body() body: UpdateStatusDto,
+ 64 |     @CurrentUser() user: JwtUser,
+ 65 |   ) {
+ 66 |     return this.eventsService.updateStatus(
+ 67 |       id,
+ 68 |       body.status,
+ 69 |       body.actionName,
+ 70 |       body.comment,
+ 71 |       user,
+ 72 |     );
+ 73 |   }
+ 74 | 
+ 75 |   @Patch(':id/preparation')
+ 76 |   @UseGuards(OwnershipGuard)
+ 77 |   @CheckOwnership('event')
+ 78 |   updatePreparation(
+ 79 |     @Param('id') id: string,
+ 80 |     @Body() body: UpdatePreparationDto,
+ 81 |   ) {
+ 82 |     return this.eventsService.updatePreparationStatus(
+ 83 |       id,
+ 84 |       body.field,
+ 85 |       body.status,
+ 86 |     );
+ 87 |   }
+ 88 | 
+ 89 |   @Post(':id/assign-crew')
+ 90 |   @UseGuards(OwnershipGuard)
+ 91 |   @CheckOwnership('event')
+ 92 |   assignCrew(@Param('id') id: string, @Body() body: AssignCrewDto) {
+ 93 |     return this.eventsService.assignCrewToEvent(id, body.crewId);
+ 94 |   }
+ 95 | 
+ 96 |   @Post(':id/history')
+ 97 |   addHistoryComment(
+ 98 |     @Param('id') id: string,
+ 99 |     @Body() body: AddCommentDto,
+100 |     @CurrentUser() user: JwtUser,
+101 |   ) {
+102 |     return this.eventsService.addHistoryComment(id, body.comment, user);
+103 |   }
+104 | 
+105 |   @Patch('history/:historyId')
+106 |   updateHistoryComment(
+107 |     @Param('historyId') historyId: string,
+108 |     @Body() body: AddCommentDto,
+109 |   ) {
+110 |     return this.eventsService.updateHistoryComment(historyId, body.comment);
+111 |   }
+112 | 
+113 |   @Delete(':id')
+114 |   @Roles('SUPERADMIN', 'MANAGER')
+115 |   @UseGuards(OwnershipGuard)
+116 |   @CheckOwnership('event')
+117 |   remove(@Param('id') id: string) {
+118 |     return this.eventsService.remove(id);
+119 |   }
+120 | 
+121 |   @Post(':id/report')
+122 |   @Throttle({ default: { ttl: 60000, limit: 10 } })
+123 |   @UseGuards(OwnershipGuard)
+124 |   @CheckOwnership('event')
+125 |   submitReport(
+126 |     @Param('id') id: string,
+127 |     @Body() body: SubmitReportDto,
+128 |     @CurrentUser() user: JwtUser,
+129 |   ) {
+130 |     return this.eventsService.submitReport(id, body, user);
+131 |   }
+132 | 
+133 |   @Get('school/:schoolId/completed')
+134 |   findCompletedBySchool(@Param('schoolId') schoolId: string) {
+135 |     return this.eventsService.findCompletedBySchool(schoolId);
+136 |   }
+137 | 
+138 |   @Get(':id')
+139 |   findOne(@Param('id') id: string) {
+140 |     return this.eventsService.findOne(id);
+141 |   }
+142 | 
+143 |   @Patch(':id/reschedule')
+144 |   @UseGuards(OwnershipGuard)
+145 |   @CheckOwnership('event')
+146 |   reschedule(
+147 |     @Param('id') id: string,
+148 |     @Body() body: RescheduleEventDto,
+149 |     @CurrentUser() user: JwtUser,
+150 |   ) {
+151 |     return this.eventsService.rescheduleEvent(id, body.date, body.time, user);
+152 |   }
+153 | }
+154 | 
 ```
 
 ### File: apps/backend/src/events/events.module.ts
@@ -4519,495 +4838,547 @@
 
 ### File: apps/backend/src/events/events.service.ts
 ```ts
-  0 | import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-  1 | import { PrismaService } from '../prisma/prisma.service';
-  2 | import { TelegramService } from '../telegram/telegram.service';
-  3 | import { Prisma, PreparationStatus } from '@prisma/client';
-  4 | 
-  5 | import { CreateEventDto } from './dto/create-event.dto';
-  6 | import {
-  7 |   SubmitReportDto,
-  8 |   ExpenseItemDto,
-  9 |   SalaryItemDto,
- 10 | } from './dto/submit-report.dto';
- 11 | import { EventQueryDto } from './dto/event-query.dto';
- 12 | import { PageMetaDto } from '../common/dto/page-meta.dto';
- 13 | import { JwtUser } from '../auth/interfaces/jwt-user.interface';
- 14 | 
- 15 | /* eslint-disable @typescript-eslint/no-unsafe-assignment */
- 16 | 
- 17 | const FIELD_ROLES = ['DRIVER', 'HOST'];
- 18 | 
- 19 | @Injectable()
- 20 | export class EventsService {
- 21 |   private readonly logger = new Logger(EventsService.name);
- 22 | 
- 23 |   constructor(
- 24 |     private readonly prisma: PrismaService,
- 25 |     private telegramService: TelegramService,
- 26 |   ) {}
- 27 | 
- 28 |   async findAllForUser(user: JwtUser, query?: EventQueryDto) {
- 29 |     const isFieldStaff = FIELD_ROLES.includes(user.role);
- 30 |     const where = isFieldStaff
- 31 |       ? { crew: { OR: [{ hostId: user.sub }, { driverId: user.sub }] } }
- 32 |       : {};
- 33 |     const include = {
- 34 |       school: { select: { id: true, name: true, type: true } },
- 35 |       city: { select: { id: true, name: true } },
- 36 |       crew: {
- 37 |         include: {
- 38 |           host: { select: { id: true, name: true } },
- 39 |           driver: { select: { id: true, name: true } },
- 40 |         },
- 41 |       },
- 42 |     };
- 43 | 
- 44 |     if (!query?.page) {
- 45 |       return this.prisma.event.findMany({
- 46 |         where,
- 47 |         include,
- 48 |         orderBy: { date: 'asc' },
- 49 |       });
- 50 |     }
- 51 | 
- 52 |     const take = query.take ?? 20;
- 53 |     const skip = (query.page - 1) * take;
- 54 | 
- 55 |     const [data, totalItems] = await Promise.all([
- 56 |       this.prisma.event.findMany({
- 57 |         where,
- 58 |         include,
- 59 |         orderBy: { date: 'asc' },
- 60 |         skip,
- 61 |         take,
- 62 |       }),
- 63 |       this.prisma.event.count({ where }),
- 64 |     ]);
- 65 | 
- 66 |     return { data, meta: new PageMetaDto(totalItems, query.page, take) };
- 67 |   }
- 68 | 
- 69 |   async create(data: CreateEventDto, user: JwtUser) {
- 70 |     return this.prisma.event.create({
- 71 |       data: {
- 72 |         ...data,
- 73 |         status: 'BASE' as never,
- 74 |         date: new Date(data.date),
- 75 |         history: {
- 76 |           create: {
- 77 |             action: 'Створено подію. Етап: База',
- 78 |             userId: user.sub,
- 79 |             userName: user.name,
- 80 |             role: user.role,
- 81 |           },
- 82 |         },
- 83 |       },
- 84 |       include: { history: true },
- 85 |     });
- 86 |   }
- 87 | 
- 88 |   async updateStatus(
- 89 |     eventId: string,
- 90 |     newStatus: string,
- 91 |     actionName: string,
- 92 |     comment: string | undefined,
- 93 |     user: JwtUser,
- 94 |   ) {
- 95 |     return this.prisma.event.update({
- 96 |       where: { id: eventId },
- 97 |       data: {
- 98 |         status: newStatus as never,
- 99 |         history: {
-100 |           create: {
-101 |             action: actionName,
-102 |             comment: comment || null,
-103 |             userId: user.sub,
-104 |             userName: user.name,
-105 |             role: user.role,
-106 |           },
-107 |         },
-108 |       },
-109 |       include: { crew: true, history: { orderBy: { createdAt: 'desc' } } },
-110 |     });
-111 |   }
-112 | 
-113 |   async updatePreparationStatus(
-114 |     eventId: string,
-115 |     field: keyof Omit<
-116 |       Prisma.EventPreparationUncheckedCreateInput,
-117 |       'id' | 'eventId'
-118 |     >,
-119 |     status: PreparationStatus,
-120 |   ) {
-121 |     const existing = await this.prisma.eventPreparation.findUnique({
-122 |       where: { eventId },
-123 |     });
-124 | 
-125 |     if (existing) {
-126 |       return this.prisma.eventPreparation.update({
-127 |         where: { eventId },
-128 |         data: { [field]: status },
-129 |       });
-130 |     } else {
-131 |       return this.prisma.eventPreparation.create({
-132 |         data: { eventId, [field]: status },
-133 |       });
-134 |     }
-135 |   }
-136 | 
-137 |   async assignCrewToEvent(eventId: string, crewId: string) {
-138 |     const event = await this.prisma.event.update({
-139 |       where: { id: eventId },
-140 |       data: { crewId: crewId },
-141 |       include: {
-142 |         crew: { include: { host: true, driver: true } },
-143 |         school: true,
-144 |         city: true,
-145 |         preparation: true,
-146 |         history: { orderBy: { createdAt: 'desc' } },
-147 |       },
-148 |     });
-149 | 
-150 |     const hostId = event.crew?.hostId;
-151 |     const driverId = event.crew?.driverId;
-152 | 
-153 |     const dateStr = new Date(event.date).toLocaleDateString('uk-UA', {
-154 |       day: '2-digit',
-155 |       month: 'long',
-156 |       year: 'numeric',
-157 |     });
-158 |     const timeStr = event.time ? `, ${event.time}` : '';
-159 | 
-160 |     const buildMessage = (role: 'ведучий' | 'водій') =>
-161 |       `🎯 <b>Вас призначено на подію!</b>\n\n` +
-162 |       `👤 <b>Роль:</b> ${role === 'ведучий' ? '🎙️ Ведучий' : '🚗 Водій'}\n` +
-163 |       `📅 <b>Дата:</b> ${dateStr}${timeStr}\n` +
-164 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
-165 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
-166 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
-167 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
-168 |       (event.contactPerson
-169 |         ? `👤 <b>Контакт:</b> ${event.contactPerson}\n`
-170 |         : '') +
-171 |       (event.contactPhone ? `📞 <b>Телефон:</b> ${event.contactPhone}\n` : '') +
-172 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+  0 | import { Injectable, Logger, HttpStatus, Inject } from '@nestjs/common';
+  1 | import { CACHE_MANAGER } from '@nestjs/cache-manager';
+  2 | import type { Cache } from 'cache-manager';
+  3 | import { AppException } from '../common/exceptions/app.exception';
+  4 | import { PrismaService } from '../prisma/prisma.service';
+  5 | import { TelegramService } from '../telegram/telegram.service';
+  6 | import { Prisma, PreparationStatus } from '@prisma/client';
+  7 | 
+  8 | import { CreateEventDto } from './dto/create-event.dto';
+  9 | import {
+ 10 |   SubmitReportDto,
+ 11 |   ExpenseItemDto,
+ 12 |   SalaryItemDto,
+ 13 | } from './dto/submit-report.dto';
+ 14 | import { EventQueryDto } from './dto/event-query.dto';
+ 15 | import { PageMetaDto } from '../common/dto/page-meta.dto';
+ 16 | import { JwtUser } from '../auth/interfaces/jwt-user.interface';
+ 17 | 
+ 18 | /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+ 19 | 
+ 20 | const FIELD_ROLES = ['DRIVER', 'HOST'];
+ 21 | 
+ 22 | @Injectable()
+ 23 | export class EventsService {
+ 24 |   private readonly logger = new Logger(EventsService.name);
+ 25 |   private readonly pendingSchoolEvents = new Map<string, Promise<unknown>>();
+ 26 | 
+ 27 |   constructor(
+ 28 |     private readonly prisma: PrismaService,
+ 29 |     private telegramService: TelegramService,
+ 30 |     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+ 31 |   ) {}
+ 32 | 
+ 33 |   async findAllForUser(user: JwtUser, query?: EventQueryDto) {
+ 34 |     const isFieldStaff = FIELD_ROLES.includes(user.role);
+ 35 |     const where = isFieldStaff
+ 36 |       ? { crew: { OR: [{ hostId: user.sub }, { driverId: user.sub }] } }
+ 37 |       : {};
+ 38 |     const include = {
+ 39 |       school: { select: { id: true, name: true, type: true } },
+ 40 |       city: { select: { id: true, name: true } },
+ 41 |       crew: {
+ 42 |         include: {
+ 43 |           host: { select: { id: true, name: true } },
+ 44 |           driver: { select: { id: true, name: true } },
+ 45 |         },
+ 46 |       },
+ 47 |     };
+ 48 | 
+ 49 |     if (!query?.page) {
+ 50 |       return this.prisma.event.findMany({
+ 51 |         where,
+ 52 |         include,
+ 53 |         orderBy: { date: 'asc' },
+ 54 |       });
+ 55 |     }
+ 56 | 
+ 57 |     const take = query.take ?? 20;
+ 58 |     const skip = (query.page - 1) * take;
+ 59 | 
+ 60 |     const [data, totalItems] = await Promise.all([
+ 61 |       this.prisma.event.findMany({
+ 62 |         where,
+ 63 |         include,
+ 64 |         orderBy: { date: 'asc' },
+ 65 |         skip,
+ 66 |         take,
+ 67 |       }),
+ 68 |       this.prisma.event.count({ where }),
+ 69 |     ]);
+ 70 | 
+ 71 |     return { data, meta: new PageMetaDto(totalItems, query.page, take) };
+ 72 |   }
+ 73 | 
+ 74 |   async create(data: CreateEventDto, user: JwtUser) {
+ 75 |     const event = await this.prisma.event.create({
+ 76 |       data: {
+ 77 |         ...data,
+ 78 |         status: 'BASE' as never,
+ 79 |         date: new Date(data.date),
+ 80 |         history: {
+ 81 |           create: {
+ 82 |             action: 'Створено подію. Етап: База',
+ 83 |             userId: user.sub,
+ 84 |             userName: user.name,
+ 85 |             role: user.role,
+ 86 |           },
+ 87 |         },
+ 88 |       },
+ 89 |       include: { history: true },
+ 90 |     });
+ 91 |     await this.invalidateSchoolEventsCache(event.schoolId);
+ 92 |     return event;
+ 93 |   }
+ 94 | 
+ 95 |   private async invalidateSchoolEventsCache(schoolId: string) {
+ 96 |     await Promise.all([
+ 97 |       this.cacheManager.del(`events:school:${schoolId}:minimal`),
+ 98 |       this.cacheManager.del(`events:school:${schoolId}:full`),
+ 99 |     ]);
+100 |   }
+101 | 
+102 |   async updateStatus(
+103 |     eventId: string,
+104 |     newStatus: string,
+105 |     actionName: string,
+106 |     comment: string | undefined,
+107 |     user: JwtUser,
+108 |   ) {
+109 |     const event = await this.prisma.event.update({
+110 |       where: { id: eventId },
+111 |       data: {
+112 |         status: newStatus as never,
+113 |         history: {
+114 |           create: {
+115 |             action: actionName,
+116 |             comment: comment || null,
+117 |             userId: user.sub,
+118 |             userName: user.name,
+119 |             role: user.role,
+120 |           },
+121 |         },
+122 |       },
+123 |       include: { crew: true, history: { orderBy: { createdAt: 'desc' } } },
+124 |     });
+125 |     await this.invalidateSchoolEventsCache(event.schoolId);
+126 |     return event;
+127 |   }
+128 | 
+129 |   async updatePreparationStatus(
+130 |     eventId: string,
+131 |     field: keyof Omit<
+132 |       Prisma.EventPreparationUncheckedCreateInput,
+133 |       'id' | 'eventId'
+134 |     >,
+135 |     status: PreparationStatus,
+136 |   ) {
+137 |     const result = await this.prisma.eventPreparation.upsert({
+138 |       where: { eventId },
+139 |       update: { [field]: status },
+140 |       create: { eventId, [field]: status },
+141 |     });
+142 | 
+143 |     const event = await this.prisma.event.findUnique({
+144 |       where: { id: eventId },
+145 |       select: { schoolId: true },
+146 |     });
+147 |     if (event) await this.invalidateSchoolEventsCache(event.schoolId);
+148 |     return result;
+149 |   }
+150 | 
+151 |   async assignCrewToEvent(eventId: string, crewId: string) {
+152 |     const event = await this.prisma.event.update({
+153 |       where: { id: eventId },
+154 |       data: { crewId: crewId },
+155 |       include: {
+156 |         crew: { include: { host: true, driver: true } },
+157 |         school: true,
+158 |         city: true,
+159 |         preparation: true,
+160 |         history: { orderBy: { createdAt: 'desc' } },
+161 |       },
+162 |     });
+163 | 
+164 |     const hostId = event.crew?.hostId;
+165 |     const driverId = event.crew?.driverId;
+166 | 
+167 |     const dateStr = new Date(event.date).toLocaleDateString('uk-UA', {
+168 |       day: '2-digit',
+169 |       month: 'long',
+170 |       year: 'numeric',
+171 |     });
+172 |     const timeStr = event.time ? `, ${event.time}` : '';
 173 | 
-174 |     if (hostId) {
-175 |       const hostChatId = await this.getChatIdForUser(hostId);
-176 |       this.logger.log(`[assignCrew] hostChatId resolved=${hostChatId}`);
-177 | 
-178 |       if (hostChatId) {
-179 |         this.telegramService
-180 |           .sendMessage(hostChatId, buildMessage('ведучий'))
-181 |           .catch((e) =>
-182 |             this.logger.warn(`[assignCrew] Telegram send failed: ${e}`),
-183 |           );
-184 |       } else {
-185 |         this.logger.warn(
-186 |           `[assignCrew] Не вдалося надіслати повідомлення ведучому ${hostId}: chatId не знайдено (користувач не натиснув /start?)`,
-187 |         );
-188 |       }
-189 |     }
-190 | 
-191 |     if (driverId) {
-192 |       const driverChatId = await this.getChatIdForUser(driverId);
-193 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
-194 | 
-195 |       if (driverChatId) {
-196 |         this.telegramService
-197 |           .sendMessage(driverChatId, buildMessage('водій'))
-198 |           .catch((e) =>
-199 |             this.logger.warn(`[assignCrew] Telegram send failed: ${e}`),
-200 |           );
-201 |       } else {
-202 |         this.logger.warn(
-203 |           `[assignCrew] Не вдалося надіслати повідомлення водію ${driverId}: chatId не знайдено`,
-204 |         );
-205 |       }
-206 |     }
-207 | 
-208 |     return event;
-209 |   }
-210 | 
-211 |   async rescheduleEvent(
-212 |     eventId: string,
-213 |     newDate: string,
-214 |     newTime: string,
-215 |     user: JwtUser,
-216 |   ) {
-217 |     const event = await this.prisma.event.update({
-218 |       where: { id: eventId },
-219 |       data: {
-220 |         date: new Date(newDate),
-221 |         time: newTime,
-222 |         history: {
-223 |           create: {
-224 |             action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
-225 |             userId: user.sub,
-226 |             userName: user.name,
-227 |             role: user.role,
-228 |           },
-229 |         },
-230 |       },
-231 |       include: {
-232 |         crew: { include: { host: true, driver: true } },
-233 |         school: true,
-234 |         city: true,
-235 |         history: { orderBy: { createdAt: 'desc' } },
-236 |       },
-237 |     });
-238 | 
-239 |     const dateStr = new Date(newDate).toLocaleDateString('uk-UA', {
-240 |       day: '2-digit',
-241 |       month: 'long',
-242 |       year: 'numeric',
-243 |     });
-244 |     const msg =
-245 |       `📅 <b>Подію перенесено!</b>\n\n` +
-246 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
-247 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
-248 |       `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
-249 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
-250 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
-251 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
-252 | 
-253 |     const sendTo = async (userId: string | null | undefined) => {
-254 |       if (!userId) return;
-255 |       const u = await this.prisma.user.findUnique({ where: { id: userId } });
-256 |       const chatId =
-257 |         u?.telegramChatId ||
-258 |         (u?.telegramId && /^\d+$/.test(u.telegramId) ? u.telegramId : null);
-259 |       if (chatId) await this.telegramService.sendMessage(chatId, msg);
-260 |     };
-261 | 
-262 |     await sendTo(event.crew?.hostId);
-263 |     await sendTo(event.crew?.driverId);
-264 | 
-265 |     return event;
-266 |   }
+174 |     const buildMessage = (role: 'ведучий' | 'водій') =>
+175 |       `🎯 <b>Вас призначено на подію!</b>\n\n` +
+176 |       `👤 <b>Роль:</b> ${role === 'ведучий' ? '🎙️ Ведучий' : '🚗 Водій'}\n` +
+177 |       `📅 <b>Дата:</b> ${dateStr}${timeStr}\n` +
+178 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
+179 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
+180 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
+181 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
+182 |       (event.contactPerson
+183 |         ? `👤 <b>Контакт:</b> ${event.contactPerson}\n`
+184 |         : '') +
+185 |       (event.contactPhone ? `📞 <b>Телефон:</b> ${event.contactPhone}\n` : '') +
+186 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+187 | 
+188 |     if (hostId) {
+189 |       const hostChatId = await this.getChatIdForUser(hostId);
+190 |       this.logger.log(`[assignCrew] hostChatId resolved=${hostChatId}`);
+191 | 
+192 |       if (hostChatId) {
+193 |         this.telegramService
+194 |           .sendMessage(hostChatId, buildMessage('ведучий'))
+195 |           .catch((e) =>
+196 |             this.logger.warn(`[assignCrew] Telegram send failed: ${e}`),
+197 |           );
+198 |       } else {
+199 |         this.logger.warn(
+200 |           `[assignCrew] Не вдалося надіслати повідомлення ведучому ${hostId}: chatId не знайдено (користувач не натиснув /start?)`,
+201 |         );
+202 |       }
+203 |     }
+204 | 
+205 |     if (driverId) {
+206 |       const driverChatId = await this.getChatIdForUser(driverId);
+207 |       this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
+208 | 
+209 |       if (driverChatId) {
+210 |         this.telegramService
+211 |           .sendMessage(driverChatId, buildMessage('водій'))
+212 |           .catch((e) =>
+213 |             this.logger.warn(`[assignCrew] Telegram send failed: ${e}`),
+214 |           );
+215 |       } else {
+216 |         this.logger.warn(
+217 |           `[assignCrew] Не вдалося надіслати повідомлення водію ${driverId}: chatId не знайдено`,
+218 |         );
+219 |       }
+220 |     }
+221 | 
+222 |     await this.invalidateSchoolEventsCache(event.schoolId);
+223 |     return event;
+224 |   }
+225 | 
+226 |   async rescheduleEvent(
+227 |     eventId: string,
+228 |     newDate: string,
+229 |     newTime: string,
+230 |     user: JwtUser,
+231 |   ) {
+232 |     const event = await this.prisma.event.update({
+233 |       where: { id: eventId },
+234 |       data: {
+235 |         date: new Date(newDate),
+236 |         time: newTime,
+237 |         history: {
+238 |           create: {
+239 |             action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
+240 |             userId: user.sub,
+241 |             userName: user.name,
+242 |             role: user.role,
+243 |           },
+244 |         },
+245 |       },
+246 |       include: {
+247 |         crew: { include: { host: true, driver: true } },
+248 |         school: true,
+249 |         city: true,
+250 |         history: { orderBy: { createdAt: 'desc' } },
+251 |       },
+252 |     });
+253 | 
+254 |     const dateStr = new Date(newDate).toLocaleDateString('uk-UA', {
+255 |       day: '2-digit',
+256 |       month: 'long',
+257 |       year: 'numeric',
+258 |     });
+259 |     const msg =
+260 |       `📅 <b>Подію перенесено!</b>\n\n` +
+261 |       `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
+262 |       `🎪 <b>Проєкт:</b> ${event.project}\n` +
+263 |       `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
+264 |       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
+265 |       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
+266 |       `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
 267 | 
-268 |   async getChatIdForUser(userId: string): Promise<string | null> {
-269 |     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-270 |     if (!user) return null;
-271 | 
-272 |     if (user.telegramChatId) return user.telegramChatId;
-273 | 
-274 |     if (user.telegramId && /^\d+$/.test(user.telegramId))
-275 |       return user.telegramId;
+268 |     const sendTo = async (userId: string | null | undefined) => {
+269 |       if (!userId) return;
+270 |       const u = await this.prisma.user.findUnique({ where: { id: userId } });
+271 |       const chatId =
+272 |         u?.telegramChatId ||
+273 |         (u?.telegramId && /^\d+$/.test(u.telegramId) ? u.telegramId : null);
+274 |       if (chatId) await this.telegramService.sendMessage(chatId, msg);
+275 |     };
 276 | 
-277 |     return null;
-278 |   }
+277 |     await sendTo(event.crew?.hostId);
+278 |     await sendTo(event.crew?.driverId);
 279 | 
-280 |   async findBySchool(schoolId: string, minimal = false) {
-281 |     if (minimal) {
-282 |       return this.prisma.event.findMany({
-283 |         where: { schoolId },
-284 |         select: {
-285 |           id: true,
-286 |           project: true,
-287 |           date: true,
-288 |           time: true,
-289 |           status: true,
-290 |           price: true,
-291 |           childrenPlanned: true,
-292 |           address: true,
-293 |           contactPerson: true,
-294 |           contactPhone: true,
-295 |           crewId: true,
-296 |           crew: {
-297 |             select: { id: true, name: true, hostId: true, driverId: true },
-298 |           },
-299 |         },
-300 |         orderBy: { date: 'desc' },
-301 |       });
-302 |     }
-303 |     return this.prisma.event.findMany({
-304 |       where: { schoolId },
-305 |       include: {
-306 |         crew: { include: { host: true, driver: true } },
-307 |         history: { orderBy: { createdAt: 'desc' } },
-308 |         preparation: true,
-309 |       },
-310 |       orderBy: { date: 'desc' },
-311 |     });
-312 |   }
-313 | 
-314 |   async updateHistoryComment(historyId: string, comment: string) {
-315 |     return this.prisma.eventHistory.update({
-316 |       where: { id: historyId },
-317 |       data: { comment: comment || null },
-318 |     });
-319 |   }
-320 | 
-321 |   async addHistoryComment(eventId: string, comment: string, user: JwtUser) {
-322 |     await this.prisma.eventHistory.create({
-323 |       data: {
-324 |         eventId,
-325 |         action: 'Коментар',
-326 |         comment,
-327 |         userId: user.sub,
-328 |         userName: user.name,
-329 |         role: user.role,
-330 |       },
-331 |     });
-332 | 
-333 |     return this.prisma.event.findUnique({
-334 |       where: { id: eventId },
-335 |       include: {
-336 |         history: { orderBy: { createdAt: 'desc' } },
-337 |       },
-338 |     });
-339 |   }
-340 | 
-341 |   async remove(id: string) {
-342 |     const exists = await this.prisma.event.findUnique({ where: { id } });
-343 |     if (!exists) throw new NotFoundException('Подію не знайдено');
-344 | 
-345 |     await this.prisma.eventHistory.deleteMany({
-346 |       where: { eventId: id },
-347 |     });
-348 | 
-349 |     await this.prisma.eventPreparation.deleteMany({
-350 |       where: { eventId: id },
-351 |     });
-352 | 
-353 |     return this.prisma.event.delete({
-354 |       where: { id },
-355 |     });
-356 |   }
-357 | 
-358 |   async submitReport(
-359 |     eventId: string,
-360 |     reportData: SubmitReportDto,
-361 |     user: JwtUser,
-362 |   ) {
-363 |     const report = await this.prisma.eventReport.upsert({
-364 |       where: { eventId },
-365 |       update: {
-366 |         announcementDone: reportData.announcementDone,
-367 |         materialShown: reportData.materialShown,
-368 |         childrenCount: reportData.childrenCount,
-369 |         classesCount: reportData.classesCount,
-370 |         privilegedCount: reportData.privilegedCount,
-371 |         showingsCount: reportData.showingsCount,
-372 |         totalSum: reportData.totalSum,
-373 |         schoolSum: reportData.schoolSum,
-374 |         remainderSum: reportData.remainderSum,
-375 |         rating: reportData.rating,
-376 |       },
-377 |       create: {
-378 |         eventId,
-379 |         announcementDone: reportData.announcementDone,
-380 |         materialShown: reportData.materialShown,
-381 |         childrenCount: reportData.childrenCount,
-382 |         classesCount: reportData.classesCount,
-383 |         privilegedCount: reportData.privilegedCount,
-384 |         showingsCount: reportData.showingsCount,
-385 |         totalSum: reportData.totalSum,
-386 |         schoolSum: reportData.schoolSum,
-387 |         remainderSum: reportData.remainderSum,
-388 |         rating: reportData.rating,
-389 |       },
-390 |     });
-391 | 
-392 |     await this.prisma.expenseItem.deleteMany({
-393 |       where: { reportId: report.id },
-394 |     });
-395 |     await this.prisma.salaryItem.deleteMany({ where: { reportId: report.id } });
+280 |     await this.invalidateSchoolEventsCache(event.schoolId);
+281 |     return event;
+282 |   }
+283 | 
+284 |   async getChatIdForUser(userId: string): Promise<string | null> {
+285 |     const user = await this.prisma.user.findUnique({ where: { id: userId } });
+286 |     if (!user) return null;
+287 | 
+288 |     if (user.telegramChatId) return user.telegramChatId;
+289 | 
+290 |     if (user.telegramId && /^\d+$/.test(user.telegramId))
+291 |       return user.telegramId;
+292 | 
+293 |     return null;
+294 |   }
+295 | 
+296 |   async findBySchool(schoolId: string, minimal = false) {
+297 |     const key = `events:school:${schoolId}:${minimal ? 'minimal' : 'full'}`;
+298 |     const cached = await this.cacheManager.get(key);
+299 |     if (cached) return cached;
+300 | 
+301 |     const existing = this.pendingSchoolEvents.get(key);
+302 |     if (existing) return existing;
+303 | 
+304 |     const compute = this.computeBySchool(key, schoolId, minimal);
+305 |     this.pendingSchoolEvents.set(key, compute);
+306 |     try {
+307 |       return await compute;
+308 |     } finally {
+309 |       this.pendingSchoolEvents.delete(key);
+310 |     }
+311 |   }
+312 | 
+313 |   private async computeBySchool(
+314 |     key: string,
+315 |     schoolId: string,
+316 |     minimal: boolean,
+317 |   ) {
+318 |     let result;
+319 |     if (minimal) {
+320 |       result = await this.prisma.event.findMany({
+321 |         where: { schoolId },
+322 |         select: {
+323 |           id: true,
+324 |           project: true,
+325 |           date: true,
+326 |           time: true,
+327 |           status: true,
+328 |           price: true,
+329 |           childrenPlanned: true,
+330 |           address: true,
+331 |           contactPerson: true,
+332 |           contactPhone: true,
+333 |           crewId: true,
+334 |           crew: {
+335 |             select: { id: true, name: true, hostId: true, driverId: true },
+336 |           },
+337 |         },
+338 |         orderBy: { date: 'desc' },
+339 |       });
+340 |     } else {
+341 |       result = await this.prisma.event.findMany({
+342 |         where: { schoolId },
+343 |         include: {
+344 |           crew: { include: { host: true, driver: true } },
+345 |           history: { orderBy: { createdAt: 'desc' } },
+346 |           preparation: true,
+347 |         },
+348 |         orderBy: { date: 'desc' },
+349 |       });
+350 |     }
+351 | 
+352 |     await this.cacheManager.set(key, result, 15_000);
+353 |     return result;
+354 |   }
+355 | 
+356 |   async updateHistoryComment(historyId: string, comment: string) {
+357 |     const history = await this.prisma.eventHistory.update({
+358 |       where: { id: historyId },
+359 |       data: { comment: comment || null },
+360 |       include: { event: { select: { schoolId: true } } },
+361 |     });
+362 |     await this.invalidateSchoolEventsCache(history.event.schoolId);
+363 |     return history;
+364 |   }
+365 | 
+366 |   async addHistoryComment(eventId: string, comment: string, user: JwtUser) {
+367 |     await this.prisma.eventHistory.create({
+368 |       data: {
+369 |         eventId,
+370 |         action: 'Коментар',
+371 |         comment,
+372 |         userId: user.sub,
+373 |         userName: user.name,
+374 |         role: user.role,
+375 |       },
+376 |     });
+377 | 
+378 |     const event = await this.prisma.event.findUnique({
+379 |       where: { id: eventId },
+380 |       include: {
+381 |         history: { orderBy: { createdAt: 'desc' } },
+382 |       },
+383 |     });
+384 |     if (event) await this.invalidateSchoolEventsCache(event.schoolId);
+385 |     return event;
+386 |   }
+387 | 
+388 |   async remove(id: string) {
+389 |     const exists = await this.prisma.event.findUnique({ where: { id } });
+390 |     if (!exists)
+391 |       throw new AppException('EVENT_NOT_FOUND', HttpStatus.NOT_FOUND);
+392 | 
+393 |     await this.prisma.eventHistory.deleteMany({
+394 |       where: { eventId: id },
+395 |     });
 396 | 
-397 |     if (reportData.expenses?.length) {
-398 |       await this.prisma.expenseItem.createMany({
-399 |         data: reportData.expenses.map((exp: ExpenseItemDto) => ({
-400 |           reportId: report.id,
-401 |           category: exp.category || 'Інше',
-402 |           name: exp.name,
-403 |           amount: new Prisma.Decimal(exp.amount || 0),
-404 |         })),
-405 |       });
-406 |     }
+397 |     await this.prisma.eventPreparation.deleteMany({
+398 |       where: { eventId: id },
+399 |     });
+400 | 
+401 |     const deleted = await this.prisma.event.delete({
+402 |       where: { id },
+403 |     });
+404 |     await this.invalidateSchoolEventsCache(exists.schoolId);
+405 |     return deleted;
+406 |   }
 407 | 
-408 |     if (reportData.salaries?.length) {
-409 |       await Promise.all(
-410 |         reportData.salaries
-411 |           .filter((s) => s.userId && s.amount > 0)
-412 |           .map((s) =>
-413 |             this.prisma.user.update({
-414 |               where: { id: s.userId },
-415 |               data: { balance: { increment: s.amount } },
-416 |             }),
-417 |           ),
-418 |       );
-419 |     }
-420 | 
-421 |     return this.prisma.event.update({
-422 |       where: { id: eventId },
-423 |       data: {
-424 |         status: 'RE_SALE' as never,
-425 |         history: {
-426 |           create: {
-427 |             action: 'Сформовано звіт. Захід завершено.',
-428 |             userId: user.sub,
-429 |             userName: user.name,
-430 |             role: user.role,
-431 |           },
-432 |         },
-433 |       },
-434 |       include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
-435 |     });
-436 |   }
-437 | 
-438 |   async findOne(id: string) {
-439 |     const event = await this.prisma.event.findUnique({
-440 |       where: { id },
-441 |       include: {
-442 |         school: true,
-443 |         city: true,
-444 |         crew: {
-445 |           include: {
-446 |             host: { select: { id: true, name: true } },
-447 |             driver: { select: { id: true, name: true } },
-448 |           },
-449 |         },
-450 |         report: true,
-451 |       },
-452 |     });
-453 |     if (!event) throw new NotFoundException('Подію не знайдено');
-454 |     return event;
-455 |   }
-456 | 
-457 |   async findCompletedBySchool(schoolId: string) {
-458 |     return this.prisma.event.findMany({
-459 |       where: { schoolId, status: 'RE_SALE' },
-460 |       select: {
-461 |         id: true,
-462 |         project: true,
-463 |         date: true,
-464 |         status: true,
-465 |         price: true,
-466 |         childrenPlanned: true,
-467 |         report: {
-468 |           select: {
-469 |             childrenCount: true,
-470 |             classesCount: true,
-471 |             privilegedCount: true,
-472 |             showingsCount: true,
-473 |             totalSum: true,
-474 |             schoolSum: true,
-475 |             remainderSum: true,
-476 |             rating: true,
-477 |             expenseItems: {
-478 |               select: { category: true, name: true, amount: true },
-479 |             },
-480 |           },
-481 |         },
-482 |         history: { orderBy: { createdAt: 'asc' } },
+408 |   async submitReport(
+409 |     eventId: string,
+410 |     reportData: SubmitReportDto,
+411 |     user: JwtUser,
+412 |   ) {
+413 |     const report = await this.prisma.eventReport.upsert({
+414 |       where: { eventId },
+415 |       update: {
+416 |         announcementDone: reportData.announcementDone,
+417 |         materialShown: reportData.materialShown,
+418 |         childrenCount: reportData.childrenCount,
+419 |         classesCount: reportData.classesCount,
+420 |         privilegedCount: reportData.privilegedCount,
+421 |         showingsCount: reportData.showingsCount,
+422 |         totalSum: reportData.totalSum,
+423 |         schoolSum: reportData.schoolSum,
+424 |         remainderSum: reportData.remainderSum,
+425 |         rating: reportData.rating,
+426 |       },
+427 |       create: {
+428 |         eventId,
+429 |         announcementDone: reportData.announcementDone,
+430 |         materialShown: reportData.materialShown,
+431 |         childrenCount: reportData.childrenCount,
+432 |         classesCount: reportData.classesCount,
+433 |         privilegedCount: reportData.privilegedCount,
+434 |         showingsCount: reportData.showingsCount,
+435 |         totalSum: reportData.totalSum,
+436 |         schoolSum: reportData.schoolSum,
+437 |         remainderSum: reportData.remainderSum,
+438 |         rating: reportData.rating,
+439 |       },
+440 |     });
+441 | 
+442 |     await this.prisma.expenseItem.deleteMany({
+443 |       where: { reportId: report.id },
+444 |     });
+445 |     await this.prisma.salaryItem.deleteMany({ where: { reportId: report.id } });
+446 | 
+447 |     if (reportData.expenses?.length) {
+448 |       await this.prisma.expenseItem.createMany({
+449 |         data: reportData.expenses.map((exp: ExpenseItemDto) => ({
+450 |           reportId: report.id,
+451 |           category: exp.category || 'Інше',
+452 |           name: exp.name,
+453 |           amount: new Prisma.Decimal(exp.amount || 0),
+454 |         })),
+455 |       });
+456 |     }
+457 | 
+458 |     if (reportData.salaries?.length) {
+459 |       await Promise.all(
+460 |         reportData.salaries
+461 |           .filter((s) => s.userId && s.amount > 0)
+462 |           .map((s) =>
+463 |             this.prisma.user.update({
+464 |               where: { id: s.userId },
+465 |               data: { balance: { increment: s.amount } },
+466 |             }),
+467 |           ),
+468 |       );
+469 |     }
+470 | 
+471 |     const event = await this.prisma.event.update({
+472 |       where: { id: eventId },
+473 |       data: {
+474 |         status: 'RE_SALE' as never,
+475 |         history: {
+476 |           create: {
+477 |             action: 'Сформовано звіт. Захід завершено.',
+478 |             userId: user.sub,
+479 |             userName: user.name,
+480 |             role: user.role,
+481 |           },
+482 |         },
 483 |       },
-484 |       orderBy: { date: 'desc' },
+484 |       include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
 485 |     });
-486 |   }
-487 | }
-488 | 
+486 |     await this.invalidateSchoolEventsCache(event.schoolId);
+487 |     return event;
+488 |   }
+489 | 
+490 |   async findOne(id: string) {
+491 |     const event = await this.prisma.event.findUnique({
+492 |       where: { id },
+493 |       include: {
+494 |         school: true,
+495 |         city: true,
+496 |         crew: {
+497 |           include: {
+498 |             host: { select: { id: true, name: true } },
+499 |             driver: { select: { id: true, name: true } },
+500 |           },
+501 |         },
+502 |         report: true,
+503 |       },
+504 |     });
+505 |     if (!event) throw new AppException('EVENT_NOT_FOUND', HttpStatus.NOT_FOUND);
+506 |     return event;
+507 |   }
+508 | 
+509 |   async findCompletedBySchool(schoolId: string) {
+510 |     return this.prisma.event.findMany({
+511 |       where: { schoolId, status: 'RE_SALE' },
+512 |       select: {
+513 |         id: true,
+514 |         project: true,
+515 |         date: true,
+516 |         status: true,
+517 |         price: true,
+518 |         childrenPlanned: true,
+519 |         report: {
+520 |           select: {
+521 |             childrenCount: true,
+522 |             classesCount: true,
+523 |             privilegedCount: true,
+524 |             showingsCount: true,
+525 |             totalSum: true,
+526 |             schoolSum: true,
+527 |             remainderSum: true,
+528 |             rating: true,
+529 |             expenseItems: {
+530 |               select: { category: true, name: true, amount: true },
+531 |             },
+532 |           },
+533 |         },
+534 |         history: { orderBy: { createdAt: 'asc' } },
+535 |       },
+536 |       orderBy: { date: 'desc' },
+537 |     });
+538 |   }
+539 | }
+540 | 
 ```
 
 ### File: apps/backend/src/finance/create-expense-item.dto.ts
@@ -5073,67 +5444,73 @@
 ### File: apps/backend/src/finance/finance.controller.ts
 ```ts
   0 | import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-  1 | import { FinanceService } from './finance.service';
-  2 | import { AuthGuard } from '../auth/auth.guard';
-  3 | import { CurrentUser } from '../auth/decorators/current-user.decorator';
-  4 | import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
-  5 | import { FinanceDashboardQueryDto } from './dto/finance-dashboard-query.dto';
-  6 | import { StaffRevenueQueryDto } from './dto/staff-revenue-query.dto';
-  7 | import { PrismaService } from '../prisma/prisma.service';
-  8 | import { RolesGuard } from '../auth/guards/roles.guard';
-  9 | import { Roles } from '../auth/decorators/roles.decorator';
- 10 | 
- 11 | @Controller('finance')
- 12 | @UseGuards(AuthGuard, RolesGuard)
- 13 | export class FinanceController {
- 14 |   constructor(
- 15 |     private readonly financeService: FinanceService,
- 16 |     private readonly prisma: PrismaService,
- 17 |   ) {}
- 18 | 
- 19 |   private async resolveCityId(
- 20 |     user: JwtUser,
- 21 |     requestedCityId?: string,
- 22 |   ): Promise<string | undefined> {
- 23 |     if (user.role === 'SUPERADMIN') return requestedCityId;
- 24 |     const me = await this.prisma.user.findUnique({
- 25 |       where: { id: user.sub },
- 26 |       select: { cityId: true },
- 27 |     });
- 28 |     return me?.cityId ?? undefined;
- 29 |   }
- 30 | 
- 31 |   @Get('dashboard')
- 32 |   @Roles('SUPERADMIN', 'MANAGER')
- 33 |   async getDashboard(
- 34 |     @Query() query: FinanceDashboardQueryDto,
- 35 |     @CurrentUser() user: JwtUser,
- 36 |   ) {
- 37 |     const cityId = await this.resolveCityId(user, query.cityId);
- 38 |     return this.financeService.getDashboard({
- 39 |       period: query.period,
- 40 |       cityId,
- 41 |       project: query.project,
- 42 |       minimal: query.minimal === 'true',
- 43 |     });
- 44 |   }
- 45 | 
- 46 |   @Get('my-balance')
- 47 |   getMyBalance(@CurrentUser() user: JwtUser) {
- 48 |     return this.financeService.getMyBalance(user.sub);
- 49 |   }
- 50 | 
- 51 |   @Get('staff-revenue')
- 52 |   @Roles('SUPERADMIN', 'MANAGER')
- 53 |   async getStaffRevenue(
- 54 |     @Query() query: StaffRevenueQueryDto,
- 55 |     @CurrentUser() user: JwtUser,
- 56 |   ) {
- 57 |     const cityId = await this.resolveCityId(user, query.cityId);
- 58 |     return this.financeService.getStaffRevenue({ ...query, cityId });
- 59 |   }
- 60 | }
- 61 | 
+  1 | import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
+  2 | import { FinanceService } from './finance.service';
+  3 | import { AuthGuard } from '../auth/auth.guard';
+  4 | import { CurrentUser } from '../auth/decorators/current-user.decorator';
+  5 | import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+  6 | import { FinanceDashboardQueryDto } from './dto/finance-dashboard-query.dto';
+  7 | import { StaffRevenueQueryDto } from './dto/staff-revenue-query.dto';
+  8 | import { PrismaService } from '../prisma/prisma.service';
+  9 | import { RolesGuard } from '../auth/guards/roles.guard';
+ 10 | import { Roles } from '../auth/decorators/roles.decorator';
+ 11 | 
+ 12 | @ApiTags('Finance')
+ 13 | @ApiCookieAuth('access_token')
+ 14 | @Controller('finance')
+ 15 | @UseGuards(AuthGuard, RolesGuard)
+ 16 | export class FinanceController {
+ 17 |   constructor(
+ 18 |     private readonly financeService: FinanceService,
+ 19 |     private readonly prisma: PrismaService,
+ 20 |   ) {}
+ 21 | 
+ 22 |   private async resolveCityId(
+ 23 |     user: JwtUser,
+ 24 |     requestedCityId?: string,
+ 25 |   ): Promise<string | undefined> {
+ 26 |     if (user.role === 'SUPERADMIN') return requestedCityId;
+ 27 |     const me = await this.prisma.user.findUnique({
+ 28 |       where: { id: user.sub },
+ 29 |       select: { cityId: true },
+ 30 |     });
+ 31 |     return me?.cityId ?? undefined;
+ 32 |   }
+ 33 | 
+ 34 |   @ApiOperation({ summary: 'Фінансовий дашборд (KPI, динаміка, топ)' })
+ 35 |   @Get('dashboard')
+ 36 |   @Roles('SUPERADMIN', 'MANAGER')
+ 37 |   async getDashboard(
+ 38 |     @Query() query: FinanceDashboardQueryDto,
+ 39 |     @CurrentUser() user: JwtUser,
+ 40 |   ) {
+ 41 |     const cityId = await this.resolveCityId(user, query.cityId);
+ 42 |     return this.financeService.getDashboard({
+ 43 |       period: query.period,
+ 44 |       cityId,
+ 45 |       project: query.project,
+ 46 |       minimal: query.minimal === 'true',
+ 47 |     });
+ 48 |   }
+ 49 | 
+ 50 |   @ApiOperation({ summary: 'Баланс поточного користувача' })
+ 51 |   @Get('my-balance')
+ 52 |   getMyBalance(@CurrentUser() user: JwtUser) {
+ 53 |     return this.financeService.getMyBalance(user.sub);
+ 54 |   }
+ 55 | 
+ 56 |   @ApiOperation({ summary: 'Виручка по співробітниках' })
+ 57 |   @Get('staff-revenue')
+ 58 |   @Roles('SUPERADMIN', 'MANAGER')
+ 59 |   async getStaffRevenue(
+ 60 |     @Query() query: StaffRevenueQueryDto,
+ 61 |     @CurrentUser() user: JwtUser,
+ 62 |   ) {
+ 63 |     const cityId = await this.resolveCityId(user, query.cityId);
+ 64 |     return this.financeService.getStaffRevenue({ ...query, cityId });
+ 65 |   }
+ 66 | }
+ 67 | 
 ```
 
 ### File: apps/backend/src/finance/finance.module.ts
@@ -6011,53 +6388,64 @@
   3 |   IsOptional,
   4 |   IsDateString,
   5 | } from 'class-validator';
-  6 | 
-  7 | export class CreateIssueDto {
-  8 |   @IsString()
-  9 |   @IsNotEmpty()
- 10 |   eventId: string;
- 11 | 
- 12 |   @IsString()
- 13 |   @IsNotEmpty()
- 14 |   schoolName: string;
- 15 | 
- 16 |   @IsString()
- 17 |   @IsNotEmpty()
- 18 |   eventName: string;
- 19 | 
+  6 | import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+  7 | 
+  8 | export class CreateIssueDto {
+  9 |   @ApiProperty({ example: 'a1b2c3d4-...' })
+ 10 |   @IsString()
+ 11 |   @IsNotEmpty()
+ 12 |   eventId: string;
+ 13 | 
+ 14 |   @ApiProperty({ example: 'Ліцей №5' })
+ 15 |   @IsString()
+ 16 |   @IsNotEmpty()
+ 17 |   schoolName: string;
+ 18 | 
+ 19 |   @ApiProperty({ example: 'Голографічне шоу «Космос»' })
  20 |   @IsString()
  21 |   @IsNotEmpty()
- 22 |   message: string;
+ 22 |   eventName: string;
  23 | 
- 24 |   @IsString()
- 25 |   @IsNotEmpty()
- 26 |   cityId: string;
- 27 | 
- 28 |   @IsOptional()
- 29 |   @IsDateString()
- 30 |   deadline?: string;
- 31 | 
- 32 |   @IsOptional()
- 33 |   @IsString()
- 34 |   assignedUserId?: string;
- 35 | 
- 36 |   @IsOptional()
- 37 |   @IsString()
- 38 |   assignedUserName?: string;
- 39 | }
- 40 | 
+ 24 |   @ApiProperty({ example: 'Не вистачає проєктора' })
+ 25 |   @IsString()
+ 26 |   @IsNotEmpty()
+ 27 |   message: string;
+ 28 | 
+ 29 |   @ApiProperty({ example: 'a1b2c3d4-...' })
+ 30 |   @IsString()
+ 31 |   @IsNotEmpty()
+ 32 |   cityId: string;
+ 33 | 
+ 34 |   @ApiPropertyOptional({ example: '2026-09-20' })
+ 35 |   @IsOptional()
+ 36 |   @IsDateString()
+ 37 |   deadline?: string;
+ 38 | 
+ 39 |   @ApiPropertyOptional({ example: 'a1b2c3d4-...' })
+ 40 |   @IsOptional()
+ 41 |   @IsString()
+ 42 |   assignedUserId?: string;
+ 43 | 
+ 44 |   @ApiPropertyOptional({ example: 'Марія Демчук' })
+ 45 |   @IsOptional()
+ 46 |   @IsString()
+ 47 |   assignedUserName?: string;
+ 48 | }
+ 49 | 
 ```
 
 ### File: apps/backend/src/issues/dto/update-issue-status.dto.ts
 ```ts
   0 | import { IsString, IsNotEmpty } from 'class-validator';
-  1 | 
-  2 | export class UpdateIssueStatusDto {
-  3 |   @IsString()
-  4 |   @IsNotEmpty()
-  5 |   status: string;
-  6 | }
-  7 | 
+  1 | import { ApiProperty } from '@nestjs/swagger';
+  2 | 
+  3 | export class UpdateIssueStatusDto {
+  4 |   @ApiProperty({ example: 'Вирішено' })
+  5 |   @IsString()
+  6 |   @IsNotEmpty()
+  7 |   status: string;
+  8 | }
+  9 | 
 ```
 
 ### File: apps/backend/src/issues/issues.controller.ts
@@ -6072,33 +6460,39 @@
   7 |   Query,
   8 |   UseGuards,
   9 | } from '@nestjs/common';
- 10 | import { IssuesService } from './issues.service';
- 11 | import { AuthGuard } from '../auth/auth.guard';
- 12 | import { CreateIssueDto } from './dto/create-issue.dto';
- 13 | import { UpdateIssueStatusDto } from './dto/update-issue-status.dto';
- 14 | import { RolesGuard } from '../auth/guards/roles.guard';
- 15 | 
- 16 | @Controller('issues')
- 17 | @UseGuards(AuthGuard, RolesGuard)
- 18 | export class IssuesController {
- 19 |   constructor(private readonly issuesService: IssuesService) {}
- 20 | 
- 21 |   @Post()
- 22 |   create(@Body() body: CreateIssueDto) {
- 23 |     return this.issuesService.create(body);
- 24 |   }
- 25 | 
- 26 |   @Get()
- 27 |   findByCityId(@Query('cityId') cityId: string) {
- 28 |     return this.issuesService.findByCityId(cityId);
- 29 |   }
- 30 | 
- 31 |   @Patch(':id/status')
- 32 |   updateStatus(@Param('id') id: string, @Body() body: UpdateIssueStatusDto) {
- 33 |     return this.issuesService.updateStatus(id, body.status);
+ 10 | import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
+ 11 | import { IssuesService } from './issues.service';
+ 12 | import { AuthGuard } from '../auth/auth.guard';
+ 13 | import { CreateIssueDto } from './dto/create-issue.dto';
+ 14 | import { UpdateIssueStatusDto } from './dto/update-issue-status.dto';
+ 15 | import { RolesGuard } from '../auth/guards/roles.guard';
+ 16 | 
+ 17 | @ApiTags('Issues')
+ 18 | @ApiCookieAuth('access_token')
+ 19 | @Controller('issues')
+ 20 | @UseGuards(AuthGuard, RolesGuard)
+ 21 | export class IssuesController {
+ 22 |   constructor(private readonly issuesService: IssuesService) {}
+ 23 | 
+ 24 |   @ApiOperation({ summary: 'Створити проблему по заходу' })
+ 25 |   @Post()
+ 26 |   create(@Body() body: CreateIssueDto) {
+ 27 |     return this.issuesService.create(body);
+ 28 |   }
+ 29 | 
+ 30 |   @ApiOperation({ summary: 'Список проблем по місту' })
+ 31 |   @Get()
+ 32 |   findByCityId(@Query('cityId') cityId: string) {
+ 33 |     return this.issuesService.findByCityId(cityId);
  34 |   }
- 35 | }
- 36 | 
+ 35 | 
+ 36 |   @ApiOperation({ summary: 'Оновити статус проблеми' })
+ 37 |   @Patch(':id/status')
+ 38 |   updateStatus(@Param('id') id: string, @Body() body: UpdateIssueStatusDto) {
+ 39 |     return this.issuesService.updateStatus(id, body.status);
+ 40 |   }
+ 41 | }
+ 42 | 
 ```
 
 ### File: apps/backend/src/issues/issues.module.ts
@@ -6260,7 +6654,7 @@
   0 | import './instrument';
   1 | import { NestFactory, Reflector } from '@nestjs/core';
   2 | import { AppModule } from './app.module';
-  3 | import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+  3 | import { ClassSerializerInterceptor } from '@nestjs/common';
   4 | import cookieParser from 'cookie-parser';
   5 | import helmet from 'helmet';
   6 | import { Logger } from 'nestjs-pino';
@@ -6282,44 +6676,37 @@
  22 |     origin: allowedOrigins,
  23 |     credentials: true,
  24 |   });
- 25 |   app.useGlobalPipes(
- 26 |     new ValidationPipe({
- 27 |       transform: true,
- 28 |       whitelist: true,
- 29 |       forbidNonWhitelisted: true,
- 30 |     }),
- 31 |   );
- 32 |   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
- 33 |   app.useGlobalFilters(new AllExceptionsFilter());
- 34 | 
- 35 |   if (process.env.NODE_ENV !== 'production') {
- 36 |     const config = new DocumentBuilder()
- 37 |       .setTitle('CRM «Світло Знань» API')
- 38 |       .setDescription(
- 39 |         'Система управління освітніми заходами у школах та садочках',
- 40 |       )
- 41 |       .setVersion('1.0')
- 42 |       .addCookieAuth('access_token')
- 43 |       .build();
- 44 |     const document = SwaggerModule.createDocument(app, config);
- 45 |     SwaggerModule.setup('docs', app, document);
- 46 | 
- 47 |     app.getHttpAdapter().get('/docs-json', (req, res) => res.json(document));
- 48 |     app.getHttpAdapter().get('/docs/redoc', (req, res) => {
- 49 |       res.type('html').send(`<!DOCTYPE html>
- 50 | <html><head><title>CRM API Docs</title>
- 51 | <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
- 52 | <style>body{margin:0;padding:0}</style></head>
- 53 | <body><redoc spec-url="/docs-json"></redoc>
- 54 | <script src="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"></script>
- 55 | </body></html>`);
- 56 |     });
- 57 |   }
- 58 | 
- 59 |   await app.listen(process.env.PORT ?? 3000);
- 60 | }
- 61 | bootstrap();
- 62 | 
+ 25 |   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+ 26 |   app.useGlobalFilters(app.get(AllExceptionsFilter));
+ 27 | 
+ 28 |   if (process.env.NODE_ENV !== 'production') {
+ 29 |     const config = new DocumentBuilder()
+ 30 |       .setTitle('CRM «Світло Знань» API')
+ 31 |       .setDescription(
+ 32 |         'Система управління освітніми заходами у школах та садочках',
+ 33 |       )
+ 34 |       .setVersion('1.0')
+ 35 |       .addCookieAuth('access_token')
+ 36 |       .build();
+ 37 |     const document = SwaggerModule.createDocument(app, config);
+ 38 |     SwaggerModule.setup('docs', app, document);
+ 39 | 
+ 40 |     app.getHttpAdapter().get('/docs-json', (req, res) => res.json(document));
+ 41 |     app.getHttpAdapter().get('/docs/redoc', (req, res) => {
+ 42 |       res.type('html').send(`<!DOCTYPE html>
+ 43 | <html><head><title>CRM API Docs</title>
+ 44 | <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+ 45 | <style>body{margin:0;padding:0}</style></head>
+ 46 | <body><redoc spec-url="/docs-json"></redoc>
+ 47 | <script src="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"></script>
+ 48 | </body></html>`);
+ 49 |     });
+ 50 |   }
+ 51 | 
+ 52 |   await app.listen(process.env.PORT ?? 3000);
+ 53 | }
+ 54 | bootstrap();
+ 55 | 
 ```
 
 ### File: apps/backend/src/metrics/metrics.controller.ts
@@ -6495,17 +6882,20 @@
 ### File: apps/backend/src/projects/dto/create-project.dto.ts
 ```ts
   0 | import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
-  1 | 
-  2 | export class CreateProjectDto {
-  3 |   @IsString()
-  4 |   @IsNotEmpty()
-  5 |   name: string;
-  6 | 
-  7 |   @IsOptional()
-  8 |   @IsString()
-  9 |   color?: string;
- 10 | }
- 11 | 
+  1 | import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+  2 | 
+  3 | export class CreateProjectDto {
+  4 |   @ApiProperty({ example: 'Голографічне шоу «Космос»' })
+  5 |   @IsString()
+  6 |   @IsNotEmpty()
+  7 |   name: string;
+  8 | 
+  9 |   @ApiPropertyOptional({ example: 'blue' })
+ 10 |   @IsOptional()
+ 11 |   @IsString()
+ 12 |   color?: string;
+ 13 | }
+ 14 | 
 ```
 
 ### File: apps/backend/src/projects/projects.controller.ts
@@ -6519,35 +6909,41 @@
   6 |   Body,
   7 |   UseGuards,
   8 | } from '@nestjs/common';
-  9 | import { ProjectsService } from './projects.service';
- 10 | import { AuthGuard } from '../auth/auth.guard';
- 11 | import { RolesGuard } from '../auth/guards/roles.guard';
- 12 | import { Roles } from '../auth/decorators/roles.decorator';
- 13 | import { CreateProjectDto } from './dto/create-project.dto';
- 14 | 
- 15 | @Controller('projects')
- 16 | @UseGuards(AuthGuard, RolesGuard)
- 17 | export class ProjectsController {
- 18 |   constructor(private readonly projectsService: ProjectsService) {}
- 19 | 
- 20 |   @Get()
- 21 |   findAll() {
- 22 |     return this.projectsService.findAll();
- 23 |   }
- 24 | 
- 25 |   @Post()
- 26 |   @Roles('SUPERADMIN')
- 27 |   create(@Body() body: CreateProjectDto) {
- 28 |     return this.projectsService.create(body);
- 29 |   }
- 30 | 
- 31 |   @Delete(':id')
- 32 |   @Roles('SUPERADMIN')
- 33 |   remove(@Param('id') id: string) {
- 34 |     return this.projectsService.remove(id);
- 35 |   }
- 36 | }
- 37 | 
+  9 | import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
+ 10 | import { ProjectsService } from './projects.service';
+ 11 | import { AuthGuard } from '../auth/auth.guard';
+ 12 | import { RolesGuard } from '../auth/guards/roles.guard';
+ 13 | import { Roles } from '../auth/decorators/roles.decorator';
+ 14 | import { CreateProjectDto } from './dto/create-project.dto';
+ 15 | 
+ 16 | @ApiTags('Projects')
+ 17 | @ApiCookieAuth('access_token')
+ 18 | @Controller('projects')
+ 19 | @UseGuards(AuthGuard, RolesGuard)
+ 20 | export class ProjectsController {
+ 21 |   constructor(private readonly projectsService: ProjectsService) {}
+ 22 | 
+ 23 |   @ApiOperation({ summary: 'Список проєктів (типів шоу)' })
+ 24 |   @Get()
+ 25 |   findAll() {
+ 26 |     return this.projectsService.findAll();
+ 27 |   }
+ 28 | 
+ 29 |   @ApiOperation({ summary: 'Створити проєкт' })
+ 30 |   @Post()
+ 31 |   @Roles('SUPERADMIN')
+ 32 |   create(@Body() body: CreateProjectDto) {
+ 33 |     return this.projectsService.create(body);
+ 34 |   }
+ 35 | 
+ 36 |   @ApiOperation({ summary: 'Видалити проєкт' })
+ 37 |   @Delete(':id')
+ 38 |   @Roles('SUPERADMIN')
+ 39 |   remove(@Param('id') id: string) {
+ 40 |     return this.projectsService.remove(id);
+ 41 |   }
+ 42 | }
+ 43 | 
 ```
 
 ### File: apps/backend/src/projects/projects.module.ts
@@ -6593,41 +6989,49 @@
 ### File: apps/backend/src/schools/dto/bulk-import.dto.ts
 ```ts
   0 | import { IsString, IsNotEmpty, IsOptional, IsIn } from 'class-validator';
-  1 | 
-  2 | export class BulkImportDto {
-  3 |   @IsString()
-  4 |   @IsNotEmpty()
-  5 |   cityId: string;
-  6 | 
-  7 |   @IsOptional()
-  8 |   @IsIn(['Школа', 'Садочок'])
-  9 |   type?: 'Школа' | 'Садочок';
- 10 | }
- 11 | 
+  1 | import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+  2 | 
+  3 | export class BulkImportDto {
+  4 |   @ApiProperty({ example: 'a1b2c3d4-...' })
+  5 |   @IsString()
+  6 |   @IsNotEmpty()
+  7 |   cityId: string;
+  8 | 
+  9 |   @ApiPropertyOptional({ example: 'Школа', enum: ['Школа', 'Садочок'] })
+ 10 |   @IsOptional()
+ 11 |   @IsIn(['Школа', 'Садочок'])
+ 12 |   type?: 'Школа' | 'Садочок';
+ 13 | }
+ 14 | 
 ```
 
 ### File: apps/backend/src/schools/dto/create-school.dto.ts
 ```ts
   0 | import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
-  1 | 
-  2 | export class CreateSchoolDto {
-  3 |   @IsString()
-  4 |   @IsNotEmpty()
-  5 |   name: string;
-  6 | 
-  7 |   @IsString()
-  8 |   @IsNotEmpty()
-  9 |   type: string;
- 10 | 
- 11 |   @IsString()
- 12 |   @IsNotEmpty()
- 13 |   cityId: string;
- 14 | 
- 15 |   @IsOptional()
- 16 |   @IsString()
- 17 |   sourceUrl?: string;
- 18 | }
- 19 | 
+  1 | import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+  2 | 
+  3 | export class CreateSchoolDto {
+  4 |   @ApiProperty({ example: 'Ліцей №5' })
+  5 |   @IsString()
+  6 |   @IsNotEmpty()
+  7 |   name: string;
+  8 | 
+  9 |   @ApiProperty({ example: 'school', enum: ['school', 'kindergarten'] })
+ 10 |   @IsString()
+ 11 |   @IsNotEmpty()
+ 12 |   type: string;
+ 13 | 
+ 14 |   @ApiProperty({ example: 'a1b2c3d4-...' })
+ 15 |   @IsString()
+ 16 |   @IsNotEmpty()
+ 17 |   cityId: string;
+ 18 | 
+ 19 |   @ApiPropertyOptional({ example: 'https://example.com/school-page' })
+ 20 |   @IsOptional()
+ 21 |   @IsString()
+ 22 |   sourceUrl?: string;
+ 23 | }
+ 24 | 
 ```
 
 ### File: apps/backend/src/schools/dto/find-contacts-query.dto.ts
@@ -8095,86 +8499,99 @@
  11 | import { SchoolsService } from './schools.service';
  12 | import { ParserService } from './parser.service';
  13 | import { Throttle } from '@nestjs/throttler';
- 14 | import { RolesGuard } from '../auth/guards/roles.guard';
- 15 | import { Roles } from '../auth/decorators/roles.decorator';
- 16 | import { AuthGuard } from '../auth/auth.guard';
- 17 | import { OwnershipGuard } from '../auth/guards/ownership.guard';
- 18 | import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
- 19 | import { CreateSchoolDto } from './dto/create-school.dto';
- 20 | import { UpdateSchoolDto } from './dto/update-school.dto';
- 21 | import { BulkImportDto } from './dto/bulk-import.dto';
- 22 | import { SchoolQueryDto } from './dto/school-query.dto';
- 23 | import { FindSchoolsQueryDto } from './dto/find-schools-query.dto';
- 24 | import { FindContactsQueryDto } from './dto/find-contacts-query.dto';
- 25 | @Controller('schools')
- 26 | @UseGuards(AuthGuard, RolesGuard)
- 27 | export class SchoolsController {
- 28 |   constructor(
- 29 |     private readonly schoolsService: SchoolsService,
- 30 |     private readonly parserService: ParserService,
- 31 |   ) {}
- 32 | 
- 33 |   @Post('bulk-import')
- 34 |   @Throttle({ default: { ttl: 300000, limit: 2 } })
- 35 |   @Roles('SUPERADMIN', 'MANAGER')
- 36 |   bulkImport(@Body() body: BulkImportDto) {
- 37 |     return this.schoolsService.bulkImport(body.cityId, body.type || 'Школа');
- 38 |   }
- 39 | 
- 40 |   @Get('supported-cities')
- 41 |   getSupportedCities() {
- 42 |     return this.parserService.getSupportedCities();
- 43 |   }
- 44 | 
- 45 |   @Post()
- 46 |   @Roles('SUPERADMIN', 'MANAGER')
- 47 |   create(@Body() body: CreateSchoolDto) {
- 48 |     return this.schoolsService.create(body);
- 49 |   }
- 50 | 
- 51 |   @Get()
- 52 |   findAll(@Query() query: SchoolQueryDto) {
- 53 |     return this.schoolsService.findAll(query);
- 54 |   }
- 55 | 
- 56 |   @Get('stats')
- 57 |   getStats(
- 58 |     @Query('cityId') cityId?: string,
- 59 |     @Query('type') type?: 'Школа' | 'Садочок',
- 60 |     @Query('stage') stage?: 'new' | 'planned' | 'inProgress' | 'done',
- 61 |   ) {
- 62 |     return this.schoolsService.getStats({ cityId, type, stage });
- 63 |   }
- 64 | 
- 65 |   @Get('search')
- 66 |   search(@Query() query: FindSchoolsQueryDto) {
- 67 |     return this.parserService.searchSchools(query.q ?? '', query.type);
- 68 |   }
- 69 | 
- 70 |   @Get(':id')
- 71 |   findOne(@Param('id') id: string) {
- 72 |     return this.schoolsService.findOne(id);
- 73 |   }
- 74 | 
- 75 |   @Patch(':id')
- 76 |   @UseGuards(OwnershipGuard)
- 77 |   @CheckOwnership('school')
- 78 |   update(@Param('id') id: string, @Body() body: UpdateSchoolDto) {
- 79 |     return this.schoolsService.update(id, body);
- 80 |   }
- 81 | 
- 82 |   @Delete(':id')
- 83 |   @Roles('SUPERADMIN')
- 84 |   remove(@Param('id') id: string) {
- 85 |     return this.schoolsService.remove(id);
- 86 |   }
- 87 | 
- 88 |   @Get('contacts/search')
- 89 |   searchContacts(@Query() query: FindContactsQueryDto) {
- 90 |     return this.schoolsService.searchContacts(query.q ?? '', query.city);
+ 14 | import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
+ 15 | import { RolesGuard } from '../auth/guards/roles.guard';
+ 16 | import { Roles } from '../auth/decorators/roles.decorator';
+ 17 | import { AuthGuard } from '../auth/auth.guard';
+ 18 | import { OwnershipGuard } from '../auth/guards/ownership.guard';
+ 19 | import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
+ 20 | import { CreateSchoolDto } from './dto/create-school.dto';
+ 21 | import { UpdateSchoolDto } from './dto/update-school.dto';
+ 22 | import { BulkImportDto } from './dto/bulk-import.dto';
+ 23 | import { SchoolQueryDto } from './dto/school-query.dto';
+ 24 | import { FindSchoolsQueryDto } from './dto/find-schools-query.dto';
+ 25 | import { FindContactsQueryDto } from './dto/find-contacts-query.dto';
+ 26 | @ApiTags('Schools')
+ 27 | @ApiCookieAuth('access_token')
+ 28 | @Controller('schools')
+ 29 | @UseGuards(AuthGuard, RolesGuard)
+ 30 | export class SchoolsController {
+ 31 |   constructor(
+ 32 |     private readonly schoolsService: SchoolsService,
+ 33 |     private readonly parserService: ParserService,
+ 34 |   ) {}
+ 35 | 
+ 36 |   @ApiOperation({ summary: 'Масовий імпорт шкіл/садочків із зовнішнього джерела' })
+ 37 |   @Post('bulk-import')
+ 38 |   @Throttle({ default: { ttl: 300000, limit: 2 } })
+ 39 |   @Roles('SUPERADMIN', 'MANAGER')
+ 40 |   bulkImport(@Body() body: BulkImportDto) {
+ 41 |     return this.schoolsService.bulkImport(body.cityId, body.type || 'Школа');
+ 42 |   }
+ 43 | 
+ 44 |   @ApiOperation({ summary: 'Список міст, підтримуваних парсером' })
+ 45 |   @Get('supported-cities')
+ 46 |   getSupportedCities() {
+ 47 |     return this.parserService.getSupportedCities();
+ 48 |   }
+ 49 | 
+ 50 |   @ApiOperation({ summary: 'Створити школу/садочок' })
+ 51 |   @Post()
+ 52 |   @Roles('SUPERADMIN', 'MANAGER')
+ 53 |   create(@Body() body: CreateSchoolDto) {
+ 54 |     return this.schoolsService.create(body);
+ 55 |   }
+ 56 | 
+ 57 |   @ApiOperation({ summary: 'Список закладів з фільтрами та пагінацією' })
+ 58 |   @Get()
+ 59 |   findAll(@Query() query: SchoolQueryDto) {
+ 60 |     return this.schoolsService.findAll(query);
+ 61 |   }
+ 62 | 
+ 63 |   @ApiOperation({ summary: 'Статистика закладів за стадією та розміром' })
+ 64 |   @Get('stats')
+ 65 |   getStats(
+ 66 |     @Query('cityId') cityId?: string,
+ 67 |     @Query('type') type?: 'Школа' | 'Садочок',
+ 68 |     @Query('stage') stage?: 'new' | 'planned' | 'inProgress' | 'done',
+ 69 |   ) {
+ 70 |     return this.schoolsService.getStats({ cityId, type, stage });
+ 71 |   }
+ 72 | 
+ 73 |   @ApiOperation({ summary: 'Пошук закладів у зовнішньому джерелі' })
+ 74 |   @Get('search')
+ 75 |   search(@Query() query: FindSchoolsQueryDto) {
+ 76 |     return this.parserService.searchSchools(query.q ?? '', query.type);
+ 77 |   }
+ 78 | 
+ 79 |   @ApiOperation({ summary: 'Отримати заклад за ID' })
+ 80 |   @Get(':id')
+ 81 |   findOne(@Param('id') id: string) {
+ 82 |     return this.schoolsService.findOne(id);
+ 83 |   }
+ 84 | 
+ 85 |   @ApiOperation({ summary: 'Оновити заклад' })
+ 86 |   @Patch(':id')
+ 87 |   @UseGuards(OwnershipGuard)
+ 88 |   @CheckOwnership('school')
+ 89 |   update(@Param('id') id: string, @Body() body: UpdateSchoolDto) {
+ 90 |     return this.schoolsService.update(id, body);
  91 |   }
- 92 | }
- 93 | 
+ 92 | 
+ 93 |   @ApiOperation({ summary: 'Видалити заклад' })
+ 94 |   @Delete(':id')
+ 95 |   @Roles('SUPERADMIN')
+ 96 |   remove(@Param('id') id: string) {
+ 97 |     return this.schoolsService.remove(id);
+ 98 |   }
+ 99 | 
+100 |   @ApiOperation({ summary: 'Пошук контактів закладу' })
+101 |   @Get('contacts/search')
+102 |   searchContacts(@Query() query: FindContactsQueryDto) {
+103 |     return this.schoolsService.searchContacts(query.q ?? '', query.city);
+104 |   }
+105 | }
+106 | 
 ```
 
 ### File: apps/backend/src/schools/schools.module.ts
@@ -8294,464 +8711,472 @@
 
 ### File: apps/backend/src/schools/schools.service.ts
 ```ts
-  0 | import {
-  1 |   Injectable,
-  2 |   NotFoundException,
-  3 |   forwardRef,
-  4 |   Inject,
-  5 | } from '@nestjs/common';
-  6 | import { Prisma } from '@prisma/client';
-  7 | import { EventsService } from '../events/events.service';
-  8 | import { ParserService } from './parser.service';
-  9 | import { PrismaService } from '../prisma/prisma.service';
- 10 | import { PageMetaDto } from '../common/dto/page-meta.dto';
- 11 | import { SchoolQueryDto } from './dto/school-query.dto';
- 12 | 
- 13 | const PLANNED_STAGES = ['BASE', 'FIRST_CONTACT', 'DATE_CONFIRMED'];
- 14 | const IN_PROGRESS_STAGES = ['PREPARATION', 'IN_PROGRESS', 'DONE', 'REPORT'];
- 15 | 
- 16 | @Injectable()
- 17 | export class SchoolsService {
- 18 |   constructor(
- 19 |     @Inject(forwardRef(() => EventsService))
- 20 |     private readonly eventsService: EventsService,
- 21 |     private readonly parserService: ParserService,
- 22 |     private readonly prisma: PrismaService,
- 23 |   ) {}
- 24 | 
- 25 |   async create(data: {
- 26 |     name: string;
- 27 |     type: string;
- 28 |     cityId: string;
- 29 |     sourceUrl?: string;
- 30 |     director?: string;
- 31 |     phone?: string;
- 32 |     address?: string;
- 33 |     childrenCount?: number;
- 34 |   }) {
- 35 |     const { sourceUrl, ...schoolData } = data;
- 36 | 
- 37 |     const newSchool = await this.prisma.school.create({
- 38 |       data: schoolData,
- 39 |     });
- 40 | 
- 41 |     this.parserService
- 42 |       .parseSchoolData(data.name, sourceUrl, data.type)
- 43 |       .then(async (parsed) => {
- 44 |         if (!parsed) {
- 45 |           console.log(`Не вдалося знайти дані для закладу: ${data.name}`);
- 46 |           return;
- 47 |         }
- 48 | 
- 49 |         const updateData: Record<string, unknown> = {};
- 50 | 
- 51 |         if (!schoolData.address && parsed.address) {
- 52 |           updateData.address = parsed.address;
- 53 |         }
- 54 |         if (!schoolData.director && parsed.director) {
- 55 |           updateData.director = parsed.director;
- 56 |         }
- 57 |         if (!schoolData.childrenCount && parsed.childrenCount) {
- 58 |           updateData.childrenCount = parsed.childrenCount;
- 59 |         }
- 60 | 
- 61 |         if (Object.keys(updateData).length === 0) {
- 62 |           console.log(
- 63 |             `Дані школи "${data.name}" вже заповнені користувачем — пропускаємо оновлення з парсингу`,
- 64 |           );
- 65 |           return;
- 66 |         }
- 67 | 
- 68 |         await this.prisma.school.update({
- 69 |           where: {
- 70 |             id: newSchool.id,
- 71 |           },
- 72 |           data: updateData,
- 73 |         });
- 74 | 
- 75 |         console.log(`Дані школи "${data.name}" успішно оновлені`);
- 76 |       })
- 77 |       .catch((error) => {
- 78 |         console.error('Помилка оновлення даних школи:', error);
- 79 |       });
- 80 | 
- 81 |     return newSchool;
- 82 |   }
- 83 | 
- 84 |   private buildFilters(
- 85 |     query: Pick<
- 86 |       SchoolQueryDto,
- 87 |       'search' | 'cityId' | 'type' | 'stage' | 'size'
- 88 |     >,
- 89 |   ): Prisma.Sql[] {
- 90 |     const { search, cityId, type, stage, size } = query;
- 91 |     const conditions: Prisma.Sql[] = [];
- 92 | 
- 93 |     if (search) {
- 94 |       const trimmed = search.trim();
- 95 |       const isNumeric = /^\d+$/.test(trimmed);
- 96 | 
- 97 |       if (isNumeric) {
- 98 |         const numberBoundary = `%№${trimmed}%`;
- 99 |         const numberWord = `% ${trimmed}%`;
-100 |         conditions.push(
-101 |           Prisma.sql`(s.name ILIKE ${numberBoundary} OR s.name ILIKE ${numberWord} OR s.name ILIKE ${trimmed + '%'})`,
-102 |         );
-103 |       } else {
-104 |         conditions.push(Prisma.sql`s.name ILIKE ${`%${trimmed}%`}`);
-105 |       }
-106 |     }
-107 |     if (cityId) {
-108 |       conditions.push(Prisma.sql`s."cityId" = ${cityId}`);
-109 |     }
-110 |     if (type) {
-111 |       conditions.push(Prisma.sql`s.type = ${type}`);
-112 |     }
-113 |     if (stage) {
-114 |       conditions.push(this.stageCondition(stage));
-115 |     }
-116 |     if (size) {
-117 |       conditions.push(this.sizeCondition(size));
-118 |     }
-119 | 
-120 |     return conditions;
-121 |   }
-122 | 
-123 |   private sizeCaseSql(): Prisma.Sql {
-124 |     return Prisma.sql`
-125 |       CASE
-126 |         WHEN s.type = 'Садочок' AND COALESCE(s."childrenCount", 0) < 50 THEN 'small'
-127 |         WHEN s.type = 'Садочок' AND COALESCE(s."childrenCount", 0) < 100 THEN 'medium'
-128 |         WHEN s.type = 'Садочок' THEN 'large'
-129 |         WHEN COALESCE(s."childrenCount", 0) < 500 THEN 'small'
-130 |         WHEN COALESCE(s."childrenCount", 0) < 900 THEN 'medium'
-131 |         ELSE 'large'
-132 |       END
-133 |     `;
-134 |   }
-135 | 
-136 |   private stageCondition(stage: string): Prisma.Sql {
-137 |     switch (stage) {
-138 |       case 'planned':
-139 |         return Prisma.sql`latest.status::text IN (${Prisma.join(PLANNED_STAGES)})`;
-140 |       case 'inProgress':
-141 |         return Prisma.sql`latest.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})`;
-142 |       case 'done':
-143 |         return Prisma.sql`latest.status::text = 'RE_SALE'`;
-144 |       default:
-145 |         return Prisma.sql`(latest.status IS NULL OR latest.status::text IN ('INTERESTED','PRE_APPROVAL'))`;
-146 |     }
-147 |   }
-148 | 
-149 |   private sizeCondition(size: string): Prisma.Sql {
-150 |     return Prisma.sql`(${this.sizeCaseSql()}) = ${size}`;
-151 |   }
-152 | 
-153 |   private mapRow(row: any) {
-154 |     const { city_id, city_name, latestStatus, ...school } = row;
-155 |     return {
-156 |       ...school,
-157 |       city: city_id ? { id: city_id, name: city_name } : null,
-158 |       events: latestStatus ? [{ status: latestStatus }] : [],
-159 |     };
-160 |   }
-161 | 
-162 |   async findAll(query: SchoolQueryDto) {
-163 |     const { skip, take, page } = query;
-164 |     const conditions = this.buildFilters(query);
-165 |     const whereClause = conditions.length
-166 |       ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`
-167 |       : Prisma.empty;
-168 | 
-169 |     const baseFrom = Prisma.sql`
-170 |       FROM "School" s
-171 |       LEFT JOIN "City" c ON c.id = s."cityId"
-172 |       LEFT JOIN LATERAL (
-173 |         SELECT e.status FROM "Event" e
-174 |         WHERE e."schoolId" = s.id
-175 |         ORDER BY e.date DESC
-176 |         LIMIT 1
-177 |       ) latest ON true
-178 |     `;
-179 | 
-180 |     const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
-181 |       SELECT s.*, c.id as city_id, c.name as city_name, latest.status as "latestStatus"
-182 |       ${baseFrom}
-183 |       ${whereClause}
-184 |       ORDER BY s."createdAt" DESC
-185 |       OFFSET ${skip} LIMIT ${take}
-186 |     `);
-187 | 
-188 |     const countRows = await this.prisma.$queryRaw<
-189 |       { count: bigint }[]
-190 |     >(Prisma.sql`
-191 |       SELECT COUNT(*)::bigint as count
-192 |       ${baseFrom}
-193 |       ${whereClause}
-194 |     `);
-195 | 
-196 |     const totalItems = Number(countRows[0].count);
-197 | 
-198 |     return {
-199 |       data: rows.map((r) => this.mapRow(r)),
-200 |       meta: new PageMetaDto(totalItems, page, take),
-201 |     };
-202 |   }
-203 | 
-204 |   async getStats(query: Pick<SchoolQueryDto, 'cityId' | 'type' | 'stage'>) {
-205 |     const baseConditions = this.buildFilters({
-206 |       cityId: query.cityId,
-207 |       type: query.type,
-208 |     });
-209 |     const baseWhere = baseConditions.length
-210 |       ? Prisma.sql`WHERE ${Prisma.join(baseConditions, ' AND ')}`
-211 |       : Prisma.empty;
-212 | 
-213 |     const sizeConditions = this.buildFilters({
-214 |       cityId: query.cityId,
-215 |       type: query.type,
-216 |       stage: query.stage,
-217 |     });
-218 |     const sizeWhere = sizeConditions.length
-219 |       ? Prisma.sql`WHERE ${Prisma.join(sizeConditions, ' AND ')}`
-220 |       : Prisma.empty;
-221 | 
-222 |     const baseFrom = Prisma.sql`
-223 |       FROM "School" s
-224 |       LEFT JOIN LATERAL (
-225 |         SELECT e.status FROM "Event" e
-226 |         WHERE e."schoolId" = s.id
-227 |         ORDER BY e.date DESC
-228 |         LIMIT 1
-229 |       ) latest ON true
-230 |     `;
-231 | 
-232 |     const [statusRows, sizeRows] = await Promise.all([
-233 |       this.prisma.$queryRaw<{ stage: string; count: bigint }[]>(Prisma.sql`
-234 |         SELECT
-235 |           CASE
-236 |             WHEN latest.status::text IN (${Prisma.join(PLANNED_STAGES)}) THEN 'planned'
-237 |             WHEN latest.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)}) THEN 'inProgress'
-238 |             WHEN latest.status::text = 'RE_SALE' THEN 'done'
-239 |             ELSE 'new'
-240 |           END as stage,
-241 |           COUNT(*)::bigint as count
-242 |         ${baseFrom}
-243 |         ${baseWhere}
-244 |         GROUP BY stage
-245 |       `),
-246 |       this.prisma.$queryRaw<{ size: string; count: bigint }[]>(Prisma.sql`
-247 |         SELECT
-248 |           ${this.sizeCaseSql()} as size,
-249 |           COUNT(*)::bigint as count
-250 |         ${baseFrom}
-251 |         ${sizeWhere}
-252 |         GROUP BY size
-253 |       `),
-254 |     ]);
-255 | 
-256 |     const statusStats = { new: 0, planned: 0, inProgress: 0, done: 0 };
-257 |     for (const row of statusRows) statusStats[row.stage] = Number(row.count);
-258 | 
-259 |     const sizeStats = { small: 0, medium: 0, large: 0 };
-260 |     for (const row of sizeRows) sizeStats[row.size] = Number(row.count);
-261 | 
-262 |     return { statusStats, sizeStats };
-263 |   }
-264 | 
-265 |   async findOne(id: string) {
-266 |     const school = await this.prisma.school.findUnique({
-267 |       where: {
-268 |         id,
-269 |       },
-270 |       include: {
-271 |         city: true,
+  0 | import { Injectable, HttpStatus, forwardRef, Inject } from '@nestjs/common';
+  1 | import { CACHE_MANAGER } from '@nestjs/cache-manager';
+  2 | import type { Cache } from 'cache-manager';
+  3 | import { AppException } from '../common/exceptions/app.exception';
+  4 | import { Prisma } from '@prisma/client';
+  5 | import { EventsService } from '../events/events.service';
+  6 | import { ParserService } from './parser.service';
+  7 | import { PrismaService } from '../prisma/prisma.service';
+  8 | import { PageMetaDto } from '../common/dto/page-meta.dto';
+  9 | import { SchoolQueryDto } from './dto/school-query.dto';
+ 10 | 
+ 11 | const PLANNED_STAGES = ['BASE', 'FIRST_CONTACT', 'DATE_CONFIRMED'];
+ 12 | const IN_PROGRESS_STAGES = ['PREPARATION', 'IN_PROGRESS', 'DONE', 'REPORT'];
+ 13 | 
+ 14 | @Injectable()
+ 15 | export class SchoolsService {
+ 16 |   constructor(
+ 17 |     @Inject(forwardRef(() => EventsService))
+ 18 |     private readonly eventsService: EventsService,
+ 19 |     private readonly parserService: ParserService,
+ 20 |     private readonly prisma: PrismaService,
+ 21 |     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+ 22 |   ) {}
+ 23 | 
+ 24 |   async create(data: {
+ 25 |     name: string;
+ 26 |     type: string;
+ 27 |     cityId: string;
+ 28 |     sourceUrl?: string;
+ 29 |     director?: string;
+ 30 |     phone?: string;
+ 31 |     address?: string;
+ 32 |     childrenCount?: number;
+ 33 |   }) {
+ 34 |     const { sourceUrl, ...schoolData } = data;
+ 35 | 
+ 36 |     const newSchool = await this.prisma.school.create({
+ 37 |       data: schoolData,
+ 38 |     });
+ 39 | 
+ 40 |     this.parserService
+ 41 |       .parseSchoolData(data.name, sourceUrl, data.type)
+ 42 |       .then(async (parsed) => {
+ 43 |         if (!parsed) {
+ 44 |           console.log(`Не вдалося знайти дані для закладу: ${data.name}`);
+ 45 |           return;
+ 46 |         }
+ 47 | 
+ 48 |         const updateData: Record<string, unknown> = {};
+ 49 | 
+ 50 |         if (!schoolData.address && parsed.address) {
+ 51 |           updateData.address = parsed.address;
+ 52 |         }
+ 53 |         if (!schoolData.director && parsed.director) {
+ 54 |           updateData.director = parsed.director;
+ 55 |         }
+ 56 |         if (!schoolData.childrenCount && parsed.childrenCount) {
+ 57 |           updateData.childrenCount = parsed.childrenCount;
+ 58 |         }
+ 59 | 
+ 60 |         if (Object.keys(updateData).length === 0) {
+ 61 |           console.log(
+ 62 |             `Дані школи "${data.name}" вже заповнені користувачем — пропускаємо оновлення з парсингу`,
+ 63 |           );
+ 64 |           return;
+ 65 |         }
+ 66 | 
+ 67 |         await this.prisma.school.update({
+ 68 |           where: {
+ 69 |             id: newSchool.id,
+ 70 |           },
+ 71 |           data: updateData,
+ 72 |         });
+ 73 | 
+ 74 |         console.log(`Дані школи "${data.name}" успішно оновлені`);
+ 75 |       })
+ 76 |       .catch((error) => {
+ 77 |         console.error('Помилка оновлення даних школи:', error);
+ 78 |       });
+ 79 | 
+ 80 |     return newSchool;
+ 81 |   }
+ 82 | 
+ 83 |   private buildFilters(
+ 84 |     query: Pick<
+ 85 |       SchoolQueryDto,
+ 86 |       'search' | 'cityId' | 'type' | 'stage' | 'size'
+ 87 |     >,
+ 88 |   ): Prisma.Sql[] {
+ 89 |     const { search, cityId, type, stage, size } = query;
+ 90 |     const conditions: Prisma.Sql[] = [];
+ 91 | 
+ 92 |     if (search) {
+ 93 |       const trimmed = search.trim();
+ 94 |       const isNumeric = /^\d+$/.test(trimmed);
+ 95 | 
+ 96 |       if (isNumeric) {
+ 97 |         const numberBoundary = `%№${trimmed}%`;
+ 98 |         const numberWord = `% ${trimmed}%`;
+ 99 |         conditions.push(
+100 |           Prisma.sql`(s.name ILIKE ${numberBoundary} OR s.name ILIKE ${numberWord} OR s.name ILIKE ${trimmed + '%'})`,
+101 |         );
+102 |       } else {
+103 |         conditions.push(Prisma.sql`s.name ILIKE ${`%${trimmed}%`}`);
+104 |       }
+105 |     }
+106 |     if (cityId) {
+107 |       conditions.push(Prisma.sql`s."cityId" = ${cityId}`);
+108 |     }
+109 |     if (type) {
+110 |       conditions.push(Prisma.sql`s.type = ${type}`);
+111 |     }
+112 |     if (stage) {
+113 |       conditions.push(this.stageCondition(stage));
+114 |     }
+115 |     if (size) {
+116 |       conditions.push(this.sizeCondition(size));
+117 |     }
+118 | 
+119 |     return conditions;
+120 |   }
+121 | 
+122 |   private sizeCaseSql(): Prisma.Sql {
+123 |     return Prisma.sql`
+124 |       CASE
+125 |         WHEN s.type = 'Садочок' AND COALESCE(s."childrenCount", 0) < 50 THEN 'small'
+126 |         WHEN s.type = 'Садочок' AND COALESCE(s."childrenCount", 0) < 100 THEN 'medium'
+127 |         WHEN s.type = 'Садочок' THEN 'large'
+128 |         WHEN COALESCE(s."childrenCount", 0) < 500 THEN 'small'
+129 |         WHEN COALESCE(s."childrenCount", 0) < 900 THEN 'medium'
+130 |         ELSE 'large'
+131 |       END
+132 |     `;
+133 |   }
+134 | 
+135 |   private stageCondition(stage: string): Prisma.Sql {
+136 |     switch (stage) {
+137 |       case 'planned':
+138 |         return Prisma.sql`latest.status::text IN (${Prisma.join(PLANNED_STAGES)})`;
+139 |       case 'inProgress':
+140 |         return Prisma.sql`latest.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})`;
+141 |       case 'done':
+142 |         return Prisma.sql`latest.status::text = 'RE_SALE'`;
+143 |       default:
+144 |         return Prisma.sql`(latest.status IS NULL OR latest.status::text IN ('INTERESTED','PRE_APPROVAL'))`;
+145 |     }
+146 |   }
+147 | 
+148 |   private sizeCondition(size: string): Prisma.Sql {
+149 |     return Prisma.sql`(${this.sizeCaseSql()}) = ${size}`;
+150 |   }
+151 | 
+152 |   private mapRow(row: any) {
+153 |     const { city_id, city_name, latestStatus, ...school } = row;
+154 |     return {
+155 |       ...school,
+156 |       city: city_id ? { id: city_id, name: city_name } : null,
+157 |       events: latestStatus ? [{ status: latestStatus }] : [],
+158 |     };
+159 |   }
+160 | 
+161 |   async findAll(query: SchoolQueryDto) {
+162 |     const { skip, take, page } = query;
+163 |     const conditions = this.buildFilters(query);
+164 |     const whereClause = conditions.length
+165 |       ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`
+166 |       : Prisma.empty;
+167 | 
+168 |     const baseFrom = Prisma.sql`
+169 |       FROM "School" s
+170 |       LEFT JOIN "City" c ON c.id = s."cityId"
+171 |       LEFT JOIN LATERAL (
+172 |         SELECT e.status FROM "Event" e
+173 |         WHERE e."schoolId" = s.id
+174 |         ORDER BY e.date DESC
+175 |         LIMIT 1
+176 |       ) latest ON true
+177 |     `;
+178 | 
+179 |     const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+180 |       SELECT s.*, c.id as city_id, c.name as city_name, latest.status as "latestStatus"
+181 |       ${baseFrom}
+182 |       ${whereClause}
+183 |       ORDER BY s."createdAt" DESC
+184 |       OFFSET ${skip} LIMIT ${take}
+185 |     `);
+186 | 
+187 |     const countRows = await this.prisma.$queryRaw<
+188 |       { count: bigint }[]
+189 |     >(Prisma.sql`
+190 |       SELECT COUNT(*)::bigint as count
+191 |       ${baseFrom}
+192 |       ${whereClause}
+193 |     `);
+194 | 
+195 |     const totalItems = Number(countRows[0].count);
+196 | 
+197 |     return {
+198 |       data: rows.map((r) => this.mapRow(r)),
+199 |       meta: new PageMetaDto(totalItems, page, take),
+200 |     };
+201 |   }
+202 | 
+203 |   async getStats(query: Pick<SchoolQueryDto, 'cityId' | 'type' | 'stage'>) {
+204 |     const baseConditions = this.buildFilters({
+205 |       cityId: query.cityId,
+206 |       type: query.type,
+207 |     });
+208 |     const baseWhere = baseConditions.length
+209 |       ? Prisma.sql`WHERE ${Prisma.join(baseConditions, ' AND ')}`
+210 |       : Prisma.empty;
+211 | 
+212 |     const sizeConditions = this.buildFilters({
+213 |       cityId: query.cityId,
+214 |       type: query.type,
+215 |       stage: query.stage,
+216 |     });
+217 |     const sizeWhere = sizeConditions.length
+218 |       ? Prisma.sql`WHERE ${Prisma.join(sizeConditions, ' AND ')}`
+219 |       : Prisma.empty;
+220 | 
+221 |     const baseFrom = Prisma.sql`
+222 |       FROM "School" s
+223 |       LEFT JOIN LATERAL (
+224 |         SELECT e.status FROM "Event" e
+225 |         WHERE e."schoolId" = s.id
+226 |         ORDER BY e.date DESC
+227 |         LIMIT 1
+228 |       ) latest ON true
+229 |     `;
+230 | 
+231 |     const [statusRows, sizeRows] = await Promise.all([
+232 |       this.prisma.$queryRaw<{ stage: string; count: bigint }[]>(Prisma.sql`
+233 |         SELECT
+234 |           CASE
+235 |             WHEN latest.status::text IN (${Prisma.join(PLANNED_STAGES)}) THEN 'planned'
+236 |             WHEN latest.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)}) THEN 'inProgress'
+237 |             WHEN latest.status::text = 'RE_SALE' THEN 'done'
+238 |             ELSE 'new'
+239 |           END as stage,
+240 |           COUNT(*)::bigint as count
+241 |         ${baseFrom}
+242 |         ${baseWhere}
+243 |         GROUP BY stage
+244 |       `),
+245 |       this.prisma.$queryRaw<{ size: string; count: bigint }[]>(Prisma.sql`
+246 |         SELECT
+247 |           ${this.sizeCaseSql()} as size,
+248 |           COUNT(*)::bigint as count
+249 |         ${baseFrom}
+250 |         ${sizeWhere}
+251 |         GROUP BY size
+252 |       `),
+253 |     ]);
+254 | 
+255 |     const statusStats = { new: 0, planned: 0, inProgress: 0, done: 0 };
+256 |     for (const row of statusRows) statusStats[row.stage] = Number(row.count);
+257 | 
+258 |     const sizeStats = { small: 0, medium: 0, large: 0 };
+259 |     for (const row of sizeRows) sizeStats[row.size] = Number(row.count);
+260 | 
+261 |     return { statusStats, sizeStats };
+262 |   }
+263 | 
+264 |   async findOne(id: string) {
+265 |     const key = `school:${id}`;
+266 |     const cached = await this.cacheManager.get(key);
+267 |     if (cached) return cached;
+268 | 
+269 |     const school = await this.prisma.school.findUnique({
+270 |       where: {
+271 |         id,
 272 |       },
-273 |     });
-274 |     if (!school) {
-275 |       throw new NotFoundException(`Школу з ID ${id} не знайдено`);
-276 |     }
-277 | 
-278 |     return school;
-279 |   }
+273 |       include: {
+274 |         city: true,
+275 |       },
+276 |     });
+277 |     if (!school) {
+278 |       throw new AppException('SCHOOL_NOT_FOUND', HttpStatus.NOT_FOUND);
+279 |     }
 280 | 
-281 |   async update(id: string, data: any) {
-282 |     const { city, id: _id, createdAt, updatedAt, ...updateData } = data;
-283 | 
-284 |     return this.prisma.school.update({
-285 |       where: {
-286 |         id,
-287 |       },
-288 |       data: updateData,
-289 |     });
-290 |   }
-291 | 
-292 |   async remove(id: string) {
-293 |     const events = await this.prisma.event.findMany({
-294 |       where: {
-295 |         schoolId: id,
-296 |       },
-297 |     });
-298 | 
-299 |     for (const event of events) {
-300 |       await this.eventsService.remove(event.id);
-301 |     }
-302 | 
-303 |     return this.prisma.school.delete({
-304 |       where: {
-305 |         id,
-306 |       },
-307 |     });
-308 |   }
-309 | 
-310 |   async searchContacts(q: string, city?: string) {
-311 |     if (!q || q.trim().length < 1) return [];
-312 | 
-313 |     const cityName = city || 'Львів';
-314 |     const normalizedQuery = q.toLowerCase().trim();
-315 | 
-316 |     const allContacts = await this.prisma.schoolContact.findMany({
-317 |       where: { city: cityName },
-318 |       orderBy: [{ schoolNumber: 'asc' }, { role: 'asc' }],
-319 |     });
+281 |     await this.cacheManager.set(key, school, 15_000);
+282 |     return school;
+283 |   }
+284 | 
+285 |   async update(id: string, data: any) {
+286 |     const { city, id: _id, createdAt, updatedAt, ...updateData } = data;
+287 | 
+288 |     const updated = await this.prisma.school.update({
+289 |       where: {
+290 |         id,
+291 |       },
+292 |       data: updateData,
+293 |     });
+294 |     await this.cacheManager.del(`school:${id}`);
+295 |     return updated;
+296 |   }
+297 | 
+298 |   async remove(id: string) {
+299 |     const events = await this.prisma.event.findMany({
+300 |       where: {
+301 |         schoolId: id,
+302 |       },
+303 |     });
+304 | 
+305 |     for (const event of events) {
+306 |       await this.eventsService.remove(event.id);
+307 |     }
+308 | 
+309 |     const deleted = await this.prisma.school.delete({
+310 |       where: {
+311 |         id,
+312 |       },
+313 |     });
+314 |     await this.cacheManager.del(`school:${id}`);
+315 |     return deleted;
+316 |   }
+317 | 
+318 |   async searchContacts(q: string, city?: string) {
+319 |     if (!q || q.trim().length < 1) return [];
 320 | 
-321 |     const STOP_WORDS = new Set([
-322 |       'школа',
-323 |       'школи',
-324 |       'садочок',
-325 |       'садок',
-326 |       'дитсадок',
-327 |       'днз',
-328 |       'ліцей',
-329 |       'гімназія',
-330 |       'зош',
-331 |       'центр',
-332 |       'розвитку',
-333 |       'комунальний',
-334 |       'заклад',
-335 |       'освіти',
-336 |       'імені',
-337 |       'ім',
-338 |     ]);
-339 | 
-340 |     const tokens = normalizedQuery
-341 |       .replace(/№/g, ' ')
-342 |       .split(/\s+/)
-343 |       .map((t) => t.replace(/[^\wа-яіїєґ0-9]/gi, ''))
-344 |       .filter((t) => t.length > 0 && !STOP_WORDS.has(t));
-345 | 
-346 |     const matches = allContacts.filter((c) => {
-347 |       const num = c.schoolNumber.toLowerCase();
-348 | 
-349 |       if (num === normalizedQuery) return true;
-350 | 
-351 |       const isNumeric = /^\d+$/.test(num);
-352 | 
-353 |       if (isNumeric) {
-354 |         if (tokens.includes(num)) return true;
-355 |       } else {
-356 |         if (num.includes(normalizedQuery) || normalizedQuery.includes(num))
-357 |           return true;
-358 |         if (tokens.some((t) => t.length >= 3 && num.includes(t))) return true;
-359 |       }
+321 |     const cityName = city || 'Львів';
+322 |     const normalizedQuery = q.toLowerCase().trim();
+323 | 
+324 |     const allContacts = await this.prisma.schoolContact.findMany({
+325 |       where: { city: cityName },
+326 |       orderBy: [{ schoolNumber: 'asc' }, { role: 'asc' }],
+327 |     });
+328 | 
+329 |     const STOP_WORDS = new Set([
+330 |       'школа',
+331 |       'школи',
+332 |       'садочок',
+333 |       'садок',
+334 |       'дитсадок',
+335 |       'днз',
+336 |       'ліцей',
+337 |       'гімназія',
+338 |       'зош',
+339 |       'центр',
+340 |       'розвитку',
+341 |       'комунальний',
+342 |       'заклад',
+343 |       'освіти',
+344 |       'імені',
+345 |       'ім',
+346 |     ]);
+347 | 
+348 |     const tokens = normalizedQuery
+349 |       .replace(/№/g, ' ')
+350 |       .split(/\s+/)
+351 |       .map((t) => t.replace(/[^\wа-яіїєґ0-9]/gi, ''))
+352 |       .filter((t) => t.length > 0 && !STOP_WORDS.has(t));
+353 | 
+354 |     const matches = allContacts.filter((c) => {
+355 |       const num = c.schoolNumber.toLowerCase();
+356 | 
+357 |       if (num === normalizedQuery) return true;
+358 | 
+359 |       const isNumeric = /^\d+$/.test(num);
 360 | 
-361 |       if (c.contactName.toLowerCase().includes(normalizedQuery)) return true;
-362 | 
-363 |       return false;
-364 |     });
-365 | 
-366 |     return matches.slice(0, 10);
-367 |   }
-368 |   async bulkImport(cityId: string, type: 'Школа' | 'Садочок' = 'Школа') {
-369 |     const city = await this.prisma.city.findUnique({ where: { id: cityId } });
-370 |     if (!city) throw new Error(`Місто з id=${cityId} не знайдено`);
-371 | 
-372 |     const allFromParser = await this.parserService.getAllSchoolsForCity(
-373 |       city.name,
-374 |       type,
-375 |     );
-376 | 
-377 |     const existingSchools = await this.prisma.school.findMany({
-378 |       where: { cityId, type },
-379 |       select: { name: true },
-380 |     });
-381 | 
-382 |     const normalize = (name: string) =>
-383 |       name
-384 |         .toLowerCase()
-385 |         .replace(/№/g, '')
-386 |         .replace(/["'«»]/g, '')
-387 |         .replace(/\s+/g, '')
-388 |         .trim();
+361 |       if (isNumeric) {
+362 |         if (tokens.includes(num)) return true;
+363 |       } else {
+364 |         if (num.includes(normalizedQuery) || normalizedQuery.includes(num))
+365 |           return true;
+366 |         if (tokens.some((t) => t.length >= 3 && num.includes(t))) return true;
+367 |       }
+368 | 
+369 |       if (c.contactName.toLowerCase().includes(normalizedQuery)) return true;
+370 | 
+371 |       return false;
+372 |     });
+373 | 
+374 |     return matches.slice(0, 10);
+375 |   }
+376 |   async bulkImport(cityId: string, type: 'Школа' | 'Садочок' = 'Школа') {
+377 |     const city = await this.prisma.city.findUnique({ where: { id: cityId } });
+378 |     if (!city) throw new AppException('CITY_NOT_FOUND', HttpStatus.NOT_FOUND);
+379 | 
+380 |     const allFromParser = await this.parserService.getAllSchoolsForCity(
+381 |       city.name,
+382 |       type,
+383 |     );
+384 | 
+385 |     const existingSchools = await this.prisma.school.findMany({
+386 |       where: { cityId, type },
+387 |       select: { name: true },
+388 |     });
 389 | 
-390 |     const existingNames = new Set(
-391 |       existingSchools.map((s) => normalize(s.name)),
-392 |     );
-393 | 
-394 |     const toCreate = allFromParser.filter(
-395 |       (s) => !existingNames.has(normalize(s.name)),
-396 |     );
+390 |     const normalize = (name: string) =>
+391 |       name
+392 |         .toLowerCase()
+393 |         .replace(/№/g, '')
+394 |         .replace(/["'«»]/g, '')
+395 |         .replace(/\s+/g, '')
+396 |         .trim();
 397 | 
-398 |     if (toCreate.length === 0) {
-399 |       return {
-400 |         total: allFromParser.length,
-401 |         created: 0,
-402 |         skipped: allFromParser.length,
-403 |       };
-404 |     }
+398 |     const existingNames = new Set(
+399 |       existingSchools.map((s) => normalize(s.name)),
+400 |     );
+401 | 
+402 |     const toCreate = allFromParser.filter(
+403 |       (s) => !existingNames.has(normalize(s.name)),
+404 |     );
 405 | 
-406 |     const contacts = await this.prisma.schoolContact.findMany({
-407 |       where: { city: city.name },
-408 |     });
-409 | 
-410 |     let created = 0;
-411 |     for (const school of toCreate) {
-412 |       if (existingNames.has(normalize(school.name))) continue;
+406 |     if (toCreate.length === 0) {
+407 |       return {
+408 |         total: allFromParser.length,
+409 |         created: 0,
+410 |         skipped: allFromParser.length,
+411 |       };
+412 |     }
 413 | 
-414 |       existingNames.add(normalize(school.name));
-415 | 
-416 |       const numMatch = school.name.match(/№?\s*(\d+)/);
-417 |       const num = numMatch?.[1];
-418 |       const matchedContacts = num
-419 |         ? contacts.filter((c) => c.schoolNumber === num)
-420 |         : contacts.filter((c) => {
-421 |             const normSchool = normalize(school.name);
-422 |             const normContact = normalize(c.schoolNumber);
-423 |             return (
-424 |               normSchool.includes(normContact) ||
-425 |               normContact.includes(normSchool)
-426 |             );
-427 |           });
-428 | 
-429 |       const director =
-430 |         matchedContacts.find(
-431 |           (c) => c.role?.includes('Директор') || c.role?.includes('Завідувач'),
-432 |         ) || matchedContacts[0];
-433 | 
-434 |       try {
-435 |         await this.create({
-436 |           name: school.name,
-437 |           type,
-438 |           cityId,
-439 |           sourceUrl: school.url,
-440 |           director: director?.contactName || '',
-441 |           phone: director?.phone || '',
-442 |         });
-443 |         created++;
-444 |       } catch (e) {
-445 |         console.error(`Помилка створення ${school.name}:`, e);
-446 |       }
-447 |     }
-448 | 
-449 |     return {
-450 |       city: city.name,
-451 |       total: allFromParser.length,
-452 |       created,
-453 |       skipped: allFromParser.length - created,
-454 |     };
-455 |   }
-456 | }
-457 | 
+414 |     const contacts = await this.prisma.schoolContact.findMany({
+415 |       where: { city: city.name },
+416 |     });
+417 | 
+418 |     let created = 0;
+419 |     for (const school of toCreate) {
+420 |       if (existingNames.has(normalize(school.name))) continue;
+421 | 
+422 |       existingNames.add(normalize(school.name));
+423 | 
+424 |       const numMatch = school.name.match(/№?\s*(\d+)/);
+425 |       const num = numMatch?.[1];
+426 |       const matchedContacts = num
+427 |         ? contacts.filter((c) => c.schoolNumber === num)
+428 |         : contacts.filter((c) => {
+429 |             const normSchool = normalize(school.name);
+430 |             const normContact = normalize(c.schoolNumber);
+431 |             return (
+432 |               normSchool.includes(normContact) ||
+433 |               normContact.includes(normSchool)
+434 |             );
+435 |           });
+436 | 
+437 |       const director =
+438 |         matchedContacts.find(
+439 |           (c) => c.role?.includes('Директор') || c.role?.includes('Завідувач'),
+440 |         ) || matchedContacts[0];
+441 | 
+442 |       try {
+443 |         await this.create({
+444 |           name: school.name,
+445 |           type,
+446 |           cityId,
+447 |           sourceUrl: school.url,
+448 |           director: director?.contactName || '',
+449 |           phone: director?.phone || '',
+450 |         });
+451 |         created++;
+452 |       } catch (e) {
+453 |         console.error(`Помилка створення ${school.name}:`, e);
+454 |       }
+455 |     }
+456 | 
+457 |     return {
+458 |       city: city.name,
+459 |       total: allFromParser.length,
+460 |       created,
+461 |       skipped: allFromParser.length - created,
+462 |     };
+463 |   }
+464 | }
+465 | 
 ```
 
 ### File: apps/backend/src/telegram/telegram.module.ts
@@ -8776,103 +9201,165 @@
   1 |   Injectable,
   2 |   Logger,
   3 |   OnModuleInit,
-  4 |   Inject,
-  5 |   forwardRef,
-  6 | } from '@nestjs/common';
-  7 | import TelegramBot from 'node-telegram-bot-api';
-  8 | import { UsersService } from '../users/users.service';
-  9 | 
- 10 | @Injectable()
- 11 | export class TelegramService implements OnModuleInit {
- 12 |   private bot: TelegramBot;
- 13 |   private readonly logger = new Logger(TelegramService.name);
- 14 | 
- 15 |   constructor(
- 16 |     @Inject(forwardRef(() => UsersService))
- 17 |     private usersService: UsersService,
- 18 |   ) {}
- 19 | 
- 20 |   onModuleInit() {
- 21 |     const token = process.env.TELEGRAM_BOT_TOKEN;
- 22 |     if (!token || process.env.NODE_ENV === 'test') {
- 23 |       this.logger.warn(
- 24 |         'TELEGRAM_BOT_TOKEN не задано або тестове середовище — бот вимкнено',
- 25 |       );
- 26 |       return;
- 27 |     }
- 28 |     this.bot = new TelegramBot(token, { polling: true });
- 29 |     this.logger.log('Telegram бот ініціалізовано');
- 30 | 
- 31 |     this.bot.onText(/\/start/, async (msg) => {
- 32 |       const chatId = String(msg.chat.id);
- 33 |       const username = msg.from?.username;
- 34 | 
- 35 |       if (!username) {
- 36 |         await this.bot.sendMessage(
- 37 |           chatId,
- 38 |           "⚠️ У вашому профілі Telegram не вказано username. Будь ласка, додайте його в налаштуваннях Telegram, щоб ми могли підв'язати акаунт.",
- 39 |         );
- 40 |         return;
- 41 |       }
- 42 | 
- 43 |       const normalizedUsername = username.toLowerCase();
- 44 | 
- 45 |       const result = await this.usersService.updateTelegramChatId(
- 46 |         normalizedUsername,
- 47 |         chatId,
- 48 |       );
- 49 | 
- 50 |       if (result.count > 0) {
- 51 |         this.logger.log(
- 52 |           `[/start] chatId=${chatId} username=${normalizedUsername} — успішно підв'язано`,
- 53 |         );
- 54 |         await this.bot.sendMessage(
- 55 |           chatId,
- 56 |           `✅ Вітаємо! Ваш акаунт успішно підключено до <b>Світло Знань CRM</b>.`,
- 57 |           { parse_mode: 'HTML' },
- 58 |         );
- 59 |       } else {
- 60 |         this.logger.warn(
- 61 |           `[/start] Користувача з username "${normalizedUsername}" не знайдено в CRM.`,
- 62 |         );
- 63 |         await this.bot.sendMessage(
- 64 |           chatId,
- 65 |           `❌ Акаунт не знайдено. Переконайтеся, що в CRM у вашому профілі вказано нікнейм <b>${normalizedUsername}</b> без помилок.`,
- 66 |           { parse_mode: 'HTML' },
- 67 |         );
- 68 |       }
- 69 |     });
- 70 |   }
- 71 | 
- 72 |   async sendMessage(chatId: string, text: string): Promise<void> {
- 73 |     if (!this.bot) return;
- 74 |     try {
- 75 |       await this.bot.sendMessage(chatId, text, { parse_mode: 'HTML' });
- 76 |     } catch (e: any) {
- 77 |       this.logger.error(
- 78 |         `Не вдалося надіслати повідомлення ${chatId}: ${e.message}`,
- 79 |       );
- 80 |     }
- 81 |   }
- 82 | 
- 83 |   async sendWelcome(
- 84 |     chatId: string,
- 85 |     name: string,
- 86 |     email: string,
- 87 |     password: string,
- 88 |   ): Promise<void> {
- 89 |     const text =
- 90 |       `👋 <b>Вітаємо у Світло Знань CRM!</b>\n\n` +
- 91 |       `Ваш акаунт створено.\n\n` +
- 92 |       `📧 <b>Логін:</b> <code>${email}</code>\n` +
- 93 |       `🔑 <b>Пароль:</b> <code>${password}</code>\n\n` +
- 94 |       `Увійдіть за посиланням: <a href="https://crm-frontend-psi-sable.vercel.app">crm-frontend-psi-sable.vercel.app</a>\n\n` +
- 95 |       `<i>Змініть пароль після першого входу.</i>`;
- 96 | 
- 97 |     await this.sendMessage(chatId, text);
- 98 |   }
- 99 | }
-100 | 
+  4 |   OnModuleDestroy,
+  5 |   Inject,
+  6 |   forwardRef,
+  7 | } from '@nestjs/common';
+  8 | import TelegramBot from 'node-telegram-bot-api';
+  9 | import Redis from 'ioredis';
+ 10 | import { randomUUID } from 'crypto';
+ 11 | import { UsersService } from '../users/users.service';
+ 12 | 
+ 13 | const LOCK_KEY = 'telegram:bot:leader';
+ 14 | const LOCK_TTL_MS = 15_000;
+ 15 | const RETRY_MS = 5_000;
+ 16 | 
+ 17 | @Injectable()
+ 18 | export class TelegramService implements OnModuleInit, OnModuleDestroy {
+ 19 |   private bot: TelegramBot;
+ 20 |   private readonly logger = new Logger(TelegramService.name);
+ 21 |   private readonly instanceId = randomUUID();
+ 22 |   private readonly redis = new Redis(
+ 23 |     process.env.REDIS_URL ?? 'redis://localhost:6379',
+ 24 |   );
+ 25 |   private lockTimer?: NodeJS.Timeout;
+ 26 |   private retryTimer?: NodeJS.Timeout;
+ 27 | 
+ 28 |   constructor(
+ 29 |     @Inject(forwardRef(() => UsersService))
+ 30 |     private usersService: UsersService,
+ 31 |   ) {}
+ 32 | 
+ 33 |   onModuleInit() {
+ 34 |     this.redis.on('error', (err: Error) =>
+ 35 |       this.logger.warn(`Redis lock connection error: ${err.message}`),
+ 36 |     );
+ 37 | 
+ 38 |     const token = process.env.TELEGRAM_BOT_TOKEN;
+ 39 |     if (!token || process.env.NODE_ENV === 'test') {
+ 40 |       this.logger.warn(
+ 41 |         'TELEGRAM_BOT_TOKEN не задано або тестове середовище — бот вимкнено',
+ 42 |       );
+ 43 |       return;
+ 44 |     }
+ 45 |     void this.tryBecomeLeader(token);
+ 46 |   }
+ 47 | 
+ 48 |   async onModuleDestroy() {
+ 49 |     clearTimeout(this.retryTimer);
+ 50 |     clearInterval(this.lockTimer);
+ 51 |     if (this.bot) await this.bot.stopPolling();
+ 52 |     const current = await this.redis.get(LOCK_KEY);
+ 53 |     if (current === this.instanceId) await this.redis.del(LOCK_KEY);
+ 54 |     this.redis.disconnect();
+ 55 |   }
+ 56 | 
+ 57 |   private async tryBecomeLeader(token: string) {
+ 58 |     let acquired: string | null;
+ 59 |     try {
+ 60 |       acquired = await this.redis.set(
+ 61 |         LOCK_KEY,
+ 62 |         this.instanceId,
+ 63 |         'PX',
+ 64 |         LOCK_TTL_MS,
+ 65 |         'NX',
+ 66 |       );
+ 67 |     } catch (e) {
+ 68 |       this.logger.warn(
+ 69 |         `Не вдалося отримати lock, повторю пізніше: ${(e as Error).message}`,
+ 70 |       );
+ 71 |       this.retryTimer = setTimeout(() => this.tryBecomeLeader(token), RETRY_MS);
+ 72 |       return;
+ 73 |     }
+ 74 |     if (!acquired) {
+ 75 |       this.retryTimer = setTimeout(() => this.tryBecomeLeader(token), RETRY_MS);
+ 76 |       return;
+ 77 |     }
+ 78 | 
+ 79 |     this.bot = new TelegramBot(token, { polling: true });
+ 80 |     this.logger.log(`Telegram бот ініціалізовано (leader=${this.instanceId})`);
+ 81 |     this.lockTimer = setInterval(() => {
+ 82 |       this.redis
+ 83 |         .set(LOCK_KEY, this.instanceId, 'PX', LOCK_TTL_MS, 'XX')
+ 84 |         .catch((e: Error) =>
+ 85 |           this.logger.warn(`Не вдалося продовжити lock: ${e.message}`),
+ 86 |         );
+ 87 |     }, LOCK_TTL_MS / 3);
+ 88 | 
+ 89 |     this.bot.onText(/\/start/, (msg) => {
+ 90 |       void this.handleStartCommand(msg);
+ 91 |     });
+ 92 |   }
+ 93 | 
+ 94 |   private async handleStartCommand(msg: TelegramBot.Message): Promise<void> {
+ 95 |     const chatId = String(msg.chat.id);
+ 96 |     const username = msg.from?.username;
+ 97 | 
+ 98 |     if (!username) {
+ 99 |       await this.bot.sendMessage(
+100 |         chatId,
+101 |         "⚠️ У вашому профілі Telegram не вказано username. Будь ласка, додайте його в налаштуваннях Telegram, щоб ми могли підв'язати акаунт.",
+102 |       );
+103 |       return;
+104 |     }
+105 | 
+106 |     const normalizedUsername = username.toLowerCase();
+107 | 
+108 |     const result = await this.usersService.updateTelegramChatId(
+109 |       normalizedUsername,
+110 |       chatId,
+111 |     );
+112 | 
+113 |     if (result.count > 0) {
+114 |       this.logger.log(
+115 |         `[/start] chatId=${chatId} username=${normalizedUsername} — успішно підв'язано`,
+116 |       );
+117 |       await this.bot.sendMessage(
+118 |         chatId,
+119 |         `✅ Вітаємо! Ваш акаунт успішно підключено до <b>Світло Знань CRM</b>.`,
+120 |         { parse_mode: 'HTML' },
+121 |       );
+122 |     } else {
+123 |       this.logger.warn(
+124 |         `[/start] Користувача з username "${normalizedUsername}" не знайдено в CRM.`,
+125 |       );
+126 |       await this.bot.sendMessage(
+127 |         chatId,
+128 |         `❌ Акаунт не знайдено. Переконайтеся, що в CRM у вашому профілі вказано нікнейм <b>${normalizedUsername}</b> без помилок.`,
+129 |         { parse_mode: 'HTML' },
+130 |       );
+131 |     }
+132 |   }
+133 | 
+134 |   async sendMessage(chatId: string, text: string): Promise<void> {
+135 |     if (!this.bot) return;
+136 |     try {
+137 |       await this.bot.sendMessage(chatId, text, { parse_mode: 'HTML' });
+138 |     } catch (e: any) {
+139 |       this.logger.error(
+140 |         `Не вдалося надіслати повідомлення ${chatId}: ${e.message}`,
+141 |       );
+142 |     }
+143 |   }
+144 | 
+145 |   async sendWelcome(
+146 |     chatId: string,
+147 |     name: string,
+148 |     email: string,
+149 |     password: string,
+150 |   ): Promise<void> {
+151 |     const text =
+152 |       `👋 <b>Вітаємо у Світло Знань CRM!</b>\n\n` +
+153 |       `Ваш акаунт створено.\n\n` +
+154 |       `📧 <b>Логін:</b> <code>${email}</code>\n` +
+155 |       `🔑 <b>Пароль:</b> <code>${password}</code>\n\n` +
+156 |       `Увійдіть за посиланням: <a href="https://crm-frontend-psi-sable.vercel.app">crm-frontend-psi-sable.vercel.app</a>\n\n` +
+157 |       `<i>Змініть пароль після першого входу.</i>`;
+158 | 
+159 |     await this.sendMessage(chatId, text);
+160 |   }
+161 | }
+162 | 
 ```
 
 ### File: apps/backend/src/users/dto/create-user.dto.ts
@@ -8887,43 +9374,52 @@
   7 |   Matches,
   8 | } from 'class-validator';
   9 | import { UserRole } from '@prisma/client';
- 10 | 
- 11 | export class CreateUserDto {
- 12 |   @IsString()
- 13 |   @IsNotEmpty()
- 14 |   fullName: string;
- 15 | 
- 16 |   @IsEmail()
- 17 |   email: string;
- 18 | 
- 19 |   @IsString()
- 20 |   @MinLength(8, { message: 'Пароль має містити щонайменше 8 символів' })
- 21 |   @Matches(/^(?=.*[a-zA-Z])(?=.*\d).+$/, {
- 22 |     message: 'Пароль має містити хоча б одну літеру та одну цифру',
- 23 |   })
- 24 |   password: string;
- 25 | 
- 26 |   @IsOptional()
- 27 |   @IsString()
- 28 |   phone?: string;
+ 10 | import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+ 11 | 
+ 12 | export class CreateUserDto {
+ 13 |   @ApiProperty({ example: 'Олег Ведучий' })
+ 14 |   @IsString()
+ 15 |   @IsNotEmpty()
+ 16 |   fullName: string;
+ 17 | 
+ 18 |   @ApiProperty({ example: 'oleg@svitlo-znan.app' })
+ 19 |   @IsEmail()
+ 20 |   email: string;
+ 21 | 
+ 22 |   @ApiProperty({ example: 'Password123', minLength: 8 })
+ 23 |   @IsString()
+ 24 |   @MinLength(8, { message: 'Пароль має містити щонайменше 8 символів' })
+ 25 |   @Matches(/^(?=.*[a-zA-Z])(?=.*\d).+$/, {
+ 26 |     message: 'Пароль має містити хоча б одну літеру та одну цифру',
+ 27 |   })
+ 28 |   password: string;
  29 | 
- 30 |   @IsOptional()
- 31 |   @IsEnum(UserRole)
- 32 |   role?: UserRole;
- 33 | 
- 34 |   @IsOptional()
- 35 |   @IsString()
- 36 |   cityId?: string;
- 37 | 
- 38 |   @IsOptional()
- 39 |   @IsString()
- 40 |   telegramId?: string;
- 41 | 
- 42 |   @IsOptional()
- 43 |   @IsString()
- 44 |   car?: string;
- 45 | }
- 46 | 
+ 30 |   @ApiPropertyOptional({ example: '+380671112233' })
+ 31 |   @IsOptional()
+ 32 |   @IsString()
+ 33 |   phone?: string;
+ 34 | 
+ 35 |   @ApiPropertyOptional({ enum: UserRole, example: UserRole.HOST })
+ 36 |   @IsOptional()
+ 37 |   @IsEnum(UserRole)
+ 38 |   role?: UserRole;
+ 39 | 
+ 40 |   @ApiPropertyOptional({ example: 'a1b2c3d4-...' })
+ 41 |   @IsOptional()
+ 42 |   @IsString()
+ 43 |   cityId?: string;
+ 44 | 
+ 45 |   @ApiPropertyOptional({ example: '@oleg_host' })
+ 46 |   @IsOptional()
+ 47 |   @IsString()
+ 48 |   telegramId?: string;
+ 49 | 
+ 50 |   @ApiPropertyOptional({ example: 'Volkswagen Transporter' })
+ 51 |   @IsOptional()
+ 52 |   @IsString()
+ 53 |   car?: string;
+ 54 | }
+ 55 | 
 ```
 
 ### File: apps/backend/src/users/dto/update-user.dto.ts
@@ -9016,42 +9512,49 @@
   7 |   Delete,
   8 |   UseGuards,
   9 | } from '@nestjs/common';
- 10 | import { UsersService } from './users.service';
- 11 | import { AuthGuard } from '../auth/auth.guard';
- 12 | import { RolesGuard } from '../auth/guards/roles.guard';
- 13 | import { Roles } from '../auth/decorators/roles.decorator';
- 14 | import { CreateUserDto } from './dto/create-user.dto';
- 15 | import { UpdateUserDto } from './dto/update-user.dto';
- 16 | 
- 17 | @Controller('users')
- 18 | @UseGuards(AuthGuard, RolesGuard)
- 19 | export class UsersController {
- 20 |   constructor(private readonly usersService: UsersService) {}
- 21 | 
- 22 |   @Get()
- 23 |   getAll() {
- 24 |     return this.usersService.getAllUsers();
- 25 |   }
- 26 | 
- 27 |   @Post()
- 28 |   @Roles('SUPERADMIN')
- 29 |   create(@Body() body: CreateUserDto) {
- 30 |     return this.usersService.createUser(body);
- 31 |   }
- 32 | 
- 33 |   @Patch(':id')
- 34 |   @Roles('SUPERADMIN')
- 35 |   update(@Param('id') id: string, @Body() body: UpdateUserDto) {
- 36 |     return this.usersService.updateUser(id, body);
- 37 |   }
- 38 | 
- 39 |   @Delete(':id')
+ 10 | import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
+ 11 | import { UsersService } from './users.service';
+ 12 | import { AuthGuard } from '../auth/auth.guard';
+ 13 | import { RolesGuard } from '../auth/guards/roles.guard';
+ 14 | import { Roles } from '../auth/decorators/roles.decorator';
+ 15 | import { CreateUserDto } from './dto/create-user.dto';
+ 16 | import { UpdateUserDto } from './dto/update-user.dto';
+ 17 | 
+ 18 | @ApiTags('Users')
+ 19 | @ApiCookieAuth('access_token')
+ 20 | @Controller('users')
+ 21 | @UseGuards(AuthGuard, RolesGuard)
+ 22 | export class UsersController {
+ 23 |   constructor(private readonly usersService: UsersService) {}
+ 24 | 
+ 25 |   @ApiOperation({ summary: 'Список усіх користувачів' })
+ 26 |   @Get()
+ 27 |   getAll() {
+ 28 |     return this.usersService.getAllUsers();
+ 29 |   }
+ 30 | 
+ 31 |   @ApiOperation({ summary: 'Створити користувача' })
+ 32 |   @Post()
+ 33 |   @Roles('SUPERADMIN')
+ 34 |   create(@Body() body: CreateUserDto) {
+ 35 |     return this.usersService.createUser(body);
+ 36 |   }
+ 37 | 
+ 38 |   @ApiOperation({ summary: 'Оновити користувача' })
+ 39 |   @Patch(':id')
  40 |   @Roles('SUPERADMIN')
- 41 |   remove(@Param('id') id: string) {
- 42 |     return this.usersService.deleteUser(id);
+ 41 |   update(@Param('id') id: string, @Body() body: UpdateUserDto) {
+ 42 |     return this.usersService.updateUser(id, body);
  43 |   }
- 44 | }
- 45 | 
+ 44 | 
+ 45 |   @ApiOperation({ summary: 'Видалити користувача' })
+ 46 |   @Delete(':id')
+ 47 |   @Roles('SUPERADMIN')
+ 48 |   remove(@Param('id') id: string) {
+ 49 |     return this.usersService.deleteUser(id);
+ 50 |   }
+ 51 | }
+ 52 | 
 ```
 
 ### File: apps/backend/src/users/users.module.ts
@@ -10215,186 +10718,192 @@
  29 | import { api } from "./config/api";
  30 | 
  31 | import ProtectedRoute from "./components/ProtectedRoute";
- 32 | 
- 33 | const CityProfile = lazyWithRetry(() => import("./pages/CityProfile"));
- 34 | const EventReport = lazyWithRetry(() => import("./pages/EventReport"));
- 35 | 
- 36 | const Cities = lazyWithRetry(() => import("./pages/Cities"));
- 37 | const Schools = lazyWithRetry(() => import("./pages/Schools"));
- 38 | const SchoolProfile = lazyWithRetry(() => import("./pages/SchoolProfile"));
- 39 | const Employees = lazyWithRetry(() => import("./pages/Employees"));
- 40 | const Finance = lazyWithRetry(() => import("./pages/Finance"));
- 41 | const CalendarView = lazyWithRetry(() => import("./pages/CalendarView"));
- 42 | const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
- 43 | const Kindergartens = lazyWithRetry(() => import("./pages/Kindergartens"));
- 44 | 
- 45 | const PageLoader = () => (
- 46 |   <div className="flex items-center justify-center h-full min-h-[50vh]">
- 47 |     <div className="text-slate-400 font-medium animate-pulse">
- 48 |       Завантаження сторінки...
- 49 |     </div>
- 50 |   </div>
- 51 | );
- 52 | 
- 53 | function AppRoutes() {
- 54 |   const { user, loading, setUser } = useAuth();
- 55 |   const isAuthenticated = !!user;
- 56 | 
- 57 |   const handleLogin = (loggedInUser: any) => {
- 58 |     setUser(loggedInUser);
- 59 |   };
- 60 | 
- 61 |   const handleLogout = async () => {
- 62 |     try {
- 63 |       await api.post("/auth/logout");
- 64 |     } catch (e) {
- 65 |       console.error("Logout error", e);
- 66 |     }
- 67 | 
- 68 |     setUser(null);
- 69 |     window.location.replace("/login");
- 70 |   };
- 71 | 
- 72 |   if (loading) return <PageLoader />;
+ 32 | import ErrorBoundary from "./components/ErrorBoundary";
+ 33 | import NotFound from "./pages/NotFound";
+ 34 | 
+ 35 | const CityProfile = lazyWithRetry(() => import("./pages/CityProfile"));
+ 36 | const EventReport = lazyWithRetry(() => import("./pages/EventReport"));
+ 37 | 
+ 38 | const Cities = lazyWithRetry(() => import("./pages/Cities"));
+ 39 | const Schools = lazyWithRetry(() => import("./pages/Schools"));
+ 40 | const SchoolProfile = lazyWithRetry(() => import("./pages/SchoolProfile"));
+ 41 | const Employees = lazyWithRetry(() => import("./pages/Employees"));
+ 42 | const Finance = lazyWithRetry(() => import("./pages/Finance"));
+ 43 | const CalendarView = lazyWithRetry(() => import("./pages/CalendarView"));
+ 44 | const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
+ 45 | const Kindergartens = lazyWithRetry(() => import("./pages/Kindergartens"));
+ 46 | 
+ 47 | const PageLoader = () => (
+ 48 |   <div className="flex items-center justify-center h-full min-h-[50vh]">
+ 49 |     <div className="text-slate-400 font-medium animate-pulse">
+ 50 |       Завантаження сторінки...
+ 51 |     </div>
+ 52 |   </div>
+ 53 | );
+ 54 | 
+ 55 | function AppRoutes() {
+ 56 |   const { user, loading, setUser } = useAuth();
+ 57 |   const isAuthenticated = !!user;
+ 58 | 
+ 59 |   const handleLogin = (loggedInUser: any) => {
+ 60 |     setUser(loggedInUser);
+ 61 |   };
+ 62 | 
+ 63 |   const handleLogout = async () => {
+ 64 |     try {
+ 65 |       await api.post("/auth/logout");
+ 66 |     } catch (e) {
+ 67 |       console.error("Logout error", e);
+ 68 |     }
+ 69 | 
+ 70 |     setUser(null);
+ 71 |     window.location.replace("/login");
+ 72 |   };
  73 | 
- 74 |   return (
- 75 |     <CityProvider>
- 76 |       <Routes>
- 77 |         <Route
- 78 |           path="/login"
- 79 |           element={
- 80 |             !isAuthenticated ? (
- 81 |               <Login onLogin={handleLogin} />
- 82 |             ) : (
- 83 |               <Navigate to="/dashboard" replace />
- 84 |             )
- 85 |           }
- 86 |         />
- 87 | 
- 88 |         {/* Захищені маршрути (Layout відображає бокове меню) */}
- 89 |         <Route
- 90 |           path="/"
- 91 |           element={
- 92 |             isAuthenticated ? <Layout /> : <Navigate to="/login" replace />
- 93 |           }
- 94 |         >
- 95 |           <Route index element={<Navigate to="/dashboard" replace />} />
- 96 | 
- 97 |           {/* Обгортаємо всі вкладені маршрути в Suspense. 
- 98 |               Коли React намагається відрендерити "ліниву" сторінку, він показує fallback (PageLoader), 
- 99 |               поки завантажується файл з сервера.
-100 |             */}
-101 |           <Route
-102 |             path="cities"
-103 |             element={
-104 |               <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
-105 |                 <Suspense fallback={<PageLoader />}>
-106 |                   <Cities />
-107 |                 </Suspense>
-108 |               </ProtectedRoute>
-109 |             }
-110 |           />
-111 | 
-112 |           <Route
-113 |             path="schools"
-114 |             element={
-115 |               <Suspense fallback={<PageLoader />}>
-116 |                 <Schools />
-117 |               </Suspense>
-118 |             }
-119 |           />
-120 | 
-121 |           <Route
-122 |             path="schools/:id"
-123 |             element={
-124 |               <Suspense fallback={<PageLoader />}>
-125 |                 <SchoolProfile />
-126 |               </Suspense>
-127 |             }
-128 |           />
-129 | 
-130 |           <Route
-131 |             path="employees"
-132 |             element={
-133 |               <ProtectedRoute allowedRoles={["SUPERADMIN"]}>
-134 |                 <Suspense fallback={<PageLoader />}>
-135 |                   <Employees />
-136 |                 </Suspense>
-137 |               </ProtectedRoute>
-138 |             }
-139 |           />
-140 | 
-141 |           <Route
-142 |             path="finance"
-143 |             element={
-144 |               <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
-145 |                 <Suspense fallback={<PageLoader />}>
-146 |                   <Finance />
-147 |                 </Suspense>
-148 |               </ProtectedRoute>
-149 |             }
-150 |           />
-151 | 
-152 |           <Route
-153 |             path="calendar"
-154 |             element={
-155 |               <Suspense fallback={<PageLoader />}>
-156 |                 <CalendarView />
-157 |               </Suspense>
-158 |             }
-159 |           />
-160 |           <Route
-161 |             path="dashboard"
-162 |             element={
-163 |               <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
-164 |                 <Suspense fallback={<PageLoader />}>
-165 |                   <Dashboard />
-166 |                 </Suspense>
-167 |               </ProtectedRoute>
-168 |             }
-169 |           />
-170 | 
-171 |           <Route
-172 |             path="kindergartens"
-173 |             element={
-174 |               <Suspense fallback={<PageLoader />}>
-175 |                 <Kindergartens />
-176 |               </Suspense>
-177 |             }
-178 |           />
-179 | 
-180 |           <Route
-181 |             path="cities/:id"
-182 |             element={
-183 |               <Suspense fallback={<PageLoader />}>
-184 |                 <CityProfile />
-185 |               </Suspense>
-186 |             }
-187 |           />
-188 | 
-189 |           <Route
-190 |             path="events/:id/report"
-191 |             element={
-192 |               <Suspense fallback={<PageLoader />}>
-193 |                 <EventReport />
-194 |               </Suspense>
-195 |             }
-196 |           />
-197 |         </Route>
-198 |       </Routes>
-199 |     </CityProvider>
-200 |   );
-201 | }
-202 | export default function App() {
-203 |   return (
-204 |     <Router>
-205 |       <AuthProvider>
-206 |         <AppRoutes />
-207 |       </AuthProvider>
-208 |     </Router>
-209 |   );
-210 | }
-211 | 
+ 74 |   if (loading) return <PageLoader />;
+ 75 | 
+ 76 |   return (
+ 77 |     <CityProvider>
+ 78 |       <Routes>
+ 79 |         <Route
+ 80 |           path="/login"
+ 81 |           element={
+ 82 |             !isAuthenticated ? (
+ 83 |               <Login onLogin={handleLogin} />
+ 84 |             ) : (
+ 85 |               <Navigate to="/dashboard" replace />
+ 86 |             )
+ 87 |           }
+ 88 |         />
+ 89 | 
+ 90 |         {/* Захищені маршрути (Layout відображає бокове меню) */}
+ 91 |         <Route
+ 92 |           path="/"
+ 93 |           element={
+ 94 |             isAuthenticated ? <Layout /> : <Navigate to="/login" replace />
+ 95 |           }
+ 96 |         >
+ 97 |           <Route index element={<Navigate to="/dashboard" replace />} />
+ 98 | 
+ 99 |           {/* Обгортаємо всі вкладені маршрути в Suspense. 
+100 |               Коли React намагається відрендерити "ліниву" сторінку, він показує fallback (PageLoader), 
+101 |               поки завантажується файл з сервера.
+102 |             */}
+103 |           <Route
+104 |             path="cities"
+105 |             element={
+106 |               <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
+107 |                 <Suspense fallback={<PageLoader />}>
+108 |                   <Cities />
+109 |                 </Suspense>
+110 |               </ProtectedRoute>
+111 |             }
+112 |           />
+113 | 
+114 |           <Route
+115 |             path="schools"
+116 |             element={
+117 |               <Suspense fallback={<PageLoader />}>
+118 |                 <Schools />
+119 |               </Suspense>
+120 |             }
+121 |           />
+122 | 
+123 |           <Route
+124 |             path="schools/:id"
+125 |             element={
+126 |               <Suspense fallback={<PageLoader />}>
+127 |                 <SchoolProfile />
+128 |               </Suspense>
+129 |             }
+130 |           />
+131 | 
+132 |           <Route
+133 |             path="employees"
+134 |             element={
+135 |               <ProtectedRoute allowedRoles={["SUPERADMIN"]}>
+136 |                 <Suspense fallback={<PageLoader />}>
+137 |                   <Employees />
+138 |                 </Suspense>
+139 |               </ProtectedRoute>
+140 |             }
+141 |           />
+142 | 
+143 |           <Route
+144 |             path="finance"
+145 |             element={
+146 |               <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
+147 |                 <Suspense fallback={<PageLoader />}>
+148 |                   <Finance />
+149 |                 </Suspense>
+150 |               </ProtectedRoute>
+151 |             }
+152 |           />
+153 | 
+154 |           <Route
+155 |             path="calendar"
+156 |             element={
+157 |               <Suspense fallback={<PageLoader />}>
+158 |                 <CalendarView />
+159 |               </Suspense>
+160 |             }
+161 |           />
+162 |           <Route
+163 |             path="dashboard"
+164 |             element={
+165 |               <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
+166 |                 <Suspense fallback={<PageLoader />}>
+167 |                   <Dashboard />
+168 |                 </Suspense>
+169 |               </ProtectedRoute>
+170 |             }
+171 |           />
+172 | 
+173 |           <Route
+174 |             path="kindergartens"
+175 |             element={
+176 |               <Suspense fallback={<PageLoader />}>
+177 |                 <Kindergartens />
+178 |               </Suspense>
+179 |             }
+180 |           />
+181 | 
+182 |           <Route
+183 |             path="cities/:id"
+184 |             element={
+185 |               <Suspense fallback={<PageLoader />}>
+186 |                 <CityProfile />
+187 |               </Suspense>
+188 |             }
+189 |           />
+190 | 
+191 |           <Route
+192 |             path="events/:id/report"
+193 |             element={
+194 |               <Suspense fallback={<PageLoader />}>
+195 |                 <EventReport />
+196 |               </Suspense>
+197 |             }
+198 |           />
+199 |         </Route>
+200 | 
+201 |         <Route path="*" element={<NotFound />} />
+202 |       </Routes>
+203 |     </CityProvider>
+204 |   );
+205 | }
+206 | export default function App() {
+207 |   return (
+208 |     <ErrorBoundary>
+209 |       <Router>
+210 |         <AuthProvider>
+211 |           <AppRoutes />
+212 |         </AuthProvider>
+213 |       </Router>
+214 |     </ErrorBoundary>
+215 |   );
+216 | }
+217 | 
 ```
 
 ### File: apps/frontend/src/components/AddressLink.tsx
@@ -10447,6 +10956,63 @@
  45 |   );
  46 | }
  47 | 
+```
+
+### File: apps/frontend/src/components/ErrorBoundary.tsx
+```tsx
+  0 | import React from "react";
+  1 | 
+  2 | interface Props {
+  3 |   children: React.ReactNode;
+  4 | }
+  5 | interface State {
+  6 |   hasError: boolean;
+  7 | }
+  8 | 
+  9 | export default class ErrorBoundary extends React.Component<Props, State> {
+ 10 |   state: State = { hasError: false };
+ 11 | 
+ 12 |   static getDerivedStateFromError() {
+ 13 |     return { hasError: true };
+ 14 |   }
+ 15 | 
+ 16 |   componentDidCatch(error: Error, info: React.ErrorInfo) {
+ 17 |     console.error("Unhandled UI error:", error, info);
+ 18 |   }
+ 19 | 
+ 20 |   handleReload = () => {
+ 21 |     window.location.href = "/";
+ 22 |   };
+ 23 | 
+ 24 |   render() {
+ 25 |     if (this.state.hasError) {
+ 26 |       return (
+ 27 |         <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+ 28 |           <div className="max-w-md w-full bg-white rounded-[24px] shadow-sm border border-slate-100 p-8 text-center">
+ 29 |             <div className="w-16 h-16 rounded-full bg-rose-50 flex items-center justify-center mx-auto mb-4 text-3xl">
+ 30 |               ⚠️
+ 31 |             </div>
+ 32 |             <h1 className="text-xl font-bold text-slate-800 mb-2">
+ 33 |               Щось пішло не так
+ 34 |             </h1>
+ 35 |             <p className="text-sm text-slate-500 mb-6">
+ 36 |               Сталася неочікувана помилка. Спробуйте оновити сторінку — якщо
+ 37 |               проблема повториться, зверніться до адміністратора.
+ 38 |             </p>
+ 39 |             <button
+ 40 |               onClick={this.handleReload}
+ 41 |               className="px-5 py-2.5 rounded-full bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 transition-colors active:scale-95"
+ 42 |             >
+ 43 |               На головну
+ 44 |             </button>
+ 45 |           </div>
+ 46 |         </div>
+ 47 |       );
+ 48 |     }
+ 49 |     return this.props.children;
+ 50 |   }
+ 51 | }
+ 52 | 
 ```
 
 ### File: apps/frontend/src/components/IssueCarousel.tsx
@@ -21230,6 +21796,37 @@
 174 | 
 ```
 
+### File: apps/frontend/src/pages/NotFound.tsx
+```tsx
+  0 | import { useNavigate } from "react-router-dom";
+  1 | 
+  2 | export default function NotFound() {
+  3 |   const navigate = useNavigate();
+  4 |   return (
+  5 |     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+  6 |       <div className="max-w-md w-full bg-white rounded-[24px] shadow-sm border border-slate-100 p-8 text-center">
+  7 |         <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4 text-3xl">
+  8 |           🔍
+  9 |         </div>
+ 10 |         <h1 className="text-xl font-bold text-slate-800 mb-2">
+ 11 |           Сторінку не знайдено
+ 12 |         </h1>
+ 13 |         <p className="text-sm text-slate-500 mb-6">
+ 14 |           Можливо, її було переміщено або видалено.
+ 15 |         </p>
+ 16 |         <button
+ 17 |           onClick={() => navigate("/")}
+ 18 |           className="px-5 py-2.5 rounded-full bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 transition-colors active:scale-95"
+ 19 |         >
+ 20 |           На головну
+ 21 |         </button>
+ 22 |       </div>
+ 23 |     </div>
+ 24 |   );
+ 25 | }
+ 26 | 
+```
+
 ### File: apps/frontend/src/pages/SchoolProfile.tsx
 ```tsx
   0 | import { useState, useMemo, useCallback, lazy, Suspense } from "react";
@@ -22908,85 +23505,47 @@
   0 | const fs = require("fs");
   1 | const path = require("path");
   2 | 
-  3 | // Назва вихідного файлу для результатів аудиту
-  4 | const outputFile = "combined_swagger_seed_audit.md";
+  3 | const outputFile = "telegram_audit.md";
+  4 | fs.writeFileSync(outputFile, "# Аудит: Telegram Bot та Запуск\n\n");
   5 | 
-  6 | fs.writeFileSync(outputFile, "# Аудит: Swagger, Seed, README та Контролери\n\n");
-  7 | 
-  8 | // 1. Конкретні файли для повного збору коду
-  9 | const filesToCollect = [
- 10 |   "README.md",
- 11 |   "collect-code.js",
- 12 |   "apps/backend/prisma/seed-admin.js",
- 13 |   "apps/backend/src/events/events.controller.ts",
- 14 |   "apps/backend/src/events/dto/create-event.dto.ts"
- 15 | ];
- 16 | 
- 17 | let collectedCount = 0;
- 18 | 
- 19 | console.log("🚀 Починаю збір специфічних файлів та аналіз контролерів...\n");
+  6 | // Точкові файли, які нам потрібні
+  7 | const filesToCollect = [
+  8 |   "apps/backend/src/telegram/telegram.module.ts",
+  9 |   "apps/backend/src/telegram/telegram.service.ts",
+ 10 |   "apps/backend/src/main.ts",
+ 11 |   "apps/backend/package.json",
+ 12 |   "package.json", // root package.json
+ 13 |   "Procfile",
+ 14 |   "railway.json",
+ 15 |   "render.yaml"
+ 16 | ];
+ 17 | 
+ 18 | let collectedCount = 0;
+ 19 | console.log("🚀 Починаю збір файлів для Telegram аудиту...\n");
  20 | 
- 21 | // Збір вмісту визначених файлів
- 22 | filesToCollect.forEach((filePath) => {
- 23 |   if (!fs.existsSync(filePath)) {
- 24 |     console.warn(`[!] Файл не знайдено (пропускаю): ${filePath}`);
- 25 |     return;
- 26 |   }
- 27 | 
- 28 |   const content = fs.readFileSync(filePath, "utf-8");
- 29 |   const ext = path.extname(filePath).replace(".", "");
- 30 | 
- 31 |   let lang = ext;
- 32 |   if (["ts", "tsx"].includes(ext)) lang = "typescript";
- 33 |   if (ext === "md") lang = "markdown";
- 34 |   if (ext === "js") lang = "javascript";
- 35 | 
- 36 |   const mdBlock = `### \`${filePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`;
- 37 |   fs.appendFileSync(outputFile, mdBlock);
- 38 |   console.log(`[+] Додано вміст: ${filePath}`);
- 39 |   collectedCount++;
- 40 | });
- 41 | 
- 42 | // 2. Функція для рекурсивного пошуку всіх *.controller.ts (тільки назви/шляхи)
- 43 | function findAllControllers(dir, fileList = []) {
- 44 |   if (!fs.existsSync(dir)) return fileList;
- 45 |   
- 46 |   const files = fs.readdirSync(dir);
- 47 |   
- 48 |   files.forEach((file) => {
- 49 |     const filePath = path.join(dir, file);
- 50 |     const stat = fs.statSync(filePath);
- 51 |     
- 52 |     // Якщо це папка — скануємо рекурсивно, якщо контролер — додаємо у список
- 53 |     if (stat.isDirectory()) {
- 54 |       findAllControllers(filePath, fileList);
- 55 |     } else if (file.endsWith(".controller.ts")) {
- 56 |       // Замінюємо зворотні слеші на прямі (актуально для Windows)
- 57 |       fileList.push(filePath.replace(/\\/g, "/"));
- 58 |     }
- 59 |   });
- 60 |   
- 61 |   return fileList;
- 62 | }
- 63 | 
- 64 | console.log("\n🔍 Сканую директорію apps/backend/src на наявність контролерів...");
- 65 | const backendSrcPath = path.join("apps", "backend", "src");
- 66 | const allControllers = findAllControllers(backendSrcPath);
- 67 | 
- 68 | // Формуємо блок зі списком усіх контролерів (без їхнього вмісту)
- 69 | let controllersMd = "### 📋 Список усіх модулів-контролерів (для оцінки Swagger Tags)\n\n";
- 70 | controllersMd += `Загалом знайдено контролерів: **${allControllers.length}**\n\n\`\`\`text\n`;
- 71 | 
- 72 | allControllers.forEach((controllerPath) => {
- 73 |   controllersMd += `${controllerPath}\n`;
- 74 | });
- 75 | 
- 76 | controllersMd += `\`\`\`\n\n---\n\n`;
- 77 | 
- 78 | fs.appendFileSync(outputFile, controllersMd);
- 79 | console.log(`[+] Згенеровано список з ${allControllers.length} контролерів.`);
- 80 | 
- 81 | console.log(`\n✅ Готово! Результати збережено у ${outputFile}`);
+ 21 | filesToCollect.forEach((filePath) => {
+ 22 |   if (!fs.existsSync(filePath)) {
+ 23 |     console.warn(`[!] Файл не знайдено (це нормально для конфігів деплою, пропускаю): ${filePath}`);
+ 24 |     return;
+ 25 |   }
+ 26 | 
+ 27 |   const content = fs.readFileSync(filePath, "utf-8");
+ 28 |   const ext = path.extname(filePath).replace(".", "");
+ 29 | 
+ 30 |   let lang = ext;
+ 31 |   if (["ts", "tsx"].includes(ext)) lang = "typescript";
+ 32 |   if (ext === "md") lang = "markdown";
+ 33 |   if (ext === "json") lang = "json";
+ 34 |   if (ext === "yaml" || ext === "yml") lang = "yaml";
+ 35 |   if (filePath === "Procfile") lang = "text";
+ 36 | 
+ 37 |   const mdBlock = `### \`${filePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`;
+ 38 |   fs.appendFileSync(outputFile, mdBlock);
+ 39 |   console.log(`[+] Додано вміст: ${filePath}`);
+ 40 |   collectedCount++;
+ 41 | });
+ 42 | 
+ 43 | console.log(`\n✅ Готово! Зібрано файлів: ${collectedCount}. Результати збережено у ${outputFile}`);
 ```
 
 ### File: doc/doc-filelist.js
@@ -23635,6 +24194,158 @@
 403 | 
 ```
 
+### File: load-tests/dashboard.js
+```js
+  0 | import http from "k6/http";
+  1 | import { check, sleep } from "k6";
+  2 | import exec from "k6/execution";
+  3 | 
+  4 | export const options = {
+  5 |   scenarios: {
+  6 |     baseline: {
+  7 |       executor: "constant-vus",
+  8 |       vus: 10,
+  9 |       duration: "1m",
+ 10 |       startTime: "0s",
+ 11 |     },
+ 12 |     peak: {
+ 13 |       executor: "constant-vus",
+ 14 |       vus: 30,
+ 15 |       duration: "1m",
+ 16 |       startTime: "1m10s",
+ 17 |     },
+ 18 |     stress: {
+ 19 |       executor: "constant-vus",
+ 20 |       vus: 60,
+ 21 |       duration: "1m",
+ 22 |       startTime: "2m20s",
+ 23 |     },
+ 24 |   },
+ 25 |   thresholds: {
+ 26 |     "http_req_duration{endpoint:dashboard}": ["p(95)<800"],
+ 27 |     http_req_failed: ["rate<0.02"],
+ 28 |   },
+ 29 | };
+ 30 | 
+ 31 | const BASE_URL = __ENV.BASE_URL || "http://localhost:3000";
+ 32 | const PASSWORD = __ENV.TEST_PASSWORD;
+ 33 | const USER_COUNT = 10;
+ 34 | 
+ 35 | export function setup() {
+ 36 |   const cookieHeaders = [];
+ 37 |   for (let i = 1; i <= USER_COUNT; i++) {
+ 38 |     const email = `loadtest${i}@svitlo-znan.app`;
+ 39 |     const res = http.post(
+ 40 |       `${BASE_URL}/auth/login`,
+ 41 |       JSON.stringify({ email, password: PASSWORD }),
+ 42 |       { headers: { "Content-Type": "application/json" } },
+ 43 |     );
+ 44 |     if (res.status !== 200) {
+ 45 |       throw new Error(`Login failed for ${email}: ${res.status} ${res.body}`);
+ 46 |     }
+ 47 |     const accessToken = res.cookies.access_token[0].value;
+ 48 |     cookieHeaders.push(`access_token=${accessToken}`);
+ 49 |   }
+ 50 |   return { cookieHeaders };
+ 51 | }
+ 52 | 
+ 53 | export default function (data) {
+ 54 |   const idx = (exec.vu.idInTest - 1) % USER_COUNT;
+ 55 |   const cookie = data.cookieHeaders[idx];
+ 56 | 
+ 57 |   const dashRes = http.get(`${BASE_URL}/dashboard/summary`, {
+ 58 |     headers: { Cookie: cookie },
+ 59 |     tags: { endpoint: "dashboard" },
+ 60 |   });
+ 61 |   check(dashRes, {
+ 62 |     "dashboard status 200": (r) => r.status === 200,
+ 63 |     "dashboard has funnel": (r) => JSON.parse(r.body).funnel !== undefined,
+ 64 |   });
+ 65 | 
+ 66 |   sleep(Math.random() * 2 + 1);
+ 67 | }
+ 68 | 
+```
+
+### File: load-tests/school-profile.js
+```js
+  0 | import http from "k6/http";
+  1 | import { check, sleep } from "k6";
+  2 | import exec from "k6/execution";
+  3 | 
+  4 | export const options = {
+  5 |   scenarios: {
+  6 |     baseline: {
+  7 |       executor: "constant-vus",
+  8 |       vus: 10,
+  9 |       duration: "1m",
+ 10 |       startTime: "0s",
+ 11 |     },
+ 12 |     peak: {
+ 13 |       executor: "constant-vus",
+ 14 |       vus: 30,
+ 15 |       duration: "1m",
+ 16 |       startTime: "1m10s",
+ 17 |     },
+ 18 |     stress: {
+ 19 |       executor: "constant-vus",
+ 20 |       vus: 60,
+ 21 |       duration: "1m",
+ 22 |       startTime: "2m20s",
+ 23 |     },
+ 24 |   },
+ 25 |   thresholds: {
+ 26 |     "http_req_duration{endpoint:school}": ["p(95)<600"],
+ 27 |     "http_req_duration{endpoint:events}": ["p(95)<600"],
+ 28 |     http_req_failed: ["rate<0.02"],
+ 29 |   },
+ 30 | };
+ 31 | 
+ 32 | const BASE_URL = __ENV.BASE_URL || "http://localhost:3000";
+ 33 | const PASSWORD = __ENV.TEST_PASSWORD;
+ 34 | const SCHOOL_ID = __ENV.TEST_SCHOOL_ID;
+ 35 | const USER_COUNT = 10;
+ 36 | 
+ 37 | export function setup() {
+ 38 |   const cookieHeaders = [];
+ 39 |   for (let i = 1; i <= USER_COUNT; i++) {
+ 40 |     const email = `loadtest${i}@svitlo-znan.app`;
+ 41 |     const res = http.post(
+ 42 |       `${BASE_URL}/auth/login`,
+ 43 |       JSON.stringify({ email, password: PASSWORD }),
+ 44 |       { headers: { "Content-Type": "application/json" } },
+ 45 |     );
+ 46 |     if (res.status !== 200) {
+ 47 |       throw new Error(`Login failed for ${email}: ${res.status} ${res.body}`);
+ 48 |     }
+ 49 |     const accessToken = res.cookies.access_token[0].value;
+ 50 |     cookieHeaders.push(`access_token=${accessToken}`);
+ 51 |   }
+ 52 |   return { cookieHeaders };
+ 53 | }
+ 54 | 
+ 55 | export default function (data) {
+ 56 |   const idx = (exec.vu.idInTest - 1) % USER_COUNT;
+ 57 |   const cookie = data.cookieHeaders[idx];
+ 58 |   const headers = { Cookie: cookie };
+ 59 | 
+ 60 |   const schoolRes = http.get(`${BASE_URL}/schools/${SCHOOL_ID}`, {
+ 61 |     headers,
+ 62 |     tags: { endpoint: "school" },
+ 63 |   });
+ 64 |   check(schoolRes, { "school status 200": (r) => r.status === 200 });
+ 65 | 
+ 66 |   const eventsRes = http.get(`${BASE_URL}/events/school/${SCHOOL_ID}`, {
+ 67 |     headers,
+ 68 |     tags: { endpoint: "events" },
+ 69 |   });
+ 70 |   check(eventsRes, { "events status 200": (r) => r.status === 200 });
+ 71 | 
+ 72 |   sleep(Math.random() * 2 + 1);
+ 73 | }
+ 74 | 
+```
+
 ### File: package.json
 ```json
   0 | {
@@ -23648,14 +24359,15 @@
   8 |     "test:e2e:frontend": "pnpm --filter frontend test:e2e",
   9 |     "test:e2e": "concurrently --kill-others-on-fail \"pnpm test:e2e:backend\" \"pnpm test:e2e:frontend\"",
  10 |     "test:all": "pnpm test:unit && pnpm test:e2e",
- 11 |     "test:coverage": "concurrently \"pnpm --filter backend test:cov\" \"pnpm --filter frontend test:coverage\""
- 12 |   },
- 13 |   "devDependencies": {
- 14 |     "concurrently": "^8.2.2"
- 15 |   },
- 16 |   "prisma": {
- 17 |     "schema": "apps/backend/prisma/schema.prisma"
- 18 |   }
- 19 | }
- 20 | 
+ 11 |     "test:coverage": "concurrently \"pnpm --filter backend test:cov\" \"pnpm --filter frontend test:coverage\"",
+ 12 |     "seed:demo": "pnpm --filter backend seed:demo"
+ 13 |   },
+ 14 |   "devDependencies": {
+ 15 |     "concurrently": "^8.2.2"
+ 16 |   },
+ 17 |   "prisma": {
+ 18 |     "schema": "apps/backend/prisma/schema.prisma"
+ 19 |   }
+ 20 | }
+ 21 | 
 ```

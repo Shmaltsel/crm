@@ -2,8 +2,16 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
-import StatsBar, { classifySchool } from "../components/schools/StatsBar";
-import { useSchools, useDeleteSchool, useCities } from "../hooks/useApi";
+import {
+  useSchools,
+  useSchoolStats,
+  useDeleteSchool,
+  useCities,
+} from "../hooks/useApi";
+import StatsBar, {
+  classifySchool,
+  classifySize,
+} from "../components/schools/StatsBar";
 import { useQueryClient } from "@tanstack/react-query";
 
 const PIPELINE_STAGES = [
@@ -48,6 +56,13 @@ export default function Kindergartens() {
   });
   const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [sizeFilter, setSizeFilter] = useState<string | null>(null);
+
+  const { data: stats } = useSchoolStats({
+    cityId: selectedCity.id || undefined,
+    type: "Садочок",
+    stage: activeFilter || undefined,
+  });
   const [suggestions, setSuggestions] = useState<
     { name: string; url: string }[]
   >([]);
@@ -178,7 +193,11 @@ export default function Kindergartens() {
     const isFilterMatch = activeFilter
       ? classifySchool(s) === activeFilter
       : true;
-    return isCityMatch && s.type === "Садочок" && isFilterMatch;
+    const isSizeMatch = sizeFilter
+      ? classifySize(s, "Садочок") === sizeFilter
+      : true;
+
+    return isCityMatch && s.type === "Садочок" && isFilterMatch && isSizeMatch;
   });
 
   return (
@@ -238,13 +257,13 @@ export default function Kindergartens() {
       </div>
 
       <StatsBar
-        schools={schools.filter(
-          (s) =>
-            (selectedCity.id ? s.cityId === selectedCity.id : true) &&
-            s.type === "Садочок",
-        )}
+        schoolType="Садочок"
+        statusStats={stats?.statusStats || {}}
+        sizeStats={stats?.sizeStats || {}}
         activeFilter={activeFilter}
         onFilterChange={setActiveFilter}
+        sizeFilter={sizeFilter}
+        onSizeFilterChange={setSizeFilter}
       />
 
       {/* Мобільний вигляд */}

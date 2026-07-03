@@ -1,0 +1,345 @@
+apps
+├── backend
+│   ├── eslint-errors.txt
+│   ├── eslint.config.mjs
+│   ├── nest-cli.json
+│   ├── package.json
+│   ├── prisma
+│   │   ├── dev.db
+│   │   ├── migrations
+│   │   │   ├── 0_init
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20260621171208_add_telegram_id
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20260621174227_add_telegram_chat_id
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20260621185332_add_school_contacts
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20260623140450_add_car_field
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20260628223725_add_expense_salary_items
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20260701224321_balance_to_decimal
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20260701232948_add_missing_indexes
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20260701234519_user_role_enum
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20260701234848_add_host_role
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20260701235202_preparation_status_enum
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20260702123544_add_performance_indexes
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20260702175302_add_audit_log
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20260703211958_event_school_id_date_index
+│   │   │   │   └── migration.sql
+│   │   │   └── migration_lock.toml
+│   │   ├── schema.prisma
+│   │   ├── seed-admin.js
+│   │   └── seed-demo.js
+│   ├── README.md
+│   ├── src
+│   │   ├── app.controller.spec.ts
+│   │   ├── app.controller.ts
+│   │   ├── app.module.ts
+│   │   ├── app.service.ts
+│   │   ├── auth
+│   │   │   ├── auth.controller.spec.ts
+│   │   │   ├── auth.controller.ts
+│   │   │   ├── auth.guard.ts
+│   │   │   ├── auth.module.ts
+│   │   │   ├── auth.service.spec.ts
+│   │   │   ├── auth.service.ts
+│   │   │   ├── csrf.guard.ts
+│   │   │   ├── decorators
+│   │   │   │   ├── check-ownership.decorator.ts
+│   │   │   │   ├── current-user.decorator.ts
+│   │   │   │   └── roles.decorator.ts
+│   │   │   ├── dto
+│   │   │   │   └── login.dto.ts
+│   │   │   ├── guards
+│   │   │   │   ├── ownership.guard.ts
+│   │   │   │   └── roles.guard.ts
+│   │   │   └── interfaces
+│   │   │       └── jwt-user.interface.ts
+│   │   ├── cities
+│   │   │   ├── cities.controller.spec.ts
+│   │   │   ├── cities.controller.ts
+│   │   │   ├── cities.module.ts
+│   │   │   ├── cities.service.spec.ts
+│   │   │   ├── cities.service.ts
+│   │   │   └── dto
+│   │   │       ├── create-city.dto.ts
+│   │   │       └── create-crew.dto.ts
+│   │   ├── common
+│   │   │   ├── cache
+│   │   │   │   └── redis-cache.module.ts
+│   │   │   ├── dto
+│   │   │   │   ├── page-meta.dto.ts
+│   │   │   │   └── page-options.dto.ts
+│   │   │   ├── exceptions
+│   │   │   │   └── app.exception.ts
+│   │   │   ├── feature-flags
+│   │   │   │   ├── feature-flags.module.ts
+│   │   │   │   └── feature-flags.service.ts
+│   │   │   ├── filters
+│   │   │   │   └── all-exceptions.filter.ts
+│   │   │   ├── guards
+│   │   │   │   └── user-throttler.guard.ts
+│   │   │   ├── i18n
+│   │   │   │   ├── i18n.module.ts
+│   │   │   │   ├── i18n.service.ts
+│   │   │   │   └── messages.ts
+│   │   │   ├── interceptors
+│   │   │   │   ├── audit-log.interceptor.ts
+│   │   │   │   └── sanitize.interceptor.ts
+│   │   │   ├── logger
+│   │   │   │   └── logger.module.ts
+│   │   │   └── pipes
+│   │   │       └── localized-validation.pipe.ts
+│   │   ├── config
+│   │   │   └── env.validation.ts
+│   │   ├── dashboard
+│   │   │   ├── dashboard.controller.ts
+│   │   │   ├── dashboard.module.ts
+│   │   │   ├── dashboard.service.spec.ts
+│   │   │   └── dashboard.service.ts
+│   │   ├── events
+│   │   │   ├── dto
+│   │   │   │   ├── add-comment.dto.ts
+│   │   │   │   ├── assign-crew.dto.ts
+│   │   │   │   ├── create-event.dto.ts
+│   │   │   │   ├── event-query.dto.ts
+│   │   │   │   ├── reschedule-event.dto.ts
+│   │   │   │   ├── submit-report.dto.spec.ts
+│   │   │   │   ├── submit-report.dto.ts
+│   │   │   │   ├── update-preparation.dto.ts
+│   │   │   │   └── update-status.dto.ts
+│   │   │   ├── events-scheduler.service.ts
+│   │   │   ├── events.controller.spec.ts
+│   │   │   ├── events.controller.ts
+│   │   │   ├── events.module.ts
+│   │   │   ├── events.service.spec.ts
+│   │   │   └── events.service.ts
+│   │   ├── finance
+│   │   │   ├── create-expense-item.dto.ts
+│   │   │   ├── dto
+│   │   │   │   ├── finance-dashboard-query.dto.ts
+│   │   │   │   └── staff-revenue-query.dto.ts
+│   │   │   ├── finance.controller.ts
+│   │   │   ├── finance.module.ts
+│   │   │   ├── finance.service.spec.ts
+│   │   │   └── finance.service.ts
+│   │   ├── health
+│   │   │   ├── health.controller.ts
+│   │   │   ├── health.module.ts
+│   │   │   ├── indicators
+│   │   │   │   └── redis.health.ts
+│   │   │   └── redis.health.ts
+│   │   ├── instrument.ts
+│   │   ├── issues
+│   │   │   ├── dto
+│   │   │   │   ├── create-issue.dto.ts
+│   │   │   │   └── update-issue-status.dto.ts
+│   │   │   ├── issues.controller.ts
+│   │   │   ├── issues.module.ts
+│   │   │   └── issues.service.ts
+│   │   ├── main.ts
+│   │   ├── metrics
+│   │   │   ├── metrics.controller.ts
+│   │   │   ├── metrics.interceptor.ts
+│   │   │   ├── metrics.module.ts
+│   │   │   └── metrics.service.ts
+│   │   ├── prisma
+│   │   │   ├── prisma.mock.ts
+│   │   │   ├── prisma.module.ts
+│   │   │   ├── prisma.service.spec.ts
+│   │   │   └── prisma.service.ts
+│   │   ├── projects
+│   │   │   ├── dto
+│   │   │   │   └── create-project.dto.ts
+│   │   │   ├── projects.controller.ts
+│   │   │   ├── projects.module.ts
+│   │   │   └── projects.service.ts
+│   │   ├── schools
+│   │   │   ├── dto
+│   │   │   │   ├── bulk-import.dto.ts
+│   │   │   │   ├── create-school.dto.ts
+│   │   │   │   ├── find-contacts-query.dto.ts
+│   │   │   │   ├── find-schools-query.dto.ts
+│   │   │   │   ├── school-query.dto.ts
+│   │   │   │   └── update-school.dto.ts
+│   │   │   ├── parser.service.ts
+│   │   │   ├── school-contacts.seed.ts
+│   │   │   ├── schools.controller.spec.ts
+│   │   │   ├── schools.controller.ts
+│   │   │   ├── schools.module.ts
+│   │   │   ├── schools.service.spec.ts
+│   │   │   └── schools.service.ts
+│   │   ├── telegram
+│   │   │   ├── telegram.module.ts
+│   │   │   └── telegram.service.ts
+│   │   ├── tests
+│   │   └── users
+│   │       ├── dto
+│   │       │   ├── create-user.dto.ts
+│   │       │   └── update-user.dto.ts
+│   │       ├── users.controller.spec.ts
+│   │       ├── users.controller.ts
+│   │       ├── users.module.ts
+│   │       ├── users.service.spec.ts
+│   │       └── users.service.ts
+│   ├── test
+│   │   ├── app.e2e-spec.ts
+│   │   ├── auth.e2e-spec.ts
+│   │   ├── dashboard.e2e-spec.ts
+│   │   ├── events.e2e-spec.ts
+│   │   ├── jest-e2e.json
+│   │   └── schools.e2e-spec.ts
+│   ├── ts-errors.txt
+│   ├── tsconfig.build.json
+│   └── tsconfig.json
+├── docker-compose.yml
+├── Dockerfile
+└── frontend
+    ├── e2e
+    │   ├── login.spec.ts
+    │   └── schools.spec.ts
+    ├── eslint.config.js
+    ├── index.html
+    ├── lighthouserc.cjs
+    ├── package.json
+    ├── playwright-report
+    │   └── index.html
+    ├── playwright.config.ts
+    ├── postcss.config.js
+    ├── public
+    │   ├── favicon.svg
+    │   ├── icons.svg
+    │   └── robots.txt
+    ├── README.md
+    ├── src
+    │   ├── App.css
+    │   ├── App.tsx
+    │   ├── assets
+    │   │   ├── hero.png
+    │   │   ├── react.svg
+    │   │   └── vite.svg
+    │   ├── components
+    │   │   ├── AddressLink.tsx
+    │   │   ├── cities
+    │   │   │   ├── CityDesktopGrid.tsx
+    │   │   │   ├── CityMobileHeader.tsx
+    │   │   │   └── CityMobileList.tsx
+    │   │   ├── city-profile
+    │   │   │   └── CityAnalytics.tsx
+    │   │   ├── dashboard
+    │   │   │   ├── ActivityFeed.tsx
+    │   │   │   ├── CitiesTable.tsx
+    │   │   │   ├── FunnelBar.tsx
+    │   │   │   ├── MonthlyKpi.tsx
+    │   │   │   ├── StaleSchools.tsx
+    │   │   │   ├── TodayEvents.tsx
+    │   │   │   └── UpcomingEvents.tsx
+    │   │   ├── ErrorBoundary.tsx
+    │   │   ├── finance
+    │   │   │   ├── FinanceCharts.tsx
+    │   │   │   └── StaffFinanceView.tsx
+    │   │   ├── IssueCarousel.tsx
+    │   │   ├── Layout.tsx
+    │   │   ├── modals
+    │   │   │   └── EventSchema.ts
+    │   │   ├── PhoneLink.tsx
+    │   │   ├── ProtectedRoute.tsx
+    │   │   ├── school-profile
+    │   │   │   ├── AssignedCrew.tsx
+    │   │   │   ├── CompletedEventModal.tsx
+    │   │   │   ├── EventDetails.tsx
+    │   │   │   ├── EventPreparation.tsx
+    │   │   │   ├── EventsTable.tsx
+    │   │   │   ├── HistoryTimeline.tsx
+    │   │   │   ├── modals
+    │   │   │   │   ├── CommentModal.tsx
+    │   │   │   │   ├── CrewModal.tsx
+    │   │   │   │   ├── EditSchoolModal.tsx
+    │   │   │   │   ├── EventModal.tsx
+    │   │   │   │   ├── EventSchema.ts
+    │   │   │   │   ├── IssueModal.tsx
+    │   │   │   │   ├── ReportModal.tsx
+    │   │   │   │   ├── RescheduleModal.tsx
+    │   │   │   │   └── SchoolEditSchema.ts
+    │   │   │   ├── Pipeline.tsx
+    │   │   │   ├── SchoolInfoCard.tsx
+    │   │   │   └── SchoolProfileHeader.tsx
+    │   │   ├── schools
+    │   │   │   ├── SchoolDesktopTable.tsx
+    │   │   │   ├── SchoolMobileList.tsx
+    │   │   │   ├── schoolUtils.ts
+    │   │   │   ├── StatsBar.tsx
+    │   │   │   └── VirtualDesktopTable.tsx
+    │   │   ├── ui
+    │   │   │   ├── OptimizedImage.tsx
+    │   │   │   └── Skeleton.tsx
+    │   │   └── VirtualSchoolList.tsx
+    │   ├── config
+    │   │   └── api.ts
+    │   ├── context
+    │   │   ├── AuthContext.tsx
+    │   │   └── CityContext.tsx
+    │   ├── hooks
+    │   │   ├── useApi.ts
+    │   │   ├── useCalendar.ts
+    │   │   ├── useCities.ts
+    │   │   ├── useEmployees.ts
+    │   │   └── useSchoolProfile.ts
+    │   ├── index.css
+    │   ├── main.tsx
+    │   ├── pages
+    │   │   ├── CalendarView.tsx
+    │   │   ├── Cities.tsx
+    │   │   ├── CityProfile.tsx
+    │   │   ├── Dashboard.tsx
+    │   │   ├── Employees.tsx
+    │   │   ├── EventReport.tsx
+    │   │   ├── Events.tsx
+    │   │   ├── Finance.tsx
+    │   │   ├── Kindergartens.tsx
+    │   │   ├── Login.tsx
+    │   │   ├── NotFound.tsx
+    │   │   ├── SchoolProfile.tsx
+    │   │   └── Schools.tsx
+    │   ├── tests
+    │   │   ├── component
+    │   │   │   ├── EventReport.test.tsx
+    │   │   │   ├── EventsTable.test.tsx
+    │   │   │   ├── Pipeline.test.tsx
+    │   │   │   └── SchoolCard.test.tsx
+    │   │   ├── mocks
+    │   │   │   ├── handlers.ts
+    │   │   │   └── server.ts
+    │   │   ├── setup.ts
+    │   │   └── unit
+    │   │       ├── formatCurrency.test.ts
+    │   │       ├── hooks
+    │   │       └── schoolUtils.test.ts
+    │   ├── types
+    │   │   └── index.ts
+    │   └── utils
+    │       ├── formatCurrency.ts
+    │       └── preparationStatus.ts
+    ├── tailwind.config.js
+    ├── tsconfig.app.json
+    ├── tsconfig.json
+    ├── tsconfig.node.json
+    ├── vercel.json
+    └── vite.config.ts
+
+packages
+└── shared
+
+scripts
+├── backup.sh
+└── restore.sh
+
