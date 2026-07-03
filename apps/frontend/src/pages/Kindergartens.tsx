@@ -188,17 +188,23 @@ export default function Kindergartens() {
     await deleteSchool.mutateAsync(schoolId);
   };
 
-  const filteredKindergartens = schools.filter((s) => {
-    const isCityMatch = selectedCity.id ? s.cityId === selectedCity.id : true;
-    const isFilterMatch = activeFilter
-      ? classifySchool(s) === activeFilter
-      : true;
-    const isSizeMatch = sizeFilter
-      ? classifySize(s, "Садочок") === sizeFilter
-      : true;
+  const filteredKindergartens = Array.isArray(schools)
+    ? schools.filter((s) => {
+        const isCityMatch = selectedCity.id
+          ? s.cityId === selectedCity.id
+          : true;
+        const isFilterMatch = activeFilter
+          ? classifySchool(s) === activeFilter
+          : true;
+        const isSizeMatch = sizeFilter
+          ? classifySize(s, "Садочок") === sizeFilter
+          : true;
 
-    return isCityMatch && s.type === "Садочок" && isFilterMatch && isSizeMatch;
-  });
+        return (
+          isCityMatch && s.type === "Садочок" && isFilterMatch && isSizeMatch
+        );
+      })
+    : [];
 
   return (
     <div className="p-4 md:p-8 h-full max-w-[100vw]">
