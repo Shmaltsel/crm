@@ -27,6 +27,7 @@ import { Throttle } from '@nestjs/throttler';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { OwnershipGuard } from '../auth/guards/ownership.guard';
 import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @ApiTags('Events')
 @ApiCookieAuth('access_token')
