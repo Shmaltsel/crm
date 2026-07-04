@@ -65,12 +65,9 @@ export default function Kindergartens() {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [sizeFilter, setSizeFilter] = useState<string | null>(null);
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [suggestions, setSuggestions] = useState;
-  {
-    name: string;
-    url: string;
-  }
-  [] > [];
+  const [suggestions, setSuggestions] = useState<
+    { name: string; url: string }[]
+  >([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [dotCount, setDotCount] = useState(3);
