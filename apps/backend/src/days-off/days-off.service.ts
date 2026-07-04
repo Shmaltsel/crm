@@ -65,6 +65,13 @@ export class DaysOffService {
       throw new ForbiddenException('Недостатньо прав');
     }
 
+    // Перевіряємо, чи вже існує вихідний, щоб не слати спам, якщо він просто оновлюється
+    const existing = await this.prisma.dayOff.findUnique({
+      where: {
+        userId_date: { userId: targetUserId, date: new Date(dto.date) },
+      },
+    });
+
     const dayOff = await this.prisma.dayOff.upsert({
       where: {
         userId_date: { userId: targetUserId, date: new Date(dto.date) },
@@ -80,15 +87,25 @@ export class DaysOffService {
       },
     });
 
-    if (isStaff) {
-      await this.notifyManager(dayOff.user.cityId, dayOff.user.name, dto.date);
+    // Сповіщаємо менеджера, якщо вихідний створено вперше
+    if (!existing) {
+      await this.notifyManager(
+        dayOff.user.cityId,
+        dayOff.user.name,
+        dto.date,
+        'created',
+      );
     }
 
     return dayOff;
   }
 
   async remove(id: string, currentUser: JwtUser) {
-    const dayOff = await this.prisma.dayOff.findUnique({ where: { id } });
+    const dayOff = await this.prisma.dayOff.findUnique({
+      where: { id },
+      include: { user: { select: { name: true, cityId: true } } },
+    });
+
     if (!dayOff)
       throw new AppException('DAY_OFF_NOT_FOUND', HttpStatus.NOT_FOUND);
 
@@ -100,10 +117,7 @@ export class DaysOffService {
     }
 
     if (currentUser.role === 'MANAGER' && !isOwner) {
-      const target = await this.prisma.user.findUnique({
-        where: { id: dayOff.userId },
-      });
-      if (target?.cityId !== currentUser.cityId) {
+      if (dayOff.user.cityId !== currentUser.cityId) {
         throw new ForbiddenException(
           'Можна скасовувати вихідні лише співробітникам свого міста',
         );
@@ -111,6 +125,15 @@ export class DaysOffService {
     }
 
     await this.prisma.dayOff.delete({ where: { id } });
+
+    // Сповіщаємо менеджера про скасування
+    await this.notifyManager(
+      dayOff.user.cityId,
+      dayOff.user.name,
+      dayOff.date.toISOString(),
+      'removed',
+    );
+
     return { success: true };
   }
 
@@ -118,6 +141,7 @@ export class DaysOffService {
     cityId: string | null,
     staffName: string,
     date: string,
+    action: 'created' | 'removed',
   ) {
     if (!cityId) return;
     const city = await this.prisma.city.findUnique({ where: { id: cityId } });
@@ -126,11 +150,13 @@ export class DaysOffService {
     const manager = await this.prisma.user.findUnique({
       where: { id: city.managerId },
     });
+
     const chatId =
       manager?.telegramChatId ||
       (manager?.telegramId && /^\d+$/.test(manager.telegramId)
         ? manager.telegramId
         : null);
+
     if (!chatId) return;
 
     const dateStr = new Date(date).toLocaleDateString('uk-UA', {
@@ -138,10 +164,11 @@ export class DaysOffService {
       month: 'long',
       year: 'numeric',
     });
+
     const msg =
-      `🌴 <b>Призначено вихідний</b>\n\n` +
-      `👤 <b>Співробітник:</b> ${staffName}\n` +
-      `📅 <b>Дата:</b> ${dateStr}`;
+      action === 'created'
+        ? `🌴 <b>Призначено вихідний</b>\n\n👤 <b>Співробітник:</b> ${staffName}\n📅 <b>Дата:</b> ${dateStr}`
+        : `❌ <b>Скасовано вихідний</b>\n\n👤 <b>Співробітник:</b> ${staffName}\n📅 <b>Дата:</b> ${dateStr}`;
 
     await this.telegramService.sendMessage(chatId, msg);
   }
