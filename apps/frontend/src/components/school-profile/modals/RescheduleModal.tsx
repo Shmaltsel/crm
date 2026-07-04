@@ -32,12 +32,17 @@ export default function RescheduleModal({
 
   if (!isOpen) return null;
 
-  const handleSave = () => {
-    onClose();
-    onSuccess();
-    api.patch(`/events/${eventId}/reschedule`, { date, time }).catch((e) => {
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      await api.patch(`/events/${eventId}/reschedule`, { date, time });
+      onClose();
+      onSuccess();
+    } catch (e) {
       console.error("Помилка перенесення:", e);
-    });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return createPortal(

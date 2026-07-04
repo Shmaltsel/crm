@@ -20,6 +20,8 @@ import { LoginDto } from './dto/login.dto';
 
 const isProd = process.env.NODE_ENV === 'production';
 
+const cookieDomain = isProd ? '.svitlo-znan.app' : undefined;
+
 function setAuthCookies(
   res: Response,
   accessToken: string,
@@ -30,12 +32,14 @@ function setAuthCookies(
     httpOnly: true,
     secure: isProd,
     sameSite: isProd ? 'none' : 'lax',
+    domain: cookieDomain,
     maxAge: 15 * 60 * 1000,
   });
   res.cookie('refresh_token', refreshToken, {
     httpOnly: true,
     secure: isProd,
     sameSite: isProd ? 'none' : 'lax',
+    domain: cookieDomain,
     path: '/auth',
     maxAge: 30 * 24 * 60 * 60 * 1000,
   });
@@ -43,6 +47,7 @@ function setAuthCookies(
     httpOnly: false,
     secure: isProd,
     sameSite: isProd ? 'none' : 'lax',
+    domain: cookieDomain,
     maxAge: 24 * 60 * 60 * 1000,
   });
 }
@@ -124,9 +129,9 @@ export class AuthController {
     const refreshToken = req.cookies?.refresh_token;
     if (refreshToken) await this.authService.revokeRefreshToken(refreshToken);
 
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token', { path: '/auth' });
-    res.clearCookie('csrf_token');
+    res.clearCookie('access_token', { domain: cookieDomain });
+    res.clearCookie('refresh_token', { path: '/auth', domain: cookieDomain });
+    res.clearCookie('csrf_token', { domain: cookieDomain });
     return { message: 'ok' };
   }
 }
