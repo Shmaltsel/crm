@@ -25,8 +25,7 @@ export const SchoolCard = React.memo(({ school, onDelete, stages, index = 0 }: S
 
   return (
     <div
-      className="school-row-enter bg-white rounded-2xl border border-slate-100 p-4 shadow-sm transition-all hover:shadow-md hover:border-blue-200 cursor-pointer active:scale-[0.99]"
-      style={{ animationDelay: `${Math.min(index * 40, 400)}ms`, animationFillMode: "both" }}
+      className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm transition-all hover:shadow-md hover:border-blue-200 cursor-pointer active:scale-[0.99]"
       onClick={() => navigate(`/schools/${school.id}`)}
     >
       <div className="flex items-start justify-between gap-2">

@@ -1,11 +1,13 @@
 import { useRef, useEffect } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import type { School } from "../types";
 
 interface VirtualSchoolListProps {
-  schools: any[];
-  renderItem: (school: any, index: number) => JSX.Element;
+  schools: School[];
+  renderItem: (school: School, index: number) => JSX.Element;
   itemHeight?: number;
   onEndReached?: () => void;
+  animationKey?: string | number;
 }
 
 export default function VirtualSchoolList({
@@ -13,6 +15,7 @@ export default function VirtualSchoolList({
   renderItem,
   itemHeight = 120,
   onEndReached,
+  animationKey,
 }: VirtualSchoolListProps) {
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -35,7 +38,18 @@ export default function VirtualSchoolList({
 
   return (
     <div ref={parentRef} className="h-[calc(100vh-200px)] overflow-auto w-full">
+      <style>{`
+        @keyframes schoolRowIn {
+          from { opacity: 0; transform: translateX(-14px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        .school-row-enter {
+          animation: schoolRowIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          animation-fill-mode: both;
+        }
+      `}</style>
       <div
+        key={animationKey}
         style={{
           height: `${rowVirtualizer.getTotalSize()}px`,
           width: "100%",
@@ -52,7 +66,9 @@ export default function VirtualSchoolList({
               width: "100%",
               height: `${virtualRow.size}px`,
               transform: `translateY(${virtualRow.start}px)`,
+              animationDelay: `${Math.min(virtualRow.index * 40, 400)}ms`,
             }}
+            className="school-row-enter"
           >
             {renderItem(schools[virtualRow.index], virtualRow.index)}
           </div>
