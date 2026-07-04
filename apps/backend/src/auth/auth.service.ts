@@ -37,6 +37,9 @@ export class AuthService {
     return token;
   }
 
+  private readonly dummyHash =
+    '$2b$10$CwTycUXWue0Thq9StjUM0uJ8lm7zqBWkD3hAvQi.jGjPUB0.wERYS';
+
   async login(
     email: string,
     pass: string,
@@ -44,13 +47,12 @@ export class AuthService {
   ) {
     const user = await this.usersService.findByEmail(email);
 
-    if (!user) {
-      throw new AppException('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
-    }
+    const isPasswordValid = await bcrypt.compare(
+      pass,
+      user?.password ?? this.dummyHash,
+    );
 
-    const isPasswordValid = await bcrypt.compare(pass, user.password);
-
-    if (!isPasswordValid) {
+    if (!user || !isPasswordValid) {
       throw new AppException('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
     }
 
