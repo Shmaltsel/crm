@@ -1702,6 +1702,8 @@ import { LoginDto } from './dto/login.dto';
 
 const isProd = process.env.NODE_ENV === 'production';
 
+const cookieDomain = isProd ? '.svitlo-znan.app' : undefined;
+
 function setAuthCookies(
   res: Response,
   accessToken: string,
@@ -1712,12 +1714,14 @@ function setAuthCookies(
     httpOnly: true,
     secure: isProd,
     sameSite: isProd ? 'none' : 'lax',
+    domain: cookieDomain,
     maxAge: 15 * 60 * 1000,
   });
   res.cookie('refresh_token', refreshToken, {
     httpOnly: true,
     secure: isProd,
     sameSite: isProd ? 'none' : 'lax',
+    domain: cookieDomain,
     path: '/auth',
     maxAge: 30 * 24 * 60 * 60 * 1000,
   });
@@ -1725,6 +1729,7 @@ function setAuthCookies(
     httpOnly: false,
     secure: isProd,
     sameSite: isProd ? 'none' : 'lax',
+    domain: cookieDomain,
     maxAge: 24 * 60 * 60 * 1000,
   });
 }
@@ -1806,9 +1811,9 @@ export class AuthController {
     const refreshToken = req.cookies?.refresh_token;
     if (refreshToken) await this.authService.revokeRefreshToken(refreshToken);
 
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token', { path: '/auth' });
-    res.clearCookie('csrf_token');
+    res.clearCookie('access_token', { domain: cookieDomain });
+    res.clearCookie('refresh_token', { path: '/auth', domain: cookieDomain });
+    res.clearCookie('csrf_token', { domain: cookieDomain });
     return { message: 'ok' };
   }
 }
@@ -1966,6 +1971,12 @@ export class AuthService {
       user?.password ?? this.dummyHash,
     );
 
+    console.log('AUTH DEBUG', {
+      found: !!user,
+      hashPrefix: user?.password?.slice(0, 7),
+      isPasswordValid,
+    });
+
     if (!user || !isPasswordValid) {
       throw new AppException('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
     }
@@ -2055,12 +2066,21 @@ import {
 
 @Injectable()
 export class CsrfGuard implements CanActivate {
+  private readonly exemptPaths = ['/auth/login'];
+
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest();
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return true;
+    if (this.exemptPaths.includes(req.path)) return true;
 
     const cookieToken = req.cookies?.csrf_token;
     const headerToken = req.headers['x-csrf-token'];
+    console.log('CSRF DEBUG', {
+      path: req.path,
+      cookieToken,
+      headerToken,
+      allCookies: Object.keys(req.cookies || {}),
+    });
     if (!cookieToken || cookieToken !== headerToken) {
       throw new ForbiddenException('CSRF token invalid');
     }
@@ -2452,22 +2472,23 @@ export class CitiesService {
   }
 
   async findAll() {
-    const cities = await this.prisma.city.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        users: {
-          where: { role: 'MANAGER' },
-          select: { id: true, name: true, phone: true },
-          take: 1,
+    const [cities, eventsStats] = await Promise.all([
+      this.prisma.city.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: {
+          users: {
+            where: { role: 'MANAGER' },
+            select: { id: true, name: true, phone: true },
+            take: 1,
+          },
+          _count: { select: { schools: true } },
         },
-        _count: { select: { schools: true } },
-      },
-    });
-
-    const eventsStats = await this.prisma.event.groupBy({
-      by: ['cityId', 'status'],
-      _count: { _all: true },
-    });
+      }),
+      this.prisma.event.groupBy({
+        by: ['cityId', 'status'],
+        _count: { _all: true },
+      }),
+    ]);
 
     return cities.map((city) => {
       const cityStats = eventsStats.filter((stat) => stat.cityId === city.id);
@@ -4469,20 +4490,20 @@ export class EventsSchedulerService implements OnModuleInit {
   async checkEventsForTomorrow() {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
+
     const startOfTomorrow = new Date(tomorrow.setHours(0, 0, 0, 0));
     const endOfTomorrow = new Date(tomorrow.setHours(23, 59, 59, 999));
 
     const events = await this.prisma.event.findMany({
       where: {
         date: { gte: startOfTomorrow, lte: endOfTomorrow },
-        status: { not: 'RE_SALE' }
+        status: { not: 'RE_SALE' },
       },
       include: {
         crew: { include: { host: true, driver: true } },
         school: true,
-        city: true
-      }
+        city: true,
+      },
     });
 
     for (const event of events) {
@@ -4497,7 +4518,8 @@ export class EventsSchedulerService implements OnModuleInit {
     if (!user || (!user.telegramChatId && !user.telegramId)) return;
 
     const chatId = user.telegramChatId || user.telegramId;
-    const message = `🔔 <b>Нагадування про подію!</b>\n\n` +
+    const message =
+      `🔔 <b>Нагадування про подію!</b>\n\n` +
       `👤 <b>Роль:</b> ${roleLabel}\n` +
       `📅 <b>Дата:</b> завтра\n` +
       `🏫 <b>Заклад:</b> ${event.school?.name || '—'}\n` +
@@ -5194,11 +5216,7 @@ describe('EventsService', () => {
         history: [],
       });
 
-      await service.submitReport(
-        'ev-1',
-        withoutRating as typeof reportData,
-        mockUser,
-      );
+      await service.submitReport('ev-1', withoutRating, mockUser);
 
       const call = mockPrisma.eventReport.upsert.mock.calls[0][0];
       expect(call.update.rating).toBeUndefined();
@@ -5246,8 +5264,6 @@ import {
 import { EventQueryDto } from './dto/event-query.dto';
 import { PageMetaDto } from '../common/dto/page-meta.dto';
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
-
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 const FIELD_ROLES = ['DRIVER', 'HOST'];
 
@@ -6341,28 +6357,21 @@ export class FinanceService {
       ...(project ? { project } : {}),
     };
 
-    const kpiAgg = await this.prisma.eventReport.aggregate({
-      where: { event: baseEventWhere },
-      _sum: { totalSum: true, remainderSum: true },
-      _count: { eventId: true },
-    });
+    const [kpiAgg, expensesRaw] = await Promise.all([
+      this.prisma.eventReport.aggregate({
+        where: { event: baseEventWhere },
+        _sum: { totalSum: true, remainderSum: true },
+        _count: { eventId: true },
+      }),
+      this.prisma.expenseItem.findMany({
+        where: { report: { event: baseEventWhere } },
+        select: { category: true, name: true, amount: true },
+      }),
+    ]);
 
     const totalRevenue = kpiAgg._sum.totalSum ?? 0;
     const totalProfit = kpiAgg._sum.remainderSum ?? 0;
     const totalEvents = kpiAgg._count.eventId ?? 0;
-
-    const expensesRaw = await this.prisma.expenseItem.findMany({
-      where: {
-        report: {
-          event: baseEventWhere,
-        },
-      },
-      select: {
-        category: true,
-        name: true,
-        amount: true,
-      },
-    });
 
     const expCatMap: Record<string, number> = {};
     let totalExpenses = 0;
@@ -6386,19 +6395,33 @@ export class FinanceService {
       revenue: number;
       profit: number;
     };
-    const monthlyRaw = await this.prisma.$queryRaw<MonthlyRow[]>`
-      SELECT
-        EXTRACT(YEAR  FROM e.date)::int                   AS year,
-        EXTRACT(MONTH FROM e.date)::int                   AS month,
-        COALESCE(SUM(r."totalSum"),      0)::float        AS revenue,
-        COALESCE(SUM(r."remainderSum"),  0)::float        AS profit
-      FROM "Event" e
-      JOIN "EventReport" r ON r."eventId" = e.id
-      WHERE e.status = 'RE_SALE'
-      ${filters}
-      GROUP BY year, month
-      ORDER BY year, month
-    `;
+    const [monthlyRaw, plannedAgg, projectsRaw, cities] = await Promise.all([
+      this.prisma.$queryRaw<MonthlyRow[]>`
+        SELECT
+          EXTRACT(YEAR  FROM e.date)::int                   AS year,
+          EXTRACT(MONTH FROM e.date)::int                   AS month,
+          COALESCE(SUM(r."totalSum"),      0)::float        AS revenue,
+          COALESCE(SUM(r."remainderSum"),  0)::float        AS profit
+        FROM "Event" e
+        JOIN "EventReport" r ON r."eventId" = e.id
+        WHERE e.status = 'RE_SALE'
+        ${filters}
+        GROUP BY year, month
+        ORDER BY year, month
+      `,
+      this.prisma.event.aggregate({
+        where: {
+          status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
+          ...(cityId ? { cityId } : {}),
+        },
+        _sum: { price: true },
+      }),
+      this.prisma.event.findMany({
+        select: { project: true },
+        distinct: ['project'],
+      }),
+      this.prisma.city.findMany({ select: { id: true, name: true } }),
+    ]);
 
     const monthly = monthlyRaw.map((row) => ({
       month: new Date(row.year, row.month - 1, 1).toLocaleString('uk-UA', {
@@ -6408,22 +6431,7 @@ export class FinanceService {
       revenue: row.revenue,
       profit: row.profit,
     }));
-
-    const plannedAgg = await this.prisma.event.aggregate({
-      where: {
-        status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
-        ...(cityId ? { cityId } : {}),
-      },
-      _sum: { price: true },
-    });
     const expectedRevenue = plannedAgg._sum.price ?? 0;
-    const [projectsRaw, cities] = await Promise.all([
-      this.prisma.event.findMany({
-        select: { project: true },
-        distinct: ['project'],
-      }),
-      this.prisma.city.findMany({ select: { id: true, name: true } }),
-    ]);
     const filterOptions = {
       projects: projectsRaw.map((p) => p.project).filter(Boolean),
       cities,
@@ -6441,69 +6449,72 @@ export class FinanceService {
     }
 
     type ProjectRow = { project: string; value: number };
-    const byProjectRows = await this.prisma.$queryRaw<ProjectRow[]>`
-      SELECT
-        COALESCE(e.project, 'Інше')              AS project,
-        COALESCE(SUM(r."totalSum"), 0)::float    AS value
-      FROM "Event" e
-      JOIN "EventReport" r ON r."eventId" = e.id
-      WHERE e.status = 'RE_SALE'
-      ${filters}
-      GROUP BY e.project
-      ORDER BY value DESC
-    `;
-    const byProject = byProjectRows.map((r) => ({
-      name: r.project,
-      value: r.value,
-    }));
     type CityRow = {
       cityId: string;
       name: string;
       revenue: number;
       profit: number;
     };
-    const topCitiesRows = await this.prisma.$queryRaw<CityRow[]>`
-      SELECT
-        e."cityId",
-        COALESCE(c.name, '—')                    AS name,
-        COALESCE(SUM(r."totalSum"),     0)::float AS revenue,
-        COALESCE(SUM(r."remainderSum"), 0)::float AS profit
-      FROM "Event" e
-      JOIN "EventReport" r ON r."eventId" = e.id
-      LEFT JOIN "City" c   ON c.id = e."cityId"
-      WHERE e.status = 'RE_SALE'
-      ${filters}
-      GROUP BY e."cityId", c.name
-      ORDER BY revenue DESC
-      LIMIT 5
-    `;
-    const topCities = topCitiesRows.map(({ name, revenue, profit }) => ({
-      name,
-      revenue,
-      profit,
-    }));
-
     type SchoolRow = {
       schoolId: string;
       name: string;
       count: number;
       revenue: number;
     };
-    const topSchoolsRows = await this.prisma.$queryRaw<SchoolRow[]>`
-      SELECT
-        e."schoolId",
-        COALESCE(s.name, '—')                    AS name,
-        COUNT(e.id)::int                         AS count,
-        COALESCE(SUM(r."totalSum"), 0)::float    AS revenue
-      FROM "Event" e
-      JOIN "EventReport" r ON r."eventId" = e.id
-      LEFT JOIN "School" s ON s.id = e."schoolId"
-      WHERE e.status = 'RE_SALE'
-      ${filters}
-      GROUP BY e."schoolId", s.name
-      ORDER BY revenue DESC
-      LIMIT 5
-    `;
+
+    const [byProjectRows, topCitiesRows, topSchoolsRows] = await Promise.all([
+      this.prisma.$queryRaw<ProjectRow[]>`
+        SELECT
+          COALESCE(e.project, 'Інше')              AS project,
+          COALESCE(SUM(r."totalSum"), 0)::float    AS value
+        FROM "Event" e
+        JOIN "EventReport" r ON r."eventId" = e.id
+        WHERE e.status = 'RE_SALE'
+        ${filters}
+        GROUP BY e.project
+        ORDER BY value DESC
+      `,
+      this.prisma.$queryRaw<CityRow[]>`
+        SELECT
+          e."cityId",
+          COALESCE(c.name, '—')                    AS name,
+          COALESCE(SUM(r."totalSum"),     0)::float AS revenue,
+          COALESCE(SUM(r."remainderSum"), 0)::float AS profit
+        FROM "Event" e
+        JOIN "EventReport" r ON r."eventId" = e.id
+        LEFT JOIN "City" c   ON c.id = e."cityId"
+        WHERE e.status = 'RE_SALE'
+        ${filters}
+        GROUP BY e."cityId", c.name
+        ORDER BY revenue DESC
+        LIMIT 5
+      `,
+      this.prisma.$queryRaw<SchoolRow[]>`
+        SELECT
+          e."schoolId",
+          COALESCE(s.name, '—')                    AS name,
+          COUNT(e.id)::int                         AS count,
+          COALESCE(SUM(r."totalSum"), 0)::float    AS revenue
+        FROM "Event" e
+        JOIN "EventReport" r ON r."eventId" = e.id
+        LEFT JOIN "School" s ON s.id = e."schoolId"
+        WHERE e.status = 'RE_SALE'
+        ${filters}
+        GROUP BY e."schoolId", s.name
+        ORDER BY revenue DESC
+        LIMIT 5
+      `,
+    ]);
+
+    const byProject = byProjectRows.map((r) => ({
+      name: r.project,
+      value: r.value,
+    }));
+    const topCities = topCitiesRows.map(({ name, revenue, profit }) => ({
+      name,
+      revenue,
+      profit,
+    }));
     const topSchools = topSchoolsRows.map(({ name, count, revenue }) => ({
       name,
       count,
@@ -7190,6 +7201,7 @@ import { MetricsInterceptor } from './metrics.interceptor';
   exports: [MetricsService],
 })
 export class MetricsModule {}
+
 ```
 
 # FILE: apps/backend/src/metrics/metrics.service.ts
@@ -8974,7 +8986,9 @@ export class SchoolsController {
     private readonly parserService: ParserService,
   ) {}
 
-  @ApiOperation({ summary: 'Масовий імпорт шкіл/садочків із зовнішнього джерела' })
+  @ApiOperation({
+    summary: 'Масовий імпорт шкіл/садочків із зовнішнього джерела',
+  })
   @Post('bulk-import')
   @Throttle({ default: { ttl: 300000, limit: 2 } })
   @Roles('SUPERADMIN', 'MANAGER')

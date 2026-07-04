@@ -2357,6 +2357,7 @@ export default function Schools() {
               schools={filteredSchools}
               itemHeight={110}
               onEndReached={handleLoadMore}
+              animationKey={`${activeFilter}-${sizeFilter}`}
               renderItem={(school, index) => (
                 <div
                   className="pb-2.5"

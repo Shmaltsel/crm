@@ -1,10 +1,10 @@
 {
   "mode": "audit",
-  "generatedAt": "2026-07-04T11:37:15.094Z",
+  "generatedAt": "2026-07-04T13:30:17.529Z",
   "totals": {
     "files": 243,
-    "lines": 24204,
-    "estimatedTokens": 328031,
+    "lines": 24259,
+    "estimatedTokens": 328502,
     "bundles": 5
   },
   "byExtension": {

@@ -3582,14 +3582,16 @@ export default function IssueCarousel() {
 # FILE: apps/frontend/src/components/Layout.tsx
 
 ```
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, useLocation, useOutlet } from "react-router-dom";
 import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useSelectedCity } from "../context/CityContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 
 export default function Layout() {
   const location = useLocation();
+  const outlet = useOutlet();
   const queryClient = useQueryClient();
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -3760,7 +3762,20 @@ export default function Layout() {
 
       {/* Головна область */}
       <main className="flex-1 overflow-y-auto mt-16 md:mt-0 relative w-full">
-        <Outlet />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            onAnimationComplete={() =>
+              window.dispatchEvent(new Event("resize"))
+            }
+          >
+            {outlet}
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );
@@ -5890,12 +5905,17 @@ export default function RescheduleModal({
 
   if (!isOpen) return null;
 
-  const handleSave = () => {
-    onClose();
-    onSuccess();
-    api.patch(`/events/${eventId}/reschedule`, { date, time }).catch((e) => {
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      await api.patch(`/events/${eventId}/reschedule`, { date, time });
+      onClose();
+      onSuccess();
+    } catch (e) {
       console.error("Помилка перенесення:", e);
-    });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return createPortal(
@@ -6392,8 +6412,7 @@ export const SchoolCard = React.memo(({ school, onDelete, stages, index = 0 }: S
 
   return (
     <div
-      className="school-row-enter bg-white rounded-2xl border border-slate-100 p-4 shadow-sm transition-all hover:shadow-md hover:border-blue-200 cursor-pointer active:scale-[0.99]"
-      style={{ animationDelay: `${Math.min(index * 40, 400)}ms`, animationFillMode: "both" }}
+      className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm transition-all hover:shadow-md hover:border-blue-200 cursor-pointer active:scale-[0.99]"
       onClick={() => navigate(`/schools/${school.id}`)}
     >
       <div className="flex items-start justify-between gap-2">
@@ -6853,12 +6872,14 @@ export const SkeletonCard = () => (
 ```
 import { useRef, useEffect } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import type { School } from "../types";
 
 interface VirtualSchoolListProps {
-  schools: any[];
-  renderItem: (school: any, index: number) => JSX.Element;
+  schools: School[];
+  renderItem: (school: School, index: number) => JSX.Element;
   itemHeight?: number;
   onEndReached?: () => void;
+  animationKey?: string | number;
 }
 
 export default function VirtualSchoolList({
@@ -6866,6 +6887,7 @@ export default function VirtualSchoolList({
   renderItem,
   itemHeight = 120,
   onEndReached,
+  animationKey,
 }: VirtualSchoolListProps) {
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -6888,7 +6910,18 @@ export default function VirtualSchoolList({
 
   return (
     <div ref={parentRef} className="h-[calc(100vh-200px)] overflow-auto w-full">
+      <style>{`
+        @keyframes schoolRowIn {
+          from { opacity: 0; transform: translateX(-14px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        .school-row-enter {
+          animation: schoolRowIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          animation-fill-mode: both;
+        }
+      `}</style>
       <div
+        key={animationKey}
         style={{
           height: `${rowVirtualizer.getTotalSize()}px`,
           width: "100%",
@@ -6907,7 +6940,14 @@ export default function VirtualSchoolList({
               transform: `translateY(${virtualRow.start}px)`,
             }}
           >
-            {renderItem(schools[virtualRow.index], virtualRow.index)}
+            <div
+              className="school-row-enter"
+              style={{
+                animationDelay: `${Math.min(virtualRow.index * 40, 400)}ms`,
+              }}
+            >
+              {renderItem(schools[virtualRow.index], virtualRow.index)}
+            </div>
           </div>
         ))}
       </div>

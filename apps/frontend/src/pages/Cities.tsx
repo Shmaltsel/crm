@@ -2,6 +2,7 @@ import React, { useState, useCallback, lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { useSelectedCity } from "../context/CityContext";
 import { useCities, useAddCity } from "../hooks/useApi";
+import { useAuth } from "../context/AuthContext";
 
 const IssueCarousel = lazy(() => import("../components/IssueCarousel"));
 const CityMobileHeader = lazy(
@@ -55,13 +56,8 @@ export default function Cities() {
     },
     [setSelectedCity],
   );
-  const [userRole] = useState<string | null>(() => {
-    try {
-      return JSON.parse(localStorage.getItem("user") || "null")?.role ?? null;
-    } catch {
-      return null;
-    }
-  });
+  const { user } = useAuth();
+  const userRole = user?.role ?? null;
   const handleAddCity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCityName.trim()) return;
