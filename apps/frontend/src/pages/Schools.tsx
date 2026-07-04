@@ -20,7 +20,7 @@ import { useQueryClient, useMutation } from "@tanstack/react-query";
 import VirtualSchoolList from "../components/VirtualSchoolList";
 import { SchoolCard } from "../components/schools/SchoolMobileList";
 import type { SchoolContact } from "../types";
-
+import { useAuth } from "../context/AuthContext";
 interface NewSchoolPayload {
   name: string;
   cityId: string;
@@ -54,13 +54,8 @@ export default function Schools() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [userRole] = useState<string | null>(() => {
-    try {
-      return JSON.parse(localStorage.getItem("user") || "null")?.role ?? null;
-    } catch {
-      return null;
-    }
-  });
+  const { user } = useAuth();
+  const userRole = user?.role ?? null;
   const qc = useQueryClient();
   const [form, setForm] = useState({
     name: "",
@@ -275,8 +270,6 @@ export default function Schools() {
     [deleteSchool, userRole],
   );
 
-
-
   return (
     <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-slate-50 min-h-screen">
       {/* Шапка */}
@@ -313,7 +306,7 @@ export default function Schools() {
                 });
               }}
               disabled={bulkImportMutation.isPending}
-              className="md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
             >
               {bulkImportMutation.isPending ? (
                 <span className="font-medium">
@@ -341,7 +334,14 @@ export default function Schools() {
           }
         >
           <StatsBar
-            statusStats={stats?.statusStats ?? { new: 0, planned: 0, inProgress: 0, done: 0 }}
+            statusStats={
+              stats?.statusStats ?? {
+                new: 0,
+                planned: 0,
+                inProgress: 0,
+                done: 0,
+              }
+            }
             sizeStats={stats?.sizeStats ?? { small: 0, medium: 0, large: 0 }}
             activeFilter={activeFilter}
             onFilterChange={setActiveFilter}

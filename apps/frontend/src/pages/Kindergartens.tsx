@@ -13,7 +13,7 @@ import StatsBar, {
   classifySize,
 } from "../components/schools/StatsBar";
 import { useQueryClient } from "@tanstack/react-query";
-
+import { useAuth } from "../context/AuthContext";
 const PIPELINE_STAGES = [
   { key: "BASE", name: "Новий заклад" },
   { key: "FIRST_CONTACT", name: "Знайомство" },
@@ -35,13 +35,8 @@ export default function Kindergartens() {
   const deleteSchool = useDeleteSchool();
   const qc = useQueryClient();
 
-  const [userRole] = useState<string | null>(() => {
-    try {
-      return JSON.parse(localStorage.getItem("user") || "null")?.role ?? null;
-    } catch {
-      return null;
-    }
-  });
+  const { user } = useAuth();
+  const userRole = user?.role ?? null;
 
   const navigate = useNavigate();
   const { selectedCity } = useSelectedCity();
@@ -246,7 +241,7 @@ export default function Kindergartens() {
                   alert("Помилка імпорту.");
                 }
               }}
-              className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
+              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
             >
               📥 Імпорт з isuo
             </button>
