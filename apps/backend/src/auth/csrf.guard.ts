@@ -7,9 +7,12 @@ import {
 
 @Injectable()
 export class CsrfGuard implements CanActivate {
+  private readonly exemptPaths = ['/auth/login'];
+
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest();
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return true;
+    if (this.exemptPaths.includes(req.path)) return true;
 
     const cookieToken = req.cookies?.csrf_token;
     const headerToken = req.headers['x-csrf-token'];
