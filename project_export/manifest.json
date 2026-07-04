@@ -140,8 +140,8 @@
   {
     "file": "apps/backend/src/app.module.ts",
     "bundle": "bundle_01.md",
-    "tokens": 824,
-    "lines": 92
+    "tokens": 852,
+    "lines": 97
   },
   {
     "file": "apps/backend/src/app.service.ts",
@@ -182,8 +182,8 @@
   {
     "file": "apps/backend/src/auth/auth.service.ts",
     "bundle": "bundle_01.md",
-    "tokens": 848,
-    "lines": 127
+    "tokens": 859,
+    "lines": 129
   },
   {
     "file": "apps/backend/src/auth/csrf.guard.ts",
@@ -638,8 +638,8 @@
   {
     "file": "apps/backend/src/prisma/prisma.service.ts",
     "bundle": "bundle_01.md",
-    "tokens": 79,
-    "lines": 9
+    "tokens": 240,
+    "lines": 31
   },
   {
     "file": "apps/backend/src/projects/dto/create-project.dto.ts",
@@ -740,8 +740,8 @@
   {
     "file": "apps/backend/src/schools/schools.service.ts",
     "bundle": "bundle_01.md",
-    "tokens": 3306,
-    "lines": 466
+    "tokens": 3409,
+    "lines": 489
   },
   {
     "file": "apps/backend/src/telegram/telegram.module.ts",
@@ -1310,8 +1310,8 @@
   {
     "file": "apps/frontend/src/pages/Kindergartens.tsx",
     "bundle": "bundle_04.md",
-    "tokens": 5560,
-    "lines": 593
+    "tokens": 5693,
+    "lines": 618
   },
   {
     "file": "apps/frontend/src/pages/Login.tsx",

@@ -1549,6 +1549,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
 import { SanitizeInterceptor } from './common/interceptors/sanitize.interceptor';
+import { CsrfGuard } from './auth/csrf.guard';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import Redis from 'ioredis';
@@ -1624,6 +1625,10 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     {
       provide: APP_GUARD,
       useClass: UserThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: CsrfGuard,
     },
     {
       provide: APP_INTERCEPTOR,
@@ -1946,6 +1951,9 @@ export class AuthService {
     return token;
   }
 
+  private readonly dummyHash =
+    '$2b$10$CwTycUXWue0Thq9StjUM0uJ8lm7zqBWkD3hAvQi.jGjPUB0.wERYS';
+
   async login(
     email: string,
     pass: string,
@@ -1953,13 +1961,12 @@ export class AuthService {
   ) {
     const user = await this.usersService.findByEmail(email);
 
-    if (!user) {
-      throw new AppException('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
-    }
+    const isPasswordValid = await bcrypt.compare(
+      pass,
+      user?.password ?? this.dummyHash,
+    );
 
-    const isPasswordValid = await bcrypt.compare(pass, user.password);
-
-    if (!isPasswordValid) {
+    if (!user || !isPasswordValid) {
       throw new AppException('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
     }
 
@@ -7280,13 +7287,35 @@ describe('PrismaService', () => {
 ```
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { dbQueryDuration } from '../metrics/metrics.service';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit {
+  constructor() {
+    super();
+    return this.$extends({
+      query: {
+        $allModels: {
+          async $allOperations({ model, operation, args, query }) {
+            const start = process.hrtime.bigint();
+            const result = await query(args);
+            const durationSec = Number(process.hrtime.bigint() - start) / 1e9;
+            dbQueryDuration.observe(
+              { model: model ?? 'unknown', action: operation },
+              durationSec,
+            );
+            return result;
+          },
+        },
+      },
+    }) as unknown as PrismaService;
+  }
+
   async onModuleInit() {
     await this.$connect();
   }
 }
+
 ```
 
 # FILE: apps/backend/src/projects/dto/create-project.dto.ts
@@ -9138,7 +9167,13 @@ describe('SchoolsService', () => {
 # FILE: apps/backend/src/schools/schools.service.ts
 
 ```
-import { Injectable, HttpStatus, forwardRef, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  HttpStatus,
+  forwardRef,
+  Inject,
+} from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { AppException } from '../common/exceptions/app.exception';
@@ -9148,12 +9183,15 @@ import { ParserService } from './parser.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PageMetaDto } from '../common/dto/page-meta.dto';
 import { SchoolQueryDto } from './dto/school-query.dto';
+import { UpdateSchoolDto } from './dto/update-school.dto';
 
 const PLANNED_STAGES = ['BASE', 'FIRST_CONTACT', 'DATE_CONFIRMED'];
 const IN_PROGRESS_STAGES = ['PREPARATION', 'IN_PROGRESS', 'DONE', 'REPORT'];
 
 @Injectable()
 export class SchoolsService {
+  private readonly logger = new Logger(SchoolsService.name);
+
   constructor(
     @Inject(forwardRef(() => EventsService))
     private readonly eventsService: EventsService,
@@ -9182,7 +9220,7 @@ export class SchoolsService {
       .parseSchoolData(data.name, sourceUrl, data.type)
       .then(async (parsed) => {
         if (!parsed) {
-          console.log(`Не вдалося знайти дані для закладу: ${data.name}`);
+          this.logger.warn(`Не вдалося знайти дані для закладу: ${data.name}`);
           return;
         }
 
@@ -9199,7 +9237,7 @@ export class SchoolsService {
         }
 
         if (Object.keys(updateData).length === 0) {
-          console.log(
+          this.logger.log(
             `Дані школи "${data.name}" вже заповнені користувачем — пропускаємо оновлення з парсингу`,
           );
           return;
@@ -9212,10 +9250,10 @@ export class SchoolsService {
           data: updateData,
         });
 
-        console.log(`Дані школи "${data.name}" успішно оновлені`);
+        this.logger.log(`Дані школи "${data.name}" успішно оновлені`);
       })
-      .catch((error) => {
-        console.error('Помилка оновлення даних школи:', error);
+      .catch((error: Error) => {
+        this.logger.error(`Помилка оновлення даних школи: ${error.message}`);
       });
 
     return newSchool;
@@ -9290,7 +9328,23 @@ export class SchoolsService {
     return Prisma.sql`(${this.sizeCaseSql()}) = ${size}`;
   }
 
-  private mapRow(row: any) {
+  private latestEventJoin(): Prisma.Sql {
+    return Prisma.sql`
+      LEFT JOIN LATERAL (
+        SELECT e.status FROM "Event" e
+        WHERE e."schoolId" = s.id
+        ORDER BY e.date DESC
+        LIMIT 1
+      ) latest ON true
+    `;
+  }
+
+  private mapRow(row: {
+    city_id: string | null;
+    city_name: string | null;
+    latestStatus: string | null;
+    [key: string]: unknown;
+  }) {
     const { city_id, city_name, latestStatus, ...school } = row;
     return {
       ...school,
@@ -9309,12 +9363,7 @@ export class SchoolsService {
     const baseFrom = Prisma.sql`
       FROM "School" s
       LEFT JOIN "City" c ON c.id = s."cityId"
-      LEFT JOIN LATERAL (
-        SELECT e.status FROM "Event" e
-        WHERE e."schoolId" = s.id
-        ORDER BY e.date DESC
-        LIMIT 1
-      ) latest ON true
+      ${this.latestEventJoin()}
     `;
 
     const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
@@ -9361,12 +9410,7 @@ export class SchoolsService {
 
     const baseFrom = Prisma.sql`
       FROM "School" s
-      LEFT JOIN LATERAL (
-        SELECT e.status FROM "Event" e
-        WHERE e."schoolId" = s.id
-        ORDER BY e.date DESC
-        LIMIT 1
-      ) latest ON true
+      ${this.latestEventJoin()}
     `;
 
     const [statusRows, sizeRows] = await Promise.all([
@@ -9423,8 +9467,14 @@ export class SchoolsService {
     return school;
   }
 
-  async update(id: string, data: any) {
-    const { city, id: _id, createdAt, updatedAt, ...updateData } = data;
+  async update(id: string, data: UpdateSchoolDto) {
+    const {
+      city,
+      id: _id,
+      createdAt,
+      updatedAt,
+      ...updateData
+    } = data as UpdateSchoolDto & Record<string, unknown>;
 
     const updated = await this.prisma.school.update({
       where: {
@@ -9443,9 +9493,9 @@ export class SchoolsService {
       },
     });
 
-    for (const event of events) {
-      await this.eventsService.remove(event.id);
-    }
+    await Promise.all(
+      events.map((event) => this.eventsService.remove(event.id)),
+    );
 
     const deleted = await this.prisma.school.delete({
       where: {
@@ -9591,7 +9641,9 @@ export class SchoolsService {
         });
         created++;
       } catch (e) {
-        console.error(`Помилка створення ${school.name}:`, e);
+        this.logger.error(
+          `Помилка створення ${school.name}: ${(e as Error).message}`,
+        );
       }
     }
 

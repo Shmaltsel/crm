@@ -52,6 +52,12 @@ export class AuthService {
       user?.password ?? this.dummyHash,
     );
 
+    console.log('AUTH DEBUG', {
+      found: !!user,
+      hashPrefix: user?.password?.slice(0, 7),
+      isPasswordValid,
+    });
+
     if (!user || !isPasswordValid) {
       throw new AppException('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
     }

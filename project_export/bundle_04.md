@@ -361,8 +361,16 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
-import StatsBar, { classifySchool } from "../components/schools/StatsBar";
-import { useSchools, useDeleteSchool, useCities } from "../hooks/useApi";
+import {
+  useSchools,
+  useSchoolStats,
+  useDeleteSchool,
+  useCities,
+} from "../hooks/useApi";
+import StatsBar, {
+  classifySchool,
+  classifySize,
+} from "../components/schools/StatsBar";
 import { useQueryClient } from "@tanstack/react-query";
 
 const PIPELINE_STAGES = [
@@ -407,6 +415,13 @@ export default function Kindergartens() {
   });
   const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [sizeFilter, setSizeFilter] = useState<string | null>(null);
+
+  const { data: stats } = useSchoolStats({
+    cityId: selectedCity.id || undefined,
+    type: "Садочок",
+    stage: activeFilter || undefined,
+  });
   const [suggestions, setSuggestions] = useState<
     { name: string; url: string }[]
   >([]);
@@ -532,13 +547,23 @@ export default function Kindergartens() {
     await deleteSchool.mutateAsync(schoolId);
   };
 
-  const filteredKindergartens = schools.filter((s) => {
-    const isCityMatch = selectedCity.id ? s.cityId === selectedCity.id : true;
-    const isFilterMatch = activeFilter
-      ? classifySchool(s) === activeFilter
-      : true;
-    return isCityMatch && s.type === "Садочок" && isFilterMatch;
-  });
+  const filteredKindergartens = Array.isArray(schools)
+    ? schools.filter((s) => {
+        const isCityMatch = selectedCity.id
+          ? s.cityId === selectedCity.id
+          : true;
+        const isFilterMatch = activeFilter
+          ? classifySchool(s) === activeFilter
+          : true;
+        const isSizeMatch = sizeFilter
+          ? classifySize(s, "Садочок") === sizeFilter
+          : true;
+
+        return (
+          isCityMatch && s.type === "Садочок" && isFilterMatch && isSizeMatch
+        );
+      })
+    : [];
 
   return (
     <div className="p-4 md:p-8 h-full max-w-[100vw]">
@@ -597,13 +622,13 @@ export default function Kindergartens() {
       </div>
 
       <StatsBar
-        schools={schools.filter(
-          (s) =>
-            (selectedCity.id ? s.cityId === selectedCity.id : true) &&
-            s.type === "Садочок",
-        )}
+        schoolType="Садочок"
+        statusStats={stats?.statusStats || {}}
+        sizeStats={stats?.sizeStats || {}}
         activeFilter={activeFilter}
         onFilterChange={setActiveFilter}
+        sizeFilter={sizeFilter}
+        onSizeFilterChange={setSizeFilter}
       />
 
       {/* Мобільний вигляд */}
@@ -712,7 +737,7 @@ export default function Kindergartens() {
         {userRole === "SUPERADMIN" && (
           <button
             onClick={handleOpenModal}
-            className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
+            className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform md:hidden"
           >
             +
           </button>
