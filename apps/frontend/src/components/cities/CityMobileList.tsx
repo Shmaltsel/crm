@@ -7,11 +7,23 @@ const CITY_ICONS: Record<string, string> = {
   Харків: "⚙️",
   Одеса: "⚓",
   Дніпро: "🌊",
-  Запоріжжя: "🔱",
-  Вінниця: "🌸",
-  Полтава: "🌻",
-  Черкаси: "🍒",
-  Чернівці: "🎭",
+  Запоріжжя: "⚡",
+  "Івано-Франківськ": "⛰️",
+  Чернівці: "🏛️",
+  Тернопіль: "⛵",
+  Ужгород: "🌸",
+  Миколаїв: "🚢",
+  Вінниця: "⛲",
+  Херсон: "🍉",
+  Полтава: "🥟",
+  Чернігів: "⛪",
+  Черкаси: "🌳",
+  Суми: "🎪",
+  Житомир: "🚀",
+  Хмельницький: "🛍️",
+  Рівне: "💎",
+  Кропивницький: "🎭",
+  Луцьк: "🏰",
 };
 const DEFAULT_CITY_ICON = "🏙️";
 
@@ -79,7 +91,10 @@ export default function CityMobileList({
             return (
               <button
                 key={tab}
-                onClick={() => { setActiveTab(tabKey as typeof activeTab); setTabKey(k => k + 1); }}
+                onClick={() => {
+                  setActiveTab(tabKey as typeof activeTab);
+                  setTabKey((k) => k + 1);
+                }}
                 className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-1.5 active:scale-95 ${
                   isActive
                     ? "bg-blue-50 text-blue-600 border border-blue-100 shadow-sm"
@@ -96,7 +111,10 @@ export default function CityMobileList({
         </div>
 
         {/* Список */}
-        <div key={tabKey} className="flex flex-col bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
+        <div
+          key={tabKey}
+          className="flex flex-col bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden"
+        >
           {filteredCities.map((city: any, index: number) => {
             const iconStyle = ICON_COLORS[index % ICON_COLORS.length];
             const totalEvents =

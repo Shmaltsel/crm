@@ -144,12 +144,16 @@ export class DaysOffService {
     action: 'created' | 'removed',
   ) {
     if (!cityId) return;
-    const city = await this.prisma.city.findUnique({ where: { id: cityId } });
-    if (!city?.managerId) return;
 
-    const manager = await this.prisma.user.findUnique({
-      where: { id: city.managerId },
+    // Шукаємо менеджера безпосередньо серед користувачів міста
+    const manager = await this.prisma.user.findFirst({
+      where: {
+        cityId: cityId,
+        role: 'MANAGER',
+      },
     });
+
+    if (!manager) return;
 
     const chatId =
       manager?.telegramChatId ||

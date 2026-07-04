@@ -292,7 +292,7 @@ export default function Schools() {
           </h1>
         </div>
         <div className="flex gap-2 shrink-0">
-          {userRole === "SUPERADMIN" && (
+          {(userRole === "SUPERADMIN" || userRole === "MANAGER") && (
             <button
               onClick={() => {
                 if (!selectedCity.id) return alert("Спочатку оберіть місто");

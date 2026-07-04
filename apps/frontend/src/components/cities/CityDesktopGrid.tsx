@@ -5,13 +5,46 @@ import OptimizedImage from "../ui/OptimizedImage";
 const CITY_PHOTOS: Record<string, string> = {
   Львів:
     "https://gohotels.com.ua/images/stories/f08072159a443e07501f3df97987f8a3.jpg",
-  Київ: "https://images.unsplash.com/photo-1630651814316-fe71f3c30279?w=600&q=80&auto=format",
+  Київ: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Kiev_-_St_Sophia_Monument_and_St_Michael_Cathedral.jpg/600px-Kiev_-_St_Sophia_Monument_and_St_Michael_Cathedral.jpg",
   Харків:
-    "https://images.unsplash.com/photo-1584646098378-0f87b72cffe1?w=600&q=80&auto=format",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Derzhprom_2010.jpg/600px-Derzhprom_2010.jpg",
   Одеса:
-    "https://images.unsplash.com/photo-1585168050053-a4ba02e3f0d2?w=600&q=80&auto=format",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Odessa_Opera_Theater_%2825828456104%29.jpg/600px-Odessa_Opera_Theater_%2825828456104%29.jpg",
   Дніпро:
-    "https://images.unsplash.com/photo-1570587953042-a65fd17e2f73?w=600&q=80&auto=format",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Dnipro_Skyline.jpg/600px-Dnipro_Skyline.jpg",
+  Запоріжжя:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Zaporizhzhia_-_Dnipro_HES.jpg/600px-Zaporizhzhia_-_Dnipro_HES.jpg",
+  "Івано-Франківськ":
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Town_Hall%2C_Ivano-Frankivsk.jpg/600px-Town_Hall%2C_Ivano-Frankivsk.jpg",
+  Чернівці:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Chernivtsi_University_1.jpg/600px-Chernivtsi_University_1.jpg",
+  Тернопіль:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Ternopil_pond_in_summer.jpg/600px-Ternopil_pond_in_summer.jpg",
+  Ужгород:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Uzhhorod_Synagogue_2016.jpg/600px-Uzhhorod_Synagogue_2016.jpg",
+  Миколаїв:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Mykolaiv_City_Hall.jpg/600px-Mykolaiv_City_Hall.jpg",
+  Вінниця:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Vinnytsia_water_tower.jpg/600px-Vinnytsia_water_tower.jpg",
+  Херсон:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Kherson_art_museum_2.jpg/600px-Kherson_art_museum_2.jpg",
+  Полтава:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Krugla_ploscha_Poltava.jpg/600px-Krugla_ploscha_Poltava.jpg",
+  Чернігів:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Katerynynska_church_Chernihiv.jpg/600px-Katerynynska_church_Chernihiv.jpg",
+  Черкаси:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Cherkasy_White_Lotus.jpg/600px-Cherkasy_White_Lotus.jpg",
+  Суми: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Sumy_Altanka.jpg/600px-Sumy_Altanka.jpg",
+  Житомир:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Zhytomyr_Transfiguration_Cathedral.jpg/600px-Zhytomyr_Transfiguration_Cathedral.jpg",
+  Хмельницький:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Khmelnytskyi_railway_station.jpg/600px-Khmelnytskyi_railway_station.jpg",
+  Рівне:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Rivne_Drama_Theatre.jpg/600px-Rivne_Drama_Theatre.jpg",
+  Кропивницький:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Kropyvnytskyi_theatre.jpg/600px-Kropyvnytskyi_theatre.jpg",
+  Луцьк:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Lutsk_castle_tower.jpg/600px-Lutsk_castle_tower.jpg",
 };
 const DEFAULT_PHOTO =
   "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80&auto=format";

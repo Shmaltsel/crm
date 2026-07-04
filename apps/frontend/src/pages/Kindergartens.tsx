@@ -218,7 +218,7 @@ export default function Kindergartens() {
           )}
         </h1>
         <div className="flex gap-2 shrink-0">
-          {userRole === "SUPERADMIN" && (
+          {(userRole === "SUPERADMIN" || userRole === "MANAGER") && (
             <button
               onClick={async () => {
                 if (!selectedCity.id) return alert("Спочатку оберіть місто");

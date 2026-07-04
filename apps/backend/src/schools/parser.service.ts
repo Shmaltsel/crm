@@ -31,6 +31,91 @@ const CITY_CONFIG: Record<
     schools: 'https://zk.isuo.org/koatuu/schools-list/id/2110100000',
     kindergartens: 'https://zk.isuo.org/koatuu/preschools-list/id/2110100000',
   },
+  Київ: {
+    domain: 'https://kyiv.isuo.org',
+    schools: 'https://kyiv.isuo.org/koatuu/schools-list/id/8000000000',
+    kindergartens: 'https://kyiv.isuo.org/koatuu/preschools-list/id/8000000000',
+  },
+  Харків: {
+    domain: 'https://kh.isuo.org',
+    schools: 'https://kh.isuo.org/koatuu/schools-list/id/6310100000',
+    kindergartens: 'https://kh.isuo.org/koatuu/preschools-list/id/6310100000',
+  },
+  Одеса: {
+    domain: 'https://od.isuo.org',
+    schools: 'https://od.isuo.org/koatuu/schools-list/id/5110100000',
+    kindergartens: 'https://od.isuo.org/koatuu/preschools-list/id/5110100000',
+  },
+  Дніпро: {
+    domain: 'https://dp.isuo.org',
+    schools: 'https://dp.isuo.org/koatuu/schools-list/id/1210100000',
+    kindergartens: 'https://dp.isuo.org/koatuu/preschools-list/id/1210100000',
+  },
+  Запоріжжя: {
+    domain: 'https://zp.isuo.org',
+    schools: 'https://zp.isuo.org/koatuu/schools-list/id/2310100000',
+    kindergartens: 'https://zp.isuo.org/koatuu/preschools-list/id/2310100000',
+  },
+  Миколаїв: {
+    domain: 'https://mk.isuo.org',
+    schools: 'https://mk.isuo.org/koatuu/schools-list/id/4810100000',
+    kindergartens: 'https://mk.isuo.org/koatuu/preschools-list/id/4810100000',
+  },
+  Вінниця: {
+    domain: 'https://vn.isuo.org',
+    schools: 'https://vn.isuo.org/koatuu/schools-list/id/0510100000',
+    kindergartens: 'https://vn.isuo.org/koatuu/preschools-list/id/0510100000',
+  },
+  Херсон: {
+    domain: 'https://ks.isuo.org',
+    schools: 'https://ks.isuo.org/koatuu/schools-list/id/6510100000',
+    kindergartens: 'https://ks.isuo.org/koatuu/preschools-list/id/6510100000',
+  },
+  Полтава: {
+    domain: 'https://pl.isuo.org',
+    schools: 'https://pl.isuo.org/koatuu/schools-list/id/5310100000',
+    kindergartens: 'https://pl.isuo.org/koatuu/preschools-list/id/5310100000',
+  },
+  Чернігів: {
+    domain: 'https://cn.isuo.org',
+    schools: 'https://cn.isuo.org/koatuu/schools-list/id/7410100000',
+    kindergartens: 'https://cn.isuo.org/koatuu/preschools-list/id/7410100000',
+  },
+  Черкаси: {
+    domain: 'https://ck.isuo.org',
+    schools: 'https://ck.isuo.org/koatuu/schools-list/id/7110100000',
+    kindergartens: 'https://ck.isuo.org/koatuu/preschools-list/id/7110100000',
+  },
+  Суми: {
+    domain: 'https://su.isuo.org',
+    schools: 'https://su.isuo.org/koatuu/schools-list/id/5910100000',
+    kindergartens: 'https://su.isuo.org/koatuu/preschools-list/id/5910100000',
+  },
+  Житомир: {
+    domain: 'https://zt.isuo.org',
+    schools: 'https://zt.isuo.org/koatuu/schools-list/id/1810100000',
+    kindergartens: 'https://zt.isuo.org/koatuu/preschools-list/id/1810100000',
+  },
+  Хмельницький: {
+    domain: 'https://km.isuo.org',
+    schools: 'https://km.isuo.org/koatuu/schools-list/id/6810100000',
+    kindergartens: 'https://km.isuo.org/koatuu/preschools-list/id/6810100000',
+  },
+  Рівне: {
+    domain: 'https://rv.isuo.org',
+    schools: 'https://rv.isuo.org/koatuu/schools-list/id/5610100000',
+    kindergartens: 'https://rv.isuo.org/koatuu/preschools-list/id/5610100000',
+  },
+  Кропивницький: {
+    domain: 'https://kr.isuo.org',
+    schools: 'https://kr.isuo.org/koatuu/schools-list/id/3510100000',
+    kindergartens: 'https://kr.isuo.org/koatuu/preschools-list/id/3510100000',
+  },
+  Луцьк: {
+    domain: 'https://vl.isuo.org',
+    schools: 'https://vl.isuo.org/koatuu/schools-list/id/0710100000',
+    kindergartens: 'https://vl.isuo.org/koatuu/preschools-list/id/0710100000',
+  },
 };
 
 @Injectable()
