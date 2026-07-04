@@ -18,6 +18,19 @@ export const MESSAGES = {
     uk: 'Сервіс тимчасово недоступний',
     en: 'Service temporarily unavailable',
   },
+  // --- ДОДАЙ ЦІ РЯДКИ ---
+  USER_ID_REQUIRED: {
+    uk: 'Ідентифікатор користувача обов’язковий',
+    en: 'User ID is required',
+  },
+  INVALID_STAFF_USER: {
+    uk: 'Невалідний користувач персоналу',
+    en: 'Invalid staff user',
+  },
+  DAY_OFF_NOT_FOUND: {
+    uk: 'Вихідний день не знайдено',
+    en: 'Day off not found',
+  },
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;
