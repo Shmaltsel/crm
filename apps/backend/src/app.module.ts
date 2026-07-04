@@ -25,6 +25,7 @@ import { IssuesModule } from './issues/issues.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ProjectsModule } from './projects/projects.module';
 import { HealthModule } from './health/health.module';
+import { DaysOffModule } from './days-off/days-off.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { FeatureFlagsModule } from './common/feature-flags/feature-flags.module';
 import { I18nModule } from './common/i18n/i18n.module';
@@ -66,6 +67,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     IssuesModule,
     DashboardModule,
     ProjectsModule,
+    DaysOffModule,
   ],
   controllers: [AppController],
   providers: [

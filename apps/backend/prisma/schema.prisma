@@ -28,9 +28,22 @@ model User {
   crewAsHost     Crew[]         @relation("HostCrew")
   city           City?          @relation(fields: [cityId], references: [id])
   salaryItems    SalaryItem[]
+  daysOff        DayOff[]
 
   @@index([role])
   @@index([cityId])
+}
+
+model DayOff {
+  id        String   @id @default(uuid())
+  userId    String
+  date      DateTime @db.Date
+  createdBy String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([date])
 }
 
 model City {
