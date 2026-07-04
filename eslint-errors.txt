@@ -1,0 +1,220 @@
+Scope: 2 of 3 workspace projects
+apps/backend lint$ eslint "{src,apps,libs,test}/**/*.ts" --fix
+apps/frontend lint$ eslint .
+apps/frontend lint: C:\CRM\apps\frontend\src\App.tsx
+apps/frontend lint:    1:17  error  'useState' is defined but never used               @typescript-eslint/no-unused-vars
+apps/frontend lint:    3:47  error  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+apps/frontend lint:   60:38  error  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+apps/frontend lint:   64:9   error  'handleLogout' is assigned a value but never used  @typescript-eslint/no-unused-vars
+apps/frontend lint: C:\CRM\apps\frontend\src\components\IssueCarousel.tsx
+apps/frontend lint:   29:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   42:59  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   61:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint: C:\CRM\apps\frontend\src\components\VirtualSchoolList.tsx
+apps/frontend lint:   22:26  warning  Compilation Skipped: Use of incompatible library
+apps/frontend lint: This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+apps/frontend lint: C:\CRM\apps\frontend\src\components\VirtualSchoolList.tsx:22:26
+apps/frontend lint:   20 |   const parentRef = useRef<HTMLDivElement>(null);
+apps/frontend lint:   21 |
+apps/frontend lint: > 22 |   const rowVirtualizer = useVirtualizer({
+apps/frontend lint:      |                          ^^^^^^^^^^^^^^ TanStack Virtual's `useVirtualizer()` API returns functions that cannot be memoized safely
+apps/frontend lint:   23 |     count: schools.length,
+apps/frontend lint:   24 |     getScrollElement: () => parentRef.current,
+apps/frontend lint:   25 |     estimateSize: () => itemHeight,  react-hooks/incompatible-library
+apps/frontend lint:   37:6   warning  React Hook useEffect has a missing dependency: 'lastItem'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        react-hooks/exhaustive-deps
+apps/frontend lint: C:\CRM\apps\frontend\src\components\cities\CityDesktopGrid.tsx
+apps/frontend lint:     3:8   error  'OptimizedImage' is defined but never used  @typescript-eslint/no-unused-vars
+apps/frontend lint:    25:9   error  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+apps/frontend lint:   170:4   error  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+apps/frontend lint:   192:28  error  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+apps/frontend lint: C:\CRM\apps\frontend\src\components\cities\CityMobileHeader.tsx
+apps/frontend lint:     6:17  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       @typescript-eslint/no-explicit-any
+apps/frontend lint:     7:11  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       @typescript-eslint/no-explicit-any
+apps/frontend lint:    38:9   error  'navigate' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+apps/frontend lint:    39:40  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       @typescript-eslint/no-explicit-any
+apps/frontend lint:    48:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+apps/frontend lint: Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+apps/frontend lint: * Update external systems with the latest state from React.
+apps/frontend lint: * Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+apps/frontend lint: Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+apps/frontend lint: C:\CRM\apps\frontend\src\components\cities\CityMobileHeader.tsx:48:7
+apps/frontend lint:   46 |   useEffect(() => {
+apps/frontend lint:   47 |     if (!selectedCity?.id) {
+apps/frontend lint: > 48 |       setIssues([]);
+apps/frontend lint:      |       ^^^^^^^^^ Avoid calling setState() directly within an effect
+apps/frontend lint:   49 |       return;
+apps/frontend lint:   50 |     }
+apps/frontend lint:   51 |     api  react-hooks/set-state-in-effect
+apps/frontend lint:    54:46  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       @typescript-eslint/no-explicit-any
+apps/frontend lint:    70:44  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       @typescript-eslint/no-explicit-any
+apps/frontend lint:   108:44  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       @typescript-eslint/no-explicit-any
+apps/frontend lint: C:\CRM\apps\frontend\src\components\cities\CityMobileList.tsx
+apps/frontend lint:    30:4   error  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+apps/frontend lint:    39:30  error  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+apps/frontend lint:   100:38  error  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+apps/frontend lint:   101:19  error  'iconStyle' is assigned a value but never used  @typescript-eslint/no-unused-vars
+apps/frontend lint: C:\CRM\apps\frontend\src\components\city-profile\CityAnalytics.tsx
+apps/frontend lint:   8:11  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint: C:\CRM\apps\frontend\src\components\dashboard\ActivityFeed.tsx
+apps/frontend lint:   4:7  error  'ROLE_INITIALS' is assigned a value but never used  @typescript-eslint/no-unused-vars
+apps/frontend lint: C:\CRM\apps\frontend\src\components\finance\FinanceCharts.tsx
+apps/frontend lint:    46:4   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:    91:11  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   109:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   141:4   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   148:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   173:12  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   245:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   264:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   276:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   305:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   340:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   353:15  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   359:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   389:9   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   394:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   420:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   421:51  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint: C:\CRM\apps\frontend\src\components\finance\StaffFinanceView.tsx
+apps/frontend lint:    16:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:    45:11  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   105:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   126:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   127:43  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   240:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint: C:\CRM\apps\frontend\src\components\school-profile\modals\EventModal.tsx
+apps/frontend lint:   45:9   error    'currentProject' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+apps/frontend lint:   45:26  warning  Compilation Skipped: Use of incompatible library
+apps/frontend lint: This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+apps/frontend lint: C:\CRM\apps\frontend\src\components\school-profile\modals\EventModal.tsx:45:26
+apps/frontend lint:   43 |   });
+apps/frontend lint:   44 |
+apps/frontend lint: > 45 |   const currentProject = watch("project");
+apps/frontend lint:      |                          ^^^^^ React Hook Form's `useForm()` API returns a `watch()` function which cannot be memoized safely.
+apps/frontend lint:   46 |
+apps/frontend lint:   47 |   useEffect(() => {
+apps/frontend lint:   48 |     if (isOpen) {  react-hooks/incompatible-library
+apps/frontend lint: C:\CRM\apps\frontend\src\components\school-profile\modals\ReportModal.tsx
+apps/frontend lint:     8:11  error  'CrewMember' is defined but never used  @typescript-eslint/no-unused-vars
+apps/frontend lint:    49:10  error  'formatDate' is defined but never used  @typescript-eslint/no-unused-vars
+apps/frontend lint:   168:10  error  'TogglePill' is defined but never used  @typescript-eslint/no-unused-vars
+apps/frontend lint:   224:3   error  'eventType' is defined but never used   @typescript-eslint/no-unused-vars
+apps/frontend lint:   225:3   error  'eventDate' is defined but never used   @typescript-eslint/no-unused-vars
+apps/frontend lint:   226:3   error  'eventIndex' is defined but never used  @typescript-eslint/no-unused-vars
+apps/frontend lint: C:\CRM\apps\frontend\src\components\school-profile\modals\RescheduleModal.tsx
+apps/frontend lint:   28:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+apps/frontend lint: Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+apps/frontend lint: * Update external systems with the latest state from React.
+apps/frontend lint: * Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+apps/frontend lint: Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+apps/frontend lint: C:\CRM\apps\frontend\src\components\school-profile\modals\RescheduleModal.tsx:28:7
+apps/frontend lint:   26 |   useEffect(() => {
+apps/frontend lint:   27 |     if (isOpen && currentDate) {
+apps/frontend lint: > 28 |       setDate(currentDate.slice(0, 10));
+apps/frontend lint:      |       ^^^^^^^ Avoid calling setState() directly within an effect
+apps/frontend lint:   29 |       setTime(currentTime || "");
+apps/frontend lint:   30 |     }
+apps/frontend lint:   31 |   }, [isOpen, currentDate, currentTime]);  react-hooks/set-state-in-effect
+apps/frontend lint: C:\CRM\apps\frontend\src\components\schools\SchoolMobileList.tsx
+apps/frontend lint:   19:67  error  'index' is assigned a value but never used  @typescript-eslint/no-unused-vars
+apps/frontend lint: C:\CRM\apps\frontend\src\components\schools\StatsBar.tsx
+apps/frontend lint:     2:10  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+apps/frontend lint:     2:26  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+apps/frontend lint:   105:9   error  'hasAnyFilter' is assigned a value but never used                                                                               @typescript-eslint/no-unused-vars
+apps/frontend lint: C:\CRM\apps\frontend\src\components\schools\VirtualDesktopTable.tsx
+apps/frontend lint:   25:26  warning  Compilation Skipped: Use of incompatible library
+apps/frontend lint: This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+apps/frontend lint: C:\CRM\apps\frontend\src\components\schools\VirtualDesktopTable.tsx:25:26
+apps/frontend lint:   23 |   const parentRef = useRef<HTMLDivElement>(null);
+apps/frontend lint:   24 |
+apps/frontend lint: > 25 |   const rowVirtualizer = useVirtualizer({
+apps/frontend lint:      |                          ^^^^^^^^^^^^^^ TanStack Virtual's `useVirtualizer()` API returns functions that cannot be memoized safely
+apps/frontend lint:   26 |     count: schools.length,
+apps/frontend lint:   27 |     getScrollElement: () => parentRef.current,
+apps/frontend lint:   28 |     estimateSize: () => 57,  react-hooks/incompatible-library
+apps/frontend lint:   40:6   warning  React Hook useEffect has a missing dependency: 'lastItem'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          react-hooks/exhaustive-deps
+apps/frontend lint: C:\CRM\apps\frontend\src\context\AuthContext.tsx
+apps/frontend lint:   53:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+apps/frontend lint: C:\CRM\apps\frontend\src\context\CityContext.tsx
+apps/frontend lint:    1:47  error  'useEffect' is defined but never used                                                                                           @typescript-eslint/no-unused-vars
+apps/frontend lint:   42:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+apps/frontend lint: C:\CRM\apps\frontend\src\hooks\useCities.ts
+apps/frontend lint:   29:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   45:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   51:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   55:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   76:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   78:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint: C:\CRM\apps\frontend\src\hooks\useSchoolProfile.ts
+apps/frontend lint:   266:7  error  'eventId' is defined but never used  @typescript-eslint/no-unused-vars
+apps/frontend lint: C:\CRM\apps\frontend\src\pages\CalendarView.tsx
+apps/frontend lint:    5:11  error  'CalendarEvent' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+apps/frontend lint:   19:18  error  'setCities' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+apps/frontend lint:   38:9   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+apps/frontend lint: Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+apps/frontend lint: * Update external systems with the latest state from React.
+apps/frontend lint: * Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+apps/frontend lint: Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+apps/frontend lint: C:\CRM\apps\frontend\src\pages\CalendarView.tsx:38:9
+apps/frontend lint:   36 |       if (token) {
+apps/frontend lint:   37 |         const payload = JSON.parse(atob(token.split(".")[1]));
+apps/frontend lint: > 38 |         setUserRole(payload.role);
+apps/frontend lint:      |         ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+apps/frontend lint:   39 |         if (payload.role === "MANAGER" && selectedCity?.id) {
+apps/frontend lint:   40 |           setFilterCityId(selectedCity.id);
+apps/frontend lint:   41 |         }  react-hooks/set-state-in-effect
+apps/frontend lint:   64:9   error  'day' is never reassigned. Use 'const' instead                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            prefer-const
+apps/frontend lint: C:\CRM\apps\frontend\src\pages\Cities.tsx
+apps/frontend lint:   53:12  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint: C:\CRM\apps\frontend\src\pages\CityProfile.tsx
+apps/frontend lint:     8:43  error  'CityProfileType' is defined but never used  @typescript-eslint/no-unused-vars
+apps/frontend lint:    23:66  error  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+apps/frontend lint:    52:41  error  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+apps/frontend lint:   270:35  error  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+apps/frontend lint:   278:45  error  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+apps/frontend lint:   361:39  error  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+apps/frontend lint:   374:49  error  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+apps/frontend lint:   589:10  error  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+apps/frontend lint:   683:50  error  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+apps/frontend lint:   728:31  error  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+apps/frontend lint: C:\CRM\apps\frontend\src\pages\Dashboard.tsx
+apps/frontend lint:   17:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint:   18:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint: C:\CRM\apps\frontend\src\pages\Employees.tsx
+apps/frontend lint:    34:11  error  'Project' is defined but never used                   @typescript-eslint/no-unused-vars
+apps/frontend lint:   124:43  error  'projectsLoading' is assigned a value but never used  @typescript-eslint/no-unused-vars
+apps/frontend lint:   135:24  error  'setIsSubmitting' is assigned a value but never used  @typescript-eslint/no-unused-vars
+apps/frontend lint:   189:19  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+apps/frontend lint:   203:14  error  'e' is defined but never used                         @typescript-eslint/no-unused-vars
+apps/frontend lint:   225:14  error  'e' is defined but never used                         @typescript-eslint/no-unused-vars
+apps/frontend lint: C:\CRM\apps\frontend\src\pages\Kindergartens.tsx
+apps/frontend lint:    27:11  error  'City' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+apps/frontend lint:    57:58  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+apps/frontend lint:   106:17  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+apps/frontend lint:   245:26  error  'e' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+apps/frontend lint:   287:18  error  Error: Cannot call impure function during render
+apps/frontend lint: `Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+apps/frontend lint: C:\CRM\apps\frontend\src\pages\Kindergartens.tsx:287:18
+apps/frontend lint:   285 |           const daysStale = lastActivityDate
+apps/frontend lint:   286 |             ? Math.floor(
+apps/frontend lint: > 287 |                 (Date.now() - new Date(lastActivityDate).getTime()) / 86400000,
+apps/frontend lint:       |                  ^^^^^^^^^^ Cannot call impure function
+apps/frontend lint:   288 |               )
+apps/frontend lint:   289 |             : null;
+apps/frontend lint:   290 |  react-hooks/purity
+apps/frontend lint: C:\CRM\apps\frontend\src\pages\SchoolProfile.tsx
+apps/frontend lint:   605:51  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+apps/frontend lint: C:\CRM\apps\frontend\src\pages\Schools.tsx
+apps/frontend lint:    37:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+apps/frontend lint:    47:11  error  'City' is defined but never used                                                                                                @typescript-eslint/no-unused-vars
+apps/frontend lint:    55:10  error  'isSubmitting' is assigned a value but never used                                                                               @typescript-eslint/no-unused-vars
+apps/frontend lint:    55:24  error  'setIsSubmitting' is assigned a value but never used                                                                            @typescript-eslint/no-unused-vars
+apps/frontend lint:   125:31  error  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+apps/frontend lint:   126:28  error  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+apps/frontend lint:   141:29  error  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+apps/frontend lint: ✖ 111 problems (106 errors, 5 warnings)
+apps/frontend lint:   1 error and 0 warnings potentially fixable with the `--fix` option.
+apps/frontend lint: Failed
+C:\CRM\apps\frontend:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] frontend@0.0.0 lint: `eslint .`
+Exit status 1

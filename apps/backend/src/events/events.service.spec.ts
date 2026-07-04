@@ -472,11 +472,7 @@ describe('EventsService', () => {
         history: [],
       });
 
-      await service.submitReport(
-        'ev-1',
-        withoutRating as typeof reportData,
-        mockUser,
-      );
+      await service.submitReport('ev-1', withoutRating, mockUser);
 
       const call = mockPrisma.eventReport.upsert.mock.calls[0][0];
       expect(call.update.rating).toBeUndefined();

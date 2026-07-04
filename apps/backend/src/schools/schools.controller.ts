@@ -34,7 +34,9 @@ export class SchoolsController {
     private readonly parserService: ParserService,
   ) {}
 
-  @ApiOperation({ summary: 'Масовий імпорт шкіл/садочків із зовнішнього джерела' })
+  @ApiOperation({
+    summary: 'Масовий імпорт шкіл/садочків із зовнішнього джерела',
+  })
   @Post('bulk-import')
   @Throttle({ default: { ttl: 300000, limit: 2 } })
   @Roles('SUPERADMIN', 'MANAGER')

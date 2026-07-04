@@ -16,8 +16,6 @@ import { EventQueryDto } from './dto/event-query.dto';
 import { PageMetaDto } from '../common/dto/page-meta.dto';
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
 const FIELD_ROLES = ['DRIVER', 'HOST'];
 
 @Injectable()
