@@ -30,6 +30,15 @@ interface City {
 }
 
 export default function Kindergartens() {
+  const { selectedCity } = useSelectedCity();
+  const { user } = useAuth();
+  const userRole = user?.role ?? null;
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [sizeFilter, setSizeFilter] = useState<string | null>(null);
+
   const { data: schoolsPages } = useSchools({
     type: "Садочок",
     cityId: selectedCity.id || undefined,
@@ -38,13 +47,13 @@ export default function Kindergartens() {
   const schools = schoolsPages?.pages?.flatMap((p: any) => p.data) ?? [];
   const { data: cities = [] } = useCities();
   const deleteSchool = useDeleteSchool();
-  const qc = useQueryClient();
 
-  const { user } = useAuth();
-  const userRole = user?.role ?? null;
+  const { data: stats } = useSchoolStats({
+    cityId: selectedCity.id || undefined,
+    type: "Садочок",
+    stage: activeFilter || undefined,
+  });
 
-  const navigate = useNavigate();
-  const { selectedCity } = useSelectedCity();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
@@ -55,14 +64,6 @@ export default function Kindergartens() {
     phone: "",
   });
   const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
-  const [sizeFilter, setSizeFilter] = useState<string | null>(null);
-
-  const { data: stats } = useSchoolStats({
-    cityId: selectedCity.id || undefined,
-    type: "Садочок",
-    stage: activeFilter || undefined,
-  });
   const [suggestions, setSuggestions] = useState<
     { name: string; url: string }[]
   >([]);
