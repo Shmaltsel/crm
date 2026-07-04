@@ -112,28 +112,21 @@ export class FinanceService {
       ...(project ? { project } : {}),
     };
 
-    const kpiAgg = await this.prisma.eventReport.aggregate({
-      where: { event: baseEventWhere },
-      _sum: { totalSum: true, remainderSum: true },
-      _count: { eventId: true },
-    });
+    const [kpiAgg, expensesRaw] = await Promise.all([
+      this.prisma.eventReport.aggregate({
+        where: { event: baseEventWhere },
+        _sum: { totalSum: true, remainderSum: true },
+        _count: { eventId: true },
+      }),
+      this.prisma.expenseItem.findMany({
+        where: { report: { event: baseEventWhere } },
+        select: { category: true, name: true, amount: true },
+      }),
+    ]);
 
     const totalRevenue = kpiAgg._sum.totalSum ?? 0;
     const totalProfit = kpiAgg._sum.remainderSum ?? 0;
     const totalEvents = kpiAgg._count.eventId ?? 0;
-
-    const expensesRaw = await this.prisma.expenseItem.findMany({
-      where: {
-        report: {
-          event: baseEventWhere,
-        },
-      },
-      select: {
-        category: true,
-        name: true,
-        amount: true,
-      },
-    });
 
     const expCatMap: Record<string, number> = {};
     let totalExpenses = 0;
@@ -157,19 +150,33 @@ export class FinanceService {
       revenue: number;
       profit: number;
     };
-    const monthlyRaw = await this.prisma.$queryRaw<MonthlyRow[]>`
-      SELECT
-        EXTRACT(YEAR  FROM e.date)::int                   AS year,
-        EXTRACT(MONTH FROM e.date)::int                   AS month,
-        COALESCE(SUM(r."totalSum"),      0)::float        AS revenue,
-        COALESCE(SUM(r."remainderSum"),  0)::float        AS profit
-      FROM "Event" e
-      JOIN "EventReport" r ON r."eventId" = e.id
-      WHERE e.status = 'RE_SALE'
-      ${filters}
-      GROUP BY year, month
-      ORDER BY year, month
-    `;
+    const [monthlyRaw, plannedAgg, projectsRaw, cities] = await Promise.all([
+      this.prisma.$queryRaw<MonthlyRow[]>`
+        SELECT
+          EXTRACT(YEAR  FROM e.date)::int                   AS year,
+          EXTRACT(MONTH FROM e.date)::int                   AS month,
+          COALESCE(SUM(r."totalSum"),      0)::float        AS revenue,
+          COALESCE(SUM(r."remainderSum"),  0)::float        AS profit
+        FROM "Event" e
+        JOIN "EventReport" r ON r."eventId" = e.id
+        WHERE e.status = 'RE_SALE'
+        ${filters}
+        GROUP BY year, month
+        ORDER BY year, month
+      `,
+      this.prisma.event.aggregate({
+        where: {
+          status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
+          ...(cityId ? { cityId } : {}),
+        },
+        _sum: { price: true },
+      }),
+      this.prisma.event.findMany({
+        select: { project: true },
+        distinct: ['project'],
+      }),
+      this.prisma.city.findMany({ select: { id: true, name: true } }),
+    ]);
 
     const monthly = monthlyRaw.map((row) => ({
       month: new Date(row.year, row.month - 1, 1).toLocaleString('uk-UA', {
@@ -179,22 +186,7 @@ export class FinanceService {
       revenue: row.revenue,
       profit: row.profit,
     }));
-
-    const plannedAgg = await this.prisma.event.aggregate({
-      where: {
-        status: { in: ['DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS'] },
-        ...(cityId ? { cityId } : {}),
-      },
-      _sum: { price: true },
-    });
     const expectedRevenue = plannedAgg._sum.price ?? 0;
-    const [projectsRaw, cities] = await Promise.all([
-      this.prisma.event.findMany({
-        select: { project: true },
-        distinct: ['project'],
-      }),
-      this.prisma.city.findMany({ select: { id: true, name: true } }),
-    ]);
     const filterOptions = {
       projects: projectsRaw.map((p) => p.project).filter(Boolean),
       cities,
@@ -212,69 +204,72 @@ export class FinanceService {
     }
 
     type ProjectRow = { project: string; value: number };
-    const byProjectRows = await this.prisma.$queryRaw<ProjectRow[]>`
-      SELECT
-        COALESCE(e.project, 'Інше')              AS project,
-        COALESCE(SUM(r."totalSum"), 0)::float    AS value
-      FROM "Event" e
-      JOIN "EventReport" r ON r."eventId" = e.id
-      WHERE e.status = 'RE_SALE'
-      ${filters}
-      GROUP BY e.project
-      ORDER BY value DESC
-    `;
-    const byProject = byProjectRows.map((r) => ({
-      name: r.project,
-      value: r.value,
-    }));
     type CityRow = {
       cityId: string;
       name: string;
       revenue: number;
       profit: number;
     };
-    const topCitiesRows = await this.prisma.$queryRaw<CityRow[]>`
-      SELECT
-        e."cityId",
-        COALESCE(c.name, '—')                    AS name,
-        COALESCE(SUM(r."totalSum"),     0)::float AS revenue,
-        COALESCE(SUM(r."remainderSum"), 0)::float AS profit
-      FROM "Event" e
-      JOIN "EventReport" r ON r."eventId" = e.id
-      LEFT JOIN "City" c   ON c.id = e."cityId"
-      WHERE e.status = 'RE_SALE'
-      ${filters}
-      GROUP BY e."cityId", c.name
-      ORDER BY revenue DESC
-      LIMIT 5
-    `;
-    const topCities = topCitiesRows.map(({ name, revenue, profit }) => ({
-      name,
-      revenue,
-      profit,
-    }));
-
     type SchoolRow = {
       schoolId: string;
       name: string;
       count: number;
       revenue: number;
     };
-    const topSchoolsRows = await this.prisma.$queryRaw<SchoolRow[]>`
-      SELECT
-        e."schoolId",
-        COALESCE(s.name, '—')                    AS name,
-        COUNT(e.id)::int                         AS count,
-        COALESCE(SUM(r."totalSum"), 0)::float    AS revenue
-      FROM "Event" e
-      JOIN "EventReport" r ON r."eventId" = e.id
-      LEFT JOIN "School" s ON s.id = e."schoolId"
-      WHERE e.status = 'RE_SALE'
-      ${filters}
-      GROUP BY e."schoolId", s.name
-      ORDER BY revenue DESC
-      LIMIT 5
-    `;
+
+    const [byProjectRows, topCitiesRows, topSchoolsRows] = await Promise.all([
+      this.prisma.$queryRaw<ProjectRow[]>`
+        SELECT
+          COALESCE(e.project, 'Інше')              AS project,
+          COALESCE(SUM(r."totalSum"), 0)::float    AS value
+        FROM "Event" e
+        JOIN "EventReport" r ON r."eventId" = e.id
+        WHERE e.status = 'RE_SALE'
+        ${filters}
+        GROUP BY e.project
+        ORDER BY value DESC
+      `,
+      this.prisma.$queryRaw<CityRow[]>`
+        SELECT
+          e."cityId",
+          COALESCE(c.name, '—')                    AS name,
+          COALESCE(SUM(r."totalSum"),     0)::float AS revenue,
+          COALESCE(SUM(r."remainderSum"), 0)::float AS profit
+        FROM "Event" e
+        JOIN "EventReport" r ON r."eventId" = e.id
+        LEFT JOIN "City" c   ON c.id = e."cityId"
+        WHERE e.status = 'RE_SALE'
+        ${filters}
+        GROUP BY e."cityId", c.name
+        ORDER BY revenue DESC
+        LIMIT 5
+      `,
+      this.prisma.$queryRaw<SchoolRow[]>`
+        SELECT
+          e."schoolId",
+          COALESCE(s.name, '—')                    AS name,
+          COUNT(e.id)::int                         AS count,
+          COALESCE(SUM(r."totalSum"), 0)::float    AS revenue
+        FROM "Event" e
+        JOIN "EventReport" r ON r."eventId" = e.id
+        LEFT JOIN "School" s ON s.id = e."schoolId"
+        WHERE e.status = 'RE_SALE'
+        ${filters}
+        GROUP BY e."schoolId", s.name
+        ORDER BY revenue DESC
+        LIMIT 5
+      `,
+    ]);
+
+    const byProject = byProjectRows.map((r) => ({
+      name: r.project,
+      value: r.value,
+    }));
+    const topCities = topCitiesRows.map(({ name, revenue, profit }) => ({
+      name,
+      revenue,
+      profit,
+    }));
     const topSchools = topSchoolsRows.map(({ name, count, revenue }) => ({
       name,
       count,
