@@ -12,22 +12,23 @@ export class CitiesService {
   }
 
   async findAll() {
-    const cities = await this.prisma.city.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        users: {
-          where: { role: 'MANAGER' },
-          select: { id: true, name: true, phone: true },
-          take: 1,
+    const [cities, eventsStats] = await Promise.all([
+      this.prisma.city.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: {
+          users: {
+            where: { role: 'MANAGER' },
+            select: { id: true, name: true, phone: true },
+            take: 1,
+          },
+          _count: { select: { schools: true } },
         },
-        _count: { select: { schools: true } },
-      },
-    });
-
-    const eventsStats = await this.prisma.event.groupBy({
-      by: ['cityId', 'status'],
-      _count: { _all: true },
-    });
+      }),
+      this.prisma.event.groupBy({
+        by: ['cityId', 'status'],
+        _count: { _all: true },
+      }),
+    ]);
 
     return cities.map((city) => {
       const cityStats = eventsStats.filter((stat) => stat.cityId === city.id);
