@@ -22,12 +22,20 @@ const isProd = process.env.NODE_ENV === 'production';
 
 const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
 
+function clearLegacyHostOnlyCookies(res: Response) {
+  res.clearCookie('access_token');
+  res.clearCookie('refresh_token', { path: '/auth' });
+  res.clearCookie('csrf_token');
+}
+
 function setAuthCookies(
   res: Response,
   accessToken: string,
   refreshToken: string,
   csrfToken: string,
 ) {
+  clearLegacyHostOnlyCookies(res);
+
   res.cookie('access_token', accessToken, {
     httpOnly: true,
     secure: isProd,
