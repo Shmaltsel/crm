@@ -309,6 +309,22 @@ export class EventsService {
     }
   }
 
+  async findOne(id: string) {
+    const event = await this.prisma.event.findUnique({
+      where: { id },
+      include: {
+        school: true,
+        city: true,
+        crew: { include: { host: true, driver: true } },
+        preparation: true,
+        history: { orderBy: { createdAt: 'desc' } },
+        report: { include: { expenseItems: true, salaryItems: true } },
+      },
+    });
+    if (!event) throw new AppException('EVENT_NOT_FOUND', HttpStatus.NOT_FOUND);
+    return event;
+  }
+
   private async computeBySchool(
     key: string,
     schoolId: string,
@@ -464,6 +480,7 @@ export class EventsService {
           data: salariesWithUser.map((s) => ({
             reportId: report.id,
             userId: s.userId,
+            userName: s.name,
             amount: new Prisma.Decimal(s.amount),
           })),
         });

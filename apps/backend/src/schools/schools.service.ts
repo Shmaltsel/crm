@@ -191,8 +191,15 @@ export class SchoolsService {
     isDone: boolean;
     [key: string]: unknown;
   }) {
-    const { city_id, city_name, latestStatus, isPlanned, isInProgress, isDone, ...school } =
-      row;
+    const {
+      city_id,
+      city_name,
+      latestStatus,
+      isPlanned,
+      isInProgress,
+      isDone,
+      ...school
+    } = row;
     const categories: ('planned' | 'inProgress' | 'done')[] = [];
     if (isPlanned) categories.push('planned');
     if (isInProgress) categories.push('inProgress');
@@ -278,7 +285,7 @@ export class SchoolsService {
     `;
 
     const [statusRows, sizeRows] = await Promise.all([
-      this.prisma.$queryRaw
+      this.prisma.$queryRaw<
         { new: bigint; planned: bigint; inProgress: bigint; done: bigint }[]
       >(Prisma.sql`
         SELECT
