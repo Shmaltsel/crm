@@ -66,11 +66,16 @@ export default function VirtualSchoolList({
               width: "100%",
               height: `${virtualRow.size}px`,
               transform: `translateY(${virtualRow.start}px)`,
-              animationDelay: `${Math.min(virtualRow.index * 40, 400)}ms`,
             }}
-            className="school-row-enter"
           >
-            {renderItem(schools[virtualRow.index], virtualRow.index)}
+            <div
+              className="school-row-enter"
+              style={{
+                animationDelay: `${Math.min(virtualRow.index * 40, 400)}ms`,
+              }}
+            >
+              {renderItem(schools[virtualRow.index], virtualRow.index)}
+            </div>
           </div>
         ))}
       </div>
