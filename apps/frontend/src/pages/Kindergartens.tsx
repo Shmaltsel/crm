@@ -30,7 +30,12 @@ interface City {
 }
 
 export default function Kindergartens() {
-  const { data: schools = [] } = useSchools();
+  const { data: schoolsPages } = useSchools({
+    type: "Садочок",
+    cityId: selectedCity.id || undefined,
+  });
+
+  const schools = schoolsPages?.pages?.flatMap((p: any) => p.data) ?? [];
   const { data: cities = [] } = useCities();
   const deleteSchool = useDeleteSchool();
   const qc = useQueryClient();

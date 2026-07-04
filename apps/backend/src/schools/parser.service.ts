@@ -32,9 +32,9 @@ const CITY_CONFIG: Record<
     kindergartens: 'https://zk.isuo.org/koatuu/preschools-list/id/2110100000',
   },
   Київ: {
-    domain: 'https://kyiv.isuo.org',
-    schools: 'https://kyiv.isuo.org/koatuu/schools-list/id/8000000000',
-    kindergartens: 'https://kyiv.isuo.org/koatuu/preschools-list/id/8000000000',
+    domain: 'https://kv.isuo.org',
+    schools: 'https://kv.isuo.org/koatuu/schools-list/id/8000000000',
+    kindergartens: 'https://kv.isuo.org/koatuu/preschools-list/id/8000000000',
   },
   Харків: {
     domain: 'https://kh.isuo.org',
@@ -77,9 +77,9 @@ const CITY_CONFIG: Record<
     kindergartens: 'https://pl.isuo.org/koatuu/preschools-list/id/5310100000',
   },
   Чернігів: {
-    domain: 'https://cn.isuo.org',
-    schools: 'https://cn.isuo.org/koatuu/schools-list/id/7410100000',
-    kindergartens: 'https://cn.isuo.org/koatuu/preschools-list/id/7410100000',
+    domain: 'https://cg.isuo.org',
+    schools: 'https://cg.isuo.org/koatuu/schools-list/id/7410100000',
+    kindergartens: 'https://cg.isuo.org/koatuu/preschools-list/id/7410100000',
   },
   Черкаси: {
     domain: 'https://ck.isuo.org',
