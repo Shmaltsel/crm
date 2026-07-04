@@ -12,6 +12,8 @@ interface User {
   name: string;
   email: string;
   role: string;
+  cityId?: string | null;
+  cityName?: string | null;
 }
 
 interface AuthContextValue {

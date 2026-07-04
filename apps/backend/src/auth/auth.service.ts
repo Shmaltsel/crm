@@ -45,18 +45,12 @@ export class AuthService {
     pass: string,
     meta: { ip?: string; userAgent?: string } = {},
   ) {
-    const user = await this.usersService.findByEmail(email);
+    const user = await this.usersService.findByEmailWithCity(email);
 
     const isPasswordValid = await bcrypt.compare(
       pass,
       user?.password ?? this.dummyHash,
     );
-
-    console.log('AUTH DEBUG', {
-      found: !!user,
-      hashPrefix: user?.password?.slice(0, 7),
-      isPasswordValid,
-    });
 
     if (!user || !isPasswordValid) {
       throw new AppException('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
@@ -67,6 +61,8 @@ export class AuthService {
       email: user.email,
       role: user.role,
       name: user.name,
+      cityId: user.cityId,
+      cityName: user.city?.name,
     };
 
     const refresh_token = await this.issueRefreshToken(user.id, meta);
@@ -79,6 +75,8 @@ export class AuthService {
         name: user.name,
         email: user.email,
         role: user.role,
+        cityId: user.cityId,
+        cityName: user.city?.name,
       },
     };
   }
@@ -90,7 +88,7 @@ export class AuthService {
     const tokenHash = this.hashToken(oldToken);
     const stored = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
-      include: { user: true },
+      include: { user: { include: { city: true } } },
     });
 
     if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
@@ -107,6 +105,8 @@ export class AuthService {
       email: stored.user.email,
       role: stored.user.role,
       name: stored.user.name,
+      cityId: stored.user.cityId,
+      cityName: stored.user.city?.name,
     };
 
     const refresh_token = await this.issueRefreshToken(stored.user.id, meta);
@@ -119,6 +119,8 @@ export class AuthService {
         name: stored.user.name,
         email: stored.user.email,
         role: stored.user.role,
+        cityId: stored.user.cityId,
+        cityName: stored.user.city?.name,
       },
     };
   }

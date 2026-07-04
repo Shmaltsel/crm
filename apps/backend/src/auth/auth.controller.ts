@@ -111,6 +111,8 @@ export class AuthController {
       email: string;
       role: string;
       name: string;
+      cityId?: string;
+      cityName?: string;
     };
     return {
       user: {
@@ -118,6 +120,8 @@ export class AuthController {
         name: payload.name,
         email: payload.email,
         role: payload.role,
+        cityId: payload.cityId ?? null,
+        cityName: payload.cityName ?? null,
       },
     };
   }

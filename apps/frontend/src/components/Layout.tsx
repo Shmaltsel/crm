@@ -84,7 +84,7 @@ export default function Layout() {
               <span className="mr-3">🏠</span> Дашборд
             </Link>
           )}
-          {is(["SUPERADMIN", "MANAGER"]) && (
+          {is(["SUPERADMIN"]) && (
             <Link
               to="/cities"
               onClick={handleLinkClick}
