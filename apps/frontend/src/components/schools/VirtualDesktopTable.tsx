@@ -52,12 +52,16 @@ export default function VirtualDesktopTable({
           </tr>
         </thead>
         <tbody>
+          {virtualItems.length > 0 && (
+            <tr>
+              <td
+                colSpan={5}
+                style={{ height: `${virtualItems[0].start}px`, padding: 0, border: "none" }}
+              />
+            </tr>
+          )}
           {virtualItems.map((virtualRow) => (
-            <tr
-              style={{
-                height: `${rowVirtualizer.getTotalSize() - virtualItems.reduce((s, r) => s + r.size, 0)}px`,
-              }}
-            >
+            <tr key={schools[virtualRow.index].id} data-index={virtualRow.index}>
               <SchoolRow
                 school={schools[virtualRow.index]}
                 onDelete={onDelete}
@@ -66,13 +70,18 @@ export default function VirtualDesktopTable({
               />
             </tr>
           ))}
-          <tr
-            style={{
-              height: `${rowVirtualizer.getTotalSize() - rowVirtualizer.getVirtualItems().reduce((s, r) => s + r.size, 0)}px`,
-            }}
-          >
-            <td colSpan={5} />
-          </tr>
+          {virtualItems.length > 0 && (
+            <tr>
+              <td
+                colSpan={5}
+                style={{
+                  height: `${rowVirtualizer.getTotalSize() - virtualItems[virtualItems.length - 1].end}px`,
+                  padding: 0,
+                  border: "none",
+                }}
+              />
+            </tr>
+          )}
         </tbody>
       </table>
 

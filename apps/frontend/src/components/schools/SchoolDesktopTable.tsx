@@ -17,12 +17,28 @@ interface SchoolRowProps {
   navigate: NavigateFunction;
 }
 
+const CATEGORY_BADGES: Record<string, { label: string; className: string }> = {
+  planned: {
+    label: "Заплановано",
+    className: "bg-blue-50 text-blue-600 border-blue-100",
+  },
+  inProgress: {
+    label: "У процесі",
+    className: "bg-amber-50 text-amber-600 border-amber-100",
+  },
+  done: {
+    label: "Проведено",
+    className: "bg-emerald-50 text-emerald-600 border-emerald-100",
+  },
+};
+
 export const SchoolRow = React.memo(
   ({ school, onDelete, stages, navigate }: SchoolRowProps) => {
     const latestEvent = school.events?.[0];
     const stage = latestEvent
       ? stages.find((s) => s.key === latestEvent.status)
       : null;
+    const categories = (school as any).categories as string[] | undefined;
 
     return (
       <motion.tr
@@ -40,7 +56,18 @@ export const SchoolRow = React.memo(
           </span>
         </td>
         <td className="p-4">
-          {stage ? (
+          {categories && categories.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {categories.map((cat) => (
+                <span
+                  key={cat}
+                  className={`px-3 py-1 rounded-full text-xs font-bold border ${CATEGORY_BADGES[cat]?.className ?? "bg-slate-50 text-slate-500 border-slate-100"}`}
+                >
+                  {CATEGORY_BADGES[cat]?.label ?? cat}
+                </span>
+              ))}
+            </div>
+          ) : stage ? (
             <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-bold border border-blue-100">
               {stage.name}
             </span>

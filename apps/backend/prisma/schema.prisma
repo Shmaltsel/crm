@@ -232,6 +232,7 @@ model Project {
   name      String   @unique
   color     String   @default("blue")
   createdAt DateTime @default(now())
+  pricePerChild Int @default(0)
 }
 
 model ExpenseItem {

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../../config/api";
 import type { City, Crew } from "../../../types";
 import { useQuery } from "@tanstack/react-query";
@@ -18,6 +19,7 @@ export default function CrewModal({
   eventDate,
   onSave,
 }: CrewModalProps) {
+  const navigate = useNavigate();
   const { data: allCities = [] } = useQuery({
     queryKey: ["cities"],
     queryFn: () => api.get("/cities").then((r) => r.data),
@@ -65,9 +67,16 @@ export default function CrewModal({
               <p className="text-slate-500">
                 У цьому місті ще немає сформованих екіпажів.
               </p>
-              <p className="text-sm mt-2 text-blue-600">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  if (currentCity?.id) navigate(`/cities/${currentCity.id}`);
+                }}
+                className="text-sm mt-2 text-blue-600 hover:text-blue-800 underline underline-offset-2"
+              >
                 Створіть екіпаж у вкладці міста!
-              </p>
+              </button>
             </div>
           ) : (
             <div className="space-y-4">

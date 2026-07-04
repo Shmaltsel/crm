@@ -22,6 +22,7 @@ export default function CityProfile() {
   const [activeTab, setActiveTab] = useState<Tab>("crews");
   const [selectedReportEvent, setSelectedReportEvent] = useState<any>(null);
   const [isCreateCrewModalOpen, setIsCreateCrewModalOpen] = useState(false);
+  const [completedSearchQuery, setCompletedSearchQuery] = useState("");
   const [crewForm, setCrewForm] = useState({
     name: "",
     hostId: "",
@@ -46,6 +47,11 @@ export default function CityProfile() {
   if (!city) return <div className="p-8 text-slate-500">Місто не знайдено</div>;
 
   const completedEvents: Event[] = city.events || [];
+  const filteredCompletedEvents = completedEvents.filter((ev) =>
+    (ev.school?.name || "")
+      .toLowerCase()
+      .includes(completedSearchQuery.trim().toLowerCase()),
+  );
   const crews: Crew[] = city.crews || [];
   const manager = city.manager;
 
@@ -141,19 +147,30 @@ export default function CityProfile() {
       {activeTab === "events" && (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
           <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-            <h3 className="font-bold text-slate-800">
+            <h3 className="font-bold text-slate-800 mb-4">
               Завершені події ({completedEvents.length})
             </h3>
+            <input
+              type="text"
+              value={completedSearchQuery}
+              onChange={(e) => setCompletedSearchQuery(e.target.value)}
+              placeholder="Пошук за назвою закладу..."
+              className="w-full sm:max-w-xs p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
-          {completedEvents.length === 0 ? (
+          {filteredCompletedEvents.length === 0 ? (
             <div className="p-12 text-center text-slate-400">
               <p className="text-4xl mb-3">📭</p>
-              <p className="font-medium">Завершених подій ще немає</p>
+              <p className="font-medium">
+                {completedSearchQuery
+                  ? "Нічого не знайдено"
+                  : "Завершених подій ще немає"}
+              </p>
             </div>
           ) : (
             <>
               <div className="md:hidden divide-y divide-slate-50">
-                {completedEvents.map((ev) => (
+                {filteredCompletedEvents.map((ev) => (
                   <div
                     key={ev.id}
                     onClick={() => setSelectedReportEvent(ev)}
@@ -197,7 +214,7 @@ export default function CityProfile() {
                     </tr>
                   </thead>
                   <tbody>
-                    {completedEvents.map((ev) => (
+                    {filteredCompletedEvents.map((ev) => (
                       <tr
                         key={ev.id}
                         onClick={() => setSelectedReportEvent(ev)}

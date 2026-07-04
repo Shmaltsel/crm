@@ -1,43 +1,35 @@
-const fs = require("fs");
-const path = require("path");
+const fs = require('fs');
+const path = require('path');
 
-const outputFile = "bugfix_audit.md";
-fs.writeFileSync(outputFile, "# Аудит: Фікс тестів та сервісів\n\n");
-
+// Сюди просто вписуйте шляхи до файлів, які ви хочете зібрати
 const filesToCollect = [
-  "apps/backend/src/dashboard/dashboard.service.ts",
-  "apps/backend/src/dashboard/dashboard.service.spec.ts",
-  "apps/backend/src/cities/cities.controller.spec.ts",
-  "apps/backend/src/common/guards/ownership.guard.ts",
-  "apps/backend/src/cities/cities.module.ts",
-  "apps/backend/src/events/events.service.ts",
-  "apps/backend/src/events/events.service.spec.ts",
-  "apps/backend/src/schools/schools.service.ts",
-  "apps/backend/src/schools/schools.service.spec.ts"
+  'apps/backend/prisma/schema.prisma',
+  'apps/backend/src/projects/dto/create-project.dto.ts',
+  'apps/frontend/src/types.ts',
+  'apps/backend/src/common/interceptors/sanitize.interceptor.ts',
+  'apps/backend/src/schools/dto/find-schools-query.dto.ts',
+  'apps/backend/src/schools/dto/find-contacts-query.dto.ts',
+  'apps/frontend/src/components/school-profile/modals/EventModal.tsx',
+  'apps/frontend/src/pages/Employees.tsx'
 ];
 
-let collectedCount = 0;
-console.log("🚀 Починаю збір файлів для аудиту...\n");
+const outputFile = 'diagnostic_bundle_final.md';
 
-filesToCollect.forEach((filePath) => {
-  if (!fs.existsSync(filePath)) {
-    console.warn(`[!] Файл не знайдено: ${filePath}`);
-    return;
+if (fs.existsSync(outputFile)) fs.unlinkSync(outputFile);
+
+filesToCollect.forEach(filePath => {
+  if (fs.existsSync(filePath)) {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const ext = path.extname(filePath).replace('.', '');
+    // Визначаємо мову для підсвітки
+    const lang = (ext === 'tsx' || ext === 'ts') ? 'typescript' : (ext === 'prisma' ? 'prisma' : 'javascript');
+    
+    const mdBlock = `### \`${filePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`;
+    fs.appendFileSync(outputFile, mdBlock);
+    console.log(`[+] Додано: ${filePath}`);
+  } else {
+    console.warn(`[!] Файл не знайдено, пропускаємо: ${filePath}`);
   }
-
-  const content = fs.readFileSync(filePath, "utf-8");
-  const ext = path.extname(filePath).replace(".", "");
-
-  let lang = ext;
-  if (["ts", "tsx"].includes(ext)) lang = "typescript";
-  if (ext === "md") lang = "markdown";
-  if (ext === "json") lang = "json";
-  if (ext === "yaml" || ext === "yml") lang = "yaml";
-  
-  const mdBlock = `### \`${filePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`;
-  fs.appendFileSync(outputFile, mdBlock);
-  console.log(`[+] Додано вміст: ${filePath}`);
-  collectedCount++;
 });
 
-console.log(`\n✅ Готово! Зібрано файлів: ${collectedCount}. Результати збережено у ${outputFile}`);
+console.log(`\n✅ Готово! Усі файли зібрано у: ${outputFile}`);

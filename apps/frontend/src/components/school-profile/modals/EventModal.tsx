@@ -19,6 +19,7 @@ export default function EventModal({
   onSave,
 }: EventModalProps) {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [priceTouched, setPriceTouched] = useState(false);
 
   const {
     register,
@@ -43,9 +44,11 @@ export default function EventModal({
   });
 
   const currentProject = watch("project");
+  const currentChildrenPlanned = watch("childrenPlanned");
 
   useEffect(() => {
     if (isOpen) {
+      setPriceTouched(!!defaultValues?.price);
       reset({
         project: "",
         date: "",
@@ -71,6 +74,22 @@ export default function EventModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  useEffect(() => {
+    if (priceTouched) return;
+    const selected = projects.find((p) => p.name === currentProject) as
+      | (Project & { pricePerChild?: number })
+      | undefined;
+    if (!selected?.pricePerChild) return;
+    const count = Number(currentChildrenPlanned) || 0;
+    setValue("price", String(count * selected.pricePerChild));
+  }, [
+    currentProject,
+    currentChildrenPlanned,
+    projects,
+    priceTouched,
+    setValue,
+  ]);
 
   if (!isOpen) return null;
 
@@ -169,8 +188,13 @@ export default function EventModal({
               <input
                 type="number"
                 {...register("price")}
+                onInput={() => setPriceTouched(true)}
                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
               />
+              <p className="text-xs text-slate-400 mt-1">
+                Розраховується автоматично: діти × ціна за дитину. Можна
+                змінити вручну.
+              </p>
               {errors.price && (
                 <p className="text-xs text-red-500 mt-1">
                   {errors.price.message}

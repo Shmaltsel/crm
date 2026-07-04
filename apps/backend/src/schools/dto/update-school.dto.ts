@@ -6,7 +6,7 @@ import {
   IsEmail,
   Min,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
 export class UpdateSchoolDto {
   @IsOptional()
@@ -34,6 +34,7 @@ export class UpdateSchoolDto {
   phone?: string;
 
   @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @IsEmail()
   email?: string;
 

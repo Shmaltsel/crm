@@ -186,13 +186,22 @@ export class SchoolsService {
     city_id: string | null;
     city_name: string | null;
     latestStatus: string | null;
+    isPlanned: boolean;
+    isInProgress: boolean;
+    isDone: boolean;
     [key: string]: unknown;
   }) {
-    const { city_id, city_name, latestStatus, ...school } = row;
+    const { city_id, city_name, latestStatus, isPlanned, isInProgress, isDone, ...school } =
+      row;
+    const categories: ('planned' | 'inProgress' | 'done')[] = [];
+    if (isPlanned) categories.push('planned');
+    if (isInProgress) categories.push('inProgress');
+    if (isDone) categories.push('done');
     return {
       ...school,
       city: city_id ? { id: city_id, name: city_name } : null,
       events: latestStatus ? [{ status: latestStatus }] : [],
+      categories,
     };
   }
 
@@ -210,7 +219,19 @@ export class SchoolsService {
     `;
 
     const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
-      SELECT s.*, c.id as city_id, c.name as city_name, latest.status as "latestStatus"
+      SELECT s.*, c.id as city_id, c.name as city_name, latest.status as "latestStatus",
+        EXISTS (
+          SELECT 1 FROM "Event" e
+          WHERE e."schoolId" = s.id AND e.status::text IN (${Prisma.join(PLANNED_STAGES)})
+        ) as "isPlanned",
+        EXISTS (
+          SELECT 1 FROM "Event" e
+          WHERE e."schoolId" = s.id AND e.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})
+        ) as "isInProgress",
+        EXISTS (
+          SELECT 1 FROM "Event" e
+          WHERE e."schoolId" = s.id AND e.status::text = 'RE_SALE'
+        ) as "isDone"
       ${baseFrom}
       ${whereClause}
       ORDER BY s."createdAt" DESC

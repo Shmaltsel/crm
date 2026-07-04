@@ -120,13 +120,40 @@ export function useDeleteUser() {
 export function useCreateProject() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (form: { name: string; color: string }) =>
+    mutationFn: (form: {
+      name: string;
+      color: string;
+      pricePerChild?: number;
+    }) =>
       api
         .post<Project>("/projects", form, { headers: h() })
         .then((r) => r.data),
     onSuccess: (data) => {
       qc.setQueryData(["projects"], (old: Project[] | undefined) =>
         Array.isArray(old) ? [...old, data] : [data],
+      );
+    },
+  });
+}
+
+export function useUpdateProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      form,
+    }: {
+      id: string;
+      form: { name?: string; color?: string; pricePerChild?: number };
+    }) =>
+      api
+        .patch<Project>(`/projects/${id}`, form, { headers: h() })
+        .then((r) => r.data),
+    onSuccess: (data, vars) => {
+      qc.setQueryData(["projects"], (old: Project[] | undefined) =>
+        Array.isArray(old)
+          ? old.map((p) => (p.id === vars.id ? { ...p, ...data } : p))
+          : old,
       );
     },
   });

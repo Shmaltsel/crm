@@ -14,6 +14,10 @@ import DayOffModal from "../components/calendar/DayOffModal";
 
 const STAFF_ROLES = ["HOST", "DRIVER"];
 const MANAGER_ROLES = ["SUPERADMIN", "MANAGER"];
+const ROLE_ICON_MAP: Record<string, string> = {
+  HOST: "🎙️",
+  DRIVER: "🚗",
+};
 
 const toISODate = (d: Date) => d.toLocaleDateString("en-CA");
 
@@ -426,22 +430,49 @@ export default function CalendarView() {
                 {day && (
                   <>
                     {showCross && (
-                      <button
-                        onClick={(e) => handleDayOffClick(e, day)}
-                        title={
-                          hasAnyDayOff
-                            ? "Скасувати вихідний"
-                            : "Призначити вихідний"
-                        }
-                        className={`absolute top-1 left-1 w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold z-10 transition-all
-                          ${
+                      <div className="absolute top-1 left-1 z-10 group/dayoff">
+                        <button
+                          onClick={(e) => handleDayOffClick(e, day)}
+                          title={
                             hasAnyDayOff
-                              ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600"
-                              : "bg-slate-100 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-rose-100 hover:text-rose-500"
-                          }`}
-                      >
-                        ✕
-                      </button>
+                              ? "Скасувати вихідний"
+                              : "Призначити вихідний"
+                          }
+                          className={`w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold transition-all
+                            ${
+                              hasAnyDayOff
+                                ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600"
+                                : "bg-slate-100 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-rose-100 hover:text-rose-500"
+                            }`}
+                        >
+                          ✕
+                        </button>
+
+                        {isManagerOrAdmin && dayOffEntries.length > 0 && (
+                          <div className="hidden md:block absolute top-full left-0 mt-2 w-48 bg-slate-800 text-white p-2.5 rounded-xl shadow-2xl opacity-0 invisible group-hover/dayoff:opacity-100 group-hover/dayoff:visible transition-all duration-200 pointer-events-none">
+                            <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1.5">
+                              Вихідний ({dayOffEntries.length})
+                            </p>
+                            <div className="space-y-1">
+                              {dayOffEntries.map((d) => {
+                                const u = allUsers.find(
+                                  (au: any) => au.id === d.userId,
+                                );
+                                return (
+                                  <p
+                                    key={d.id}
+                                    className="text-xs font-medium truncate"
+                                  >
+                                    {u
+                                      ? `${ROLE_ICON_MAP[u.role] || "👤"} ${u.name}`
+                                      : "Невідомий"}
+                                  </p>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
 
                     <div className="flex justify-center md:justify-end mb-1.5">

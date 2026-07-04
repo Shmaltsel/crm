@@ -1,3 +1,704 @@
+### `apps/backend/prisma/schema.prisma`
+
+```prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id             String         @id @default(uuid())
+  name           String
+  email          String         @unique
+  phone          String?
+  password       String
+  role           UserRole       @default(MANAGER)
+  cityId         String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  telegramId     String?
+  telegramChatId String?
+  car            String?
+  balance        Decimal        @default(0) @db.Decimal(12, 2)
+  managedCities  City[]         @relation("CityManager")
+  refreshTokens  RefreshToken[]
+  crewAsDriver   Crew[]         @relation("DriverCrew")
+  crewAsHost     Crew[]         @relation("HostCrew")
+  city           City?          @relation(fields: [cityId], references: [id])
+  salaryItems    SalaryItem[]
+  daysOff        DayOff[]
+
+  @@index([role])
+  @@index([cityId])
+}
+
+model DayOff {
+  id        String   @id @default(uuid())
+  userId    String
+  date      DateTime @db.Date
+  createdBy String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([date])
+}
+
+model City {
+  id        String        @id @default(uuid())
+  name      String
+  managerId String?
+  createdAt DateTime      @default(now())
+  manager   User?         @relation("CityManager", fields: [managerId], references: [id])
+  crews     Crew[]
+  events    Event[]
+  issues    IssueReport[]
+  schools   School[]
+  users     User[]
+}
+
+model School {
+  id            String   @id @default(uuid())
+  name          String
+  type          String
+  cityId        String
+  address       String?
+  director      String?
+  phone         String?
+  email         String?
+  notes         String?
+  childrenCount Int?
+  isHotClient   Boolean  @default(false)
+  rating        Float?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  events        Event[]
+  city          City     @relation(fields: [cityId], references: [id])
+
+  @@index([cityId])
+  @@index([updatedAt, cityId])
+}
+
+model Crew {
+  id        String   @id @default(uuid())
+  name      String
+  cityId    String
+  hostId    String?
+  driverId  String?
+  car       String?
+  carPlate  String?
+  phone     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  city      City     @relation(fields: [cityId], references: [id])
+  driver    User?    @relation("DriverCrew", fields: [driverId], references: [id])
+  host      User?    @relation("HostCrew", fields: [hostId], references: [id])
+  events    Event[]
+}
+
+model Event {
+  id              String            @id @default(uuid())
+  cityId          String
+  schoolId        String
+  crewId          String?
+  project         String
+  date            DateTime
+  time            String?
+  status          EventStatus       @default(BASE)
+  childrenPlanned Int?
+  childrenActual  Int?
+  price           Float?
+  received        Float?
+  paymentMethod   String?
+  address         String?
+  contactPerson   String?
+  contactPhone    String?
+  equipment       String?
+  nextContact     DateTime?
+  nextProject     String?
+  responsibleId   String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  city            City              @relation(fields: [cityId], references: [id])
+  crew            Crew?             @relation(fields: [crewId], references: [id])
+  school          School            @relation(fields: [schoolId], references: [id])
+  history         EventHistory[]
+  preparation     EventPreparation?
+  report          EventReport?
+  files           File[]
+  issues          IssueReport[]
+
+  @@index([cityId])
+  @@index([status])
+  @@index([schoolId])
+  @@index([schoolId, date])
+  @@index([date, status, cityId])
+}
+
+model EventReport {
+  id                String        @id @default(uuid())
+  eventId           String        @unique
+  directorSatisfied Boolean?
+  teachersSatisfied Boolean?
+  hadIssues         Boolean       @default(false)
+  comment           String?
+  rating            Float?
+  createdAt         DateTime      @default(now())
+  announcementDone  Boolean       @default(false)
+  materialShown     Boolean       @default(false)
+  childrenCount     Int           @default(0)
+  classesCount      Int           @default(0)
+  privilegedCount   Int           @default(0)
+  showingsCount     Int           @default(0)
+  totalSum          Float         @default(0)
+  schoolSum         Float         @default(0)
+  remainderSum      Float         @default(0)
+  event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  photos            File[]
+  expenseItems      ExpenseItem[]
+  salaryItems       SalaryItem[]
+}
+
+model File {
+  id        String       @id @default(uuid())
+  name      String
+  url       String
+  size      Int
+  eventId   String?
+  reportId  String?
+  createdAt DateTime     @default(now())
+  event     Event?       @relation(fields: [eventId], references: [id])
+  report    EventReport? @relation(fields: [reportId], references: [id])
+}
+
+model EventHistory {
+  id        String   @id @default(uuid())
+  eventId   String
+  action    String
+  comment   String?
+  userId    String
+  userName  String
+  role      String
+  createdAt DateTime @default(now())
+  event     Event    @relation(fields: [eventId], references: [id])
+
+  @@index([eventId, createdAt])
+}
+
+model EventPreparation {
+  id               String            @id @default(uuid())
+  eventId          String            @unique
+  assignCrew       PreparationStatus @default(PLANNED)
+  bookEquipment    PreparationStatus @default(PLANNED)
+  prepareDocs      PreparationStatus @default(PLANNED)
+  prepareMaterials PreparationStatus @default(PLANNED)
+  remindSchool     PreparationStatus @default(PLANNED)
+  event            Event             @relation(fields: [eventId], references: [id])
+}
+
+model IssueReport {
+  id               String    @id @default(uuid())
+  eventId          String
+  schoolName       String
+  eventName        String
+  message          String
+  cityId           String
+  status           String    @default("Планується")
+  createdAt        DateTime  @default(now())
+  deadline         DateTime?
+  assignedUserId   String?
+  assignedUserName String?
+  city             City      @relation(fields: [cityId], references: [id])
+  event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([cityId])
+  @@index([eventId])
+}
+
+model SchoolContact {
+  id           String   @id @default(uuid())
+  city         String   @default("Львів")
+  schoolNumber String
+  contactName  String
+  phone        String
+  role         String?
+  createdAt    DateTime @default(now())
+}
+
+model Project {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  color     String   @default("blue")
+  createdAt DateTime @default(now())
+  pricePerChild Int @default(0)
+}
+
+model ExpenseItem {
+  id        String   @id @default(uuid())
+  reportId  String
+  category  String
+  name      String?
+  amount    Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+
+  report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+}
+
+model SalaryItem {
+  id        String   @id @default(uuid())
+  reportId  String
+  userId    String?
+  userName  String
+  amount    Decimal  @db.Decimal(12, 2)
+  role      String?
+  createdAt DateTime @default(now())
+
+  report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user   User?       @relation(fields: [userId], references: [id])
+
+  @@index([reportId])
+  @@index([userId])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  userAgent String?
+  ip        String?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  userName  String?
+  action    String
+  entity    String?
+  entityId  String?
+  ip        String?
+  userAgent String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action, createdAt])
+  @@index([entity, entityId])
+}
+
+enum UserRole {
+  SUPERADMIN
+  MANAGER
+  HOST
+  DRIVER
+}
+
+enum PreparationStatus {
+  PLANNED
+  IN_PROGRESS
+  DONE
+}
+
+enum EventStatus {
+  BASE
+  FIRST_CONTACT
+  INTERESTED
+  PRE_APPROVAL
+  DATE_CONFIRMED
+  PREPARATION
+  IN_PROGRESS
+  DONE
+  REPORT
+  RE_SALE
+}
+
+```
+
+---
+
+### `apps/backend/src/projects/dto/create-project.dto.ts`
+
+```typescript
+import { IsString, IsNotEmpty, IsOptional, IsNumber, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class CreateProjectDto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  color?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  pricePerChild?: number;
+}
+```
+
+---
+
+### `apps/backend/src/common/interceptors/sanitize.interceptor.ts`
+
+```typescript
+import {
+  CallHandler,
+  ExecutionContext,
+  Injectable,
+  NestInterceptor,
+} from '@nestjs/common';
+import { Observable } from 'rxjs';
+
+function sanitizeValue(value: unknown): unknown {
+  if (typeof value === 'string') {
+    return value
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+      .trim();
+  }
+  if (Array.isArray(value)) return value.map(sanitizeValue);
+  if (value && typeof value === 'object') {
+    const result: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(value))
+      result[key] = sanitizeValue(val);
+    return result;
+  }
+  return value;
+}
+
+@Injectable()
+export class SanitizeInterceptor implements NestInterceptor {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    const req = context.switchToHttp().getRequest();
+    if (req.body) req.body = sanitizeValue(req.body);
+    return next.handle();
+  }
+}
+
+```
+
+---
+
+### `apps/backend/src/schools/dto/find-schools-query.dto.ts`
+
+```typescript
+import { IsOptional, IsString, MinLength, IsIn } from 'class-validator';
+
+export class FindSchoolsQueryDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  q?: string;
+
+  @IsOptional()
+  @IsIn(['Школа', 'Садочок'])
+  type?: 'Школа' | 'Садочок';
+}
+
+```
+
+---
+
+### `apps/backend/src/schools/dto/find-contacts-query.dto.ts`
+
+```typescript
+import { IsOptional, IsString, MinLength } from 'class-validator';
+
+export class FindContactsQueryDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  q?: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
+}
+
+```
+
+---
+
+### `apps/frontend/src/components/school-profile/modals/EventModal.tsx`
+
+```typescript
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { api } from "../../../config/api";
+import type { Project } from "../../../types";
+import { eventSchema, type EventFormValues } from "./EventSchema";
+
+interface EventModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  defaultValues?: Partial<EventFormValues>;
+  onSave: (data: EventFormValues) => void;
+}
+
+export default function EventModal({
+  isOpen,
+  onClose,
+  defaultValues,
+  onSave,
+}: EventModalProps) {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [priceTouched, setPriceTouched] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<EventFormValues>({
+    resolver: zodResolver(eventSchema),
+    defaultValues: {
+      project: "",
+      date: "",
+      time: "",
+      childrenPlanned: "",
+      price: "",
+      address: "",
+      contactPerson: "",
+      contactPhone: "",
+      ...defaultValues,
+    },
+  });
+
+  const currentProject = watch("project");
+  const currentChildrenPlanned = watch("childrenPlanned");
+
+  useEffect(() => {
+    if (isOpen) {
+      setPriceTouched(!!defaultValues?.price);
+      reset({
+        project: "",
+        date: "",
+        time: "",
+        childrenPlanned: "",
+        price: "",
+        address: "",
+        contactPerson: "",
+        contactPhone: "",
+        ...defaultValues,
+      });
+      api
+        .get<Project[]>("/projects", {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        })
+        .then((res) => {
+          setProjects(res.data);
+          if (!defaultValues?.project && res.data.length > 0) {
+            setValue("project", res.data[0].name);
+          }
+        })
+        .catch(console.error);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (priceTouched) return;
+    const selected = projects.find((p) => p.name === currentProject) as
+      | (Project & { pricePerChild?: number })
+      | undefined;
+    if (!selected?.pricePerChild) return;
+    const count = Number(currentChildrenPlanned) || 0;
+    setValue("price", String(count * selected.pricePerChild));
+  }, [
+    currentProject,
+    currentChildrenPlanned,
+    projects,
+    priceTouched,
+    setValue,
+  ]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[92vh] flex flex-col">
+        <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
+          <h3 className="text-xl font-bold text-slate-800">Нова подія</h3>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 p-2 -mr-2 text-xl leading-none"
+          >
+            ✕
+          </button>
+        </div>
+        <form
+          onSubmit={handleSubmit(onSave)}
+          className="p-5 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-4"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <label className="block text-sm mb-1 text-slate-600">
+                Проєкт (Вид події)
+              </label>
+              <select
+                {...register("project")}
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="" disabled>
+                  Оберіть вид події
+                </option>
+                {projects.length > 0 ? (
+                  projects.map((p) => (
+                    <option key={p.id} value={p.name}>
+                      {p.name}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option>Голограма для школи</option>
+                    <option>360° шоу</option>
+                  </>
+                )}
+              </select>
+              {errors.project && (
+                <p className="text-xs text-red-500 mt-1">
+                  {errors.project.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm mb-1 text-slate-600">Дата</label>
+              <input
+                type="date"
+                {...register("date")}
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+              {errors.date && (
+                <p className="text-xs text-red-500 mt-1">
+                  {errors.date.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm mb-1 text-slate-600">Час</label>
+              <input
+                type="time"
+                {...register("time")}
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+              {errors.time && (
+                <p className="text-xs text-red-500 mt-1">
+                  {errors.time.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm mb-1 text-slate-600">
+                Дітей (план)
+              </label>
+              <input
+                type="number"
+                {...register("childrenPlanned")}
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+              {errors.childrenPlanned && (
+                <p className="text-xs text-red-500 mt-1">
+                  {errors.childrenPlanned.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm mb-1 text-slate-600">
+                Вартість
+              </label>
+              <input
+                type="number"
+                {...register("price")}
+                onInput={() => setPriceTouched(true)}
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-slate-400 mt-1">
+                Розраховується автоматично: діти × ціна за дитину. Можна
+                змінити вручну.
+              </p>
+              {errors.price && (
+                <p className="text-xs text-red-500 mt-1">
+                  {errors.price.message}
+                </p>
+              )}
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm mb-1 text-slate-600">
+                Адреса
+              </label>
+              <input
+                type="text"
+                {...register("address")}
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm mb-1 text-slate-600">
+                Контактна особа
+              </label>
+              <input
+                type="text"
+                {...register("contactPerson")}
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm mb-1 text-slate-600">
+                Телефон
+              </label>
+              <input
+                type="text"
+                {...register("contactPhone")}
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <div className="flex gap-3 mt-4 shrink-0 pt-4 border-t border-slate-100 pb-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full sm:w-auto px-5 py-3 bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium rounded-xl transition-colors"
+            >
+              Скасувати
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full sm:w-auto px-5 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              Створити
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+```
+
+---
+
+### `apps/frontend/src/pages/Employees.tsx`
+
+```typescript
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -7,7 +708,6 @@ import {
   useUpdateUser,
   useDeleteUser,
   useCreateProject,
-  useUpdateProject,
   useDeleteProject,
 } from "../hooks/useEmployees";
 import { useCities } from "../hooks/useCities";
@@ -127,7 +827,6 @@ export default function Employees() {
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
   const createProject = useCreateProject();
-  const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
 
   const isLoading = usersLoading;
@@ -137,26 +836,11 @@ export default function Employees() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [projectForm, setProjectForm] = useState({
     name: "",
     color: "blue",
     pricePerChild: "",
   });
-
-  const handleOpenProjectModal = (project: Project | null = null) => {
-    setEditingProject(project);
-    setProjectForm(
-      project
-        ? {
-            name: project.name,
-            color: project.color,
-            pricePerChild: String((project as any).pricePerChild ?? ""),
-          }
-        : { name: "", color: "blue", pricePerChild: "" },
-    );
-    setIsProjectModalOpen(true);
-  };
 
   const { selectedCity } = useSelectedCity();
 
@@ -235,12 +919,7 @@ export default function Employees() {
       pricePerChild: Number(projectForm.pricePerChild) || 0,
     };
     setProjectForm({ name: "", color: "blue", pricePerChild: "" });
-    if (editingProject) {
-      updateProject.mutate({ id: editingProject.id, form: payload });
-      setEditingProject(null);
-    } else {
-      createProject.mutate(payload);
-    }
+    createProject.mutate(payload);
   };
 
   const handleDeleteProject = async (id: string, name: string) => {
@@ -495,7 +1174,7 @@ export default function Employees() {
           </div>
           {isSuperAdmin && (
             <button
-              onClick={() => handleOpenProjectModal()}
+              onClick={() => setIsProjectModalOpen(true)}
               className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 transition-colors w-full sm:w-auto"
             >
               + Створити вид події
@@ -532,22 +1211,13 @@ export default function Employees() {
                 </div>
               </div>
               {isSuperAdmin && (
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => handleOpenProjectModal(p)}
-                    className="text-slate-300 hover:text-blue-500 p-2 -mr-1"
-                    title="Редагувати"
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    onClick={() => handleDeleteProject(p.id, p.name)}
-                    className="text-slate-300 hover:text-red-500 p-2 -mr-2"
-                    title="Видалити"
-                  >
-                    🗑
-                  </button>
-                </div>
+                <button
+                  onClick={() => handleDeleteProject(p.id, p.name)}
+                  className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2 -mr-2"
+                  title="Видалити"
+                >
+                  🗑
+                </button>
               )}
             </motion.div>
           ))}
@@ -565,13 +1235,10 @@ export default function Employees() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h3 className="text-xl font-bold text-slate-800">
-                {editingProject ? "Редагувати вид події" : "Новий вид події"}
+                Новий вид події
               </h3>
               <button
-                onClick={() => {
-                  setIsProjectModalOpen(false);
-                  setEditingProject(null);
-                }}
+                onClick={() => setIsProjectModalOpen(false)}
                 className="text-slate-400 text-xl leading-none p-2 -mr-2"
               >
                 ✕
@@ -770,3 +1437,8 @@ export default function Employees() {
     </motion.div>
   );
 }
+
+```
+
+---
+
