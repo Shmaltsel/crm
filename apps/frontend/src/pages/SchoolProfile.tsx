@@ -676,6 +676,7 @@ export default function SchoolProfile() {
         isOpen={isCrewModalOpen}
         onClose={() => setIsCrewModalOpen(false)}
         city={schoolData.city}
+        eventDate={currentEvent?.date}
         employees={users}
         onSave={handleAssignCrew}
       />

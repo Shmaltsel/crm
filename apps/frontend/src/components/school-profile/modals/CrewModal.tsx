@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { api } from "../../../config/api";
 import type { City, Crew } from "../../../types";
 import { useQuery } from "@tanstack/react-query";
+import { useDaysOff } from "../../../hooks/useDaysOff";
 interface CrewModalProps {
   isOpen: boolean;
   onClose: () => void;
   city?: string;
+  eventDate?: string;
   onSave: (crewId: string) => void;
 }
 
@@ -13,6 +15,7 @@ export default function CrewModal({
   isOpen,
   onClose,
   city,
+  eventDate,
   onSave,
 }: CrewModalProps) {
   const { data: allCities = [] } = useQuery({
@@ -29,6 +32,12 @@ export default function CrewModal({
     enabled: !!currentCity?.id && isOpen,
     staleTime: 60 * 1000,
   });
+  const dayOnly = eventDate ? eventDate.slice(0, 10) : undefined;
+  const { data: dayOffs = [] } = useDaysOff(dayOnly, dayOnly);
+  const dayOffUserIds = useMemo(
+    () => new Set(dayOffs.map((d) => d.userId)),
+    [dayOffs],
+  );
   const [selectedCrewId, setSelectedCrewId] = useState("");
 
   if (!isOpen) return null;
@@ -66,33 +75,53 @@ export default function CrewModal({
                 Оберіть готовий екіпаж
               </label>
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                {crews.map((crew) => (
-                  <label
-                    key={crew.id}
-                    className={`flex items-start p-3 rounded-xl border cursor-pointer transition-all ${selectedCrewId === crew.id ? "border-blue-500 bg-blue-50/50 ring-1 ring-blue-500" : "border-slate-200 hover:border-blue-300"}`}
-                  >
-                    <input
-                      type="radio"
-                      name="crew"
-                      value={crew.id}
-                      checked={selectedCrewId === crew.id}
-                      onChange={() => setSelectedCrewId(crew.id)}
-                      className="mt-1 mr-3 text-blue-600 focus:ring-blue-500"
-                    />
-                    <div>
-                      <p className="font-bold text-slate-800">{crew.name}</p>
-                      <p className="text-xs text-slate-500 mt-1">
-                        🎙️ {crew.host?.name || "—"} | 🚗{" "}
-                        {crew.driver?.name || "—"}
-                      </p>
-                      {crew.car && (
-                        <p className="text-xs text-emerald-600 mt-0.5">
-                          Авто: {crew.car}
+                {crews.map((crew) => {
+                  const hostOnDayOff =
+                    crew.hostId && dayOffUserIds.has(crew.hostId);
+                  const driverOnDayOff =
+                    crew.driverId && dayOffUserIds.has(crew.driverId);
+                  const isUnavailable = hostOnDayOff || driverOnDayOff;
+                  return (
+                    <label
+                      key={crew.id}
+                      className={`flex items-start p-3 rounded-xl border transition-all ${
+                        isUnavailable
+                          ? "border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed"
+                          : selectedCrewId === crew.id
+                            ? "border-blue-500 bg-blue-50/50 ring-1 ring-blue-500 cursor-pointer"
+                            : "border-slate-200 hover:border-blue-300 cursor-pointer"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="crew"
+                        value={crew.id}
+                        checked={selectedCrewId === crew.id}
+                        disabled={!!isUnavailable}
+                        onChange={() => setSelectedCrewId(crew.id)}
+                        className="mt-1 mr-3 text-blue-600 focus:ring-blue-500"
+                      />
+                      <div>
+                        <p className="font-bold text-slate-800">{crew.name}</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          🎙️ {crew.host?.name || "—"} | 🚗{" "}
+                          {crew.driver?.name || "—"}
                         </p>
-                      )}
-                    </div>
-                  </label>
-                ))}
+                        {crew.car && (
+                          <p className="text-xs text-emerald-600 mt-0.5">
+                            Авто: {crew.car}
+                          </p>
+                        )}
+                        {isUnavailable && (
+                          <p className="text-xs text-rose-500 font-medium mt-1">
+                            🌴 {hostOnDayOff ? "Ведучий" : "Водій"} у вихідному
+                            цього дня
+                          </p>
+                        )}
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
             </div>
           )}

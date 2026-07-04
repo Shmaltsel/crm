@@ -1,49 +1,45 @@
 import { useSelectedCity } from "../context/CityContext";
+import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useCalendarEvents, useCalendarProjects } from "../hooks/useCalendar";
-import { useState, useEffect } from 'react';
-interface CalendarEvent {
-  id: string;
-  project: string;
-  date: string;
-  time?: string;
-  status: string;
-  school?: { id: string; name: string };
-  city?: { id: string; name: string };
-  crew?: { id: string; name: string };
-}
+import { useUsers } from "../hooks/useEmployees";
+import { useCities } from "../hooks/useCities";
+import {
+  useDaysOff,
+  useCreateDayOff,
+  useDeleteDayOff,
+} from "../hooks/useDaysOff";
+import { useState, useMemo, useCallback } from "react";
+import DayOffModal from "../components/calendar/DayOffModal";
+
+const STAFF_ROLES = ["HOST", "DRIVER"];
+const MANAGER_ROLES = ["SUPERADMIN", "MANAGER"];
+
+const toISODate = (d: Date) => d.toLocaleDateString("en-CA");
 
 export default function CalendarView() {
   const { data: events = [], isLoading: eventsLoading } = useCalendarEvents();
   const { data: projects = [] } = useCalendarProjects();
-  const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
+  const { data: cities = [] } = useCities();
+  const { data: allUsers = [] } = useUsers();
   const [currentDate, setCurrentDate] = useState(new Date());
   const isLoading = eventsLoading;
   const [selectedMobileDate, setSelectedMobileDate] = useState<Date>(
     new Date(),
   );
+  const [dayOffModalDate, setDayOffModalDate] = useState<Date | null>(null);
 
   const { selectedCity } = useSelectedCity();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [userRole, setUserRole] = useState<string>("GUEST");
-  const [filterCityId, setFilterCityId] = useState<string>("ALL");
+  const userRole = user?.role || "GUEST";
+  const isStaff = STAFF_ROLES.includes(userRole);
+  const isManagerOrAdmin = MANAGER_ROLES.includes(userRole);
 
-
-  useEffect(() => {
-    try {
-      const token = localStorage.getItem("token");
-      if (token) {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        setUserRole(payload.role);
-        if (payload.role === "MANAGER" && selectedCity?.id) {
-          setFilterCityId(selectedCity.id);
-        }
-      }
-    } catch (e) {
-      console.error("Помилка парсингу токена", e);
-    }
-  }, [selectedCity]);
+  const [filterCityId, setFilterCityId] = useState<string>(() =>
+    userRole === "MANAGER" && user?.cityId ? user.cityId : "ALL",
+  );
 
   const nextMonth = () =>
     setCurrentDate(
@@ -70,18 +66,54 @@ export default function CalendarView() {
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
 
-  const days = [];
+  const days: (Date | null)[] = [];
   for (let i = 0; i < firstDay; i++) days.push(null);
   for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
 
-  const filteredEvents = events.filter((ev) => {
+  const monthFrom = toISODate(new Date(year, month, 1));
+  const monthTo = toISODate(new Date(year, month + 1, 0));
+
+  const dayOffCityId = isManagerOrAdmin
+    ? filterCityId !== "ALL"
+      ? filterCityId
+      : undefined
+    : undefined;
+
+  const { data: dayOffs = [] } = useDaysOff(monthFrom, monthTo, dayOffCityId);
+  const createDayOff = useCreateDayOff();
+  const deleteDayOff = useDeleteDayOff();
+
+  const dayOffsByDate = useMemo(() => {
+    const map = new Map<string, typeof dayOffs>();
+    for (const d of dayOffs) {
+      const key = d.date.slice(0, 10);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(d);
+    }
+    return map;
+  }, [dayOffs]);
+
+  const staffForModal = useMemo(() => {
+    const cityScope =
+      userRole === "MANAGER"
+        ? user?.cityId
+        : filterCityId !== "ALL"
+          ? filterCityId
+          : null;
+    return allUsers.filter(
+      (u: any) =>
+        STAFF_ROLES.includes(u.role) && (!cityScope || u.cityId === cityScope),
+    );
+  }, [allUsers, userRole, user?.cityId, filterCityId]);
+
+  const filteredEvents = events.filter((ev: any) => {
     if (ev.status === "RE_SALE") return false;
     if (filterCityId !== "ALL" && ev.city?.id !== filterCityId) return false;
     return true;
   });
 
   const getEventsForDay = (date: Date) => {
-    return filteredEvents.filter((ev) => {
+    return filteredEvents.filter((ev: any) => {
       const evDate = new Date(ev.date);
       return (
         evDate.getFullYear() === date.getFullYear() &&
@@ -90,6 +122,58 @@ export default function CalendarView() {
       );
     });
   };
+
+  const isPastDay = (date: Date) => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    return date < startOfToday;
+  };
+
+  const handleDayOffClick = useCallback(
+    (e: React.MouseEvent, date: Date) => {
+      e.stopPropagation();
+      if (isPastDay(date)) return;
+
+      if (isStaff && user) {
+        const key = toISODate(date);
+        const existing = dayOffsByDate
+          .get(key)
+          ?.find((d) => d.userId === user.id);
+        if (existing) {
+          deleteDayOff.mutate(existing.id);
+        } else {
+          createDayOff.mutate({ date: key });
+        }
+        return;
+      }
+
+      if (isManagerOrAdmin) {
+        setDayOffModalDate(date);
+      }
+    },
+    [
+      isStaff,
+      isManagerOrAdmin,
+      user,
+      dayOffsByDate,
+      createDayOff,
+      deleteDayOff,
+    ],
+  );
+
+  const handleToggleStaffDayOff = useCallback(
+    (targetUserId: string, existingId?: string) => {
+      if (existingId) {
+        deleteDayOff.mutate(existingId);
+      } else if (dayOffModalDate) {
+        createDayOff.mutate({
+          date: toISODate(dayOffModalDate),
+          userId: targetUserId,
+        });
+      }
+    },
+    [dayOffModalDate, createDayOff, deleteDayOff],
+  );
 
   const monthNames = [
     "Січень",
@@ -107,7 +191,7 @@ export default function CalendarView() {
   ];
 
   const getProjectColor = (projectName: string) => {
-    const proj = projects.find((p) => p.name === projectName);
+    const proj = projects.find((p: any) => p.name === projectName);
     const color = proj ? proj.color : "blue";
 
     switch (color) {
@@ -129,7 +213,6 @@ export default function CalendarView() {
   if (isLoading)
     return (
       <div className="p-4 md:p-8 bg-slate-50 min-h-screen pb-24 animate-pulse">
-        {/* Шапка */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
           <div>
             <div className="h-8 w-52 bg-slate-200 rounded-xl mb-2" />
@@ -147,15 +230,12 @@ export default function CalendarView() {
           <div className="h-10 w-48 bg-slate-200 rounded-xl" />
         </div>
 
-        {/* Календар */}
         <div className="bg-white rounded-[24px] border border-slate-100 overflow-hidden">
-          {/* Керування місяцем */}
           <div className="flex items-center justify-between p-5 md:p-6 border-b border-slate-100">
             <div className="h-8 w-36 bg-slate-200 rounded-xl" />
             <div className="h-10 w-44 bg-slate-200 rounded-2xl" />
           </div>
 
-          {/* Дні тижня */}
           <div className="grid grid-cols-7 bg-slate-50/50">
             {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((d) => (
               <div key={d} className="py-3 flex justify-center">
@@ -163,7 +243,6 @@ export default function CalendarView() {
               </div>
             ))}
 
-            {/* Клітинки */}
             {Array.from({ length: 35 }).map((_, i) => (
               <div
                 key={i}
@@ -183,7 +262,6 @@ export default function CalendarView() {
           </div>
         </div>
 
-        {/* Мобільний блок подій */}
         <div className="mt-6 md:hidden">
           <div className="h-6 w-40 bg-slate-200 rounded-lg mb-3" />
           <div className="space-y-3">
@@ -209,6 +287,17 @@ export default function CalendarView() {
 
   return (
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen pb-24">
+      <style>{`
+        @keyframes dayOffPop {
+          0% { transform: scale(0.7); opacity: 0; }
+          60% { transform: scale(1.15); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .dayoff-cell-enter {
+          animation: dayOffPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+      `}</style>
+
       {/* Шапка календаря */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
@@ -219,9 +308,8 @@ export default function CalendarView() {
             Графік запланованих та активних заходів
           </p>
 
-          {/* Легенда */}
           <div className="flex flex-wrap items-center gap-3 mt-4">
-            {projects.map((p) => {
+            {projects.map((p: any) => {
               const badgeColor =
                 {
                   blue: "bg-blue-400",
@@ -242,6 +330,10 @@ export default function CalendarView() {
                 </span>
               );
             })}
+            <span className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+              <span className="w-3 h-3 rounded-full bg-rose-500"></span>{" "}
+              Вихідний
+            </span>
           </div>
         </div>
 
@@ -254,7 +346,7 @@ export default function CalendarView() {
               className="text-sm font-semibold text-slate-800 outline-none cursor-pointer bg-transparent"
             >
               <option value="ALL">🌍 Всі міста</option>
-              {cities.map((c) => (
+              {cities.map((c: any) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
@@ -265,7 +357,6 @@ export default function CalendarView() {
       </div>
 
       <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-        {/* Керування місяцями */}
         <div className="flex flex-col sm:flex-row items-center justify-between p-5 md:p-6 border-b border-slate-100 gap-4 bg-white">
           <h2 className="text-2xl font-bold text-slate-800 capitalize tracking-tight">
             {monthNames[month]}{" "}
@@ -293,7 +384,6 @@ export default function CalendarView() {
           </div>
         </div>
 
-        {/* Сітка календаря */}
         <div className="grid grid-cols-7 bg-slate-50/50">
           {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((dayName) => (
             <div
@@ -310,6 +400,18 @@ export default function CalendarView() {
             const isSelected =
               day && day.toDateString() === selectedMobileDate.toDateString();
             const dayEvents = day ? getEventsForDay(day) : [];
+            const dayKey = day ? toISODate(day) : "";
+            const dayOffEntries = day ? (dayOffsByDate.get(dayKey) ?? []) : [];
+
+            const myDayOff = isStaff
+              ? dayOffEntries.find((d) => d.userId === user?.id)
+              : undefined;
+            const hasAnyDayOff = isStaff
+              ? !!myDayOff
+              : dayOffEntries.length > 0;
+
+            const showCross =
+              day && !isPastDay(day) && (isStaff || isManagerOrAdmin);
 
             return (
               <div
@@ -318,10 +420,30 @@ export default function CalendarView() {
                 className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group
                   ${day ? "bg-white hover:bg-slate-50 cursor-pointer" : "bg-slate-50/30"}
                   ${isSelected ? "ring-2 ring-inset ring-blue-500/20 bg-blue-50/10" : ""}
+                  ${hasAnyDayOff ? "dayoff-cell-enter bg-rose-50/70" : ""}
                 `}
               >
                 {day && (
                   <>
+                    {showCross && (
+                      <button
+                        onClick={(e) => handleDayOffClick(e, day)}
+                        title={
+                          hasAnyDayOff
+                            ? "Скасувати вихідний"
+                            : "Призначити вихідний"
+                        }
+                        className={`absolute top-1 left-1 w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold z-10 transition-all
+                          ${
+                            hasAnyDayOff
+                              ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600"
+                              : "bg-slate-100 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-rose-100 hover:text-rose-500"
+                          }`}
+                      >
+                        ✕
+                      </button>
+                    )}
+
                     <div className="flex justify-center md:justify-end mb-1.5">
                       <span
                         className={`w-7 h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-semibold transition-colors
@@ -332,24 +454,25 @@ export default function CalendarView() {
                       </span>
                     </div>
 
+                    {hasAnyDayOff && !isStaff && dayOffEntries.length > 0 && (
+                      <p className="text-[9px] md:text-[10px] text-rose-600 font-semibold text-center mb-1 truncate px-1">
+                        🌴 {dayOffEntries.length}{" "}
+                        {dayOffEntries.length === 1 ? "вихідний" : "вихідних"}
+                      </p>
+                    )}
+
                     <div className="space-y-1.5 max-h-[80px] md:max-h-[100px] overflow-y-auto custom-scrollbar pr-0.5">
-                      {dayEvents.map((ev) => (
+                      {dayEvents.map((ev: any) => (
                         <div
                           key={ev.id}
                           className="relative group/event z-0 hover:z-50"
                         >
                           <button
-                            // onClick={(e) => {
-                            //   e.stopPropagation();
-                            //   if (ev.school)
-                            //     navigate(`/schools/${ev.school.id}`);
-                            // }}
                             className={`w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${getProjectColor(ev.project)}`}
                           >
                             {ev.time || "—"}
                           </button>
 
-                          {/* Тултип (тільки для Десктопу) */}
                           <div className="hidden md:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-800 text-white p-3 rounded-xl shadow-2xl opacity-0 invisible group-hover/event:opacity-100 group-hover/event:visible transition-all duration-200 pointer-events-none">
                             <p className="font-bold text-sm mb-1 truncate">
                               {ev.school?.name || "Невідомий заклад"}
@@ -370,7 +493,6 @@ export default function CalendarView() {
                                 </span>
                               </p>
                             </div>
-                            {/* Трикутник тултипа */}
                             <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-slate-800"></div>
                           </div>
                         </div>
@@ -384,7 +506,6 @@ export default function CalendarView() {
         </div>
       </div>
 
-      {/* Блок подій для мобільних пристроїв (з'являється під календарем) */}
       <div className="mt-6 md:hidden">
         <h3 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
           📅 Події на{" "}
@@ -400,7 +521,7 @@ export default function CalendarView() {
           </div>
         ) : (
           <div className="space-y-3">
-            {selectedDayEvents.map((ev) => (
+            {selectedDayEvents.map((ev: any) => (
               <div
                 key={ev.id}
                 onClick={() =>
@@ -435,6 +556,19 @@ export default function CalendarView() {
           </div>
         )}
       </div>
+
+      <DayOffModal
+        isOpen={!!dayOffModalDate}
+        onClose={() => setDayOffModalDate(null)}
+        date={dayOffModalDate}
+        staff={staffForModal}
+        dayOffs={
+          dayOffModalDate
+            ? (dayOffsByDate.get(toISODate(dayOffModalDate)) ?? [])
+            : []
+        }
+        onToggle={handleToggleStaffDayOff}
+      />
     </div>
   );
 }
