@@ -1,0 +1,22 @@
+prometheus.remote_write "metrics_hosted_prometheus" {
+   endpoint {
+      name = "hosted-prometheus"
+      url  = "https://prometheus-prod-65-prod-eu-west-2.grafana.net/api/prom/push"
+
+      basic_auth {
+        username = "3350156"
+        password = env("GRAFANA_CLOUD_API_KEY")
+      }
+   }
+}
+
+prometheus.scrape "crm_backend" {
+  targets = [{
+    __address__ = "crm-57qd.onrender.com",
+    __scheme__  = "https",
+    job         = "crm-backend",
+  }]
+  metrics_path    = "/metrics"
+  scrape_interval = "30s"
+  forward_to      = [prometheus.remote_write.metrics_hosted_prometheus.receiver]
+}
