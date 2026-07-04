@@ -144,11 +144,9 @@ function AppRoutes() {
           <Route
             path="finance"
             element={
-              <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
-                <Suspense fallback={<PageLoader />}>
-                  <Finance />
-                </Suspense>
-              </ProtectedRoute>
+              <Suspense fallback={<PageLoader />}>
+                <Finance />
+              </Suspense>
             }
           />
 

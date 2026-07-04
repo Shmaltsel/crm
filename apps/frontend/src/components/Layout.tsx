@@ -109,15 +109,13 @@ export default function Layout() {
           >
             <span className="mr-3">🧸</span> Садочки
           </Link>
-          {is(["SUPERADMIN", "MANAGER"]) && (
-            <Link
-              to="/finance"
-              onClick={handleLinkClick}
-              className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/finance") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-            >
-              <span className="mr-3">💰</span> Фінанси
-            </Link>
-          )}
+          <Link
+            to="/finance"
+            onClick={handleLinkClick}
+            className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/finance") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+          >
+            <span className="mr-3">💰</span> Фінанси
+          </Link>
           <Link
             to="/calendar"
             onClick={handleLinkClick}
