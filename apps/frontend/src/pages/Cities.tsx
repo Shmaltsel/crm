@@ -65,8 +65,10 @@ export default function Cities() {
       await addCity.mutateAsync(newCityName.trim());
       setNewCityName("");
       setIsModalOpen(false);
-    } catch {
-      alert("Не вдалося створити місто. Можливо воно вже існує.");
+    } catch (err: any) {
+      alert(
+        `DEBUG\nстатус: ${err?.response?.status}\nтіло: ${JSON.stringify(err?.response?.data)}\ncookie: ${document.cookie}`,
+      );
     }
   };
 
