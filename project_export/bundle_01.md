@@ -709,6 +709,31 @@ CREATE INDEX "Event_schoolId_date_idx" ON "Event"("schoolId", "date");
 
 ```
 
+# FILE: apps/backend/prisma/migrations/20260704140802_add_day_off/migration.sql
+
+```
+-- CreateTable
+CREATE TABLE "DayOff" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "date" DATE NOT NULL,
+    "createdBy" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "DayOff_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE INDEX "DayOff_date_idx" ON "DayOff"("date");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "DayOff_userId_date_key" ON "DayOff"("userId", "date");
+
+-- AddForeignKey
+ALTER TABLE "DayOff" ADD CONSTRAINT "DayOff_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+```
+
 # FILE: apps/backend/prisma/schema.prisma
 
 ```
@@ -742,9 +767,22 @@ model User {
   crewAsHost     Crew[]         @relation("HostCrew")
   city           City?          @relation(fields: [cityId], references: [id])
   salaryItems    SalaryItem[]
+  daysOff        DayOff[]
 
   @@index([role])
   @@index([cityId])
+}
+
+model DayOff {
+  id        String   @id @default(uuid())
+  userId    String
+  date      DateTime @db.Date
+  createdBy String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([date])
 }
 
 model City {
@@ -1572,6 +1610,7 @@ import { IssuesModule } from './issues/issues.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ProjectsModule } from './projects/projects.module';
 import { HealthModule } from './health/health.module';
+import { DaysOffModule } from './days-off/days-off.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { FeatureFlagsModule } from './common/feature-flags/feature-flags.module';
 import { I18nModule } from './common/i18n/i18n.module';
@@ -1613,6 +1652,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     IssuesModule,
     DashboardModule,
     ProjectsModule,
+    DaysOffModule,
   ],
   controllers: [AppController],
   providers: [
@@ -1793,6 +1833,8 @@ export class AuthController {
       email: string;
       role: string;
       name: string;
+      cityId?: string;
+      cityName?: string;
     };
     return {
       user: {
@@ -1800,6 +1842,8 @@ export class AuthController {
         name: payload.name,
         email: payload.email,
         role: payload.role,
+        cityId: payload.cityId ?? null,
+        cityName: payload.cityName ?? null,
       },
     };
   }
@@ -1964,18 +2008,12 @@ export class AuthService {
     pass: string,
     meta: { ip?: string; userAgent?: string } = {},
   ) {
-    const user = await this.usersService.findByEmail(email);
+    const user = await this.usersService.findByEmailWithCity(email);
 
     const isPasswordValid = await bcrypt.compare(
       pass,
       user?.password ?? this.dummyHash,
     );
-
-    console.log('AUTH DEBUG', {
-      found: !!user,
-      hashPrefix: user?.password?.slice(0, 7),
-      isPasswordValid,
-    });
 
     if (!user || !isPasswordValid) {
       throw new AppException('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
@@ -1986,6 +2024,8 @@ export class AuthService {
       email: user.email,
       role: user.role,
       name: user.name,
+      cityId: user.cityId,
+      cityName: user.city?.name,
     };
 
     const refresh_token = await this.issueRefreshToken(user.id, meta);
@@ -1998,6 +2038,8 @@ export class AuthService {
         name: user.name,
         email: user.email,
         role: user.role,
+        cityId: user.cityId,
+        cityName: user.city?.name,
       },
     };
   }
@@ -2009,7 +2051,7 @@ export class AuthService {
     const tokenHash = this.hashToken(oldToken);
     const stored = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
-      include: { user: true },
+      include: { user: { include: { city: true } } },
     });
 
     if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
@@ -2026,6 +2068,8 @@ export class AuthService {
       email: stored.user.email,
       role: stored.user.role,
       name: stored.user.name,
+      cityId: stored.user.cityId,
+      cityName: stored.user.city?.name,
     };
 
     const refresh_token = await this.issueRefreshToken(stored.user.id, meta);
@@ -2038,6 +2082,8 @@ export class AuthService {
         name: stored.user.name,
         email: stored.user.email,
         role: stored.user.role,
+        cityId: stored.user.cityId,
+        cityName: stored.user.city?.name,
       },
     };
   }
@@ -2313,6 +2359,7 @@ export interface JwtUser {
   sub: string;
   name: string;
   role: UserRole;
+  cityId?: string | null;
 }
 
 ```
@@ -2969,6 +3016,19 @@ export const MESSAGES = {
   SERVICE_UNAVAILABLE: {
     uk: 'Сервіс тимчасово недоступний',
     en: 'Service temporarily unavailable',
+  },
+  // --- ДОДАЙ ЦІ РЯДКИ ---
+  USER_ID_REQUIRED: {
+    uk: 'Ідентифікатор користувача обов’язковий',
+    en: 'User ID is required',
+  },
+  INVALID_STAFF_USER: {
+    uk: 'Невалідний користувач персоналу',
+    en: 'Invalid staff user',
+  },
+  DAY_OFF_NOT_FOUND: {
+    uk: 'Вихідний день не знайдено',
+    en: 'Day off not found',
   },
 } as const;
 
@@ -4020,6 +4080,282 @@ export class DashboardService {
       }))
       .sort((a, b) => b.monthRevenue - a.monthRevenue);
   }
+}
+
+```
+
+# FILE: apps/backend/src/days-off/days-off.controller.ts
+
+```
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
+import { DaysOffService } from './days-off.service';
+import { AuthGuard } from '../auth/auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+import { CreateDayOffDto } from './dto/create-day-off.dto';
+
+@ApiTags('DaysOff')
+@ApiCookieAuth('access_token')
+@Controller('days-off')
+@UseGuards(AuthGuard)
+export class DaysOffController {
+  constructor(private readonly daysOffService: DaysOffService) {}
+
+  @ApiOperation({ summary: 'Список вихідних' })
+  @Get()
+  findAll(
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('cityId') cityId?: string,
+  ) {
+    return this.daysOffService.findAll(from, to, cityId);
+  }
+
+  @ApiOperation({ summary: 'Призначити вихідний' })
+  @Post()
+  create(@Body() body: CreateDayOffDto, @CurrentUser() user: JwtUser) {
+    return this.daysOffService.create(body, user);
+  }
+
+  @ApiOperation({ summary: 'Скасувати вихідний' })
+  @Delete(':id')
+  remove(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.daysOffService.remove(id, user);
+  }
+}
+
+```
+
+# FILE: apps/backend/src/days-off/days-off.module.ts
+
+```
+import { Module } from '@nestjs/common';
+import { DaysOffService } from './days-off.service';
+import { DaysOffController } from './days-off.controller';
+import { TelegramModule } from '../telegram/telegram.module';
+
+@Module({
+  imports: [TelegramModule],
+  controllers: [DaysOffController],
+  providers: [DaysOffService],
+})
+export class DaysOffModule {}
+
+```
+
+# FILE: apps/backend/src/days-off/days-off.service.ts
+
+```
+import { Injectable, ForbiddenException, HttpStatus } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
+import { AppException } from '../common/exceptions/app.exception';
+import { JwtUser } from '../auth/interfaces/jwt-user.interface';
+
+const STAFF_ROLES = ['HOST', 'DRIVER'];
+const MANAGER_ROLES = ['SUPERADMIN', 'MANAGER'];
+
+@Injectable()
+export class DaysOffService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly telegramService: TelegramService,
+  ) {}
+
+  async findAll(from?: string, to?: string, cityId?: string) {
+    return this.prisma.dayOff.findMany({
+      where: {
+        ...(from || to
+          ? {
+              date: {
+                ...(from ? { gte: new Date(from) } : {}),
+                ...(to ? { lte: new Date(to) } : {}),
+              },
+            }
+          : {}),
+        ...(cityId ? { user: { cityId } } : {}),
+      },
+      include: {
+        user: { select: { id: true, name: true, role: true, cityId: true } },
+      },
+      orderBy: { date: 'asc' },
+    });
+  }
+
+  async create(dto: { date: string; userId?: string }, currentUser: JwtUser) {
+    const isStaff = STAFF_ROLES.includes(currentUser.role);
+    const isManagerOrAdmin = MANAGER_ROLES.includes(currentUser.role);
+
+    let targetUserId: string;
+
+    if (isStaff) {
+      targetUserId = currentUser.sub;
+    } else if (isManagerOrAdmin) {
+      if (!dto.userId)
+        throw new AppException('USER_ID_REQUIRED', HttpStatus.BAD_REQUEST);
+
+      const target = await this.prisma.user.findUnique({
+        where: { id: dto.userId },
+      });
+      if (!target || !STAFF_ROLES.includes(target.role)) {
+        throw new AppException('INVALID_STAFF_USER', HttpStatus.BAD_REQUEST);
+      }
+      if (
+        currentUser.role === 'MANAGER' &&
+        target.cityId !== currentUser.cityId
+      ) {
+        throw new ForbiddenException(
+          'Можна призначати вихідні лише співробітникам свого міста',
+        );
+      }
+      targetUserId = target.id;
+    } else {
+      throw new ForbiddenException('Недостатньо прав');
+    }
+
+    // Перевіряємо, чи вже існує вихідний, щоб не слати спам, якщо він просто оновлюється
+    const existing = await this.prisma.dayOff.findUnique({
+      where: {
+        userId_date: { userId: targetUserId, date: new Date(dto.date) },
+      },
+    });
+
+    const dayOff = await this.prisma.dayOff.upsert({
+      where: {
+        userId_date: { userId: targetUserId, date: new Date(dto.date) },
+      },
+      update: {},
+      create: {
+        userId: targetUserId,
+        date: new Date(dto.date),
+        createdBy: currentUser.sub,
+      },
+      include: {
+        user: { select: { id: true, name: true, role: true, cityId: true } },
+      },
+    });
+
+    // Сповіщаємо менеджера, якщо вихідний створено вперше
+    if (!existing) {
+      await this.notifyManager(
+        dayOff.user.cityId,
+        dayOff.user.name,
+        dto.date,
+        'created',
+      );
+    }
+
+    return dayOff;
+  }
+
+  async remove(id: string, currentUser: JwtUser) {
+    const dayOff = await this.prisma.dayOff.findUnique({
+      where: { id },
+      include: { user: { select: { name: true, cityId: true } } },
+    });
+
+    if (!dayOff)
+      throw new AppException('DAY_OFF_NOT_FOUND', HttpStatus.NOT_FOUND);
+
+    const isOwner = dayOff.userId === currentUser.sub;
+    const isManagerOrAdmin = MANAGER_ROLES.includes(currentUser.role);
+
+    if (!isOwner && !isManagerOrAdmin) {
+      throw new ForbiddenException('Недостатньо прав');
+    }
+
+    if (currentUser.role === 'MANAGER' && !isOwner) {
+      if (dayOff.user.cityId !== currentUser.cityId) {
+        throw new ForbiddenException(
+          'Можна скасовувати вихідні лише співробітникам свого міста',
+        );
+      }
+    }
+
+    await this.prisma.dayOff.delete({ where: { id } });
+
+    // Сповіщаємо менеджера про скасування
+    await this.notifyManager(
+      dayOff.user.cityId,
+      dayOff.user.name,
+      dayOff.date.toISOString(),
+      'removed',
+    );
+
+    return { success: true };
+  }
+
+  private async notifyManager(
+    cityId: string | null,
+    staffName: string,
+    date: string,
+    action: 'created' | 'removed',
+  ) {
+    if (!cityId) return;
+
+    // Шукаємо менеджера безпосередньо серед користувачів міста
+    const manager = await this.prisma.user.findFirst({
+      where: {
+        cityId: cityId,
+        role: 'MANAGER',
+      },
+    });
+
+    if (!manager) return;
+
+    const chatId =
+      manager?.telegramChatId ||
+      (manager?.telegramId && /^\d+$/.test(manager.telegramId)
+        ? manager.telegramId
+        : null);
+
+    if (!chatId) return;
+
+    const dateStr = new Date(date).toLocaleDateString('uk-UA', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+
+    const msg =
+      action === 'created'
+        ? `🌴 <b>Призначено вихідний</b>\n\n👤 <b>Співробітник:</b> ${staffName}\n📅 <b>Дата:</b> ${dateStr}`
+        : `❌ <b>Скасовано вихідний</b>\n\n👤 <b>Співробітник:</b> ${staffName}\n📅 <b>Дата:</b> ${dateStr}`;
+
+    await this.telegramService.sendMessage(chatId, msg);
+  }
+}
+
+```
+
+# FILE: apps/backend/src/days-off/dto/create-day-off.dto.ts
+
+```
+import { IsDateString, IsOptional, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+export class CreateDayOffDto {
+  @ApiProperty({ example: '2026-07-10' })
+  @IsDateString()
+  date: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Заповнюється менеджером/адміном для призначення вихідного співробітнику',
+  })
+  @IsOptional()
+  @IsString()
+  userId?: string;
 }
 
 ```
@@ -7652,6 +7988,91 @@ const CITY_CONFIG: Record<
     schools: 'https://zk.isuo.org/koatuu/schools-list/id/2110100000',
     kindergartens: 'https://zk.isuo.org/koatuu/preschools-list/id/2110100000',
   },
+  Київ: {
+    domain: 'https://kv.isuo.org',
+    schools: 'https://kv.isuo.org/koatuu/schools-list/id/8000000000',
+    kindergartens: 'https://kv.isuo.org/koatuu/preschools-list/id/8000000000',
+  },
+  Харків: {
+    domain: 'https://kh.isuo.org',
+    schools: 'https://kh.isuo.org/koatuu/schools-list/id/6310100000',
+    kindergartens: 'https://kh.isuo.org/koatuu/preschools-list/id/6310100000',
+  },
+  Одеса: {
+    domain: 'https://od.isuo.org',
+    schools: 'https://od.isuo.org/koatuu/schools-list/id/5110100000',
+    kindergartens: 'https://od.isuo.org/koatuu/preschools-list/id/5110100000',
+  },
+  Дніпро: {
+    domain: 'https://dp.isuo.org',
+    schools: 'https://dp.isuo.org/koatuu/schools-list/id/1210100000',
+    kindergartens: 'https://dp.isuo.org/koatuu/preschools-list/id/1210100000',
+  },
+  Запоріжжя: {
+    domain: 'https://zp.isuo.org',
+    schools: 'https://zp.isuo.org/koatuu/schools-list/id/2310100000',
+    kindergartens: 'https://zp.isuo.org/koatuu/preschools-list/id/2310100000',
+  },
+  Миколаїв: {
+    domain: 'https://mk.isuo.org',
+    schools: 'https://mk.isuo.org/koatuu/schools-list/id/4810100000',
+    kindergartens: 'https://mk.isuo.org/koatuu/preschools-list/id/4810100000',
+  },
+  Вінниця: {
+    domain: 'https://vn.isuo.org',
+    schools: 'https://vn.isuo.org/koatuu/schools-list/id/0510100000',
+    kindergartens: 'https://vn.isuo.org/koatuu/preschools-list/id/0510100000',
+  },
+  Херсон: {
+    domain: 'https://ks.isuo.org',
+    schools: 'https://ks.isuo.org/koatuu/schools-list/id/6510100000',
+    kindergartens: 'https://ks.isuo.org/koatuu/preschools-list/id/6510100000',
+  },
+  Полтава: {
+    domain: 'https://pl.isuo.org',
+    schools: 'https://pl.isuo.org/koatuu/schools-list/id/5310100000',
+    kindergartens: 'https://pl.isuo.org/koatuu/preschools-list/id/5310100000',
+  },
+  Чернігів: {
+    domain: 'https://cg.isuo.org',
+    schools: 'https://cg.isuo.org/koatuu/schools-list/id/7410100000',
+    kindergartens: 'https://cg.isuo.org/koatuu/preschools-list/id/7410100000',
+  },
+  Черкаси: {
+    domain: 'https://ck.isuo.org',
+    schools: 'https://ck.isuo.org/koatuu/schools-list/id/7110100000',
+    kindergartens: 'https://ck.isuo.org/koatuu/preschools-list/id/7110100000',
+  },
+  Суми: {
+    domain: 'https://su.isuo.org',
+    schools: 'https://su.isuo.org/koatuu/schools-list/id/5910100000',
+    kindergartens: 'https://su.isuo.org/koatuu/preschools-list/id/5910100000',
+  },
+  Житомир: {
+    domain: 'https://zt.isuo.org',
+    schools: 'https://zt.isuo.org/koatuu/schools-list/id/1810100000',
+    kindergartens: 'https://zt.isuo.org/koatuu/preschools-list/id/1810100000',
+  },
+  Хмельницький: {
+    domain: 'https://km.isuo.org',
+    schools: 'https://km.isuo.org/koatuu/schools-list/id/6810100000',
+    kindergartens: 'https://km.isuo.org/koatuu/preschools-list/id/6810100000',
+  },
+  Рівне: {
+    domain: 'https://rv.isuo.org',
+    schools: 'https://rv.isuo.org/koatuu/schools-list/id/5610100000',
+    kindergartens: 'https://rv.isuo.org/koatuu/preschools-list/id/5610100000',
+  },
+  Кропивницький: {
+    domain: 'https://kr.isuo.org',
+    schools: 'https://kr.isuo.org/koatuu/schools-list/id/3510100000',
+    kindergartens: 'https://kr.isuo.org/koatuu/preschools-list/id/3510100000',
+  },
+  Луцьк: {
+    domain: 'https://vl.isuo.org',
+    schools: 'https://vl.isuo.org/koatuu/schools-list/id/0710100000',
+    kindergartens: 'https://vl.isuo.org/koatuu/preschools-list/id/0710100000',
+  },
 };
 
 @Injectable()
@@ -10120,7 +10541,15 @@ export class UsersService {
   async findByEmail(email: string): Promise<User | null> {
     if (!email) return null;
     return this.prisma.user.findUnique({
-      where: { email },
+      where: { email: email.toLowerCase().trim() },
+    });
+  }
+
+  async findByEmailWithCity(email: string) {
+    if (!email) return null;
+    return this.prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+      include: { city: true },
     });
   }
 

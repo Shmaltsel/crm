@@ -82,6 +82,17 @@ export function useSchoolStats(
   });
 }
 
+export function useSupportedCities() {
+  return useQuery({
+    queryKey: ["supportedCities"],
+    queryFn: () =>
+      api
+        .get<string[]>("/schools/supported-cities", { headers: auth() })
+        .then((r) => r.data),
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
 export function useAddSchool() {
   const qc = useQueryClient();
   return useMutation({

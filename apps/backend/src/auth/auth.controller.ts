@@ -20,7 +20,7 @@ import { LoginDto } from './dto/login.dto';
 
 const isProd = process.env.NODE_ENV === 'production';
 
-const cookieDomain = isProd ? '.svitlo-znan.app' : undefined;
+const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
 
 function setAuthCookies(
   res: Response,

@@ -14,7 +14,7 @@ export function useCities() {
 export function useCity(id: string | undefined) {
   return useQuery({
     queryKey: ["city", id],
-    queryFn: () => api.get(`/cities/${id}`).then((r) => r.data),
+    queryFn: () => api.get(`/cities/${id}`, { headers: h() }).then((r) => r.data),
     enabled: !!id,
     staleTime: 2 * 60 * 1000,
   });
@@ -37,7 +37,7 @@ export function useCreateCrew(cityId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (form: { name: string; hostId: string; driverId: string }) =>
-      api.post(`/cities/${cityId}/crews`, form).then((r) => r.data),
+      api.post(`/cities/${cityId}/crews`, form, { headers: h() }).then((r) => r.data),
     onMutate: async (form) => {
       await qc.cancelQueries({ queryKey: ["city", cityId] });
       const prev = qc.getQueryData(["city", cityId]);
@@ -69,7 +69,7 @@ export function useDeleteCrew(cityId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (crewId: string) =>
-      api.delete(`/cities/crews/${crewId}`).then((r) => r.data),
+      api.delete(`/cities/crews/${crewId}`, { headers: h() }).then((r) => r.data),
     onMutate: async (crewId) => {
       await qc.cancelQueries({ queryKey: ["city", cityId] });
       const prev = qc.getQueryData(["city", cityId]);

@@ -1,3 +1,843 @@
+# FILE: apps/frontend/src/pages/Employees.tsx
+
+```
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  useUsers,
+  useProjects,
+  useCreateUser,
+  useUpdateUser,
+  useDeleteUser,
+  useCreateProject,
+  useDeleteProject,
+} from "../hooks/useEmployees";
+import { useCities } from "../hooks/useCities";
+import PhoneLink from "../components/PhoneLink";
+import { useSelectedCity } from "../context/CityContext";
+import { useAuth } from "../context/AuthContext";
+
+type Role = "MANAGER" | "DRIVER" | "HOST" | "SUPERADMIN" | "GUEST";
+
+interface City {
+  id: string;
+  name: string;
+}
+interface User {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string;
+  cityId: string | null;
+  city?: City;
+  role: Role;
+  telegramId?: string | null;
+  car?: string | null;
+}
+interface Project {
+  id: string;
+  name: string;
+  color: string;
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  MANAGER: "Менеджер",
+  DRIVER: "Водій",
+  HOST: "Ведучий",
+  SUPERADMIN: "Суперадмін",
+  GUEST: "Гість",
+};
+const ROLE_COLORS: Record<string, string> = {
+  MANAGER: "bg-blue-50 text-blue-700 border-blue-200",
+  DRIVER: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  HOST: "bg-violet-50 text-violet-700 border-violet-200",
+};
+const ROLE_HEADER_COLORS: Record<string, string> = {
+  MANAGER: "bg-blue-600",
+  DRIVER: "bg-emerald-600",
+  HOST: "bg-violet-600",
+};
+const EMPTY_FORM = {
+  fullName: "",
+  phone: "",
+  email: "",
+  cityId: "",
+  role: "MANAGER" as Role,
+  password: "",
+  telegramId: "",
+  car: "",
+};
+
+const PROJECT_COLORS: Record<string, string> = {
+  blue: "bg-blue-500",
+  emerald: "bg-emerald-500",
+  rose: "bg-rose-500",
+  red: "bg-red-500",
+  amber: "bg-amber-500",
+  purple: "bg-purple-500",
+};
+
+function EmployeesSkeleton() {
+  return (
+    <div className="p-4 md:p-8 animate-pulse">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <div className="h-7 w-56 bg-slate-200 rounded-lg mb-2" />
+          <div className="h-4 w-72 bg-slate-100 rounded" />
+        </div>
+        <div className="h-10 w-44 bg-slate-200 rounded-lg" />
+      </div>
+      {["Менеджери", "Водії", "Ведучі"].map((label) => (
+        <div key={label} className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-1 h-6 bg-slate-200 rounded-full" />
+            <div className="h-5 w-24 bg-slate-200 rounded" />
+            <div className="h-5 w-8 bg-slate-100 rounded-full" />
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+            <div className="bg-slate-50 border-b border-slate-100 px-5 py-3 flex gap-8">
+              {["w-24", "w-20", "w-28", "w-16", "w-12"].map((w, i) => (
+                <div key={i} className={`h-3 ${w} bg-slate-200 rounded`} />
+              ))}
+            </div>
+            {[1, 2].map((i) => (
+              <div
+                key={i}
+                className="flex items-center gap-8 px-5 py-4 border-b border-slate-50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-slate-200" />
+                  <div className="h-4 w-28 bg-slate-200 rounded" />
+                </div>
+                <div className="h-4 w-20 bg-slate-100 rounded" />
+                <div className="h-4 w-36 bg-slate-100 rounded" />
+                <div className="h-6 w-20 bg-slate-100 rounded-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function Employees() {
+  const { data: users = [], isLoading: usersLoading } = useUsers();
+  const { data: cities = [] } = useCities();
+  const { data: projects = [], isLoading: projectsLoading } = useProjects();
+  const createUser = useCreateUser();
+  const updateUser = useUpdateUser();
+  const deleteUser = useDeleteUser();
+  const createProject = useCreateProject();
+  const deleteProject = useDeleteProject();
+
+  const isLoading = usersLoading;
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [projectForm, setProjectForm] = useState({ name: "", color: "blue" });
+
+  const { selectedCity } = useSelectedCity();
+
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === "SUPERADMIN";
+
+  const cityFilteredUsers = selectedCity.id
+    ? users.filter((u) => u.cityId === selectedCity.id)
+    : users;
+  const grouped = (["MANAGER", "DRIVER", "HOST"] as Role[]).map((role) => ({
+    role,
+    label: ROLE_LABELS[role],
+    items: cityFilteredUsers.filter((u) => u.role === role),
+  }));
+
+  const handleOpenModal = (user: User | null = null) => {
+    setFormError("");
+    setEditingUser(user);
+    if (user) {
+      setForm({
+        fullName: user.name,
+        phone: user.phone || "",
+        email: user.email,
+        cityId: user.cityId || "",
+        role: user.role,
+        password: "",
+        telegramId: user.telegramId || "",
+        car: user.car || "",
+      });
+    } else {
+      setForm({ ...EMPTY_FORM });
+    }
+    setIsModalOpen(true);
+  };
+
+  const [formError, setFormError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.fullName.trim()) return;
+    setFormError("");
+    try {
+      if (editingUser) {
+        const { password, ...rest } = form;
+        const payload = password.trim() ? form : rest;
+        await updateUser.mutateAsync({ id: editingUser.id, form: payload });
+      } else {
+        await createUser.mutateAsync(form);
+      }
+      setIsModalOpen(false);
+    } catch (err: any) {
+      const messages = err?.response?.data?.message;
+      setFormError(
+        Array.isArray(messages)
+          ? messages.join(", ")
+          : messages || "Помилка збереження",
+      );
+    }
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`Видалити користувача "${name}"?`)) return;
+    try {
+      await deleteUser.mutateAsync(id);
+    } catch (e) {
+      alert("Помилка видалення");
+    }
+  };
+
+  const handleCreateProject = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!projectForm.name.trim()) return;
+    setIsProjectModalOpen(false);
+    setProjectForm({ name: "", color: "blue" });
+    createProject.mutate(projectForm);
+  };
+
+  const handleDeleteProject = async (id: string, name: string) => {
+    if (
+      !window.confirm(
+        `Видалити вид події "${name}"? Існуючі події з цією назвою збережуться.`,
+      )
+    )
+      return;
+    try {
+      await deleteProject.mutateAsync(id);
+    } catch (e) {
+      alert("Помилка видалення");
+    }
+  };
+
+  if (isLoading) return <EmployeesSkeleton />;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+      className="p-4 md:p-8 h-full"
+    >
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        >
+          <h1 className="text-2xl font-bold text-slate-800">
+            Акаунти та Проєкти{" "}
+            {selectedCity.id && (
+              <span className="ml-2 text-base font-normal text-blue-500">
+                · {selectedCity.name}
+              </span>
+            )}
+          </h1>
+          <p className="text-sm text-slate-400 mt-1">
+            Керування доступами, працівниками та видами подій
+          </p>
+        </motion.div>
+        {isSuperAdmin && (
+          <motion.button
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => handleOpenModal()}
+            className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
+          >
+            + Створити користувача
+          </motion.button>
+        )}
+      </div>
+
+      <div className="space-y-8">
+        {grouped.map(({ role, label, items }, gi) => (
+          <motion.div
+            key={role}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: gi * 0.06 }}
+          >
+            <div className={`flex items-center gap-3 mb-4`}>
+              <div
+                className={`w-1 h-6 rounded-full ${ROLE_HEADER_COLORS[role]}`}
+              ></div>
+              <h2 className="text-lg font-bold text-slate-700">{label}</h2>
+              <motion.span
+                key={items.length}
+                initial={{ scale: 0.7, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.2 }}
+                className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_COLORS[role]}`}
+              >
+                {items.length}
+              </motion.span>
+            </div>
+            {items.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.25 }}
+                className="bg-white rounded-xl border border-slate-100 p-6 text-center text-slate-400 text-sm"
+              >
+                Немає {label.toLowerCase()}ів
+              </motion.div>
+            ) : (
+              <motion.div
+                whileHover={{
+                  y: -2,
+                  boxShadow: "0 8px 24px -4px rgba(0,0,0,0.08)",
+                }}
+                transition={{ duration: 0.2 }}
+                className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+              >
+                <div className="sm:hidden divide-y divide-slate-50">
+                  <AnimatePresence initial={false}>
+                    {items.map((u, ri) => (
+                      <motion.div
+                        key={u.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2, delay: ri * 0.04 }}
+                        className="p-4 flex flex-col gap-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
+                            >
+                              {u.name.charAt(0)}
+                            </div>
+                            <span className="font-medium text-slate-800">
+                              {u.name}
+                            </span>
+                          </div>
+                          {isSuperAdmin && (
+                            <div className="flex items-center gap-1 shrink-0">
+                              <motion.button
+                                whileTap={{ scale: 0.93 }}
+                                onClick={() => handleOpenModal(u)}
+                                className="text-slate-400 hover:text-blue-500 p-2 hover:bg-blue-50 rounded-lg"
+                              >
+                                ✏️
+                              </motion.button>
+                              <motion.button
+                                whileTap={{ scale: 0.93 }}
+                                onClick={() => handleDelete(u.id, u.name)}
+                                className="text-slate-400 hover:text-red-500 p-2 hover:bg-red-50 rounded-lg"
+                              >
+                                🗑
+                              </motion.button>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 pl-11">
+                          <PhoneLink phone={u.phone} />
+                          <span>{u.email}</span>
+                        </div>
+                        <div className="flex items-center gap-2 pl-11">
+                          <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
+                            📍 {u.city?.name || "Всі міста"}
+                          </span>
+                          {u.car && (
+                            <span className="text-xs text-emerald-600 font-medium">
+                              🚗 {u.car}
+                            </span>
+                          )}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+                <table className="w-full text-left hidden sm:table">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      <th className="px-5 py-3">ПІБ</th>
+                      <th className="px-5 py-3">Телефон</th>
+                      <th className="px-5 py-3">Пошта / Логін</th>
+                      <th className="px-5 py-3">Місто</th>
+                      <th className="px-5 py-3 text-center">Дії</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <AnimatePresence initial={false}>
+                      {items.map((u, ri) => (
+                        <motion.tr
+                          key={u.id}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2, delay: ri * 0.04 }}
+                          className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+                        >
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <motion.div
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ duration: 0.2, delay: 0.05 }}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
+                              >
+                                {u.name.charAt(0)}
+                              </motion.div>
+                              <span className="font-medium text-slate-800">
+                                {u.name}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4 text-slate-600 text-sm">
+                            <PhoneLink phone={u.phone} />
+                            {u.car && (
+                              <p className="text-xs text-emerald-600 font-medium mt-1">
+                                🚗 {u.car}
+                              </p>
+                            )}
+                          </td>
+                          <td className="px-5 py-4 text-slate-600 text-sm font-medium">
+                            {u.email}
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
+                              📍 {u.city?.name || "Всі міста"}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 text-center">
+                            {isSuperAdmin && (
+                              <>
+                                <motion.button
+                                  whileTap={{ scale: 0.93 }}
+                                  onClick={() => handleOpenModal(u)}
+                                  className="text-slate-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 rounded-lg mr-2 transition-colors"
+                                >
+                                  ✏️
+                                </motion.button>
+                                <motion.button
+                                  whileTap={{ scale: 0.93 }}
+                                  onClick={() => handleDelete(u.id, u.name)}
+                                  className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                                >
+                                  🗑
+                                </motion.button>
+                              </>
+                            )}
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </AnimatePresence>
+                  </tbody>
+                </table>
+              </motion.div>
+            )}
+          </motion.div>
+        ))}
+      </div>
+
+      {/* --- СЕКЦІЯ ПРОЄКТІВ (ВИДІВ ПОДІЙ) --- */}
+      <div className="mt-16 border-t border-slate-200 pt-10">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">
+              Види подій (Проєкти)
+            </h2>
+            <p className="text-sm text-slate-400 mt-1">
+              Ці проєкти відображатимуться у випадаючому списку при створенні
+              події
+            </p>
+          </div>
+          {isSuperAdmin && (
+            <button
+              onClick={() => setIsProjectModalOpen(true)}
+              className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 transition-colors w-full sm:w-auto"
+            >
+              + Створити вид події
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {projects.map((p, pi) => (
+            <motion.div
+              key={p.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, delay: pi * 0.05 }}
+              whileHover={{
+                y: -3,
+                boxShadow: "0 8px 24px -4px rgba(0,0,0,0.10)",
+              }}
+              className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default"
+            >
+              <div className="flex items-center gap-3">
+                <motion.div
+                  whileHover={{ scale: 1.3 }}
+                  transition={{ duration: 0.15 }}
+                  className={`w-4 h-4 rounded-full ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm`}
+                />
+                <span className="font-bold text-slate-800">{p.name}</span>
+              </div>
+              {isSuperAdmin && (
+                <button
+                  onClick={() => handleDeleteProject(p.id, p.name)}
+                  className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2 -mr-2"
+                  title="Видалити"
+                >
+                  🗑
+                </button>
+              )}
+            </motion.div>
+          ))}
+          {projects.length === 0 && (
+            <div className="col-span-full text-center py-10 text-slate-400">
+              Ви ще не додали жодного виду події
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Модалки Користувача і Проєктів */}
+      {isProjectModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h3 className="text-xl font-bold text-slate-800">
+                Новий вид події
+              </h3>
+              <button
+                onClick={() => setIsProjectModalOpen(false)}
+                className="text-slate-400 text-xl leading-none p-2 -mr-2"
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleCreateProject} className="p-6">
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Назва
+              </label>
+              <input
+                type="text"
+                value={projectForm.name}
+                onChange={(e) =>
+                  setProjectForm({ ...projectForm, name: e.target.value })
+                }
+                className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none mb-6"
+                required
+                placeholder="Наприклад: Шоу мильних бульбашок"
+              />
+              <label className="block text-sm font-medium text-slate-700 mb-3">
+                Колір для календаря
+              </label>
+              <div className="flex gap-4 mb-8">
+                {Object.keys(PROJECT_COLORS).map((c) => (
+                  <button
+                    type="button"
+                    key={c}
+                    onClick={() => setProjectForm({ ...projectForm, color: c })}
+                    className={`w-8 h-8 rounded-full ${PROJECT_COLORS[c]} transition-all ${projectForm.color === c ? "ring-4 ring-offset-2 ring-blue-200 scale-110" : "hover:scale-110"}`}
+                  />
+                ))}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsProjectModalOpen(false)}
+                  className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
+                >
+                  Скасувати
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-medium"
+                >
+                  Зберегти
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Ваша стара модалка Користувача */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          {/* Ваш існуючий код модалки працівника... Для стислості я зберіг базові поля */}
+          <div className="bg-white rounded-2xl shadow-xl w-full sm:max-w-lg overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+              <h3 className="text-xl font-bold">
+                {editingUser ? "Редагувати" : "Новий користувач"}
+              </h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-slate-400 text-xl p-2 -mr-2"
+              >
+                ✕
+              </button>
+            </div>
+            <form
+              onSubmit={handleSubmit}
+              className="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh]"
+            >
+              {formError && (
+                <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">
+                  {formError}
+                </div>
+              )}
+              <input
+                type="text"
+                value={form.fullName}
+                onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                required
+                placeholder="ПІБ"
+                className="w-full p-2.5 border rounded-lg"
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  required
+                  placeholder="Пошта"
+                  className="w-full p-2.5 border rounded-lg"
+                />
+                <input
+                  type="password"
+                  value={form.password}
+                  onChange={(e) =>
+                    setForm({ ...form, password: e.target.value })
+                  }
+                  required={!editingUser}
+                  placeholder="Пароль (мін. 8 симв., літера+цифра)"
+                  minLength={8}
+                  className="w-full p-2.5 border rounded-lg"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="Телефон"
+                  className="w-full p-2.5 border rounded-lg"
+                />
+                <input
+                  type="text"
+                  value={form.telegramId}
+                  onChange={(e) =>
+                    setForm({ ...form, telegramId: e.target.value })
+                  }
+                  placeholder="Telegram ID або @username"
+                  className="w-full p-2.5 border rounded-lg"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <select
+                  value={form.role}
+                  onChange={(e) =>
+                    setForm({ ...form, role: e.target.value as Role })
+                  }
+                  className="w-full p-2.5 border rounded-lg"
+                >
+                  <option value="MANAGER">Менеджер</option>
+                  <option value="DRIVER">Водій</option>
+                  <option value="HOST">Ведучий</option>
+                  <option value="SUPERADMIN">Суперадмін</option>
+                </select>
+                <select
+                  value={form.cityId}
+                  onChange={(e) => setForm({ ...form, cityId: e.target.value })}
+                  className="w-full p-2.5 border rounded-lg"
+                >
+                  <option value="">Всі міста</option>
+                  {cities.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {form.role === "DRIVER" && (
+                <input
+                  type="text"
+                  value={form.car || ""}
+                  onChange={(e) => setForm({ ...form, car: e.target.value })}
+                  placeholder="Автомобіль (напр. Renault Trafic)"
+                  className="w-full p-2.5 border rounded-lg"
+                />
+              )}
+              <div className="flex gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
+                >
+                  Скасувати
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium"
+                >
+                  Зберегти
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/pages/EventReport.tsx
+
+```
+import type { ReactNode } from "react";
+import { Link, useParams } from "react-router-dom";
+
+import { useEventFull } from "../hooks/useSchoolProfile";
+import AddressLink from "../components/AddressLink";
+import { formatCurrency } from "../utils/formatCurrency";
+
+export default function EventReport() {
+  const { eventId } = useParams();
+  const { data: event, isLoading, isError } = useEventFull(eventId);
+
+  if (isLoading)
+    return <div className="p-8 text-slate-500">Завантаження...</div>;
+  if (isError || !event)
+    return <div className="p-8 text-slate-500">Подію не знайдено</div>;
+
+  const report = event.report;
+  const crew = event.crew;
+  const fmt = formatCurrency;
+
+  return (
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+      {/* Breadcrumb */}
+      <div className="text-xs sm:text-sm text-slate-500 mb-4 flex items-center gap-1 flex-wrap">
+        <Link to="/cities" className="hover:text-blue-600">
+          Міста
+        </Link>
+        <span>›</span>
+        <Link to={`/cities/${event.cityId}`} className="hover:text-blue-600">
+          {event.city?.name}
+        </Link>
+        <span>›</span>
+        <span>Події</span>
+        <span>›</span>
+        <span className="text-slate-800 font-medium">Звіт по події</span>
+      </div>
+
+      <button
+        onClick={() => history.back()}
+        className="mb-4 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2"
+      >
+        ← Назад
+      </button>
+
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">
+          Звіт по події
+        </h1>
+        <span className="bg-green-100 text-green-700 text-xs font-semibold px-3 py-1 rounded-full">
+          Проведено
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {/* Інформація */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-6">
+          <h3 className="font-bold text-slate-800 mb-4">Інформація</h3>
+          <div className="space-y-2 text-sm">
+            <Row label="Заклад" value={event.school?.name} />
+            <Row
+              label="Адреса"
+              value={<AddressLink address={event.address} />}
+            />
+            <Row
+              label="Дата"
+              value={new Date(event.date).toLocaleDateString("uk-UA")}
+            />
+            <Row label="Час" value={event.time} />
+            <Row label="Проєкт" value={event.project} />
+            <Row label="Екіпаж" value={crew?.name} />
+            <Row label="Ведучий" value={crew?.host?.name} />
+            <Row label="Водій" value={crew?.driver?.name} />
+          </div>
+        </div>
+
+        {/* Результат */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-6">
+          <h3 className="font-bold text-slate-800 mb-4">Результат</h3>
+          <div className="space-y-2 text-sm">
+            <Row label="Заплановано дітей" value={event.childrenPlanned} />
+            <Row label="Фактично дітей" value={report?.childrenCount} />
+            <Row label="Вартість" value={`${fmt(event.price)} грн`} />
+            <Row label="Отримано" value={`${fmt(report?.totalSum)} грн`} />
+            <Row label="Спосіб оплати" value={event.paymentMethod} />
+          </div>
+        </div>
+
+        {/* Оцінка */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-6">
+          <h3 className="font-bold text-slate-800 mb-4">Оцінка</h3>
+          <div className="space-y-2 text-sm">
+            <Row
+              label="Директор задоволений"
+              value={report?.directorSatisfied ? "Так" : "Ні"}
+            />
+            <Row
+              label="Вчителі задоволені"
+              value={report?.teachersSatisfied ? "Так" : "Ні"}
+            />
+            <Row label="Проблеми" value={report?.hadIssues ? "Так" : "Ні"} />
+            {report?.comment && (
+              <div className="pt-2">
+                <p className="text-slate-400 mb-1">Коментар:</p>
+                <p className="text-slate-700 italic">"{report.comment}"</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex justify-between">
+      <span className="text-slate-400">{label}:</span>
+      <span className="font-medium text-slate-800">{value || "—"}</span>
+    </div>
+  );
+}
+
+```
+
 # FILE: apps/frontend/src/pages/Events.tsx
 
 ```
@@ -372,7 +1212,7 @@ import StatsBar, {
   classifySize,
 } from "../components/schools/StatsBar";
 import { useQueryClient } from "@tanstack/react-query";
-
+import { useAuth } from "../context/AuthContext";
 const PIPELINE_STAGES = [
   { key: "BASE", name: "Новий заклад" },
   { key: "FIRST_CONTACT", name: "Знайомство" },
@@ -389,21 +1229,30 @@ interface City {
 }
 
 export default function Kindergartens() {
-  const { data: schools = [] } = useSchools();
-  const { data: cities = [] } = useCities();
-  const deleteSchool = useDeleteSchool();
+  const { selectedCity } = useSelectedCity();
+  const { user } = useAuth();
+  const userRole = user?.role ?? null;
+  const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const [userRole] = useState<string | null>(() => {
-    try {
-      return JSON.parse(localStorage.getItem("user") || "null")?.role ?? null;
-    } catch {
-      return null;
-    }
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [sizeFilter, setSizeFilter] = useState<string | null>(null);
+
+  const { data: schoolsPages } = useSchools({
+    type: "Садочок",
+    cityId: selectedCity.id || undefined,
   });
 
-  const navigate = useNavigate();
-  const { selectedCity } = useSelectedCity();
+  const schools = schoolsPages?.pages?.flatMap((p: any) => p.data) ?? [];
+  const { data: cities = [] } = useCities();
+  const deleteSchool = useDeleteSchool();
+
+  const { data: stats } = useSchoolStats({
+    cityId: selectedCity.id || undefined,
+    type: "Садочок",
+    stage: activeFilter || undefined,
+  });
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
@@ -414,14 +1263,6 @@ export default function Kindergartens() {
     phone: "",
   });
   const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
-  const [sizeFilter, setSizeFilter] = useState<string | null>(null);
-
-  const { data: stats } = useSchoolStats({
-    cityId: selectedCity.id || undefined,
-    type: "Садочок",
-    stage: activeFilter || undefined,
-  });
   const [suggestions, setSuggestions] = useState<
     { name: string; url: string }[]
   >([]);
@@ -577,7 +1418,7 @@ export default function Kindergartens() {
           )}
         </h1>
         <div className="flex gap-2 shrink-0">
-          {userRole === "SUPERADMIN" && (
+          {(userRole === "SUPERADMIN" || userRole === "MANAGER") && (
             <button
               onClick={async () => {
                 if (!selectedCity.id) return alert("Спочатку оберіть місто");
@@ -605,7 +1446,7 @@ export default function Kindergartens() {
                   alert("Помилка імпорту.");
                 }
               }}
-              className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
+              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
             >
               📥 Імпорт з isuo
             </button>
@@ -1870,6 +2711,7 @@ export default function SchoolProfile() {
         isOpen={isCrewModalOpen}
         onClose={() => setIsCrewModalOpen(false)}
         city={schoolData.city}
+        eventDate={currentEvent?.date}
         employees={users}
         onSave={handleAssignCrew}
       />
@@ -1938,7 +2780,7 @@ import { useQueryClient, useMutation } from "@tanstack/react-query";
 import VirtualSchoolList from "../components/VirtualSchoolList";
 import { SchoolCard } from "../components/schools/SchoolMobileList";
 import type { SchoolContact } from "../types";
-
+import { useAuth } from "../context/AuthContext";
 interface NewSchoolPayload {
   name: string;
   cityId: string;
@@ -1972,13 +2814,8 @@ export default function Schools() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [userRole] = useState<string | null>(() => {
-    try {
-      return JSON.parse(localStorage.getItem("user") || "null")?.role ?? null;
-    } catch {
-      return null;
-    }
-  });
+  const { user } = useAuth();
+  const userRole = user?.role ?? null;
   const qc = useQueryClient();
   const [form, setForm] = useState({
     name: "",
@@ -2193,8 +3030,6 @@ export default function Schools() {
     [deleteSchool, userRole],
   );
 
-
-
   return (
     <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-slate-50 min-h-screen">
       {/* Шапка */}
@@ -2210,7 +3045,7 @@ export default function Schools() {
           </h1>
         </div>
         <div className="flex gap-2 shrink-0">
-          {userRole === "SUPERADMIN" && (
+          {(userRole === "SUPERADMIN" || userRole === "MANAGER") && (
             <button
               onClick={() => {
                 if (!selectedCity.id) return alert("Спочатку оберіть місто");
@@ -2231,7 +3066,7 @@ export default function Schools() {
                 });
               }}
               disabled={bulkImportMutation.isPending}
-              className="md:flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
             >
               {bulkImportMutation.isPending ? (
                 <span className="font-medium">
@@ -2259,7 +3094,14 @@ export default function Schools() {
           }
         >
           <StatsBar
-            statusStats={stats?.statusStats ?? { new: 0, planned: 0, inProgress: 0, done: 0 }}
+            statusStats={
+              stats?.statusStats ?? {
+                new: 0,
+                planned: 0,
+                inProgress: 0,
+                done: 0,
+              }
+            }
             sizeStats={stats?.sizeStats ?? { small: 0, medium: 0, large: 0 }}
             activeFilter={activeFilter}
             onFilterChange={setActiveFilter}

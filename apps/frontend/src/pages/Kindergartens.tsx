@@ -1,19 +1,42 @@
-import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useCallback,
+  lazy,
+  Suspense,
+} from "react";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
 import {
   useSchools,
   useSchoolStats,
   useDeleteSchool,
+  usePrefetchSchool,
   useCities,
+  useSupportedCities,
 } from "../hooks/useApi";
-import StatsBar, {
-  classifySchool,
-  classifySize,
-} from "../components/schools/StatsBar";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import VirtualSchoolList from "../components/VirtualSchoolList";
+import { SchoolCard } from "../components/schools/SchoolMobileList";
+import type { SchoolContact } from "../types";
 import { useAuth } from "../context/AuthContext";
+
+interface NewSchoolPayload {
+  name: string;
+  cityId: string;
+  sourceUrl: string;
+  director: string;
+  phone: string;
+  type: string;
+}
+
+const StatsBar = lazy(() => import("../components/schools/StatsBar"));
+const VirtualDesktopTable = lazy(
+  () => import("../components/schools/VirtualDesktopTable"),
+);
+
 const PIPELINE_STAGES = [
   { key: "BASE", name: "Новий заклад" },
   { key: "FIRST_CONTACT", name: "Знайомство" },
@@ -24,38 +47,13 @@ const PIPELINE_STAGES = [
   { key: "REPORT", name: "Звіт" },
 ];
 
-interface City {
-  id: string;
-  name: string;
-}
-
 export default function Kindergartens() {
   const { selectedCity } = useSelectedCity();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const { user } = useAuth();
   const userRole = user?.role ?? null;
-  const navigate = useNavigate();
   const qc = useQueryClient();
-
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
-  const [sizeFilter, setSizeFilter] = useState<string | null>(null);
-
-  const { data: schoolsPages } = useSchools({
-    type: "Садочок",
-    cityId: selectedCity.id || undefined,
-  });
-
-  const schools = schoolsPages?.pages?.flatMap((p: any) => p.data) ?? [];
-  const { data: cities = [] } = useCities();
-  const deleteSchool = useDeleteSchool();
-
-  const { data: stats } = useSchoolStats({
-    cityId: selectedCity.id || undefined,
-    type: "Садочок",
-    stage: activeFilter || undefined,
-  });
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: "",
     cityId: "",
@@ -63,15 +61,96 @@ export default function Kindergartens() {
     director: "",
     phone: "",
   });
-  const [matchedContacts, setMatchedContacts] = useState<any[]>([]);
-  const [suggestions, setSuggestions] = useState<
-    { name: string; url: string }[]
-  >([]);
+  const [matchedContacts, setMatchedContacts] = useState<SchoolContact[]>([]);
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [sizeFilter, setSizeFilter] = useState<string | null>(null);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [suggestions, setSuggestions] = useState;
+  {
+    name: string;
+    url: string;
+  }
+  [] > [];
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [dotCount, setDotCount] = useState(3);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleOpenModal = () => {
+  const addSchoolMutation = useMutation({
+    mutationFn: (newSchool: NewSchoolPayload) =>
+      api.post("/schools", newSchool, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["schools"] });
+      setIsModalOpen(false);
+    },
+    onError: () => alert("Не вдалося створити садочок"),
+  });
+
+  const bulkImportMutation = useMutation({
+    mutationFn: (cityId: string) =>
+      api.post(
+        "/schools/bulk-import",
+        { cityId, type: "Садочок" },
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          timeout: 120000,
+        },
+      ),
+    onSuccess: (res) => {
+      alert(
+        `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
+      );
+      qc.invalidateQueries({ queryKey: ["schools"] });
+    },
+    onError: () => alert("Помилка імпорту."),
+  });
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 350);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const schoolFilters = useMemo(
+    () => ({
+      search: debouncedQuery || undefined,
+      cityId: selectedCity.id || undefined,
+      type: "Садочок" as const,
+      stage: (activeFilter as any) || undefined,
+      size: (sizeFilter as any) || undefined,
+    }),
+    [debouncedQuery, selectedCity.id, activeFilter, sizeFilter],
+  );
+
+  const {
+    data: schoolsPages,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useSchools(schoolFilters);
+  const { data: stats } = useSchoolStats({
+    cityId: selectedCity.id || undefined,
+    type: "Садочок",
+    stage: (activeFilter as any) || undefined,
+  });
+  const { data: cities = [] } = useCities();
+  const { data: supportedCities = [] } = useSupportedCities();
+  const deleteSchool = useDeleteSchool();
+  const prefetchSchool = usePrefetchSchool();
+
+  const handleLoadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const filteredSchools = useMemo(
+    () => schoolsPages?.pages.flatMap((p) => p.data) ?? [],
+    [schoolsPages],
+  );
+  const totalItems = schoolsPages?.pages[0]?.meta.totalItems ?? 0;
+
+  const handleOpenModal = useCallback(() => {
     setForm({
       name: "",
       cityId: selectedCity.id || cities[0]?.id || "",
@@ -81,32 +160,39 @@ export default function Kindergartens() {
     });
     setMatchedContacts([]);
     setIsModalOpen(true);
-  };
+  }, [selectedCity.id, cities]);
 
   const fetchContacts = async (schoolName: string) => {
-    if (!schoolName || schoolName.trim().length < 1) {
-      setMatchedContacts([]);
-      return;
-    }
+    if (!schoolName || schoolName.trim().length < 1)
+      return setMatchedContacts([]);
     const currentCityName =
       selectedCity.name || cities.find((c) => c.id === form.cityId)?.name || "";
-    if (currentCityName.toLowerCase() !== "львів") {
-      setMatchedContacts([]);
-      return;
-    }
+    if (currentCityName.toLowerCase() !== "львів")
+      return setMatchedContacts([]);
     try {
-      const token = localStorage.getItem("token");
-      const res = await api.get(
-        `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=${encodeURIComponent("Садочок")}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      setMatchedContacts(res.data);
-      if (res.data.length > 0) {
+      const data = await qc.fetchQuery<SchoolContact[]>({
+        queryKey: ["schoolContacts", schoolName, currentCityName],
+        queryFn: async () => {
+          const res = await api.get<SchoolContact[]>(
+            `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=Садочок`,
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            },
+          );
+          return res.data;
+        },
+        staleTime: 1000 * 60 * 5,
+      });
+
+      setMatchedContacts(data);
+      if (data.length > 0) {
         const director =
-          res.data.find(
-            (c: any) =>
+          data.find(
+            (c: SchoolContact) =>
               c.role?.includes("Директор") || c.role?.includes("Завідувач"),
-          ) || res.data[0];
+          ) || data[0];
         setForm((f) => ({
           ...f,
           director: director.contactName,
@@ -130,18 +216,26 @@ export default function Kindergartens() {
     setIsSearching(true);
     setShowSuggestions(true);
     debounceTimer.current = setTimeout(async () => {
-      const token = localStorage.getItem("token");
       try {
-        const [externalRes] = await Promise.all([
-          api.get(
-            `/schools/search?q=${value}&type=${encodeURIComponent("Садочок")}`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
+        const [externalData] = await Promise.all([
+          qc.fetchQuery({
+            queryKey: ["schoolSearchExternal", value],
+            queryFn: async () => {
+              const res = await api.get(
+                `/schools/search?q=${encodeURIComponent(value)}&type=Садочок`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                  },
+                },
+              );
+              return res.data;
             },
-          ),
+            staleTime: 1000 * 60 * 5,
+          }),
           fetchContacts(value),
         ]);
-        setSuggestions(externalRes.data);
+        setSuggestions(externalData);
       } catch (e) {
         console.error(e);
       } finally {
@@ -156,322 +250,256 @@ export default function Kindergartens() {
     fetchContacts(name);
   };
 
-  const handleAddSchool = async (e: React.FormEvent) => {
+  const handleAddSchool = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.cityId) return;
-    setIsSubmitting(true);
-    try {
-      const token = localStorage.getItem("token");
-      await api.post(
-        "/schools",
-        { ...form, type: "Садочок" },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      setIsModalOpen(false);
-      qc.invalidateQueries({ queryKey: ["schools"] });
-    } catch (e) {
-      console.error(e);
-      alert("Не вдалося створити садочок");
-    } finally {
-      setIsSubmitting(false);
-    }
+    addSchoolMutation.mutate({ ...form, type: "Садочок" });
   };
 
-  const handleDeleteSchool = async (
-    e: React.MouseEvent,
-    schoolId: string,
-    schoolName: string,
-  ) => {
-    e.stopPropagation();
-    if (!window.confirm(`Видалити садочок "${schoolName}"?...`)) return;
-    await deleteSchool.mutateAsync(schoolId);
-  };
-
-  const filteredKindergartens = Array.isArray(schools)
-    ? schools.filter((s) => {
-        const isCityMatch = selectedCity.id
-          ? s.cityId === selectedCity.id
-          : true;
-        const isFilterMatch = activeFilter
-          ? classifySchool(s) === activeFilter
-          : true;
-        const isSizeMatch = sizeFilter
-          ? classifySize(s, "Садочок") === sizeFilter
-          : true;
-
-        return (
-          isCityMatch && s.type === "Садочок" && isFilterMatch && isSizeMatch
-        );
-      })
-    : [];
+  const handleDeleteSchool = useCallback(
+    async (e: React.MouseEvent, schoolId: string, schoolName: string) => {
+      e.stopPropagation();
+      if (userRole !== "SUPERADMIN") return;
+      if (
+        !window.confirm(
+          `Видалити садочок "${schoolName}"? Це видалить також усі його події.`,
+        )
+      )
+        return;
+      await deleteSchool.mutateAsync(schoolId);
+    },
+    [deleteSchool, userRole],
+  );
 
   return (
-    <div className="p-4 md:p-8 h-full max-w-[100vw]">
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <h1 className="text-xl font-bold text-slate-800">
-          Садочки
-          {selectedCity.id && (
-            <span className="ml-2 text-sm font-normal text-blue-500">
-              · {selectedCity.name}
-            </span>
-          )}
-        </h1>
+    <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-slate-50 min-h-screen">
+      <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-slate-800 leading-tight">
+            Садочки
+            {selectedCity.id && (
+              <span className="ml-2 text-sm font-normal text-blue-500">
+                · {selectedCity.name}
+              </span>
+            )}
+          </h1>
+        </div>
         <div className="flex gap-2 shrink-0">
           {(userRole === "SUPERADMIN" || userRole === "MANAGER") && (
             <button
-              onClick={async () => {
+              onClick={() => {
                 if (!selectedCity.id) return alert("Спочатку оберіть місто");
+                if (!supportedCities.includes(selectedCity.name))
+                  return alert(
+                    `Місто "${selectedCity.name}" не підтримується для імпорту.`,
+                  );
                 if (
                   !window.confirm(
                     `Імпортувати всі садочки з isuo.org для міста ${selectedCity.name}?`,
                   )
                 )
                   return;
-                try {
-                  const token = localStorage.getItem("token");
-                  const res = await api.post(
-                    "/schools/bulk-import",
-                    { cityId: selectedCity.id, type: "Садочок" },
-                    {
-                      headers: { Authorization: `Bearer ${token}` },
-                      timeout: 120000,
-                    },
-                  );
-                  alert(
-                    `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
-                  );
-                  qc.invalidateQueries({ queryKey: ["schools"] });
-                } catch (e) {
-                  alert("Помилка імпорту.");
-                }
+
+                setDotCount(3);
+                const dotInterval = setInterval(() => {
+                  setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
+                }, 500);
+
+                bulkImportMutation.mutate(selectedCity.id, {
+                  onSettled: () => clearInterval(dotInterval),
+                });
               }}
-              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
+              disabled={bulkImportMutation.isPending}
+              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
             >
-              📥 Імпорт з isuo
+              {bulkImportMutation.isPending ? (
+                <span className="font-medium">
+                  Імпортую{"·".repeat(dotCount)}
+                </span>
+              ) : (
+                <>📥 Імпорт з isuo</>
+              )}
             </button>
           )}
-          {userRole === "SUPERADMIN" && (
-            <button
-              onClick={handleOpenModal}
-              className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-            >
-              + Додати
-            </button>
-          )}
+          <button
+            onClick={handleOpenModal}
+            className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+          >
+            + Додати
+          </button>
         </div>
       </div>
 
-      <StatsBar
-        schoolType="Садочок"
-        statusStats={stats?.statusStats || {}}
-        sizeStats={stats?.sizeStats || {}}
-        activeFilter={activeFilter}
-        onFilterChange={setActiveFilter}
-        sizeFilter={sizeFilter}
-        onSizeFilterChange={setSizeFilter}
-      />
+      <div className="shrink-0">
+        <Suspense
+          fallback={
+            <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
+          }
+        >
+          <StatsBar
+            statusStats={
+              stats?.statusStats ?? {
+                new: 0,
+                planned: 0,
+                inProgress: 0,
+                done: 0,
+              }
+            }
+            sizeStats={stats?.sizeStats ?? { small: 0, medium: 0, large: 0 }}
+            activeFilter={activeFilter}
+            onFilterChange={setActiveFilter}
+            sizeFilter={sizeFilter}
+            onSizeFilterChange={setSizeFilter}
+            schoolType="Садочок"
+          />
+        </Suspense>
+      </div>
 
-      {/* Мобільний вигляд */}
-      <div className="md:hidden flex flex-col gap-2.5">
-        {filteredKindergartens.map((school) => {
-          const latestEvent = school.events?.[0];
-          const stage = latestEvent
-            ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
-            : null;
-
-          const lastActivityDate =
-            school.events?.[0]?.updatedAt ?? school.updatedAt ?? null;
-          const daysStale = lastActivityDate
-            ? Math.floor(
-                (Date.now() - new Date(lastActivityDate).getTime()) / 86400000,
-              )
-            : null;
-
-          const stalenessColor =
-            daysStale === null
-              ? "text-slate-400"
-              : daysStale >= 21
-                ? "text-red-500"
-                : daysStale >= 14
-                  ? "text-orange-500"
-                  : daysStale >= 7
-                    ? "text-amber-500"
-                    : "text-emerald-500";
-
-          return (
-            <div
-              key={school.id}
-              onClick={() => navigate(`/schools/${school.id}`)}
-              className="bg-white rounded-2xl border border-slate-100 p-3.5 active:scale-[0.99] transition-transform"
-            >
-              {/* Рядок 1: назва + видалити */}
-              <div className="flex items-start justify-between gap-2">
-                <p className="font-semibold text-slate-800 leading-snug text-sm line-clamp-2 flex-1">
-                  {school.name}
-                </p>
-                {userRole === "SUPERADMIN" && (
-                  <button
-                    onClick={(e) =>
-                      handleDeleteSchool(e, school.id, school.name)
-                    }
-                    className="text-slate-300 active:text-red-500 p-1 -mt-0.5 -mr-1 shrink-0"
-                  >
-                    🗑
-                  </button>
-                )}
-              </div>
-
-              {/* Рядок 2: директор (клікабельний телефон) + етап */}
-              <div className="flex items-center justify-between gap-2 mt-2">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  {school.phone ? (
-                    <a
-                      href={`tel:${school.phone}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-1 text-xs text-blue-600 font-medium truncate"
-                    >
-                      📞 {school.director || school.phone}
-                    </a>
-                  ) : school.director ? (
-                    <span className="text-xs text-slate-500 truncate">
-                      👤 {school.director}
-                    </span>
-                  ) : (
-                    <span className="text-xs text-slate-300 italic">
-                      Контакт не вказано
-                    </span>
-                  )}
-                </div>
-
-                {stage ? (
-                  <span className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full border border-blue-100 shrink-0 font-medium">
-                    {stage.name}
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-slate-300 shrink-0">
-                    Етап —
-                  </span>
-                )}
-              </div>
-
-              {/* Рядок 3: остання активність */}
-              {daysStale !== null && (
-                <p className={`text-[11px] mt-1.5 ${stalenessColor}`}>
-                  ⏱{" "}
-                  {daysStale === 0
-                    ? "Активність сьогодні"
-                    : `Остання активність ${daysStale} дн тому`}
-                </p>
-              )}
-            </div>
-          );
-        })}
-
-        {filteredKindergartens.length === 0 && (
-          <div className="bg-white rounded-2xl border border-slate-100 text-center py-10 text-slate-400 text-sm">
-            Садочків ще немає
-          </div>
-        )}
-
-        {/* FAB */}
-        {userRole === "SUPERADMIN" && (
-          <button
-            onClick={handleOpenModal}
-            className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform md:hidden"
+      <div className="relative shrink-0 mb-4 mt-2">
+        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+          <svg
+            className="w-5 h-5 text-slate-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            +
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
+            />
+          </svg>
+        </div>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Пошук за назвою садочка..."
+          className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border-none sm:border sm:border-slate-200 rounded-2xl sm:rounded-xl text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600 transition"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
           </button>
         )}
       </div>
 
-      {/* Десктоп таблиця */}
-      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto w-full">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50 border-b border-slate-100">
-              <th className="p-4 font-medium text-slate-600">Назва садочку</th>
-              <th className="p-4 font-medium text-slate-600">Місто</th>
-              <th className="p-4 font-medium text-slate-600">Статус</th>
-              <th className="p-4 font-medium text-slate-600">Поточний етап</th>
-              <th className="p-4 font-medium text-slate-600 text-center">
-                Дія
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredKindergartens.map((school) => {
-              const latestEvent = school.events?.[0];
-              const stage = latestEvent
-                ? PIPELINE_STAGES.find((s) => s.key === latestEvent.status)
-                : null;
-              return (
-                <tr
-                  key={school.id}
-                  onClick={() => navigate(`/schools/${school.id}`)}
-                  className="cursor-pointer border-b border-slate-50 hover:bg-slate-50/50 transition"
-                >
-                  <td className="p-4 text-slate-800 font-medium">
-                    {school.name}
-                  </td>
-                  <td className="p-4 text-slate-600">{school.city?.name}</td>
-                  <td className="p-4">
-                    <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-medium">
-                      Активний
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    {stage ? (
-                      <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium border border-blue-100">
-                        {stage.name}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400 text-xs italic">—</span>
-                    )}
-                  </td>
-                  <td className="p-4 text-center">
-                    {userRole === "SUPERADMIN" && (
-                      <button
-                        onClick={(e) =>
-                          handleDeleteSchool(e, school.id, school.name)
-                        }
-                        className="text-slate-400 hover:text-red-500 transition-colors p-2"
-                      >
-                        🗑
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <p className="text-xs font-semibold text-slate-400 mb-4 shrink-0 uppercase tracking-wide px-1">
+        {`${filteredSchools.length} з ${totalItems} садочків`}
+        {(activeFilter || sizeFilter) && (
+          <button
+            onClick={() => {
+              setActiveFilter(null);
+              setSizeFilter(null);
+            }}
+            className="ml-3 text-blue-500 hover:text-blue-700 lowercase"
+          >
+            скинути фільтри
+          </button>
+        )}
+      </p>
 
-      {/* Модалка */}
+      {isLoading ? (
+        <div className="flex flex-col gap-2.5 flex-1">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-white rounded-2xl border border-slate-100 p-3.5 animate-pulse"
+              style={{ opacity: 1 - i * 0.1 }}
+            >
+              <div className="h-4 bg-slate-200 rounded-lg w-3/4 mb-3" />
+              <div className="flex justify-between">
+                <div className="h-3 bg-slate-100 rounded-lg w-1/3" />
+                <div className="h-3 bg-slate-100 rounded-lg w-1/4" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="md:hidden flex-1 w-full overflow-hidden">
+            <VirtualSchoolList
+              schools={filteredSchools}
+              itemHeight={110}
+              onEndReached={handleLoadMore}
+              animationKey={`${activeFilter}-${sizeFilter}`}
+              renderItem={(school, index) => (
+                <div
+                  className="pb-2.5"
+                  onMouseEnter={() => prefetchSchool(school.id)}
+                >
+                  <SchoolCard
+                    school={school}
+                    index={index}
+                    onDelete={handleDeleteSchool}
+                    stages={PIPELINE_STAGES}
+                  />
+                </div>
+              )}
+            />
+          </div>
+
+          <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
+            <Suspense
+              fallback={<div className="flex-1 animate-pulse bg-slate-50" />}
+            >
+              <VirtualDesktopTable
+                schools={filteredSchools}
+                searchQuery={searchQuery}
+                onDelete={handleDeleteSchool}
+                stages={PIPELINE_STAGES}
+                onEndReached={handleLoadMore}
+              />
+            </Suspense>
+          </div>
+        </>
+      )}
+
+      <button
+        onClick={handleOpenModal}
+        className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
+      >
+        +
+      </button>
+
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md max-h-[92vh] overflow-hidden flex flex-col">
-            <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
-            <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <h3 className="text-xl font-bold text-slate-800">
                 Новий садочок
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-2 -mr-2"
+                className="text-slate-400 hover:text-slate-600 p-2 -mr-2 leading-none text-xl"
               >
                 ✕
               </button>
             </div>
+
             <form
               onSubmit={handleAddSchool}
-              className="p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto"
+              className="p-6 flex flex-col gap-4 overflow-y-auto"
             >
               <div className="relative">
-                <label className="block text-sm text-slate-600 mb-1">
-                  Назва садочку
+                <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                  Назва садочка
                 </label>
                 <input
                   type="text"
@@ -480,15 +508,15 @@ export default function Kindergartens() {
                   onBlur={() =>
                     setTimeout(() => setShowSuggestions(false), 150)
                   }
-                  required
                   placeholder="Наприклад: Садочок №1"
-                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  required
+                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 {showSuggestions && (
-                  <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                  <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto overflow-hidden">
                     {isSearching ? (
-                      <li className="px-3 py-2 text-sm text-slate-400 italic">
-                        Пошук за збігами...
+                      <li className="px-4 py-3 text-sm text-slate-400 italic">
+                        Пошук...
                       </li>
                     ) : suggestions.length > 0 ? (
                       suggestions.map((s, i) => (
@@ -497,13 +525,13 @@ export default function Kindergartens() {
                           onMouseDown={() =>
                             handleSelectSuggestion(s.name, s.url)
                           }
-                          className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer"
+                          className="px-4 py-3 text-sm hover:bg-blue-50 cursor-pointer font-medium border-b border-slate-50 last:border-0"
                         >
                           {s.name}
                         </li>
                       ))
                     ) : (
-                      <li className="px-3 py-2 text-sm text-slate-400 italic">
+                      <li className="px-4 py-3 text-sm text-slate-400 italic">
                         Нічого не знайдено
                       </li>
                     )}
@@ -513,7 +541,7 @@ export default function Kindergartens() {
 
               {!selectedCity.id && (
                 <div>
-                  <label className="block text-sm text-slate-600 mb-1">
+                  <label className="block text-sm font-medium text-slate-600 mb-1.5">
                     Місто
                   </label>
                   <select
@@ -522,7 +550,7 @@ export default function Kindergartens() {
                       setForm({ ...form, cityId: e.target.value })
                     }
                     required
-                    className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 bg-white"
+                    className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   >
                     <option value="">— Оберіть місто —</option>
                     {cities.map((c) => (
@@ -535,14 +563,14 @@ export default function Kindergartens() {
               )}
 
               <div>
-                <label className="block text-sm text-slate-600 mb-1">
+                <label className="block text-sm font-medium text-slate-600 mb-1.5">
                   Контакт{" "}
-                  <span className="ml-1 text-xs text-slate-400">
+                  <span className="ml-1 text-xs font-normal text-slate-400">
                     (автозаповнення)
                   </span>
                 </label>
                 {matchedContacts.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-2">
+                  <div className="flex flex-wrap gap-1.5 mb-3">
                     {matchedContacts.map((c, i) => (
                       <button
                         key={i}
@@ -554,11 +582,7 @@ export default function Kindergartens() {
                             phone: c.phone,
                           }))
                         }
-                        className={`text-xs px-2 py-1 rounded-full border transition-colors ${
-                          form.director === c.contactName
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
-                        }`}
+                        className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${form.director === c.contactName ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
                       >
                         {c.role ? `${c.role}: ` : ""}
                         {c.contactName}
@@ -573,40 +597,34 @@ export default function Kindergartens() {
                     setForm({ ...form, director: e.target.value })
                   }
                   placeholder="Микола Петренко"
-                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm text-slate-600 mb-1">
-                  Телефон{" "}
-                  <span className="ml-1 text-xs text-slate-400">
-                    (автозаповнення)
-                  </span>
+                <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                  Телефон
                 </label>
                 <input
                   type="text"
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   placeholder="0671234567"
-                  className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-2 pb-1 sm:pb-0">
+              <div className="flex gap-3 mt-4">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-slate-100 rounded-xl sm:rounded-lg text-sm font-medium hover:bg-slate-200"
+                  className="flex-1 px-5 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors"
                 >
                   Скасувати
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-blue-600 text-white rounded-xl sm:rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                  disabled={addSchoolMutation.isPending}
+                  className="flex-1 px-5 py-3.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
-                  {isSubmitting ? "Збереження..." : "Створити"}
+                  {addSchoolMutation.isPending ? "Збереження..." : "Створити"}
                 </button>
               </div>
             </form>

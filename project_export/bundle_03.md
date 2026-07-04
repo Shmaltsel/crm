@@ -420,7 +420,7 @@ function AppRoutes() {
           <Route
             path="cities"
             element={
-              <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
+              <ProtectedRoute allowedRoles={["SUPERADMIN"]}>
                 <Suspense fallback={<PageLoader />}>
                   <Cities />
                 </Suspense>
@@ -460,11 +460,9 @@ function AppRoutes() {
           <Route
             path="finance"
             element={
-              <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
-                <Suspense fallback={<PageLoader />}>
-                  <Finance />
-                </Suspense>
-              </ProtectedRoute>
+              <Suspense fallback={<PageLoader />}>
+                <Finance />
+              </Suspense>
             }
           />
 
@@ -587,6 +585,128 @@ export default function AddressLink({ address, className }: AddressLinkProps) {
 
 ```
 
+# FILE: apps/frontend/src/components/calendar/DayOffModal.tsx
+
+```
+import { createPortal } from "react-dom";
+import type { DayOff } from "../../hooks/useDaysOff";
+
+interface StaffUser {
+  id: string;
+  name: string;
+  role: string;
+}
+
+interface DayOffModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  date: Date | null;
+  staff: StaffUser[];
+  dayOffs: DayOff[];
+  onToggle: (userId: string, existingId?: string) => void;
+}
+
+const ROLE_ICON: Record<string, string> = {
+  HOST: "🎙️",
+  DRIVER: "🚗",
+};
+
+export default function DayOffModal({
+  isOpen,
+  onClose,
+  date,
+  staff,
+  dayOffs,
+  onToggle,
+}: DayOffModalProps) {
+  if (!isOpen || !date) return null;
+
+  const dateStr = date.toLocaleDateString("uk-UA", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+
+  return createPortal(
+    <div
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
+      style={{ animation: "fadeIn 0.2s ease-out forwards" }}
+    >
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalScale {
+          from { opacity: 0; transform: scale(0.95) translateY(15px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
+      <div
+        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
+        style={{ animation: "modalScale 0.3s ease-out forwards" }}
+      >
+        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+          <div>
+            <h3 className="text-lg font-bold text-slate-800">
+              Вихідний на {dateStr}
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Оберіть співробітника
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="p-4 max-h-[60vh] overflow-y-auto">
+          {staff.length === 0 ? (
+            <p className="text-center text-slate-400 py-6 text-sm">
+              Немає співробітників у цьому місті
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {staff.map((s) => {
+                const existing = dayOffs.find((d) => d.userId === s.id);
+                const isOff = !!existing;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => onToggle(s.id, existing?.id)}
+                    className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left ${
+                      isOff
+                        ? "border-rose-200 bg-rose-50"
+                        : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/30"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 font-medium text-slate-800">
+                      <span>{ROLE_ICON[s.role] || "👤"}</span>
+                      {s.name}
+                    </span>
+                    <span
+                      className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                        isOff
+                          ? "bg-rose-100 text-rose-600"
+                          : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {isOff ? "Вихідний ✕" : "Призначити"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+```
+
 # FILE: apps/frontend/src/components/cities/CityDesktopGrid.tsx
 
 ```
@@ -596,14 +716,68 @@ import OptimizedImage from "../ui/OptimizedImage";
 
 const CITY_PHOTOS: Record<string, string> = {
   Львів:
-    "https://gohotels.com.ua/images/stories/f08072159a443e07501f3df97987f8a3.jpg",
-  Київ: "https://images.unsplash.com/photo-1630651814316-fe71f3c30279?w=600&q=80&auto=format",
+    "https://static4.depositphotos.com/1027798/376/i/450/depositphotos_3763579-stock-photo-lviv-lvov-ukraine.jpg",
+
+  Київ: "https://st.depositphotos.com/58719516/51188/i/450/depositphotos_511888226-stock-photo-kyiv-central-square-buildings-landscape.jpg",
+
   Харків:
-    "https://images.unsplash.com/photo-1584646098378-0f87b72cffe1?w=600&q=80&auto=format",
+    "https://st.depositphotos.com/67336120/56801/i/950/depositphotos_568018044-stock-photo-kharkiv-ukraine-spring-2021-panoramic.jpg",
+
   Одеса:
-    "https://images.unsplash.com/photo-1585168050053-a4ba02e3f0d2?w=600&q=80&auto=format",
+    "https://st3.depositphotos.com/3644443/16721/i/450/depositphotos_167218870-stock-photo-aerial-view-opera-and-ballet.jpg",
+
   Дніпро:
-    "https://images.unsplash.com/photo-1570587953042-a65fd17e2f73?w=600&q=80&auto=format",
+    "https://st4.depositphotos.com/1005991/20622/i/450/depositphotos_206223052-stock-photo-dnepropetrovsk-beautiful-city-landscape-dnepr.jpg",
+
+  Запоріжжя:
+    "https://st4.depositphotos.com/2955305/41468/i/950/depositphotos_414689920-stock-photo-zaporozhye-ukraine-2020-theater-square.jpg",
+
+  "Івано-Франківськ":
+    "https://st3.depositphotos.com/7149852/15888/i/450/depositphotos_158883576-stock-photo-the-center-of-historic-european.jpg",
+
+  Чернівці:
+    "https://st3.depositphotos.com/6179956/16823/i/450/depositphotos_168238240-stock-photo-chernivtsi-ukraine-april-2017-residence.jpg",
+
+  Тернопіль:
+    "https://st.depositphotos.com/3651191/51255/i/450/depositphotos_512553730-stock-photo-colorful-autumn-view-flying-drone.jpg",
+
+  Ужгород:
+    "https://st2.depositphotos.com/2954445/42446/i/950/depositphotos_424466430-stock-photo-view-city-mountain-uzhhorod-castle.jpg",
+
+  Миколаїв:
+    "https://korabelov.info/wp-content/uploads/2023/02/752638-780x470.jpg.webp",
+
+  Вінниця:
+    "https://st5.depositphotos.com/10859846/83141/i/950/depositphotos_831410524-stock-photo-aerial-view-cremona-italy-highlighting.jpg",
+
+  Херсон:
+    "https://st2.depositphotos.com/28888872/48293/i/450/depositphotos_482930928-stock-photo-aerial-view-of-the-kherson.jpg",
+
+  Полтава:
+    "https://st4.depositphotos.com/8109164/38951/i/450/depositphotos_389510792-stock-photo-aerial-view-on-holy-dormition.jpg",
+
+  Чернігів:
+    "https://st2.depositphotos.com/1642129/6819/i/450/depositphotos_68194491-stock-photo-chernihivs-railway-station-is-looking.jpg",
+
+  Черкаси:
+    "https://st4.depositphotos.com/6259690/24892/i/450/depositphotos_248928436-stock-photo-scenic-cityscape-of-cherkasy-ukraine.jpg",
+
+  Суми: "https://st3.depositphotos.com/29384342/33416/i/450/depositphotos_334165806-stock-photo-scenic-view-christmas-decorations.jpg",
+
+  Житомир:
+    "https://st4.depositphotos.com/1315434/22548/i/950/depositphotos_225486326-stock-photo-aerial-view-zhytomyr-city-ukraine.jpg",
+
+  Хмельницький:
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSMF4ElBw0lBXcW--rvqPYk5ZTM7PXi-A6qxxw9UAwhmg&s=10",
+
+  Рівне:
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSVEqOaKt-xPQssGp6LtVdqPkKmNMeK1BkDf9HwkF0_qw&s=10",
+
+  Кропивницький:
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcToTY417WfgkTzzu3LZ2o_3MOpWeP4D2ueot6GV80VQPA&s=10",
+
+  Луцьк:
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTRWzzd6fMVMUDsaUHZITW7-U8MS-FpM70v2DjBnoYRoQ&s=10",
 };
 const DEFAULT_PHOTO =
   "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80&auto=format";
@@ -806,7 +980,7 @@ import { api } from "../../config/api";
 
 interface Props {
   selectedCity: any;
-  cities: any[]; 
+  cities: any[];
 }
 
 const STATUSES = ["Планується", "Виконується", "Виконано"];
@@ -828,11 +1002,23 @@ const CITY_ICONS: Record<string, string> = {
   Харків: "⚙️",
   Одеса: "⚓",
   Дніпро: "🌊",
-  Запоріжжя: "🔱",
-  Вінниця: "🌸",
-  Полтава: "🌻",
-  Черкаси: "🍒",
-  Чернівці: "🎭",
+  Запоріжжя: "⚡",
+  "Івано-Франківськ": "⛰️",
+  Чернівці: "🏛️",
+  Тернопіль: "⛵",
+  Ужгород: "🌸",
+  Миколаїв: "🚢",
+  Вінниця: "⛲",
+  Херсон: "🍉",
+  Полтава: "🥟",
+  Чернігів: "⛪",
+  Черкаси: "🌳",
+  Суми: "🎪",
+  Житомир: "🚀",
+  Хмельницький: "🛍️",
+  Рівне: "💎",
+  Кропивницький: "🎭",
+  Луцьк: "🏰",
 };
 const DEFAULT_CITY_ICON = "🏙️";
 
@@ -1130,11 +1316,23 @@ const CITY_ICONS: Record<string, string> = {
   Харків: "⚙️",
   Одеса: "⚓",
   Дніпро: "🌊",
-  Запоріжжя: "🔱",
-  Вінниця: "🌸",
-  Полтава: "🌻",
-  Черкаси: "🍒",
-  Чернівці: "🎭",
+  Запоріжжя: "⚡",
+  "Івано-Франківськ": "⛰️",
+  Чернівці: "🏛️",
+  Тернопіль: "⛵",
+  Ужгород: "🌸",
+  Миколаїв: "🚢",
+  Вінниця: "⛲",
+  Херсон: "🍉",
+  Полтава: "🥟",
+  Чернігів: "⛪",
+  Черкаси: "🌳",
+  Суми: "🎪",
+  Житомир: "🚀",
+  Хмельницький: "🛍️",
+  Рівне: "💎",
+  Кропивницький: "🎭",
+  Луцьк: "🏰",
 };
 const DEFAULT_CITY_ICON = "🏙️";
 
@@ -1202,7 +1400,10 @@ export default function CityMobileList({
             return (
               <button
                 key={tab}
-                onClick={() => { setActiveTab(tabKey as typeof activeTab); setTabKey(k => k + 1); }}
+                onClick={() => {
+                  setActiveTab(tabKey as typeof activeTab);
+                  setTabKey((k) => k + 1);
+                }}
                 className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-1.5 active:scale-95 ${
                   isActive
                     ? "bg-blue-50 text-blue-600 border border-blue-100 shadow-sm"
@@ -1219,7 +1420,10 @@ export default function CityMobileList({
         </div>
 
         {/* Список */}
-        <div key={tabKey} className="flex flex-col bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
+        <div
+          key={tabKey}
+          className="flex flex-col bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden"
+        >
           {filteredCities.map((city: any, index: number) => {
             const iconStyle = ICON_COLORS[index % ICON_COLORS.length];
             const totalEvents =
@@ -3668,7 +3872,7 @@ export default function Layout() {
               <span className="mr-3">🏠</span> Дашборд
             </Link>
           )}
-          {is(["SUPERADMIN", "MANAGER"]) && (
+          {is(["SUPERADMIN"]) && (
             <Link
               to="/cities"
               onClick={handleLinkClick}
@@ -3693,15 +3897,13 @@ export default function Layout() {
           >
             <span className="mr-3">🧸</span> Садочки
           </Link>
-          {is(["SUPERADMIN", "MANAGER"]) && (
-            <Link
-              to="/finance"
-              onClick={handleLinkClick}
-              className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/finance") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-            >
-              <span className="mr-3">💰</span> Фінанси
-            </Link>
-          )}
+          <Link
+            to="/finance"
+            onClick={handleLinkClick}
+            className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/finance") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+          >
+            <span className="mr-3">💰</span> Фінанси
+          </Link>
           <Link
             to="/calendar"
             onClick={handleLinkClick}
@@ -4589,14 +4791,16 @@ export default function CommentModal({ isOpen, onClose, mode, text, setText, onS
 # FILE: apps/frontend/src/components/school-profile/modals/CrewModal.tsx
 
 ```
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { api } from "../../../config/api";
 import type { City, Crew } from "../../../types";
 import { useQuery } from "@tanstack/react-query";
+import { useDaysOff } from "../../../hooks/useDaysOff";
 interface CrewModalProps {
   isOpen: boolean;
   onClose: () => void;
   city?: string;
+  eventDate?: string;
   onSave: (crewId: string) => void;
 }
 
@@ -4604,6 +4808,7 @@ export default function CrewModal({
   isOpen,
   onClose,
   city,
+  eventDate,
   onSave,
 }: CrewModalProps) {
   const { data: allCities = [] } = useQuery({
@@ -4620,6 +4825,12 @@ export default function CrewModal({
     enabled: !!currentCity?.id && isOpen,
     staleTime: 60 * 1000,
   });
+  const dayOnly = eventDate ? eventDate.slice(0, 10) : undefined;
+  const { data: dayOffs = [] } = useDaysOff(dayOnly, dayOnly);
+  const dayOffUserIds = useMemo(
+    () => new Set(dayOffs.map((d) => d.userId)),
+    [dayOffs],
+  );
   const [selectedCrewId, setSelectedCrewId] = useState("");
 
   if (!isOpen) return null;
@@ -4657,33 +4868,53 @@ export default function CrewModal({
                 Оберіть готовий екіпаж
               </label>
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                {crews.map((crew) => (
-                  <label
-                    key={crew.id}
-                    className={`flex items-start p-3 rounded-xl border cursor-pointer transition-all ${selectedCrewId === crew.id ? "border-blue-500 bg-blue-50/50 ring-1 ring-blue-500" : "border-slate-200 hover:border-blue-300"}`}
-                  >
-                    <input
-                      type="radio"
-                      name="crew"
-                      value={crew.id}
-                      checked={selectedCrewId === crew.id}
-                      onChange={() => setSelectedCrewId(crew.id)}
-                      className="mt-1 mr-3 text-blue-600 focus:ring-blue-500"
-                    />
-                    <div>
-                      <p className="font-bold text-slate-800">{crew.name}</p>
-                      <p className="text-xs text-slate-500 mt-1">
-                        🎙️ {crew.host?.name || "—"} | 🚗{" "}
-                        {crew.driver?.name || "—"}
-                      </p>
-                      {crew.car && (
-                        <p className="text-xs text-emerald-600 mt-0.5">
-                          Авто: {crew.car}
+                {crews.map((crew) => {
+                  const hostOnDayOff =
+                    crew.hostId && dayOffUserIds.has(crew.hostId);
+                  const driverOnDayOff =
+                    crew.driverId && dayOffUserIds.has(crew.driverId);
+                  const isUnavailable = hostOnDayOff || driverOnDayOff;
+                  return (
+                    <label
+                      key={crew.id}
+                      className={`flex items-start p-3 rounded-xl border transition-all ${
+                        isUnavailable
+                          ? "border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed"
+                          : selectedCrewId === crew.id
+                            ? "border-blue-500 bg-blue-50/50 ring-1 ring-blue-500 cursor-pointer"
+                            : "border-slate-200 hover:border-blue-300 cursor-pointer"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="crew"
+                        value={crew.id}
+                        checked={selectedCrewId === crew.id}
+                        disabled={!!isUnavailable}
+                        onChange={() => setSelectedCrewId(crew.id)}
+                        className="mt-1 mr-3 text-blue-600 focus:ring-blue-500"
+                      />
+                      <div>
+                        <p className="font-bold text-slate-800">{crew.name}</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          🎙️ {crew.host?.name || "—"} | 🚗{" "}
+                          {crew.driver?.name || "—"}
                         </p>
-                      )}
-                    </div>
-                  </label>
-                ))}
+                        {crew.car && (
+                          <p className="text-xs text-emerald-600 mt-0.5">
+                            Авто: {crew.car}
+                          </p>
+                        )}
+                        {isUnavailable && (
+                          <p className="text-xs text-rose-500 font-medium mt-1">
+                            🌴 {hostOnDayOff ? "Ведучий" : "Водій"} у вихідному
+                            цього дня
+                          </p>
+                        )}
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -7009,6 +7240,8 @@ interface User {
   name: string;
   email: string;
   role: string;
+  cityId?: string | null;
+  cityName?: string | null;
 }
 
 interface AuthContextValue {
@@ -7058,7 +7291,14 @@ export function useAuth() {
 # FILE: apps/frontend/src/context/CityContext.tsx
 
 ```
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
+import { useAuth } from "./AuthContext";
 
 interface SelectedCity {
   id: string;
@@ -7068,32 +7308,46 @@ interface SelectedCity {
 interface CityContextType {
   selectedCity: SelectedCity;
   setSelectedCity: (city: SelectedCity) => void;
+  isCityLocked: boolean;
 }
 
-const DEFAULT_CITY: SelectedCity = { id: '', name: 'Львів' };
+const DEFAULT_CITY: SelectedCity = { id: "", name: "Львів" };
 
 const CityContext = createContext<CityContextType>({
   selectedCity: DEFAULT_CITY,
   setSelectedCity: () => {},
+  isCityLocked: false,
 });
 
 export function CityProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const isCityLocked = user?.role === "MANAGER" && !!user.cityId;
+
   const [selectedCity, setSelectedCityState] = useState<SelectedCity>(() => {
     try {
-      const raw = localStorage.getItem('selectedCity');
+      const raw = localStorage.getItem("selectedCity");
       return raw ? JSON.parse(raw) : DEFAULT_CITY;
     } catch {
       return DEFAULT_CITY;
     }
   });
 
+  useEffect(() => {
+    if (isCityLocked && user?.cityId) {
+      setSelectedCityState({ id: user.cityId, name: user.cityName || "" });
+    }
+  }, [isCityLocked, user?.cityId, user?.cityName]);
+
   const setSelectedCity = (city: SelectedCity) => {
+    if (isCityLocked) return;
     setSelectedCityState(city);
-    localStorage.setItem('selectedCity', JSON.stringify(city));
+    localStorage.setItem("selectedCity", JSON.stringify(city));
   };
 
   return (
-    <CityContext.Provider value={{ selectedCity, setSelectedCity }}>
+    <CityContext.Provider
+      value={{ selectedCity, setSelectedCity, isCityLocked }}
+    >
       {children}
     </CityContext.Provider>
   );
@@ -7248,12 +7502,10 @@ export function usePrefetchSchool() {
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
 
-const h = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
-
 export function useCalendarEvents() {
   return useQuery({
     queryKey: ["calendarEvents"],
-    queryFn: () => api.get("/events", { headers: h() }).then((r) => r.data),
+    queryFn: () => api.get("/events").then((r) => r.data),
     staleTime: 60 * 1000,
   });
 }
@@ -7261,7 +7513,7 @@ export function useCalendarEvents() {
 export function useCalendarProjects() {
   return useQuery({
     queryKey: ["projects"],
-    queryFn: () => api.get("/projects", { headers: h() }).then((r) => r.data),
+    queryFn: () => api.get("/projects").then((r) => r.data),
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -7355,6 +7607,56 @@ export function useDeleteCrew(cityId: string | undefined) {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(["city", cityId], ctx.prev);
+    },
+  });
+}
+
+```
+
+# FILE: apps/frontend/src/hooks/useDaysOff.ts
+
+```
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "../config/api";
+
+export interface DayOff {
+  id: string;
+  userId: string;
+  date: string;
+  user: { id: string; name: string; role: string; cityId: string | null };
+}
+
+export function useDaysOff(from?: string, to?: string, cityId?: string) {
+  return useQuery({
+    queryKey: ["daysOff", from, to, cityId],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
+      if (cityId) params.set("cityId", cityId);
+      return api.get<DayOff[]>(`/days-off?${params}`).then((r) => r.data);
+    },
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useCreateDayOff() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { date: string; userId?: string }) =>
+      api.post<DayOff>("/days-off", payload).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["daysOff"] });
+    },
+  });
+}
+
+export function useDeleteDayOff() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/days-off/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["daysOff"] });
     },
   });
 }
@@ -7874,51 +8176,47 @@ createRoot(document.getElementById("root")!).render(
 
 ```
 import { useSelectedCity } from "../context/CityContext";
+import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useCalendarEvents, useCalendarProjects } from "../hooks/useCalendar";
-import { useState, useEffect } from 'react';
-interface CalendarEvent {
-  id: string;
-  project: string;
-  date: string;
-  time?: string;
-  status: string;
-  school?: { id: string; name: string };
-  city?: { id: string; name: string };
-  crew?: { id: string; name: string };
-}
+import { useUsers } from "../hooks/useEmployees";
+import { useCities } from "../hooks/useCities";
+import {
+  useDaysOff,
+  useCreateDayOff,
+  useDeleteDayOff,
+} from "../hooks/useDaysOff";
+import { useState, useMemo, useCallback } from "react";
+import DayOffModal from "../components/calendar/DayOffModal";
+
+const STAFF_ROLES = ["HOST", "DRIVER"];
+const MANAGER_ROLES = ["SUPERADMIN", "MANAGER"];
+
+const toISODate = (d: Date) => d.toLocaleDateString("en-CA");
 
 export default function CalendarView() {
   const { data: events = [], isLoading: eventsLoading } = useCalendarEvents();
   const { data: projects = [] } = useCalendarProjects();
-  const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
+  const { data: cities = [] } = useCities();
+  const { data: allUsers = [] } = useUsers();
   const [currentDate, setCurrentDate] = useState(new Date());
   const isLoading = eventsLoading;
   const [selectedMobileDate, setSelectedMobileDate] = useState<Date>(
     new Date(),
   );
+  const [dayOffModalDate, setDayOffModalDate] = useState<Date | null>(null);
 
   const { selectedCity } = useSelectedCity();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [userRole, setUserRole] = useState<string>("GUEST");
-  const [filterCityId, setFilterCityId] = useState<string>("ALL");
+  const userRole = user?.role || "GUEST";
+  const isStaff = STAFF_ROLES.includes(userRole);
+  const isManagerOrAdmin = MANAGER_ROLES.includes(userRole);
 
-
-  useEffect(() => {
-    try {
-      const token = localStorage.getItem("token");
-      if (token) {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        setUserRole(payload.role);
-        if (payload.role === "MANAGER" && selectedCity?.id) {
-          setFilterCityId(selectedCity.id);
-        }
-      }
-    } catch (e) {
-      console.error("Помилка парсингу токена", e);
-    }
-  }, [selectedCity]);
+  const [filterCityId, setFilterCityId] = useState<string>(() =>
+    userRole === "MANAGER" && user?.cityId ? user.cityId : "ALL",
+  );
 
   const nextMonth = () =>
     setCurrentDate(
@@ -7945,18 +8243,54 @@ export default function CalendarView() {
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
 
-  const days = [];
+  const days: (Date | null)[] = [];
   for (let i = 0; i < firstDay; i++) days.push(null);
   for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
 
-  const filteredEvents = events.filter((ev) => {
+  const monthFrom = toISODate(new Date(year, month, 1));
+  const monthTo = toISODate(new Date(year, month + 1, 0));
+
+  const dayOffCityId = isManagerOrAdmin
+    ? filterCityId !== "ALL"
+      ? filterCityId
+      : undefined
+    : undefined;
+
+  const { data: dayOffs = [] } = useDaysOff(monthFrom, monthTo, dayOffCityId);
+  const createDayOff = useCreateDayOff();
+  const deleteDayOff = useDeleteDayOff();
+
+  const dayOffsByDate = useMemo(() => {
+    const map = new Map<string, typeof dayOffs>();
+    for (const d of dayOffs) {
+      const key = d.date.slice(0, 10);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(d);
+    }
+    return map;
+  }, [dayOffs]);
+
+  const staffForModal = useMemo(() => {
+    const cityScope =
+      userRole === "MANAGER"
+        ? user?.cityId
+        : filterCityId !== "ALL"
+          ? filterCityId
+          : null;
+    return allUsers.filter(
+      (u: any) =>
+        STAFF_ROLES.includes(u.role) && (!cityScope || u.cityId === cityScope),
+    );
+  }, [allUsers, userRole, user?.cityId, filterCityId]);
+
+  const filteredEvents = events.filter((ev: any) => {
     if (ev.status === "RE_SALE") return false;
     if (filterCityId !== "ALL" && ev.city?.id !== filterCityId) return false;
     return true;
   });
 
   const getEventsForDay = (date: Date) => {
-    return filteredEvents.filter((ev) => {
+    return filteredEvents.filter((ev: any) => {
       const evDate = new Date(ev.date);
       return (
         evDate.getFullYear() === date.getFullYear() &&
@@ -7965,6 +8299,58 @@ export default function CalendarView() {
       );
     });
   };
+
+  const isPastDay = (date: Date) => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    return date < startOfToday;
+  };
+
+  const handleDayOffClick = useCallback(
+    (e: React.MouseEvent, date: Date) => {
+      e.stopPropagation();
+      if (isPastDay(date)) return;
+
+      if (isStaff && user) {
+        const key = toISODate(date);
+        const existing = dayOffsByDate
+          .get(key)
+          ?.find((d) => d.userId === user.id);
+        if (existing) {
+          deleteDayOff.mutate(existing.id);
+        } else {
+          createDayOff.mutate({ date: key });
+        }
+        return;
+      }
+
+      if (isManagerOrAdmin) {
+        setDayOffModalDate(date);
+      }
+    },
+    [
+      isStaff,
+      isManagerOrAdmin,
+      user,
+      dayOffsByDate,
+      createDayOff,
+      deleteDayOff,
+    ],
+  );
+
+  const handleToggleStaffDayOff = useCallback(
+    (targetUserId: string, existingId?: string) => {
+      if (existingId) {
+        deleteDayOff.mutate(existingId);
+      } else if (dayOffModalDate) {
+        createDayOff.mutate({
+          date: toISODate(dayOffModalDate),
+          userId: targetUserId,
+        });
+      }
+    },
+    [dayOffModalDate, createDayOff, deleteDayOff],
+  );
 
   const monthNames = [
     "Січень",
@@ -7982,7 +8368,7 @@ export default function CalendarView() {
   ];
 
   const getProjectColor = (projectName: string) => {
-    const proj = projects.find((p) => p.name === projectName);
+    const proj = projects.find((p: any) => p.name === projectName);
     const color = proj ? proj.color : "blue";
 
     switch (color) {
@@ -8004,7 +8390,6 @@ export default function CalendarView() {
   if (isLoading)
     return (
       <div className="p-4 md:p-8 bg-slate-50 min-h-screen pb-24 animate-pulse">
-        {/* Шапка */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
           <div>
             <div className="h-8 w-52 bg-slate-200 rounded-xl mb-2" />
@@ -8022,15 +8407,12 @@ export default function CalendarView() {
           <div className="h-10 w-48 bg-slate-200 rounded-xl" />
         </div>
 
-        {/* Календар */}
         <div className="bg-white rounded-[24px] border border-slate-100 overflow-hidden">
-          {/* Керування місяцем */}
           <div className="flex items-center justify-between p-5 md:p-6 border-b border-slate-100">
             <div className="h-8 w-36 bg-slate-200 rounded-xl" />
             <div className="h-10 w-44 bg-slate-200 rounded-2xl" />
           </div>
 
-          {/* Дні тижня */}
           <div className="grid grid-cols-7 bg-slate-50/50">
             {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((d) => (
               <div key={d} className="py-3 flex justify-center">
@@ -8038,7 +8420,6 @@ export default function CalendarView() {
               </div>
             ))}
 
-            {/* Клітинки */}
             {Array.from({ length: 35 }).map((_, i) => (
               <div
                 key={i}
@@ -8058,7 +8439,6 @@ export default function CalendarView() {
           </div>
         </div>
 
-        {/* Мобільний блок подій */}
         <div className="mt-6 md:hidden">
           <div className="h-6 w-40 bg-slate-200 rounded-lg mb-3" />
           <div className="space-y-3">
@@ -8084,6 +8464,17 @@ export default function CalendarView() {
 
   return (
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen pb-24">
+      <style>{`
+        @keyframes dayOffPop {
+          0% { transform: scale(0.7); opacity: 0; }
+          60% { transform: scale(1.15); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .dayoff-cell-enter {
+          animation: dayOffPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+      `}</style>
+
       {/* Шапка календаря */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
@@ -8094,9 +8485,8 @@ export default function CalendarView() {
             Графік запланованих та активних заходів
           </p>
 
-          {/* Легенда */}
           <div className="flex flex-wrap items-center gap-3 mt-4">
-            {projects.map((p) => {
+            {projects.map((p: any) => {
               const badgeColor =
                 {
                   blue: "bg-blue-400",
@@ -8117,6 +8507,10 @@ export default function CalendarView() {
                 </span>
               );
             })}
+            <span className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+              <span className="w-3 h-3 rounded-full bg-rose-500"></span>{" "}
+              Вихідний
+            </span>
           </div>
         </div>
 
@@ -8129,7 +8523,7 @@ export default function CalendarView() {
               className="text-sm font-semibold text-slate-800 outline-none cursor-pointer bg-transparent"
             >
               <option value="ALL">🌍 Всі міста</option>
-              {cities.map((c) => (
+              {cities.map((c: any) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
@@ -8140,7 +8534,6 @@ export default function CalendarView() {
       </div>
 
       <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-        {/* Керування місяцями */}
         <div className="flex flex-col sm:flex-row items-center justify-between p-5 md:p-6 border-b border-slate-100 gap-4 bg-white">
           <h2 className="text-2xl font-bold text-slate-800 capitalize tracking-tight">
             {monthNames[month]}{" "}
@@ -8168,7 +8561,6 @@ export default function CalendarView() {
           </div>
         </div>
 
-        {/* Сітка календаря */}
         <div className="grid grid-cols-7 bg-slate-50/50">
           {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((dayName) => (
             <div
@@ -8185,6 +8577,18 @@ export default function CalendarView() {
             const isSelected =
               day && day.toDateString() === selectedMobileDate.toDateString();
             const dayEvents = day ? getEventsForDay(day) : [];
+            const dayKey = day ? toISODate(day) : "";
+            const dayOffEntries = day ? (dayOffsByDate.get(dayKey) ?? []) : [];
+
+            const myDayOff = isStaff
+              ? dayOffEntries.find((d) => d.userId === user?.id)
+              : undefined;
+            const hasAnyDayOff = isStaff
+              ? !!myDayOff
+              : dayOffEntries.length > 0;
+
+            const showCross =
+              day && !isPastDay(day) && (isStaff || isManagerOrAdmin);
 
             return (
               <div
@@ -8193,10 +8597,30 @@ export default function CalendarView() {
                 className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group
                   ${day ? "bg-white hover:bg-slate-50 cursor-pointer" : "bg-slate-50/30"}
                   ${isSelected ? "ring-2 ring-inset ring-blue-500/20 bg-blue-50/10" : ""}
+                  ${hasAnyDayOff ? "dayoff-cell-enter bg-rose-50/70" : ""}
                 `}
               >
                 {day && (
                   <>
+                    {showCross && (
+                      <button
+                        onClick={(e) => handleDayOffClick(e, day)}
+                        title={
+                          hasAnyDayOff
+                            ? "Скасувати вихідний"
+                            : "Призначити вихідний"
+                        }
+                        className={`absolute top-1 left-1 w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold z-10 transition-all
+                          ${
+                            hasAnyDayOff
+                              ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600"
+                              : "bg-slate-100 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-rose-100 hover:text-rose-500"
+                          }`}
+                      >
+                        ✕
+                      </button>
+                    )}
+
                     <div className="flex justify-center md:justify-end mb-1.5">
                       <span
                         className={`w-7 h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-semibold transition-colors
@@ -8207,24 +8631,25 @@ export default function CalendarView() {
                       </span>
                     </div>
 
+                    {hasAnyDayOff && !isStaff && dayOffEntries.length > 0 && (
+                      <p className="text-[9px] md:text-[10px] text-rose-600 font-semibold text-center mb-1 truncate px-1">
+                        🌴 {dayOffEntries.length}{" "}
+                        {dayOffEntries.length === 1 ? "вихідний" : "вихідних"}
+                      </p>
+                    )}
+
                     <div className="space-y-1.5 max-h-[80px] md:max-h-[100px] overflow-y-auto custom-scrollbar pr-0.5">
-                      {dayEvents.map((ev) => (
+                      {dayEvents.map((ev: any) => (
                         <div
                           key={ev.id}
                           className="relative group/event z-0 hover:z-50"
                         >
                           <button
-                            // onClick={(e) => {
-                            //   e.stopPropagation();
-                            //   if (ev.school)
-                            //     navigate(`/schools/${ev.school.id}`);
-                            // }}
                             className={`w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${getProjectColor(ev.project)}`}
                           >
                             {ev.time || "—"}
                           </button>
 
-                          {/* Тултип (тільки для Десктопу) */}
                           <div className="hidden md:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-800 text-white p-3 rounded-xl shadow-2xl opacity-0 invisible group-hover/event:opacity-100 group-hover/event:visible transition-all duration-200 pointer-events-none">
                             <p className="font-bold text-sm mb-1 truncate">
                               {ev.school?.name || "Невідомий заклад"}
@@ -8245,7 +8670,6 @@ export default function CalendarView() {
                                 </span>
                               </p>
                             </div>
-                            {/* Трикутник тултипа */}
                             <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-slate-800"></div>
                           </div>
                         </div>
@@ -8259,7 +8683,6 @@ export default function CalendarView() {
         </div>
       </div>
 
-      {/* Блок подій для мобільних пристроїв (з'являється під календарем) */}
       <div className="mt-6 md:hidden">
         <h3 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
           📅 Події на{" "}
@@ -8275,7 +8698,7 @@ export default function CalendarView() {
           </div>
         ) : (
           <div className="space-y-3">
-            {selectedDayEvents.map((ev) => (
+            {selectedDayEvents.map((ev: any) => (
               <div
                 key={ev.id}
                 onClick={() =>
@@ -8310,6 +8733,19 @@ export default function CalendarView() {
           </div>
         )}
       </div>
+
+      <DayOffModal
+        isOpen={!!dayOffModalDate}
+        onClose={() => setDayOffModalDate(null)}
+        date={dayOffModalDate}
+        staff={staffForModal}
+        dayOffs={
+          dayOffModalDate
+            ? (dayOffsByDate.get(toISODate(dayOffModalDate)) ?? [])
+            : []
+        }
+        onToggle={handleToggleStaffDayOff}
+      />
     </div>
   );
 }
@@ -8323,6 +8759,7 @@ import React, { useState, useCallback, lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { useSelectedCity } from "../context/CityContext";
 import { useCities, useAddCity } from "../hooks/useApi";
+import { useAuth } from "../context/AuthContext";
 
 const IssueCarousel = lazy(() => import("../components/IssueCarousel"));
 const CityMobileHeader = lazy(
@@ -8376,13 +8813,8 @@ export default function Cities() {
     },
     [setSelectedCity],
   );
-  const [userRole] = useState<string | null>(() => {
-    try {
-      return JSON.parse(localStorage.getItem("user") || "null")?.role ?? null;
-    } catch {
-      return null;
-    }
-  });
+  const { user } = useAuth();
+  const userRole = user?.role ?? null;
   const handleAddCity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCityName.trim()) return;
@@ -9554,845 +9986,5 @@ export default function Dashboard() {
     </div>
   );
 }
-```
-
-# FILE: apps/frontend/src/pages/Employees.tsx
-
-```
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  useUsers,
-  useProjects,
-  useCreateUser,
-  useUpdateUser,
-  useDeleteUser,
-  useCreateProject,
-  useDeleteProject,
-} from "../hooks/useEmployees";
-import { useCities } from "../hooks/useCities";
-import PhoneLink from "../components/PhoneLink";
-import { useSelectedCity } from "../context/CityContext";
-import { useAuth } from "../context/AuthContext";
-
-type Role = "MANAGER" | "DRIVER" | "HOST" | "SUPERADMIN" | "GUEST";
-
-interface City {
-  id: string;
-  name: string;
-}
-interface User {
-  id: string;
-  name: string;
-  phone: string | null;
-  email: string;
-  cityId: string | null;
-  city?: City;
-  role: Role;
-  telegramId?: string | null;
-  car?: string | null;
-}
-interface Project {
-  id: string;
-  name: string;
-  color: string;
-}
-
-const ROLE_LABELS: Record<string, string> = {
-  MANAGER: "Менеджер",
-  DRIVER: "Водій",
-  HOST: "Ведучий",
-  SUPERADMIN: "Суперадмін",
-  GUEST: "Гість",
-};
-const ROLE_COLORS: Record<string, string> = {
-  MANAGER: "bg-blue-50 text-blue-700 border-blue-200",
-  DRIVER: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  HOST: "bg-violet-50 text-violet-700 border-violet-200",
-};
-const ROLE_HEADER_COLORS: Record<string, string> = {
-  MANAGER: "bg-blue-600",
-  DRIVER: "bg-emerald-600",
-  HOST: "bg-violet-600",
-};
-const EMPTY_FORM = {
-  fullName: "",
-  phone: "",
-  email: "",
-  cityId: "",
-  role: "MANAGER" as Role,
-  password: "",
-  telegramId: "",
-  car: "",
-};
-
-const PROJECT_COLORS: Record<string, string> = {
-  blue: "bg-blue-500",
-  emerald: "bg-emerald-500",
-  rose: "bg-rose-500",
-  red: "bg-red-500",
-  amber: "bg-amber-500",
-  purple: "bg-purple-500",
-};
-
-function EmployeesSkeleton() {
-  return (
-    <div className="p-4 md:p-8 animate-pulse">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <div className="h-7 w-56 bg-slate-200 rounded-lg mb-2" />
-          <div className="h-4 w-72 bg-slate-100 rounded" />
-        </div>
-        <div className="h-10 w-44 bg-slate-200 rounded-lg" />
-      </div>
-      {["Менеджери", "Водії", "Ведучі"].map((label) => (
-        <div key={label} className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-1 h-6 bg-slate-200 rounded-full" />
-            <div className="h-5 w-24 bg-slate-200 rounded" />
-            <div className="h-5 w-8 bg-slate-100 rounded-full" />
-          </div>
-          <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-            <div className="bg-slate-50 border-b border-slate-100 px-5 py-3 flex gap-8">
-              {["w-24", "w-20", "w-28", "w-16", "w-12"].map((w, i) => (
-                <div key={i} className={`h-3 ${w} bg-slate-200 rounded`} />
-              ))}
-            </div>
-            {[1, 2].map((i) => (
-              <div
-                key={i}
-                className="flex items-center gap-8 px-5 py-4 border-b border-slate-50"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-slate-200" />
-                  <div className="h-4 w-28 bg-slate-200 rounded" />
-                </div>
-                <div className="h-4 w-20 bg-slate-100 rounded" />
-                <div className="h-4 w-36 bg-slate-100 rounded" />
-                <div className="h-6 w-20 bg-slate-100 rounded-full" />
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export default function Employees() {
-  const { data: users = [], isLoading: usersLoading } = useUsers();
-  const { data: cities = [] } = useCities();
-  const { data: projects = [], isLoading: projectsLoading } = useProjects();
-  const createUser = useCreateUser();
-  const updateUser = useUpdateUser();
-  const deleteUser = useDeleteUser();
-  const createProject = useCreateProject();
-  const deleteProject = useDeleteProject();
-
-  const isLoading = usersLoading;
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
-  const [projectForm, setProjectForm] = useState({ name: "", color: "blue" });
-
-  const { selectedCity } = useSelectedCity();
-
-  const { user } = useAuth();
-  const isSuperAdmin = user?.role === "SUPERADMIN";
-
-  const cityFilteredUsers = selectedCity.id
-    ? users.filter((u) => u.cityId === selectedCity.id)
-    : users;
-  const grouped = (["MANAGER", "DRIVER", "HOST"] as Role[]).map((role) => ({
-    role,
-    label: ROLE_LABELS[role],
-    items: cityFilteredUsers.filter((u) => u.role === role),
-  }));
-
-  const handleOpenModal = (user: User | null = null) => {
-    setFormError("");
-    setEditingUser(user);
-    if (user) {
-      setForm({
-        fullName: user.name,
-        phone: user.phone || "",
-        email: user.email,
-        cityId: user.cityId || "",
-        role: user.role,
-        password: "",
-        telegramId: user.telegramId || "",
-        car: user.car || "",
-      });
-    } else {
-      setForm({ ...EMPTY_FORM });
-    }
-    setIsModalOpen(true);
-  };
-
-  const [formError, setFormError] = useState("");
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.fullName.trim()) return;
-    setFormError("");
-    try {
-      if (editingUser) {
-        const { password, ...rest } = form;
-        const payload = password.trim() ? form : rest;
-        await updateUser.mutateAsync({ id: editingUser.id, form: payload });
-      } else {
-        await createUser.mutateAsync(form);
-      }
-      setIsModalOpen(false);
-    } catch (err: any) {
-      const messages = err?.response?.data?.message;
-      setFormError(
-        Array.isArray(messages)
-          ? messages.join(", ")
-          : messages || "Помилка збереження",
-      );
-    }
-  };
-
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Видалити користувача "${name}"?`)) return;
-    try {
-      await deleteUser.mutateAsync(id);
-    } catch (e) {
-      alert("Помилка видалення");
-    }
-  };
-
-  const handleCreateProject = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!projectForm.name.trim()) return;
-    setIsProjectModalOpen(false);
-    setProjectForm({ name: "", color: "blue" });
-    createProject.mutate(projectForm);
-  };
-
-  const handleDeleteProject = async (id: string, name: string) => {
-    if (
-      !window.confirm(
-        `Видалити вид події "${name}"? Існуючі події з цією назвою збережуться.`,
-      )
-    )
-      return;
-    try {
-      await deleteProject.mutateAsync(id);
-    } catch (e) {
-      alert("Помилка видалення");
-    }
-  };
-
-  if (isLoading) return <EmployeesSkeleton />;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: "easeOut" }}
-      className="p-4 md:p-8 h-full"
-    >
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-        >
-          <h1 className="text-2xl font-bold text-slate-800">
-            Акаунти та Проєкти{" "}
-            {selectedCity.id && (
-              <span className="ml-2 text-base font-normal text-blue-500">
-                · {selectedCity.name}
-              </span>
-            )}
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Керування доступами, працівниками та видами подій
-          </p>
-        </motion.div>
-        {isSuperAdmin && (
-          <motion.button
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => handleOpenModal()}
-            className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
-          >
-            + Створити користувача
-          </motion.button>
-        )}
-      </div>
-
-      <div className="space-y-8">
-        {grouped.map(({ role, label, items }, gi) => (
-          <motion.div
-            key={role}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: gi * 0.06 }}
-          >
-            <div className={`flex items-center gap-3 mb-4`}>
-              <div
-                className={`w-1 h-6 rounded-full ${ROLE_HEADER_COLORS[role]}`}
-              ></div>
-              <h2 className="text-lg font-bold text-slate-700">{label}</h2>
-              <motion.span
-                key={items.length}
-                initial={{ scale: 0.7, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.2 }}
-                className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_COLORS[role]}`}
-              >
-                {items.length}
-              </motion.span>
-            </div>
-            {items.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.97 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.25 }}
-                className="bg-white rounded-xl border border-slate-100 p-6 text-center text-slate-400 text-sm"
-              >
-                Немає {label.toLowerCase()}ів
-              </motion.div>
-            ) : (
-              <motion.div
-                whileHover={{
-                  y: -2,
-                  boxShadow: "0 8px 24px -4px rgba(0,0,0,0.08)",
-                }}
-                transition={{ duration: 0.2 }}
-                className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
-              >
-                <div className="sm:hidden divide-y divide-slate-50">
-                  <AnimatePresence initial={false}>
-                    {items.map((u, ri) => (
-                      <motion.div
-                        key={u.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2, delay: ri * 0.04 }}
-                        className="p-4 flex flex-col gap-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
-                            >
-                              {u.name.charAt(0)}
-                            </div>
-                            <span className="font-medium text-slate-800">
-                              {u.name}
-                            </span>
-                          </div>
-                          {isSuperAdmin && (
-                            <div className="flex items-center gap-1 shrink-0">
-                              <motion.button
-                                whileTap={{ scale: 0.93 }}
-                                onClick={() => handleOpenModal(u)}
-                                className="text-slate-400 hover:text-blue-500 p-2 hover:bg-blue-50 rounded-lg"
-                              >
-                                ✏️
-                              </motion.button>
-                              <motion.button
-                                whileTap={{ scale: 0.93 }}
-                                onClick={() => handleDelete(u.id, u.name)}
-                                className="text-slate-400 hover:text-red-500 p-2 hover:bg-red-50 rounded-lg"
-                              >
-                                🗑
-                              </motion.button>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 pl-11">
-                          <PhoneLink phone={u.phone} />
-                          <span>{u.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2 pl-11">
-                          <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
-                            📍 {u.city?.name || "Всі міста"}
-                          </span>
-                          {u.car && (
-                            <span className="text-xs text-emerald-600 font-medium">
-                              🚗 {u.car}
-                            </span>
-                          )}
-                        </div>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
-                <table className="w-full text-left hidden sm:table">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      <th className="px-5 py-3">ПІБ</th>
-                      <th className="px-5 py-3">Телефон</th>
-                      <th className="px-5 py-3">Пошта / Логін</th>
-                      <th className="px-5 py-3">Місто</th>
-                      <th className="px-5 py-3 text-center">Дії</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <AnimatePresence initial={false}>
-                      {items.map((u, ri) => (
-                        <motion.tr
-                          key={u.id}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.2, delay: ri * 0.04 }}
-                          className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
-                        >
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-3">
-                              <motion.div
-                                initial={{ scale: 0.8, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                transition={{ duration: 0.2, delay: 0.05 }}
-                                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
-                              >
-                                {u.name.charAt(0)}
-                              </motion.div>
-                              <span className="font-medium text-slate-800">
-                                {u.name}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-5 py-4 text-slate-600 text-sm">
-                            <PhoneLink phone={u.phone} />
-                            {u.car && (
-                              <p className="text-xs text-emerald-600 font-medium mt-1">
-                                🚗 {u.car}
-                              </p>
-                            )}
-                          </td>
-                          <td className="px-5 py-4 text-slate-600 text-sm font-medium">
-                            {u.email}
-                          </td>
-                          <td className="px-5 py-4">
-                            <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
-                              📍 {u.city?.name || "Всі міста"}
-                            </span>
-                          </td>
-                          <td className="px-5 py-4 text-center">
-                            {isSuperAdmin && (
-                              <>
-                                <motion.button
-                                  whileTap={{ scale: 0.93 }}
-                                  onClick={() => handleOpenModal(u)}
-                                  className="text-slate-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 rounded-lg mr-2 transition-colors"
-                                >
-                                  ✏️
-                                </motion.button>
-                                <motion.button
-                                  whileTap={{ scale: 0.93 }}
-                                  onClick={() => handleDelete(u.id, u.name)}
-                                  className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
-                                >
-                                  🗑
-                                </motion.button>
-                              </>
-                            )}
-                          </td>
-                        </motion.tr>
-                      ))}
-                    </AnimatePresence>
-                  </tbody>
-                </table>
-              </motion.div>
-            )}
-          </motion.div>
-        ))}
-      </div>
-
-      {/* --- СЕКЦІЯ ПРОЄКТІВ (ВИДІВ ПОДІЙ) --- */}
-      <div className="mt-16 border-t border-slate-200 pt-10">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-800">
-              Види подій (Проєкти)
-            </h2>
-            <p className="text-sm text-slate-400 mt-1">
-              Ці проєкти відображатимуться у випадаючому списку при створенні
-              події
-            </p>
-          </div>
-          {isSuperAdmin && (
-            <button
-              onClick={() => setIsProjectModalOpen(true)}
-              className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 transition-colors w-full sm:w-auto"
-            >
-              + Створити вид події
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((p, pi) => (
-            <motion.div
-              key={p.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25, delay: pi * 0.05 }}
-              whileHover={{
-                y: -3,
-                boxShadow: "0 8px 24px -4px rgba(0,0,0,0.10)",
-              }}
-              className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default"
-            >
-              <div className="flex items-center gap-3">
-                <motion.div
-                  whileHover={{ scale: 1.3 }}
-                  transition={{ duration: 0.15 }}
-                  className={`w-4 h-4 rounded-full ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm`}
-                />
-                <span className="font-bold text-slate-800">{p.name}</span>
-              </div>
-              {isSuperAdmin && (
-                <button
-                  onClick={() => handleDeleteProject(p.id, p.name)}
-                  className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2 -mr-2"
-                  title="Видалити"
-                >
-                  🗑
-                </button>
-              )}
-            </motion.div>
-          ))}
-          {projects.length === 0 && (
-            <div className="col-span-full text-center py-10 text-slate-400">
-              Ви ще не додали жодного виду події
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Модалки Користувача і Проєктів */}
-      {isProjectModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="text-xl font-bold text-slate-800">
-                Новий вид події
-              </h3>
-              <button
-                onClick={() => setIsProjectModalOpen(false)}
-                className="text-slate-400 text-xl leading-none p-2 -mr-2"
-              >
-                ✕
-              </button>
-            </div>
-            <form onSubmit={handleCreateProject} className="p-6">
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Назва
-              </label>
-              <input
-                type="text"
-                value={projectForm.name}
-                onChange={(e) =>
-                  setProjectForm({ ...projectForm, name: e.target.value })
-                }
-                className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none mb-6"
-                required
-                placeholder="Наприклад: Шоу мильних бульбашок"
-              />
-              <label className="block text-sm font-medium text-slate-700 mb-3">
-                Колір для календаря
-              </label>
-              <div className="flex gap-4 mb-8">
-                {Object.keys(PROJECT_COLORS).map((c) => (
-                  <button
-                    type="button"
-                    key={c}
-                    onClick={() => setProjectForm({ ...projectForm, color: c })}
-                    className={`w-8 h-8 rounded-full ${PROJECT_COLORS[c]} transition-all ${projectForm.color === c ? "ring-4 ring-offset-2 ring-blue-200 scale-110" : "hover:scale-110"}`}
-                  />
-                ))}
-              </div>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsProjectModalOpen(false)}
-                  className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
-                >
-                  Скасувати
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-medium"
-                >
-                  Зберегти
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Ваша стара модалка Користувача */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          {/* Ваш існуючий код модалки працівника... Для стислості я зберіг базові поля */}
-          <div className="bg-white rounded-2xl shadow-xl w-full sm:max-w-lg overflow-hidden flex flex-col">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <h3 className="text-xl font-bold">
-                {editingUser ? "Редагувати" : "Новий користувач"}
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 text-xl p-2 -mr-2"
-              >
-                ✕
-              </button>
-            </div>
-            <form
-              onSubmit={handleSubmit}
-              className="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh]"
-            >
-              {formError && (
-                <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">
-                  {formError}
-                </div>
-              )}
-              <input
-                type="text"
-                value={form.fullName}
-                onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                required
-                placeholder="ПІБ"
-                className="w-full p-2.5 border rounded-lg"
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  required
-                  placeholder="Пошта"
-                  className="w-full p-2.5 border rounded-lg"
-                />
-                <input
-                  type="password"
-                  value={form.password}
-                  onChange={(e) =>
-                    setForm({ ...form, password: e.target.value })
-                  }
-                  required={!editingUser}
-                  placeholder="Пароль (мін. 8 симв., літера+цифра)"
-                  minLength={8}
-                  className="w-full p-2.5 border rounded-lg"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="Телефон"
-                  className="w-full p-2.5 border rounded-lg"
-                />
-                <input
-                  type="text"
-                  value={form.telegramId}
-                  onChange={(e) =>
-                    setForm({ ...form, telegramId: e.target.value })
-                  }
-                  placeholder="Telegram ID або @username"
-                  className="w-full p-2.5 border rounded-lg"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <select
-                  value={form.role}
-                  onChange={(e) =>
-                    setForm({ ...form, role: e.target.value as Role })
-                  }
-                  className="w-full p-2.5 border rounded-lg"
-                >
-                  <option value="MANAGER">Менеджер</option>
-                  <option value="DRIVER">Водій</option>
-                  <option value="HOST">Ведучий</option>
-                  <option value="SUPERADMIN">Суперадмін</option>
-                </select>
-                <select
-                  value={form.cityId}
-                  onChange={(e) => setForm({ ...form, cityId: e.target.value })}
-                  className="w-full p-2.5 border rounded-lg"
-                >
-                  <option value="">Всі міста</option>
-                  {cities.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {form.role === "DRIVER" && (
-                <input
-                  type="text"
-                  value={form.car || ""}
-                  onChange={(e) => setForm({ ...form, car: e.target.value })}
-                  placeholder="Автомобіль (напр. Renault Trafic)"
-                  className="w-full p-2.5 border rounded-lg"
-                />
-              )}
-              <div className="flex gap-3 mt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
-                >
-                  Скасувати
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium"
-                >
-                  Зберегти
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
-```
-
-# FILE: apps/frontend/src/pages/EventReport.tsx
-
-```
-import type { ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
-
-import { useEventFull } from "../hooks/useSchoolProfile";
-import AddressLink from "../components/AddressLink";
-import { formatCurrency } from "../utils/formatCurrency";
-
-export default function EventReport() {
-  const { eventId } = useParams();
-  const { data: event, isLoading, isError } = useEventFull(eventId);
-
-  if (isLoading)
-    return <div className="p-8 text-slate-500">Завантаження...</div>;
-  if (isError || !event)
-    return <div className="p-8 text-slate-500">Подію не знайдено</div>;
-
-  const report = event.report;
-  const crew = event.crew;
-  const fmt = formatCurrency;
-
-  return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
-      {/* Breadcrumb */}
-      <div className="text-xs sm:text-sm text-slate-500 mb-4 flex items-center gap-1 flex-wrap">
-        <Link to="/cities" className="hover:text-blue-600">
-          Міста
-        </Link>
-        <span>›</span>
-        <Link to={`/cities/${event.cityId}`} className="hover:text-blue-600">
-          {event.city?.name}
-        </Link>
-        <span>›</span>
-        <span>Події</span>
-        <span>›</span>
-        <span className="text-slate-800 font-medium">Звіт по події</span>
-      </div>
-
-      <button
-        onClick={() => history.back()}
-        className="mb-4 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2"
-      >
-        ← Назад
-      </button>
-
-      <div className="flex items-center gap-3 mb-6 flex-wrap">
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">
-          Звіт по події
-        </h1>
-        <span className="bg-green-100 text-green-700 text-xs font-semibold px-3 py-1 rounded-full">
-          Проведено
-        </span>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {/* Інформація */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-6">
-          <h3 className="font-bold text-slate-800 mb-4">Інформація</h3>
-          <div className="space-y-2 text-sm">
-            <Row label="Заклад" value={event.school?.name} />
-            <Row
-              label="Адреса"
-              value={<AddressLink address={event.address} />}
-            />
-            <Row
-              label="Дата"
-              value={new Date(event.date).toLocaleDateString("uk-UA")}
-            />
-            <Row label="Час" value={event.time} />
-            <Row label="Проєкт" value={event.project} />
-            <Row label="Екіпаж" value={crew?.name} />
-            <Row label="Ведучий" value={crew?.host?.name} />
-            <Row label="Водій" value={crew?.driver?.name} />
-          </div>
-        </div>
-
-        {/* Результат */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-6">
-          <h3 className="font-bold text-slate-800 mb-4">Результат</h3>
-          <div className="space-y-2 text-sm">
-            <Row label="Заплановано дітей" value={event.childrenPlanned} />
-            <Row label="Фактично дітей" value={report?.childrenCount} />
-            <Row label="Вартість" value={`${fmt(event.price)} грн`} />
-            <Row label="Отримано" value={`${fmt(report?.totalSum)} грн`} />
-            <Row label="Спосіб оплати" value={event.paymentMethod} />
-          </div>
-        </div>
-
-        {/* Оцінка */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-6">
-          <h3 className="font-bold text-slate-800 mb-4">Оцінка</h3>
-          <div className="space-y-2 text-sm">
-            <Row
-              label="Директор задоволений"
-              value={report?.directorSatisfied ? "Так" : "Ні"}
-            />
-            <Row
-              label="Вчителі задоволені"
-              value={report?.teachersSatisfied ? "Так" : "Ні"}
-            />
-            <Row label="Проблеми" value={report?.hadIssues ? "Так" : "Ні"} />
-            {report?.comment && (
-              <div className="pt-2">
-                <p className="text-slate-400 mb-1">Коментар:</p>
-                <p className="text-slate-700 italic">"{report.comment}"</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="flex justify-between">
-      <span className="text-slate-400">{label}:</span>
-      <span className="font-medium text-slate-800">{value || "—"}</span>
-    </div>
-  );
-}
-
 ```
 

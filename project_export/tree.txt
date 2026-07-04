@@ -35,6 +35,8 @@ apps
 │   │   │   │   └── migration.sql
 │   │   │   ├── 20260703211958_event_school_id_date_index
 │   │   │   │   └── migration.sql
+│   │   │   ├── 20260704140802_add_day_off
+│   │   │   │   └── migration.sql
 │   │   │   └── migration_lock.toml
 │   │   ├── schema.prisma
 │   │   ├── seed-admin.js
@@ -106,6 +108,12 @@ apps
 │   │   │   ├── dashboard.module.ts
 │   │   │   ├── dashboard.service.spec.ts
 │   │   │   └── dashboard.service.ts
+│   │   ├── days-off
+│   │   │   ├── days-off.controller.ts
+│   │   │   ├── days-off.module.ts
+│   │   │   ├── days-off.service.ts
+│   │   │   └── dto
+│   │   │       └── create-day-off.dto.ts
 │   │   ├── events
 │   │   │   ├── dto
 │   │   │   │   ├── add-comment.dto.ts
@@ -229,6 +237,8 @@ apps
     │   │   └── vite.svg
     │   ├── components
     │   │   ├── AddressLink.tsx
+    │   │   ├── calendar
+    │   │   │   └── DayOffModal.tsx
     │   │   ├── cities
     │   │   │   ├── CityDesktopGrid.tsx
     │   │   │   ├── CityMobileHeader.tsx
@@ -292,6 +302,7 @@ apps
     │   │   ├── useApi.ts
     │   │   ├── useCalendar.ts
     │   │   ├── useCities.ts
+    │   │   ├── useDaysOff.ts
     │   │   ├── useEmployees.ts
     │   │   └── useSchoolProfile.ts
     │   ├── index.css

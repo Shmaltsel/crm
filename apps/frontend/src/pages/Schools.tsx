@@ -15,6 +15,7 @@ import {
   useDeleteSchool,
   usePrefetchSchool,
   useCities,
+  useSupportedCities,
 } from "../hooks/useApi";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import VirtualSchoolList from "../components/VirtualSchoolList";
@@ -136,6 +137,7 @@ export default function Schools() {
     stage: (activeFilter as any) || undefined,
   });
   const { data: cities = [] } = useCities();
+  const { data: supportedCities = [] } = useSupportedCities();
   const deleteSchool = useDeleteSchool();
   const prefetchSchool = usePrefetchSchool();
 
@@ -289,6 +291,10 @@ export default function Schools() {
             <button
               onClick={() => {
                 if (!selectedCity.id) return alert("Спочатку оберіть місто");
+                if (!supportedCities.includes(selectedCity.name))
+                  return alert(
+                    `Місто "${selectedCity.name}" не підтримується для імпорту.`,
+                  );
                 if (
                   !window.confirm(
                     `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`,

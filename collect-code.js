@@ -1,27 +1,29 @@
 const fs = require("fs");
 const path = require("path");
 
-const outputFile = "telegram_audit.md";
-fs.writeFileSync(outputFile, "# Аудит: Telegram Bot та Запуск\n\n");
+const outputFile = "cities_audit.md";
+fs.writeFileSync(outputFile, "# Аудит: Міста (Навігація та Додавання)\n\n");
 
-// Точкові файли, які нам потрібні
 const filesToCollect = [
-  "apps/backend/src/telegram/telegram.module.ts",
-  "apps/backend/src/telegram/telegram.service.ts",
-  "apps/backend/src/main.ts",
-  "apps/backend/package.json",
-  "package.json", // root package.json
-  "Procfile",
-  "railway.json",
-  "render.yaml"
+  "apps/frontend/src/pages/Cities.tsx",
+  "apps/frontend/src/pages/CityProfile.tsx",
+  "apps/frontend/src/components/cities/CityDesktopGrid.tsx",
+  "apps/frontend/src/components/cities/CityMobileHeader.tsx",
+  "apps/frontend/src/components/cities/CityMobileList.tsx",
+  "apps/backend/src/cities/cities.controller.ts",
+  "apps/backend/src/cities/cities.service.ts",
+  "apps/backend/src/config/cities.config.ts",
+  "apps/backend/src/config/cityConfig.ts",
+  "apps/frontend/src/constants/cityConfig.ts",
+  "apps/frontend/src/config/cityConfig.ts"
 ];
 
 let collectedCount = 0;
-console.log("🚀 Починаю збір файлів для Telegram аудиту...\n");
+console.log("🚀 Починаю збір файлів для аудиту...\n");
 
 filesToCollect.forEach((filePath) => {
   if (!fs.existsSync(filePath)) {
-    console.warn(`[!] Файл не знайдено (це нормально для конфігів деплою, пропускаю): ${filePath}`);
+    console.warn(`[!] Файл не знайдено: ${filePath}`);
     return;
   }
 
@@ -33,8 +35,7 @@ filesToCollect.forEach((filePath) => {
   if (ext === "md") lang = "markdown";
   if (ext === "json") lang = "json";
   if (ext === "yaml" || ext === "yml") lang = "yaml";
-  if (filePath === "Procfile") lang = "text";
-
+  
   const mdBlock = `### \`${filePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`;
   fs.appendFileSync(outputFile, mdBlock);
   console.log(`[+] Додано вміст: ${filePath}`);
