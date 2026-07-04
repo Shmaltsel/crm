@@ -4,6 +4,7 @@ import { CitiesController } from './cities.controller';
 import { CitiesService } from './cities.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { OwnershipGuard } from '../auth/guards/ownership.guard';
 
 describe('CitiesController', () => {
   it('should be defined', async () => {
@@ -12,10 +13,15 @@ describe('CitiesController', () => {
       providers: [
         { provide: CitiesService, useValue: {} },
         { provide: JwtService, useValue: { verifyAsync: jest.fn() } },
-        { provide: AuthGuard, useValue: { canActivate: () => true } },
-        { provide: RolesGuard, useValue: { canActivate: () => true } },
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(RolesGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(OwnershipGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
     expect(module.get(CitiesController)).toBeDefined();
   });
 });

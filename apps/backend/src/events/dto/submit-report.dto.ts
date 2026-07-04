@@ -86,7 +86,7 @@ export class SubmitReportDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
-  @Max(10)
+  @Max(5)
   @Type(() => Number)
   rating?: number;
 

@@ -1,21 +1,19 @@
 const fs = require("fs");
 const path = require("path");
 
-const outputFile = "cities_audit.md";
-fs.writeFileSync(outputFile, "# Аудит: Міста (Навігація та Додавання)\n\n");
+const outputFile = "bugfix_audit.md";
+fs.writeFileSync(outputFile, "# Аудит: Фікс тестів та сервісів\n\n");
 
 const filesToCollect = [
-  "apps/frontend/src/pages/Cities.tsx",
-  "apps/frontend/src/pages/CityProfile.tsx",
-  "apps/frontend/src/components/cities/CityDesktopGrid.tsx",
-  "apps/frontend/src/components/cities/CityMobileHeader.tsx",
-  "apps/frontend/src/components/cities/CityMobileList.tsx",
-  "apps/backend/src/cities/cities.controller.ts",
-  "apps/backend/src/cities/cities.service.ts",
-  "apps/backend/src/config/cities.config.ts",
-  "apps/backend/src/config/cityConfig.ts",
-  "apps/frontend/src/constants/cityConfig.ts",
-  "apps/frontend/src/config/cityConfig.ts"
+  "apps/backend/src/dashboard/dashboard.service.ts",
+  "apps/backend/src/dashboard/dashboard.service.spec.ts",
+  "apps/backend/src/cities/cities.controller.spec.ts",
+  "apps/backend/src/common/guards/ownership.guard.ts",
+  "apps/backend/src/cities/cities.module.ts",
+  "apps/backend/src/events/events.service.ts",
+  "apps/backend/src/events/events.service.spec.ts",
+  "apps/backend/src/schools/schools.service.ts",
+  "apps/backend/src/schools/schools.service.spec.ts"
 ];
 
 let collectedCount = 0;

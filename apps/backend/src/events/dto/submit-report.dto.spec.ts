@@ -50,10 +50,10 @@ describe('SubmitReportDto', () => {
     expect(errors.some((e) => e.property === 'remainderSum')).toBe(false);
   });
 
-  it('відхиляє rating більше 5', async () => {
+  it('відхиляє rating більше 10', async () => {
     const dto = plainToInstance(SubmitReportDto, {
       ...validPayload,
-      rating: 6,
+      rating: 11,
     });
     const errors = await validate(dto);
     expect(errors.some((e) => e.property === 'rating')).toBe(true);

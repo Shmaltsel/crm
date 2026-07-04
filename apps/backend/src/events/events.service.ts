@@ -182,7 +182,7 @@ export class EventsService {
         ? `👤 <b>Контакт:</b> ${event.contactPerson}\n`
         : '') +
       (event.contactPhone ? `📞 <b>Телефон:</b> ${event.contactPhone}\n` : '') +
-      `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+      `\n<i>Деталі у CRM: <a href="https://app.svitlo-znan.app">Посилання</a></i>`;
 
     if (hostId) {
       const hostChatId = await this.getChatIdForUser(hostId);
@@ -262,7 +262,7 @@ export class EventsService {
       `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
-      `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+      `\n<i>Деталі у CRM: <a href="-https://app.svitlo-znan.app">Посилання</a></i>`;
 
     const sendTo = async (userId: string | null | undefined) => {
       if (!userId) return;
@@ -382,6 +382,7 @@ export class EventsService {
     });
     if (event) await this.invalidateSchoolEventsCache(event.schoolId);
     return event;
+    return event;
   }
 
   async remove(id: string) {
@@ -441,7 +442,9 @@ export class EventsService {
     await this.prisma.expenseItem.deleteMany({
       where: { reportId: report.id },
     });
-    await this.prisma.salaryItem.deleteMany({ where: { reportId: report.id } });
+    await this.prisma.salaryItem.deleteMany({
+      where: { reportId: report.id },
+    });
 
     if (reportData.expenses?.length) {
       await this.prisma.expenseItem.createMany({
@@ -455,22 +458,34 @@ export class EventsService {
     }
 
     if (reportData.salaries?.length) {
-      await Promise.all(
-        reportData.salaries
-          .filter((s) => s.userId && s.amount > 0)
-          .map((s) =>
-            this.prisma.user.update({
-              where: { id: s.userId },
-              data: { balance: { increment: s.amount } },
-            }),
-          ),
-      );
+      const salariesWithUser = reportData.salaries.filter((s) => s.userId);
+      if (salariesWithUser.length) {
+        await this.prisma.salaryItem.createMany({
+          data: salariesWithUser.map((s) => ({
+            reportId: report.id,
+            userId: s.userId,
+            amount: new Prisma.Decimal(s.amount),
+          })),
+        });
+
+        const positiveSalaries = salariesWithUser.filter((s) => s.amount > 0);
+        if (positiveSalaries.length) {
+          await Promise.all(
+            positiveSalaries.map((s) =>
+              this.prisma.user.update({
+                where: { id: s.userId },
+                data: { balance: { increment: s.amount } },
+              }),
+            ),
+          );
+        }
+      }
     }
 
     const event = await this.prisma.event.update({
       where: { id: eventId },
       data: {
-        status: 'RE_SALE' as never,
+        status: 'REPORT' as never,
         history: {
           create: {
             action: 'Сформовано звіт. Захід завершено.',
@@ -482,26 +497,8 @@ export class EventsService {
       },
       include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
     });
-    await this.invalidateSchoolEventsCache(event.schoolId);
-    return event;
-  }
 
-  async findOne(id: string) {
-    const event = await this.prisma.event.findUnique({
-      where: { id },
-      include: {
-        school: true,
-        city: true,
-        crew: {
-          include: {
-            host: { select: { id: true, name: true } },
-            driver: { select: { id: true, name: true } },
-          },
-        },
-        report: true,
-      },
-    });
-    if (!event) throw new AppException('EVENT_NOT_FOUND', HttpStatus.NOT_FOUND);
+    await this.invalidateSchoolEventsCache(event.schoolId);
     return event;
   }
 

@@ -3,10 +3,10 @@ import { SchoolsService } from './schools.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsService } from '../events/events.service';
 import { ParserService } from './parser.service';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
 const mockPrisma = {
   school: {
-    findMany: jest.fn(),
     findUnique: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
@@ -14,6 +14,7 @@ const mockPrisma = {
   },
   event: { findMany: jest.fn() },
   schoolContact: { findMany: jest.fn() },
+  $queryRaw: jest.fn(),
 };
 
 describe('SchoolsService', () => {
@@ -32,6 +33,14 @@ describe('SchoolsService', () => {
             getAllSchoolsForCity: jest.fn(),
           },
         },
+        {
+          provide: CACHE_MANAGER,
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            del: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -42,20 +51,29 @@ describe('SchoolsService', () => {
 
   describe('findAll', () => {
     it('повертає всі школи', async () => {
-      mockPrisma.school.findMany.mockResolvedValue([
-        { id: '1', name: 'Школа №1' },
-      ]);
-      const result = await service.findAll();
-      expect(result).toHaveLength(1);
-      expect(mockPrisma.school.findMany).toHaveBeenCalledTimes(1);
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce([{ id: '1', name: 'Школа №1' }])
+        .mockResolvedValueOnce([{ count: BigInt(1) }]);
+      const result = await service.findAll({
+        skip: 0,
+        take: 10,
+        page: 1,
+      } as any);
+      expect(result.data).toHaveLength(1);
+      expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(2);
     });
 
-    it('minimal=true — select без include', async () => {
-      mockPrisma.school.findMany.mockResolvedValue([]);
-      await service.findAll(true);
-      const call = mockPrisma.school.findMany.mock.calls[0][0];
-      expect(call.select).toBeDefined();
-      expect(call.include).toBeUndefined();
+    it('повертає порожній список і totalItems=0, якщо школи відсутні', async () => {
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ count: BigInt(0) }]);
+      const result = await service.findAll({
+        skip: 0,
+        take: 10,
+        page: 1,
+      } as any);
+      expect(result.data).toHaveLength(0);
+      expect(result.meta.totalItems).toBe(0);
     });
   });
 

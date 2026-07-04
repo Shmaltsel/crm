@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { EventsService } from './events.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
 const mockPrisma = {
   event: {
@@ -47,6 +48,14 @@ describe('EventsService', () => {
         EventsService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: TelegramService, useValue: mockTelegram },
+        {
+          provide: CACHE_MANAGER,
+          useValue: {
+            get: jest.fn().mockResolvedValue(null),
+            set: jest.fn().mockResolvedValue(undefined),
+            del: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
     service = module.get<EventsService>(EventsService);
@@ -283,7 +292,7 @@ describe('EventsService', () => {
     });
 
     it('очищує попередні expense/salary записи перед кожною подачею звіту (ідемпотентність редагування)', async () => {
-      mockPrisma.eventReport.upsert.mockResolvedValueOnce({});
+      mockPrisma.eventReport.upsert.mockResolvedValueOnce({ id: 'report-1' });
       mockPrisma.user.update.mockResolvedValue({});
       mockPrisma.event.update.mockResolvedValueOnce({
         id: 'ev-1',
@@ -295,10 +304,10 @@ describe('EventsService', () => {
       await service.submitReport('ev-1', reportData, mockUser);
 
       expect(mockPrisma.expenseItem.deleteMany).toHaveBeenCalledWith({
-        where: { reportId: 'ev-1' },
+        where: { reportId: 'report-1' },
       });
       expect(mockPrisma.salaryItem.deleteMany).toHaveBeenCalledWith({
-        where: { reportId: 'ev-1' },
+        where: { reportId: 'report-1' },
       });
     });
 

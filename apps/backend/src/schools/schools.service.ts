@@ -145,13 +145,25 @@ export class SchoolsService {
   private stageCondition(stage: string): Prisma.Sql {
     switch (stage) {
       case 'planned':
-        return Prisma.sql`latest.status::text IN (${Prisma.join(PLANNED_STAGES)})`;
+        return Prisma.sql`EXISTS (
+          SELECT 1 FROM "Event" e
+          WHERE e."schoolId" = s.id AND e.status::text IN (${Prisma.join(PLANNED_STAGES)})
+        )`;
       case 'inProgress':
-        return Prisma.sql`latest.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})`;
+        return Prisma.sql`EXISTS (
+          SELECT 1 FROM "Event" e
+          WHERE e."schoolId" = s.id AND e.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})
+        )`;
       case 'done':
-        return Prisma.sql`latest.status::text = 'RE_SALE'`;
+        return Prisma.sql`EXISTS (
+          SELECT 1 FROM "Event" e
+          WHERE e."schoolId" = s.id AND e.status::text = 'RE_SALE'
+        )`;
       default:
-        return Prisma.sql`(latest.status IS NULL OR latest.status::text IN ('INTERESTED','PRE_APPROVAL'))`;
+        return Prisma.sql`NOT EXISTS (
+          SELECT 1 FROM "Event" e
+          WHERE e."schoolId" = s.id AND e.status::text NOT IN ('INTERESTED','PRE_APPROVAL')
+        )`;
     }
   }
 
@@ -245,18 +257,36 @@ export class SchoolsService {
     `;
 
     const [statusRows, sizeRows] = await Promise.all([
-      this.prisma.$queryRaw<{ stage: string; count: bigint }[]>(Prisma.sql`
+      this.prisma.$queryRaw
+        { new: bigint; planned: bigint; inProgress: bigint; done: bigint }[]
+      >(Prisma.sql`
         SELECT
-          CASE
-            WHEN latest.status::text IN (${Prisma.join(PLANNED_STAGES)}) THEN 'planned'
-            WHEN latest.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)}) THEN 'inProgress'
-            WHEN latest.status::text = 'RE_SALE' THEN 'done'
-            ELSE 'new'
-          END as stage,
-          COUNT(*)::bigint as count
-        ${baseFrom}
+          COUNT(*) FILTER (
+            WHERE NOT EXISTS (
+              SELECT 1 FROM "Event" e
+              WHERE e."schoolId" = s.id AND e.status::text NOT IN ('INTERESTED','PRE_APPROVAL')
+            )
+          )::bigint as new,
+          COUNT(*) FILTER (
+            WHERE EXISTS (
+              SELECT 1 FROM "Event" e
+              WHERE e."schoolId" = s.id AND e.status::text IN (${Prisma.join(PLANNED_STAGES)})
+            )
+          )::bigint as planned,
+          COUNT(*) FILTER (
+            WHERE EXISTS (
+              SELECT 1 FROM "Event" e
+              WHERE e."schoolId" = s.id AND e.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})
+            )
+          )::bigint as "inProgress",
+          COUNT(*) FILTER (
+            WHERE EXISTS (
+              SELECT 1 FROM "Event" e
+              WHERE e."schoolId" = s.id AND e.status::text = 'RE_SALE'
+            )
+          )::bigint as done
+        FROM "School" s
         ${baseWhere}
-        GROUP BY stage
       `),
       this.prisma.$queryRaw<{ size: string; count: bigint }[]>(Prisma.sql`
         SELECT
@@ -268,8 +298,14 @@ export class SchoolsService {
       `),
     ]);
 
-    const statusStats = { new: 0, planned: 0, inProgress: 0, done: 0 };
-    for (const row of statusRows) statusStats[row.stage] = Number(row.count);
+    const statusStats = statusRows[0]
+      ? {
+          new: Number(statusRows[0].new),
+          planned: Number(statusRows[0].planned),
+          inProgress: Number(statusRows[0].inProgress),
+          done: Number(statusRows[0].done),
+        }
+      : { new: 0, planned: 0, inProgress: 0, done: 0 };
 
     const sizeStats = { small: 0, medium: 0, large: 0 };
     for (const row of sizeRows) sizeStats[row.size] = Number(row.count);

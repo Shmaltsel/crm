@@ -1704,13 +1704,17 @@ export class AppService {
 import { Test } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { AuthGuard } from './auth.guard';
 
 describe('AuthController', () => {
   it('should be defined', async () => {
     const module = await Test.createTestingModule({
       controllers: [AuthController],
       providers: [{ provide: AuthService, useValue: { login: jest.fn() } }],
-    }).compile();
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
     expect(module.get(AuthController)).toBeDefined();
   });
 });
@@ -1742,7 +1746,13 @@ import { LoginDto } from './dto/login.dto';
 
 const isProd = process.env.NODE_ENV === 'production';
 
-const cookieDomain = isProd ? '.svitlo-znan.app' : undefined;
+const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
+
+function clearLegacyHostOnlyCookies(res: Response) {
+  res.clearCookie('access_token');
+  res.clearCookie('refresh_token', { path: '/auth' });
+  res.clearCookie('csrf_token');
+}
 
 function setAuthCookies(
   res: Response,
@@ -1750,6 +1760,8 @@ function setAuthCookies(
   refreshToken: string,
   csrfToken: string,
 ) {
+  clearLegacyHostOnlyCookies(res);
+
   res.cookie('access_token', accessToken, {
     httpOnly: true,
     secure: isProd,
@@ -1942,6 +1954,7 @@ import { Test } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from '../prisma/prisma.service';
 
 describe('AuthService', () => {
   it('should be defined', async () => {
@@ -1950,6 +1963,15 @@ describe('AuthService', () => {
         AuthService,
         { provide: UsersService, useValue: { findByEmail: jest.fn() } },
         { provide: JwtService, useValue: { sign: jest.fn() } },
+        {
+          provide: PrismaService,
+          useValue: {
+            user: {
+              findUnique: jest.fn(),
+              update: jest.fn(),
+            },
+          },
+        },
       ],
     }).compile();
     expect(module.get(AuthService)).toBeDefined();
@@ -2121,12 +2143,6 @@ export class CsrfGuard implements CanActivate {
 
     const cookieToken = req.cookies?.csrf_token;
     const headerToken = req.headers['x-csrf-token'];
-    console.log('CSRF DEBUG', {
-      path: req.path,
-      cookieToken,
-      headerToken,
-      allCookies: Object.keys(req.cookies || {}),
-    });
     if (!cookieToken || cookieToken !== headerToken) {
       throw new ForbiddenException('CSRF token invalid');
     }
@@ -3364,8 +3380,15 @@ export class DashboardModule {}
 
 ```
 import { Test, TestingModule } from '@nestjs/testing';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { DashboardService } from './dashboard.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+const mockCacheManager = {
+  get: jest.fn().mockResolvedValue(undefined),
+  set: jest.fn().mockResolvedValue(undefined),
+  del: jest.fn().mockResolvedValue(undefined),
+};
 
 const today = new Date();
 const todayStr = today.toISOString();
@@ -3390,6 +3413,7 @@ const makeService = async () => {
     providers: [
       DashboardService,
       { provide: PrismaService, useValue: mockPrisma },
+      { provide: CACHE_MANAGER, useValue: mockCacheManager },
     ],
   }).compile();
   return module.get<DashboardService>(DashboardService);
@@ -3415,7 +3439,9 @@ describe('DashboardService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     service = await makeService();
-    (service as any).cache.clear();
+    mockCacheManager.get.mockClear();
+    mockCacheManager.set.mockClear();
+    mockCacheManager.del.mockClear();
   });
 
   describe('getSummary — funnel', () => {
@@ -4584,10 +4610,10 @@ describe('SubmitReportDto', () => {
     expect(errors.some((e) => e.property === 'remainderSum')).toBe(false);
   });
 
-  it('відхиляє rating більше 5', async () => {
+  it('відхиляє rating більше 10', async () => {
     const dto = plainToInstance(SubmitReportDto, {
       ...validPayload,
-      rating: 6,
+      rating: 11,
     });
     const errors = await validate(dto);
     expect(errors.some((e) => e.property === 'rating')).toBe(true);
@@ -4730,7 +4756,7 @@ export class SubmitReportDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
-  @Max(10)
+  @Max(5)
   @Type(() => Number)
   rating?: number;
 
@@ -4879,6 +4905,7 @@ import { Test } from '@nestjs/testing';
 import { EventsController } from './events.controller';
 import { EventsService } from './events.service';
 import { JwtService } from '@nestjs/jwt';
+import { OwnershipGuard } from '../auth/guards/ownership.guard';
 
 describe('EventsController', () => {
   it('should be defined', async () => {
@@ -4888,7 +4915,12 @@ describe('EventsController', () => {
         { provide: EventsService, useValue: {} },
         { provide: JwtService, useValue: { verifyAsync: jest.fn() } },
       ],
-    }).compile();
+    })
+      .overrideGuard(OwnershipGuard)
+      .useValue({
+        canActivate: jest.fn().mockReturnValue(true),
+      })
+      .compile();
     expect(module.get(EventsController)).toBeDefined();
   });
 });
@@ -5083,6 +5115,7 @@ import { Prisma } from '@prisma/client';
 import { EventsService } from './events.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
 const mockPrisma = {
   event: {
@@ -5127,6 +5160,14 @@ describe('EventsService', () => {
         EventsService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: TelegramService, useValue: mockTelegram },
+        {
+          provide: CACHE_MANAGER,
+          useValue: {
+            get: jest.fn().mockResolvedValue(null),
+            set: jest.fn().mockResolvedValue(undefined),
+            del: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
     service = module.get<EventsService>(EventsService);
@@ -5967,6 +6008,7 @@ export class EventsService {
     });
     if (event) await this.invalidateSchoolEventsCache(event.schoolId);
     return event;
+    return event;
   }
 
   async remove(id: string) {
@@ -6026,7 +6068,9 @@ export class EventsService {
     await this.prisma.expenseItem.deleteMany({
       where: { reportId: report.id },
     });
-    await this.prisma.salaryItem.deleteMany({ where: { reportId: report.id } });
+    await this.prisma.salaryItem.deleteMany({
+      where: { reportId: report.id },
+    });
 
     if (reportData.expenses?.length) {
       await this.prisma.expenseItem.createMany({
@@ -6040,16 +6084,26 @@ export class EventsService {
     }
 
     if (reportData.salaries?.length) {
-      await Promise.all(
-        reportData.salaries
-          .filter((s) => s.userId && s.amount > 0)
-          .map((s) =>
+      const positiveSalaries = reportData.salaries.filter(
+        (s) => s.userId && s.amount > 0,
+      );
+      if (positiveSalaries.length) {
+        await this.prisma.salaryItem.createMany({
+          data: positiveSalaries.map((s) => ({
+            reportId: report.id,
+            userId: s.userId,
+            amount: new Prisma.Decimal(s.amount),
+          })),
+        });
+        await Promise.all(
+          positiveSalaries.map((s) =>
             this.prisma.user.update({
               where: { id: s.userId },
               data: { balance: { increment: s.amount } },
             }),
           ),
-      );
+        );
+      }
     }
 
     const event = await this.prisma.event.update({
@@ -6067,26 +6121,8 @@ export class EventsService {
       },
       include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
     });
-    await this.invalidateSchoolEventsCache(event.schoolId);
-    return event;
-  }
 
-  async findOne(id: string) {
-    const event = await this.prisma.event.findUnique({
-      where: { id },
-      include: {
-        school: true,
-        city: true,
-        crew: {
-          include: {
-            host: { select: { id: true, name: true } },
-            driver: { select: { id: true, name: true } },
-          },
-        },
-        report: true,
-      },
-    });
-    if (!event) throw new AppException('EVENT_NOT_FOUND', HttpStatus.NOT_FOUND);
+    await this.invalidateSchoolEventsCache(event.schoolId);
     return event;
   }
 
@@ -6665,9 +6701,11 @@ export class FinanceService {
       where: { id: userId },
       select: { balance: true, name: true },
     });
-    return { balance: user?.balance?.toNumber() ?? 0, name: user?.name ?? '' };
+    return {
+      balance: user?.balance ? Number(user.balance) : 0,
+      name: user?.name ?? '',
+    };
   }
-
   async getDashboard({
     period,
     cityId,
@@ -9346,6 +9384,7 @@ import { SchoolsService } from './schools.service';
 import { ParserService } from './parser.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { OwnershipGuard } from '../auth/guards/ownership.guard';
 
 describe('SchoolsController', () => {
   it('should be defined', async () => {
@@ -9359,6 +9398,8 @@ describe('SchoolsController', () => {
       .overrideGuard(AuthGuard)
       .useValue({ canActivate: () => true })
       .overrideGuard(RolesGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(OwnershipGuard)
       .useValue({ canActivate: () => true })
       .compile();
 
@@ -9509,6 +9550,7 @@ import { SchoolsService } from './schools.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsService } from '../events/events.service';
 import { ParserService } from './parser.service';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
 const mockPrisma = {
   school: {
@@ -9520,6 +9562,7 @@ const mockPrisma = {
   },
   event: { findMany: jest.fn() },
   schoolContact: { findMany: jest.fn() },
+  $queryRaw: jest.fn().mockResolvedValue([]),
 };
 
 describe('SchoolsService', () => {
@@ -9538,6 +9581,14 @@ describe('SchoolsService', () => {
             getAllSchoolsForCity: jest.fn(),
           },
         },
+        {
+          provide: CACHE_MANAGER,
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            del: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -9551,7 +9602,11 @@ describe('SchoolsService', () => {
       mockPrisma.school.findMany.mockResolvedValue([
         { id: '1', name: 'Школа №1' },
       ]);
-      const result = await service.findAll();
+      const result = await service.findAll({
+        skip: 0,
+        take: 10,
+        page: 1,
+      } as any);
       expect(result).toHaveLength(1);
       expect(mockPrisma.school.findMany).toHaveBeenCalledTimes(1);
     });

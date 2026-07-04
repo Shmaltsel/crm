@@ -7193,8 +7193,7 @@ export default function VirtualSchoolList({
 ```
 import axios from "axios";
 
-export const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "https://crm-57qd.onrender.com";
+export const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -7446,6 +7445,17 @@ export function useSchoolStats(
   });
 }
 
+export function useSupportedCities() {
+  return useQuery({
+    queryKey: ["supportedCities"],
+    queryFn: () =>
+      api
+        .get<string[]>("/schools/supported-cities", { headers: auth() })
+        .then((r) => r.data),
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
 export function useAddSchool() {
   const qc = useQueryClient();
   return useMutation({
@@ -7539,7 +7549,7 @@ export function useCities() {
 export function useCity(id: string | undefined) {
   return useQuery({
     queryKey: ["city", id],
-    queryFn: () => api.get(`/cities/${id}`).then((r) => r.data),
+    queryFn: () => api.get(`/cities/${id}`, { headers: h() }).then((r) => r.data),
     enabled: !!id,
     staleTime: 2 * 60 * 1000,
   });
@@ -7562,7 +7572,7 @@ export function useCreateCrew(cityId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (form: { name: string; hostId: string; driverId: string }) =>
-      api.post(`/cities/${cityId}/crews`, form).then((r) => r.data),
+      api.post(`/cities/${cityId}/crews`, form, { headers: h() }).then((r) => r.data),
     onMutate: async (form) => {
       await qc.cancelQueries({ queryKey: ["city", cityId] });
       const prev = qc.getQueryData(["city", cityId]);
@@ -7594,7 +7604,7 @@ export function useDeleteCrew(cityId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (crewId: string) =>
-      api.delete(`/cities/crews/${crewId}`).then((r) => r.data),
+      api.delete(`/cities/crews/${crewId}`, { headers: h() }).then((r) => r.data),
     onMutate: async (crewId) => {
       await qc.cancelQueries({ queryKey: ["city", cityId] });
       const prev = qc.getQueryData(["city", cityId]);
@@ -8822,8 +8832,10 @@ export default function Cities() {
       await addCity.mutateAsync(newCityName.trim());
       setNewCityName("");
       setIsModalOpen(false);
-    } catch {
-      alert("Не вдалося створити місто. Можливо воно вже існує.");
+    } catch (err: any) {
+      alert(
+        `DEBUG\nстатус: ${err?.response?.status}\nтіло: ${JSON.stringify(err?.response?.data)}\ncookie: ${document.cookie}`,
+      );
     }
   };
 

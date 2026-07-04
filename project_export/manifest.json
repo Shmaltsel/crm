@@ -158,14 +158,14 @@
   {
     "file": "apps/backend/src/auth/auth.controller.spec.ts",
     "bundle": "bundle_01.md",
-    "tokens": 132,
-    "lines": 14
+    "tokens": 164,
+    "lines": 18
   },
   {
     "file": "apps/backend/src/auth/auth.controller.ts",
     "bundle": "bundle_01.md",
-    "tokens": 981,
-    "lines": 142
+    "tokens": 1035,
+    "lines": 150
   },
   {
     "file": "apps/backend/src/auth/auth.guard.ts",
@@ -182,8 +182,8 @@
   {
     "file": "apps/backend/src/auth/auth.service.spec.ts",
     "bundle": "bundle_01.md",
-    "tokens": 159,
-    "lines": 18
+    "tokens": 222,
+    "lines": 28
   },
   {
     "file": "apps/backend/src/auth/auth.service.ts",
@@ -194,8 +194,8 @@
   {
     "file": "apps/backend/src/auth/csrf.guard.ts",
     "bundle": "bundle_01.md",
-    "tokens": 226,
-    "lines": 31
+    "tokens": 188,
+    "lines": 25
   },
   {
     "file": "apps/backend/src/auth/decorators/check-ownership.decorator.ts",
@@ -392,8 +392,8 @@
   {
     "file": "apps/backend/src/dashboard/dashboard.service.spec.ts",
     "bundle": "bundle_01.md",
-    "tokens": 2281,
-    "lines": 285
+    "tokens": 2373,
+    "lines": 295
   },
   {
     "file": "apps/backend/src/dashboard/dashboard.service.ts",
@@ -488,8 +488,8 @@
   {
     "file": "apps/backend/src/events/events.controller.spec.ts",
     "bundle": "bundle_01.md",
-    "tokens": 165,
-    "lines": 18
+    "tokens": 213,
+    "lines": 24
   },
   {
     "file": "apps/backend/src/events/events.controller.ts",
@@ -506,14 +506,14 @@
   {
     "file": "apps/backend/src/events/events.service.spec.ts",
     "bundle": "bundle_01.md",
-    "tokens": 3796,
-    "lines": 500
+    "tokens": 3874,
+    "lines": 509
   },
   {
     "file": "apps/backend/src/events/events.service.ts",
     "bundle": "bundle_01.md",
-    "tokens": 4039,
-    "lines": 539
+    "tokens": 4008,
+    "lines": 534
   },
   {
     "file": "apps/backend/src/finance/create-expense-item.dto.ts",
@@ -554,8 +554,8 @@
   {
     "file": "apps/backend/src/finance/finance.service.ts",
     "bundle": "bundle_01.md",
-    "tokens": 3033,
-    "lines": 406
+    "tokens": 3039,
+    "lines": 408
   },
   {
     "file": "apps/backend/src/health/health.controller.ts",
@@ -746,8 +746,8 @@
   {
     "file": "apps/backend/src/schools/schools.controller.spec.ts",
     "bundle": "bundle_01.md",
-    "tokens": 231,
-    "lines": 26
+    "tokens": 268,
+    "lines": 29
   },
   {
     "file": "apps/backend/src/schools/schools.controller.ts",
@@ -764,8 +764,8 @@
   {
     "file": "apps/backend/src/schools/schools.service.spec.ts",
     "bundle": "bundle_01.md",
-    "tokens": 687,
-    "lines": 93
+    "tokens": 773,
+    "lines": 107
   },
   {
     "file": "apps/backend/src/schools/schools.service.ts",
@@ -1238,8 +1238,8 @@
   {
     "file": "apps/frontend/src/config/api.ts",
     "bundle": "bundle_03.md",
-    "tokens": 190,
-    "lines": 30
+    "tokens": 183,
+    "lines": 29
   },
   {
     "file": "apps/frontend/src/context/AuthContext.tsx",
@@ -1256,8 +1256,8 @@
   {
     "file": "apps/frontend/src/hooks/useApi.ts",
     "bundle": "bundle_03.md",
-    "tokens": 838,
-    "lines": 132
+    "tokens": 904,
+    "lines": 143
   },
   {
     "file": "apps/frontend/src/hooks/useCalendar.ts",
@@ -1268,7 +1268,7 @@
   {
     "file": "apps/frontend/src/hooks/useCities.ts",
     "bundle": "bundle_03.md",
-    "tokens": 689,
+    "tokens": 703,
     "lines": 88
   },
   {
@@ -1310,8 +1310,8 @@
   {
     "file": "apps/frontend/src/pages/Cities.tsx",
     "bundle": "bundle_03.md",
-    "tokens": 2035,
-    "lines": 215
+    "tokens": 2058,
+    "lines": 217
   },
   {
     "file": "apps/frontend/src/pages/CityProfile.tsx",
@@ -1352,8 +1352,8 @@
   {
     "file": "apps/frontend/src/pages/Kindergartens.tsx",
     "bundle": "bundle_04.md",
-    "tokens": 5716,
-    "lines": 619
+    "tokens": 5662,
+    "lines": 634
   },
   {
     "file": "apps/frontend/src/pages/Login.tsx",
@@ -1376,8 +1376,8 @@
   {
     "file": "apps/frontend/src/pages/Schools.tsx",
     "bundle": "bundle_04.md",
-    "tokens": 5676,
-    "lines": 639
+    "tokens": 5748,
+    "lines": 645
   },
   {
     "file": "apps/frontend/src/tests/component/EventReport.test.tsx",
@@ -1478,8 +1478,8 @@
   {
     "file": "apps/frontend/vercel.json",
     "bundle": "bundle_04.md",
-    "tokens": 36,
-    "lines": 12
+    "tokens": 62,
+    "lines": 16
   },
   {
     "file": "apps/frontend/vite.config.ts",

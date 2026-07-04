@@ -4,6 +4,7 @@ import { SchoolsService } from './schools.service';
 import { ParserService } from './parser.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { OwnershipGuard } from '../auth/guards/ownership.guard';
 
 describe('SchoolsController', () => {
   it('should be defined', async () => {
@@ -17,6 +18,8 @@ describe('SchoolsController', () => {
       .overrideGuard(AuthGuard)
       .useValue({ canActivate: () => true })
       .overrideGuard(RolesGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(OwnershipGuard)
       .useValue({ canActivate: () => true })
       .compile();
 

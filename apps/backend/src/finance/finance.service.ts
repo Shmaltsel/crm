@@ -84,9 +84,11 @@ export class FinanceService {
       where: { id: userId },
       select: { balance: true, name: true },
     });
-    return { balance: user?.balance?.toNumber() ?? 0, name: user?.name ?? '' };
+    return {
+      balance: user?.balance ? Number(user.balance) : 0,
+      name: user?.name ?? '',
+    };
   }
-
   async getDashboard({
     period,
     cityId,

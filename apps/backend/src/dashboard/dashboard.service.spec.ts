@@ -1,6 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { DashboardService } from './dashboard.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+const mockCacheManager = {
+  get: jest.fn().mockResolvedValue(undefined),
+  set: jest.fn().mockResolvedValue(undefined),
+  del: jest.fn().mockResolvedValue(undefined),
+};
 
 const today = new Date();
 const todayStr = today.toISOString();
@@ -25,6 +32,7 @@ const makeService = async () => {
     providers: [
       DashboardService,
       { provide: PrismaService, useValue: mockPrisma },
+      { provide: CACHE_MANAGER, useValue: mockCacheManager },
     ],
   }).compile();
   return module.get<DashboardService>(DashboardService);
@@ -35,12 +43,13 @@ const defaultMocks = () => {
     .mockResolvedValueOnce([])
     .mockResolvedValueOnce([])
     .mockResolvedValueOnce([]);
-  mockPrisma.$queryRaw.mockResolvedValueOnce([
-    { status: 'BASE', count: BigInt(10) },
-    { status: 'FIRST_CONTACT', count: BigInt(5) },
-    { status: 'IN_PROGRESS', count: BigInt(3) },
-  ]);
-  mockPrisma.school.findMany.mockResolvedValueOnce([]);
+  mockPrisma.$queryRaw
+    .mockResolvedValueOnce([
+      { status: 'BASE', count: BigInt(10) },
+      { status: 'FIRST_CONTACT', count: BigInt(5) },
+      { status: 'IN_PROGRESS', count: BigInt(3) },
+    ])
+    .mockResolvedValueOnce([]);
   mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
 };
 
@@ -50,7 +59,9 @@ describe('DashboardService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     service = await makeService();
-    (service as any).cache.clear();
+    mockCacheManager.get.mockClear();
+    mockCacheManager.set.mockClear();
+    mockCacheManager.del.mockClear();
   });
 
   describe('getSummary — funnel', () => {
@@ -101,8 +112,7 @@ describe('DashboardService', () => {
         .mockResolvedValueOnce([todayEvent])
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([]);
-      mockPrisma.$queryRaw.mockResolvedValueOnce([]);
-      mockPrisma.school.findMany.mockResolvedValueOnce([]);
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
       mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
 
       const result = await service.getSummary('city-1');
@@ -131,8 +141,7 @@ describe('DashboardService', () => {
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([upcoming])
         .mockResolvedValueOnce([]);
-      mockPrisma.$queryRaw.mockResolvedValueOnce([]);
-      mockPrisma.school.findMany.mockResolvedValueOnce([]);
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
       mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
 
       const result = await service.getSummary('city-1');
@@ -146,23 +155,18 @@ describe('DashboardService', () => {
       const staleDate = new Date();
       staleDate.setDate(staleDate.getDate() - 10);
 
-      const staleSchool = {
-        id: 's-stale',
-        name: 'Стала школа',
-        events: [
-          {
-            status: 'FIRST_CONTACT',
-            history: [{ createdAt: staleDate }],
-          },
-        ],
-      };
-
       mockPrisma.event.findMany
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([]);
-      mockPrisma.$queryRaw.mockResolvedValueOnce([]);
-      mockPrisma.school.findMany.mockResolvedValueOnce([staleSchool]);
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([
+        {
+          id: 's-stale',
+          name: 'Стала школа',
+          status: 'FIRST_CONTACT',
+          lastActivity: staleDate,
+        },
+      ]);
       mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
 
       const result = await service.getSummary('city-1');
@@ -181,18 +185,9 @@ describe('DashboardService', () => {
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([]);
-      mockPrisma.$queryRaw.mockResolvedValueOnce([]);
-      mockPrisma.school.findMany.mockResolvedValueOnce([
-        {
-          id: 's-1',
-          name: 'Школа 1',
-          events: [{ status: 'BASE', history: [{ createdAt: date10 }] }],
-        },
-        {
-          id: 's-2',
-          name: 'Школа 2',
-          events: [{ status: 'BASE', history: [{ createdAt: date20 }] }],
-        },
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([
+        { id: 's-2', name: 'Школа 2', status: 'BASE', lastActivity: date20 },
+        { id: 's-1', name: 'Школа 1', status: 'BASE', lastActivity: date10 },
       ]);
       mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
 
@@ -218,8 +213,7 @@ describe('DashboardService', () => {
             report: { totalSum: 5000, remainderSum: 2000, childrenCount: 50 },
           },
         ]);
-      mockPrisma.$queryRaw.mockResolvedValueOnce([]);
-      mockPrisma.school.findMany.mockResolvedValueOnce([]);
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
       mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
 
       const result = await service.getSummary('city-1');
@@ -276,6 +270,9 @@ describe('DashboardService', () => {
   describe('getSummary — кеш', () => {
     it('повертає кешований результат при повторному виклику', async () => {
       defaultMocks();
+      mockCacheManager.get
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce({ cached: true } as any);
       await service.getSummary('city-1');
       await service.getSummary('city-1');
       expect(mockPrisma.event.findMany).toHaveBeenCalledTimes(3);
