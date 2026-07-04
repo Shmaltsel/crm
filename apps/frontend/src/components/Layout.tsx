@@ -1,11 +1,13 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, useLocation, useOutlet } from "react-router-dom";
 import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useSelectedCity } from "../context/CityContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 
 export default function Layout() {
   const location = useLocation();
+  const outlet = useOutlet();
   const queryClient = useQueryClient();
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -176,7 +178,17 @@ export default function Layout() {
 
       {/* Головна область */}
       <main className="flex-1 overflow-y-auto mt-16 md:mt-0 relative w-full">
-        <Outlet />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+          >
+            {outlet}
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );
