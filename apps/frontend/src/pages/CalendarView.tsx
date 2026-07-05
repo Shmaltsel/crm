@@ -273,11 +273,31 @@ export default function CalendarView() {
     return PROJECT_HEX[proj?.color] || PROJECT_HEX.blue;
   };
 
+  const shadeHex = (hex: string, percent: number) => {
+    const n = parseInt(hex.replace("#", ""), 16);
+    const r = Math.min(255, Math.max(0, (n >> 16) + percent));
+    const g = Math.min(255, Math.max(0, ((n >> 8) & 0xff) + percent));
+    const b = Math.min(255, Math.max(0, (n & 0xff) + percent));
+    return `rgb(${r}, ${g}, ${b})`;
+  };
+
   const getDayColor = (dayEvents: any[]) => {
     if (dayEvents.length === 0) return undefined;
-    const hexes = [...new Set(dayEvents.map((ev) => getProjectHex(ev.project)))];
-    if (hexes.length === 1) return hexes[0];
-    return `linear-gradient(135deg, ${hexes.join(", ")})`;
+    const hexes = [
+      ...new Set(dayEvents.map((ev) => getProjectHex(ev.project))),
+    ];
+    const n = hexes.length;
+    if (n === 1) {
+      return `linear-gradient(135deg, ${shadeHex(hexes[0], 35)}, ${shadeHex(hexes[0], -25)})`;
+    }
+    const stops: string[] = [];
+    hexes.forEach((hex, i) => {
+      const start = (i / n) * 100;
+      const end = ((i + 1) / n) * 100;
+      stops.push(`${shadeHex(hex, 35)} ${start}%`);
+      stops.push(`${shadeHex(hex, -25)} ${end}%`);
+    });
+    return `linear-gradient(to right, ${stops.join(", ")})`;
   };
 
   if (isLoading)
@@ -657,7 +677,7 @@ export default function CalendarView() {
                       onTouchMove={cancelLongPress}
                       onContextMenu={(e) => e.preventDefault()}
                       onClick={() => handleMobileDayTap(day)}
-                      className={`relative w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold transition-transform active:scale-90 overflow-hidden
+                      className={`relative w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold transition-transform active:scale-90
                         ${isSelected ? "ring-2 ring-blue-600 ring-offset-2" : ""}
                         ${isToday && !isSelected ? "ring-2 ring-blue-200" : ""}
                       `}
@@ -671,8 +691,8 @@ export default function CalendarView() {
                     >
                       {day.getDate()}
                       {dayOffEntries.length > 0 && (
-                        <span className="pointer-events-none absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 border-2 border-white flex items-center justify-center">
-                          <span className="text-white text-[7px] font-bold leading-none">
+                        <span className="pointer-events-none absolute -top-2.5 -right-2.5 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white flex items-center justify-center">
+                          <span className="text-white text-[6px] font-bold leading-none">
                             ✕
                           </span>
                         </span>
