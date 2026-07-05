@@ -283,21 +283,26 @@ export default function CalendarView() {
 
   const getDayColor = (dayEvents: any[]) => {
     if (dayEvents.length === 0) return undefined;
-    const hexes = [
-      ...new Set(dayEvents.map((ev) => getProjectHex(ev.project))),
-    ];
-    const n = hexes.length;
-    if (n === 1) {
-      return `linear-gradient(135deg, ${shadeHex(hexes[0], 35)}, ${shadeHex(hexes[0], -25)})`;
+    const counts = new Map<string, number>();
+    for (const ev of dayEvents) {
+      const hex = getProjectHex(ev.project);
+      counts.set(hex, (counts.get(hex) || 0) + 1);
     }
+    const total = dayEvents.length;
+    if (counts.size === 1) {
+      const [hex] = counts.keys();
+      return `linear-gradient(to bottom, ${shadeHex(hex, 35)}, ${shadeHex(hex, -25)})`;
+    }
+    let acc = 0;
     const stops: string[] = [];
-    hexes.forEach((hex, i) => {
-      const start = (i / n) * 100;
-      const end = ((i + 1) / n) * 100;
+    for (const [hex, count] of counts) {
+      const start = (acc / total) * 100;
+      acc += count;
+      const end = (acc / total) * 100;
       stops.push(`${shadeHex(hex, 35)} ${start}%`);
       stops.push(`${shadeHex(hex, -25)} ${end}%`);
-    });
-    return `linear-gradient(to right, ${stops.join(", ")})`;
+    }
+    return `linear-gradient(to bottom, ${stops.join(", ")})`;
   };
 
   if (isLoading)
