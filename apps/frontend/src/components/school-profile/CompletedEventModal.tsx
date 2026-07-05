@@ -125,6 +125,52 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* Історія пайплайну */}
+          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm mt-4">
+            <h4 className="font-bold text-slate-800 mb-5 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center">
+                ⏳
+              </span>
+              Історія пайплайну
+            </h4>
+            {!event.history || event.history.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-4">
+                Історія порожня.
+              </p>
+            ) : (
+              <div className="space-y-4 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-slate-100">
+                {[...event.history]
+                  .sort(
+                    (a, b) =>
+                      new Date(a.createdAt).getTime() -
+                      new Date(b.createdAt).getTime(),
+                  )
+                  .map((item) => (
+                    <div key={item.id} className="relative pl-8 text-sm">
+                      <div className="absolute left-1.5 w-3 h-3 rounded-full top-1 bg-violet-500 ring-4 ring-white"></div>
+                      <p className="font-semibold text-slate-800">
+                        {item.action}
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {new Date(item.createdAt).toLocaleString("uk-UA", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}{" "}
+                        · 👤 {item.userName}
+                      </p>
+                      {item.comment && (
+                        <div className="mt-2 p-3 bg-slate-50/80 rounded-xl text-slate-600 italic border border-slate-100">
+                          {item.comment}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
