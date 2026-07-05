@@ -175,7 +175,7 @@ export default function Layout() {
       </aside>
 
       {/* Головна область */}
-      <main className="flex-1 overflow-y-auto mt-16 md:mt-0 relative w-full">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden mt-16 md:mt-0 relative w-full min-w-0">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
