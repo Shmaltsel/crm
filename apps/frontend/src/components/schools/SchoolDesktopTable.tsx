@@ -48,7 +48,7 @@ export const SchoolRow = React.memo(
         onClick={() => navigate(`/schools/${school.id}`)}
         className="border-b border-slate-50 hover:bg-blue-50/50 transition-colors cursor-pointer"
       >
-        <td className="p-4 font-bold text-slate-800">
+        <td className="p-4 font-bold text-slate-800 overflow-hidden">
           <span className="block truncate" title={school.name}>
             {school.name}
           </span>
