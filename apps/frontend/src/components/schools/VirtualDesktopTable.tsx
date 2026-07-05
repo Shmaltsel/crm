@@ -41,7 +41,14 @@ export default function VirtualDesktopTable({
 
   return (
     <div ref={parentRef} className="overflow-y-auto flex-1 h-full">
-      <table className="w-full text-left border-collapse">
+      <table className="w-full text-left border-collapse table-fixed">
+        <colgroup>
+          <col />
+          <col style={{ width: "140px" }} />
+          <col style={{ width: "120px" }} />
+          <col style={{ width: "220px" }} />
+          <col style={{ width: "72px" }} />
+        </colgroup>
         <thead className="sticky top-0 z-10 bg-slate-50">
           <tr className="border-b border-slate-100">
             <th className="p-4 font-medium text-slate-600">Назва школи</th>

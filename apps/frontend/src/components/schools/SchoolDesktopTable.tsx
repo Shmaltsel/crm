@@ -48,7 +48,11 @@ export const SchoolRow = React.memo(
         onClick={() => navigate(`/schools/${school.id}`)}
         className="border-b border-slate-50 hover:bg-blue-50/50 transition-colors cursor-pointer"
       >
-        <td className="p-4 font-bold text-slate-800">{school.name}</td>
+        <td className="p-4 font-bold text-slate-800 max-w-0 w-full">
+          <span className="block truncate" title={school.name}>
+            {school.name}
+          </span>
+        </td>
         <td className="p-4 font-medium text-slate-600">{school.city?.name}</td>
         <td className="p-4">
           <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold">
@@ -104,7 +108,14 @@ export default function SchoolDesktopTable({
   return (
     <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0 custom-scrollbar">
       <div className="overflow-y-auto flex-1">
-        <table className="w-full text-left border-collapse">
+        <table className="w-full text-left border-collapse table-fixed">
+          <colgroup>
+            <col />
+            <col style={{ width: "140px" }} />
+            <col style={{ width: "120px" }} />
+            <col style={{ width: "220px" }} />
+            <col style={{ width: "72px" }} />
+          </colgroup>
           <thead className="sticky top-0 z-10 bg-slate-50">
             <tr className="border-b border-slate-100">
               <th className="p-4 font-medium text-slate-600">Назва школи</th>
