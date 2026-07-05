@@ -40,7 +40,7 @@ export default function VirtualDesktopTable({
   }, [lastItem?.index, schools.length, onEndReached]);
 
   return (
-    <div ref={parentRef} className="overflow-y-auto flex-1 h-full">
+    <div ref={parentRef} className="overflow-y-auto flex-1 h-full min-w-0">
       <table className="w-full text-left border-collapse table-fixed">
         <colgroup>
           <col style={{ width: "42%" }} />

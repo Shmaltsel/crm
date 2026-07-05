@@ -463,7 +463,7 @@ export default function Schools() {
           </div>
 
           {/* Десктоп: таблиця з віртуалізованим tbody */}
-          <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
+          <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0 min-w-0">
             <Suspense
               fallback={<div className="flex-1 animate-pulse bg-slate-50" />}
             >

@@ -106,8 +106,8 @@ export default function SchoolDesktopTable({
   const navigate = useNavigate();
 
   return (
-    <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0 custom-scrollbar">
-      <div className="overflow-y-auto flex-1">
+    <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0 min-w-0 custom-scrollbar">
+      <div className="overflow-y-auto flex-1 min-w-0">
         <table className="w-full text-left border-collapse table-fixed">
           <colgroup>
             <col style={{ width: "42%" }} />

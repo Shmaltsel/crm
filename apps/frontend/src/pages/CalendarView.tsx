@@ -506,7 +506,7 @@ export default function CalendarView() {
               <div
                 key={idx}
                 onClick={() => day && setSelectedMobileDate(day)}
-                className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group overflow-hidden
+                className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group
                   ${day ? "bg-white hover:bg-slate-50 cursor-pointer" : "bg-slate-50/30"}
                   ${isSelected ? "ring-2 ring-inset ring-blue-500/20 bg-blue-50/10" : ""}
                   ${hasAnyDayOff ? "dayoff-cell-enter bg-rose-50/70" : ""}
