@@ -43,11 +43,11 @@ export default function VirtualDesktopTable({
     <div ref={parentRef} className="overflow-y-auto flex-1 h-full">
       <table className="w-full text-left border-collapse table-fixed">
         <colgroup>
-          <col />
-          <col style={{ width: "140px" }} />
-          <col style={{ width: "120px" }} />
-          <col style={{ width: "220px" }} />
-          <col style={{ width: "72px" }} />
+          <col style={{ width: "42%" }} />
+          <col style={{ width: "15%" }} />
+          <col style={{ width: "13%" }} />
+          <col style={{ width: "20%" }} />
+          <col style={{ width: "10%" }} />
         </colgroup>
         <thead className="sticky top-0 z-10 bg-slate-50">
           <tr className="border-b border-slate-100">
