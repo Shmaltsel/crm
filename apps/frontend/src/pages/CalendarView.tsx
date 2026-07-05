@@ -9,11 +9,21 @@ import {
   useCreateDayOff,
   useDeleteDayOff,
 } from "../hooks/useDaysOff";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import DayOffModal from "../components/calendar/DayOffModal";
 
 const STAFF_ROLES = ["HOST", "DRIVER"];
 const MANAGER_ROLES = ["SUPERADMIN", "MANAGER"];
+
+const PROJECT_HEX: Record<string, string> = {
+  blue: "#3b82f6",
+  emerald: "#10b981",
+  rose: "#f43f5e",
+  red: "#ef4444",
+  amber: "#f59e0b",
+  purple: "#a855f7",
+};
 const ROLE_ICON_MAP: Record<string, string> = {
   HOST: "🎙️",
   DRIVER: "🚗",
@@ -165,6 +175,50 @@ export default function CalendarView() {
     ],
   );
 
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
+
+  const startLongPress = useCallback(
+    (day: Date) => {
+      longPressFired.current = false;
+      pressTimer.current = setTimeout(() => {
+        longPressFired.current = true;
+        if ("vibrate" in navigator) navigator.vibrate(15);
+        if (isPastDay(day)) return;
+        if (isStaff && user) {
+          const key = toISODate(day);
+          const existing = dayOffsByDate
+            .get(key)
+            ?.find((d) => d.userId === user.id);
+          if (existing) deleteDayOff.mutate(existing.id);
+          else createDayOff.mutate({ date: key });
+        } else if (isManagerOrAdmin) {
+          setDayOffModalDate(day);
+        }
+      }, 550);
+    },
+    [
+      isStaff,
+      isManagerOrAdmin,
+      user,
+      dayOffsByDate,
+      createDayOff,
+      deleteDayOff,
+    ],
+  );
+
+  const cancelLongPress = useCallback(() => {
+    if (pressTimer.current) clearTimeout(pressTimer.current);
+  }, []);
+
+  const handleMobileDayTap = useCallback((day: Date) => {
+    if (longPressFired.current) {
+      longPressFired.current = false;
+      return;
+    }
+    setSelectedMobileDate(day);
+  }, []);
+
   const handleToggleStaffDayOff = useCallback(
     (targetUserId: string, existingId?: string) => {
       if (existingId) {
@@ -212,6 +266,30 @@ export default function CalendarView() {
       default:
         return "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300";
     }
+  };
+
+  const getProjectHex = (projectName: string) => {
+    const proj = projects.find((p: any) => p.name === projectName);
+    return PROJECT_HEX[proj?.color] || PROJECT_HEX.blue;
+  };
+
+  const buildDayGradient = (dayEvents: any[]) => {
+    if (dayEvents.length === 0) return undefined;
+    const counts = new Map<string, number>();
+    for (const ev of dayEvents) {
+      const hex = getProjectHex(ev.project);
+      counts.set(hex, (counts.get(hex) || 0) + 1);
+    }
+    const total = dayEvents.length;
+    let acc = 0;
+    const stops: string[] = [];
+    for (const [hex, count] of counts) {
+      const start = (acc / total) * 100;
+      acc += count;
+      const end = (acc / total) * 100;
+      stops.push(`${hex} ${start}% ${end}%`);
+    }
+    return `linear-gradient(to bottom, ${stops.join(", ")})`;
   };
 
   if (isLoading)
@@ -312,7 +390,7 @@ export default function CalendarView() {
             Графік запланованих та активних заходів
           </p>
 
-          <div className="flex flex-wrap items-center gap-3 mt-4">
+          <div className="hidden md:flex flex-wrap items-center gap-3 mt-4">
             {projects.map((p: any) => {
               const badgeColor =
                 {
@@ -342,7 +420,7 @@ export default function CalendarView() {
         </div>
 
         {userRole === "SUPERADMIN" && (
-          <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 flex items-center gap-3 shrink-0">
+          <div className="hidden md:flex bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 items-center gap-3 shrink-0">
             <span className="text-sm text-slate-500 font-medium">Місто:</span>
             <select
               value={filterCityId}
@@ -388,7 +466,7 @@ export default function CalendarView() {
           </div>
         </div>
 
-        <div className="grid grid-cols-7 bg-slate-50/50">
+        <div className="hidden md:grid grid-cols-7 bg-slate-50/50">
           {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((dayName) => (
             <div
               key={dayName}
@@ -537,55 +615,207 @@ export default function CalendarView() {
         </div>
       </div>
 
-      <div className="mt-6 md:hidden">
-        <h3 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
-          📅 Події на{" "}
-          {selectedMobileDate.toLocaleDateString("uk-UA", {
-            day: "2-digit",
-            month: "long",
-          })}
-        </h3>
-
-        {selectedDayEvents.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-400">
-            На цей день подій не заплановано
+      <div className="md:hidden mt-4">
+        <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-3.5 border-b border-slate-100">
+            <button
+              onClick={prevMonth}
+              className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 active:bg-slate-100 transition-colors"
+            >
+              ‹
+            </button>
+            <button
+              onClick={today}
+              className="text-base font-bold text-slate-800 capitalize"
+            >
+              {monthNames[month]}{" "}
+              <span className="text-slate-400 font-medium">{year}</span>
+            </button>
+            <button
+              onClick={nextMonth}
+              className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 active:bg-slate-100 transition-colors"
+            >
+              ›
+            </button>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {selectedDayEvents.map((ev: any) => (
+
+          <div className="grid grid-cols-7 px-2 pt-2">
+            {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((dayName) => (
               <div
-                key={ev.id}
-                onClick={() =>
-                  ev.school && navigate(`/schools/${ev.school.id}`)
-                }
-                className={`bg-white p-4 rounded-2xl border-l-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer
-                  ${
-                    ev.project.toLowerCase().includes("голограм")
-                      ? "border-l-emerald-500"
-                      : ev.project.toLowerCase().includes("малювайк")
-                        ? "border-l-rose-500"
-                        : ev.project.toLowerCase().includes("360")
-                          ? "border-l-red-500"
-                          : "border-l-blue-500"
-                  }
-                `}
+                key={dayName}
+                className="text-center text-[10px] font-bold tracking-wide text-slate-400 uppercase pb-1.5"
               >
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-xs font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-600">
-                    🕒 {ev.time || "Не вказано"}
-                  </span>
-                  <span className="text-xs font-medium text-slate-500">
-                    {ev.project}
-                  </span>
-                </div>
-                <p className="font-bold text-slate-800">{ev.school?.name}</p>
-                <p className="text-sm text-slate-500 mt-1">
-                  🚐 Екіпаж: {ev.crew?.name || "Не призначено"}
-                </p>
+                {dayName}
               </div>
             ))}
           </div>
-        )}
+
+          <div className="grid grid-cols-7 gap-y-1.5 px-2 pb-3">
+            {days.map((day, idx) => {
+              const isToday =
+                day && day.toDateString() === new Date().toDateString();
+              const isSelected =
+                day &&
+                day.toDateString() === selectedMobileDate.toDateString();
+              const dayEvents = day ? getEventsForDay(day) : [];
+              const dayKey = day ? toISODate(day) : "";
+              const dayOffEntries = day
+                ? (dayOffsByDate.get(dayKey) ?? [])
+                : [];
+              const gradient = day ? buildDayGradient(dayEvents) : undefined;
+
+              return (
+                <div
+                  key={idx}
+                  className="flex items-center justify-center py-0.5"
+                >
+                  {day && (
+                    <button
+                      onTouchStart={() => startLongPress(day)}
+                      onTouchEnd={() => {
+                        cancelLongPress();
+                        handleMobileDayTap(day);
+                      }}
+                      onTouchMove={cancelLongPress}
+                      onContextMenu={(e) => e.preventDefault()}
+                      onClick={() => handleMobileDayTap(day)}
+                      className={`relative w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold transition-transform active:scale-90 overflow-hidden
+                        ${isSelected ? "ring-2 ring-blue-600 ring-offset-2" : ""}
+                        ${isToday && !isSelected ? "ring-2 ring-blue-200" : ""}
+                      `}
+                      style={{
+                        background: gradient || "#f1f5f9",
+                        color: gradient ? "#fff" : "#64748b",
+                        textShadow: gradient
+                          ? "0 1px 2px rgba(0,0,0,0.35)"
+                          : "none",
+                      }}
+                    >
+                      {day.getDate()}
+                      {dayOffEntries.length > 0 && (
+                        <span className="pointer-events-none absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 border-2 border-white flex items-center justify-center">
+                          <span className="text-white text-[7px] font-bold leading-none">
+                            ✕
+                          </span>
+                        </span>
+                      )}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 mt-3 px-1">
+          {projects.map((p: any) => (
+            <span
+              key={p.id}
+              className="flex items-center gap-1 text-[10px] font-medium text-slate-500"
+            >
+              <span
+                className="w-2 h-2 rounded-full"
+                style={{
+                  background: PROJECT_HEX[p.color] || PROJECT_HEX.blue,
+                }}
+              />
+              {p.name}
+            </span>
+          ))}
+          <span className="flex items-center gap-1 text-[10px] font-medium text-slate-500">
+            <span className="w-2 h-2 rounded-full bg-rose-500" />
+            Вихідний
+          </span>
+
+          {userRole === "SUPERADMIN" && (
+            <select
+              value={filterCityId}
+              onChange={(e) => setFilterCityId(e.target.value)}
+              className="ml-auto text-[11px] font-semibold text-slate-700 outline-none bg-slate-50 border border-slate-200 rounded-lg px-2 py-1"
+            >
+              <option value="ALL">🌍 Всі міста</option>
+              {cities.map((c: any) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={toISODate(selectedMobileDate)}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className="mt-4"
+          >
+            <h3 className="text-sm font-bold text-slate-800 mb-2.5">
+              {selectedMobileDate.toLocaleDateString("uk-UA", {
+                day: "2-digit",
+                month: "long",
+                weekday: "long",
+              })}
+            </h3>
+
+            {(() => {
+              const key = toISODate(selectedMobileDate);
+              const dayOffEntries = dayOffsByDate.get(key) ?? [];
+              if (dayOffEntries.length === 0) return null;
+              return (
+                <div className="mb-3 flex flex-wrap gap-1.5">
+                  {dayOffEntries.map((d) => {
+                    const u = allUsers.find((au: any) => au.id === d.userId);
+                    return (
+                      <span
+                        key={d.id}
+                        className="text-[11px] font-semibold text-rose-600 bg-rose-50 border border-rose-100 px-2 py-1 rounded-full"
+                      >
+                        🌴 {u?.name || "Вихідний"}
+                      </span>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {selectedDayEvents.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-400 text-sm">
+                На цей день подій не заплановано
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {selectedDayEvents.map((ev: any) => (
+                  <div
+                    key={ev.id}
+                    onClick={() =>
+                      ev.school && navigate(`/schools/${ev.school.id}`)
+                    }
+                    className="bg-white p-4 rounded-2xl border-l-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
+                    style={{ borderLeftColor: getProjectHex(ev.project) }}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-xs font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-600">
+                        🕒 {ev.time || "Не вказано"}
+                      </span>
+                      <span className="text-xs font-medium text-slate-500">
+                        {ev.project}
+                      </span>
+                    </div>
+                    <p className="font-bold text-slate-800">
+                      {ev.school?.name}
+                    </p>
+                    <p className="text-sm text-slate-500 mt-1">
+                      🚐 Екіпаж: {ev.crew?.name || "Не призначено"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       <DayOffModal
