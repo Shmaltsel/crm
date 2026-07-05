@@ -506,7 +506,7 @@ export default function CalendarView() {
               <div
                 key={idx}
                 onClick={() => day && setSelectedMobileDate(day)}
-                className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group
+                className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group overflow-hidden
                   ${day ? "bg-white hover:bg-slate-50 cursor-pointer" : "bg-slate-50/30"}
                   ${isSelected ? "ring-2 ring-inset ring-blue-500/20 bg-blue-50/10" : ""}
                   ${hasAnyDayOff ? "dayoff-cell-enter bg-rose-50/70" : ""}
@@ -577,8 +577,8 @@ export default function CalendarView() {
                       </p>
                     )}
 
-                    <div className="space-y-1.5 max-h-[80px] md:max-h-[100px] overflow-y-auto custom-scrollbar pr-0.5">
-                      {dayEvents.map((ev: any) => (
+                    <div className="space-y-1.5">
+                      {dayEvents.slice(0, 3).map((ev: any) => (
                         <div
                           key={ev.id}
                           className="relative group/event z-0 hover:z-50"
@@ -613,6 +613,11 @@ export default function CalendarView() {
                           </div>
                         </div>
                       ))}
+                      {dayEvents.length > 3 && (
+                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 text-center">
+                          +{dayEvents.length - 3} ще
+                        </p>
+                      )}
                     </div>
                   </>
                 )}
