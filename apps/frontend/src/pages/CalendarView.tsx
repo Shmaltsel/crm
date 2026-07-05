@@ -273,23 +273,11 @@ export default function CalendarView() {
     return PROJECT_HEX[proj?.color] || PROJECT_HEX.blue;
   };
 
-  const buildDayGradient = (dayEvents: any[]) => {
+  const getDayColor = (dayEvents: any[]) => {
     if (dayEvents.length === 0) return undefined;
-    const counts = new Map<string, number>();
-    for (const ev of dayEvents) {
-      const hex = getProjectHex(ev.project);
-      counts.set(hex, (counts.get(hex) || 0) + 1);
-    }
-    const total = dayEvents.length;
-    let acc = 0;
-    const stops: string[] = [];
-    for (const [hex, count] of counts) {
-      const start = (acc / total) * 100;
-      acc += count;
-      const end = (acc / total) * 100;
-      stops.push(`${hex} ${start}% ${end}%`);
-    }
-    return `linear-gradient(to bottom, ${stops.join(", ")})`;
+    const hexes = [...new Set(dayEvents.map((ev) => getProjectHex(ev.project)))];
+    if (hexes.length === 1) return hexes[0];
+    return `linear-gradient(135deg, ${hexes.join(", ")})`;
   };
 
   if (isLoading)
@@ -439,11 +427,7 @@ export default function CalendarView() {
       </div>
 
       <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-        <div className="flex flex-col sm:flex-row items-center justify-between p-5 md:p-6 border-b border-slate-100 gap-4 bg-white">
-          <h2 className="text-2xl font-bold text-slate-800 capitalize tracking-tight">
-            {monthNames[month]}{" "}
-            <span className="text-slate-400 font-medium">{year}</span>
-          </h2>
+        <div className="flex items-center justify-center p-5 md:p-6 border-b border-slate-100 bg-white">
           <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
             <button
               onClick={prevMonth}
@@ -451,12 +435,10 @@ export default function CalendarView() {
             >
               ◀
             </button>
-            <button
-              onClick={today}
-              className="px-4 md:px-6 py-2 bg-white rounded-xl shadow-sm text-slate-800 font-bold transition-all hover:bg-slate-50"
-            >
-              Сьогодні
-            </button>
+            <span className="px-4 md:px-6 py-2 text-slate-800 font-bold capitalize tracking-tight">
+              {monthNames[month]}{" "}
+              <span className="text-slate-400 font-medium">{year}</span>
+            </span>
             <button
               onClick={nextMonth}
               className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium"
@@ -624,13 +606,10 @@ export default function CalendarView() {
             >
               ‹
             </button>
-            <button
-              onClick={today}
-              className="text-base font-bold text-slate-800 capitalize"
-            >
+            <span className="text-base font-bold text-slate-800 capitalize">
               {monthNames[month]}{" "}
               <span className="text-slate-400 font-medium">{year}</span>
-            </button>
+            </span>
             <button
               onClick={nextMonth}
               className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 active:bg-slate-100 transition-colors"
@@ -655,14 +634,13 @@ export default function CalendarView() {
               const isToday =
                 day && day.toDateString() === new Date().toDateString();
               const isSelected =
-                day &&
-                day.toDateString() === selectedMobileDate.toDateString();
+                day && day.toDateString() === selectedMobileDate.toDateString();
               const dayEvents = day ? getEventsForDay(day) : [];
               const dayKey = day ? toISODate(day) : "";
               const dayOffEntries = day
                 ? (dayOffsByDate.get(dayKey) ?? [])
                 : [];
-              const gradient = day ? buildDayGradient(dayEvents) : undefined;
+              const dayColor = day ? getDayColor(dayEvents) : undefined;
 
               return (
                 <div
@@ -684,9 +662,9 @@ export default function CalendarView() {
                         ${isToday && !isSelected ? "ring-2 ring-blue-200" : ""}
                       `}
                       style={{
-                        background: gradient || "#f1f5f9",
-                        color: gradient ? "#fff" : "#64748b",
-                        textShadow: gradient
+                        background: dayColor || "#f1f5f9",
+                        color: dayColor ? "#fff" : "#64748b",
+                        textShadow: dayColor
                           ? "0 1px 2px rgba(0,0,0,0.35)"
                           : "none",
                       }}
