@@ -60,6 +60,7 @@ export default function EventModal({
         contactPhone: "",
         ...defaultValues,
       });
+      setProjects([]);
       api
         .get<Project[]>("/projects", {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
@@ -116,23 +117,19 @@ export default function EventModal({
               </label>
               <select
                 {...register("project")}
-                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                disabled={projects.length === 0}
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-slate-50 disabled:text-slate-400"
               >
                 <option value="" disabled>
-                  Оберіть вид події
+                  {projects.length === 0
+                    ? "Завантаження видів подій..."
+                    : "Оберіть вид події"}
                 </option>
-                {projects.length > 0 ? (
-                  projects.map((p) => (
-                    <option key={p.id} value={p.name}>
-                      {p.name}
-                    </option>
-                  ))
-                ) : (
-                  <>
-                    <option>Голограма для школи</option>
-                    <option>360° шоу</option>
-                  </>
-                )}
+                {projects.map((p) => (
+                  <option key={p.id} value={p.name}>
+                    {p.name}
+                  </option>
+                ))}
               </select>
               {errors.project && (
                 <p className="text-xs text-red-500 mt-1">
