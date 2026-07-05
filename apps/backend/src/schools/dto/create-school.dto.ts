@@ -21,4 +21,14 @@ export class CreateSchoolDto {
   @IsOptional()
   @IsString()
   sourceUrl?: string;
+
+  @ApiPropertyOptional({ example: 'Іваненко Іван Іванович' })
+  @IsOptional()
+  @IsString()
+  director?: string;
+
+  @ApiPropertyOptional({ example: '+380501234567' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
 }

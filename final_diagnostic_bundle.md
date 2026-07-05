@@ -725,6 +725,230 @@ export default function SchoolProfile() {
 
 ---
 
+### `apps/frontend/src/pages/Cities.tsx`
+
+```typescript
+import React, { useState, useCallback, lazy, Suspense } from "react";
+import { createPortal } from "react-dom";
+import { useSelectedCity } from "../context/CityContext";
+import { useCities, useAddCity } from "../hooks/useApi";
+import { useAuth } from "../context/AuthContext";
+
+const IssueCarousel = lazy(() => import("../components/IssueCarousel"));
+const CityMobileHeader = lazy(
+  () => import("../components/cities/CityMobileHeader"),
+);
+const CityMobileList = lazy(
+  () => import("../components/cities/CityMobileList"),
+);
+const CityDesktopGrid = lazy(
+  () => import("../components/cities/CityDesktopGrid"),
+);
+
+const CitiesSkeleton = () => (
+  <div className="w-full animate-pulse">
+    {/* Мобільний скелетон */}
+    <div className="md:hidden flex flex-col gap-4 mt-4">
+      <div className="h-28 bg-slate-200 rounded-2xl w-full"></div>
+      <div className="h-16 bg-slate-200 rounded-2xl w-full"></div>
+      <div className="h-16 bg-slate-200 rounded-2xl w-full"></div>
+    </div>
+    {/* Десктопний скелетон */}
+    <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {[...Array(3)].map((_, i) => (
+        <div
+          key={i}
+          className="bg-white rounded-2xl shadow-sm border border-slate-100 h-72 overflow-hidden"
+        >
+          <div className="h-44 bg-slate-200 w-full"></div>
+          <div className="p-5 flex flex-col gap-3">
+            <div className="h-6 bg-slate-200 rounded w-1/2"></div>
+            <div className="h-4 bg-slate-200 rounded w-3/4 mt-2"></div>
+            <div className="h-10 bg-slate-200 rounded w-full mt-auto"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+export default function Cities() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newCityName, setNewCityName] = useState("");
+
+  const { selectedCity, setSelectedCity } = useSelectedCity();
+  const { data: cities = [], isLoading: isFetching } = useCities();
+  const addCity = useAddCity();
+
+  const handleSelectCity = useCallback(
+    (city: any) => {
+      setSelectedCity(city);
+    },
+    [setSelectedCity],
+  );
+  const { user } = useAuth();
+  const userRole = user?.role ?? null;
+  const handleAddCity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCityName.trim()) return;
+    try {
+      await addCity.mutateAsync(newCityName.trim());
+      setNewCityName("");
+      setIsModalOpen(false);
+    } catch (err: any) {
+      alert(
+        `DEBUG\nстатус: ${err?.response?.status}\nтіло: ${JSON.stringify(err?.response?.data)}\ncookie: ${document.cookie}`,
+      );
+    }
+  };
+
+  return (
+    <div
+      className="p-4 md:p-8 bg-slate-50 min-h-screen"
+      style={{ contentVisibility: "auto" }}
+    >
+      {/* Шапка для ПК */}
+      <style>{`
+        @keyframes headerFadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .header-enter { animation: headerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .header-btn-enter { animation: headerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
+      `}</style>
+      <div className="hidden md:flex justify-between items-center mb-8">
+        <h1 className="header-enter text-3xl font-bold text-slate-800">
+          Міста
+        </h1>
+        {userRole === "SUPERADMIN" && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="header-btn-enter bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm flex items-center transition-all duration-150"
+          >
+            <span className="mr-2">+</span> Додати місто
+          </button>
+        )}
+      </div>
+
+      {isFetching ? (
+        <CitiesSkeleton />
+      ) : (
+        /* Оптимізація 6: Suspense обгортка для лінивих компонентів */
+        <Suspense fallback={<CitiesSkeleton />}>
+          {/* 1. Блок для Мобільних (Шапка + Список) */}
+          <div className="md:hidden">
+            <CityMobileHeader selectedCity={selectedCity} cities={cities} />
+            <CityMobileList
+              cities={cities}
+              selectedCity={selectedCity}
+              onSelectCity={handleSelectCity}
+            />
+          </div>
+
+          {/* 2. Блок для Десктопів (Карусель + Сітка) */}
+          <div className="hidden md:block">
+            <IssueCarousel />
+            <CityDesktopGrid
+              cities={cities}
+              selectedCity={selectedCity}
+              onSelectCity={handleSelectCity}
+            />
+          </div>
+        </Suspense>
+      )}
+
+      {/* Мобільна плаваюча кнопка FAB */}
+      {userRole === "SUPERADMIN" && (
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 active:scale-95 transition-transform opacity-0"
+          style={{
+            animation:
+              "fabPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) 0.2s forwards",
+          }}
+          aria-label="Додати місто"
+        >
+          <style>{`
+            @keyframes fabPop {
+              from { opacity: 0; transform: scale(0.5) translateY(20px); }
+              to { opacity: 1; transform: scale(1) translateY(0); }
+            }
+          `}</style>
+          +
+        </button>
+      )}
+
+      {/* Модалка додавання */}
+      {isModalOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
+            style={{ animation: "fadeIn 0.2s ease-out forwards" }}
+          >
+            <style>{`
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            @keyframes modalScale {
+              from { opacity: 0; transform: scale(0.95) translateY(15px); }
+              to { opacity: 1; transform: scale(1) translateY(0); }
+            }
+          `}</style>
+
+            {/* ТУТ БУЛА ПРОБЛЕМА: додано opacity-0 та style з анімацією modalScale */}
+            <div
+              className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
+              style={{ animation: "modalScale 0.3s ease-out forwards" }}
+            >
+              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 className="text-xl font-bold text-slate-800">Нове місто</h3>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+              <form onSubmit={handleAddCity} className="p-6">
+                <input
+                  type="text"
+                  value={newCityName}
+                  onChange={(e) => setNewCityName(e.target.value)}
+                  placeholder="Наприклад: Львів"
+                  className="w-full p-3 mb-6 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+                  autoFocus
+                  required
+                />
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors"
+                  >
+                    Скасувати
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={addCity.isPending}
+                    className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {addCity.isPending ? "Збереження..." : "Зберегти"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </div>
+  );
+}
+
+```
+
+---
+
 ### `apps/frontend/src/pages/CalendarView.tsx`
 
 ```typescript
@@ -1338,223 +1562,551 @@ export default function CalendarView() {
 
 ---
 
-### `apps/frontend/src/pages/Cities.tsx`
+### `apps/frontend/src/components/school-profile/modals/CrewModal.tsx`
 
 ```typescript
-import React, { useState, useCallback, lazy, Suspense } from "react";
-import { createPortal } from "react-dom";
-import { useSelectedCity } from "../context/CityContext";
-import { useCities, useAddCity } from "../hooks/useApi";
-import { useAuth } from "../context/AuthContext";
+import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { api } from "../../../config/api";
+import type { City, Crew } from "../../../types";
+import { useQuery } from "@tanstack/react-query";
+import { useDaysOff } from "../../../hooks/useDaysOff";
+interface CrewModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  city?: string;
+  eventDate?: string;
+  onSave: (crewId: string) => void;
+}
 
-const IssueCarousel = lazy(() => import("../components/IssueCarousel"));
-const CityMobileHeader = lazy(
-  () => import("../components/cities/CityMobileHeader"),
-);
-const CityMobileList = lazy(
-  () => import("../components/cities/CityMobileList"),
-);
-const CityDesktopGrid = lazy(
-  () => import("../components/cities/CityDesktopGrid"),
-);
+export default function CrewModal({
+  isOpen,
+  onClose,
+  city,
+  eventDate,
+  onSave,
+}: CrewModalProps) {
+  const navigate = useNavigate();
+  const { data: allCities = [] } = useQuery({
+    queryKey: ["cities"],
+    queryFn: () => api.get("/cities").then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
 
-const CitiesSkeleton = () => (
-  <div className="w-full animate-pulse">
-    {/* Мобільний скелетон */}
-    <div className="md:hidden flex flex-col gap-4 mt-4">
-      <div className="h-28 bg-slate-200 rounded-2xl w-full"></div>
-      <div className="h-16 bg-slate-200 rounded-2xl w-full"></div>
-      <div className="h-16 bg-slate-200 rounded-2xl w-full"></div>
-    </div>
-    {/* Десктопний скелетон */}
-    <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {[...Array(3)].map((_, i) => (
-        <div
-          key={i}
-          className="bg-white rounded-2xl shadow-sm border border-slate-100 h-72 overflow-hidden"
-        >
-          <div className="h-44 bg-slate-200 w-full"></div>
-          <div className="p-5 flex flex-col gap-3">
-            <div className="h-6 bg-slate-200 rounded w-1/2"></div>
-            <div className="h-4 bg-slate-200 rounded w-3/4 mt-2"></div>
-            <div className="h-10 bg-slate-200 rounded w-full mt-auto"></div>
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-);
-
-export default function Cities() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newCityName, setNewCityName] = useState("");
-
-  const { selectedCity, setSelectedCity } = useSelectedCity();
-  const { data: cities = [], isLoading: isFetching } = useCities();
-  const addCity = useAddCity();
-
-  const handleSelectCity = useCallback(
-    (city: any) => {
-      setSelectedCity(city);
-    },
-    [setSelectedCity],
+  const currentCity = allCities.find((c: City) => c.name === city);
+  const { data: crews = [], isLoading } = useQuery({
+    queryKey: ["cityCrews", currentCity?.id],
+    queryFn: () =>
+      api.get<Crew[]>(`/cities/${currentCity!.id}/crews`).then((r) => r.data),
+    enabled: !!currentCity?.id && isOpen,
+    staleTime: 60 * 1000,
+  });
+  const dayOnly = eventDate ? eventDate.slice(0, 10) : undefined;
+  const { data: dayOffs = [] } = useDaysOff(dayOnly, dayOnly);
+  const dayOffUserIds = useMemo(
+    () => new Set(dayOffs.map((d) => d.userId)),
+    [dayOffs],
   );
-  const { user } = useAuth();
-  const userRole = user?.role ?? null;
-  const handleAddCity = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCityName.trim()) return;
-    try {
-      await addCity.mutateAsync(newCityName.trim());
-      setNewCityName("");
-      setIsModalOpen(false);
-    } catch (err: any) {
-      alert(
-        `DEBUG\nстатус: ${err?.response?.status}\nтіло: ${JSON.stringify(err?.response?.data)}\ncookie: ${document.cookie}`,
-      );
-    }
-  };
+  const [selectedCrewId, setSelectedCrewId] = useState("");
+
+  if (!isOpen) return null;
 
   return (
-    <div
-      className="p-4 md:p-8 bg-slate-50 min-h-screen"
-      style={{ contentVisibility: "auto" }}
-    >
-      {/* Шапка для ПК */}
-      <style>{`
-        @keyframes headerFadeIn {
-          from { opacity: 0; transform: translateY(-10px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .header-enter { animation: headerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
-        .header-btn-enter { animation: headerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
-      `}</style>
-      <div className="hidden md:flex justify-between items-center mb-8">
-        <h1 className="header-enter text-3xl font-bold text-slate-800">
-          Міста
-        </h1>
-        {userRole === "SUPERADMIN" && (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+          <h3 className="text-xl font-bold text-slate-800">
+            Призначити екіпаж
+          </h3>
           <button
-            onClick={() => setIsModalOpen(true)}
-            className="header-btn-enter bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm flex items-center transition-all duration-150"
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600"
           >
-            <span className="mr-2">+</span> Додати місто
+            ✕
           </button>
-        )}
-      </div>
+        </div>
 
-      {isFetching ? (
-        <CitiesSkeleton />
-      ) : (
-        /* Оптимізація 6: Suspense обгортка для лінивих компонентів */
-        <Suspense fallback={<CitiesSkeleton />}>
-          {/* 1. Блок для Мобільних (Шапка + Список) */}
-          <div className="md:hidden">
-            <CityMobileHeader selectedCity={selectedCity} cities={cities} />
-            <CityMobileList
-              cities={cities}
-              selectedCity={selectedCity}
-              onSelectCity={handleSelectCity}
-            />
-          </div>
-
-          {/* 2. Блок для Десктопів (Карусель + Сітка) */}
-          <div className="hidden md:block">
-            <IssueCarousel />
-            <CityDesktopGrid
-              cities={cities}
-              selectedCity={selectedCity}
-              onSelectCity={handleSelectCity}
-            />
-          </div>
-        </Suspense>
-      )}
-
-      {/* Мобільна плаваюча кнопка FAB */}
-      {userRole === "SUPERADMIN" && (
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 active:scale-95 transition-transform opacity-0"
-          style={{
-            animation:
-              "fabPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) 0.2s forwards",
-          }}
-          aria-label="Додати місто"
-        >
-          <style>{`
-            @keyframes fabPop {
-              from { opacity: 0; transform: scale(0.5) translateY(20px); }
-              to { opacity: 1; transform: scale(1) translateY(0); }
-            }
-          `}</style>
-          +
-        </button>
-      )}
-
-      {/* Модалка додавання */}
-      {isModalOpen &&
-        createPortal(
-          <div
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
-            style={{ animation: "fadeIn 0.2s ease-out forwards" }}
-          >
-            <style>{`
-            @keyframes fadeIn {
-              from { opacity: 0; }
-              to { opacity: 1; }
-            }
-            @keyframes modalScale {
-              from { opacity: 0; transform: scale(0.95) translateY(15px); }
-              to { opacity: 1; transform: scale(1) translateY(0); }
-            }
-          `}</style>
-
-            {/* ТУТ БУЛА ПРОБЛЕМА: додано opacity-0 та style з анімацією modalScale */}
-            <div
-              className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
-              style={{ animation: "modalScale 0.3s ease-out forwards" }}
-            >
-              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <h3 className="text-xl font-bold text-slate-800">Нове місто</h3>
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-              <form onSubmit={handleAddCity} className="p-6">
-                <input
-                  type="text"
-                  value={newCityName}
-                  onChange={(e) => setNewCityName(e.target.value)}
-                  placeholder="Наприклад: Львів"
-                  className="w-full p-3 mb-6 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
-                  autoFocus
-                  required
-                />
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors"
-                  >
-                    Скасувати
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={addCity.isPending}
-                    className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                  >
-                    {addCity.isPending ? "Збереження..." : "Зберегти"}
-                  </button>
-                </div>
-              </form>
+        <div className="p-6">
+          {isLoading ? (
+            <p className="text-slate-500 text-center py-4">Завантаження...</p>
+          ) : crews.length === 0 ? (
+            <div className="text-center py-4">
+              <p className="text-slate-500">
+                У цьому місті ще немає сформованих екіпажів.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  if (currentCity?.id) navigate(`/cities/${currentCity.id}`);
+                }}
+                className="text-sm mt-2 text-blue-600 hover:text-blue-800 underline underline-offset-2"
+              >
+                Створіть екіпаж у вкладці міста!
+              </button>
             </div>
-          </div>,
-          document.body,
-        )}
+          ) : (
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-slate-700">
+                Оберіть готовий екіпаж
+              </label>
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {crews.map((crew) => {
+                  const hostOnDayOff =
+                    crew.hostId && dayOffUserIds.has(crew.hostId);
+                  const driverOnDayOff =
+                    crew.driverId && dayOffUserIds.has(crew.driverId);
+                  const isUnavailable = hostOnDayOff || driverOnDayOff;
+                  return (
+                    <label
+                      key={crew.id}
+                      className={`flex items-start p-3 rounded-xl border transition-all ${
+                        isUnavailable
+                          ? "border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed"
+                          : selectedCrewId === crew.id
+                            ? "border-blue-500 bg-blue-50/50 ring-1 ring-blue-500 cursor-pointer"
+                            : "border-slate-200 hover:border-blue-300 cursor-pointer"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="crew"
+                        value={crew.id}
+                        checked={selectedCrewId === crew.id}
+                        disabled={!!isUnavailable}
+                        onChange={() => setSelectedCrewId(crew.id)}
+                        className="mt-1 mr-3 text-blue-600 focus:ring-blue-500"
+                      />
+                      <div>
+                        <p className="font-bold text-slate-800">{crew.name}</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          🎙️ {crew.host?.name || "—"} | 🚗{" "}
+                          {crew.driver?.name || "—"}
+                        </p>
+                        {crew.car && (
+                          <p className="text-xs text-emerald-600 mt-0.5">
+                            Авто: {crew.car}
+                          </p>
+                        )}
+                        {isUnavailable && (
+                          <p className="text-xs text-rose-500 font-medium mt-1">
+                            🌴 {hostOnDayOff ? "Ведучий" : "Водій"} у вихідному
+                            цього дня
+                          </p>
+                        )}
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3 mt-6">
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200"
+            >
+              Скасувати
+            </button>
+            <button
+              onClick={() => onSave(selectedCrewId)}
+              disabled={!selectedCrewId}
+              className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-opacity"
+            >
+              Призначити
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
+  );
+}
+
+```
+
+---
+
+### `apps/frontend/src/components/school-profile/modals/EventModal.tsx`
+
+```typescript
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { api } from "../../../config/api";
+import type { Project } from "../../../types";
+import { eventSchema, type EventFormValues } from "./EventSchema";
+
+interface EventModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  defaultValues?: Partial<EventFormValues>;
+  onSave: (data: EventFormValues) => void;
+}
+
+export default function EventModal({
+  isOpen,
+  onClose,
+  defaultValues,
+  onSave,
+}: EventModalProps) {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [priceTouched, setPriceTouched] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<EventFormValues>({
+    resolver: zodResolver(eventSchema),
+    defaultValues: {
+      project: "",
+      date: "",
+      time: "",
+      childrenPlanned: "",
+      price: "",
+      address: "",
+      contactPerson: "",
+      contactPhone: "",
+      ...defaultValues,
+    },
+  });
+
+  const currentProject = watch("project");
+  const currentChildrenPlanned = watch("childrenPlanned");
+
+  useEffect(() => {
+    if (isOpen) {
+      setPriceTouched(!!defaultValues?.price);
+      reset({
+        project: "",
+        date: "",
+        time: "",
+        childrenPlanned: "",
+        price: "",
+        address: "",
+        contactPerson: "",
+        contactPhone: "",
+        ...defaultValues,
+      });
+      api
+        .get<Project[]>("/projects", {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        })
+        .then((res) => {
+          setProjects(res.data);
+          if (!defaultValues?.project && res.data.length > 0) {
+            setValue("project", res.data[0].name);
+          }
+        })
+        .catch(console.error);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (priceTouched) return;
+    const selected = projects.find((p) => p.name === currentProject) as
+      | (Project & { pricePerChild?: number })
+      | undefined;
+    if (!selected?.pricePerChild) return;
+    const count = Number(currentChildrenPlanned) || 0;
+    setValue("price", String(count * selected.pricePerChild));
+  }, [
+    currentProject,
+    currentChildrenPlanned,
+    projects,
+    priceTouched,
+    setValue,
+  ]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[92vh] flex flex-col">
+        <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
+          <h3 className="text-xl font-bold text-slate-800">Нова подія</h3>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 p-2 -mr-2 text-xl leading-none"
+          >
+            ✕
+          </button>
+        </div>
+        <form
+          onSubmit={handleSubmit(onSave)}
+          className="p-5 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-4"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <label className="block text-sm mb-1 text-slate-600">
+                Проєкт (Вид події)
+              </label>
+              <select
+                {...register("project")}
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="" disabled>
+                  Оберіть вид події
+                </option>
+                {projects.length > 0 ? (
+                  projects.map((p) => (
+                    <option key={p.id} value={p.name}>
+                      {p.name}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option>Голограма для школи</option>
+                    <option>360° шоу</option>
+                  </>
+                )}
+              </select>
+              {errors.project && (
+                <p className="text-xs text-red-500 mt-1">
+                  {errors.project.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm mb-1 text-slate-600">Дата</label>
+              <input
+                type="date"
+                {...register("date")}
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+              {errors.date && (
+                <p className="text-xs text-red-500 mt-1">
+                  {errors.date.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm mb-1 text-slate-600">Час</label>
+              <input
+                type="time"
+                {...register("time")}
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+              {errors.time && (
+                <p className="text-xs text-red-500 mt-1">
+                  {errors.time.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm mb-1 text-slate-600">
+                Дітей (план)
+              </label>
+              <input
+                type="number"
+                {...register("childrenPlanned")}
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+              {errors.childrenPlanned && (
+                <p className="text-xs text-red-500 mt-1">
+                  {errors.childrenPlanned.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm mb-1 text-slate-600">
+                Вартість
+              </label>
+              <input
+                type="number"
+                {...register("price")}
+                onInput={() => setPriceTouched(true)}
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-slate-400 mt-1">
+                Розраховується автоматично: діти × ціна за дитину. Можна
+                змінити вручну.
+              </p>
+              {errors.price && (
+                <p className="text-xs text-red-500 mt-1">
+                  {errors.price.message}
+                </p>
+              )}
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm mb-1 text-slate-600">
+                Адреса
+              </label>
+              <input
+                type="text"
+                {...register("address")}
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm mb-1 text-slate-600">
+                Контактна особа
+              </label>
+              <input
+                type="text"
+                {...register("contactPerson")}
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm mb-1 text-slate-600">
+                Телефон
+              </label>
+              <input
+                type="text"
+                {...register("contactPhone")}
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <div className="flex gap-3 mt-4 shrink-0 pt-4 border-t border-slate-100 pb-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full sm:w-auto px-5 py-3 bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium rounded-xl transition-colors"
+            >
+              Скасувати
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full sm:w-auto px-5 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              Створити
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+```
+
+---
+
+### `apps/frontend/src/components/calendar/DayOffModal.tsx`
+
+```typescript
+import { createPortal } from "react-dom";
+import type { DayOff } from "../../hooks/useDaysOff";
+
+interface StaffUser {
+  id: string;
+  name: string;
+  role: string;
+}
+
+interface DayOffModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  date: Date | null;
+  staff: StaffUser[];
+  dayOffs: DayOff[];
+  onToggle: (userId: string, existingId?: string) => void;
+}
+
+const ROLE_ICON: Record<string, string> = {
+  HOST: "🎙️",
+  DRIVER: "🚗",
+};
+
+export default function DayOffModal({
+  isOpen,
+  onClose,
+  date,
+  staff,
+  dayOffs,
+  onToggle,
+}: DayOffModalProps) {
+  if (!isOpen || !date) return null;
+
+  const dateStr = date.toLocaleDateString("uk-UA", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+
+  return createPortal(
+    <div
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
+      style={{ animation: "fadeIn 0.2s ease-out forwards" }}
+    >
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalScale {
+          from { opacity: 0; transform: scale(0.95) translateY(15px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
+      <div
+        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
+        style={{ animation: "modalScale 0.3s ease-out forwards" }}
+      >
+        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+          <div>
+            <h3 className="text-lg font-bold text-slate-800">
+              Вихідний на {dateStr}
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Оберіть співробітника
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="p-4 max-h-[60vh] overflow-y-auto">
+          {staff.length === 0 ? (
+            <p className="text-center text-slate-400 py-6 text-sm">
+              Немає співробітників у цьому місті
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {staff.map((s) => {
+                const existing = dayOffs.find((d) => d.userId === s.id);
+                const isOff = !!existing;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => onToggle(s.id, existing?.id)}
+                    className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left ${
+                      isOff
+                        ? "border-rose-200 bg-rose-50"
+                        : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/30"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 font-medium text-slate-800">
+                      <span>{ROLE_ICON[s.role] || "👤"}</span>
+                      {s.name}
+                    </span>
+                    <span
+                      className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                        isOff
+                          ? "bg-rose-100 text-rose-600"
+                          : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {isOff ? "Вихідний ✕" : "Призначити"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -1672,68 +2224,6 @@ export class SchoolsController {
   searchContacts(@Query() query: FindContactsQueryDto) {
     return this.schoolsService.searchContacts(query.q ?? '', query.city);
   }
-}
-
-```
-
----
-
-### `apps/backend/src/schools/dto/update-school.dto.ts`
-
-```typescript
-import {
-  IsString,
-  IsOptional,
-  IsInt,
-  IsBoolean,
-  IsEmail,
-  Min,
-} from 'class-validator';
-import { Type, Transform } from 'class-transformer';
-
-export class UpdateSchoolDto {
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @IsOptional()
-  @IsString()
-  type?: string;
-
-  @IsOptional()
-  @IsString()
-  cityId?: string;
-
-  @IsOptional()
-  @IsString()
-  address?: string;
-
-  @IsOptional()
-  @IsString()
-  director?: string;
-
-  @IsOptional()
-  @IsString()
-  phone?: string;
-
-  @IsOptional()
-  @Transform(({ value }) => (value === '' ? undefined : value))
-  @IsEmail()
-  email?: string;
-
-  @IsOptional()
-  @IsString()
-  notes?: string;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  @Type(() => Number)
-  childrenCount?: number;
-
-  @IsOptional()
-  @IsBoolean()
-  isHotClient?: boolean;
 }
 
 ```
@@ -2462,124 +2952,62 @@ export class EventsService {
 
 ---
 
-### `apps/frontend/src/components/calendar/DayOffModal.tsx`
+### `apps/backend/src/schools/dto/update-school.dto.ts`
 
 ```typescript
-import { createPortal } from "react-dom";
-import type { DayOff } from "../../hooks/useDaysOff";
+import {
+  IsString,
+  IsOptional,
+  IsInt,
+  IsBoolean,
+  IsEmail,
+  Min,
+} from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 
-interface StaffUser {
-  id: string;
-  name: string;
-  role: string;
-}
+export class UpdateSchoolDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
 
-interface DayOffModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  date: Date | null;
-  staff: StaffUser[];
-  dayOffs: DayOff[];
-  onToggle: (userId: string, existingId?: string) => void;
-}
+  @IsOptional()
+  @IsString()
+  type?: string;
 
-const ROLE_ICON: Record<string, string> = {
-  HOST: "🎙️",
-  DRIVER: "🚗",
-};
+  @IsOptional()
+  @IsString()
+  cityId?: string;
 
-export default function DayOffModal({
-  isOpen,
-  onClose,
-  date,
-  staff,
-  dayOffs,
-  onToggle,
-}: DayOffModalProps) {
-  if (!isOpen || !date) return null;
+  @IsOptional()
+  @IsString()
+  address?: string;
 
-  const dateStr = date.toLocaleDateString("uk-UA", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
+  @IsOptional()
+  @IsString()
+  director?: string;
 
-  return createPortal(
-    <div
-      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
-      style={{ animation: "fadeIn 0.2s ease-out forwards" }}
-    >
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes modalScale {
-          from { opacity: 0; transform: scale(0.95) translateY(15px); }
-          to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-      `}</style>
-      <div
-        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
-        style={{ animation: "modalScale 0.3s ease-out forwards" }}
-      >
-        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-          <div>
-            <h3 className="text-lg font-bold text-slate-800">
-              Вихідний на {dateStr}
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Оберіть співробітника
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
-          >
-            ✕
-          </button>
-        </div>
+  @IsOptional()
+  @IsString()
+  phone?: string;
 
-        <div className="p-4 max-h-[60vh] overflow-y-auto">
-          {staff.length === 0 ? (
-            <p className="text-center text-slate-400 py-6 text-sm">
-              Немає співробітників у цьому місті
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {staff.map((s) => {
-                const existing = dayOffs.find((d) => d.userId === s.id);
-                const isOff = !!existing;
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() => onToggle(s.id, existing?.id)}
-                    className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left ${
-                      isOff
-                        ? "border-rose-200 bg-rose-50"
-                        : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/30"
-                    }`}
-                  >
-                    <span className="flex items-center gap-2 font-medium text-slate-800">
-                      <span>{ROLE_ICON[s.role] || "👤"}</span>
-                      {s.name}
-                    </span>
-                    <span
-                      className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                        isOff
-                          ? "bg-rose-100 text-rose-600"
-                          : "bg-slate-100 text-slate-500"
-                      }`}
-                    >
-                      {isOff ? "Вихідний ✕" : "Призначити"}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
+  @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  childrenCount?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isHotClient?: boolean;
 }
 
 ```

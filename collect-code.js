@@ -1,35 +1,47 @@
 const fs = require('fs');
 const path = require('path');
 
-// Сюди просто вписуйте шляхи до файлів, які ви хочете зібрати
+// Твій список файлів
 const filesToCollect = [
-  'apps/backend/prisma/schema.prisma',
-  'apps/backend/src/projects/dto/create-project.dto.ts',
-  'apps/frontend/src/types.ts',
-  'apps/backend/src/common/interceptors/sanitize.interceptor.ts',
-  'apps/backend/src/schools/dto/find-schools-query.dto.ts',
-  'apps/backend/src/schools/dto/find-contacts-query.dto.ts',
+  'apps/frontend/src/pages/SchoolProfile.tsx',
+  'apps/frontend/src/pages/Cities.tsx',
+  'apps/frontend/src/pages/CalendarView.tsx',
+  'apps/frontend/src/components/schools/VirtualSchoolList.tsx',
+  'apps/frontend/src/components/school-profile/modals/CrewModal.tsx',
   'apps/frontend/src/components/school-profile/modals/EventModal.tsx',
-  'apps/frontend/src/pages/Employees.tsx'
+  'apps/frontend/src/components/calendar/DayOffModal.tsx',
+  'apps/backend/src/schools/schools.controller.ts',
+  'apps/backend/src/events/events.controller.ts',
+  'apps/backend/src/events/events.service.ts',
+  'apps/backend/src/schools/dto/update-school.dto.ts',
+  'apps/frontend/src/hooks/useApi.ts'
 ];
 
-const outputFile = 'diagnostic_bundle_final.md';
+const outputFile = 'final_diagnostic_bundle.md';
 
+// Очищення старого файлу
 if (fs.existsSync(outputFile)) fs.unlinkSync(outputFile);
 
-filesToCollect.forEach(filePath => {
-  if (fs.existsSync(filePath)) {
-    const content = fs.readFileSync(filePath, 'utf8');
-    const ext = path.extname(filePath).replace('.', '');
-    // Визначаємо мову для підсвітки
-    const lang = (ext === 'tsx' || ext === 'ts') ? 'typescript' : (ext === 'prisma' ? 'prisma' : 'javascript');
+// Використовуємо filesToCollect, а не неіснуючий fileList
+filesToCollect.forEach(relativePath => {
+  try {
+    const fullPath = path.resolve(relativePath);
     
-    const mdBlock = `### \`${filePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`;
+    if (!fs.existsSync(fullPath)) {
+      console.warn(`[!] Файл не знайдено: ${relativePath}`);
+      return;
+    }
+
+    const content = fs.readFileSync(fullPath, 'utf8');
+    const ext = path.extname(fullPath).slice(1);
+    const lang = (ext === 'tsx' || ext === 'ts') ? 'typescript' : 'javascript';
+    
+    const mdBlock = `### \`${relativePath}\`\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n---\n\n`;
     fs.appendFileSync(outputFile, mdBlock);
-    console.log(`[+] Додано: ${filePath}`);
-  } else {
-    console.warn(`[!] Файл не знайдено, пропускаємо: ${filePath}`);
+    console.log(`[+] Додано: ${relativePath}`);
+  } catch (err) {
+    console.error(`[!] Помилка при обробці ${relativePath}:`, err.message);
   }
 });
 
-console.log(`\n✅ Готово! Усі файли зібрано у: ${outputFile}`);
+console.log(`\n✅ Готово! Твій бандл лежить у: ${outputFile}`);
