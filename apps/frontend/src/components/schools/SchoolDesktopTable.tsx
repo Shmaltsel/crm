@@ -48,7 +48,7 @@ export const SchoolRow = React.memo(
         onClick={() => navigate(`/schools/${school.id}`)}
         className="border-b border-slate-50 hover:bg-blue-50/50 transition-colors cursor-pointer"
       >
-        <td className="p-4 font-bold text-slate-800 max-w-0 w-full">
+        <td className="p-4 font-bold text-slate-800">
           <span className="block truncate" title={school.name}>
             {school.name}
           </span>
@@ -108,18 +108,15 @@ export default function SchoolDesktopTable({
   return (
     <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0 custom-scrollbar">
       <div className="overflow-y-auto flex-1">
-        <table className="w-full text-left border-collapse">
+        <table className="w-full text-left border-collapse table-fixed">
+          <colgroup>
+            <col style={{ width: "42%" }} />
+            <col style={{ width: "15%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "10%" }} />
+          </colgroup>
           <thead className="sticky top-0 z-10 bg-slate-50">
-            <tr className="border-b border-slate-100">
-              <th className="p-4 font-medium text-slate-600 w-[40%]">Назва школи</th>
-              <th className="p-4 font-medium text-slate-600 w-[15%]">Місто</th>
-              <th className="p-4 font-medium text-slate-600 w-[15%]">Статус</th>
-              <th className="p-4 font-medium text-slate-600 w-[20%]">Поточний етап</th>
-              <th className="p-4 font-medium text-slate-600 w-[10%] text-center">
-                Дія
-              </th>
-            </tr>
-          </thead>
             <tr className="border-b border-slate-100">
               <th className="p-4 font-medium text-slate-600">Назва школи</th>
               <th className="p-4 font-medium text-slate-600">Місто</th>
