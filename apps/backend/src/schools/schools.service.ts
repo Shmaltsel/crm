@@ -16,8 +16,30 @@ import { PageMetaDto } from '../common/dto/page-meta.dto';
 import { SchoolQueryDto } from './dto/school-query.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
 
+
 const PLANNED_STAGES = ['BASE', 'FIRST_CONTACT', 'DATE_CONFIRMED'];
 const IN_PROGRESS_STAGES = ['PREPARATION', 'IN_PROGRESS', 'DONE', 'REPORT'];
+
+function concurrencyLimit(n: number) {
+  let active = 0;
+  const queue: (() => void)[] = [];
+  const next = () => {
+    active--;
+    if (queue.length > 0) queue.shift()!();
+  };
+  return <T>(fn: () => Promise<T>): Promise<T> =>
+    new Promise<T>((resolve, reject) => {
+      const run = () => {
+        active++;
+        fn().then(resolve, reject).finally(next);
+      };
+      if (active >= n) {
+        queue.push(run);
+      } else {
+        run();
+      }
+    });
+}
 
 @Injectable()
 export class SchoolsService {
@@ -49,45 +71,61 @@ export class SchoolsService {
 
     this.parserService
       .parseSchoolData(data.name, sourceUrl, data.type)
-      .then(async (parsed) => {
-        if (!parsed) {
-          this.logger.warn(`Не вдалося знайти дані для закладу: ${data.name}`);
-          return;
-        }
-
-        const updateData: Record<string, unknown> = {};
-
-        if (!schoolData.address && parsed.address) {
-          updateData.address = parsed.address;
-        }
-        if (!schoolData.director && parsed.director) {
-          updateData.director = parsed.director;
-        }
-        if (!schoolData.childrenCount && parsed.childrenCount) {
-          updateData.childrenCount = parsed.childrenCount;
-        }
-
-        if (Object.keys(updateData).length === 0) {
-          this.logger.log(
-            `Дані школи "${data.name}" вже заповнені користувачем — пропускаємо оновлення з парсингу`,
-          );
-          return;
-        }
-
-        await this.prisma.school.update({
-          where: {
-            id: newSchool.id,
-          },
-          data: updateData,
-        });
-
-        this.logger.log(`Дані школи "${data.name}" успішно оновлені`);
-      })
-      .catch((error: Error) => {
-        this.logger.error(`Помилка оновлення даних школи: ${error.message}`);
-      });
+      this.enrichSchoolFromParser(newSchool, data.name, sourceUrl, data.type);
 
     return newSchool;
+  }
+
+  private async enrichSchoolFromParser(
+    school: { id: string; address: string | null; director: string | null; childrenCount: number | null },
+    name: string,
+    sourceUrl?: string,
+    type?: string,
+  ) {
+    try {
+      const parsed = await this.parserService.parseSchoolData(name, sourceUrl, type);
+      if (!parsed) {
+        this.logger.warn(`Не вдалося знайти дані для закладу: ${name}`);
+        return;
+      }
+
+      const updateData: Record<string, unknown> = {};
+
+      if (!school.address && parsed.address) {
+        updateData.address = parsed.address;
+      }
+      if (!school.director && parsed.director) {
+        updateData.director = parsed.director;
+      }
+      if (!school.childrenCount && parsed.childrenCount) {
+        updateData.childrenCount = parsed.childrenCount;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        this.logger.log(
+          `Дані школи "${name}" вже заповнені користувачем — пропускаємо оновлення з парсингу`,
+        );
+        return;
+      }
+
+      await this.prisma.school.update({
+        where: { id: school.id },
+        data: updateData,
+      });
+
+      this.logger.log(`Дані школи "${name}" успішно оновлені`);
+    } catch (error) {
+      this.logger.error(`Помилка оновлення даних школи: ${(error as Error).message}`);
+    }
+  }
+
+  private createMany(
+    schools: { name: string; type: string; cityId: string; director?: string; phone?: string }[],
+  ) {
+    return this.prisma.school.createMany({
+      data: schools,
+      skipDuplicates: true,
+    });
   }
 
   private buildFilters(
@@ -491,6 +529,7 @@ export class SchoolsService {
 
     if (toCreate.length === 0) {
       return {
+        city: city.name,
         total: allFromParser.length,
         created: 0,
         skipped: allFromParser.length,
@@ -501,12 +540,7 @@ export class SchoolsService {
       where: { city: city.name },
     });
 
-    let created = 0;
-    for (const school of toCreate) {
-      if (existingNames.has(normalize(school.name))) continue;
-
-      existingNames.add(normalize(school.name));
-
+    const schoolInputs = toCreate.map((school) => {
       const numMatch = school.name.match(/№?\s*(\d+)/);
       const num = numMatch?.[1];
       const matchedContacts = num
@@ -525,28 +559,36 @@ export class SchoolsService {
           (c) => c.role?.includes('Директор') || c.role?.includes('Завідувач'),
         ) || matchedContacts[0];
 
-      try {
-        await this.create({
-          name: school.name,
-          type,
-          cityId,
-          sourceUrl: school.url,
-          director: director?.contactName || '',
-          phone: director?.phone || '',
-        });
-        created++;
-      } catch (e) {
-        this.logger.error(
-          `Помилка створення ${school.name}: ${(e as Error).message}`,
+      return {
+        name: school.name,
+        type,
+        cityId,
+        director: director?.contactName || '',
+        phone: director?.phone || '',
+      };
+    });
+
+    await this.createMany(schoolInputs);
+
+    const createdSchools = await this.prisma.school.findMany({
+      where: { cityId, type, name: { in: schoolInputs.map((s) => s.name) } },
+    });
+
+    const limit = concurrencyLimit(5);
+    await Promise.allSettled(
+      createdSchools.map((school) => {
+        const input = allFromParser.find((si) => si.name === school.name);
+        return limit(() =>
+          this.enrichSchoolFromParser(school, school.name, input?.url, type),
         );
-      }
-    }
+      }),
+    );
 
     return {
       city: city.name,
       total: allFromParser.length,
-      created,
-      skipped: allFromParser.length - created,
+      created: schoolInputs.length,
+      skipped: allFromParser.length - schoolInputs.length,
     };
   }
 }
