@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ForbiddenException, HttpStatus } from '@nestjs/common';
+import { HttpStatus } from '@nestjs/common';
 import { DaysOffService } from './days-off.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
@@ -196,7 +196,7 @@ describe('DaysOffService', () => {
 
       await expect(
         service.create({ date: '2026-07-10', userId: 'host-2' }, managerUser),
-      ).rejects.toBeInstanceOf(ForbiddenException);
+      ).rejects.toBeInstanceOf(AppException);
     });
 
     it('MANAGER може призначити staff свого міста', async () => {
@@ -285,12 +285,12 @@ describe('DaysOffService', () => {
       });
     });
 
-    it('для role поза whitelist -> ForbiddenException', async () => {
+    it('для role поза whitelist -> AppException', async () => {
       const outsider = { ...hostUser, role: 'ACCOUNTANT' as any };
 
       await expect(
         service.create({ date: '2026-07-10', userId: 'host-2' }, outsider),
-      ).rejects.toBeInstanceOf(ForbiddenException);
+      ).rejects.toBeInstanceOf(AppException);
     });
 
     it('якщо existing відсутній -> викликає notifyManager(action=created)', async () => {
@@ -458,12 +458,12 @@ describe('DaysOffService', () => {
       });
 
       await expect(service.remove('d12', managerUser)).rejects.toBeInstanceOf(
-        ForbiddenException,
+        AppException,
       );
       expect(mockPrisma.dayOff.delete).not.toHaveBeenCalled();
     });
 
-    it('не owner і не manager/admin -> ForbiddenException', async () => {
+    it('не owner і не manager/admin -> AppException', async () => {
       mockPrisma.dayOff.findUnique.mockResolvedValueOnce({
         id: 'd13',
         userId: 'host-2',
@@ -472,7 +472,7 @@ describe('DaysOffService', () => {
       });
 
       await expect(service.remove('d13', driverUser)).rejects.toBeInstanceOf(
-        ForbiddenException,
+        AppException,
       );
     });
   });

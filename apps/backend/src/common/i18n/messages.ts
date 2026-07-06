@@ -31,6 +31,14 @@ export const MESSAGES = {
     uk: 'Вихідний день не знайдено',
     en: 'Day off not found',
   },
+  FORBIDDEN: {
+    uk: 'Недостатньо прав',
+    en: 'Forbidden',
+  },
+  CROSS_CITY_DAY_OFF: {
+    uk: 'Можна призначати вихідні лише співробітникам свого міста',
+    en: 'Can only manage day offs for own city staff',
+  },
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;

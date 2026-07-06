@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { AppException } from '../common/exceptions/app.exception';
@@ -56,13 +56,13 @@ export class DaysOffService {
         currentUser.role === 'MANAGER' &&
         target.cityId !== currentUser.cityId
       ) {
-        throw new ForbiddenException(
-          'Можна призначати вихідні лише співробітникам свого міста',
+        throw new AppException(
+          'CROSS_CITY_DAY_OFF', HttpStatus.FORBIDDEN,
         );
       }
       targetUserId = target.id;
     } else {
-      throw new ForbiddenException('Недостатньо прав');
+      throw new AppException('FORBIDDEN', HttpStatus.FORBIDDEN);
     }
 
     // Перевіряємо, чи вже існує вихідний, щоб не слати спам, якщо він просто оновлюється
@@ -113,13 +113,13 @@ export class DaysOffService {
     const isManagerOrAdmin = MANAGER_ROLES.includes(currentUser.role);
 
     if (!isOwner && !isManagerOrAdmin) {
-      throw new ForbiddenException('Недостатньо прав');
+      throw new AppException('FORBIDDEN', HttpStatus.FORBIDDEN);
     }
 
     if (currentUser.role === 'MANAGER' && !isOwner) {
       if (dayOff.user.cityId !== currentUser.cityId) {
-        throw new ForbiddenException(
-          'Можна скасовувати вихідні лише співробітникам свого міста',
+        throw new AppException(
+          'CROSS_CITY_DAY_OFF', HttpStatus.FORBIDDEN,
         );
       }
     }

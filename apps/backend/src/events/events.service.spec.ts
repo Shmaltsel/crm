@@ -238,7 +238,7 @@ describe('EventsService', () => {
 
       const result = await service.findAllForUser(
         { sub: 'mgr-1', name: 'М', role: 'MANAGER' },
-        { page: 2, take: 2 },
+        { page: 2, take: 2 } as any,
       );
 
       expect(result).toHaveProperty('data');

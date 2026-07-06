@@ -1,17 +1,3 @@
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { PageOptionsDto } from '../../common/dto/page-options.dto';
 
-export class EventQueryDto {
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @IsOptional()
-  page?: number;
-
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  @IsOptional()
-  take?: number;
-}
+export class EventQueryDto extends PageOptionsDto {}
