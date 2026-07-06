@@ -11,7 +11,8 @@ import {
   useDeleteProject,
 } from "../hooks/useEmployees";
 import { useCities } from "../hooks/useCities";
-import PhoneLink from "../components/PhoneLink";
+import EmployeeCard from "../components/employees/EmployeeCard";
+import { sectionVariants } from "../animations/employees";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
 
@@ -302,9 +303,9 @@ export default function Employees() {
         {grouped.map(({ role, label, items }, gi) => (
           <motion.div
             key={role}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: gi * 0.06 }}
+            variants={sectionVariants}
+            initial="hidden"
+            animate="visible"
           >
             <div className={`flex items-center gap-3 mb-4`}>
               <div
@@ -332,151 +333,23 @@ export default function Employees() {
               </motion.div>
             ) : (
               <motion.div
-                whileHover={{
-                  y: -2,
-                  boxShadow: "0 8px 24px -4px rgba(0,0,0,0.08)",
-                }}
-                transition={{ duration: 0.2 }}
-                className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+                variants={sectionVariants}
+                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"
               >
-                <div className="sm:hidden divide-y divide-slate-50">
-                  <AnimatePresence initial={false}>
-                    {items.map((u, ri) => (
-                      <motion.div
-                        key={u.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2, delay: ri * 0.04 }}
-                        className="p-4 flex flex-col gap-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
-                            >
-                              {u.name.charAt(0)}
-                            </div>
-                            <span className="font-medium text-slate-800">
-                              {u.name}
-                            </span>
-                          </div>
-                          {isSuperAdmin && (
-                            <div className="flex items-center gap-1 shrink-0">
-                              <motion.button
-                                whileTap={{ scale: 0.93 }}
-                                onClick={() => handleOpenModal(u)}
-                                className="text-slate-400 hover:text-blue-500 p-2 hover:bg-blue-50 rounded-lg"
-                              >
-                                ✏️
-                              </motion.button>
-                              <motion.button
-                                whileTap={{ scale: 0.93 }}
-                                onClick={() => handleDelete(u.id, u.name)}
-                                className="text-slate-400 hover:text-red-500 p-2 hover:bg-red-50 rounded-lg"
-                              >
-                                🗑
-                              </motion.button>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 pl-11">
-                          <PhoneLink phone={u.phone} />
-                          <span>{u.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2 pl-11">
-                          <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
-                            📍 {u.city?.name || "Всі міста"}
-                          </span>
-                          {u.car && (
-                            <span className="text-xs text-emerald-600 font-medium">
-                              🚗 {u.car}
-                            </span>
-                          )}
-                        </div>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
-                <table className="w-full text-left hidden sm:table">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      <th className="px-5 py-3">ПІБ</th>
-                      <th className="px-5 py-3">Телефон</th>
-                      <th className="px-5 py-3">Пошта / Логін</th>
-                      <th className="px-5 py-3">Місто</th>
-                      <th className="px-5 py-3 text-center">Дії</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <AnimatePresence initial={false}>
-                      {items.map((u, ri) => (
-                        <motion.tr
-                          key={u.id}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.2, delay: ri * 0.04 }}
-                          className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
-                        >
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-3">
-                              <motion.div
-                                initial={{ scale: 0.8, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                transition={{ duration: 0.2, delay: 0.05 }}
-                                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
-                              >
-                                {u.name.charAt(0)}
-                              </motion.div>
-                              <span className="font-medium text-slate-800">
-                                {u.name}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-5 py-4 text-slate-600 text-sm">
-                            <PhoneLink phone={u.phone} />
-                            {u.car && (
-                              <p className="text-xs text-emerald-600 font-medium mt-1">
-                                🚗 {u.car}
-                              </p>
-                            )}
-                          </td>
-                          <td className="px-5 py-4 text-slate-600 text-sm font-medium">
-                            {u.email}
-                          </td>
-                          <td className="px-5 py-4">
-                            <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
-                              📍 {u.city?.name || "Всі міста"}
-                            </span>
-                          </td>
-                          <td className="px-5 py-4 text-center">
-                            {isSuperAdmin && (
-                              <>
-                                <motion.button
-                                  whileTap={{ scale: 0.93 }}
-                                  onClick={() => handleOpenModal(u)}
-                                  className="text-slate-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 rounded-lg mr-2 transition-colors"
-                                >
-                                  ✏️
-                                </motion.button>
-                                <motion.button
-                                  whileTap={{ scale: 0.93 }}
-                                  onClick={() => handleDelete(u.id, u.name)}
-                                  className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
-                                >
-                                  🗑
-                                </motion.button>
-                              </>
-                            )}
-                          </td>
-                        </motion.tr>
-                      ))}
-                    </AnimatePresence>
-                  </tbody>
-                </table>
+                <AnimatePresence initial={false}>
+                  {items.map((u) => (
+                    <EmployeeCard
+                      key={u.id}
+                      user={u}
+                      role={role}
+                      isSuperAdmin={isSuperAdmin}
+                      onEdit={handleOpenModal}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </AnimatePresence>
               </motion.div>
-            )}
+            )}{" "}
           </motion.div>
         ))}
       </div>
@@ -514,14 +387,16 @@ export default function Employees() {
                 y: -3,
                 boxShadow: "0 8px 24px -4px rgba(0,0,0,0.10)",
               }}
-              className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default"
+             className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default hover:border-slate-200 transition-colors"
             >
               <div className="flex items-center gap-3">
                 <motion.div
-                  whileHover={{ scale: 1.3 }}
+                  whileHover={{ scale: 1.15 }}
                   transition={{ duration: 0.15 }}
-                  className={`w-4 h-4 rounded-full ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm`}
-                />
+                  className={`w-10 h-10 rounded-2xl flex items-center justify-center ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm ring-4 ring-offset-1 ring-slate-50`}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-white/80" />
+                </motion.div>
                 <div>
                   <span className="font-bold text-slate-800">{p.name}</span>
                   {!!(p as any).pricePerChild && (
