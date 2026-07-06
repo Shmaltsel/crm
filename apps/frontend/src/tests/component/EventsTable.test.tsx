@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
-vi.mock("axios", () => ({
-  default: { delete: vi.fn().mockResolvedValue({}) },
+vi.mock("../../hooks/useSchoolProfile", () => ({
+  useDeleteEvent: () => ({ mutateAsync: vi.fn().mockResolvedValue(undefined) }),
 }));
 
 import EventsTable from "../../components/school-profile/EventsTable";
@@ -32,10 +32,6 @@ describe("EventsTable", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.confirm = vi.fn(() => true);
-
-    vi.stubGlobal("localStorage", {
-      getItem: vi.fn(() => "fake-token"),
-    });
   });
 
   it("відображає всі події", () => {
@@ -46,6 +42,7 @@ describe("EventsTable", () => {
           selectedEventId={null}
           onEventSelect={onEventSelect}
           onDeleteSuccess={onDeleteSuccess}
+          schoolId="school-1"
         />
       </MemoryRouter>,
     );
@@ -62,6 +59,7 @@ describe("EventsTable", () => {
           selectedEventId={null}
           onEventSelect={onEventSelect}
           onDeleteSuccess={onDeleteSuccess}
+          schoolId="school-1"
         />
       </MemoryRouter>,
     );
@@ -76,6 +74,7 @@ describe("EventsTable", () => {
           selectedEventId={null}
           onEventSelect={onEventSelect}
           onDeleteSuccess={onDeleteSuccess}
+          schoolId="school-1"
         />
       </MemoryRouter>,
     );
@@ -90,6 +89,7 @@ describe("EventsTable", () => {
           selectedEventId={null}
           onEventSelect={onEventSelect}
           onDeleteSuccess={onDeleteSuccess}
+          schoolId="school-1"
         />
       </MemoryRouter>,
     );
@@ -105,6 +105,7 @@ describe("EventsTable", () => {
           selectedEventId={null}
           onEventSelect={onEventSelect}
           onDeleteSuccess={onDeleteSuccess}
+          schoolId="school-1"
         />
       </MemoryRouter>,
     );
@@ -115,7 +116,6 @@ describe("EventsTable", () => {
 
   it("не видаляє якщо confirm повернув false", async () => {
     window.confirm = vi.fn(() => false);
-    const axios = await import("axios");
     render(
       <MemoryRouter>
         <EventsTable
@@ -123,12 +123,13 @@ describe("EventsTable", () => {
           selectedEventId={null}
           onEventSelect={onEventSelect}
           onDeleteSuccess={onDeleteSuccess}
+          schoolId="school-1"
         />
       </MemoryRouter>,
     );
     const deleteButtons = screen.getAllByText("🗑");
     fireEvent.click(deleteButtons[0]);
-    expect(axios.default.delete).not.toHaveBeenCalled();
+    expect(onDeleteSuccess).not.toHaveBeenCalled();
   });
 
   it("виділяє вибрану подію", () => {
@@ -139,6 +140,7 @@ describe("EventsTable", () => {
           selectedEventId="ev-1"
           onEventSelect={onEventSelect}
           onDeleteSuccess={onDeleteSuccess}
+          schoolId="school-1"
         />
       </MemoryRouter>,
     );

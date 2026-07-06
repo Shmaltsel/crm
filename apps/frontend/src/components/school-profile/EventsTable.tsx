@@ -1,26 +1,25 @@
 
-
-import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Event } from '../../types';
+import { useDeleteEvent } from '../../hooks/useSchoolProfile';
 
 interface EventsTableProps {
   events: Event[];
   selectedEventId: string | null;
   onEventSelect: (id: string) => void;
   onDeleteSuccess: () => void;
+  schoolId: string;
 }
 
-export default function EventsTable({ events, selectedEventId, onEventSelect, onDeleteSuccess }: EventsTableProps) {
-  
+export default function EventsTable({ events, selectedEventId, onEventSelect, onDeleteSuccess, schoolId }: EventsTableProps) {
+  const deleteMutation = useDeleteEvent(schoolId);
+
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (!window.confirm('Видалити цю подію?')) return;
-    
+
     try {
-      await axios.delete(`https://crm-57qd.onrender.com/events/${id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
+      await deleteMutation.mutateAsync(id);
       onDeleteSuccess();
     } catch (error) {
       console.error('Помилка видалення:', error);

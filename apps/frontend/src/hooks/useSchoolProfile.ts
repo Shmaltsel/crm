@@ -241,6 +241,19 @@ export const useUpdateSchool = () => {
   });
 };
 
+export function useDeleteEvent(schoolId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (eventId: string) => {
+      await api.delete(`/events/${eventId}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["school", schoolId] });
+      qc.invalidateQueries({ queryKey: ["schoolCompletedEvents", schoolId] });
+    },
+  });
+}
+
 export const useCreateEvent = () => {
   const queryClient = useQueryClient();
 

@@ -540,6 +540,7 @@ export default function SchoolProfile() {
                 onDeleteSuccess={() =>
                   qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
                 }
+                schoolId={schoolData.id}
               />
             </Suspense>
             {completedEvents.length > 0 && (
