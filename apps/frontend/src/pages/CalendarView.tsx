@@ -4,8 +4,20 @@ import { useNavigate } from "react-router-dom";
 import { useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import DayOffModal from "../components/calendar/DayOffModal";
-import type { Event as CalendarEvent, Project, City, User, DayOff } from "../types";
-import { STAFF_ROLES, MANAGER_ROLES, PROJECT_HEX, ROLE_ICON_MAP, MONTH_NAMES } from "../features/calendar/constants";
+import type {
+  Event as CalendarEvent,
+  Project,
+  City,
+  User,
+  DayOff,
+} from "../types";
+import {
+  STAFF_ROLES,
+  MANAGER_ROLES,
+  PROJECT_HEX,
+  ROLE_ICON_MAP,
+  MONTH_NAMES,
+} from "../features/calendar/constants";
 import { toISODate, isPastDay } from "../features/calendar/utils/date";
 import { getDayColor } from "../features/calendar/utils/color";
 import { useCalendarMonth } from "../features/calendar/hooks/useCalendarMonth";
@@ -76,105 +88,20 @@ export default function CalendarView() {
     user?.cityId,
   );
 
-  const { startLongPress, cancelLongPress, wasLongPress } =
-    useLongPress(handleLongPressDayOff);
-
-  const handleMobileDayTap = useCallback((day: Date) => {
-    if (wasLongPress()) return;
-    setSelectedMobileDate(day);
-  }, [setSelectedMobileDate, wasLongPress]);
-
-  const selectedDayEvents = eventsByDate.get(toISODate(selectedMobileDate)) ?? [];
-
-  const handleDayOffClick = useCallback(
-    (e: React.MouseEvent, date: Date) => {
-      e.stopPropagation();
-      if (isPastDay(date)) return;
-
-      if (isStaff && user) {
-        const key = toISODate(date);
-        const existing = dayOffsByDate
-          .get(key)
-          ?.find((d) => d.userId === user.id);
-        if (existing) {
-          deleteDayOff.mutate(existing.id);
-        } else {
-          createDayOff.mutate({ date: key });
-        }
-        return;
-      }
-
-      if (isManagerOrAdmin) {
-        setDayOffModalDate(date);
-      }
-    },
-    [
-      isStaff,
-      isManagerOrAdmin,
-      user,
-      dayOffsByDate,
-      createDayOff,
-      deleteDayOff,
-    ],
+  const { startLongPress, cancelLongPress, wasLongPress } = useLongPress(
+    handleLongPressDayOff,
   );
 
-  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const longPressFired = useRef(false);
-
-  const startLongPress = useCallback(
+  const handleMobileDayTap = useCallback(
     (day: Date) => {
-      longPressFired.current = false;
-      pressTimer.current = setTimeout(() => {
-        longPressFired.current = true;
-        if ("vibrate" in navigator) navigator.vibrate(15);
-        if (isPastDay(day)) return;
-        if (isStaff && user) {
-          const key = toISODate(day);
-          const existing = dayOffsByDate
-            .get(key)
-            ?.find((d) => d.userId === user.id);
-          if (existing) deleteDayOff.mutate(existing.id);
-          else createDayOff.mutate({ date: key });
-        } else if (isManagerOrAdmin) {
-          setDayOffModalDate(day);
-        }
-      }, 550);
+      if (wasLongPress()) return;
+      setSelectedMobileDate(day);
     },
-    [
-      isStaff,
-      isManagerOrAdmin,
-      user,
-      dayOffsByDate,
-      createDayOff,
-      deleteDayOff,
-    ],
+    [setSelectedMobileDate, wasLongPress],
   );
 
-  const cancelLongPress = useCallback(() => {
-    if (pressTimer.current) clearTimeout(pressTimer.current);
-  }, []);
-
-  const handleMobileDayTap = useCallback((day: Date) => {
-    if (longPressFired.current) {
-      longPressFired.current = false;
-      return;
-    }
-    setSelectedMobileDate(day);
-  }, []);
-
-  const handleToggleStaffDayOff = useCallback(
-    (targetUserId: string, existingId?: string) => {
-      if (existingId) {
-        deleteDayOff.mutate(existingId);
-      } else if (dayOffModalDate) {
-        createDayOff.mutate({
-          date: toISODate(dayOffModalDate),
-          userId: targetUserId,
-        });
-      }
-    },
-    [dayOffModalDate, createDayOff, deleteDayOff],
-  );
+  const selectedDayEvents =
+    eventsByDate.get(toISODate(selectedMobileDate)) ?? [];
 
   if (eventsLoading)
     return (
@@ -539,7 +466,9 @@ export default function CalendarView() {
               const dayOffEntries = day
                 ? (dayOffsByDate.get(dayKey) ?? [])
                 : [];
-              const dayColor = day ? getDayColor(dayEvents, projectHexMap) : undefined;
+              const dayColor = day
+                ? getDayColor(dayEvents, projectHexMap)
+                : undefined;
 
               return (
                 <div
@@ -671,7 +600,10 @@ export default function CalendarView() {
                       ev.school && navigate(`/schools/${ev.school.id}`)
                     }
                     className="bg-white p-4 rounded-2xl border-l-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
-                    style={{ borderLeftColor: projectHexMap.get(ev.project) ?? PROJECT_HEX.blue }}
+                    style={{
+                      borderLeftColor:
+                        projectHexMap.get(ev.project) ?? PROJECT_HEX.blue,
+                    }}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <span className="text-xs font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-600">
