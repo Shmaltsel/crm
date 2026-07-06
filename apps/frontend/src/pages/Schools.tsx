@@ -79,9 +79,7 @@ export default function Schools() {
 
   const addSchoolMutation = useMutation({
     mutationFn: (newSchool: NewSchoolPayload) =>
-      api.post("/schools", newSchool, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      }),
+      api.post("/schools", newSchool),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["schools"] });
       setIsModalOpen(false);
@@ -94,10 +92,7 @@ export default function Schools() {
       api.post(
         "/schools/bulk-import",
         { cityId, type: "Школа" },
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-          timeout: 120000,
-        },
+        { timeout: 120000 },
       ),
     onSuccess: (res) => {
       alert(
@@ -176,11 +171,6 @@ export default function Schools() {
         queryFn: async () => {
           const res = await api.get<SchoolContact[]>(
             `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=Школа`,
-            {
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
-              },
-            },
           );
           return res.data;
         },
@@ -224,11 +214,6 @@ export default function Schools() {
             queryFn: async () => {
               const res = await api.get(
                 `/schools/search?q=${encodeURIComponent(value)}&type=Школа`,
-                {
-                  headers: {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                  },
-                },
               );
               return res.data;
             },

@@ -61,10 +61,7 @@ export default function EventModal({
         ...defaultValues,
       });
       setProjects([]);
-      api
-        .get<Project[]>("/projects", {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        })
+      api.get<Project[]>("/projects")
         .then((res) => {
           setProjects(res.data);
           if (!defaultValues?.project && res.data.length > 0) {

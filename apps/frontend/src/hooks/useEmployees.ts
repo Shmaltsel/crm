@@ -2,8 +2,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../config/api";
 import type { User, Project } from "../types";
 
-const h = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
-
 export interface UserFormData {
   fullName: string;
   phone: string;
@@ -19,7 +17,7 @@ export function useUsers() {
   return useQuery({
     queryKey: ["users"],
     queryFn: () =>
-      api.get<User[]>("/users", { headers: h() }).then((r) => r.data),
+      api.get<User[]>("/users", undefined).then((r) => r.data),
     staleTime: 2 * 60 * 1000,
   });
 }
@@ -28,7 +26,7 @@ export function useProjects() {
   return useQuery({
     queryKey: ["projects"],
     queryFn: () =>
-      api.get<Project[]>("/projects", { headers: h() }).then((r) => r.data),
+      api.get<Project[]>("/projects", undefined).then((r) => r.data),
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -37,7 +35,7 @@ export function useCreateUser() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (form: UserFormData) =>
-      api.post<User>("/users", form, { headers: h() }).then((r) => r.data),
+      api.post<User>("/users", form, undefined).then((r) => r.data),
     onMutate: async (form) => {
       await qc.cancelQueries({ queryKey: ["users"] });
       const prev = qc.getQueryData<User[]>(["users"]);
@@ -69,7 +67,7 @@ export function useUpdateUser() {
   return useMutation({
     mutationFn: ({ id, form }: { id: string; form: Partial<UserFormData> }) =>
       api
-        .patch<User>(`/users/${id}`, form, { headers: h() })
+        .patch<User>(`/users/${id}`, form, undefined)
         .then((r) => r.data),
     onMutate: async ({ id, form }) => {
       await qc.cancelQueries({ queryKey: ["users"] });
@@ -102,7 +100,7 @@ export function useDeleteUser() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      api.delete(`/users/${id}`, { headers: h() }).then((r) => r.data),
+      api.delete(`/users/${id}`, undefined).then((r) => r.data),
     onMutate: async (id) => {
       await qc.cancelQueries({ queryKey: ["users"] });
       const prev = qc.getQueryData<User[]>(["users"]);
@@ -126,7 +124,7 @@ export function useCreateProject() {
       pricePerChild?: number;
     }) =>
       api
-        .post<Project>("/projects", form, { headers: h() })
+        .post<Project>("/projects", form, undefined)
         .then((r) => r.data),
     onSuccess: (data) => {
       qc.setQueryData(["projects"], (old: Project[] | undefined) =>
@@ -147,7 +145,7 @@ export function useUpdateProject() {
       form: { name?: string; color?: string; pricePerChild?: number };
     }) =>
       api
-        .patch<Project>(`/projects/${id}`, form, { headers: h() })
+        .patch<Project>(`/projects/${id}`, form, undefined)
         .then((r) => r.data),
     onSuccess: (data, vars) => {
       qc.setQueryData(["projects"], (old: Project[] | undefined) =>
@@ -163,7 +161,7 @@ export function useDeleteProject() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      api.delete(`/projects/${id}`, { headers: h() }).then((r) => r.data),
+      api.delete(`/projects/${id}`, undefined).then((r) => r.data),
     onSuccess: (_data, id) => {
       qc.setQueryData(["projects"], (old: Project[] | undefined) =>
         Array.isArray(old) ? old.filter((p) => p.id !== id) : old,

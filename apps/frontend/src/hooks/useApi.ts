@@ -7,15 +7,10 @@ import {
 import { api } from "../config/api";
 import type { City, School } from "../types";
 
-const auth = () => ({
-  Authorization: `Bearer ${localStorage.getItem("token")}`,
-});
-
 export function useCities() {
   return useQuery({
     queryKey: ["cities"],
-    queryFn: () =>
-      api.get<City[]>("/cities", { headers: auth() }).then((r) => r.data),
+    queryFn: () => api.get<City[]>("/cities").then((r) => r.data),
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -24,9 +19,7 @@ export function useAddCity() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (name: string) =>
-      api
-        .post<City>("/cities", { name }, { headers: auth() })
-        .then((r) => r.data),
+      api.post<City>("/cities", { name }).then((r) => r.data),
     onSuccess: (newCity) => {
       qc.setQueryData(["cities"], (old: City[] = []) => [newCity, ...old]);
     },
@@ -58,7 +51,6 @@ export function useSchools(filters: SchoolFilters = {}) {
     queryFn: ({ pageParam = 1 }) =>
       api
         .get<SchoolsPage>("/schools", {
-          headers: auth(),
           params: { ...filters, page: pageParam, take: 30 },
         })
         .then((r) => r.data),
@@ -76,7 +68,7 @@ export function useSchoolStats(
     queryKey: ["schoolStats", filters],
     queryFn: () =>
       api
-        .get("/schools/stats", { headers: auth(), params: filters })
+        .get("/schools/stats", { params: filters })
         .then((r) => r.data),
     staleTime: 2 * 60 * 1000,
   });
@@ -87,7 +79,7 @@ export function useSupportedCities() {
     queryKey: ["supportedCities"],
     queryFn: () =>
       api
-        .get<string[]>("/schools/supported-cities", { headers: auth() })
+        .get<string[]>("/schools/supported-cities")
         .then((r) => r.data),
     staleTime: 60 * 60 * 1000,
   });
@@ -98,7 +90,7 @@ export function useAddSchool() {
   return useMutation({
     mutationFn: (data: Partial<School>) =>
       api
-        .post<School>("/schools", data, { headers: auth() })
+        .post<School>("/schools", data)
         .then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["schools"] });
@@ -111,7 +103,7 @@ export function useDeleteSchool() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (schoolId: string) =>
-      api.delete(`/schools/${schoolId}`, { headers: auth() }),
+      api.delete(`/schools/${schoolId}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["schools"] });
       qc.invalidateQueries({ queryKey: ["schoolStats"] });
@@ -122,7 +114,7 @@ export function useDeleteSchool() {
 export function useEvents() {
   return useQuery({
     queryKey: ["events"],
-    queryFn: () => api.get("/events", { headers: auth() }).then((r) => r.data),
+    queryFn: () => api.get("/events").then((r) => r.data),
     staleTime: 2 * 60 * 1000,
   });
 }
@@ -134,7 +126,7 @@ export function usePrefetchSchool() {
       queryKey: ["school", schoolId],
       queryFn: () =>
         api
-          .get<School>(`/schools/${schoolId}`, { headers: auth() })
+          .get<School>(`/schools/${schoolId}`)
           .then((r) => r.data),
       staleTime: 2 * 60 * 1000,
     });

@@ -8,15 +8,11 @@ import type {
 } from "../types";
 import type { ReportData } from "../components/school-profile/modals/ReportModal";
 
-const authHeader = () => ({
-  Authorization: `Bearer ${localStorage.getItem("token")}`,
-});
-
 export function useSchool(id: string | undefined) {
   return useQuery({
     queryKey: ["school", id],
     queryFn: async () => {
-      const res = await api.get(`/schools/${id}`, { headers: authHeader() });
+      const res = await api.get(`/schools/${id}`);
       return res.data;
     },
     enabled: !!id,
@@ -48,7 +44,7 @@ export function useSchoolEvents(schoolId: string | undefined, full = false) {
       const url = full
         ? `/events/school/${schoolId}`
         : `/events/school/${schoolId}?minimal=true`;
-      const res = await api.get<Event[]>(url, { headers: authHeader() });
+      const res = await api.get<Event[]>(url, undefined);
       return res.data.filter((ev) => ev.status !== "RE_SALE");
     },
     enabled: !!schoolId,
@@ -90,7 +86,7 @@ export function useUpdateEventStatus() {
         .patch(
           `/events/${eventId}/status`,
           { status, actionName, comment },
-          { headers: authHeader() },
+          undefined,
         )
         .then((r) => r.data),
     onSuccess: (data, vars) => {
@@ -128,7 +124,7 @@ export function useUpdatePreparation() {
         .patch(
           `/events/${eventId}/preparation`,
           { field, status },
-          { headers: authHeader() },
+          undefined,
         )
         .then((r) => r.data),
     onSuccess: (_data, vars) => {
@@ -155,7 +151,7 @@ export function useAssignCrew() {
         .post(
           `/events/${eventId}/assign-crew`,
           { crewId },
-          { headers: authHeader() },
+          undefined,
         )
         .then((r) => r.data),
     onSuccess: (data, vars) => {
@@ -213,7 +209,7 @@ export function useAddComment() {
         .post(
           `/events/${eventId}/history`,
           { comment },
-          { headers: authHeader() },
+          undefined,
         )
         .then((r) => r.data),
     onSuccess: (data, vars) => {
@@ -286,7 +282,7 @@ export function useUpdateHistoryComment() {
         .patch(
           `/events/history/${historyId}`,
           { comment },
-          { headers: authHeader() },
+          undefined,
         )
         .then((r) => r.data),
     onSuccess: (_data, vars) => {
