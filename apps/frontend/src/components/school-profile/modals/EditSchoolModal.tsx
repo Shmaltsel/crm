@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -19,6 +19,19 @@ export default function EditSchoolModal({
   defaultValues,
   onSave,
 }: EditSchoolModalProps) {
+  const headingId = 'edit-school-modal-heading';
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
   const {
     register,
     handleSubmit,
@@ -37,15 +50,21 @@ export default function EditSchoolModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={headingId}
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       {/* Bottom-sheet на мобільному, центрований діалог на десктопі */}
       <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl overflow-hidden max-h-[92vh] flex flex-col">
         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
 
         {/* Шапка не зжимається (shrink-0) */}
         <div className="p-5 sm:p-6 border-b flex justify-between items-center bg-slate-50 shrink-0">
-          <h3 className="text-xl font-bold">Редагування</h3>
-          <button onClick={onClose} className="text-slate-400 p-2 -mr-2">
+          <h3 id={headingId} className="text-xl font-bold">Редагування</h3>
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 p-2 -mr-2">
             ✕
           </button>
         </div>

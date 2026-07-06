@@ -146,6 +146,70 @@ describe("API auto-refresh interceptor", () => {
     expect(dispatchSpy).toHaveBeenCalledTimes(1);
   });
 
+  it("паралельні 401-запити — лише один refresh (single-flight)", async () => {
+    let refreshCalls = 0;
+
+    const instance = axios.create({ baseURL: "/api", withCredentials: true });
+
+    let refreshPromise: Promise<void> | null = null;
+
+    instance.interceptors.response.use(
+      (res) => res,
+      async (error: any) => {
+        const original = error.config;
+        const isAuth =
+          original?.url?.includes("/auth/login") ||
+          original?.url?.includes("/auth/refresh");
+
+        if (
+          error.response?.status === 401 &&
+          original &&
+          !original._retry &&
+          !isAuth
+        ) {
+          original._retry = true;
+          try {
+            if (!refreshPromise) {
+              refreshPromise = instance
+                .post("/auth/refresh")
+                .then(() => undefined)
+                .finally(() => {
+                  refreshPromise = null;
+                });
+            }
+            await refreshPromise;
+            return instance(original);
+          } catch {
+            window.dispatchEvent(new Event("auth:expired"));
+            return Promise.reject(error);
+          }
+        }
+        return Promise.reject(error);
+      },
+    );
+
+    instance.defaults.adapter = (config: any) => {
+      if (config.url === "/auth/refresh") {
+        refreshCalls++;
+        return okAdapter({ ok: true })(config);
+      }
+      if (config.url?.startsWith("/data/") && config._retry) {
+        return okAdapter({ id: config.url.split("/").pop() })(config);
+      }
+      return rejectingAdapter(401, null)(config);
+    };
+
+    const results = await Promise.all([
+      instance.get("/data/1"),
+      instance.get("/data/2"),
+      instance.get("/data/3"),
+    ]);
+
+    expect(results).toHaveLength(3);
+    results.forEach((r) => expect(r.status).toBe(200));
+    expect(refreshCalls).toBe(1);
+  });
+
   it("не рефрешить на auth-ендпоінтах", async () => {
     const instance = axios.create({ baseURL: "/api", withCredentials: true });
 

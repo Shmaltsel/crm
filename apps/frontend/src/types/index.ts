@@ -174,6 +174,13 @@ export interface PipelineStage {
   name: string;
 }
 
+export interface DayOff {
+  id: string;
+  userId: string;
+  date: string;
+  user: { id: string; name: string; role: string; cityId: string | null };
+}
+
 export interface IssueReport {
   id: string;
   eventId: string;
@@ -183,4 +190,58 @@ export interface IssueReport {
   cityId: string;
   status: string;
   createdAt: string;
+}
+
+export interface FinanceKpi {
+  totalRevenue: number;
+  totalExpenses: number;
+  totalProfit: number;
+  totalEvents: number;
+}
+
+export interface MonthlyFinance {
+  month: string;
+  revenue: number;
+  profit: number;
+}
+
+export interface FinanceByProject {
+  name: string;
+  value: number;
+}
+
+export interface FinanceByCategory {
+  name: string;
+  value: number;
+}
+
+export interface FinanceTopSchool {
+  name: string;
+  count: number;
+  revenue: number;
+}
+
+export interface FinanceEventItem {
+  id: string;
+  date: string;
+  school: string;
+  profit: number;
+  revenue: number;
+}
+
+export interface FinanceFilterOptions {
+  projects: string[];
+  cities: { id: string; name: string }[];
+}
+
+export interface FinanceDashboardData {
+  kpi: FinanceKpi;
+  monthly: MonthlyFinance[];
+  expectedRevenue: number;
+  filters: FinanceFilterOptions;
+  byProject?: FinanceByProject[];
+  byExpenseCategory?: FinanceByCategory[];
+  topSchools?: FinanceTopSchool[];
+  topEvents?: FinanceEventItem[];
+  worstEvents?: FinanceEventItem[];
 }

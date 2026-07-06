@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PNPM_VERSION: '10'
+  NODE_VERSION: '22'
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: crm
+          POSTGRES_PASSWORD: crm
+          POSTGRES_DB: crm_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Встановлення залежностей
+        run: pnpm install --frozen-lockfile
+
+      - name: Генерація Prisma клієнта
+        run: pnpm --filter backend exec prisma generate
+
+      - name: Лінт — backend
+        run: pnpm --filter backend lint
+
+      - name: Лінт — frontend
+        run: pnpm --filter frontend lint
+
+      - name: TypeScript — backend
+        run: pnpm --filter backend exec tsc --noEmit
+
+      - name: TypeScript — frontend
+        run: pnpm --filter frontend exec tsc --noEmit
+
+      - name: Білд — backend
+        run: pnpm --filter backend build
+
+      - name: Білд — frontend
+        run: pnpm --filter frontend build
+
+      - name: Unit-тести + покриття — backend
+        run: pnpm --filter backend test:cov
+
+      - name: Unit-тести + покриття — frontend
+        run: pnpm --filter frontend test:run -- --coverage
+
+      - name: Міграція БД для e2e
+        run: pnpm --filter backend exec prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://crm:crm@localhost:5432/crm_test
+
+      - name: E2E-тести — backend
+        run: pnpm --filter backend test:e2e
+        env:
+          DATABASE_URL: postgresql://crm:crm@localhost:5432/crm_test
+          DIRECT_URL: postgresql://crm:crm@localhost:5432/crm_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-only-secret-do-not-use-elsewhere-12345
+          FRONTEND_URL: http://localhost:5173
+          TELEGRAM_BOT_TOKEN: test-telegram-token
+          NODE_ENV: test
+
+      - name: Збір звіту покриття
+        if: always()
+        run: |
+          mkdir -p coverage-report
+          cp -r apps/backend/coverage coverage-report/backend 2>/dev/null || true
+          cp -r apps/frontend/coverage coverage-report/frontend 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report-${{ github.sha }}
+          path: coverage-report

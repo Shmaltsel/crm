@@ -1,16 +1,17 @@
 import './instrument';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ClassSerializerInterceptor } from '@nestjs/common';
+import { ClassSerializerInterceptor, Logger } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
-import { Logger } from 'nestjs-pino';
+import { Logger as PinoLogger } from 'nestjs-pino';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { PrismaService } from './prisma/prisma.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
-  app.useLogger(app.get(Logger));
+  app.useLogger(app.get(PinoLogger));
   app.use(helmet());
   app.use(cookieParser());
 
@@ -49,6 +50,25 @@ async function bootstrap() {
 </body></html>`);
     });
   }
+
+  app.enableShutdownHooks();
+  const logger = new Logger('Bootstrap');
+
+  process.on('SIGTERM', async () => {
+    logger.log('Отримано SIGTERM, завершення роботи...');
+    const prisma = app.get(PrismaService);
+    await prisma.$disconnect();
+    await app.close();
+    process.exit(0);
+  });
+
+  process.on('SIGINT', async () => {
+    logger.log('Отримано SIGINT, завершення роботи...');
+    const prisma = app.get(PrismaService);
+    await prisma.$disconnect();
+    await app.close();
+    process.exit(0);
+  });
 
   await app.listen(process.env.PORT ?? 3000);
 }

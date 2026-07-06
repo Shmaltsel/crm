@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../../../config/api";
 
@@ -22,6 +22,8 @@ export default function RescheduleModal({
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [loading, setLoading] = useState(false);
+  const headingId = 'reschedule-modal-heading';
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (isOpen && currentDate) {
@@ -29,6 +31,17 @@ export default function RescheduleModal({
       setTime(currentTime || "");
     }
   }, [isOpen, currentDate, currentTime]);
+
+  useEffect(() => {
+    if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -47,8 +60,12 @@ export default function RescheduleModal({
 
   return createPortal(
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={headingId}
       className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
       style={{ animation: "fadeIn 0.2s ease-out forwards" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -62,13 +79,10 @@ export default function RescheduleModal({
         style={{ animation: "modalScale 0.3s ease-out forwards" }}
       >
         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-          <h3 className="text-xl font-bold text-slate-800">
+          <h3 id={headingId} className="text-xl font-bold text-slate-800">
             📅 Перенести подію
           </h3>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
-          >
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors">
             ✕
           </button>
         </div>

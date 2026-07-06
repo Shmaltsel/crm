@@ -231,10 +231,10 @@ describe('FinanceService', () => {
         .mockResolvedValueOnce([]);
 
       const result = await service.getDashboard({});
-      const fuel = result.byExpenseCategory.find(
+      const fuel = result.byExpenseCategory!.find(
         (c: any) => c.name === 'Паливо',
       );
-      const ads = result.byExpenseCategory.find(
+      const ads = result.byExpenseCategory!.find(
         (c: any) => c.name === 'Реклама',
       );
       expect(fuel?.value).toBe(800);

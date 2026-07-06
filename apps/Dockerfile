@@ -15,12 +15,16 @@ RUN pnpm --filter backend build
 RUN pnpm --filter backend deploy --prod /prod/backend
 
 FROM node:22-alpine AS runtime
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl && \
+    addgroup -S appgroup && \
+    adduser -S appuser -G appgroup
 WORKDIR /app
 COPY --from=build /prod/backend/dist ./dist
 COPY --from=build /prod/backend/node_modules ./node_modules
 COPY --from=build /prod/backend/prisma ./prisma
 COPY --from=build /prod/backend/package.json ./package.json
+RUN chown -R appuser:appgroup /app
+USER appuser
 ENV NODE_ENV=production
 EXPOSE 3000
 CMD ["node", "dist/main.js"]

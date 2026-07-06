@@ -56,3 +56,11 @@ pids
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 /generated/prisma
+
+# SQLite dev db (not used with Postgres)
+*.db
+*.db-journal
+
+# Список помилок TypeScript/ESLint
+ts-errors.txt
+eslint-errors.txt

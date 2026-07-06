@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../../../config/api";
 
@@ -31,6 +31,19 @@ export default function IssueModal({
   const [deadline, setDeadline] = useState("");
   const [assignedUserId, setAssignedUserId] = useState("");
   const [sent, setSent] = useState(false);
+  const headingId = 'issue-modal-heading';
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -62,8 +75,12 @@ export default function IssueModal({
 
   return createPortal(
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={headingId}
       className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
       style={{ animation: "fadeIn 0.2s ease-out forwards" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -78,16 +95,13 @@ export default function IssueModal({
       >
         <div className="p-5 border-b border-slate-100 flex justify-between items-start bg-slate-50 shrink-0">
           <div>
-            <h3 className="text-xl font-bold text-slate-800">🚨 Запит</h3>
+            <h3 id={headingId} className="text-xl font-bold text-slate-800">🚨 Запит</h3>
             <p className="text-sm text-red-500 mt-0.5 font-medium">
               {schoolName}
             </p>
             <p className="text-xs text-slate-400 mt-0.5">{eventName}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
-          >
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors">
             ✕
           </button>
         </div>

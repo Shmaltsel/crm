@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Expense {
@@ -226,6 +226,19 @@ export default function ReportModal({
   eventIndex,
   crew,
 }: ReportModalProps) {
+  const headingId = 'report-modal-heading';
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
   const [form, setForm] = useState({
     announcementDone: true,
     materialShown: true,
@@ -304,11 +317,15 @@ export default function ReportModal({
     <AnimatePresence>
       {isOpen && (
         <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={headingId}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
           <motion.div
             initial={{ opacity: 0, y: 24, scale: 0.97 }}
@@ -322,17 +339,14 @@ export default function ReportModal({
         {/* Header */}
         <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 bg-slate-50 flex items-start justify-between shrink-0">
           <div className="min-w-0">
-            <h3 className="text-lg sm:text-xl font-bold text-slate-800 leading-tight">
+            <h3 id={headingId} className="text-lg sm:text-xl font-bold text-slate-800 leading-tight">
               Звіт по події
             </h3>
             <p className="text-sm text-slate-500 mt-0.5 truncate">
               {schoolName}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-lg leading-none p-2 -mr-2 shrink-0"
-          >
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 text-lg leading-none p-2 -mr-2 shrink-0">
             ✕
           </button>
         </div>

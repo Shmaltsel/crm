@@ -1,18 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
+import type { Event, Project } from "../types";
 
 export function useCalendarEvents() {
-  return useQuery({
+  return useQuery<Event[]>({
     queryKey: ["calendarEvents"],
-    queryFn: () => api.get("/events").then((r) => r.data),
+    queryFn: () => api.get<Event[]>("/events").then((r) => r.data),
     staleTime: 60 * 1000,
   });
 }
 
 export function useCalendarProjects() {
-  return useQuery({
+  return useQuery<Project[]>({
     queryKey: ["projects"],
-    queryFn: () => api.get("/projects").then((r) => r.data),
+    queryFn: () => api.get<Project[]>("/projects").then((r) => r.data),
     staleTime: 5 * 60 * 1000,
   });
 }

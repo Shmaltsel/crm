@@ -3,6 +3,8 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { EventsController } from './events.controller';
 import { EventsService } from './events.service';
+import { EventsReportService } from './events-report.service';
+import { EventsSchedulingService } from './events-scheduling.service';
 import { JwtService } from '@nestjs/jwt';
 import { AuthGuard } from '../auth/auth.guard';
 import { OwnershipGuard } from '../auth/guards/ownership.guard';
@@ -14,6 +16,14 @@ const mockEventsService = {
   findOne: jest.fn(),
   addHistoryComment: jest.fn(),
   updateHistoryComment: jest.fn(),
+};
+
+const mockEventsReportService = {
+  submitReport: jest.fn(),
+};
+
+const mockEventsSchedulingService = {
+  rescheduleEvent: jest.fn(),
 };
 
 const mockGuard = { canActivate: jest.fn() };
@@ -30,6 +40,8 @@ describe('EventsController (HTTP)', () => {
       controllers: [EventsController],
       providers: [
         { provide: EventsService, useValue: mockEventsService },
+        { provide: EventsReportService, useValue: mockEventsReportService },
+        { provide: EventsSchedulingService, useValue: mockEventsSchedulingService },
         { provide: JwtService, useValue: mockJwtService },
       ],
     })

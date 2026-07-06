@@ -17,4 +17,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-.DS_Storebackups/
+.DS_Store
+backups/
+
+# Список помилок TypeScript/ESLint
+ts-errors.txt
+eslint-errors.txt
+
+# Експортовані артефакти
+project_export/

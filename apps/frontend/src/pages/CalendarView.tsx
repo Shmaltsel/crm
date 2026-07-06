@@ -12,6 +12,7 @@ import {
 import { useState, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import DayOffModal from "../components/calendar/DayOffModal";
+import type { Event, Project, City, User, DayOff } from "../types";
 
 const STAFF_ROLES = ["HOST", "DRIVER"];
 const MANAGER_ROLES = ["SUPERADMIN", "MANAGER"];
@@ -115,33 +116,65 @@ export default function CalendarView() {
           ? filterCityId
           : null;
     return allUsers.filter(
-      (u: any) =>
+      (u: User) =>
         STAFF_ROLES.includes(u.role) && (!cityScope || u.cityId === cityScope),
     );
   }, [allUsers, userRole, user?.cityId, filterCityId]);
 
-  const filteredEvents = events.filter((ev: any) => {
-    if (ev.status === "RE_SALE") return false;
-    if (filterCityId !== "ALL" && ev.city?.id !== filterCityId) return false;
-    return true;
-  });
-
-  const getEventsForDay = (date: Date) => {
-    return filteredEvents.filter((ev: any) => {
-      const evDate = new Date(ev.date);
-      return (
-        evDate.getFullYear() === date.getFullYear() &&
-        evDate.getMonth() === date.getMonth() &&
-        evDate.getDate() === date.getDate()
-      );
+  const filteredEvents = useMemo(() => {
+    return events.filter((ev: Event) => {
+      if (ev.status === "RE_SALE") return false;
+      if (filterCityId !== "ALL" && ev.city?.id !== filterCityId) return false;
+      return true;
     });
-  };
+  }, [events, filterCityId]);
+
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, Event[]>();
+    for (const ev of filteredEvents) {
+      const key = ev.date.slice(0, 10);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(ev);
+    }
+    return map;
+  }, [filteredEvents]);
+
+  const projectColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of projects) {
+      switch (p.color) {
+        case "emerald":
+          map.set(p.name, "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200 hover:border-emerald-300"); break;
+        case "rose":
+          map.set(p.name, "bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200 hover:border-rose-300"); break;
+        case "red":
+          map.set(p.name, "bg-red-100 text-red-700 border-red-300 hover:bg-red-200 hover:border-red-400"); break;
+        case "amber":
+          map.set(p.name, "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200 hover:border-amber-300"); break;
+        case "purple":
+          map.set(p.name, "bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200 hover:border-purple-300"); break;
+        default:
+          map.set(p.name, "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300");
+      }
+    }
+    return map;
+  }, [projects]);
+
+  const projectHexMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of projects) {
+      map.set(p.name, PROJECT_HEX[p.color] || PROJECT_HEX.blue);
+    }
+    return map;
+  }, [projects]);
 
   const isPastDay = (date: Date) => {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
     return date < startOfToday;
   };
+
+  const selectedDayEvents = eventsByDate.get(toISODate(selectedMobileDate)) ?? [];
 
   const handleDayOffClick = useCallback(
     (e: React.MouseEvent, date: Date) => {
@@ -248,31 +281,6 @@ export default function CalendarView() {
     "Грудень",
   ];
 
-  const getProjectColor = (projectName: string) => {
-    const proj = projects.find((p: any) => p.name === projectName);
-    const color = proj ? proj.color : "blue";
-
-    switch (color) {
-      case "emerald":
-        return "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200 hover:border-emerald-300";
-      case "rose":
-        return "bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200 hover:border-rose-300";
-      case "red":
-        return "bg-red-100 text-red-700 border-red-300 hover:bg-red-200 hover:border-red-400";
-      case "amber":
-        return "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200 hover:border-amber-300";
-      case "purple":
-        return "bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200 hover:border-purple-300";
-      default:
-        return "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300";
-    }
-  };
-
-  const getProjectHex = (projectName: string) => {
-    const proj = projects.find((p: any) => p.name === projectName);
-    return PROJECT_HEX[proj?.color] || PROJECT_HEX.blue;
-  };
-
   const shadeHex = (hex: string, percent: number) => {
     const n = parseInt(hex.replace("#", ""), 16);
     const r = Math.min(255, Math.max(0, (n >> 16) + percent));
@@ -281,11 +289,11 @@ export default function CalendarView() {
     return `rgb(${r}, ${g}, ${b})`;
   };
 
-  const getDayColor = (dayEvents: any[]) => {
+  const getDayColor = (dayEvents: Event[]) => {
     if (dayEvents.length === 0) return undefined;
     const counts = new Map<string, number>();
     for (const ev of dayEvents) {
-      const hex = getProjectHex(ev.project);
+      const hex = projectHexMap.get(ev.project) ?? PROJECT_HEX.blue;
       counts.set(hex, (counts.get(hex) || 0) + 1);
     }
     const total = dayEvents.length;
@@ -378,8 +386,6 @@ export default function CalendarView() {
       </div>
     );
 
-  const selectedDayEvents = getEventsForDay(selectedMobileDate);
-
   return (
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen pb-24">
       <style>{`
@@ -404,7 +410,7 @@ export default function CalendarView() {
           </p>
 
           <div className="hidden md:flex flex-wrap items-center gap-3 mt-4">
-            {projects.map((p: any) => {
+            {projects.map((p: Project) => {
               const badgeColor =
                 {
                   blue: "bg-blue-400",
@@ -441,7 +447,7 @@ export default function CalendarView() {
               className="text-sm font-semibold text-slate-800 outline-none cursor-pointer bg-transparent"
             >
               <option value="ALL">🌍 Всі міста</option>
-              {cities.map((c: any) => (
+              {cities.map((c: City) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
@@ -488,8 +494,8 @@ export default function CalendarView() {
               day && day.toDateString() === new Date().toDateString();
             const isSelected =
               day && day.toDateString() === selectedMobileDate.toDateString();
-            const dayEvents = day ? getEventsForDay(day) : [];
             const dayKey = day ? toISODate(day) : "";
+            const dayEvents = day ? (eventsByDate.get(dayKey) ?? []) : [];
             const dayOffEntries = day ? (dayOffsByDate.get(dayKey) ?? []) : [];
 
             const myDayOff = isStaff
@@ -539,9 +545,9 @@ export default function CalendarView() {
                               Вихідний ({dayOffEntries.length})
                             </p>
                             <div className="space-y-1">
-                              {dayOffEntries.map((d) => {
+                              {dayOffEntries.map((d: DayOff) => {
                                 const u = allUsers.find(
-                                  (au: any) => au.id === d.userId,
+                                  (au: User) => au.id === d.userId,
                                 );
                                 return (
                                   <p
@@ -578,13 +584,13 @@ export default function CalendarView() {
                     )}
 
                     <div className="space-y-1.5">
-                      {dayEvents.slice(0, 3).map((ev: any) => (
+                      {dayEvents.slice(0, 3).map((ev: Event) => (
                         <div
                           key={ev.id}
                           className="relative group/event z-0 hover:z-50"
                         >
                           <button
-                            className={`w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${getProjectColor(ev.project)}`}
+                            className={`w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${projectColorMap.get(ev.project) ?? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300"}`}
                           >
                             {ev.time || "—"}
                           </button>
@@ -665,8 +671,8 @@ export default function CalendarView() {
                 day && day.toDateString() === new Date().toDateString();
               const isSelected =
                 day && day.toDateString() === selectedMobileDate.toDateString();
-              const dayEvents = day ? getEventsForDay(day) : [];
               const dayKey = day ? toISODate(day) : "";
+              const dayEvents = day ? (eventsByDate.get(dayKey) ?? []) : [];
               const dayOffEntries = day
                 ? (dayOffsByDate.get(dayKey) ?? [])
                 : [];
@@ -716,7 +722,7 @@ export default function CalendarView() {
         </div>
 
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 mt-3 px-1">
-          {projects.map((p: any) => (
+          {projects.map((p: Project) => (
             <span
               key={p.id}
               className="flex items-center gap-1 text-[10px] font-medium text-slate-500"
@@ -742,7 +748,7 @@ export default function CalendarView() {
               className="ml-auto text-[11px] font-semibold text-slate-700 outline-none bg-slate-50 border border-slate-200 rounded-lg px-2 py-1"
             >
               <option value="ALL">🌍 Всі міста</option>
-              {cities.map((c: any) => (
+              {cities.map((c: City) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
@@ -774,8 +780,8 @@ export default function CalendarView() {
               if (dayOffEntries.length === 0) return null;
               return (
                 <div className="mb-3 flex flex-wrap gap-1.5">
-                  {dayOffEntries.map((d) => {
-                    const u = allUsers.find((au: any) => au.id === d.userId);
+                  {dayOffEntries.map((d: DayOff) => {
+                    const u = allUsers.find((au: User) => au.id === d.userId);
                     return (
                       <span
                         key={d.id}
@@ -795,14 +801,14 @@ export default function CalendarView() {
               </div>
             ) : (
               <div className="space-y-3">
-                {selectedDayEvents.map((ev: any) => (
+                {selectedDayEvents.map((ev: Event) => (
                   <div
                     key={ev.id}
                     onClick={() =>
                       ev.school && navigate(`/schools/${ev.school.id}`)
                     }
                     className="bg-white p-4 rounded-2xl border-l-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
-                    style={{ borderLeftColor: getProjectHex(ev.project) }}
+                    style={{ borderLeftColor: projectHexMap.get(ev.project) ?? PROJECT_HEX.blue }}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <span className="text-xs font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-600">

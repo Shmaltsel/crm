@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
+import * as bcrypt from 'bcrypt';
 import { AppModule } from '../src/app.module';
+import { PrismaService } from '../src/prisma/prisma.service';
 
 describe('Schools API (contract)', () => {
   let app: INestApplication;
@@ -134,6 +136,86 @@ describe('Schools API (contract)', () => {
         .expect(200);
 
       expect(res.body.director).toBe('Новий Директор');
+    });
+  });
+
+  describe('IDOR — OwnershipGuard для MANAGER', () => {
+    let prisma: PrismaService;
+    let adminToken: string;
+    let otherCityId: string;
+    let otherCitySchoolId: string;
+
+    beforeAll(async () => {
+      prisma = app.get(PrismaService);
+
+      const loginRes = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email: 'admin@crm.com', password: 'admin123' });
+      adminToken = loginRes.body.access_token;
+    });
+
+    it('MANAGER отримує 403 при спробі доступу до школи іншого міста', async () => {
+      if (!cityId) return;
+
+      // Admin створює інше місто
+      const cityBRes = await request(app.getHttpServer())
+        .post('/cities')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: `E2E IDOR City ${Date.now()}` })
+        .expect(201);
+      otherCityId = cityBRes.body.id;
+
+      // Admin створює школу в іншому місті
+      const schoolRes = await request(app.getHttpServer())
+        .post('/schools')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          name: `E2E IDOR School ${Date.now()}`,
+          type: 'Школа',
+          cityId: otherCityId,
+          director: 'Test',
+          phone: '0671111111',
+        })
+        .expect(201);
+      otherCitySchoolId = schoolRes.body.id;
+
+      // Створюємо MANAGER користувача з cityId = cityA (перше місто)
+      const hashedPassword = await bcrypt.hash('manager123', 10);
+      const manager = await prisma.user.create({
+        data: {
+          email: `e2e-manager-${Date.now()}@crm.com`,
+          password: hashedPassword,
+          name: 'E2E Manager IDOR',
+          role: 'MANAGER',
+          cityId,
+        },
+      });
+
+      // Логін як MANAGER
+      const managerLogin = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email: manager.email, password: 'manager123' })
+        .expect(201);
+      const managerToken = managerLogin.body.access_token;
+
+      // MANAGER намагається отримати школу з іншого міста → 403
+      await request(app.getHttpServer())
+        .get(`/schools/${otherCitySchoolId}`)
+        .set('Authorization', `Bearer ${managerToken}`)
+        .expect(403);
+    });
+
+    afterAll(async () => {
+      if (otherCitySchoolId) {
+        await request(app.getHttpServer())
+          .delete(`/schools/${otherCitySchoolId}`)
+          .set('Authorization', `Bearer ${adminToken}`);
+      }
+      if (otherCityId) {
+        await request(app.getHttpServer())
+          .delete(`/cities/${otherCityId}`)
+          .set('Authorization', `Bearer ${adminToken}`);
+      }
     });
   });
 

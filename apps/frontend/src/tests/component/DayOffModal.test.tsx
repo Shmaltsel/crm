@@ -89,7 +89,7 @@ describe("DayOffModal", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "✕" }));
+    fireEvent.click(screen.getByRole("button", { name: "Закрити" }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

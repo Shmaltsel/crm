@@ -12,6 +12,8 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
 import { EventsService } from './events.service';
+import { EventsReportService } from './events-report.service';
+import { EventsSchedulingService } from './events-scheduling.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
@@ -34,7 +36,11 @@ import { Roles } from '../auth/decorators/roles.decorator';
 @Controller('events')
 @UseGuards(AuthGuard, RolesGuard)
 export class EventsController {
-  constructor(private readonly eventsService: EventsService) {}
+  constructor(
+    private readonly eventsService: EventsService,
+    private readonly eventsReportService: EventsReportService,
+    private readonly eventsSchedulingService: EventsSchedulingService,
+  ) {}
 
   @ApiOperation({ summary: 'Список подій для поточного користувача' })
   @Get()
@@ -134,7 +140,7 @@ export class EventsController {
     @Body() body: SubmitReportDto,
     @CurrentUser() user: JwtUser,
   ) {
-    return this.eventsService.submitReport(id, body, user);
+    return this.eventsReportService.submitReport(id, body, user);
   }
 
   @Get('school/:schoolId/completed')
@@ -159,6 +165,6 @@ export class EventsController {
     @Body() body: RescheduleEventDto,
     @CurrentUser() user: JwtUser,
   ) {
-    return this.eventsService.rescheduleEvent(id, body.date, body.time, user);
+    return this.eventsSchedulingService.rescheduleEvent(id, body.date, body.time, user);
   }
 }

@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import { useEffect, useRef } from "react";
 import type { DayOff } from "../../hooks/useDaysOff";
 
 interface StaffUser {
@@ -29,6 +30,20 @@ export default function DayOffModal({
   dayOffs,
   onToggle,
 }: DayOffModalProps) {
+  const headingId = 'dayoff-modal-heading';
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !date) return null;
 
   const dateStr = date.toLocaleDateString("uk-UA", {
@@ -39,8 +54,12 @@ export default function DayOffModal({
 
   return createPortal(
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={headingId}
       className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
       style={{ animation: "fadeIn 0.2s ease-out forwards" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -55,17 +74,14 @@ export default function DayOffModal({
       >
         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <div>
-            <h3 className="text-lg font-bold text-slate-800">
+            <h3 id={headingId} className="text-lg font-bold text-slate-800">
               Вихідний на {dateStr}
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
               Оберіть співробітника
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
-          >
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors">
             ✕
           </button>
         </div>

@@ -14,6 +14,8 @@ import { UsersService } from '../users/users.service';
 const LOCK_KEY = 'telegram:bot:leader';
 const LOCK_TTL_MS = 15_000;
 const RETRY_MS = 5_000;
+const SEND_TIMEOUT_MS = 5_000;
+const SEND_MAX_RETRIES = 3;
 
 @Injectable()
 export class TelegramService implements OnModuleInit, OnModuleDestroy {
@@ -132,15 +134,53 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async sendMessage(chatId: string, text: string): Promise<void> {
-    if (!this.bot) return;
+  private isNetworkError(e: any): boolean {
+    if (e.code === 'TIMEOUT') return true;
+    if (e.code === 'ECONNRESET' || e.code === 'ETIMEDOUT' || e.code === 'ECONNREFUSED' || e.code === 'ENOTFOUND') return true;
+    if (e.response?.statusCode && e.response.statusCode < 500) return false;
+    return !e.response;
+  }
+
+  private async sendWithRetry(
+    chatId: string,
+    text: string,
+    attempt = 1,
+  ): Promise<void> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, SEND_TIMEOUT_MS);
+
     try {
-      await this.bot.sendMessage(chatId, text, { parse_mode: 'HTML' });
+      const promise = this.bot!.sendMessage(chatId, text, { parse_mode: 'HTML' });
+      await Promise.race([
+        promise,
+        new Promise<never>((_, reject) => {
+          controller.signal.addEventListener('abort', () => {
+            reject(Object.assign(new Error('Request timeout'), { code: 'TIMEOUT' }));
+          });
+        }),
+      ]);
+      clearTimeout(timeoutId);
     } catch (e: any) {
+      clearTimeout(timeoutId);
+      if (this.isNetworkError(e) && attempt < SEND_MAX_RETRIES) {
+        const delay = Math.pow(2, attempt - 1) * 1000;
+        this.logger.warn(
+          `[sendMessage] мережева помилка (спроба ${attempt}/${SEND_MAX_RETRIES}), повтор через ${delay}ms: ${e.message}`,
+        );
+        await new Promise((r) => setTimeout(r, delay));
+        return this.sendWithRetry(chatId, text, attempt + 1);
+      }
       this.logger.error(
         `Не вдалося надіслати повідомлення ${chatId}: ${e.message}`,
       );
     }
+  }
+
+  async sendMessage(chatId: string, text: string): Promise<void> {
+    if (!this.bot) return;
+    await this.sendWithRetry(chatId, text);
   }
 
   async sendWelcome(

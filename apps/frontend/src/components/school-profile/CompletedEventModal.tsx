@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import type { Event, ExpenseItem, SalaryItem } from "../../types";
 
 interface CompletedEventModalProps {
@@ -12,6 +12,20 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
   onClose,
   event,
 }) => {
+  const headingId = 'completed-event-modal-heading';
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !event) return null;
 
   const report = event.report;
@@ -19,22 +33,25 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
     new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={headingId}
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
           <div>
-            <h3 className="text-xl font-bold text-slate-800">
+            <h3 id={headingId} className="text-xl font-bold text-slate-800">
               Звіт: {event.project}
             </h3>
             <p className="text-sm text-slate-500 mt-1">
               {new Date(event.date).toLocaleDateString("uk-UA")}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg"
-          >
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg">
             ✕
           </button>
         </div>

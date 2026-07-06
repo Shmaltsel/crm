@@ -81,6 +81,8 @@ export class SchoolsController {
 
   @ApiOperation({ summary: 'Отримати заклад за ID' })
   @Get(':id')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('school')
   findOne(@Param('id') id: string) {
     return this.schoolsService.findOne(id);
   }

@@ -78,6 +78,9 @@ model School {
   city          City     @relation(fields: [cityId], references: [id])
 
   @@index([cityId])
+  @@index([cityId, type])
+  @@index([type])
+  @@index([createdAt])
   @@index([updatedAt, cityId])
 }
 
@@ -131,6 +134,7 @@ model Event {
   issues          IssueReport[]
 
   @@index([cityId])
+  @@index([cityId, date])
   @@index([status])
   @@index([schoolId])
   @@index([schoolId, date])
@@ -185,6 +189,7 @@ model EventHistory {
   event     Event    @relation(fields: [eventId], references: [id])
 
   @@index([eventId, createdAt])
+  @@index([createdAt])
 }
 
 model EventPreparation {
@@ -225,6 +230,8 @@ model SchoolContact {
   phone        String
   role         String?
   createdAt    DateTime @default(now())
+
+  @@index([city])
 }
 
 model Project {

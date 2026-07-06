@@ -81,8 +81,10 @@ describe('TelegramService — sendMessage', () => {
 
   it('не кидає помилку якщо bot.sendMessage падає (помилка логується)', async () => {
     const service = makeService();
+    const apiError = new Error('Bad Request: chat not found');
+    (apiError as any).response = { statusCode: 400, body: { description: 'chat not found' } };
     const mockBot = {
-      sendMessage: jest.fn().mockRejectedValue(new Error('Telegram API error')),
+      sendMessage: jest.fn().mockRejectedValue(apiError),
     };
     (service as any).bot = mockBot;
 
@@ -119,6 +121,77 @@ describe('TelegramService — sendWelcome', () => {
     const text = sendSpy.mock.calls[0][1];
     expect(text).toContain('<b>');
     expect(text).toContain('<code>');
+  });
+});
+
+describe('TelegramService — retry логіка sendMessage', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('при мережевій помилці (ECONNRESET) робить retry і досягає успіху', async () => {
+    const service = makeService();
+    const mockBot = {
+      sendMessage: jest
+        .fn()
+        .mockRejectedValueOnce(
+          Object.assign(new Error('connection reset'), { code: 'ECONNRESET' }),
+        )
+        .mockResolvedValueOnce({}),
+    };
+    (service as any).bot = mockBot;
+
+    const promise = service.sendMessage('chat-1', 'test');
+    await jest.advanceTimersByTimeAsync(2000);
+
+    await expect(promise).resolves.toBeUndefined();
+    expect(mockBot.sendMessage).toHaveBeenCalledTimes(2);
+  });
+
+  it('після 3 невдалих мережевих спроб помилка логується (далі не кидається)', async () => {
+    const service = makeService();
+    const mockBot = {
+      sendMessage: jest.fn().mockRejectedValue(
+        Object.assign(new Error('ECONNREFUSED'), { code: 'ECONNREFUSED' }),
+      ),
+    };
+    (service as any).bot = mockBot;
+
+    const promise = service.sendMessage('chat-1', 'test');
+    await jest.advanceTimersByTimeAsync(5000);
+
+    await expect(promise).resolves.toBeUndefined();
+    expect(mockBot.sendMessage).toHaveBeenCalledTimes(3);
+  });
+
+  it('при 4xx помилці (не мережева) retry НЕ відбувається', async () => {
+    const service = makeService();
+    const apiError = new Error('Bad Request: chat not found');
+    (apiError as any).response = { statusCode: 400, body: { description: 'chat not found' } };
+    const mockBot = {
+      sendMessage: jest.fn().mockRejectedValue(apiError),
+    };
+    (service as any).bot = mockBot;
+
+    await service.sendMessage('chat-1', 'test');
+
+    expect(mockBot.sendMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('при успішному першому виклику retry не відбувається', async () => {
+    const service = makeService();
+    const mockBot = {
+      sendMessage: jest.fn().mockResolvedValue({}),
+    };
+    (service as any).bot = mockBot;
+
+    await service.sendMessage('chat-1', 'test');
+
+    expect(mockBot.sendMessage).toHaveBeenCalledTimes(1);
   });
 });
 

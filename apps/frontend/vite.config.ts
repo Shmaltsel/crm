@@ -21,6 +21,12 @@ export default defineConfig({
     coverage: {
       reporter: ["text", "html"],
       exclude: ["src/tests/**", "src/main.tsx"],
+      thresholds: {
+        statements: 70,
+        branches: 50,
+        functions: 60,
+        lines: 70,
+      },
     },
   },
 });

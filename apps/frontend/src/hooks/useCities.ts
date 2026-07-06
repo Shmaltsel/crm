@@ -1,18 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../config/api";
+import type { City, CityProfile } from "../types";
 
 export function useCities() {
-  return useQuery({
+  return useQuery<City[]>({
     queryKey: ["cities"],
-    queryFn: () => api.get("/cities").then((r) => r.data),
+    queryFn: () => api.get<City[]>("/cities").then((r) => r.data),
     staleTime: 5 * 60 * 1000,
   });
 }
 
 export function useCity(id: string | undefined) {
-  return useQuery({
+  return useQuery<CityProfile>({
     queryKey: ["city", id],
-    queryFn: () => api.get(`/cities/${id}`).then((r) => r.data),
+    queryFn: () => api.get<CityProfile>(`/cities/${id}`).then((r) => r.data),
     enabled: !!id,
     staleTime: 2 * 60 * 1000,
   });
@@ -24,7 +25,7 @@ export function useCreateCity() {
     mutationFn: (name: string) =>
       api.post("/cities", { name }).then((r) => r.data),
     onSuccess: (data) => {
-      qc.setQueryData(["cities"], (old: any) =>
+      qc.setQueryData<City[]>(["cities"], (old) =>
         Array.isArray(old) ? [data, ...old] : [data],
       );
     },
@@ -38,19 +39,19 @@ export function useCreateCrew(cityId: string | undefined) {
       api.post(`/cities/${cityId}/crews`, form).then((r) => r.data),
     onMutate: async (form) => {
       await qc.cancelQueries({ queryKey: ["city", cityId] });
-      const prev = qc.getQueryData(["city", cityId]);
-      const optimistic = { id: `temp-${Date.now()}`, ...form, name: form.name };
-      qc.setQueryData(["city", cityId], (old: any) =>
+      const prev = qc.getQueryData<CityProfile>(["city", cityId]);
+      const optimistic: Crew = { id: `temp-${Date.now()}`, ...form, name: form.name, cityId: cityId! };
+      qc.setQueryData<CityProfile>(["city", cityId], (old) =>
         old ? { ...old, crews: [...(old.crews || []), optimistic] } : old,
       );
       return { prev };
     },
     onSuccess: (data) => {
-      qc.setQueryData(["city", cityId], (old: any) =>
+      qc.setQueryData<CityProfile>(["city", cityId], (old) =>
         old
           ? {
               ...old,
-              crews: old.crews?.map((c: any) =>
+              crews: old.crews?.map((c: Crew) =>
                 c.id?.startsWith("temp-") ? data : c,
               ),
             }
@@ -58,7 +59,7 @@ export function useCreateCrew(cityId: string | undefined) {
       );
     },
     onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["city", cityId], ctx.prev);
+      if (ctx?.prev) qc.setQueryData<CityProfile>(["city", cityId], ctx.prev);
     },
   });
 }
@@ -70,16 +71,16 @@ export function useDeleteCrew(cityId: string | undefined) {
       api.delete(`/cities/crews/${crewId}`).then((r) => r.data),
     onMutate: async (crewId) => {
       await qc.cancelQueries({ queryKey: ["city", cityId] });
-      const prev = qc.getQueryData(["city", cityId]);
-      qc.setQueryData(["city", cityId], (old: any) =>
+      const prev = qc.getQueryData<CityProfile>(["city", cityId]);
+      qc.setQueryData<CityProfile>(["city", cityId], (old) =>
         old
-          ? { ...old, crews: old.crews?.filter((c: any) => c.id !== crewId) }
+          ? { ...old, crews: old.crews?.filter((c: Crew) => c.id !== crewId) }
           : old,
       );
       return { prev };
     },
     onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["city", cityId], ctx.prev);
+      if (ctx?.prev) qc.setQueryData<CityProfile>(["city", cityId], ctx.prev);
     },
   });
 }

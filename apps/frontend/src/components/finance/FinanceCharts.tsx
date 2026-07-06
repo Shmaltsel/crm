@@ -13,6 +13,14 @@ import {
   BarChart,
   Bar,
 } from "recharts";
+import type {
+  FinanceDashboardData,
+  MonthlyFinance,
+  FinanceByProject,
+  FinanceByCategory,
+  FinanceTopSchool,
+  FinanceEventItem,
+} from "../../types";
 
 const PALETTE = [
   "#3b82f6",
@@ -36,6 +44,15 @@ const fmt = (n: number) =>
   new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
 
 
+interface KpiCardProps {
+  title: string;
+  value: number;
+  color: string;
+  bg: string;
+  icon: React.ReactNode;
+  subtitle?: string;
+}
+
 const KpiCard = memo(function KpiCard({
   title,
   value,
@@ -43,7 +60,7 @@ const KpiCard = memo(function KpiCard({
   bg,
   icon,
   subtitle,
-}: any) {
+}: KpiCardProps) {
   return (
     <div className="bg-white rounded-[24px] p-5 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow duration-300">
       <div className="flex justify-between items-start mb-4">
@@ -88,7 +105,7 @@ const EventTable = memo(function EventTable({
   events,
   positive,
 }: {
-  events: any[];
+  events: FinanceEventItem[];
   positive: boolean;
 }) {
   if (!events || !events.length) return <EmptyState />;
@@ -106,7 +123,7 @@ const EventTable = memo(function EventTable({
         </tr>
       </thead>
       <tbody>
-        {events.map((e: any, i: number) => (
+        {events.map((e: FinanceEventItem, i: number) => (
           <tr
             key={i}
             className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
@@ -134,18 +151,28 @@ const EventTable = memo(function EventTable({
   );
 });
 
+interface TooltipPayload {
+  name?: string;
+  value?: number;
+  color?: string;
+}
+
 const CustomTooltip = memo(function CustomTooltip({
   active,
   payload,
   label,
-}: any) {
+}: {
+  active?: boolean;
+  payload?: TooltipPayload[];
+  label?: string;
+}) {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-white/90 backdrop-blur-md border border-slate-100 p-4 rounded-2xl shadow-xl text-sm min-w-[160px]">
       <p className="font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">
         {label}
       </p>
-      {payload.map((entry: any, index: number) => (
+      {payload.map((entry: TooltipPayload, index: number) => (
         <div
           key={index}
           className="flex items-center justify-between gap-4 mb-1.5 last:mb-0"
@@ -170,7 +197,7 @@ const CustomTooltip = memo(function CustomTooltip({
 const RevenueChart = memo(function RevenueChart({
   monthly,
 }: {
-  monthly: any[];
+  monthly: MonthlyFinance[];
 }) {
   if (!monthly?.length) return <EmptyState />;
   const data = monthly.slice(-12);
@@ -242,7 +269,7 @@ const ProjectPieChart = memo(function ProjectPieChart({
   byProject,
   projectTotals,
 }: {
-  byProject: any[];
+  byProject: FinanceByProject[];
   projectTotals: { total: number; percents: number[] };
 }) {
   if (!byProject?.length) return <EmptyState />;
@@ -261,7 +288,7 @@ const ProjectPieChart = memo(function ProjectPieChart({
               stroke="none"
               isAnimationActive={false}
             >
-              {byProject.map((_: any, index: number) => (
+              {byProject.map((_: FinanceByProject, index: number) => (
                 <Cell
                   key={`cell-${index}`}
                   fill={PIE_COLORS[index % PIE_COLORS.length]}
@@ -273,7 +300,7 @@ const ProjectPieChart = memo(function ProjectPieChart({
         </ResponsiveContainer>
       </div>
       <div className="flex-1 overflow-y-auto space-y-3 pr-2">
-        {byProject.map((item: any, idx: number) => (
+        {byProject.map((item: FinanceByProject, idx: number) => (
           <div key={idx} className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-3 min-w-0 pr-2">
               <div
@@ -302,7 +329,7 @@ const ProjectPieChart = memo(function ProjectPieChart({
 const ExpenseChart = memo(function ExpenseChart({
   byExpenseCategory,
 }: {
-  byExpenseCategory: any[];
+  byExpenseCategory: FinanceByCategory[];
 }) {
   if (!byExpenseCategory?.length) return <EmptyState />;
   return (
@@ -337,7 +364,7 @@ const ExpenseChart = memo(function ExpenseChart({
             barSize={20}
             isAnimationActive={false}
           >
-            {byExpenseCategory.map((_: any, idx: number) => (
+            {byExpenseCategory.map((_: FinanceByCategory, idx: number) => (
               <Cell key={`cell-${idx}`} fill={PALETTE[idx % PALETTE.length]} />
             ))}
           </Bar>
@@ -350,13 +377,13 @@ const ExpenseChart = memo(function ExpenseChart({
 const TopSchools = memo(function TopSchools({
   topSchools,
 }: {
-  topSchools: any[];
+  topSchools: FinanceTopSchool[];
 }) {
   if (!topSchools?.length) return <EmptyState />;
   const maxRev = topSchools[0].revenue;
   return (
     <div className="space-y-5">
-      {topSchools.map((school: any, idx: number) => {
+      {topSchools.map((school: FinanceTopSchool, idx: number) => {
         const percent = Math.max((school.revenue / maxRev) * 100, 2);
         return (
           <div key={idx} className="relative">
@@ -386,12 +413,12 @@ const TopSchools = memo(function TopSchools({
 
 
 interface Props {
-  data: any;
+  data: FinanceDashboardData;
   period: string;
   setPeriod: (v: string) => void;
   projectFilter: string;
   setProjectFilter: (v: string) => void;
-  selectedCity: any;
+  selectedCity: { id: string; name: string };
 }
 
 
@@ -417,8 +444,8 @@ export default memo(function FinanceCharts({
 
   const projectTotals = useMemo(() => {
     const total =
-      byProject?.reduce((sum: number, p: any) => sum + p.value, 0) ?? 0;
-    const percents = (byProject ?? []).map((item: any) =>
+      byProject?.reduce((sum: number, p: FinanceByProject) => sum + p.value, 0) ?? 0;
+    const percents = (byProject ?? []).map((item: FinanceByProject) =>
       total > 0 ? Math.round((item.value / total) * 100) : 0,
     );
     return { total, percents };

@@ -24,15 +24,16 @@ import {
 } from "react-router-dom";
 
 import Layout from "./components/Layout";
-import Login from "./pages/Login";
 import { CityProvider } from "./context/CityContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { api } from "./config/api";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
-import NotFound from "./pages/NotFound";
+import { SkeletonCard } from "./components/ui/Skeleton";
 
+const Login = lazyWithRetry(() => import("./pages/Login"));
+const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const CityProfile = lazyWithRetry(() => import("./pages/CityProfile"));
 const EventReport = lazyWithRetry(() => import("./pages/EventReport"));
 
@@ -46,10 +47,10 @@ const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
 const Kindergartens = lazyWithRetry(() => import("./pages/Kindergartens"));
 
 const PageLoader = () => (
-  <div className="flex items-center justify-center h-full min-h-[50vh]">
-    <div className="text-slate-400 font-medium animate-pulse">
-      Завантаження сторінки...
-    </div>
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-4 md:p-8">
+    <SkeletonCard />
+    <SkeletonCard />
+    <SkeletonCard />
   </div>
 );
 
