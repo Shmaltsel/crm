@@ -14,18 +14,28 @@ import { motion, AnimatePresence } from "framer-motion";
 import DayOffModal from "../components/calendar/DayOffModal";
 import type { Event as CalendarEvent, Project, City, User, DayOff } from "../types";
 import { STAFF_ROLES, MANAGER_ROLES, PROJECT_HEX, ROLE_ICON_MAP, MONTH_NAMES } from "../features/calendar/constants";
-import { toISODate, isPastDay, buildMonthDays } from "../features/calendar/utils/date";
+import { toISODate, isPastDay } from "../features/calendar/utils/date";
 import { getDayColor } from "../features/calendar/utils/color";
+import { useCalendarMonth } from "../features/calendar/hooks/useCalendarMonth";
 
 export default function CalendarView() {
+  const {
+    days,
+    year,
+    month,
+    monthFrom,
+    monthTo,
+    selectedMobileDate,
+    setSelectedMobileDate,
+    nextMonth,
+    prevMonth,
+    today,
+  } = useCalendarMonth();
+
   const { data: events = [], isLoading: eventsLoading } = useCalendarEvents();
   const { data: projects = [] } = useCalendarProjects();
   const { data: cities = [] } = useCities();
   const { data: allUsers = [] } = useUsers();
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedMobileDate, setSelectedMobileDate] = useState<Date>(
-    new Date(),
-  );
   const [dayOffModalDate, setDayOffModalDate] = useState<Date | null>(null);
 
   const { selectedCity } = useSelectedCity();
@@ -39,26 +49,6 @@ export default function CalendarView() {
   const [filterCityId, setFilterCityId] = useState<string>(() =>
     userRole === "MANAGER" && user?.cityId ? user.cityId : "ALL",
   );
-
-  const nextMonth = () =>
-    setCurrentDate(
-      new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1),
-    );
-  const prevMonth = () =>
-    setCurrentDate(
-      new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
-    );
-  const today = () => {
-    setCurrentDate(new Date());
-    setSelectedMobileDate(new Date());
-  };
-
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-  const days = buildMonthDays(year, month);
-
-  const monthFrom = toISODate(new Date(year, month, 1));
-  const monthTo = toISODate(new Date(year, month + 1, 0));
 
   const dayOffCityId = isManagerOrAdmin
     ? filterCityId !== "ALL"
