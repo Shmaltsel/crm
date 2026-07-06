@@ -13,24 +13,9 @@ import { useState, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import DayOffModal from "../components/calendar/DayOffModal";
 import type { Event as CalendarEvent, Project, City, User, DayOff } from "../types";
-
-const STAFF_ROLES = ["HOST", "DRIVER"];
-const MANAGER_ROLES = ["SUPERADMIN", "MANAGER"];
-
-const PROJECT_HEX: Record<string, string> = {
-  blue: "#3b82f6",
-  emerald: "#10b981",
-  rose: "#f43f5e",
-  red: "#ef4444",
-  amber: "#f59e0b",
-  purple: "#a855f7",
-};
-const ROLE_ICON_MAP: Record<string, string> = {
-  HOST: "🎙️",
-  DRIVER: "🚗",
-};
-
-const toISODate = (d: Date) => d.toLocaleDateString("en-CA");
+import { STAFF_ROLES, MANAGER_ROLES, PROJECT_HEX, ROLE_ICON_MAP, MONTH_NAMES } from "../features/calendar/constants";
+import { toISODate, isPastDay, buildMonthDays } from "../features/calendar/utils/date";
+import { getDayColor } from "../features/calendar/utils/color";
 
 export default function CalendarView() {
   const { data: events = [], isLoading: eventsLoading } = useCalendarEvents();
@@ -68,21 +53,9 @@ export default function CalendarView() {
     setSelectedMobileDate(new Date());
   };
 
-  const getDaysInMonth = (year: number, month: number) =>
-    new Date(year, month + 1, 0).getDate();
-  const getFirstDayOfMonth = (year: number, month: number) => {
-    let day = new Date(year, month, 1).getDay();
-    return day === 0 ? 6 : day - 1;
-  };
-
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-  const daysInMonth = getDaysInMonth(year, month);
-  const firstDay = getFirstDayOfMonth(year, month);
-
-  const days: (Date | null)[] = [];
-  for (let i = 0; i < firstDay; i++) days.push(null);
-  for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
+  const days = buildMonthDays(year, month);
 
   const monthFrom = toISODate(new Date(year, month, 1));
   const monthTo = toISODate(new Date(year, month + 1, 0));
@@ -166,12 +139,6 @@ export default function CalendarView() {
     }
     return map;
   }, [projects]);
-
-  const isPastDay = (date: Date) => {
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    return date < startOfToday;
-  };
 
   const selectedDayEvents = eventsByDate.get(toISODate(selectedMobileDate)) ?? [];
 
@@ -264,53 +231,6 @@ export default function CalendarView() {
     },
     [dayOffModalDate, createDayOff, deleteDayOff],
   );
-
-  const monthNames = [
-    "Січень",
-    "Лютий",
-    "Березень",
-    "Квітень",
-    "Травень",
-    "Червень",
-    "Липень",
-    "Серпень",
-    "Вересень",
-    "Жовтень",
-    "Листопад",
-    "Грудень",
-  ];
-
-  const shadeHex = (hex: string, percent: number) => {
-    const n = parseInt(hex.replace("#", ""), 16);
-    const r = Math.min(255, Math.max(0, (n >> 16) + percent));
-    const g = Math.min(255, Math.max(0, ((n >> 8) & 0xff) + percent));
-    const b = Math.min(255, Math.max(0, (n & 0xff) + percent));
-    return `rgb(${r}, ${g}, ${b})`;
-  };
-
-  const getDayColor = (dayEvents: CalendarEvent[]) => {
-    if (dayEvents.length === 0) return undefined;
-    const counts = new Map<string, number>();
-    for (const ev of dayEvents) {
-      const hex = projectHexMap.get(ev.project) ?? PROJECT_HEX.blue;
-      counts.set(hex, (counts.get(hex) || 0) + 1);
-    }
-    const total = dayEvents.length;
-    if (counts.size === 1) {
-      const [hex] = counts.keys();
-      return `linear-gradient(to bottom, ${shadeHex(hex, 35)}, ${shadeHex(hex, -25)})`;
-    }
-    let acc = 0;
-    const stops: string[] = [];
-    for (const [hex, count] of counts) {
-      const start = (acc / total) * 100;
-      acc += count;
-      const end = (acc / total) * 100;
-      stops.push(`${shadeHex(hex, 35)} ${start}%`);
-      stops.push(`${shadeHex(hex, -25)} ${end}%`);
-    }
-    return `linear-gradient(to bottom, ${stops.join(", ")})`;
-  };
 
   if (eventsLoading)
     return (
@@ -466,7 +386,7 @@ export default function CalendarView() {
               ◀
             </button>
             <span className="px-4 md:px-6 py-2 text-slate-800 font-bold capitalize tracking-tight">
-              {monthNames[month]}{" "}
+              {MONTH_NAMES[month]}{" "}
               <span className="text-slate-400 font-medium">{year}</span>
             </span>
             <button
@@ -642,7 +562,7 @@ export default function CalendarView() {
               ‹
             </button>
             <span className="text-base font-bold text-slate-800 capitalize">
-              {monthNames[month]}{" "}
+              {MONTH_NAMES[month]}{" "}
               <span className="text-slate-400 font-medium">{year}</span>
             </span>
             <button
@@ -675,7 +595,7 @@ export default function CalendarView() {
               const dayOffEntries = day
                 ? (dayOffsByDate.get(dayKey) ?? [])
                 : [];
-              const dayColor = day ? getDayColor(dayEvents) : undefined;
+              const dayColor = day ? getDayColor(dayEvents, projectHexMap) : undefined;
 
               return (
                 <div
