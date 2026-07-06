@@ -4,6 +4,7 @@ import type { Cache } from 'cache-manager';
 import { AppException } from '../common/exceptions/app.exception';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { CacheVersionService } from '../common/cache/cache-version.service';
 import { Prisma, PreparationStatus } from '@prisma/client';
 
 import { CreateEventDto } from './dto/create-event.dto';
@@ -27,6 +28,7 @@ export class EventsService {
     private readonly prisma: PrismaService,
     private telegramService: TelegramService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly cacheVersion: CacheVersionService,
   ) {}
 
   async findAllForUser(user: JwtUser, query?: EventQueryDto) {
@@ -122,6 +124,10 @@ export class EventsService {
       include: { crew: true, history: { orderBy: { createdAt: 'desc' } } },
     });
     await this.invalidateSchoolEventsCache(event.schoolId);
+    await Promise.all([
+      this.cacheVersion.bumpVersion('finance'),
+      this.cacheVersion.bumpVersion('dashboard'),
+    ]);
     return event;
   }
 
@@ -398,7 +404,6 @@ export class EventsService {
     });
     if (event) await this.invalidateSchoolEventsCache(event.schoolId);
     return event;
-    return event;
   }
 
   async remove(id: string) {
@@ -516,6 +521,10 @@ export class EventsService {
     });
 
     await this.invalidateSchoolEventsCache(event.schoolId);
+    await Promise.all([
+      this.cacheVersion.bumpVersion('finance'),
+      this.cacheVersion.bumpVersion('dashboard'),
+    ]);
     return event;
   }
 
