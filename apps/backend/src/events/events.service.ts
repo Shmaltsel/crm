@@ -431,94 +431,92 @@ export class EventsService {
     reportData: SubmitReportDto,
     user: JwtUser,
   ) {
-    const report = await this.prisma.eventReport.upsert({
-      where: { eventId },
-      update: {
-        announcementDone: reportData.announcementDone,
-        materialShown: reportData.materialShown,
-        childrenCount: reportData.childrenCount,
-        classesCount: reportData.classesCount,
-        privilegedCount: reportData.privilegedCount,
-        showingsCount: reportData.showingsCount,
-        totalSum: reportData.totalSum,
-        schoolSum: reportData.schoolSum,
-        remainderSum: reportData.remainderSum,
-        rating: reportData.rating,
-      },
-      create: {
-        eventId,
-        announcementDone: reportData.announcementDone,
-        materialShown: reportData.materialShown,
-        childrenCount: reportData.childrenCount,
-        classesCount: reportData.classesCount,
-        privilegedCount: reportData.privilegedCount,
-        showingsCount: reportData.showingsCount,
-        totalSum: reportData.totalSum,
-        schoolSum: reportData.schoolSum,
-        remainderSum: reportData.remainderSum,
-        rating: reportData.rating,
-      },
-    });
-
-    await this.prisma.expenseItem.deleteMany({
-      where: { reportId: report.id },
-    });
-    await this.prisma.salaryItem.deleteMany({
-      where: { reportId: report.id },
-    });
-
-    if (reportData.expenses?.length) {
-      await this.prisma.expenseItem.createMany({
-        data: reportData.expenses.map((exp: ExpenseItemDto) => ({
-          reportId: report.id,
-          category: exp.category || 'Інше',
-          name: exp.name,
-          amount: new Prisma.Decimal(exp.amount || 0),
-        })),
+    const event = await this.prisma.$transaction(async (tx) => {
+      const report = await tx.eventReport.upsert({
+        where: { eventId },
+        update: {
+          announcementDone: reportData.announcementDone,
+          materialShown: reportData.materialShown,
+          childrenCount: reportData.childrenCount,
+          classesCount: reportData.classesCount,
+          privilegedCount: reportData.privilegedCount,
+          showingsCount: reportData.showingsCount,
+          totalSum: reportData.totalSum,
+          schoolSum: reportData.schoolSum,
+          remainderSum: reportData.remainderSum,
+          rating: reportData.rating,
+        },
+        create: {
+          eventId,
+          announcementDone: reportData.announcementDone,
+          materialShown: reportData.materialShown,
+          childrenCount: reportData.childrenCount,
+          classesCount: reportData.classesCount,
+          privilegedCount: reportData.privilegedCount,
+          showingsCount: reportData.showingsCount,
+          totalSum: reportData.totalSum,
+          schoolSum: reportData.schoolSum,
+          remainderSum: reportData.remainderSum,
+          rating: reportData.rating,
+        },
       });
-    }
 
-    if (reportData.salaries?.length) {
-      const salariesWithUser = reportData.salaries.filter((s) => s.userId);
-      if (salariesWithUser.length) {
-        await this.prisma.salaryItem.createMany({
-          data: salariesWithUser.map((s) => ({
+      await tx.expenseItem.deleteMany({
+        where: { reportId: report.id },
+      });
+      await tx.salaryItem.deleteMany({
+        where: { reportId: report.id },
+      });
+
+      if (reportData.expenses?.length) {
+        await tx.expenseItem.createMany({
+          data: reportData.expenses.map((exp: ExpenseItemDto) => ({
             reportId: report.id,
-            userId: s.userId,
-            userName: s.name,
-            amount: new Prisma.Decimal(s.amount),
+            category: exp.category || 'Інше',
+            name: exp.name,
+            amount: new Prisma.Decimal(exp.amount || 0),
           })),
         });
+      }
 
-        const positiveSalaries = salariesWithUser.filter((s) => s.amount > 0);
-        if (positiveSalaries.length) {
-          await Promise.all(
-            positiveSalaries.map((s) =>
-              this.prisma.user.update({
-                where: { id: s.userId },
-                data: { balance: { increment: s.amount } },
-              }),
-            ),
-          );
+      if (reportData.salaries?.length) {
+        const salariesWithUser = reportData.salaries.filter((s) => s.userId);
+        if (salariesWithUser.length) {
+          await tx.salaryItem.createMany({
+            data: salariesWithUser.map((s) => ({
+              reportId: report.id,
+              userId: s.userId,
+              userName: s.name,
+              amount: new Prisma.Decimal(s.amount),
+            })),
+          });
+
+          const positiveSalaries = salariesWithUser.filter((s) => s.amount > 0);
+          for (const s of positiveSalaries) {
+            await tx.user.update({
+              where: { id: s.userId },
+              data: { balance: { increment: s.amount } },
+            });
+          }
         }
       }
-    }
 
-    const event = await this.prisma.event.update({
-      where: { id: eventId },
-      data: {
-        status: 'REPORT' as never,
-        history: {
-          create: {
-            action: 'Сформовано звіт. Захід завершено.',
-            userId: user.sub,
-            userName: user.name,
-            role: user.role,
+      return tx.event.update({
+        where: { id: eventId },
+        data: {
+          status: 'REPORT' as never,
+          history: {
+            create: {
+              action: 'Сформовано звіт. Захід завершено.',
+              userId: user.sub,
+              userName: user.name,
+              role: user.role,
+            },
           },
         },
-      },
-      include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
-    });
+        include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
+      });
+    }, { timeout: 15000 });
 
     await this.invalidateSchoolEventsCache(event.schoolId);
     await Promise.all([
