@@ -66,9 +66,8 @@ export default function Cities() {
       setNewCityName("");
       setIsModalOpen(false);
     } catch (err: any) {
-      alert(
-        `DEBUG\nстатус: ${err?.response?.status}\nтіло: ${JSON.stringify(err?.response?.data)}\ncookie: ${document.cookie}`,
-      );
+      setNewCityName("");
+      setIsModalOpen(false);
     }
   };
 

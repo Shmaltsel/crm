@@ -36,7 +36,7 @@ export default function EventReport() {
       </div>
 
       <button
-        onClick={() => history.back()}
+        onClick={() => window.history.back()}
         className="mb-4 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2"
       >
         ← Назад

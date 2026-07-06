@@ -28,6 +28,8 @@ describe("Login", () => {
     );
 
     renderLogin();
+    await userEvent.type(screen.getByLabelText(/email/i), "test@test.com");
+    await userEvent.type(screen.getByLabelText(/пароль/i), "wrong");
     
     await userEvent.click(screen.getByRole("button", { name: /увійти/i }));
     
@@ -46,7 +48,9 @@ describe("Login", () => {
 
     const onLogin = vi.fn();
     renderLogin(onLogin);
-
+    await userEvent.type(screen.getByLabelText(/email/i), mockUser.email);
+    await userEvent.type(screen.getByLabelText(/пароль/i), "123!PASSWORD!321");
+    
     await userEvent.click(screen.getByRole("button", { name: /увійти/i }));
 
     await waitFor(() => {

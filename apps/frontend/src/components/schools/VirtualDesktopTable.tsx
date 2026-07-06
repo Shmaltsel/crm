@@ -68,14 +68,13 @@ export default function VirtualDesktopTable({
             </tr>
           )}
           {virtualItems.map((virtualRow) => (
-            <tr key={schools[virtualRow.index].id} data-index={virtualRow.index}>
-              <SchoolRow
-                school={schools[virtualRow.index]}
-                onDelete={onDelete}
-                stages={stages}
-                navigate={navigate}
-              />
-            </tr>
+            <SchoolRow
+              key={schools[virtualRow.index].id}
+              school={schools[virtualRow.index]}
+              onDelete={onDelete}
+              stages={stages}
+              navigate={navigate}
+            />
           ))}
           {virtualItems.length > 0 && (
             <tr>
