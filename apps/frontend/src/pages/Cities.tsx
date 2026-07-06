@@ -1,7 +1,8 @@
 import React, { useState, useCallback, lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { useSelectedCity } from "../context/CityContext";
-import { useCities, useAddCity } from "../hooks/useApi";
+import { useAddCity } from "../hooks/useApi";
+import { useCities } from "../hooks/useCities";
 import { useAuth } from "../context/AuthContext";
 
 const IssueCarousel = lazy(() => import("../components/IssueCarousel"));
@@ -76,15 +77,6 @@ export default function Cities() {
       className="p-4 md:p-8 bg-slate-50 min-h-screen"
       style={{ contentVisibility: "auto" }}
     >
-      {/* Шапка для ПК */}
-      <style>{`
-        @keyframes headerFadeIn {
-          from { opacity: 0; transform: translateY(-10px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .header-enter { animation: headerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
-        .header-btn-enter { animation: headerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
-      `}</style>
       <div className="hidden md:flex justify-between items-center mb-8">
         <h1 className="header-enter text-3xl font-bold text-slate-800">
           Міста
@@ -137,12 +129,6 @@ export default function Cities() {
           }}
           aria-label="Додати місто"
         >
-          <style>{`
-            @keyframes fabPop {
-              from { opacity: 0; transform: scale(0.5) translateY(20px); }
-              to { opacity: 1; transform: scale(1) translateY(0); }
-            }
-          `}</style>
           +
         </button>
       )}
@@ -154,17 +140,6 @@ export default function Cities() {
             className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
             style={{ animation: "fadeIn 0.2s ease-out forwards" }}
           >
-            <style>{`
-            @keyframes fadeIn {
-              from { opacity: 0; }
-              to { opacity: 1; }
-            }
-            @keyframes modalScale {
-              from { opacity: 0; transform: scale(0.95) translateY(15px); }
-              to { opacity: 1; transform: scale(1) translateY(0); }
-            }
-          `}</style>
-
             {/* ТУТ БУЛА ПРОБЛЕМА: додано opacity-0 та style з анімацією modalScale */}
             <div
               className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"

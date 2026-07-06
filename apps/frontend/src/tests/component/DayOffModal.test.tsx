@@ -201,7 +201,7 @@ describe("DayOffModal", () => {
     expect(onToggle).toHaveBeenCalledWith("u-host", "d-host-1");
   });
 
-  it("поточна поведінка: existing визначається лише по userId (date не перевіряється)", () => {
+  it("не враховує dayOff з іншої дати (перевіряє і userId, і date)", () => {
     const mismatchDate: DayOff = {
       ...dayOff,
       id: "d-date-mismatch",
@@ -219,6 +219,6 @@ describe("DayOffModal", () => {
       />,
     );
 
-    expect(screen.getByText("Вихідний ✕")).toBeInTheDocument();
+    expect(screen.queryByText("Вихідний ✕")).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import React, { useState, Suspense, lazy } from "react";
+import { useState, Suspense, lazy } from "react";
 
 function lazyWithRetry(factory: () => Promise<any>) {
   return lazy(async () => {
@@ -26,7 +26,6 @@ import {
 import Layout from "./components/Layout";
 import { CityProvider } from "./context/CityContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { api } from "./config/api";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";

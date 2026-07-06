@@ -42,8 +42,10 @@ export default function CrewModal({
   const currentCity = allCities.find((c: City) => c.name === city);
   const { data: crews = [], isLoading } = useQuery({
     queryKey: ["cityCrews", currentCity?.id],
-    queryFn: () =>
-      api.get<Crew[]>(`/cities/${currentCity!.id}/crews`).then((r) => r.data),
+    queryFn: () => {
+      if (!currentCity) return Promise.resolve([]);
+      return api.get<Crew[]>(`/cities/${currentCity.id}/crews`).then((r) => r.data);
+    },
     enabled: !!currentCity?.id && isOpen,
     staleTime: 60 * 1000,
   });

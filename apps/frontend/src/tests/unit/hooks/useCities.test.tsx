@@ -1,5 +1,6 @@
 import { renderHook, waitFor } from "@testing-library/react";
-import { useCities, useAddCity } from "../../../hooks/useApi";
+import { useCities } from "../../../hooks/useCities";
+import { useAddCity } from "../../../hooks/useApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactNode } from "react";
 import { http, HttpResponse } from "msw";

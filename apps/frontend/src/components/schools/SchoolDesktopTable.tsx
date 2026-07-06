@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate, type NavigateFunction } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import type { School, PipelineStage } from "../../types";
+import { CATEGORY_BADGES } from "../../constants/categoryBadges";
 
 interface Props {
   schools: School[];
@@ -16,21 +17,6 @@ interface SchoolRowProps {
   stages: PipelineStage[];
   navigate: NavigateFunction;
 }
-
-const CATEGORY_BADGES: Record<string, { label: string; className: string }> = {
-  planned: {
-    label: "Заплановано",
-    className: "bg-blue-50 text-blue-600 border-blue-100",
-  },
-  inProgress: {
-    label: "У процесі",
-    className: "bg-amber-50 text-amber-600 border-amber-100",
-  },
-  done: {
-    label: "Проведено",
-    className: "bg-emerald-50 text-emerald-600 border-emerald-100",
-  },
-};
 
 export const SchoolRow = React.memo(
   ({ school, onDelete, stages, navigate }: SchoolRowProps) => {

@@ -7,14 +7,6 @@ import {
 import { api } from "../config/api";
 import type { City, School } from "../types";
 
-export function useCities() {
-  return useQuery({
-    queryKey: ["cities"],
-    queryFn: () => api.get<City[]>("/cities").then((r) => r.data),
-    staleTime: 5 * 60 * 1000,
-  });
-}
-
 export function useAddCity() {
   const qc = useQueryClient();
   return useMutation({

@@ -38,16 +38,6 @@ export default function VirtualSchoolList({
 
   return (
     <div ref={parentRef} className="h-[calc(100vh-200px)] overflow-auto w-full">
-      <style>{`
-        @keyframes schoolRowIn {
-          from { opacity: 0; transform: translateX(-14px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
-        .school-row-enter {
-          animation: schoolRowIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-          animation-fill-mode: both;
-        }
-      `}</style>
       <div
         key={animationKey}
         style={{

@@ -31,7 +31,7 @@ export default function IssueCarousel() {
     },
     enabled: !!selectedCity?.id,
     refetchOnWindowFocus: true,
-    staleTime: 0,
+    staleTime: 30_000,
   });
 
   const updateStatusMutation = useMutation({

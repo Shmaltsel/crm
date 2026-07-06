@@ -102,7 +102,6 @@ export default function StatsBar({
 }: StatsBarProps) {
   const sizeItems =
     schoolType === "Садочок" ? SIZE_ITEMS_KINDER : SIZE_ITEMS_SCHOOL;
-  const hasAnyFilter = activeFilter || sizeFilter;
 
   return (
     <div className="flex flex-col gap-2 mb-4">

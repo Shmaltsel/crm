@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import type { School, PipelineStage } from "../../types";
+import { CATEGORY_BADGES } from "../../constants/categoryBadges";
 
 interface Props {
   schools: School[];
@@ -15,21 +16,6 @@ interface SchoolCardProps {
   stages: PipelineStage[];
   index?: number;
 }
-
-const CATEGORY_BADGES: Record<string, { label: string; className: string }> = {
-  planned: {
-    label: "Заплановано",
-    className: "bg-blue-50 text-blue-600 border-blue-100",
-  },
-  inProgress: {
-    label: "У процесі",
-    className: "bg-amber-50 text-amber-600 border-amber-100",
-  },
-  done: {
-    label: "Проведено",
-    className: "bg-emerald-50 text-emerald-600 border-emerald-100",
-  },
-};
 
 export const SchoolCard = React.memo(
   ({ school, onDelete, stages, index = 0 }: SchoolCardProps) => {
@@ -107,16 +93,6 @@ export default function SchoolMobileList({
 }: Props) {
   return (
     <>
-      <style>{`
-        @keyframes schoolRowIn {
-          from { opacity: 0; transform: translateX(-14px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
-        .school-row-enter {
-          animation: schoolRowIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-          opacity: 0;
-        }
-      `}</style>
       <div className="md:hidden flex-1 overflow-y-auto flex flex-col gap-3 pb-24 px-1 custom-scrollbar">
         {schools.map((school, index) => (
           <SchoolCard

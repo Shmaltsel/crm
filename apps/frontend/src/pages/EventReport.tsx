@@ -115,7 +115,7 @@ function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex justify-between">
       <span className="text-slate-400">{label}:</span>
-      <span className="font-medium text-slate-800">{value || "—"}</span>
+      <span className="font-medium text-slate-800">{value ?? "—"}</span>
     </div>
   );
 }

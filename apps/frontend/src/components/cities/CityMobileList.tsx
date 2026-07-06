@@ -1,32 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import type { City } from "../../types";
-
-const CITY_ICONS: Record<string, string> = {
-  Львів: "🦁",
-  Київ: "🏰",
-  Харків: "⚙️",
-  Одеса: "⚓",
-  Дніпро: "🌊",
-  Запоріжжя: "⚡",
-  "Івано-Франківськ": "⛰️",
-  Чернівці: "🏛️",
-  Тернопіль: "⛵",
-  Ужгород: "🌸",
-  Миколаїв: "🚢",
-  Вінниця: "⛲",
-  Херсон: "🍉",
-  Полтава: "🥟",
-  Чернігів: "⛪",
-  Черкаси: "🌳",
-  Суми: "🎪",
-  Житомир: "🚀",
-  Хмельницький: "🛍️",
-  Рівне: "💎",
-  Кропивницький: "🎭",
-  Луцьк: "🏰",
-};
-const DEFAULT_CITY_ICON = "🏙️";
+import { CITY_ICONS, DEFAULT_CITY_ICON } from "../../constants/cityIcons";
 
 const ICON_COLORS = [
   "bg-purple-50",

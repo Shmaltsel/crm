@@ -151,15 +151,13 @@ describe("EventReport", () => {
     expect(screen.queryByText(/Коментар:/)).not.toBeInTheDocument();
   });
 
-  it("ЕDGE-CASE (задокументована поведінка): childrenPlanned=0 показується як '—', а не '0'", () => {
-    // Row робить `value || "—"`, а 0 — falsy. Це може бути небажаним для UX
-    // (0 запланованих дітей — валідне значення, але виглядає як «немає даних»).
+  it("childrenPlanned=0 показує '0' (виправлено: використовуємо ?? замість ||)", () => {
     mockUseEventFull.mockReturnValue({
       data: { ...baseEvent, childrenPlanned: 0 },
       isLoading: false,
       isError: false,
     });
     renderPage();
-    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+    expect(screen.getByText("0")).toBeInTheDocument();
   });
 });

@@ -14,15 +14,16 @@ import {
   useSchoolStats,
   useDeleteSchool,
   usePrefetchSchool,
-  useCities,
   useSupportedCities,
 } from "../hooks/useApi";
+import { useCities } from "../hooks/useCities";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import VirtualSchoolList from "../components/VirtualSchoolList";
 import { SchoolCard } from "../components/schools/SchoolMobileList";
 import type { SchoolContact } from "../types";
 import { useAuth } from "../context/AuthContext";
 import { Download } from "lucide-react";
+import { PIPELINE_STAGES } from "../constants/pipelineStages";
 interface NewSchoolPayload {
   name: string;
   cityId: string;
@@ -36,16 +37,6 @@ const StatsBar = lazy(() => import("../components/schools/StatsBar"));
 const VirtualDesktopTable = lazy(
   () => import("../components/schools/VirtualDesktopTable"),
 );
-export const PIPELINE_STAGES = [
-  { key: "BASE", name: "Новий заклад" },
-  { key: "FIRST_CONTACT", name: "Знайомство" },
-  { key: "DATE_CONFIRMED", name: "Підтвердження дати" },
-  { key: "PREPARATION", name: "Оголошення" },
-  { key: "IN_PROGRESS", name: "Підготовка" },
-  { key: "DONE", name: "Проведення заходу" },
-  { key: "REPORT", name: "Звіт" },
-];
-
 interface City {
   id: string;
   name: string;

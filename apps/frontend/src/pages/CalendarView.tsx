@@ -12,7 +12,7 @@ import {
 import { useState, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import DayOffModal from "../components/calendar/DayOffModal";
-import type { Event, Project, City, User, DayOff } from "../types";
+import type { Event as CalendarEvent, Project, City, User, DayOff } from "../types";
 
 const STAFF_ROLES = ["HOST", "DRIVER"];
 const MANAGER_ROLES = ["SUPERADMIN", "MANAGER"];
@@ -122,7 +122,7 @@ export default function CalendarView() {
   }, [allUsers, userRole, user?.cityId, filterCityId]);
 
   const filteredEvents = useMemo(() => {
-    return events.filter((ev: Event) => {
+    return events.filter((ev: CalendarEvent) => {
       if (ev.status === "RE_SALE") return false;
       if (filterCityId !== "ALL" && ev.city?.id !== filterCityId) return false;
       return true;
@@ -130,7 +130,7 @@ export default function CalendarView() {
   }, [events, filterCityId]);
 
   const eventsByDate = useMemo(() => {
-    const map = new Map<string, Event[]>();
+    const map = new Map<string, CalendarEvent[]>();
     for (const ev of filteredEvents) {
       const key = ev.date.slice(0, 10);
       if (!map.has(key)) map.set(key, []);
@@ -289,7 +289,7 @@ export default function CalendarView() {
     return `rgb(${r}, ${g}, ${b})`;
   };
 
-  const getDayColor = (dayEvents: Event[]) => {
+  const getDayColor = (dayEvents: CalendarEvent[]) => {
     if (dayEvents.length === 0) return undefined;
     const counts = new Map<string, number>();
     for (const ev of dayEvents) {
@@ -584,7 +584,7 @@ export default function CalendarView() {
                     )}
 
                     <div className="space-y-1.5">
-                      {dayEvents.slice(0, 3).map((ev: Event) => (
+                      {dayEvents.slice(0, 3).map((ev: CalendarEvent) => (
                         <div
                           key={ev.id}
                           className="relative group/event z-0 hover:z-50"
@@ -801,7 +801,7 @@ export default function CalendarView() {
               </div>
             ) : (
               <div className="space-y-3">
-                {selectedDayEvents.map((ev: Event) => (
+                {selectedDayEvents.map((ev: CalendarEvent) => (
                   <div
                     key={ev.id}
                     onClick={() =>

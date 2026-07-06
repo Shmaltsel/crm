@@ -1,8 +1,7 @@
-import { Link, useLocation, useOutlet } from "react-router-dom";
+import { Link, useOutlet } from "react-router-dom";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSelectedCity } from "../context/CityContext";
-import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import {
   Home,
@@ -48,9 +47,7 @@ function NavLink({
 }
 
 export default function Layout() {
-  const location = useLocation();
   const outlet = useOutlet();
-  const queryClient = useQueryClient();
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -59,7 +56,6 @@ export default function Layout() {
 
   const handleLogout = async () => {
     await logout();
-    queryClient.clear();
   };
 
   const closeMenu = () => setIsMobileMenuOpen(false);

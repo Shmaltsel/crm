@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../config/api";
 import type { City, IssueReport } from "../../types";
+import { CITY_ICONS, DEFAULT_CITY_ICON } from "../../constants/cityIcons";
 
 interface Props {
   selectedCity: City | null;
@@ -20,32 +21,6 @@ function getNextStatus(current: string) {
   const idx = STATUSES.indexOf(current);
   return STATUSES[(idx + 1) % STATUSES.length];
 }
-
-const CITY_ICONS: Record<string, string> = {
-  Львів: "🦁",
-  Київ: "🏰",
-  Харків: "⚙️",
-  Одеса: "⚓",
-  Дніпро: "🌊",
-  Запоріжжя: "⚡",
-  "Івано-Франківськ": "⛰️",
-  Чернівці: "🏛️",
-  Тернопіль: "⛵",
-  Ужгород: "🌸",
-  Миколаїв: "🚢",
-  Вінниця: "⛲",
-  Херсон: "🍉",
-  Полтава: "🥟",
-  Чернігів: "⛪",
-  Черкаси: "🌳",
-  Суми: "🎪",
-  Житомир: "🚀",
-  Хмельницький: "🛍️",
-  Рівне: "💎",
-  Кропивницький: "🎭",
-  Луцьк: "🏰",
-};
-const DEFAULT_CITY_ICON = "🏙️";
 
 export default function CityMobileHeader({ selectedCity, cities }: Props) {
   const navigate = useNavigate();

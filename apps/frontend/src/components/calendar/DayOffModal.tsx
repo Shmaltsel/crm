@@ -51,6 +51,7 @@ export default function DayOffModal({
     month: "long",
     year: "numeric",
   });
+  const dateKey = date.toLocaleDateString("en-CA");
 
   return createPortal(
     <div
@@ -61,13 +62,6 @@ export default function DayOffModal({
       style={{ animation: "fadeIn 0.2s ease-out forwards" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes modalScale {
-          from { opacity: 0; transform: scale(0.95) translateY(15px); }
-          to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-      `}</style>
       <div
         className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
         style={{ animation: "modalScale 0.3s ease-out forwards" }}
@@ -94,7 +88,7 @@ export default function DayOffModal({
           ) : (
             <div className="space-y-2">
               {staff.map((s) => {
-                const existing = dayOffs.find((d) => d.userId === s.id);
+                const existing = dayOffs.find((d) => d.userId === s.id && d.date === dateKey);
                 const isOff = !!existing;
                 return (
                   <button
