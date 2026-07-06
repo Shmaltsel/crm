@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
 
@@ -20,9 +20,38 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+let refreshPromise: Promise<void> | null = null;
+
+function refreshSession(): Promise<void> {
+  if (!refreshPromise) {
+    refreshPromise = api
+      .post("/auth/refresh")
+      .then(() => undefined)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
 api.interceptors.response.use(
   (res) => res,
-  (error) => {
+  async (error: AxiosError) => {
+    const original = error.config as (typeof error.config & { _retry?: boolean }) | undefined;
+
+    const isAuthEndpoint = original?.url?.includes("/auth/login") || original?.url?.includes("/auth/refresh");
+
+    if (error.response?.status === 401 && original && !original._retry && !isAuthEndpoint) {
+      original._retry = true;
+      try {
+        await refreshSession();
+        return api(original);
+      } catch {
+        window.dispatchEvent(new Event("auth:expired"));
+        return Promise.reject(error);
+      }
+    }
+
     return Promise.reject(error);
   },
 );
