@@ -96,7 +96,7 @@ export default function Cities() {
       ) : (
         /* Оптимізація 6: Suspense обгортка для лінивих компонентів */
         <Suspense fallback={<CitiesSkeleton />}>
-          {/* 1. Блок для Мобільних (Шапка + Список) */}
+          
           <div className="md:hidden">
             <CityMobileHeader selectedCity={selectedCity} cities={cities} />
             <CityMobileList
@@ -106,7 +106,7 @@ export default function Cities() {
             />
           </div>
 
-          {/* 2. Блок для Десктопів (Карусель + Сітка) */}
+          
           <div className="hidden md:block">
             <IssueCarousel />
             <CityDesktopGrid
@@ -140,7 +140,7 @@ export default function Cities() {
             className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
             style={{ animation: "fadeIn 0.2s ease-out forwards" }}
           >
-            {/* ТУТ БУЛА ПРОБЛЕМА: додано opacity-0 та style з анімацією modalScale */}
+            
             <div
               className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
               style={{ animation: "modalScale 0.3s ease-out forwards" }}

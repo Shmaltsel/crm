@@ -97,10 +97,7 @@ function AppRoutes() {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
 
-          {/* Обгортаємо всі вкладені маршрути в Suspense. 
-              Коли React намагається відрендерити "ліниву" сторінку, він показує fallback (PageLoader), 
-              поки завантажується файл з сервера.
-            */}
+          
           <Route
             path="cities"
             element={

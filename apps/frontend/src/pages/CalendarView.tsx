@@ -38,7 +38,6 @@ export default function CalendarView() {
   const { data: cities = [] } = useCities();
   const { data: allUsers = [] } = useUsers();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const isLoading = eventsLoading;
   const [selectedMobileDate, setSelectedMobileDate] = useState<Date>(
     new Date(),
   );
@@ -313,7 +312,7 @@ export default function CalendarView() {
     return `linear-gradient(to bottom, ${stops.join(", ")})`;
   };
 
-  if (isLoading)
+  if (eventsLoading)
     return (
       <div className="p-4 md:p-8 bg-slate-50 min-h-screen pb-24 animate-pulse">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">

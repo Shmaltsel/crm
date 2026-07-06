@@ -18,7 +18,6 @@ export const MESSAGES = {
     uk: 'Сервіс тимчасово недоступний',
     en: 'Service temporarily unavailable',
   },
-  // --- ДОДАЙ ЦІ РЯДКИ ---
   USER_ID_REQUIRED: {
     uk: 'Ідентифікатор користувача обов’язковий',
     en: 'User ID is required',

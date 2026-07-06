@@ -16,7 +16,7 @@ export default function OptimizedImage({
   return (
     <img
       src={src}
-      alt={alt || "Image"}
+      alt={alt || ""}
       width={width}
       height={height}
       loading="lazy"
