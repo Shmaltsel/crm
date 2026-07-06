@@ -12,6 +12,8 @@ import {
 } from "../hooks/useEmployees";
 import { useCities } from "../hooks/useCities";
 import EmployeeCard from "../components/employees/EmployeeCard";
+import UserModal from "../components/employees/UserModal";
+import ProjectModal from "../components/employees/ProjectModal";
 import { sectionVariants } from "../animations/employees";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
@@ -136,6 +138,7 @@ export default function Employees() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -199,6 +202,7 @@ export default function Employees() {
     e.preventDefault();
     if (!form.fullName.trim()) return;
     setFormError("");
+    setIsSubmitting(true);
     try {
       if (editingUser) {
         const { password, ...rest } = form;
@@ -207,7 +211,11 @@ export default function Employees() {
       } else {
         await createUser.mutateAsync(form);
       }
-      setIsModalOpen(false);
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        setIsModalOpen(false);
+      }, 700);
     } catch (err: any) {
       const messages = err?.response?.data?.message;
       setFormError(
@@ -215,6 +223,8 @@ export default function Employees() {
           ? messages.join(", ")
           : messages || "Помилка збереження",
       );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -387,7 +397,7 @@ export default function Employees() {
                 y: -3,
                 boxShadow: "0 8px 24px -4px rgba(0,0,0,0.10)",
               }}
-             className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default hover:border-slate-200 transition-colors"
+              className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default hover:border-slate-200 transition-colors"
             >
               <div className="flex items-center gap-3">
                 <motion.div
@@ -434,214 +444,30 @@ export default function Employees() {
         </div>
       </div>
 
-      {/* Модалки Користувача і Проєктів */}
-      {isProjectModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="text-xl font-bold text-slate-800">
-                {editingProject ? "Редагувати вид події" : "Новий вид події"}
-              </h3>
-              <button
-                onClick={() => {
-                  setIsProjectModalOpen(false);
-                  setEditingProject(null);
-                }}
-                className="text-slate-400 text-xl leading-none p-2 -mr-2"
-              >
-                ✕
-              </button>
-            </div>
-            <form onSubmit={handleCreateProject} className="p-6">
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Назва
-              </label>
-              <input
-                type="text"
-                value={projectForm.name}
-                onChange={(e) =>
-                  setProjectForm({ ...projectForm, name: e.target.value })
-                }
-                className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none mb-6"
-                required
-                placeholder="Наприклад: Шоу мильних бульбашок"
-              />
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Ціна за дитину, грн
-              </label>
-              <input
-                type="number"
-                min={0}
-                value={projectForm.pricePerChild}
-                onChange={(e) =>
-                  setProjectForm({
-                    ...projectForm,
-                    pricePerChild: e.target.value,
-                  })
-                }
-                placeholder="Наприклад: 150"
-                className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none mb-6"
-              />
-              <label className="block text-sm font-medium text-slate-700 mb-3">
-                Колір для календаря
-              </label>
-              <div className="flex gap-4 mb-8">
-                {Object.keys(PROJECT_COLORS).map((c) => (
-                  <button
-                    type="button"
-                    key={c}
-                    onClick={() => setProjectForm({ ...projectForm, color: c })}
-                    className={`w-8 h-8 rounded-full ${PROJECT_COLORS[c]} transition-all ${projectForm.color === c ? "ring-4 ring-offset-2 ring-blue-200 scale-110" : "hover:scale-110"}`}
-                  />
-                ))}
-              </div>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsProjectModalOpen(false)}
-                  className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
-                >
-                  Скасувати
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-medium"
-                >
-                  Зберегти
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <ProjectModal
+        isOpen={isProjectModalOpen}
+        isEditing={!!editingProject}
+        form={projectForm}
+        setForm={setProjectForm}
+        onClose={() => {
+          setIsProjectModalOpen(false);
+          setEditingProject(null);
+        }}
+        onSubmit={handleCreateProject}
+      />
 
-      {/* Ваша стара модалка Користувача */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          {/* Ваш існуючий код модалки працівника... Для стислості я зберіг базові поля */}
-          <div className="bg-white rounded-2xl shadow-xl w-full sm:max-w-lg overflow-hidden flex flex-col">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <h3 className="text-xl font-bold">
-                {editingUser ? "Редагувати" : "Новий користувач"}
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 text-xl p-2 -mr-2"
-              >
-                ✕
-              </button>
-            </div>
-            <form
-              onSubmit={handleSubmit}
-              className="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh]"
-            >
-              {formError && (
-                <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">
-                  {formError}
-                </div>
-              )}
-              <input
-                type="text"
-                value={form.fullName}
-                onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                required
-                placeholder="ПІБ"
-                className="w-full p-2.5 border rounded-lg"
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  required
-                  placeholder="Пошта"
-                  className="w-full p-2.5 border rounded-lg"
-                />
-                <input
-                  type="password"
-                  value={form.password}
-                  onChange={(e) =>
-                    setForm({ ...form, password: e.target.value })
-                  }
-                  required={!editingUser}
-                  placeholder="Пароль (мін. 8 симв., літера+цифра)"
-                  minLength={8}
-                  className="w-full p-2.5 border rounded-lg"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="Телефон"
-                  className="w-full p-2.5 border rounded-lg"
-                />
-                <input
-                  type="text"
-                  value={form.telegramId}
-                  onChange={(e) =>
-                    setForm({ ...form, telegramId: e.target.value })
-                  }
-                  placeholder="Telegram ID або @username"
-                  className="w-full p-2.5 border rounded-lg"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <select
-                  value={form.role}
-                  onChange={(e) =>
-                    setForm({ ...form, role: e.target.value as Role })
-                  }
-                  className="w-full p-2.5 border rounded-lg"
-                >
-                  <option value="MANAGER">Менеджер</option>
-                  <option value="DRIVER">Водій</option>
-                  <option value="HOST">Ведучий</option>
-                  <option value="SUPERADMIN">Суперадмін</option>
-                </select>
-                <select
-                  value={form.cityId}
-                  onChange={(e) => setForm({ ...form, cityId: e.target.value })}
-                  className="w-full p-2.5 border rounded-lg"
-                >
-                  <option value="">Всі міста</option>
-                  {cities.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {form.role === "DRIVER" && (
-                <input
-                  type="text"
-                  value={form.car || ""}
-                  onChange={(e) => setForm({ ...form, car: e.target.value })}
-                  placeholder="Автомобіль (напр. Renault Trafic)"
-                  className="w-full p-2.5 border rounded-lg"
-                />
-              )}
-              <div className="flex gap-3 mt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
-                >
-                  Скасувати
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium"
-                >
-                  Зберегти
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <UserModal
+        isOpen={isModalOpen}
+        isEditing={!!editingUser}
+        form={form}
+        setForm={setForm}
+        cities={cities}
+        formError={formError}
+        isSubmitting={isSubmitting}
+        showSuccess={showSuccess}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleSubmit}
+      />
     </motion.div>
   );
 }
