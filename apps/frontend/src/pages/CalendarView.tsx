@@ -1,12 +1,7 @@
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import {
-  useDaysOff,
-  useCreateDayOff,
-  useDeleteDayOff,
-} from "../hooks/useDaysOff";
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import DayOffModal from "../components/calendar/DayOffModal";
 import type { Event as CalendarEvent, Project, City, User, DayOff } from "../types";
@@ -15,6 +10,8 @@ import { toISODate, isPastDay } from "../features/calendar/utils/date";
 import { getDayColor } from "../features/calendar/utils/color";
 import { useCalendarMonth } from "../features/calendar/hooks/useCalendarMonth";
 import { useCalendarData } from "../features/calendar/hooks/useCalendarData";
+import { useDayOffActions } from "../features/calendar/hooks/useDayOffActions";
+import { useLongPress } from "../features/calendar/hooks/useLongPress";
 
 export default function CalendarView() {
   const {
@@ -29,8 +26,6 @@ export default function CalendarView() {
     prevMonth,
     today,
   } = useCalendarMonth();
-
-  const [dayOffModalDate, setDayOffModalDate] = useState<Date | null>(null);
 
   const { selectedCity } = useSelectedCity();
   const { user } = useAuth();
@@ -60,32 +55,34 @@ export default function CalendarView() {
       : undefined
     : undefined;
 
-  const { data: dayOffs = [] } = useDaysOff(monthFrom, monthTo, dayOffCityId);
-  const createDayOff = useCreateDayOff();
-  const deleteDayOff = useDeleteDayOff();
+  const {
+    dayOffsByDate,
+    staffForModal,
+    dayOffModalDate,
+    setDayOffModalDate,
+    handleDayOffClick,
+    handleToggleStaffDayOff,
+    handleLongPressDayOff,
+  } = useDayOffActions(
+    monthFrom,
+    monthTo,
+    dayOffCityId,
+    isStaff,
+    isManagerOrAdmin,
+    user,
+    allUsers,
+    filterCityId,
+    userRole,
+    user?.cityId,
+  );
 
-  const dayOffsByDate = useMemo(() => {
-    const map = new Map<string, typeof dayOffs>();
-    for (const d of dayOffs) {
-      const key = d.date.slice(0, 10);
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(d);
-    }
-    return map;
-  }, [dayOffs]);
+  const { startLongPress, cancelLongPress, wasLongPress } =
+    useLongPress(handleLongPressDayOff);
 
-  const staffForModal = useMemo(() => {
-    const cityScope =
-      userRole === "MANAGER"
-        ? user?.cityId
-        : filterCityId !== "ALL"
-          ? filterCityId
-          : null;
-    return allUsers.filter(
-      (u: User) =>
-        STAFF_ROLES.includes(u.role) && (!cityScope || u.cityId === cityScope),
-    );
-  }, [allUsers, userRole, user?.cityId, filterCityId]);
+  const handleMobileDayTap = useCallback((day: Date) => {
+    if (wasLongPress()) return;
+    setSelectedMobileDate(day);
+  }, [setSelectedMobileDate, wasLongPress]);
 
   const selectedDayEvents = eventsByDate.get(toISODate(selectedMobileDate)) ?? [];
 

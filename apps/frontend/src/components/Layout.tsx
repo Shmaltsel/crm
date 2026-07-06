@@ -1,4 +1,4 @@
-import { Link, useOutlet } from "react-router-dom";
+import { Link, useOutlet, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSelectedCity } from "../context/CityContext";
@@ -22,14 +22,15 @@ function NavLink({
   icon: Icon,
   label,
   onClick,
+  currentPath,
 }: {
   to: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   onClick?: () => void;
+  currentPath: string;
 }) {
-  const location = useLocation();
-  const active = location.pathname.startsWith(to);
+  const active = currentPath.startsWith(to);
   return (
     <Link
       to={to}
@@ -48,6 +49,7 @@ function NavLink({
 
 export default function Layout() {
   const outlet = useOutlet();
+  const location = useLocation();
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -121,17 +123,59 @@ export default function Layout() {
 
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto mt-16 md:mt-0">
           {is(["SUPERADMIN", "MANAGER"]) && (
-            <NavLink to="/dashboard" icon={Home} label="Дашборд" onClick={closeMenu} />
+            <NavLink
+              to="/dashboard"
+              icon={Home}
+              label="Дашборд"
+              onClick={closeMenu}
+              currentPath={location.pathname}
+            />
           )}
           {is(["SUPERADMIN"]) && (
-            <NavLink to="/cities" icon={MapPin} label="Міста" onClick={closeMenu} />
+            <NavLink
+              to="/cities"
+              icon={MapPin}
+              label="Міста"
+              onClick={closeMenu}
+              currentPath={location.pathname}
+            />
           )}
-          <NavLink to="/schools" icon={School} label="Школи" onClick={closeMenu} />
-          <NavLink to="/kindergartens" icon={Baby} label="Садочки" onClick={closeMenu} />
-          <NavLink to="/finance" icon={Wallet} label="Фінанси" onClick={closeMenu} />
-          <NavLink to="/calendar" icon={Calendar} label="Календар" onClick={closeMenu} />
+          <NavLink
+            to="/schools"
+            icon={School}
+            label="Школи"
+            onClick={closeMenu}
+            currentPath={location.pathname}
+          />
+          <NavLink
+            to="/kindergartens"
+            icon={Baby}
+            label="Садочки"
+            onClick={closeMenu}
+            currentPath={location.pathname}
+          />
+          <NavLink
+            to="/finance"
+            icon={Wallet}
+            label="Фінанси"
+            onClick={closeMenu}
+            currentPath={location.pathname}
+          />
+          <NavLink
+            to="/calendar"
+            icon={Calendar}
+            label="Календар"
+            onClick={closeMenu}
+            currentPath={location.pathname}
+          />
           {is(["SUPERADMIN"]) && (
-            <NavLink to="/employees" icon={Users} label="Працівники" onClick={closeMenu} />
+            <NavLink
+              to="/employees"
+              icon={Users}
+              label="Працівники"
+              onClick={closeMenu}
+              currentPath={location.pathname}
+            />
           )}
         </nav>
 
