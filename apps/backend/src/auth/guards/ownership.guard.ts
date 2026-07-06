@@ -32,11 +32,21 @@ export class OwnershipGuard implements CanActivate {
     // SUPERADMIN бачить усе — перевірка не потрібна
     if (user?.role === 'SUPERADMIN') return true;
 
-    const paramId: string | undefined =
+    let paramId: string | undefined =
       request.params.id ??
       request.params.schoolId ??
       request.params.eventId ??
       request.params.crewId;
+
+    if (!paramId && request.params.historyId && resourceType === 'event') {
+      const history = await this.prisma.eventHistory.findUnique({
+        where: { id: request.params.historyId },
+        select: { eventId: true },
+      });
+      if (!history) throw new NotFoundException('Запис історії не знайдено');
+      paramId = history.eventId;
+    }
+
     if (!paramId) return true;
 
     if (user?.role === 'HOST' || user?.role === 'DRIVER') {

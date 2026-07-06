@@ -95,6 +95,8 @@ export class EventsController {
   }
 
   @Post(':id/history')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('event')
   addHistoryComment(
     @Param('id') id: string,
     @Body() body: AddCommentDto,
@@ -104,6 +106,8 @@ export class EventsController {
   }
 
   @Patch('history/:historyId')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('event')
   updateHistoryComment(
     @Param('historyId') historyId: string,
     @Body() body: AddCommentDto,
@@ -137,6 +141,8 @@ export class EventsController {
   }
 
   @Get(':id')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('event')
   findOne(@Param('id') id: string) {
     return this.eventsService.findOne(id);
   }
