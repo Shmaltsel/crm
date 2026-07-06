@@ -22,6 +22,7 @@ import VirtualSchoolList from "../components/VirtualSchoolList";
 import { SchoolCard } from "../components/schools/SchoolMobileList";
 import type { SchoolContact } from "../types";
 import { useAuth } from "../context/AuthContext";
+import { Download } from "lucide-react";
 
 interface NewSchoolPayload {
   name: string;
@@ -299,7 +300,7 @@ export default function Kindergartens() {
                   Імпортую{"·".repeat(dotCount)}
                 </span>
               ) : (
-                <>📥 Імпорт з isuo</>
+                <><Download className="w-4 h-4" /> Імпорт з isuo</>
               )}
             </button>
           )}

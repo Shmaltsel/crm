@@ -1,8 +1,14 @@
 
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  *:focus-visible {
+    outline: 2px solid theme('colors.brand.DEFAULT');
+    outline-offset: 2px;
+  }
+}
 
 .custom-scrollbar {
   scrollbar-width: thin;
@@ -16,10 +22,4 @@
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background-color: #cbd5e1;
   border-radius: 20px;
-}
-
-/* Плавність для всіх інтерактивних елементів */
-button, div {
-  transition-property: color, background-color, border-color, transform, box-shadow;
-  transition-duration: 200ms;
 }

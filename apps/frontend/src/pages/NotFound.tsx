@@ -1,25 +1,24 @@
 import { useNavigate } from "react-router-dom";
+import { SearchX } from "lucide-react";
+import { Button } from "../components/ui/Button";
 
 export default function NotFound() {
   const navigate = useNavigate();
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-      <div className="max-w-md w-full bg-white rounded-[24px] shadow-sm border border-slate-100 p-8 text-center">
-        <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4 text-3xl">
-          🔍
+    <div className="min-h-screen flex items-center justify-center bg-surface-subtle px-4">
+      <div className="max-w-md w-full bg-surface rounded-card shadow-card border border-border p-8 text-center">
+        <div className="w-16 h-16 rounded-full bg-brand-subtle flex items-center justify-center mx-auto mb-4">
+          <SearchX className="w-7 h-7 text-brand" />
         </div>
-        <h1 className="text-xl font-bold text-slate-800 mb-2">
+        <h1 className="text-xl font-bold text-content-primary mb-2">
           Сторінку не знайдено
         </h1>
-        <p className="text-sm text-slate-500 mb-6">
+        <p className="text-sm text-content-muted mb-6">
           Можливо, її було переміщено або видалено.
         </p>
-        <button
-          onClick={() => navigate("/")}
-          className="px-5 py-2.5 rounded-full bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 transition-colors active:scale-95"
-        >
+        <Button onClick={() => navigate("/")}>
           На головну
-        </button>
+        </Button>
       </div>
     </div>
   );

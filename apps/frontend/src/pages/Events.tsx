@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useEvents } from "../hooks/useApi";
 import { useNavigate } from "react-router-dom";
+import { School, MapPin, User, Truck } from "lucide-react";
 import AddressLink from "../components/AddressLink";
 import PhoneLink from "../components/PhoneLink";
 import { useSelectedCity } from "../context/CityContext";
@@ -162,17 +163,17 @@ export default function Events() {
                   {formatDate(ev.date)}
                   {ev.time ? `, ${ev.time}` : ""} · {ev.city?.name ?? "—"}
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  🏫 {ev.school?.name ?? "—"}
+                <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                  <School className="w-3 h-3 shrink-0" /> {ev.school?.name ?? "—"}
                 </p>
                 {ev.address && (
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    📍 <AddressLink address={ev.address} />
+                  <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                    <MapPin className="w-3 h-3 shrink-0" /> <AddressLink address={ev.address} />
                   </p>
                 )}
                 {(ev.crew?.host || ev.crew?.driver) && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    👤 {ev.crew?.host?.name ?? "—"} · 🚐{" "}
+                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                    <User className="w-3 h-3 shrink-0" /> {ev.crew?.host?.name ?? "—"} <Truck className="w-3 h-3 shrink-0" />{" "}
                     {ev.crew?.driver?.name ?? "—"}
                   </p>
                 )}
@@ -231,8 +232,8 @@ export default function Events() {
                       )}
                     </td>
                     <td className="p-4 text-gray-600 text-sm">
-                      <div>👤 {ev.crew?.host?.name ?? "—"}</div>
-                      <div>🚐 {ev.crew?.driver?.name ?? "—"}</div>
+                      <div className="flex items-center gap-1"><User className="w-3 h-3 shrink-0" /> {ev.crew?.host?.name ?? "—"}</div>
+                      <div className="flex items-center gap-1"><Truck className="w-3 h-3 shrink-0" /> {ev.crew?.driver?.name ?? "—"}</div>
                     </td>
                     <td className="p-4">
                       <span

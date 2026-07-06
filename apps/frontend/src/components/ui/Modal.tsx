@@ -1,0 +1,64 @@
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useRef, type ReactNode } from "react";
+import { X } from "lucide-react";
+
+interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
+  maxWidth?: string;
+}
+
+export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-md" }: ModalProps) {
+  const headingId = useRef(`modal-${Math.random().toString(36).slice(2)}`).current;
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", handler);
+    closeRef.current?.focus();
+    return () => document.removeEventListener("keydown", handler);
+  }, [isOpen, onClose]);
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={headingId}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+          onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
+          <motion.div
+            initial={{ y: 24, opacity: 0, scale: 0.98 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 24, opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className={`bg-surface rounded-t-3xl sm:rounded-modal shadow-modal w-full sm:${maxWidth} overflow-hidden max-h-[90vh] flex flex-col`}
+          >
+            <div className="sm:hidden w-10 h-1.5 bg-border-strong rounded-pill mx-auto mt-3" />
+            <div className="p-5 sm:p-6 border-b border-border flex justify-between items-center bg-surface-subtle shrink-0">
+              <h3 id={headingId} className="text-lg font-bold text-content-primary">{title}</h3>
+              <button
+                ref={closeRef}
+                onClick={onClose}
+                aria-label="Закрити"
+                className="p-2 -mr-2 text-content-muted hover:text-content-primary rounded-control transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 sm:p-6 overflow-y-auto">{children}</div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}

@@ -1,6 +1,7 @@
 import { Suspense, lazy } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { MapPin } from "lucide-react";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
@@ -149,10 +150,10 @@ export default function Dashboard() {
       <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-slate-800">Дашборд</h1>
-          <p className="text-sm text-slate-500 mt-1">📍 Оберіть місто</p>
+          <p className="text-sm text-content-muted mt-1 flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> Оберіть місто</p>
         </div>
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center">
-          <p className="text-4xl mb-3">📍</p>
+          <MapPin className="w-10 h-10 mx-auto mb-3 text-content-muted" />
           <p className="font-semibold text-slate-700 mb-2">Місто не обрано</p>
           <p className="text-sm text-slate-500 mb-4">
             Оберіть місто у розділі «Міста», щоб бачити активність
