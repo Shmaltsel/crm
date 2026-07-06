@@ -26,9 +26,6 @@ export function useSchoolCompletedEvents(schoolId: string | undefined) {
     queryFn: async () => {
       const res = await api.get<Event[]>(
         `/events/school/${schoolId}/completed`,
-        {
-          headers: authHeader(),
-        },
       );
       return res.data;
     },
@@ -56,9 +53,7 @@ export function useEventFull(eventId: string | undefined) {
   return useQuery({
     queryKey: ["eventFull", eventId],
     queryFn: async () => {
-      const res = await api.get<Event>(`/events/${eventId}`, {
-        headers: authHeader(),
-      });
+      const res = await api.get<Event>(`/events/${eventId}`);
       return res.data;
     },
     enabled: !!eventId,
@@ -182,9 +177,7 @@ export function useSubmitReport() {
       reportData: ReportData;
     }) =>
       api
-        .post(`/events/${eventId}/report`, reportData, {
-          headers: authHeader(),
-        })
+        .post(`/events/${eventId}/report`, reportData)
         .then((r) => r.data)
         .catch((err) => {
           console.error("submitReport failed:", err.response?.data ?? err);

@@ -1,6 +1,7 @@
 import { Logger, Module } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
+import { CacheVersionService } from './cache-version.service';
 
 const logger = new Logger('RedisCacheModule');
 
@@ -30,6 +31,7 @@ const logger = new Logger('RedisCacheModule');
       },
     }),
   ],
-  exports: [CacheModule],
+  providers: [CacheVersionService],
+  exports: [CacheVersionService, CacheModule],
 })
 export class RedisCacheModule {}

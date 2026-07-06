@@ -1,6 +1,6 @@
 import { http, HttpResponse } from "msw";
 
-const BASE = "";
+const BASE = "http://localhost:3000/api";
 
 export const handlers = [
   http.get(`${BASE}/cities`, () =>

@@ -1,6 +1,9 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { Injectable } from '@nestjs/common/decorators/core/injectable.decorator';
+import { Injectable, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
+import { CacheVersionService } from '../common/cache/cache-version.service';
 export interface FinanceKpi {
   totalRevenue: number;
   totalExpenses: number;
@@ -40,19 +43,11 @@ export interface FinanceDashboardResult {
 
 @Injectable()
 export class FinanceService {
-  private cache = new Map<string, { data: unknown; expiresAt: number }>();
-
-  private getCached<T>(key: string): T | null {
-    const entry = this.cache.get(key);
-    if (!entry || Date.now() > entry.expiresAt) return null;
-    return entry.data as T;
-  }
-
-  private setCached(key: string, data: unknown, ttlMs = 5 * 60 * 1000) {
-    this.cache.set(key, { data, expiresAt: Date.now() + ttlMs });
-  }
-
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly cacheVersion: CacheVersionService,
+  ) {}
 
   private resolveDateFrom(period?: string): Date | undefined {
     const now = new Date();
@@ -100,8 +95,10 @@ export class FinanceService {
     project?: string;
     minimal?: boolean;
   }): Promise<FinanceDashboardResult> {
-    const cacheKey = `finance:${cityId}:${period}:${project}:${minimal}`;
-    const cached = this.getCached<FinanceDashboardResult>(cacheKey);
+    const version = await this.cacheVersion.getVersion('finance');
+    const cacheKey = `finance:v${version}:${cityId ?? ''}:${period ?? ''}:${project ?? ''}:${minimal}`;
+    const cached =
+      await this.cacheManager.get<FinanceDashboardResult>(cacheKey);
     if (cached) return cached;
 
     const dateFrom = this.resolveDateFrom(period);
@@ -126,8 +123,8 @@ export class FinanceService {
       }),
     ]);
 
-    const totalRevenue = kpiAgg._sum.totalSum ?? 0;
-    const totalProfit = kpiAgg._sum.remainderSum ?? 0;
+    const totalRevenue = Number(kpiAgg._sum.totalSum ?? 0);
+    const totalProfit = Number(kpiAgg._sum.remainderSum ?? 0);
     const totalEvents = kpiAgg._count.eventId ?? 0;
 
     const expCatMap: Record<string, number> = {};
@@ -188,7 +185,7 @@ export class FinanceService {
       revenue: row.revenue,
       profit: row.profit,
     }));
-    const expectedRevenue = plannedAgg._sum.price ?? 0;
+    const expectedRevenue = Number(plannedAgg._sum.price ?? 0);
     const filterOptions = {
       projects: projectsRaw.map((p) => p.project).filter(Boolean),
       cities,
@@ -201,7 +198,7 @@ export class FinanceService {
         expectedRevenue,
         filters: filterOptions,
       };
-      this.setCached(cacheKey, result);
+      await this.cacheManager.set(cacheKey, result, 300_000);
       return result;
     }
 
@@ -309,8 +306,8 @@ export class FinanceService {
       id: r.event.id,
       date: r.event.date,
       school: r.event.school?.name ?? '—',
-      profit: r.remainderSum ?? 0,
-      revenue: r.totalSum ?? 0,
+      profit: Number(r.remainderSum ?? 0),
+      revenue: Number(r.totalSum ?? 0),
     });
 
     const topEvents = topEventsRaw.map(mapEvent);
@@ -328,7 +325,7 @@ export class FinanceService {
       expectedRevenue,
       filters: filterOptions,
     };
-    this.setCached(cacheKey, result);
+    await this.cacheManager.set(cacheKey, result, 300_000);
     return result;
   }
 

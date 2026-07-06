@@ -1,0 +1,483 @@
+﻿node.exe : $ jest "--passWithNoTests"
+At C:\Users\shmal\AppData\Roaming\npm\pnpm.ps1:24 char:5
++     & "node$exe"  "$basedir/node_modules/pnpm/bin/pnpm.mjs" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ($ jest "--passWithNoTests":String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+FAIL src/issues/issues.service.spec.ts
+  ΓùÅ Test suite failed to run
+
+    [96msrc/issues/issues.service.spec.ts[0m:[93m178[0m:[93m51[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+    [7m178[0m   it('formatMember: ╤ç╨╕╤ü╨╗╨╛╨▓╨╕╨╣ telegramId ΓåÆ ╨╗╨╕╤ê╨╡ ╤û╨╝'╤Å (╨╜╨╡ @mention)', async () => {
+    [7m   [0m [91m                                                  ~[0m
+    [96msrc/issues/issues.service.spec.ts[0m:[93m178[0m:[93m57[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+    [7m178[0m   it('formatMember: ╤ç╨╕╤ü╨╗╨╛╨▓╨╕╨╣ telegramId ΓåÆ ╨╗╨╕╤ê╨╡ ╤û╨╝'╤Å (╨╜╨╡ @mention)', async () => {
+    [7m   [0m [91m                                                        ~[0m
+    [96msrc/issues/issues.service.spec.ts[0m:[93m178[0m:[93m65[0m - [91merror[0m[90m TS1109: [0mExpression 
+expected.
+
+    [7m178[0m   it('formatMember: ╤ç╨╕╤ü╨╗╨╛╨▓╨╕╨╣ telegramId ΓåÆ ╨╗╨╕╤ê╨╡ ╤û╨╝'╤Å (╨╜╨╡ @mention)', async () => {
+    [7m   [0m [91m                                                                [0m
+    [96msrc/issues/issues.service.spec.ts[0m:[93m178[0m:[93m66[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+    [7m178[0m   it('formatMember: ╤ç╨╕╤ü╨╗╨╛╨▓╨╕╨╣ telegramId ΓåÆ ╨╗╨╕╤ê╨╡ ╤û╨╝'╤Å (╨╜╨╡ @mention)', async () => {
+    [7m   [0m [91m                                                                 ~~~~~~~~~~~~~~~~[0m
+    [96msrc/issues/issues.service.spec.ts[0m:[93m178[0m:[93m82[0m - [91merror[0m[90m TS1002: [0mUnterminated 
+string literal.
+
+    [7m178[0m   it('formatMember: ╤ç╨╕╤ü╨╗╨╛╨▓╨╕╨╣ telegramId ΓåÆ ╨╗╨╕╤ê╨╡ ╤û╨╝'╤Å (╨╜╨╡ @mention)', async () => {
+    [7m   [0m [91m                                                                                 [0m
+    [96msrc/issues/issues.service.spec.ts[0m:[93m179[0m:[93m5[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+    [7m179[0m     mockPrisma.event.findUnique.mockResolvedValueOnce({
+    [7m   [0m [91m    ~~~~~~~~~~[0m
+    [96msrc/issues/issues.service.spec.ts[0m:[93m185[0m:[93m7[0m - [91merror[0m[90m TS1005: [0m')' expected.
+
+    [7m185[0m     });
+    [7m   [0m [91m      ~[0m
+    [96msrc/issues/issues.service.spec.ts[0m:[93m226[0m:[93m1[0m - [91merror[0m[90m TS1128: [0mDeclaration 
+or statement expected.
+
+    [7m226[0m });
+    [7m   [0m [91m~[0m
+    [96msrc/issues/issues.service.spec.ts[0m:[93m226[0m:[93m2[0m - [91merror[0m[90m TS1128: [0mDeclaration 
+or statement expected.
+
+    [7m226[0m });
+    [7m   [0m [91m ~[0m
+
+[31m[Nest] 18308  - [39m06/07/2026, 02:49:14 [31m  ERROR[39m [38;5;3m[TelegramService] [39m[31m╨¥╨╡ 
+╨▓╨┤╨░╨╗╨╛╤ü╤Å ╨╜╨░╨┤╤û╤ü╨╗╨░╤é╨╕ ╨┐╨╛╨▓╤û╨┤╨╛╨╝╨╗╨╡╨╜╨╜╤Å chat-123: Telegram API error[39m
+FAIL src/telegram/telegram.service.spec.ts
+  ΓùÅ TelegramService ΓÇö sendWelcome ΓÇ║ ╨╜╨░╨┤╤ü╨╕╨╗╨░╤ö ╨┐╨╛╨▓╤û╨┤╨╛╨╝╨╗╨╡╨╜╨╜╤Å ╨╖╤û ╨╗╨╛╨│╤û╨╜╨╛╨╝ ╤é╨░ 
+╨┐╨░╤Ç╨╛╨╗╨╡╨╝
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "╨å╨▓╨░╨╜"
+    Received string:    "≡ƒæï <b>╨Æ╤û╤é╨░╤ö╨╝╨╛ ╤â ╨í╨▓╤û╤é╨╗╨╛ ╨ù╨╜╨░╨╜╤î CRM!</b>┬╖
+    ╨Æ╨░╤ê ╨░╨║╨░╤â╨╜╤é ╤ü╤é╨▓╨╛╤Ç╨╡╨╜╨╛.┬╖
+    ≡ƒôº <b>╨¢╨╛╨│╤û╨╜:</b> <code>ivan@crm.com</code>
+    ≡ƒöæ <b>╨ƒ╨░╤Ç╨╛╨╗╤î:</b> <code>secret123</code>┬╖
+    ╨ú╨▓╤û╨╣╨┤╤û╤é╤î ╨╖╨░ ╨┐╨╛╤ü╨╕╨╗╨░╨╜╨╜╤Å╨╝: <a 
+href=\"https://crm-frontend-psi-sable.vercel.app\">crm-frontend-psi-sable.vercel.app</a>┬╖
+    <i>╨ù╨╝╤û╨╜╤û╤é╤î ╨┐╨░╤Ç╨╛╨╗╤î ╨┐╤û╤ü╨╗╤Å ╨┐╨╡╤Ç╤ê╨╛╨│╨╛ ╨▓╤à╨╛╨┤╤â.</i>"
+
+    [0m [90m 109 |[39m     expect(text)[33m.[39mtoContain([32m'ivan@crm.com'[39m)[33m;[39m
+     [90m 110 |[39m     expect(text)[33m.[39mtoContain([32m'secret123'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 111 |[39m     expect(text)[33m.[39mtoContain([32m'╨å╨▓╨░╨╜'[39m)[33m;[39m
+     [90m     |[39m                  [31m[1m^[22m[39m
+     [90m 112 |[39m   })[33m;[39m
+     [90m 113 |[39m
+     [90m 114 |[39m   it([32m'╨┐╨╛╨▓╤û╨┤╨╛╨╝╨╗╨╡╨╜╨╜╤Å ╨╝╤û╤ü╤é╨╕╤é╤î HTML ╤é╨╡╨│╨╕ (╨╜╨╡ plain 
+text)'[39m[33m,[39m [36masync[39m () [33m=>[39m {[0m
+
+      at Object.<anonymous> (telegram/telegram.service.spec.ts:111:18)
+
+[33m[Nest] 18308  - [39m06/07/2026, 02:49:14 [33m   WARN[39m [38;5;3m[TelegramService] [39m[33mTELEGRAM_BOT_TOKEN ╨╜╨╡ ╨╖╨░╨┤╨░╨╜╨╛ ╨░╨▒╨╛ ╤é╨╡╤ü╤é╨╛╨▓╨╡ ╤ü╨╡╤Ç╨╡╨┤╨╛╨▓╨╕╤ë╨╡ ΓÇö ╨▒╨╛╤é ╨▓╨╕╨╝╨║╨╜╨╡╨╜╨╛[39m
+[33m[Nest] 18308  - [39m06/07/2026, 02:49:14 [33m   WARN[39m [38;5;3m[TelegramService] [39m[33mTELEGRAM_BOT_TOKEN ╨╜╨╡ ╨╖╨░╨┤╨░╨╜╨╛ ╨░╨▒╨╛ ╤é╨╡╤ü╤é╨╛╨▓╨╡ ╤ü╨╡╤Ç╨╡╨┤╨╛╨▓╨╕╤ë╨╡ ΓÇö ╨▒╨╛╤é ╨▓╨╕╨╝╨║╨╜╨╡╨╜╨╛[39m
+FAIL src/schools/schools.service.spec.ts
+  ΓùÅ Test suite failed to run
+
+    [96msrc/schools/schools.service.spec.ts[0m:[93m279[0m:[93m32[0m - [91merror[0m[90m TS1005: [0m',' 
+expected.
+
+    [7m279[0m   it('╨╖╨╜╨░╤à╨╛╨┤╨╕╤é╤î ╨║╨╛╨╜╤é╨░╨║╤é╨╕ ╨╖╨░ ╤û╨╝'╤Å╨╝ (╤ç╨░╤ü╤é╨║╨╛╨▓╨╡ ╤ü╨┐╤û╨▓╨┐╨░╨┤╤û╨╜╨╜╤Å)', 
+async () => {
+    [7m   [0m [91m                               ~~[0m
+    [96msrc/schools/schools.service.spec.ts[0m:[93m279[0m:[93m45[0m - [91merror[0m[90m TS1005: [0m',' 
+expected.
+
+    [7m279[0m   it('╨╖╨╜╨░╤à╨╛╨┤╨╕╤é╤î ╨║╨╛╨╜╤é╨░╨║╤é╨╕ ╨╖╨░ ╤û╨╝'╤Å╨╝ (╤ç╨░╤ü╤é╨║╨╛╨▓╨╡ ╤ü╨┐╤û╨▓╨┐╨░╨┤╤û╨╜╨╜╤Å)', 
+async () => {
+    [7m   [0m [91m                                            ~~~~~~~~~~~[0m
+    [96msrc/schools/schools.service.spec.ts[0m:[93m279[0m:[93m57[0m - [91merror[0m[90m TS1005: [0m',' 
+expected.
+
+    [7m279[0m   it('╨╖╨╜╨░╤à╨╛╨┤╨╕╤é╤î ╨║╨╛╨╜╤é╨░╨║╤é╨╕ ╨╖╨░ ╤û╨╝'╤Å╨╝ (╤ç╨░╤ü╤é╨║╨╛╨▓╨╡ ╤ü╨┐╤û╨▓╨┐╨░╨┤╤û╨╜╨╜╤Å)', 
+async () => {
+    [7m   [0m [91m                                                        ~~~~~~~~~~~~~~~~[0m
+    [96msrc/schools/schools.service.spec.ts[0m:[93m279[0m:[93m73[0m - [91merror[0m[90m TS1002: 
+[0mUnterminated string literal.
+
+    [7m279[0m   it('╨╖╨╜╨░╤à╨╛╨┤╨╕╤é╤î ╨║╨╛╨╜╤é╨░╨║╤é╨╕ ╨╖╨░ ╤û╨╝'╤Å╨╝ (╤ç╨░╤ü╤é╨║╨╛╨▓╨╡ ╤ü╨┐╤û╨▓╨┐╨░╨┤╤û╨╜╨╜╤Å)', 
+async () => {
+    [7m   [0m [91m                                                                        [0m
+    [96msrc/schools/schools.service.spec.ts[0m:[93m280[0m:[93m5[0m - [91merror[0m[90m TS1005: [0m',' 
+expected.
+
+    [7m280[0m     mockPrisma.schoolContact.findMany.mockResolvedValueOnce([
+    [7m   [0m [91m    ~~~~~~~~~~[0m
+    [96msrc/schools/schools.service.spec.ts[0m:[93m283[0m:[93m7[0m - [91merror[0m[90m TS1005: [0m')' 
+expected.
+
+    [7m283[0m     ]);
+    [7m   [0m [91m      ~[0m
+    [96msrc/schools/schools.service.spec.ts[0m:[93m308[0m:[93m1[0m - [91merror[0m[90m TS1128: [0mDeclaration 
+or statement expected.
+
+    [7m308[0m });
+    [7m   [0m [91m~[0m
+    [96msrc/schools/schools.service.spec.ts[0m:[93m308[0m:[93m2[0m - [91merror[0m[90m TS1128: [0mDeclaration 
+or statement expected.
+
+    [7m308[0m });
+    [7m   [0m [91m ~[0m
+
+FAIL src/events/events.service.spec.ts
+  ΓùÅ Test suite failed to run
+
+    [96msrc/events/events.service.spec.ts[0m:[93m592[0m:[93m40[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+    [7m592[0m     it('╨║╨╛╨╜╨▓╨╡╤Ç╤é╤â╤ö date ╤Ç╤Å╨┤╨╛╨║ ╤â Date ╨╛╨▒'╤ö╨║╤é', async () => {
+    [7m   [0m [91m                                       ~~~[0m
+    [96msrc/events/events.service.spec.ts[0m:[93m592[0m:[93m43[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+    [7m592[0m     it('╨║╨╛╨╜╨▓╨╡╤Ç╤é╤â╤ö date ╤Ç╤Å╨┤╨╛╨║ ╤â Date ╨╛╨▒'╤ö╨║╤é', async () => {
+    [7m   [0m [91m                                          ~~~~~~~~~~~~~~~~[0m
+    [96msrc/events/events.service.spec.ts[0m:[93m592[0m:[93m59[0m - [91merror[0m[90m TS1002: [0mUnterminated 
+string literal.
+
+    [7m592[0m     it('╨║╨╛╨╜╨▓╨╡╤Ç╤é╤â╤ö date ╤Ç╤Å╨┤╨╛╨║ ╤â Date ╨╛╨▒'╤ö╨║╤é', async () => {
+    [7m   [0m [91m                                                          [0m
+    [96msrc/events/events.service.spec.ts[0m:[93m593[0m:[93m7[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+    [7m593[0m       mockPrisma.event.create.mockResolvedValueOnce({ id: 'ev-1', schoolId: 's-1', history: [] });
+    [7m   [0m [91m      ~~~~~~~~~~[0m
+    [96msrc/events/events.service.spec.ts[0m:[93m593[0m:[93m98[0m - [91merror[0m[90m TS1005: [0m')' expected.
+
+    [7m593[0m       mockPrisma.event.create.mockResolvedValueOnce({ id: 'ev-1', schoolId: 's-1', history: [] });
+    [7m   [0m [91m                                                                                                 
+~[0m
+    [96msrc/events/events.service.spec.ts[0m:[93m702[0m:[93m1[0m - [91merror[0m[90m TS1128: [0mDeclaration 
+or statement expected.
+
+    [7m702[0m });
+    [7m   [0m [91m~[0m
+    [96msrc/events/events.service.spec.ts[0m:[93m702[0m:[93m2[0m - [91merror[0m[90m TS1128: [0mDeclaration 
+or statement expected.
+
+    [7m702[0m });
+    [7m   [0m [91m ~[0m
+
+FAIL src/schools/parser.service.spec.ts
+  ΓùÅ Console
+
+    console.error
+      ╨ƒ╨╛╨╝╨╕╨╗╨║╨░ ╨┐╨░╤Ç╤ü╨╕╨╜╨│╤â ╨╖╨░╨║╨╗╨░╨┤╤â: Error: Network Error
+          at Object.<anonymous> (C:\CRM\apps\backend\src\schools\parser.service.spec.ts:80:43)
+          at Promise.then.completed 
+(C:\CRM\node_modules\.pnpm\jest-circus@29.7.0\node_modules\jest-circus\build\utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn 
+(C:\CRM\node_modules\.pnpm\jest-circus@29.7.0\node_modules\jest-circus\build\utils.js:231:10)
+          at _callCircusTest 
+(C:\CRM\node_modules\.pnpm\jest-circus@29.7.0\node_modules\jest-circus\build\run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:104:5)
+          at _runTest (C:\CRM\node_modules\.pnpm\jest-circus@29.7.0\node_modules\jest-circus\build\run.js:252:3)
+          at _runTestsForDescribeBlock 
+(C:\CRM\node_modules\.pnpm\jest-circus@29.7.0\node_modules\jest-circus\build\run.js:126:9)
+          at _runTestsForDescribeBlock 
+(C:\CRM\node_modules\.pnpm\jest-circus@29.7.0\node_modules\jest-circus\build\run.js:121:9)
+          at run (C:\CRM\node_modules\.pnpm\jest-circus@29.7.0\node_modules\jest-circus\build\run.js:71:3)
+          at runAndTransformResultsToJestFormat (C:\CRM\node_modules\.pnpm\jest-circus@29.7.0\node_modules\jest-circus\
+build\legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+          at jestAdapter (C:\CRM\node_modules\.pnpm\jest-circus@29.7.0\node_modules\jest-circus\build\legacy-code-todo-
+rewrite\jestAdapter.js:79:19)
+          at runTestInternal 
+(C:\CRM\node_modules\.pnpm\jest-runner@29.7.0\node_modules\jest-runner\build\runTest.js:367:16)
+          at runTest (C:\CRM\node_modules\.pnpm\jest-runner@29.7.0\node_modules\jest-runner\build\runTest.js:444:34)
+          at Object.worker 
+(C:\CRM\node_modules\.pnpm\jest-runner@29.7.0\node_modules\jest-runner\build\testWorker.js:106:12)
+
+    [0m [90m 190 |[39m       [36mreturn[39m { address[33m,[39m director[33m,[39m childrenCount }[33m;[39m
+     [90m 191 |[39m     } [36mcatch[39m (error) {
+    [31m[1m>[22m[39m[90m 192 |[39m       console[33m.[39merror([32m'╨ƒ╨╛╨╝╨╕╨╗╨║╨░ ╨┐╨░╤Ç╤ü╨╕╨╜╨│╤â 
+╨╖╨░╨║╨╗╨░╨┤╤â:'[39m[33m,[39m error)[33m;[39m
+     [90m     |[39m               [31m[1m^[22m[39m
+     [90m 193 |[39m       [36mreturn[39m [36mnull[39m[33m;[39m
+     [90m 194 |[39m     }
+     [90m 195 |[39m   }[0m
+
+      at ParserService.parseSchoolData (schools/parser.service.ts:192:15)
+      at Object.<anonymous> (schools/parser.service.spec.ts:83:20)
+
+    console.log
+      ╨ù╨░╨║╨╗╨░╨┤ ╨╜╨╡ ╨╖╨╜╨░╨╣╨┤╨╡╨╜╨╛: ╨¥╨╡╤û╤ü╨╜╤â╤Ä╤ç╨░ ╤ê╨║╨╛╨╗╨░
+
+      at ParserService.parseSchoolData (schools/parser.service.ts:163:17)
+
+    console.error
+      ╨ƒ╨╛╨╝╨╕╨╗╨║╨░ ╨┐╨╛╤ê╤â╨║╤â ╨╖╨░╨║╨╗╨░╨┤╤û╨▓: Error: Network Error
+          at Object.<anonymous> (C:\CRM\apps\backend\src\schools\parser.service.spec.ts:173:43)
+          at Promise.then.completed 
+(C:\CRM\node_modules\.pnpm\jest-circus@29.7.0\node_modules\jest-circus\build\utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn 
+(C:\CRM\node_modules\.pnpm\jest-circus@29.7.0\node_modules\jest-circus\build\utils.js:231:10)
+          at _callCircusTest 
+(C:\CRM\node_modules\.pnpm\jest-circus@29.7.0\node_modules\jest-circus\build\run.js:316:40)
+          at processTicksAndRejections (node:internal/process/task_queues:104:5)
+          at _runTest (C:\CRM\node_modules\.pnpm\jest-circus@29.7.0\node_modules\jest-circus\build\run.js:252:3)
+          at _runTestsForDescribeBlock 
+(C:\CRM\node_modules\.pnpm\jest-circus@29.7.0\node_modules\jest-circus\build\run.js:126:9)
+          at _runTestsForDescribeBlock 
+(C:\CRM\node_modules\.pnpm\jest-circus@29.7.0\node_modules\jest-circus\build\run.js:121:9)
+          at run (C:\CRM\node_modules\.pnpm\jest-circus@29.7.0\node_modules\jest-circus\build\run.js:71:3)
+          at runAndTransformResultsToJestFormat (C:\CRM\node_modules\.pnpm\jest-circus@29.7.0\node_modules\jest-circus\
+build\legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+          at jestAdapter (C:\CRM\node_modules\.pnpm\jest-circus@29.7.0\node_modules\jest-circus\build\legacy-code-todo-
+rewrite\jestAdapter.js:79:19)
+          at runTestInternal 
+(C:\CRM\node_modules\.pnpm\jest-runner@29.7.0\node_modules\jest-runner\build\runTest.js:367:16)
+          at runTest (C:\CRM\node_modules\.pnpm\jest-runner@29.7.0\node_modules\jest-runner\build\runTest.js:444:34)
+          at Object.worker 
+(C:\CRM\node_modules\.pnpm\jest-runner@29.7.0\node_modules\jest-runner\build\testWorker.js:106:12)
+
+    [0m [90m 238 |[39m       [36mreturn[39m results[33m.[39mslice([35m0[39m[33m,[39m 
+[35m10[39m)[33m;[39m
+     [90m 239 |[39m     } [36mcatch[39m (error) {
+    [31m[1m>[22m[39m[90m 240 |[39m       console[33m.[39merror([32m'╨ƒ╨╛╨╝╨╕╨╗╨║╨░ ╨┐╨╛╤ê╤â╨║╤â 
+╨╖╨░╨║╨╗╨░╨┤╤û╨▓:'[39m[33m,[39m error)[33m;[39m
+     [90m     |[39m               [31m[1m^[22m[39m
+     [90m 241 |[39m       [36mreturn[39m [][33m;[39m
+     [90m 242 |[39m     }
+     [90m 243 |[39m   }[0m
+
+      at ParserService.searchSchools (schools/parser.service.ts:240:15)
+      at Object.<anonymous> (schools/parser.service.spec.ts:176:21)
+
+    console.log
+      ╨£╤û╤ü╤é╨╛ "╨É╤é╨╗╨░╨╜╤é╨╕╨┤╨░" ╨╜╨╡ ╨┐╤û╨┤╤é╤Ç╨╕╨╝╤â╤ö╤é╤î╤ü╤Å ╨┤╨╗╤Å ╤û╨╝╨┐╨╛╤Ç╤é╤â
+
+      at ParserService.getAllSchoolsForCity (schools/parser.service.ts:251:15)
+
+  ΓùÅ ParserService ΓÇö searchSchools ΓÇ║ ╤ç╨╕╤ü╨╗╨╛╨▓╨╕╨╣ ╨╖╨░╨┐╨╕╤é ΓÇö ╤ê╤â╨║╨░╤ö ╨╖╨░ ╨╜╨╛╨╝╨╡╤Ç╨╛╨╝ ╤ê╨║╨╛╨╗╨╕ 
+╤é╨╛╤ç╨╜╨╛ (regex ╨╖ word boundary)
+
+    expect(received).not.toContain(expected) // indexOf
+
+    Expected value: not "╨¿╨║╨╛╨╗╨░ Γäû15"
+    Received array:     ["╨¿╨║╨╛╨╗╨░ Γäû5", "╨¿╨║╨╛╨╗╨░ Γäû15", "╨¿╨║╨╛╨╗╨░ Γäû50"]
+
+    [0m [90m 150 |[39m     [36mconst[39m names [33m=[39m results[33m.[39mmap((r) [33m=>[39m 
+r[33m.[39mname)[33m;[39m
+     [90m 151 |[39m     expect(names)[33m.[39mtoContain([32m'╨¿╨║╨╛╨╗╨░ Γäû5'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 152 |[39m     expect(names)[33m.[39mnot[33m.[39mtoContain([32m'╨¿╨║╨╛╨╗╨░ 
+Γäû15'[39m)[33m;[39m
+     [90m     |[39m                       [31m[1m^[22m[39m
+     [90m 153 |[39m     expect(names)[33m.[39mnot[33m.[39mtoContain([32m'╨¿╨║╨╛╨╗╨░ Γäû50'[39m)[33m;[39m
+     [90m 154 |[39m   })[33m;[39m
+     [90m 155 |[39m[0m
+
+      at Object.<anonymous> (schools/parser.service.spec.ts:152:23)
+
+[31m[Nest] 4440  - [39m06/07/2026, 02:49:16 [31m  ERROR[39m [38;5;3m[EventsSchedulerService] 
+[39m[31m╨ƒ╨╛╨╝╨╕╨╗╨║╨░ ╨▓╤û╨┤╨┐╤Ç╨░╨▓╨║╨╕: Error: Telegram API error[39m
+PASS src/events/events-scheduler.service.spec.ts
+PASS src/prisma/prisma.service.spec.ts
+PASS src/auth/auth.service.spec.ts
+PASS src/auth/auth.controller.spec.ts
+PASS src/users/users.controller.spec.ts (6.218 s)
+PASS src/events/events.controller.spec.ts (6.345 s)
+PASS src/schools/schools.controller.spec.ts (6.79 s)
+PASS src/events/dto/submit-report.dto.spec.ts
+PASS src/days-off/days-off.service.spec.ts
+PASS src/finance/finance.service.spec.ts
+PASS src/dashboard/dashboard.service.spec.ts
+PASS src/users/users.service.spec.ts
+PASS src/auth/guards/ownership.guard.spec.ts
+PASS src/cities/cities.service.spec.ts
+PASS src/auth/guards/roles.guard.spec.ts
+PASS src/auth/auth.guard.spec.ts
+PASS src/app.controller.spec.ts
+PASS src/cities/cities.controller.spec.ts
+
+Summary of all failing tests
+FAIL issues/issues.service.spec.ts
+  ΓùÅ Test suite failed to run
+
+    [96msrc/issues/issues.service.spec.ts[0m:[93m178[0m:[93m51[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+    [7m178[0m   it('formatMember: ╤ç╨╕╤ü╨╗╨╛╨▓╨╕╨╣ telegramId ΓåÆ ╨╗╨╕╤ê╨╡ ╤û╨╝'╤Å (╨╜╨╡ @mention)', async () => {
+    [7m   [0m [91m                                                  ~[0m
+    [96msrc/issues/issues.service.spec.ts[0m:[93m178[0m:[93m57[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+    [7m178[0m   it('formatMember: ╤ç╨╕╤ü╨╗╨╛╨▓╨╕╨╣ telegramId ΓåÆ ╨╗╨╕╤ê╨╡ ╤û╨╝'╤Å (╨╜╨╡ @mention)', async () => {
+    [7m   [0m [91m                                                        ~[0m
+    [96msrc/issues/issues.service.spec.ts[0m:[93m178[0m:[93m65[0m - [91merror[0m[90m TS1109: [0mExpression 
+expected.
+
+    [7m178[0m   it('formatMember: ╤ç╨╕╤ü╨╗╨╛╨▓╨╕╨╣ telegramId ΓåÆ ╨╗╨╕╤ê╨╡ ╤û╨╝'╤Å (╨╜╨╡ @mention)', async () => {
+    [7m   [0m [91m                                                                [0m
+    [96msrc/issues/issues.service.spec.ts[0m:[93m178[0m:[93m66[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+    [7m178[0m   it('formatMember: ╤ç╨╕╤ü╨╗╨╛╨▓╨╕╨╣ telegramId ΓåÆ ╨╗╨╕╤ê╨╡ ╤û╨╝'╤Å (╨╜╨╡ @mention)', async () => {
+    [7m   [0m [91m                                                                 ~~~~~~~~~~~~~~~~[0m
+    [96msrc/issues/issues.service.spec.ts[0m:[93m178[0m:[93m82[0m - [91merror[0m[90m TS1002: [0mUnterminated 
+string literal.
+
+    [7m178[0m   it('formatMember: ╤ç╨╕╤ü╨╗╨╛╨▓╨╕╨╣ telegramId ΓåÆ ╨╗╨╕╤ê╨╡ ╤û╨╝'╤Å (╨╜╨╡ @mention)', async () => {
+    [7m   [0m [91m                                                                                 [0m
+    [96msrc/issues/issues.service.spec.ts[0m:[93m179[0m:[93m5[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+    [7m179[0m     mockPrisma.event.findUnique.mockResolvedValueOnce({
+    [7m   [0m [91m    ~~~~~~~~~~[0m
+    [96msrc/issues/issues.service.spec.ts[0m:[93m185[0m:[93m7[0m - [91merror[0m[90m TS1005: [0m')' expected.
+
+    [7m185[0m     });
+    [7m   [0m [91m      ~[0m
+    [96msrc/issues/issues.service.spec.ts[0m:[93m226[0m:[93m1[0m - [91merror[0m[90m TS1128: [0mDeclaration 
+or statement expected.
+
+    [7m226[0m });
+    [7m   [0m [91m~[0m
+    [96msrc/issues/issues.service.spec.ts[0m:[93m226[0m:[93m2[0m - [91merror[0m[90m TS1128: [0mDeclaration 
+or statement expected.
+
+    [7m226[0m });
+    [7m   [0m [91m ~[0m
+
+FAIL telegram/telegram.service.spec.ts
+  ΓùÅ TelegramService ΓÇö sendWelcome ΓÇ║ ╨╜╨░╨┤╤ü╨╕╨╗╨░╤ö ╨┐╨╛╨▓╤û╨┤╨╛╨╝╨╗╨╡╨╜╨╜╤Å ╨╖╤û ╨╗╨╛╨│╤û╨╜╨╛╨╝ ╤é╨░ 
+╨┐╨░╤Ç╨╛╨╗╨╡╨╝
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "╨å╨▓╨░╨╜"
+    Received string:    "∩┐╜∩┐╜ <b>╨Æ╤û╤é╨░╤ö╨╝╨╛ ╤â ╨í╨▓╤û╤é╨╗╨╛ ╨ù╨╜╨░╨╜╤î CRM!</b>┬╖
+    ╨Æ╨░╤ê ╨░╨║╨░╤â╨╜╤é ╤ü╤é╨▓╨╛╤Ç╨╡╨╜╨╛.┬╖
+    ∩┐╜∩┐╜ <b>╨¢╨╛╨│╤û╨╜:</b> <code>ivan@crm.com</code>
+    ∩┐╜∩┐╜ <b>╨ƒ╨░╤Ç╨╛╨╗╤î:</b> <code>secret123</code>┬╖
+    ╨ú╨▓╤û╨╣╨┤╤û╤é╤î ╨╖╨░ ╨┐╨╛╤ü╨╕╨╗╨░╨╜╨╜╤Å╨╝: <a 
+href=\"https://crm-frontend-psi-sable.vercel.app\">crm-frontend-psi-sable.vercel.app</a>┬╖
+    <i>╨ù╨╝╤û╨╜╤û╤é╤î ╨┐╨░╤Ç╨╛╨╗╤î ╨┐╤û╤ü╨╗╤Å ╨┐╨╡╤Ç╤ê╨╛╨│╨╛ ╨▓╤à╨╛╨┤╤â.</i>"
+
+    [0m [90m 109 |[39m     expect(text)[33m.[39mtoContain([32m'ivan@crm.com'[39m)[33m;[39m
+     [90m 110 |[39m     expect(text)[33m.[39mtoContain([32m'secret123'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 111 |[39m     expect(text)[33m.[39mtoContain([32m'╨å╨▓╨░╨╜'[39m)[33m;[39m
+     [90m     |[39m                  [31m[1m^[22m[39m
+     [90m 112 |[39m   })[33m;[39m
+     [90m 113 |[39m
+     [90m 114 |[39m   it([32m'╨┐╨╛╨▓╤û╨┤╨╛╨╝╨╗╨╡╨╜╨╜╤Å ╨╝╤û╤ü╤é╨╕╤é╤î HTML ╤é╨╡╨│╨╕ (╨╜╨╡ plain 
+text)'[39m[33m,[39m [36masync[39m () [33m=>[39m {[0m
+
+      at Object.<anonymous> (telegram/telegram.service.spec.ts:111:18)
+
+FAIL schools/schools.service.spec.ts
+  ΓùÅ Test suite failed to run
+
+    [96msrc/schools/schools.service.spec.ts[0m:[93m279[0m:[93m32[0m - [91merror[0m[90m TS1005: [0m',' 
+expected.
+
+    [7m279[0m   it('╨╖╨╜╨░╤à╨╛╨┤╨╕╤é╤î ╨║╨╛╨╜╤é╨░╨║╤é╨╕ ╨╖╨░ ╤û╨╝'╤Å╨╝ (╤ç╨░╤ü╤é╨║╨╛╨▓╨╡ ╤ü╨┐╤û╨▓╨┐╨░╨┤╤û╨╜╨╜╤Å)', 
+async () => {
+    [7m   [0m [91m                               ~~[0m
+    [96msrc/schools/schools.service.spec.ts[0m:[93m279[0m:[93m45[0m - [91merror[0m[90m TS1005: [0m',' 
+expected.
+
+    [7m279[0m   it('╨╖╨╜╨░╤à╨╛╨┤╨╕╤é╤î ╨║╨╛╨╜╤é╨░╨║╤é╨╕ ╨╖╨░ ╤û╨╝'╤Å╨╝ (╤ç╨░╤ü╤é╨║╨╛╨▓╨╡ ╤ü╨┐╤û╨▓╨┐╨░╨┤╤û╨╜╨╜╤Å)', 
+async () => {
+    [7m   [0m [91m                                            ~~~~~~~~~~~[0m
+    [96msrc/schools/schools.service.spec.ts[0m:[93m279[0m:[93m57[0m - [91merror[0m[90m TS1005: [0m',' 
+expected.
+
+    [7m279[0m   it('╨╖╨╜╨░╤à╨╛╨┤╨╕╤é╤î ╨║╨╛╨╜╤é╨░╨║╤é╨╕ ╨╖╨░ ╤û╨╝'╤Å╨╝ (╤ç╨░╤ü╤é╨║╨╛╨▓╨╡ ╤ü╨┐╤û╨▓╨┐╨░╨┤╤û╨╜╨╜╤Å)', 
+async () => {
+    [7m   [0m [91m                                                        ~~~~~~~~~~~~~~~~[0m
+    [96msrc/schools/schools.service.spec.ts[0m:[93m279[0m:[93m73[0m - [91merror[0m[90m TS1002: 
+[0mUnterminated string literal.
+
+    [7m279[0m   it('╨╖╨╜╨░╤à╨╛╨┤╨╕╤é╤î ╨║╨╛╨╜╤é╨░╨║╤é╨╕ ╨╖╨░ ╤û╨╝'╤Å╨╝ (╤ç╨░╤ü╤é╨║╨╛╨▓╨╡ ╤ü╨┐╤û╨▓╨┐╨░╨┤╤û╨╜╨╜╤Å)', 
+async () => {
+    [7m   [0m [91m                                                                        [0m
+    [96msrc/schools/schools.service.spec.ts[0m:[93m280[0m:[93m5[0m - [91merror[0m[90m TS1005: [0m',' 
+expected.
+
+    [7m280[0m     mockPrisma.schoolContact.findMany.mockResolvedValueOnce([
+    [7m   [0m [91m    ~~~~~~~~~~[0m
+    [96msrc/schools/schools.service.spec.ts[0m:[93m283[0m:[93m7[0m - [91merror[0m[90m TS1005: [0m')' 
+expected.
+
+    [7m283[0m     ]);
+    [7m   [0m [91m      ~[0m
+    [96msrc/schools/schools.service.spec.ts[0m:[93m308[0m:[93m1[0m - [91merror[0m[90m TS1128: [0mDeclaration 
+or statement expected.
+
+    [7m308[0m });
+    [7m   [0m [91m~[0m
+    [96msrc/schools/schools.service.spec.ts[0m:[93m308[0m:[93m2[0m - [91merror[0m[90m TS1128: [0mDeclaration 
+or statement expected.
+
+    [7m308[0m });
+    [7m   [0m [91m ~[0m
+
+FAIL events/events.service.spec.ts
+  ΓùÅ Test suite failed to run
+
+    [96msrc/events/events.service.spec.ts[0m:[93m592[0m:[93m40[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+    [7m592[0m     it('╨║╨╛╨╜╨▓╨╡╤Ç╤é╤â╤ö date ╤Ç╤Å╨┤╨╛╨║ ╤â Date ╨╛╨▒'╤ö╨║╤é', async () => {
+    [7m   [0m [91m                                       ~~~[0m
+    [96msrc/events/events.service.spec.ts[0m:[93m592[0m:[93m43[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+    [7m592[0m     it('╨║╨╛╨╜╨▓╨╡╤Ç╤é╤â╤ö date ╤Ç╤Å╨┤╨╛╨║ ╤â Date ╨╛╨▒'╤ö╨║╤é', async () => {
+    [7m   [0m [91m                                          ~~~~~~~~~~~~~~~~[0m
+    [96msrc/events/events.service.spec.ts[0m:[93m592[0m:[93m59[0m - [91merror[0m[90m TS1002: [0mUnterminated 
+string literal.
+
+    [7m592[0m     it('╨║╨╛╨╜╨▓╨╡╤Ç╤é╤â╤ö date ╤Ç╤Å╨┤╨╛╨║ ╤â Date ╨╛╨▒'╤ö╨║╤é', async () => {
+    [7m   [0m [91m                                                          [0m
+    [96msrc/events/events.service.spec.ts[0m:[93m593[0m:[93m7[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+    [7m593[0m       mockPrisma.event.create.mockResolvedValueOnce({ id: 'ev-1', schoolId: 's-1', history: [] });
+    [7m   [0m [91m      ~~~~~~~~~~[0m
+    [96msrc/events/events.service.spec.ts[0m:[93m593[0m:[93m98[0m - [91merror[0m[90m TS1005: [0m')' expected.
+
+    [7m593[0m       mockPrisma.event.create.mockResolvedValueOnce({ id: 'ev-1', schoolId: 's-1', history: [] });
+    [7m   [0m [91m                                                                                                 
+~[0m
+    [96msrc/events/events.service.spec.ts[0m:[93m702[0m:[93m1[0m - [91merror[0m[90m TS1128: [0mDeclaration 
+or statement expected.
+
+    [7m702[0m });
+    [7m   [0m [91m~[0m
+    [96msrc/events/events.service.spec.ts[0m:[93m702[0m:[93m2[0m - [91merror[0m[90m TS1128: [0mDeclaration 
+or statement expected.
+
+    [7m702[0m });
+    [7m   [0m [91m ~[0m
+
+FAIL schools/parser.service.spec.ts
+  ΓùÅ ParserService ΓÇö searchSchools ΓÇ║ ╤ç╨╕╤ü╨╗╨╛╨▓╨╕╨╣ ╨╖╨░╨┐╨╕╤é ΓÇö ╤ê╤â╨║╨░╤ö ╨╖╨░ ╨╜╨╛╨╝╨╡╤Ç╨╛╨╝ ╤ê╨║╨╛╨╗╨╕ 
+╤é╨╛╤ç╨╜╨╛ (regex ╨╖ word boundary)
+
+    expect(received).not.toContain(expected) // indexOf
+
+    Expected value: not "╨¿╨║╨╛╨╗╨░ Γäû15"
+    Received array:     ["╨¿╨║╨╛╨╗╨░ Γäû5", "╨¿╨║╨╛╨╗╨░ Γäû15", "╨¿╨║╨╛╨╗╨░ Γäû50"]
+
+    [0m [90m 150 |[39m     [36mconst[39m names [33m=[39m results[33m.[39mmap((r) [33m=>[39m 
+r[33m.[39mname)[33m;[39m
+     [90m 151 |[39m     expect(names)[33m.[39mtoContain([32m'╨¿╨║╨╛╨╗╨░ Γäû5'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 152 |[39m     expect(names)[33m.[39mnot[33m.[39mtoContain([32m'╨¿╨║╨╛╨╗╨░ 
+Γäû15'[39m)[33m;[39m
+     [90m     |[39m                       [31m[1m^[22m[39m
+     [90m 153 |[39m     expect(names)[33m.[39mnot[33m.[39mtoContain([32m'╨¿╨║╨╛╨╗╨░ Γäû50'[39m)[33m;[39m
+     [90m 154 |[39m   })[33m;[39m
+     [90m 155 |[39m[0m
+
+      at Object.<anonymous> (schools/parser.service.spec.ts:152:23)
+
+
+Test Suites: 5 failed, 18 passed, 23 total
+Tests:       2 failed, 162 passed, 164 total
+Snapshots:   0 total
+Time:        10.147 s
+Ran all test suites.
+C:\CRM\apps\backend:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] backend@0.0.1 test: `jest "--passWithNoTests"`
+Exit status 1

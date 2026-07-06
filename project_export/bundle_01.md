@@ -734,6 +734,28 @@ ALTER TABLE "DayOff" ADD CONSTRAINT "DayOff_userId_fkey" FOREIGN KEY ("userId") 
 
 ```
 
+# FILE: apps/backend/prisma/migrations/20260704220311_add_project_price_per_child/migration.sql
+
+```
+-- AlterTable
+ALTER TABLE "Project" ADD COLUMN     "pricePerChild" INTEGER NOT NULL DEFAULT 0;
+
+```
+
+# FILE: apps/backend/prisma/migrations/20260706120000_event_report_decimal_money/migration.sql
+
+```
+-- AlterTable: Event price and received from Float to Decimal(12,2)
+ALTER TABLE "Event" ALTER COLUMN "price" TYPE numeric(12,2) USING "price"::numeric(12,2);
+ALTER TABLE "Event" ALTER COLUMN "received" TYPE numeric(12,2) USING "received"::numeric(12,2);
+
+-- AlterTable: EventReport money fields from Float to Decimal(12,2)
+ALTER TABLE "EventReport" ALTER COLUMN "totalSum" TYPE numeric(12,2) USING "totalSum"::numeric(12,2);
+ALTER TABLE "EventReport" ALTER COLUMN "schoolSum" TYPE numeric(12,2) USING "schoolSum"::numeric(12,2);
+ALTER TABLE "EventReport" ALTER COLUMN "remainderSum" TYPE numeric(12,2) USING "remainderSum"::numeric(12,2);
+
+```
+
 # FILE: apps/backend/prisma/schema.prisma
 
 ```
@@ -848,8 +870,8 @@ model Event {
   status          EventStatus       @default(BASE)
   childrenPlanned Int?
   childrenActual  Int?
-  price           Float?
-  received        Float?
+  price           Decimal? @db.Decimal(12, 2)
+  received        Decimal? @db.Decimal(12, 2)
   paymentMethod   String?
   address         String?
   contactPerson   String?
@@ -891,9 +913,9 @@ model EventReport {
   classesCount      Int           @default(0)
   privilegedCount   Int           @default(0)
   showingsCount     Int           @default(0)
-  totalSum          Float         @default(0)
-  schoolSum         Float         @default(0)
-  remainderSum      Float         @default(0)
+  totalSum          Decimal       @default(0) @db.Decimal(12, 2)
+  schoolSum         Decimal       @default(0) @db.Decimal(12, 2)
+  remainderSum      Decimal       @default(0) @db.Decimal(12, 2)
   event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
   photos            File[]
   expenseItems      ExpenseItem[]
@@ -971,6 +993,7 @@ model Project {
   name      String   @unique
   color     String   @default("blue")
   createdAt DateTime @default(now())
+  pricePerChild Int @default(0)
 }
 
 model ExpenseItem {
@@ -1876,6 +1899,82 @@ export class AuthController {
 
 ```
 
+# FILE: apps/backend/src/auth/auth.guard.spec.ts
+
+```
+import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { AuthGuard } from './auth.guard';
+
+describe('AuthGuard', () => {
+  let guard: AuthGuard;
+  let jwtService: { verifyAsync: jest.Mock };
+
+  const createContext = (request: any): ExecutionContext =>
+    ({
+      switchToHttp: () => ({
+        getRequest: () => request,
+      }),
+    }) as any;
+
+  beforeEach(() => {
+    jwtService = { verifyAsync: jest.fn() };
+    guard = new AuthGuard(jwtService as unknown as JwtService);
+  });
+
+  it('бере токен з cookie і встановлює request.user', async () => {
+    const req = { cookies: { access_token: 'cookie-token' }, headers: {} };
+    jwtService.verifyAsync.mockResolvedValueOnce({ sub: 'u1', role: 'HOST' });
+
+    const ok = await guard.canActivate(createContext(req));
+
+    expect(ok).toBe(true);
+    expect(jwtService.verifyAsync).toHaveBeenCalledWith('cookie-token', {
+      secret: process.env.JWT_SECRET,
+    });
+    expect(req['user']).toEqual({ sub: 'u1', role: 'HOST' });
+  });
+
+  it('без токена кидає UnauthorizedException: Токен не знайдено', async () => {
+    const req = { cookies: {}, headers: {} };
+
+    await expect(guard.canActivate(createContext(req))).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    await expect(guard.canActivate(createContext(req))).rejects.toThrow(
+      'Токен не знайдено',
+    );
+  });
+
+  it('при помилці verify кидає UnauthorizedException: Недійсний токен', async () => {
+    const req = { cookies: { access_token: 'bad-token' }, headers: {} };
+    jwtService.verifyAsync.mockRejectedValue(new Error('bad jwt'));
+
+    await expect(guard.canActivate(createContext(req))).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    await expect(guard.canActivate(createContext(req))).rejects.toThrow(
+      'Недійсний токен',
+    );
+  });
+
+  it('verifyAsync викликається з secret з env', async () => {
+    const prev = process.env.JWT_SECRET;
+    process.env.JWT_SECRET = 'test-secret';
+    const req = { cookies: { access_token: 'cookie-token' }, headers: {} };
+    jwtService.verifyAsync.mockResolvedValueOnce({ sub: 'u1' });
+
+    await guard.canActivate(createContext(req));
+
+    expect(jwtService.verifyAsync).toHaveBeenCalledWith('cookie-token', {
+      secret: 'test-secret',
+    });
+    process.env.JWT_SECRET = prev;
+  });
+});
+
+```
+
 # FILE: apps/backend/src/auth/auth.guard.ts
 
 ```
@@ -1910,9 +2009,7 @@ export class AuthGuard implements CanActivate {
   }
 
   private extractTokenFromHeader(request: Request): string | undefined {
-    if (request.cookies?.access_token) return request.cookies.access_token;
-    const [type, token] = request.headers.authorization?.split(' ') ?? [];
-    return type === 'Bearer' ? token : undefined; // тимчасовий fallback на перехідний період
+    return request.cookies?.access_token;
   }
 }
 
@@ -1950,31 +2047,256 @@ export class AuthModule {}
 # FILE: apps/backend/src/auth/auth.service.spec.ts
 
 ```
-import { Test } from '@nestjs/testing';
+import { HttpStatus } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
-import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
+import { AppException } from '../common/exceptions/app.exception';
+import * as bcrypt from 'bcrypt';
 
-describe('AuthService', () => {
-  it('should be defined', async () => {
-    const module = await Test.createTestingModule({
-      providers: [
-        AuthService,
-        { provide: UsersService, useValue: { findByEmail: jest.fn() } },
-        { provide: JwtService, useValue: { sign: jest.fn() } },
-        {
-          provide: PrismaService,
-          useValue: {
-            user: {
-              findUnique: jest.fn(),
-              update: jest.fn(),
-            },
-          },
-        },
-      ],
-    }).compile();
-    expect(module.get(AuthService)).toBeDefined();
+jest.mock('bcrypt');
+
+const mockUsersService = { findByEmailWithCity: jest.fn() };
+const mockJwtService = { signAsync: jest.fn().mockResolvedValue('signed-jwt') };
+const mockPrisma = {
+  refreshToken: {
+    create: jest.fn(),
+    findUnique: jest.fn(),
+    update: jest.fn(),
+  },
+};
+
+const makeService = () =>
+  new AuthService(
+    mockUsersService as unknown as UsersService,
+    mockJwtService as unknown as JwtService,
+    mockPrisma as unknown as PrismaService,
+  );
+
+const validUser = {
+  id: 'user-1',
+  email: 'test@example.com',
+  name: 'Іван',
+  role: 'MANAGER',
+  cityId: 'city-1',
+  password: 'hashed-password',
+  city: { name: 'Львів' },
+};
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+  mockPrisma.refreshToken.create.mockResolvedValue({ id: 'rt-1' });
+  mockPrisma.refreshToken.update.mockResolvedValue({ id: 'rt-1' });
+});
+
+describe('AuthService — login', () => {
+  it('повертає access_token, refresh_token та user при успішному логіні', async () => {
+    mockUsersService.findByEmailWithCity.mockResolvedValueOnce(validUser);
+
+    const service = makeService();
+    const result = await service.login('test@example.com', 'pass123');
+
+    expect(result.access_token).toBe('signed-jwt');
+    expect(result.refresh_token).toBeDefined();
+    expect(typeof result.refresh_token).toBe('string');
+    expect(result.user.id).toBe('user-1');
+    expect(result.user.email).toBe('test@example.com');
+    expect(result.user.cityName).toBe('Львів');
+  });
+
+  it('створює refresh token у БД при логіні', async () => {
+    mockUsersService.findByEmailWithCity.mockResolvedValueOnce(validUser);
+
+    const service = makeService();
+    await service.login('test@example.com', 'pass123', {
+      ip: '127.0.0.1',
+      userAgent: 'test-agent',
+    });
+
+    expect(mockPrisma.refreshToken.create).toHaveBeenCalledTimes(1);
+    const createCall = mockPrisma.refreshToken.create.mock.calls[0][0].data;
+    expect(createCall.userId).toBe('user-1');
+    expect(createCall.ip).toBe('127.0.0.1');
+    expect(createCall.userAgent).toBe('test-agent');
+    expect(createCall.tokenHash).toBeDefined();
+    expect(createCall.expiresAt).toBeInstanceOf(Date);
+  });
+
+  it('кидає AppException INVALID_CREDENTIALS якщо користувача не знайдено', async () => {
+    mockUsersService.findByEmailWithCity.mockResolvedValueOnce(null);
+
+    const service = makeService();
+    await expect(service.login('nobody@example.com', 'pass')).rejects.toThrow(
+      AppException,
+    );
+    await expect(
+      service.login('nobody@example.com', 'pass'),
+    ).rejects.toMatchObject({ status: HttpStatus.UNAUTHORIZED });
+  });
+
+  it('кидає AppException INVALID_CREDENTIALS якщо пароль невірний', async () => {
+    mockUsersService.findByEmailWithCity.mockResolvedValue(validUser);
+    (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+    const service = makeService();
+    await expect(service.login('test@example.com', 'wrong')).rejects.toThrow(
+      AppException,
+    );
+  });
+
+  it('порівнює з dummyHash якщо user не знайдено (захист від timing attack)', async () => {
+    mockUsersService.findByEmailWithCity.mockResolvedValue(null);
+    (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+    const service = makeService();
+    try {
+      await service.login('ghost@example.com', 'any');
+    } catch {}
+
+    // bcrypt.compare має бути викликаний навіть коли user=null
+    expect(bcrypt.compare).toHaveBeenCalled();
+    const [, hashArg] = (bcrypt.compare as jest.Mock).mock.calls[0];
+    // dummyHash починається з $2b$10$
+    expect(hashArg).toMatch(/^\$2b\$10\$/);
+  });
+
+  it('підписує JWT з коректним payload', async () => {
+    mockUsersService.findByEmailWithCity.mockResolvedValueOnce(validUser);
+
+    const service = makeService();
+    await service.login('test@example.com', 'pass');
+
+    expect(mockJwtService.signAsync).toHaveBeenCalledWith({
+      sub: 'user-1',
+      email: 'test@example.com',
+      role: 'MANAGER',
+      name: 'Іван',
+      cityId: 'city-1',
+      cityName: 'Львів',
+    });
+  });
+
+  it('user без міста — cityName=undefined', async () => {
+    const userNoCity = { ...validUser, city: undefined, cityId: null };
+    mockUsersService.findByEmailWithCity.mockResolvedValueOnce(userNoCity);
+
+    const service = makeService();
+    const result = await service.login('test@example.com', 'pass');
+
+    expect(result.user.cityName).toBeUndefined();
+  });
+});
+
+describe('AuthService — refresh', () => {
+  const storedToken = {
+    id: 'rt-stored',
+    revokedAt: null,
+    expiresAt: new Date(Date.now() + 60_000),
+    user: {
+      id: 'user-1',
+      email: 'test@example.com',
+      name: 'Іван',
+      role: 'MANAGER',
+      cityId: 'city-1',
+      city: { name: 'Львів' },
+    },
+  };
+
+  it('повертає нові токени при валідному refresh token', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValueOnce(storedToken);
+
+    const service = makeService();
+    const result = await service.refresh('valid-old-token');
+
+    expect(result.access_token).toBe('signed-jwt');
+    expect(result.refresh_token).toBeDefined();
+    expect(result.user.id).toBe('user-1');
+  });
+
+  it('відкликає старий токен при refresh', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValueOnce(storedToken);
+
+    const service = makeService();
+    await service.refresh('valid-old-token');
+
+    expect(mockPrisma.refreshToken.update).toHaveBeenCalledWith({
+      where: { id: 'rt-stored' },
+      data: { revokedAt: expect.any(Date) },
+    });
+  });
+
+  it('кидає AppException якщо токен не знайдено', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValueOnce(null);
+
+    const service = makeService();
+    await expect(service.refresh('unknown-token')).rejects.toThrow(
+      AppException,
+    );
+    await expect(service.refresh('unknown-token')).rejects.toMatchObject({
+      status: HttpStatus.UNAUTHORIZED,
+    });
+  });
+
+  it('кидає AppException якщо токен відкликаний (revokedAt є)', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValue({
+      ...storedToken,
+      revokedAt: new Date(),
+    });
+
+    const service = makeService();
+    await expect(service.refresh('revoked-token')).rejects.toThrow(
+      AppException,
+    );
+  });
+
+  it('кидає AppException якщо токен прострочений', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValue({
+      ...storedToken,
+      expiresAt: new Date(Date.now() - 1000),
+    });
+
+    const service = makeService();
+    await expect(service.refresh('expired-token')).rejects.toThrow(
+      AppException,
+    );
+  });
+
+  it('хешує токен перед пошуком у БД', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValueOnce(storedToken);
+
+    const service = makeService();
+    await service.refresh('my-plain-token');
+
+    const { tokenHash } =
+      mockPrisma.refreshToken.findUnique.mock.calls[0][0].where;
+    // sha256 — hex рядок довжиною 64 символи
+    expect(tokenHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(tokenHash).not.toBe('my-plain-token');
+  });
+});
+
+describe('AuthService — revokeRefreshToken', () => {
+  it('відкликає токен через update', async () => {
+    const service = makeService();
+    await service.revokeRefreshToken('some-token');
+
+    expect(mockPrisma.refreshToken.update).toHaveBeenCalledWith({
+      where: { tokenHash: expect.any(String) },
+      data: { revokedAt: expect.any(Date) },
+    });
+  });
+
+  it('не кидає помилку якщо токен не знайдено (catch → undefined)', async () => {
+    mockPrisma.refreshToken.update.mockRejectedValueOnce(
+      new Error('Record not found'),
+    );
+
+    const service = makeService();
+    await expect(
+      service.revokeRefreshToken('non-existent'),
+    ).resolves.toBeUndefined();
   });
 });
 
@@ -2211,6 +2533,257 @@ export class LoginDto {
 
 ```
 
+# FILE: apps/backend/src/auth/guards/ownership.guard.spec.ts
+
+```
+import {
+  ExecutionContext,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { OwnershipGuard } from './ownership.guard';
+import { PrismaService } from '../../prisma/prisma.service';
+
+describe('OwnershipGuard', () => {
+  let guard: OwnershipGuard;
+  let reflector: { getAllAndOverride: jest.Mock };
+  let prisma: any;
+
+  const createContext = (user: any, params: Record<string, string> = {}) =>
+    ({
+      getHandler: () => ({}),
+      getClass: () => ({}),
+      switchToHttp: () => ({
+        getRequest: () => ({ user, params }),
+      }),
+    }) as ExecutionContext;
+
+  beforeEach(() => {
+    reflector = { getAllAndOverride: jest.fn() };
+    prisma = {
+      user: { findUnique: jest.fn() },
+      school: { findUnique: jest.fn() },
+      event: { findUnique: jest.fn() },
+      crew: { findUnique: jest.fn() },
+      eventHistory: { findUnique: jest.fn() },
+    };
+    guard = new OwnershipGuard(reflector as unknown as Reflector, prisma);
+  });
+
+  it('без metadata ownership -> true', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce(undefined);
+    const ok = await guard.canActivate(
+      createContext({ role: 'MANAGER', sub: 'm1' }),
+    );
+    expect(ok).toBe(true);
+  });
+
+  it('SUPERADMIN -> true без prisma', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce('event');
+    const ok = await guard.canActivate(
+      createContext({ role: 'SUPERADMIN', sub: 'a1' }, { id: 'ev1' }),
+    );
+    expect(ok).toBe(true);
+    expect(prisma.event.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('без paramId -> true', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce('school');
+    const ok = await guard.canActivate(
+      createContext({ role: 'MANAGER', sub: 'm1' }),
+    );
+    expect(ok).toBe(true);
+  });
+
+  it('HOST/DRIVER + resourceType != event -> Forbidden', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce('school');
+    await expect(
+      guard.canActivate(
+        createContext({ role: 'HOST', sub: 'h1' }, { id: 's1' }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('HOST + event not found -> NotFound', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce('event');
+    prisma.event.findUnique.mockResolvedValueOnce(null);
+    await expect(
+      guard.canActivate(
+        createContext({ role: 'HOST', sub: 'h1' }, { id: 'e1' }),
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('DRIVER + event not assigned -> Forbidden', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce('event');
+    prisma.event.findUnique.mockResolvedValueOnce({
+      crew: { hostId: 'h2', driverId: 'd2' },
+    });
+    await expect(
+      guard.canActivate(
+        createContext({ role: 'DRIVER', sub: 'd1' }, { id: 'e1' }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('HOST assigned до event -> true', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce('event');
+    prisma.event.findUnique.mockResolvedValueOnce({
+      crew: { hostId: 'h1', driverId: 'd2' },
+    });
+    const ok = await guard.canActivate(
+      createContext({ role: 'HOST', sub: 'h1' }, { id: 'e1' }),
+    );
+    expect(ok).toBe(true);
+  });
+
+  it('DRIVER assigned до event -> true', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce('event');
+    prisma.event.findUnique.mockResolvedValueOnce({
+      crew: { hostId: 'h2', driverId: 'd1' },
+    });
+    const ok = await guard.canActivate(
+      createContext({ role: 'DRIVER', sub: 'd1' }, { id: 'e1' }),
+    );
+    expect(ok).toBe(true);
+  });
+
+  it('роль поза MANAGER/HOST/DRIVER/SUPERADMIN -> Forbidden', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce('event');
+    await expect(
+      guard.canActivate(
+        createContext({ role: 'ACCOUNTANT', sub: 'x1' }, { id: 'e1' }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('MANAGER без cityId -> Forbidden', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce('school');
+    prisma.user.findUnique.mockResolvedValueOnce({ cityId: null });
+    await expect(
+      guard.canActivate(
+        createContext({ role: 'MANAGER', sub: 'm1' }, { id: 's1' }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('MANAGER + school: not found -> NotFound', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce('school');
+    prisma.user.findUnique.mockResolvedValueOnce({ cityId: 'city-1' });
+    prisma.school.findUnique.mockResolvedValueOnce(null);
+    await expect(
+      guard.canActivate(
+        createContext({ role: 'MANAGER', sub: 'm1' }, { id: 's1' }),
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('MANAGER + school: city match -> true', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce('school');
+    prisma.user.findUnique.mockResolvedValueOnce({ cityId: 'city-1' });
+    prisma.school.findUnique.mockResolvedValueOnce({ cityId: 'city-1' });
+    const ok = await guard.canActivate(
+      createContext({ role: 'MANAGER', sub: 'm1' }, { id: 's1' }),
+    );
+    expect(ok).toBe(true);
+  });
+
+  it('MANAGER + school: city mismatch -> Forbidden', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce('school');
+    prisma.user.findUnique.mockResolvedValueOnce({ cityId: 'city-1' });
+    prisma.school.findUnique.mockResolvedValueOnce({ cityId: 'city-9' });
+    await expect(
+      guard.canActivate(
+        createContext({ role: 'MANAGER', sub: 'm1' }, { id: 's1' }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('MANAGER + event: city match -> true', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce('event');
+    prisma.user.findUnique.mockResolvedValueOnce({ cityId: 'city-1' });
+    prisma.event.findUnique.mockResolvedValueOnce({ cityId: 'city-1' });
+    const ok = await guard.canActivate(
+      createContext({ role: 'MANAGER', sub: 'm1' }, { id: 'e1' }),
+    );
+    expect(ok).toBe(true);
+  });
+
+  it('MANAGER + crew: city mismatch -> Forbidden', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce('crew');
+    prisma.user.findUnique.mockResolvedValueOnce({ cityId: 'city-1' });
+    prisma.crew.findUnique.mockResolvedValueOnce({ cityId: 'city-2' });
+    await expect(
+      guard.canActivate(
+        createContext({ role: 'MANAGER', sub: 'm1' }, { id: 'c1' }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('MANAGER + city: paramId==manager.cityId -> true', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce('city');
+    prisma.user.findUnique.mockResolvedValueOnce({ cityId: 'city-1' });
+    const ok = await guard.canActivate(
+      createContext({ role: 'MANAGER', sub: 'm1' }, { id: 'city-1' }),
+    );
+    expect(ok).toBe(true);
+  });
+
+  it('MANAGER + city: paramId!=manager.cityId -> Forbidden', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce('city');
+    prisma.user.findUnique.mockResolvedValueOnce({ cityId: 'city-1' });
+    await expect(
+      guard.canActivate(
+        createContext({ role: 'MANAGER', sub: 'm1' }, { id: 'city-2' }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('historyId резолвиться в eventId для resourceType=event', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce('event');
+    prisma.eventHistory.findUnique.mockResolvedValueOnce({ eventId: 'ev-1' });
+    prisma.user.findUnique.mockResolvedValueOnce({ cityId: 'city-1' });
+    prisma.event.findUnique.mockResolvedValueOnce({ cityId: 'city-1' });
+    const ok = await guard.canActivate(
+      createContext({ role: 'MANAGER', sub: 'm1' }, { historyId: 'h-1' }),
+    );
+    expect(ok).toBe(true);
+    expect(prisma.event.findUnique).toHaveBeenCalledWith({
+      where: { id: 'ev-1' },
+      select: { cityId: true },
+    });
+  });
+
+  it('historyId не знайдено -> NotFoundException', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce('event');
+    prisma.eventHistory.findUnique.mockResolvedValueOnce(null);
+    await expect(
+      guard.canActivate(
+        createContext({ role: 'MANAGER', sub: 'm1' }, { historyId: 'missing' }),
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('пріоритет id над schoolId/eventId/crewId', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce('event');
+    prisma.user.findUnique.mockResolvedValueOnce({ cityId: 'city-1' });
+    prisma.event.findUnique.mockResolvedValueOnce({ cityId: 'city-1' });
+    await guard.canActivate(
+      createContext(
+        { role: 'MANAGER', sub: 'm1' },
+        { id: 'event-by-id', eventId: 'event-by-eventId' },
+      ),
+    );
+    expect(prisma.event.findUnique).toHaveBeenCalledWith({
+      where: { id: 'event-by-id' },
+      select: { cityId: true },
+    });
+  });
+});
+
+```
+
 # FILE: apps/backend/src/auth/guards/ownership.guard.ts
 
 ```
@@ -2248,11 +2821,21 @@ export class OwnershipGuard implements CanActivate {
     // SUPERADMIN бачить усе — перевірка не потрібна
     if (user?.role === 'SUPERADMIN') return true;
 
-    const paramId: string | undefined =
+    let paramId: string | undefined =
       request.params.id ??
       request.params.schoolId ??
       request.params.eventId ??
       request.params.crewId;
+
+    if (!paramId && request.params.historyId && resourceType === 'event') {
+      const history = await this.prisma.eventHistory.findUnique({
+        where: { id: request.params.historyId },
+        select: { eventId: true },
+      });
+      if (!history) throw new NotFoundException('Запис історії не знайдено');
+      paramId = history.eventId;
+    }
+
     if (!paramId) return true;
 
     if (user?.role === 'HOST' || user?.role === 'DRIVER') {
@@ -2329,6 +2912,78 @@ export class OwnershipGuard implements CanActivate {
 
 ```
 
+# FILE: apps/backend/src/auth/guards/roles.guard.spec.ts
+
+```
+import { ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { UserRole } from '@prisma/client';
+import { RolesGuard } from './roles.guard';
+
+describe('RolesGuard', () => {
+  let guard: RolesGuard;
+  let reflector: { getAllAndOverride: jest.Mock };
+
+  const createContext = (user?: any): ExecutionContext =>
+    ({
+      getHandler: () => ({}),
+      getClass: () => ({}),
+      switchToHttp: () => ({
+        getRequest: () => ({ user }),
+      }),
+    }) as any;
+
+  beforeEach(() => {
+    reflector = { getAllAndOverride: jest.fn() };
+    guard = new RolesGuard(reflector as unknown as Reflector);
+  });
+
+  it('якщо requiredRoles відсутні -> true', () => {
+    reflector.getAllAndOverride.mockReturnValueOnce(undefined);
+
+    const ok = guard.canActivate(createContext({ role: UserRole.MANAGER }));
+
+    expect(ok).toBe(true);
+  });
+
+  it('SUPERADMIN проходить незалежно від requiredRoles', () => {
+    reflector.getAllAndOverride.mockReturnValueOnce([UserRole.MANAGER]);
+
+    const ok = guard.canActivate(createContext({ role: UserRole.SUPERADMIN }));
+
+    expect(ok).toBe(true);
+  });
+
+  it('роль входить у requiredRoles -> true', () => {
+    reflector.getAllAndOverride.mockReturnValueOnce([UserRole.MANAGER]);
+
+    const ok = guard.canActivate(createContext({ role: UserRole.MANAGER }));
+
+    expect(ok).toBe(true);
+  });
+
+  it('роль не входить у requiredRoles -> ForbiddenException', () => {
+    reflector.getAllAndOverride.mockReturnValue([UserRole.MANAGER]);
+
+    expect(() =>
+      guard.canActivate(createContext({ role: UserRole.DRIVER })),
+    ).toThrow(ForbiddenException);
+    expect(() =>
+      guard.canActivate(createContext({ role: UserRole.DRIVER })),
+    ).toThrow('Недостатньо прав');
+  });
+
+  it('user відсутній -> ForbiddenException', () => {
+    reflector.getAllAndOverride.mockReturnValueOnce([UserRole.MANAGER]);
+
+    expect(() => guard.canActivate(createContext(undefined))).toThrow(
+      ForbiddenException,
+    );
+  });
+});
+
+```
+
 # FILE: apps/backend/src/auth/guards/roles.guard.ts
 
 ```
@@ -2389,6 +3044,7 @@ import { CitiesController } from './cities.controller';
 import { CitiesService } from './cities.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { OwnershipGuard } from '../auth/guards/ownership.guard';
 
 describe('CitiesController', () => {
   it('should be defined', async () => {
@@ -2397,10 +3053,15 @@ describe('CitiesController', () => {
       providers: [
         { provide: CitiesService, useValue: {} },
         { provide: JwtService, useValue: { verifyAsync: jest.fn() } },
-        { provide: AuthGuard, useValue: { canActivate: () => true } },
-        { provide: RolesGuard, useValue: { canActivate: () => true } },
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(RolesGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(OwnershipGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
     expect(module.get(CitiesController)).toBeDefined();
   });
 });
@@ -2689,12 +3350,112 @@ export class CreateCrewDto {
 
 ```
 
+# FILE: apps/backend/src/common/cache/cache-version.service.spec.ts
+
+```
+import { Test, TestingModule } from '@nestjs/testing';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { CacheVersionService } from './cache-version.service';
+
+const mockCacheManager = {
+  get: jest.fn(),
+  set: jest.fn(),
+};
+
+describe('CacheVersionService', () => {
+  let service: CacheVersionService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        CacheVersionService,
+        { provide: CACHE_MANAGER, useValue: mockCacheManager },
+      ],
+    }).compile();
+    service = module.get<CacheVersionService>(CacheVersionService);
+  });
+
+  describe('getVersion', () => {
+    it('повертає 0 коли версія не збережена', async () => {
+      mockCacheManager.get.mockResolvedValueOnce(undefined);
+      const version = await service.getVersion('finance');
+      expect(version).toBe(0);
+    });
+
+    it('повертає збережене значення', async () => {
+      mockCacheManager.get.mockResolvedValueOnce(5);
+      const version = await service.getVersion('dashboard');
+      expect(version).toBe(5);
+    });
+  });
+
+  describe('bumpVersion', () => {
+    it('встановлює 1 при першому виклику', async () => {
+      mockCacheManager.get.mockResolvedValueOnce(undefined);
+      await service.bumpVersion('finance');
+      expect(mockCacheManager.set).toHaveBeenCalledWith(
+        'cache:version:finance',
+        1,
+        0,
+      );
+    });
+
+    it('інкрементує версію при повторному виклику', async () => {
+      mockCacheManager.get.mockResolvedValueOnce(1);
+      await service.bumpVersion('finance');
+      expect(mockCacheManager.set).toHaveBeenCalledWith(
+        'cache:version:finance',
+        2,
+        0,
+      );
+
+      mockCacheManager.get.mockResolvedValueOnce(2);
+      await service.bumpVersion('finance');
+      expect(mockCacheManager.set).toHaveBeenCalledWith(
+        'cache:version:finance',
+        3,
+        0,
+      );
+    });
+  });
+});
+
+```
+
+# FILE: apps/backend/src/common/cache/cache-version.service.ts
+
+```
+import { Inject, Injectable } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
+
+@Injectable()
+export class CacheVersionService {
+  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {}
+
+  async getVersion(namespace: string): Promise<number> {
+    const key = `cache:version:${namespace}`;
+    const version = await this.cacheManager.get<number>(key);
+    return version ?? 0;
+  }
+
+  async bumpVersion(namespace: string): Promise<void> {
+    const key = `cache:version:${namespace}`;
+    const current = await this.cacheManager.get<number>(key);
+    await this.cacheManager.set(key, (current ?? 0) + 1, 0);
+  }
+}
+
+```
+
 # FILE: apps/backend/src/common/cache/redis-cache.module.ts
 
 ```
 import { Logger, Module } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
+import { CacheVersionService } from './cache-version.service';
 
 const logger = new Logger('RedisCacheModule');
 
@@ -2724,7 +3485,8 @@ const logger = new Logger('RedisCacheModule');
       },
     }),
   ],
-  exports: [CacheModule],
+  providers: [CacheVersionService],
+  exports: [CacheVersionService, CacheModule],
 })
 export class RedisCacheModule {}
 
@@ -3383,6 +4145,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { DashboardService } from './dashboard.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheVersionService } from '../common/cache/cache-version.service';
 
 const mockCacheManager = {
   get: jest.fn().mockResolvedValue(undefined),
@@ -3408,12 +4171,18 @@ const mockPrisma = {
   $queryRaw: jest.fn(),
 };
 
+const mockCacheVersion = {
+  getVersion: jest.fn().mockResolvedValue(0),
+  bumpVersion: jest.fn().mockResolvedValue(undefined),
+};
+
 const makeService = async () => {
   const module: TestingModule = await Test.createTestingModule({
     providers: [
       DashboardService,
       { provide: PrismaService, useValue: mockPrisma },
       { provide: CACHE_MANAGER, useValue: mockCacheManager },
+      { provide: CacheVersionService, useValue: mockCacheVersion },
     ],
   }).compile();
   return module.get<DashboardService>(DashboardService);
@@ -3424,12 +4193,13 @@ const defaultMocks = () => {
     .mockResolvedValueOnce([])
     .mockResolvedValueOnce([])
     .mockResolvedValueOnce([]);
-  mockPrisma.$queryRaw.mockResolvedValueOnce([
-    { status: 'BASE', count: BigInt(10) },
-    { status: 'FIRST_CONTACT', count: BigInt(5) },
-    { status: 'IN_PROGRESS', count: BigInt(3) },
-  ]);
-  mockPrisma.school.findMany.mockResolvedValueOnce([]);
+  mockPrisma.$queryRaw
+    .mockResolvedValueOnce([
+      { status: 'BASE', count: BigInt(10) },
+      { status: 'FIRST_CONTACT', count: BigInt(5) },
+      { status: 'IN_PROGRESS', count: BigInt(3) },
+    ])
+    .mockResolvedValueOnce([]);
   mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
 };
 
@@ -3492,8 +4262,7 @@ describe('DashboardService', () => {
         .mockResolvedValueOnce([todayEvent])
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([]);
-      mockPrisma.$queryRaw.mockResolvedValueOnce([]);
-      mockPrisma.school.findMany.mockResolvedValueOnce([]);
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
       mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
 
       const result = await service.getSummary('city-1');
@@ -3522,8 +4291,7 @@ describe('DashboardService', () => {
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([upcoming])
         .mockResolvedValueOnce([]);
-      mockPrisma.$queryRaw.mockResolvedValueOnce([]);
-      mockPrisma.school.findMany.mockResolvedValueOnce([]);
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
       mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
 
       const result = await service.getSummary('city-1');
@@ -3537,23 +4305,18 @@ describe('DashboardService', () => {
       const staleDate = new Date();
       staleDate.setDate(staleDate.getDate() - 10);
 
-      const staleSchool = {
-        id: 's-stale',
-        name: 'Стала школа',
-        events: [
-          {
-            status: 'FIRST_CONTACT',
-            history: [{ createdAt: staleDate }],
-          },
-        ],
-      };
-
       mockPrisma.event.findMany
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([]);
-      mockPrisma.$queryRaw.mockResolvedValueOnce([]);
-      mockPrisma.school.findMany.mockResolvedValueOnce([staleSchool]);
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([
+        {
+          id: 's-stale',
+          name: 'Стала школа',
+          status: 'FIRST_CONTACT',
+          lastActivity: staleDate,
+        },
+      ]);
       mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
 
       const result = await service.getSummary('city-1');
@@ -3572,18 +4335,9 @@ describe('DashboardService', () => {
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([]);
-      mockPrisma.$queryRaw.mockResolvedValueOnce([]);
-      mockPrisma.school.findMany.mockResolvedValueOnce([
-        {
-          id: 's-1',
-          name: 'Школа 1',
-          events: [{ status: 'BASE', history: [{ createdAt: date10 }] }],
-        },
-        {
-          id: 's-2',
-          name: 'Школа 2',
-          events: [{ status: 'BASE', history: [{ createdAt: date20 }] }],
-        },
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([
+        { id: 's-2', name: 'Школа 2', status: 'BASE', lastActivity: date20 },
+        { id: 's-1', name: 'Школа 1', status: 'BASE', lastActivity: date10 },
       ]);
       mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
 
@@ -3609,8 +4363,7 @@ describe('DashboardService', () => {
             report: { totalSum: 5000, remainderSum: 2000, childrenCount: 50 },
           },
         ]);
-      mockPrisma.$queryRaw.mockResolvedValueOnce([]);
-      mockPrisma.school.findMany.mockResolvedValueOnce([]);
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
       mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
 
       const result = await service.getSummary('city-1');
@@ -3667,6 +4420,9 @@ describe('DashboardService', () => {
   describe('getSummary — кеш', () => {
     it('повертає кешований результат при повторному виклику', async () => {
       defaultMocks();
+      mockCacheManager.get
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce({ cached: true } as any);
       await service.getSummary('city-1');
       await service.getSummary('city-1');
       expect(mockPrisma.event.findMany).toHaveBeenCalledTimes(3);
@@ -3684,6 +4440,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheVersionService } from '../common/cache/cache-version.service';
 const PIPELINE_STAGES = [
   'BASE',
   'FIRST_CONTACT',
@@ -3763,10 +4520,12 @@ export class DashboardService {
   constructor(
     private prisma: PrismaService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly cacheVersion: CacheVersionService,
   ) {}
 
   async getSummary(cityId?: string, role?: string): Promise<DashboardSummary> {
-    const key = `dashboard:${cityId ?? 'all'}-${role ?? 'anon'}`;
+    const version = await this.cacheVersion.getVersion('dashboard');
+    const key = `dashboard:v${version}:${cityId ?? 'all'}-${role ?? 'anon'}`;
     const cached = await this.cacheManager.get<DashboardSummary>(key);
     if (cached) {
       this.hits++;
@@ -3962,8 +4721,8 @@ export class DashboardService {
 
     return monthEvents.reduce(
       (acc, ev) => {
-        acc.revenue += ev.report?.totalSum ?? 0;
-        acc.profit += ev.report?.remainderSum ?? 0;
+        acc.revenue += Number(ev.report?.totalSum ?? 0);
+        acc.profit += Number(ev.report?.remainderSum ?? 0);
         acc.children += ev.report?.childrenCount ?? 0;
         acc.count += 1;
         return acc;
@@ -4093,7 +4852,7 @@ export class DashboardService {
     const revenueIdx: Record<string, number> = {};
     for (const ev of allMonthEvents) {
       revenueIdx[ev.cityId] =
-        (revenueIdx[ev.cityId] ?? 0) + (ev.report?.totalSum ?? 0);
+        (revenueIdx[ev.cityId] ?? 0) + Number(ev.report?.totalSum ?? 0);
     }
 
     return allCities
@@ -4176,6 +4935,605 @@ import { TelegramModule } from '../telegram/telegram.module';
   providers: [DaysOffService],
 })
 export class DaysOffModule {}
+
+```
+
+# FILE: apps/backend/src/days-off/days-off.service.spec.ts
+
+```
+import { Test, TestingModule } from '@nestjs/testing';
+import { ForbiddenException, HttpStatus } from '@nestjs/common';
+import { DaysOffService } from './days-off.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
+import { AppException } from '../common/exceptions/app.exception';
+import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+
+const mockPrisma = {
+  dayOff: {
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    upsert: jest.fn(),
+    delete: jest.fn(),
+  },
+  user: {
+    findUnique: jest.fn(),
+    findFirst: jest.fn(),
+  },
+};
+
+const mockTelegram = {
+  sendMessage: jest.fn(),
+};
+
+const hostUser: JwtUser = {
+  sub: 'host-1',
+  name: 'Host One',
+  role: 'HOST',
+  cityId: 'city-1',
+};
+
+const driverUser: JwtUser = {
+  sub: 'driver-1',
+  name: 'Driver One',
+  role: 'DRIVER',
+  cityId: 'city-1',
+};
+
+const managerUser: JwtUser = {
+  sub: 'manager-1',
+  name: 'Manager One',
+  role: 'MANAGER',
+  cityId: 'city-1',
+};
+
+const superAdminUser: JwtUser = {
+  sub: 'admin-1',
+  name: 'Admin One',
+  role: 'SUPERADMIN',
+  cityId: null,
+};
+
+describe('DaysOffService', () => {
+  let service: DaysOffService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        DaysOffService,
+        { provide: PrismaService, useValue: mockPrisma },
+        { provide: TelegramService, useValue: mockTelegram },
+      ],
+    }).compile();
+
+    service = module.get<DaysOffService>(DaysOffService);
+  });
+
+  describe('findAll', () => {
+    it('без фільтрів формує базовий findMany include+orderBy', async () => {
+      mockPrisma.dayOff.findMany.mockResolvedValueOnce([]);
+
+      await service.findAll();
+
+      expect(mockPrisma.dayOff.findMany).toHaveBeenCalledWith({
+        where: {},
+        include: {
+          user: { select: { id: true, name: true, role: true, cityId: true } },
+        },
+        orderBy: { date: 'asc' },
+      });
+    });
+
+    it('лише from додає where.date.gte', async () => {
+      mockPrisma.dayOff.findMany.mockResolvedValueOnce([]);
+
+      await service.findAll('2026-07-01');
+
+      const call = mockPrisma.dayOff.findMany.mock.calls[0][0];
+      expect(call.where.date.gte).toEqual(new Date('2026-07-01'));
+      expect(call.where.date.lte).toBeUndefined();
+    });
+
+    it('лише to додає where.date.lte', async () => {
+      mockPrisma.dayOff.findMany.mockResolvedValueOnce([]);
+
+      await service.findAll(undefined, '2026-07-31');
+
+      const call = mockPrisma.dayOff.findMany.mock.calls[0][0];
+      expect(call.where.date.lte).toEqual(new Date('2026-07-31'));
+      expect(call.where.date.gte).toBeUndefined();
+    });
+
+    it('from+to+cityId комбінує всі фільтри', async () => {
+      mockPrisma.dayOff.findMany.mockResolvedValueOnce([]);
+
+      await service.findAll('2026-07-01', '2026-07-31', 'city-1');
+
+      expect(mockPrisma.dayOff.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            date: {
+              gte: new Date('2026-07-01'),
+              lte: new Date('2026-07-31'),
+            },
+            user: { cityId: 'city-1' },
+          },
+        }),
+      );
+    });
+  });
+
+  describe('create', () => {
+    it('HOST ігнорує dto.userId та використовує currentUser.sub', async () => {
+      mockPrisma.dayOff.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.dayOff.upsert.mockResolvedValueOnce({
+        id: 'd1',
+        userId: hostUser.sub,
+        user: {
+          id: hostUser.sub,
+          name: 'Host One',
+          role: 'HOST',
+          cityId: 'city-1',
+        },
+      });
+      mockPrisma.user.findFirst.mockResolvedValueOnce(null);
+
+      await service.create(
+        { date: '2026-07-10', userId: 'another-user' },
+        hostUser,
+      );
+
+      const upsertArg = mockPrisma.dayOff.upsert.mock.calls[0][0];
+      expect(upsertArg.where.userId_date.userId).toBe(hostUser.sub);
+      expect(upsertArg.create.userId).toBe(hostUser.sub);
+      expect(upsertArg.create.createdBy).toBe(hostUser.sub);
+    });
+
+    it('DRIVER також використовує currentUser.sub', async () => {
+      mockPrisma.dayOff.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.dayOff.upsert.mockResolvedValueOnce({
+        id: 'd1',
+        userId: driverUser.sub,
+        user: {
+          id: driverUser.sub,
+          name: 'Driver One',
+          role: 'DRIVER',
+          cityId: 'city-1',
+        },
+      });
+      mockPrisma.user.findFirst.mockResolvedValueOnce(null);
+
+      await service.create({ date: '2026-07-11' }, driverUser);
+
+      const upsertArg = mockPrisma.dayOff.upsert.mock.calls[0][0];
+      expect(upsertArg.where.userId_date.userId).toBe(driverUser.sub);
+      expect(upsertArg.update).toEqual({});
+    });
+
+    it('MANAGER без userId отримує USER_ID_REQUIRED', async () => {
+      await expect(
+        service.create({ date: '2026-07-10' }, managerUser),
+      ).rejects.toMatchObject({
+        messageKey: 'USER_ID_REQUIRED',
+        status: HttpStatus.BAD_REQUEST,
+      });
+    });
+
+    it('SUPERADMIN без userId отримує USER_ID_REQUIRED', async () => {
+      await expect(
+        service.create({ date: '2026-07-10' }, superAdminUser),
+      ).rejects.toMatchObject({
+        messageKey: 'USER_ID_REQUIRED',
+        status: HttpStatus.BAD_REQUEST,
+      });
+    });
+
+    it('MANAGER не може призначити вихідний staff з іншого міста', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({
+        id: 'host-2',
+        role: 'HOST',
+        cityId: 'city-2',
+      });
+
+      await expect(
+        service.create({ date: '2026-07-10', userId: 'host-2' }, managerUser),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('MANAGER може призначити staff свого міста', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({
+        id: 'host-2',
+        role: 'HOST',
+        cityId: 'city-1',
+      });
+      mockPrisma.dayOff.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.dayOff.upsert.mockResolvedValueOnce({
+        id: 'd2',
+        userId: 'host-2',
+        user: {
+          id: 'host-2',
+          name: 'Host Two',
+          role: 'HOST',
+          cityId: 'city-1',
+        },
+      });
+      mockPrisma.user.findFirst.mockResolvedValueOnce(null);
+
+      const result = await service.create(
+        { date: '2026-07-10', userId: 'host-2' },
+        managerUser,
+      );
+
+      expect(result.id).toBe('d2');
+    });
+
+    it('SUPERADMIN може призначити staff з будь-якого міста', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({
+        id: 'driver-2',
+        role: 'DRIVER',
+        cityId: 'city-9',
+      });
+      mockPrisma.dayOff.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.dayOff.upsert.mockResolvedValueOnce({
+        id: 'd3',
+        userId: 'driver-2',
+        user: {
+          id: 'driver-2',
+          name: 'Driver Two',
+          role: 'DRIVER',
+          cityId: 'city-9',
+        },
+      });
+      mockPrisma.user.findFirst.mockResolvedValueOnce(null);
+
+      const result = await service.create(
+        { date: '2026-07-10', userId: 'driver-2' },
+        superAdminUser,
+      );
+
+      expect(result.id).toBe('d3');
+    });
+
+    it('цільовий користувач не STAFF -> INVALID_STAFF_USER', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({
+        id: 'manager-2',
+        role: 'MANAGER',
+        cityId: 'city-1',
+      });
+
+      await expect(
+        service.create(
+          { date: '2026-07-10', userId: 'manager-2' },
+          superAdminUser,
+        ),
+      ).rejects.toMatchObject({
+        messageKey: 'INVALID_STAFF_USER',
+        status: HttpStatus.BAD_REQUEST,
+      });
+    });
+
+    it('цільовий користувач не знайдений -> INVALID_STAFF_USER', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+
+      await expect(
+        service.create(
+          { date: '2026-07-10', userId: 'missing-user' },
+          managerUser,
+        ),
+      ).rejects.toMatchObject({
+        messageKey: 'INVALID_STAFF_USER',
+        status: HttpStatus.BAD_REQUEST,
+      });
+    });
+
+    it('для role поза whitelist -> ForbiddenException', async () => {
+      const outsider = { ...hostUser, role: 'ACCOUNTANT' as any };
+
+      await expect(
+        service.create({ date: '2026-07-10', userId: 'host-2' }, outsider),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('якщо existing відсутній -> викликає notifyManager(action=created)', async () => {
+      const notifySpy = jest.spyOn<any, any>(service as any, 'notifyManager');
+      mockPrisma.dayOff.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.dayOff.upsert.mockResolvedValueOnce({
+        id: 'd4',
+        userId: hostUser.sub,
+        user: {
+          id: hostUser.sub,
+          name: 'Host One',
+          role: 'HOST',
+          cityId: 'city-1',
+        },
+      });
+      mockPrisma.user.findFirst.mockResolvedValueOnce(null);
+
+      await service.create({ date: '2026-07-10' }, hostUser);
+
+      expect(notifySpy).toHaveBeenCalledWith(
+        'city-1',
+        'Host One',
+        '2026-07-10',
+        'created',
+      );
+    });
+
+    it('якщо existing є -> notifyManager не викликається (anti-spam)', async () => {
+      const notifySpy = jest.spyOn<any, any>(service as any, 'notifyManager');
+      mockPrisma.dayOff.findUnique.mockResolvedValueOnce({
+        id: 'existing-1',
+        userId: hostUser.sub,
+      });
+      mockPrisma.dayOff.upsert.mockResolvedValueOnce({
+        id: 'existing-1',
+        userId: hostUser.sub,
+        user: {
+          id: hostUser.sub,
+          name: 'Host One',
+          role: 'HOST',
+          cityId: 'city-1',
+        },
+      });
+
+      await service.create({ date: '2026-07-10' }, hostUser);
+
+      expect(notifySpy).not.toHaveBeenCalled();
+    });
+
+    it('поточна поведінка: минула дата дозволена (без серверної валідації past-date)', async () => {
+      mockPrisma.dayOff.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.dayOff.upsert.mockResolvedValueOnce({
+        id: 'past-1',
+        userId: hostUser.sub,
+        user: {
+          id: hostUser.sub,
+          name: 'Host One',
+          role: 'HOST',
+          cityId: 'city-1',
+        },
+      });
+      mockPrisma.user.findFirst.mockResolvedValueOnce(null);
+
+      const result = await service.create({ date: '2000-01-01' }, hostUser);
+
+      expect(result.id).toBe('past-1');
+      const upsertArg = mockPrisma.dayOff.upsert.mock.calls[0][0];
+      expect(upsertArg.where.userId_date.date).toEqual(new Date('2000-01-01'));
+    });
+
+    it('STAFF двічі поспіль на ту саму дату: upsert повертає той самий запис, дубліката не очікується', async () => {
+      const notifySpy = jest.spyOn<any, any>(service as any, 'notifyManager');
+      mockPrisma.dayOff.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 'same-1', userId: hostUser.sub });
+      mockPrisma.dayOff.upsert
+        .mockResolvedValueOnce({
+          id: 'same-1',
+          userId: hostUser.sub,
+          user: {
+            id: hostUser.sub,
+            name: 'Host One',
+            role: 'HOST',
+            cityId: 'city-1',
+          },
+        })
+        .mockResolvedValueOnce({
+          id: 'same-1',
+          userId: hostUser.sub,
+          user: {
+            id: hostUser.sub,
+            name: 'Host One',
+            role: 'HOST',
+            cityId: 'city-1',
+          },
+        });
+      mockPrisma.user.findFirst.mockResolvedValueOnce(null);
+
+      const first = await service.create({ date: '2026-07-10' }, hostUser);
+      const second = await service.create({ date: '2026-07-10' }, hostUser);
+
+      expect(first.id).toBe('same-1');
+      expect(second.id).toBe('same-1');
+      expect(mockPrisma.dayOff.upsert).toHaveBeenCalledTimes(2);
+      expect(notifySpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('remove', () => {
+    it('якщо dayOff не знайдено -> DAY_OFF_NOT_FOUND', async () => {
+      mockPrisma.dayOff.findUnique.mockResolvedValueOnce(null);
+
+      await expect(service.remove('missing', hostUser)).rejects.toMatchObject({
+        messageKey: 'DAY_OFF_NOT_FOUND',
+        status: HttpStatus.NOT_FOUND,
+      });
+    });
+
+    it('owner STAFF може видалити свій вихідний', async () => {
+      const notifySpy = jest.spyOn<any, any>(service as any, 'notifyManager');
+      mockPrisma.dayOff.findUnique.mockResolvedValueOnce({
+        id: 'd10',
+        userId: hostUser.sub,
+        date: new Date('2026-07-10'),
+        user: { name: 'Host One', cityId: 'city-1' },
+      });
+      mockPrisma.dayOff.delete.mockResolvedValueOnce({});
+      mockPrisma.user.findFirst.mockResolvedValueOnce(null);
+
+      const result = await service.remove('d10', hostUser);
+
+      expect(result).toEqual({ success: true });
+      expect(mockPrisma.dayOff.delete).toHaveBeenCalledWith({
+        where: { id: 'd10' },
+      });
+      expect(notifySpy).toHaveBeenCalledWith(
+        'city-1',
+        'Host One',
+        new Date('2026-07-10').toISOString(),
+        'removed',
+      );
+    });
+
+    it('MANAGER (не owner) може видалити тільки у межах свого міста', async () => {
+      mockPrisma.dayOff.findUnique.mockResolvedValueOnce({
+        id: 'd11',
+        userId: 'host-2',
+        date: new Date('2026-07-12'),
+        user: { name: 'Host Two', cityId: 'city-1' },
+      });
+      mockPrisma.dayOff.delete.mockResolvedValueOnce({});
+      mockPrisma.user.findFirst.mockResolvedValueOnce(null);
+
+      const result = await service.remove('d11', managerUser);
+
+      expect(result).toEqual({ success: true });
+    });
+
+    it('MANAGER (не owner) не може видалити у чужому місті', async () => {
+      mockPrisma.dayOff.findUnique.mockResolvedValueOnce({
+        id: 'd12',
+        userId: 'host-2',
+        date: new Date('2026-07-12'),
+        user: { name: 'Host Two', cityId: 'city-9' },
+      });
+
+      await expect(service.remove('d12', managerUser)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      expect(mockPrisma.dayOff.delete).not.toHaveBeenCalled();
+    });
+
+    it('не owner і не manager/admin -> ForbiddenException', async () => {
+      mockPrisma.dayOff.findUnique.mockResolvedValueOnce({
+        id: 'd13',
+        userId: 'host-2',
+        date: new Date('2026-07-12'),
+        user: { name: 'Host Two', cityId: 'city-1' },
+      });
+
+      await expect(service.remove('d13', driverUser)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+    });
+  });
+
+  describe('notifyManager (private)', () => {
+    it('cityId=null -> ранній вихід без запитів', async () => {
+      await (service as any).notifyManager(
+        null,
+        'Host One',
+        '2026-07-10',
+        'created',
+      );
+
+      expect(mockPrisma.user.findFirst).not.toHaveBeenCalled();
+      expect(mockTelegram.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('менеджера не знайдено -> без telegram', async () => {
+      mockPrisma.user.findFirst.mockResolvedValueOnce(null);
+
+      await (service as any).notifyManager(
+        'city-1',
+        'Host One',
+        '2026-07-10',
+        'created',
+      );
+
+      expect(mockTelegram.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('пріоритет telegramChatId над telegramId', async () => {
+      mockPrisma.user.findFirst.mockResolvedValueOnce({
+        id: 'm1',
+        role: 'MANAGER',
+        cityId: 'city-1',
+        telegramChatId: 'chat-123',
+        telegramId: '999999',
+      });
+      mockTelegram.sendMessage.mockResolvedValueOnce(undefined);
+
+      await (service as any).notifyManager(
+        'city-1',
+        'Host One',
+        '2026-07-10',
+        'created',
+      );
+
+      expect(mockTelegram.sendMessage).toHaveBeenCalledWith(
+        'chat-123',
+        expect.stringContaining('Призначено вихідний'),
+      );
+    });
+
+    it('fallback на numeric telegramId, якщо telegramChatId відсутній', async () => {
+      mockPrisma.user.findFirst.mockResolvedValueOnce({
+        id: 'm2',
+        role: 'MANAGER',
+        cityId: 'city-1',
+        telegramChatId: null,
+        telegramId: '123456789',
+      });
+      mockTelegram.sendMessage.mockResolvedValueOnce(undefined);
+
+      await (service as any).notifyManager(
+        'city-1',
+        'Host One',
+        '2026-07-10',
+        'removed',
+      );
+
+      expect(mockTelegram.sendMessage).toHaveBeenCalledWith(
+        '123456789',
+        expect.stringContaining('Скасовано вихідний'),
+      );
+    });
+
+    it('не numeric telegramId -> не відправляє', async () => {
+      mockPrisma.user.findFirst.mockResolvedValueOnce({
+        id: 'm3',
+        role: 'MANAGER',
+        cityId: 'city-1',
+        telegramChatId: null,
+        telegramId: 'abc123',
+      });
+
+      await (service as any).notifyManager(
+        'city-1',
+        'Host One',
+        '2026-07-10',
+        'created',
+      );
+
+      expect(mockTelegram.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('помилка telegramService.sendMessage пробрасывається', async () => {
+      mockPrisma.user.findFirst.mockResolvedValueOnce({
+        id: 'm4',
+        role: 'MANAGER',
+        cityId: 'city-1',
+        telegramChatId: 'chat-err',
+        telegramId: null,
+      });
+      mockTelegram.sendMessage.mockRejectedValueOnce(
+        new Error('telegram failed'),
+      );
+
+      await expect(
+        (service as any).notifyManager(
+          'city-1',
+          'Host One',
+          '2026-07-10',
+          'created',
+        ),
+      ).rejects.toThrow('telegram failed');
+    });
+  });
+});
 
 ```
 
@@ -4818,6 +6176,218 @@ export class UpdateStatusDto {
 
 ```
 
+# FILE: apps/backend/src/events/events-scheduler.service.spec.ts
+
+```
+import { EventsSchedulerService } from './events-scheduler.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
+
+const mockPrisma = {
+  event: { findMany: jest.fn() },
+};
+const mockTelegram = { sendMessage: jest.fn() };
+
+const makeService = () =>
+  new EventsSchedulerService(
+    mockPrisma as unknown as PrismaService,
+    mockTelegram as unknown as TelegramService,
+  );
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
+describe('EventsSchedulerService', () => {
+  describe('onModuleInit', () => {
+    it('викликає scheduleDailyCheck при ініціалізації модуля', () => {
+      const service = makeService();
+      const spy = jest
+        .spyOn(service as any, 'scheduleDailyCheck')
+        .mockImplementation(() => {});
+      service.onModuleInit();
+      expect(spy).toHaveBeenCalled();
+    });
+  });
+
+  describe('checkEventsForTomorrow', () => {
+    it('надсилає нагадування ведучому та водію якщо є crew', async () => {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const mockEvent = {
+        id: 'ev-1',
+        project: 'Голограма',
+        contactPhone: '0501234567',
+        school: { name: 'Школа №1' },
+        city: { name: 'Львів' },
+        crew: {
+          host: { telegramChatId: '111', telegramId: null },
+          driver: { telegramChatId: null, telegramId: '222' },
+        },
+      };
+      mockPrisma.event.findMany.mockResolvedValueOnce([mockEvent]);
+
+      const service = makeService();
+      await service.checkEventsForTomorrow();
+
+      expect(mockTelegram.sendMessage).toHaveBeenCalledTimes(2);
+      expect(mockTelegram.sendMessage).toHaveBeenCalledWith(
+        '111',
+        expect.stringContaining('ведучий'),
+      );
+      expect(mockTelegram.sendMessage).toHaveBeenCalledWith(
+        '222',
+        expect.stringContaining('водій'),
+      );
+    });
+
+    it('не надсилає нагадування якщо crew відсутній', async () => {
+      mockPrisma.event.findMany.mockResolvedValueOnce([
+        { id: 'ev-1', project: 'Test', school: {}, city: {}, crew: null },
+      ]);
+
+      const service = makeService();
+      await service.checkEventsForTomorrow();
+
+      expect(mockTelegram.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('не надсилає якщо подій на завтра немає', async () => {
+      mockPrisma.event.findMany.mockResolvedValueOnce([]);
+
+      const service = makeService();
+      await service.checkEventsForTomorrow();
+
+      expect(mockTelegram.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('запитує події з датою у межах завтра (gte/lte)', async () => {
+      mockPrisma.event.findMany.mockResolvedValueOnce([]);
+
+      const service = makeService();
+      const before = new Date();
+      await service.checkEventsForTomorrow();
+      const after = new Date();
+
+      const call = mockPrisma.event.findMany.mock.calls[0][0];
+      const { gte, lte } = call.where.date;
+
+      // gte — початок завтра (00:00)
+      expect(gte.getHours()).toBe(0);
+      expect(gte.getMinutes()).toBe(0);
+      // lte — кінець завтра (23:59)
+      expect(lte.getHours()).toBe(23);
+      expect(lte.getMinutes()).toBe(59);
+      // обидва — завтра
+      const tomorrowDate = new Date(before);
+      tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+      expect(gte.getDate()).toBe(tomorrowDate.getDate());
+    });
+
+    it('фільтрує події, виключаючи RE_SALE', async () => {
+      mockPrisma.event.findMany.mockResolvedValueOnce([]);
+      const service = makeService();
+      await service.checkEventsForTomorrow();
+
+      const call = mockPrisma.event.findMany.mock.calls[0][0];
+      expect(call.where.status).toEqual({ not: 'RE_SALE' });
+    });
+
+    it('не кидає помилку якщо sendMessage падає', async () => {
+      const event = {
+        id: 'ev-1',
+        project: 'Тест',
+        contactPhone: null,
+        school: { name: 'Школа' },
+        city: { name: 'Місто' },
+        crew: {
+          host: { telegramChatId: '111', telegramId: null },
+          driver: null,
+        },
+      };
+      mockPrisma.event.findMany.mockResolvedValueOnce([event]);
+      mockTelegram.sendMessage.mockRejectedValueOnce(
+        new Error('Telegram API error'),
+      );
+
+      const service = makeService();
+      await expect(service.checkEventsForTomorrow()).resolves.not.toThrow();
+    });
+  });
+
+  describe('sendReminder (via checkEventsForTomorrow)', () => {
+    it('не надсилає якщо у user немає telegramChatId і telegramId', async () => {
+      const event = {
+        id: 'ev-1',
+        project: 'Test',
+        school: { name: 'Школа' },
+        city: { name: 'Місто' },
+        contactPhone: null,
+        crew: {
+          host: { telegramChatId: null, telegramId: null },
+          driver: null,
+        },
+      };
+      mockPrisma.event.findMany.mockResolvedValueOnce([event]);
+
+      const service = makeService();
+      await service.checkEventsForTomorrow();
+
+      expect(mockTelegram.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('надсилає telegramChatId замість telegramId якщо обидва є', async () => {
+      const event = {
+        id: 'ev-1',
+        project: 'Test',
+        school: { name: 'Школа' },
+        city: { name: 'Місто' },
+        contactPhone: null,
+        crew: {
+          host: { telegramChatId: 'chatId-999', telegramId: 'userId-555' },
+          driver: null,
+        },
+      };
+      mockPrisma.event.findMany.mockResolvedValueOnce([event]);
+
+      const service = makeService();
+      await service.checkEventsForTomorrow();
+
+      // chatId має пріоритет
+      expect(mockTelegram.sendMessage).toHaveBeenCalledWith(
+        'chatId-999',
+        expect.any(String),
+      );
+    });
+
+    it('повідомлення містить назву школи та проєкт', async () => {
+      const event = {
+        id: 'ev-1',
+        project: 'Малювайко',
+        school: { name: 'Гімназія №5' },
+        city: { name: 'Тернопіль' },
+        contactPhone: '0671234567',
+        crew: {
+          host: { telegramChatId: '333', telegramId: null },
+          driver: null,
+        },
+      };
+      mockPrisma.event.findMany.mockResolvedValueOnce([event]);
+
+      const service = makeService();
+      await service.checkEventsForTomorrow();
+
+      const message = mockTelegram.sendMessage.mock.calls[0][1] as string;
+      expect(message).toContain('Гімназія №5');
+      expect(message).toContain('Малювайко');
+      expect(message).toContain('0671234567');
+    });
+  });
+});
+
+```
+
 # FILE: apps/backend/src/events/events-scheduler.service.ts
 
 ```
@@ -4901,27 +6471,191 @@ export class EventsSchedulerService implements OnModuleInit {
 # FILE: apps/backend/src/events/events.controller.spec.ts
 
 ```
-import { Test } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
+import { INestApplication } from '@nestjs/common';
+import request from 'supertest';
 import { EventsController } from './events.controller';
 import { EventsService } from './events.service';
 import { JwtService } from '@nestjs/jwt';
+import { AuthGuard } from '../auth/auth.guard';
 import { OwnershipGuard } from '../auth/guards/ownership.guard';
 
-describe('EventsController', () => {
-  it('should be defined', async () => {
-    const module = await Test.createTestingModule({
+const mockEventsService = {
+  findAllForUser: jest.fn(),
+  findBySchool: jest.fn(),
+  findCompletedBySchool: jest.fn(),
+  findOne: jest.fn(),
+  addHistoryComment: jest.fn(),
+  updateHistoryComment: jest.fn(),
+};
+
+const mockGuard = { canActivate: jest.fn() };
+
+const mockJwtService = { verifyAsync: jest.fn() };
+
+describe('EventsController (HTTP)', () => {
+  let app: INestApplication;
+
+  beforeAll(async () => {
+    jest.clearAllMocks();
+
+    const module: TestingModule = await Test.createTestingModule({
       controllers: [EventsController],
       providers: [
-        { provide: EventsService, useValue: {} },
-        { provide: JwtService, useValue: { verifyAsync: jest.fn() } },
+        { provide: EventsService, useValue: mockEventsService },
+        { provide: JwtService, useValue: mockJwtService },
       ],
     })
+      .overrideGuard(AuthGuard)
+      .useValue(mockGuard)
       .overrideGuard(OwnershipGuard)
-      .useValue({
-        canActivate: jest.fn().mockReturnValue(true),
-      })
+      .useValue(mockGuard)
       .compile();
-    expect(module.get(EventsController)).toBeDefined();
+
+    app = module.createNestApplication();
+    await app.init();
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGuard.canActivate.mockResolvedValue(true);
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  describe('GET /events/school/:schoolId — findBySchool', () => {
+    it('OWNERSHIP: MANAGER іншого міста отримує 403', async () => {
+      mockGuard.canActivate.mockRejectedValueOnce(
+        new (require('@nestjs/common').ForbiddenException)(
+          'Немає доступу до ресурсу іншого міста',
+        ),
+      );
+      await request(app.getHttpServer())
+        .get('/events/school/s-1')
+        .expect(403);
+    });
+
+    it('OWNERSHIP: HOST отримує 403 (resourceType=school не дозволено для HOST)', async () => {
+      mockGuard.canActivate.mockRejectedValueOnce(
+        new (require('@nestjs/common').ForbiddenException)(
+          'Немає доступу до цього типу ресурсу',
+        ),
+      );
+      await request(app.getHttpServer())
+        .get('/events/school/s-1')
+        .expect(403);
+    });
+
+    it('SUPERADMIN отримує 200', async () => {
+      mockGuard.canActivate.mockResolvedValue(true);
+      mockEventsService.findBySchool.mockResolvedValueOnce([]);
+      const res = await request(app.getHttpServer())
+        .get('/events/school/s-1')
+        .expect(200);
+      expect(res.body).toEqual([]);
+    });
+  });
+
+  describe('GET /events/school/:schoolId/completed — findCompletedBySchool', () => {
+    it('OWNERSHIP: MANAGER свого міста отримує 200', async () => {
+      mockGuard.canActivate.mockResolvedValue(true);
+      mockEventsService.findCompletedBySchool.mockResolvedValueOnce([
+        { id: 'ev-1' },
+      ]);
+      const res = await request(app.getHttpServer())
+        .get('/events/school/s-1/completed')
+        .expect(200);
+      expect(res.body).toHaveLength(1);
+    });
+
+    it('MANAGER без cityId отримує 403', async () => {
+      mockGuard.canActivate.mockRejectedValueOnce(
+        new (require('@nestjs/common').ForbiddenException)(
+          'Менеджер не прив\'язаний до міста',
+        ),
+      );
+      await request(app.getHttpServer())
+        .get('/events/school/s-1/completed')
+        .expect(403);
+    });
+  });
+
+  describe('GET /events/:id — findOne', () => {
+    it('OWNERSHIP: HOST без призначення отримує 403', async () => {
+      mockGuard.canActivate.mockRejectedValueOnce(
+        new (require('@nestjs/common').ForbiddenException)(
+          'Немає доступу до цієї події',
+        ),
+      );
+      const res = await request(app.getHttpServer())
+        .get('/events/ev-1')
+        .expect(403);
+      expect(res.body.message).toBe('Немає доступу до цієї події');
+    });
+
+    it('SUPERADMIN отримує 200', async () => {
+      mockGuard.canActivate.mockResolvedValue(true);
+      mockEventsService.findOne.mockResolvedValueOnce({ id: 'ev-1' });
+      const res = await request(app.getHttpServer())
+        .get('/events/ev-1')
+        .expect(200);
+      expect(res.body.id).toBe('ev-1');
+    });
+  });
+
+  describe('POST /events/:id/history — addHistoryComment', () => {
+    it('OWNERSHIP: MANAGER іншого міста отримує 403', async () => {
+      mockGuard.canActivate.mockRejectedValueOnce(
+        new (require('@nestjs/common').ForbiddenException)(
+          'Немає доступу до ресурсу іншого міста',
+        ),
+      );
+      const res = await request(app.getHttpServer())
+        .post('/events/ev-1/history')
+        .send({ comment: 'test' })
+        .expect(403);
+      expect(res.body.message).toBe('Немає доступу до ресурсу іншого міста');
+    });
+
+    it('HOST призначений на подію отримує 201', async () => {
+      mockGuard.canActivate.mockResolvedValue(true);
+      mockEventsService.addHistoryComment.mockResolvedValueOnce({
+        id: 'ev-1',
+        history: [],
+      });
+      const res = await request(app.getHttpServer())
+        .post('/events/ev-1/history')
+        .send({ comment: 'коментар' })
+        .expect(201);
+    });
+  });
+
+  describe('PATCH /events/history/:historyId — updateHistoryComment', () => {
+    it('OWNERSHIP: історія не знайдена — 404', async () => {
+      mockGuard.canActivate.mockRejectedValueOnce(
+        new (require('@nestjs/common').NotFoundException)(
+          'Запис історії не знайдено',
+        ),
+      );
+      const res = await request(app.getHttpServer())
+        .patch('/events/history/missing')
+        .send({ comment: 'test' })
+        .expect(404);
+      expect(res.body.message).toBe('Запис історії не знайдено');
+    });
+
+    it('MANAGER свого міста отримує 200', async () => {
+      mockGuard.canActivate.mockResolvedValue(true);
+      mockEventsService.updateHistoryComment.mockResolvedValueOnce({
+        id: 'h-1',
+      });
+      await request(app.getHttpServer())
+        .patch('/events/history/h-1')
+        .send({ comment: 'оновлено' })
+        .expect(200);
+    });
   });
 });
 
@@ -4981,6 +6715,8 @@ export class EventsController {
   }
 
   @Get('school/:schoolId')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('school')
   findBySchool(
     @Param('schoolId') schoolId: string,
     @Query('minimal') minimal?: string,
@@ -5027,6 +6763,8 @@ export class EventsController {
   }
 
   @Post(':id/history')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('event')
   addHistoryComment(
     @Param('id') id: string,
     @Body() body: AddCommentDto,
@@ -5036,6 +6774,8 @@ export class EventsController {
   }
 
   @Patch('history/:historyId')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('event')
   updateHistoryComment(
     @Param('historyId') historyId: string,
     @Body() body: AddCommentDto,
@@ -5064,11 +6804,15 @@ export class EventsController {
   }
 
   @Get('school/:schoolId/completed')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('school')
   findCompletedBySchool(@Param('schoolId') schoolId: string) {
     return this.eventsService.findCompletedBySchool(schoolId);
   }
 
   @Get(':id')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('event')
   findOne(@Param('id') id: string) {
     return this.eventsService.findOne(id);
   }
@@ -5116,6 +6860,7 @@ import { EventsService } from './events.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { CacheVersionService } from '../common/cache/cache-version.service';
 
 const mockPrisma = {
   event: {
@@ -5144,6 +6889,7 @@ const mockPrisma = {
     findUnique: jest.fn(),
     update: jest.fn(),
   },
+  $transaction: jest.fn(),
 };
 
 const mockTelegram = { sendMessage: jest.fn() };
@@ -5166,6 +6912,13 @@ describe('EventsService', () => {
             get: jest.fn().mockResolvedValue(null),
             set: jest.fn().mockResolvedValue(undefined),
             del: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: CacheVersionService,
+          useValue: {
+            getVersion: jest.fn().mockResolvedValue(0),
+            bumpVersion: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],
@@ -5275,6 +7028,8 @@ describe('EventsService', () => {
   });
 
   describe('submitReport', () => {
+    let mockTx: any;
+
     const reportData = {
       announcementDone: true,
       materialShown: true,
@@ -5293,10 +7048,27 @@ describe('EventsService', () => {
       ],
     };
 
+    const setupTx = () => {
+      mockTx = {
+        eventReport: { upsert: jest.fn() },
+        expenseItem: { deleteMany: jest.fn(), createMany: jest.fn() },
+        salaryItem: { deleteMany: jest.fn(), createMany: jest.fn() },
+        user: { update: jest.fn() },
+        event: { update: jest.fn() },
+      };
+      mockPrisma.$transaction.mockImplementation(
+        async (fn: (tx: any) => unknown, _opts?: unknown) => fn(mockTx),
+      );
+    };
+
+    beforeEach(() => {
+      setupTx();
+    });
+
     it('зберігає звіт через upsert', async () => {
-      mockPrisma.eventReport.upsert.mockResolvedValueOnce({ eventId: 'ev-1' });
-      mockPrisma.user.update.mockResolvedValue({ id: 'host-1', balance: 1500 });
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.eventReport.upsert.mockResolvedValueOnce({ eventId: 'ev-1' });
+      mockTx.user.update.mockResolvedValue({ id: 'host-1', balance: 1500 });
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         status: 'REPORT',
         report: {},
@@ -5305,25 +7077,25 @@ describe('EventsService', () => {
 
       await service.submitReport('ev-1', reportData, mockUser);
 
-      expect(mockPrisma.eventReport.upsert).toHaveBeenCalledWith(
+      expect(mockTx.eventReport.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { eventId: 'ev-1' },
           update: expect.objectContaining({
-            totalSum: 10000,
-            remainderSum: 8000,
+            totalSum: expect.any(Prisma.Decimal),
+            remainderSum: expect.any(Prisma.Decimal),
           }),
           create: expect.objectContaining({
-            totalSum: 10000,
-            remainderSum: 8000,
+            totalSum: expect.any(Prisma.Decimal),
+            remainderSum: expect.any(Prisma.Decimal),
           }),
         }),
       );
     });
 
     it('нараховує зарплату користувачам', async () => {
-      mockPrisma.eventReport.upsert.mockResolvedValueOnce({});
-      mockPrisma.user.update.mockResolvedValue({});
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.user.update.mockResolvedValue({});
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         status: 'REPORT',
         report: {},
@@ -5332,20 +7104,20 @@ describe('EventsService', () => {
 
       await service.submitReport('ev-1', reportData, mockUser);
 
-      expect(mockPrisma.user.update).toHaveBeenCalledTimes(2);
-      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+      expect(mockTx.user.update).toHaveBeenCalledTimes(2);
+      expect(mockTx.user.update).toHaveBeenCalledWith({
         where: { id: 'host-1' },
         data: { balance: { increment: 1500 } },
       });
-      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+      expect(mockTx.user.update).toHaveBeenCalledWith({
         where: { id: 'driver-1' },
         data: { balance: { increment: 1000 } },
       });
     });
 
     it('не нараховує зарплату якщо amount = 0', async () => {
-      mockPrisma.eventReport.upsert.mockResolvedValueOnce({});
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         status: 'REPORT',
         report: {},
@@ -5361,13 +7133,13 @@ describe('EventsService', () => {
         mockUser,
       );
 
-      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      expect(mockTx.user.update).not.toHaveBeenCalled();
     });
 
     it('змінює статус на REPORT після збереження звіту', async () => {
-      mockPrisma.eventReport.upsert.mockResolvedValueOnce({});
-      mockPrisma.user.update.mockResolvedValue({});
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.user.update.mockResolvedValue({});
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         status: 'REPORT',
         report: {},
@@ -5376,7 +7148,7 @@ describe('EventsService', () => {
 
       const result = await service.submitReport('ev-1', reportData, mockUser);
 
-      expect(mockPrisma.event.update).toHaveBeenCalledWith(
+      expect(mockTx.event.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'ev-1' },
           data: expect.objectContaining({ status: 'REPORT' }),
@@ -5386,8 +7158,8 @@ describe('EventsService', () => {
     });
 
     it('не нараховує зарплату якщо salaries порожній', async () => {
-      mockPrisma.eventReport.upsert.mockResolvedValueOnce({});
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         status: 'REPORT',
         report: {},
@@ -5400,13 +7172,13 @@ describe('EventsService', () => {
         mockUser,
       );
 
-      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      expect(mockTx.user.update).not.toHaveBeenCalled();
     });
 
     it('очищує попередні expense/salary записи перед кожною подачею звіту (ідемпотентність редагування)', async () => {
-      mockPrisma.eventReport.upsert.mockResolvedValueOnce({});
-      mockPrisma.user.update.mockResolvedValue({});
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.eventReport.upsert.mockResolvedValueOnce({ id: 'report-1' });
+      mockTx.user.update.mockResolvedValue({});
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         status: 'REPORT',
         report: {},
@@ -5415,17 +7187,17 @@ describe('EventsService', () => {
 
       await service.submitReport('ev-1', reportData, mockUser);
 
-      expect(mockPrisma.expenseItem.deleteMany).toHaveBeenCalledWith({
-        where: { reportId: 'ev-1' },
+      expect(mockTx.expenseItem.deleteMany).toHaveBeenCalledWith({
+        where: { reportId: 'report-1' },
       });
-      expect(mockPrisma.salaryItem.deleteMany).toHaveBeenCalledWith({
-        where: { reportId: 'ev-1' },
+      expect(mockTx.salaryItem.deleteMany).toHaveBeenCalledWith({
+        where: { reportId: 'report-1' },
       });
     });
 
     it('deleteMany викликається завжди, навіть якщо expenses і salaries порожні', async () => {
-      mockPrisma.eventReport.upsert.mockResolvedValueOnce({});
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         status: 'REPORT',
         report: {},
@@ -5438,16 +7210,16 @@ describe('EventsService', () => {
         mockUser,
       );
 
-      expect(mockPrisma.expenseItem.deleteMany).toHaveBeenCalled();
-      expect(mockPrisma.salaryItem.deleteMany).toHaveBeenCalled();
-      expect(mockPrisma.expenseItem.createMany).not.toHaveBeenCalled();
-      expect(mockPrisma.salaryItem.createMany).not.toHaveBeenCalled();
+      expect(mockTx.expenseItem.deleteMany).toHaveBeenCalled();
+      expect(mockTx.salaryItem.deleteMany).toHaveBeenCalled();
+      expect(mockTx.expenseItem.createMany).not.toHaveBeenCalled();
+      expect(mockTx.salaryItem.createMany).not.toHaveBeenCalled();
     });
 
     it('підставляє категорію "Інше" для витрати без вказаної категорії', async () => {
-      mockPrisma.eventReport.upsert.mockResolvedValueOnce({});
-      mockPrisma.user.update.mockResolvedValue({});
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.user.update.mockResolvedValue({});
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         status: 'REPORT',
         report: {},
@@ -5460,14 +7232,14 @@ describe('EventsService', () => {
         mockUser,
       );
 
-      const call = mockPrisma.expenseItem.createMany.mock.calls[0][0];
+      const call = mockTx.expenseItem.createMany.mock.calls[0][0];
       expect(call.data[0].category).toBe('Інше');
     });
 
     it('конвертує суми витрат у Prisma.Decimal з точністю до копійок', async () => {
-      mockPrisma.eventReport.upsert.mockResolvedValueOnce({});
-      mockPrisma.user.update.mockResolvedValue({});
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.user.update.mockResolvedValue({});
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         status: 'REPORT',
         report: {},
@@ -5483,15 +7255,15 @@ describe('EventsService', () => {
         mockUser,
       );
 
-      const call = mockPrisma.expenseItem.createMany.mock.calls[0][0];
+      const call = mockTx.expenseItem.createMany.mock.calls[0][0];
       expect(call.data[0].amount).toBeInstanceOf(Prisma.Decimal);
       expect(call.data[0].amount.toString()).toBe('349.99');
     });
 
     it('обробляє відсутність суми витрати (amount undefined -> 0)', async () => {
-      mockPrisma.eventReport.upsert.mockResolvedValueOnce({});
-      mockPrisma.user.update.mockResolvedValue({});
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.user.update.mockResolvedValue({});
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         status: 'REPORT',
         report: {},
@@ -5513,13 +7285,13 @@ describe('EventsService', () => {
         mockUser,
       );
 
-      const call = mockPrisma.expenseItem.createMany.mock.calls[0][0];
+      const call = mockTx.expenseItem.createMany.mock.calls[0][0];
       expect(call.data[0].amount.toString()).toBe('0');
     });
 
     it("не нараховує баланс якщо сума зарплати від'ємна, але запис зберігається", async () => {
-      mockPrisma.eventReport.upsert.mockResolvedValueOnce({});
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         status: 'REPORT',
         report: {},
@@ -5535,14 +7307,14 @@ describe('EventsService', () => {
         mockUser,
       );
 
-      expect(mockPrisma.salaryItem.createMany).toHaveBeenCalled();
-      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      expect(mockTx.salaryItem.createMany).toHaveBeenCalled();
+      expect(mockTx.user.update).not.toHaveBeenCalled();
     });
 
     it('створює всі salary items одним викликом createMany', async () => {
-      mockPrisma.eventReport.upsert.mockResolvedValueOnce({});
-      mockPrisma.user.update.mockResolvedValue({});
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.user.update.mockResolvedValue({});
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         status: 'REPORT',
         report: {},
@@ -5551,22 +7323,21 @@ describe('EventsService', () => {
 
       await service.submitReport('ev-1', reportData, mockUser);
 
-      expect(mockPrisma.salaryItem.createMany).toHaveBeenCalledTimes(1);
-      const call = mockPrisma.salaryItem.createMany.mock.calls[0][0];
+      expect(mockTx.salaryItem.createMany).toHaveBeenCalledTimes(1);
+      const call = mockTx.salaryItem.createMany.mock.calls[0][0];
       expect(call.data).toHaveLength(2);
     });
 
     it('зберігає totalSum/schoolSum/remainderSum саме такими, як прийшли з фронтенду — бекенд НЕ перераховує арифметику', async () => {
-      mockPrisma.eventReport.upsert.mockResolvedValueOnce({});
-      mockPrisma.user.update.mockResolvedValue({});
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.user.update.mockResolvedValue({});
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         status: 'REPORT',
         report: {},
         history: [],
       });
 
-      // Навмисно неузгоджені дані: 15000 - 3000 = 12000, а не 11500
       await service.submitReport(
         'ev-1',
         {
@@ -5578,15 +7349,15 @@ describe('EventsService', () => {
         mockUser,
       );
 
-      const call = mockPrisma.eventReport.upsert.mock.calls[0][0];
-      expect(call.update.remainderSum).toBe(11500);
+      const call = mockTx.eventReport.upsert.mock.calls[0][0];
+      expect(Number(call.update.remainderSum)).toBe(11500);
     });
 
     it('коректно обробляє відсутній rating', async () => {
       const { rating, ...withoutRating } = reportData;
-      mockPrisma.eventReport.upsert.mockResolvedValueOnce({});
-      mockPrisma.user.update.mockResolvedValue({});
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.user.update.mockResolvedValue({});
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         status: 'REPORT',
         report: {},
@@ -5595,8 +7366,28 @@ describe('EventsService', () => {
 
       await service.submitReport('ev-1', withoutRating, mockUser);
 
-      const call = mockPrisma.eventReport.upsert.mock.calls[0][0];
+      const call = mockTx.eventReport.upsert.mock.calls[0][0];
       expect(call.update.rating).toBeUndefined();
+    });
+
+    it('транзакція відкочується при помилці — event.update не виконується', async () => {
+      mockTx.eventReport.upsert.mockRejectedValueOnce(new Error('DB error'));
+      mockTx.event.update.mockResolvedValueOnce({
+        id: 'ev-1',
+        status: 'REPORT',
+        report: {},
+        history: [],
+      });
+
+      await expect(
+        service.submitReport('ev-1', reportData, mockUser),
+      ).rejects.toThrow('DB error');
+
+      expect(mockTx.event.update).not.toHaveBeenCalled();
+      expect(mockPrisma.$transaction).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.objectContaining({ timeout: 15000 }),
+      );
     });
   });
 
@@ -5617,6 +7408,262 @@ describe('EventsService', () => {
       expect(call.select).toBeUndefined();
     });
   });
+
+  describe('findAllForUser', () => {
+    it('MANAGER — без фільтру по crew (порожній where)', async () => {
+      mockPrisma.event.findMany.mockResolvedValueOnce([]);
+      await service.findAllForUser({
+        sub: 'mgr-1',
+        name: 'Менеджер',
+        role: 'MANAGER',
+      });
+      const call = mockPrisma.event.findMany.mock.calls[0][0];
+      expect(call.where).toEqual({});
+    });
+
+    it('HOST — фільтрує за hostId', async () => {
+      mockPrisma.event.findMany.mockResolvedValueOnce([]);
+      await service.findAllForUser({
+        sub: 'host-1',
+        name: 'Ведучий',
+        role: 'HOST',
+      });
+      const call = mockPrisma.event.findMany.mock.calls[0][0];
+      expect(call.where).toEqual({
+        crew: { OR: [{ hostId: 'host-1' }, { driverId: 'host-1' }] },
+      });
+    });
+
+    it('DRIVER — фільтрує за driverId', async () => {
+      mockPrisma.event.findMany.mockResolvedValueOnce([]);
+      await service.findAllForUser({
+        sub: 'driver-1',
+        name: 'Водій',
+        role: 'DRIVER',
+      });
+      const call = mockPrisma.event.findMany.mock.calls[0][0];
+      expect(call.where).toEqual({
+        crew: { OR: [{ hostId: 'driver-1' }, { driverId: 'driver-1' }] },
+      });
+    });
+
+    it('з пагінацією — повертає data + meta', async () => {
+      const fakeEvents = [{ id: 'ev-1' }, { id: 'ev-2' }];
+      mockPrisma.event.findMany.mockResolvedValueOnce(fakeEvents);
+      mockPrisma.event.count = jest.fn().mockResolvedValueOnce(10);
+
+      const result = await service.findAllForUser(
+        { sub: 'mgr-1', name: 'М', role: 'MANAGER' },
+        { page: 2, take: 2 },
+      );
+
+      expect(result).toHaveProperty('data');
+      expect(result).toHaveProperty('meta');
+      expect((result as any).data).toHaveLength(2);
+      expect((result as any).meta.page).toBe(2);
+    });
+
+    it('без пагінації — повертає масив', async () => {
+      mockPrisma.event.findMany.mockResolvedValueOnce([{ id: 'ev-1' }]);
+      const result = await service.findAllForUser({
+        sub: 'mgr-1',
+        name: 'М',
+        role: 'MANAGER',
+      });
+      expect(Array.isArray(result)).toBe(true);
+    });
+  });
+
+  describe('create', () => {
+    it('створює подію зі статусом BASE та записом в history', async () => {
+      const dto = {
+        schoolId: 'school-1',
+        cityId: 'city-1',
+        project: 'Голограма',
+        date: '2025-09-01',
+        price: 5000,
+      };
+      mockPrisma.event.create.mockResolvedValueOnce({
+        id: 'ev-new',
+        schoolId: 'school-1',
+        status: 'BASE',
+        history: [{ id: 'h-1' }],
+      });
+
+      const result = await service.create(dto, mockUser);
+
+      expect(mockPrisma.event.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: 'BASE',
+            history: {
+              create: expect.objectContaining({
+                userId: 'user-1',
+                role: 'MANAGER',
+              }),
+            },
+          }),
+        }),
+      );
+      expect(result.id).toBe('ev-new');
+    });
+
+    it("конвертує date рядок у Date об'єкт", async () => {
+      mockPrisma.event.create.mockResolvedValueOnce({
+        id: 'ev-1',
+        schoolId: 's-1',
+        history: [],
+      });
+      const dto = {
+        schoolId: 's-1',
+        cityId: 'c-1',
+        project: 'Test',
+        date: '2025-12-25',
+        price: 100,
+      };
+
+      await service.create(dto, mockUser);
+
+      const callData = mockPrisma.event.create.mock.calls[0][0].data;
+      expect(callData.date).toBeInstanceOf(Date);
+      expect(callData.date.getFullYear()).toBe(2025);
+    });
+
+    it('інвалідує кеш школи після створення події', async () => {
+      mockPrisma.event.create.mockResolvedValueOnce({
+        id: 'ev-1',
+        schoolId: 'school-99',
+        history: [],
+      });
+      const cacheDelSpy = jest.spyOn((service as any).cacheManager, 'del');
+
+      await service.create(
+        {
+          schoolId: 'school-99',
+          date: '2025-01-01',
+          project: 'T',
+          price: 0,
+        } as any,
+        mockUser,
+      );
+
+      expect(cacheDelSpy).toHaveBeenCalledWith(
+        'events:school:school-99:minimal',
+      );
+      expect(cacheDelSpy).toHaveBeenCalledWith('events:school:school-99:full');
+    });
+  });
+
+  describe('findOne', () => {
+    it('повертає подію якщо знайдено', async () => {
+      mockPrisma.event.findUnique.mockResolvedValueOnce({
+        id: 'ev-1',
+        school: {},
+        city: {},
+      });
+      const result = await service.findOne('ev-1');
+      expect(result.id).toBe('ev-1');
+    });
+
+    it('кидає AppException EVENT_NOT_FOUND якщо подія не існує', async () => {
+      mockPrisma.event.findUnique.mockResolvedValueOnce(null);
+      await expect(service.findOne('nonexistent')).rejects.toMatchObject({
+        message: 'EVENT_NOT_FOUND',
+      });
+    });
+  });
+
+  describe('remove', () => {
+    it('видаляє подію разом з history та preparation', async () => {
+      mockPrisma.event.findUnique.mockResolvedValueOnce({
+        id: 'ev-1',
+        schoolId: 'school-1',
+      });
+      mockPrisma.eventHistory.deleteMany.mockResolvedValueOnce({ count: 2 });
+      mockPrisma.eventPreparation.deleteMany.mockResolvedValueOnce({
+        count: 1,
+      });
+      mockPrisma.event.delete.mockResolvedValueOnce({
+        id: 'ev-1',
+        schoolId: 'school-1',
+      });
+
+      await service.remove('ev-1');
+
+      expect(mockPrisma.eventHistory.deleteMany).toHaveBeenCalledWith({
+        where: { eventId: 'ev-1' },
+      });
+      expect(mockPrisma.eventPreparation.deleteMany).toHaveBeenCalledWith({
+        where: { eventId: 'ev-1' },
+      });
+      expect(mockPrisma.event.delete).toHaveBeenCalledWith({
+        where: { id: 'ev-1' },
+      });
+    });
+
+    it('кидає AppException EVENT_NOT_FOUND якщо подія не існує', async () => {
+      mockPrisma.event.findUnique.mockResolvedValueOnce(null);
+      await expect(service.remove('ghost')).rejects.toMatchObject({
+        message: 'EVENT_NOT_FOUND',
+      });
+    });
+  });
+
+  describe('getChatIdForUser', () => {
+    it('повертає telegramChatId якщо є', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({
+        telegramChatId: '123456',
+        telegramId: null,
+      });
+      const result = await service.getChatIdForUser('user-1');
+      expect(result).toBe('123456');
+    });
+
+    it('повертає telegramId якщо chatId відсутній і telegramId є числом', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({
+        telegramChatId: null,
+        telegramId: '987654321',
+      });
+      const result = await service.getChatIdForUser('user-1');
+      expect(result).toBe('987654321');
+    });
+
+    it('повертає null якщо telegramId є username (@handle)', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({
+        telegramChatId: null,
+        telegramId: '@myhandle',
+      });
+      const result = await service.getChatIdForUser('user-1');
+      expect(result).toBeNull();
+    });
+
+    it('повертає null якщо user не знайдено', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+      const result = await service.getChatIdForUser('ghost-id');
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('updatePreparationStatus', () => {
+    it('upsert EventPreparation та інвалідує кеш школи', async () => {
+      mockPrisma.eventPreparation.upsert = jest
+        .fn()
+        .mockResolvedValueOnce({ eventId: 'ev-1' });
+      mockPrisma.event.findUnique.mockResolvedValueOnce({
+        schoolId: 'school-1',
+      });
+      const cacheDelSpy = jest.spyOn((service as any).cacheManager, 'del');
+
+      await service.updatePreparationStatus('ev-1', 'equipment' as any, 'DONE');
+
+      expect(mockPrisma.eventPreparation.upsert).toHaveBeenCalledWith({
+        where: { eventId: 'ev-1' },
+        update: { equipment: 'DONE' },
+        create: { eventId: 'ev-1', equipment: 'DONE' },
+      });
+      expect(cacheDelSpy).toHaveBeenCalled();
+    });
+  });
 });
 
 ```
@@ -5630,13 +7677,13 @@ import type { Cache } from 'cache-manager';
 import { AppException } from '../common/exceptions/app.exception';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { CacheVersionService } from '../common/cache/cache-version.service';
 import { Prisma, PreparationStatus } from '@prisma/client';
 
 import { CreateEventDto } from './dto/create-event.dto';
 import {
   SubmitReportDto,
   ExpenseItemDto,
-  SalaryItemDto,
 } from './dto/submit-report.dto';
 import { EventQueryDto } from './dto/event-query.dto';
 import { PageMetaDto } from '../common/dto/page-meta.dto';
@@ -5653,7 +7700,38 @@ export class EventsService {
     private readonly prisma: PrismaService,
     private telegramService: TelegramService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly cacheVersion: CacheVersionService,
   ) {}
+
+  private toOptionalNumber(value: unknown): number | null {
+    return value != null ? Number(value) : null;
+  }
+
+  private toNumber(value: unknown): number {
+    return Number(value ?? 0);
+  }
+
+  private serializeEvent<T extends Record<string, unknown>>(ev: T): T {
+    return {
+      ...ev,
+      price: this.toOptionalNumber(ev.price),
+      received: this.toOptionalNumber(ev.received),
+      report: ev.report
+        ? {
+            ...(ev.report as Record<string, unknown>),
+            totalSum: this.toNumber(
+              (ev.report as Record<string, unknown>).totalSum,
+            ),
+            schoolSum: this.toNumber(
+              (ev.report as Record<string, unknown>).schoolSum,
+            ),
+            remainderSum: this.toNumber(
+              (ev.report as Record<string, unknown>).remainderSum,
+            ),
+          }
+        : ev.report,
+    };
+  }
 
   async findAllForUser(user: JwtUser, query?: EventQueryDto) {
     const isFieldStaff = FIELD_ROLES.includes(user.role);
@@ -5672,11 +7750,12 @@ export class EventsService {
     };
 
     if (!query?.page) {
-      return this.prisma.event.findMany({
+      const events = await this.prisma.event.findMany({
         where,
         include,
         orderBy: { date: 'asc' },
       });
+      return events.map((e) => this.serializeEvent(e as any));
     }
 
     const take = query.take ?? 20;
@@ -5693,7 +7772,10 @@ export class EventsService {
       this.prisma.event.count({ where }),
     ]);
 
-    return { data, meta: new PageMetaDto(totalItems, query.page, take) };
+    return {
+      data: data.map((e) => this.serializeEvent(e as any)),
+      meta: new PageMetaDto(totalItems, query.page, take),
+    };
   }
 
   async create(data: CreateEventDto, user: JwtUser) {
@@ -5714,7 +7796,7 @@ export class EventsService {
       include: { history: true },
     });
     await this.invalidateSchoolEventsCache(event.schoolId);
-    return event;
+    return this.serializeEvent(event as any);
   }
 
   private async invalidateSchoolEventsCache(schoolId: string) {
@@ -5748,7 +7830,11 @@ export class EventsService {
       include: { crew: true, history: { orderBy: { createdAt: 'desc' } } },
     });
     await this.invalidateSchoolEventsCache(event.schoolId);
-    return event;
+    await Promise.all([
+      this.cacheVersion.bumpVersion('finance'),
+      this.cacheVersion.bumpVersion('dashboard'),
+    ]);
+    return this.serializeEvent(event as any);
   }
 
   async updatePreparationStatus(
@@ -5808,7 +7894,7 @@ export class EventsService {
         ? `👤 <b>Контакт:</b> ${event.contactPerson}\n`
         : '') +
       (event.contactPhone ? `📞 <b>Телефон:</b> ${event.contactPhone}\n` : '') +
-      `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+      `\n<i>Деталі у CRM: <a href="https://app.svitlo-znan.app">Посилання</a></i>`;
 
     if (hostId) {
       const hostChatId = await this.getChatIdForUser(hostId);
@@ -5845,7 +7931,7 @@ export class EventsService {
     }
 
     await this.invalidateSchoolEventsCache(event.schoolId);
-    return event;
+    return this.serializeEvent(event as any);
   }
 
   async rescheduleEvent(
@@ -5888,7 +7974,7 @@ export class EventsService {
       `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
       `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
       (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
-      `\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+      `\n<i>Деталі у CRM: <a href="-https://app.svitlo-znan.app">Посилання</a></i>`;
 
     const sendTo = async (userId: string | null | undefined) => {
       if (!userId) return;
@@ -5903,7 +7989,7 @@ export class EventsService {
     await sendTo(event.crew?.driverId);
 
     await this.invalidateSchoolEventsCache(event.schoolId);
-    return event;
+    return this.serializeEvent(event as any);
   }
 
   async getChatIdForUser(userId: string): Promise<string | null> {
@@ -5921,18 +8007,47 @@ export class EventsService {
   async findBySchool(schoolId: string, minimal = false) {
     const key = `events:school:${schoolId}:${minimal ? 'minimal' : 'full'}`;
     const cached = await this.cacheManager.get(key);
-    if (cached) return cached;
+    if (cached)
+      return (Array.isArray(cached) ? cached : []).map((e: any) =>
+        this.serializeEvent(e),
+      );
 
     const existing = this.pendingSchoolEvents.get(key);
-    if (existing) return existing;
+    if (existing) {
+      const result = await existing;
+      return Array.isArray(result)
+        ? result.map((e: any) => this.serializeEvent(e))
+        : result;
+    }
 
-    const compute = this.computeBySchool(key, schoolId, minimal);
+    const compute = this.computeBySchool(key, schoolId, minimal).then(
+      (result) =>
+        Array.isArray(result)
+          ? result.map((e: any) => this.serializeEvent(e))
+          : result,
+    );
     this.pendingSchoolEvents.set(key, compute);
     try {
       return await compute;
     } finally {
       this.pendingSchoolEvents.delete(key);
     }
+  }
+
+  async findOne(id: string) {
+    const event = await this.prisma.event.findUnique({
+      where: { id },
+      include: {
+        school: true,
+        city: true,
+        crew: { include: { host: true, driver: true } },
+        preparation: true,
+        history: { orderBy: { createdAt: 'desc' } },
+        report: { include: { expenseItems: true, salaryItems: true } },
+      },
+    });
+    if (!event) throw new AppException('EVENT_NOT_FOUND', HttpStatus.NOT_FOUND);
+    return this.serializeEvent(event as any);
   }
 
   private async computeBySchool(
@@ -6007,8 +8122,7 @@ export class EventsService {
       },
     });
     if (event) await this.invalidateSchoolEventsCache(event.schoolId);
-    return event;
-    return event;
+    return this.serializeEvent(event as any);
   }
 
   async remove(id: string) {
@@ -6028,7 +8142,7 @@ export class EventsService {
       where: { id },
     });
     await this.invalidateSchoolEventsCache(exists.schoolId);
-    return deleted;
+    return this.serializeEvent(deleted as any);
   }
 
   async submitReport(
@@ -6036,98 +8150,111 @@ export class EventsService {
     reportData: SubmitReportDto,
     user: JwtUser,
   ) {
-    const report = await this.prisma.eventReport.upsert({
-      where: { eventId },
-      update: {
-        announcementDone: reportData.announcementDone,
-        materialShown: reportData.materialShown,
-        childrenCount: reportData.childrenCount,
-        classesCount: reportData.classesCount,
-        privilegedCount: reportData.privilegedCount,
-        showingsCount: reportData.showingsCount,
-        totalSum: reportData.totalSum,
-        schoolSum: reportData.schoolSum,
-        remainderSum: reportData.remainderSum,
-        rating: reportData.rating,
-      },
-      create: {
-        eventId,
-        announcementDone: reportData.announcementDone,
-        materialShown: reportData.materialShown,
-        childrenCount: reportData.childrenCount,
-        classesCount: reportData.classesCount,
-        privilegedCount: reportData.privilegedCount,
-        showingsCount: reportData.showingsCount,
-        totalSum: reportData.totalSum,
-        schoolSum: reportData.schoolSum,
-        remainderSum: reportData.remainderSum,
-        rating: reportData.rating,
-      },
-    });
-
-    await this.prisma.expenseItem.deleteMany({
-      where: { reportId: report.id },
-    });
-    await this.prisma.salaryItem.deleteMany({
-      where: { reportId: report.id },
-    });
-
-    if (reportData.expenses?.length) {
-      await this.prisma.expenseItem.createMany({
-        data: reportData.expenses.map((exp: ExpenseItemDto) => ({
-          reportId: report.id,
-          category: exp.category || 'Інше',
-          name: exp.name,
-          amount: new Prisma.Decimal(exp.amount || 0),
-        })),
-      });
-    }
-
-    if (reportData.salaries?.length) {
-      const positiveSalaries = reportData.salaries.filter(
-        (s) => s.userId && s.amount > 0,
-      );
-      if (positiveSalaries.length) {
-        await this.prisma.salaryItem.createMany({
-          data: positiveSalaries.map((s) => ({
-            reportId: report.id,
-            userId: s.userId,
-            amount: new Prisma.Decimal(s.amount),
-          })),
-        });
-        await Promise.all(
-          positiveSalaries.map((s) =>
-            this.prisma.user.update({
-              where: { id: s.userId },
-              data: { balance: { increment: s.amount } },
-            }),
-          ),
-        );
-      }
-    }
-
-    const event = await this.prisma.event.update({
-      where: { id: eventId },
-      data: {
-        status: 'RE_SALE' as never,
-        history: {
-          create: {
-            action: 'Сформовано звіт. Захід завершено.',
-            userId: user.sub,
-            userName: user.name,
-            role: user.role,
+    const event = await this.prisma.$transaction(
+      async (tx) => {
+        const report = await tx.eventReport.upsert({
+          where: { eventId },
+          update: {
+            announcementDone: reportData.announcementDone,
+            materialShown: reportData.materialShown,
+            childrenCount: reportData.childrenCount,
+            classesCount: reportData.classesCount,
+            privilegedCount: reportData.privilegedCount,
+            showingsCount: reportData.showingsCount,
+            totalSum: new Prisma.Decimal(reportData.totalSum),
+            schoolSum: new Prisma.Decimal(reportData.schoolSum),
+            remainderSum: new Prisma.Decimal(reportData.remainderSum),
+            rating: reportData.rating,
           },
-        },
+          create: {
+            eventId,
+            announcementDone: reportData.announcementDone,
+            materialShown: reportData.materialShown,
+            childrenCount: reportData.childrenCount,
+            classesCount: reportData.classesCount,
+            privilegedCount: reportData.privilegedCount,
+            showingsCount: reportData.showingsCount,
+            totalSum: new Prisma.Decimal(reportData.totalSum),
+            schoolSum: new Prisma.Decimal(reportData.schoolSum),
+            remainderSum: new Prisma.Decimal(reportData.remainderSum),
+            rating: reportData.rating,
+          },
+        });
+
+        await tx.expenseItem.deleteMany({
+          where: { reportId: report.id },
+        });
+        await tx.salaryItem.deleteMany({
+          where: { reportId: report.id },
+        });
+
+        if (reportData.expenses?.length) {
+          await tx.expenseItem.createMany({
+            data: reportData.expenses.map((exp: ExpenseItemDto) => ({
+              reportId: report.id,
+              category: exp.category || 'Інше',
+              name: exp.name,
+              amount: new Prisma.Decimal(exp.amount || 0),
+            })),
+          });
+        }
+
+        if (reportData.salaries?.length) {
+          const salariesWithUser = reportData.salaries.filter((s) => s.userId);
+          if (salariesWithUser.length) {
+            await tx.salaryItem.createMany({
+              data: salariesWithUser.map((s) => ({
+                reportId: report.id,
+                userId: s.userId,
+                userName: s.name,
+                amount: new Prisma.Decimal(s.amount),
+              })),
+            });
+
+            const positiveSalaries = salariesWithUser.filter(
+              (s) => s.amount > 0,
+            );
+            for (const s of positiveSalaries) {
+              await tx.user.update({
+                where: { id: s.userId },
+                data: { balance: { increment: s.amount } },
+              });
+            }
+          }
+        }
+
+        return tx.event.update({
+          where: { id: eventId },
+          data: {
+            status: 'REPORT' as never,
+            history: {
+              create: {
+                action: 'Сформовано звіт. Захід завершено.',
+                userId: user.sub,
+                userName: user.name,
+                role: user.role,
+              },
+            },
+          },
+          include: {
+            report: true,
+            history: { orderBy: { createdAt: 'desc' } },
+          },
+        });
       },
-      include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
-    });
+      { timeout: 15000 },
+    );
 
     await this.invalidateSchoolEventsCache(event.schoolId);
-    return event;
+    await Promise.all([
+      this.cacheVersion.bumpVersion('finance'),
+      this.cacheVersion.bumpVersion('dashboard'),
+    ]);
+    return this.serializeEvent(event as any);
   }
 
   async findCompletedBySchool(schoolId: string) {
-    return this.prisma.event.findMany({
+    const events = await this.prisma.event.findMany({
       where: { schoolId, status: 'RE_SALE' },
       select: {
         id: true,
@@ -6155,6 +8282,7 @@ export class EventsService {
       },
       orderBy: { date: 'desc' },
     });
+    return events.map((e) => this.serializeEvent(e as any));
   }
 }
 
@@ -6315,8 +8443,10 @@ export class FinanceModule {}
 
 ```
 import { Test, TestingModule } from '@nestjs/testing';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { FinanceService } from './finance.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheVersionService } from '../common/cache/cache-version.service';
 
 const mockPrisma = {
   eventReport: {
@@ -6351,6 +8481,17 @@ const mockPrisma = {
   $queryRaw: jest.fn(),
 };
 
+const mockCacheManager = {
+  get: jest.fn().mockResolvedValue(undefined),
+  set: jest.fn().mockResolvedValue(undefined),
+  del: jest.fn().mockResolvedValue(undefined),
+};
+
+const mockCacheVersion = {
+  getVersion: jest.fn().mockResolvedValue(0),
+  bumpVersion: jest.fn().mockResolvedValue(undefined),
+};
+
 describe('FinanceService', () => {
   let service: FinanceService;
 
@@ -6360,10 +8501,11 @@ describe('FinanceService', () => {
       providers: [
         FinanceService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: CACHE_MANAGER, useValue: mockCacheManager },
+        { provide: CacheVersionService, useValue: mockCacheVersion },
       ],
     }).compile();
     service = module.get<FinanceService>(FinanceService);
-    (service as any).cache.clear();
   });
 
   const defaultMocks = () => {
@@ -6548,12 +8690,13 @@ describe('FinanceService', () => {
   describe('getDashboard — кеш', () => {
     it('повторний виклик з тими ж параметрами не робить нових запитів', async () => {
       defaultMocks();
-      await service.getDashboard({ cityId: 'city-1' });
+      const result = await service.getDashboard({ cityId: 'city-1' });
+      mockCacheManager.get.mockResolvedValueOnce(result);
       await service.getDashboard({ cityId: 'city-1' });
       expect(mockPrisma.eventReport.aggregate).toHaveBeenCalledTimes(1);
     });
 
-    it('різні параметри — різні записи в кеші', async () => {
+    it('різні параметри — різні ключі кешу', async () => {
       defaultMocks();
       defaultMocks();
       await service.getDashboard({ cityId: 'city-1' });
@@ -6617,7 +8760,10 @@ describe('FinanceService', () => {
 ```
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { Injectable } from '@nestjs/common/decorators/core/injectable.decorator';
+import { Injectable, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
+import { CacheVersionService } from '../common/cache/cache-version.service';
 export interface FinanceKpi {
   totalRevenue: number;
   totalExpenses: number;
@@ -6657,19 +8803,11 @@ export interface FinanceDashboardResult {
 
 @Injectable()
 export class FinanceService {
-  private cache = new Map<string, { data: unknown; expiresAt: number }>();
-
-  private getCached<T>(key: string): T | null {
-    const entry = this.cache.get(key);
-    if (!entry || Date.now() > entry.expiresAt) return null;
-    return entry.data as T;
-  }
-
-  private setCached(key: string, data: unknown, ttlMs = 5 * 60 * 1000) {
-    this.cache.set(key, { data, expiresAt: Date.now() + ttlMs });
-  }
-
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly cacheVersion: CacheVersionService,
+  ) {}
 
   private resolveDateFrom(period?: string): Date | undefined {
     const now = new Date();
@@ -6717,8 +8855,10 @@ export class FinanceService {
     project?: string;
     minimal?: boolean;
   }): Promise<FinanceDashboardResult> {
-    const cacheKey = `finance:${cityId}:${period}:${project}:${minimal}`;
-    const cached = this.getCached<FinanceDashboardResult>(cacheKey);
+    const version = await this.cacheVersion.getVersion('finance');
+    const cacheKey = `finance:v${version}:${cityId ?? ''}:${period ?? ''}:${project ?? ''}:${minimal}`;
+    const cached =
+      await this.cacheManager.get<FinanceDashboardResult>(cacheKey);
     if (cached) return cached;
 
     const dateFrom = this.resolveDateFrom(period);
@@ -6743,8 +8883,8 @@ export class FinanceService {
       }),
     ]);
 
-    const totalRevenue = kpiAgg._sum.totalSum ?? 0;
-    const totalProfit = kpiAgg._sum.remainderSum ?? 0;
+    const totalRevenue = Number(kpiAgg._sum.totalSum ?? 0);
+    const totalProfit = Number(kpiAgg._sum.remainderSum ?? 0);
     const totalEvents = kpiAgg._count.eventId ?? 0;
 
     const expCatMap: Record<string, number> = {};
@@ -6805,7 +8945,7 @@ export class FinanceService {
       revenue: row.revenue,
       profit: row.profit,
     }));
-    const expectedRevenue = plannedAgg._sum.price ?? 0;
+    const expectedRevenue = Number(plannedAgg._sum.price ?? 0);
     const filterOptions = {
       projects: projectsRaw.map((p) => p.project).filter(Boolean),
       cities,
@@ -6818,7 +8958,7 @@ export class FinanceService {
         expectedRevenue,
         filters: filterOptions,
       };
-      this.setCached(cacheKey, result);
+      await this.cacheManager.set(cacheKey, result, 300_000);
       return result;
     }
 
@@ -6926,8 +9066,8 @@ export class FinanceService {
       id: r.event.id,
       date: r.event.date,
       school: r.event.school?.name ?? '—',
-      profit: r.remainderSum ?? 0,
-      revenue: r.totalSum ?? 0,
+      profit: Number(r.remainderSum ?? 0),
+      revenue: Number(r.totalSum ?? 0),
     });
 
     const topEvents = topEventsRaw.map(mapEvent);
@@ -6945,7 +9085,7 @@ export class FinanceService {
       expectedRevenue,
       filters: filterOptions,
     };
-    this.setCached(cacheKey, result);
+    await this.cacheManager.set(cacheKey, result, 300_000);
     return result;
   }
 
@@ -7303,6 +9443,305 @@ export class IssuesModule {}
 
 ```
 
+# FILE: apps/backend/src/issues/issues.service.spec.ts
+
+```
+import { IssuesService } from './issues.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
+
+const mockPrisma = {
+  issueReport: {
+    create: jest.fn(),
+    findMany: jest.fn(),
+    update: jest.fn(),
+  },
+  event: { findUnique: jest.fn() },
+  city: { findUnique: jest.fn() },
+  user: { findUnique: jest.fn() },
+};
+
+const mockTelegram = { sendMessage: jest.fn() };
+
+const makeService = () =>
+  new IssuesService(
+    mockPrisma as unknown as PrismaService,
+    mockTelegram as unknown as TelegramService,
+  );
+
+const baseData = {
+  eventId: 'ev-1',
+  schoolName: 'Школа №1',
+  eventName: 'Голограма',
+  message: 'Проблема з обладнанням',
+  cityId: 'city-1',
+};
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockPrisma.issueReport.create.mockResolvedValue({
+    id: 'issue-1',
+    ...baseData,
+  });
+  mockPrisma.event.findUnique.mockResolvedValue({ id: 'ev-1', crew: null });
+  mockPrisma.city.findUnique.mockResolvedValue({ id: 'city-1', users: [] });
+});
+
+describe('IssuesService — create', () => {
+  it('створює IssueReport у БД з коректними полями', async () => {
+    const service = makeService();
+    await service.create(baseData);
+
+    expect(mockPrisma.issueReport.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        eventId: 'ev-1',
+        schoolName: 'Школа №1',
+        eventName: 'Голограма',
+        message: 'Проблема з обладнанням',
+        cityId: 'city-1',
+        deadline: null,
+        assignedUserId: null,
+        assignedUserName: null,
+      }),
+    });
+  });
+
+  it('конвертує deadline рядок у Date', async () => {
+    const service = makeService();
+    await service.create({ ...baseData, deadline: '2025-12-31' });
+
+    const { deadline } = mockPrisma.issueReport.create.mock.calls[0][0].data;
+    expect(deadline).toBeInstanceOf(Date);
+    expect(deadline.getFullYear()).toBe(2025);
+  });
+
+  it('надсилає Telegram менеджеру міста якщо є chatId', async () => {
+    mockPrisma.city.findUnique.mockResolvedValueOnce({
+      id: 'city-1',
+      users: [{ telegramChatId: 'mgr-chat-123', telegramId: null }],
+    });
+
+    const service = makeService();
+    await service.create(baseData);
+
+    expect(mockTelegram.sendMessage).toHaveBeenCalledWith(
+      'mgr-chat-123',
+      expect.stringContaining('Школа №1'),
+    );
+  });
+
+  it('не надсилає менеджеру якщо у нього немає chatId', async () => {
+    mockPrisma.city.findUnique.mockResolvedValueOnce({
+      id: 'city-1',
+      users: [{ telegramChatId: null, telegramId: '@handle' }],
+    });
+
+    const service = makeService();
+    await service.create(baseData);
+
+    expect(mockTelegram.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('надсилає відповідальному якщо assignedUserId є і chatId відрізняється', async () => {
+    mockPrisma.city.findUnique.mockResolvedValueOnce({
+      id: 'city-1',
+      users: [{ telegramChatId: 'mgr-111', telegramId: null }],
+    });
+    mockPrisma.user.findUnique.mockResolvedValueOnce({
+      telegramChatId: 'assignee-222',
+      telegramId: null,
+    });
+
+    const service = makeService();
+    await service.create({
+      ...baseData,
+      assignedUserId: 'user-2',
+      assignedUserName: 'Василь',
+    });
+
+    expect(mockTelegram.sendMessage).toHaveBeenCalledTimes(2);
+    const chatIds = mockTelegram.sendMessage.mock.calls.map(
+      ([chatId]: [string]) => chatId,
+    );
+    expect(chatIds).toContain('mgr-111');
+    expect(chatIds).toContain('assignee-222');
+  });
+
+  it('не надсилає дублю якщо менеджер і відповідальний — одна людина', async () => {
+    mockPrisma.city.findUnique.mockResolvedValueOnce({
+      id: 'city-1',
+      users: [{ telegramChatId: 'same-chat', telegramId: null }],
+    });
+    mockPrisma.user.findUnique.mockResolvedValueOnce({
+      telegramChatId: 'same-chat',
+      telegramId: null,
+    });
+
+    const service = makeService();
+    await service.create({
+      ...baseData,
+      assignedUserId: 'user-same',
+      assignedUserName: 'Один',
+    });
+
+    expect(mockTelegram.sendMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('повідомлення містить інформацію про дедлайн якщо він є', async () => {
+    mockPrisma.city.findUnique.mockResolvedValueOnce({
+      id: 'city-1',
+      users: [{ telegramChatId: 'mgr-111', telegramId: null }],
+    });
+
+    const service = makeService();
+    await service.create({ ...baseData, deadline: '2025-06-30' });
+
+    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
+    expect(msg).toContain('Дедлайн');
+  });
+
+  it('включає відповідального у повідомлення', async () => {
+    mockPrisma.city.findUnique.mockResolvedValueOnce({
+      id: 'city-1',
+      users: [{ telegramChatId: 'mgr-111', telegramId: null }],
+    });
+
+    const service = makeService();
+    await service.create({ ...baseData, assignedUserName: 'Марія Шевченко' });
+
+    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
+    expect(msg).toContain('Марія Шевченко');
+  });
+
+  it('включає учасників екіпажу у повідомлення', async () => {
+    mockPrisma.event.findUnique.mockResolvedValueOnce({
+      id: 'ev-1',
+      crew: {
+        host: { name: 'Ведучий Іван', telegramId: null },
+        driver: { name: 'Водій Петро', telegramId: '123456' },
+      },
+    });
+    mockPrisma.city.findUnique.mockResolvedValueOnce({
+      id: 'city-1',
+      users: [{ telegramChatId: 'mgr-111', telegramId: null }],
+    });
+
+    const service = makeService();
+    await service.create(baseData);
+
+    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
+    expect(msg).toContain('Ведучий Іван');
+    expect(msg).toContain('Водій Петро');
+  });
+
+  it("formatMember: числовий telegramId → лише ім'я (не @mention)", async () => {
+    mockPrisma.event.findUnique.mockResolvedValueOnce({
+      id: 'ev-1',
+      crew: {
+        host: { name: 'Ведучий', telegramId: '987654321' },
+        driver: null,
+      },
+    });
+    mockPrisma.city.findUnique.mockResolvedValueOnce({
+      id: 'city-1',
+      users: [{ telegramChatId: 'mgr-1', telegramId: null }],
+    });
+
+    const service = makeService();
+    await service.create(baseData);
+
+    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
+    // числовий id — не повинно бути @
+    expect(msg).not.toMatch(/@\d/);
+    expect(msg).toContain('Ведучий');
+  });
+
+  it('formatMember: @username telegramId → @mention', async () => {
+    mockPrisma.event.findUnique.mockResolvedValueOnce({
+      id: 'ev-1',
+      crew: {
+        host: { name: 'Ведучий', telegramId: '@ivanko' },
+        driver: null,
+      },
+    });
+    mockPrisma.city.findUnique.mockResolvedValueOnce({
+      id: 'city-1',
+      users: [{ telegramChatId: 'mgr-1', telegramId: null }],
+    });
+
+    const service = makeService();
+    await service.create(baseData);
+
+    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
+    expect(msg).toContain('@ivanko');
+  });
+
+  it('повертає створений issue', async () => {
+    const service = makeService();
+    const result = await service.create(baseData);
+
+    expect(result).toMatchObject({ id: 'issue-1' });
+  });
+});
+
+describe('IssuesService — findByCityId', () => {
+  it('повертає активні проблеми для міста (виключає Виконано)', async () => {
+    const issues = [{ id: 'i-1' }, { id: 'i-2' }];
+    mockPrisma.issueReport.findMany.mockResolvedValueOnce(issues);
+
+    const service = makeService();
+    const result = await service.findByCityId('city-1');
+
+    expect(mockPrisma.issueReport.findMany).toHaveBeenCalledWith({
+      where: { cityId: 'city-1', status: { not: 'Виконано' } },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(result).toHaveLength(2);
+  });
+
+  it('повертає порожній масив якщо активних проблем немає', async () => {
+    mockPrisma.issueReport.findMany.mockResolvedValueOnce([]);
+
+    const service = makeService();
+    const result = await service.findByCityId('city-empty');
+
+    expect(result).toEqual([]);
+  });
+});
+
+describe('IssuesService — updateStatus', () => {
+  it('оновлює статус проблеми', async () => {
+    mockPrisma.issueReport.update.mockResolvedValueOnce({
+      id: 'i-1',
+      status: 'Виконано',
+    });
+
+    const service = makeService();
+    const result = await service.updateStatus('i-1', 'Виконано');
+
+    expect(mockPrisma.issueReport.update).toHaveBeenCalledWith({
+      where: { id: 'i-1' },
+      data: { status: 'Виконано' },
+    });
+    expect(result).toMatchObject({ status: 'Виконано' });
+  });
+
+  it('може встановити довільний статус рядком', async () => {
+    mockPrisma.issueReport.update.mockResolvedValueOnce({
+      id: 'i-2',
+      status: 'В процесі',
+    });
+
+    const service = makeService();
+    await service.updateStatus('i-2', 'В процесі');
+
+    const callData = mockPrisma.issueReport.update.mock.calls[0][0];
+    expect(callData.data.status).toBe('В процесі');
+  });
+});
+
+```
+
 # FILE: apps/backend/src/issues/issues.service.ts
 
 ```
@@ -7410,7 +9849,7 @@ export class IssuesService {
       (crewMembers.length > 0
         ? `\n\n👥 <b>Екіпаж:</b>\n${crewMembers.join('\n')}`
         : '') +
-      `\n\n<i>Деталі у CRM: <a href="https://crm-frontend-59hvkjtym-shmaltsels-projects.vercel.app/login">Посилання</a></i>`;
+      `\n\n<i>Деталі у CRM: <a href="https://app.svitlo-znan.app">Посилання</a></i>`;
 
     if (managerChatId)
       await this.telegramService.sendMessage(managerChatId, text);
@@ -7707,20 +10146,40 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
 # FILE: apps/backend/src/projects/dto/create-project.dto.ts
 
 ```
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsNumber,
+  Min,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateProjectDto {
-  @ApiProperty({ example: 'Голографічне шоу «Космос»' })
   @IsString()
   @IsNotEmpty()
   name: string;
 
-  @ApiPropertyOptional({ example: 'blue' })
   @IsOptional()
   @IsString()
   color?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  pricePerChild?: number;
 }
+
+```
+
+# FILE: apps/backend/src/projects/dto/update-project.dto.ts
+
+```
+import { PartialType } from '@nestjs/swagger';
+import { CreateProjectDto } from './create-project.dto';
+
+export class UpdateProjectDto extends PartialType(CreateProjectDto) {}
 
 ```
 
@@ -7731,6 +10190,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Param,
   Body,
@@ -7742,6 +10202,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { UpdateProjectDto } from './dto/update-project.dto';
 
 @ApiTags('Projects')
 @ApiCookieAuth('access_token')
@@ -7761,6 +10222,13 @@ export class ProjectsController {
   @Roles('SUPERADMIN')
   create(@Body() body: CreateProjectDto) {
     return this.projectsService.create(body);
+  }
+
+  @ApiOperation({ summary: 'Оновити проєкт' })
+  @Patch(':id')
+  @Roles('SUPERADMIN')
+  update(@Param('id') id: string, @Body() body: UpdateProjectDto) {
+    return this.projectsService.update(id, body);
   }
 
   @ApiOperation({ summary: 'Видалити проєкт' })
@@ -7802,10 +10270,21 @@ export class ProjectsService {
     return this.prisma.project.findMany({ orderBy: { createdAt: 'asc' } });
   }
 
-  create(data: { name: string; color?: string }) {
+  create(data: { name: string; color?: string; pricePerChild?: number }) {
     return this.prisma.project.create({
-      data: { name: data.name, color: data.color ?? '#3b82f6' },
+      data: {
+        name: data.name,
+        color: data.color ?? '#3b82f6',
+        pricePerChild: data.pricePerChild ?? 0,
+      },
     });
+  }
+
+  update(
+    id: string,
+    data: { name?: string; color?: string; pricePerChild?: number },
+  ) {
+    return this.prisma.project.update({ where: { id }, data });
   }
 
   remove(id: string) {
@@ -7861,6 +10340,16 @@ export class CreateSchoolDto {
   @IsOptional()
   @IsString()
   sourceUrl?: string;
+
+  @ApiPropertyOptional({ example: 'Іваненко Іван Іванович' })
+  @IsOptional()
+  @IsString()
+  director?: string;
+
+  @ApiPropertyOptional({ example: '+380501234567' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
 }
 
 ```
@@ -7942,7 +10431,7 @@ import {
   IsEmail,
   Min,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
 export class UpdateSchoolDto {
   @IsOptional()
@@ -7970,6 +10459,7 @@ export class UpdateSchoolDto {
   phone?: string;
 
   @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @IsEmail()
   email?: string;
 
@@ -7987,6 +10477,303 @@ export class UpdateSchoolDto {
   @IsBoolean()
   isHotClient?: boolean;
 }
+
+```
+
+# FILE: apps/backend/src/schools/parser.service.spec.ts
+
+```
+import { ParserService } from './parser.service';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+
+// Хелпер: генерує HTML-таблицю зі списком шкіл
+const buildTableHtml = (rows: { name: string; href: string }[]): string => {
+  const trs = rows
+    .map((r) => `<tr><td>1</td><td><a href="${r.href}">${r.name}</a></td></tr>`)
+    .join('');
+  return `<table class="zebra-stripe list">${trs}</table>`;
+};
+
+// Хелпер: генерує HTML-профіль школи
+const buildProfileHtml = (fields: Record<string, string>): string => {
+  const rows = Object.entries(fields)
+    .map(([label, value]) => `<tr><th>${label}</th><td>${value}</td></tr>`)
+    .join('');
+  return `<table>${rows}</table>`;
+};
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
+describe('ParserService — parseSchoolData', () => {
+  it('повертає address, director, childrenCount за прямим URL', async () => {
+    const profileHtml = buildProfileHtml({
+      'Поштова адреса': 'вул. Шевченка 1',
+      Директор: 'Іваненко Іван',
+      'Кількість учнів': '1023',
+    });
+    mockedAxios.get.mockResolvedValueOnce({ data: profileHtml });
+
+    const service = new ParserService();
+    const result = await service.parseSchoolData(
+      'Школа №1',
+      'https://lv.isuo.org/schools/123',
+    );
+
+    expect(result).toEqual({
+      address: 'вул. Шевченка 1',
+      director: 'Іваненко Іван',
+      childrenCount: 1023,
+    });
+  });
+
+  it('розпізнає альтернативні лейбли (Завідувач, Кількість дітей)', async () => {
+    const profileHtml = buildProfileHtml({
+      Адреса: 'вул. Лесі 10',
+      Завідувач: 'Петренко Оксана',
+      'Кількість дітей': '456 дітей',
+    });
+    mockedAxios.get.mockResolvedValueOnce({ data: profileHtml });
+
+    const service = new ParserService();
+    const result = await service.parseSchoolData(
+      'Садочок №2',
+      'https://lv.isuo.org/k/1',
+    );
+
+    expect(result?.director).toBe('Петренко Оксана');
+    expect(result?.childrenCount).toBe(456);
+  });
+
+  it('повертає 0 для childrenCount якщо число не розпізнано', async () => {
+    const profileHtml = buildProfileHtml({
+      Директор: 'Без дітей',
+    });
+    mockedAxios.get.mockResolvedValueOnce({ data: profileHtml });
+
+    const service = new ParserService();
+    const result = await service.parseSchoolData(
+      'Тест',
+      'https://lv.isuo.org/x/1',
+    );
+
+    expect(result?.childrenCount).toBe(0);
+  });
+
+  it('повертає null при мережевій помилці', async () => {
+    mockedAxios.get.mockRejectedValueOnce(new Error('Network Error'));
+
+    const service = new ParserService();
+    const result = await service.parseSchoolData(
+      'Школа',
+      'https://lv.isuo.org/x/1',
+    );
+
+    expect(result).toBeNull();
+  });
+
+  it('шукає школу у списку якщо URL не вказано', async () => {
+    const listHtml = buildTableHtml([
+      { name: 'Загальноосвітня школа №42', href: '/schools/42' },
+    ]);
+    const profileHtml = buildProfileHtml({ Директор: 'Тест' });
+
+    mockedAxios.get
+      .mockResolvedValueOnce({ data: listHtml }) // список
+      .mockResolvedValueOnce({ data: profileHtml }); // профіль
+
+    const service = new ParserService();
+    const result = await service.parseSchoolData('школа №42');
+
+    expect(mockedAxios.get).toHaveBeenCalledTimes(2);
+    expect(result?.director).toBe('Тест');
+  });
+
+  it('повертає null якщо школу не знайдено у списку', async () => {
+    const listHtml = buildTableHtml([
+      { name: 'Інша школа', href: '/schools/99' },
+    ]);
+    mockedAxios.get
+      .mockResolvedValueOnce({ data: listHtml })
+      .mockResolvedValueOnce({ data: listHtml }); // page 2
+
+    const service = new ParserService();
+    const result = await service.parseSchoolData('Неіснуюча школа');
+
+    expect(result).toBeNull();
+  });
+});
+
+describe('ParserService — searchSchools', () => {
+  it('повертає список шкіл що відповідають запиту', async () => {
+    const html = buildTableHtml([
+      { name: 'Гімназія №3', href: '/schools/3' },
+      { name: 'Ліцей №10', href: '/schools/10' },
+    ]);
+    mockedAxios.get
+      .mockResolvedValueOnce({ data: html })
+      .mockResolvedValueOnce({ data: html }); // page 2
+
+    const service = new ParserService();
+    const results = await service.searchSchools('гімназія');
+
+    expect(results).toHaveLength(2); // до 10, cheerio знаходить обидва по "гімназія"
+  });
+
+  it('числовий запит — шукає за номером школи точно (regex з word boundary)', async () => {
+    const html = buildTableHtml([
+      { name: 'Школа №5', href: '/schools/5' },
+      { name: 'Школа №15', href: '/schools/15' },
+      { name: 'Школа №50', href: '/schools/50' },
+    ]);
+    mockedAxios.get
+      .mockResolvedValueOnce({ data: html })
+      .mockResolvedValueOnce({ data: '<table></table>' });
+
+    const service = new ParserService();
+    const results = await service.searchSchools('5');
+
+    // Має знайти тільки "Школа №5", не "15" чи "50"
+    const names = results.map((r) => r.name);
+    expect(names).toContain('Школа №5');
+    expect(names).not.toContain('Школа №15');
+    expect(names).not.toContain('Школа №50');
+  });
+
+  it('повертає не більше 10 результатів', async () => {
+    const manyRows = Array.from({ length: 20 }, (_, i) => ({
+      name: `Тестова школа №${i + 1}`,
+      href: `/schools/${i + 1}`,
+    }));
+    const html = buildTableHtml(manyRows);
+    mockedAxios.get
+      .mockResolvedValueOnce({ data: html })
+      .mockResolvedValueOnce({ data: '<table></table>' });
+
+    const service = new ParserService();
+    const results = await service.searchSchools('тестова');
+
+    expect(results.length).toBeLessThanOrEqual(10);
+  });
+
+  it('повертає порожній масив при мережевій помилці', async () => {
+    mockedAxios.get.mockRejectedValueOnce(new Error('Network Error'));
+
+    const service = new ParserService();
+    const results = await service.searchSchools('щось');
+
+    expect(results).toEqual([]);
+  });
+
+  it('для type="Садочок" — використовує URL дошкільних закладів', async () => {
+    mockedAxios.get.mockResolvedValue({ data: '<table></table>' });
+
+    const service = new ParserService();
+    await service.searchSchools('садок', 'Садочок');
+
+    const url = mockedAxios.get.mock.calls[0][0];
+    expect(url).toContain('preschools');
+  });
+});
+
+describe('ParserService — getAllSchoolsForCity', () => {
+  it('повертає заклади для підтримуваного міста', async () => {
+    const page1 = buildTableHtml([
+      { name: 'Школа №1', href: '/schools/1' },
+      { name: 'Школа №2', href: '/schools/2' },
+    ]);
+    const emptyPage = '<table class="zebra-stripe list"></table>';
+
+    mockedAxios.get
+      .mockResolvedValueOnce({ data: page1 })
+      .mockResolvedValueOnce({ data: emptyPage });
+
+    const service = new ParserService();
+    const results = await service.getAllSchoolsForCity('Львів', 'Школа');
+
+    expect(results).toHaveLength(2);
+    expect(results[0].name).toBe('Школа №1');
+    expect(results[0].url).toContain('lv.isuo.org');
+  });
+
+  it('повертає порожній масив для непідтримуваного міста', async () => {
+    const service = new ParserService();
+    const results = await service.getAllSchoolsForCity('Атлантида');
+
+    expect(results).toEqual([]);
+    expect(mockedAxios.get).not.toHaveBeenCalled();
+  });
+
+  it('зупиняється якщо сторінка не містить результатів', async () => {
+    const page1 = buildTableHtml([{ name: 'Школа №1', href: '/schools/1' }]);
+    const emptyPage = '<table class="zebra-stripe list"></table>';
+
+    mockedAxios.get
+      .mockResolvedValueOnce({ data: page1 })
+      .mockResolvedValueOnce({ data: emptyPage });
+
+    const service = new ParserService();
+    const results = await service.getAllSchoolsForCity('Київ');
+
+    expect(results).toHaveLength(1);
+    expect(mockedAxios.get).toHaveBeenCalledTimes(2);
+  });
+
+  it('дедуплікує однакові заклади (за нормалізованою назвою)', async () => {
+    const html = buildTableHtml([
+      { name: 'Школа  №1', href: '/schools/1' },
+      { name: 'Школа №1', href: '/schools/1b' },
+    ]);
+    const emptyPage = '<table class="zebra-stripe list"></table>';
+
+    mockedAxios.get
+      .mockResolvedValueOnce({ data: html })
+      .mockResolvedValueOnce({ data: emptyPage });
+
+    const service = new ParserService();
+    const results = await service.getAllSchoolsForCity('Харків');
+
+    expect(results).toHaveLength(1);
+  });
+
+  it('зупиняється при мережевій помилці на конкретній сторінці', async () => {
+    mockedAxios.get.mockRejectedValueOnce(new Error('timeout'));
+
+    const service = new ParserService();
+    const results = await service.getAllSchoolsForCity('Одеса');
+
+    expect(results).toEqual([]);
+  });
+
+  it('для type="Садочок" — використовує URL kindergartens', async () => {
+    mockedAxios.get.mockResolvedValue({
+      data: '<table class="zebra-stripe list"></table>',
+    });
+
+    const service = new ParserService();
+    await service.getAllSchoolsForCity('Тернопіль', 'Садочок');
+
+    const url = mockedAxios.get.mock.calls[0][0];
+    expect(url).toContain('preschools');
+  });
+});
+
+describe('ParserService — getSupportedCities', () => {
+  it('повертає масив підтримуваних міст', () => {
+    const service = new ParserService();
+    const cities = service.getSupportedCities();
+
+    expect(cities).toBeInstanceOf(Array);
+    expect(cities.length).toBeGreaterThan(0);
+    expect(cities).toContain('Львів');
+    expect(cities).toContain('Київ');
+  });
+});
 
 ```
 
@@ -8208,7 +10995,7 @@ export class ParserService {
       const normalizedQuery = query.toLowerCase().replace(/\s+/g, ' ').trim();
       const isNumericQuery = /^\d+$/.test(normalizedQuery);
       const numericRegex = isNumericQuery
-        ? new RegExp(`(?<!\d)${normalizedQuery}(?!\d)`)
+        ? new RegExp(`(?<!\\d)${normalizedQuery}(?!\\d)`)
         : null;
       for (const url of urls) {
         const response = await axios.get(url);
@@ -9548,2225 +12335,363 @@ export class SchoolsModule {}
 import { Test, TestingModule } from '@nestjs/testing';
 import { SchoolsService } from './schools.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { EventsService } from '../events/events.service';
 import { ParserService } from './parser.service';
+import { EventsService } from '../events/events.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { HttpStatus } from '@nestjs/common';
 
 const mockPrisma = {
   school: {
-    findMany: jest.fn(),
-    findUnique: jest.fn(),
     create: jest.fn(),
+    findUnique: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
+    findMany: jest.fn(),
   },
   event: { findMany: jest.fn() },
   schoolContact: { findMany: jest.fn() },
-  $queryRaw: jest.fn().mockResolvedValue([]),
+  city: { findUnique: jest.fn() },
+  $queryRaw: jest.fn(),
 };
 
-describe('SchoolsService', () => {
-  let service: SchoolsService;
-
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        SchoolsService,
-        { provide: PrismaService, useValue: mockPrisma },
-        { provide: EventsService, useValue: { remove: jest.fn() } },
-        {
-          provide: ParserService,
-          useValue: {
-            parseSchoolData: jest.fn(),
-            getAllSchoolsForCity: jest.fn(),
-          },
-        },
-        {
-          provide: CACHE_MANAGER,
-          useValue: {
-            get: jest.fn(),
-            set: jest.fn(),
-            del: jest.fn(),
-          },
-        },
-      ],
-    }).compile();
-
-    service = module.get<SchoolsService>(SchoolsService);
-  });
-
-  afterEach(() => jest.clearAllMocks());
-
-  describe('findAll', () => {
-    it('повертає всі школи', async () => {
-      mockPrisma.school.findMany.mockResolvedValue([
-        { id: '1', name: 'Школа №1' },
-      ]);
-      const result = await service.findAll({
-        skip: 0,
-        take: 10,
-        page: 1,
-      } as any);
-      expect(result).toHaveLength(1);
-      expect(mockPrisma.school.findMany).toHaveBeenCalledTimes(1);
-    });
-
-    it('minimal=true — select без include', async () => {
-      mockPrisma.school.findMany.mockResolvedValue([]);
-      await service.findAll(true);
-      const call = mockPrisma.school.findMany.mock.calls[0][0];
-      expect(call.select).toBeDefined();
-      expect(call.include).toBeUndefined();
-    });
-  });
-
-  describe('findOne', () => {
-    it('повертає школу по id', async () => {
-      mockPrisma.school.findUnique.mockResolvedValue({
-        id: '1',
-        name: 'Школа №1',
-      });
-      const result = await service.findOne('1');
-      expect(result?.name).toBe('Школа №1');
-    });
-  });
-
-  describe('update', () => {
-    it('оновлює школу без системних полів', async () => {
-      mockPrisma.school.update.mockResolvedValue({
-        id: '1',
-        name: 'Нова назва',
-      });
-      await service.update('1', {
-        id: '1',
-        name: 'Нова назва',
-        city: 'Львів',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      const call = mockPrisma.school.update.mock.calls[0][0];
-      expect(call.data.id).toBeUndefined();
-      expect(call.data.city).toBeUndefined();
-      expect(call.data.name).toBe('Нова назва');
-    });
-  });
-});
-
-```
-
-# FILE: apps/backend/src/schools/schools.service.ts
-
-```
-import {
-  Injectable,
-  Logger,
-  HttpStatus,
-  forwardRef,
-  Inject,
-} from '@nestjs/common';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import type { Cache } from 'cache-manager';
-import { AppException } from '../common/exceptions/app.exception';
-import { Prisma } from '@prisma/client';
-import { EventsService } from '../events/events.service';
-import { ParserService } from './parser.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { PageMetaDto } from '../common/dto/page-meta.dto';
-import { SchoolQueryDto } from './dto/school-query.dto';
-import { UpdateSchoolDto } from './dto/update-school.dto';
-
-const PLANNED_STAGES = ['BASE', 'FIRST_CONTACT', 'DATE_CONFIRMED'];
-const IN_PROGRESS_STAGES = ['PREPARATION', 'IN_PROGRESS', 'DONE', 'REPORT'];
-
-@Injectable()
-export class SchoolsService {
-  private readonly logger = new Logger(SchoolsService.name);
-
-  constructor(
-    @Inject(forwardRef(() => EventsService))
-    private readonly eventsService: EventsService,
-    private readonly parserService: ParserService,
-    private readonly prisma: PrismaService,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) {}
-
-  async create(data: {
-    name: string;
-    type: string;
-    cityId: string;
-    sourceUrl?: string;
-    director?: string;
-    phone?: string;
-    address?: string;
-    childrenCount?: number;
-  }) {
-    const { sourceUrl, ...schoolData } = data;
-
-    const newSchool = await this.prisma.school.create({
-      data: schoolData,
-    });
-
-    this.parserService
-      .parseSchoolData(data.name, sourceUrl, data.type)
-      .then(async (parsed) => {
-        if (!parsed) {
-          this.logger.warn(`Не вдалося знайти дані для закладу: ${data.name}`);
-          return;
-        }
-
-        const updateData: Record<string, unknown> = {};
-
-        if (!schoolData.address && parsed.address) {
-          updateData.address = parsed.address;
-        }
-        if (!schoolData.director && parsed.director) {
-          updateData.director = parsed.director;
-        }
-        if (!schoolData.childrenCount && parsed.childrenCount) {
-          updateData.childrenCount = parsed.childrenCount;
-        }
-
-        if (Object.keys(updateData).length === 0) {
-          this.logger.log(
-            `Дані школи "${data.name}" вже заповнені користувачем — пропускаємо оновлення з парсингу`,
-          );
-          return;
-        }
-
-        await this.prisma.school.update({
-          where: {
-            id: newSchool.id,
-          },
-          data: updateData,
-        });
-
-        this.logger.log(`Дані школи "${data.name}" успішно оновлені`);
-      })
-      .catch((error: Error) => {
-        this.logger.error(`Помилка оновлення даних школи: ${error.message}`);
-      });
-
-    return newSchool;
-  }
-
-  private buildFilters(
-    query: Pick<
-      SchoolQueryDto,
-      'search' | 'cityId' | 'type' | 'stage' | 'size'
-    >,
-  ): Prisma.Sql[] {
-    const { search, cityId, type, stage, size } = query;
-    const conditions: Prisma.Sql[] = [];
-
-    if (search) {
-      const trimmed = search.trim();
-      const isNumeric = /^\d+$/.test(trimmed);
-
-      if (isNumeric) {
-        const numberBoundary = `%№${trimmed}%`;
-        const numberWord = `% ${trimmed}%`;
-        conditions.push(
-          Prisma.sql`(s.name ILIKE ${numberBoundary} OR s.name ILIKE ${numberWord} OR s.name ILIKE ${trimmed + '%'})`,
-        );
-      } else {
-        conditions.push(Prisma.sql`s.name ILIKE ${`%${trimmed}%`}`);
-      }
-    }
-    if (cityId) {
-      conditions.push(Prisma.sql`s."cityId" = ${cityId}`);
-    }
-    if (type) {
-      conditions.push(Prisma.sql`s.type = ${type}`);
-    }
-    if (stage) {
-      conditions.push(this.stageCondition(stage));
-    }
-    if (size) {
-      conditions.push(this.sizeCondition(size));
-    }
-
-    return conditions;
-  }
-
-  private sizeCaseSql(): Prisma.Sql {
-    return Prisma.sql`
-      CASE
-        WHEN s.type = 'Садочок' AND COALESCE(s."childrenCount", 0) < 50 THEN 'small'
-        WHEN s.type = 'Садочок' AND COALESCE(s."childrenCount", 0) < 100 THEN 'medium'
-        WHEN s.type = 'Садочок' THEN 'large'
-        WHEN COALESCE(s."childrenCount", 0) < 500 THEN 'small'
-        WHEN COALESCE(s."childrenCount", 0) < 900 THEN 'medium'
-        ELSE 'large'
-      END
-    `;
-  }
-
-  private stageCondition(stage: string): Prisma.Sql {
-    switch (stage) {
-      case 'planned':
-        return Prisma.sql`latest.status::text IN (${Prisma.join(PLANNED_STAGES)})`;
-      case 'inProgress':
-        return Prisma.sql`latest.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})`;
-      case 'done':
-        return Prisma.sql`latest.status::text = 'RE_SALE'`;
-      default:
-        return Prisma.sql`(latest.status IS NULL OR latest.status::text IN ('INTERESTED','PRE_APPROVAL'))`;
-    }
-  }
-
-  private sizeCondition(size: string): Prisma.Sql {
-    return Prisma.sql`(${this.sizeCaseSql()}) = ${size}`;
-  }
-
-  private latestEventJoin(): Prisma.Sql {
-    return Prisma.sql`
-      LEFT JOIN LATERAL (
-        SELECT e.status FROM "Event" e
-        WHERE e."schoolId" = s.id
-        ORDER BY e.date DESC
-        LIMIT 1
-      ) latest ON true
-    `;
-  }
-
-  private mapRow(row: {
-    city_id: string | null;
-    city_name: string | null;
-    latestStatus: string | null;
-    [key: string]: unknown;
-  }) {
-    const { city_id, city_name, latestStatus, ...school } = row;
-    return {
-      ...school,
-      city: city_id ? { id: city_id, name: city_name } : null,
-      events: latestStatus ? [{ status: latestStatus }] : [],
-    };
-  }
-
-  async findAll(query: SchoolQueryDto) {
-    const { skip, take, page } = query;
-    const conditions = this.buildFilters(query);
-    const whereClause = conditions.length
-      ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`
-      : Prisma.empty;
-
-    const baseFrom = Prisma.sql`
-      FROM "School" s
-      LEFT JOIN "City" c ON c.id = s."cityId"
-      ${this.latestEventJoin()}
-    `;
-
-    const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
-      SELECT s.*, c.id as city_id, c.name as city_name, latest.status as "latestStatus"
-      ${baseFrom}
-      ${whereClause}
-      ORDER BY s."createdAt" DESC
-      OFFSET ${skip} LIMIT ${take}
-    `);
-
-    const countRows = await this.prisma.$queryRaw<
-      { count: bigint }[]
-    >(Prisma.sql`
-      SELECT COUNT(*)::bigint as count
-      ${baseFrom}
-      ${whereClause}
-    `);
-
-    const totalItems = Number(countRows[0].count);
-
-    return {
-      data: rows.map((r) => this.mapRow(r)),
-      meta: new PageMetaDto(totalItems, page, take),
-    };
-  }
-
-  async getStats(query: Pick<SchoolQueryDto, 'cityId' | 'type' | 'stage'>) {
-    const baseConditions = this.buildFilters({
-      cityId: query.cityId,
-      type: query.type,
-    });
-    const baseWhere = baseConditions.length
-      ? Prisma.sql`WHERE ${Prisma.join(baseConditions, ' AND ')}`
-      : Prisma.empty;
-
-    const sizeConditions = this.buildFilters({
-      cityId: query.cityId,
-      type: query.type,
-      stage: query.stage,
-    });
-    const sizeWhere = sizeConditions.length
-      ? Prisma.sql`WHERE ${Prisma.join(sizeConditions, ' AND ')}`
-      : Prisma.empty;
-
-    const baseFrom = Prisma.sql`
-      FROM "School" s
-      ${this.latestEventJoin()}
-    `;
-
-    const [statusRows, sizeRows] = await Promise.all([
-      this.prisma.$queryRaw<{ stage: string; count: bigint }[]>(Prisma.sql`
-        SELECT
-          CASE
-            WHEN latest.status::text IN (${Prisma.join(PLANNED_STAGES)}) THEN 'planned'
-            WHEN latest.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)}) THEN 'inProgress'
-            WHEN latest.status::text = 'RE_SALE' THEN 'done'
-            ELSE 'new'
-          END as stage,
-          COUNT(*)::bigint as count
-        ${baseFrom}
-        ${baseWhere}
-        GROUP BY stage
-      `),
-      this.prisma.$queryRaw<{ size: string; count: bigint }[]>(Prisma.sql`
-        SELECT
-          ${this.sizeCaseSql()} as size,
-          COUNT(*)::bigint as count
-        ${baseFrom}
-        ${sizeWhere}
-        GROUP BY size
-      `),
-    ]);
-
-    const statusStats = { new: 0, planned: 0, inProgress: 0, done: 0 };
-    for (const row of statusRows) statusStats[row.stage] = Number(row.count);
-
-    const sizeStats = { small: 0, medium: 0, large: 0 };
-    for (const row of sizeRows) sizeStats[row.size] = Number(row.count);
-
-    return { statusStats, sizeStats };
-  }
-
-  async findOne(id: string) {
-    const key = `school:${id}`;
-    const cached = await this.cacheManager.get(key);
-    if (cached) return cached;
-
-    const school = await this.prisma.school.findUnique({
-      where: {
-        id,
-      },
-      include: {
-        city: true,
-      },
-    });
-    if (!school) {
-      throw new AppException('SCHOOL_NOT_FOUND', HttpStatus.NOT_FOUND);
-    }
-
-    await this.cacheManager.set(key, school, 15_000);
-    return school;
-  }
-
-  async update(id: string, data: UpdateSchoolDto) {
-    const {
-      city,
-      id: _id,
-      createdAt,
-      updatedAt,
-      ...updateData
-    } = data as UpdateSchoolDto & Record<string, unknown>;
-
-    const updated = await this.prisma.school.update({
-      where: {
-        id,
-      },
-      data: updateData,
-    });
-    await this.cacheManager.del(`school:${id}`);
-    return updated;
-  }
-
-  async remove(id: string) {
-    const events = await this.prisma.event.findMany({
-      where: {
-        schoolId: id,
-      },
-    });
-
-    await Promise.all(
-      events.map((event) => this.eventsService.remove(event.id)),
-    );
-
-    const deleted = await this.prisma.school.delete({
-      where: {
-        id,
-      },
-    });
-    await this.cacheManager.del(`school:${id}`);
-    return deleted;
-  }
-
-  async searchContacts(q: string, city?: string) {
-    if (!q || q.trim().length < 1) return [];
-
-    const cityName = city || 'Львів';
-    const normalizedQuery = q.toLowerCase().trim();
-
-    const allContacts = await this.prisma.schoolContact.findMany({
-      where: { city: cityName },
-      orderBy: [{ schoolNumber: 'asc' }, { role: 'asc' }],
-    });
-
-    const STOP_WORDS = new Set([
-      'школа',
-      'школи',
-      'садочок',
-      'садок',
-      'дитсадок',
-      'днз',
-      'ліцей',
-      'гімназія',
-      'зош',
-      'центр',
-      'розвитку',
-      'комунальний',
-      'заклад',
-      'освіти',
-      'імені',
-      'ім',
-    ]);
-
-    const tokens = normalizedQuery
-      .replace(/№/g, ' ')
-      .split(/\s+/)
-      .map((t) => t.replace(/[^\wа-яіїєґ0-9]/gi, ''))
-      .filter((t) => t.length > 0 && !STOP_WORDS.has(t));
-
-    const matches = allContacts.filter((c) => {
-      const num = c.schoolNumber.toLowerCase();
-
-      if (num === normalizedQuery) return true;
-
-      const isNumeric = /^\d+$/.test(num);
-
-      if (isNumeric) {
-        if (tokens.includes(num)) return true;
-      } else {
-        if (num.includes(normalizedQuery) || normalizedQuery.includes(num))
-          return true;
-        if (tokens.some((t) => t.length >= 3 && num.includes(t))) return true;
-      }
-
-      if (c.contactName.toLowerCase().includes(normalizedQuery)) return true;
-
-      return false;
-    });
-
-    return matches.slice(0, 10);
-  }
-  async bulkImport(cityId: string, type: 'Школа' | 'Садочок' = 'Школа') {
-    const city = await this.prisma.city.findUnique({ where: { id: cityId } });
-    if (!city) throw new AppException('CITY_NOT_FOUND', HttpStatus.NOT_FOUND);
-
-    const allFromParser = await this.parserService.getAllSchoolsForCity(
-      city.name,
-      type,
-    );
-
-    const existingSchools = await this.prisma.school.findMany({
-      where: { cityId, type },
-      select: { name: true },
-    });
-
-    const normalize = (name: string) =>
-      name
-        .toLowerCase()
-        .replace(/№/g, '')
-        .replace(/["'«»]/g, '')
-        .replace(/\s+/g, '')
-        .trim();
-
-    const existingNames = new Set(
-      existingSchools.map((s) => normalize(s.name)),
-    );
-
-    const toCreate = allFromParser.filter(
-      (s) => !existingNames.has(normalize(s.name)),
-    );
-
-    if (toCreate.length === 0) {
-      return {
-        total: allFromParser.length,
-        created: 0,
-        skipped: allFromParser.length,
-      };
-    }
-
-    const contacts = await this.prisma.schoolContact.findMany({
-      where: { city: city.name },
-    });
-
-    let created = 0;
-    for (const school of toCreate) {
-      if (existingNames.has(normalize(school.name))) continue;
-
-      existingNames.add(normalize(school.name));
-
-      const numMatch = school.name.match(/№?\s*(\d+)/);
-      const num = numMatch?.[1];
-      const matchedContacts = num
-        ? contacts.filter((c) => c.schoolNumber === num)
-        : contacts.filter((c) => {
-            const normSchool = normalize(school.name);
-            const normContact = normalize(c.schoolNumber);
-            return (
-              normSchool.includes(normContact) ||
-              normContact.includes(normSchool)
-            );
-          });
-
-      const director =
-        matchedContacts.find(
-          (c) => c.role?.includes('Директор') || c.role?.includes('Завідувач'),
-        ) || matchedContacts[0];
-
-      try {
-        await this.create({
-          name: school.name,
-          type,
-          cityId,
-          sourceUrl: school.url,
-          director: director?.contactName || '',
-          phone: director?.phone || '',
-        });
-        created++;
-      } catch (e) {
-        this.logger.error(
-          `Помилка створення ${school.name}: ${(e as Error).message}`,
-        );
-      }
-    }
-
-    return {
-      city: city.name,
-      total: allFromParser.length,
-      created,
-      skipped: allFromParser.length - created,
-    };
-  }
-}
-
-```
-
-# FILE: apps/backend/src/telegram/telegram.module.ts
-
-```
-import { Module, forwardRef } from '@nestjs/common';
-import { TelegramService } from './telegram.service';
-import { PrismaModule } from '../prisma/prisma.module';
-import { UsersModule } from '../users/users.module';
-
-@Module({
-  imports: [PrismaModule, forwardRef(() => UsersModule)],
-  providers: [TelegramService],
-  exports: [TelegramService],
-})
-export class TelegramModule {}
-
-```
-
-# FILE: apps/backend/src/telegram/telegram.service.ts
-
-```
-import {
-  Injectable,
-  Logger,
-  OnModuleInit,
-  OnModuleDestroy,
-  Inject,
-  forwardRef,
-} from '@nestjs/common';
-import TelegramBot from 'node-telegram-bot-api';
-import Redis from 'ioredis';
-import { randomUUID } from 'crypto';
-import { UsersService } from '../users/users.service';
-
-const LOCK_KEY = 'telegram:bot:leader';
-const LOCK_TTL_MS = 15_000;
-const RETRY_MS = 5_000;
-
-@Injectable()
-export class TelegramService implements OnModuleInit, OnModuleDestroy {
-  private bot: TelegramBot;
-  private readonly logger = new Logger(TelegramService.name);
-  private readonly instanceId = randomUUID();
-  private readonly redis = new Redis(
-    process.env.REDIS_URL ?? 'redis://localhost:6379',
-  );
-  private lockTimer?: NodeJS.Timeout;
-  private retryTimer?: NodeJS.Timeout;
-
-  constructor(
-    @Inject(forwardRef(() => UsersService))
-    private usersService: UsersService,
-  ) {}
-
-  onModuleInit() {
-    this.redis.on('error', (err: Error) =>
-      this.logger.warn(`Redis lock connection error: ${err.message}`),
-    );
-
-    const token = process.env.TELEGRAM_BOT_TOKEN;
-    if (!token || process.env.NODE_ENV === 'test') {
-      this.logger.warn(
-        'TELEGRAM_BOT_TOKEN не задано або тестове середовище — бот вимкнено',
-      );
-      return;
-    }
-    void this.tryBecomeLeader(token);
-  }
-
-  async onModuleDestroy() {
-    clearTimeout(this.retryTimer);
-    clearInterval(this.lockTimer);
-    if (this.bot) await this.bot.stopPolling();
-    const current = await this.redis.get(LOCK_KEY);
-    if (current === this.instanceId) await this.redis.del(LOCK_KEY);
-    this.redis.disconnect();
-  }
-
-  private async tryBecomeLeader(token: string) {
-    let acquired: string | null;
-    try {
-      acquired = await this.redis.set(
-        LOCK_KEY,
-        this.instanceId,
-        'PX',
-        LOCK_TTL_MS,
-        'NX',
-      );
-    } catch (e) {
-      this.logger.warn(
-        `Не вдалося отримати lock, повторю пізніше: ${(e as Error).message}`,
-      );
-      this.retryTimer = setTimeout(() => this.tryBecomeLeader(token), RETRY_MS);
-      return;
-    }
-    if (!acquired) {
-      this.retryTimer = setTimeout(() => this.tryBecomeLeader(token), RETRY_MS);
-      return;
-    }
-
-    this.bot = new TelegramBot(token, { polling: true });
-    this.logger.log(`Telegram бот ініціалізовано (leader=${this.instanceId})`);
-    this.lockTimer = setInterval(() => {
-      this.redis
-        .set(LOCK_KEY, this.instanceId, 'PX', LOCK_TTL_MS, 'XX')
-        .catch((e: Error) =>
-          this.logger.warn(`Не вдалося продовжити lock: ${e.message}`),
-        );
-    }, LOCK_TTL_MS / 3);
-
-    this.bot.onText(/\/start/, (msg) => {
-      void this.handleStartCommand(msg);
-    });
-  }
-
-  private async handleStartCommand(msg: TelegramBot.Message): Promise<void> {
-    const chatId = String(msg.chat.id);
-    const username = msg.from?.username;
-
-    if (!username) {
-      await this.bot.sendMessage(
-        chatId,
-        "⚠️ У вашому профілі Telegram не вказано username. Будь ласка, додайте його в налаштуваннях Telegram, щоб ми могли підв'язати акаунт.",
-      );
-      return;
-    }
-
-    const normalizedUsername = username.toLowerCase();
-
-    const result = await this.usersService.updateTelegramChatId(
-      normalizedUsername,
-      chatId,
-    );
-
-    if (result.count > 0) {
-      this.logger.log(
-        `[/start] chatId=${chatId} username=${normalizedUsername} — успішно підв'язано`,
-      );
-      await this.bot.sendMessage(
-        chatId,
-        `✅ Вітаємо! Ваш акаунт успішно підключено до <b>Світло Знань CRM</b>.`,
-        { parse_mode: 'HTML' },
-      );
-    } else {
-      this.logger.warn(
-        `[/start] Користувача з username "${normalizedUsername}" не знайдено в CRM.`,
-      );
-      await this.bot.sendMessage(
-        chatId,
-        `❌ Акаунт не знайдено. Переконайтеся, що в CRM у вашому профілі вказано нікнейм <b>${normalizedUsername}</b> без помилок.`,
-        { parse_mode: 'HTML' },
-      );
-    }
-  }
-
-  async sendMessage(chatId: string, text: string): Promise<void> {
-    if (!this.bot) return;
-    try {
-      await this.bot.sendMessage(chatId, text, { parse_mode: 'HTML' });
-    } catch (e: any) {
-      this.logger.error(
-        `Не вдалося надіслати повідомлення ${chatId}: ${e.message}`,
-      );
-    }
-  }
-
-  async sendWelcome(
-    chatId: string,
-    name: string,
-    email: string,
-    password: string,
-  ): Promise<void> {
-    const text =
-      `👋 <b>Вітаємо у Світло Знань CRM!</b>\n\n` +
-      `Ваш акаунт створено.\n\n` +
-      `📧 <b>Логін:</b> <code>${email}</code>\n` +
-      `🔑 <b>Пароль:</b> <code>${password}</code>\n\n` +
-      `Увійдіть за посиланням: <a href="https://crm-frontend-psi-sable.vercel.app">crm-frontend-psi-sable.vercel.app</a>\n\n` +
-      `<i>Змініть пароль після першого входу.</i>`;
-
-    await this.sendMessage(chatId, text);
-  }
-}
-
-```
-
-# FILE: apps/backend/src/users/dto/create-user.dto.ts
-
-```
-import {
-  IsString,
-  IsEmail,
-  IsNotEmpty,
-  IsOptional,
-  MinLength,
-  IsEnum,
-  Matches,
-} from 'class-validator';
-import { UserRole } from '@prisma/client';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
-export class CreateUserDto {
-  @ApiProperty({ example: 'Олег Ведучий' })
-  @IsString()
-  @IsNotEmpty()
-  fullName: string;
-
-  @ApiProperty({ example: 'oleg@svitlo-znan.app' })
-  @IsEmail()
-  email: string;
-
-  @ApiProperty({ example: 'Password123', minLength: 8 })
-  @IsString()
-  @MinLength(8, { message: 'Пароль має містити щонайменше 8 символів' })
-  @Matches(/^(?=.*[a-zA-Z])(?=.*\d).+$/, {
-    message: 'Пароль має містити хоча б одну літеру та одну цифру',
-  })
-  password: string;
-
-  @ApiPropertyOptional({ example: '+380671112233' })
-  @IsOptional()
-  @IsString()
-  phone?: string;
-
-  @ApiPropertyOptional({ enum: UserRole, example: UserRole.HOST })
-  @IsOptional()
-  @IsEnum(UserRole)
-  role?: UserRole;
-
-  @ApiPropertyOptional({ example: 'a1b2c3d4-...' })
-  @IsOptional()
-  @IsString()
-  cityId?: string;
-
-  @ApiPropertyOptional({ example: '@oleg_host' })
-  @IsOptional()
-  @IsString()
-  telegramId?: string;
-
-  @ApiPropertyOptional({ example: 'Volkswagen Transporter' })
-  @IsOptional()
-  @IsString()
-  car?: string;
-}
-
-```
-
-# FILE: apps/backend/src/users/dto/update-user.dto.ts
-
-```
-import {
-  IsString,
-  IsEmail,
-  IsOptional,
-  MinLength,
-  IsEnum,
-  Matches,
-} from 'class-validator';
-import { UserRole } from '@prisma/client';
-
-export class UpdateUserDto {
-  @IsOptional()
-  @IsString()
-  fullName?: string;
-
-  @IsOptional()
-  @IsEmail()
-  email?: string;
-
-  @IsOptional()
-  @IsString()
-  @MinLength(8, { message: 'Пароль має містити щонайменше 8 символів' })
-  @Matches(/^(?=.*[a-zA-Z])(?=.*\d).+$/, {
-    message: 'Пароль має містити хоча б одну літеру та одну цифру',
-  })
-  password?: string;
-
-  @IsOptional()
-  @IsString()
-  phone?: string;
-
-  @IsOptional()
-  @IsEnum(UserRole)
-  role?: UserRole;
-
-  @IsOptional()
-  @IsString()
-  cityId?: string;
-
-  @IsOptional()
-  @IsString()
-  telegramId?: string;
-
-  @IsOptional()
-  @IsString()
-  car?: string;
-}
-
-```
-
-# FILE: apps/backend/src/users/users.controller.spec.ts
-
-```
-import { Test } from '@nestjs/testing';
-import { UsersController } from './users.controller';
-import { UsersService } from './users.service';
-import { AuthGuard } from '../auth/auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-
-describe('UsersController', () => {
-  it('should be defined', async () => {
-    const module = await Test.createTestingModule({
-      controllers: [UsersController],
-      providers: [{ provide: UsersService, useValue: {} }],
-    })
-      .overrideGuard(AuthGuard)
-      .useValue({ canActivate: () => true })
-      .overrideGuard(RolesGuard)
-      .useValue({ canActivate: () => true })
-      .compile();
-
-    expect(module.get(UsersController)).toBeDefined();
-  });
-});
-
-```
-
-# FILE: apps/backend/src/users/users.controller.ts
-
-```
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  UseGuards,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
-import { UsersService } from './users.service';
-import { AuthGuard } from '../auth/auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-
-@ApiTags('Users')
-@ApiCookieAuth('access_token')
-@Controller('users')
-@UseGuards(AuthGuard, RolesGuard)
-export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
-
-  @ApiOperation({ summary: 'Список усіх користувачів' })
-  @Get()
-  getAll() {
-    return this.usersService.getAllUsers();
-  }
-
-  @ApiOperation({ summary: 'Створити користувача' })
-  @Post()
-  @Roles('SUPERADMIN')
-  create(@Body() body: CreateUserDto) {
-    return this.usersService.createUser(body);
-  }
-
-  @ApiOperation({ summary: 'Оновити користувача' })
-  @Patch(':id')
-  @Roles('SUPERADMIN')
-  update(@Param('id') id: string, @Body() body: UpdateUserDto) {
-    return this.usersService.updateUser(id, body);
-  }
-
-  @ApiOperation({ summary: 'Видалити користувача' })
-  @Delete(':id')
-  @Roles('SUPERADMIN')
-  remove(@Param('id') id: string) {
-    return this.usersService.deleteUser(id);
-  }
-}
-
-```
-
-# FILE: apps/backend/src/users/users.module.ts
-
-```
-import { Module, forwardRef } from '@nestjs/common';
-import { UsersService } from './users.service';
-import { UsersController } from './users.controller';
-import { TelegramModule } from '../telegram/telegram.module';
-import { PrismaModule } from '../prisma/prisma.module';
-
-@Module({
-  imports: [forwardRef(() => TelegramModule)],
-  providers: [UsersService],
-  controllers: [UsersController],
-  exports: [UsersService],
-})
-export class UsersModule {}
-
-```
-
-# FILE: apps/backend/src/users/users.service.spec.ts
-
-```
-import { Test } from '@nestjs/testing';
-import { UsersService } from './users.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { TelegramService } from '../telegram/telegram.service';
-
-describe('UsersService', () => {
-  it('should be defined', async () => {
-    const module = await Test.createTestingModule({
-      providers: [
-        UsersService,
-        { provide: PrismaService, useValue: { user: { findMany: jest.fn() } } },
-        { provide: TelegramService, useValue: { sendMessage: jest.fn() } },
-      ],
-    }).compile();
-    expect(module.get(UsersService)).toBeDefined();
-  });
-});
-
-```
-
-# FILE: apps/backend/src/users/users.service.ts
-
-```
-import { Injectable, Inject, forwardRef } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import * as bcrypt from 'bcrypt';
-import { TelegramService } from '../telegram/telegram.service';
-import { Prisma, User } from '@prisma/client';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-
-@Injectable()
-export class UsersService {
-  constructor(
-    private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => TelegramService))
-    private telegramService: TelegramService,
-  ) {}
-
-  async findByEmail(email: string): Promise<User | null> {
-    if (!email) return null;
-    return this.prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
-    });
-  }
-
-  async findByEmailWithCity(email: string) {
-    if (!email) return null;
-    return this.prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
-      include: { city: true },
-    });
-  }
-
-  async findById(id: string): Promise<User | null> {
-    return this.prisma.user.findUnique({
-      where: { id },
-    });
-  }
-
-  async getAllUsers() {
-    return this.prisma.user.findMany({
-      include: {
-        city: true,
-      },
-    });
-  }
-
-  async create(data: Prisma.UserCreateInput): Promise<User> {
-    return this.prisma.user.create({
-      data,
-    });
-  }
-
-  async createUser(data: CreateUserDto) {
-    const hashedPassword = await bcrypt.hash(data.password, 10);
-    const user = await this.prisma.user.create({
-      data: {
-        name: data.fullName,
-        email: data.email,
-        phone: data.phone,
-        password: hashedPassword,
-        role: data.role,
-        cityId: data.cityId || null,
-        telegramId: data.telegramId || null,
-        car: data.car || null,
-      },
-    });
-
-    if (data.password) {
-      const chatId = user.telegramChatId || null;
-
-      if (chatId) {
-        await this.telegramService.sendWelcome(
-          chatId,
-          data.fullName,
-          data.email,
-          data.password,
-        );
-      }
-    }
-
-    return user;
-  }
-
-  async updateUser(id: string, data: UpdateUserDto) {
-    const updateData: Prisma.UserUpdateInput = {
-      name: data.fullName,
-      email: data.email,
-      phone: data.phone,
-      role: data.role,
-      city: data.cityId
-        ? { connect: { id: data.cityId } }
-        : { disconnect: true },
-      telegramId: data.telegramId || null,
-      car: data.car || null,
-    };
-
-    if (data.password) {
-      updateData.password = await bcrypt.hash(data.password, 10);
-    }
-
-    return this.prisma.user.update({ where: { id }, data: updateData });
-  }
-
-  async deleteUser(id: string) {
-    return this.prisma.user.delete({ where: { id } });
-  }
-
-  async findAll() {
-    return this.prisma.user.findMany();
-  }
-
-  async updateTelegramChatId(username: string, chatId: string) {
-    return this.prisma.user.updateMany({
-      where: {
-        telegramId: {
-          equals: username,
-          mode: 'insensitive',
-        },
-      },
-      data: { telegramChatId: chatId },
-    });
-  }
-}
-
-```
-
-# FILE: apps/backend/test/app.e2e-spec.ts
-
-```
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
-import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
-
-describe('AppController (e2e)', () => {
-  let app: INestApplication<App>;
-
-  beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
-  });
-
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
-  });
-
-  afterEach(async () => {
-    await app.close();
-  });
-});
-
-```
-
-# FILE: apps/backend/test/auth.e2e-spec.ts
-
-```
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { ValidationPipe } from '@nestjs/common';
-
-describe('Auth API (contract)', () => {
-  let app: INestApplication;
-
-  beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-    app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-    await app.init();
-  });
-
-  afterAll(async () => await app.close());
-
-  describe('POST /auth/login', () => {
-    it('повертає токен при правильних даних', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({ email: 'admin@crm.com', password: 'admin123' })
-        .expect(200);
-
-      expect(res.body).toHaveProperty('access_token');
-      expect(typeof res.body.access_token).toBe('string');
-      expect(res.body.access_token.length).toBeGreaterThan(10);
-    });
-
-    it('повертає 401 при невірному паролі', async () => {
-      await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({ email: 'admin@crm.com', password: 'wrongpassword' })
-        .expect(401);
-    });
-
-    it('повертає 401 при невірному email', async () => {
-      await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({ email: 'nobody@crm.com', password: 'admin123' })
-        .expect(401);
-    });
-
-    it('повертає 400 без email', async () => {
-      await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({ password: 'admin123' })
-        .expect(400);
-    });
-
-    it('структура відповіді відповідає контракту', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({ email: 'admin@crm.com', password: 'admin123' })
-        .expect(200);
-
-      expect(res.body).toMatchObject({
-        access_token: expect.any(String),
-      });
-    });
-  });
-});
-
-```
-
-# FILE: apps/backend/test/dashboard.e2e-spec.ts
-
-```
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
-import { AppModule } from '../src/app.module';
-
-describe('Dashboard API (contract)', () => {
-  let app: INestApplication;
-  let token: string;
-
-  beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-    app = moduleFixture.createNestApplication();
-    await app.init();
-
-    const loginRes = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ email: 'admin@crm.com', password: 'admin123' });
-    token = loginRes.body.access_token;
-  });
-
-  afterAll(async () => await app.close());
-
-  describe('GET /dashboard/summary', () => {
-    it('повертає summary з токеном', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/dashboard/summary')
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200);
-
-      expect(res.body).toHaveProperty('todayEvents');
-      expect(res.body).toHaveProperty('upcomingEvents');
-      expect(res.body).toHaveProperty('funnel');
-      expect(res.body).toHaveProperty('monthlyKpi');
-      expect(res.body).toHaveProperty('staleSchools');
-      expect(res.body).toHaveProperty('activityFeed');
-    });
-
-    it('повертає 401 без токена', async () => {
-      await request(app.getHttpServer()).get('/dashboard/summary').expect(401);
-    });
-
-    it('funnel містить всі етапи пайплайну', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/dashboard/summary')
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200);
-
-      const stages = [
-        'BASE',
-        'FIRST_CONTACT',
-        'DATE_CONFIRMED',
-        'PREPARATION',
-        'IN_PROGRESS',
-        'DONE',
-        'REPORT',
-        'RE_SALE',
-      ];
-      for (const stage of stages) {
-        expect(res.body.funnel).toHaveProperty(stage);
-      }
-    });
-
-    it('monthlyKpi має числові поля', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/dashboard/summary')
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200);
-
-      const kpi = res.body.monthlyKpi;
-      expect(typeof kpi.revenue).toBe('number');
-      expect(typeof kpi.profit).toBe('number');
-      expect(typeof kpi.children).toBe('number');
-      expect(typeof kpi.count).toBe('number');
-    });
-
-    it('фільтр по cityId повертає коректний результат', async () => {
-      const citiesRes = await request(app.getHttpServer())
-        .get('/cities')
-        .set('Authorization', `Bearer ${token}`);
-
-      const cityId = citiesRes.body[0]?.id;
-      if (!cityId) return;
-
-      const res = await request(app.getHttpServer())
-        .get(`/dashboard/summary?cityId=${cityId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200);
-
-      expect(res.body).toHaveProperty('funnel');
-      expect(res.body).toHaveProperty('todayEvents');
-    });
-
-    it('todayEvents і upcomingEvents — масиви', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/dashboard/summary')
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200);
-
-      expect(Array.isArray(res.body.todayEvents)).toBe(true);
-      expect(Array.isArray(res.body.upcomingEvents)).toBe(true);
-      expect(Array.isArray(res.body.staleSchools)).toBe(true);
-      expect(Array.isArray(res.body.activityFeed)).toBe(true);
-    });
-  });
-});
-
-```
-
-# FILE: apps/backend/test/events.e2e-spec.ts
-
-```
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
-import { AppModule } from '../src/app.module';
-
-describe('Events API (contract)', () => {
-  let app: INestApplication;
-  let token: string;
-  let createdEventId: string;
-  let schoolId: string;
-  let cityId: string;
-
-  beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-    app = moduleFixture.createNestApplication();
-    await app.init();
-
-    const loginRes = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ email: 'admin@crm.com', password: 'admin123' });
-    token = loginRes.body.access_token;
-
-    const citiesRes = await request(app.getHttpServer())
-      .get('/cities')
-      .set('Authorization', `Bearer ${token}`);
-    cityId = citiesRes.body[0]?.id;
-
-    if (cityId) {
-      const schoolsRes = await request(app.getHttpServer())
-        .get('/schools')
-        .set('Authorization', `Bearer ${token}`);
-      schoolId = schoolsRes.body[0]?.id;
-    }
-  });
-
-  afterAll(async () => {
-    if (createdEventId) {
-      await request(app.getHttpServer())
-        .delete(`/events/${createdEventId}`)
-        .set('Authorization', `Bearer ${token}`);
-    }
-    await app.close();
-  });
-
-  describe('GET /events', () => {
-    it('повертає список подій з токеном', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/events')
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('повертає 401 без токена', async () => {
-      await request(app.getHttpServer()).get('/events').expect(401);
-    });
-
-    it('кожна подія має обовязкові поля', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/events')
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200);
-
-      if (res.body.length > 0) {
-        const event = res.body[0];
-        expect(event).toHaveProperty('id');
-        expect(event).toHaveProperty('project');
-        expect(event).toHaveProperty('date');
-        expect(event).toHaveProperty('status');
-      }
-    });
-  });
-
-  describe('POST /events', () => {
-    it('створює нову подію', async () => {
-      if (!schoolId || !cityId) return;
-
-      const res = await request(app.getHttpServer())
-        .post('/events')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
-          project: 'Тестова подія E2E',
-          date: '2027-01-15',
-          time: '10:00',
-          schoolId,
-          cityId,
-          childrenPlanned: 100,
-          price: 5000,
-          address: 'вул. Тестова 1',
-          contactPerson: 'Тест',
-          contactPhone: '0671234567',
-        })
-        .expect(201);
-
-      expect(res.body).toHaveProperty('id');
-      expect(res.body.project).toBe('Тестова подія E2E');
-      expect(res.body.status).toBe('BASE');
-      createdEventId = res.body.id;
-    });
-
-    it('повертає 401 без токена', async () => {
-      await request(app.getHttpServer())
-        .post('/events')
-        .send({ project: 'Test' })
-        .expect(401);
-    });
-  });
-
-  describe('GET /events/:id', () => {
-    it('повертає подію по id', async () => {
-      if (!createdEventId) return;
-
-      const res = await request(app.getHttpServer())
-        .get(`/events/${createdEventId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200);
-
-      expect(res.body.id).toBe(createdEventId);
-    });
-
-    it('повертає 404 для неіснуючої події', async () => {
-      await request(app.getHttpServer())
-        .get('/events/nonexistent-id-12345')
-        .set('Authorization', `Bearer ${token}`)
-        .expect(404);
-    });
-  });
-
-  describe('PATCH /events/:id/status', () => {
-    it('змінює статус події', async () => {
-      if (!createdEventId) return;
-
-      const res = await request(app.getHttpServer())
-        .patch(`/events/${createdEventId}/status`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
-          status: 'FIRST_CONTACT',
-          actionName: 'Знайомство',
-          comment: 'Тестовий коментар',
-        })
-        .expect(200);
-
-      expect(res.body.status).toBe('FIRST_CONTACT');
-      expect(res.body.history).toBeDefined();
-      expect(res.body.history.length).toBeGreaterThan(0);
-    });
-  });
-
-  describe('GET /events/school/:schoolId', () => {
-    it('повертає події школи', async () => {
-      if (!schoolId) return;
-
-      const res = await request(app.getHttpServer())
-        .get(`/events/school/${schoolId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200);
-
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('minimal=true повертає менше полів', async () => {
-      if (!schoolId) return;
-
-      const fullRes = await request(app.getHttpServer())
-        .get(`/events/school/${schoolId}`)
-        .set('Authorization', `Bearer ${token}`);
-
-      const minRes = await request(app.getHttpServer())
-        .get(`/events/school/${schoolId}?minimal=true`)
-        .set('Authorization', `Bearer ${token}`);
-
-      if (fullRes.body.length > 0 && minRes.body.length > 0) {
-        expect(minRes.body[0]).not.toHaveProperty('history');
-        expect(minRes.body[0]).not.toHaveProperty('preparation');
-      }
-    });
-  });
-
-  describe('DELETE /events/:id', () => {
-    it('видаляє подію', async () => {
-      if (!schoolId || !cityId) return;
-
-      const createRes = await request(app.getHttpServer())
-        .post('/events')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
-          project: 'Подія для видалення',
-          date: '2027-02-01',
-          time: '11:00',
-          schoolId,
-          cityId,
-          childrenPlanned: 50,
-          price: 2000,
-          address: 'вул. Тест 2',
-          contactPerson: 'Тест',
-          contactPhone: '0671234568',
-        });
-
-      const deleteId = createRes.body.id;
-      if (!deleteId) return;
-
-      await request(app.getHttpServer())
-        .delete(`/events/${deleteId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200);
-
-      await request(app.getHttpServer())
-        .get(`/events/${deleteId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .expect(404);
-    });
-  });
-});
-
-```
-
-# FILE: apps/backend/test/jest-e2e.json
-
-```
-{
-  "moduleFileExtensions": ["js", "json", "ts"],
-  "rootDir": ".",
-  "testEnvironment": "node",
-  "testRegex": ".e2e-spec.ts$",
-  "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
-  },
-  "testTimeout": 30000,
-  "moduleNameMapper": {
-    "^src/(.*)$": "<rootDir>/../src/$1"
-  }
-}
-
-```
-
-# FILE: apps/backend/test/schools.e2e-spec.ts
-
-```
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
-import { AppModule } from '../src/app.module';
-
-describe('Schools API (contract)', () => {
-  let app: INestApplication;
-  let token: string;
-  let createdSchoolId: string;
-  let cityId: string;
-
-  beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-    app = moduleFixture.createNestApplication();
-    await app.init();
-
-    const loginRes = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ email: 'admin@crm.com', password: 'admin123' });
-    token = loginRes.body.access_token;
-
-    const citiesRes = await request(app.getHttpServer())
-      .get('/cities')
-      .set('Authorization', `Bearer ${token}`);
-    cityId = citiesRes.body[0]?.id;
-  });
-
-  afterAll(async () => {
-    if (createdSchoolId) {
-      await request(app.getHttpServer())
-        .delete(`/schools/${createdSchoolId}`)
-        .set('Authorization', `Bearer ${token}`);
-    }
-    await app.close();
-  });
-
-  describe('GET /schools', () => {
-    it('повертає список шкіл', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/schools')
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('minimal=true — немає include полів', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/schools?minimal=true')
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('повертає 401 без токена', async () => {
-      await request(app.getHttpServer()).get('/schools').expect(401);
-    });
-
-    it('кожна школа має обовязкові поля', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/schools')
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200);
-
-      if (res.body.length > 0) {
-        const school = res.body[0];
-        expect(school).toHaveProperty('id');
-        expect(school).toHaveProperty('name');
-        expect(school).toHaveProperty('type');
-        expect(school).toHaveProperty('cityId');
-      }
-    });
-  });
-
-  describe('POST /schools', () => {
-    it('створює нову школу', async () => {
-      if (!cityId) return;
-
-      const res = await request(app.getHttpServer())
-        .post('/schools')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
-          name: 'E2E Тестова школа',
-          type: 'Школа',
-          cityId,
-          director: 'Тест Тестович',
-          phone: '0671234567',
-        })
-        .expect(201);
-
-      expect(res.body).toHaveProperty('id');
-      expect(res.body.name).toBe('E2E Тестова школа');
-      createdSchoolId = res.body.id;
-    });
-
-    it('повертає 401 без токена', async () => {
-      await request(app.getHttpServer())
-        .post('/schools')
-        .send({ name: 'Test', type: 'Школа', cityId: 'city-1' })
-        .expect(401);
-    });
-  });
-
-  describe('GET /schools/:id', () => {
-    it('повертає школу по id', async () => {
-      if (!createdSchoolId) return;
-
-      const res = await request(app.getHttpServer())
-        .get(`/schools/${createdSchoolId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200);
-
-      expect(res.body.id).toBe(createdSchoolId);
-      expect(res.body).toHaveProperty('city');
-    });
-
-    it('повертає 404 для неіснуючої школи', async () => {
-      await request(app.getHttpServer())
-        .get('/schools/nonexistent-id-99999')
-        .set('Authorization', `Bearer ${token}`)
-        .expect(404);
-    });
-  });
-
-  describe('PATCH /schools/:id', () => {
-    it('оновлює дані школи', async () => {
-      if (!createdSchoolId) return;
-
-      const res = await request(app.getHttpServer())
-        .patch(`/schools/${createdSchoolId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({ director: 'Новий Директор' })
-        .expect(200);
-
-      expect(res.body.director).toBe('Новий Директор');
-    });
-  });
-
-  describe('DELETE /schools/:id', () => {
-    it('видаляє школу разом з подіями', async () => {
-      if (!cityId) return;
-
-      const createRes = await request(app.getHttpServer())
-        .post('/schools')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ name: 'Школа для видалення E2E', type: 'Школа', cityId });
-
-      const deleteId = createRes.body.id;
-      if (!deleteId) return;
-
-      await request(app.getHttpServer())
-        .delete(`/schools/${deleteId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200);
-
-      await request(app.getHttpServer())
-        .get(`/schools/${deleteId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .expect(404);
-    });
-  });
-});
-
-```
-
-# FILE: apps/backend/tsconfig.build.json
-
-```
-{
-  "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
-}
-
-```
-
-# FILE: apps/backend/tsconfig.json
-
-```
-{
-  "compilerOptions": {
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
-    "types": ["jest", "node"],
-    "resolvePackageJsonExports": true,
-    "esModuleInterop": true,
-    "isolatedModules": true,
-    "declaration": true,
-    "removeComments": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "allowSyntheticDefaultImports": true,
-    "target": "ES2023",
-    "sourceMap": true,
-    "outDir": "./dist",
-    "baseUrl": "./",
-    "incremental": true,
-    "skipLibCheck": true,
-    "strictNullChecks": true,
-    "forceConsistentCasingInFileNames": true,
-    "noImplicitAny": false,
-    "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
-  }
-}
-
-```
-
-# FILE: apps/docker-compose.yml
-
-```
-services:
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    env_file:
-      - apps/backend/.env
-    depends_on:
-      - redis
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-
-volumes:
-  redis_data:
-```
-
-# FILE: apps/frontend/e2e/login.spec.ts
-
-```
-import { test, expect } from "@playwright/test";
-
-test.describe("Авторизація", () => {
-  test("успішний логін перенаправляє на /cities", async ({ page }) => {
-    await page.goto("/login");
-    await page.fill('input[type="email"]', "admin@crm.com");
-    await page.fill('input[type="password"]', "admin123");
-    await page.click('button[type="submit"]');
-    await expect(page).toHaveURL(/cities/, { timeout: 8000 });
-  });
-
-  test("невірний пароль — залишається на /login", async ({ page }) => {
-    await page.goto("/login");
-    await page.fill('input[type="email"]', "admin@crm.com");
-    await page.fill('input[type="password"]', "wrongpassword");
-    await page.click('button[type="submit"]');
-    await expect(page).toHaveURL(/login/);
-  });
-
-  test("невірний пароль — показує повідомлення про помилку", async ({
-    page,
-  }) => {
-    await page.goto("/login");
-    await page.fill('input[type="email"]', "admin@crm.com");
-    await page.fill('input[type="password"]', "wrongpassword");
-    await page.click('button[type="submit"]');
-    await expect(
-      page.locator("text=/невірний|помилка|неправильний/i"),
-    ).toBeVisible({ timeout: 5000 });
-  });
-
-  test("порожній email — кнопка не відправляє форму", async ({ page }) => {
-    await page.goto("/login");
-    await page.fill('input[type="password"]', "admin123");
-    await page.click('button[type="submit"]');
-    await expect(page).toHaveURL(/login/);
-  });
-
-  test("після логіну встановлюється httpOnly cookie access_token", async ({
-    page,
-  }) => {
-    await page.goto("/login");
-    await page.fill('input[type="email"]', "admin@crm.com");
-    await page.fill('input[type="password"]', "admin123");
-    await page.click('button[type="submit"]');
-    await page.waitForURL(/cities/);
-    const cookies = await page.context().cookies();
-    const authCookie = cookies.find((c) => c.name === "access_token");
-    expect(authCookie).toBeTruthy();
-    expect(authCookie?.httpOnly).toBe(true);
-  });
-
-  test("після логауту cookie access_token видаляється", async ({ page }) => {
-    await page.goto("/login");
-    await page.fill('input[type="email"]', "admin@crm.com");
-    await page.fill('input[type="password"]', "admin123");
-    await page.click('button[type="submit"]');
-    await page.waitForURL(/cities/);
-
-    const logoutBtn = page.locator("button", { hasText: /вийти|logout/i });
-    if (await logoutBtn.isVisible()) {
-      await logoutBtn.click();
-      const cookies = await page.context().cookies();
-      const authCookie = cookies.find((c) => c.name === "access_token");
-      expect(authCookie).toBeFalsy();
-    }
-  });
-
- test("захищений маршрут без cookie перенаправляє на /login", async ({
-    page,
-  }) => {
-    await page.goto("/schools");
-    await page.context().clearCookies();
-    await page.goto("/schools");
-    await expect(page).toHaveURL(/login/);
-  });
-});
-
-```
-
-# FILE: apps/frontend/e2e/schools.spec.ts
-
-```
-import { test, expect, Page } from "@playwright/test";
-
-async function login(page: Page) {
-  await page.goto("/login");
-  await page.fill('input[type="email"]', "admin@crm.com");
-  await page.fill('input[type="password"]', "admin123");
-  await page.click('button[type="submit"]');
-  await page.waitForURL(/cities/, { timeout: 8000 });
-}
-
-test.describe("Сторінка шкіл", () => {
-  test.beforeEach(async ({ page }) => {
-    await login(page);
-    await page.goto("/schools");
-    await page.waitForLoadState("networkidle");
-  });
-
-  test("відображає заголовок Школи", async ({ page }) => {
-    await expect(page.locator("h1")).toContainText("Школи");
-  });
-
-  test("відображає список шкіл", async ({ page }) => {
-    const rows = page.locator("table tbody tr, .school-row-enter");
-    await expect(rows.first()).toBeVisible({ timeout: 8000 });
-  });
-
-  test("пошук фільтрує школи", async ({ page }) => {
-    const searchInput = page.locator('input[placeholder*="Пошук"]');
-    await expect(searchInput).toBeVisible();
-
-    const firstSchool = page.locator("table tbody tr").first();
-    const schoolName = await firstSchool.locator("td").first().textContent();
-    const searchTerm = schoolName?.slice(0, 5) ?? "Школа";
-
-    await searchInput.fill(searchTerm);
-    await page.waitForTimeout(300);
-
-    const results = page.locator("table tbody tr");
-    const count = await results.count();
-    expect(count).toBeGreaterThan(0);
-  });
-
-  test("очищення пошуку повертає всі результати", async ({ page }) => {
-    const searchInput = page.locator('input[placeholder*="Пошук"]');
-    await searchInput.fill("Школа №1");
-    await page.waitForTimeout(300);
-    const filtered = await page.locator("table tbody tr").count();
-
-    await searchInput.fill("");
-    await page.waitForTimeout(300);
-    const all = await page.locator("table tbody tr").count();
-
-    expect(all).toBeGreaterThanOrEqual(filtered);
-  });
-
-  test("фільтр по статусу працює", async ({ page }) => {
-    const newFilter = page.locator("button", { hasText: "Нові" });
-    if (await newFilter.isVisible()) {
-      await newFilter.click();
-      await page.waitForTimeout(200);
-      const counter = page.locator("text=/шкіл/i");
-      await expect(counter).toBeVisible();
-    }
-  });
-
-  test("клік на школу переходить на профіль", async ({ page }) => {
-    const firstRow = page.locator("table tbody tr").first();
-    await firstRow.click();
-    await expect(page).toHaveURL(/\/schools\/.+/, { timeout: 5000 });
-  });
-
-  test("відображає StatsBar з лічильниками", async ({ page }) => {
-    await expect(page.locator("text=Нові")).toBeVisible();
-    await expect(page.locator("text=Заплановані")).toBeVisible();
-    await expect(page.locator("text=В роботі")).toBeVisible();
-  });
-});
-
-test.describe("Додавання школи", () => {
-  test.beforeEach(async ({ page }) => {
-    await login(page);
-    await page.goto("/schools");
-    await page.waitForLoadState("networkidle");
-  });
-
-  test("кнопка Додати відкриває модалку", async ({ page }) => {
-    const addBtn = page.locator("button", { hasText: /\+ Додати/i });
-    await expect(addBtn).toBeVisible();
-    await addBtn.click();
-    await expect(page.locator("text=Нова школа")).toBeVisible();
-  });
-
-  test("модалка закривається по кнопці Скасувати", async ({ page }) => {
-    await page.locator("button", { hasText: /\+ Додати/i }).click();
-    await expect(page.locator("text=Нова школа")).toBeVisible();
-    await page.locator("button", { hasText: "Скасувати" }).click();
-    await expect(page.locator("text=Нова школа")).not.toBeVisible();
-  });
-
-  test("форма не відправляється без назви школи", async ({ page }) => {
-    await page.locator("button", { hasText: /\+ Додати/i }).click();
-    await page.locator("button", { hasText: "Створити" }).click();
-    await expect(page.locator("text=Нова школа")).toBeVisible();
-  });
-});
-
-```
-
-# FILE: apps/frontend/eslint.config.js
-
-```
-
-
-import js from '@eslint/js'
-import globals from 'globals'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
-import tseslint from 'typescript-eslint'
-import { defineConfig, globalIgnores } from 'eslint/config'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      js.configs.recommended,
-      tseslint.configs.recommended,
-      reactHooks.configs.flat.recommended,
-      reactRefresh.configs.vite,
+const mockParser = {
+  parseSchoolData: jest.fn(),
+  getAllSchoolsForCity: jest.fn(),
+};
+
+const mockEventsService = { remove: jest.fn() };
+
+const mockCache = {
+  get: jest.fn().mockResolvedValue(null),
+  set: jest.fn().mockResolvedValue(undefined),
+  del: jest.fn().mockResolvedValue(undefined),
+};
+
+const makeModule = async () => {
+  const module: TestingModule = await Test.createTestingModule({
+    providers: [
+      SchoolsService,
+      { provide: PrismaService, useValue: mockPrisma },
+      { provide: ParserService, useValue: mockParser },
+      { provide: EventsService, useValue: mockEventsService },
+      { provide: CACHE_MANAGER, useValue: mockCache },
     ],
-    languageOptions: {
-      globals: globals.browser,
-    },
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'error',
-    },
-  },
-])
+  }).compile();
 
-
-
-```
-
-# FILE: apps/frontend/index.html
-
-```
-
-
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="description" content="CRM система для управління подіями, школами та фінансами">
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CRM</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
-
-
-```
-
-# FILE: apps/frontend/lighthouserc.cjs
-
-```
-module.exports = {
-  ci: {
-    collect: {
-      url: [
-        "https://crm-frontend-cfwr3tsoi-shmaltsels-projects.vercel.app/cities",
-        "https://crm-frontend-cfwr3tsoi-shmaltsels-projects.vercel.app/schools",
-        "https://crm-frontend-cfwr3tsoi-shmaltsels-projects.vercel.app/events",
-        "https://crm-frontend-cfwr3tsoi-shmaltsels-projects.vercel.app/finance",
-      ],
-      numberOfRuns: 3,
-      settings: {
-        preset: "desktop",
-        formFactor: "desktop",
-        throttlingMethod: "devtools",     
-        screenEmulation: { disabled: true },
-        chromeFlags: "--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage",
-      },
-      skipAudits: ["redirects-http"],
-    },
-
-    upload: {
-      target: "temporary-public-storage",
-    },
-
-    assert: {
-      preset: "lighthouse:recommended",
-      assertions: {
-        "categories:performance": ["error", { minScore: 0.70 }],
-        "categories:accessibility": ["warn", { minScore: 0.85 }],
-        "categories:seo": ["warn", { minScore: 0.80 }],
-        "largest-contentful-paint": ["warn", { maxNumericValue: 3500 }],
-        "first-contentful-paint": ["warn", { maxNumericValue: 2500 }],
-        "cumulative-layout-shift": ["warn", { maxNumericValue: 0.25 }],
-        "total-blocking-time": ["warn", { maxNumericValue: 600 }],
-        "speed-index": ["warn", { maxNumericValue: 3500 }],
-      }
-    },
-
-    options: {
-      output: ["html", "json"],
-      onlyCategories: ["performance", "accessibility", "seo", "best-practices"],
-    }
-  }
+  return module.get<SchoolsService>(SchoolsService);
 };
-```
 
-# FILE: apps/frontend/package.json
+beforeEach(() => {
+  jest.clearAllMocks();
+});
 
-```
-{
-  "name": "frontend",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage",
-    "pretest:e2e": "playwright install --with-deps chromium",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
-  },
-  "dependencies": {
-    "@hookform/resolvers": "^5.4.0",
-    "@tanstack/react-query": "^5.101.0",
-    "@tanstack/react-virtual": "^3.14.3",
-    "axios": "^1.18.0",
-    "framer-motion": "^12.41.0",
-    "jwt-decode": "^4.0.0",
-    "lucide-react": "^1.20.0",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6",
-    "react-hook-form": "^7.79.0",
-    "react-router-dom": "^7.18.0",
-    "recharts": "^3.8.1",
-    "zod": "^4.4.3",
-    "zustand": "^5.0.14"
-  },
-  "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "@lhci/cli": "^0.15.1",
-    "@playwright/test": "^1.61.1",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^14.6.1",
-    "@types/node": "^24.12.3",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
-    "@vitest/ui": "^4.1.9",
-    "autoprefixer": "^10.5.0",
-    "eslint": "^10.3.0",
-    "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "globals": "^17.6.0",
-    "husky": "^9.1.7",
-    "jsdom": "^29.1.1",
-    "msw": "^2.14.6",
-    "postcss": "^8.5.15",
-    "tailwindcss": "^3.4.19",
-    "typescript": "~6.0.2",
-    "typescript-eslint": "^8.59.2",
-    "vite": "^8.0.12",
-    "vite-plugin-image-optimizer": "^2.0.3",
-    "vitest": "^4.1.9"
-  }
-}
+describe('SchoolsService — create', () => {
+  it('створює школу у БД та повертає її', async () => {
+    const newSchool = {
+      id: 'school-1',
+      name: 'Школа №1',
+      type: 'Школа',
+      cityId: 'city-1',
+    };
+    mockPrisma.school.create.mockResolvedValueOnce(newSchool);
+    mockParser.parseSchoolData.mockResolvedValue(null);
+
+    const service = await makeModule();
+    const result = await service.create({
+      name: 'Школа №1',
+      type: 'Школа',
+      cityId: 'city-1',
+    });
+
+    expect(mockPrisma.school.create).toHaveBeenCalledWith({
+      data: { name: 'Школа №1', type: 'Школа', cityId: 'city-1' },
+    });
+    expect(result.id).toBe('school-1');
+  });
+
+  it('sourceUrl не потрапляє до БД, але передається в parser', async () => {
+    const newSchool = {
+      id: 'school-1',
+      name: 'Школа №1',
+      type: 'Школа',
+      cityId: 'city-1',
+    };
+    mockPrisma.school.create.mockResolvedValueOnce(newSchool);
+    mockParser.parseSchoolData.mockResolvedValue({
+      address: 'вул.1',
+      director: 'Тест',
+      childrenCount: 100,
+    });
+    mockPrisma.school.update.mockResolvedValueOnce(newSchool);
+
+    const service = await makeModule();
+    await service.create({
+      name: 'Школа №1',
+      type: 'Школа',
+      cityId: 'city-1',
+      sourceUrl: 'https://example.com/123',
+    });
+
+    const createCall = mockPrisma.school.create.mock.calls[0][0].data;
+    expect(createCall.sourceUrl).toBeUndefined();
+
+    // Чекаємо на асинхронний парсинг
+    await new Promise((r) => setTimeout(r, 10));
+    expect(mockParser.parseSchoolData).toHaveBeenCalledWith(
+      'Школа №1',
+      'https://example.com/123',
+      'Школа',
+    );
+  });
+
+  it('не оновлює БД якщо parser повертає null', async () => {
+    const newSchool = {
+      id: 'school-1',
+      name: 'Школа №1',
+      type: 'Школа',
+      cityId: 'city-1',
+    };
+    mockPrisma.school.create.mockResolvedValueOnce(newSchool);
+    mockParser.parseSchoolData.mockResolvedValue(null);
+
+    const service = await makeModule();
+    await service.create({ name: 'Школа №1', type: 'Школа', cityId: 'city-1' });
+
+    await new Promise((r) => setTimeout(r, 10));
+    expect(mockPrisma.school.update).not.toHaveBeenCalled();
+  });
+
+  it('не перезаписує вже заповнені поля результатом парсингу', async () => {
+    const newSchool = {
+      id: 'school-1',
+      name: 'Школа №1',
+      type: 'Школа',
+      cityId: 'city-1',
+      address: 'вже вказана адреса',
+      director: 'вже вказаний директор',
+      childrenCount: 999,
+    };
+    mockPrisma.school.create.mockResolvedValueOnce(newSchool);
+    mockParser.parseSchoolData.mockResolvedValue({
+      address: 'Парсер-адреса',
+      director: 'Парсер-директор',
+      childrenCount: 100,
+    });
+
+    const service = await makeModule();
+    await service.create({
+      name: 'Школа №1',
+      type: 'Школа',
+      cityId: 'city-1',
+      address: 'вже вказана адреса',
+      director: 'вже вказаний директор',
+      childrenCount: 999,
+    });
+
+    await new Promise((r) => setTimeout(r, 10));
+    // update має не викликатись, бо всі поля вже заповнені
+    expect(mockPrisma.school.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('SchoolsService — findOne', () => {
+  it('повертає школу якщо знайдено', async () => {
+    const school = {
+      id: 'school-1',
+      name: 'Школа №1',
+      city: { name: 'Львів' },
+    };
+    mockPrisma.school.findUnique.mockResolvedValueOnce(school);
+
+    const service = await makeModule();
+    const result = await service.findOne('school-1');
+
+    expect(result).toMatchObject({ id: 'school-1' });
+  });
+
+  it('кешує результат при першому запиті', async () => {
+    const school = { id: 'school-1', name: 'Школа №1', city: {} };
+    mockPrisma.school.findUnique.mockResolvedValueOnce(school);
+
+    const service = await makeModule();
+    await service.findOne('school-1');
+
+    expect(mockCache.set).toHaveBeenCalledWith(
+      'school:school-1',
+      school,
+      15_000,
+    );
+  });
+
+  it('повертає кешований результат без запиту до БД', async () => {
+    const cached = { id: 'school-1', name: 'Кешована школа', city: {} };
+    mockCache.get.mockResolvedValueOnce(cached);
+
+    const service = await makeModule();
+    const result = await service.findOne('school-1');
+
+    expect(result).toBe(cached);
+    expect(mockPrisma.school.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('кидає AppException SCHOOL_NOT_FOUND якщо школи не існує', async () => {
+    mockPrisma.school.findUnique.mockResolvedValueOnce(null);
+
+    const service = await makeModule();
+    await expect(service.findOne('ghost')).rejects.toMatchObject({
+      message: 'SCHOOL_NOT_FOUND',
+      status: HttpStatus.NOT_FOUND,
+    });
+  });
+});
+
+describe('SchoolsService — update', () => {
+  it('оновлює школу та видаляє кеш', async () => {
+    const updated = { id: 'school-1', name: 'Нова назва' };
+    mockPrisma.school.update.mockResolvedValueOnce(updated);
+
+    const service = await makeModule();
+    const result = await service.update('school-1', {
+      name: 'Нова назва',
+    });
+
+    expect(mockPrisma.school.update).toHaveBeenCalledWith({
+      where: { id: 'school-1' },
+      data: { name: 'Нова назва' },
+    });
+    expect(mockCache.del).toHaveBeenCalledWith('school:school-1');
+    expect(result.name).toBe('Нова назва');
+  });
+
+  it('не передає системні поля (city, id, createdAt, updatedAt) у data', async () => {
+    mockPrisma.school.update.mockResolvedValueOnce({ id: 'school-1' });
+
+    const service = await makeModule();
+    await service.update('school-1', {
+      name: 'Тест',
+      city: { id: 'c-1', name: 'Львів' } as any,
+      createdAt: new Date() as any,
+      updatedAt: new Date() as any,
+    } as any);
+
+    const updateData = mockPrisma.school.update.mock.calls[0][0].data;
+    expect(updateData.city).toBeUndefined();
+    expect(updateData.createdAt).toBeUndefined();
+    expect(updateData.updatedAt).toBeUndefined();
+    expect(updateData.id).toBeUndefined();
+  });
+});
+
+describe('SchoolsService — remove', () => {
+  it('видаляє всі події школи перед видаленням самої школи', async () => {
+    mockPrisma.event.findMany.mockResolvedValueOnce([
+      { id: 'ev-1' },
+      { id: 'ev-2' },
+    ]);
+    mockEventsService.remove.mockResolvedValue({});
+    mockPrisma.school.delete.mockResolvedValueOnce({ id: 'school-1' });
+
+    const service = await makeModule();
+    await service.remove('school-1');
+
+    expect(mockEventsService.remove).toHaveBeenCalledTimes(2);
+    expect(mockEventsService.remove).toHaveBeenCalledWith('ev-1');
+    expect(mockEventsService.remove).toHaveBeenCalledWith('ev-2');
+    expect(mockPrisma.school.delete).toHaveBeenCalledWith({
+      where: { id: 'school-1' },
+    });
+  });
+
+  it('видаляє школу навіть без подій', async () => {
+    mockPrisma.event.findMany.mockResolvedValueOnce([]);
+    mockPrisma.school.delete.mockResolvedValueOnce({ id: 'school-1' });
+
+    const service = await makeModule();
+    await service.remove('school-1');
+
+    expect(mockEventsService.remove).not.toHaveBeenCalled();
+    expect(mockPrisma.school.delete).toHaveBeenCalled();
+  });
+
+  it('видаляє кеш після видалення школи', async () => {
+    mockPrisma.event.findMany.mockResolvedValueOnce([]);
+    mockPrisma.school.delete.mockResolvedValueOnce({ id: 'school-1' });
+
+    const service = await makeModule();
+    await service.remove('school-1');
+
+    expect(mockCache.del).toHaveBeenCalledWith('school:school-1');
+  });
+});
+
+describe('SchoolsService — searchContacts', () => {
+  it('повертає порожній масив якщо query порожній', async () => {
+    const service = await makeModule();
+    const result = await service.searchContacts('');
+    expect(result).toEqual([]);
+    expect(mockPrisma.schoolContact.findMany).not.toHaveBeenCalled();
+  });
+
+  it('знаходить контакти за номером школи', async () => {
+    mockPrisma.schoolContact.findMany.mockResolvedValueOnce([
+      {
+        schoolNumber: '42',
+        contactName: 'Директор Тест',
+        phone: '',
+        role: 'Директор',
+        city: 'Львів',
+      },
+    ]);
+
+    const service = await makeModule();
+    const results = await service.searchContacts('42');
+
+    expect(results).toHaveLength(1);
+    expect(results[0].schoolNumber).toBe('42');
+  });
+
+  it("знаходить контакти за ім'ям (часткове співпадіння)", async () => {
+    mockPrisma.schoolContact.findMany.mockResolvedValueOnce([
+      {
+        schoolNumber: '1',
+        contactName: 'Марія Іваненко',
+        phone: '',
+        role: 'Директор',
+        city: 'Львів',
+      },
+      {
+        schoolNumber: '2',
+        contactName: 'Петро Коваль',
+        phone: '',
+        role: 'Директор',
+        city: 'Львів',
+      },
+    ]);
+
+    const service = await makeModule();
+    const results = await service.searchContacts('марія');
+
+    expect(results).toHaveLength(1);
+    expect(results[0].contactName).toBe('Марія Іваненко');
+  });
+
+  it('повертає не більше 10 результатів', async () => {
+    const contacts = Array.from({ length: 20 }, (_, i) => ({
+      schoolNumber: String(i + 1),
+      contactName: `Тест ${i + 1}`,
+      phone: '',
+      role: 'Директор',
+      city: 'Київ',
+    }));
+    mockPrisma.schoolContact.findMany.mockResolvedValueOnce(contacts);
+
+    const service = await makeModule();
+    // Пошук за словом, що є у всіх
+    const results = await service.searchContacts('Тест');
+
+    expect(results.length).toBeLessThanOrEqual(10);
+  });
+});
 
 ```
 

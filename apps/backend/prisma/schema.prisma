@@ -109,8 +109,8 @@ model Event {
   status          EventStatus       @default(BASE)
   childrenPlanned Int?
   childrenActual  Int?
-  price           Float?
-  received        Float?
+  price           Decimal? @db.Decimal(12, 2)
+  received        Decimal? @db.Decimal(12, 2)
   paymentMethod   String?
   address         String?
   contactPerson   String?
@@ -152,9 +152,9 @@ model EventReport {
   classesCount      Int           @default(0)
   privilegedCount   Int           @default(0)
   showingsCount     Int           @default(0)
-  totalSum          Float         @default(0)
-  schoolSum         Float         @default(0)
-  remainderSum      Float         @default(0)
+  totalSum          Decimal       @default(0) @db.Decimal(12, 2)
+  schoolSum         Decimal       @default(0) @db.Decimal(12, 2)
+  remainderSum      Decimal       @default(0) @db.Decimal(12, 2)
   event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
   photos            File[]
   expenseItems      ExpenseItem[]

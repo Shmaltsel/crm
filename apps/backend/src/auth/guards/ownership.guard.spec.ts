@@ -30,15 +30,14 @@ describe('OwnershipGuard', () => {
       crew: { findUnique: jest.fn() },
       eventHistory: { findUnique: jest.fn() },
     };
-    guard = new OwnershipGuard(
-      reflector as unknown as Reflector,
-      prisma as unknown as PrismaService,
-    );
+    guard = new OwnershipGuard(reflector as unknown as Reflector, prisma);
   });
 
   it('без metadata ownership -> true', async () => {
     reflector.getAllAndOverride.mockReturnValueOnce(undefined);
-    const ok = await guard.canActivate(createContext({ role: 'MANAGER', sub: 'm1' }));
+    const ok = await guard.canActivate(
+      createContext({ role: 'MANAGER', sub: 'm1' }),
+    );
     expect(ok).toBe(true);
   });
 
@@ -53,14 +52,18 @@ describe('OwnershipGuard', () => {
 
   it('без paramId -> true', async () => {
     reflector.getAllAndOverride.mockReturnValueOnce('school');
-    const ok = await guard.canActivate(createContext({ role: 'MANAGER', sub: 'm1' }));
+    const ok = await guard.canActivate(
+      createContext({ role: 'MANAGER', sub: 'm1' }),
+    );
     expect(ok).toBe(true);
   });
 
   it('HOST/DRIVER + resourceType != event -> Forbidden', async () => {
     reflector.getAllAndOverride.mockReturnValueOnce('school');
     await expect(
-      guard.canActivate(createContext({ role: 'HOST', sub: 'h1' }, { id: 's1' })),
+      guard.canActivate(
+        createContext({ role: 'HOST', sub: 'h1' }, { id: 's1' }),
+      ),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -68,7 +71,9 @@ describe('OwnershipGuard', () => {
     reflector.getAllAndOverride.mockReturnValueOnce('event');
     prisma.event.findUnique.mockResolvedValueOnce(null);
     await expect(
-      guard.canActivate(createContext({ role: 'HOST', sub: 'h1' }, { id: 'e1' })),
+      guard.canActivate(
+        createContext({ role: 'HOST', sub: 'h1' }, { id: 'e1' }),
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
@@ -78,7 +83,9 @@ describe('OwnershipGuard', () => {
       crew: { hostId: 'h2', driverId: 'd2' },
     });
     await expect(
-      guard.canActivate(createContext({ role: 'DRIVER', sub: 'd1' }, { id: 'e1' })),
+      guard.canActivate(
+        createContext({ role: 'DRIVER', sub: 'd1' }, { id: 'e1' }),
+      ),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -107,7 +114,9 @@ describe('OwnershipGuard', () => {
   it('роль поза MANAGER/HOST/DRIVER/SUPERADMIN -> Forbidden', async () => {
     reflector.getAllAndOverride.mockReturnValueOnce('event');
     await expect(
-      guard.canActivate(createContext({ role: 'ACCOUNTANT', sub: 'x1' }, { id: 'e1' })),
+      guard.canActivate(
+        createContext({ role: 'ACCOUNTANT', sub: 'x1' }, { id: 'e1' }),
+      ),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -115,7 +124,9 @@ describe('OwnershipGuard', () => {
     reflector.getAllAndOverride.mockReturnValueOnce('school');
     prisma.user.findUnique.mockResolvedValueOnce({ cityId: null });
     await expect(
-      guard.canActivate(createContext({ role: 'MANAGER', sub: 'm1' }, { id: 's1' })),
+      guard.canActivate(
+        createContext({ role: 'MANAGER', sub: 'm1' }, { id: 's1' }),
+      ),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -124,7 +135,9 @@ describe('OwnershipGuard', () => {
     prisma.user.findUnique.mockResolvedValueOnce({ cityId: 'city-1' });
     prisma.school.findUnique.mockResolvedValueOnce(null);
     await expect(
-      guard.canActivate(createContext({ role: 'MANAGER', sub: 'm1' }, { id: 's1' })),
+      guard.canActivate(
+        createContext({ role: 'MANAGER', sub: 'm1' }, { id: 's1' }),
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
@@ -143,7 +156,9 @@ describe('OwnershipGuard', () => {
     prisma.user.findUnique.mockResolvedValueOnce({ cityId: 'city-1' });
     prisma.school.findUnique.mockResolvedValueOnce({ cityId: 'city-9' });
     await expect(
-      guard.canActivate(createContext({ role: 'MANAGER', sub: 'm1' }, { id: 's1' })),
+      guard.canActivate(
+        createContext({ role: 'MANAGER', sub: 'm1' }, { id: 's1' }),
+      ),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -162,7 +177,9 @@ describe('OwnershipGuard', () => {
     prisma.user.findUnique.mockResolvedValueOnce({ cityId: 'city-1' });
     prisma.crew.findUnique.mockResolvedValueOnce({ cityId: 'city-2' });
     await expect(
-      guard.canActivate(createContext({ role: 'MANAGER', sub: 'm1' }, { id: 'c1' })),
+      guard.canActivate(
+        createContext({ role: 'MANAGER', sub: 'm1' }, { id: 'c1' }),
+      ),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -179,7 +196,9 @@ describe('OwnershipGuard', () => {
     reflector.getAllAndOverride.mockReturnValueOnce('city');
     prisma.user.findUnique.mockResolvedValueOnce({ cityId: 'city-1' });
     await expect(
-      guard.canActivate(createContext({ role: 'MANAGER', sub: 'm1' }, { id: 'city-2' })),
+      guard.canActivate(
+        createContext({ role: 'MANAGER', sub: 'm1' }, { id: 'city-2' }),
+      ),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -189,10 +208,7 @@ describe('OwnershipGuard', () => {
     prisma.user.findUnique.mockResolvedValueOnce({ cityId: 'city-1' });
     prisma.event.findUnique.mockResolvedValueOnce({ cityId: 'city-1' });
     const ok = await guard.canActivate(
-      createContext(
-        { role: 'MANAGER', sub: 'm1' },
-        { historyId: 'h-1' },
-      ),
+      createContext({ role: 'MANAGER', sub: 'm1' }, { historyId: 'h-1' }),
     );
     expect(ok).toBe(true);
     expect(prisma.event.findUnique).toHaveBeenCalledWith({

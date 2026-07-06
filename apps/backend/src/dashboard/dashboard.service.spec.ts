@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { DashboardService } from './dashboard.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheVersionService } from '../common/cache/cache-version.service';
 
 const mockCacheManager = {
   get: jest.fn().mockResolvedValue(undefined),
@@ -27,12 +28,18 @@ const mockPrisma = {
   $queryRaw: jest.fn(),
 };
 
+const mockCacheVersion = {
+  getVersion: jest.fn().mockResolvedValue(0),
+  bumpVersion: jest.fn().mockResolvedValue(undefined),
+};
+
 const makeService = async () => {
   const module: TestingModule = await Test.createTestingModule({
     providers: [
       DashboardService,
       { provide: PrismaService, useValue: mockPrisma },
       { provide: CACHE_MANAGER, useValue: mockCacheManager },
+      { provide: CacheVersionService, useValue: mockCacheVersion },
     ],
   }).compile();
   return module.get<DashboardService>(DashboardService);

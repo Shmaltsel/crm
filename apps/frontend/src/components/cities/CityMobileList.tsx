@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import type { City } from "../../types";
 
 const CITY_ICONS: Record<string, string> = {
   Львів: "🦁",
@@ -35,11 +36,17 @@ const ICON_COLORS = [
   "bg-sky-50",
 ];
 
+interface CityMobileListProps {
+  cities: City[];
+  selectedCity: City | null;
+  onSelectCity: (city: { id: string; name: string }) => void;
+}
+
 export default function CityMobileList({
   cities,
   selectedCity,
   onSelectCity,
-}: any) {
+}: CityMobileListProps) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"ACTIVE" | "ALL" | "ARCHIVED">(
     "ACTIVE",
@@ -48,7 +55,7 @@ export default function CityMobileList({
   const [tabKey, setTabKey] = useState(0);
 
   const filteredCities = useMemo(() => {
-    return cities.filter((c: any) => {
+    return cities.filter((c: City) => {
       const hasEvents = (c.plannedEvents || 0) + (c.completedEvents || 0) > 0;
       if (activeTab === "ACTIVE") return hasEvents;
       if (activeTab === "ARCHIVED") return !hasEvents;
@@ -115,7 +122,7 @@ export default function CityMobileList({
           key={tabKey}
           className="flex flex-col bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden"
         >
-          {filteredCities.map((city: any, index: number) => {
+          {filteredCities.map((city: City, index: number) => {
             const iconStyle = ICON_COLORS[index % ICON_COLORS.length];
             const totalEvents =
               (city.plannedEvents || 0) + (city.completedEvents || 0);

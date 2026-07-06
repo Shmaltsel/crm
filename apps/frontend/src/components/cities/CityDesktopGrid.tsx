@@ -1,5 +1,6 @@
 import { useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import type { City } from "../../types";
 import OptimizedImage from "../ui/OptimizedImage";
 
 const CITY_PHOTOS: Record<string, string> = {
@@ -76,7 +77,7 @@ function CityCard({
   isSelected,
   onSelect,
 }: {
-  city: any;
+  city: City;
   index: number;
   isSelected: boolean;
   onSelect: () => void;
@@ -217,11 +218,17 @@ function CityCard({
   );
 }
 
+interface CityDesktopGridProps {
+  cities: City[];
+  selectedCity: City | null;
+  onSelectCity: (city: { id: string; name: string }) => void;
+}
+
 export default function CityDesktopGrid({
   cities,
   selectedCity,
   onSelectCity,
-}: any) {
+}: CityDesktopGridProps) {
   return (
     <>
       {}
@@ -243,7 +250,7 @@ export default function CityDesktopGrid({
       `}</style>
 
       <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {cities.map((city: any, index: number) => (
+        {cities.map((city: City, index: number) => (
           <CityCard
             key={city.id}
             city={city}

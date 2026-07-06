@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
+import type { IssueReport } from "../types";
 
 const STATUSES = ["Планується", "Виконується", "Виконано"];
 
@@ -26,7 +27,7 @@ export default function IssueCarousel() {
     queryFn: async () => {
       if (!selectedCity?.id) return [];
       const res = await api.get(`/issues?cityId=${selectedCity.id}`);
-      return res.data.filter((i: any) => i.status !== "Виконано");
+      return res.data.filter((i: IssueReport) => i.status !== "Виконано");
     },
     enabled: !!selectedCity?.id,
     refetchOnWindowFocus: true,
@@ -39,7 +40,7 @@ export default function IssueCarousel() {
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: ["issues", selectedCity?.id] });
       const prev = qc.getQueryData(["issues", selectedCity?.id]);
-      qc.setQueryData(["issues", selectedCity?.id], (old: any[] | undefined) =>
+      qc.setQueryData(["issues", selectedCity?.id], (old: IssueReport[] | undefined) =>
         Array.isArray(old)
           ? old
               .map((i) =>
@@ -58,7 +59,7 @@ export default function IssueCarousel() {
     },
   });
 
-  const handleStatusToggle = (issue: any) => {
+  const handleStatusToggle = (issue: IssueReport) => {
     const nextStatus = getNextStatus(issue.status);
 
     if (nextStatus === "Виконано") {

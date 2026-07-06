@@ -225,12 +225,12 @@ describe('EventsService', () => {
         expect.objectContaining({
           where: { eventId: 'ev-1' },
           update: expect.objectContaining({
-            totalSum: 10000,
-            remainderSum: 8000,
+            totalSum: expect.any(Prisma.Decimal),
+            remainderSum: expect.any(Prisma.Decimal),
           }),
           create: expect.objectContaining({
-            totalSum: 10000,
-            remainderSum: 8000,
+            totalSum: expect.any(Prisma.Decimal),
+            remainderSum: expect.any(Prisma.Decimal),
           }),
         }),
       );
@@ -494,7 +494,7 @@ describe('EventsService', () => {
       );
 
       const call = mockTx.eventReport.upsert.mock.calls[0][0];
-      expect(call.update.remainderSum).toBe(11500);
+      expect(Number(call.update.remainderSum)).toBe(11500);
     });
 
     it('коректно обробляє відсутній rating', async () => {
@@ -556,14 +556,22 @@ describe('EventsService', () => {
   describe('findAllForUser', () => {
     it('MANAGER — без фільтру по crew (порожній where)', async () => {
       mockPrisma.event.findMany.mockResolvedValueOnce([]);
-      await service.findAllForUser({ sub: 'mgr-1', name: 'Менеджер', role: 'MANAGER' });
+      await service.findAllForUser({
+        sub: 'mgr-1',
+        name: 'Менеджер',
+        role: 'MANAGER',
+      });
       const call = mockPrisma.event.findMany.mock.calls[0][0];
       expect(call.where).toEqual({});
     });
 
     it('HOST — фільтрує за hostId', async () => {
       mockPrisma.event.findMany.mockResolvedValueOnce([]);
-      await service.findAllForUser({ sub: 'host-1', name: 'Ведучий', role: 'HOST' });
+      await service.findAllForUser({
+        sub: 'host-1',
+        name: 'Ведучий',
+        role: 'HOST',
+      });
       const call = mockPrisma.event.findMany.mock.calls[0][0];
       expect(call.where).toEqual({
         crew: { OR: [{ hostId: 'host-1' }, { driverId: 'host-1' }] },
@@ -572,7 +580,11 @@ describe('EventsService', () => {
 
     it('DRIVER — фільтрує за driverId', async () => {
       mockPrisma.event.findMany.mockResolvedValueOnce([]);
-      await service.findAllForUser({ sub: 'driver-1', name: 'Водій', role: 'DRIVER' });
+      await service.findAllForUser({
+        sub: 'driver-1',
+        name: 'Водій',
+        role: 'DRIVER',
+      });
       const call = mockPrisma.event.findMany.mock.calls[0][0];
       expect(call.where).toEqual({
         crew: { OR: [{ hostId: 'driver-1' }, { driverId: 'driver-1' }] },
@@ -597,7 +609,11 @@ describe('EventsService', () => {
 
     it('без пагінації — повертає масив', async () => {
       mockPrisma.event.findMany.mockResolvedValueOnce([{ id: 'ev-1' }]);
-      const result = await service.findAllForUser({ sub: 'mgr-1', name: 'М', role: 'MANAGER' });
+      const result = await service.findAllForUser({
+        sub: 'mgr-1',
+        name: 'М',
+        role: 'MANAGER',
+      });
       expect(Array.isArray(result)).toBe(true);
     });
   });
@@ -618,7 +634,7 @@ describe('EventsService', () => {
         history: [{ id: 'h-1' }],
       });
 
-      const result = await service.create(dto as any, mockUser);
+      const result = await service.create(dto, mockUser);
 
       expect(mockPrisma.event.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -637,10 +653,20 @@ describe('EventsService', () => {
     });
 
     it("конвертує date рядок у Date об'єкт", async () => {
-      mockPrisma.event.create.mockResolvedValueOnce({ id: 'ev-1', schoolId: 's-1', history: [] });
-      const dto = { schoolId: 's-1', cityId: 'c-1', project: 'Test', date: '2025-12-25', price: 100 };
+      mockPrisma.event.create.mockResolvedValueOnce({
+        id: 'ev-1',
+        schoolId: 's-1',
+        history: [],
+      });
+      const dto = {
+        schoolId: 's-1',
+        cityId: 'c-1',
+        project: 'Test',
+        date: '2025-12-25',
+        price: 100,
+      };
 
-      await service.create(dto as any, mockUser);
+      await service.create(dto, mockUser);
 
       const callData = mockPrisma.event.create.mock.calls[0][0].data;
       expect(callData.date).toBeInstanceOf(Date);
@@ -648,19 +674,37 @@ describe('EventsService', () => {
     });
 
     it('інвалідує кеш школи після створення події', async () => {
-      mockPrisma.event.create.mockResolvedValueOnce({ id: 'ev-1', schoolId: 'school-99', history: [] });
+      mockPrisma.event.create.mockResolvedValueOnce({
+        id: 'ev-1',
+        schoolId: 'school-99',
+        history: [],
+      });
       const cacheDelSpy = jest.spyOn((service as any).cacheManager, 'del');
 
-      await service.create({ schoolId: 'school-99', date: '2025-01-01', project: 'T', price: 0 } as any, mockUser);
+      await service.create(
+        {
+          schoolId: 'school-99',
+          date: '2025-01-01',
+          project: 'T',
+          price: 0,
+        } as any,
+        mockUser,
+      );
 
-      expect(cacheDelSpy).toHaveBeenCalledWith('events:school:school-99:minimal');
+      expect(cacheDelSpy).toHaveBeenCalledWith(
+        'events:school:school-99:minimal',
+      );
       expect(cacheDelSpy).toHaveBeenCalledWith('events:school:school-99:full');
     });
   });
 
   describe('findOne', () => {
     it('повертає подію якщо знайдено', async () => {
-      mockPrisma.event.findUnique.mockResolvedValueOnce({ id: 'ev-1', school: {}, city: {} });
+      mockPrisma.event.findUnique.mockResolvedValueOnce({
+        id: 'ev-1',
+        school: {},
+        city: {},
+      });
       const result = await service.findOne('ev-1');
       expect(result.id).toBe('ev-1');
     });
@@ -675,16 +719,30 @@ describe('EventsService', () => {
 
   describe('remove', () => {
     it('видаляє подію разом з history та preparation', async () => {
-      mockPrisma.event.findUnique.mockResolvedValueOnce({ id: 'ev-1', schoolId: 'school-1' });
+      mockPrisma.event.findUnique.mockResolvedValueOnce({
+        id: 'ev-1',
+        schoolId: 'school-1',
+      });
       mockPrisma.eventHistory.deleteMany.mockResolvedValueOnce({ count: 2 });
-      mockPrisma.eventPreparation.deleteMany.mockResolvedValueOnce({ count: 1 });
-      mockPrisma.event.delete.mockResolvedValueOnce({ id: 'ev-1', schoolId: 'school-1' });
+      mockPrisma.eventPreparation.deleteMany.mockResolvedValueOnce({
+        count: 1,
+      });
+      mockPrisma.event.delete.mockResolvedValueOnce({
+        id: 'ev-1',
+        schoolId: 'school-1',
+      });
 
       await service.remove('ev-1');
 
-      expect(mockPrisma.eventHistory.deleteMany).toHaveBeenCalledWith({ where: { eventId: 'ev-1' } });
-      expect(mockPrisma.eventPreparation.deleteMany).toHaveBeenCalledWith({ where: { eventId: 'ev-1' } });
-      expect(mockPrisma.event.delete).toHaveBeenCalledWith({ where: { id: 'ev-1' } });
+      expect(mockPrisma.eventHistory.deleteMany).toHaveBeenCalledWith({
+        where: { eventId: 'ev-1' },
+      });
+      expect(mockPrisma.eventPreparation.deleteMany).toHaveBeenCalledWith({
+        where: { eventId: 'ev-1' },
+      });
+      expect(mockPrisma.event.delete).toHaveBeenCalledWith({
+        where: { id: 'ev-1' },
+      });
     });
 
     it('кидає AppException EVENT_NOT_FOUND якщо подія не існує', async () => {
@@ -732,11 +790,15 @@ describe('EventsService', () => {
 
   describe('updatePreparationStatus', () => {
     it('upsert EventPreparation та інвалідує кеш школи', async () => {
-      mockPrisma.eventPreparation.upsert = jest.fn().mockResolvedValueOnce({ eventId: 'ev-1' });
-      mockPrisma.event.findUnique.mockResolvedValueOnce({ schoolId: 'school-1' });
+      mockPrisma.eventPreparation.upsert = jest
+        .fn()
+        .mockResolvedValueOnce({ eventId: 'ev-1' });
+      mockPrisma.event.findUnique.mockResolvedValueOnce({
+        schoolId: 'school-1',
+      });
       const cacheDelSpy = jest.spyOn((service as any).cacheManager, 'del');
 
-      await service.updatePreparationStatus('ev-1', 'equipment' as any, 'DONE' as any);
+      await service.updatePreparationStatus('ev-1', 'equipment' as any, 'DONE');
 
       expect(mockPrisma.eventPreparation.upsert).toHaveBeenCalledWith({
         where: { eventId: 'ev-1' },

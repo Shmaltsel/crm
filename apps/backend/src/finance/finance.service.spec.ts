@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { FinanceService } from './finance.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheVersionService } from '../common/cache/cache-version.service';
 
 const mockPrisma = {
   eventReport: {
@@ -35,6 +37,17 @@ const mockPrisma = {
   $queryRaw: jest.fn(),
 };
 
+const mockCacheManager = {
+  get: jest.fn().mockResolvedValue(undefined),
+  set: jest.fn().mockResolvedValue(undefined),
+  del: jest.fn().mockResolvedValue(undefined),
+};
+
+const mockCacheVersion = {
+  getVersion: jest.fn().mockResolvedValue(0),
+  bumpVersion: jest.fn().mockResolvedValue(undefined),
+};
+
 describe('FinanceService', () => {
   let service: FinanceService;
 
@@ -44,10 +57,11 @@ describe('FinanceService', () => {
       providers: [
         FinanceService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: CACHE_MANAGER, useValue: mockCacheManager },
+        { provide: CacheVersionService, useValue: mockCacheVersion },
       ],
     }).compile();
     service = module.get<FinanceService>(FinanceService);
-    (service as any).cache.clear();
   });
 
   const defaultMocks = () => {
@@ -232,12 +246,13 @@ describe('FinanceService', () => {
   describe('getDashboard — кеш', () => {
     it('повторний виклик з тими ж параметрами не робить нових запитів', async () => {
       defaultMocks();
-      await service.getDashboard({ cityId: 'city-1' });
+      const result = await service.getDashboard({ cityId: 'city-1' });
+      mockCacheManager.get.mockResolvedValueOnce(result);
       await service.getDashboard({ cityId: 'city-1' });
       expect(mockPrisma.eventReport.aggregate).toHaveBeenCalledTimes(1);
     });
 
-    it('різні параметри — різні записи в кеші', async () => {
+    it('різні параметри — різні ключі кешу', async () => {
       defaultMocks();
       defaultMocks();
       await service.getDashboard({ cityId: 'city-1' });

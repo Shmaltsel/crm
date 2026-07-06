@@ -37,6 +37,10 @@ apps
 │   │   │   │   └── migration.sql
 │   │   │   ├── 20260704140802_add_day_off
 │   │   │   │   └── migration.sql
+│   │   │   ├── 20260704220311_add_project_price_per_child
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20260706120000_event_report_decimal_money
+│   │   │   │   └── migration.sql
 │   │   │   └── migration_lock.toml
 │   │   ├── schema.prisma
 │   │   ├── seed-admin.js
@@ -50,6 +54,7 @@ apps
 │   │   ├── auth
 │   │   │   ├── auth.controller.spec.ts
 │   │   │   ├── auth.controller.ts
+│   │   │   ├── auth.guard.spec.ts
 │   │   │   ├── auth.guard.ts
 │   │   │   ├── auth.module.ts
 │   │   │   ├── auth.service.spec.ts
@@ -62,7 +67,9 @@ apps
 │   │   │   ├── dto
 │   │   │   │   └── login.dto.ts
 │   │   │   ├── guards
+│   │   │   │   ├── ownership.guard.spec.ts
 │   │   │   │   ├── ownership.guard.ts
+│   │   │   │   ├── roles.guard.spec.ts
 │   │   │   │   └── roles.guard.ts
 │   │   │   └── interfaces
 │   │   │       └── jwt-user.interface.ts
@@ -77,6 +84,8 @@ apps
 │   │   │       └── create-crew.dto.ts
 │   │   ├── common
 │   │   │   ├── cache
+│   │   │   │   ├── cache-version.service.spec.ts
+│   │   │   │   ├── cache-version.service.ts
 │   │   │   │   └── redis-cache.module.ts
 │   │   │   ├── dto
 │   │   │   │   ├── page-meta.dto.ts
@@ -111,6 +120,7 @@ apps
 │   │   ├── days-off
 │   │   │   ├── days-off.controller.ts
 │   │   │   ├── days-off.module.ts
+│   │   │   ├── days-off.service.spec.ts
 │   │   │   ├── days-off.service.ts
 │   │   │   └── dto
 │   │   │       └── create-day-off.dto.ts
@@ -125,6 +135,7 @@ apps
 │   │   │   │   ├── submit-report.dto.ts
 │   │   │   │   ├── update-preparation.dto.ts
 │   │   │   │   └── update-status.dto.ts
+│   │   │   ├── events-scheduler.service.spec.ts
 │   │   │   ├── events-scheduler.service.ts
 │   │   │   ├── events.controller.spec.ts
 │   │   │   ├── events.controller.ts
@@ -153,6 +164,7 @@ apps
 │   │   │   │   └── update-issue-status.dto.ts
 │   │   │   ├── issues.controller.ts
 │   │   │   ├── issues.module.ts
+│   │   │   ├── issues.service.spec.ts
 │   │   │   └── issues.service.ts
 │   │   ├── main.ts
 │   │   ├── metrics
@@ -167,7 +179,8 @@ apps
 │   │   │   └── prisma.service.ts
 │   │   ├── projects
 │   │   │   ├── dto
-│   │   │   │   └── create-project.dto.ts
+│   │   │   │   ├── create-project.dto.ts
+│   │   │   │   └── update-project.dto.ts
 │   │   │   ├── projects.controller.ts
 │   │   │   ├── projects.module.ts
 │   │   │   └── projects.service.ts
@@ -179,6 +192,7 @@ apps
 │   │   │   │   ├── find-schools-query.dto.ts
 │   │   │   │   ├── school-query.dto.ts
 │   │   │   │   └── update-school.dto.ts
+│   │   │   ├── parser.service.spec.ts
 │   │   │   ├── parser.service.ts
 │   │   │   ├── school-contacts.seed.ts
 │   │   │   ├── schools.controller.spec.ts
@@ -188,6 +202,7 @@ apps
 │   │   │   └── schools.service.ts
 │   │   ├── telegram
 │   │   │   ├── telegram.module.ts
+│   │   │   ├── telegram.service.spec.ts
 │   │   │   └── telegram.service.ts
 │   │   ├── tests
 │   │   └── users
@@ -323,18 +338,30 @@ apps
     │   │   └── Schools.tsx
     │   ├── tests
     │   │   ├── component
+    │   │   │   ├── Dashboard.test.tsx
+    │   │   │   ├── DayOffModal.test.tsx
     │   │   │   ├── EventReport.test.tsx
     │   │   │   ├── EventsTable.test.tsx
+    │   │   │   ├── IssueCarousel.test.tsx
+    │   │   │   ├── Login.test.tsx
     │   │   │   ├── Pipeline.test.tsx
-    │   │   │   └── SchoolCard.test.tsx
+    │   │   │   ├── ProtectedRoute.test.tsx
+    │   │   │   ├── SchoolCard.test.tsx
+    │   │   │   ├── Schools.test.tsx
+    │   │   │   └── VirtualSchoolList.test.tsx
     │   │   ├── mocks
     │   │   │   ├── handlers.ts
     │   │   │   └── server.ts
     │   │   ├── setup.ts
     │   │   └── unit
+    │   │       ├── api.test.ts
+    │   │       ├── apiRefresh.test.ts
     │   │       ├── formatCurrency.test.ts
     │   │       ├── hooks
-    │   │       └── schoolUtils.test.ts
+    │   │       │   ├── useCities.test.tsx
+    │   │       │   └── useSchoolProfile.test.tsx
+    │   │       ├── schoolUtils.test.ts
+    │   │       └── useDaysOff.test.tsx
     │   ├── types
     │   │   └── index.ts
     │   └── utils

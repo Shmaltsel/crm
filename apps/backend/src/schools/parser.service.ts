@@ -213,7 +213,7 @@ export class ParserService {
       const normalizedQuery = query.toLowerCase().replace(/\s+/g, ' ').trim();
       const isNumericQuery = /^\d+$/.test(normalizedQuery);
       const numericRegex = isNumericQuery
-        ? new RegExp(`(?<!\d)${normalizedQuery}(?!\d)`)
+        ? new RegExp(`(?<!\\d)${normalizedQuery}(?!\\d)`)
         : null;
       for (const url of urls) {
         const response = await axios.get(url);

@@ -3,6 +3,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheVersionService } from '../common/cache/cache-version.service';
 const PIPELINE_STAGES = [
   'BASE',
   'FIRST_CONTACT',
@@ -82,10 +83,12 @@ export class DashboardService {
   constructor(
     private prisma: PrismaService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly cacheVersion: CacheVersionService,
   ) {}
 
   async getSummary(cityId?: string, role?: string): Promise<DashboardSummary> {
-    const key = `dashboard:${cityId ?? 'all'}-${role ?? 'anon'}`;
+    const version = await this.cacheVersion.getVersion('dashboard');
+    const key = `dashboard:v${version}:${cityId ?? 'all'}-${role ?? 'anon'}`;
     const cached = await this.cacheManager.get<DashboardSummary>(key);
     if (cached) {
       this.hits++;
@@ -281,8 +284,8 @@ export class DashboardService {
 
     return monthEvents.reduce(
       (acc, ev) => {
-        acc.revenue += ev.report?.totalSum ?? 0;
-        acc.profit += ev.report?.remainderSum ?? 0;
+        acc.revenue += Number(ev.report?.totalSum ?? 0);
+        acc.profit += Number(ev.report?.remainderSum ?? 0);
         acc.children += ev.report?.childrenCount ?? 0;
         acc.count += 1;
         return acc;
@@ -412,7 +415,7 @@ export class DashboardService {
     const revenueIdx: Record<string, number> = {};
     for (const ev of allMonthEvents) {
       revenueIdx[ev.cityId] =
-        (revenueIdx[ev.cityId] ?? 0) + (ev.report?.totalSum ?? 0);
+        (revenueIdx[ev.cityId] ?? 0) + Number(ev.report?.totalSum ?? 0);
     }
 
     return allCities

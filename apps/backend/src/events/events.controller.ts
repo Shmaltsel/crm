@@ -49,6 +49,8 @@ export class EventsController {
   }
 
   @Get('school/:schoolId')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('school')
   findBySchool(
     @Param('schoolId') schoolId: string,
     @Query('minimal') minimal?: string,
@@ -136,6 +138,8 @@ export class EventsController {
   }
 
   @Get('school/:schoolId/completed')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('school')
   findCompletedBySchool(@Param('schoolId') schoolId: string) {
     return this.eventsService.findCompletedBySchool(schoolId);
   }

@@ -11,7 +11,6 @@ import { CreateEventDto } from './dto/create-event.dto';
 import {
   SubmitReportDto,
   ExpenseItemDto,
-  SalaryItemDto,
 } from './dto/submit-report.dto';
 import { EventQueryDto } from './dto/event-query.dto';
 import { PageMetaDto } from '../common/dto/page-meta.dto';
@@ -31,6 +30,36 @@ export class EventsService {
     private readonly cacheVersion: CacheVersionService,
   ) {}
 
+  private toOptionalNumber(value: unknown): number | null {
+    return value != null ? Number(value) : null;
+  }
+
+  private toNumber(value: unknown): number {
+    return Number(value ?? 0);
+  }
+
+  private serializeEvent<T extends Record<string, unknown>>(ev: T): T {
+    return {
+      ...ev,
+      price: this.toOptionalNumber(ev.price),
+      received: this.toOptionalNumber(ev.received),
+      report: ev.report
+        ? {
+            ...(ev.report as Record<string, unknown>),
+            totalSum: this.toNumber(
+              (ev.report as Record<string, unknown>).totalSum,
+            ),
+            schoolSum: this.toNumber(
+              (ev.report as Record<string, unknown>).schoolSum,
+            ),
+            remainderSum: this.toNumber(
+              (ev.report as Record<string, unknown>).remainderSum,
+            ),
+          }
+        : ev.report,
+    };
+  }
+
   async findAllForUser(user: JwtUser, query?: EventQueryDto) {
     const isFieldStaff = FIELD_ROLES.includes(user.role);
     const where = isFieldStaff
@@ -48,11 +77,12 @@ export class EventsService {
     };
 
     if (!query?.page) {
-      return this.prisma.event.findMany({
+      const events = await this.prisma.event.findMany({
         where,
         include,
         orderBy: { date: 'asc' },
       });
+      return events.map((e) => this.serializeEvent(e as any));
     }
 
     const take = query.take ?? 20;
@@ -69,7 +99,10 @@ export class EventsService {
       this.prisma.event.count({ where }),
     ]);
 
-    return { data, meta: new PageMetaDto(totalItems, query.page, take) };
+    return {
+      data: data.map((e) => this.serializeEvent(e as any)),
+      meta: new PageMetaDto(totalItems, query.page, take),
+    };
   }
 
   async create(data: CreateEventDto, user: JwtUser) {
@@ -90,7 +123,7 @@ export class EventsService {
       include: { history: true },
     });
     await this.invalidateSchoolEventsCache(event.schoolId);
-    return event;
+    return this.serializeEvent(event as any);
   }
 
   private async invalidateSchoolEventsCache(schoolId: string) {
@@ -128,7 +161,7 @@ export class EventsService {
       this.cacheVersion.bumpVersion('finance'),
       this.cacheVersion.bumpVersion('dashboard'),
     ]);
-    return event;
+    return this.serializeEvent(event as any);
   }
 
   async updatePreparationStatus(
@@ -225,7 +258,7 @@ export class EventsService {
     }
 
     await this.invalidateSchoolEventsCache(event.schoolId);
-    return event;
+    return this.serializeEvent(event as any);
   }
 
   async rescheduleEvent(
@@ -283,7 +316,7 @@ export class EventsService {
     await sendTo(event.crew?.driverId);
 
     await this.invalidateSchoolEventsCache(event.schoolId);
-    return event;
+    return this.serializeEvent(event as any);
   }
 
   async getChatIdForUser(userId: string): Promise<string | null> {
@@ -301,12 +334,25 @@ export class EventsService {
   async findBySchool(schoolId: string, minimal = false) {
     const key = `events:school:${schoolId}:${minimal ? 'minimal' : 'full'}`;
     const cached = await this.cacheManager.get(key);
-    if (cached) return cached;
+    if (cached)
+      return (Array.isArray(cached) ? cached : []).map((e: any) =>
+        this.serializeEvent(e),
+      );
 
     const existing = this.pendingSchoolEvents.get(key);
-    if (existing) return existing;
+    if (existing) {
+      const result = await existing;
+      return Array.isArray(result)
+        ? result.map((e: any) => this.serializeEvent(e))
+        : result;
+    }
 
-    const compute = this.computeBySchool(key, schoolId, minimal);
+    const compute = this.computeBySchool(key, schoolId, minimal).then(
+      (result) =>
+        Array.isArray(result)
+          ? result.map((e: any) => this.serializeEvent(e))
+          : result,
+    );
     this.pendingSchoolEvents.set(key, compute);
     try {
       return await compute;
@@ -328,7 +374,7 @@ export class EventsService {
       },
     });
     if (!event) throw new AppException('EVENT_NOT_FOUND', HttpStatus.NOT_FOUND);
-    return event;
+    return this.serializeEvent(event as any);
   }
 
   private async computeBySchool(
@@ -403,7 +449,7 @@ export class EventsService {
       },
     });
     if (event) await this.invalidateSchoolEventsCache(event.schoolId);
-    return event;
+    return this.serializeEvent(event as any);
   }
 
   async remove(id: string) {
@@ -423,7 +469,7 @@ export class EventsService {
       where: { id },
     });
     await this.invalidateSchoolEventsCache(exists.schoolId);
-    return deleted;
+    return this.serializeEvent(deleted as any);
   }
 
   async submitReport(
@@ -431,103 +477,111 @@ export class EventsService {
     reportData: SubmitReportDto,
     user: JwtUser,
   ) {
-    const event = await this.prisma.$transaction(async (tx) => {
-      const report = await tx.eventReport.upsert({
-        where: { eventId },
-        update: {
-          announcementDone: reportData.announcementDone,
-          materialShown: reportData.materialShown,
-          childrenCount: reportData.childrenCount,
-          classesCount: reportData.classesCount,
-          privilegedCount: reportData.privilegedCount,
-          showingsCount: reportData.showingsCount,
-          totalSum: reportData.totalSum,
-          schoolSum: reportData.schoolSum,
-          remainderSum: reportData.remainderSum,
-          rating: reportData.rating,
-        },
-        create: {
-          eventId,
-          announcementDone: reportData.announcementDone,
-          materialShown: reportData.materialShown,
-          childrenCount: reportData.childrenCount,
-          classesCount: reportData.classesCount,
-          privilegedCount: reportData.privilegedCount,
-          showingsCount: reportData.showingsCount,
-          totalSum: reportData.totalSum,
-          schoolSum: reportData.schoolSum,
-          remainderSum: reportData.remainderSum,
-          rating: reportData.rating,
-        },
-      });
-
-      await tx.expenseItem.deleteMany({
-        where: { reportId: report.id },
-      });
-      await tx.salaryItem.deleteMany({
-        where: { reportId: report.id },
-      });
-
-      if (reportData.expenses?.length) {
-        await tx.expenseItem.createMany({
-          data: reportData.expenses.map((exp: ExpenseItemDto) => ({
-            reportId: report.id,
-            category: exp.category || 'Інше',
-            name: exp.name,
-            amount: new Prisma.Decimal(exp.amount || 0),
-          })),
+    const event = await this.prisma.$transaction(
+      async (tx) => {
+        const report = await tx.eventReport.upsert({
+          where: { eventId },
+          update: {
+            announcementDone: reportData.announcementDone,
+            materialShown: reportData.materialShown,
+            childrenCount: reportData.childrenCount,
+            classesCount: reportData.classesCount,
+            privilegedCount: reportData.privilegedCount,
+            showingsCount: reportData.showingsCount,
+            totalSum: new Prisma.Decimal(reportData.totalSum),
+            schoolSum: new Prisma.Decimal(reportData.schoolSum),
+            remainderSum: new Prisma.Decimal(reportData.remainderSum),
+            rating: reportData.rating,
+          },
+          create: {
+            eventId,
+            announcementDone: reportData.announcementDone,
+            materialShown: reportData.materialShown,
+            childrenCount: reportData.childrenCount,
+            classesCount: reportData.classesCount,
+            privilegedCount: reportData.privilegedCount,
+            showingsCount: reportData.showingsCount,
+            totalSum: new Prisma.Decimal(reportData.totalSum),
+            schoolSum: new Prisma.Decimal(reportData.schoolSum),
+            remainderSum: new Prisma.Decimal(reportData.remainderSum),
+            rating: reportData.rating,
+          },
         });
-      }
 
-      if (reportData.salaries?.length) {
-        const salariesWithUser = reportData.salaries.filter((s) => s.userId);
-        if (salariesWithUser.length) {
-          await tx.salaryItem.createMany({
-            data: salariesWithUser.map((s) => ({
+        await tx.expenseItem.deleteMany({
+          where: { reportId: report.id },
+        });
+        await tx.salaryItem.deleteMany({
+          where: { reportId: report.id },
+        });
+
+        if (reportData.expenses?.length) {
+          await tx.expenseItem.createMany({
+            data: reportData.expenses.map((exp: ExpenseItemDto) => ({
               reportId: report.id,
-              userId: s.userId,
-              userName: s.name,
-              amount: new Prisma.Decimal(s.amount),
+              category: exp.category || 'Інше',
+              name: exp.name,
+              amount: new Prisma.Decimal(exp.amount || 0),
             })),
           });
+        }
 
-          const positiveSalaries = salariesWithUser.filter((s) => s.amount > 0);
-          for (const s of positiveSalaries) {
-            await tx.user.update({
-              where: { id: s.userId },
-              data: { balance: { increment: s.amount } },
+        if (reportData.salaries?.length) {
+          const salariesWithUser = reportData.salaries.filter((s) => s.userId);
+          if (salariesWithUser.length) {
+            await tx.salaryItem.createMany({
+              data: salariesWithUser.map((s) => ({
+                reportId: report.id,
+                userId: s.userId,
+                userName: s.name,
+                amount: new Prisma.Decimal(s.amount),
+              })),
             });
+
+            const positiveSalaries = salariesWithUser.filter(
+              (s) => s.amount > 0,
+            );
+            for (const s of positiveSalaries) {
+              await tx.user.update({
+                where: { id: s.userId },
+                data: { balance: { increment: s.amount } },
+              });
+            }
           }
         }
-      }
 
-      return tx.event.update({
-        where: { id: eventId },
-        data: {
-          status: 'REPORT' as never,
-          history: {
-            create: {
-              action: 'Сформовано звіт. Захід завершено.',
-              userId: user.sub,
-              userName: user.name,
-              role: user.role,
+        return tx.event.update({
+          where: { id: eventId },
+          data: {
+            status: 'REPORT' as never,
+            history: {
+              create: {
+                action: 'Сформовано звіт. Захід завершено.',
+                userId: user.sub,
+                userName: user.name,
+                role: user.role,
+              },
             },
           },
-        },
-        include: { report: true, history: { orderBy: { createdAt: 'desc' } } },
-      });
-    }, { timeout: 15000 });
+          include: {
+            report: true,
+            history: { orderBy: { createdAt: 'desc' } },
+          },
+        });
+      },
+      { timeout: 15000 },
+    );
 
     await this.invalidateSchoolEventsCache(event.schoolId);
     await Promise.all([
       this.cacheVersion.bumpVersion('finance'),
       this.cacheVersion.bumpVersion('dashboard'),
     ]);
-    return event;
+    return this.serializeEvent(event as any);
   }
 
   async findCompletedBySchool(schoolId: string) {
-    return this.prisma.event.findMany({
+    const events = await this.prisma.event.findMany({
       where: { schoolId, status: 'RE_SALE' },
       select: {
         id: true,
@@ -555,5 +609,6 @@ export class EventsService {
       },
       orderBy: { date: 'desc' },
     });
+    return events.map((e) => this.serializeEvent(e as any));
   }
 }

@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../config/api";
+import type { City, IssueReport } from "../../types";
 
 interface Props {
-  selectedCity: any;
-  cities: any[];
+  selectedCity: City | null;
+  cities: City[];
 }
 
 const STATUSES = ["Планується", "Виконується", "Виконано"];
@@ -48,7 +49,7 @@ const DEFAULT_CITY_ICON = "🏙️";
 
 export default function CityMobileHeader({ selectedCity, cities }: Props) {
   const navigate = useNavigate();
-  const [issues, setIssues] = useState<any[]>([]);
+  const [issues, setIssues] = useState<IssueReport[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isListExiting, setIsListExiting] = useState(false);
   const [exitingIssueId, setExitingIssueId] = useState<string | null>(null);
@@ -63,7 +64,7 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
     api
       .get(`/issues?cityId=${selectedCity.id}`)
       .then((res) => {
-        const filtered = res.data.filter((i: any) => i.status !== "Виконано");
+        const filtered = res.data.filter((i: IssueReport) => i.status !== "Виконано");
         setIssues(filtered);
         if (filtered.length > 0) {
           setIssuesExiting(false);
@@ -79,7 +80,7 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
       .catch(console.error);
   }, [selectedCity?.id]);
 
-  const handleStatusToggle = async (issue: any) => {
+  const handleStatusToggle = async (issue: IssueReport) => {
     const nextStatus = getNextStatus(issue.status);
 
     if (nextStatus === "Виконано") {
@@ -117,7 +118,7 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
       });
   };
 
-  const currentCityData = cities?.find((c: any) => c.id === selectedCity?.id);
+  const currentCityData = cities?.find((c: City) => c.id === selectedCity?.id);
   const totalEvents =
     (currentCityData?.plannedEvents || 0) +
     (currentCityData?.completedEvents || 0);

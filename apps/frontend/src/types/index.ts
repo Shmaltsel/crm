@@ -4,6 +4,7 @@ export interface City {
   manager?: { id: string; name: string; phone: string } | null;
   plannedEvents?: number;
   completedEvents?: number;
+  schoolsCount?: number;
 }
 
 export interface School {

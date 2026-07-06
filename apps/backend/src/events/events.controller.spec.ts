@@ -10,6 +10,7 @@ import { OwnershipGuard } from '../auth/guards/ownership.guard';
 const mockEventsService = {
   findAllForUser: jest.fn(),
   findBySchool: jest.fn(),
+  findCompletedBySchool: jest.fn(),
   findOne: jest.fn(),
   addHistoryComment: jest.fn(),
   updateHistoryComment: jest.fn(),
@@ -51,10 +52,69 @@ describe('EventsController (HTTP)', () => {
     await app.close();
   });
 
+  describe('GET /events/school/:schoolId — findBySchool', () => {
+    it('OWNERSHIP: MANAGER іншого міста отримує 403', async () => {
+      mockGuard.canActivate.mockRejectedValueOnce(
+        new (require('@nestjs/common').ForbiddenException)(
+          'Немає доступу до ресурсу іншого міста',
+        ),
+      );
+      await request(app.getHttpServer())
+        .get('/events/school/s-1')
+        .expect(403);
+    });
+
+    it('OWNERSHIP: HOST отримує 403 (resourceType=school не дозволено для HOST)', async () => {
+      mockGuard.canActivate.mockRejectedValueOnce(
+        new (require('@nestjs/common').ForbiddenException)(
+          'Немає доступу до цього типу ресурсу',
+        ),
+      );
+      await request(app.getHttpServer())
+        .get('/events/school/s-1')
+        .expect(403);
+    });
+
+    it('SUPERADMIN отримує 200', async () => {
+      mockGuard.canActivate.mockResolvedValue(true);
+      mockEventsService.findBySchool.mockResolvedValueOnce([]);
+      const res = await request(app.getHttpServer())
+        .get('/events/school/s-1')
+        .expect(200);
+      expect(res.body).toEqual([]);
+    });
+  });
+
+  describe('GET /events/school/:schoolId/completed — findCompletedBySchool', () => {
+    it('OWNERSHIP: MANAGER свого міста отримує 200', async () => {
+      mockGuard.canActivate.mockResolvedValue(true);
+      mockEventsService.findCompletedBySchool.mockResolvedValueOnce([
+        { id: 'ev-1' },
+      ]);
+      const res = await request(app.getHttpServer())
+        .get('/events/school/s-1/completed')
+        .expect(200);
+      expect(res.body).toHaveLength(1);
+    });
+
+    it('MANAGER без cityId отримує 403', async () => {
+      mockGuard.canActivate.mockRejectedValueOnce(
+        new (require('@nestjs/common').ForbiddenException)(
+          'Менеджер не прив\'язаний до міста',
+        ),
+      );
+      await request(app.getHttpServer())
+        .get('/events/school/s-1/completed')
+        .expect(403);
+    });
+  });
+
   describe('GET /events/:id — findOne', () => {
     it('OWNERSHIP: HOST без призначення отримує 403', async () => {
       mockGuard.canActivate.mockRejectedValueOnce(
-        new (require('@nestjs/common').ForbiddenException)('Немає доступу до цієї події'),
+        new (require('@nestjs/common').ForbiddenException)(
+          'Немає доступу до цієї події',
+        ),
       );
       const res = await request(app.getHttpServer())
         .get('/events/ev-1')
@@ -75,7 +135,9 @@ describe('EventsController (HTTP)', () => {
   describe('POST /events/:id/history — addHistoryComment', () => {
     it('OWNERSHIP: MANAGER іншого міста отримує 403', async () => {
       mockGuard.canActivate.mockRejectedValueOnce(
-        new (require('@nestjs/common').ForbiddenException)('Немає доступу до ресурсу іншого міста'),
+        new (require('@nestjs/common').ForbiddenException)(
+          'Немає доступу до ресурсу іншого міста',
+        ),
       );
       const res = await request(app.getHttpServer())
         .post('/events/ev-1/history')
@@ -86,7 +148,10 @@ describe('EventsController (HTTP)', () => {
 
     it('HOST призначений на подію отримує 201', async () => {
       mockGuard.canActivate.mockResolvedValue(true);
-      mockEventsService.addHistoryComment.mockResolvedValueOnce({ id: 'ev-1', history: [] });
+      mockEventsService.addHistoryComment.mockResolvedValueOnce({
+        id: 'ev-1',
+        history: [],
+      });
       const res = await request(app.getHttpServer())
         .post('/events/ev-1/history')
         .send({ comment: 'коментар' })
@@ -97,7 +162,9 @@ describe('EventsController (HTTP)', () => {
   describe('PATCH /events/history/:historyId — updateHistoryComment', () => {
     it('OWNERSHIP: історія не знайдена — 404', async () => {
       mockGuard.canActivate.mockRejectedValueOnce(
-        new (require('@nestjs/common').NotFoundException)('Запис історії не знайдено'),
+        new (require('@nestjs/common').NotFoundException)(
+          'Запис історії не знайдено',
+        ),
       );
       const res = await request(app.getHttpServer())
         .patch('/events/history/missing')
@@ -108,7 +175,9 @@ describe('EventsController (HTTP)', () => {
 
     it('MANAGER свого міста отримує 200', async () => {
       mockGuard.canActivate.mockResolvedValue(true);
-      mockEventsService.updateHistoryComment.mockResolvedValueOnce({ id: 'h-1' });
+      mockEventsService.updateHistoryComment.mockResolvedValueOnce({
+        id: 'h-1',
+      });
       await request(app.getHttpServer())
         .patch('/events/history/h-1')
         .send({ comment: 'оновлено' })

@@ -16,7 +16,6 @@ import { PageMetaDto } from '../common/dto/page-meta.dto';
 import { SchoolQueryDto } from './dto/school-query.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
 
-
 const PLANNED_STAGES = ['BASE', 'FIRST_CONTACT', 'DATE_CONFIRMED'];
 const IN_PROGRESS_STAGES = ['PREPARATION', 'IN_PROGRESS', 'DONE', 'REPORT'];
 
@@ -69,21 +68,29 @@ export class SchoolsService {
       data: schoolData,
     });
 
-    this.parserService
-      .parseSchoolData(data.name, sourceUrl, data.type)
-      this.enrichSchoolFromParser(newSchool, data.name, sourceUrl, data.type);
+    this.parserService.parseSchoolData(data.name, sourceUrl, data.type);
+    this.enrichSchoolFromParser(newSchool, data.name, sourceUrl, data.type);
 
     return newSchool;
   }
 
   private async enrichSchoolFromParser(
-    school: { id: string; address: string | null; director: string | null; childrenCount: number | null },
+    school: {
+      id: string;
+      address: string | null;
+      director: string | null;
+      childrenCount: number | null;
+    },
     name: string,
     sourceUrl?: string,
     type?: string,
   ) {
     try {
-      const parsed = await this.parserService.parseSchoolData(name, sourceUrl, type);
+      const parsed = await this.parserService.parseSchoolData(
+        name,
+        sourceUrl,
+        type,
+      );
       if (!parsed) {
         this.logger.warn(`Не вдалося знайти дані для закладу: ${name}`);
         return;
@@ -115,12 +122,20 @@ export class SchoolsService {
 
       this.logger.log(`Дані школи "${name}" успішно оновлені`);
     } catch (error) {
-      this.logger.error(`Помилка оновлення даних школи: ${(error as Error).message}`);
+      this.logger.error(
+        `Помилка оновлення даних школи: ${(error as Error).message}`,
+      );
     }
   }
 
   private createMany(
-    schools: { name: string; type: string; cityId: string; director?: string; phone?: string }[],
+    schools: {
+      name: string;
+      type: string;
+      cityId: string;
+      director?: string;
+      phone?: string;
+    }[],
   ) {
     return this.prisma.school.createMany({
       data: schools,

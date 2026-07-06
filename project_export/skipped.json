@@ -60,6 +60,14 @@
     "reason": "ignored directory"
   },
   {
+    "path": "apps/frontend/coverage",
+    "reason": "ignored directory"
+  },
+  {
+    "path": "apps/frontend/dist",
+    "reason": "ignored directory"
+  },
+  {
     "path": "apps/frontend/node_modules",
     "reason": "ignored directory"
   },
