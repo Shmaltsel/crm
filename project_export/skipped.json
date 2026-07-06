@@ -1,5 +1,9 @@
 [
   {
+    "path": "apps/.dockerignore",
+    "reason": "extension"
+  },
+  {
     "path": "apps/backend/.env",
     "reason": "extension"
   },

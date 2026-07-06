@@ -1,3 +1,257 @@
+# FILE: apps/frontend/src/pages/Dashboard.tsx
+
+```
+import { Suspense, lazy } from "react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { MapPin } from "lucide-react";
+import { api } from "../config/api";
+import { useSelectedCity } from "../context/CityContext";
+import { useAuth } from "../context/AuthContext";
+const IssueCarousel = lazy(() => import("../components/IssueCarousel"));
+const FunnelBar = lazy(() => import("../components/dashboard/FunnelBar"));
+const TodayEvents = lazy(() => import("../components/dashboard/TodayEvents"));
+const UpcomingEvents = lazy(() => import("../components/dashboard/UpcomingEvents"));
+const StaleSchools = lazy(() => import("../components/dashboard/StaleSchools"));
+const MonthlyKpi = lazy(() => import("../components/dashboard/MonthlyKpi"));
+const ActivityFeed = lazy(() => import("../components/dashboard/ActivityFeed"));
+const CitiesTable = lazy(() => import("../components/dashboard/CitiesTable"));
+
+interface DashboardSummary {
+  todayEvents: any[];
+  upcomingEvents: any[];
+  funnel: Record<string, number>;
+  totalSchools: number;
+  monthlyKpi: {
+    revenue: number;
+    profit: number;
+    children: number;
+    count: number;
+  };
+  staleSchools: {
+    id: string;
+    name: string;
+    status: string | null;
+    lastActivity: string | null;
+    daysStale: number | null;
+  }[];
+  activityFeed: {
+    id: string;
+    userName: string;
+    role: string;
+    action: string;
+    comment: string | null;
+    createdAt: string;
+    schoolId: string | null;
+    schoolName: string | null;
+    eventId: string | null;
+  }[];
+  citiesStats: {
+    cityId: string;
+    cityName: string;
+    schoolsCount: number;
+    activeEvents: number;
+    monthRevenue: number;
+  }[];
+}
+
+
+function SkeletonCard({ className = "" }: { className?: string }) {
+  return (
+    <div className={`bg-white rounded-2xl border border-slate-100 shadow-sm p-4 animate-pulse ${className}`}>
+      <div className="h-4 bg-slate-100 rounded-full w-1/3 mb-3" />
+      <div className="space-y-2">
+        <div className="h-3 bg-slate-100 rounded-full w-full" />
+        <div className="h-3 bg-slate-100 rounded-full w-4/5" />
+        <div className="h-3 bg-slate-100 rounded-full w-3/5" />
+      </div>
+    </div>
+  );
+}
+
+function SkeletonEventCard() {
+  return (
+    <div className="bg-white rounded-xl border border-slate-100 p-3 animate-pulse">
+      <div className="flex justify-between mb-2">
+        <div className="h-5 bg-slate-100 rounded w-16" />
+        <div className="h-4 bg-slate-100 rounded w-24" />
+      </div>
+      <div className="h-4 bg-slate-100 rounded w-3/4 mb-3" />
+      <div className="flex justify-between items-center">
+        <div className="h-5 bg-slate-100 rounded-full w-28" />
+        <div className="h-7 bg-slate-100 rounded-lg w-20" />
+      </div>
+    </div>
+  );
+}
+
+function DashboardSkeleton({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+  return (
+    <div className="flex flex-col gap-6">
+      {/* IssueCarousel placeholder */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 animate-pulse h-24" />
+
+      {/* Сьогодні + Потребують уваги */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* TodayEvents */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 animate-pulse">
+          <div className="flex justify-between mb-3">
+            <div>
+              <div className="h-4 bg-slate-100 rounded w-36 mb-1" />
+              <div className="h-3 bg-slate-100 rounded w-28" />
+            </div>
+            <div className="h-4 bg-slate-100 rounded w-16" />
+          </div>
+          <div className="flex flex-col gap-2">
+            <SkeletonEventCard />
+            <SkeletonEventCard />
+          </div>
+        </div>
+
+        {/* StaleSchools */}
+        <SkeletonCard />
+        {/* UpcomingEvents */}
+        <SkeletonCard />
+      </div>
+
+      <hr className="border-slate-200" />
+
+      {/* KPI + Воронка */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
+
+      {/* Activity + Cities */}
+      <div className={`grid grid-cols-1 gap-4 ${isSuperAdmin ? "md:grid-cols-2" : ""}`}>
+        <SkeletonCard className="min-h-[200px]" />
+        {isSuperAdmin && <SkeletonCard className="min-h-[200px]" />}
+      </div>
+    </div>
+  );
+}
+
+
+export default function Dashboard() {
+  const { selectedCity } = useSelectedCity();
+  const { user } = useAuth();
+
+  const isSuperAdmin = user?.role === "SUPERADMIN";
+
+  const { data: summary, isLoading } = useQuery<DashboardSummary>({
+    queryKey: ["dashboardSummary", selectedCity.id],
+    queryFn: async () => {
+      const params = selectedCity.id ? `?cityId=${selectedCity.id}` : "";
+      const res = await api.get(`/dashboard/summary${params}`);
+      return res.data;
+    },
+    enabled: Boolean(selectedCity.id || isSuperAdmin),
+  });
+
+  if (!selectedCity.id && !isSuperAdmin) {
+    return (
+      <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-slate-800">Дашборд</h1>
+          <p className="text-sm text-content-muted mt-1 flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> Оберіть місто</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center">
+          <MapPin className="w-10 h-10 mx-auto mb-3 text-content-muted" />
+          <p className="font-semibold text-slate-700 mb-2">Місто не обрано</p>
+          <p className="text-sm text-slate-500 mb-4">
+            Оберіть місто у розділі «Міста», щоб бачити активність
+          </p>
+          <Link
+            to="/cities"
+            className="inline-block px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+          >
+            Перейти до міст
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+      {/* Шапка */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-800">
+          Дашборд
+          {selectedCity.name && (
+            <span className="ml-2 text-base font-normal text-blue-500">
+              · {selectedCity.name}
+            </span>
+          )}
+          {isSuperAdmin && !selectedCity.name && (
+            <span className="ml-2 text-base font-normal text-purple-500">
+              · Усі міста
+            </span>
+          )}
+        </h1>
+        <p className="text-xs text-slate-400 mt-1">
+          {new Date().toLocaleDateString("uk-UA", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })}
+        </p>
+      </div>
+
+      {isLoading ? (
+        <DashboardSkeleton isSuperAdmin={isSuperAdmin} />
+      ) : summary ? (
+        <div className="flex flex-col gap-6">
+          {/* ── ЗОНА ДІЇ ── */}
+          <Suspense fallback={<div className="h-24 bg-white rounded-2xl animate-pulse border border-slate-100" />}>
+            <IssueCarousel />
+          </Suspense>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Suspense fallback={<SkeletonCard />}>
+              <TodayEvents events={summary.todayEvents} />
+            </Suspense>
+            <Suspense fallback={<SkeletonCard />}>
+              <StaleSchools schools={summary.staleSchools} />
+            </Suspense>
+            <Suspense fallback={<SkeletonCard />}>
+              <UpcomingEvents events={summary.upcomingEvents} />
+            </Suspense>
+          </div>
+
+          <hr className="border-slate-200" />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Suspense fallback={<SkeletonCard />}>
+              <MonthlyKpi kpi={summary.monthlyKpi} />
+            </Suspense>
+            <Suspense fallback={<SkeletonCard />}>
+              <FunnelBar funnel={summary.funnel} />
+            </Suspense>
+          </div>
+
+          <div className={`grid grid-cols-1 gap-4 ${isSuperAdmin ? "md:grid-cols-2" : ""}`}>
+            <Suspense fallback={<SkeletonCard className="min-h-[200px]" />}>
+              <ActivityFeed items={summary.activityFeed} />
+            </Suspense>
+            {isSuperAdmin && summary.citiesStats.length > 0 && (
+              <Suspense fallback={<SkeletonCard className="min-h-[200px]" />}>
+                <CitiesTable rows={summary.citiesStats} />
+              </Suspense>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="text-center py-20 text-slate-400 text-sm">
+          Не вдалося завантажити дані
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
 # FILE: apps/frontend/src/pages/Employees.tsx
 
 ```
@@ -909,6 +1163,7 @@ function Row({ label, value }: { label: string; value: ReactNode }) {
 import { useState } from "react";
 import { useEvents } from "../hooks/useApi";
 import { useNavigate } from "react-router-dom";
+import { School, MapPin, User, Truck } from "lucide-react";
 import AddressLink from "../components/AddressLink";
 import PhoneLink from "../components/PhoneLink";
 import { useSelectedCity } from "../context/CityContext";
@@ -1070,17 +1325,17 @@ export default function Events() {
                   {formatDate(ev.date)}
                   {ev.time ? `, ${ev.time}` : ""} · {ev.city?.name ?? "—"}
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  🏫 {ev.school?.name ?? "—"}
+                <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                  <School className="w-3 h-3 shrink-0" /> {ev.school?.name ?? "—"}
                 </p>
                 {ev.address && (
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    📍 <AddressLink address={ev.address} />
+                  <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                    <MapPin className="w-3 h-3 shrink-0" /> <AddressLink address={ev.address} />
                   </p>
                 )}
                 {(ev.crew?.host || ev.crew?.driver) && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    👤 {ev.crew?.host?.name ?? "—"} · 🚐{" "}
+                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                    <User className="w-3 h-3 shrink-0" /> {ev.crew?.host?.name ?? "—"} <Truck className="w-3 h-3 shrink-0" />{" "}
                     {ev.crew?.driver?.name ?? "—"}
                   </p>
                 )}
@@ -1139,8 +1394,8 @@ export default function Events() {
                       )}
                     </td>
                     <td className="p-4 text-gray-600 text-sm">
-                      <div>👤 {ev.crew?.host?.name ?? "—"}</div>
-                      <div>🚐 {ev.crew?.driver?.name ?? "—"}</div>
+                      <div className="flex items-center gap-1"><User className="w-3 h-3 shrink-0" /> {ev.crew?.host?.name ?? "—"}</div>
+                      <div className="flex items-center gap-1"><Truck className="w-3 h-3 shrink-0" /> {ev.crew?.driver?.name ?? "—"}</div>
                     </td>
                     <td className="p-4">
                       <span
@@ -1286,6 +1541,7 @@ import VirtualSchoolList from "../components/VirtualSchoolList";
 import { SchoolCard } from "../components/schools/SchoolMobileList";
 import type { SchoolContact } from "../types";
 import { useAuth } from "../context/AuthContext";
+import { Download } from "lucide-react";
 
 interface NewSchoolPayload {
   name: string;
@@ -1563,7 +1819,7 @@ export default function Kindergartens() {
                   Імпортую{"·".repeat(dotCount)}
                 </span>
               ) : (
-                <>📥 Імпорт з isuo</>
+                <><Download className="w-4 h-4" /> Імпорт з isuo</>
               )}
             </button>
           )}
@@ -2067,27 +2323,26 @@ export default function Login({ onLogin }: LoginProps) {
 
 ```
 import { useNavigate } from "react-router-dom";
+import { SearchX } from "lucide-react";
+import { Button } from "../components/ui/Button";
 
 export default function NotFound() {
   const navigate = useNavigate();
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-      <div className="max-w-md w-full bg-white rounded-[24px] shadow-sm border border-slate-100 p-8 text-center">
-        <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4 text-3xl">
-          🔍
+    <div className="min-h-screen flex items-center justify-center bg-surface-subtle px-4">
+      <div className="max-w-md w-full bg-surface rounded-card shadow-card border border-border p-8 text-center">
+        <div className="w-16 h-16 rounded-full bg-brand-subtle flex items-center justify-center mx-auto mb-4">
+          <SearchX className="w-7 h-7 text-brand" />
         </div>
-        <h1 className="text-xl font-bold text-slate-800 mb-2">
+        <h1 className="text-xl font-bold text-content-primary mb-2">
           Сторінку не знайдено
         </h1>
-        <p className="text-sm text-slate-500 mb-6">
+        <p className="text-sm text-content-muted mb-6">
           Можливо, її було переміщено або видалено.
         </p>
-        <button
-          onClick={() => navigate("/")}
-          className="px-5 py-2.5 rounded-full bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 transition-colors active:scale-95"
-        >
+        <Button onClick={() => navigate("/")}>
           На головну
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -2848,6 +3103,7 @@ import VirtualSchoolList from "../components/VirtualSchoolList";
 import { SchoolCard } from "../components/schools/SchoolMobileList";
 import type { SchoolContact } from "../types";
 import { useAuth } from "../context/AuthContext";
+import { Download } from "lucide-react";
 interface NewSchoolPayload {
   name: string;
   cityId: string;
@@ -3130,7 +3386,7 @@ export default function Schools() {
                   Імпортую{"·".repeat(dotCount)}
                 </span>
               ) : (
-                <>📥 Імпорт з isuo</>
+                <><Download className="w-4 h-4" /> Імпорт з isuo</>
               )}
             </button>
           )}
@@ -3620,7 +3876,7 @@ describe("DayOffModal", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "✕" }));
+    fireEvent.click(screen.getByRole("button", { name: "Закрити" }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -4897,6 +5153,70 @@ describe("API auto-refresh interceptor", () => {
     expect(dispatchSpy).toHaveBeenCalledTimes(1);
   });
 
+  it("паралельні 401-запити — лише один refresh (single-flight)", async () => {
+    let refreshCalls = 0;
+
+    const instance = axios.create({ baseURL: "/api", withCredentials: true });
+
+    let refreshPromise: Promise<void> | null = null;
+
+    instance.interceptors.response.use(
+      (res) => res,
+      async (error: any) => {
+        const original = error.config;
+        const isAuth =
+          original?.url?.includes("/auth/login") ||
+          original?.url?.includes("/auth/refresh");
+
+        if (
+          error.response?.status === 401 &&
+          original &&
+          !original._retry &&
+          !isAuth
+        ) {
+          original._retry = true;
+          try {
+            if (!refreshPromise) {
+              refreshPromise = instance
+                .post("/auth/refresh")
+                .then(() => undefined)
+                .finally(() => {
+                  refreshPromise = null;
+                });
+            }
+            await refreshPromise;
+            return instance(original);
+          } catch {
+            window.dispatchEvent(new Event("auth:expired"));
+            return Promise.reject(error);
+          }
+        }
+        return Promise.reject(error);
+      },
+    );
+
+    instance.defaults.adapter = (config: any) => {
+      if (config.url === "/auth/refresh") {
+        refreshCalls++;
+        return okAdapter({ ok: true })(config);
+      }
+      if (config.url?.startsWith("/data/") && config._retry) {
+        return okAdapter({ id: config.url.split("/").pop() })(config);
+      }
+      return rejectingAdapter(401, null)(config);
+    };
+
+    const results = await Promise.all([
+      instance.get("/data/1"),
+      instance.get("/data/2"),
+      instance.get("/data/3"),
+    ]);
+
+    expect(results).toHaveLength(3);
+    results.forEach((r) => expect(r.status).toBe(200));
+    expect(refreshCalls).toBe(1);
+  });
+
   it("не рефрешить на auth-ендпоінтах", async () => {
     const instance = axios.create({ baseURL: "/api", withCredentials: true });
 
@@ -5615,6 +5935,13 @@ export interface PipelineStage {
   name: string;
 }
 
+export interface DayOff {
+  id: string;
+  userId: string;
+  date: string;
+  user: { id: string; name: string; role: string; cityId: string | null };
+}
+
 export interface IssueReport {
   id: string;
   eventId: string;
@@ -5624,6 +5951,60 @@ export interface IssueReport {
   cityId: string;
   status: string;
   createdAt: string;
+}
+
+export interface FinanceKpi {
+  totalRevenue: number;
+  totalExpenses: number;
+  totalProfit: number;
+  totalEvents: number;
+}
+
+export interface MonthlyFinance {
+  month: string;
+  revenue: number;
+  profit: number;
+}
+
+export interface FinanceByProject {
+  name: string;
+  value: number;
+}
+
+export interface FinanceByCategory {
+  name: string;
+  value: number;
+}
+
+export interface FinanceTopSchool {
+  name: string;
+  count: number;
+  revenue: number;
+}
+
+export interface FinanceEventItem {
+  id: string;
+  date: string;
+  school: string;
+  profit: number;
+  revenue: number;
+}
+
+export interface FinanceFilterOptions {
+  projects: string[];
+  cities: { id: string; name: string }[];
+}
+
+export interface FinanceDashboardData {
+  kpi: FinanceKpi;
+  monthly: MonthlyFinance[];
+  expectedRevenue: number;
+  filters: FinanceFilterOptions;
+  byProject?: FinanceByProject[];
+  byExpenseCategory?: FinanceByCategory[];
+  topSchools?: FinanceTopSchool[];
+  topEvents?: FinanceEventItem[];
+  worstEvents?: FinanceEventItem[];
 }
 
 ```
@@ -5670,7 +6051,6 @@ export function getNextPreparationStatus(
 
 ```
 
-
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -5678,11 +6058,47 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        surface: {
+          DEFAULT: "#ffffff",
+          subtle: "#f8fafc",
+          muted: "#f1f5f9",
+        },
+        border: {
+          DEFAULT: "#f1f5f9",
+          strong: "#e2e8f0",
+        },
+        content: {
+          primary: "#1e293b",
+          secondary: "#475569",
+          muted: "#94a3b8",
+        },
+        brand: {
+          DEFAULT: "#2563eb",
+          hover: "#1d4ed8",
+          subtle: "#eff6ff",
+        },
+        success: { DEFAULT: "#10b981", subtle: "#ecfdf5" },
+        danger:  { DEFAULT: "#ef4444", subtle: "#fef2f2" },
+        warning: { DEFAULT: "#f59e0b", subtle: "#fffbeb" },
+      },
+      borderRadius: {
+        card: "1rem",
+        modal: "1.5rem",
+        control: "0.75rem",
+        pill: "9999px",
+      },
+      boxShadow: {
+        card: "0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06)",
+        modal: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+      },
+      transitionDuration: { fast: "150ms", base: "200ms", slow: "300ms" },
+    },
   },
+  darkMode: "class",
   plugins: [],
 }
-
 
 ```
 
@@ -5819,6 +6235,12 @@ export default defineConfig({
     coverage: {
       reporter: ["text", "html"],
       exclude: ["src/tests/**", "src/main.tsx"],
+      thresholds: {
+        statements: 70,
+        branches: 50,
+        functions: 60,
+        lines: 70,
+      },
     },
   },
 });

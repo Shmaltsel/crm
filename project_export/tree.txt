@@ -39,6 +39,8 @@ apps
 │   │   │   │   └── migration.sql
 │   │   │   ├── 20260704220311_add_project_price_per_child
 │   │   │   │   └── migration.sql
+│   │   │   ├── 20260706104815_add_query_indexes
+│   │   │   │   └── migration.sql
 │   │   │   ├── 20260706120000_event_report_decimal_money
 │   │   │   │   └── migration.sql
 │   │   │   └── migration_lock.toml
@@ -59,11 +61,13 @@ apps
 │   │   │   ├── auth.module.ts
 │   │   │   ├── auth.service.spec.ts
 │   │   │   ├── auth.service.ts
+│   │   │   ├── csrf.guard.spec.ts
 │   │   │   ├── csrf.guard.ts
 │   │   │   ├── decorators
 │   │   │   │   ├── check-ownership.decorator.ts
 │   │   │   │   ├── current-user.decorator.ts
-│   │   │   │   └── roles.decorator.ts
+│   │   │   │   ├── roles.decorator.ts
+│   │   │   │   └── skip-csrf.decorator.ts
 │   │   │   ├── dto
 │   │   │   │   └── login.dto.ts
 │   │   │   ├── guards
@@ -135,8 +139,12 @@ apps
 │   │   │   │   ├── submit-report.dto.ts
 │   │   │   │   ├── update-preparation.dto.ts
 │   │   │   │   └── update-status.dto.ts
+│   │   │   ├── events-report.service.spec.ts
+│   │   │   ├── events-report.service.ts
 │   │   │   ├── events-scheduler.service.spec.ts
 │   │   │   ├── events-scheduler.service.ts
+│   │   │   ├── events-scheduling.service.spec.ts
+│   │   │   ├── events-scheduling.service.ts
 │   │   │   ├── events.controller.spec.ts
 │   │   │   ├── events.controller.ts
 │   │   │   ├── events.module.ts
@@ -168,7 +176,10 @@ apps
 │   │   │   └── issues.service.ts
 │   │   ├── main.ts
 │   │   ├── metrics
+│   │   │   ├── metrics.controller.spec.ts
 │   │   │   ├── metrics.controller.ts
+│   │   │   ├── metrics.guard.spec.ts
+│   │   │   ├── metrics.guard.ts
 │   │   │   ├── metrics.interceptor.ts
 │   │   │   ├── metrics.module.ts
 │   │   │   └── metrics.service.ts
@@ -244,7 +255,6 @@ apps
     │   └── robots.txt
     ├── README.md
     ├── src
-    │   ├── App.css
     │   ├── App.tsx
     │   ├── assets
     │   │   ├── hero.png
@@ -305,8 +315,13 @@ apps
     │   │   │   ├── StatsBar.tsx
     │   │   │   └── VirtualDesktopTable.tsx
     │   │   ├── ui
+    │   │   │   ├── Button.tsx
+    │   │   │   ├── Card.tsx
+    │   │   │   ├── Input.tsx
+    │   │   │   ├── Modal.tsx
     │   │   │   ├── OptimizedImage.tsx
-    │   │   │   └── Skeleton.tsx
+    │   │   │   ├── Skeleton.tsx
+    │   │   │   └── Toast.tsx
     │   │   └── VirtualSchoolList.tsx
     │   ├── config
     │   │   └── api.ts
@@ -321,6 +336,7 @@ apps
     │   │   ├── useEmployees.ts
     │   │   └── useSchoolProfile.ts
     │   ├── index.css
+    │   ├── instrument.ts
     │   ├── main.tsx
     │   ├── pages
     │   │   ├── CalendarView.tsx

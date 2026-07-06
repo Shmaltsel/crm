@@ -167,6 +167,14 @@ export default tseslint.config(
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
+    "coverageThreshold": {
+      "global": {
+        "statements": 70,
+        "branches": 50,
+        "functions": 60,
+        "lines": 70
+      }
+    },
     "testEnvironment": "node",
     "moduleNameMapper": {
       "^src/(.*)$": "<rootDir>/$1"
@@ -742,6 +750,29 @@ ALTER TABLE "Project" ADD COLUMN     "pricePerChild" INTEGER NOT NULL DEFAULT 0;
 
 ```
 
+# FILE: apps/backend/prisma/migrations/20260706104815_add_query_indexes/migration.sql
+
+```
+-- CreateIndex
+CREATE INDEX "Event_cityId_date_idx" ON "Event"("cityId", "date");
+
+-- CreateIndex
+CREATE INDEX "EventHistory_createdAt_idx" ON "EventHistory"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "School_cityId_type_idx" ON "School"("cityId", "type");
+
+-- CreateIndex
+CREATE INDEX "School_type_idx" ON "School"("type");
+
+-- CreateIndex
+CREATE INDEX "School_createdAt_idx" ON "School"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "SchoolContact_city_idx" ON "SchoolContact"("city");
+
+```
+
 # FILE: apps/backend/prisma/migrations/20260706120000_event_report_decimal_money/migration.sql
 
 ```
@@ -839,6 +870,9 @@ model School {
   city          City     @relation(fields: [cityId], references: [id])
 
   @@index([cityId])
+  @@index([cityId, type])
+  @@index([type])
+  @@index([createdAt])
   @@index([updatedAt, cityId])
 }
 
@@ -892,6 +926,7 @@ model Event {
   issues          IssueReport[]
 
   @@index([cityId])
+  @@index([cityId, date])
   @@index([status])
   @@index([schoolId])
   @@index([schoolId, date])
@@ -946,6 +981,7 @@ model EventHistory {
   event     Event    @relation(fields: [eventId], references: [id])
 
   @@index([eventId, createdAt])
+  @@index([createdAt])
 }
 
 model EventPreparation {
@@ -986,6 +1022,8 @@ model SchoolContact {
   phone        String
   role         String?
   createdAt    DateTime @default(now())
+
+  @@index([city])
 }
 
 model Project {
@@ -2444,6 +2482,97 @@ export class AuthService {
 
 ```
 
+# FILE: apps/backend/src/auth/csrf.guard.spec.ts
+
+```
+import { ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { CsrfGuard } from './csrf.guard';
+import { SKIP_CSRF_KEY } from './decorators/skip-csrf.decorator';
+
+describe('CsrfGuard', () => {
+  let guard: CsrfGuard;
+  let reflector: { getAllAndOverride: jest.Mock };
+
+  const createContext = (
+    method: string,
+    path: string,
+    cookies: Record<string, string> = {},
+    headers: Record<string, string> = {},
+  ): ExecutionContext =>
+    ({
+      getHandler: () => ({}),
+      getClass: () => ({}),
+      switchToHttp: () => ({
+        getRequest: () => ({ method, path, cookies, headers }),
+      }),
+    }) as any;
+
+  beforeEach(() => {
+    reflector = { getAllAndOverride: jest.fn() };
+    guard = new CsrfGuard(reflector as unknown as Reflector);
+  });
+
+  it('@SkipCsrf — пропускає без перевірки', () => {
+    reflector.getAllAndOverride.mockReturnValueOnce(true);
+    const ok = guard.canActivate(
+      createContext('POST', '/some-path', {}, {}),
+    );
+    expect(ok).toBe(true);
+  });
+
+  it('GET/HEAD/OPTIONS пропускає без перевірки', () => {
+    reflector.getAllAndOverride.mockReturnValueOnce(undefined);
+    const ok = guard.canActivate(
+      createContext('GET', '/any-path'),
+    );
+    expect(ok).toBe(true);
+  });
+
+  it('/auth/login пропускає без перевірки', () => {
+    reflector.getAllAndOverride.mockReturnValueOnce(undefined);
+    const ok = guard.canActivate(
+      createContext('POST', '/auth/login'),
+    );
+    expect(ok).toBe(true);
+  });
+
+  it('POST без csrf_token у cookie кидає Forbidden', () => {
+    reflector.getAllAndOverride.mockReturnValueOnce(undefined);
+    expect(() =>
+      guard.canActivate(createContext('POST', '/some-path', {}, {})),
+    ).toThrow(ForbiddenException);
+  });
+
+  it('POST з cookie але без заголовка кидає Forbidden', () => {
+    reflector.getAllAndOverride.mockReturnValueOnce(undefined);
+    expect(() =>
+      guard.canActivate(
+        createContext('POST', '/some-path', { csrf_token: 'token123' }, {}),
+      ),
+    ).toThrow(ForbiddenException);
+  });
+
+  it('POST з неспівпадінням токенів кидає Forbidden', () => {
+    reflector.getAllAndOverride.mockReturnValueOnce(undefined);
+    expect(() =>
+      guard.canActivate(
+        createContext('POST', '/some-path', { csrf_token: 'token123' }, { 'x-csrf-token': 'wrong' }),
+      ),
+    ).toThrow(ForbiddenException);
+  });
+
+  it('POST зі співпадінням токенів пропускає', () => {
+    reflector.getAllAndOverride.mockReturnValueOnce(undefined);
+    const ok = guard.canActivate(
+      createContext('POST', '/some-path', { csrf_token: 'token123' }, { 'x-csrf-token': 'token123' }),
+    );
+    expect(ok).toBe(true);
+  });
+});
+
+```
+
 # FILE: apps/backend/src/auth/csrf.guard.ts
 
 ```
@@ -2453,12 +2582,22 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { SKIP_CSRF_KEY } from './decorators/skip-csrf.decorator';
 
 @Injectable()
 export class CsrfGuard implements CanActivate {
   private readonly exemptPaths = ['/auth/login'];
 
+  constructor(private reflector: Reflector) {}
+
   canActivate(context: ExecutionContext): boolean {
+    const skipCsrf = this.reflector.getAllAndOverride<boolean>(SKIP_CSRF_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (skipCsrf) return true;
+
     const req = context.switchToHttp().getRequest();
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return true;
     if (this.exemptPaths.includes(req.path)) return true;
@@ -2510,6 +2649,16 @@ import { UserRole } from '@prisma/client';
 
 export const ROLES_KEY = 'roles';
 export const Roles = (...roles: UserRole[]) => SetMetadata(ROLES_KEY, roles);
+
+```
+
+# FILE: apps/backend/src/auth/decorators/skip-csrf.decorator.ts
+
+```
+import { SetMetadata } from '@nestjs/common';
+
+export const SKIP_CSRF_KEY = 'skipCsrf';
+export const SkipCsrf = () => SetMetadata(SKIP_CSRF_KEY, true);
 
 ```
 
@@ -3849,18 +3998,20 @@ export class AuditLogInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap(() => {
         const user = req.user as { sub?: string; name?: string } | undefined;
-        const [, entity, entityId] = req.path.split('/');
-        const cleanEntityId =
-          entityId && !entityId.includes('?') ? entityId : undefined;
+        const entity = context.getClass().name.replace(/Controller$/, '').toLowerCase();
+        const entityId =
+          (Object.values(req.params ?? {}).find(
+            (v) => typeof v === 'string' && /^\d+$/.test(v),
+          ) as string | undefined) ?? undefined;
 
         this.prisma.auditLog
           .create({
             data: {
               userId: user?.sub,
               userName: user?.name,
-              action: `${req.method} ${entity ?? req.path}`,
+              action: `${req.method} ${entity || req.path}`,
               entity: entity || undefined,
-              entityId: cleanEntityId,
+              entityId,
               ip: req.ip,
               userAgent: req.headers['user-agent'],
             },
@@ -4044,6 +4195,7 @@ export const envValidationSchema = Joi.object({
   FRONTEND_URL: Joi.string().required(),
   TELEGRAM_BOT_TOKEN: Joi.string().required(),
   REDIS_URL: Joi.string().uri().default('redis://localhost:6379'),
+  METRICS_TOKEN: Joi.string().optional(),
   JWT_SECRET: Joi.string()
     .min(32)
     .when('NODE_ENV', {
@@ -6176,6 +6328,585 @@ export class UpdateStatusDto {
 
 ```
 
+# FILE: apps/backend/src/events/events-report.service.spec.ts
+
+```
+import { Test, TestingModule } from '@nestjs/testing';
+import { Prisma } from '@prisma/client';
+import { EventsReportService } from './events-report.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { CacheVersionService } from '../common/cache/cache-version.service';
+
+const mockPrisma = {
+  $transaction: jest.fn(),
+};
+
+const mockUser = { sub: 'user-1', name: 'Менеджер', role: 'MANAGER' } as const;
+
+describe('EventsReportService', () => {
+  let service: EventsReportService;
+  let mockTx: any;
+
+  const reportData = {
+    announcementDone: true,
+    materialShown: true,
+    childrenCount: 100,
+    classesCount: 4,
+    privilegedCount: 5,
+    showingsCount: 2,
+    totalSum: 10000,
+    schoolSum: 2000,
+    remainderSum: 8000,
+    rating: 9,
+    expenses: [],
+    salaries: [
+      { userId: 'host-1', name: 'Ведучий Тест', amount: 1500 },
+      { userId: 'driver-1', name: 'Водій Тест', amount: 1000 },
+    ],
+  };
+
+  const setupTx = () => {
+    mockTx = {
+      eventReport: { upsert: jest.fn() },
+      expenseItem: { deleteMany: jest.fn(), createMany: jest.fn() },
+      salaryItem: { deleteMany: jest.fn(), createMany: jest.fn() },
+      user: { update: jest.fn() },
+      event: { update: jest.fn() },
+    };
+    mockPrisma.$transaction.mockImplementation(
+      async (fn: (tx: any) => unknown, _opts?: unknown) => fn(mockTx),
+    );
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    setupTx();
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        EventsReportService,
+        { provide: PrismaService, useValue: mockPrisma },
+        {
+          provide: CACHE_MANAGER,
+          useValue: {
+            get: jest.fn().mockResolvedValue(null),
+            set: jest.fn().mockResolvedValue(undefined),
+            del: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: CacheVersionService,
+          useValue: {
+            getVersion: jest.fn().mockResolvedValue(0),
+            bumpVersion: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+      ],
+    }).compile();
+
+    service = module.get<EventsReportService>(EventsReportService);
+  });
+
+  describe('submitReport', () => {
+    it('зберігає звіт через upsert', async () => {
+      mockTx.eventReport.upsert.mockResolvedValueOnce({ eventId: 'ev-1' });
+      mockTx.user.update.mockResolvedValue({ id: 'host-1', balance: 1500 });
+      mockTx.event.update.mockResolvedValueOnce({
+        id: 'ev-1',
+        status: 'REPORT',
+        report: {},
+        history: [],
+      });
+
+      await service.submitReport('ev-1', reportData, mockUser);
+
+      expect(mockTx.eventReport.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { eventId: 'ev-1' },
+          update: expect.objectContaining({
+            totalSum: expect.any(Prisma.Decimal),
+            remainderSum: expect.any(Prisma.Decimal),
+          }),
+          create: expect.objectContaining({
+            totalSum: expect.any(Prisma.Decimal),
+            remainderSum: expect.any(Prisma.Decimal),
+          }),
+        }),
+      );
+    });
+
+    it('нараховує зарплату користувачам', async () => {
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.user.update.mockResolvedValue({});
+      mockTx.event.update.mockResolvedValueOnce({
+        id: 'ev-1',
+        status: 'REPORT',
+        report: {},
+        history: [],
+      });
+
+      await service.submitReport('ev-1', reportData, mockUser);
+
+      expect(mockTx.user.update).toHaveBeenCalledTimes(2);
+      expect(mockTx.user.update).toHaveBeenCalledWith({
+        where: { id: 'host-1' },
+        data: { balance: { increment: 1500 } },
+      });
+      expect(mockTx.user.update).toHaveBeenCalledWith({
+        where: { id: 'driver-1' },
+        data: { balance: { increment: 1000 } },
+      });
+    });
+
+    it('не нараховує зарплату якщо amount = 0', async () => {
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.event.update.mockResolvedValueOnce({
+        id: 'ev-1',
+        status: 'REPORT',
+        report: {},
+        history: [],
+      });
+
+      await service.submitReport(
+        'ev-1',
+        {
+          ...reportData,
+          salaries: [{ userId: 'host-1', name: 'Host', amount: 0 }],
+        },
+        mockUser,
+      );
+
+      expect(mockTx.user.update).not.toHaveBeenCalled();
+    });
+
+    it('змінює статус на REPORT після збереження звіту', async () => {
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.user.update.mockResolvedValue({});
+      mockTx.event.update.mockResolvedValueOnce({
+        id: 'ev-1',
+        status: 'REPORT',
+        report: {},
+        history: [],
+      });
+
+      const result = await service.submitReport('ev-1', reportData, mockUser);
+
+      expect(mockTx.event.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'ev-1' },
+          data: expect.objectContaining({ status: 'REPORT' }),
+        }),
+      );
+      expect(result.status).toBe('REPORT');
+    });
+
+    it('не нараховує зарплату якщо salaries порожній', async () => {
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.event.update.mockResolvedValueOnce({
+        id: 'ev-1',
+        status: 'REPORT',
+        report: {},
+        history: [],
+      });
+
+      await service.submitReport(
+        'ev-1',
+        { ...reportData, salaries: [] },
+        mockUser,
+      );
+
+      expect(mockTx.user.update).not.toHaveBeenCalled();
+    });
+
+    it('очищує попередні expense/salary записи перед кожною подачею звіту (ідемпотентність редагування)', async () => {
+      mockTx.eventReport.upsert.mockResolvedValueOnce({ id: 'report-1' });
+      mockTx.user.update.mockResolvedValue({});
+      mockTx.event.update.mockResolvedValueOnce({
+        id: 'ev-1',
+        status: 'REPORT',
+        report: {},
+        history: [],
+      });
+
+      await service.submitReport('ev-1', reportData, mockUser);
+
+      expect(mockTx.expenseItem.deleteMany).toHaveBeenCalledWith({
+        where: { reportId: 'report-1' },
+      });
+      expect(mockTx.salaryItem.deleteMany).toHaveBeenCalledWith({
+        where: { reportId: 'report-1' },
+      });
+    });
+
+    it('deleteMany викликається завжди, навіть якщо expenses і salaries порожні', async () => {
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.event.update.mockResolvedValueOnce({
+        id: 'ev-1',
+        status: 'REPORT',
+        report: {},
+        history: [],
+      });
+
+      await service.submitReport(
+        'ev-1',
+        { ...reportData, expenses: [], salaries: [] },
+        mockUser,
+      );
+
+      expect(mockTx.expenseItem.deleteMany).toHaveBeenCalled();
+      expect(mockTx.salaryItem.deleteMany).toHaveBeenCalled();
+      expect(mockTx.expenseItem.createMany).not.toHaveBeenCalled();
+      expect(mockTx.salaryItem.createMany).not.toHaveBeenCalled();
+    });
+
+    it('підставляє категорію "Інше" для витрати без вказаної категорії', async () => {
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.user.update.mockResolvedValue({});
+      mockTx.event.update.mockResolvedValueOnce({
+        id: 'ev-1',
+        status: 'REPORT',
+        report: {},
+        history: [],
+      });
+
+      await service.submitReport(
+        'ev-1',
+        { ...reportData, expenses: [{ name: 'Бензин', amount: 300 }] },
+        mockUser,
+      );
+
+      const call = mockTx.expenseItem.createMany.mock.calls[0][0];
+      expect(call.data[0].category).toBe('Інше');
+    });
+
+    it('конвертує суми витрат у Prisma.Decimal з точністю до копійок', async () => {
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.user.update.mockResolvedValue({});
+      mockTx.event.update.mockResolvedValueOnce({
+        id: 'ev-1',
+        status: 'REPORT',
+        report: {},
+        history: [],
+      });
+
+      await service.submitReport(
+        'ev-1',
+        {
+          ...reportData,
+          expenses: [{ category: 'Транспорт', name: 'Бензин', amount: 349.99 }],
+        },
+        mockUser,
+      );
+
+      const call = mockTx.expenseItem.createMany.mock.calls[0][0];
+      expect(call.data[0].amount).toBeInstanceOf(Prisma.Decimal);
+      expect(call.data[0].amount.toString()).toBe('349.99');
+    });
+
+    it('обробляє відсутність суми витрати (amount undefined -> 0)', async () => {
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.event.update.mockResolvedValueOnce({
+        id: 'ev-1',
+        status: 'REPORT',
+        report: {},
+        history: [],
+      });
+
+      await service.submitReport(
+        'ev-1',
+        {
+          ...reportData,
+          expenses: [
+            {
+              category: 'Інше',
+              name: 'Без суми',
+              amount: undefined as unknown as number,
+            },
+          ],
+        },
+        mockUser,
+      );
+
+      const call = mockTx.expenseItem.createMany.mock.calls[0][0];
+      expect(call.data[0].amount.toString()).toBe('0');
+    });
+
+    it("не нараховує баланс якщо сума зарплати від'ємна, але запис зберігається", async () => {
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.event.update.mockResolvedValueOnce({
+        id: 'ev-1',
+        status: 'REPORT',
+        report: {},
+        history: [],
+      });
+
+      await service.submitReport(
+        'ev-1',
+        {
+          ...reportData,
+          salaries: [{ userId: 'host-1', name: 'Ведучий Тест', amount: 0 }],
+        },
+        mockUser,
+      );
+
+      expect(mockTx.salaryItem.createMany).toHaveBeenCalled();
+      expect(mockTx.user.update).not.toHaveBeenCalled();
+    });
+
+    it('створює всі salary items одним викликом createMany', async () => {
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.user.update.mockResolvedValue({});
+      mockTx.event.update.mockResolvedValueOnce({
+        id: 'ev-1',
+        status: 'REPORT',
+        report: {},
+        history: [],
+      });
+
+      await service.submitReport('ev-1', reportData, mockUser);
+
+      expect(mockTx.salaryItem.createMany).toHaveBeenCalledTimes(1);
+      const call = mockTx.salaryItem.createMany.mock.calls[0][0];
+      expect(call.data).toHaveLength(2);
+    });
+
+    it('зберігає totalSum/schoolSum/remainderSum саме такими, як прийшли з фронтенду — бекенд НЕ перераховує арифметику', async () => {
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.user.update.mockResolvedValue({});
+      mockTx.event.update.mockResolvedValueOnce({
+        id: 'ev-1',
+        status: 'REPORT',
+        report: {},
+        history: [],
+      });
+
+      await service.submitReport(
+        'ev-1',
+        {
+          ...reportData,
+          totalSum: 15000,
+          schoolSum: 3000,
+          remainderSum: 11500,
+        },
+        mockUser,
+      );
+
+      const call = mockTx.eventReport.upsert.mock.calls[0][0];
+      expect(Number(call.update.remainderSum)).toBe(11500);
+    });
+
+    it('коректно обробляє відсутній rating', async () => {
+      const { rating, ...withoutRating } = reportData;
+      mockTx.eventReport.upsert.mockResolvedValueOnce({});
+      mockTx.user.update.mockResolvedValue({});
+      mockTx.event.update.mockResolvedValueOnce({
+        id: 'ev-1',
+        status: 'REPORT',
+        report: {},
+        history: [],
+      });
+
+      await service.submitReport('ev-1', withoutRating, mockUser);
+
+      const call = mockTx.eventReport.upsert.mock.calls[0][0];
+      expect(call.update.rating).toBeUndefined();
+    });
+
+    it('транзакція відкочується при помилці — event.update не виконується', async () => {
+      mockTx.eventReport.upsert.mockRejectedValueOnce(new Error('DB error'));
+      mockTx.event.update.mockResolvedValueOnce({
+        id: 'ev-1',
+        status: 'REPORT',
+        report: {},
+        history: [],
+      });
+
+      await expect(
+        service.submitReport('ev-1', reportData, mockUser),
+      ).rejects.toThrow('DB error');
+
+      expect(mockTx.event.update).not.toHaveBeenCalled();
+      expect(mockPrisma.$transaction).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.objectContaining({ timeout: 15000 }),
+      );
+    });
+  });
+});
+
+```
+
+# FILE: apps/backend/src/events/events-report.service.ts
+
+```
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
+import { PrismaService } from '../prisma/prisma.service';
+import { CacheVersionService } from '../common/cache/cache-version.service';
+import { Prisma } from '@prisma/client';
+import { SubmitReportDto, ExpenseItemDto } from './dto/submit-report.dto';
+import { JwtUser } from '../auth/interfaces/jwt-user.interface';
+
+@Injectable()
+export class EventsReportService {
+  private readonly logger = new Logger(EventsReportService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly cacheVersion: CacheVersionService,
+  ) {}
+
+  private toOptionalNumber(value: unknown): number | null {
+    return value != null ? Number(value) : null;
+  }
+
+  private toNumber(value: unknown): number {
+    return Number(value ?? 0);
+  }
+
+  private serializeEvent<T extends Record<string, unknown>>(ev: T): T {
+    return {
+      ...ev,
+      price: this.toOptionalNumber(ev.price),
+      received: this.toOptionalNumber(ev.received),
+      report: ev.report
+        ? {
+            ...(ev.report as Record<string, unknown>),
+            totalSum: this.toNumber(
+              (ev.report as Record<string, unknown>).totalSum,
+            ),
+            schoolSum: this.toNumber(
+              (ev.report as Record<string, unknown>).schoolSum,
+            ),
+            remainderSum: this.toNumber(
+              (ev.report as Record<string, unknown>).remainderSum,
+            ),
+          }
+        : ev.report,
+    };
+  }
+
+  private async invalidateSchoolEventsCache(schoolId: string) {
+    await Promise.all([
+      this.cacheManager.del(`events:school:${schoolId}:minimal`),
+      this.cacheManager.del(`events:school:${schoolId}:full`),
+    ]);
+  }
+
+  async submitReport(
+    eventId: string,
+    reportData: SubmitReportDto,
+    user: JwtUser,
+  ) {
+    const event = await this.prisma.$transaction(
+      async (tx) => {
+        const report = await tx.eventReport.upsert({
+          where: { eventId },
+          update: {
+            announcementDone: reportData.announcementDone,
+            materialShown: reportData.materialShown,
+            childrenCount: reportData.childrenCount,
+            classesCount: reportData.classesCount,
+            privilegedCount: reportData.privilegedCount,
+            showingsCount: reportData.showingsCount,
+            totalSum: new Prisma.Decimal(reportData.totalSum),
+            schoolSum: new Prisma.Decimal(reportData.schoolSum),
+            remainderSum: new Prisma.Decimal(reportData.remainderSum),
+            rating: reportData.rating,
+          },
+          create: {
+            eventId,
+            announcementDone: reportData.announcementDone,
+            materialShown: reportData.materialShown,
+            childrenCount: reportData.childrenCount,
+            classesCount: reportData.classesCount,
+            privilegedCount: reportData.privilegedCount,
+            showingsCount: reportData.showingsCount,
+            totalSum: new Prisma.Decimal(reportData.totalSum),
+            schoolSum: new Prisma.Decimal(reportData.schoolSum),
+            remainderSum: new Prisma.Decimal(reportData.remainderSum),
+            rating: reportData.rating,
+          },
+        });
+
+        await tx.expenseItem.deleteMany({
+          where: { reportId: report.id },
+        });
+        await tx.salaryItem.deleteMany({
+          where: { reportId: report.id },
+        });
+
+        if (reportData.expenses?.length) {
+          await tx.expenseItem.createMany({
+            data: reportData.expenses.map((exp: ExpenseItemDto) => ({
+              reportId: report.id,
+              category: exp.category || 'Інше',
+              name: exp.name,
+              amount: new Prisma.Decimal(exp.amount || 0),
+            })),
+          });
+        }
+
+        if (reportData.salaries?.length) {
+          const salariesWithUser = reportData.salaries.filter((s) => s.userId);
+          if (salariesWithUser.length) {
+            await tx.salaryItem.createMany({
+              data: salariesWithUser.map((s) => ({
+                reportId: report.id,
+                userId: s.userId,
+                userName: s.name,
+                amount: new Prisma.Decimal(s.amount),
+              })),
+            });
+
+            const positiveSalaries = salariesWithUser.filter(
+              (s) => s.amount > 0,
+            );
+            for (const s of positiveSalaries) {
+              await tx.user.update({
+                where: { id: s.userId },
+                data: { balance: { increment: s.amount } },
+              });
+            }
+          }
+        }
+
+        return tx.event.update({
+          where: { id: eventId },
+          data: {
+            status: 'REPORT' as never,
+            history: {
+              create: {
+                action: 'Сформовано звіт. Захід завершено.',
+                userId: user.sub,
+                userName: user.name,
+                role: user.role,
+              },
+            },
+          },
+          include: {
+            report: true,
+            history: { orderBy: { createdAt: 'desc' } },
+          },
+        });
+      },
+      { timeout: 15000 },
+    );
+
+    await this.invalidateSchoolEventsCache(event.schoolId);
+    await Promise.all([
+      this.cacheVersion.bumpVersion('finance'),
+      this.cacheVersion.bumpVersion('dashboard'),
+    ]);
+    return this.serializeEvent(event);
+  }
+}
+
+```
+
 # FILE: apps/backend/src/events/events-scheduler.service.spec.ts
 
 ```
@@ -6468,6 +7199,276 @@ export class EventsSchedulerService implements OnModuleInit {
 
 ```
 
+# FILE: apps/backend/src/events/events-scheduling.service.spec.ts
+
+```
+import { Test, TestingModule } from '@nestjs/testing';
+import { EventsSchedulingService } from './events-scheduling.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+
+const mockPrisma = {
+  event: {
+    update: jest.fn(),
+  },
+  user: {
+    findUnique: jest.fn(),
+  },
+};
+
+const mockTelegram = { sendMessage: jest.fn() };
+
+const mockUser = { sub: 'user-1', name: 'Менеджер', role: 'MANAGER' } as const;
+
+describe('EventsSchedulingService', () => {
+  let service: EventsSchedulingService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        EventsSchedulingService,
+        { provide: PrismaService, useValue: mockPrisma },
+        { provide: TelegramService, useValue: mockTelegram },
+        {
+          provide: CACHE_MANAGER,
+          useValue: {
+            get: jest.fn().mockResolvedValue(null),
+            set: jest.fn().mockResolvedValue(undefined),
+            del: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+      ],
+    }).compile();
+
+    service = module.get<EventsSchedulingService>(EventsSchedulingService);
+  });
+
+  describe('rescheduleEvent', () => {
+    it('оновлює дату, час та додає запис в історію', async () => {
+      const updatedEvent = {
+        id: 'ev-1',
+        project: 'Голограма',
+        date: new Date('2025-10-15'),
+        time: '14:00',
+        school: { id: 'school-1', name: 'Школа №1' },
+        city: { id: 'city-1', name: 'Київ' },
+        crew: null,
+        history: [{ id: 'h-1', action: 'Подію перенесено' }],
+      };
+      mockPrisma.event.update.mockResolvedValueOnce(updatedEvent);
+
+      const result = await service.rescheduleEvent(
+        'ev-1',
+        '2025-10-15',
+        '14:00',
+        mockUser,
+      );
+
+      expect(mockPrisma.event.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'ev-1' },
+          data: expect.objectContaining({
+            date: expect.any(Date),
+            time: '14:00',
+          }),
+        }),
+      );
+      expect(result.time).toBe('14:00');
+    });
+
+    it('надсилає Telegram сповіщення якщо є екіпаж з chatId', async () => {
+      mockPrisma.event.update.mockResolvedValueOnce({
+        id: 'ev-1',
+        project: 'Голограма',
+        date: new Date('2025-10-15'),
+        time: '14:00',
+        school: { name: 'Школа' },
+        city: { name: 'Київ' },
+        crew: { hostId: 'host-1', driverId: 'driver-1' },
+        history: [],
+      });
+
+      mockPrisma.user.findUnique.mockResolvedValueOnce({
+        id: 'host-1',
+        telegramChatId: '123456',
+      });
+      mockPrisma.user.findUnique.mockResolvedValueOnce({
+        id: 'driver-1',
+        telegramChatId: '789012',
+      });
+
+      await service.rescheduleEvent('ev-1', '2025-10-15', '14:00', mockUser);
+
+      expect(mockTelegram.sendMessage).toHaveBeenCalledTimes(2);
+    });
+
+    it('не надсилає сповіщення якщо екіпаж не призначений', async () => {
+      mockPrisma.event.update.mockResolvedValueOnce({
+        id: 'ev-1',
+        project: 'Голограма',
+        date: new Date('2025-10-15'),
+        time: '14:00',
+        school: { name: 'Школа' },
+        city: { name: 'Київ' },
+        crew: null,
+        history: [],
+      });
+
+      await service.rescheduleEvent('ev-1', '2025-10-15', '14:00', mockUser);
+
+      expect(mockTelegram.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('інвалідує кеш школи після перенесення', async () => {
+      mockPrisma.event.update.mockResolvedValueOnce({
+        id: 'ev-1',
+        schoolId: 'school-1',
+        project: 'Голограма',
+        date: new Date('2025-10-15'),
+        time: '14:00',
+        school: { id: 'school-1', name: 'Школа' },
+        city: { id: 'city-1', name: 'Київ' },
+        crew: null,
+        history: [],
+      });
+      const cacheDelSpy = jest.spyOn(
+        (service as any).cacheManager,
+        'del',
+      );
+
+      await service.rescheduleEvent('ev-1', '2025-10-15', '14:00', mockUser);
+
+      expect(cacheDelSpy).toHaveBeenCalledWith(
+        'events:school:school-1:minimal',
+      );
+      expect(cacheDelSpy).toHaveBeenCalledWith('events:school:school-1:full');
+    });
+  });
+});
+
+```
+
+# FILE: apps/backend/src/events/events-scheduling.service.ts
+
+```
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
+import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
+import { JwtUser } from '../auth/interfaces/jwt-user.interface';
+
+@Injectable()
+export class EventsSchedulingService {
+  private readonly logger = new Logger(EventsSchedulingService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private telegramService: TelegramService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
+
+  private toOptionalNumber(value: unknown): number | null {
+    return value != null ? Number(value) : null;
+  }
+
+  private toNumber(value: unknown): number {
+    return Number(value ?? 0);
+  }
+
+  private serializeEvent<T extends Record<string, unknown>>(ev: T): T {
+    return {
+      ...ev,
+      price: this.toOptionalNumber(ev.price),
+      received: this.toOptionalNumber(ev.received),
+      report: ev.report
+        ? {
+            ...(ev.report as Record<string, unknown>),
+            totalSum: this.toNumber(
+              (ev.report as Record<string, unknown>).totalSum,
+            ),
+            schoolSum: this.toNumber(
+              (ev.report as Record<string, unknown>).schoolSum,
+            ),
+            remainderSum: this.toNumber(
+              (ev.report as Record<string, unknown>).remainderSum,
+            ),
+          }
+        : ev.report,
+    };
+  }
+
+  private async invalidateSchoolEventsCache(schoolId: string) {
+    await Promise.all([
+      this.cacheManager.del(`events:school:${schoolId}:minimal`),
+      this.cacheManager.del(`events:school:${schoolId}:full`),
+    ]);
+  }
+
+  async rescheduleEvent(
+    eventId: string,
+    newDate: string,
+    newTime: string,
+    user: JwtUser,
+  ) {
+    const event = await this.prisma.event.update({
+      where: { id: eventId },
+      data: {
+        date: new Date(newDate),
+        time: newTime,
+        history: {
+          create: {
+            action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
+            userId: user.sub,
+            userName: user.name,
+            role: user.role,
+          },
+        },
+      },
+      include: {
+        crew: { include: { host: true, driver: true } },
+        school: true,
+        city: true,
+        history: { orderBy: { createdAt: 'desc' } },
+      },
+    });
+
+    const dateStr = new Date(newDate).toLocaleDateString('uk-UA', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+    const msg =
+      `📅 <b>Подію перенесено!</b>\n\n` +
+      `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
+      `🎪 <b>Проєкт:</b> ${event.project}\n` +
+      `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
+      `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
+      (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
+      `\n<i>Деталі у CRM: <a href="-https://app.svitlo-znan.app">Посилання</a></i>`;
+
+    const sendTo = async (userId: string | null | undefined) => {
+      if (!userId) return;
+      const u = await this.prisma.user.findUnique({ where: { id: userId } });
+      const chatId =
+        u?.telegramChatId ||
+        (u?.telegramId && /^\d+$/.test(u.telegramId) ? u.telegramId : null);
+      if (chatId) await this.telegramService.sendMessage(chatId, msg);
+    };
+
+    await sendTo(event.crew?.hostId);
+    await sendTo(event.crew?.driverId);
+
+    await this.invalidateSchoolEventsCache(event.schoolId);
+    return this.serializeEvent(event);
+  }
+}
+
+```
+
 # FILE: apps/backend/src/events/events.controller.spec.ts
 
 ```
@@ -6476,6 +7477,8 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { EventsController } from './events.controller';
 import { EventsService } from './events.service';
+import { EventsReportService } from './events-report.service';
+import { EventsSchedulingService } from './events-scheduling.service';
 import { JwtService } from '@nestjs/jwt';
 import { AuthGuard } from '../auth/auth.guard';
 import { OwnershipGuard } from '../auth/guards/ownership.guard';
@@ -6487,6 +7490,14 @@ const mockEventsService = {
   findOne: jest.fn(),
   addHistoryComment: jest.fn(),
   updateHistoryComment: jest.fn(),
+};
+
+const mockEventsReportService = {
+  submitReport: jest.fn(),
+};
+
+const mockEventsSchedulingService = {
+  rescheduleEvent: jest.fn(),
 };
 
 const mockGuard = { canActivate: jest.fn() };
@@ -6503,6 +7514,8 @@ describe('EventsController (HTTP)', () => {
       controllers: [EventsController],
       providers: [
         { provide: EventsService, useValue: mockEventsService },
+        { provide: EventsReportService, useValue: mockEventsReportService },
+        { provide: EventsSchedulingService, useValue: mockEventsSchedulingService },
         { provide: JwtService, useValue: mockJwtService },
       ],
     })
@@ -6678,6 +7691,8 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
 import { EventsService } from './events.service';
+import { EventsReportService } from './events-report.service';
+import { EventsSchedulingService } from './events-scheduling.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
@@ -6700,7 +7715,11 @@ import { Roles } from '../auth/decorators/roles.decorator';
 @Controller('events')
 @UseGuards(AuthGuard, RolesGuard)
 export class EventsController {
-  constructor(private readonly eventsService: EventsService) {}
+  constructor(
+    private readonly eventsService: EventsService,
+    private readonly eventsReportService: EventsReportService,
+    private readonly eventsSchedulingService: EventsSchedulingService,
+  ) {}
 
   @ApiOperation({ summary: 'Список подій для поточного користувача' })
   @Get()
@@ -6800,7 +7819,7 @@ export class EventsController {
     @Body() body: SubmitReportDto,
     @CurrentUser() user: JwtUser,
   ) {
-    return this.eventsService.submitReport(id, body, user);
+    return this.eventsReportService.submitReport(id, body, user);
   }
 
   @Get('school/:schoolId/completed')
@@ -6825,7 +7844,7 @@ export class EventsController {
     @Body() body: RescheduleEventDto,
     @CurrentUser() user: JwtUser,
   ) {
-    return this.eventsService.rescheduleEvent(id, body.date, body.time, user);
+    return this.eventsSchedulingService.rescheduleEvent(id, body.date, body.time, user);
   }
 }
 
@@ -6836,16 +7855,24 @@ export class EventsController {
 ```
 import { Module, forwardRef } from '@nestjs/common';
 import { EventsService } from './events.service';
+import { EventsReportService } from './events-report.service';
+import { EventsSchedulingService } from './events-scheduling.service';
 import { EventsController } from './events.controller';
 import { SchoolsModule } from '../schools/schools.module';
 import { TelegramModule } from '../telegram/telegram.module';
+import { RedisCacheModule } from '../common/cache/redis-cache.module';
 import { EventsSchedulerService } from './events-scheduler.service';
 
 @Module({
-  imports: [forwardRef(() => SchoolsModule), TelegramModule],
+  imports: [forwardRef(() => SchoolsModule), TelegramModule, RedisCacheModule],
   controllers: [EventsController],
-  providers: [EventsService, EventsSchedulerService],
-  exports: [EventsService],
+  providers: [
+    EventsService,
+    EventsReportService,
+    EventsSchedulingService,
+    EventsSchedulerService,
+  ],
+  exports: [EventsService, EventsReportService, EventsSchedulingService],
 })
 export class EventsModule {}
 
@@ -6869,6 +7896,7 @@ const mockPrisma = {
     create: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
+    count: jest.fn(),
   },
   eventHistory: {
     create: jest.fn(),
@@ -6881,6 +7909,7 @@ const mockPrisma = {
     create: jest.fn(),
     update: jest.fn(),
     deleteMany: jest.fn(),
+    upsert: jest.fn(),
   },
   eventReport: { upsert: jest.fn() },
   expenseItem: { deleteMany: jest.fn(), createMany: jest.fn() },
@@ -6894,7 +7923,7 @@ const mockPrisma = {
 
 const mockTelegram = { sendMessage: jest.fn() };
 
-const mockUser = { sub: 'user-1', name: 'Менеджер', role: 'MANAGER' };
+const mockUser = { sub: 'user-1', name: 'Менеджер', role: 'MANAGER' } as const;
 
 describe('EventsService', () => {
   let service: EventsService;
@@ -7027,369 +8056,7 @@ describe('EventsService', () => {
     });
   });
 
-  describe('submitReport', () => {
-    let mockTx: any;
 
-    const reportData = {
-      announcementDone: true,
-      materialShown: true,
-      childrenCount: 100,
-      classesCount: 4,
-      privilegedCount: 5,
-      showingsCount: 2,
-      totalSum: 10000,
-      schoolSum: 2000,
-      remainderSum: 8000,
-      rating: 9,
-      expenses: [],
-      salaries: [
-        { userId: 'host-1', name: 'Ведучий Тест', amount: 1500 },
-        { userId: 'driver-1', name: 'Водій Тест', amount: 1000 },
-      ],
-    };
-
-    const setupTx = () => {
-      mockTx = {
-        eventReport: { upsert: jest.fn() },
-        expenseItem: { deleteMany: jest.fn(), createMany: jest.fn() },
-        salaryItem: { deleteMany: jest.fn(), createMany: jest.fn() },
-        user: { update: jest.fn() },
-        event: { update: jest.fn() },
-      };
-      mockPrisma.$transaction.mockImplementation(
-        async (fn: (tx: any) => unknown, _opts?: unknown) => fn(mockTx),
-      );
-    };
-
-    beforeEach(() => {
-      setupTx();
-    });
-
-    it('зберігає звіт через upsert', async () => {
-      mockTx.eventReport.upsert.mockResolvedValueOnce({ eventId: 'ev-1' });
-      mockTx.user.update.mockResolvedValue({ id: 'host-1', balance: 1500 });
-      mockTx.event.update.mockResolvedValueOnce({
-        id: 'ev-1',
-        status: 'REPORT',
-        report: {},
-        history: [],
-      });
-
-      await service.submitReport('ev-1', reportData, mockUser);
-
-      expect(mockTx.eventReport.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { eventId: 'ev-1' },
-          update: expect.objectContaining({
-            totalSum: expect.any(Prisma.Decimal),
-            remainderSum: expect.any(Prisma.Decimal),
-          }),
-          create: expect.objectContaining({
-            totalSum: expect.any(Prisma.Decimal),
-            remainderSum: expect.any(Prisma.Decimal),
-          }),
-        }),
-      );
-    });
-
-    it('нараховує зарплату користувачам', async () => {
-      mockTx.eventReport.upsert.mockResolvedValueOnce({});
-      mockTx.user.update.mockResolvedValue({});
-      mockTx.event.update.mockResolvedValueOnce({
-        id: 'ev-1',
-        status: 'REPORT',
-        report: {},
-        history: [],
-      });
-
-      await service.submitReport('ev-1', reportData, mockUser);
-
-      expect(mockTx.user.update).toHaveBeenCalledTimes(2);
-      expect(mockTx.user.update).toHaveBeenCalledWith({
-        where: { id: 'host-1' },
-        data: { balance: { increment: 1500 } },
-      });
-      expect(mockTx.user.update).toHaveBeenCalledWith({
-        where: { id: 'driver-1' },
-        data: { balance: { increment: 1000 } },
-      });
-    });
-
-    it('не нараховує зарплату якщо amount = 0', async () => {
-      mockTx.eventReport.upsert.mockResolvedValueOnce({});
-      mockTx.event.update.mockResolvedValueOnce({
-        id: 'ev-1',
-        status: 'REPORT',
-        report: {},
-        history: [],
-      });
-
-      await service.submitReport(
-        'ev-1',
-        {
-          ...reportData,
-          salaries: [{ userId: 'host-1', amount: 0 }],
-        },
-        mockUser,
-      );
-
-      expect(mockTx.user.update).not.toHaveBeenCalled();
-    });
-
-    it('змінює статус на REPORT після збереження звіту', async () => {
-      mockTx.eventReport.upsert.mockResolvedValueOnce({});
-      mockTx.user.update.mockResolvedValue({});
-      mockTx.event.update.mockResolvedValueOnce({
-        id: 'ev-1',
-        status: 'REPORT',
-        report: {},
-        history: [],
-      });
-
-      const result = await service.submitReport('ev-1', reportData, mockUser);
-
-      expect(mockTx.event.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'ev-1' },
-          data: expect.objectContaining({ status: 'REPORT' }),
-        }),
-      );
-      expect(result.status).toBe('REPORT');
-    });
-
-    it('не нараховує зарплату якщо salaries порожній', async () => {
-      mockTx.eventReport.upsert.mockResolvedValueOnce({});
-      mockTx.event.update.mockResolvedValueOnce({
-        id: 'ev-1',
-        status: 'REPORT',
-        report: {},
-        history: [],
-      });
-
-      await service.submitReport(
-        'ev-1',
-        { ...reportData, salaries: [] },
-        mockUser,
-      );
-
-      expect(mockTx.user.update).not.toHaveBeenCalled();
-    });
-
-    it('очищує попередні expense/salary записи перед кожною подачею звіту (ідемпотентність редагування)', async () => {
-      mockTx.eventReport.upsert.mockResolvedValueOnce({ id: 'report-1' });
-      mockTx.user.update.mockResolvedValue({});
-      mockTx.event.update.mockResolvedValueOnce({
-        id: 'ev-1',
-        status: 'REPORT',
-        report: {},
-        history: [],
-      });
-
-      await service.submitReport('ev-1', reportData, mockUser);
-
-      expect(mockTx.expenseItem.deleteMany).toHaveBeenCalledWith({
-        where: { reportId: 'report-1' },
-      });
-      expect(mockTx.salaryItem.deleteMany).toHaveBeenCalledWith({
-        where: { reportId: 'report-1' },
-      });
-    });
-
-    it('deleteMany викликається завжди, навіть якщо expenses і salaries порожні', async () => {
-      mockTx.eventReport.upsert.mockResolvedValueOnce({});
-      mockTx.event.update.mockResolvedValueOnce({
-        id: 'ev-1',
-        status: 'REPORT',
-        report: {},
-        history: [],
-      });
-
-      await service.submitReport(
-        'ev-1',
-        { ...reportData, expenses: [], salaries: [] },
-        mockUser,
-      );
-
-      expect(mockTx.expenseItem.deleteMany).toHaveBeenCalled();
-      expect(mockTx.salaryItem.deleteMany).toHaveBeenCalled();
-      expect(mockTx.expenseItem.createMany).not.toHaveBeenCalled();
-      expect(mockTx.salaryItem.createMany).not.toHaveBeenCalled();
-    });
-
-    it('підставляє категорію "Інше" для витрати без вказаної категорії', async () => {
-      mockTx.eventReport.upsert.mockResolvedValueOnce({});
-      mockTx.user.update.mockResolvedValue({});
-      mockTx.event.update.mockResolvedValueOnce({
-        id: 'ev-1',
-        status: 'REPORT',
-        report: {},
-        history: [],
-      });
-
-      await service.submitReport(
-        'ev-1',
-        { ...reportData, expenses: [{ name: 'Бензин', amount: 300 }] },
-        mockUser,
-      );
-
-      const call = mockTx.expenseItem.createMany.mock.calls[0][0];
-      expect(call.data[0].category).toBe('Інше');
-    });
-
-    it('конвертує суми витрат у Prisma.Decimal з точністю до копійок', async () => {
-      mockTx.eventReport.upsert.mockResolvedValueOnce({});
-      mockTx.user.update.mockResolvedValue({});
-      mockTx.event.update.mockResolvedValueOnce({
-        id: 'ev-1',
-        status: 'REPORT',
-        report: {},
-        history: [],
-      });
-
-      await service.submitReport(
-        'ev-1',
-        {
-          ...reportData,
-          expenses: [{ category: 'Транспорт', name: 'Бензин', amount: 349.99 }],
-        },
-        mockUser,
-      );
-
-      const call = mockTx.expenseItem.createMany.mock.calls[0][0];
-      expect(call.data[0].amount).toBeInstanceOf(Prisma.Decimal);
-      expect(call.data[0].amount.toString()).toBe('349.99');
-    });
-
-    it('обробляє відсутність суми витрати (amount undefined -> 0)', async () => {
-      mockTx.eventReport.upsert.mockResolvedValueOnce({});
-      mockTx.user.update.mockResolvedValue({});
-      mockTx.event.update.mockResolvedValueOnce({
-        id: 'ev-1',
-        status: 'REPORT',
-        report: {},
-        history: [],
-      });
-
-      await service.submitReport(
-        'ev-1',
-        {
-          ...reportData,
-          expenses: [
-            {
-              category: 'Інше',
-              name: 'Без суми',
-              amount: undefined as unknown as number,
-            },
-          ],
-        },
-        mockUser,
-      );
-
-      const call = mockTx.expenseItem.createMany.mock.calls[0][0];
-      expect(call.data[0].amount.toString()).toBe('0');
-    });
-
-    it("не нараховує баланс якщо сума зарплати від'ємна, але запис зберігається", async () => {
-      mockTx.eventReport.upsert.mockResolvedValueOnce({});
-      mockTx.event.update.mockResolvedValueOnce({
-        id: 'ev-1',
-        status: 'REPORT',
-        report: {},
-        history: [],
-      });
-
-      await service.submitReport(
-        'ev-1',
-        {
-          ...reportData,
-          salaries: [{ userId: 'host-1', name: 'Ведучий Тест', amount: 0 }],
-        },
-        mockUser,
-      );
-
-      expect(mockTx.salaryItem.createMany).toHaveBeenCalled();
-      expect(mockTx.user.update).not.toHaveBeenCalled();
-    });
-
-    it('створює всі salary items одним викликом createMany', async () => {
-      mockTx.eventReport.upsert.mockResolvedValueOnce({});
-      mockTx.user.update.mockResolvedValue({});
-      mockTx.event.update.mockResolvedValueOnce({
-        id: 'ev-1',
-        status: 'REPORT',
-        report: {},
-        history: [],
-      });
-
-      await service.submitReport('ev-1', reportData, mockUser);
-
-      expect(mockTx.salaryItem.createMany).toHaveBeenCalledTimes(1);
-      const call = mockTx.salaryItem.createMany.mock.calls[0][0];
-      expect(call.data).toHaveLength(2);
-    });
-
-    it('зберігає totalSum/schoolSum/remainderSum саме такими, як прийшли з фронтенду — бекенд НЕ перераховує арифметику', async () => {
-      mockTx.eventReport.upsert.mockResolvedValueOnce({});
-      mockTx.user.update.mockResolvedValue({});
-      mockTx.event.update.mockResolvedValueOnce({
-        id: 'ev-1',
-        status: 'REPORT',
-        report: {},
-        history: [],
-      });
-
-      await service.submitReport(
-        'ev-1',
-        {
-          ...reportData,
-          totalSum: 15000,
-          schoolSum: 3000,
-          remainderSum: 11500,
-        },
-        mockUser,
-      );
-
-      const call = mockTx.eventReport.upsert.mock.calls[0][0];
-      expect(Number(call.update.remainderSum)).toBe(11500);
-    });
-
-    it('коректно обробляє відсутній rating', async () => {
-      const { rating, ...withoutRating } = reportData;
-      mockTx.eventReport.upsert.mockResolvedValueOnce({});
-      mockTx.user.update.mockResolvedValue({});
-      mockTx.event.update.mockResolvedValueOnce({
-        id: 'ev-1',
-        status: 'REPORT',
-        report: {},
-        history: [],
-      });
-
-      await service.submitReport('ev-1', withoutRating, mockUser);
-
-      const call = mockTx.eventReport.upsert.mock.calls[0][0];
-      expect(call.update.rating).toBeUndefined();
-    });
-
-    it('транзакція відкочується при помилці — event.update не виконується', async () => {
-      mockTx.eventReport.upsert.mockRejectedValueOnce(new Error('DB error'));
-      mockTx.event.update.mockResolvedValueOnce({
-        id: 'ev-1',
-        status: 'REPORT',
-        report: {},
-        history: [],
-      });
-
-      await expect(
-        service.submitReport('ev-1', reportData, mockUser),
-      ).rejects.toThrow('DB error');
-
-      expect(mockTx.event.update).not.toHaveBeenCalled();
-      expect(mockPrisma.$transaction).toHaveBeenCalledWith(
-        expect.any(Function),
-        expect.objectContaining({ timeout: 15000 }),
-      );
-    });
-  });
 
   describe('findBySchool', () => {
     it('minimal=true — використовує select без history/preparation', async () => {
@@ -7681,10 +8348,6 @@ import { CacheVersionService } from '../common/cache/cache-version.service';
 import { Prisma, PreparationStatus } from '@prisma/client';
 
 import { CreateEventDto } from './dto/create-event.dto';
-import {
-  SubmitReportDto,
-  ExpenseItemDto,
-} from './dto/submit-report.dto';
 import { EventQueryDto } from './dto/event-query.dto';
 import { PageMetaDto } from '../common/dto/page-meta.dto';
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
@@ -7755,7 +8418,7 @@ export class EventsService {
         include,
         orderBy: { date: 'asc' },
       });
-      return events.map((e) => this.serializeEvent(e as any));
+      return events.map((e) => this.serializeEvent(e));
     }
 
     const take = query.take ?? 20;
@@ -7773,7 +8436,7 @@ export class EventsService {
     ]);
 
     return {
-      data: data.map((e) => this.serializeEvent(e as any)),
+      data: data.map((e) => this.serializeEvent(e)),
       meta: new PageMetaDto(totalItems, query.page, take),
     };
   }
@@ -7796,7 +8459,7 @@ export class EventsService {
       include: { history: true },
     });
     await this.invalidateSchoolEventsCache(event.schoolId);
-    return this.serializeEvent(event as any);
+    return this.serializeEvent(event);
   }
 
   private async invalidateSchoolEventsCache(schoolId: string) {
@@ -7834,7 +8497,7 @@ export class EventsService {
       this.cacheVersion.bumpVersion('finance'),
       this.cacheVersion.bumpVersion('dashboard'),
     ]);
-    return this.serializeEvent(event as any);
+    return this.serializeEvent(event);
   }
 
   async updatePreparationStatus(
@@ -7931,65 +8594,7 @@ export class EventsService {
     }
 
     await this.invalidateSchoolEventsCache(event.schoolId);
-    return this.serializeEvent(event as any);
-  }
-
-  async rescheduleEvent(
-    eventId: string,
-    newDate: string,
-    newTime: string,
-    user: JwtUser,
-  ) {
-    const event = await this.prisma.event.update({
-      where: { id: eventId },
-      data: {
-        date: new Date(newDate),
-        time: newTime,
-        history: {
-          create: {
-            action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
-            userId: user.sub,
-            userName: user.name,
-            role: user.role,
-          },
-        },
-      },
-      include: {
-        crew: { include: { host: true, driver: true } },
-        school: true,
-        city: true,
-        history: { orderBy: { createdAt: 'desc' } },
-      },
-    });
-
-    const dateStr = new Date(newDate).toLocaleDateString('uk-UA', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    });
-    const msg =
-      `📅 <b>Подію перенесено!</b>\n\n` +
-      `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
-      `🎪 <b>Проєкт:</b> ${event.project}\n` +
-      `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
-      `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
-      (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
-      `\n<i>Деталі у CRM: <a href="-https://app.svitlo-znan.app">Посилання</a></i>`;
-
-    const sendTo = async (userId: string | null | undefined) => {
-      if (!userId) return;
-      const u = await this.prisma.user.findUnique({ where: { id: userId } });
-      const chatId =
-        u?.telegramChatId ||
-        (u?.telegramId && /^\d+$/.test(u.telegramId) ? u.telegramId : null);
-      if (chatId) await this.telegramService.sendMessage(chatId, msg);
-    };
-
-    await sendTo(event.crew?.hostId);
-    await sendTo(event.crew?.driverId);
-
-    await this.invalidateSchoolEventsCache(event.schoolId);
-    return this.serializeEvent(event as any);
+    return this.serializeEvent(event);
   }
 
   async getChatIdForUser(userId: string): Promise<string | null> {
@@ -8008,22 +8613,24 @@ export class EventsService {
     const key = `events:school:${schoolId}:${minimal ? 'minimal' : 'full'}`;
     const cached = await this.cacheManager.get(key);
     if (cached)
-      return (Array.isArray(cached) ? cached : []).map((e: any) =>
-        this.serializeEvent(e),
+      return (Array.isArray(cached) ? cached : []).map(
+        (e: Record<string, unknown>) => this.serializeEvent(e),
       );
 
     const existing = this.pendingSchoolEvents.get(key);
     if (existing) {
       const result = await existing;
       return Array.isArray(result)
-        ? result.map((e: any) => this.serializeEvent(e))
+        ? result.map((e: Record<string, unknown>) => this.serializeEvent(e))
         : result;
     }
 
     const compute = this.computeBySchool(key, schoolId, minimal).then(
       (result) =>
         Array.isArray(result)
-          ? result.map((e: any) => this.serializeEvent(e))
+          ? result.map((e: Record<string, unknown>) =>
+              this.serializeEvent(e),
+            )
           : result,
     );
     this.pendingSchoolEvents.set(key, compute);
@@ -8047,7 +8654,7 @@ export class EventsService {
       },
     });
     if (!event) throw new AppException('EVENT_NOT_FOUND', HttpStatus.NOT_FOUND);
-    return this.serializeEvent(event as any);
+    return this.serializeEvent(event);
   }
 
   private async computeBySchool(
@@ -8121,8 +8728,9 @@ export class EventsService {
         history: { orderBy: { createdAt: 'desc' } },
       },
     });
-    if (event) await this.invalidateSchoolEventsCache(event.schoolId);
-    return this.serializeEvent(event as any);
+    if (!event) return null;
+    await this.invalidateSchoolEventsCache(event.schoolId);
+    return this.serializeEvent(event);
   }
 
   async remove(id: string) {
@@ -8143,114 +8751,6 @@ export class EventsService {
     });
     await this.invalidateSchoolEventsCache(exists.schoolId);
     return this.serializeEvent(deleted as any);
-  }
-
-  async submitReport(
-    eventId: string,
-    reportData: SubmitReportDto,
-    user: JwtUser,
-  ) {
-    const event = await this.prisma.$transaction(
-      async (tx) => {
-        const report = await tx.eventReport.upsert({
-          where: { eventId },
-          update: {
-            announcementDone: reportData.announcementDone,
-            materialShown: reportData.materialShown,
-            childrenCount: reportData.childrenCount,
-            classesCount: reportData.classesCount,
-            privilegedCount: reportData.privilegedCount,
-            showingsCount: reportData.showingsCount,
-            totalSum: new Prisma.Decimal(reportData.totalSum),
-            schoolSum: new Prisma.Decimal(reportData.schoolSum),
-            remainderSum: new Prisma.Decimal(reportData.remainderSum),
-            rating: reportData.rating,
-          },
-          create: {
-            eventId,
-            announcementDone: reportData.announcementDone,
-            materialShown: reportData.materialShown,
-            childrenCount: reportData.childrenCount,
-            classesCount: reportData.classesCount,
-            privilegedCount: reportData.privilegedCount,
-            showingsCount: reportData.showingsCount,
-            totalSum: new Prisma.Decimal(reportData.totalSum),
-            schoolSum: new Prisma.Decimal(reportData.schoolSum),
-            remainderSum: new Prisma.Decimal(reportData.remainderSum),
-            rating: reportData.rating,
-          },
-        });
-
-        await tx.expenseItem.deleteMany({
-          where: { reportId: report.id },
-        });
-        await tx.salaryItem.deleteMany({
-          where: { reportId: report.id },
-        });
-
-        if (reportData.expenses?.length) {
-          await tx.expenseItem.createMany({
-            data: reportData.expenses.map((exp: ExpenseItemDto) => ({
-              reportId: report.id,
-              category: exp.category || 'Інше',
-              name: exp.name,
-              amount: new Prisma.Decimal(exp.amount || 0),
-            })),
-          });
-        }
-
-        if (reportData.salaries?.length) {
-          const salariesWithUser = reportData.salaries.filter((s) => s.userId);
-          if (salariesWithUser.length) {
-            await tx.salaryItem.createMany({
-              data: salariesWithUser.map((s) => ({
-                reportId: report.id,
-                userId: s.userId,
-                userName: s.name,
-                amount: new Prisma.Decimal(s.amount),
-              })),
-            });
-
-            const positiveSalaries = salariesWithUser.filter(
-              (s) => s.amount > 0,
-            );
-            for (const s of positiveSalaries) {
-              await tx.user.update({
-                where: { id: s.userId },
-                data: { balance: { increment: s.amount } },
-              });
-            }
-          }
-        }
-
-        return tx.event.update({
-          where: { id: eventId },
-          data: {
-            status: 'REPORT' as never,
-            history: {
-              create: {
-                action: 'Сформовано звіт. Захід завершено.',
-                userId: user.sub,
-                userName: user.name,
-                role: user.role,
-              },
-            },
-          },
-          include: {
-            report: true,
-            history: { orderBy: { createdAt: 'desc' } },
-          },
-        });
-      },
-      { timeout: 15000 },
-    );
-
-    await this.invalidateSchoolEventsCache(event.schoolId);
-    await Promise.all([
-      this.cacheVersion.bumpVersion('finance'),
-      this.cacheVersion.bumpVersion('dashboard'),
-    ]);
-    return this.serializeEvent(event as any);
   }
 
   async findCompletedBySchool(schoolId: string) {
@@ -8428,10 +8928,12 @@ export class FinanceController {
 
 ```
 import { Module } from '@nestjs/common';
+import { RedisCacheModule } from '../common/cache/redis-cache.module';
 import { FinanceController } from './finance.controller';
 import { FinanceService } from './finance.service';
 
 @Module({
+  imports: [RedisCacheModule],
   controllers: [FinanceController],
   providers: [FinanceService],
 })
@@ -8675,10 +9177,10 @@ describe('FinanceService', () => {
         .mockResolvedValueOnce([]);
 
       const result = await service.getDashboard({});
-      const fuel = result.byExpenseCategory.find(
+      const fuel = result.byExpenseCategory!.find(
         (c: any) => c.name === 'Паливо',
       );
-      const ads = result.byExpenseCategory.find(
+      const ads = result.byExpenseCategory!.find(
         (c: any) => c.name === 'Реклама',
       );
       expect(fuel?.value).toBe(800);
@@ -9887,16 +10389,17 @@ export class IssuesService {
 import './instrument';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ClassSerializerInterceptor } from '@nestjs/common';
+import { ClassSerializerInterceptor, Logger } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
-import { Logger } from 'nestjs-pino';
+import { Logger as PinoLogger } from 'nestjs-pino';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { PrismaService } from './prisma/prisma.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
-  app.useLogger(app.get(Logger));
+  app.useLogger(app.get(PinoLogger));
   app.use(helmet());
   app.use(cookieParser());
 
@@ -9936,19 +10439,108 @@ async function bootstrap() {
     });
   }
 
+  app.enableShutdownHooks();
+  const logger = new Logger('Bootstrap');
+
+  process.on('SIGTERM', async () => {
+    logger.log('Отримано SIGTERM, завершення роботи...');
+    const prisma = app.get(PrismaService);
+    await prisma.$disconnect();
+    await app.close();
+    process.exit(0);
+  });
+
+  process.on('SIGINT', async () => {
+    logger.log('Отримано SIGINT, завершення роботи...');
+    const prisma = app.get(PrismaService);
+    await prisma.$disconnect();
+    await app.close();
+    process.exit(0);
+  });
+
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
 
 ```
 
+# FILE: apps/backend/src/metrics/metrics.controller.spec.ts
+
+```
+import { Test, TestingModule } from '@nestjs/testing';
+import { INestApplication } from '@nestjs/common';
+import request from 'supertest';
+import { MetricsController } from './metrics.controller';
+import { MetricsService } from './metrics.service';
+import { MetricsGuard } from './metrics.guard';
+
+const mockGuard = { canActivate: jest.fn() };
+const mockMetricsService = {
+  getMetrics: jest.fn(),
+  getContentType: jest.fn(),
+};
+
+describe('MetricsController', () => {
+  let app: INestApplication;
+
+  beforeAll(async () => {
+    jest.clearAllMocks();
+
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [MetricsController],
+      providers: [
+        { provide: MetricsService, useValue: mockMetricsService },
+      ],
+    })
+      .overrideGuard(MetricsGuard)
+      .useValue(mockGuard)
+      .compile();
+
+    app = module.createNestApplication();
+    await app.init();
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGuard.canActivate.mockResolvedValue(true);
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  describe('GET /metrics', () => {
+    it('без токена — 403 якщо METRICS_TOKEN встановлено', async () => {
+      mockGuard.canActivate.mockRejectedValueOnce(
+        new (require('@nestjs/common').ForbiddenException)(
+          'Invalid metrics token',
+        ),
+      );
+      await request(app.getHttpServer()).get('/metrics').expect(403);
+    });
+
+    it('з правильним токеном — 200', async () => {
+      mockGuard.canActivate.mockResolvedValue(true);
+      mockMetricsService.getMetrics.mockResolvedValueOnce('metrics data');
+      const res = await request(app.getHttpServer())
+        .get('/metrics')
+        .expect(200);
+      expect(res.text).toBe('metrics data');
+    });
+  });
+});
+
+```
+
 # FILE: apps/backend/src/metrics/metrics.controller.ts
 
 ```
-import { Controller, Get, Header } from '@nestjs/common';
+import { Controller, Get, Header, UseGuards } from '@nestjs/common';
 import { MetricsService } from './metrics.service';
+import { MetricsGuard } from './metrics.guard';
 
 @Controller('metrics')
+@UseGuards(MetricsGuard)
 export class MetricsController {
   constructor(private metrics: MetricsService) {}
 
@@ -9956,6 +10548,84 @@ export class MetricsController {
   @Header('Content-Type', 'text/plain')
   async getMetrics() {
     return this.metrics.getMetrics();
+  }
+}
+
+```
+
+# FILE: apps/backend/src/metrics/metrics.guard.spec.ts
+
+```
+import { ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { MetricsGuard } from './metrics.guard';
+
+describe('MetricsGuard', () => {
+  let guard: MetricsGuard;
+
+  const createContext = (headers: Record<string, string> = {}): ExecutionContext =>
+    ({
+      switchToHttp: () => ({
+        getRequest: () => ({ headers }),
+      }),
+    }) as any;
+
+  beforeEach(() => {
+    guard = new MetricsGuard();
+  });
+
+  afterEach(() => {
+    delete process.env.METRICS_TOKEN;
+  });
+
+  it('без METRICS_TOKEN в env пропускає всі запити', () => {
+    const ok = guard.canActivate(createContext({}));
+    expect(ok).toBe(true);
+  });
+
+  it('з METRICS_TOKEN і правильним X-Metrics-Token пропускає', () => {
+    process.env.METRICS_TOKEN = 'secret123';
+    const ok = guard.canActivate(createContext({ 'x-metrics-token': 'secret123' }));
+    expect(ok).toBe(true);
+  });
+
+  it('з METRICS_TOKEN і неправильним X-Metrics-Token кидає Forbidden', () => {
+    process.env.METRICS_TOKEN = 'secret123';
+    expect(() =>
+      guard.canActivate(createContext({ 'x-metrics-token': 'wrong' })),
+    ).toThrow(ForbiddenException);
+  });
+
+  it('з METRICS_TOKEN і без заголовка кидає Forbidden', () => {
+    process.env.METRICS_TOKEN = 'secret123';
+    expect(() => guard.canActivate(createContext({}))).toThrow(ForbiddenException);
+  });
+});
+
+```
+
+# FILE: apps/backend/src/metrics/metrics.guard.ts
+
+```
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
+
+@Injectable()
+export class MetricsGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
+    const token = process.env.METRICS_TOKEN;
+    if (!token) return true;
+
+    const req = context.switchToHttp().getRequest();
+    const headerToken = req.headers['x-metrics-token'];
+
+    if (headerToken !== token) {
+      throw new ForbiddenException('Invalid metrics token');
+    }
+    return true;
   }
 }
 
@@ -10110,12 +10780,15 @@ describe('PrismaService', () => {
 # FILE: apps/backend/src/prisma/prisma.service.ts
 
 ```
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { dbQueryDuration } from '../metrics/metrics.service';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit {
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
   constructor() {
     super();
     return this.$extends({
@@ -10138,6 +10811,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
 
   async onModuleInit() {
     await this.$connect();
+  }
+
+  async onModuleDestroy() {
+    await this.$disconnect();
   }
 }
 
@@ -12159,539 +12836,6 @@ async function main() {
 main()
   .catch(console.error)
   .finally(() => prisma.$disconnect());
-
-```
-
-# FILE: apps/backend/src/schools/schools.controller.spec.ts
-
-```
-import { Test } from '@nestjs/testing';
-import { SchoolsController } from './schools.controller';
-import { SchoolsService } from './schools.service';
-import { ParserService } from './parser.service';
-import { AuthGuard } from '../auth/auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { OwnershipGuard } from '../auth/guards/ownership.guard';
-
-describe('SchoolsController', () => {
-  it('should be defined', async () => {
-    const module = await Test.createTestingModule({
-      controllers: [SchoolsController],
-      providers: [
-        { provide: SchoolsService, useValue: {} },
-        { provide: ParserService, useValue: {} },
-      ],
-    })
-      .overrideGuard(AuthGuard)
-      .useValue({ canActivate: () => true })
-      .overrideGuard(RolesGuard)
-      .useValue({ canActivate: () => true })
-      .overrideGuard(OwnershipGuard)
-      .useValue({ canActivate: () => true })
-      .compile();
-
-    expect(module.get(SchoolsController)).toBeDefined();
-  });
-});
-
-```
-
-# FILE: apps/backend/src/schools/schools.controller.ts
-
-```
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Patch,
-  Delete,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
-import { SchoolsService } from './schools.service';
-import { ParserService } from './parser.service';
-import { Throttle } from '@nestjs/throttler';
-import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { AuthGuard } from '../auth/auth.guard';
-import { OwnershipGuard } from '../auth/guards/ownership.guard';
-import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
-import { CreateSchoolDto } from './dto/create-school.dto';
-import { UpdateSchoolDto } from './dto/update-school.dto';
-import { BulkImportDto } from './dto/bulk-import.dto';
-import { SchoolQueryDto } from './dto/school-query.dto';
-import { FindSchoolsQueryDto } from './dto/find-schools-query.dto';
-import { FindContactsQueryDto } from './dto/find-contacts-query.dto';
-@ApiTags('Schools')
-@ApiCookieAuth('access_token')
-@Controller('schools')
-@UseGuards(AuthGuard, RolesGuard)
-export class SchoolsController {
-  constructor(
-    private readonly schoolsService: SchoolsService,
-    private readonly parserService: ParserService,
-  ) {}
-
-  @ApiOperation({
-    summary: 'Масовий імпорт шкіл/садочків із зовнішнього джерела',
-  })
-  @Post('bulk-import')
-  @Throttle({ default: { ttl: 300000, limit: 2 } })
-  @Roles('SUPERADMIN', 'MANAGER')
-  bulkImport(@Body() body: BulkImportDto) {
-    return this.schoolsService.bulkImport(body.cityId, body.type || 'Школа');
-  }
-
-  @ApiOperation({ summary: 'Список міст, підтримуваних парсером' })
-  @Get('supported-cities')
-  getSupportedCities() {
-    return this.parserService.getSupportedCities();
-  }
-
-  @ApiOperation({ summary: 'Створити школу/садочок' })
-  @Post()
-  @Roles('SUPERADMIN', 'MANAGER')
-  create(@Body() body: CreateSchoolDto) {
-    return this.schoolsService.create(body);
-  }
-
-  @ApiOperation({ summary: 'Список закладів з фільтрами та пагінацією' })
-  @Get()
-  findAll(@Query() query: SchoolQueryDto) {
-    return this.schoolsService.findAll(query);
-  }
-
-  @ApiOperation({ summary: 'Статистика закладів за стадією та розміром' })
-  @Get('stats')
-  getStats(
-    @Query('cityId') cityId?: string,
-    @Query('type') type?: 'Школа' | 'Садочок',
-    @Query('stage') stage?: 'new' | 'planned' | 'inProgress' | 'done',
-  ) {
-    return this.schoolsService.getStats({ cityId, type, stage });
-  }
-
-  @ApiOperation({ summary: 'Пошук закладів у зовнішньому джерелі' })
-  @Get('search')
-  search(@Query() query: FindSchoolsQueryDto) {
-    return this.parserService.searchSchools(query.q ?? '', query.type);
-  }
-
-  @ApiOperation({ summary: 'Отримати заклад за ID' })
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.schoolsService.findOne(id);
-  }
-
-  @ApiOperation({ summary: 'Оновити заклад' })
-  @Patch(':id')
-  @UseGuards(OwnershipGuard)
-  @CheckOwnership('school')
-  update(@Param('id') id: string, @Body() body: UpdateSchoolDto) {
-    return this.schoolsService.update(id, body);
-  }
-
-  @ApiOperation({ summary: 'Видалити заклад' })
-  @Delete(':id')
-  @Roles('SUPERADMIN')
-  remove(@Param('id') id: string) {
-    return this.schoolsService.remove(id);
-  }
-
-  @ApiOperation({ summary: 'Пошук контактів закладу' })
-  @Get('contacts/search')
-  searchContacts(@Query() query: FindContactsQueryDto) {
-    return this.schoolsService.searchContacts(query.q ?? '', query.city);
-  }
-}
-
-```
-
-# FILE: apps/backend/src/schools/schools.module.ts
-
-```
-import { Module, forwardRef } from '@nestjs/common';
-import { SchoolsService } from './schools.service';
-import { SchoolsController } from './schools.controller';
-import { EventsModule } from '../events/events.module';
-import { ParserService } from './parser.service';
-
-@Module({
-  imports: [forwardRef(() => EventsModule)],
-  controllers: [SchoolsController],
-  providers: [SchoolsService, ParserService],
-  exports: [SchoolsService, ParserService],
-})
-export class SchoolsModule {}
-
-```
-
-# FILE: apps/backend/src/schools/schools.service.spec.ts
-
-```
-import { Test, TestingModule } from '@nestjs/testing';
-import { SchoolsService } from './schools.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { ParserService } from './parser.service';
-import { EventsService } from '../events/events.service';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { HttpStatus } from '@nestjs/common';
-
-const mockPrisma = {
-  school: {
-    create: jest.fn(),
-    findUnique: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-    findMany: jest.fn(),
-  },
-  event: { findMany: jest.fn() },
-  schoolContact: { findMany: jest.fn() },
-  city: { findUnique: jest.fn() },
-  $queryRaw: jest.fn(),
-};
-
-const mockParser = {
-  parseSchoolData: jest.fn(),
-  getAllSchoolsForCity: jest.fn(),
-};
-
-const mockEventsService = { remove: jest.fn() };
-
-const mockCache = {
-  get: jest.fn().mockResolvedValue(null),
-  set: jest.fn().mockResolvedValue(undefined),
-  del: jest.fn().mockResolvedValue(undefined),
-};
-
-const makeModule = async () => {
-  const module: TestingModule = await Test.createTestingModule({
-    providers: [
-      SchoolsService,
-      { provide: PrismaService, useValue: mockPrisma },
-      { provide: ParserService, useValue: mockParser },
-      { provide: EventsService, useValue: mockEventsService },
-      { provide: CACHE_MANAGER, useValue: mockCache },
-    ],
-  }).compile();
-
-  return module.get<SchoolsService>(SchoolsService);
-};
-
-beforeEach(() => {
-  jest.clearAllMocks();
-});
-
-describe('SchoolsService — create', () => {
-  it('створює школу у БД та повертає її', async () => {
-    const newSchool = {
-      id: 'school-1',
-      name: 'Школа №1',
-      type: 'Школа',
-      cityId: 'city-1',
-    };
-    mockPrisma.school.create.mockResolvedValueOnce(newSchool);
-    mockParser.parseSchoolData.mockResolvedValue(null);
-
-    const service = await makeModule();
-    const result = await service.create({
-      name: 'Школа №1',
-      type: 'Школа',
-      cityId: 'city-1',
-    });
-
-    expect(mockPrisma.school.create).toHaveBeenCalledWith({
-      data: { name: 'Школа №1', type: 'Школа', cityId: 'city-1' },
-    });
-    expect(result.id).toBe('school-1');
-  });
-
-  it('sourceUrl не потрапляє до БД, але передається в parser', async () => {
-    const newSchool = {
-      id: 'school-1',
-      name: 'Школа №1',
-      type: 'Школа',
-      cityId: 'city-1',
-    };
-    mockPrisma.school.create.mockResolvedValueOnce(newSchool);
-    mockParser.parseSchoolData.mockResolvedValue({
-      address: 'вул.1',
-      director: 'Тест',
-      childrenCount: 100,
-    });
-    mockPrisma.school.update.mockResolvedValueOnce(newSchool);
-
-    const service = await makeModule();
-    await service.create({
-      name: 'Школа №1',
-      type: 'Школа',
-      cityId: 'city-1',
-      sourceUrl: 'https://example.com/123',
-    });
-
-    const createCall = mockPrisma.school.create.mock.calls[0][0].data;
-    expect(createCall.sourceUrl).toBeUndefined();
-
-    // Чекаємо на асинхронний парсинг
-    await new Promise((r) => setTimeout(r, 10));
-    expect(mockParser.parseSchoolData).toHaveBeenCalledWith(
-      'Школа №1',
-      'https://example.com/123',
-      'Школа',
-    );
-  });
-
-  it('не оновлює БД якщо parser повертає null', async () => {
-    const newSchool = {
-      id: 'school-1',
-      name: 'Школа №1',
-      type: 'Школа',
-      cityId: 'city-1',
-    };
-    mockPrisma.school.create.mockResolvedValueOnce(newSchool);
-    mockParser.parseSchoolData.mockResolvedValue(null);
-
-    const service = await makeModule();
-    await service.create({ name: 'Школа №1', type: 'Школа', cityId: 'city-1' });
-
-    await new Promise((r) => setTimeout(r, 10));
-    expect(mockPrisma.school.update).not.toHaveBeenCalled();
-  });
-
-  it('не перезаписує вже заповнені поля результатом парсингу', async () => {
-    const newSchool = {
-      id: 'school-1',
-      name: 'Школа №1',
-      type: 'Школа',
-      cityId: 'city-1',
-      address: 'вже вказана адреса',
-      director: 'вже вказаний директор',
-      childrenCount: 999,
-    };
-    mockPrisma.school.create.mockResolvedValueOnce(newSchool);
-    mockParser.parseSchoolData.mockResolvedValue({
-      address: 'Парсер-адреса',
-      director: 'Парсер-директор',
-      childrenCount: 100,
-    });
-
-    const service = await makeModule();
-    await service.create({
-      name: 'Школа №1',
-      type: 'Школа',
-      cityId: 'city-1',
-      address: 'вже вказана адреса',
-      director: 'вже вказаний директор',
-      childrenCount: 999,
-    });
-
-    await new Promise((r) => setTimeout(r, 10));
-    // update має не викликатись, бо всі поля вже заповнені
-    expect(mockPrisma.school.update).not.toHaveBeenCalled();
-  });
-});
-
-describe('SchoolsService — findOne', () => {
-  it('повертає школу якщо знайдено', async () => {
-    const school = {
-      id: 'school-1',
-      name: 'Школа №1',
-      city: { name: 'Львів' },
-    };
-    mockPrisma.school.findUnique.mockResolvedValueOnce(school);
-
-    const service = await makeModule();
-    const result = await service.findOne('school-1');
-
-    expect(result).toMatchObject({ id: 'school-1' });
-  });
-
-  it('кешує результат при першому запиті', async () => {
-    const school = { id: 'school-1', name: 'Школа №1', city: {} };
-    mockPrisma.school.findUnique.mockResolvedValueOnce(school);
-
-    const service = await makeModule();
-    await service.findOne('school-1');
-
-    expect(mockCache.set).toHaveBeenCalledWith(
-      'school:school-1',
-      school,
-      15_000,
-    );
-  });
-
-  it('повертає кешований результат без запиту до БД', async () => {
-    const cached = { id: 'school-1', name: 'Кешована школа', city: {} };
-    mockCache.get.mockResolvedValueOnce(cached);
-
-    const service = await makeModule();
-    const result = await service.findOne('school-1');
-
-    expect(result).toBe(cached);
-    expect(mockPrisma.school.findUnique).not.toHaveBeenCalled();
-  });
-
-  it('кидає AppException SCHOOL_NOT_FOUND якщо школи не існує', async () => {
-    mockPrisma.school.findUnique.mockResolvedValueOnce(null);
-
-    const service = await makeModule();
-    await expect(service.findOne('ghost')).rejects.toMatchObject({
-      message: 'SCHOOL_NOT_FOUND',
-      status: HttpStatus.NOT_FOUND,
-    });
-  });
-});
-
-describe('SchoolsService — update', () => {
-  it('оновлює школу та видаляє кеш', async () => {
-    const updated = { id: 'school-1', name: 'Нова назва' };
-    mockPrisma.school.update.mockResolvedValueOnce(updated);
-
-    const service = await makeModule();
-    const result = await service.update('school-1', {
-      name: 'Нова назва',
-    });
-
-    expect(mockPrisma.school.update).toHaveBeenCalledWith({
-      where: { id: 'school-1' },
-      data: { name: 'Нова назва' },
-    });
-    expect(mockCache.del).toHaveBeenCalledWith('school:school-1');
-    expect(result.name).toBe('Нова назва');
-  });
-
-  it('не передає системні поля (city, id, createdAt, updatedAt) у data', async () => {
-    mockPrisma.school.update.mockResolvedValueOnce({ id: 'school-1' });
-
-    const service = await makeModule();
-    await service.update('school-1', {
-      name: 'Тест',
-      city: { id: 'c-1', name: 'Львів' } as any,
-      createdAt: new Date() as any,
-      updatedAt: new Date() as any,
-    } as any);
-
-    const updateData = mockPrisma.school.update.mock.calls[0][0].data;
-    expect(updateData.city).toBeUndefined();
-    expect(updateData.createdAt).toBeUndefined();
-    expect(updateData.updatedAt).toBeUndefined();
-    expect(updateData.id).toBeUndefined();
-  });
-});
-
-describe('SchoolsService — remove', () => {
-  it('видаляє всі події школи перед видаленням самої школи', async () => {
-    mockPrisma.event.findMany.mockResolvedValueOnce([
-      { id: 'ev-1' },
-      { id: 'ev-2' },
-    ]);
-    mockEventsService.remove.mockResolvedValue({});
-    mockPrisma.school.delete.mockResolvedValueOnce({ id: 'school-1' });
-
-    const service = await makeModule();
-    await service.remove('school-1');
-
-    expect(mockEventsService.remove).toHaveBeenCalledTimes(2);
-    expect(mockEventsService.remove).toHaveBeenCalledWith('ev-1');
-    expect(mockEventsService.remove).toHaveBeenCalledWith('ev-2');
-    expect(mockPrisma.school.delete).toHaveBeenCalledWith({
-      where: { id: 'school-1' },
-    });
-  });
-
-  it('видаляє школу навіть без подій', async () => {
-    mockPrisma.event.findMany.mockResolvedValueOnce([]);
-    mockPrisma.school.delete.mockResolvedValueOnce({ id: 'school-1' });
-
-    const service = await makeModule();
-    await service.remove('school-1');
-
-    expect(mockEventsService.remove).not.toHaveBeenCalled();
-    expect(mockPrisma.school.delete).toHaveBeenCalled();
-  });
-
-  it('видаляє кеш після видалення школи', async () => {
-    mockPrisma.event.findMany.mockResolvedValueOnce([]);
-    mockPrisma.school.delete.mockResolvedValueOnce({ id: 'school-1' });
-
-    const service = await makeModule();
-    await service.remove('school-1');
-
-    expect(mockCache.del).toHaveBeenCalledWith('school:school-1');
-  });
-});
-
-describe('SchoolsService — searchContacts', () => {
-  it('повертає порожній масив якщо query порожній', async () => {
-    const service = await makeModule();
-    const result = await service.searchContacts('');
-    expect(result).toEqual([]);
-    expect(mockPrisma.schoolContact.findMany).not.toHaveBeenCalled();
-  });
-
-  it('знаходить контакти за номером школи', async () => {
-    mockPrisma.schoolContact.findMany.mockResolvedValueOnce([
-      {
-        schoolNumber: '42',
-        contactName: 'Директор Тест',
-        phone: '',
-        role: 'Директор',
-        city: 'Львів',
-      },
-    ]);
-
-    const service = await makeModule();
-    const results = await service.searchContacts('42');
-
-    expect(results).toHaveLength(1);
-    expect(results[0].schoolNumber).toBe('42');
-  });
-
-  it("знаходить контакти за ім'ям (часткове співпадіння)", async () => {
-    mockPrisma.schoolContact.findMany.mockResolvedValueOnce([
-      {
-        schoolNumber: '1',
-        contactName: 'Марія Іваненко',
-        phone: '',
-        role: 'Директор',
-        city: 'Львів',
-      },
-      {
-        schoolNumber: '2',
-        contactName: 'Петро Коваль',
-        phone: '',
-        role: 'Директор',
-        city: 'Львів',
-      },
-    ]);
-
-    const service = await makeModule();
-    const results = await service.searchContacts('марія');
-
-    expect(results).toHaveLength(1);
-    expect(results[0].contactName).toBe('Марія Іваненко');
-  });
-
-  it('повертає не більше 10 результатів', async () => {
-    const contacts = Array.from({ length: 20 }, (_, i) => ({
-      schoolNumber: String(i + 1),
-      contactName: `Тест ${i + 1}`,
-      phone: '',
-      role: 'Директор',
-      city: 'Київ',
-    }));
-    mockPrisma.schoolContact.findMany.mockResolvedValueOnce(contacts);
-
-    const service = await makeModule();
-    // Пошук за словом, що є у всіх
-    const results = await service.searchContacts('Тест');
-
-    expect(results.length).toBeLessThanOrEqual(10);
-  });
-});
 
 ```
 

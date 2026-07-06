@@ -247,4 +247,53 @@ describe("API auto-refresh interceptor", () => {
 
     await expect(instance.post("/auth/login", {})).rejects.toThrow();
   });
+
+  it("/auth/me не тригерить refresh — захист від безкінечного редиректу", async () => {
+    let refreshCalled = false;
+    const dispatchSpy = vi.fn();
+    window.addEventListener("auth:expired", dispatchSpy);
+
+    const instance = axios.create({ baseURL: "/api", withCredentials: true });
+
+    instance.interceptors.response.use(
+      (res) => res,
+      async (error: any) => {
+        const original = error.config;
+        const isAuth =
+          original?.url?.includes("/auth/login") ||
+          original?.url?.includes("/auth/refresh") ||
+          original?.url?.includes("/auth/me");
+
+        if (
+          error.response?.status === 401 &&
+          original &&
+          !original._retry &&
+          !isAuth
+        ) {
+          original._retry = true;
+          try {
+            const rp = instance.post("/auth/refresh").then(() => undefined);
+            await rp;
+            return instance(original);
+          } catch {
+            window.dispatchEvent(new Event("auth:expired"));
+            return Promise.reject(error);
+          }
+        }
+        return Promise.reject(error);
+      },
+    );
+
+    instance.defaults.adapter = (config: any) => {
+      if (config.url === "/auth/refresh") {
+        refreshCalled = true;
+        return rejectingAdapter(401, null)(config);
+      }
+      return rejectingAdapter(401, null)(config);
+    };
+
+    await expect(instance.get("/auth/me")).rejects.toThrow();
+    expect(refreshCalled).toBe(false);
+    expect(dispatchSpy).not.toHaveBeenCalled();
+  });
 });

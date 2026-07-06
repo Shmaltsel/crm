@@ -117,200 +117,6 @@ export default defineConfig([
 
 ```
 
-# FILE: apps/frontend/src/App.css
-
-```
-
-
-.counter {
-  font-size: 16px;
-  padding: 5px 10px;
-  border-radius: 5px;
-  color: var(--accent);
-  background: var(--accent-bg);
-  border: 2px solid transparent;
-  transition: border-color 0.3s;
-  margin-bottom: 24px;
-
-  &:hover {
-    border-color: var(--accent-border);
-  }
-  &:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-}
-
-.hero {
-  position: relative;
-
-  .base,
-  .framework,
-  .vite {
-    inset-inline: 0;
-    margin: 0 auto;
-  }
-
-  .base {
-    width: 170px;
-    position: relative;
-    z-index: 0;
-  }
-
-  .framework,
-  .vite {
-    position: absolute;
-  }
-
-  .framework {
-    z-index: 1;
-    top: 34px;
-    height: 28px;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
-      scale(1.4);
-  }
-
-  .vite {
-    z-index: 0;
-    top: 107px;
-    height: 26px;
-    width: auto;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
-      scale(0.8);
-  }
-}
-
-#center {
-  display: flex;
-  flex-direction: column;
-  gap: 25px;
-  place-content: center;
-  place-items: center;
-  flex-grow: 1;
-
-  @media (max-width: 1024px) {
-    padding: 32px 20px 24px;
-    gap: 18px;
-  }
-}
-
-#next-steps {
-  display: flex;
-  border-top: 1px solid var(--border);
-  text-align: left;
-
-  & > div {
-    flex: 1 1 0;
-    padding: 32px;
-    @media (max-width: 1024px) {
-      padding: 24px 20px;
-    }
-  }
-
-  .icon {
-    margin-bottom: 16px;
-    width: 22px;
-    height: 22px;
-  }
-
-  @media (max-width: 1024px) {
-    flex-direction: column;
-    text-align: center;
-  }
-}
-
-#docs {
-  border-right: 1px solid var(--border);
-
-  @media (max-width: 1024px) {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-}
-
-#next-steps ul {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  gap: 8px;
-  margin: 32px 0 0;
-
-  .logo {
-    height: 18px;
-  }
-
-  a {
-    color: var(--text-h);
-    font-size: 16px;
-    border-radius: 6px;
-    background: var(--social-bg);
-    display: flex;
-    padding: 6px 12px;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    transition: box-shadow 0.3s;
-
-    &:hover {
-      box-shadow: var(--shadow);
-    }
-    .button-icon {
-      height: 18px;
-      width: 18px;
-    }
-  }
-
-  @media (max-width: 1024px) {
-    margin-top: 20px;
-    flex-wrap: wrap;
-    justify-content: center;
-
-    li {
-      flex: 1 1 calc(50% - 8px);
-    }
-
-    a {
-      width: 100%;
-      justify-content: center;
-      box-sizing: border-box;
-    }
-  }
-}
-
-#spacer {
-  height: 88px;
-  border-top: 1px solid var(--border);
-  @media (max-width: 1024px) {
-    height: 48px;
-  }
-}
-
-.ticks {
-  position: relative;
-  width: 100%;
-
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    top: -4.5px;
-    border: 5px solid transparent;
-  }
-
-  &::before {
-    left: 0;
-    border-left-color: var(--border);
-  }
-  &::after {
-    right: 0;
-    border-right-color: var(--border);
-  }
-}
-
-
-
-```
-
 # FILE: apps/frontend/src/App.tsx
 
 ```
@@ -340,15 +146,16 @@ import {
 } from "react-router-dom";
 
 import Layout from "./components/Layout";
-import Login from "./pages/Login";
 import { CityProvider } from "./context/CityContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { api } from "./config/api";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
-import NotFound from "./pages/NotFound";
+import { SkeletonCard } from "./components/ui/Skeleton";
 
+const Login = lazyWithRetry(() => import("./pages/Login"));
+const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const CityProfile = lazyWithRetry(() => import("./pages/CityProfile"));
 const EventReport = lazyWithRetry(() => import("./pages/EventReport"));
 
@@ -362,10 +169,10 @@ const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
 const Kindergartens = lazyWithRetry(() => import("./pages/Kindergartens"));
 
 const PageLoader = () => (
-  <div className="flex items-center justify-center h-full min-h-[50vh]">
-    <div className="text-slate-400 font-medium animate-pulse">
-      Завантаження сторінки...
-    </div>
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-4 md:p-8">
+    <SkeletonCard />
+    <SkeletonCard />
+    <SkeletonCard />
   </div>
 );
 
@@ -589,6 +396,7 @@ export default function AddressLink({ address, className }: AddressLinkProps) {
 
 ```
 import { createPortal } from "react-dom";
+import { useEffect, useRef } from "react";
 import type { DayOff } from "../../hooks/useDaysOff";
 
 interface StaffUser {
@@ -619,6 +427,20 @@ export default function DayOffModal({
   dayOffs,
   onToggle,
 }: DayOffModalProps) {
+  const headingId = 'dayoff-modal-heading';
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !date) return null;
 
   const dateStr = date.toLocaleDateString("uk-UA", {
@@ -629,8 +451,12 @@ export default function DayOffModal({
 
   return createPortal(
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={headingId}
       className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
       style={{ animation: "fadeIn 0.2s ease-out forwards" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -645,17 +471,14 @@ export default function DayOffModal({
       >
         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <div>
-            <h3 className="text-lg font-bold text-slate-800">
+            <h3 id={headingId} className="text-lg font-bold text-slate-800">
               Вихідний на {dateStr}
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
               Оберіть співробітника
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
-          >
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors">
             ✕
           </button>
         </div>
@@ -2742,6 +2565,7 @@ export default function UpcomingEvents({ events }: Props) {
 
 ```
 import React from "react";
+import * as Sentry from "@sentry/react";
 
 interface Props {
   children: React.ReactNode;
@@ -2758,7 +2582,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error("Unhandled UI error:", error, info);
+    Sentry.captureException(error, { extra: { componentStack: info.componentStack } });
   }
 
   handleReload = () => {
@@ -2814,6 +2638,14 @@ import {
   BarChart,
   Bar,
 } from "recharts";
+import type {
+  FinanceDashboardData,
+  MonthlyFinance,
+  FinanceByProject,
+  FinanceByCategory,
+  FinanceTopSchool,
+  FinanceEventItem,
+} from "../../types";
 
 const PALETTE = [
   "#3b82f6",
@@ -2837,6 +2669,15 @@ const fmt = (n: number) =>
   new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
 
 
+interface KpiCardProps {
+  title: string;
+  value: number;
+  color: string;
+  bg: string;
+  icon: React.ReactNode;
+  subtitle?: string;
+}
+
 const KpiCard = memo(function KpiCard({
   title,
   value,
@@ -2844,7 +2685,7 @@ const KpiCard = memo(function KpiCard({
   bg,
   icon,
   subtitle,
-}: any) {
+}: KpiCardProps) {
   return (
     <div className="bg-white rounded-[24px] p-5 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow duration-300">
       <div className="flex justify-between items-start mb-4">
@@ -2889,7 +2730,7 @@ const EventTable = memo(function EventTable({
   events,
   positive,
 }: {
-  events: any[];
+  events: FinanceEventItem[];
   positive: boolean;
 }) {
   if (!events || !events.length) return <EmptyState />;
@@ -2907,7 +2748,7 @@ const EventTable = memo(function EventTable({
         </tr>
       </thead>
       <tbody>
-        {events.map((e: any, i: number) => (
+        {events.map((e: FinanceEventItem, i: number) => (
           <tr
             key={i}
             className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
@@ -2935,18 +2776,28 @@ const EventTable = memo(function EventTable({
   );
 });
 
+interface TooltipPayload {
+  name?: string;
+  value?: number;
+  color?: string;
+}
+
 const CustomTooltip = memo(function CustomTooltip({
   active,
   payload,
   label,
-}: any) {
+}: {
+  active?: boolean;
+  payload?: TooltipPayload[];
+  label?: string;
+}) {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-white/90 backdrop-blur-md border border-slate-100 p-4 rounded-2xl shadow-xl text-sm min-w-[160px]">
       <p className="font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">
         {label}
       </p>
-      {payload.map((entry: any, index: number) => (
+      {payload.map((entry: TooltipPayload, index: number) => (
         <div
           key={index}
           className="flex items-center justify-between gap-4 mb-1.5 last:mb-0"
@@ -2971,7 +2822,7 @@ const CustomTooltip = memo(function CustomTooltip({
 const RevenueChart = memo(function RevenueChart({
   monthly,
 }: {
-  monthly: any[];
+  monthly: MonthlyFinance[];
 }) {
   if (!monthly?.length) return <EmptyState />;
   const data = monthly.slice(-12);
@@ -3043,7 +2894,7 @@ const ProjectPieChart = memo(function ProjectPieChart({
   byProject,
   projectTotals,
 }: {
-  byProject: any[];
+  byProject: FinanceByProject[];
   projectTotals: { total: number; percents: number[] };
 }) {
   if (!byProject?.length) return <EmptyState />;
@@ -3062,7 +2913,7 @@ const ProjectPieChart = memo(function ProjectPieChart({
               stroke="none"
               isAnimationActive={false}
             >
-              {byProject.map((_: any, index: number) => (
+              {byProject.map((_: FinanceByProject, index: number) => (
                 <Cell
                   key={`cell-${index}`}
                   fill={PIE_COLORS[index % PIE_COLORS.length]}
@@ -3074,7 +2925,7 @@ const ProjectPieChart = memo(function ProjectPieChart({
         </ResponsiveContainer>
       </div>
       <div className="flex-1 overflow-y-auto space-y-3 pr-2">
-        {byProject.map((item: any, idx: number) => (
+        {byProject.map((item: FinanceByProject, idx: number) => (
           <div key={idx} className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-3 min-w-0 pr-2">
               <div
@@ -3103,7 +2954,7 @@ const ProjectPieChart = memo(function ProjectPieChart({
 const ExpenseChart = memo(function ExpenseChart({
   byExpenseCategory,
 }: {
-  byExpenseCategory: any[];
+  byExpenseCategory: FinanceByCategory[];
 }) {
   if (!byExpenseCategory?.length) return <EmptyState />;
   return (
@@ -3138,7 +2989,7 @@ const ExpenseChart = memo(function ExpenseChart({
             barSize={20}
             isAnimationActive={false}
           >
-            {byExpenseCategory.map((_: any, idx: number) => (
+            {byExpenseCategory.map((_: FinanceByCategory, idx: number) => (
               <Cell key={`cell-${idx}`} fill={PALETTE[idx % PALETTE.length]} />
             ))}
           </Bar>
@@ -3151,13 +3002,13 @@ const ExpenseChart = memo(function ExpenseChart({
 const TopSchools = memo(function TopSchools({
   topSchools,
 }: {
-  topSchools: any[];
+  topSchools: FinanceTopSchool[];
 }) {
   if (!topSchools?.length) return <EmptyState />;
   const maxRev = topSchools[0].revenue;
   return (
     <div className="space-y-5">
-      {topSchools.map((school: any, idx: number) => {
+      {topSchools.map((school: FinanceTopSchool, idx: number) => {
         const percent = Math.max((school.revenue / maxRev) * 100, 2);
         return (
           <div key={idx} className="relative">
@@ -3187,12 +3038,12 @@ const TopSchools = memo(function TopSchools({
 
 
 interface Props {
-  data: any;
+  data: FinanceDashboardData;
   period: string;
   setPeriod: (v: string) => void;
   projectFilter: string;
   setProjectFilter: (v: string) => void;
-  selectedCity: any;
+  selectedCity: { id: string; name: string };
 }
 
 
@@ -3218,8 +3069,8 @@ export default memo(function FinanceCharts({
 
   const projectTotals = useMemo(() => {
     const total =
-      byProject?.reduce((sum: number, p: any) => sum + p.value, 0) ?? 0;
-    const percents = (byProject ?? []).map((item: any) =>
+      byProject?.reduce((sum: number, p: FinanceByProject) => sum + p.value, 0) ?? 0;
+    const percents = (byProject ?? []).map((item: FinanceByProject) =>
       total > 0 ? Math.round((item.value / total) * 100) : 0,
     );
     return { total, percents };
@@ -3808,6 +3659,48 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useSelectedCity } from "../context/CityContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
+import {
+  Home,
+  MapPin,
+  School,
+  Baby,
+  Wallet,
+  Calendar,
+  Users,
+  GraduationCap,
+  Menu,
+  X,
+  LogOut,
+} from "lucide-react";
+
+function NavLink({
+  to,
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  onClick?: () => void;
+}) {
+  const location = useLocation();
+  const active = location.pathname.startsWith(to);
+  return (
+    <Link
+      to={to}
+      onClick={onClick}
+      className={`relative flex items-center px-4 py-3 rounded-lg transition-colors group
+        ${active ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+    >
+      {active && (
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full" />
+      )}
+      <Icon className="w-4 h-4 mr-3 shrink-0" />
+      {label}
+    </Link>
+  );
+}
 
 export default function Layout() {
   const location = useLocation();
@@ -3819,23 +3712,19 @@ export default function Layout() {
   const is = (roles: string[]) => !!user?.role && roles.includes(user.role);
   const { selectedCity } = useSelectedCity();
 
-  const isActive = (path: string) => location.pathname.startsWith(path);
-
   const handleLogout = async () => {
     await logout();
     queryClient.clear();
   };
 
-  const handleLinkClick = () => {
-    setIsMobileMenuOpen(false);
-  };
+  const closeMenu = () => setIsMobileMenuOpen(false);
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans">
-      {/* Мобільний хедер (видно тільки на малих екранах) */}
+    <div className="flex h-screen bg-surface-subtle font-sans">
+      {/* Мобільний хедер */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0B1527] text-white flex items-center justify-between px-4 z-40">
         <div className="flex items-center gap-2">
-          <span className="text-xl">🎓</span>
+          <GraduationCap className="w-5 h-5" />
           <span className="font-semibold tracking-wider text-sm">
             СВІТЛО ЗНАНЬ
           </span>
@@ -3845,20 +3734,30 @@ export default function Layout() {
         </div>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 focus:outline-none"
+          className="p-2"
+          aria-label={isMobileMenuOpen ? "Закрити меню" : "Відкрити меню"}
         >
-          {/* Проста іконка гамбургера / хрестика */}
-          <span className="text-2xl">{isMobileMenuOpen ? "✕" : "☰"}</span>
+          {isMobileMenuOpen ? (
+            <X className="w-6 h-6" />
+          ) : (
+            <Menu className="w-6 h-6" />
+          )}
         </button>
       </div>
 
-      {/* Оверлей для мобільного меню (затемнення фону) */}
-      {isMobileMenuOpen && (
-        <div
-          className="md:hidden fixed inset-0 bg-slate-900/50 z-40"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
+      {/* Оверлей для мобільного меню */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="md:hidden fixed inset-0 bg-slate-900/50 z-40"
+            onClick={closeMenu}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Сайдбар */}
       <aside
@@ -3869,82 +3768,39 @@ export default function Layout() {
       `}
       >
         <div className="p-6 flex flex-col items-center border-b border-slate-700/50 hidden md:flex">
-          <div className="w-16 h-16 bg-blue-500 rounded-full mb-3 flex items-center justify-center text-2xl">
-            🎓
+          <div className="w-16 h-16 bg-blue-500 rounded-full mb-3 flex items-center justify-center">
+            <GraduationCap className="w-8 h-8" />
           </div>
           <h2 className="text-sm font-semibold tracking-wider">СВІТЛО ЗНАНЬ</h2>
-          <p className="text-xs text-blue-300 mt-1 tracking-wide">
-            📍 {selectedCity.name}
+          <p className="text-xs text-blue-300 mt-1 tracking-wide flex items-center gap-1">
+            <MapPin className="w-3 h-3" />
+            {selectedCity.name}
           </p>
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto mt-16 md:mt-0">
           {is(["SUPERADMIN", "MANAGER"]) && (
-            <Link
-              to="/dashboard"
-              onClick={handleLinkClick}
-              className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/dashboard") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-            >
-              <span className="mr-3">🏠</span> Дашборд
-            </Link>
+            <NavLink to="/dashboard" icon={Home} label="Дашборд" onClick={closeMenu} />
           )}
           {is(["SUPERADMIN"]) && (
-            <Link
-              to="/cities"
-              onClick={handleLinkClick}
-              className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/cities") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-            >
-              <span className="mr-3">📍</span> Міста
-            </Link>
+            <NavLink to="/cities" icon={MapPin} label="Міста" onClick={closeMenu} />
           )}
-          <Link
-            to="/schools"
-            onClick={handleLinkClick}
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/schools") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-          >
-            <span className="mr-3">🏫</span> Школи
-          </Link>
-
-          {/* ДОДАЛИ НОВИЙ ПУНКТ "САДОЧКИ" */}
-          <Link
-            to="/kindergartens"
-            onClick={handleLinkClick}
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/kindergartens") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-          >
-            <span className="mr-3">🧸</span> Садочки
-          </Link>
-          <Link
-            to="/finance"
-            onClick={handleLinkClick}
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/finance") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-          >
-            <span className="mr-3">💰</span> Фінанси
-          </Link>
-          <Link
-            to="/calendar"
-            onClick={handleLinkClick}
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/calendar") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-          >
-            <span className="mr-3">📆</span> Календар
-          </Link>
+          <NavLink to="/schools" icon={School} label="Школи" onClick={closeMenu} />
+          <NavLink to="/kindergartens" icon={Baby} label="Садочки" onClick={closeMenu} />
+          <NavLink to="/finance" icon={Wallet} label="Фінанси" onClick={closeMenu} />
+          <NavLink to="/calendar" icon={Calendar} label="Календар" onClick={closeMenu} />
           {is(["SUPERADMIN"]) && (
-            <Link
-              to="/employees"
-              onClick={handleLinkClick}
-              className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive("/employees") ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-            >
-              <span className="mr-3">👥</span> Працівники
-            </Link>
+            <NavLink to="/employees" icon={Users} label="Працівники" onClick={closeMenu} />
           )}
         </nav>
 
         <div className="p-4 border-t border-slate-700/50 pb-8 md:pb-4">
           <div className="flex items-center px-4 py-2 text-slate-300 justify-between">
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-slate-600 rounded-full mr-3 flex items-center justify-center text-xs font-bold">
+            <div className="flex items-center min-w-0">
+              <div className="w-8 h-8 bg-slate-600 rounded-full mr-3 flex items-center justify-center text-xs font-bold shrink-0">
                 {user?.name?.charAt(0) ?? "?"}
               </div>
-              <div className="text-sm truncate max-w-[120px]">
+              <div className="text-sm truncate min-w-0">
                 <p className="font-medium text-white truncate">
                   {user?.name ?? "Користувач"}
                 </p>
@@ -3958,20 +3814,7 @@ export default function Layout() {
               className="flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-colors text-xs font-medium ml-2 shrink-0 px-2.5 py-2 rounded-lg"
               title="Вийти"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="w-4 h-4"
-              >
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
+              <LogOut className="w-4 h-4" />
               Вийти
             </button>
           </div>
@@ -4170,7 +4013,7 @@ export default memo(function AssignedCrew({ currentEvent, employees }: AssignedC
 # FILE: apps/frontend/src/components/school-profile/CompletedEventModal.tsx
 
 ```
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import type { Event, ExpenseItem, SalaryItem } from "../../types";
 
 interface CompletedEventModalProps {
@@ -4184,6 +4027,20 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
   onClose,
   event,
 }) => {
+  const headingId = 'completed-event-modal-heading';
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !event) return null;
 
   const report = event.report;
@@ -4191,22 +4048,25 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
     new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={headingId}
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
           <div>
-            <h3 className="text-xl font-bold text-slate-800">
+            <h3 id={headingId} className="text-xl font-bold text-slate-800">
               Звіт: {event.project}
             </h3>
             <p className="text-sm text-slate-500 mt-1">
               {new Date(event.date).toLocaleDateString("uk-UA")}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg"
-          >
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg">
             ✕
           </button>
         </div>
@@ -4797,7 +4657,7 @@ export default memo(function HistoryTimeline({ currentEvent, onHistoryClick, onA
 # FILE: apps/frontend/src/components/school-profile/modals/CommentModal.tsx
 
 ```
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface CommentModalProps {
   isOpen: boolean;
@@ -4809,17 +4669,38 @@ interface CommentModalProps {
 }
 
 export default function CommentModal({ isOpen, onClose, mode, text, setText, onSave }: CommentModalProps) {
+  const headingId = 'comment-modal-heading';
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={headingId}
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
+    >
       <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden max-h-[90vh] flex flex-col">
         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
         <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
-          <h3 className="text-xl font-bold text-slate-800">
+          <h3 id={headingId} className="text-xl font-bold text-slate-800">
             {mode === 'pipeline' ? 'Завершення етапу' : mode === 'add_comment' ? 'Новий коментар' : 'Редагувати'}
           </h3>
-          <button onClick={onClose} className="text-slate-400 p-2 -mr-2">✕</button>
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 p-2 -mr-2">✕</button>
         </div>
         <form onSubmit={onSave} className="p-5 sm:p-6 flex-1 flex flex-col">
           <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -4852,7 +4733,7 @@ export default function CommentModal({ isOpen, onClose, mode, text, setText, onS
 # FILE: apps/frontend/src/components/school-profile/modals/CrewModal.tsx
 
 ```
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../config/api";
 import type { City, Crew } from "../../../types";
@@ -4873,6 +4754,19 @@ export default function CrewModal({
   eventDate,
   onSave,
 }: CrewModalProps) {
+  const headingId = 'crew-modal-heading';
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
   const navigate = useNavigate();
   const { data: allCities = [] } = useQuery({
     queryKey: ["cities"],
@@ -4899,16 +4793,19 @@ export default function CrewModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={headingId}
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-          <h3 className="text-xl font-bold text-slate-800">
+          <h3 id={headingId} className="text-xl font-bold text-slate-800">
             Призначити екіпаж
           </h3>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600"
-          >
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600">
             ✕
           </button>
         </div>
@@ -5015,7 +4912,7 @@ export default function CrewModal({
 # FILE: apps/frontend/src/components/school-profile/modals/EditSchoolModal.tsx
 
 ```
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -5036,6 +4933,19 @@ export default function EditSchoolModal({
   defaultValues,
   onSave,
 }: EditSchoolModalProps) {
+  const headingId = 'edit-school-modal-heading';
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
   const {
     register,
     handleSubmit,
@@ -5054,15 +4964,21 @@ export default function EditSchoolModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={headingId}
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       {/* Bottom-sheet на мобільному, центрований діалог на десктопі */}
       <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl overflow-hidden max-h-[92vh] flex flex-col">
         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
 
         {/* Шапка не зжимається (shrink-0) */}
         <div className="p-5 sm:p-6 border-b flex justify-between items-center bg-slate-50 shrink-0">
-          <h3 className="text-xl font-bold">Редагування</h3>
-          <button onClick={onClose} className="text-slate-400 p-2 -mr-2">
+          <h3 id={headingId} className="text-xl font-bold">Редагування</h3>
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 p-2 -mr-2">
             ✕
           </button>
         </div>
@@ -5162,7 +5078,7 @@ export default function EditSchoolModal({
 # FILE: apps/frontend/src/components/school-profile/modals/EventModal.tsx
 
 ```
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { api } from "../../../config/api";
@@ -5182,6 +5098,19 @@ export default function EventModal({
   defaultValues,
   onSave,
 }: EventModalProps) {
+  const headingId = 'event-modal-heading';
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [priceTouched, setPriceTouched] = useState(false);
 
@@ -5256,14 +5185,17 @@ export default function EventModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={headingId}
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[92vh] flex flex-col">
         <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
-          <h3 className="text-xl font-bold text-slate-800">Нова подія</h3>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-2 -mr-2 text-xl leading-none"
-          >
+          <h3 id={headingId} className="text-xl font-bold text-slate-800">Нова подія</h3>
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 p-2 -mr-2 text-xl leading-none">
             ✕
           </button>
         </div>
@@ -5443,7 +5375,7 @@ export type EventFormValues = z.infer<typeof eventSchema>;
 # FILE: apps/frontend/src/components/school-profile/modals/IssueModal.tsx
 
 ```
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../../../config/api";
 
@@ -5476,6 +5408,19 @@ export default function IssueModal({
   const [deadline, setDeadline] = useState("");
   const [assignedUserId, setAssignedUserId] = useState("");
   const [sent, setSent] = useState(false);
+  const headingId = 'issue-modal-heading';
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -5507,8 +5452,12 @@ export default function IssueModal({
 
   return createPortal(
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={headingId}
       className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
       style={{ animation: "fadeIn 0.2s ease-out forwards" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -5523,16 +5472,13 @@ export default function IssueModal({
       >
         <div className="p-5 border-b border-slate-100 flex justify-between items-start bg-slate-50 shrink-0">
           <div>
-            <h3 className="text-xl font-bold text-slate-800">🚨 Запит</h3>
+            <h3 id={headingId} className="text-xl font-bold text-slate-800">🚨 Запит</h3>
             <p className="text-sm text-red-500 mt-0.5 font-medium">
               {schoolName}
             </p>
             <p className="text-xs text-slate-400 mt-0.5">{eventName}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
-          >
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors">
             ✕
           </button>
         </div>
@@ -5614,7 +5560,7 @@ export default function IssueModal({
 # FILE: apps/frontend/src/components/school-profile/modals/ReportModal.tsx
 
 ```
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Expense {
@@ -5842,6 +5788,19 @@ export default function ReportModal({
   eventIndex,
   crew,
 }: ReportModalProps) {
+  const headingId = 'report-modal-heading';
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
   const [form, setForm] = useState({
     announcementDone: true,
     materialShown: true,
@@ -5920,11 +5879,15 @@ export default function ReportModal({
     <AnimatePresence>
       {isOpen && (
         <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={headingId}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
           <motion.div
             initial={{ opacity: 0, y: 24, scale: 0.97 }}
@@ -5938,17 +5901,14 @@ export default function ReportModal({
         {/* Header */}
         <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 bg-slate-50 flex items-start justify-between shrink-0">
           <div className="min-w-0">
-            <h3 className="text-lg sm:text-xl font-bold text-slate-800 leading-tight">
+            <h3 id={headingId} className="text-lg sm:text-xl font-bold text-slate-800 leading-tight">
               Звіт по події
             </h3>
             <p className="text-sm text-slate-500 mt-0.5 truncate">
               {schoolName}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-lg leading-none p-2 -mr-2 shrink-0"
-          >
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 text-lg leading-none p-2 -mr-2 shrink-0">
             ✕
           </button>
         </div>
@@ -6190,7 +6150,7 @@ export default function ReportModal({
 # FILE: apps/frontend/src/components/school-profile/modals/RescheduleModal.tsx
 
 ```
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../../../config/api";
 
@@ -6214,6 +6174,8 @@ export default function RescheduleModal({
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [loading, setLoading] = useState(false);
+  const headingId = 'reschedule-modal-heading';
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (isOpen && currentDate) {
@@ -6221,6 +6183,17 @@ export default function RescheduleModal({
       setTime(currentTime || "");
     }
   }, [isOpen, currentDate, currentTime]);
+
+  useEffect(() => {
+    if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -6239,8 +6212,12 @@ export default function RescheduleModal({
 
   return createPortal(
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={headingId}
       className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
       style={{ animation: "fadeIn 0.2s ease-out forwards" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -6254,13 +6231,10 @@ export default function RescheduleModal({
         style={{ animation: "modalScale 0.3s ease-out forwards" }}
       >
         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-          <h3 className="text-xl font-bold text-slate-800">
+          <h3 id={headingId} className="text-xl font-bold text-slate-800">
             📅 Перенести подію
           </h3>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
-          >
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors">
             ✕
           </button>
         </div>
@@ -7228,6 +7202,190 @@ export default function VirtualDesktopTable({
 
 ```
 
+# FILE: apps/frontend/src/components/ui/Button.tsx
+
+```
+import { forwardRef } from "react";
+import { motion, type HTMLMotionProps } from "framer-motion";
+
+type Variant = "primary" | "secondary" | "danger" | "ghost";
+type Size = "sm" | "md";
+
+const variants: Record<Variant, string> = {
+  primary: "bg-brand text-white hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed",
+  secondary: "bg-surface-muted text-content-secondary hover:bg-border-strong disabled:opacity-50 disabled:cursor-not-allowed",
+  danger: "bg-danger text-white hover:bg-danger/90 disabled:opacity-50 disabled:cursor-not-allowed",
+  ghost: "bg-transparent text-content-secondary hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed",
+};
+
+const sizes: Record<Size, string> = {
+  sm: "px-3 py-1.5 text-sm",
+  md: "px-5 py-2.5 text-sm",
+};
+
+interface Props extends Omit<HTMLMotionProps<"button">, "ref"> {
+  variant?: Variant;
+  size?: Size;
+  isLoading?: boolean;
+}
+
+export const Button = forwardRef<HTMLButtonElement, Props>(
+  ({ variant = "primary", size = "md", isLoading, className = "", children, disabled, ...props }, ref) => (
+    <motion.button
+      ref={ref}
+      whileTap={{ scale: 0.97 }}
+      transition={{ duration: 0.1 }}
+      disabled={disabled || isLoading}
+      className={`rounded-control font-medium transition-colors duration-fast
+        focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-2
+        ${variants[variant]} ${sizes[size]} ${className}`}
+      {...props}
+    >
+      {isLoading ? "…" : children}
+    </motion.button>
+  )
+);
+
+```
+
+# FILE: apps/frontend/src/components/ui/Card.tsx
+
+```
+import type { ReactNode, HTMLAttributes } from "react";
+
+interface Props extends HTMLAttributes<HTMLDivElement> {
+  children: ReactNode;
+  padding?: "sm" | "md" | "lg";
+}
+
+const paddings = {
+  sm: "p-3",
+  md: "p-5 sm:p-6",
+  lg: "p-6 sm:p-8",
+};
+
+export function Card({ children, padding = "md", className = "", ...props }: Props) {
+  return (
+    <div
+      className={`bg-surface rounded-card shadow-card border border-border ${paddings[padding]} ${className}`}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/ui/Input.tsx
+
+```
+import { forwardRef, type InputHTMLAttributes } from "react";
+
+interface Props extends InputHTMLAttributes<HTMLInputElement> {
+  label?: string;
+  error?: string;
+}
+
+export const Input = forwardRef<HTMLInputElement, Props>(
+  ({ label, error, className = "", id, ...props }, ref) => {
+    const inputId = id || label?.toLowerCase().replace(/\s+/g, "-");
+    return (
+      <div className="flex flex-col gap-1.5">
+        {label && (
+          <label htmlFor={inputId} className="text-sm font-medium text-content-primary">
+            {label}
+          </label>
+        )}
+        <input
+          ref={ref}
+          id={inputId}
+          className={`rounded-control border px-3.5 py-2.5 text-sm text-content-primary bg-surface
+            placeholder:text-content-muted transition-colors duration-fast
+            ${error ? "border-danger" : "border-border-strong hover:border-content-muted"}
+            focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand
+            disabled:opacity-50 disabled:cursor-not-allowed
+            ${className}`}
+          {...props}
+        />
+        {error && <p className="text-xs text-danger">{error}</p>}
+      </div>
+    );
+  }
+);
+
+```
+
+# FILE: apps/frontend/src/components/ui/Modal.tsx
+
+```
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useRef, type ReactNode } from "react";
+import { X } from "lucide-react";
+
+interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
+  maxWidth?: string;
+}
+
+export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-md" }: ModalProps) {
+  const headingId = useRef(`modal-${Math.random().toString(36).slice(2)}`).current;
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", handler);
+    closeRef.current?.focus();
+    return () => document.removeEventListener("keydown", handler);
+  }, [isOpen, onClose]);
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={headingId}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+          onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
+          <motion.div
+            initial={{ y: 24, opacity: 0, scale: 0.98 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 24, opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className={`bg-surface rounded-t-3xl sm:rounded-modal shadow-modal w-full sm:${maxWidth} overflow-hidden max-h-[90vh] flex flex-col`}
+          >
+            <div className="sm:hidden w-10 h-1.5 bg-border-strong rounded-pill mx-auto mt-3" />
+            <div className="p-5 sm:p-6 border-b border-border flex justify-between items-center bg-surface-subtle shrink-0">
+              <h3 id={headingId} className="text-lg font-bold text-content-primary">{title}</h3>
+              <button
+                ref={closeRef}
+                onClick={onClose}
+                aria-label="Закрити"
+                className="p-2 -mr-2 text-content-muted hover:text-content-primary rounded-control transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 sm:p-6 overflow-y-auto">{children}</div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+```
+
 # FILE: apps/frontend/src/components/ui/OptimizedImage.tsx
 
 ```
@@ -7275,6 +7433,58 @@ export const SkeletonCard = () => (
     </div>
   </div>
 );
+```
+
+# FILE: apps/frontend/src/components/ui/Toast.tsx
+
+```
+import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+
+type ToastKind = "success" | "error" | "info";
+
+interface ToastItem {
+  id: number;
+  msg: string;
+  kind: ToastKind;
+}
+
+const ToastContext = createContext<(msg: string, kind?: ToastKind) => void>(() => {});
+
+export const useToast = () => useContext(ToastContext);
+
+export function ToastProvider({ children }: { children: ReactNode }) {
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const push = useCallback((msg: string, kind: ToastKind = "info") => {
+    const id = Date.now();
+    setToasts((t) => [...t, { id, msg, kind }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500);
+  }, []);
+
+  return (
+    <ToastContext.Provider value={push}>
+      {children}
+      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
+        <AnimatePresence>
+          {toasts.map((t) => (
+            <motion.div
+              key={t.id}
+              initial={{ opacity: 0, y: 20, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 40 }}
+              transition={{ duration: 0.2 }}
+              className={`pointer-events-auto px-4 py-3 rounded-control shadow-modal text-sm font-medium text-white
+                ${t.kind === "success" ? "bg-success" : t.kind === "error" ? "bg-danger" : "bg-slate-800"}`}
+            >
+              {t.msg}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+    </ToastContext.Provider>
+  );
+}
+
 ```
 
 # FILE: apps/frontend/src/components/VirtualSchoolList.tsx
@@ -7411,7 +7621,7 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const original = error.config as (typeof error.config & { _retry?: boolean }) | undefined;
 
-    const isAuthEndpoint = original?.url?.includes("/auth/login") || original?.url?.includes("/auth/refresh");
+    const isAuthEndpoint = original?.url?.includes("/auth/login") || original?.url?.includes("/auth/refresh") || original?.url?.includes("/auth/me");
 
     if (error.response?.status === 401 && original && !original._retry && !isAuthEndpoint) {
       original._retry = true;
@@ -7720,19 +7930,20 @@ export function usePrefetchSchool() {
 ```
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
+import type { Event, Project } from "../types";
 
 export function useCalendarEvents() {
-  return useQuery({
+  return useQuery<Event[]>({
     queryKey: ["calendarEvents"],
-    queryFn: () => api.get("/events").then((r) => r.data),
+    queryFn: () => api.get<Event[]>("/events").then((r) => r.data),
     staleTime: 60 * 1000,
   });
 }
 
 export function useCalendarProjects() {
-  return useQuery({
+  return useQuery<Project[]>({
     queryKey: ["projects"],
-    queryFn: () => api.get("/projects").then((r) => r.data),
+    queryFn: () => api.get<Project[]>("/projects").then((r) => r.data),
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -7744,19 +7955,20 @@ export function useCalendarProjects() {
 ```
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../config/api";
+import type { City, CityProfile } from "../types";
 
 export function useCities() {
-  return useQuery({
+  return useQuery<City[]>({
     queryKey: ["cities"],
-    queryFn: () => api.get("/cities").then((r) => r.data),
+    queryFn: () => api.get<City[]>("/cities").then((r) => r.data),
     staleTime: 5 * 60 * 1000,
   });
 }
 
 export function useCity(id: string | undefined) {
-  return useQuery({
+  return useQuery<CityProfile>({
     queryKey: ["city", id],
-    queryFn: () => api.get(`/cities/${id}`).then((r) => r.data),
+    queryFn: () => api.get<CityProfile>(`/cities/${id}`).then((r) => r.data),
     enabled: !!id,
     staleTime: 2 * 60 * 1000,
   });
@@ -7768,7 +7980,7 @@ export function useCreateCity() {
     mutationFn: (name: string) =>
       api.post("/cities", { name }).then((r) => r.data),
     onSuccess: (data) => {
-      qc.setQueryData(["cities"], (old: any) =>
+      qc.setQueryData<City[]>(["cities"], (old) =>
         Array.isArray(old) ? [data, ...old] : [data],
       );
     },
@@ -7782,19 +7994,19 @@ export function useCreateCrew(cityId: string | undefined) {
       api.post(`/cities/${cityId}/crews`, form).then((r) => r.data),
     onMutate: async (form) => {
       await qc.cancelQueries({ queryKey: ["city", cityId] });
-      const prev = qc.getQueryData(["city", cityId]);
-      const optimistic = { id: `temp-${Date.now()}`, ...form, name: form.name };
-      qc.setQueryData(["city", cityId], (old: any) =>
+      const prev = qc.getQueryData<CityProfile>(["city", cityId]);
+      const optimistic: Crew = { id: `temp-${Date.now()}`, ...form, name: form.name, cityId: cityId! };
+      qc.setQueryData<CityProfile>(["city", cityId], (old) =>
         old ? { ...old, crews: [...(old.crews || []), optimistic] } : old,
       );
       return { prev };
     },
     onSuccess: (data) => {
-      qc.setQueryData(["city", cityId], (old: any) =>
+      qc.setQueryData<CityProfile>(["city", cityId], (old) =>
         old
           ? {
               ...old,
-              crews: old.crews?.map((c: any) =>
+              crews: old.crews?.map((c: Crew) =>
                 c.id?.startsWith("temp-") ? data : c,
               ),
             }
@@ -7802,7 +8014,7 @@ export function useCreateCrew(cityId: string | undefined) {
       );
     },
     onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["city", cityId], ctx.prev);
+      if (ctx?.prev) qc.setQueryData<CityProfile>(["city", cityId], ctx.prev);
     },
   });
 }
@@ -7814,16 +8026,16 @@ export function useDeleteCrew(cityId: string | undefined) {
       api.delete(`/cities/crews/${crewId}`).then((r) => r.data),
     onMutate: async (crewId) => {
       await qc.cancelQueries({ queryKey: ["city", cityId] });
-      const prev = qc.getQueryData(["city", cityId]);
-      qc.setQueryData(["city", cityId], (old: any) =>
+      const prev = qc.getQueryData<CityProfile>(["city", cityId]);
+      qc.setQueryData<CityProfile>(["city", cityId], (old) =>
         old
-          ? { ...old, crews: old.crews?.filter((c: any) => c.id !== crewId) }
+          ? { ...old, crews: old.crews?.filter((c: Crew) => c.id !== crewId) }
           : old,
       );
       return { prev };
     },
     onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["city", cityId], ctx.prev);
+      if (ctx?.prev) qc.setQueryData<CityProfile>(["city", cityId], ctx.prev);
     },
   });
 }
@@ -8361,10 +8573,16 @@ export function useUpdateHistoryComment() {
 
 ```
 
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  *:focus-visible {
+    outline: 2px solid theme('colors.brand.DEFAULT');
+    outline-offset: 2px;
+  }
+}
 
 .custom-scrollbar {
   scrollbar-width: thin;
@@ -8380,21 +8598,34 @@ export function useUpdateHistoryComment() {
   border-radius: 20px;
 }
 
-/* Плавність для всіх інтерактивних елементів */
-button, div {
-  transition-property: color, background-color, border-color, transform, box-shadow;
-  transition-duration: 200ms;
-}
+```
+
+# FILE: apps/frontend/src/instrument.ts
+
+```
+import * as Sentry from '@sentry/react';
+
+Sentry.init({
+  dsn: import.meta.env.VITE_SENTRY_DSN,
+  environment: import.meta.env.VITE_SENTRY_ENVIRONMENT ?? import.meta.env.MODE,
+  integrations: [Sentry.replayIntegration()],
+  tracesSampleRate: import.meta.env.PROD ? 0.2 : 1.0,
+  replaysSessionSampleRate: import.meta.env.PROD ? 0.1 : 0,
+  replaysOnErrorSampleRate: 1.0,
+});
+
 ```
 
 # FILE: apps/frontend/src/main.tsx
 
 ```
+import "./instrument";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./index.css";
 import App from "./App";
+import { ToastProvider } from "./components/ui/Toast";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -8409,7 +8640,9 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <ToastProvider>
+        <App />
+      </ToastProvider>
     </QueryClientProvider>
   </StrictMode>,
 );
@@ -8433,6 +8666,7 @@ import {
 import { useState, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import DayOffModal from "../components/calendar/DayOffModal";
+import type { Event, Project, City, User, DayOff } from "../types";
 
 const STAFF_ROLES = ["HOST", "DRIVER"];
 const MANAGER_ROLES = ["SUPERADMIN", "MANAGER"];
@@ -8536,33 +8770,65 @@ export default function CalendarView() {
           ? filterCityId
           : null;
     return allUsers.filter(
-      (u: any) =>
+      (u: User) =>
         STAFF_ROLES.includes(u.role) && (!cityScope || u.cityId === cityScope),
     );
   }, [allUsers, userRole, user?.cityId, filterCityId]);
 
-  const filteredEvents = events.filter((ev: any) => {
-    if (ev.status === "RE_SALE") return false;
-    if (filterCityId !== "ALL" && ev.city?.id !== filterCityId) return false;
-    return true;
-  });
-
-  const getEventsForDay = (date: Date) => {
-    return filteredEvents.filter((ev: any) => {
-      const evDate = new Date(ev.date);
-      return (
-        evDate.getFullYear() === date.getFullYear() &&
-        evDate.getMonth() === date.getMonth() &&
-        evDate.getDate() === date.getDate()
-      );
+  const filteredEvents = useMemo(() => {
+    return events.filter((ev: Event) => {
+      if (ev.status === "RE_SALE") return false;
+      if (filterCityId !== "ALL" && ev.city?.id !== filterCityId) return false;
+      return true;
     });
-  };
+  }, [events, filterCityId]);
+
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, Event[]>();
+    for (const ev of filteredEvents) {
+      const key = ev.date.slice(0, 10);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(ev);
+    }
+    return map;
+  }, [filteredEvents]);
+
+  const projectColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of projects) {
+      switch (p.color) {
+        case "emerald":
+          map.set(p.name, "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200 hover:border-emerald-300"); break;
+        case "rose":
+          map.set(p.name, "bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200 hover:border-rose-300"); break;
+        case "red":
+          map.set(p.name, "bg-red-100 text-red-700 border-red-300 hover:bg-red-200 hover:border-red-400"); break;
+        case "amber":
+          map.set(p.name, "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200 hover:border-amber-300"); break;
+        case "purple":
+          map.set(p.name, "bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200 hover:border-purple-300"); break;
+        default:
+          map.set(p.name, "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300");
+      }
+    }
+    return map;
+  }, [projects]);
+
+  const projectHexMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of projects) {
+      map.set(p.name, PROJECT_HEX[p.color] || PROJECT_HEX.blue);
+    }
+    return map;
+  }, [projects]);
 
   const isPastDay = (date: Date) => {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
     return date < startOfToday;
   };
+
+  const selectedDayEvents = eventsByDate.get(toISODate(selectedMobileDate)) ?? [];
 
   const handleDayOffClick = useCallback(
     (e: React.MouseEvent, date: Date) => {
@@ -8669,31 +8935,6 @@ export default function CalendarView() {
     "Грудень",
   ];
 
-  const getProjectColor = (projectName: string) => {
-    const proj = projects.find((p: any) => p.name === projectName);
-    const color = proj ? proj.color : "blue";
-
-    switch (color) {
-      case "emerald":
-        return "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200 hover:border-emerald-300";
-      case "rose":
-        return "bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200 hover:border-rose-300";
-      case "red":
-        return "bg-red-100 text-red-700 border-red-300 hover:bg-red-200 hover:border-red-400";
-      case "amber":
-        return "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200 hover:border-amber-300";
-      case "purple":
-        return "bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200 hover:border-purple-300";
-      default:
-        return "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300";
-    }
-  };
-
-  const getProjectHex = (projectName: string) => {
-    const proj = projects.find((p: any) => p.name === projectName);
-    return PROJECT_HEX[proj?.color] || PROJECT_HEX.blue;
-  };
-
   const shadeHex = (hex: string, percent: number) => {
     const n = parseInt(hex.replace("#", ""), 16);
     const r = Math.min(255, Math.max(0, (n >> 16) + percent));
@@ -8702,11 +8943,11 @@ export default function CalendarView() {
     return `rgb(${r}, ${g}, ${b})`;
   };
 
-  const getDayColor = (dayEvents: any[]) => {
+  const getDayColor = (dayEvents: Event[]) => {
     if (dayEvents.length === 0) return undefined;
     const counts = new Map<string, number>();
     for (const ev of dayEvents) {
-      const hex = getProjectHex(ev.project);
+      const hex = projectHexMap.get(ev.project) ?? PROJECT_HEX.blue;
       counts.set(hex, (counts.get(hex) || 0) + 1);
     }
     const total = dayEvents.length;
@@ -8799,8 +9040,6 @@ export default function CalendarView() {
       </div>
     );
 
-  const selectedDayEvents = getEventsForDay(selectedMobileDate);
-
   return (
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen pb-24">
       <style>{`
@@ -8825,7 +9064,7 @@ export default function CalendarView() {
           </p>
 
           <div className="hidden md:flex flex-wrap items-center gap-3 mt-4">
-            {projects.map((p: any) => {
+            {projects.map((p: Project) => {
               const badgeColor =
                 {
                   blue: "bg-blue-400",
@@ -8862,7 +9101,7 @@ export default function CalendarView() {
               className="text-sm font-semibold text-slate-800 outline-none cursor-pointer bg-transparent"
             >
               <option value="ALL">🌍 Всі міста</option>
-              {cities.map((c: any) => (
+              {cities.map((c: City) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
@@ -8909,8 +9148,8 @@ export default function CalendarView() {
               day && day.toDateString() === new Date().toDateString();
             const isSelected =
               day && day.toDateString() === selectedMobileDate.toDateString();
-            const dayEvents = day ? getEventsForDay(day) : [];
             const dayKey = day ? toISODate(day) : "";
+            const dayEvents = day ? (eventsByDate.get(dayKey) ?? []) : [];
             const dayOffEntries = day ? (dayOffsByDate.get(dayKey) ?? []) : [];
 
             const myDayOff = isStaff
@@ -8960,9 +9199,9 @@ export default function CalendarView() {
                               Вихідний ({dayOffEntries.length})
                             </p>
                             <div className="space-y-1">
-                              {dayOffEntries.map((d) => {
+                              {dayOffEntries.map((d: DayOff) => {
                                 const u = allUsers.find(
-                                  (au: any) => au.id === d.userId,
+                                  (au: User) => au.id === d.userId,
                                 );
                                 return (
                                   <p
@@ -8999,13 +9238,13 @@ export default function CalendarView() {
                     )}
 
                     <div className="space-y-1.5">
-                      {dayEvents.slice(0, 3).map((ev: any) => (
+                      {dayEvents.slice(0, 3).map((ev: Event) => (
                         <div
                           key={ev.id}
                           className="relative group/event z-0 hover:z-50"
                         >
                           <button
-                            className={`w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${getProjectColor(ev.project)}`}
+                            className={`w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${projectColorMap.get(ev.project) ?? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300"}`}
                           >
                             {ev.time || "—"}
                           </button>
@@ -9086,8 +9325,8 @@ export default function CalendarView() {
                 day && day.toDateString() === new Date().toDateString();
               const isSelected =
                 day && day.toDateString() === selectedMobileDate.toDateString();
-              const dayEvents = day ? getEventsForDay(day) : [];
               const dayKey = day ? toISODate(day) : "";
+              const dayEvents = day ? (eventsByDate.get(dayKey) ?? []) : [];
               const dayOffEntries = day
                 ? (dayOffsByDate.get(dayKey) ?? [])
                 : [];
@@ -9137,7 +9376,7 @@ export default function CalendarView() {
         </div>
 
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 mt-3 px-1">
-          {projects.map((p: any) => (
+          {projects.map((p: Project) => (
             <span
               key={p.id}
               className="flex items-center gap-1 text-[10px] font-medium text-slate-500"
@@ -9163,7 +9402,7 @@ export default function CalendarView() {
               className="ml-auto text-[11px] font-semibold text-slate-700 outline-none bg-slate-50 border border-slate-200 rounded-lg px-2 py-1"
             >
               <option value="ALL">🌍 Всі міста</option>
-              {cities.map((c: any) => (
+              {cities.map((c: City) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
@@ -9195,8 +9434,8 @@ export default function CalendarView() {
               if (dayOffEntries.length === 0) return null;
               return (
                 <div className="mb-3 flex flex-wrap gap-1.5">
-                  {dayOffEntries.map((d) => {
-                    const u = allUsers.find((au: any) => au.id === d.userId);
+                  {dayOffEntries.map((d: DayOff) => {
+                    const u = allUsers.find((au: User) => au.id === d.userId);
                     return (
                       <span
                         key={d.id}
@@ -9216,14 +9455,14 @@ export default function CalendarView() {
               </div>
             ) : (
               <div className="space-y-3">
-                {selectedDayEvents.map((ev: any) => (
+                {selectedDayEvents.map((ev: Event) => (
                   <div
                     key={ev.id}
                     onClick={() =>
                       ev.school && navigate(`/schools/${ev.school.id}`)
                     }
                     className="bg-white p-4 rounded-2xl border-l-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
-                    style={{ borderLeftColor: getProjectHex(ev.project) }}
+                    style={{ borderLeftColor: projectHexMap.get(ev.project) ?? PROJECT_HEX.blue }}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <span className="text-xs font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-600">
@@ -10265,258 +10504,5 @@ function CompletedEventModal({
   );
 }
 
-```
-
-# FILE: apps/frontend/src/pages/Dashboard.tsx
-
-```
-import { Suspense, lazy } from "react";
-import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "../config/api";
-import { useSelectedCity } from "../context/CityContext";
-import { useAuth } from "../context/AuthContext";
-const IssueCarousel = lazy(() => import("../components/IssueCarousel"));
-const FunnelBar = lazy(() => import("../components/dashboard/FunnelBar"));
-const TodayEvents = lazy(() => import("../components/dashboard/TodayEvents"));
-const UpcomingEvents = lazy(() => import("../components/dashboard/UpcomingEvents"));
-const StaleSchools = lazy(() => import("../components/dashboard/StaleSchools"));
-const MonthlyKpi = lazy(() => import("../components/dashboard/MonthlyKpi"));
-const ActivityFeed = lazy(() => import("../components/dashboard/ActivityFeed"));
-const CitiesTable = lazy(() => import("../components/dashboard/CitiesTable"));
-
-interface DashboardSummary {
-  todayEvents: any[];
-  upcomingEvents: any[];
-  funnel: Record<string, number>;
-  totalSchools: number;
-  monthlyKpi: {
-    revenue: number;
-    profit: number;
-    children: number;
-    count: number;
-  };
-  staleSchools: {
-    id: string;
-    name: string;
-    status: string | null;
-    lastActivity: string | null;
-    daysStale: number | null;
-  }[];
-  activityFeed: {
-    id: string;
-    userName: string;
-    role: string;
-    action: string;
-    comment: string | null;
-    createdAt: string;
-    schoolId: string | null;
-    schoolName: string | null;
-    eventId: string | null;
-  }[];
-  citiesStats: {
-    cityId: string;
-    cityName: string;
-    schoolsCount: number;
-    activeEvents: number;
-    monthRevenue: number;
-  }[];
-}
-
-
-function SkeletonCard({ className = "" }: { className?: string }) {
-  return (
-    <div className={`bg-white rounded-2xl border border-slate-100 shadow-sm p-4 animate-pulse ${className}`}>
-      <div className="h-4 bg-slate-100 rounded-full w-1/3 mb-3" />
-      <div className="space-y-2">
-        <div className="h-3 bg-slate-100 rounded-full w-full" />
-        <div className="h-3 bg-slate-100 rounded-full w-4/5" />
-        <div className="h-3 bg-slate-100 rounded-full w-3/5" />
-      </div>
-    </div>
-  );
-}
-
-function SkeletonEventCard() {
-  return (
-    <div className="bg-white rounded-xl border border-slate-100 p-3 animate-pulse">
-      <div className="flex justify-between mb-2">
-        <div className="h-5 bg-slate-100 rounded w-16" />
-        <div className="h-4 bg-slate-100 rounded w-24" />
-      </div>
-      <div className="h-4 bg-slate-100 rounded w-3/4 mb-3" />
-      <div className="flex justify-between items-center">
-        <div className="h-5 bg-slate-100 rounded-full w-28" />
-        <div className="h-7 bg-slate-100 rounded-lg w-20" />
-      </div>
-    </div>
-  );
-}
-
-function DashboardSkeleton({ isSuperAdmin }: { isSuperAdmin: boolean }) {
-  return (
-    <div className="flex flex-col gap-6">
-      {/* IssueCarousel placeholder */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 animate-pulse h-24" />
-
-      {/* Сьогодні + Потребують уваги */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* TodayEvents */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 animate-pulse">
-          <div className="flex justify-between mb-3">
-            <div>
-              <div className="h-4 bg-slate-100 rounded w-36 mb-1" />
-              <div className="h-3 bg-slate-100 rounded w-28" />
-            </div>
-            <div className="h-4 bg-slate-100 rounded w-16" />
-          </div>
-          <div className="flex flex-col gap-2">
-            <SkeletonEventCard />
-            <SkeletonEventCard />
-          </div>
-        </div>
-
-        {/* StaleSchools */}
-        <SkeletonCard />
-        {/* UpcomingEvents */}
-        <SkeletonCard />
-      </div>
-
-      <hr className="border-slate-200" />
-
-      {/* KPI + Воронка */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <SkeletonCard />
-        <SkeletonCard />
-      </div>
-
-      {/* Activity + Cities */}
-      <div className={`grid grid-cols-1 gap-4 ${isSuperAdmin ? "md:grid-cols-2" : ""}`}>
-        <SkeletonCard className="min-h-[200px]" />
-        {isSuperAdmin && <SkeletonCard className="min-h-[200px]" />}
-      </div>
-    </div>
-  );
-}
-
-
-export default function Dashboard() {
-  const { selectedCity } = useSelectedCity();
-  const { user } = useAuth();
-
-  const isSuperAdmin = user?.role === "SUPERADMIN";
-
-  const { data: summary, isLoading } = useQuery<DashboardSummary>({
-    queryKey: ["dashboardSummary", selectedCity.id],
-    queryFn: async () => {
-      const params = selectedCity.id ? `?cityId=${selectedCity.id}` : "";
-      const res = await api.get(`/dashboard/summary${params}`);
-      return res.data;
-    },
-    enabled: Boolean(selectedCity.id || isSuperAdmin),
-  });
-
-  if (!selectedCity.id && !isSuperAdmin) {
-    return (
-      <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-800">Дашборд</h1>
-          <p className="text-sm text-slate-500 mt-1">📍 Оберіть місто</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center">
-          <p className="text-4xl mb-3">📍</p>
-          <p className="font-semibold text-slate-700 mb-2">Місто не обрано</p>
-          <p className="text-sm text-slate-500 mb-4">
-            Оберіть місто у розділі «Міста», щоб бачити активність
-          </p>
-          <Link
-            to="/cities"
-            className="inline-block px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-          >
-            Перейти до міст
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
-      {/* Шапка */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">
-          Дашборд
-          {selectedCity.name && (
-            <span className="ml-2 text-base font-normal text-blue-500">
-              · {selectedCity.name}
-            </span>
-          )}
-          {isSuperAdmin && !selectedCity.name && (
-            <span className="ml-2 text-base font-normal text-purple-500">
-              · Усі міста
-            </span>
-          )}
-        </h1>
-        <p className="text-xs text-slate-400 mt-1">
-          {new Date().toLocaleDateString("uk-UA", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          })}
-        </p>
-      </div>
-
-      {isLoading ? (
-        <DashboardSkeleton isSuperAdmin={isSuperAdmin} />
-      ) : summary ? (
-        <div className="flex flex-col gap-6">
-          {/* ── ЗОНА ДІЇ ── */}
-          <Suspense fallback={<div className="h-24 bg-white rounded-2xl animate-pulse border border-slate-100" />}>
-            <IssueCarousel />
-          </Suspense>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Suspense fallback={<SkeletonCard />}>
-              <TodayEvents events={summary.todayEvents} />
-            </Suspense>
-            <Suspense fallback={<SkeletonCard />}>
-              <StaleSchools schools={summary.staleSchools} />
-            </Suspense>
-            <Suspense fallback={<SkeletonCard />}>
-              <UpcomingEvents events={summary.upcomingEvents} />
-            </Suspense>
-          </div>
-
-          <hr className="border-slate-200" />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Suspense fallback={<SkeletonCard />}>
-              <MonthlyKpi kpi={summary.monthlyKpi} />
-            </Suspense>
-            <Suspense fallback={<SkeletonCard />}>
-              <FunnelBar funnel={summary.funnel} />
-            </Suspense>
-          </div>
-
-          <div className={`grid grid-cols-1 gap-4 ${isSuperAdmin ? "md:grid-cols-2" : ""}`}>
-            <Suspense fallback={<SkeletonCard className="min-h-[200px]" />}>
-              <ActivityFeed items={summary.activityFeed} />
-            </Suspense>
-            {isSuperAdmin && summary.citiesStats.length > 0 && (
-              <Suspense fallback={<SkeletonCard className="min-h-[200px]" />}>
-                <CitiesTable rows={summary.citiesStats} />
-              </Suspense>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="text-center py-20 text-slate-400 text-sm">
-          Не вдалося завантажити дані
-        </div>
-      )}
-    </div>
-  );
-}
 ```
 

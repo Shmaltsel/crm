@@ -1,3 +1,589 @@
+# FILE: apps/backend/src/schools/schools.controller.spec.ts
+
+```
+import { Test, TestingModule } from '@nestjs/testing';
+import { INestApplication } from '@nestjs/common';
+import request from 'supertest';
+import { SchoolsController } from './schools.controller';
+import { SchoolsService } from './schools.service';
+import { ParserService } from './parser.service';
+import { AuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { OwnershipGuard } from '../auth/guards/ownership.guard';
+
+const mockGuard = { canActivate: jest.fn() };
+
+const mockSchoolsService = {
+  findOne: jest.fn(),
+  findAll: jest.fn(),
+};
+
+const mockParserService = {};
+
+describe('SchoolsController', () => {
+  let app: INestApplication;
+
+  beforeAll(async () => {
+    jest.clearAllMocks();
+
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [SchoolsController],
+      providers: [
+        { provide: SchoolsService, useValue: mockSchoolsService },
+        { provide: ParserService, useValue: mockParserService },
+      ],
+    })
+      .overrideGuard(AuthGuard)
+      .useValue(mockGuard)
+      .overrideGuard(RolesGuard)
+      .useValue(mockGuard)
+      .overrideGuard(OwnershipGuard)
+      .useValue(mockGuard)
+      .compile();
+
+    app = module.createNestApplication();
+    await app.init();
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGuard.canActivate.mockResolvedValue(true);
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('should be defined', () => {
+    expect(app).toBeDefined();
+  });
+
+  describe('GET /schools/:id — findOne', () => {
+    it('OWNERSHIP: MANAGER іншого міста отримує 403', async () => {
+      mockGuard.canActivate.mockRejectedValueOnce(
+        new (require('@nestjs/common').ForbiddenException)(
+          'Немає доступу до ресурсу іншого міста',
+        ),
+      );
+      await request(app.getHttpServer())
+        .get('/schools/s-1')
+        .expect(403);
+    });
+
+    it('SUPERADMIN отримує 200', async () => {
+      mockGuard.canActivate.mockResolvedValue(true);
+      mockSchoolsService.findOne.mockResolvedValueOnce({ id: 's-1' });
+      const res = await request(app.getHttpServer())
+        .get('/schools/s-1')
+        .expect(200);
+      expect(res.body.id).toBe('s-1');
+    });
+  });
+});
+
+```
+
+# FILE: apps/backend/src/schools/schools.controller.ts
+
+```
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Delete,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { SchoolsService } from './schools.service';
+import { ParserService } from './parser.service';
+import { Throttle } from '@nestjs/throttler';
+import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { AuthGuard } from '../auth/auth.guard';
+import { OwnershipGuard } from '../auth/guards/ownership.guard';
+import { CheckOwnership } from '../auth/decorators/check-ownership.decorator';
+import { CreateSchoolDto } from './dto/create-school.dto';
+import { UpdateSchoolDto } from './dto/update-school.dto';
+import { BulkImportDto } from './dto/bulk-import.dto';
+import { SchoolQueryDto } from './dto/school-query.dto';
+import { FindSchoolsQueryDto } from './dto/find-schools-query.dto';
+import { FindContactsQueryDto } from './dto/find-contacts-query.dto';
+@ApiTags('Schools')
+@ApiCookieAuth('access_token')
+@Controller('schools')
+@UseGuards(AuthGuard, RolesGuard)
+export class SchoolsController {
+  constructor(
+    private readonly schoolsService: SchoolsService,
+    private readonly parserService: ParserService,
+  ) {}
+
+  @ApiOperation({
+    summary: 'Масовий імпорт шкіл/садочків із зовнішнього джерела',
+  })
+  @Post('bulk-import')
+  @Throttle({ default: { ttl: 300000, limit: 2 } })
+  @Roles('SUPERADMIN', 'MANAGER')
+  bulkImport(@Body() body: BulkImportDto) {
+    return this.schoolsService.bulkImport(body.cityId, body.type || 'Школа');
+  }
+
+  @ApiOperation({ summary: 'Список міст, підтримуваних парсером' })
+  @Get('supported-cities')
+  getSupportedCities() {
+    return this.parserService.getSupportedCities();
+  }
+
+  @ApiOperation({ summary: 'Створити школу/садочок' })
+  @Post()
+  @Roles('SUPERADMIN', 'MANAGER')
+  create(@Body() body: CreateSchoolDto) {
+    return this.schoolsService.create(body);
+  }
+
+  @ApiOperation({ summary: 'Список закладів з фільтрами та пагінацією' })
+  @Get()
+  findAll(@Query() query: SchoolQueryDto) {
+    return this.schoolsService.findAll(query);
+  }
+
+  @ApiOperation({ summary: 'Статистика закладів за стадією та розміром' })
+  @Get('stats')
+  getStats(
+    @Query('cityId') cityId?: string,
+    @Query('type') type?: 'Школа' | 'Садочок',
+    @Query('stage') stage?: 'new' | 'planned' | 'inProgress' | 'done',
+  ) {
+    return this.schoolsService.getStats({ cityId, type, stage });
+  }
+
+  @ApiOperation({ summary: 'Пошук закладів у зовнішньому джерелі' })
+  @Get('search')
+  search(@Query() query: FindSchoolsQueryDto) {
+    return this.parserService.searchSchools(query.q ?? '', query.type);
+  }
+
+  @ApiOperation({ summary: 'Отримати заклад за ID' })
+  @Get(':id')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('school')
+  findOne(@Param('id') id: string) {
+    return this.schoolsService.findOne(id);
+  }
+
+  @ApiOperation({ summary: 'Оновити заклад' })
+  @Patch(':id')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('school')
+  update(@Param('id') id: string, @Body() body: UpdateSchoolDto) {
+    return this.schoolsService.update(id, body);
+  }
+
+  @ApiOperation({ summary: 'Видалити заклад' })
+  @Delete(':id')
+  @Roles('SUPERADMIN')
+  remove(@Param('id') id: string) {
+    return this.schoolsService.remove(id);
+  }
+
+  @ApiOperation({ summary: 'Пошук контактів закладу' })
+  @Get('contacts/search')
+  searchContacts(@Query() query: FindContactsQueryDto) {
+    return this.schoolsService.searchContacts(query.q ?? '', query.city);
+  }
+}
+
+```
+
+# FILE: apps/backend/src/schools/schools.module.ts
+
+```
+import { Module, forwardRef } from '@nestjs/common';
+import { SchoolsService } from './schools.service';
+import { SchoolsController } from './schools.controller';
+import { EventsModule } from '../events/events.module';
+import { ParserService } from './parser.service';
+
+@Module({
+  imports: [forwardRef(() => EventsModule)],
+  controllers: [SchoolsController],
+  providers: [SchoolsService, ParserService],
+  exports: [SchoolsService, ParserService],
+})
+export class SchoolsModule {}
+
+```
+
+# FILE: apps/backend/src/schools/schools.service.spec.ts
+
+```
+import { Test, TestingModule } from '@nestjs/testing';
+import { SchoolsService } from './schools.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { ParserService } from './parser.service';
+import { EventsService } from '../events/events.service';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { HttpStatus } from '@nestjs/common';
+
+const mockPrisma = {
+  school: {
+    create: jest.fn(),
+    findUnique: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+    findMany: jest.fn(),
+  },
+  event: { findMany: jest.fn() },
+  schoolContact: { findMany: jest.fn() },
+  city: { findUnique: jest.fn() },
+  $queryRaw: jest.fn(),
+};
+
+const mockParser = {
+  parseSchoolData: jest.fn(),
+  getAllSchoolsForCity: jest.fn(),
+};
+
+const mockEventsService = { remove: jest.fn() };
+
+const mockCache = {
+  get: jest.fn().mockResolvedValue(null),
+  set: jest.fn().mockResolvedValue(undefined),
+  del: jest.fn().mockResolvedValue(undefined),
+};
+
+const makeModule = async () => {
+  const module: TestingModule = await Test.createTestingModule({
+    providers: [
+      SchoolsService,
+      { provide: PrismaService, useValue: mockPrisma },
+      { provide: ParserService, useValue: mockParser },
+      { provide: EventsService, useValue: mockEventsService },
+      { provide: CACHE_MANAGER, useValue: mockCache },
+    ],
+  }).compile();
+
+  return module.get<SchoolsService>(SchoolsService);
+};
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
+describe('SchoolsService — create', () => {
+  it('створює школу у БД та повертає її', async () => {
+    const newSchool = {
+      id: 'school-1',
+      name: 'Школа №1',
+      type: 'Школа',
+      cityId: 'city-1',
+    };
+    mockPrisma.school.create.mockResolvedValueOnce(newSchool);
+    mockParser.parseSchoolData.mockResolvedValue(null);
+
+    const service = await makeModule();
+    const result = await service.create({
+      name: 'Школа №1',
+      type: 'Школа',
+      cityId: 'city-1',
+    });
+
+    expect(mockPrisma.school.create).toHaveBeenCalledWith({
+      data: { name: 'Школа №1', type: 'Школа', cityId: 'city-1' },
+    });
+    expect(result.id).toBe('school-1');
+  });
+
+  it('sourceUrl не потрапляє до БД, але передається в parser', async () => {
+    const newSchool = {
+      id: 'school-1',
+      name: 'Школа №1',
+      type: 'Школа',
+      cityId: 'city-1',
+    };
+    mockPrisma.school.create.mockResolvedValueOnce(newSchool);
+    mockParser.parseSchoolData.mockResolvedValue({
+      address: 'вул.1',
+      director: 'Тест',
+      childrenCount: 100,
+    });
+    mockPrisma.school.update.mockResolvedValueOnce(newSchool);
+
+    const service = await makeModule();
+    await service.create({
+      name: 'Школа №1',
+      type: 'Школа',
+      cityId: 'city-1',
+      sourceUrl: 'https://example.com/123',
+    });
+
+    const createCall = mockPrisma.school.create.mock.calls[0][0].data;
+    expect(createCall.sourceUrl).toBeUndefined();
+
+    // Чекаємо на асинхронний парсинг
+    await new Promise((r) => setTimeout(r, 10));
+    expect(mockParser.parseSchoolData).toHaveBeenCalledWith(
+      'Школа №1',
+      'https://example.com/123',
+      'Школа',
+    );
+  });
+
+  it('не оновлює БД якщо parser повертає null', async () => {
+    const newSchool = {
+      id: 'school-1',
+      name: 'Школа №1',
+      type: 'Школа',
+      cityId: 'city-1',
+    };
+    mockPrisma.school.create.mockResolvedValueOnce(newSchool);
+    mockParser.parseSchoolData.mockResolvedValue(null);
+
+    const service = await makeModule();
+    await service.create({ name: 'Школа №1', type: 'Школа', cityId: 'city-1' });
+
+    await new Promise((r) => setTimeout(r, 10));
+    expect(mockPrisma.school.update).not.toHaveBeenCalled();
+  });
+
+  it('не перезаписує вже заповнені поля результатом парсингу', async () => {
+    const newSchool = {
+      id: 'school-1',
+      name: 'Школа №1',
+      type: 'Школа',
+      cityId: 'city-1',
+      address: 'вже вказана адреса',
+      director: 'вже вказаний директор',
+      childrenCount: 999,
+    };
+    mockPrisma.school.create.mockResolvedValueOnce(newSchool);
+    mockParser.parseSchoolData.mockResolvedValue({
+      address: 'Парсер-адреса',
+      director: 'Парсер-директор',
+      childrenCount: 100,
+    });
+
+    const service = await makeModule();
+    await service.create({
+      name: 'Школа №1',
+      type: 'Школа',
+      cityId: 'city-1',
+      address: 'вже вказана адреса',
+      director: 'вже вказаний директор',
+      childrenCount: 999,
+    });
+
+    await new Promise((r) => setTimeout(r, 10));
+    // update має не викликатись, бо всі поля вже заповнені
+    expect(mockPrisma.school.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('SchoolsService — findOne', () => {
+  it('повертає школу якщо знайдено', async () => {
+    const school = {
+      id: 'school-1',
+      name: 'Школа №1',
+      city: { name: 'Львів' },
+    };
+    mockPrisma.school.findUnique.mockResolvedValueOnce(school);
+
+    const service = await makeModule();
+    const result = await service.findOne('school-1');
+
+    expect(result).toMatchObject({ id: 'school-1' });
+  });
+
+  it('кешує результат при першому запиті', async () => {
+    const school = { id: 'school-1', name: 'Школа №1', city: {} };
+    mockPrisma.school.findUnique.mockResolvedValueOnce(school);
+
+    const service = await makeModule();
+    await service.findOne('school-1');
+
+    expect(mockCache.set).toHaveBeenCalledWith(
+      'school:school-1',
+      school,
+      15_000,
+    );
+  });
+
+  it('повертає кешований результат без запиту до БД', async () => {
+    const cached = { id: 'school-1', name: 'Кешована школа', city: {} };
+    mockCache.get.mockResolvedValueOnce(cached);
+
+    const service = await makeModule();
+    const result = await service.findOne('school-1');
+
+    expect(result).toBe(cached);
+    expect(mockPrisma.school.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('кидає AppException SCHOOL_NOT_FOUND якщо школи не існує', async () => {
+    mockPrisma.school.findUnique.mockResolvedValueOnce(null);
+
+    const service = await makeModule();
+    await expect(service.findOne('ghost')).rejects.toMatchObject({
+      message: 'SCHOOL_NOT_FOUND',
+      status: HttpStatus.NOT_FOUND,
+    });
+  });
+});
+
+describe('SchoolsService — update', () => {
+  it('оновлює школу та видаляє кеш', async () => {
+    const updated = { id: 'school-1', name: 'Нова назва' };
+    mockPrisma.school.update.mockResolvedValueOnce(updated);
+
+    const service = await makeModule();
+    const result = await service.update('school-1', {
+      name: 'Нова назва',
+    });
+
+    expect(mockPrisma.school.update).toHaveBeenCalledWith({
+      where: { id: 'school-1' },
+      data: { name: 'Нова назва' },
+    });
+    expect(mockCache.del).toHaveBeenCalledWith('school:school-1');
+    expect(result.name).toBe('Нова назва');
+  });
+
+  it('не передає системні поля (city, id, createdAt, updatedAt) у data', async () => {
+    mockPrisma.school.update.mockResolvedValueOnce({ id: 'school-1' });
+
+    const service = await makeModule();
+    await service.update('school-1', {
+      name: 'Тест',
+      city: { id: 'c-1', name: 'Львів' } as any,
+      createdAt: new Date() as any,
+      updatedAt: new Date() as any,
+    } as any);
+
+    const updateData = mockPrisma.school.update.mock.calls[0][0].data;
+    expect(updateData.city).toBeUndefined();
+    expect(updateData.createdAt).toBeUndefined();
+    expect(updateData.updatedAt).toBeUndefined();
+    expect(updateData.id).toBeUndefined();
+  });
+});
+
+describe('SchoolsService — remove', () => {
+  it('видаляє всі події школи перед видаленням самої школи', async () => {
+    mockPrisma.event.findMany.mockResolvedValueOnce([
+      { id: 'ev-1' },
+      { id: 'ev-2' },
+    ]);
+    mockEventsService.remove.mockResolvedValue({});
+    mockPrisma.school.delete.mockResolvedValueOnce({ id: 'school-1' });
+
+    const service = await makeModule();
+    await service.remove('school-1');
+
+    expect(mockEventsService.remove).toHaveBeenCalledTimes(2);
+    expect(mockEventsService.remove).toHaveBeenCalledWith('ev-1');
+    expect(mockEventsService.remove).toHaveBeenCalledWith('ev-2');
+    expect(mockPrisma.school.delete).toHaveBeenCalledWith({
+      where: { id: 'school-1' },
+    });
+  });
+
+  it('видаляє школу навіть без подій', async () => {
+    mockPrisma.event.findMany.mockResolvedValueOnce([]);
+    mockPrisma.school.delete.mockResolvedValueOnce({ id: 'school-1' });
+
+    const service = await makeModule();
+    await service.remove('school-1');
+
+    expect(mockEventsService.remove).not.toHaveBeenCalled();
+    expect(mockPrisma.school.delete).toHaveBeenCalled();
+  });
+
+  it('видаляє кеш після видалення школи', async () => {
+    mockPrisma.event.findMany.mockResolvedValueOnce([]);
+    mockPrisma.school.delete.mockResolvedValueOnce({ id: 'school-1' });
+
+    const service = await makeModule();
+    await service.remove('school-1');
+
+    expect(mockCache.del).toHaveBeenCalledWith('school:school-1');
+  });
+});
+
+describe('SchoolsService — searchContacts', () => {
+  it('повертає порожній масив якщо query порожній', async () => {
+    const service = await makeModule();
+    const result = await service.searchContacts('');
+    expect(result).toEqual([]);
+    expect(mockPrisma.schoolContact.findMany).not.toHaveBeenCalled();
+  });
+
+  it('знаходить контакти за номером школи', async () => {
+    mockPrisma.schoolContact.findMany.mockResolvedValueOnce([
+      {
+        schoolNumber: '42',
+        contactName: 'Директор Тест',
+        phone: '',
+        role: 'Директор',
+        city: 'Львів',
+      },
+    ]);
+
+    const service = await makeModule();
+    const results = await service.searchContacts('42');
+
+    expect(results).toHaveLength(1);
+    expect(results[0].schoolNumber).toBe('42');
+  });
+
+  it("знаходить контакти за ім'ям (часткове співпадіння)", async () => {
+    mockPrisma.schoolContact.findMany.mockResolvedValueOnce([
+      {
+        schoolNumber: '1',
+        contactName: 'Марія Іваненко',
+        phone: '',
+        role: 'Директор',
+        city: 'Львів',
+      },
+      {
+        schoolNumber: '2',
+        contactName: 'Петро Коваль',
+        phone: '',
+        role: 'Директор',
+        city: 'Львів',
+      },
+    ]);
+
+    const service = await makeModule();
+    const results = await service.searchContacts('марія');
+
+    expect(results).toHaveLength(1);
+    expect(results[0].contactName).toBe('Марія Іваненко');
+  });
+
+  it('повертає не більше 10 результатів', async () => {
+    const contacts = Array.from({ length: 20 }, (_, i) => ({
+      schoolNumber: String(i + 1),
+      contactName: `Тест ${i + 1}`,
+      phone: '',
+      role: 'Директор',
+      city: 'Київ',
+    }));
+    mockPrisma.schoolContact.findMany.mockResolvedValueOnce(contacts);
+
+    const service = await makeModule();
+    // Пошук за словом, що є у всіх
+    const results = await service.searchContacts('Тест');
+
+    expect(results.length).toBeLessThanOrEqual(10);
+  });
+});
+
+```
+
 # FILE: apps/backend/src/schools/schools.service.ts
 
 ```
@@ -716,8 +1302,10 @@ describe('TelegramService — sendMessage', () => {
 
   it('не кидає помилку якщо bot.sendMessage падає (помилка логується)', async () => {
     const service = makeService();
+    const apiError = new Error('Bad Request: chat not found');
+    (apiError as any).response = { statusCode: 400, body: { description: 'chat not found' } };
     const mockBot = {
-      sendMessage: jest.fn().mockRejectedValue(new Error('Telegram API error')),
+      sendMessage: jest.fn().mockRejectedValue(apiError),
     };
     (service as any).bot = mockBot;
 
@@ -754,6 +1342,77 @@ describe('TelegramService — sendWelcome', () => {
     const text = sendSpy.mock.calls[0][1];
     expect(text).toContain('<b>');
     expect(text).toContain('<code>');
+  });
+});
+
+describe('TelegramService — retry логіка sendMessage', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('при мережевій помилці (ECONNRESET) робить retry і досягає успіху', async () => {
+    const service = makeService();
+    const mockBot = {
+      sendMessage: jest
+        .fn()
+        .mockRejectedValueOnce(
+          Object.assign(new Error('connection reset'), { code: 'ECONNRESET' }),
+        )
+        .mockResolvedValueOnce({}),
+    };
+    (service as any).bot = mockBot;
+
+    const promise = service.sendMessage('chat-1', 'test');
+    await jest.advanceTimersByTimeAsync(2000);
+
+    await expect(promise).resolves.toBeUndefined();
+    expect(mockBot.sendMessage).toHaveBeenCalledTimes(2);
+  });
+
+  it('після 3 невдалих мережевих спроб помилка логується (далі не кидається)', async () => {
+    const service = makeService();
+    const mockBot = {
+      sendMessage: jest.fn().mockRejectedValue(
+        Object.assign(new Error('ECONNREFUSED'), { code: 'ECONNREFUSED' }),
+      ),
+    };
+    (service as any).bot = mockBot;
+
+    const promise = service.sendMessage('chat-1', 'test');
+    await jest.advanceTimersByTimeAsync(5000);
+
+    await expect(promise).resolves.toBeUndefined();
+    expect(mockBot.sendMessage).toHaveBeenCalledTimes(3);
+  });
+
+  it('при 4xx помилці (не мережева) retry НЕ відбувається', async () => {
+    const service = makeService();
+    const apiError = new Error('Bad Request: chat not found');
+    (apiError as any).response = { statusCode: 400, body: { description: 'chat not found' } };
+    const mockBot = {
+      sendMessage: jest.fn().mockRejectedValue(apiError),
+    };
+    (service as any).bot = mockBot;
+
+    await service.sendMessage('chat-1', 'test');
+
+    expect(mockBot.sendMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('при успішному першому виклику retry не відбувається', async () => {
+    const service = makeService();
+    const mockBot = {
+      sendMessage: jest.fn().mockResolvedValue({}),
+    };
+    (service as any).bot = mockBot;
+
+    await service.sendMessage('chat-1', 'test');
+
+    expect(mockBot.sendMessage).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -817,6 +1476,8 @@ import { UsersService } from '../users/users.service';
 const LOCK_KEY = 'telegram:bot:leader';
 const LOCK_TTL_MS = 15_000;
 const RETRY_MS = 5_000;
+const SEND_TIMEOUT_MS = 5_000;
+const SEND_MAX_RETRIES = 3;
 
 @Injectable()
 export class TelegramService implements OnModuleInit, OnModuleDestroy {
@@ -935,15 +1596,53 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async sendMessage(chatId: string, text: string): Promise<void> {
-    if (!this.bot) return;
+  private isNetworkError(e: any): boolean {
+    if (e.code === 'TIMEOUT') return true;
+    if (e.code === 'ECONNRESET' || e.code === 'ETIMEDOUT' || e.code === 'ECONNREFUSED' || e.code === 'ENOTFOUND') return true;
+    if (e.response?.statusCode && e.response.statusCode < 500) return false;
+    return !e.response;
+  }
+
+  private async sendWithRetry(
+    chatId: string,
+    text: string,
+    attempt = 1,
+  ): Promise<void> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, SEND_TIMEOUT_MS);
+
     try {
-      await this.bot.sendMessage(chatId, text, { parse_mode: 'HTML' });
+      const promise = this.bot!.sendMessage(chatId, text, { parse_mode: 'HTML' });
+      await Promise.race([
+        promise,
+        new Promise<never>((_, reject) => {
+          controller.signal.addEventListener('abort', () => {
+            reject(Object.assign(new Error('Request timeout'), { code: 'TIMEOUT' }));
+          });
+        }),
+      ]);
+      clearTimeout(timeoutId);
     } catch (e: any) {
+      clearTimeout(timeoutId);
+      if (this.isNetworkError(e) && attempt < SEND_MAX_RETRIES) {
+        const delay = Math.pow(2, attempt - 1) * 1000;
+        this.logger.warn(
+          `[sendMessage] мережева помилка (спроба ${attempt}/${SEND_MAX_RETRIES}), повтор через ${delay}ms: ${e.message}`,
+        );
+        await new Promise((r) => setTimeout(r, delay));
+        return this.sendWithRetry(chatId, text, attempt + 1);
+      }
       this.logger.error(
         `Не вдалося надіслати повідомлення ${chatId}: ${e.message}`,
       );
     }
+  }
+
+  async sendMessage(chatId: string, text: string): Promise<void> {
+    if (!this.bot) return;
+    await this.sendWithRetry(chatId, text);
   }
 
   async sendWelcome(
@@ -1800,7 +2499,9 @@ describe('Events API (contract)', () => {
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
+import * as bcrypt from 'bcrypt';
 import { AppModule } from '../src/app.module';
+import { PrismaService } from '../src/prisma/prisma.service';
 
 describe('Schools API (contract)', () => {
   let app: INestApplication;
@@ -1936,6 +2637,86 @@ describe('Schools API (contract)', () => {
     });
   });
 
+  describe('IDOR — OwnershipGuard для MANAGER', () => {
+    let prisma: PrismaService;
+    let adminToken: string;
+    let otherCityId: string;
+    let otherCitySchoolId: string;
+
+    beforeAll(async () => {
+      prisma = app.get(PrismaService);
+
+      const loginRes = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email: 'admin@crm.com', password: 'admin123' });
+      adminToken = loginRes.body.access_token;
+    });
+
+    it('MANAGER отримує 403 при спробі доступу до школи іншого міста', async () => {
+      if (!cityId) return;
+
+      // Admin створює інше місто
+      const cityBRes = await request(app.getHttpServer())
+        .post('/cities')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: `E2E IDOR City ${Date.now()}` })
+        .expect(201);
+      otherCityId = cityBRes.body.id;
+
+      // Admin створює школу в іншому місті
+      const schoolRes = await request(app.getHttpServer())
+        .post('/schools')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          name: `E2E IDOR School ${Date.now()}`,
+          type: 'Школа',
+          cityId: otherCityId,
+          director: 'Test',
+          phone: '0671111111',
+        })
+        .expect(201);
+      otherCitySchoolId = schoolRes.body.id;
+
+      // Створюємо MANAGER користувача з cityId = cityA (перше місто)
+      const hashedPassword = await bcrypt.hash('manager123', 10);
+      const manager = await prisma.user.create({
+        data: {
+          email: `e2e-manager-${Date.now()}@crm.com`,
+          password: hashedPassword,
+          name: 'E2E Manager IDOR',
+          role: 'MANAGER',
+          cityId,
+        },
+      });
+
+      // Логін як MANAGER
+      const managerLogin = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email: manager.email, password: 'manager123' })
+        .expect(201);
+      const managerToken = managerLogin.body.access_token;
+
+      // MANAGER намагається отримати школу з іншого міста → 403
+      await request(app.getHttpServer())
+        .get(`/schools/${otherCitySchoolId}`)
+        .set('Authorization', `Bearer ${managerToken}`)
+        .expect(403);
+    });
+
+    afterAll(async () => {
+      if (otherCitySchoolId) {
+        await request(app.getHttpServer())
+          .delete(`/schools/${otherCitySchoolId}`)
+          .set('Authorization', `Bearer ${adminToken}`);
+      }
+      if (otherCityId) {
+        await request(app.getHttpServer())
+          .delete(`/cities/${otherCityId}`)
+          .set('Authorization', `Bearer ${adminToken}`);
+      }
+    });
+  });
+
   describe('DELETE /schools/:id', () => {
     it('видаляє школу разом з подіями', async () => {
       if (!cityId) return;
@@ -2009,6 +2790,36 @@ describe('Schools API (contract)', () => {
 
 ```
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: crm
+      POSTGRES_PASSWORD: crm
+      POSTGRES_DB: crm
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U crm -d crm
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: redis-cli ping
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
   backend:
     build:
       context: .
@@ -2018,18 +2829,20 @@ services:
     env_file:
       - apps/backend/.env
     depends_on:
-      - redis
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:3000/.well-known/health || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     restart: unless-stopped
 
 volumes:
+  postgres_data:
   redis_data:
 ```
 
@@ -2357,6 +3170,7 @@ module.exports = {
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
+    "@sentry/react": "^10.63.0",
     "@tanstack/react-query": "^5.101.0",
     "@tanstack/react-virtual": "^3.14.3",
     "axios": "^1.18.0",
