@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useId, type ReactNode } from "react";
 import { X } from "lucide-react";
 
 interface ModalProps {
@@ -11,7 +11,8 @@ interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-md" }: ModalProps) {
-  const headingId = useRef(`modal-${Math.random().toString(36).slice(2)}`).current;
+  const generatedId = useId();
+  const headingId = `modal-${generatedId}`;
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {

@@ -2,7 +2,7 @@ import { forwardRef } from "react";
 import { motion, type HTMLMotionProps } from "framer-motion";
 
 type Variant = "primary" | "secondary" | "danger" | "ghost";
-type Size = "sm" | "md";
+type Size = "sm" | "md" | "lg";
 
 const variants: Record<Variant, string> = {
   primary: "bg-brand text-white hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed",
@@ -14,6 +14,7 @@ const variants: Record<Variant, string> = {
 const sizes: Record<Size, string> = {
   sm: "px-3 py-1.5 text-sm",
   md: "px-5 py-2.5 text-sm",
+  lg: "px-6 py-3 text-base",
 };
 
 interface Props extends Omit<HTMLMotionProps<"button">, "ref"> {
