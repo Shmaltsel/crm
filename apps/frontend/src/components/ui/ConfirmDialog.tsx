@@ -1,0 +1,82 @@
+import { motion, AnimatePresence } from "framer-motion";
+import { AlertTriangle, Trash2 } from "lucide-react";
+
+type Variant = "danger" | "warning";
+
+interface ConfirmDialogProps {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  variant?: Variant;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+const variantStyles: Record<Variant, { icon: string; button: string }> = {
+  danger: {
+    icon: "bg-red-100 text-red-600",
+    button: "bg-red-600 hover:bg-red-700 text-white",
+  },
+  warning: {
+    icon: "bg-amber-100 text-amber-600",
+    button: "bg-amber-600 hover:bg-amber-700 text-white",
+  },
+};
+
+export function ConfirmDialog({
+  isOpen,
+  title,
+  message,
+  confirmLabel = "Підтвердити",
+  variant = "danger",
+  onConfirm,
+  onCancel,
+}: ConfirmDialogProps) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={onCancel}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: 10 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6"
+          >
+            <div className="flex items-start gap-4">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${variantStyles[variant].icon}`}>
+                {variant === "danger" ? <Trash2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-bold text-content-primary">{title}</h3>
+                <p className="text-sm text-content-secondary mt-1">{message}</p>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={onCancel}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-neutral-100 text-content-secondary hover:bg-neutral-200 transition-colors"
+              >
+                Скасувати
+              </button>
+              <button
+                onClick={onConfirm}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${variantStyles[variant].button}`}
+              >
+                {confirmLabel}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}

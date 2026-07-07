@@ -21,6 +21,7 @@ import ProjectModal from "../components/employees/ProjectModal";
 import { EmployeesHeader } from "../components/employees/EmployeesHeader";
 import { FilterPanel } from "../components/employees/FilterPanel";
 import { EmptyState } from "../components/ui/EmptyState";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { sectionVariants } from "../animations/employees";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
@@ -161,7 +162,7 @@ export default function Employees() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
+  const [userFormValues, setUserFormValues] = useState(EMPTY_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -170,6 +171,8 @@ export default function Employees() {
   const [projectForm, setProjectForm] = useState({ name: "", color: "blue", pricePerChild: "" });
 
   const [formError, setFormError] = useState("");
+
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
   const handleOpenProjectModal = useCallback((project: Project | null = null) => {
     setEditingProject(project);
@@ -262,30 +265,28 @@ export default function Employees() {
   const handleOpenModal = useCallback((user: User | null = null) => {
     setFormError("");
     setEditingUser(user);
-    if (user) {
-      setForm({
-        fullName: user.name, phone: user.phone || "", email: user.email,
-        cityId: user.cityId || "", role: user.role, password: "",
-        telegramId: user.telegramId || "", car: user.car || "",
-      });
-    } else {
-      setForm({ ...EMPTY_FORM });
-    }
+    setUserFormValues(
+      user
+        ? {
+            fullName: user.name, phone: user.phone || "", email: user.email,
+            cityId: user.cityId || "", role: user.role, password: "",
+            telegramId: user.telegramId || "", car: user.car || "",
+          }
+        : { ...EMPTY_FORM },
+    );
     setIsModalOpen(true);
   }, []);
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.fullName.trim()) return;
+  const handleSaveUser = useCallback(async (values: Record<string, string>) => {
     setFormError("");
     setIsSubmitting(true);
     try {
       if (editingUser) {
-        const { password, ...rest } = form;
-        const payload = password.trim() ? form : rest;
+        const { password, ...rest } = values;
+        const payload = password.trim() ? values : rest;
         await updateUser.mutateAsync({ id: editingUser.id, form: payload });
       } else {
-        await createUser.mutateAsync(form);
+        await createUser.mutateAsync(values);
       }
       setShowSuccess(true);
       setTimeout(() => { setShowSuccess(false); setIsModalOpen(false); }, 700);
@@ -295,13 +296,14 @@ export default function Employees() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [form, editingUser, createUser, updateUser]);
+  }, [editingUser, createUser, updateUser]);
 
-  const handleDelete = useCallback(async (id: string, name: string) => {
-    if (!window.confirm(`Видалити користувача "${name}"?`)) return;
-    try { await deleteUser.mutateAsync(id); }
+  const handleDelete = useCallback(async () => {
+    if (!confirmDelete) return;
+    try { await deleteUser.mutateAsync(confirmDelete.id); }
     catch { alert("Помилка видалення"); }
-  }, [deleteUser]);
+    finally { setConfirmDelete(null); }
+  }, [confirmDelete, deleteUser]);
 
   const handleCreateProject = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -460,7 +462,7 @@ export default function Employees() {
                               role={role}
                               isSuperAdmin={isSuperAdmin}
                               onEdit={handleOpenModal}
-                              onDelete={handleDelete}
+                              onDelete={(id, name) => setConfirmDelete({ id, name })}
                             />
                           ))}
                         </AnimatePresence>
@@ -537,14 +539,22 @@ export default function Employees() {
         <UserModal
           isOpen={isModalOpen}
           isEditing={!!editingUser}
-          form={form}
-          setForm={setForm}
+          initialValues={userFormValues}
           cities={cities}
           formError={formError}
           isSubmitting={isSubmitting}
           showSuccess={showSuccess}
-          onClose={() => setIsModalOpen(false)}
-          onSubmit={handleSubmit}
+          onClose={() => { setIsModalOpen(false); setEditingUser(null); }}
+          onSave={handleSaveUser}
+        />
+        <ConfirmDialog
+          isOpen={!!confirmDelete}
+          title="Видалити користувача"
+          message={`Ви впевнені, що хочете видалити "${confirmDelete?.name}"?`}
+          confirmLabel="Видалити"
+          variant="danger"
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDelete(null)}
         />
       </motion.div>
     </MotionConfig>

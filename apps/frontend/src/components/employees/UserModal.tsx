@@ -1,54 +1,74 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { useFormik } from "formik";
+import * as Yup from "yup";
 import {
   backdropVariants,
   modalVariants,
   formVariants,
-  fieldVariants,
   shakeVariants,
   checkmarkVariants,
 } from "../../animations/employees";
 
 type Role = "MANAGER" | "DRIVER" | "HOST" | "SUPERADMIN" | "GUEST";
-interface City {
-  id: string;
-  name: string;
-}
-interface FormState {
-  fullName: string;
-  phone: string;
-  email: string;
-  cityId: string;
-  role: Role;
-  password: string;
-  telegramId: string;
-  car: string;
-}
+interface City { id: string; name: string }
 
 interface Props {
   isOpen: boolean;
   isEditing: boolean;
-  form: FormState;
-  setForm: (form: FormState) => void;
+  initialValues: {
+    fullName: string; phone: string; email: string; cityId: string;
+    role: Role; password: string; telegramId: string; car: string;
+  };
   cities: City[];
   formError: string;
   isSubmitting: boolean;
   showSuccess: boolean;
   onClose: () => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onSave: (values: Record<string, string>) => void;
 }
+
+const PHONE_REGEX = /^(\+?380\d{9}|0\d{9}|\d{10,13})$/;
+
+const validationSchema = Yup.object({
+  fullName: Yup.string().required("ПІБ обов'язкове"),
+  email: Yup.string().email("Невірний формат email").required("Email обов'язковий"),
+  phone: Yup.string().matches(PHONE_REGEX, "Невірний формат телефону (+380...)"),
+  password: Yup.string().min(6, "Мінімум 6 символів"),
+  telegramId: Yup.string(),
+  car: Yup.string(),
+  cityId: Yup.string(),
+  role: Yup.string().required(),
+});
 
 export default function UserModal({
   isOpen,
   isEditing,
-  form,
-  setForm,
+  initialValues,
   cities,
   formError,
   isSubmitting,
   showSuccess,
   onClose,
-  onSubmit,
+  onSave,
 }: Props) {
+  const formik = useFormik({
+    initialValues: {
+      fullName: initialValues.fullName,
+      phone: initialValues.phone ?? "",
+      email: initialValues.email,
+      cityId: initialValues.cityId ?? "",
+      role: initialValues.role as string,
+      password: initialValues.password ?? "",
+      telegramId: initialValues.telegramId ?? "",
+      car: initialValues.car ?? "",
+    },
+    validationSchema,
+    enableReinitialize: true,
+    onSubmit: (values) => {
+      onSave(values);
+    },
+  });
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -93,15 +113,13 @@ export default function UserModal({
               <h3 className="text-xl font-bold">
                 {isEditing ? "Редагувати" : "Новий користувач"}
               </h3>
-              <button
-                onClick={onClose}
-                className="text-slate-400 text-xl p-2 -mr-2"
-              >
+              <button onClick={onClose} className="text-slate-400 text-xl p-2 -mr-2">
                 ✕
               </button>
             </div>
+
             <motion.form
-              onSubmit={onSubmit}
+              onSubmit={formik.handleSubmit}
               variants={formVariants}
               initial="hidden"
               animate="visible"
@@ -122,104 +140,127 @@ export default function UserModal({
                 )}
               </AnimatePresence>
 
-              <motion.input
-                variants={fieldVariants}
-                type="text"
-                value={form.fullName}
-                onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                required
-                placeholder="ПІБ"
-                className="w-full p-2.5 border rounded-lg"
-              />
-              <motion.div
-                variants={fieldVariants}
-                className="grid grid-cols-2 gap-4"
-              >
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  required
-                  placeholder="Пошта"
-                  className="w-full p-2.5 border rounded-lg"
-                />
-                <input
-                  type="password"
-                  value={form.password}
-                  onChange={(e) =>
-                    setForm({ ...form, password: e.target.value })
-                  }
-                  required={!isEditing}
-                  placeholder="Пароль (мін. 8 симв., літера+цифра)"
-                  minLength={8}
-                  className="w-full p-2.5 border rounded-lg"
-                />
-              </motion.div>
-              <motion.div
-                variants={fieldVariants}
-                className="grid grid-cols-2 gap-4"
-              >
-                <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="Телефон"
-                  className="w-full p-2.5 border rounded-lg"
-                />
+              <div>
                 <input
                   type="text"
-                  value={form.telegramId}
-                  onChange={(e) =>
-                    setForm({ ...form, telegramId: e.target.value })
-                  }
-                  placeholder="Telegram ID або @username"
-                  className="w-full p-2.5 border rounded-lg"
+                  name="fullName"
+                  value={formik.values.fullName}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  placeholder="ПІБ"
+                  className="w-full p-2.5 border rounded-lg text-sm"
                 />
-              </motion.div>
-              <motion.div
-                variants={fieldVariants}
-                className="grid grid-cols-2 gap-4"
-              >
-                <select
-                  value={form.role}
-                  onChange={(e) =>
-                    setForm({ ...form, role: e.target.value as Role })
-                  }
-                  className="w-full p-2.5 border rounded-lg"
-                >
-                  <option value="MANAGER">Менеджер</option>
-                  <option value="DRIVER">Водій</option>
-                  <option value="HOST">Ведучий</option>
-                  <option value="SUPERADMIN">Суперадмін</option>
-                </select>
-                <select
-                  value={form.cityId}
-                  onChange={(e) => setForm({ ...form, cityId: e.target.value })}
-                  className="w-full p-2.5 border rounded-lg"
-                >
-                  <option value="">Всі міста</option>
-                  {cities.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </motion.div>
-              {form.role === "DRIVER" && (
-                <motion.input
-                  variants={fieldVariants}
-                  type="text"
-                  value={form.car || ""}
-                  onChange={(e) => setForm({ ...form, car: e.target.value })}
-                  placeholder="Автомобіль (напр. Renault Trafic)"
-                  className="w-full p-2.5 border rounded-lg"
-                />
+                {formik.touched.fullName && formik.errors.fullName && (
+                  <p className="text-xs text-red-500 mt-1">{formik.errors.fullName}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formik.values.email}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    placeholder="Пошта"
+                    className="w-full p-2.5 border rounded-lg text-sm"
+                  />
+                  {formik.touched.email && formik.errors.email && (
+                    <p className="text-xs text-red-500 mt-1">{formik.errors.email}</p>
+                  )}
+                </div>
+                <div>
+                  <input
+                    type="password"
+                    name="password"
+                    value={formik.values.password}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    placeholder="Пароль"
+                    className="w-full p-2.5 border rounded-lg text-sm"
+                  />
+                  {formik.touched.password && formik.errors.password && (
+                    <p className="text-xs text-red-500 mt-1">{formik.errors.password}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formik.values.phone}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    placeholder="Телефон (+380...)"
+                    className="w-full p-2.5 border rounded-lg text-sm"
+                  />
+                  {formik.touched.phone && formik.errors.phone && (
+                    <p className="text-xs text-red-500 mt-1">{formik.errors.phone}</p>
+                  )}
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    name="telegramId"
+                    value={formik.values.telegramId}
+                    onChange={formik.handleChange}
+                    placeholder="Telegram ID або @username"
+                    className="w-full p-2.5 border rounded-lg text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <select
+                    name="role"
+                    value={formik.values.role}
+                    onChange={formik.handleChange}
+                    className="w-full p-2.5 border rounded-lg text-sm"
+                  >
+                    <option value="MANAGER">Менеджер</option>
+                    <option value="DRIVER">Водій</option>
+                    <option value="HOST">Ведучий</option>
+                    <option value="SUPERADMIN">Суперадмін</option>
+                  </select>
+                </div>
+                <div>
+                  <select
+                    name="cityId"
+                    value={formik.values.cityId}
+                    onChange={formik.handleChange}
+                    className="w-full p-2.5 border rounded-lg text-sm"
+                  >
+                    <option value="">Всі міста</option>
+                    {cities.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {formik.values.role === "DRIVER" && (
+                <div>
+                  <input
+                    type="text"
+                    name="car"
+                    value={formik.values.car ?? ""}
+                    onChange={formik.handleChange}
+                    placeholder="Автомобіль (напр. Renault Trafic)"
+                    className="w-full p-2.5 border rounded-lg text-sm"
+                  />
+                </div>
               )}
-              <motion.div variants={fieldVariants} className="flex gap-3 mt-2">
+
+              <div className="flex gap-3 mt-2">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
+                  disabled={isSubmitting}
+                  className="flex-1 bg-slate-100 py-3 rounded-xl font-medium disabled:opacity-50"
                 >
                   Скасувати
                 </button>
@@ -230,7 +271,7 @@ export default function UserModal({
                 >
                   {isSubmitting ? "Збереження..." : "Зберегти"}
                 </button>
-              </motion.div>
+              </div>
             </motion.form>
           </motion.div>
         </motion.div>
