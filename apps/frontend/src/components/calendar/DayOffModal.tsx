@@ -51,7 +51,6 @@ export default function DayOffModal({
     month: "long",
     year: "numeric",
   });
-  const dateKey = date.toLocaleDateString("en-CA");
 
   return createPortal(
     <div
@@ -88,7 +87,7 @@ export default function DayOffModal({
           ) : (
             <div className="space-y-2">
               {staff.map((s) => {
-                const existing = dayOffs.find((d) => d.userId === s.id && d.date === dateKey);
+                const existing = dayOffs.find((d) => d.userId === s.id);
                 const isOff = !!existing;
                 return (
                   <button

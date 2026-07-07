@@ -3,12 +3,12 @@ import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { NAV_TABS } from "../constants/navTabs";
+import { hasRole } from "../utils/roles";
 import type { NavTab } from "../constants/navTabs";
 
 export function useFilteredTabs(): NavTab[] {
   const { user } = useAuth();
-  const is = (roles?: string[]) => !roles || (!!user?.role && roles.includes(user.role));
-  return useMemo(() => NAV_TABS.filter((t) => is(t.roles)), [user]);
+  return useMemo(() => NAV_TABS.filter((t) => hasRole(user?.role, t.roles)), [user]);
 }
 
 export default function BottomNavigationBar() {

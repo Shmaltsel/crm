@@ -201,8 +201,8 @@ describe("DayOffModal", () => {
     expect(onToggle).toHaveBeenCalledWith("u-host", "d-host-1");
   });
 
-  it("не враховує dayOff з іншої дати (перевіряє і userId, і date)", () => {
-    const mismatchDate: DayOff = {
+  it("шукає existing dayOff лише за userId (дата ігнорується — upstream вже відфільтрував)", () => {
+    const dayOffOtherDate: DayOff = {
       ...dayOff,
       id: "d-date-mismatch",
       date: "1999-01-01",
@@ -214,11 +214,11 @@ describe("DayOffModal", () => {
         onClose={vi.fn()}
         date={makeDate()}
         staff={staff}
-        dayOffs={[mismatchDate]}
+        dayOffs={[dayOffOtherDate]}
         onToggle={vi.fn()}
       />,
     );
 
-    expect(screen.queryByText("Вихідний ✕")).not.toBeInTheDocument();
+    expect(screen.getByText("Вихідний ✕")).toBeInTheDocument();
   });
 });

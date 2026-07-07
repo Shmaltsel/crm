@@ -17,6 +17,7 @@ import {
 import BottomNavigationBar from "./BottomNavigationBar";
 import MobileTopNav from "./MobileTopNav";
 import { NAV_TABS } from "../constants/navTabs";
+import { hasRole } from "../utils/roles";
 
 function NavLink({
   to,
@@ -79,10 +80,10 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const { selectedCity } = useSelectedCity();
 
-  const tabPaths = useMemo(() => {
-    const isFn = (roles?: string[]) => !roles || (!!user?.role && roles.includes(user.role));
-    return NAV_TABS.filter((t) => isFn(t.roles));
-  }, [user]);
+  const tabPaths = useMemo(
+    () => NAV_TABS.filter((t) => hasRole(user?.role, t.roles)),
+    [user],
+  );
 
   const handleLogout = useCallback(async () => {
     await logout();
@@ -203,17 +204,17 @@ export default function Layout() {
           </div>
 
           <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-            {isFn(["SUPERADMIN", "MANAGER"]) && (
+            {hasRole(user?.role, ["SUPERADMIN", "MANAGER"]) && (
               <NavLink to="/dashboard" icon={Home} label="Дашборд" currentPath={location.pathname} />
             )}
-            {isFn(["SUPERADMIN"]) && (
+            {hasRole(user?.role, ["SUPERADMIN"]) && (
               <NavLink to="/cities" icon={MapPin} label="Міста" currentPath={location.pathname} />
             )}
             <NavLink to="/schools" icon={School} label="Школи" currentPath={location.pathname} />
             <NavLink to="/kindergartens" icon={Baby} label="Садочки" currentPath={location.pathname} />
             <NavLink to="/finance" icon={Wallet} label="Фінанси" currentPath={location.pathname} />
             <NavLink to="/calendar" icon={Calendar} label="Календар" currentPath={location.pathname} />
-            {isFn(["SUPERADMIN"]) && (
+            {hasRole(user?.role, ["SUPERADMIN"]) && (
               <NavLink to="/employees" icon={Users} label="Працівники" currentPath={location.pathname} />
             )}
           </nav>

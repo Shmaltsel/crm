@@ -104,9 +104,10 @@ export default function MobileCalendarGrid({
                     onTouchStart={() => startLongPress(day)}
                     onTouchEnd={() => cancelLongPress()}
                     onTouchMove={cancelLongPress}
+                    onTouchCancel={() => cancelLongPress()}
                     onContextMenu={(e) => e.preventDefault()}
                     onClick={() => handleMobileDayTap(day)}
-                    className={`relative w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold select-none no-select-ios active:scale-90
+                    className={`relative w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold select-none no-select-ios touch-manipulation active:scale-90
                       ${isSelected ? "ring-2 ring-blue-600 ring-offset-2" : ""}
                       ${isToday && !isSelected ? "ring-2 ring-blue-200" : ""}
                       ${triggeredDay === day ? "dayoff-cell-enter" : ""}

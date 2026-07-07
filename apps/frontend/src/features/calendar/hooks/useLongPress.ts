@@ -24,6 +24,7 @@ export function useLongPress(onTrigger: (day: Date) => void, delay = 550) {
 
   const cancelLongPress = useCallback(() => {
     if (pressTimer.current) clearTimeout(pressTimer.current);
+    longPressFired.current = false;
     setPressingDay(null);
   }, []);
 
