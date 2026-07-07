@@ -1,5 +1,5 @@
-import { Link, useOutlet, useLocation } from "react-router-dom";
-import { useState } from "react";
+import { Link, useOutlet, useLocation, useNavigation } from "react-router-dom";
+import { useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
@@ -16,6 +16,7 @@ import {
   X,
   LogOut,
 } from "lucide-react";
+import BottomNavigationBar from "./BottomNavigationBar";
 
 function NavLink({
   to,
@@ -47,9 +48,46 @@ function NavLink({
   );
 }
 
+function useNavigationDirection() {
+  const location = useLocation();
+  const [prevPath, setPrevPath] = useState(location.pathname);
+
+  const direction = useCallback(() => {
+    const segments = location.pathname.split("/").filter(Boolean);
+    const prevSegments = prevPath.split("/").filter(Boolean);
+    const curDepth = segments.length;
+    const prevDepth = prevSegments.length;
+
+    if (curDepth > prevDepth) return 1;
+    if (curDepth < prevDepth) return -1;
+
+    const curLast = segments.pop() ?? "";
+    const prevLast = prevSegments.pop() ?? "";
+    return curLast.localeCompare(prevLast) > 0 ? 1 : -1;
+  }, [location.pathname, prevPath]);
+
+  const dir = direction();
+  setPrevPath(location.pathname);
+
+  return dir;
+}
+
+const pageVariants = (dir: number) => ({
+  initial: { opacity: 0, x: dir * 40 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: dir * -40 },
+});
+
+const pageTransition = {
+  type: "spring",
+  stiffness: 300,
+  damping: 30,
+} as const;
+
 export default function Layout() {
   const outlet = useOutlet();
   const location = useLocation();
+  const dir = useNavigationDirection();
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -64,7 +102,6 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen bg-surface-subtle font-sans">
-      {/* Мобільний хедер */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0B1527] text-white flex items-center justify-between px-4 z-40">
         <div className="flex items-center gap-2">
           <GraduationCap className="w-5 h-5" />
@@ -88,7 +125,6 @@ export default function Layout() {
         </button>
       </div>
 
-      {/* Оверлей для мобільного меню */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
@@ -102,7 +138,6 @@ export default function Layout() {
         )}
       </AnimatePresence>
 
-      {/* Сайдбар */}
       <aside
         className={`
         fixed inset-y-0 left-0 z-50 w-64 bg-[#0B1527] text-white flex flex-col transition-transform duration-300 ease-in-out
@@ -206,15 +241,16 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* Головна область */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden mt-16 md:mt-0 relative w-full min-w-0">
-        <AnimatePresence mode="wait">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden mt-16 md:mt-0 relative w-full min-w-0 pb-16 md:pb-0">
+        <AnimatePresence mode="wait" custom={dir}>
           <motion.div
             key={location.pathname}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
+            custom={dir}
+            variants={pageVariants(dir)}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={pageTransition}
             onAnimationComplete={() =>
               window.dispatchEvent(new Event("resize"))
             }
@@ -223,6 +259,8 @@ export default function Layout() {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      <BottomNavigationBar />
     </div>
   );
 }
