@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Search, List, LayoutGrid, Download, Plus, SlidersHorizontal } from "lucide-react";
 import { Button } from "../ui/Button";
 
@@ -10,6 +9,8 @@ interface EmployeesHeaderProps {
   onViewModeChange: (mode: ViewMode) => void;
   onAddUser: () => void;
   onToggleFilter: () => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
 }
 
 export function EmployeesHeader({
@@ -18,9 +19,9 @@ export function EmployeesHeader({
   onViewModeChange,
   onAddUser,
   onToggleFilter,
+  searchQuery,
+  onSearchChange,
 }: EmployeesHeaderProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-
   return (
     <div className="flex flex-col gap-4 mb-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -44,7 +45,7 @@ export function EmployeesHeader({
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Пошук за ім'ям, email, телефоном..."
             className="w-full pl-9 pr-3 py-2 rounded-control border border-border-strong bg-surface
               text-sm text-content-primary placeholder:text-content-muted

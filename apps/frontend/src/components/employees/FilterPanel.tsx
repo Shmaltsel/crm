@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SlidersHorizontal, X } from "lucide-react";
 import { Button } from "../ui/Button";
@@ -11,24 +10,34 @@ const ROLE_OPTIONS = [
   { value: "SUPERADMIN", label: "Суперадмін" },
 ];
 
-const CITY_OPTIONS = [
-  { value: "all", label: "Всі міста" },
-  { value: "kyiv", label: "Київ" },
-  { value: "lviv", label: "Львів" },
-];
-
 interface FilterPanelProps {
   isMobileOpen: boolean;
   onMobileClose: () => void;
+  selectedRoles: string[];
+  onRolesChange: (roles: string[]) => void;
+  selectedCity: string;
+  onCityChange: (city: string) => void;
+  cityOptions: { value: string; label: string }[];
+  onReset: () => void;
+  hasActiveFilters: boolean;
 }
 
-export function FilterPanel({ isMobileOpen, onMobileClose }: FilterPanelProps) {
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
-  const [selectedCity, setSelectedCity] = useState("all");
-
+export function FilterPanel({
+  isMobileOpen,
+  onMobileClose,
+  selectedRoles,
+  onRolesChange,
+  selectedCity,
+  onCityChange,
+  cityOptions,
+  onReset,
+  hasActiveFilters,
+}: FilterPanelProps) {
   const toggleRole = (role: string) => {
-    setSelectedRoles((prev) =>
-      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
+    onRolesChange(
+      selectedRoles.includes(role)
+        ? selectedRoles.filter((r) => r !== role)
+        : [...selectedRoles, role],
     );
   };
 
@@ -65,10 +74,10 @@ export function FilterPanel({ isMobileOpen, onMobileClose }: FilterPanelProps) {
           Місто
         </h3>
         <div className="flex flex-col gap-1.5">
-          {CITY_OPTIONS.map((city) => (
+          {cityOptions.map((city) => (
             <button
               key={city.value}
-              onClick={() => setSelectedCity(city.value)}
+              onClick={() => onCityChange(city.value)}
               className={`flex items-center gap-2.5 px-3 py-2 rounded-control text-sm font-medium transition-colors text-left
                 ${selectedCity === city.value ? "bg-brand-50 text-brand-700" : "text-content-secondary hover:bg-neutral-50"}`}
             >
@@ -96,15 +105,8 @@ export function FilterPanel({ isMobileOpen, onMobileClose }: FilterPanelProps) {
         </div>
       </div>
 
-      {(selectedRoles.length > 0 || selectedCity !== "all") && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            setSelectedRoles([]);
-            setSelectedCity("all");
-          }}
-        >
+      {hasActiveFilters && (
+        <Button variant="ghost" size="sm" onClick={onReset}>
           Скинути фільтри
         </Button>
       )}
