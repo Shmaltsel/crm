@@ -24,6 +24,7 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { LoadingBar } from "../components/ui/LoadingBar";
 import { useToast } from "../components/ui/Toast";
+import { exportCsv } from "../utils/exportCsv";
 import { sectionVariants } from "../animations/employees";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
@@ -321,6 +322,22 @@ export default function Employees() {
     }
   }, [editingUser, createUser, updateUser, toast]);
 
+  const handleExport = useCallback(() => {
+    if (filteredUsers.length === 0) {
+      toast("Немає даних для експорту", "info");
+      return;
+    }
+    const rows = filteredUsers.map((u) => ({
+      "Ім'я": u.name,
+      "Email": u.email,
+      "Телефон": u.phone ?? "",
+      "Роль": ROLE_LABELS[u.role] ?? u.role,
+      "Місто": u.city?.name ?? "",
+    }));
+    exportCsv(rows, `employees-${new Date().toISOString().slice(0, 10)}.csv`);
+    toast(`Експортовано ${rows.length} записів`, "success");
+  }, [filteredUsers, toast]);
+
   const handleDelete = useCallback(async () => {
     if (!confirmDelete) return;
     setIsMutating(true);
@@ -380,6 +397,7 @@ export default function Employees() {
           onToggleFilter={() => setFilterPanelOpen((p) => !p)}
           searchQuery={rawSearch}
           onSearchChange={(q) => updateParams({ search: q || null })}
+          onExport={handleExport}
         />
 
         {activeFilterChips.length > 0 && (

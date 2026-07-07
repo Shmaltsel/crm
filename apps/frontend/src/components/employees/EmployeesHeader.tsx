@@ -11,6 +11,7 @@ interface EmployeesHeaderProps {
   onToggleFilter: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  onExport?: () => void;
 }
 
 export function EmployeesHeader({
@@ -21,6 +22,7 @@ export function EmployeesHeader({
   onToggleFilter,
   searchQuery,
   onSearchChange,
+  onExport,
 }: EmployeesHeaderProps) {
   return (
     <div className="flex flex-col gap-4 mb-6">
@@ -84,8 +86,9 @@ export function EmployeesHeader({
         </div>
 
         <button
+          onClick={onExport}
           className="p-2 rounded-control text-content-muted hover:text-content-primary hover:bg-neutral-100 transition-colors"
-          aria-label="Експорт"
+          aria-label="Експорт CSV"
         >
           <Download className="w-5 h-5" />
         </button>
