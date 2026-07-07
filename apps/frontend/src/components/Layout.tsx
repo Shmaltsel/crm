@@ -1,5 +1,5 @@
-import { Link, useOutlet, useLocation, useNavigation } from "react-router-dom";
-import { useState, useCallback } from "react";
+import { Link, useOutlet, useLocation } from "react-router-dom";
+import { useState, useRef, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
@@ -48,28 +48,14 @@ function NavLink({
   );
 }
 
-function useNavigationDirection() {
-  const location = useLocation();
-  const [prevPath, setPrevPath] = useState(location.pathname);
-
-  const direction = useCallback(() => {
-    const segments = location.pathname.split("/").filter(Boolean);
-    const prevSegments = prevPath.split("/").filter(Boolean);
-    const curDepth = segments.length;
-    const prevDepth = prevSegments.length;
-
-    if (curDepth > prevDepth) return 1;
-    if (curDepth < prevDepth) return -1;
-
-    const curLast = segments.pop() ?? "";
-    const prevLast = prevSegments.pop() ?? "";
-    return curLast.localeCompare(prevLast) > 0 ? 1 : -1;
-  }, [location.pathname, prevPath]);
-
-  const dir = direction();
-  setPrevPath(location.pathname);
-
-  return dir;
+function getDirection(from: string, to: string): number {
+  const fromSegs = from.split("/").filter(Boolean);
+  const toSegs = to.split("/").filter(Boolean);
+  if (toSegs.length > fromSegs.length) return 1;
+  if (toSegs.length < fromSegs.length) return -1;
+  const fromLast = fromSegs.pop() ?? "";
+  const toLast = toSegs.pop() ?? "";
+  return toLast.localeCompare(fromLast) > 0 ? 1 : -1;
 }
 
 const pageVariants = (dir: number) => ({
@@ -87,7 +73,12 @@ const pageTransition = {
 export default function Layout() {
   const outlet = useOutlet();
   const location = useLocation();
-  const dir = useNavigationDirection();
+  const prevPathRef = useRef(location.pathname);
+  const dir = useMemo(() => {
+    const d = getDirection(prevPathRef.current, location.pathname);
+    prevPathRef.current = location.pathname;
+    return d;
+  }, [location.pathname]);
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
