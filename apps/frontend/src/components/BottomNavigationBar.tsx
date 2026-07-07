@@ -22,7 +22,7 @@ export default function BottomNavigationBar() {
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border flex items-center justify-around px-2 pb-safe pt-1 h-16"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border flex items-center justify-around px-2 pb-safe pt-1 h-16 overflow-visible"
       role="tablist"
       aria-label="Основна навігація"
     >
@@ -36,17 +36,18 @@ export default function BottomNavigationBar() {
             role="tab"
             aria-selected={isActive}
             className={`relative flex flex-col items-center gap-0.5 px-3 py-1 min-w-0 flex-1 transition-colors
-              ${isActive ? "text-brand" : "text-content-muted hover:text-content-secondary"}`}
+              ${isActive ? "text-white" : "text-content-muted hover:text-content-secondary"}`}
           >
             {isActive && (
               <motion.div
-                layoutId="bottom-nav-indicator"
-                className="absolute -top-px left-1/4 right-1/4 h-0.5 bg-brand rounded-full"
-                transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                layoutId="active-tab-pill"
+                className="absolute inset-0 bg-brand rounded-full shadow-lg shadow-brand/30"
+                style={{ translateY: "-12px", scale: 1.08 }}
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
               />
             )}
-            <Icon className="w-5 h-5" />
-            <span className="text-[10px] font-medium truncate w-full text-center">
+            <Icon className={`relative z-10 ${isActive ? "w-6 h-6" : "w-5 h-5"}`} />
+            <span className={`relative z-10 text-[10px] font-medium truncate w-full text-center ${isActive ? "text-white" : ""}`}>
               {tab.label}
             </span>
           </Link>
