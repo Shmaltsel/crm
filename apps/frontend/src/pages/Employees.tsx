@@ -310,10 +310,17 @@ export default function Employees() {
 
   const handleDelete = useCallback(async () => {
     if (!confirmDelete) return;
-    try { await deleteUser.mutateAsync(confirmDelete.id); }
-    catch { alert("Помилка видалення"); }
-    finally { setConfirmDelete(null); }
-  }, [confirmDelete, deleteUser]);
+    setIsMutating(true);
+    try {
+      await deleteUser.mutateAsync(confirmDelete.id);
+      toast("Користувача видалено", "success");
+    } catch {
+      toast("Помилка видалення", "error");
+    } finally {
+      setConfirmDelete(null);
+      setIsMutating(false);
+    }
+  }, [confirmDelete, deleteUser, toast]);
 
   const handleCreateProject = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -343,13 +350,15 @@ export default function Employees() {
   if (isLoading) return <EmployeesSkeleton />;
 
   return (
-    <MotionConfig reducedMotion="user">
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: "easeOut" }}
-        className="p-4 md:p-8 h-full"
-      >
+    <>
+      <LoadingBar isLoading={isMutating} />
+      <MotionConfig reducedMotion="user">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
+          className="p-4 md:p-8 h-full"
+        >
         <EmployeesHeader
           isSuperAdmin={isSuperAdmin}
           viewMode={viewMode}
@@ -566,7 +575,8 @@ export default function Employees() {
           onConfirm={handleDelete}
           onCancel={() => setConfirmDelete(null)}
         />
-      </motion.div>
-    </MotionConfig>
+        </motion.div>
+      </MotionConfig>
+    </>
   );
 }
