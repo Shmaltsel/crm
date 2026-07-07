@@ -50,3 +50,18 @@
   animation: schoolRowIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   animation-fill-mode: both;
 }
+
+.no-select-ios {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+@keyframes dayOffPop {
+  0% { transform: scale(0.7); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.dayoff-cell-enter {
+  animation: dayOffPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}

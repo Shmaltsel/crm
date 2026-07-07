@@ -50,7 +50,7 @@ export default function CalendarView() {
     user, allUsers, filterCityId, userRole, user?.cityId,
   );
 
-  const { startLongPress, cancelLongPress, wasLongPress } = useLongPress(handleLongPressDayOff);
+  const { startLongPress, cancelLongPress, wasLongPress, pressingDay, triggeredDay } = useLongPress(handleLongPressDayOff);
 
   const handleMobileDayTap = useCallback(
     (day: Date) => {
@@ -74,24 +74,26 @@ export default function CalendarView() {
         userRole={userRole}
       />
 
-      <DesktopCalendarGrid
-        days={days}
-        year={year}
-        month={month}
-        selectedMobileDate={selectedMobileDate}
-        setSelectedMobileDate={setSelectedMobileDate}
-        eventsByDate={eventsByDate}
-        dayOffsByDate={dayOffsByDate}
-        projectColorMap={projectColorMap}
-        projectHexMap={projectHexMap}
-        isStaff={isStaff}
-        isManagerOrAdmin={isManagerOrAdmin}
-        user={user}
-        allUsers={allUsers}
-        handleDayOffClick={handleDayOffClick}
-        prevMonth={prevMonth}
-        nextMonth={nextMonth}
-      />
+      <div className="hidden md:block">
+        <DesktopCalendarGrid
+          days={days}
+          year={year}
+          month={month}
+          selectedMobileDate={selectedMobileDate}
+          setSelectedMobileDate={setSelectedMobileDate}
+          eventsByDate={eventsByDate}
+          dayOffsByDate={dayOffsByDate}
+          projectColorMap={projectColorMap}
+          projectHexMap={projectHexMap}
+          isStaff={isStaff}
+          isManagerOrAdmin={isManagerOrAdmin}
+          user={user}
+          allUsers={allUsers}
+          handleDayOffClick={handleDayOffClick}
+          prevMonth={prevMonth}
+          nextMonth={nextMonth}
+        />
+      </div>
 
       <div className="md:hidden mt-4">
         <MobileCalendarGrid
@@ -110,6 +112,8 @@ export default function CalendarView() {
           handleMobileDayTap={handleMobileDayTap}
           startLongPress={startLongPress}
           cancelLongPress={cancelLongPress}
+          pressingDay={pressingDay}
+          triggeredDay={triggeredDay}
           prevMonth={prevMonth}
           nextMonth={nextMonth}
         />

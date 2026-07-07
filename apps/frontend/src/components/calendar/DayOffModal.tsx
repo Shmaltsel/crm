@@ -63,7 +63,7 @@ export default function DayOffModal({
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0 select-none"
+        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0 select-none no-select-ios"
         style={{ animation: "modalScale 0.3s ease-out forwards" }}
       >
         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -94,7 +94,7 @@ export default function DayOffModal({
                   <button
                     key={s.id}
                     onClick={() => onToggle(s.id, existing?.id)}
-                    className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left ${
+                    className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left no-select-ios ${
                       isOff
                         ? "border-rose-200 bg-rose-50"
                         : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/30"

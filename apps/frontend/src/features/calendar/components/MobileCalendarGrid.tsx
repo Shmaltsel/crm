@@ -19,6 +19,8 @@ interface MobileCalendarGridProps {
   handleMobileDayTap: (day: Date) => void;
   startLongPress: (day: Date) => void;
   cancelLongPress: () => void;
+  pressingDay: Date | null;
+  triggeredDay: Date | null;
   prevMonth: () => void;
   nextMonth: () => void;
 }
@@ -39,6 +41,8 @@ export default function MobileCalendarGrid({
   handleMobileDayTap,
   startLongPress,
   cancelLongPress,
+  pressingDay,
+  triggeredDay,
   prevMonth,
   nextMonth,
 }: MobileCalendarGridProps) {
@@ -102,9 +106,10 @@ export default function MobileCalendarGrid({
                     onTouchMove={cancelLongPress}
                     onContextMenu={(e) => e.preventDefault()}
                     onClick={() => handleMobileDayTap(day)}
-                    className={`relative w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold transition-transform active:scale-90 select-none
+                    className={`relative w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold select-none no-select-ios active:scale-90
                       ${isSelected ? "ring-2 ring-blue-600 ring-offset-2" : ""}
                       ${isToday && !isSelected ? "ring-2 ring-blue-200" : ""}
+                      ${triggeredDay === day ? "dayoff-cell-enter" : ""}
                     `}
                     style={{
                       background: dayColor || "#f1f5f9",
@@ -112,8 +117,34 @@ export default function MobileCalendarGrid({
                       textShadow: dayColor
                         ? "0 1px 2px rgba(0,0,0,0.35)"
                         : "none",
+                      transform: pressingDay === day ? "scale(0.9)" : "",
+                      transition: pressingDay === day
+                        ? "transform 550ms ease-out"
+                        : "transform 150ms ease-out",
                     }}
                   >
+                    <svg
+                      className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none"
+                      viewBox="0 0 36 36"
+                    >
+                      <circle
+                        cx="18"
+                        cy="18"
+                        r="16"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeDasharray="100.53"
+                        strokeDashoffset={pressingDay === day ? 0 : 100.53}
+                        style={{
+                          transition: pressingDay === day
+                            ? "stroke-dashoffset 550ms linear"
+                            : "stroke-dashoffset 150ms ease-out",
+                        }}
+                        className="text-blue-500 opacity-70"
+                      />
+                    </svg>
                     {day.getDate()}
                     {dayOffEntries.length > 0 && (
                       <span className="pointer-events-none absolute -top-2.5 -right-2.5 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white flex items-center justify-center">

@@ -42,19 +42,7 @@ export default function DesktopCalendarGrid({
   nextMonth,
 }: DesktopCalendarGridProps) {
   return (
-    <>
-      <style>{`
-        @keyframes dayOffPop {
-          0% { transform: scale(0.7); opacity: 0; }
-          60% { transform: scale(1.15); opacity: 1; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        .dayoff-cell-enter {
-          animation: dayOffPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-      `}</style>
-
-      <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+    <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
         <div className="flex items-center justify-center p-5 md:p-6 border-b border-slate-100 bg-white">
           <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
             <button
@@ -76,7 +64,7 @@ export default function DesktopCalendarGrid({
           </div>
         </div>
 
-        <div className="hidden md:grid grid-cols-7 bg-slate-50/50">
+        <div className="grid grid-cols-7 bg-slate-50/50">
           {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((dayName) => (
             <div
               key={dayName}
@@ -113,7 +101,7 @@ export default function DesktopCalendarGrid({
               <div
                 key={idx}
                 onClick={() => day && setSelectedMobileDate(day)}
-                className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group select-none
+                className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group select-none no-select-ios
                   ${day ? "bg-white hover:bg-slate-50 cursor-pointer" : "bg-slate-50/30"}
                   ${isSelected ? "ring-2 ring-inset ring-blue-500/20 bg-blue-50/10" : ""}
                   ${hasAnyDayOff ? "dayoff-cell-enter bg-rose-50/70" : ""}
@@ -216,6 +204,5 @@ export default function DesktopCalendarGrid({
           })}
         </div>
       </div>
-    </>
   );
 }
