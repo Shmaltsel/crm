@@ -16,6 +16,7 @@ import UserModal from "../components/employees/UserModal";
 import ProjectModal from "../components/employees/ProjectModal";
 import { EmployeesHeader } from "../components/employees/EmployeesHeader";
 import { FilterPanel } from "../components/employees/FilterPanel";
+import EmployeesTable from "../components/employees/EmployeesTable";
 import { sectionVariants } from "../animations/employees";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
@@ -464,11 +465,7 @@ export default function Employees() {
             )}
 
             {viewMode === "table" && (
-              <div className="bg-white rounded-card shadow-card border border-border p-8 text-center">
-                <p className="text-content-muted text-sm">
-                  Табличний режим — в розробці
-                </p>
-              </div>
+              <EmployeesTable users={cityFilteredUsers} onSelect={(user) => console.log("select", user)} />
             )}
           </div>
         </div>
