@@ -377,7 +377,7 @@ export default function Employees() {
     [cities],
   );
 
-  if (isLoading) return <EmployeesSkeleton />;
+  if (usersLoading) return <EmployeesSkeleton />;
 
   return (
     <>

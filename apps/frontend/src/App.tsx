@@ -61,17 +61,6 @@ function AppRoutes() {
     setUser(loggedInUser);
   };
 
-  const handleLogout = async () => {
-    try {
-      await api.post("/auth/logout");
-    } catch (e) {
-      console.error("Logout error", e);
-    }
-
-    setUser(null);
-    window.location.replace("/login");
-  };
-
   if (loading) return <PageLoader />;
 
   return (

@@ -1,31 +1,19 @@
 import { useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Home, School, Baby, Wallet, Calendar, Users } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { NAV_TABS } from "../constants/navTabs";
+import type { NavTab } from "../constants/navTabs";
 
-interface Tab {
-  to: string;
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  roles?: string[];
+export function useFilteredTabs(): NavTab[] {
+  const { user } = useAuth();
+  const is = (roles?: string[]) => !roles || (!!user?.role && roles.includes(user.role));
+  return useMemo(() => NAV_TABS.filter((t) => is(t.roles)), [user]);
 }
-
-const ALL_TABS: Tab[] = [
-  { to: "/dashboard", icon: Home, label: "Дашборд", roles: ["SUPERADMIN", "MANAGER"] },
-  { to: "/schools", icon: School, label: "Школи" },
-  { to: "/kindergartens", icon: Baby, label: "Садочки" },
-  { to: "/finance", icon: Wallet, label: "Фінанси" },
-  { to: "/calendar", icon: Calendar, label: "Календар" },
-  { to: "/employees", icon: Users, label: "Працівники", roles: ["SUPERADMIN"] },
-];
 
 export default function BottomNavigationBar() {
   const location = useLocation();
-  const { user } = useAuth();
-  const is = (roles?: string[]) => !roles || (!!user?.role && roles.includes(user.role));
-
-  const tabs = useMemo(() => ALL_TABS.filter((t) => is(t.roles)), [user]);
+  const tabs = useFilteredTabs();
 
   const activeIndex = useMemo(
     () => tabs.findIndex((t) => location.pathname.startsWith(t.to)),
@@ -40,6 +28,7 @@ export default function BottomNavigationBar() {
     >
       {tabs.map((tab, i) => {
         const isActive = i === activeIndex;
+        const Icon = tab.icon;
         return (
           <Link
             key={tab.to}
@@ -56,7 +45,7 @@ export default function BottomNavigationBar() {
                 transition={{ type: "spring", stiffness: 500, damping: 35 }}
               />
             )}
-            <tab.icon className="w-5 h-5" />
+            <Icon className="w-5 h-5" />
             <span className="text-[10px] font-medium truncate w-full text-center">
               {tab.label}
             </span>

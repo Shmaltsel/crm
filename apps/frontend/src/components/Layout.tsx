@@ -1,6 +1,6 @@
-import { Link, useOutlet, useLocation } from "react-router-dom";
-import { useState, useRef, useMemo } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { Link, useOutlet, useLocation, useNavigate } from "react-router-dom";
+import { useState, useRef, useMemo, useCallback } from "react";
+import { AnimatePresence, motion, MotionConfig } from "framer-motion";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -12,11 +12,12 @@ import {
   Calendar,
   Users,
   GraduationCap,
-  Menu,
-  X,
   LogOut,
 } from "lucide-react";
 import BottomNavigationBar from "./BottomNavigationBar";
+import MobileTopNav from "./MobileTopNav";
+import { NAV_TABS } from "../constants/navTabs";
+import type { NavTab } from "../constants/navTabs";
 
 function NavLink({
   to,
@@ -49,13 +50,21 @@ function NavLink({
 }
 
 function getDirection(from: string, to: string): number {
-  const fromSegs = from.split("/").filter(Boolean);
-  const toSegs = to.split("/").filter(Boolean);
-  if (toSegs.length > fromSegs.length) return 1;
-  if (toSegs.length < fromSegs.length) return -1;
-  const fromLast = fromSegs.pop() ?? "";
-  const toLast = toSegs.pop() ?? "";
-  return toLast.localeCompare(fromLast) > 0 ? 1 : -1;
+  const fromPath = from.split("/")[1] || "";
+  const toPath = to.split("/")[1] || "";
+  const tabPaths = NAV_TABS.map((t) => t.to.replace("/", ""));
+  const fromIdx = tabPaths.indexOf(fromPath);
+  const toIdx = tabPaths.indexOf(toPath);
+  if (fromIdx === -1 || toIdx === -1) {
+    const fromSegs = from.split("/").filter(Boolean);
+    const toSegs = to.split("/").filter(Boolean);
+    if (toSegs.length > fromSegs.length) return 1;
+    if (toSegs.length < fromSegs.length) return -1;
+    const fromLast = fromSegs.pop() ?? "";
+    const toLast = toSegs.pop() ?? "";
+    return toLast.localeCompare(fromLast) > 0 ? 1 : -1;
+  }
+  return toIdx > fromIdx ? 1 : -1;
 }
 
 const pageVariants = (dir: number) => ({
@@ -64,194 +73,199 @@ const pageVariants = (dir: number) => ({
   exit: { opacity: 0, x: dir * -40 },
 });
 
-const pageTransition = {
+const pageTransitionDesktop = {
   type: "spring",
   stiffness: 300,
   damping: 30,
 } as const;
 
+const pageTransitionMobile = {
+  type: "tween",
+  duration: 0.22,
+  ease: "easeOut",
+} as const;
+
+function isMobileWidth() {
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
+}
+
 export default function Layout() {
   const outlet = useOutlet();
   const location = useLocation();
+  const navigate = useNavigate();
   const prevPathRef = useRef(location.pathname);
+  const isMobile = useRef(isMobileWidth());
+  const swipeXRef = useRef(0);
+  const swipeStartRef = useRef(0);
+  const swipingRef = useRef(false);
+
+  const { user, logout } = useAuth();
+  const { selectedCity } = useSelectedCity();
+
+  const isFn = (roles?: string[]) => !roles || (!!user?.role && roles.includes(user.role));
+  const tabPaths = useMemo(
+    () => NAV_TABS.filter((t) => isFn(t.roles)),
+    [user],
+  );
+
   const dir = useMemo(() => {
     const d = getDirection(prevPathRef.current, location.pathname);
     prevPathRef.current = location.pathname;
     return d;
   }, [location.pathname]);
-  const { user, logout } = useAuth();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const is = (roles: string[]) => !!user?.role && roles.includes(user.role);
-  const { selectedCity } = useSelectedCity();
-
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await logout();
+  }, [logout]);
+
+  const pageTransition = isMobile.current ? pageTransitionMobile : pageTransitionDesktop;
+
+  const shouldIgnoreSwipe = (target: EventTarget | null): boolean => {
+    if (!target || !(target instanceof HTMLElement)) return true;
+    if (target.closest("[data-no-swipe]")) return true;
+    if (target.closest('[style*="overflow-x: auto"]')) return true;
+    if (target.closest('[style*="overflow-x: scroll"]')) return true;
+    const el = target.closest(".overflow-x-auto, .overflow-x-scroll");
+    if (el) {
+      const e = el as HTMLElement;
+      if (e.scrollWidth > e.clientWidth) return true;
+    }
+    return false;
   };
 
-  const closeMenu = () => setIsMobileMenuOpen(false);
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (shouldIgnoreSwipe(e.target)) return;
+    swipeStartRef.current = e.touches[0].clientX;
+    swipeXRef.current = 0;
+    swipingRef.current = false;
+  }, []);
+
+  const touchStartYRef = useRef(0);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (shouldIgnoreSwipe(e.target)) return;
+    swipeStartRef.current = e.touches[0].clientX;
+    touchStartYRef.current = e.touches[0].clientY;
+    swipeXRef.current = 0;
+    swipingRef.current = false;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (swipeStartRef.current === 0) return;
+    const dx = e.touches[0].clientX - swipeStartRef.current;
+    const dy = Math.abs(e.touches[0].clientY - touchStartYRef.current);
+    if (Math.abs(dx) < 5) return;
+    if (Math.abs(dx) < dy * 1.5) {
+      swipeStartRef.current = 0;
+      return;
+    }
+    swipingRef.current = true;
+    swipeXRef.current = dx;
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (!swipingRef.current) return;
+    const dx = swipeXRef.current;
+    swipingRef.current = false;
+    swipeStartRef.current = 0;
+    swipeXRef.current = 0;
+
+    if (Math.abs(dx) < 60) return;
+
+    const currentIdx = tabPaths.findIndex((t) =>
+      location.pathname.startsWith(t.to),
+    );
+    if (currentIdx === -1) return;
+
+    if (dx < 0 && currentIdx < tabPaths.length - 1) {
+      navigate(tabPaths[currentIdx + 1].to);
+    } else if (dx > 0 && currentIdx > 0) {
+      navigate(tabPaths[currentIdx - 1].to);
+    }
+  }, [navigate, tabPaths, location.pathname]);
 
   return (
-    <div className="flex h-screen bg-surface-subtle font-sans">
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0B1527] text-white flex items-center justify-between px-4 z-40">
-        <div className="flex items-center gap-2">
-          <GraduationCap className="w-5 h-5" />
-          <span className="font-semibold tracking-wider text-sm">
-            СВІТЛО ЗНАНЬ
-          </span>
-          <span className="text-xs text-blue-300 ml-1">
-            · {selectedCity.name}
-          </span>
-        </div>
-        <button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2"
-          aria-label={isMobileMenuOpen ? "Закрити меню" : "Відкрити меню"}
+    <MotionConfig reducedMotion="user">
+      <div className="flex h-screen bg-surface-subtle font-sans">
+        <MobileTopNav />
+
+        <aside
+          className="hidden md:flex md:relative w-64 flex-col bg-[#0B1527] text-white shrink-0"
         >
-          {isMobileMenuOpen ? (
-            <X className="w-6 h-6" />
-          ) : (
-            <Menu className="w-6 h-6" />
-          )}
-        </button>
-      </div>
-
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="md:hidden fixed inset-0 bg-slate-900/50 z-40"
-            onClick={closeMenu}
-          />
-        )}
-      </AnimatePresence>
-
-      <aside
-        className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-[#0B1527] text-white flex flex-col transition-transform duration-300 ease-in-out
-        md:relative md:translate-x-0
-        ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
-      `}
-      >
-        <div className="p-6 flex flex-col items-center border-b border-slate-700/50 hidden md:flex">
-          <div className="w-16 h-16 bg-blue-500 rounded-full mb-3 flex items-center justify-center">
-            <GraduationCap className="w-8 h-8" />
-          </div>
-          <h2 className="text-sm font-semibold tracking-wider">СВІТЛО ЗНАНЬ</h2>
-          <p className="text-xs text-blue-300 mt-1 tracking-wide flex items-center gap-1">
-            <MapPin className="w-3 h-3" />
-            {selectedCity.name}
-          </p>
-        </div>
-
-        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto mt-16 md:mt-0">
-          {is(["SUPERADMIN", "MANAGER"]) && (
-            <NavLink
-              to="/dashboard"
-              icon={Home}
-              label="Дашборд"
-              onClick={closeMenu}
-              currentPath={location.pathname}
-            />
-          )}
-          {is(["SUPERADMIN"]) && (
-            <NavLink
-              to="/cities"
-              icon={MapPin}
-              label="Міста"
-              onClick={closeMenu}
-              currentPath={location.pathname}
-            />
-          )}
-          <NavLink
-            to="/schools"
-            icon={School}
-            label="Школи"
-            onClick={closeMenu}
-            currentPath={location.pathname}
-          />
-          <NavLink
-            to="/kindergartens"
-            icon={Baby}
-            label="Садочки"
-            onClick={closeMenu}
-            currentPath={location.pathname}
-          />
-          <NavLink
-            to="/finance"
-            icon={Wallet}
-            label="Фінанси"
-            onClick={closeMenu}
-            currentPath={location.pathname}
-          />
-          <NavLink
-            to="/calendar"
-            icon={Calendar}
-            label="Календар"
-            onClick={closeMenu}
-            currentPath={location.pathname}
-          />
-          {is(["SUPERADMIN"]) && (
-            <NavLink
-              to="/employees"
-              icon={Users}
-              label="Працівники"
-              onClick={closeMenu}
-              currentPath={location.pathname}
-            />
-          )}
-        </nav>
-
-        <div className="p-4 border-t border-slate-700/50 pb-8 md:pb-4">
-          <div className="flex items-center px-4 py-2 text-slate-300 justify-between">
-            <div className="flex items-center min-w-0">
-              <div className="w-8 h-8 bg-slate-600 rounded-full mr-3 flex items-center justify-center text-xs font-bold shrink-0">
-                {user?.name?.charAt(0) ?? "?"}
-              </div>
-              <div className="text-sm truncate min-w-0">
-                <p className="font-medium text-white truncate">
-                  {user?.name ?? "Користувач"}
-                </p>
-                <p className="text-xs text-slate-400 truncate">
-                  {user?.role ?? ""}
-                </p>
-              </div>
+          <div className="p-6 flex flex-col items-center border-b border-slate-700/50">
+            <div className="w-16 h-16 bg-blue-500 rounded-full mb-3 flex items-center justify-center">
+              <GraduationCap className="w-8 h-8" />
             </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-colors text-xs font-medium ml-2 shrink-0 px-2.5 py-2 rounded-lg"
-              title="Вийти"
-            >
-              <LogOut className="w-4 h-4" />
-              Вийти
-            </button>
+            <h2 className="text-sm font-semibold tracking-wider">СВІТЛО ЗНАНЬ</h2>
+            <p className="text-xs text-blue-300 mt-1 tracking-wide flex items-center gap-1">
+              <MapPin className="w-3 h-3" />
+              {selectedCity.name}
+            </p>
           </div>
-        </div>
-      </aside>
 
-      <main className="flex-1 overflow-y-auto overflow-x-hidden mt-16 md:mt-0 relative w-full min-w-0 pb-16 md:pb-0">
-        <AnimatePresence mode="wait" custom={dir}>
-          <motion.div
-            key={location.pathname}
-            custom={dir}
-            variants={pageVariants(dir)}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={pageTransition}
-            onAnimationComplete={() =>
-              window.dispatchEvent(new Event("resize"))
-            }
-          >
-            {outlet}
-          </motion.div>
-        </AnimatePresence>
-      </main>
+          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            {isFn(["SUPERADMIN", "MANAGER"]) && (
+              <NavLink to="/dashboard" icon={Home} label="Дашборд" currentPath={location.pathname} />
+            )}
+            {isFn(["SUPERADMIN"]) && (
+              <NavLink to="/cities" icon={MapPin} label="Міста" currentPath={location.pathname} />
+            )}
+            <NavLink to="/schools" icon={School} label="Школи" currentPath={location.pathname} />
+            <NavLink to="/kindergartens" icon={Baby} label="Садочки" currentPath={location.pathname} />
+            <NavLink to="/finance" icon={Wallet} label="Фінанси" currentPath={location.pathname} />
+            <NavLink to="/calendar" icon={Calendar} label="Календар" currentPath={location.pathname} />
+            {isFn(["SUPERADMIN"]) && (
+              <NavLink to="/employees" icon={Users} label="Працівники" currentPath={location.pathname} />
+            )}
+          </nav>
 
-      <BottomNavigationBar />
-    </div>
+          <div className="p-4 border-t border-slate-700/50 pb-8 md:pb-4">
+            <div className="flex items-center px-4 py-2 text-slate-300 justify-between">
+              <div className="flex items-center min-w-0">
+                <div className="w-8 h-8 bg-slate-600 rounded-full mr-3 flex items-center justify-center text-xs font-bold shrink-0">
+                  {user?.name?.charAt(0) ?? "?"}
+                </div>
+                <div className="text-sm truncate min-w-0">
+                  <p className="font-medium text-white truncate">{user?.name ?? "Користувач"}</p>
+                  <p className="text-xs text-slate-400 truncate">{user?.role ?? ""}</p>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-colors text-xs font-medium ml-2 shrink-0 px-2.5 py-2 rounded-lg"
+                title="Вийти"
+              >
+                <LogOut className="w-4 h-4" />
+                Вийти
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <main
+          className="flex-1 overflow-y-auto overflow-x-hidden mt-16 md:mt-0 relative w-full min-w-0 pb-16 md:pb-0"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <AnimatePresence mode={isMobile.current ? undefined : "wait"} custom={dir}>
+            <motion.div
+              key={location.pathname}
+              custom={dir}
+              variants={pageVariants(dir)}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={pageTransition}
+              style={{ willChange: "transform, opacity" }}
+            >
+              {outlet}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+
+        <BottomNavigationBar />
+      </div>
+    </MotionConfig>
   );
 }

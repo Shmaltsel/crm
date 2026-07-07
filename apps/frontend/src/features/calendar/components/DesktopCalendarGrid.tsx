@@ -1,5 +1,6 @@
 import { toISODate, isPastDay } from "../utils/date";
 import { MONTH_NAMES, ROLE_ICON_MAP } from "../constants";
+import { getDayColor } from "../utils/color";
 import EventTooltip from "./EventTooltip";
 import type { Event as CalendarEvent, DayOff, User } from "../../../types";
 
@@ -12,6 +13,7 @@ interface DesktopCalendarGridProps {
   eventsByDate: Map<string, CalendarEvent[]>;
   dayOffsByDate: Map<string, DayOff[]>;
   projectColorMap: Map<string, string>;
+  projectHexMap: Map<string, string>;
   isStaff: boolean;
   isManagerOrAdmin: boolean;
   user: { id: string } | null;
@@ -30,6 +32,7 @@ export default function DesktopCalendarGrid({
   eventsByDate,
   dayOffsByDate,
   projectColorMap,
+  projectHexMap,
   isStaff,
   isManagerOrAdmin,
   user,
@@ -92,6 +95,10 @@ export default function DesktopCalendarGrid({
             const dayEvents = day ? (eventsByDate.get(dayKey) ?? []) : [];
             const dayOffEntries = day ? (dayOffsByDate.get(dayKey) ?? []) : [];
 
+            const dayColor = day
+              ? getDayColor(dayEvents, projectHexMap)
+              : undefined;
+
             const myDayOff = isStaff
               ? dayOffEntries.find((d) => d.userId === user?.id)
               : undefined;
@@ -106,7 +113,7 @@ export default function DesktopCalendarGrid({
               <div
                 key={idx}
                 onClick={() => day && setSelectedMobileDate(day)}
-                className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group
+                className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group select-none
                   ${day ? "bg-white hover:bg-slate-50 cursor-pointer" : "bg-slate-50/30"}
                   ${isSelected ? "ring-2 ring-inset ring-blue-500/20 bg-blue-50/10" : ""}
                   ${hasAnyDayOff ? "dayoff-cell-enter bg-rose-50/70" : ""}
@@ -163,8 +170,12 @@ export default function DesktopCalendarGrid({
                     <div className="flex justify-center md:justify-end mb-1.5">
                       <span
                         className={`w-7 h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-semibold transition-colors
-                        ${isToday ? "bg-blue-600 text-white shadow-md" : "text-slate-500 md:group-hover:text-blue-600"}
+                        ${isToday && !dayColor ? "bg-blue-600 text-white shadow-md" : !dayColor ? "text-slate-500 md:group-hover:text-blue-600" : "text-white"}
                       `}
+                        style={{
+                          background: dayColor || undefined,
+                          textShadow: dayColor ? "0 1px 2px rgba(0,0,0,0.35)" : "none",
+                        }}
                       >
                         {day.getDate()}
                       </span>

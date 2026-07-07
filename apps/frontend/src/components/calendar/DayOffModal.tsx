@@ -63,7 +63,7 @@ export default function DayOffModal({
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
+        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0 select-none"
         style={{ animation: "modalScale 0.3s ease-out forwards" }}
       >
         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">

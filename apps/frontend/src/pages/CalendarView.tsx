@@ -83,6 +83,7 @@ export default function CalendarView() {
         eventsByDate={eventsByDate}
         dayOffsByDate={dayOffsByDate}
         projectColorMap={projectColorMap}
+        projectHexMap={projectHexMap}
         isStaff={isStaff}
         isManagerOrAdmin={isManagerOrAdmin}
         user={user}

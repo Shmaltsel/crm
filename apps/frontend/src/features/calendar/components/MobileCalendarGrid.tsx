@@ -1,7 +1,7 @@
 import { getDayColor } from "../utils/color";
 import { toISODate } from "../utils/date";
 import { MONTH_NAMES, PROJECT_HEX } from "../constants";
-import type { Event as CalendarEvent, Project, City } from "../../../types";
+import type { Event as CalendarEvent, Project, City, DayOff } from "../../../types";
 
 interface MobileCalendarGridProps {
   days: (Date | null)[];
@@ -9,7 +9,7 @@ interface MobileCalendarGridProps {
   month: number;
   selectedMobileDate: Date;
   eventsByDate: Map<string, CalendarEvent[]>;
-  dayOffsByDate: Map<string, { id: string; userId: string; date: string }[]>;
+  dayOffsByDate: Map<string, DayOff[]>;
   projectHexMap: Map<string, string>;
   projects: Project[];
   filterCityId: string;
@@ -98,14 +98,11 @@ export default function MobileCalendarGrid({
                 {day && (
                   <button
                     onTouchStart={() => startLongPress(day)}
-                    onTouchEnd={() => {
-                      cancelLongPress();
-                      handleMobileDayTap(day);
-                    }}
+                    onTouchEnd={() => cancelLongPress()}
                     onTouchMove={cancelLongPress}
                     onContextMenu={(e) => e.preventDefault()}
                     onClick={() => handleMobileDayTap(day)}
-                    className={`relative w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold transition-transform active:scale-90
+                    className={`relative w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold transition-transform active:scale-90 select-none
                       ${isSelected ? "ring-2 ring-blue-600 ring-offset-2" : ""}
                       ${isToday && !isSelected ? "ring-2 ring-blue-200" : ""}
                     `}
