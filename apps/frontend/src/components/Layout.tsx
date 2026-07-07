@@ -133,13 +133,6 @@ export default function Layout() {
     return false;
   };
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (shouldIgnoreSwipe(e.target)) return;
-    swipeStartRef.current = e.touches[0].clientX;
-    swipeXRef.current = 0;
-    swipingRef.current = false;
-  }, []);
-
   const touchStartYRef = useRef(0);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
