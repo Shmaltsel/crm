@@ -1,3 +1,783 @@
+# FILE: apps/frontend/src/pages/CityProfile.tsx
+
+```
+import { useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { lazy, Suspense } from "react";
+const CityAnalytics = lazy(
+  () => import("../components/city-profile/CityAnalytics"),
+);
+import PhoneLink from "../components/PhoneLink";
+import type { Event, Crew, CityProfile as CityProfileType } from "../types";
+import OptimizedImage from "../components/ui/OptimizedImage";
+import { useCity, useCreateCrew, useDeleteCrew } from "../hooks/useCities";
+import { useUsers } from "../hooks/useEmployees";
+
+type Tab = "events" | "crews" | "analytics";
+
+export default function CityProfile() {
+  const { id } = useParams();
+  const { data: city, isLoading } = useCity(id);
+  const { data: users = [] } = useUsers();
+  const createCrew = useCreateCrew(id);
+  const deleteCrew = useDeleteCrew(id);
+
+  const [activeTab, setActiveTab] = useState<Tab>("crews");
+  const [selectedReportEvent, setSelectedReportEvent] = useState<any>(null);
+  const [isCreateCrewModalOpen, setIsCreateCrewModalOpen] = useState(false);
+  const [completedSearchQuery, setCompletedSearchQuery] = useState("");
+  const [crewForm, setCrewForm] = useState({
+    name: "",
+    hostId: "",
+    driverId: "",
+  });
+
+  const handleCreateCrew = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!crewForm.hostId || !crewForm.driverId)
+      return alert("Оберіть ведучого та водія!");
+    setIsCreateCrewModalOpen(false);
+    createCrew.mutate(crewForm);
+  };
+
+  const handleDeleteCrew = (crewId: string) => {
+    if (!window.confirm("Видалити екіпаж?")) return;
+    deleteCrew.mutate(crewId);
+  };
+
+  if (isLoading)
+    return <div className="p-8 text-slate-500">Завантаження...</div>;
+  if (!city) return <div className="p-8 text-slate-500">Місто не знайдено</div>;
+
+  const completedEvents: Event[] = city.events || [];
+  const filteredCompletedEvents = completedEvents.filter((ev) =>
+    (ev.school?.name || "")
+      .toLowerCase()
+      .includes(completedSearchQuery.trim().toLowerCase()),
+  );
+  const crews: Crew[] = city.crews || [];
+  const manager = city.manager;
+
+  const busyUserIds = crews.flatMap((c: any) => [c.hostId, c.driverId]);
+  const availableHosts = users.filter(
+    (u) =>
+      u.role === "HOST" &&
+      u.city?.id === city.id &&
+      !busyUserIds.includes(u.id),
+  );
+  const availableDrivers = users.filter(
+    (u) =>
+      u.role === "DRIVER" &&
+      u.city?.id === city.id &&
+      !busyUserIds.includes(u.id),
+  );
+
+  const totalChildren = completedEvents.reduce(
+    (sum, ev) => sum + (ev.report?.childrenCount || ev.childrenPlanned || 0),
+    0,
+  );
+  const totalRevenue = completedEvents.reduce(
+    (sum, ev) => sum + (ev.report?.totalSum || ev.price || 0),
+    0,
+  );
+  const totalProfit = completedEvents.reduce(
+    (sum, ev) => sum + (ev.report?.remainderSum || 0),
+    0,
+  );
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("uk-UA").format(Math.round(n));
+
+  const TABS: { key: Tab; label: string; icon: string }[] = [
+    { key: "events", label: "Події", icon: "📅" },
+    { key: "crews", label: "Екіпажі", icon: "🚐" },
+    { key: "analytics", label: "Аналітика", icon: "📊" },
+  ];
+
+  return (
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+      <div className="text-sm text-slate-500 mb-6">
+        <Link to="/cities" className="hover:text-blue-600 transition-colors">
+          Міста
+        </Link>
+        <span className="mx-2">›</span>
+        <span className="text-slate-800 font-medium">{city.name}</span>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center gap-6">
+          <div className="flex items-center gap-4 min-w-[220px]">
+            <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
+              {manager?.name?.charAt(0) ?? "?"}
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-0.5">
+                Менеджер
+              </p>
+              <p className="font-bold text-slate-800">{manager?.name ?? "—"}</p>
+              <p className="text-sm text-slate-500">
+                <PhoneLink phone={manager?.phone} />
+              </p>
+            </div>
+          </div>
+          <div className="hidden md:block w-px h-16 bg-slate-100" />
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-6 gap-y-4 sm:gap-8 flex-1">
+            <Stat label="Закладів" value={city.schools?.length ?? 0} />
+            <Stat label="Проведено подій" value={completedEvents.length} />
+            <Stat label="Охоплено дітей" value={fmt(totalChildren)} />
+            <Stat label="Виручка" value={`${fmt(totalRevenue)} грн`} />
+            <Stat label="Прибуток" value={`${fmt(totalProfit)} грн`} />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 sm:flex sm:w-fit gap-1 bg-white rounded-xl p-1 border border-slate-100 shadow-sm mb-6">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+              activeTab === tab.key
+                ? "bg-blue-600 text-white shadow-sm"
+                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            <span>{tab.icon}</span>{" "}
+            <span className="truncate">{tab.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "events" && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+            <h3 className="font-bold text-slate-800 mb-4">
+              Завершені події ({completedEvents.length})
+            </h3>
+            <input
+              type="text"
+              value={completedSearchQuery}
+              onChange={(e) => setCompletedSearchQuery(e.target.value)}
+              placeholder="Пошук за назвою закладу..."
+              className="w-full sm:max-w-xs p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          {filteredCompletedEvents.length === 0 ? (
+            <div className="p-12 text-center text-slate-400">
+              <p className="text-4xl mb-3">📭</p>
+              <p className="font-medium">
+                {completedSearchQuery
+                  ? "Нічого не знайдено"
+                  : "Завершених подій ще немає"}
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="md:hidden divide-y divide-slate-50">
+                {filteredCompletedEvents.map((ev) => (
+                  <div
+                    key={ev.id}
+                    onClick={() => setSelectedReportEvent(ev)}
+                    className="flex items-center justify-between gap-3 p-4 active:bg-slate-50 cursor-pointer"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-blue-600 truncate">
+                        {ev.school?.name}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {ev.project} ·{" "}
+                        {new Date(ev.date).toLocaleDateString("uk-UA")}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        👶{" "}
+                        {ev.report?.childrenCount || ev.childrenPlanned || "—"}{" "}
+                        дітей
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-semibold text-slate-800 text-sm">
+                        {fmt(ev.report?.totalSum || ev.price || 0)} грн
+                      </p>
+                      <p className="text-xs font-medium text-emerald-600 mt-0.5">
+                        +{fmt(ev.report?.remainderSum || 0)} грн
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+                      <th className="p-4">Заклад</th>
+                      <th className="p-4">Проєкт</th>
+                      <th className="p-4">Дата</th>
+                      <th className="p-4">Дітей</th>
+                      <th className="p-4">Виручка</th>
+                      <th className="p-4">Прибуток</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCompletedEvents.map((ev) => (
+                      <tr
+                        key={ev.id}
+                        onClick={() => setSelectedReportEvent(ev)}
+                        className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
+                      >
+                        <td className="p-4">
+                          <span className="font-medium text-blue-600">
+                            {ev.school?.name}
+                          </span>
+                          <p className="text-xs text-slate-400">
+                            {ev.school?.type}
+                          </p>
+                        </td>
+                        <td className="p-4 text-slate-700">{ev.project}</td>
+                        <td className="p-4 text-slate-600">
+                          {new Date(ev.date).toLocaleDateString("uk-UA")}
+                        </td>
+                        <td className="p-4 font-medium">
+                          {ev.report?.childrenCount ||
+                            ev.childrenPlanned ||
+                            "—"}
+                        </td>
+                        <td className="p-4 font-medium text-slate-800">
+                          {fmt(ev.report?.totalSum || ev.price || 0)} грн
+                        </td>
+                        <td className="p-4 font-medium text-emerald-600">
+                          {fmt(ev.report?.remainderSum || 0)} грн
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Вкладка ЕКІПАЖІ з новим дизайном */}
+      {activeTab === "crews" && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+          <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
+            <h3 className="text-xl font-bold text-slate-800">
+              Екіпажі - {city.name}
+            </h3>
+            <button
+              onClick={() => {
+                setCrewForm({
+                  name: `Екіпаж №${crews.length + 1}`,
+                  hostId: "",
+                  driverId: "",
+                });
+                setIsCreateCrewModalOpen(true);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm"
+            >
+              + Додати екіпаж
+            </button>
+          </div>
+
+          {crews.length === 0 ? (
+            <div className="p-12 text-center text-slate-400">
+              <p className="text-4xl mb-3">🚐</p>
+              <p className="font-medium">Екіпажів ще немає</p>
+            </div>
+          ) : (
+            <>
+              {/* Мобільний вигляд */}
+              <div className="md:hidden divide-y divide-slate-50">
+                {crews.map((crew: any) => {
+                  const hostObj = users.find((u) => u.id === crew.hostId);
+                  const driverObj = users.find((u) => u.id === crew.driverId);
+                  const carName = crew.car
+                    ? crew.car.split("(")[0].trim()
+                    : "—";
+                  const carPlate = crew.car?.match(/\(([^)]+)\)/)?.[1] || "";
+                  const eventsCount =
+                    city.events?.filter((e: any) => e.crewId === crew.id)
+                      .length || 0;
+
+                  return (
+                    <div key={crew.id} className="p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-16 h-10 rounded overflow-hidden bg-slate-100 shrink-0 shadow-sm border border-slate-200">
+                            <OptimizedImage
+                              src="https://images.unsplash.com/photo-1517026575980-3e1e2dedeab4?auto=format&fit=crop&q=80&w=120&h=80"
+                              alt="van"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <p className="font-bold text-slate-800">
+                            {crew.name}
+                          </p>
+                        </div>
+                        <span className="bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded text-xs font-medium">
+                          Активний
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-y-3 text-xs mt-4">
+                        <div>
+                          <p className="font-medium text-slate-800">
+                            {hostObj?.name || crew.host?.name || "—"}
+                          </p>
+                          <p className="text-slate-500 mt-0.5">
+                            {hostObj?.phone || "—"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-800">
+                            {driverObj?.name || crew.driver?.name || "—"}
+                          </p>
+                          <p className="text-slate-500 mt-0.5">
+                            {driverObj?.phone || "—"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-800">
+                            {carName}
+                          </p>
+                          {carPlate && (
+                            <p className="text-slate-500 mt-0.5">{carPlate}</p>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-slate-500">
+                            Подій:{" "}
+                            <span className="font-bold text-slate-800">
+                              {eventsCount}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteCrew(crew.id)}
+                        className="w-full mt-4 py-2 border border-slate-200 text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Видалити екіпаж
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Десктоп таблиця як на дизайні */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="bg-white border-b border-slate-100 text-slate-800 font-bold">
+                      <th className="p-5">Екіпаж</th>
+                      <th className="p-5">Ведучий</th>
+                      <th className="p-5">Водій</th>
+                      <th className="p-5">Авто</th>
+                      <th className="p-5">Статус</th>
+                      <th className="p-5 text-center">Подій (міс.)</th>
+                      <th className="p-5 text-center">Дія</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {crews.map((crew: any) => {
+                      const hostObj = users.find((u) => u.id === crew.hostId);
+                      const driverObj = users.find(
+                        (u) => u.id === crew.driverId,
+                      );
+
+                      const carName = crew.car
+                        ? crew.car.split("(")[0].trim()
+                        : "—";
+                      const carPlate =
+                        crew.car?.match(/\(([^)]+)\)/)?.[1] || "";
+
+                      const eventsCount =
+                        city.events?.filter((e: any) => e.crewId === crew.id)
+                          .length || 0;
+
+                      return (
+                        <tr
+                          key={crew.id}
+                          className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+                        >
+                          <td className="p-5">
+                            <div className="flex items-center gap-3">
+                              {/* Універсальна фотографія буса */}
+                              <div className="w-[60px] h-[40px] rounded border border-slate-200 overflow-hidden bg-slate-100 shrink-0 shadow-sm">
+                                <OptimizedImage
+                                  src="https://images.unsplash.com/photo-1517026575980-3e1e2dedeab4?auto=format&fit=crop&q=80&w=120&h=80"
+                                  alt="van"
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <span className="font-bold text-slate-800">
+                                {crew.name}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-5">
+                            <div className="font-medium text-slate-800">
+                              {hostObj?.name || crew.host?.name || "—"}
+                            </div>
+                            <div className="text-xs text-slate-500 mt-1 tracking-wide">
+                              {hostObj?.phone || "—"}
+                            </div>
+                          </td>
+                          <td className="p-5">
+                            <div className="font-medium text-slate-800">
+                              {driverObj?.name || crew.driver?.name || "—"}
+                            </div>
+                            <div className="text-xs text-slate-500 mt-1 tracking-wide">
+                              {driverObj?.phone || "—"}
+                            </div>
+                          </td>
+                          <td className="p-5">
+                            <div className="font-medium text-slate-600">
+                              {carName}
+                            </div>
+                            {carPlate ? (
+                              <div className="text-xs text-slate-500 mt-1 tracking-wider">
+                                {carPlate}
+                              </div>
+                            ) : (
+                              <div className="text-xs text-slate-400 mt-1">
+                                —
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-5">
+                            <span className="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-md text-xs font-semibold tracking-wide">
+                              Активний
+                            </span>
+                          </td>
+                          <td className="p-5 text-center font-bold text-slate-800 text-base">
+                            {eventsCount}
+                          </td>
+                          <td className="p-5 text-center">
+                            <button
+                              onClick={() => handleDeleteCrew(crew.id)}
+                              className="text-slate-400 hover:text-red-500 p-2 transition-colors rounded-lg hover:bg-red-50"
+                              title="Видалити екіпаж"
+                            >
+                              🗑
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {activeTab === "analytics" && (
+        <Suspense
+          fallback={
+            <div className="bg-white rounded-2xl h-64 animate-pulse border border-slate-100" />
+          }
+        >
+          <CityAnalytics events={completedEvents} />
+        </Suspense>
+      )}
+
+      {/* Модалка створення екіпажу */}
+      {isCreateCrewModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+            <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50">
+              <h3 className="text-xl font-bold text-slate-800">Новий екіпаж</h3>
+              <button
+                onClick={() => setIsCreateCrewModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 text-lg leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleCreateCrew} className="p-5 sm:p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Назва екіпажу
+                </label>
+                <input
+                  type="text"
+                  value={crewForm.name}
+                  onChange={(e) =>
+                    setCrewForm({ ...crewForm, name: e.target.value })
+                  }
+                  className="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Ведучий
+                </label>
+                <select
+                  value={crewForm.hostId}
+                  onChange={(e) =>
+                    setCrewForm({ ...crewForm, hostId: e.target.value })
+                  }
+                  required
+                  className="w-full p-2.5 border border-slate-200 rounded-lg bg-white outline-none"
+                >
+                  <option value="" disabled>
+                    Оберіть ведучого
+                  </option>
+                  {availableHosts.map((h) => (
+                    <option key={h.id} value={h.id}>
+                      {h.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-emerald-600 mt-1">
+                  ✓ Доступно: {availableHosts.length} вільних
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Водій
+                </label>
+                <select
+                  value={crewForm.driverId}
+                  onChange={(e) =>
+                    setCrewForm({ ...crewForm, driverId: e.target.value })
+                  }
+                  required
+                  className="w-full p-2.5 border border-slate-200 rounded-lg bg-white outline-none"
+                >
+                  <option value="" disabled>
+                    Оберіть водія
+                  </option>
+                  {availableDrivers.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name} {d.car ? `(🚗 ${d.car})` : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-emerald-600 mt-1">
+                  ✓ Доступно: {availableDrivers.length} вільних
+                </p>
+              </div>
+              <div className="flex gap-3 pt-2 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateCrewModalOpen(false)}
+                  className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg font-medium hover:bg-slate-200 transition-colors"
+                >
+                  Скасувати
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Створити
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Модальне вікно Звіту */}
+      <CompletedEventModal
+        isOpen={!!selectedReportEvent}
+        onClose={() => setSelectedReportEvent(null)}
+        event={selectedReportEvent}
+      />
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div>
+      <p className="text-xs text-slate-400 font-medium mb-1">{label}</p>
+      <p className="text-2xl font-bold text-slate-800">{value}</p>
+    </div>
+  );
+}
+
+function CompletedEventModal({
+  isOpen,
+  onClose,
+  event,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  event: any;
+}) {
+  if (!isOpen || !event) return null;
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+  const report = event.report;
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
+        <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+        <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
+          <div>
+            <h3 className="text-xl font-bold text-slate-800">
+              Звіт: {event.project}
+            </h3>
+            <p className="text-sm text-slate-500 mt-1">
+              {event.school?.name} ·{" "}
+              {new Date(event.date).toLocaleDateString("uk-UA")}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="p-5 sm:p-6 flex-1 overflow-y-auto bg-slate-50/30">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+              <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                  📊
+                </span>
+                Результати
+              </h4>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-slate-500">Дітей (факт):</span>
+                  <span className="font-bold">
+                    {report?.childrenCount || 0}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-slate-500">Класів:</span>
+                  <span className="font-medium">
+                    {report?.classesCount || 0}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-slate-500">Пільговиків:</span>
+                  <span className="font-medium">
+                    {report?.privilegedCount || 0}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-slate-500">Сеансів:</span>
+                  <span className="font-medium">
+                    {report?.showingsCount || 0}
+                  </span>
+                </div>
+                <div className="flex justify-between pb-1">
+                  <span className="text-slate-500">Оцінка:</span>
+                  <span className="font-bold text-amber-500">
+                    ⭐ {report?.rating || 0}/10
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+              <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  💰
+                </span>
+                Фінанси
+              </h4>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-slate-500">Загальна виручка:</span>
+                  <span className="font-bold">{fmt(report?.totalSum)} грн</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-slate-500">На заклад (20%):</span>
+                  <span className="font-medium text-rose-500">
+                    − {fmt(report?.schoolSum)} грн
+                  </span>
+                </div>
+                {Array.isArray(report?.expenses) &&
+                  report.expenses.length > 0 && (
+                    <div className="py-2 border-b border-slate-50">
+                      <span className="text-slate-500 block mb-2">
+                        Додаткові витрати:
+                      </span>
+                      {report.expenses.map((exp: any, i: number) => (
+                        <div
+                          key={i}
+                          className="flex justify-between text-xs mb-1 pl-2"
+                        >
+                          <span className="text-slate-400">
+                            — {exp.name || exp.category}
+                          </span>
+                          <span className="text-rose-500 font-medium">
+                            − {fmt(exp.amount)} грн
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                <div className="flex justify-between pt-1">
+                  <span className="font-bold text-slate-800">
+                    Чистий прибуток:
+                  </span>
+                  <span className="font-bold text-emerald-600 text-base">
+                    {fmt(report?.remainderSum)} грн
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm">
+            <h4 className="font-bold text-slate-800 mb-5 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center">
+                ⏳
+              </span>
+              Історія пайплайну
+            </h4>
+            {!event.history || event.history.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-4">
+                Історія порожня.
+              </p>
+            ) : (
+              <div className="space-y-4 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-slate-100">
+                {[...event.history]
+                  .sort(
+                    (a, b) =>
+                      new Date(a.createdAt).getTime() -
+                      new Date(b.createdAt).getTime(),
+                  )
+                  .map((item: any) => (
+                    <div key={item.id} className="relative pl-8 text-sm">
+                      <div className="absolute left-1.5 w-3 h-3 rounded-full top-1 bg-violet-500 ring-4 ring-white"></div>
+                      <p className="font-semibold text-slate-800">
+                        {item.action}
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {new Date(item.createdAt).toLocaleString("uk-UA", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}{" "}
+                        · 👤 {item.userName}
+                      </p>
+                      {item.comment && (
+                        <div className="mt-2 p-3 bg-slate-50/80 rounded-xl text-slate-600 italic border border-slate-100">
+                          {item.comment}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+```
+
 # FILE: apps/frontend/src/pages/Dashboard.tsx
 
 ```
@@ -256,7 +1036,7 @@ export default function Dashboard() {
 
 ```
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, MotionConfig } from "framer-motion";
 import {
   useUsers,
   useProjects,
@@ -268,7 +1048,10 @@ import {
   useDeleteProject,
 } from "../hooks/useEmployees";
 import { useCities } from "../hooks/useCities";
-import PhoneLink from "../components/PhoneLink";
+import EmployeeCard from "../components/employees/EmployeeCard";
+import UserModal from "../components/employees/UserModal";
+import ProjectModal from "../components/employees/ProjectModal";
+import { sectionVariants } from "../animations/employees";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
 
@@ -332,9 +1115,24 @@ const PROJECT_COLORS: Record<string, string> = {
   purple: "bg-purple-500",
 };
 
+function Shimmer() {
+  return (
+    <motion.div
+      className="absolute inset-0 -translate-x-full"
+      style={{
+        background:
+          "linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent)",
+      }}
+      animate={{ translateX: ["-100%", "100%"] }}
+      transition={{ duration: 1.4, repeat: Infinity, ease: "linear" }}
+    />
+  );
+}
+
 function EmployeesSkeleton() {
   return (
-    <div className="p-4 md:p-8 animate-pulse">
+    <div className="p-4 md:p-8">
+      {" "}
       <div className="flex justify-between items-center mb-8">
         <div>
           <div className="h-7 w-56 bg-slate-200 rounded-lg mb-2" />
@@ -342,31 +1140,33 @@ function EmployeesSkeleton() {
         </div>
         <div className="h-10 w-44 bg-slate-200 rounded-lg" />
       </div>
-      {["Менеджери", "Водії", "Ведучі"].map((label) => (
+      {[
+        { label: "Менеджери", accent: "bg-blue-200" },
+        { label: "Водії", accent: "bg-emerald-200" },
+        { label: "Ведучі", accent: "bg-violet-200" },
+      ].map(({ label, accent }) => (
         <div key={label} className="mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-1 h-6 bg-slate-200 rounded-full" />
+            <div className={`w-1 h-6 rounded-full ${accent}`} />
             <div className="h-5 w-24 bg-slate-200 rounded" />
             <div className="h-5 w-8 bg-slate-100 rounded-full" />
           </div>
-          <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-            <div className="bg-slate-50 border-b border-slate-100 px-5 py-3 flex gap-8">
-              {["w-24", "w-20", "w-28", "w-16", "w-12"].map((w, i) => (
-                <div key={i} className={`h-3 ${w} bg-slate-200 rounded`} />
-              ))}
-            </div>
-            {[1, 2].map((i) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="flex items-center gap-8 px-5 py-4 border-b border-slate-50"
+                className="relative overflow-hidden bg-white border border-slate-100 rounded-3xl p-5 flex items-start gap-4"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-slate-200" />
-                  <div className="h-4 w-28 bg-slate-200 rounded" />
+                <Shimmer />
+                <div className="w-12 h-12 rounded-2xl bg-slate-200 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="h-4 w-32 bg-slate-200 rounded mb-2" />
+                  <div className="h-3 w-40 bg-slate-100 rounded mb-3" />
+                  <div className="flex gap-2">
+                    <div className="h-5 w-16 bg-slate-100 rounded-full" />
+                    <div className="h-5 w-20 bg-slate-100 rounded-full" />
+                  </div>
                 </div>
-                <div className="h-4 w-20 bg-slate-100 rounded" />
-                <div className="h-4 w-36 bg-slate-100 rounded" />
-                <div className="h-6 w-20 bg-slate-100 rounded-full" />
               </div>
             ))}
           </div>
@@ -375,7 +1175,6 @@ function EmployeesSkeleton() {
     </div>
   );
 }
-
 export default function Employees() {
   const { data: users = [], isLoading: usersLoading } = useUsers();
   const { data: cities = [] } = useCities();
@@ -392,6 +1191,7 @@ export default function Employees() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -455,6 +1255,7 @@ export default function Employees() {
     e.preventDefault();
     if (!form.fullName.trim()) return;
     setFormError("");
+    setIsSubmitting(true);
     try {
       if (editingUser) {
         const { password, ...rest } = form;
@@ -463,7 +1264,11 @@ export default function Employees() {
       } else {
         await createUser.mutateAsync(form);
       }
-      setIsModalOpen(false);
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        setIsModalOpen(false);
+      }, 700);
     } catch (err: any) {
       const messages = err?.response?.data?.message;
       setFormError(
@@ -471,6 +1276,8 @@ export default function Employees() {
           ? messages.join(", ")
           : messages || "Помилка збереження",
       );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -517,514 +1324,219 @@ export default function Employees() {
   if (isLoading) return <EmployeesSkeleton />;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: "easeOut" }}
-      className="p-4 md:p-8 h-full"
-    >
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-        >
-          <h1 className="text-2xl font-bold text-slate-800">
-            Акаунти та Проєкти{" "}
-            {selectedCity.id && (
-              <span className="ml-2 text-base font-normal text-blue-500">
-                · {selectedCity.name}
-              </span>
-            )}
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Керування доступами, працівниками та видами подій
-          </p>
-        </motion.div>
-        {isSuperAdmin && (
-          <motion.button
+    <MotionConfig reducedMotion="user">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: "easeOut" }}
+        className="p-4 md:p-8 h-full"
+      >
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
+          <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => handleOpenModal()}
-            className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
+            transition={{ duration: 0.4, ease: "easeOut" }}
           >
-            + Створити користувача
-          </motion.button>
-        )}
-      </div>
+            <h1 className="text-2xl font-bold text-slate-800">
+              Акаунти та Проєкти{" "}
+              {selectedCity.id && (
+                <span className="ml-2 text-base font-normal text-blue-500">
+                  · {selectedCity.name}
+                </span>
+              )}
+            </h1>
+            <p className="text-sm text-slate-400 mt-1">
+              Керування доступами, працівниками та видами подій
+            </p>
+          </motion.div>
+          {isSuperAdmin && (
+            <motion.button
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => handleOpenModal()}
+              className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
+            >
+              + Створити користувача
+            </motion.button>
+          )}
+        </div>
 
-      <div className="space-y-8">
-        {grouped.map(({ role, label, items }, gi) => (
-          <motion.div
-            key={role}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: gi * 0.06 }}
-          >
-            <div className={`flex items-center gap-3 mb-4`}>
-              <div
-                className={`w-1 h-6 rounded-full ${ROLE_HEADER_COLORS[role]}`}
-              ></div>
-              <h2 className="text-lg font-bold text-slate-700">{label}</h2>
-              <motion.span
-                key={items.length}
-                initial={{ scale: 0.7, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.2 }}
-                className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_COLORS[role]}`}
-              >
-                {items.length}
-              </motion.span>
-            </div>
-            {items.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.97 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.25 }}
-                className="bg-white rounded-xl border border-slate-100 p-6 text-center text-slate-400 text-sm"
-              >
-                Немає {label.toLowerCase()}ів
-              </motion.div>
-            ) : (
-              <motion.div
-                whileHover={{
-                  y: -2,
-                  boxShadow: "0 8px 24px -4px rgba(0,0,0,0.08)",
-                }}
-                transition={{ duration: 0.2 }}
-                className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
-              >
-                <div className="sm:hidden divide-y divide-slate-50">
+        <div className="space-y-8">
+          {grouped.map(({ role, label, items }, gi) => (
+            <motion.div
+              key={role}
+              variants={sectionVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              <div className={`flex items-center gap-3 mb-4`}>
+                <div
+                  className={`w-1 h-6 rounded-full ${ROLE_HEADER_COLORS[role]}`}
+                ></div>
+                <h2 className="text-lg font-bold text-slate-700">{label}</h2>
+                <motion.span
+                  key={items.length}
+                  initial={{ scale: 0.7, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                  className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_COLORS[role]}`}
+                >
+                  {items.length}
+                </motion.span>
+              </div>
+              {items.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.97 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.25 }}
+                  className="bg-white rounded-2xl border border-dashed border-slate-200 p-8 text-center"
+                >
+                  <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 text-lg">
+                    👤
+                  </div>
+                  <p className="text-slate-400 text-sm mb-3">
+                    Немає {label.toLowerCase()}ів
+                  </p>
+                  {isSuperAdmin && (
+                    <button
+                      onClick={() => handleOpenModal()}
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                    >
+                      + Додати {label.toLowerCase()}а
+                    </button>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  variants={sectionVariants}
+                  className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"
+                >
                   <AnimatePresence initial={false}>
-                    {items.map((u, ri) => (
-                      <motion.div
+                    {items.map((u) => (
+                      <EmployeeCard
                         key={u.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2, delay: ri * 0.04 }}
-                        className="p-4 flex flex-col gap-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
-                            >
-                              {u.name.charAt(0)}
-                            </div>
-                            <span className="font-medium text-slate-800">
-                              {u.name}
-                            </span>
-                          </div>
-                          {isSuperAdmin && (
-                            <div className="flex items-center gap-1 shrink-0">
-                              <motion.button
-                                whileTap={{ scale: 0.93 }}
-                                onClick={() => handleOpenModal(u)}
-                                className="text-slate-400 hover:text-blue-500 p-2 hover:bg-blue-50 rounded-lg"
-                              >
-                                ✏️
-                              </motion.button>
-                              <motion.button
-                                whileTap={{ scale: 0.93 }}
-                                onClick={() => handleDelete(u.id, u.name)}
-                                className="text-slate-400 hover:text-red-500 p-2 hover:bg-red-50 rounded-lg"
-                              >
-                                🗑
-                              </motion.button>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 pl-11">
-                          <PhoneLink phone={u.phone} />
-                          <span>{u.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2 pl-11">
-                          <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
-                            📍 {u.city?.name || "Всі міста"}
-                          </span>
-                          {u.car && (
-                            <span className="text-xs text-emerald-600 font-medium">
-                              🚗 {u.car}
-                            </span>
-                          )}
-                        </div>
-                      </motion.div>
+                        user={u}
+                        role={role}
+                        isSuperAdmin={isSuperAdmin}
+                        onEdit={handleOpenModal}
+                        onDelete={handleDelete}
+                      />
                     ))}
                   </AnimatePresence>
-                </div>
-                <table className="w-full text-left hidden sm:table">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      <th className="px-5 py-3">ПІБ</th>
-                      <th className="px-5 py-3">Телефон</th>
-                      <th className="px-5 py-3">Пошта / Логін</th>
-                      <th className="px-5 py-3">Місто</th>
-                      <th className="px-5 py-3 text-center">Дії</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <AnimatePresence initial={false}>
-                      {items.map((u, ri) => (
-                        <motion.tr
-                          key={u.id}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.2, delay: ri * 0.04 }}
-                          className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
-                        >
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-3">
-                              <motion.div
-                                initial={{ scale: 0.8, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                transition={{ duration: 0.2, delay: 0.05 }}
-                                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${ROLE_HEADER_COLORS[role]}`}
-                              >
-                                {u.name.charAt(0)}
-                              </motion.div>
-                              <span className="font-medium text-slate-800">
-                                {u.name}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-5 py-4 text-slate-600 text-sm">
-                            <PhoneLink phone={u.phone} />
-                            {u.car && (
-                              <p className="text-xs text-emerald-600 font-medium mt-1">
-                                🚗 {u.car}
-                              </p>
-                            )}
-                          </td>
-                          <td className="px-5 py-4 text-slate-600 text-sm font-medium">
-                            {u.email}
-                          </td>
-                          <td className="px-5 py-4">
-                            <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">
-                              📍 {u.city?.name || "Всі міста"}
-                            </span>
-                          </td>
-                          <td className="px-5 py-4 text-center">
-                            {isSuperAdmin && (
-                              <>
-                                <motion.button
-                                  whileTap={{ scale: 0.93 }}
-                                  onClick={() => handleOpenModal(u)}
-                                  className="text-slate-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 rounded-lg mr-2 transition-colors"
-                                >
-                                  ✏️
-                                </motion.button>
-                                <motion.button
-                                  whileTap={{ scale: 0.93 }}
-                                  onClick={() => handleDelete(u.id, u.name)}
-                                  className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
-                                >
-                                  🗑
-                                </motion.button>
-                              </>
-                            )}
-                          </td>
-                        </motion.tr>
-                      ))}
-                    </AnimatePresence>
-                  </tbody>
-                </table>
-              </motion.div>
-            )}
-          </motion.div>
-        ))}
-      </div>
-
-      {/* --- СЕКЦІЯ ПРОЄКТІВ (ВИДІВ ПОДІЙ) --- */}
-      <div className="mt-16 border-t border-slate-200 pt-10">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-800">
-              Види подій (Проєкти)
-            </h2>
-            <p className="text-sm text-slate-400 mt-1">
-              Ці проєкти відображатимуться у випадаючому списку при створенні
-              події
-            </p>
-          </div>
-          {isSuperAdmin && (
-            <button
-              onClick={() => handleOpenProjectModal()}
-              className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 transition-colors w-full sm:w-auto"
-            >
-              + Створити вид події
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((p, pi) => (
-            <motion.div
-              key={p.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25, delay: pi * 0.05 }}
-              whileHover={{
-                y: -3,
-                boxShadow: "0 8px 24px -4px rgba(0,0,0,0.10)",
-              }}
-              className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default"
-            >
-              <div className="flex items-center gap-3">
-                <motion.div
-                  whileHover={{ scale: 1.3 }}
-                  transition={{ duration: 0.15 }}
-                  className={`w-4 h-4 rounded-full ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm`}
-                />
-                <div>
-                  <span className="font-bold text-slate-800">{p.name}</span>
-                  {!!(p as any).pricePerChild && (
-                    <p className="text-xs text-slate-400">
-                      {(p as any).pricePerChild} грн / дитина
-                    </p>
-                  )}
-                </div>
-              </div>
-              {isSuperAdmin && (
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => handleOpenProjectModal(p)}
-                    className="text-slate-300 hover:text-blue-500 p-2 -mr-1"
-                    title="Редагувати"
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    onClick={() => handleDeleteProject(p.id, p.name)}
-                    className="text-slate-300 hover:text-red-500 p-2 -mr-2"
-                    title="Видалити"
-                  >
-                    🗑
-                  </button>
-                </div>
-              )}
+                </motion.div>
+              )}{" "}
             </motion.div>
           ))}
-          {projects.length === 0 && (
-            <div className="col-span-full text-center py-10 text-slate-400">
-              Ви ще не додали жодного виду події
-            </div>
-          )}
         </div>
-      </div>
 
-      {/* Модалки Користувача і Проєктів */}
-      {isProjectModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="text-xl font-bold text-slate-800">
-                {editingProject ? "Редагувати вид події" : "Новий вид події"}
-              </h3>
+        {/* --- СЕКЦІЯ ПРОЄКТІВ (ВИДІВ ПОДІЙ) --- */}
+        <div className="mt-16 border-t border-slate-200 pt-10">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800">
+                Види подій (Проєкти)
+              </h2>
+              <p className="text-sm text-slate-400 mt-1">
+                Ці проєкти відображатимуться у випадаючому списку при створенні
+                події
+              </p>
+            </div>
+            {isSuperAdmin && (
               <button
-                onClick={() => {
-                  setIsProjectModalOpen(false);
-                  setEditingProject(null);
+                onClick={() => handleOpenProjectModal()}
+                className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 transition-colors w-full sm:w-auto"
+              >
+                + Створити вид події
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {projects.map((p, pi) => (
+              <motion.div
+                key={p.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: pi * 0.05 }}
+                whileHover={{
+                  y: -3,
+                  boxShadow: "0 8px 24px -4px rgba(0,0,0,0.10)",
                 }}
-                className="text-slate-400 text-xl leading-none p-2 -mr-2"
+                className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default hover:border-slate-200 transition-colors"
               >
-                ✕
-              </button>
-            </div>
-            <form onSubmit={handleCreateProject} className="p-6">
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Назва
-              </label>
-              <input
-                type="text"
-                value={projectForm.name}
-                onChange={(e) =>
-                  setProjectForm({ ...projectForm, name: e.target.value })
-                }
-                className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none mb-6"
-                required
-                placeholder="Наприклад: Шоу мильних бульбашок"
-              />
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Ціна за дитину, грн
-              </label>
-              <input
-                type="number"
-                min={0}
-                value={projectForm.pricePerChild}
-                onChange={(e) =>
-                  setProjectForm({
-                    ...projectForm,
-                    pricePerChild: e.target.value,
-                  })
-                }
-                placeholder="Наприклад: 150"
-                className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none mb-6"
-              />
-              <label className="block text-sm font-medium text-slate-700 mb-3">
-                Колір для календаря
-              </label>
-              <div className="flex gap-4 mb-8">
-                {Object.keys(PROJECT_COLORS).map((c) => (
-                  <button
-                    type="button"
-                    key={c}
-                    onClick={() => setProjectForm({ ...projectForm, color: c })}
-                    className={`w-8 h-8 rounded-full ${PROJECT_COLORS[c]} transition-all ${projectForm.color === c ? "ring-4 ring-offset-2 ring-blue-200 scale-110" : "hover:scale-110"}`}
-                  />
-                ))}
-              </div>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsProjectModalOpen(false)}
-                  className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
-                >
-                  Скасувати
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-medium"
-                >
-                  Зберегти
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Ваша стара модалка Користувача */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          {/* Ваш існуючий код модалки працівника... Для стислості я зберіг базові поля */}
-          <div className="bg-white rounded-2xl shadow-xl w-full sm:max-w-lg overflow-hidden flex flex-col">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <h3 className="text-xl font-bold">
-                {editingUser ? "Редагувати" : "Новий користувач"}
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 text-xl p-2 -mr-2"
-              >
-                ✕
-              </button>
-            </div>
-            <form
-              onSubmit={handleSubmit}
-              className="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh]"
-            >
-              {formError && (
-                <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">
-                  {formError}
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    whileHover={{ scale: 1.15 }}
+                    transition={{ duration: 0.15 }}
+                    className={`w-10 h-10 rounded-2xl flex items-center justify-center ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm ring-4 ring-offset-1 ring-slate-50`}
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full bg-white/80" />
+                  </motion.div>
+                  <div>
+                    <span className="font-bold text-slate-800">{p.name}</span>
+                    {!!(p as any).pricePerChild && (
+                      <p className="text-xs text-slate-400">
+                        {(p as any).pricePerChild} грн / дитина
+                      </p>
+                    )}
+                  </div>
                 </div>
-              )}
-              <input
-                type="text"
-                value={form.fullName}
-                onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                required
-                placeholder="ПІБ"
-                className="w-full p-2.5 border rounded-lg"
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  required
-                  placeholder="Пошта"
-                  className="w-full p-2.5 border rounded-lg"
-                />
-                <input
-                  type="password"
-                  value={form.password}
-                  onChange={(e) =>
-                    setForm({ ...form, password: e.target.value })
-                  }
-                  required={!editingUser}
-                  placeholder="Пароль (мін. 8 симв., літера+цифра)"
-                  minLength={8}
-                  className="w-full p-2.5 border rounded-lg"
-                />
+                {isSuperAdmin && (
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleOpenProjectModal(p)}
+                      className="text-slate-300 hover:text-blue-500 p-2 -mr-1"
+                      title="Редагувати"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={() => handleDeleteProject(p.id, p.name)}
+                      className="text-slate-300 hover:text-red-500 p-2 -mr-2"
+                      title="Видалити"
+                    >
+                      🗑
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            ))}
+            {projects.length === 0 && (
+              <div className="col-span-full text-center py-10 text-slate-400">
+                Ви ще не додали жодного виду події
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="Телефон"
-                  className="w-full p-2.5 border rounded-lg"
-                />
-                <input
-                  type="text"
-                  value={form.telegramId}
-                  onChange={(e) =>
-                    setForm({ ...form, telegramId: e.target.value })
-                  }
-                  placeholder="Telegram ID або @username"
-                  className="w-full p-2.5 border rounded-lg"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <select
-                  value={form.role}
-                  onChange={(e) =>
-                    setForm({ ...form, role: e.target.value as Role })
-                  }
-                  className="w-full p-2.5 border rounded-lg"
-                >
-                  <option value="MANAGER">Менеджер</option>
-                  <option value="DRIVER">Водій</option>
-                  <option value="HOST">Ведучий</option>
-                  <option value="SUPERADMIN">Суперадмін</option>
-                </select>
-                <select
-                  value={form.cityId}
-                  onChange={(e) => setForm({ ...form, cityId: e.target.value })}
-                  className="w-full p-2.5 border rounded-lg"
-                >
-                  <option value="">Всі міста</option>
-                  {cities.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {form.role === "DRIVER" && (
-                <input
-                  type="text"
-                  value={form.car || ""}
-                  onChange={(e) => setForm({ ...form, car: e.target.value })}
-                  placeholder="Автомобіль (напр. Renault Trafic)"
-                  className="w-full p-2.5 border rounded-lg"
-                />
-              )}
-              <div className="flex gap-3 mt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
-                >
-                  Скасувати
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium"
-                >
-                  Зберегти
-                </button>
-              </div>
-            </form>
+            )}
           </div>
         </div>
-      )}
-    </motion.div>
+
+        <ProjectModal
+          isOpen={isProjectModalOpen}
+          isEditing={!!editingProject}
+          form={projectForm}
+          setForm={setProjectForm}
+          onClose={() => {
+            setIsProjectModalOpen(false);
+            setEditingProject(null);
+          }}
+          onSubmit={handleCreateProject}
+        />
+
+        <UserModal
+          isOpen={isModalOpen}
+          isEditing={!!editingUser}
+          form={form}
+          setForm={setForm}
+          cities={cities}
+          formError={formError}
+          isSubmitting={isSubmitting}
+          showSuccess={showSuccess}
+          onClose={() => setIsModalOpen(false)}
+          onSubmit={handleSubmit}
+        />
+      </motion.div>
+    </MotionConfig>
   );
 }
 
@@ -1071,7 +1583,7 @@ export default function EventReport() {
       </div>
 
       <button
-        onClick={() => history.back()}
+        onClick={() => window.history.back()}
         className="mb-4 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2"
       >
         ← Назад
@@ -1150,7 +1662,7 @@ function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex justify-between">
       <span className="text-slate-400">{label}:</span>
-      <span className="font-medium text-slate-800">{value || "—"}</span>
+      <span className="font-medium text-slate-800">{value ?? "—"}</span>
     </div>
   );
 }
@@ -1423,7 +1935,7 @@ export default function Events() {
 # FILE: apps/frontend/src/pages/Finance.tsx
 
 ```
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
@@ -1533,15 +2045,16 @@ import {
   useSchoolStats,
   useDeleteSchool,
   usePrefetchSchool,
-  useCities,
   useSupportedCities,
 } from "../hooks/useApi";
+import { useCities } from "../hooks/useCities";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import VirtualSchoolList from "../components/VirtualSchoolList";
 import { SchoolCard } from "../components/schools/SchoolMobileList";
 import type { SchoolContact } from "../types";
 import { useAuth } from "../context/AuthContext";
 import { Download } from "lucide-react";
+import { PIPELINE_STAGES } from "../constants/pipelineStages";
 
 interface NewSchoolPayload {
   name: string;
@@ -1556,16 +2069,6 @@ const StatsBar = lazy(() => import("../components/schools/StatsBar"));
 const VirtualDesktopTable = lazy(
   () => import("../components/schools/VirtualDesktopTable"),
 );
-
-const PIPELINE_STAGES = [
-  { key: "BASE", name: "Новий заклад" },
-  { key: "FIRST_CONTACT", name: "Знайомство" },
-  { key: "DATE_CONFIRMED", name: "Підтвердження дати" },
-  { key: "PREPARATION", name: "Оголошення" },
-  { key: "IN_PROGRESS", name: "Підготовка" },
-  { key: "DONE", name: "Проведення заходу" },
-  { key: "REPORT", name: "Звіт" },
-];
 
 export default function Kindergartens() {
   const { selectedCity } = useSelectedCity();
@@ -2168,8 +2671,8 @@ interface LoginProps {
 }
 
 export default function Login({ onLogin }: LoginProps) {
-  const [email, setEmail] = useState("admin@crm.com");
-  const [password, setPassword] = useState("123!PASSWORD!321");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -2250,10 +2753,11 @@ export default function Login({ onLogin }: LoginProps) {
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 mb-1">
               Email
             </label>
             <input
+              id="login-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -2262,10 +2766,11 @@ export default function Login({ onLogin }: LoginProps) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 mb-1">
               Пароль
             </label>
             <input
+              id="login-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -3095,15 +3600,16 @@ import {
   useSchoolStats,
   useDeleteSchool,
   usePrefetchSchool,
-  useCities,
   useSupportedCities,
 } from "../hooks/useApi";
+import { useCities } from "../hooks/useCities";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import VirtualSchoolList from "../components/VirtualSchoolList";
 import { SchoolCard } from "../components/schools/SchoolMobileList";
 import type { SchoolContact } from "../types";
 import { useAuth } from "../context/AuthContext";
 import { Download } from "lucide-react";
+import { PIPELINE_STAGES } from "../constants/pipelineStages";
 interface NewSchoolPayload {
   name: string;
   cityId: string;
@@ -3117,16 +3623,6 @@ const StatsBar = lazy(() => import("../components/schools/StatsBar"));
 const VirtualDesktopTable = lazy(
   () => import("../components/schools/VirtualDesktopTable"),
 );
-export const PIPELINE_STAGES = [
-  { key: "BASE", name: "Новий заклад" },
-  { key: "FIRST_CONTACT", name: "Знайомство" },
-  { key: "DATE_CONFIRMED", name: "Підтвердження дати" },
-  { key: "PREPARATION", name: "Оголошення" },
-  { key: "IN_PROGRESS", name: "Підготовка" },
-  { key: "DONE", name: "Проведення заходу" },
-  { key: "REPORT", name: "Звіт" },
-];
-
 interface City {
   id: string;
   name: string;
@@ -3988,7 +4484,7 @@ describe("DayOffModal", () => {
     expect(onToggle).toHaveBeenCalledWith("u-host", "d-host-1");
   });
 
-  it("поточна поведінка: existing визначається лише по userId (date не перевіряється)", () => {
+  it("не враховує dayOff з іншої дати (перевіряє і userId, і date)", () => {
     const mismatchDate: DayOff = {
       ...dayOff,
       id: "d-date-mismatch",
@@ -4006,7 +4502,7 @@ describe("DayOffModal", () => {
       />,
     );
 
-    expect(screen.getByText("Вихідний ✕")).toBeInTheDocument();
+    expect(screen.queryByText("Вихідний ✕")).not.toBeInTheDocument();
   });
 });
 
@@ -4168,16 +4664,14 @@ describe("EventReport", () => {
     expect(screen.queryByText(/Коментар:/)).not.toBeInTheDocument();
   });
 
-  it("ЕDGE-CASE (задокументована поведінка): childrenPlanned=0 показується як '—', а не '0'", () => {
-    // Row робить `value || "—"`, а 0 — falsy. Це може бути небажаним для UX
-    // (0 запланованих дітей — валідне значення, але виглядає як «немає даних»).
+  it("childrenPlanned=0 показує '0' (виправлено: використовуємо ?? замість ||)", () => {
     mockUseEventFull.mockReturnValue({
       data: { ...baseEvent, childrenPlanned: 0 },
       isLoading: false,
       isError: false,
     });
     renderPage();
-    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+    expect(screen.getByText("0")).toBeInTheDocument();
   });
 });
 
@@ -4463,6 +4957,8 @@ describe("Login", () => {
     );
 
     renderLogin();
+    await userEvent.type(screen.getByLabelText(/email/i), "test@test.com");
+    await userEvent.type(screen.getByLabelText(/пароль/i), "wrong");
     
     await userEvent.click(screen.getByRole("button", { name: /увійти/i }));
     
@@ -4481,7 +4977,9 @@ describe("Login", () => {
 
     const onLogin = vi.fn();
     renderLogin(onLogin);
-
+    await userEvent.type(screen.getByLabelText(/email/i), mockUser.email);
+    await userEvent.type(screen.getByLabelText(/пароль/i), "123!PASSWORD!321");
+    
     await userEvent.click(screen.getByRole("button", { name: /увійти/i }));
 
     await waitFor(() => {
@@ -5254,6 +5752,55 @@ describe("API auto-refresh interceptor", () => {
 
     await expect(instance.post("/auth/login", {})).rejects.toThrow();
   });
+
+  it("/auth/me не тригерить refresh — захист від безкінечного редиректу", async () => {
+    let refreshCalled = false;
+    const dispatchSpy = vi.fn();
+    window.addEventListener("auth:expired", dispatchSpy);
+
+    const instance = axios.create({ baseURL: "/api", withCredentials: true });
+
+    instance.interceptors.response.use(
+      (res) => res,
+      async (error: any) => {
+        const original = error.config;
+        const isAuth =
+          original?.url?.includes("/auth/login") ||
+          original?.url?.includes("/auth/refresh") ||
+          original?.url?.includes("/auth/me");
+
+        if (
+          error.response?.status === 401 &&
+          original &&
+          !original._retry &&
+          !isAuth
+        ) {
+          original._retry = true;
+          try {
+            const rp = instance.post("/auth/refresh").then(() => undefined);
+            await rp;
+            return instance(original);
+          } catch {
+            window.dispatchEvent(new Event("auth:expired"));
+            return Promise.reject(error);
+          }
+        }
+        return Promise.reject(error);
+      },
+    );
+
+    instance.defaults.adapter = (config: any) => {
+      if (config.url === "/auth/refresh") {
+        refreshCalled = true;
+        return rejectingAdapter(401, null)(config);
+      }
+      return rejectingAdapter(401, null)(config);
+    };
+
+    await expect(instance.get("/auth/me")).rejects.toThrow();
+    expect(refreshCalled).toBe(false);
+    expect(dispatchSpy).not.toHaveBeenCalled();
+  });
 });
 
 ```
@@ -5305,7 +5852,8 @@ describe("formatCurrency", () => {
 
 ```
 import { renderHook, waitFor } from "@testing-library/react";
-import { useCities, useAddCity } from "../../../hooks/useApi";
+import { useCities } from "../../../hooks/useCities";
+import { useAddCity } from "../../../hooks/useApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactNode } from "react";
 import { http, HttpResponse } from "msw";

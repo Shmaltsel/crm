@@ -26,3 +26,4 @@ eslint-errors.txt
 
 # Експортовані артефакти
 project_export/
+.aider*

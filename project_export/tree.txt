@@ -162,9 +162,8 @@ apps
 │   │   ├── health
 │   │   │   ├── health.controller.ts
 │   │   │   ├── health.module.ts
-│   │   │   ├── indicators
-│   │   │   │   └── redis.health.ts
-│   │   │   └── redis.health.ts
+│   │   │   └── indicators
+│   │   │       └── redis.health.ts
 │   │   ├── instrument.ts
 │   │   ├── issues
 │   │   │   ├── dto
@@ -255,6 +254,8 @@ apps
     │   └── robots.txt
     ├── README.md
     ├── src
+    │   ├── animations
+    │   │   └── employees.ts
     │   ├── App.tsx
     │   ├── assets
     │   │   ├── hero.png
@@ -278,6 +279,10 @@ apps
     │   │   │   ├── StaleSchools.tsx
     │   │   │   ├── TodayEvents.tsx
     │   │   │   └── UpcomingEvents.tsx
+    │   │   ├── employees
+    │   │   │   ├── EmployeeCard.tsx
+    │   │   │   ├── ProjectModal.tsx
+    │   │   │   └── UserModal.tsx
     │   │   ├── ErrorBoundary.tsx
     │   │   ├── finance
     │   │   │   ├── FinanceCharts.tsx
@@ -285,7 +290,6 @@ apps
     │   │   ├── IssueCarousel.tsx
     │   │   ├── Layout.tsx
     │   │   ├── modals
-    │   │   │   └── EventSchema.ts
     │   │   ├── PhoneLink.tsx
     │   │   ├── ProtectedRoute.tsx
     │   │   ├── school-profile
@@ -325,9 +329,25 @@ apps
     │   │   └── VirtualSchoolList.tsx
     │   ├── config
     │   │   └── api.ts
+    │   ├── constants
+    │   │   ├── categoryBadges.ts
+    │   │   ├── cityIcons.ts
+    │   │   └── pipelineStages.ts
     │   ├── context
     │   │   ├── AuthContext.tsx
     │   │   └── CityContext.tsx
+    │   ├── features
+    │   │   └── calendar
+    │   │       ├── components
+    │   │       ├── constants.ts
+    │   │       ├── hooks
+    │   │       │   ├── useCalendarData.ts
+    │   │       │   ├── useCalendarMonth.ts
+    │   │       │   ├── useDayOffActions.ts
+    │   │       │   └── useLongPress.ts
+    │   │       └── utils
+    │   │           ├── color.ts
+    │   │           └── date.ts
     │   ├── hooks
     │   │   ├── useApi.ts
     │   │   ├── useCalendar.ts

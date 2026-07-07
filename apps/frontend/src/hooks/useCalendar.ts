@@ -5,7 +5,8 @@ import type { Event, Project } from "../types";
 export function useCalendarEvents() {
   return useQuery<Event[]>({
     queryKey: ["calendarEvents"],
-    queryFn: () => api.get<Event[]>("/events").then((r) => r.data),
+    queryFn: () =>
+      api.get<{ data: Event[] }>("/events").then((r) => r.data.data),
     staleTime: 60 * 1000,
   });
 }
@@ -13,7 +14,8 @@ export function useCalendarEvents() {
 export function useCalendarProjects() {
   return useQuery<Project[]>({
     queryKey: ["projects"],
-    queryFn: () => api.get<Project[]>("/projects").then((r) => r.data),
+    queryFn: () =>
+      api.get<{ data: Project[] }>("/projects").then((r) => r.data.data),
     staleTime: 5 * 60 * 1000,
   });
 }

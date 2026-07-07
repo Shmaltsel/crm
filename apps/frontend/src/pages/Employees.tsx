@@ -22,6 +22,8 @@ import { EmployeesHeader } from "../components/employees/EmployeesHeader";
 import { FilterPanel } from "../components/employees/FilterPanel";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { LoadingBar } from "../components/ui/LoadingBar";
+import { useToast } from "../components/ui/Toast";
 import { sectionVariants } from "../animations/employees";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
@@ -122,6 +124,7 @@ export default function Employees() {
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
+  const toast = useToast();
   const { selectedCity: contextCity } = useSelectedCity();
   const { user: authUser } = useAuth();
   const isSuperAdmin = authUser?.role === "SUPERADMIN";
@@ -171,6 +174,7 @@ export default function Employees() {
   const [projectForm, setProjectForm] = useState({ name: "", color: "blue", pricePerChild: "" });
 
   const [formError, setFormError] = useState("");
+  const [isMutating, setIsMutating] = useState(false);
 
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
@@ -280,23 +284,29 @@ export default function Employees() {
   const handleSaveUser = useCallback(async (values: Record<string, string>) => {
     setFormError("");
     setIsSubmitting(true);
+    setIsMutating(true);
     try {
       if (editingUser) {
         const { password, ...rest } = values;
         const payload = password.trim() ? values : rest;
         await updateUser.mutateAsync({ id: editingUser.id, form: payload });
+        toast("Користувача оновлено", "success");
       } else {
         await createUser.mutateAsync(values);
+        toast("Користувача створено", "success");
       }
       setShowSuccess(true);
       setTimeout(() => { setShowSuccess(false); setIsModalOpen(false); }, 700);
     } catch (err: any) {
       const messages = err?.response?.data?.message;
-      setFormError(Array.isArray(messages) ? messages.join(", ") : messages || "Помилка збереження");
+      const errorMsg = Array.isArray(messages) ? messages.join(", ") : messages || "Помилка збереження";
+      setFormError(errorMsg);
+      toast(errorMsg, "error");
     } finally {
       setIsSubmitting(false);
+      setIsMutating(false);
     }
-  }, [editingUser, createUser, updateUser]);
+  }, [editingUser, createUser, updateUser, toast]);
 
   const handleDelete = useCallback(async () => {
     if (!confirmDelete) return;

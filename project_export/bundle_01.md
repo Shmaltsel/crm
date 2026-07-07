@@ -3332,7 +3332,7 @@ describe('CitiesService', () => {
 
 ```
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class CitiesService {
@@ -3944,7 +3944,6 @@ export const MESSAGES = {
     uk: 'Сервіс тимчасово недоступний',
     en: 'Service temporarily unavailable',
   },
-  // --- ДОДАЙ ЦІ РЯДКИ ---
   USER_ID_REQUIRED: {
     uk: 'Ідентифікатор користувача обов’язковий',
     en: 'User ID is required',
@@ -3956,6 +3955,14 @@ export const MESSAGES = {
   DAY_OFF_NOT_FOUND: {
     uk: 'Вихідний день не знайдено',
     en: 'Day off not found',
+  },
+  FORBIDDEN: {
+    uk: 'Недостатньо прав',
+    en: 'Forbidden',
+  },
+  CROSS_CITY_DAY_OFF: {
+    uk: 'Можна призначати вихідні лише співробітникам свого міста',
+    en: 'Can only manage day offs for own city staff',
   },
 } as const;
 
@@ -5037,6 +5044,8 @@ import {
 import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
 import { DaysOffService } from './days-off.service';
 import { AuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 import { CreateDayOffDto } from './dto/create-day-off.dto';
@@ -5044,7 +5053,7 @@ import { CreateDayOffDto } from './dto/create-day-off.dto';
 @ApiTags('DaysOff')
 @ApiCookieAuth('access_token')
 @Controller('days-off')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
 export class DaysOffController {
   constructor(private readonly daysOffService: DaysOffService) {}
 
@@ -5094,7 +5103,7 @@ export class DaysOffModule {}
 
 ```
 import { Test, TestingModule } from '@nestjs/testing';
-import { ForbiddenException, HttpStatus } from '@nestjs/common';
+import { HttpStatus } from '@nestjs/common';
 import { DaysOffService } from './days-off.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
@@ -5291,7 +5300,7 @@ describe('DaysOffService', () => {
 
       await expect(
         service.create({ date: '2026-07-10', userId: 'host-2' }, managerUser),
-      ).rejects.toBeInstanceOf(ForbiddenException);
+      ).rejects.toBeInstanceOf(AppException);
     });
 
     it('MANAGER може призначити staff свого міста', async () => {
@@ -5380,12 +5389,12 @@ describe('DaysOffService', () => {
       });
     });
 
-    it('для role поза whitelist -> ForbiddenException', async () => {
+    it('для role поза whitelist -> AppException', async () => {
       const outsider = { ...hostUser, role: 'ACCOUNTANT' as any };
 
       await expect(
         service.create({ date: '2026-07-10', userId: 'host-2' }, outsider),
-      ).rejects.toBeInstanceOf(ForbiddenException);
+      ).rejects.toBeInstanceOf(AppException);
     });
 
     it('якщо existing відсутній -> викликає notifyManager(action=created)', async () => {
@@ -5553,12 +5562,12 @@ describe('DaysOffService', () => {
       });
 
       await expect(service.remove('d12', managerUser)).rejects.toBeInstanceOf(
-        ForbiddenException,
+        AppException,
       );
       expect(mockPrisma.dayOff.delete).not.toHaveBeenCalled();
     });
 
-    it('не owner і не manager/admin -> ForbiddenException', async () => {
+    it('не owner і не manager/admin -> AppException', async () => {
       mockPrisma.dayOff.findUnique.mockResolvedValueOnce({
         id: 'd13',
         userId: 'host-2',
@@ -5567,7 +5576,7 @@ describe('DaysOffService', () => {
       });
 
       await expect(service.remove('d13', driverUser)).rejects.toBeInstanceOf(
-        ForbiddenException,
+        AppException,
       );
     });
   });
@@ -5692,7 +5701,7 @@ describe('DaysOffService', () => {
 # FILE: apps/backend/src/days-off/days-off.service.ts
 
 ```
-import { Injectable, ForbiddenException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { AppException } from '../common/exceptions/app.exception';
@@ -5750,13 +5759,13 @@ export class DaysOffService {
         currentUser.role === 'MANAGER' &&
         target.cityId !== currentUser.cityId
       ) {
-        throw new ForbiddenException(
-          'Можна призначати вихідні лише співробітникам свого міста',
+        throw new AppException(
+          'CROSS_CITY_DAY_OFF', HttpStatus.FORBIDDEN,
         );
       }
       targetUserId = target.id;
     } else {
-      throw new ForbiddenException('Недостатньо прав');
+      throw new AppException('FORBIDDEN', HttpStatus.FORBIDDEN);
     }
 
     // Перевіряємо, чи вже існує вихідний, щоб не слати спам, якщо він просто оновлюється
@@ -5807,13 +5816,13 @@ export class DaysOffService {
     const isManagerOrAdmin = MANAGER_ROLES.includes(currentUser.role);
 
     if (!isOwner && !isManagerOrAdmin) {
-      throw new ForbiddenException('Недостатньо прав');
+      throw new AppException('FORBIDDEN', HttpStatus.FORBIDDEN);
     }
 
     if (currentUser.role === 'MANAGER' && !isOwner) {
       if (dayOff.user.cityId !== currentUser.cityId) {
-        throw new ForbiddenException(
-          'Можна скасовувати вихідні лише співробітникам свого міста',
+        throw new AppException(
+          'CROSS_CITY_DAY_OFF', HttpStatus.FORBIDDEN,
         );
       }
     }
@@ -6028,23 +6037,9 @@ export class CreateEventDto {
 # FILE: apps/backend/src/events/dto/event-query.dto.ts
 
 ```
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { PageOptionsDto } from '../../common/dto/page-options.dto';
 
-export class EventQueryDto {
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @IsOptional()
-  page?: number;
-
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  @IsOptional()
-  take?: number;
-}
+export class EventQueryDto extends PageOptionsDto {}
 
 ```
 
@@ -6120,10 +6115,10 @@ describe('SubmitReportDto', () => {
     expect(errors.some((e) => e.property === 'remainderSum')).toBe(false);
   });
 
-  it('відхиляє rating більше 10', async () => {
+  it('відхиляє rating більше 5', async () => {
     const dto = plainToInstance(SubmitReportDto, {
       ...validPayload,
-      rating: 11,
+      rating: 6,
     });
     const errors = await validate(dto);
     expect(errors.some((e) => e.property === 'rating')).toBe(true);
@@ -6310,11 +6305,14 @@ export class UpdatePreparationDto {
 # FILE: apps/backend/src/events/dto/update-status.dto.ts
 
 ```
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsIn } from 'class-validator';
+
+const EVENT_STATUSES = ['BASE', 'FIRST_CONTACT', 'INTERESTED', 'PRE_APPROVAL', 'DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS', 'DONE', 'REPORT', 'RE_SALE'] as const;
 
 export class UpdateStatusDto {
   @IsString()
   @IsNotEmpty()
+  @IsIn(EVENT_STATUSES)
   status: string;
 
   @IsString()
@@ -7145,9 +7143,15 @@ export class EventsSchedulerService implements OnModuleInit {
       await this.checkEventsForTomorrow();
     };
 
-    check();
+    check().catch((err) =>
+      this.logger.error('Помилка першої перевірки подій:', err),
+    );
 
-    setInterval(check, 24 * 60 * 60 * 1000);
+    setInterval(() => {
+      check().catch((err) =>
+        this.logger.error('Помилка перевірки подій:', err),
+      );
+    }, 24 * 60 * 60 * 1000);
   }
 
   async checkEventsForTomorrow() {
@@ -8121,7 +8125,7 @@ describe('EventsService', () => {
 
       const result = await service.findAllForUser(
         { sub: 'mgr-1', name: 'М', role: 'MANAGER' },
-        { page: 2, take: 2 },
+        { page: 2, take: 2 } as any,
       );
 
       expect(result).toHaveProperty('data');
@@ -9755,45 +9759,6 @@ export class RedisHealthIndicator extends HealthIndicator {
 
 ```
 
-# FILE: apps/backend/src/health/redis.health.ts
-
-```
-import { Injectable } from '@nestjs/common';
-import {
-  HealthIndicator,
-  HealthIndicatorResult,
-  HealthCheckError,
-} from '@nestjs/terminus';
-import Redis from 'ioredis';
-
-@Injectable()
-export class RedisHealthIndicator extends HealthIndicator {
-  private client = new Redis(
-    process.env.REDIS_URL ?? 'redis://localhost:6379',
-    {
-      lazyConnect: true,
-      maxRetriesPerRequest: 1,
-      connectTimeout: 3000,
-      retryStrategy: () => null,
-    },
-  );
-
-  async isHealthy(key: string): Promise<HealthIndicatorResult> {
-    try {
-      if (this.client.status !== 'ready') await this.client.connect();
-      await this.client.ping();
-      return this.getStatus(key, true);
-    } catch (e) {
-      throw new HealthCheckError(
-        'Redis check failed',
-        this.getStatus(key, false, { message: e.message }),
-      );
-    }
-  }
-}
-
-```
-
 # FILE: apps/backend/src/instrument.ts
 
 ```
@@ -9868,13 +9833,16 @@ export class CreateIssueDto {
 # FILE: apps/backend/src/issues/dto/update-issue-status.dto.ts
 
 ```
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsIn } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
+const ISSUE_STATUSES = ['Планується', 'Виконується', 'Виконано'] as const;
+
 export class UpdateIssueStatusDto {
-  @ApiProperty({ example: 'Вирішено' })
+  @ApiProperty({ example: 'Виконано' })
   @IsString()
   @IsNotEmpty()
+  @IsIn(ISSUE_STATUSES)
   status: string;
 }
 
@@ -9899,6 +9867,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { CreateIssueDto } from './dto/create-issue.dto';
 import { UpdateIssueStatusDto } from './dto/update-issue-status.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @ApiTags('Issues')
 @ApiCookieAuth('access_token')
@@ -9908,18 +9877,21 @@ export class IssuesController {
   constructor(private readonly issuesService: IssuesService) {}
 
   @ApiOperation({ summary: 'Створити проблему по заходу' })
+  @Roles('SUPERADMIN', 'MANAGER')
   @Post()
   create(@Body() body: CreateIssueDto) {
     return this.issuesService.create(body);
   }
 
   @ApiOperation({ summary: 'Список проблем по місту' })
+  @Roles('SUPERADMIN', 'MANAGER')
   @Get()
   findByCityId(@Query('cityId') cityId: string) {
     return this.issuesService.findByCityId(cityId);
   }
 
   @ApiOperation({ summary: 'Оновити статус проблеми' })
+  @Roles('SUPERADMIN', 'MANAGER')
   @Patch(':id/status')
   updateStatus(@Param('id') id: string, @Body() body: UpdateIssueStatusDto) {
     return this.issuesService.updateStatus(id, body.status);
