@@ -1,45 +1,26 @@
-import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { useState, useMemo, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useCallback } from "react";
 import DayOffModal from "../components/calendar/DayOffModal";
-import type {
-  Event as CalendarEvent,
-  Project,
-  City,
-  User,
-  DayOff,
-} from "../types";
-import {
-  STAFF_ROLES,
-  MANAGER_ROLES,
-  PROJECT_HEX,
-  ROLE_ICON_MAP,
-  MONTH_NAMES,
-} from "../features/calendar/constants";
-import { toISODate, isPastDay } from "../features/calendar/utils/date";
-import { getDayColor } from "../features/calendar/utils/color";
+import { STAFF_ROLES, MANAGER_ROLES } from "../features/calendar/constants";
+import { toISODate } from "../features/calendar/utils/date";
 import { useCalendarMonth } from "../features/calendar/hooks/useCalendarMonth";
 import { useCalendarData } from "../features/calendar/hooks/useCalendarData";
 import { useDayOffActions } from "../features/calendar/hooks/useDayOffActions";
 import { useLongPress } from "../features/calendar/hooks/useLongPress";
+import CalendarSkeleton from "../features/calendar/components/CalendarSkeleton";
+import CalendarHeader from "../features/calendar/components/CalendarHeader";
+import DesktopCalendarGrid from "../features/calendar/components/DesktopCalendarGrid";
+import MobileCalendarGrid from "../features/calendar/components/MobileCalendarGrid";
+import MobileDayDetailsPanel from "../features/calendar/components/MobileDayDetailsPanel";
 
 export default function CalendarView() {
   const {
-    days,
-    year,
-    month,
-    monthFrom,
-    monthTo,
-    selectedMobileDate,
-    setSelectedMobileDate,
-    nextMonth,
-    prevMonth,
-    today,
+    days, year, month, monthFrom, monthTo,
+    selectedMobileDate, setSelectedMobileDate,
+    nextMonth, prevMonth,
   } = useCalendarMonth();
 
-  const { selectedCity } = useSelectedCity();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -52,45 +33,24 @@ export default function CalendarView() {
   );
 
   const {
-    eventsLoading,
-    projects,
-    cities,
-    allUsers,
-    eventsByDate,
-    projectColorMap,
-    projectHexMap,
+    eventsLoading, projects, cities, allUsers,
+    eventsByDate, projectColorMap, projectHexMap,
   } = useCalendarData(filterCityId);
 
   const dayOffCityId = isManagerOrAdmin
-    ? filterCityId !== "ALL"
-      ? filterCityId
-      : undefined
+    ? filterCityId !== "ALL" ? filterCityId : undefined
     : undefined;
 
   const {
-    dayOffsByDate,
-    staffForModal,
-    dayOffModalDate,
-    setDayOffModalDate,
-    handleDayOffClick,
-    handleToggleStaffDayOff,
-    handleLongPressDayOff,
+    dayOffsByDate, staffForModal, dayOffModalDate,
+    setDayOffModalDate, handleDayOffClick,
+    handleToggleStaffDayOff, handleLongPressDayOff,
   } = useDayOffActions(
-    monthFrom,
-    monthTo,
-    dayOffCityId,
-    isStaff,
-    isManagerOrAdmin,
-    user,
-    allUsers,
-    filterCityId,
-    userRole,
-    user?.cityId,
+    monthFrom, monthTo, dayOffCityId, isStaff, isManagerOrAdmin,
+    user, allUsers, filterCityId, userRole, user?.cityId,
   );
 
-  const { startLongPress, cancelLongPress, wasLongPress } = useLongPress(
-    handleLongPressDayOff,
-  );
+  const { startLongPress, cancelLongPress, wasLongPress } = useLongPress(handleLongPressDayOff);
 
   const handleMobileDayTap = useCallback(
     (day: Date) => {
@@ -100,531 +60,67 @@ export default function CalendarView() {
     [setSelectedMobileDate, wasLongPress],
   );
 
-  const selectedDayEvents =
-    eventsByDate.get(toISODate(selectedMobileDate)) ?? [];
+  const selectedDayEvents = eventsByDate.get(toISODate(selectedMobileDate)) ?? [];
 
-  if (eventsLoading)
-    return (
-      <div className="p-4 md:p-8 bg-slate-50 min-h-screen pb-24 animate-pulse">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
-          <div>
-            <div className="h-8 w-52 bg-slate-200 rounded-xl mb-2" />
-            <div className="h-4 w-72 bg-slate-200 rounded-lg mb-4" />
-            <div className="flex gap-3 mt-4">
-              {[80, 100, 90].map((w, i) => (
-                <div
-                  key={i}
-                  className="h-4 bg-slate-200 rounded-full"
-                  style={{ width: w }}
-                />
-              ))}
-            </div>
-          </div>
-          <div className="h-10 w-48 bg-slate-200 rounded-xl" />
-        </div>
-
-        <div className="bg-white rounded-[24px] border border-slate-100 overflow-hidden">
-          <div className="flex items-center justify-between p-5 md:p-6 border-b border-slate-100">
-            <div className="h-8 w-36 bg-slate-200 rounded-xl" />
-            <div className="h-10 w-44 bg-slate-200 rounded-2xl" />
-          </div>
-
-          <div className="grid grid-cols-7 bg-slate-50/50">
-            {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((d) => (
-              <div key={d} className="py-3 flex justify-center">
-                <div className="h-3 w-6 bg-slate-200 rounded" />
-              </div>
-            ))}
-
-            {Array.from({ length: 35 }).map((_, i) => (
-              <div
-                key={i}
-                className="min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-2"
-              >
-                <div className="flex justify-end mb-2">
-                  <div className="w-7 h-7 rounded-full bg-slate-200" />
-                </div>
-                {i % 4 === 0 && (
-                  <div className="h-5 bg-slate-100 rounded-md mb-1.5 mx-0.5" />
-                )}
-                {i % 7 === 2 && (
-                  <div className="h-5 bg-slate-100 rounded-md mx-0.5" />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-6 md:hidden">
-          <div className="h-6 w-40 bg-slate-200 rounded-lg mb-3" />
-          <div className="space-y-3">
-            {[1, 2].map((i) => (
-              <div
-                key={i}
-                className="bg-white p-4 rounded-2xl border-l-4 border-l-slate-200 shadow-sm"
-              >
-                <div className="flex justify-between mb-2">
-                  <div className="h-5 w-20 bg-slate-200 rounded" />
-                  <div className="h-5 w-28 bg-slate-200 rounded" />
-                </div>
-                <div className="h-5 w-48 bg-slate-200 rounded mb-1" />
-                <div className="h-4 w-36 bg-slate-200 rounded" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+  if (eventsLoading) return <CalendarSkeleton />;
 
   return (
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen pb-24">
-      <style>{`
-        @keyframes dayOffPop {
-          0% { transform: scale(0.7); opacity: 0; }
-          60% { transform: scale(1.15); opacity: 1; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        .dayoff-cell-enter {
-          animation: dayOffPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-      `}</style>
+      <CalendarHeader
+        projects={projects}
+        filterCityId={filterCityId}
+        setFilterCityId={setFilterCityId}
+        cities={cities}
+        userRole={userRole}
+      />
 
-      {/* Шапка календаря */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-800">
-            Календар подій
-          </h1>
-          <p className="text-slate-500 mt-1 text-sm">
-            Графік запланованих та активних заходів
-          </p>
-
-          <div className="hidden md:flex flex-wrap items-center gap-3 mt-4">
-            {projects.map((p: Project) => {
-              const badgeColor =
-                {
-                  blue: "bg-blue-400",
-                  emerald: "bg-emerald-400",
-                  rose: "bg-rose-400",
-                  red: "bg-red-500",
-                  amber: "bg-amber-400",
-                  purple: "bg-purple-400",
-                }[p.color] || "bg-blue-400";
-
-              return (
-                <span
-                  key={p.id}
-                  className="flex items-center gap-1.5 text-xs font-medium text-slate-600"
-                >
-                  <span className={`w-3 h-3 rounded-full ${badgeColor}`}></span>{" "}
-                  {p.name}
-                </span>
-              );
-            })}
-            <span className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
-              <span className="w-3 h-3 rounded-full bg-rose-500"></span>{" "}
-              Вихідний
-            </span>
-          </div>
-        </div>
-
-        {userRole === "SUPERADMIN" && (
-          <div className="hidden md:flex bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 items-center gap-3 shrink-0">
-            <span className="text-sm text-slate-500 font-medium">Місто:</span>
-            <select
-              value={filterCityId}
-              onChange={(e) => setFilterCityId(e.target.value)}
-              className="text-sm font-semibold text-slate-800 outline-none cursor-pointer bg-transparent"
-            >
-              <option value="ALL">🌍 Всі міста</option>
-              {cities.map((c: City) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
-
-      <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-        <div className="flex items-center justify-center p-5 md:p-6 border-b border-slate-100 bg-white">
-          <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
-            <button
-              onClick={prevMonth}
-              className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium"
-            >
-              ◀
-            </button>
-            <span className="px-4 md:px-6 py-2 text-slate-800 font-bold capitalize tracking-tight">
-              {MONTH_NAMES[month]}{" "}
-              <span className="text-slate-400 font-medium">{year}</span>
-            </span>
-            <button
-              onClick={nextMonth}
-              className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium"
-            >
-              ▶
-            </button>
-          </div>
-        </div>
-
-        <div className="hidden md:grid grid-cols-7 bg-slate-50/50">
-          {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((dayName) => (
-            <div
-              key={dayName}
-              className="py-3 text-center text-[10px] md:text-xs font-bold tracking-widest text-slate-400 uppercase border-b border-slate-100"
-            >
-              {dayName}
-            </div>
-          ))}
-
-          {days.map((day, idx) => {
-            const isToday =
-              day && day.toDateString() === new Date().toDateString();
-            const isSelected =
-              day && day.toDateString() === selectedMobileDate.toDateString();
-            const dayKey = day ? toISODate(day) : "";
-            const dayEvents = day ? (eventsByDate.get(dayKey) ?? []) : [];
-            const dayOffEntries = day ? (dayOffsByDate.get(dayKey) ?? []) : [];
-
-            const myDayOff = isStaff
-              ? dayOffEntries.find((d) => d.userId === user?.id)
-              : undefined;
-            const hasAnyDayOff = isStaff
-              ? !!myDayOff
-              : dayOffEntries.length > 0;
-
-            const showCross =
-              day && !isPastDay(day) && (isStaff || isManagerOrAdmin);
-
-            return (
-              <div
-                key={idx}
-                onClick={() => day && setSelectedMobileDate(day)}
-                className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group
-                  ${day ? "bg-white hover:bg-slate-50 cursor-pointer" : "bg-slate-50/30"}
-                  ${isSelected ? "ring-2 ring-inset ring-blue-500/20 bg-blue-50/10" : ""}
-                  ${hasAnyDayOff ? "dayoff-cell-enter bg-rose-50/70" : ""}
-                `}
-              >
-                {day && (
-                  <>
-                    {showCross && (
-                      <div className="absolute top-1 left-1 z-10 group/dayoff">
-                        <button
-                          onClick={(e) => handleDayOffClick(e, day)}
-                          title={
-                            hasAnyDayOff
-                              ? "Скасувати вихідний"
-                              : "Призначити вихідний"
-                          }
-                          className={`w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold transition-all
-                            ${
-                              hasAnyDayOff
-                                ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600"
-                                : "bg-slate-100 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-rose-100 hover:text-rose-500"
-                            }`}
-                        >
-                          ✕
-                        </button>
-
-                        {isManagerOrAdmin && dayOffEntries.length > 0 && (
-                          <div className="hidden md:block absolute top-full left-0 mt-2 w-48 bg-slate-800 text-white p-2.5 rounded-xl shadow-2xl opacity-0 invisible group-hover/dayoff:opacity-100 group-hover/dayoff:visible transition-all duration-200 pointer-events-none">
-                            <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1.5">
-                              Вихідний ({dayOffEntries.length})
-                            </p>
-                            <div className="space-y-1">
-                              {dayOffEntries.map((d: DayOff) => {
-                                const u = allUsers.find(
-                                  (au: User) => au.id === d.userId,
-                                );
-                                return (
-                                  <p
-                                    key={d.id}
-                                    className="text-xs font-medium truncate"
-                                  >
-                                    {u
-                                      ? `${ROLE_ICON_MAP[u.role] || "👤"} ${u.name}`
-                                      : "Невідомий"}
-                                  </p>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="flex justify-center md:justify-end mb-1.5">
-                      <span
-                        className={`w-7 h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-semibold transition-colors
-                        ${isToday ? "bg-blue-600 text-white shadow-md" : "text-slate-500 md:group-hover:text-blue-600"}
-                      `}
-                      >
-                        {day.getDate()}
-                      </span>
-                    </div>
-
-                    {hasAnyDayOff && !isStaff && dayOffEntries.length > 0 && (
-                      <p className="text-[9px] md:text-[10px] text-rose-600 font-semibold text-center mb-1 truncate px-1">
-                        🌴 {dayOffEntries.length}{" "}
-                        {dayOffEntries.length === 1 ? "вихідний" : "вихідних"}
-                      </p>
-                    )}
-
-                    <div className="space-y-1.5">
-                      {dayEvents.slice(0, 3).map((ev: CalendarEvent) => (
-                        <div
-                          key={ev.id}
-                          className="relative group/event z-0 hover:z-50"
-                        >
-                          <button
-                            className={`w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${projectColorMap.get(ev.project) ?? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300"}`}
-                          >
-                            {ev.time || "—"}
-                          </button>
-
-                          <div className="hidden md:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-800 text-white p-3 rounded-xl shadow-2xl opacity-0 invisible group-hover/event:opacity-100 group-hover/event:visible transition-all duration-200 pointer-events-none">
-                            <p className="font-bold text-sm mb-1 truncate">
-                              {ev.school?.name || "Невідомий заклад"}
-                            </p>
-                            <div className="space-y-1 text-xs text-slate-300">
-                              <p>
-                                <span className="text-slate-400">Проєкт:</span>{" "}
-                                {ev.project}
-                              </p>
-                              <p>
-                                <span className="text-slate-400">Екіпаж:</span>{" "}
-                                {ev.crew?.name || "Не призначено"}
-                              </p>
-                              <p>
-                                <span className="text-slate-400">Час:</span>{" "}
-                                <span className="font-bold text-white">
-                                  {ev.time || "—"}
-                                </span>
-                              </p>
-                            </div>
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-slate-800"></div>
-                          </div>
-                        </div>
-                      ))}
-                      {dayEvents.length > 3 && (
-                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 text-center">
-                          +{dayEvents.length - 3} ще
-                        </p>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <DesktopCalendarGrid
+        days={days}
+        year={year}
+        month={month}
+        selectedMobileDate={selectedMobileDate}
+        setSelectedMobileDate={setSelectedMobileDate}
+        eventsByDate={eventsByDate}
+        dayOffsByDate={dayOffsByDate}
+        projectColorMap={projectColorMap}
+        isStaff={isStaff}
+        isManagerOrAdmin={isManagerOrAdmin}
+        user={user}
+        allUsers={allUsers}
+        handleDayOffClick={handleDayOffClick}
+        prevMonth={prevMonth}
+        nextMonth={nextMonth}
+      />
 
       <div className="md:hidden mt-4">
-        <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
-          <div className="flex items-center justify-between px-3 py-3.5 border-b border-slate-100">
-            <button
-              onClick={prevMonth}
-              className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 active:bg-slate-100 transition-colors"
-            >
-              ‹
-            </button>
-            <span className="text-base font-bold text-slate-800 capitalize">
-              {MONTH_NAMES[month]}{" "}
-              <span className="text-slate-400 font-medium">{year}</span>
-            </span>
-            <button
-              onClick={nextMonth}
-              className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 active:bg-slate-100 transition-colors"
-            >
-              ›
-            </button>
-          </div>
+        <MobileCalendarGrid
+          days={days}
+          year={year}
+          month={month}
+          selectedMobileDate={selectedMobileDate}
+          eventsByDate={eventsByDate}
+          dayOffsByDate={dayOffsByDate}
+          projectHexMap={projectHexMap}
+          projects={projects}
+          filterCityId={filterCityId}
+          setFilterCityId={setFilterCityId}
+          cities={cities}
+          userRole={userRole}
+          handleMobileDayTap={handleMobileDayTap}
+          startLongPress={startLongPress}
+          cancelLongPress={cancelLongPress}
+          prevMonth={prevMonth}
+          nextMonth={nextMonth}
+        />
 
-          <div className="grid grid-cols-7 px-2 pt-2">
-            {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((dayName) => (
-              <div
-                key={dayName}
-                className="text-center text-[10px] font-bold tracking-wide text-slate-400 uppercase pb-1.5"
-              >
-                {dayName}
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-7 gap-y-1.5 px-2 pb-3">
-            {days.map((day, idx) => {
-              const isToday =
-                day && day.toDateString() === new Date().toDateString();
-              const isSelected =
-                day && day.toDateString() === selectedMobileDate.toDateString();
-              const dayKey = day ? toISODate(day) : "";
-              const dayEvents = day ? (eventsByDate.get(dayKey) ?? []) : [];
-              const dayOffEntries = day
-                ? (dayOffsByDate.get(dayKey) ?? [])
-                : [];
-              const dayColor = day
-                ? getDayColor(dayEvents, projectHexMap)
-                : undefined;
-
-              return (
-                <div
-                  key={idx}
-                  className="flex items-center justify-center py-0.5"
-                >
-                  {day && (
-                    <button
-                      onTouchStart={() => startLongPress(day)}
-                      onTouchEnd={() => {
-                        cancelLongPress();
-                        handleMobileDayTap(day);
-                      }}
-                      onTouchMove={cancelLongPress}
-                      onContextMenu={(e) => e.preventDefault()}
-                      onClick={() => handleMobileDayTap(day)}
-                      className={`relative w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold transition-transform active:scale-90
-                        ${isSelected ? "ring-2 ring-blue-600 ring-offset-2" : ""}
-                        ${isToday && !isSelected ? "ring-2 ring-blue-200" : ""}
-                      `}
-                      style={{
-                        background: dayColor || "#f1f5f9",
-                        color: dayColor ? "#fff" : "#64748b",
-                        textShadow: dayColor
-                          ? "0 1px 2px rgba(0,0,0,0.35)"
-                          : "none",
-                      }}
-                    >
-                      {day.getDate()}
-                      {dayOffEntries.length > 0 && (
-                        <span className="pointer-events-none absolute -top-2.5 -right-2.5 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white flex items-center justify-center">
-                          <span className="text-white text-[6px] font-bold leading-none">
-                            ✕
-                          </span>
-                        </span>
-                      )}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 mt-3 px-1">
-          {projects.map((p: Project) => (
-            <span
-              key={p.id}
-              className="flex items-center gap-1 text-[10px] font-medium text-slate-500"
-            >
-              <span
-                className="w-2 h-2 rounded-full"
-                style={{
-                  background: PROJECT_HEX[p.color] || PROJECT_HEX.blue,
-                }}
-              />
-              {p.name}
-            </span>
-          ))}
-          <span className="flex items-center gap-1 text-[10px] font-medium text-slate-500">
-            <span className="w-2 h-2 rounded-full bg-rose-500" />
-            Вихідний
-          </span>
-
-          {userRole === "SUPERADMIN" && (
-            <select
-              value={filterCityId}
-              onChange={(e) => setFilterCityId(e.target.value)}
-              className="ml-auto text-[11px] font-semibold text-slate-700 outline-none bg-slate-50 border border-slate-200 rounded-lg px-2 py-1"
-            >
-              <option value="ALL">🌍 Всі міста</option>
-              {cities.map((c: City) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={toISODate(selectedMobileDate)}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-            className="mt-4"
-          >
-            <h3 className="text-sm font-bold text-slate-800 mb-2.5">
-              {selectedMobileDate.toLocaleDateString("uk-UA", {
-                day: "2-digit",
-                month: "long",
-                weekday: "long",
-              })}
-            </h3>
-
-            {(() => {
-              const key = toISODate(selectedMobileDate);
-              const dayOffEntries = dayOffsByDate.get(key) ?? [];
-              if (dayOffEntries.length === 0) return null;
-              return (
-                <div className="mb-3 flex flex-wrap gap-1.5">
-                  {dayOffEntries.map((d: DayOff) => {
-                    const u = allUsers.find((au: User) => au.id === d.userId);
-                    return (
-                      <span
-                        key={d.id}
-                        className="text-[11px] font-semibold text-rose-600 bg-rose-50 border border-rose-100 px-2 py-1 rounded-full"
-                      >
-                        🌴 {u?.name || "Вихідний"}
-                      </span>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-
-            {selectedDayEvents.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-400 text-sm">
-                На цей день подій не заплановано
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {selectedDayEvents.map((ev: CalendarEvent) => (
-                  <div
-                    key={ev.id}
-                    onClick={() =>
-                      ev.school && navigate(`/schools/${ev.school.id}`)
-                    }
-                    className="bg-white p-4 rounded-2xl border-l-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
-                    style={{
-                      borderLeftColor:
-                        projectHexMap.get(ev.project) ?? PROJECT_HEX.blue,
-                    }}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-xs font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-600">
-                        🕒 {ev.time || "Не вказано"}
-                      </span>
-                      <span className="text-xs font-medium text-slate-500">
-                        {ev.project}
-                      </span>
-                    </div>
-                    <p className="font-bold text-slate-800">
-                      {ev.school?.name}
-                    </p>
-                    <p className="text-sm text-slate-500 mt-1">
-                      🚐 Екіпаж: {ev.crew?.name || "Не призначено"}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
+        <MobileDayDetailsPanel
+          selectedMobileDate={selectedMobileDate}
+          selectedDayEvents={selectedDayEvents}
+          dayOffsByDate={dayOffsByDate}
+          allUsers={allUsers}
+          projectHexMap={projectHexMap}
+          navigate={navigate}
+        />
       </div>
 
       <DayOffModal

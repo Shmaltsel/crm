@@ -4,7 +4,7 @@ export const getDaysInMonth = (year: number, month: number) =>
   new Date(year, month + 1, 0).getDate();
 
 export const getFirstDayOfMonth = (year: number, month: number) => {
-  let day = new Date(year, month, 1).getDay();
+  const day = new Date(year, month, 1).getDay();
   return day === 0 ? 6 : day - 1;
 };
 
@@ -25,12 +25,3 @@ export const buildMonthDays = (
   for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
   return days;
 };
-import { format, getDaysInMonth, startOfMonth, isPast } from 'date-fns';
-
-export const toISODate = (date: Date) => format(date, 'yyyy-MM-dd');
-
-export const getDaysInMonth = (date: Date) => getDaysInMonth(date);
-
-export const getFirstDayOfMonth = (date: Date) => startOfMonth(date);
-
-export const isPastDay = (date: Date) => isPast(date, { now: new Date() });

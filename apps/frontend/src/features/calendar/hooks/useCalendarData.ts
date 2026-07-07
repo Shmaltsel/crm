@@ -3,7 +3,7 @@ import { useCalendarEvents, useCalendarProjects } from "../../../hooks/useCalend
 import { useUsers } from "../../../hooks/useEmployees";
 import { useCities } from "../../../hooks/useCities";
 import { PROJECT_HEX } from "../constants";
-import type { Event as CalendarEvent, Project, City, User } from "../../../types";
+import type { Event as CalendarEvent } from "../../../types";
 
 export function useCalendarData(filterCityId: string) {
   const { data: events = [], isLoading: eventsLoading } = useCalendarEvents();

@@ -1,0 +1,210 @@
+import { toISODate, isPastDay } from "../utils/date";
+import { MONTH_NAMES, ROLE_ICON_MAP } from "../constants";
+import EventTooltip from "./EventTooltip";
+import type { Event as CalendarEvent, DayOff, User } from "../../../types";
+
+interface DesktopCalendarGridProps {
+  days: (Date | null)[];
+  year: number;
+  month: number;
+  selectedMobileDate: Date;
+  setSelectedMobileDate: (date: Date) => void;
+  eventsByDate: Map<string, CalendarEvent[]>;
+  dayOffsByDate: Map<string, DayOff[]>;
+  projectColorMap: Map<string, string>;
+  isStaff: boolean;
+  isManagerOrAdmin: boolean;
+  user: { id: string } | null;
+  allUsers: User[];
+  handleDayOffClick: (e: React.MouseEvent, date: Date) => void;
+  prevMonth: () => void;
+  nextMonth: () => void;
+}
+
+export default function DesktopCalendarGrid({
+  days,
+  year,
+  month,
+  selectedMobileDate,
+  setSelectedMobileDate,
+  eventsByDate,
+  dayOffsByDate,
+  projectColorMap,
+  isStaff,
+  isManagerOrAdmin,
+  user,
+  allUsers,
+  handleDayOffClick,
+  prevMonth,
+  nextMonth,
+}: DesktopCalendarGridProps) {
+  return (
+    <>
+      <style>{`
+        @keyframes dayOffPop {
+          0% { transform: scale(0.7); opacity: 0; }
+          60% { transform: scale(1.15); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .dayoff-cell-enter {
+          animation: dayOffPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+      `}</style>
+
+      <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+        <div className="flex items-center justify-center p-5 md:p-6 border-b border-slate-100 bg-white">
+          <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+            <button
+              onClick={prevMonth}
+              className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium"
+            >
+              ◀
+            </button>
+            <span className="px-4 md:px-6 py-2 text-slate-800 font-bold capitalize tracking-tight">
+              {MONTH_NAMES[month]}{" "}
+              <span className="text-slate-400 font-medium">{year}</span>
+            </span>
+            <button
+              onClick={nextMonth}
+              className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium"
+            >
+              ▶
+            </button>
+          </div>
+        </div>
+
+        <div className="hidden md:grid grid-cols-7 bg-slate-50/50">
+          {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((dayName) => (
+            <div
+              key={dayName}
+              className="py-3 text-center text-[10px] md:text-xs font-bold tracking-widest text-slate-400 uppercase border-b border-slate-100"
+            >
+              {dayName}
+            </div>
+          ))}
+
+          {days.map((day, idx) => {
+            const isToday =
+              day && day.toDateString() === new Date().toDateString();
+            const isSelected =
+              day && day.toDateString() === selectedMobileDate.toDateString();
+            const dayKey = day ? toISODate(day) : "";
+            const dayEvents = day ? (eventsByDate.get(dayKey) ?? []) : [];
+            const dayOffEntries = day ? (dayOffsByDate.get(dayKey) ?? []) : [];
+
+            const myDayOff = isStaff
+              ? dayOffEntries.find((d) => d.userId === user?.id)
+              : undefined;
+            const hasAnyDayOff = isStaff
+              ? !!myDayOff
+              : dayOffEntries.length > 0;
+
+            const showCross =
+              day && !isPastDay(day) && (isStaff || isManagerOrAdmin);
+
+            return (
+              <div
+                key={idx}
+                onClick={() => day && setSelectedMobileDate(day)}
+                className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group
+                  ${day ? "bg-white hover:bg-slate-50 cursor-pointer" : "bg-slate-50/30"}
+                  ${isSelected ? "ring-2 ring-inset ring-blue-500/20 bg-blue-50/10" : ""}
+                  ${hasAnyDayOff ? "dayoff-cell-enter bg-rose-50/70" : ""}
+                `}
+              >
+                {day && (
+                  <>
+                    {showCross && (
+                      <div className="absolute top-1 left-1 z-10 group/dayoff">
+                        <button
+                          onClick={(e) => handleDayOffClick(e, day)}
+                          title={
+                            hasAnyDayOff
+                              ? "Скасувати вихідний"
+                              : "Призначити вихідний"
+                          }
+                          className={`w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold transition-all
+                            ${
+                              hasAnyDayOff
+                                ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600"
+                                : "bg-slate-100 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-rose-100 hover:text-rose-500"
+                            }`}
+                        >
+                          ✕
+                        </button>
+
+                        {isManagerOrAdmin && dayOffEntries.length > 0 && (
+                          <div className="hidden md:block absolute top-full left-0 mt-2 w-48 bg-slate-800 text-white p-2.5 rounded-xl shadow-2xl opacity-0 invisible group-hover/dayoff:opacity-100 group-hover/dayoff:visible transition-all duration-200 pointer-events-none">
+                            <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1.5">
+                              Вихідний ({dayOffEntries.length})
+                            </p>
+                            <div className="space-y-1">
+                              {dayOffEntries.map((d: DayOff) => {
+                                const u = allUsers.find(
+                                  (au: User) => au.id === d.userId,
+                                );
+                                return (
+                                  <p
+                                    key={d.id}
+                                    className="text-xs font-medium truncate"
+                                  >
+                                    {u
+                                      ? `${ROLE_ICON_MAP[u.role] || "👤"} ${u.name}`
+                                      : "Невідомий"}
+                                  </p>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex justify-center md:justify-end mb-1.5">
+                      <span
+                        className={`w-7 h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-semibold transition-colors
+                        ${isToday ? "bg-blue-600 text-white shadow-md" : "text-slate-500 md:group-hover:text-blue-600"}
+                      `}
+                      >
+                        {day.getDate()}
+                      </span>
+                    </div>
+
+                    {hasAnyDayOff && !isStaff && dayOffEntries.length > 0 && (
+                      <p className="text-[9px] md:text-[10px] text-rose-600 font-semibold text-center mb-1 truncate px-1">
+                        🌴 {dayOffEntries.length}{" "}
+                        {dayOffEntries.length === 1 ? "вихідний" : "вихідних"}
+                      </p>
+                    )}
+
+                    <div className="space-y-1.5">
+                      {dayEvents.slice(0, 3).map((ev: CalendarEvent) => (
+                        <div
+                          key={ev.id}
+                          className="relative group/event z-0 hover:z-50"
+                        >
+                          <button
+                            className={`w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${projectColorMap.get(ev.project) ?? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300"}`}
+                          >
+                            {ev.time || "—"}
+                          </button>
+
+                          <EventTooltip event={ev} />
+                        </div>
+                      ))}
+                      {dayEvents.length > 3 && (
+                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 text-center">
+                          +{dayEvents.length - 3} ще
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
