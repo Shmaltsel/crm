@@ -43,13 +43,14 @@ export function EmployeesHeader({
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted pointer-events-none" />
           <input
-            type="text"
+            type="search"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Пошук за ім'ям, email, телефоном..."
-            className="w-full pl-9 pr-3 py-2 rounded-control border border-border-strong bg-surface
+            aria-label="Пошук працівників"
+            className="w-full pl-9 pr-3 py-2.5 md:py-2 rounded-control border border-border-strong bg-surface
               text-sm text-content-primary placeholder:text-content-muted
-              focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/30 focus-visible:border-brand"
           />
         </div>
 
@@ -61,8 +62,10 @@ export function EmployeesHeader({
           <SlidersHorizontal className="w-5 h-5" />
         </button>
 
-        <div className="flex items-center border border-border-strong rounded-control overflow-hidden">
+        <div role="tablist" aria-label="Режим перегляду" className="flex items-center border border-border-strong rounded-control overflow-hidden">
           <button
+            role="tab"
+            aria-selected={viewMode === "cards"}
             onClick={() => onViewModeChange("cards")}
             className={`p-2 transition-colors ${viewMode === "cards" ? "bg-brand text-white" : "text-content-muted hover:bg-neutral-100"}`}
             aria-label="Картки"
@@ -70,6 +73,8 @@ export function EmployeesHeader({
             <LayoutGrid className="w-4 h-4" />
           </button>
           <button
+            role="tab"
+            aria-selected={viewMode === "table"}
             onClick={() => onViewModeChange("table")}
             className={`p-2 transition-colors ${viewMode === "table" ? "bg-brand text-white" : "text-content-muted hover:bg-neutral-100"}`}
             aria-label="Таблиця"

@@ -61,6 +61,8 @@ export default function EmployeeCard({
       whileHover="hover"
       whileTap={{ scale: 0.98 }}
       layoutId={`user-${user.id}`}
+      role="article"
+      aria-label={`${user.name}, ${ROLE_LABELS[role] ?? role}`}
       className="group relative bg-surface rounded-card shadow-card border border-border p-5 transition-shadow duration-200 hover:shadow-card-hover"
     >
       <div className="flex items-start gap-4">

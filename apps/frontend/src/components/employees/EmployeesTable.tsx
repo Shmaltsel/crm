@@ -92,44 +92,45 @@ export default function EmployeesTable({ users, onSelect }: EmployeesTableProps)
   return (
     <div>
       {selectedIds.size > 0 && (
-        <div className="mb-3 flex items-center gap-2 px-4 py-2.5 bg-brand-50 border border-brand-200 rounded-control">
+        <div role="toolbar" aria-label="Масові дії" className="mb-3 flex items-center gap-2 px-4 py-2.5 bg-brand-50 border border-brand-200 rounded-control">
           <span className="text-sm font-medium text-brand-700">
             Обрано {selectedIds.size}
           </span>
           <div className="ml-auto flex gap-2">
-            <button className="text-xs font-semibold px-3 py-1.5 rounded-control bg-white border border-brand-200 text-brand-700 hover:bg-brand-100 transition-colors">
+            <button className="text-xs font-semibold px-3 py-1.5 rounded-control bg-white border border-brand-200 text-brand-700 hover:bg-brand-100 focus-visible:ring-2 focus-visible:ring-brand/50 transition-colors">
               Архівувати
             </button>
-            <button className="text-xs font-semibold px-3 py-1.5 rounded-control bg-white border border-brand-200 text-brand-700 hover:bg-brand-100 transition-colors">
+            <button className="text-xs font-semibold px-3 py-1.5 rounded-control bg-white border border-brand-200 text-brand-700 hover:bg-brand-100 focus-visible:ring-2 focus-visible:ring-brand/50 transition-colors">
               Змінити роль
             </button>
-            <button className="text-xs font-semibold px-3 py-1.5 rounded-control bg-white border border-brand-200 text-brand-700 hover:bg-brand-100 transition-colors">
+            <button className="text-xs font-semibold px-3 py-1.5 rounded-control bg-white border border-brand-200 text-brand-700 hover:bg-brand-100 focus-visible:ring-2 focus-visible:ring-brand/50 transition-colors">
               Призначити проєкт
             </button>
           </div>
         </div>
       )}
 
-      <div className="bg-white rounded-card border border-border shadow-card overflow-hidden">
-        <div className={`${colWidths} items-center px-4 py-3 bg-neutral-50 border-b border-border text-xs font-semibold text-content-muted uppercase tracking-wider`}>
-          <div className="flex items-center">
+      <div role="region" aria-label="Таблиця працівників" className="bg-white rounded-card border border-border shadow-card overflow-hidden">
+          <div role="row" className={`${colWidths} items-center px-4 py-3 bg-neutral-50 border-b border-border text-xs font-semibold text-content-muted uppercase tracking-wider`}>
+          <div className="flex items-center" role="columnheader">
             <input
               type="checkbox"
               checked={allSelected}
               onChange={toggleAll}
-              className="w-4 h-4 rounded border-neutral-300 text-brand focus:ring-brand"
+              aria-label={allSelected ? "Зняти виділення всіх" : "Виділити всіх"}
+              className="w-4 h-4 rounded border-neutral-300 text-brand focus-visible:ring-2 focus-visible:ring-brand/50"
             />
           </div>
-          <button onClick={() => toggleSort("name")} className="flex items-center gap-1 hover:text-content-primary transition-colors">
+          <button role="columnheader" aria-sort={sortField === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} onClick={() => toggleSort("name")} className="flex items-center gap-1 hover:text-content-primary transition-colors focus-visible:ring-2 focus-visible:ring-brand/50 rounded">
             Ім'я <SortIcon field="name" />
           </button>
-          <button onClick={() => toggleSort("role")} className="flex items-center gap-1 hover:text-content-primary transition-colors">
+          <button role="columnheader" aria-sort={sortField === "role" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} onClick={() => toggleSort("role")} className="flex items-center gap-1 hover:text-content-primary transition-colors focus-visible:ring-2 focus-visible:ring-brand/50 rounded">
             Роль <SortIcon field="role" />
           </button>
-          <button onClick={() => toggleSort("city")} className="flex items-center gap-1 hover:text-content-primary transition-colors">
+          <button role="columnheader" aria-sort={sortField === "city" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} onClick={() => toggleSort("city")} className="flex items-center gap-1 hover:text-content-primary transition-colors focus-visible:ring-2 focus-visible:ring-brand/50 rounded">
             Місто <SortIcon field="city" />
           </button>
-          <button onClick={() => toggleSort("email")} className="flex items-center gap-1 hover:text-content-primary transition-colors">
+          <button role="columnheader" aria-sort={sortField === "email" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} onClick={() => toggleSort("email")} className="flex items-center gap-1 hover:text-content-primary transition-colors focus-visible:ring-2 focus-visible:ring-brand/50 rounded">
             Контакт <SortIcon field="email" />
           </button>
           <div />
@@ -143,9 +144,13 @@ export default function EmployeesTable({ users, onSelect }: EmployeesTableProps)
               return (
                 <div
                   key={user.id}
+                  role="row"
+                  aria-selected={isSelected}
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect?.(user); } }}
                   className={`${colWidths} items-center px-4 py-0 border-b border-border text-sm cursor-pointer transition-colors
                     ${virtualRow.index % 2 === 1 ? "bg-neutral-50/50" : "bg-white"}
-                    ${isSelected ? "bg-brand-50/40" : "hover:bg-neutral-50"}`}
+                    ${isSelected ? "bg-brand-50/40" : "hover:bg-neutral-50 focus-visible:bg-neutral-50"}`}
                   style={{
                     position: "absolute",
                     top: 0,
@@ -161,7 +166,8 @@ export default function EmployeesTable({ users, onSelect }: EmployeesTableProps)
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleOne(user.id)}
-                      className="w-4 h-4 rounded border-neutral-300 text-brand focus:ring-brand"
+                      aria-label={`Обрати ${user.name}`}
+                      className="w-4 h-4 rounded border-neutral-300 text-brand focus-visible:ring-2 focus-visible:ring-brand/50"
                     />
                   </div>
                   <div className="flex items-center gap-2.5 min-w-0">

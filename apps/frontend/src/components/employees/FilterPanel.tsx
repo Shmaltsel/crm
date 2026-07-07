@@ -51,6 +51,8 @@ export function FilterPanel({
           {ROLE_OPTIONS.map((role) => (
             <button
               key={role.value}
+              role="checkbox"
+              aria-checked={selectedRoles.includes(role.value)}
               onClick={() => toggleRole(role.value)}
               className={`flex items-center gap-2.5 px-3 py-2 rounded-control text-sm font-medium transition-colors text-left
                 ${selectedRoles.includes(role.value) ? "bg-brand-50 text-brand-700" : "text-content-secondary hover:bg-neutral-50"}`}
@@ -77,6 +79,8 @@ export function FilterPanel({
           {cityOptions.map((city) => (
             <button
               key={city.value}
+              role="radio"
+              aria-checked={selectedCity === city.value}
               onClick={() => onCityChange(city.value)}
               className={`flex items-center gap-2.5 px-3 py-2 rounded-control text-sm font-medium transition-colors text-left
                 ${selectedCity === city.value ? "bg-brand-50 text-brand-700" : "text-content-secondary hover:bg-neutral-50"}`}
@@ -115,7 +119,7 @@ export function FilterPanel({
 
   return (
     <>
-      <div className="hidden lg:block w-56 shrink-0">
+      <div role="region" aria-label="Фільтри" className="hidden lg:block w-56 shrink-0">
         <div className="sticky top-4">
           <div className="flex items-center gap-2 mb-4">
             <SlidersHorizontal className="w-4 h-4 text-content-muted" />
@@ -135,6 +139,9 @@ export function FilterPanel({
             onClick={onMobileClose}
           >
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Фільтри"
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}

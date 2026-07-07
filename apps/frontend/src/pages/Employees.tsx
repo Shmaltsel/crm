@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence, MotionConfig } from "framer-motion";
 import { X, Search, UserPlus } from "lucide-react";
@@ -177,6 +177,19 @@ export default function Employees() {
   const [isMutating, setIsMutating] = useState(false);
 
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (confirmDelete) setConfirmDelete(null);
+        else if (isModalOpen) setIsModalOpen(false);
+        else if (isProjectModalOpen) { setIsProjectModalOpen(false); setEditingProject(null); }
+        else if (filterPanelOpen) setFilterPanelOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [confirmDelete, isModalOpen, isProjectModalOpen, filterPanelOpen]);
 
   const handleOpenProjectModal = useCallback((project: Project | null = null) => {
     setEditingProject(project);
