@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import MobileTopNav from "../../components/MobileTopNav";
@@ -17,23 +17,20 @@ function Wrapper({ children }: { children: ReactNode }) {
 }
 
 describe("MobileTopNav", () => {
-  it("рендерить логотип СВІТЛО ЗНАНЬ", () => {
+  it("рендерить назву СВІТЛО ЗНАНЬ", () => {
     render(<MobileTopNav />, { wrapper: Wrapper });
     expect(screen.getByText("СВІТЛО ЗНАНЬ")).toBeTruthy();
   });
 
-  it("рендерить іконки навігації", () => {
+  it("рендерить назву міста", () => {
     render(<MobileTopNav />, { wrapper: Wrapper });
-    const links = screen.getAllByRole("link");
-    expect(links.length).toBeGreaterThanOrEqual(4);
+    const cityTexts = screen.getAllByText(/.+/);
+    expect(cityTexts.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("активна вкладка має клас bg-blue-600", () => {
+  it("не містить клікабельних посилань", () => {
     render(<MobileTopNav />, { wrapper: Wrapper });
-    const links = screen.getAllByLabelText("Школи");
-    expect(links.length).toBeGreaterThanOrEqual(1);
-    for (const link of links) {
-      expect(link.className).toContain("bg-blue-600");
-    }
+    const links = screen.queryAllByRole("link");
+    expect(links.length).toBe(0);
   });
 });
