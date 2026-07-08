@@ -6,7 +6,21 @@ import Company from "../features/salary/pages/Company";
 
 type Tab = "my-salary" | "team" | "company";
 
-export default function Finance() {
+function PeekSkeleton() {
+  return (
+    <div className="p-4 space-y-4 animate-pulse">
+      <div className="h-8 bg-slate-200 rounded-xl w-48" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-24 bg-white rounded-2xl border border-slate-100" />
+        ))}
+      </div>
+      <div className="h-64 bg-white rounded-2xl border border-slate-100" />
+    </div>
+  );
+}
+
+export default function Finance({ isPeek }: { isPeek?: boolean }) {
   const { user } = useAuth();
   const isManagerOrAdmin = user?.role === "MANAGER" || user?.role === "SUPERADMIN" || user?.role === "OWNER";
 
@@ -18,6 +32,10 @@ export default function Finance() {
 
   const availableTabs = tabs.filter((t) => !t.managerOnly || isManagerOrAdmin);
   const [activeTab, setActiveTab] = useState<Tab>(availableTabs[0]?.key ?? "my-salary");
+
+  if (isPeek) {
+    return <PeekSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">

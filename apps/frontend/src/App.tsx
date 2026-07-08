@@ -1,21 +1,4 @@
-import { useState, Suspense, lazy } from "react";
-
-function lazyWithRetry(factory: () => Promise<any>) {
-  return lazy(async () => {
-    try {
-      return await factory();
-    } catch (err) {
-      const key = "chunk-reload-ts";
-      const last = Number(sessionStorage.getItem(key) || 0);
-      if (Date.now() - last > 10000) {
-        sessionStorage.setItem(key, String(Date.now()));
-        window.location.reload();
-        return new Promise(() => {});
-      }
-      throw err;
-    }
-  });
-}
+import { Suspense } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -26,6 +9,7 @@ import {
 import Layout from "./components/Layout";
 import { CityProvider } from "./context/CityContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { lazyWithRetry, TAB_PAGE_COMPONENTS } from "./pages/lazyTabPages";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -37,16 +21,17 @@ const CityProfile = lazyWithRetry(() => import("./pages/CityProfile"));
 const EventReport = lazyWithRetry(() => import("./pages/EventReport"));
 
 const Cities = lazyWithRetry(() => import("./pages/Cities"));
-const Schools = lazyWithRetry(() => import("./pages/Schools"));
 const SchoolProfile = lazyWithRetry(() => import("./pages/SchoolProfile"));
-const Employees = lazyWithRetry(() => import("./pages/Employees"));
-const Finance = lazyWithRetry(() => import("./pages/Finance"));
-const CalendarView = lazyWithRetry(() => import("./pages/CalendarView"));
-const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
-const Kindergartens = lazyWithRetry(() => import("./pages/Kindergartens"));
-const Analytics = lazyWithRetry(() => import("./pages/Analytics"));
 const AuditLog = lazyWithRetry(() => import("./pages/AuditLog"));
 const ReportsReview = lazyWithRetry(() => import("./features/reports/pages/ReportsReviewPage"));
+
+const Dashboard = TAB_PAGE_COMPONENTS["/dashboard"];
+const Schools = TAB_PAGE_COMPONENTS["/schools"];
+const Kindergartens = TAB_PAGE_COMPONENTS["/kindergartens"];
+const Finance = TAB_PAGE_COMPONENTS["/finance"];
+const CalendarView = TAB_PAGE_COMPONENTS["/calendar"];
+const Employees = TAB_PAGE_COMPONENTS["/employees"];
+const Analytics = TAB_PAGE_COMPONENTS["/analytics"];
 
 const PageLoader = () => (
   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-4 md:p-8">

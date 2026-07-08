@@ -17,7 +17,9 @@ import {
 import BottomNavigationBar from "./BottomNavigationBar";
 import MobileTopNav from "./MobileTopNav";
 import { NAV_TABS } from "../constants/navTabs";
+import { TAB_PAGE_COMPONENTS, rawImportFactories } from "../pages/lazyTabPages";
 import { hasRole } from "../utils/roles";
+import { SkeletonCard } from "./ui/Skeleton";
 
 function NavLink({
   to,
@@ -61,6 +63,14 @@ const desktopVariants = {
   exit: { opacity: 0 },
 };
 
+const PageLoader = () => (
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-4 md:p-8">
+    <SkeletonCard />
+    <SkeletonCard />
+    <SkeletonCard />
+  </div>
+);
+
 function MobileDragView({
   x,
   winWidth,
@@ -68,6 +78,10 @@ function MobileDragView({
   shouldIgnoreSwipe,
   handleDragEnd,
   outlet,
+  peekDir,
+  setPeekDir,
+  tabPaths,
+  currentIdx,
 }: {
   x: ReturnType<typeof useMotionValue<number>>;
   winWidth: number;
@@ -75,25 +89,48 @@ function MobileDragView({
   shouldIgnoreSwipe: (target: EventTarget | null) => boolean;
   handleDragEnd: (event: PointerEvent, info: PanInfo) => void;
   outlet: React.ReactNode;
+  peekDir: 1 | -1 | null;
+  setPeekDir: (dir: 1 | -1 | null) => void;
+  tabPaths: { to: string }[];
+  currentIdx: number;
 }) {
-  const ghostX = useTransform(x, [-winWidth, 0, winWidth], [0, -winWidth * 0.15, 0]);
-  const ghostScale = useTransform(x, [-winWidth, 0, winWidth], [1, 0.94, 1]);
-  const ghostFilter = useTransform(x, [-winWidth, 0, winWidth], ["brightness(1)", "brightness(0.85)", "brightness(1)"]);
+  const peekTab = peekDir ? tabPaths[currentIdx + peekDir] : null;
+  const peekTabComponent = peekTab ? TAB_PAGE_COMPONENTS[peekTab.to] : null;
+
+  const peekX = peekDir
+    ? useTransform(x, (v) => peekDir! * winWidth + v)
+    : useTransform(x, () => winWidth);
 
   return (
     <div className="relative min-h-full" style={{ overflowX: "visible" } as React.CSSProperties}>
+      {peekTabComponent && (
+        <motion.div
+          className="absolute inset-0 z-0"
+          style={{ x: peekX }}
+        >
+          <Suspense fallback={<PageLoader />}>
+            <peekTabComponent isPeek />
+          </Suspense>
+        </motion.div>
+      )}
       <motion.div
-        className="absolute inset-0 bg-surface-subtle"
-        style={{ x: ghostX, scale: ghostScale, filter: ghostFilter }}
-      />
-      <motion.div
-        className="absolute inset-0"
+        className="absolute inset-0 z-10"
         drag="x"
         dragConstraints={{ left: -winWidth, right: winWidth }}
         dragElastic={0.5}
         dragMomentum={false}
         onDragStart={(e) => {
           dragBlockedRef.current = shouldIgnoreSwipe(e.target as HTMLElement);
+        }}
+        onDrag={(_, info) => {
+          if (dragBlockedRef.current) return;
+          if (peekDir === null && Math.abs(info.offset.x) > 12) {
+            const dir: 1 | -1 = info.offset.x < 0 ? 1 : -1;
+            const targetIdx = currentIdx + dir;
+            if (targetIdx >= 0 && targetIdx < tabPaths.length) {
+              setPeekDir(dir);
+            }
+          }
         }}
         onDragEnd={handleDragEnd}
         style={{ x }}
@@ -116,6 +153,7 @@ export default function Layout() {
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches,
   );
+  const [peekDir, setPeekDir] = useState<1 | -1 | null>(null);
 
   const { user, logout } = useAuth();
   const { selectedCity } = useSelectedCity();
@@ -142,6 +180,33 @@ export default function Layout() {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
+  useEffect(() => {
+    const currentIdx = tabPaths.findIndex((t) =>
+      location.pathname.startsWith(t.to),
+    );
+    if (currentIdx === -1) return;
+
+    const preload = (idx: number) => {
+      const tab = tabPaths[idx];
+      if (!tab) return;
+      const factory = rawImportFactories[tab.to];
+      if (factory) factory().catch(() => {});
+    };
+
+    const doPreload = () => {
+      preload(currentIdx - 1);
+      preload(currentIdx + 1);
+    };
+
+    if ("requestIdleCallback" in window) {
+      const id = requestIdleCallback(doPreload, { timeout: 2000 });
+      return () => cancelIdleCallback(id);
+    } else {
+      const timer = setTimeout(doPreload, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [location.pathname, tabPaths]);
+
   const shouldIgnoreSwipe = useCallback((target: EventTarget | null): boolean => {
     if (!target || !(target instanceof HTMLElement)) return true;
     if (target.closest("[data-no-swipe]")) return true;
@@ -161,6 +226,7 @@ export default function Layout() {
 
   const handleDragEnd = useCallback(
     (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+      setPeekDir(null);
       if (dragBlockedRef.current) {
         dragBlockedRef.current = false;
         animate(x, 0, { type: "spring", stiffness: 400, damping: 35 });
@@ -266,6 +332,10 @@ export default function Layout() {
               shouldIgnoreSwipe={shouldIgnoreSwipe}
               handleDragEnd={handleDragEnd}
               outlet={outlet}
+              peekDir={peekDir}
+              setPeekDir={setPeekDir}
+              tabPaths={tabPaths}
+              currentIdx={tabPaths.findIndex((t) => location.pathname.startsWith(t.to))}
             />
           ) : (
             <AnimatePresence mode="wait">
