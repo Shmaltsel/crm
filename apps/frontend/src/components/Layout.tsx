@@ -1,6 +1,6 @@
 import { Link, useOutlet, useLocation, useNavigate } from "react-router-dom";
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
-import { AnimatePresence, motion, MotionConfig, useMotionValue, useTransform, animate } from "framer-motion";
+import { AnimatePresence, motion, MotionConfig } from "framer-motion";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -61,18 +61,49 @@ const desktopVariants = {
   exit: { opacity: 0 },
 };
 
+function stackVariants(dir: 1 | -1, w: number) {
+  return {
+    initial: {
+      x: dir * w,
+      scale: 1,
+      opacity: 1,
+      boxShadow:
+        dir > 0
+          ? "-12px 0 32px rgba(0,0,0,0.18)"
+          : "12px 0 32px rgba(0,0,0,0.18)",
+    },
+    animate: {
+      x: 0,
+      scale: 1,
+      opacity: 1,
+      boxShadow: "0 0 0 rgba(0,0,0,0)",
+    },
+    exit: {
+      x: dir * w * -0.15,
+      scale: 0.94,
+      filter: "brightness(0.85)",
+    },
+  };
+}
+
 export default function Layout() {
   const outlet = useOutlet();
   const location = useLocation();
   const navigate = useNavigate();
   const swipeStartRef = useRef(0);
   const touchStartYRef = useRef(0);
-  const dragX = useMotionValue(0);
+  const lastMoveTimeRef = useRef(0);
+  const lastMoveXRef = useRef(0);
+  const swipeVelocityRef = useRef(0);
   const [winWidth, setWinWidth] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth : 360,
   );
-  const [swipeActive, setSwipeActive] = useState(false);
   const [swipeDir, setSwipeDir] = useState<1 | -1>(1);
+  const [transitionConfig, setTransitionConfig] = useState({
+    type: "tween" as const,
+    duration: 0.27,
+    ease: [0.32, 0.72, 0, 1],
+  });
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches,
   );
@@ -102,18 +133,6 @@ export default function Layout() {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  const inputRange = useMemo(() => [-winWidth, 0, winWidth], [winWidth]);
-  const previewScale = useTransform(dragX, inputRange, [1, 0.92, 1]);
-  const previewOpacity = useTransform(dragX, inputRange, [1, 0.5, 1]);
-  const previewXCallback = useCallback(
-    (v: number) => {
-      if (v < 0) return v + winWidth;
-      return v - winWidth;
-    },
-    [winWidth],
-  );
-  const previewX = useTransform(dragX, previewXCallback);
-
   const shouldIgnoreSwipe = (target: EventTarget | null): boolean => {
     if (!target || !(target instanceof HTMLElement)) return true;
     if (target.closest("[data-no-swipe]")) return true;
@@ -131,6 +150,8 @@ export default function Layout() {
     if (shouldIgnoreSwipe(e.target)) return;
     swipeStartRef.current = e.touches[0].clientX;
     touchStartYRef.current = e.touches[0].clientY;
+    lastMoveTimeRef.current = e.timeStamp;
+    lastMoveXRef.current = e.touches[0].clientX;
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
@@ -142,47 +163,47 @@ export default function Layout() {
       swipeStartRef.current = 0;
       return;
     }
-    dragX.set(dx);
-    if (Math.abs(dx) > 10 && !swipeActive) {
-      setSwipeDir(dx < 0 ? 1 : -1);
-      setSwipeActive(true);
+    const dt = e.timeStamp - lastMoveTimeRef.current;
+    if (dt > 1) {
+      swipeVelocityRef.current = Math.abs(e.touches[0].clientX - lastMoveXRef.current) / dt;
     }
-  }, [swipeActive, dragX]);
+    lastMoveTimeRef.current = e.timeStamp;
+    lastMoveXRef.current = e.touches[0].clientX;
+  }, []);
 
   const handleTouchEnd = useCallback(() => {
-    if (!swipeActive) return;
-    const dx = dragX.get();
-    const absDx = Math.abs(dx);
+    if (swipeStartRef.current === 0) return;
+    const xStart = swipeStartRef.current;
+    const xEnd = lastMoveXRef.current;
     swipeStartRef.current = 0;
-    setSwipeActive(false);
 
-    if (absDx < 60) {
-      animate(dragX, 0, { type: "spring", stiffness: 350, damping: 35 });
-      return;
-    }
+    const dx = xEnd - xStart;
+    const absDx = Math.abs(dx);
+    const velocity = swipeVelocityRef.current;
+    swipeVelocityRef.current = 0;
+
+    if (absDx < 28 && velocity < 0.5) return;
+
+    const dir: 1 | -1 = dx < 0 ? 1 : -1;
+    setSwipeDir(dir);
+
+    const dur = Math.max(0.12, 0.27 - velocity * 0.15);
+    setTransitionConfig({
+      type: "tween",
+      duration: dur,
+      ease: [0.32, 0.72, 0, 1],
+    });
 
     const currentIdx = tabPaths.findIndex((t) =>
       location.pathname.startsWith(t.to),
     );
     if (currentIdx === -1) return;
 
-    const goingNext = dx < 0;
-    const targetIdx = currentIdx + (goingNext ? 1 : -1);
-    if (targetIdx < 0 || targetIdx >= tabPaths.length) {
-      animate(dragX, 0, { type: "spring", stiffness: 350, damping: 35 });
-      return;
-    }
+    const targetIdx = currentIdx + dir;
+    if (targetIdx < 0 || targetIdx >= tabPaths.length) return;
 
-    const commitX = goingNext ? -winWidth : winWidth;
-    animate(dragX, commitX, {
-      type: "spring",
-      stiffness: 350,
-      damping: 35,
-    }).then(() => {
-      dragX.jump(0);
-      navigate(tabPaths[targetIdx].to);
-    });
-  }, [navigate, tabPaths, location.pathname, swipeActive, winWidth, dragX]);
+    navigate(tabPaths[targetIdx].to);
+  }, [navigate, tabPaths, location.pathname]);
 
   return (
     <MotionConfig reducedMotion="user">
@@ -243,40 +264,27 @@ export default function Layout() {
         </aside>
 
         <main
-          className="flex-1 overflow-y-auto overflow-x-hidden mt-16 md:mt-0 relative w-full min-w-0 pb-16 md:pb-0"
+          className="flex-1 overflow-y-auto mt-16 md:mt-0 relative w-full min-w-0 pb-16 md:pb-0"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
           {isMobile ? (
-            <div className="relative min-h-full">
-              {swipeActive && (() => {
-                const currentIdx = tabPaths.findIndex((t) =>
-                  location.pathname.startsWith(t.to),
-                );
-                const targetIdx = currentIdx + swipeDir;
-                if (targetIdx < 0 || targetIdx >= tabPaths.length) return null;
-                const TabIcon = tabPaths[targetIdx].icon;
-                return (
-                  <motion.div
-                    className="absolute inset-0 flex items-center justify-center bg-surface-subtle"
-                    style={{ x: previewX, scale: previewScale, opacity: previewOpacity }}
-                  >
-                    <div className="flex flex-col items-center gap-3 pointer-events-none">
-                      <TabIcon className="w-12 h-12 text-content-muted" />
-                      <span className="text-sm font-medium text-content-muted">
-                        {tabPaths[targetIdx].label}
-                      </span>
-                    </div>
-                  </motion.div>
-                );
-              })()}
-              <motion.div
-                className="relative z-10 bg-surface-subtle"
-                style={{ x: dragX }}
-              >
-                {outlet}
-              </motion.div>
+            <div className="relative min-h-full" style={{ overflowX: "visible" } as React.CSSProperties}>
+              <AnimatePresence custom={swipeDir}>
+                <motion.div
+                  key={location.pathname}
+                  className="absolute inset-0"
+                  custom={swipeDir}
+                  variants={stackVariants(swipeDir, winWidth)}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  transition={transitionConfig}
+                >
+                  {outlet}
+                </motion.div>
+              </AnimatePresence>
             </div>
           ) : (
             <AnimatePresence mode="wait">
