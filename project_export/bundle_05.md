@@ -1,3 +1,324 @@
+# FILE: apps/frontend/src/features/calendar/components/MobileCalendarGrid.tsx
+
+```
+import { getDayColor } from "../utils/color";
+import { toISODate } from "../utils/date";
+import { MONTH_NAMES, PROJECT_HEX } from "../constants";
+import type { Event as CalendarEvent, Project, City, DayOff } from "../../../types";
+
+interface MobileCalendarGridProps {
+  days: (Date | null)[];
+  year: number;
+  month: number;
+  selectedMobileDate: Date;
+  eventsByDate: Map<string, CalendarEvent[]>;
+  dayOffsByDate: Map<string, DayOff[]>;
+  projectHexMap: Map<string, string>;
+  projects: Project[];
+  filterCityId: string;
+  setFilterCityId: (value: string) => void;
+  cities: City[];
+  userRole: string;
+  handleMobileDayTap: (day: Date) => void;
+  startLongPress: (day: Date) => void;
+  cancelLongPress: () => void;
+  pressingDay: Date | null;
+  triggeredDay: Date | null;
+  prevMonth: () => void;
+  nextMonth: () => void;
+}
+
+export default function MobileCalendarGrid({
+  days,
+  year,
+  month,
+  selectedMobileDate,
+  eventsByDate,
+  dayOffsByDate,
+  projectHexMap,
+  projects,
+  filterCityId,
+  setFilterCityId,
+  cities,
+  userRole,
+  handleMobileDayTap,
+  startLongPress,
+  cancelLongPress,
+  pressingDay,
+  triggeredDay,
+  prevMonth,
+  nextMonth,
+}: MobileCalendarGridProps) {
+  return (
+    <>
+      <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-3.5 border-b border-slate-100" data-no-swipe>
+          <button
+            onClick={prevMonth}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 active:bg-slate-100 transition-colors"
+          >
+            ‹
+          </button>
+          <span className="text-base font-bold text-slate-800 capitalize">
+            {MONTH_NAMES[month]}{" "}
+            <span className="text-slate-400 font-medium">{year}</span>
+          </span>
+          <button
+            onClick={nextMonth}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 active:bg-slate-100 transition-colors"
+          >
+            ›
+          </button>
+        </div>
+
+        <div className="grid grid-cols-7 px-2 pt-2">
+          {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((dayName) => (
+            <div
+              key={dayName}
+              className="text-center text-[10px] font-bold tracking-wide text-slate-400 uppercase pb-1.5"
+            >
+              {dayName}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 gap-y-2.5 px-2 pb-3" data-no-swipe>
+          {days.map((day, idx) => {
+            const isToday =
+              day && day.toDateString() === new Date().toDateString();
+            const isSelected =
+              day && day.toDateString() === selectedMobileDate.toDateString();
+            const dayKey = day ? toISODate(day) : "";
+            const dayEvents = day ? (eventsByDate.get(dayKey) ?? []) : [];
+            const dayOffEntries = day
+              ? (dayOffsByDate.get(dayKey) ?? [])
+              : [];
+            const dayColor = day
+              ? getDayColor(dayEvents, projectHexMap)
+              : undefined;
+
+            return (
+              <div
+                key={idx}
+                className="flex items-center justify-center py-0.5"
+              >
+                {day && (
+                  <button
+                    onTouchStart={(e) => {
+                      const t = e.touches[0];
+                      startLongPress(day, t.clientX, t.clientY);
+                    }}
+                    onTouchEnd={() => cancelLongPress()}
+                    onTouchMove={(e) => {
+                      const t = e.touches[0];
+                      cancelLongPress(t.clientX, t.clientY);
+                    }}
+                    onTouchCancel={() => cancelLongPress()}
+                    onContextMenu={(e) => e.preventDefault()}
+                    onClick={() => handleMobileDayTap(day)}
+                    className={`relative w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold select-none no-select-ios touch-manipulation active:scale-90
+                      ${isSelected ? "ring-2 ring-blue-600 ring-offset-2" : ""}
+                      ${isToday && !isSelected ? "ring-2 ring-blue-200" : ""}
+                      ${triggeredDay === day ? "dayoff-cell-enter" : ""}
+                    `}
+                    style={{
+                      background: dayColor || "#f1f5f9",
+                      color: dayColor ? "#fff" : "#64748b",
+                      textShadow: dayColor
+                        ? "0 1px 2px rgba(0,0,0,0.35)"
+                        : "none",
+                      transform: pressingDay === day ? "scale(0.9)" : "",
+                      transition: pressingDay === day
+                        ? "transform 550ms ease-out"
+                        : "transform 150ms ease-out",
+                    }}
+                  >
+                    <svg
+                      className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none"
+                      viewBox="0 0 36 36"
+                    >
+                      <circle
+                        cx="18"
+                        cy="18"
+                        r="16"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeDasharray="100.53"
+                        strokeDashoffset={pressingDay === day ? 0 : 100.53}
+                        style={{
+                          transition: pressingDay === day
+                            ? "stroke-dashoffset 550ms linear"
+                            : "stroke-dashoffset 150ms ease-out",
+                        }}
+                        className="text-blue-500 opacity-70"
+                      />
+                    </svg>
+                    {day.getDate()}
+                    {dayOffEntries.length > 0 && (
+                      <span className="pointer-events-none absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white flex items-center justify-center">
+                        <span className="text-white text-[6px] font-bold leading-none">
+                          ✕
+                        </span>
+                      </span>
+                    )}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 mt-3 px-1">
+        {projects.map((p: Project) => (
+          <span
+            key={p.id}
+            className="flex items-center gap-1 text-[10px] font-medium text-slate-500"
+          >
+            <span
+              className="w-2 h-2 rounded-full"
+              style={{
+                background: PROJECT_HEX[p.color] || PROJECT_HEX.blue,
+              }}
+            />
+            {p.name}
+          </span>
+        ))}
+        <span className="flex items-center gap-1 text-[10px] font-medium text-slate-500">
+          <span className="w-2 h-2 rounded-full bg-rose-500" />
+          Вихідний
+        </span>
+
+        {userRole === "SUPERADMIN" && (
+          <select
+            value={filterCityId}
+            onChange={(e) => setFilterCityId(e.target.value)}
+            className="ml-auto text-[11px] font-semibold text-slate-700 outline-none bg-slate-50 border border-slate-200 rounded-lg px-2 py-1"
+          >
+            <option value="ALL">🌍 Всі міста</option>
+            {cities.map((c: City) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+    </>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/features/calendar/components/MobileDayDetailsPanel.tsx
+
+```
+import { motion, AnimatePresence } from "framer-motion";
+import { toISODate } from "../utils/date";
+import { PROJECT_HEX } from "../constants";
+import type { Event as CalendarEvent, DayOff, User } from "../../../types";
+
+interface MobileDayDetailsPanelProps {
+  selectedMobileDate: Date;
+  selectedDayEvents: CalendarEvent[];
+  dayOffsByDate: Map<string, DayOff[]>;
+  allUsers: User[];
+  projectHexMap: Map<string, string>;
+  navigate: (path: string) => void;
+}
+
+export default function MobileDayDetailsPanel({
+  selectedMobileDate,
+  selectedDayEvents,
+  dayOffsByDate,
+  allUsers,
+  projectHexMap,
+  navigate,
+}: MobileDayDetailsPanelProps) {
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={toISODate(selectedMobileDate)}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.2 }}
+        className="mt-4 select-none"
+      >
+        <h3 className="text-sm font-bold text-slate-800 mb-2.5">
+          {selectedMobileDate.toLocaleDateString("uk-UA", {
+            day: "2-digit",
+            month: "long",
+            weekday: "long",
+          })}
+        </h3>
+
+        {(() => {
+          const key = toISODate(selectedMobileDate);
+          const dayOffEntries = dayOffsByDate.get(key) ?? [];
+          if (dayOffEntries.length === 0) return null;
+          return (
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {dayOffEntries.map((d: DayOff) => {
+                const u = allUsers.find((au: User) => au.id === d.userId);
+                return (
+                  <span
+                    key={d.id}
+                    className="text-[11px] font-semibold text-rose-600 bg-rose-50 border border-rose-100 px-2 py-1 rounded-full"
+                  >
+                    🌴 {u?.name || "Вихідний"}
+                  </span>
+                );
+              })}
+            </div>
+          );
+        })()}
+
+        {selectedDayEvents.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-400 text-sm">
+            На цей день подій не заплановано
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {selectedDayEvents.map((ev: CalendarEvent) => (
+              <div
+                key={ev.id}
+                onClick={() =>
+                  ev.school && navigate(`/schools/${ev.school.id}`)
+                }
+                className="bg-white p-4 rounded-2xl border-l-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
+                style={{
+                  borderLeftColor:
+                    projectHexMap.get(ev.project) ?? PROJECT_HEX.blue,
+                }}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-xs font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-600">
+                    🕒 {ev.time || "Не вказано"}
+                  </span>
+                  <span className="text-xs font-medium text-slate-500">
+                    {ev.project}
+                  </span>
+                </div>
+                <p className="font-bold text-slate-800">
+                  {ev.school?.name}
+                </p>
+                <p className="text-sm text-slate-500 mt-1">
+                  🚐 Екіпаж: {ev.crew?.name || "Не призначено"}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+```
+
 # FILE: apps/frontend/src/features/calendar/constants.ts
 
 ```
@@ -2684,21 +3005,55 @@ export function useDeleteProject() {
 ```
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../config/api";
+import type { InventoryItem, CreateInventoryPayload, UpdateInventoryPayload } from "../types";
 
-export interface InventoryItem {
-  id: string;
-  name: string;
-  sku: string | null;
-  unit: string;
-  minStock: number;
-  currentStock: number;
+export function useInventory(filters?: { category?: string; cityId?: string; lowStock?: string; search?: string }) {
+  const params = new URLSearchParams();
+  if (filters?.category) params.set("category", filters.category);
+  if (filters?.cityId) params.set("cityId", filters.cityId);
+  if (filters?.lowStock) params.set("lowStock", filters.lowStock);
+  if (filters?.search) params.set("search", filters.search);
+  const qs = params.toString();
+
+  return useQuery({
+    queryKey: ["inventory", filters],
+    queryFn: () => api.get<InventoryItem[]>(`/inventory${qs ? `?${qs}` : ""}`).then(r => r.data),
+    staleTime: 30 * 1000,
+  });
 }
 
-export function useInventory() {
+export function useLowStockItems() {
   return useQuery({
-    queryKey: ["inventory"],
-    queryFn: () => api.get<InventoryItem[]>("/inventory").then(r => r.data),
+    queryKey: ["inventory", "low-stock"],
+    queryFn: () => api.get<InventoryItem[]>("/inventory/low-stock").then(r => r.data),
     staleTime: 30 * 1000,
+  });
+}
+
+export function useCreateInventoryItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateInventoryPayload) =>
+      api.post<InventoryItem>("/inventory", data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["inventory"] }),
+  });
+}
+
+export function useUpdateInventoryItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: UpdateInventoryPayload) =>
+      api.patch<InventoryItem>(`/inventory/${id}`, data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["inventory"] }),
+  });
+}
+
+export function useDeleteInventoryItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.delete(`/inventory/${id}`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["inventory"] }),
   });
 }
 
@@ -6446,9 +6801,18 @@ export default function Finance({ isPeek }: { isPeek?: boolean }) {
 # FILE: apps/frontend/src/pages/Inventory.tsx
 
 ```
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { Plus, Search, Edit3, Trash2, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { useInventory, useAddStock } from "../hooks/useInventory";
+import {
+  useInventory,
+  useCreateInventoryItem,
+  useUpdateInventoryItem,
+  useDeleteInventoryItem,
+  useAddStock,
+} from "../hooks/useInventory";
+import { InventoryItemModal } from "../components/inventory/InventoryItemModal";
+import type { InventoryItem } from "../types";
 
 function StockBadge({ current, min }: { current: number; min: number }) {
   let color = "bg-green-100 text-green-700";
@@ -6461,77 +6825,256 @@ function StockBadge({ current, min }: { current: number; min: number }) {
   );
 }
 
+const CATEGORIES = ["Техніка", "Матеріали", "Реквізит", "Канцелярія", "Інше"];
+
 export default function InventoryPage() {
   const { user } = useAuth();
-  const { data: items, isLoading } = useInventory();
-  const addStock = useAddStock();
-  const [stockModal, setStockModal] = useState<{ id: string; name: string } | null>(null);
-  const [quantity, setQuantity] = useState(0);
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [lowStockOnly, setLowStockOnly] = useState(false);
 
-  const canAddStock = user?.role === "MANAGER" || user?.role === "SUPERADMIN" || user?.role === "OWNER";
+  const { data: items, isLoading } = useInventory({
+    search: search || undefined,
+    category: categoryFilter || undefined,
+    lowStock: lowStockOnly ? "true" : undefined,
+  });
+
+  const createItem = useCreateInventoryItem();
+  const updateItem = useUpdateInventoryItem();
+  const deleteItem = useDeleteInventoryItem();
+  const addStock = useAddStock();
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editItem, setEditItem] = useState<InventoryItem | null>(null);
+  const [stockModal, setStockModal] = useState<{ id: string; name: string } | null>(null);
+  const [stockQty, setStockQty] = useState(0);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  const canEdit = user?.role === "SUPERADMIN" || user?.role === "OWNER";
+  const canAddStock = canEdit || user?.role === "MANAGER";
+
+  const uniqueCategories = useMemo(() => {
+    if (!items) return CATEGORIES;
+    const cats = new Set(items.map((i) => i.category));
+    return [...new Set([...CATEGORIES, ...cats])];
+  }, [items]);
+
+  const handleOpenCreate = () => {
+    setEditItem(null);
+    setModalOpen(true);
+  };
+
+  const handleOpenEdit = (item: InventoryItem) => {
+    setEditItem(item);
+    setModalOpen(true);
+  };
+
+  const handleSave = async (data: { name: string; sku?: string; category: string; unit: string; minStock: number; currentStock: number; notes?: string }) => {
+    if (editItem) {
+      await updateItem.mutateAsync({ id: editItem.id, ...data });
+    } else {
+      await createItem.mutateAsync(data);
+    }
+    setModalOpen(false);
+    setEditItem(null);
+  };
+
+  const handleDelete = async (id: string) => {
+    await deleteItem.mutateAsync(id);
+    setDeleteConfirm(null);
+  };
 
   const handleAddStock = async () => {
-    if (!stockModal || quantity <= 0) return;
-    await addStock.mutateAsync({ id: stockModal.id, quantity });
+    if (!stockModal || stockQty <= 0) return;
+    await addStock.mutateAsync({ id: stockModal.id, quantity: stockQty });
     setStockModal(null);
-    setQuantity(0);
+    setStockQty(0);
   };
+
+  const cardView = (item: InventoryItem) => (
+    <div key={item.id} className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 sm:hidden">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="font-semibold text-slate-800 truncate">{item.name}</div>
+          {item.sku && <div className="text-xs text-slate-400 mt-0.5">{item.sku}</div>}
+        </div>
+        <StockBadge current={item.currentStock} min={item.minStock} />
+      </div>
+      <div className="flex items-center gap-3 text-xs text-slate-500">
+        <span className="bg-slate-100 px-2 py-0.5 rounded">{item.category}</span>
+        <span>{item.unit}</span>
+        {item.city && <span>{item.city.name}</span>}
+      </div>
+      <div className="flex items-center gap-2 pt-1">
+        {canAddStock && (
+          <button onClick={() => setStockModal({ id: item.id, name: item.name })} className="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium">
+            Поповнити
+          </button>
+        )}
+        {canEdit && (
+          <>
+            <button onClick={() => handleOpenEdit(item)} className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium">
+              <Edit3 className="w-3.5 h-3.5 inline mr-1" />
+              Змінити
+            </button>
+            <button onClick={() => setDeleteConfirm(item.id)} className="text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-medium">
+              <Trash2 className="w-3.5 h-3.5 inline mr-1" />
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Склад</h1>
+        {canEdit && (
+          <button
+            onClick={handleOpenCreate}
+            className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Додати товар
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 mb-5">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Пошук товару..."
+            className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="p-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+        >
+          <option value="">Всі категорії</option>
+          {uniqueCategories.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+        <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={lowStockOnly}
+            onChange={(e) => setLowStockOnly(e.target.checked)}
+            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          />
+          Мало на складі
+        </label>
       </div>
 
       {isLoading ? (
-        <div className="text-slate-500">Завантаження...</div>
-      ) : (
-        <div className="overflow-x-auto bg-white rounded-2xl border border-slate-200">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50">
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Назва</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Артикул</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Од.</th>
-                <th className="text-center px-4 py-3 font-semibold text-slate-600">На складі</th>
-                <th className="text-center px-4 py-3 font-semibold text-slate-600">Мін.</th>
-                <th className="text-right px-4 py-3 font-semibold text-slate-600">Дії</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items?.map((item) => (
-                <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                  <td className="px-4 py-3 font-medium text-slate-800">{item.name}</td>
-                  <td className="px-4 py-3 text-slate-500">{item.sku || "—"}</td>
-                  <td className="px-4 py-3 text-slate-500">{item.unit}</td>
-                  <td className="px-4 py-3 text-center">
-                    <StockBadge current={item.currentStock} min={item.minStock} />
-                  </td>
-                  <td className="px-4 py-3 text-center text-slate-600">{item.minStock}</td>
-                  <td className="px-4 py-3 text-right space-x-2">
-                    {canAddStock && (
-                      <button
-                        onClick={() => setStockModal({ id: item.id, name: item.name })}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium"
-                      >
-                        Поповнити
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {(!items || items.length === 0) && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
-                    Склад порожній
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="text-slate-500 py-8 text-center">Завантаження...</div>
+      ) : !items || items.length === 0 ? (
+        <div className="text-slate-400 py-16 text-center">
+          <p className="text-lg mb-2">Склад порожній</p>
+          {canEdit && (
+            <button onClick={handleOpenCreate} className="text-blue-600 font-medium text-sm hover:underline">
+              + Додати перший товар
+            </button>
+          )}
         </div>
+      ) : (
+        <>
+          {/* Mobile cards */}
+          <div className="flex flex-col gap-3 sm:hidden">{items.map(cardView)}</div>
+
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto bg-white rounded-2xl border border-slate-200">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50">
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Назва</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Артикул</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Категорія</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Од.</th>
+                  <th className="text-center px-4 py-3 font-semibold text-slate-600">На складі</th>
+                  <th className="text-center px-4 py-3 font-semibold text-slate-600">Мін.</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Місто</th>
+                  <th className="text-right px-4 py-3 font-semibold text-slate-600">Дії</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50/50">
+                    <td className="px-4 py-3 font-medium text-slate-800">{item.name}</td>
+                    <td className="px-4 py-3 text-slate-500">{item.sku || "—"}</td>
+                    <td className="px-4 py-3 text-slate-500">{item.category}</td>
+                    <td className="px-4 py-3 text-slate-500">{item.unit}</td>
+                    <td className="px-4 py-3 text-center">
+                      <StockBadge current={item.currentStock} min={item.minStock} />
+                    </td>
+                    <td className="px-4 py-3 text-center text-slate-600">{item.minStock}</td>
+                    <td className="px-4 py-3 text-slate-500">{item.city?.name || "—"}</td>
+                    <td className="px-4 py-3 text-right space-x-2">
+                      {canAddStock && (
+                        <button
+                          onClick={() => setStockModal({ id: item.id, name: item.name })}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium"
+                        >
+                          Поповнити
+                        </button>
+                      )}
+                      {canEdit && (
+                        <>
+                          <button
+                            onClick={() => handleOpenEdit(item)}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 inline mr-1" />
+                            Змінити
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirm(item.id)}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-medium"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 inline" />
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
+      {/* FAB for mobile */}
+      {canEdit && (
+        <button
+          onClick={handleOpenCreate}
+          className="sm:hidden fixed bottom-20 right-4 z-40 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors"
+          aria-label="Додати товар"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      )}
+
+      {/* Create/Edit Modal */}
+      <InventoryItemModal
+        isOpen={modalOpen}
+        onClose={() => { setModalOpen(false); setEditItem(null); }}
+        onSave={handleSave}
+        item={editItem}
+      />
+
+      {/* Stock modal */}
       {stockModal && (
         <div
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center"
@@ -6543,8 +7086,8 @@ export default function InventoryPage() {
             <input
               type="number"
               min={1}
-              value={quantity || ""}
-              onChange={(e) => setQuantity(+e.target.value)}
+              value={stockQty || ""}
+              onChange={(e) => setStockQty(+e.target.value)}
               placeholder="Кількість"
               className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none mb-4"
               autoFocus
@@ -6558,10 +7101,38 @@ export default function InventoryPage() {
               </button>
               <button
                 onClick={handleAddStock}
-                disabled={quantity <= 0 || addStock.isPending}
+                disabled={stockQty <= 0 || addStock.isPending}
                 className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-medium text-sm disabled:opacity-50"
               >
                 {addStock.isPending ? "..." : "Додати"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation */}
+      {deleteConfirm && (
+        <div
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center"
+          onClick={(e) => { if (e.target === e.currentTarget) setDeleteConfirm(null); }}
+        >
+          <div className="bg-white rounded-2xl p-6 shadow-xl w-full max-w-sm mx-4">
+            <h2 className="text-lg font-bold text-slate-800 mb-2">Видалити товар?</h2>
+            <p className="text-sm text-slate-500 mb-5">Цю дію не можна скасувати.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-medium text-sm"
+              >
+                Скасувати
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirm)}
+                disabled={deleteItem.isPending}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-medium text-sm disabled:opacity-50"
+              >
+                {deleteItem.isPending ? "..." : "Видалити"}
               </button>
             </div>
           </div>
@@ -9616,743 +10187,6 @@ describe("EventReport", () => {
     });
     renderPage();
     expect(screen.getByText("0")).toBeInTheDocument();
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/component/EventsTable.test.tsx
-
-```
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-
-vi.mock("../../hooks/useSchoolProfile", () => ({
-  useDeleteEvent: () => ({ mutateAsync: vi.fn().mockResolvedValue(undefined) }),
-}));
-
-import EventsTable from "../../components/school-profile/EventsTable";
-
-const mockEvents = [
-  {
-    id: "ev-1",
-    project: "Голограма",
-    date: "2026-07-01T10:00:00Z",
-    price: 5000,
-    status: "BASE",
-  },
-  {
-    id: "ev-2",
-    project: "Малювайко",
-    date: "2026-08-01T10:00:00Z",
-    price: 3000,
-    status: "FIRST_CONTACT",
-  },
-];
-
-describe("EventsTable", () => {
-  const onEventSelect = vi.fn();
-  const onDeleteSuccess = vi.fn();
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    window.confirm = vi.fn(() => true);
-  });
-
-  it("відображає всі події", () => {
-    render(
-      <MemoryRouter>
-        <EventsTable
-          events={mockEvents}
-          selectedEventId={null}
-          onEventSelect={onEventSelect}
-          onDeleteSuccess={onDeleteSuccess}
-          schoolId="school-1"
-        />
-      </MemoryRouter>,
-    );
-
-    expect(screen.getAllByText("Голограма")).toHaveLength(2);
-    expect(screen.getAllByText("Малювайко")).toHaveLength(2);
-  });
-
-  it("показує кількість подій у заголовку", () => {
-    render(
-      <MemoryRouter>
-        <EventsTable
-          events={mockEvents}
-          selectedEventId={null}
-          onEventSelect={onEventSelect}
-          onDeleteSuccess={onDeleteSuccess}
-          schoolId="school-1"
-        />
-      </MemoryRouter>,
-    );
-    expect(screen.getByText("Всі події (2)")).toBeInTheDocument();
-  });
-
-  it("не рендериться якщо events порожній", () => {
-    const { container } = render(
-      <MemoryRouter>
-        <EventsTable
-          events={[]}
-          selectedEventId={null}
-          onEventSelect={onEventSelect}
-          onDeleteSuccess={onDeleteSuccess}
-          schoolId="school-1"
-        />
-      </MemoryRouter>,
-    );
-    expect(container.firstChild).toBeNull();
-  });
-
-  it("викликає onEventSelect при кліку на подію", () => {
-    render(
-      <MemoryRouter>
-        <EventsTable
-          events={mockEvents}
-          selectedEventId={null}
-          onEventSelect={onEventSelect}
-          onDeleteSuccess={onDeleteSuccess}
-          schoolId="school-1"
-        />
-      </MemoryRouter>,
-    );
-    fireEvent.click(screen.getAllByText("Голограма")[0]);
-    expect(onEventSelect).toHaveBeenCalledWith("ev-1");
-  });
-
-  it("показує підтвердження перед видаленням", () => {
-    render(
-      <MemoryRouter>
-        <EventsTable
-          events={mockEvents}
-          selectedEventId={null}
-          onEventSelect={onEventSelect}
-          onDeleteSuccess={onDeleteSuccess}
-          schoolId="school-1"
-        />
-      </MemoryRouter>,
-    );
-    const deleteButtons = screen.getAllByText("🗑");
-    fireEvent.click(deleteButtons[0]);
-    expect(window.confirm).toHaveBeenCalledWith("Видалити цю подію?");
-  });
-
-  it("не видаляє якщо confirm повернув false", async () => {
-    window.confirm = vi.fn(() => false);
-    render(
-      <MemoryRouter>
-        <EventsTable
-          events={mockEvents}
-          selectedEventId={null}
-          onEventSelect={onEventSelect}
-          onDeleteSuccess={onDeleteSuccess}
-          schoolId="school-1"
-        />
-      </MemoryRouter>,
-    );
-    const deleteButtons = screen.getAllByText("🗑");
-    fireEvent.click(deleteButtons[0]);
-    expect(onDeleteSuccess).not.toHaveBeenCalled();
-  });
-
-  it("виділяє вибрану подію", () => {
-    const { container } = render(
-      <MemoryRouter>
-        <EventsTable
-          events={mockEvents}
-          selectedEventId="ev-1"
-          onEventSelect={onEventSelect}
-          onDeleteSuccess={onDeleteSuccess}
-          schoolId="school-1"
-        />
-      </MemoryRouter>,
-    );
-    const selected = container.querySelector(".bg-blue-50\\/50");
-    expect(selected).toBeInTheDocument();
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/component/IssueCarousel.test.tsx
-
-```
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import IssueCarousel from "../../components/IssueCarousel";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { http, HttpResponse } from "msw";
-import { server } from "../mocks/server";
-import { vi } from "vitest";
-
-vi.mock("../../context/CityContext", () => ({
-  useSelectedCity: () => ({ selectedCity: { id: "city-1", name: "Львів" } })
-}));
-
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
-  );
-};
-
-describe("IssueCarousel", () => {
-  it("fetches and renders issues", async () => {
-    server.use(
-      http.get("http://localhost:3000/api/issues", () =>
-        HttpResponse.json([
-          {
-            id: "issue-1",
-            schoolName: "Test School",
-            eventName: "Test Event",
-            message: "Need help",
-            status: "Планується",
-            createdAt: new Date().toISOString(),
-          },
-        ])
-      )
-    );
-
-    render(<IssueCarousel />, { wrapper: createWrapper() });
-    
-    await waitFor(() => {
-      expect(screen.getByText("Test School")).toBeInTheDocument();
-    });
-    expect(screen.getByText('"Need help"')).toBeInTheDocument();
-  });
-
-  it("toggles status to next phase", async () => {
-    server.use(
-      http.get("http://localhost:3000/api/issues", () =>
-        HttpResponse.json([
-          {
-            id: "issue-1",
-            schoolName: "Test School",
-            status: "Планується",
-            createdAt: new Date().toISOString(),
-          },
-        ])
-      )
-    );
-
-    let patchedStatus: string | null = null;
-    server.use(
-      http.patch("http://localhost:3000/api/issues/:id/status", async ({ request }) => {
-        const body = await request.json() as any;
-        patchedStatus = body.status;
-        return HttpResponse.json({ success: true });
-      })
-    );
-
-    render(<IssueCarousel />, { wrapper: createWrapper() });
-    
-    await waitFor(() => {
-      expect(screen.getByText("Test School")).toBeInTheDocument();
-    });
-
-    const button = screen.getByRole("button", { name: /Планується/i });
-    await userEvent.click(button);
-
-    await waitFor(() => {
-      expect(patchedStatus).toBe("Виконується");
-    });
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/component/LoadingBar.test.tsx
-
-```
-import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { LoadingBar } from "../../components/ui/LoadingBar";
-
-describe("LoadingBar", () => {
-  it("рендериться, коли isLoading=true", () => {
-    const { container } = render(<LoadingBar isLoading={true} />);
-    expect(container.querySelector(".fixed.top-0")).toBeInTheDocument();
-  });
-
-  it("не рендериться, коли isLoading=false", () => {
-    const { container } = render(<LoadingBar isLoading={false} />);
-    expect(container.querySelector(".fixed.top-0")).not.toBeInTheDocument();
-  });
-
-  it("має правильні CSS-класи для позиціонування", () => {
-    const { container } = render(<LoadingBar isLoading={true} />);
-    const bar = container.querySelector(".fixed.top-0")!;
-    expect(bar).toHaveClass("left-0", "right-0", "z-[60]", "h-0.5");
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/component/Login.test.tsx
-
-```
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import Login from "../../pages/Login";
-import { BrowserRouter } from "react-router-dom";
-import { http, HttpResponse } from "msw";
-import { server } from "../mocks/server";
-import { vi } from "vitest";
-
-const renderLogin = (onLogin = vi.fn()) => {
-  return render(
-    <BrowserRouter>
-      <Login onLogin={onLogin} />
-    </BrowserRouter>
-  );
-};
-
-describe("Login", () => {
-  it("renders login form", () => {
-    renderLogin();
-    expect(screen.getByText("Вхід у CRM")).toBeInTheDocument();
-  });
-
-  it("shows error on failed login", async () => {
-    server.use(
-      http.post("http://localhost:3000/api/auth/login", () => {
-        return new HttpResponse(null, { status: 401 });
-      })
-    );
-
-    renderLogin();
-    await userEvent.type(screen.getByLabelText(/email/i), "test@test.com");
-    await userEvent.type(screen.getByLabelText(/пароль/i), "wrong");
-    
-    await userEvent.click(screen.getByRole("button", { name: /увійти/i }));
-    
-    await waitFor(() => {
-      expect(screen.getByText("Невірний email або пароль")).toBeInTheDocument();
-    });
-  });
-
-  it("calls onLogin on successful login", async () => {
-    const mockUser = { id: "1", name: "Admin", email: "admin@crm.com", role: "SUPERADMIN" };
-    server.use(
-      http.post("http://localhost:3000/api/auth/login", () => {
-        return HttpResponse.json({ user: mockUser, token: "fake-token" });
-      })
-    );
-
-    const onLogin = vi.fn();
-    renderLogin(onLogin);
-    await userEvent.type(screen.getByLabelText(/email/i), mockUser.email);
-    await userEvent.type(screen.getByLabelText(/пароль/i), "123!PASSWORD!321");
-    
-    await userEvent.click(screen.getByRole("button", { name: /увійти/i }));
-
-    await waitFor(() => {
-      expect(onLogin).toHaveBeenCalledWith(mockUser);
-    }, { timeout: 3000 });
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/component/MobileTopNav.test.tsx
-
-```
-import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import MobileTopNav from "../../components/MobileTopNav";
-import { AuthProvider } from "../../context/AuthContext";
-import { CityProvider } from "../../context/CityContext";
-import type { ReactNode } from "react";
-
-const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-
-function Wrapper({ children }: { children: ReactNode }) {
-  return (
-    <MemoryRouter initialEntries={["/schools"]}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <CityProvider>{children}</CityProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </MemoryRouter>
-  );
-}
-
-describe("MobileTopNav", () => {
-  it("рендерить назву СВІТЛО ЗНАНЬ", () => {
-    render(<MobileTopNav />, { wrapper: Wrapper });
-    expect(screen.getByText("СВІТЛО ЗНАНЬ")).toBeTruthy();
-  });
-
-  it("рендерить назву міста", () => {
-    render(<MobileTopNav />, { wrapper: Wrapper });
-    const cityTexts = screen.getAllByText(/.+/);
-    expect(cityTexts.length).toBeGreaterThanOrEqual(2);
-  });
-
-  it("не містить клікабельних посилань", () => {
-    render(<MobileTopNav />, { wrapper: Wrapper });
-    const links = screen.queryAllByRole("link");
-    expect(links.length).toBe(0);
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/component/Pipeline.test.tsx
-
-```
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import Pipeline from "../../components/school-profile/Pipeline";
-
-const STAGES = [
-  { id: 1, key: "BASE", name: "Новий заклад" },
-  { id: 2, key: "FIRST_CONTACT", name: "Знайомство" },
-  { id: 3, key: "DATE_CONFIRMED", name: "Підтвердження дати" },
-];
-
-describe("Pipeline", () => {
-  it("відображає всі етапи", () => {
-    render(
-      <Pipeline
-        currentStageIndex={0}
-        currentEvent={{ id: "e1", status: "BASE" }}
-        onPipelineClick={vi.fn()}
-        stages={STAGES}
-      />,
-    );
-    expect(screen.getByText("Новий заклад")).toBeInTheDocument();
-    expect(screen.getByText("Знайомство")).toBeInTheDocument();
-  });
-
-  it("викликає onPipelineClick для наступного етапу", () => {
-    const onClick = vi.fn();
-    render(
-      <Pipeline
-        currentStageIndex={0}
-        currentEvent={{ id: "e1", status: "BASE" }}
-        onPipelineClick={onClick}
-        stages={STAGES}
-      />,
-    );
-    fireEvent.click(screen.getByText("2"));
-    expect(onClick).toHaveBeenCalledWith(2);
-  });
-
-  it("не викликає onClick для недоступного етапу", () => {
-    const onClick = vi.fn();
-    render(
-      <Pipeline
-        currentStageIndex={0}
-        currentEvent={{ id: "e1", status: "BASE" }}
-        onPipelineClick={onClick}
-        stages={STAGES}
-      />,
-    );
-    fireEvent.click(screen.getByText("3"));
-    expect(onClick).not.toHaveBeenCalled();
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/component/ProtectedRoute.test.tsx
-
-```
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
-import ProtectedRoute from "../../components/ProtectedRoute";
-import { vi } from "vitest";
-import * as AuthContext from "../../context/AuthContext";
-
-describe("ProtectedRoute", () => {
-  it("redirects to login if user is not authenticated", () => {
-    vi.spyOn(AuthContext, "useAuth").mockReturnValue({ user: null } as any);
-    render(
-      <MemoryRouter initialEntries={["/protected"]}>
-        <Routes>
-          <Route path="/login" element={<div>Login Page</div>} />
-          <Route path="/protected" element={<ProtectedRoute allowedRoles={["SUPERADMIN"]}>Protected Content</ProtectedRoute>} />
-        </Routes>
-      </MemoryRouter>
-    );
-    expect(screen.getByText("Login Page")).toBeInTheDocument();
-  });
-
-  it("redirects to /schools if user lacks required role", () => {
-    vi.spyOn(AuthContext, "useAuth").mockReturnValue({ user: { role: "MANAGER" } } as any);
-    render(
-      <MemoryRouter initialEntries={["/protected"]}>
-        <Routes>
-          <Route path="/schools" element={<div>Schools Page</div>} />
-          <Route path="/protected" element={<ProtectedRoute allowedRoles={["SUPERADMIN"]}>Protected Content</ProtectedRoute>} />
-        </Routes>
-      </MemoryRouter>
-    );
-    expect(screen.getByText("Schools Page")).toBeInTheDocument();
-  });
-
-  it("renders children if user is authenticated and has required role", () => {
-    vi.spyOn(AuthContext, "useAuth").mockReturnValue({ user: { role: "SUPERADMIN" } } as any);
-    render(
-      <MemoryRouter initialEntries={["/protected"]}>
-        <Routes>
-          <Route path="/protected" element={<ProtectedRoute allowedRoles={["SUPERADMIN"]}>Protected Content</ProtectedRoute>} />
-        </Routes>
-      </MemoryRouter>
-    );
-    expect(screen.getByText("Protected Content")).toBeInTheDocument();
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/component/SchoolCard.test.tsx
-
-```
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import { SchoolCard } from "../../components/schools/SchoolMobileList";
-
-const STAGES = [
-  { key: "BASE", name: "Новий заклад" },
-  { key: "FIRST_CONTACT", name: "Знайомство" },
-];
-
-const mockSchool = {
-  id: "school-1",
-  name: "Школа №1",
-  director: "Іван Петренко",
-  phone: "0671234567",
-  events: [{ status: "BASE" }],
-};
-
-describe("SchoolCard", () => {
-  it("відображає назву школи", () => {
-    render(
-      <MemoryRouter>
-        <SchoolCard
-          school={mockSchool}
-          onDelete={vi.fn()}
-          stages={STAGES}
-          index={0}
-        />
-      </MemoryRouter>,
-    );
-    expect(screen.getByText("Школа №1")).toBeInTheDocument();
-  });
-
-  it("відображає директора", () => {
-    render(
-      <MemoryRouter>
-        <SchoolCard
-          school={mockSchool}
-          onDelete={vi.fn()}
-          stages={STAGES}
-          index={0}
-        />
-      </MemoryRouter>,
-    );
-    expect(screen.getByText(/Іван Петренко/)).toBeInTheDocument();
-  });
-
-  it("відображає поточний етап", () => {
-    render(
-      <MemoryRouter>
-        <SchoolCard
-          school={mockSchool}
-          onDelete={vi.fn()}
-          stages={STAGES}
-          index={0}
-        />
-      </MemoryRouter>,
-    );
-    expect(screen.getByText("Новий заклад")).toBeInTheDocument();
-  });
-
-  it("викликає onDelete при натисканні", () => {
-    const onDelete = vi.fn();
-    render(
-      <MemoryRouter>
-        <SchoolCard
-          school={mockSchool}
-          onDelete={onDelete}
-          stages={STAGES}
-          index={0}
-        />
-      </MemoryRouter>,
-    );
-    fireEvent.click(screen.getByText("🗑"));
-    expect(onDelete).toHaveBeenCalledWith(
-      expect.any(Object),
-      "school-1",
-      "Школа №1",
-    );
-  });
-
-  it("не показує етап якщо подій немає", () => {
-    render(
-      <MemoryRouter>
-        <SchoolCard
-          school={{ ...mockSchool, events: [] }}
-          onDelete={vi.fn()}
-          stages={STAGES}
-          index={0}
-        />
-      </MemoryRouter>,
-    );
-    expect(screen.queryByText("Новий заклад")).not.toBeInTheDocument();
-  });
-
-  it("показує телефон як посилання tel:, а видимий текст — ім'я директора (якщо воно вказане)", () => {
-    render(
-      <MemoryRouter>
-        <SchoolCard
-          school={mockSchool}
-          onDelete={vi.fn()}
-          stages={STAGES}
-          index={0}
-        />
-      </MemoryRouter>,
-    );
-    const link = screen.getByText(/Іван Петренко/).closest("a");
-    expect(link).toHaveAttribute("href", "tel:0671234567");
-  });
-
-  it("показує сам номер телефону як текст, якщо директор не вказаний", () => {
-    render(
-      <MemoryRouter>
-        <SchoolCard
-          school={{ ...mockSchool, director: "" }}
-          onDelete={vi.fn()}
-          stages={STAGES}
-          index={0}
-        />
-      </MemoryRouter>,
-    );
-    expect(screen.getByText(/0671234567/)).toBeInTheDocument();
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/component/Schools.test.tsx
-
-```
-import { render, screen, waitFor } from "@testing-library/react";
-import Schools from "../../pages/Schools";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter } from "react-router-dom";
-import { http, HttpResponse } from "msw";
-import { server } from "../mocks/server";
-import { vi } from "vitest";
-
-// Mock nested lazy components
-vi.mock("../../components/schools/StatsBar", () => ({ default: () => <div data-testid="stats-bar" /> }));
-vi.mock("../../components/schools/VirtualDesktopTable", () => ({ default: () => <div data-testid="virtual-desktop-table" /> }));
-vi.mock("../../components/VirtualSchoolList", () => ({ default: () => <div data-testid="virtual-school-list" /> }));
-
-vi.mock("../../context/CityContext", () => ({
-  useSelectedCity: () => ({ selectedCity: { id: "city-1", name: "Львів" } })
-}));
-
-vi.mock("../../context/AuthContext", () => ({
-  useAuth: () => ({ user: { role: "SUPERADMIN" } })
-}));
-
-const createWrapper = () => {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>{children}</BrowserRouter>
-    </QueryClientProvider>
-  );
-};
-
-describe("Schools Page", () => {
-  it("renders schools page and child components", async () => {
-    server.use(
-      http.get("http://localhost:3000/api/schools", () =>
-        HttpResponse.json({
-          data: [],
-          meta: { totalItems: 0, currentPage: 1, totalPages: 1 }
-        })
-      ),
-      http.get("http://localhost:3000/api/schools/stats", () =>
-        HttpResponse.json({
-          statusStats: { new: 0, planned: 0, inProgress: 0, done: 0 },
-          sizeStats: { small: 0, medium: 0, large: 0 }
-        })
-      ),
-      http.get("http://localhost:3000/api/cities", () =>
-        HttpResponse.json([{ id: "city-1", name: "Львів" }])
-      ),
-      http.get("http://localhost:3000/api/cities/supported", () =>
-        HttpResponse.json(["Львів"])
-      )
-    );
-
-    render(<Schools />, { wrapper: createWrapper() });
-
-    expect(screen.getByText(/Школи/i)).toBeInTheDocument();
-    
-    await waitFor(() => {
-      expect(screen.getByTestId("stats-bar")).toBeInTheDocument();
-      // On desktop (default JSDOM width might hide mobile list, but let's check desktop table)
-      expect(screen.getByTestId("virtual-desktop-table")).toBeInTheDocument();
-    });
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/component/VirtualSchoolList.test.tsx
-
-```
-import { render, screen } from "@testing-library/react";
-import VirtualSchoolList from "../../components/VirtualSchoolList";
-import type { School } from "../../types";
-import { vi } from "vitest";
-
-vi.mock("@tanstack/react-virtual", () => ({
-  useVirtualizer: () => ({
-    getVirtualItems: () => [
-      { index: 0, start: 0, size: 50, key: "0" },
-      { index: 1, start: 50, size: 50, key: "1" },
-    ],
-    getTotalSize: () => 100,
-  }),
-}));
-
-describe("VirtualSchoolList", () => {
-  it("renders a list of items using renderItem", () => {
-    const schools: School[] = [
-      { id: "1", name: "School 1", cityId: "c1", type: "Школа" } as School,
-      { id: "2", name: "School 2", cityId: "c1", type: "Школа" } as School,
-    ];
-
-    render(
-      <VirtualSchoolList
-        schools={schools}
-        renderItem={(school) => <div data-testid="school-item">{school.name}</div>}
-      />
-    );
-
-    const items = screen.getAllByTestId("school-item");
-    expect(items.length).toBe(2);
-    expect(screen.getByText("School 1")).toBeInTheDocument();
-    expect(screen.getByText("School 2")).toBeInTheDocument();
   });
 });
 

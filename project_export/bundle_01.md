@@ -963,6 +963,29 @@ ALTER TABLE "InventoryUsage" ADD CONSTRAINT "InventoryUsage_reportId_fkey" FOREI
 
 ```
 
+# FILE: apps/backend/prisma/migrations/20260708233051_add_inventory_category_city/migration.sql
+
+```
+-- AlterTable
+ALTER TABLE "InventoryItem" ADD COLUMN     "category" TEXT NOT NULL DEFAULT 'Інше',
+ADD COLUMN     "cityId" TEXT,
+ADD COLUMN     "notes" TEXT,
+ADD COLUMN     "schoolId" TEXT;
+
+-- CreateIndex
+CREATE INDEX "InventoryItem_category_idx" ON "InventoryItem"("category");
+
+-- CreateIndex
+CREATE INDEX "InventoryItem_cityId_idx" ON "InventoryItem"("cityId");
+
+-- AddForeignKey
+ALTER TABLE "InventoryItem" ADD CONSTRAINT "InventoryItem_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "City"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InventoryItem" ADD CONSTRAINT "InventoryItem_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "School"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+```
+
 # FILE: apps/backend/prisma/schema.prisma
 
 ```
@@ -1016,36 +1039,38 @@ model DayOff {
 }
 
 model City {
-  id        String        @id @default(uuid())
-  name      String
-  managerId String?
-  createdAt DateTime      @default(now())
-  manager   User?         @relation("CityManager", fields: [managerId], references: [id])
-  crews     Crew[]
-  events    Event[]
-  issues    IssueReport[]
-  schools   School[]
-  users     User[]
+  id             String          @id @default(uuid())
+  name           String
+  managerId      String?
+  createdAt      DateTime        @default(now())
+  manager        User?           @relation("CityManager", fields: [managerId], references: [id])
+  crews          Crew[]
+  events         Event[]
+  issues         IssueReport[]
+  schools        School[]
+  users          User[]
+  inventoryItems InventoryItem[]
 }
 
 model School {
-  id            String   @id @default(uuid())
-  name          String
-  type          String
-  cityId        String
-  address       String?
-  director      String?
-  phone         String?
-  email         String?
-  notes         String?
-  childrenCount Int?
-  isHotClient   Boolean  @default(false)
-  rating        Float?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  events        Event[]
-  comments      SchoolComment[]
-  city          City     @relation(fields: [cityId], references: [id])
+  id             String          @id @default(uuid())
+  name           String
+  type           String
+  cityId         String
+  address        String?
+  director       String?
+  phone          String?
+  email          String?
+  notes          String?
+  childrenCount  Int?
+  isHotClient    Boolean         @default(false)
+  rating         Float?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  events         Event[]
+  comments       SchoolComment[]
+  inventoryItems InventoryItem[]
+  city           City            @relation(fields: [cityId], references: [id])
 
   @@index([cityId])
   @@index([cityId, type])
@@ -1342,15 +1367,23 @@ model InventoryItem {
   id           String   @id @default(cuid())
   name         String
   sku          String?
+  category     String   @default("Інше")
   unit         String   @default("шт")
   minStock     Int      @default(5)
   currentStock Int      @default(0)
+  notes        String?
+  cityId       String?
+  schoolId     String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  city   City?   @relation(fields: [cityId], references: [id])
+  school School? @relation(fields: [schoolId], references: [id])
   usages InventoryUsage[]
 
   @@index([name])
+  @@index([category])
+  @@index([cityId])
 }
 
 model InventoryUsage {
@@ -11046,11 +11079,18 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiQuery,
+  ApiCookieAuth,
+} from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -11064,9 +11104,35 @@ export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
   @ApiOperation({ summary: 'Список товарів на складі' })
+  @ApiQuery({ name: 'category', required: false })
+  @ApiQuery({ name: 'cityId', required: false })
+  @ApiQuery({
+    name: 'lowStock',
+    required: false,
+    description: 'true — тільки товари з недостатньою кількістю',
+  })
+  @ApiQuery({ name: 'search', required: false })
   @Get()
-  findAll() {
-    return this.inventoryService.findAll();
+  findAll(
+    @Query('category') category?: string,
+    @Query('cityId') cityId?: string,
+    @Query('lowStock') lowStock?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.inventoryService.findAll({
+      category,
+      cityId,
+      lowStock,
+      search,
+    });
+  }
+
+  @ApiOperation({
+    summary: 'Товари з низьким запасом (currentStock <= minStock)',
+  })
+  @Get('low-stock')
+  findLowStock() {
+    return this.inventoryService.findLowStock();
   }
 
   @ApiOperation({ summary: 'Створити товар' })
@@ -11077,9 +11143,13 @@ export class InventoryController {
     dto: {
       name: string;
       sku?: string;
+      category?: string;
       unit?: string;
       minStock?: number;
       currentStock?: number;
+      notes?: string;
+      cityId?: string;
+      schoolId?: string;
     },
   ) {
     return this.inventoryService.create(dto);
@@ -11091,9 +11161,26 @@ export class InventoryController {
   update(
     @Param('id') id: string,
     @Body()
-    dto: { name?: string; sku?: string; unit?: string; minStock?: number },
+    dto: {
+      name?: string;
+      sku?: string;
+      category?: string;
+      unit?: string;
+      minStock?: number;
+      currentStock?: number;
+      notes?: string;
+      cityId?: string;
+      schoolId?: string;
+    },
   ) {
     return this.inventoryService.update(id, dto);
+  }
+
+  @ApiOperation({ summary: 'Видалити товар' })
+  @Delete(':id')
+  @Roles('SUPERADMIN', 'OWNER')
+  delete(@Param('id') id: string) {
+    return this.inventoryService.delete(id);
   }
 
   @ApiOperation({ summary: 'Поповнити склад' })
@@ -11144,28 +11231,87 @@ export class InventoryService {
   async create(dto: {
     name: string;
     sku?: string;
+    category?: string;
     unit?: string;
     minStock?: number;
     currentStock?: number;
+    notes?: string;
+    cityId?: string;
+    schoolId?: string;
   }) {
     return this.prisma.inventoryItem.create({
       data: {
         name: dto.name,
         sku: dto.sku,
+        category: dto.category ?? 'Інше',
         unit: dto.unit ?? 'шт',
         minStock: dto.minStock ?? 5,
         currentStock: dto.currentStock ?? 0,
+        notes: dto.notes,
+        cityId: dto.cityId,
+        schoolId: dto.schoolId,
       },
+      include: { city: true, school: true },
     });
   }
 
-  async findAll() {
-    return this.prisma.inventoryItem.findMany({ orderBy: { name: 'asc' } });
+  async findAll(filters?: {
+    category?: string;
+    cityId?: string;
+    lowStock?: string;
+    search?: string;
+  }) {
+    const where: Record<string, unknown> = {};
+
+    if (filters?.category) {
+      where.category = filters.category;
+    }
+    if (filters?.cityId) {
+      where.cityId = filters.cityId;
+    }
+    if (filters?.lowStock === 'true') {
+      const lowIds = await this.prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM "InventoryItem" WHERE "currentStock" <= "minStock"
+      `;
+      where.id = { in: lowIds.map((i) => i.id) };
+    }
+    if (filters?.search) {
+      where.OR = [
+        { name: { contains: filters.search, mode: 'insensitive' } },
+        { sku: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+
+    return this.prisma.inventoryItem.findMany({
+      where,
+      orderBy: { name: 'asc' },
+      include: { city: true, school: true },
+    });
+  }
+
+  async findLowStock() {
+    return this.prisma.inventoryItem.findMany({
+      where: {
+        currentStock: { lte: this.prisma.inventoryItem.fields.minStock },
+      },
+      orderBy: { currentStock: 'asc' },
+      include: { city: true, school: true },
+    });
   }
 
   async update(
     id: string,
-    dto: { name?: string; sku?: string; unit?: string; minStock?: number },
+    dto: {
+      name?: string;
+      sku?: string;
+      category?: string;
+      unit?: string;
+      minStock?: number;
+      currentStock?: number;
+      notes?: string;
+      cityId?: string;
+      schoolId?: string;
+    },
   ) {
     const item = await this.prisma.inventoryItem.findUnique({ where: { id } });
     if (!item) throw new NotFoundException('Товар не знайдено');
@@ -11173,7 +11319,16 @@ export class InventoryService {
     return this.prisma.inventoryItem.update({
       where: { id },
       data: dto,
+      include: { city: true, school: true },
     });
+  }
+
+  async delete(id: string) {
+    const item = await this.prisma.inventoryItem.findUnique({ where: { id } });
+    if (!item) throw new NotFoundException('Товар не знайдено');
+
+    await this.prisma.inventoryUsage.deleteMany({ where: { itemId: id } });
+    return this.prisma.inventoryItem.delete({ where: { id } });
   }
 
   async addStock(id: string, quantity: number) {
@@ -12389,124 +12544,6 @@ import { PartialType } from '@nestjs/swagger';
 import { CreateProjectDto } from './create-project.dto';
 
 export class UpdateProjectDto extends PartialType(CreateProjectDto) {}
-
-```
-
-# FILE: apps/backend/src/projects/projects.controller.ts
-
-```
-import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Delete,
-  Param,
-  Body,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiCookieAuth,
-  ApiPropertyOptional,
-} from '@nestjs/swagger';
-import { ProjectsService } from './projects.service';
-import { AuthGuard } from '../auth/auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
-import { CreateProjectDto } from './dto/create-project.dto';
-import { UpdateProjectDto } from './dto/update-project.dto';
-import { PrismaService } from '../prisma/prisma.service';
-import { IsOptional, IsString } from 'class-validator';
-
-class ProjectStatsQueryDto {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  cityId?: string;
-}
-
-@ApiTags('Projects')
-@ApiCookieAuth('access_token')
-@Controller('projects')
-@UseGuards(AuthGuard, RolesGuard)
-export class ProjectsController {
-  constructor(
-    private readonly projectsService: ProjectsService,
-    private readonly prisma: PrismaService,
-  ) {}
-
-  @ApiOperation({ summary: 'Список проєктів (типів шоу)' })
-  @Get()
-  findAll() {
-    return this.projectsService.findAll();
-  }
-
-  @ApiOperation({ summary: 'Отримати проєкт за ID' })
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.projectsService.findOne(id);
-  }
-
-  @ApiOperation({ summary: 'Статистика проєкту' })
-  @Get(':id/stats')
-  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
-  async getStats(
-    @Param('id') id: string,
-    @Query() query: ProjectStatsQueryDto,
-    @CurrentUser() user: JwtUser,
-  ) {
-    let effectiveCityId: string | undefined = query.cityId;
-    if (user.role === 'MANAGER') {
-      const me = await this.prisma.user.findUnique({
-        where: { id: user.sub },
-        select: { cityId: true },
-      });
-      effectiveCityId = me?.cityId ?? undefined;
-    }
-    return this.projectsService.getStats(id, effectiveCityId);
-  }
-
-  @ApiOperation({ summary: 'Створити проєкт' })
-  @Post()
-  @Roles('SUPERADMIN')
-  create(@Body() body: CreateProjectDto) {
-    return this.projectsService.create(body);
-  }
-
-  @ApiOperation({ summary: 'Оновити проєкт' })
-  @Patch(':id')
-  @Roles('SUPERADMIN')
-  update(@Param('id') id: string, @Body() body: UpdateProjectDto) {
-    return this.projectsService.update(id, body);
-  }
-
-  @ApiOperation({ summary: 'Видалити проєкт' })
-  @Delete(':id')
-  @Roles('SUPERADMIN')
-  remove(@Param('id') id: string) {
-    return this.projectsService.remove(id);
-  }
-}
-
-```
-
-# FILE: apps/backend/src/projects/projects.module.ts
-
-```
-import { Module } from '@nestjs/common';
-import { ProjectsService } from './projects.service';
-import { ProjectsController } from './projects.controller';
-
-@Module({
-  providers: [ProjectsService],
-  controllers: [ProjectsController],
-})
-export class ProjectsModule {}
 
 ```
 

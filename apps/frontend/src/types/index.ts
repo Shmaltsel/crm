@@ -283,3 +283,36 @@ export interface FinanceDashboardData {
 export type CommentType = "NOTE" | "CALL" | "RESCHEDULE" | "CONFIRMATION" | "PROBLEM";
 
 export type UserRole = "SUPERADMIN" | "OWNER" | "MANAGER" | "HOST" | "DRIVER";
+
+export interface InventoryItem {
+  id: string;
+  name: string;
+  sku: string | null;
+  category: string;
+  unit: string;
+  minStock: number;
+  currentStock: number;
+  notes: string | null;
+  cityId: string | null;
+  schoolId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  city?: { id: string; name: string } | null;
+  school?: { id: string; name: string } | null;
+}
+
+export interface CreateInventoryPayload {
+  name: string;
+  sku?: string;
+  category?: string;
+  unit?: string;
+  minStock?: number;
+  currentStock?: number;
+  notes?: string;
+  cityId?: string;
+  schoolId?: string;
+}
+
+export interface UpdateInventoryPayload extends Partial<CreateInventoryPayload> {
+  id: string;
+}

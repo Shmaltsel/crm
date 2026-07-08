@@ -3850,6 +3850,7 @@ import type {
   FinanceTopSchool,
   FinanceEventItem,
 } from "../../types";
+import { fmtAmount as fmt, calcProjectTotals, calcBarPercent } from "../../utils/financeCalculations";
 
 const PALETTE = [
   "#3b82f6",
@@ -3868,10 +3869,6 @@ const PIE_COLORS = [
   "#10b981",
   "#0ea5e9",
 ];
-
-const fmt = (n: number) =>
-  new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
-
 
 interface KpiCardProps {
   title: string;
@@ -4213,7 +4210,7 @@ const TopSchools = memo(function TopSchools({
   return (
     <div className="space-y-5">
       {topSchools.map((school: FinanceTopSchool, idx: number) => {
-        const percent = Math.max((school.revenue / maxRev) * 100, 2);
+        const percent = calcBarPercent(school.revenue, maxRev);
         return (
           <div key={idx} className="relative">
             <div className="flex justify-between items-end mb-2 text-sm">
@@ -4271,14 +4268,7 @@ export default memo(function FinanceCharts({
     filters,
   } = data;
 
-  const projectTotals = useMemo(() => {
-    const total =
-      byProject?.reduce((sum: number, p: FinanceByProject) => sum + p.value, 0) ?? 0;
-    const percents = (byProject ?? []).map((item: FinanceByProject) =>
-      total > 0 ? Math.round((item.value / total) * 100) : 0,
-    );
-    return { total, percents };
-  }, [byProject]);
+  const projectTotals = useMemo(() => calcProjectTotals(byProject ?? []), [byProject]);
 
   return (
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen font-sans overflow-x-hidden">
@@ -4701,6 +4691,123 @@ export default memo(function StaffFinanceView({
 
 ```
 
+# FILE: apps/frontend/src/components/inventory/InventoryItemModal.tsx
+
+```
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Modal } from "../ui/Modal";
+import type { InventoryItem } from "../../types";
+
+const schema = z.object({
+  name: z.string().min(1, "Введіть назву товару"),
+  sku: z.string().optional().default(""),
+  category: z.string().min(1, "Введіть категорію"),
+  unit: z.string().min(1, "Введіть одиницю виміру"),
+  minStock: z.coerce.number().min(0, "Мінімум не може бути від'ємним"),
+  currentStock: z.coerce.number().min(0, "Кількість не може бути від'ємною"),
+  notes: z.string().optional().default(""),
+});
+
+type FormValues = z.infer<typeof schema>;
+
+interface InventoryItemModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (data: FormValues) => Promise<void>;
+  item?: InventoryItem | null;
+}
+
+export function InventoryItemModal({ isOpen, onClose, onSave, item }: InventoryItemModalProps) {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      name: "",
+      sku: "",
+      category: "Інше",
+      unit: "шт",
+      minStock: 5,
+      currentStock: 0,
+      notes: "",
+    },
+  });
+
+  useEffect(() => {
+    if (isOpen) {
+      reset({
+        name: item?.name ?? "",
+        sku: item?.sku ?? "",
+        category: item?.category ?? "Інше",
+        unit: item?.unit ?? "шт",
+        minStock: item?.minStock ?? 5,
+        currentStock: item?.currentStock ?? 0,
+        notes: item?.notes ?? "",
+      });
+    }
+  }, [isOpen, item, reset]);
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={item ? "Редагувати товар" : "Новий товар"}>
+      <form onSubmit={handleSubmit(onSave)} className="flex flex-col gap-4">
+        <div>
+          <label className="block text-sm mb-1 text-slate-600">Назва *</label>
+          <input {...register("name")} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+          {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm mb-1 text-slate-600">Категорія *</label>
+            <input {...register("category")} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+            {errors.category && <p className="text-xs text-red-500 mt-1">{errors.category.message}</p>}
+          </div>
+          <div>
+            <label className="block text-sm mb-1 text-slate-600">Артикул</label>
+            <input {...register("sku")} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm mb-1 text-slate-600">Одиниця *</label>
+            <input {...register("unit")} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+            {errors.unit && <p className="text-xs text-red-500 mt-1">{errors.unit.message}</p>}
+          </div>
+          <div>
+            <label className="block text-sm mb-1 text-slate-600">Мінімум</label>
+            <input type="number" {...register("minStock")} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+            {errors.minStock && <p className="text-xs text-red-500 mt-1">{errors.minStock.message}</p>}
+          </div>
+          <div>
+            <label className="block text-sm mb-1 text-slate-600">На складі</label>
+            <input type="number" {...register("currentStock")} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+            {errors.currentStock && <p className="text-xs text-red-500 mt-1">{errors.currentStock.message}</p>}
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm mb-1 text-slate-600">Нотатки</label>
+          <textarea {...register("notes")} rows={3} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none" />
+        </div>
+        <div className="flex gap-3 mt-2 pt-4 border-t border-slate-100">
+          <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-medium text-sm hover:bg-slate-200 transition-colors">
+            Скасувати
+          </button>
+          <button type="submit" disabled={isSubmitting} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-medium text-sm hover:bg-blue-700 transition-colors disabled:opacity-50">
+            {isSubmitting ? "..." : item ? "Зберегти" : "Створити"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+```
+
 # FILE: apps/frontend/src/components/IssueCarousel.tsx
 
 ```
@@ -4858,7 +4965,7 @@ export default function IssueCarousel() {
 
 ```
 import { Link, useOutlet, useLocation, useNavigate } from "react-router-dom";
-import { useState, useRef, useMemo, useCallback, useEffect } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect, Suspense } from "react";
 import { AnimatePresence, motion, MotionConfig, useMotionValue, useTransform, animate, type PanInfo } from "framer-motion";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
@@ -10216,327 +10323,6 @@ export default function EventTooltip({ event: ev }: EventTooltipProps) {
       </div>
       <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-slate-800"></div>
     </div>
-  );
-}
-
-```
-
-# FILE: apps/frontend/src/features/calendar/components/MobileCalendarGrid.tsx
-
-```
-import { getDayColor } from "../utils/color";
-import { toISODate } from "../utils/date";
-import { MONTH_NAMES, PROJECT_HEX } from "../constants";
-import type { Event as CalendarEvent, Project, City, DayOff } from "../../../types";
-
-interface MobileCalendarGridProps {
-  days: (Date | null)[];
-  year: number;
-  month: number;
-  selectedMobileDate: Date;
-  eventsByDate: Map<string, CalendarEvent[]>;
-  dayOffsByDate: Map<string, DayOff[]>;
-  projectHexMap: Map<string, string>;
-  projects: Project[];
-  filterCityId: string;
-  setFilterCityId: (value: string) => void;
-  cities: City[];
-  userRole: string;
-  handleMobileDayTap: (day: Date) => void;
-  startLongPress: (day: Date) => void;
-  cancelLongPress: () => void;
-  pressingDay: Date | null;
-  triggeredDay: Date | null;
-  prevMonth: () => void;
-  nextMonth: () => void;
-}
-
-export default function MobileCalendarGrid({
-  days,
-  year,
-  month,
-  selectedMobileDate,
-  eventsByDate,
-  dayOffsByDate,
-  projectHexMap,
-  projects,
-  filterCityId,
-  setFilterCityId,
-  cities,
-  userRole,
-  handleMobileDayTap,
-  startLongPress,
-  cancelLongPress,
-  pressingDay,
-  triggeredDay,
-  prevMonth,
-  nextMonth,
-}: MobileCalendarGridProps) {
-  return (
-    <>
-      <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
-        <div className="flex items-center justify-between px-3 py-3.5 border-b border-slate-100" data-no-swipe>
-          <button
-            onClick={prevMonth}
-            className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 active:bg-slate-100 transition-colors"
-          >
-            ‹
-          </button>
-          <span className="text-base font-bold text-slate-800 capitalize">
-            {MONTH_NAMES[month]}{" "}
-            <span className="text-slate-400 font-medium">{year}</span>
-          </span>
-          <button
-            onClick={nextMonth}
-            className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 active:bg-slate-100 transition-colors"
-          >
-            ›
-          </button>
-        </div>
-
-        <div className="grid grid-cols-7 px-2 pt-2">
-          {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((dayName) => (
-            <div
-              key={dayName}
-              className="text-center text-[10px] font-bold tracking-wide text-slate-400 uppercase pb-1.5"
-            >
-              {dayName}
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-7 gap-y-2.5 px-2 pb-3" data-no-swipe>
-          {days.map((day, idx) => {
-            const isToday =
-              day && day.toDateString() === new Date().toDateString();
-            const isSelected =
-              day && day.toDateString() === selectedMobileDate.toDateString();
-            const dayKey = day ? toISODate(day) : "";
-            const dayEvents = day ? (eventsByDate.get(dayKey) ?? []) : [];
-            const dayOffEntries = day
-              ? (dayOffsByDate.get(dayKey) ?? [])
-              : [];
-            const dayColor = day
-              ? getDayColor(dayEvents, projectHexMap)
-              : undefined;
-
-            return (
-              <div
-                key={idx}
-                className="flex items-center justify-center py-0.5"
-              >
-                {day && (
-                  <button
-                    onTouchStart={(e) => {
-                      const t = e.touches[0];
-                      startLongPress(day, t.clientX, t.clientY);
-                    }}
-                    onTouchEnd={() => cancelLongPress()}
-                    onTouchMove={(e) => {
-                      const t = e.touches[0];
-                      cancelLongPress(t.clientX, t.clientY);
-                    }}
-                    onTouchCancel={() => cancelLongPress()}
-                    onContextMenu={(e) => e.preventDefault()}
-                    onClick={() => handleMobileDayTap(day)}
-                    className={`relative w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold select-none no-select-ios touch-manipulation active:scale-90
-                      ${isSelected ? "ring-2 ring-blue-600 ring-offset-2" : ""}
-                      ${isToday && !isSelected ? "ring-2 ring-blue-200" : ""}
-                      ${triggeredDay === day ? "dayoff-cell-enter" : ""}
-                    `}
-                    style={{
-                      background: dayColor || "#f1f5f9",
-                      color: dayColor ? "#fff" : "#64748b",
-                      textShadow: dayColor
-                        ? "0 1px 2px rgba(0,0,0,0.35)"
-                        : "none",
-                      transform: pressingDay === day ? "scale(0.9)" : "",
-                      transition: pressingDay === day
-                        ? "transform 550ms ease-out"
-                        : "transform 150ms ease-out",
-                    }}
-                  >
-                    <svg
-                      className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none"
-                      viewBox="0 0 36 36"
-                    >
-                      <circle
-                        cx="18"
-                        cy="18"
-                        r="16"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeDasharray="100.53"
-                        strokeDashoffset={pressingDay === day ? 0 : 100.53}
-                        style={{
-                          transition: pressingDay === day
-                            ? "stroke-dashoffset 550ms linear"
-                            : "stroke-dashoffset 150ms ease-out",
-                        }}
-                        className="text-blue-500 opacity-70"
-                      />
-                    </svg>
-                    {day.getDate()}
-                    {dayOffEntries.length > 0 && (
-                      <span className="pointer-events-none absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white flex items-center justify-center">
-                        <span className="text-white text-[6px] font-bold leading-none">
-                          ✕
-                        </span>
-                      </span>
-                    )}
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 mt-3 px-1">
-        {projects.map((p: Project) => (
-          <span
-            key={p.id}
-            className="flex items-center gap-1 text-[10px] font-medium text-slate-500"
-          >
-            <span
-              className="w-2 h-2 rounded-full"
-              style={{
-                background: PROJECT_HEX[p.color] || PROJECT_HEX.blue,
-              }}
-            />
-            {p.name}
-          </span>
-        ))}
-        <span className="flex items-center gap-1 text-[10px] font-medium text-slate-500">
-          <span className="w-2 h-2 rounded-full bg-rose-500" />
-          Вихідний
-        </span>
-
-        {userRole === "SUPERADMIN" && (
-          <select
-            value={filterCityId}
-            onChange={(e) => setFilterCityId(e.target.value)}
-            className="ml-auto text-[11px] font-semibold text-slate-700 outline-none bg-slate-50 border border-slate-200 rounded-lg px-2 py-1"
-          >
-            <option value="ALL">🌍 Всі міста</option>
-            {cities.map((c: City) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
-    </>
-  );
-}
-
-```
-
-# FILE: apps/frontend/src/features/calendar/components/MobileDayDetailsPanel.tsx
-
-```
-import { motion, AnimatePresence } from "framer-motion";
-import { toISODate } from "../utils/date";
-import { PROJECT_HEX } from "../constants";
-import type { Event as CalendarEvent, DayOff, User } from "../../../types";
-
-interface MobileDayDetailsPanelProps {
-  selectedMobileDate: Date;
-  selectedDayEvents: CalendarEvent[];
-  dayOffsByDate: Map<string, DayOff[]>;
-  allUsers: User[];
-  projectHexMap: Map<string, string>;
-  navigate: (path: string) => void;
-}
-
-export default function MobileDayDetailsPanel({
-  selectedMobileDate,
-  selectedDayEvents,
-  dayOffsByDate,
-  allUsers,
-  projectHexMap,
-  navigate,
-}: MobileDayDetailsPanelProps) {
-  return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={toISODate(selectedMobileDate)}
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 0.2 }}
-        className="mt-4 select-none"
-      >
-        <h3 className="text-sm font-bold text-slate-800 mb-2.5">
-          {selectedMobileDate.toLocaleDateString("uk-UA", {
-            day: "2-digit",
-            month: "long",
-            weekday: "long",
-          })}
-        </h3>
-
-        {(() => {
-          const key = toISODate(selectedMobileDate);
-          const dayOffEntries = dayOffsByDate.get(key) ?? [];
-          if (dayOffEntries.length === 0) return null;
-          return (
-            <div className="mb-3 flex flex-wrap gap-1.5">
-              {dayOffEntries.map((d: DayOff) => {
-                const u = allUsers.find((au: User) => au.id === d.userId);
-                return (
-                  <span
-                    key={d.id}
-                    className="text-[11px] font-semibold text-rose-600 bg-rose-50 border border-rose-100 px-2 py-1 rounded-full"
-                  >
-                    🌴 {u?.name || "Вихідний"}
-                  </span>
-                );
-              })}
-            </div>
-          );
-        })()}
-
-        {selectedDayEvents.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-400 text-sm">
-            На цей день подій не заплановано
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {selectedDayEvents.map((ev: CalendarEvent) => (
-              <div
-                key={ev.id}
-                onClick={() =>
-                  ev.school && navigate(`/schools/${ev.school.id}`)
-                }
-                className="bg-white p-4 rounded-2xl border-l-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
-                style={{
-                  borderLeftColor:
-                    projectHexMap.get(ev.project) ?? PROJECT_HEX.blue,
-                }}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-xs font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-600">
-                    🕒 {ev.time || "Не вказано"}
-                  </span>
-                  <span className="text-xs font-medium text-slate-500">
-                    {ev.project}
-                  </span>
-                </div>
-                <p className="font-bold text-slate-800">
-                  {ev.school?.name}
-                </p>
-                <p className="text-sm text-slate-500 mt-1">
-                  🚐 Екіпаж: {ev.crew?.name || "Не призначено"}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </motion.div>
-    </AnimatePresence>
   );
 }
 

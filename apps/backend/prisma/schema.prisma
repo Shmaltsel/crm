@@ -48,36 +48,38 @@ model DayOff {
 }
 
 model City {
-  id        String        @id @default(uuid())
-  name      String
-  managerId String?
-  createdAt DateTime      @default(now())
-  manager   User?         @relation("CityManager", fields: [managerId], references: [id])
-  crews     Crew[]
-  events    Event[]
-  issues    IssueReport[]
-  schools   School[]
-  users     User[]
+  id             String          @id @default(uuid())
+  name           String
+  managerId      String?
+  createdAt      DateTime        @default(now())
+  manager        User?           @relation("CityManager", fields: [managerId], references: [id])
+  crews          Crew[]
+  events         Event[]
+  issues         IssueReport[]
+  schools        School[]
+  users          User[]
+  inventoryItems InventoryItem[]
 }
 
 model School {
-  id            String   @id @default(uuid())
-  name          String
-  type          String
-  cityId        String
-  address       String?
-  director      String?
-  phone         String?
-  email         String?
-  notes         String?
-  childrenCount Int?
-  isHotClient   Boolean  @default(false)
-  rating        Float?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  events        Event[]
-  comments      SchoolComment[]
-  city          City     @relation(fields: [cityId], references: [id])
+  id             String          @id @default(uuid())
+  name           String
+  type           String
+  cityId         String
+  address        String?
+  director       String?
+  phone          String?
+  email          String?
+  notes          String?
+  childrenCount  Int?
+  isHotClient    Boolean         @default(false)
+  rating         Float?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  events         Event[]
+  comments       SchoolComment[]
+  inventoryItems InventoryItem[]
+  city           City            @relation(fields: [cityId], references: [id])
 
   @@index([cityId])
   @@index([cityId, type])
@@ -374,15 +376,23 @@ model InventoryItem {
   id           String   @id @default(cuid())
   name         String
   sku          String?
+  category     String   @default("Інше")
   unit         String   @default("шт")
   minStock     Int      @default(5)
   currentStock Int      @default(0)
+  notes        String?
+  cityId       String?
+  schoolId     String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  city   City?   @relation(fields: [cityId], references: [id])
+  school School? @relation(fields: [schoolId], references: [id])
   usages InventoryUsage[]
 
   @@index([name])
+  @@index([category])
+  @@index([cityId])
 }
 
 model InventoryUsage {

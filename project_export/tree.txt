@@ -53,6 +53,8 @@ apps
 │   │   │   │   └── migration.sql
 │   │   │   ├── 20260708221238_add_inventory_notification_models
 │   │   │   │   └── migration.sql
+│   │   │   ├── 20260708233051_add_inventory_category_city
+│   │   │   │   └── migration.sql
 │   │   │   └── migration_lock.toml
 │   │   ├── schema.prisma
 │   │   ├── seed-admin.js
@@ -336,10 +338,11 @@ apps
     │   │   ├── finance
     │   │   │   ├── FinanceCharts.tsx
     │   │   │   └── StaffFinanceView.tsx
+    │   │   ├── inventory
+    │   │   │   └── InventoryItemModal.tsx
     │   │   ├── IssueCarousel.tsx
     │   │   ├── Layout.tsx
     │   │   ├── MobileTopNav.tsx
-    │   │   ├── modals
     │   │   ├── NotificationBell.tsx
     │   │   ├── PhoneLink.tsx
     │   │   ├── ProtectedRoute.tsx
@@ -482,6 +485,7 @@ apps
     │   │   │   ├── MobileTopNav.test.tsx
     │   │   │   ├── Pipeline.test.tsx
     │   │   │   ├── ProtectedRoute.test.tsx
+    │   │   │   ├── ReportModal.test.tsx
     │   │   │   ├── SchoolCard.test.tsx
     │   │   │   ├── Schools.test.tsx
     │   │   │   └── VirtualSchoolList.test.tsx
@@ -519,9 +523,6 @@ apps
     ├── tsconfig.node.json
     ├── vercel.json
     └── vite.config.ts
-
-packages
-└── shared
 
 scripts
 ├── backup.sh

@@ -1,16 +1,16 @@
 {
   "mode": "audit",
-  "generatedAt": "2026-07-08T22:55:49.681Z",
+  "generatedAt": "2026-07-08T23:45:19.387Z",
   "totals": {
-    "files": 389,
-    "lines": 39924,
-    "estimatedTokens": 460357,
+    "files": 392,
+    "lines": 40607,
+    "estimatedTokens": 466741,
     "bundles": 7
   },
   "byExtension": {
     ".mjs": 1,
     ".json": 10,
-    ".sql": 23,
+    ".sql": 24,
     ".prisma": 1,
     ".js": 5,
     ".md": 2,
@@ -18,12 +18,12 @@
     ".yml": 1,
     ".html": 2,
     ".cjs": 1,
-    ".tsx": 118,
+    ".tsx": 120,
     ".css": 1,
     ".sh": 2
   },
   "byRootFolder": {
-    "apps": 387,
+    "apps": 390,
     "scripts": 2
   }
 }

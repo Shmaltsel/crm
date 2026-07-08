@@ -156,10 +156,16 @@
     "lines": 55
   },
   {
+    "file": "apps/backend/prisma/migrations/20260708233051_add_inventory_category_city/migration.sql",
+    "bundle": "bundle_01.md",
+    "tokens": 207,
+    "lines": 18
+  },
+  {
     "file": "apps/backend/prisma/schema.prisma",
     "bundle": "bundle_01.md",
-    "tokens": 2791,
-    "lines": 425
+    "tokens": 2905,
+    "lines": 435
   },
   {
     "file": "apps/backend/prisma/seed-admin.js",
@@ -746,8 +752,8 @@
   {
     "file": "apps/backend/src/inventory/inventory.controller.ts",
     "bundle": "bundle_01.md",
-    "tokens": 413,
-    "lines": 63
+    "tokens": 703,
+    "lines": 117
   },
   {
     "file": "apps/backend/src/inventory/inventory.module.ts",
@@ -758,8 +764,8 @@
   {
     "file": "apps/backend/src/inventory/inventory.service.ts",
     "bundle": "bundle_01.md",
-    "tokens": 414,
-    "lines": 62
+    "tokens": 878,
+    "lines": 130
   },
   {
     "file": "apps/backend/src/issues/dto/create-issue.dto.ts",
@@ -901,13 +907,13 @@
   },
   {
     "file": "apps/backend/src/projects/projects.controller.ts",
-    "bundle": "bundle_01.md",
+    "bundle": "bundle_02.md",
     "tokens": 675,
     "lines": 98
   },
   {
     "file": "apps/backend/src/projects/projects.module.ts",
-    "bundle": "bundle_01.md",
+    "bundle": "bundle_02.md",
     "tokens": 84,
     "lines": 10
   },
@@ -1400,14 +1406,20 @@
   {
     "file": "apps/frontend/src/components/finance/FinanceCharts.tsx",
     "bundle": "bundle_04.md",
-    "tokens": 4761,
-    "lines": 608
+    "tokens": 4701,
+    "lines": 598
   },
   {
     "file": "apps/frontend/src/components/finance/StaffFinanceView.tsx",
     "bundle": "bundle_04.md",
     "tokens": 2249,
     "lines": 259
+  },
+  {
+    "file": "apps/frontend/src/components/inventory/InventoryItemModal.tsx",
+    "bundle": "bundle_04.md",
+    "tokens": 1240,
+    "lines": 112
   },
   {
     "file": "apps/frontend/src/components/IssueCarousel.tsx",
@@ -1418,7 +1430,7 @@
   {
     "file": "apps/frontend/src/components/Layout.tsx",
     "bundle": "bundle_04.md",
-    "tokens": 3102,
+    "tokens": 3105,
     "lines": 365
   },
   {
@@ -1729,13 +1741,13 @@
   },
   {
     "file": "apps/frontend/src/features/calendar/components/MobileCalendarGrid.tsx",
-    "bundle": "bundle_04.md",
+    "bundle": "bundle_05.md",
     "tokens": 1954,
     "lines": 209
   },
   {
     "file": "apps/frontend/src/features/calendar/components/MobileDayDetailsPanel.tsx",
-    "bundle": "bundle_04.md",
+    "bundle": "bundle_05.md",
     "tokens": 907,
     "lines": 102
   },
@@ -1898,8 +1910,8 @@
   {
     "file": "apps/frontend/src/hooks/useInventory.ts",
     "bundle": "bundle_05.md",
-    "tokens": 209,
-    "lines": 29
+    "tokens": 581,
+    "lines": 63
   },
   {
     "file": "apps/frontend/src/hooks/useNotifications.ts",
@@ -2018,8 +2030,8 @@
   {
     "file": "apps/frontend/src/pages/Inventory.tsx",
     "bundle": "bundle_05.md",
-    "tokens": 1345,
-    "lines": 125
+    "tokens": 3607,
+    "lines": 341
   },
   {
     "file": "apps/frontend/src/pages/Kindergartens.tsx",
@@ -2095,69 +2107,75 @@
   },
   {
     "file": "apps/frontend/src/tests/component/EventsTable.test.tsx",
-    "bundle": "bundle_05.md",
+    "bundle": "bundle_06.md",
     "tokens": 1022,
     "lines": 151
   },
   {
     "file": "apps/frontend/src/tests/component/IssueCarousel.test.tsx",
-    "bundle": "bundle_05.md",
+    "bundle": "bundle_06.md",
     "tokens": 646,
     "lines": 86
   },
   {
     "file": "apps/frontend/src/tests/component/LoadingBar.test.tsx",
-    "bundle": "bundle_05.md",
+    "bundle": "bundle_06.md",
     "tokens": 234,
     "lines": 22
   },
   {
     "file": "apps/frontend/src/tests/component/Login.test.tsx",
-    "bundle": "bundle_05.md",
+    "bundle": "bundle_06.md",
     "tokens": 498,
     "lines": 61
   },
   {
     "file": "apps/frontend/src/tests/component/MobileTopNav.test.tsx",
-    "bundle": "bundle_05.md",
+    "bundle": "bundle_06.md",
     "tokens": 380,
     "lines": 42
   },
   {
     "file": "apps/frontend/src/tests/component/Pipeline.test.tsx",
-    "bundle": "bundle_05.md",
+    "bundle": "bundle_06.md",
     "tokens": 394,
     "lines": 53
   },
   {
     "file": "apps/frontend/src/tests/component/ProtectedRoute.test.tsx",
-    "bundle": "bundle_05.md",
+    "bundle": "bundle_06.md",
     "tokens": 498,
     "lines": 46
   },
   {
+    "file": "apps/frontend/src/tests/component/ReportModal.test.tsx",
+    "bundle": "bundle_06.md",
+    "tokens": 1247,
+    "lines": 138
+  },
+  {
     "file": "apps/frontend/src/tests/component/SchoolCard.test.tsx",
-    "bundle": "bundle_05.md",
+    "bundle": "bundle_06.md",
     "tokens": 783,
     "lines": 125
   },
   {
     "file": "apps/frontend/src/tests/component/Schools.test.tsx",
-    "bundle": "bundle_05.md",
+    "bundle": "bundle_06.md",
     "tokens": 636,
     "lines": 65
   },
   {
     "file": "apps/frontend/src/tests/component/VirtualSchoolList.test.tsx",
-    "bundle": "bundle_05.md",
+    "bundle": "bundle_06.md",
     "tokens": 301,
     "lines": 36
   },
   {
     "file": "apps/frontend/src/tests/mocks/handlers.ts",
     "bundle": "bundle_06.md",
-    "tokens": 523,
-    "lines": 73
+    "tokens": 594,
+    "lines": 83
   },
   {
     "file": "apps/frontend/src/tests/mocks/server.ts",
@@ -2258,8 +2276,8 @@
   {
     "file": "apps/frontend/src/types/index.ts",
     "bundle": "bundle_06.md",
-    "tokens": 1434,
-    "lines": 286
+    "tokens": 1608,
+    "lines": 319
   },
   {
     "file": "apps/frontend/src/utils/exportCsv.ts",
