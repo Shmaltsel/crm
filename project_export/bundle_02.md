@@ -1,3 +1,2948 @@
+# FILE: apps/backend/src/projects/projects.service.ts
+
+```
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class ProjectsService {
+  constructor(private prisma: PrismaService) {}
+
+  findAll() {
+    return this.prisma.project.findMany({ orderBy: { createdAt: 'asc' } });
+  }
+
+  create(data: { name: string; color?: string; pricePerChild?: number }) {
+    return this.prisma.project.create({
+      data: {
+        name: data.name,
+        color: data.color ?? '#3b82f6',
+        pricePerChild: data.pricePerChild ?? 0,
+      },
+    });
+  }
+
+  update(
+    id: string,
+    data: { name?: string; color?: string; pricePerChild?: number },
+  ) {
+    return this.prisma.project.update({ where: { id }, data });
+  }
+
+  findOne(id: string) {
+    return this.prisma.project.findUnique({ where: { id } });
+  }
+
+  remove(id: string) {
+    return this.prisma.project.delete({ where: { id } });
+  }
+
+  async getStats(projectId: string, cityId?: string) {
+    const where: Record<string, unknown> = { project: projectId };
+    if (cityId) where.cityId = cityId;
+
+    const events = await this.prisma.event.findMany({
+      where,
+      include: {
+        report: {
+          select: {
+            totalSum: true,
+            schoolSum: true,
+            remainderSum: true,
+            rating: true,
+          },
+        },
+      },
+    });
+
+    const totalEvents = events.length;
+    const completedEvents = events.filter(
+      (e) => e.status === 'REPORT' || e.status === 'DONE',
+    ).length;
+    const totalRevenue = events.reduce(
+      (sum, e) => sum + Number(e.report?.totalSum ?? 0),
+      0,
+    );
+    const totalProfit = events.reduce(
+      (sum, e) => sum + Number(e.report?.remainderSum ?? 0),
+      0,
+    );
+    const totalSchoolSum = events.reduce(
+      (sum, e) => sum + Number(e.report?.schoolSum ?? 0),
+      0,
+    );
+    const rated = events.filter((e) => e.report?.rating);
+    const avgRating = rated.length
+      ? rated.reduce((sum, e) => sum + Number(e.report!.rating!), 0) /
+        rated.length
+      : 0;
+
+    return {
+      totalEvents,
+      completedEvents,
+      totalRevenue,
+      totalProfit,
+      totalSchoolSum,
+      avgRating: Math.round(avgRating * 10) / 10,
+    };
+  }
+}
+
+```
+
+# FILE: apps/backend/src/reports/dto/create-report.dto.ts
+
+```
+import {
+  IsBoolean,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsArray,
+  ValidateNested,
+  Min,
+  Max,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+
+class ExpenseItemDto {
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  amount: number;
+}
+
+class SalaryRecordDto {
+  @IsString()
+  userId: string;
+
+  @IsString()
+  name: string;
+
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  amount: number;
+
+  @IsOptional()
+  @IsString()
+  role?: string;
+}
+
+export class CreateReportDto {
+  @IsString()
+  eventId: string;
+
+  @IsOptional()
+  @IsBoolean()
+  announcementDone?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  materialShown?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  childrenCount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  classesCount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  privilegedCount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  showingsCount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  totalSum?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  schoolSum?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  remainderSum?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(5)
+  @Type(() => Number)
+  rating?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  directorSatisfied?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  teachersSatisfied?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  hadIssues?: boolean;
+
+  @IsOptional()
+  @IsString()
+  comment?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ExpenseItemDto)
+  expenses?: ExpenseItemDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SalaryRecordDto)
+  salaries?: SalaryRecordDto[];
+}
+
+```
+
+# FILE: apps/backend/src/reports/dto/revision.dto.ts
+
+```
+import { IsString, MinLength } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+
+export class RevisionDto {
+  @ApiProperty({
+    description: 'Коментар при поверненні на доопрацювання або відхиленні',
+  })
+  @IsString()
+  @MinLength(1)
+  comment: string;
+}
+
+```
+
+# FILE: apps/backend/src/reports/dto/update-report.dto.ts
+
+```
+import { PartialType } from '@nestjs/swagger';
+import { CreateReportDto } from './create-report.dto';
+
+export class UpdateReportDto extends PartialType(CreateReportDto) {}
+
+```
+
+# FILE: apps/backend/src/reports/reports.controller.ts
+
+```
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
+import { ReportsService } from './reports.service';
+import { AuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+import { CreateReportDto } from './dto/create-report.dto';
+import { UpdateReportDto } from './dto/update-report.dto';
+import { RevisionDto } from './dto/revision.dto';
+
+@ApiTags('Reports')
+@ApiCookieAuth('access_token')
+@Controller('reports')
+@UseGuards(AuthGuard, RolesGuard)
+export class ReportsController {
+  constructor(private readonly reportsService: ReportsService) {}
+
+  @ApiOperation({ summary: 'Створити чернетку звіту (Draft)' })
+  @Post()
+  create(@Body() dto: CreateReportDto, @CurrentUser() user: JwtUser) {
+    return this.reportsService.create(dto, user);
+  }
+
+  @ApiOperation({
+    summary: 'Оновити поля звіту (лише DRAFT або NEEDS_REVISION)',
+  })
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateReportDto,
+    @CurrentUser() user: JwtUser,
+  ) {
+    return this.reportsService.update(id, dto, user);
+  }
+
+  @ApiOperation({ summary: 'Подати звіт (DRAFT/NEEDS_REVISION → SUBMITTED)' })
+  @Post(':id/submit')
+  submit(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.reportsService.submit(id, user);
+  }
+
+  @ApiOperation({
+    summary:
+      'Затвердити звіт (SUBMITTED → APPROVED, лише MANAGER/SUPERADMIN/OWNER)',
+  })
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  @Post(':id/approve')
+  approve(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.reportsService.approve(id, user);
+  }
+
+  @ApiOperation({
+    summary: 'Повернути звіт на доопрацювання (SUBMITTED → NEEDS_REVISION)',
+  })
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  @Post(':id/request-revision')
+  requestRevision(
+    @Param('id') id: string,
+    @Body() dto: RevisionDto,
+    @CurrentUser() user: JwtUser,
+  ) {
+    return this.reportsService.requestRevision(id, dto, user);
+  }
+
+  @ApiOperation({ summary: 'Відхилити звіт (SUBMITTED → REJECTED)' })
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  @Post(':id/reject')
+  reject(
+    @Param('id') id: string,
+    @Body() dto: RevisionDto,
+    @CurrentUser() user: JwtUser,
+  ) {
+    return this.reportsService.reject(id, dto, user);
+  }
+
+  @ApiOperation({ summary: 'Отримати звіт за подією' })
+  @Get('event/:eventId')
+  findByEvent(@Param('eventId') eventId: string) {
+    return this.reportsService.findByEvent(eventId);
+  }
+
+  @ApiOperation({ summary: 'Список поданих звітів (для MANAGER)' })
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  @Get('submitted')
+  findSubmitted() {
+    return this.reportsService.findSubmitted();
+  }
+}
+
+```
+
+# FILE: apps/backend/src/reports/reports.module.ts
+
+```
+import { Module } from '@nestjs/common';
+import { ReportsController } from './reports.controller';
+import { ReportsService } from './reports.service';
+
+@Module({
+  controllers: [ReportsController],
+  providers: [ReportsService],
+})
+export class ReportsModule {}
+
+```
+
+# FILE: apps/backend/src/reports/reports.service.ts
+
+```
+import {
+  Injectable,
+  ForbiddenException,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+import { CreateReportDto } from './dto/create-report.dto';
+import { UpdateReportDto } from './dto/update-report.dto';
+import { RevisionDto } from './dto/revision.dto';
+import { ReportStatus } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+
+const ALLOWED_TRANSITIONS: Record<ReportStatus, ReportStatus[]> = {
+  DRAFT: ['SUBMITTED'],
+  SUBMITTED: ['APPROVED', 'NEEDS_REVISION', 'REJECTED'],
+  NEEDS_REVISION: ['SUBMITTED'],
+  APPROVED: [],
+  REJECTED: ['CLOSED'],
+  CLOSED: [],
+};
+
+@Injectable()
+export class ReportsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  private async assertCrewMember(
+    eventId: string,
+    userId: string,
+  ): Promise<void> {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      include: { crew: true },
+    });
+    if (!event) throw new NotFoundException('events.notFound');
+    if (!event.crew) throw new ForbiddenException('report.noCrew');
+    if (event.crew.hostId !== userId && event.crew.driverId !== userId) {
+      throw new ForbiddenException('report.notCrewMember');
+    }
+  }
+
+  private async assertReportOwner(
+    reportId: string,
+    userId: string,
+    eventId: string,
+  ) {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      include: { crew: true },
+    });
+    if (!event?.crew) throw new ForbiddenException('report.notAuthor');
+    if (event.crew.hostId !== userId && event.crew.driverId !== userId) {
+      throw new ForbiddenException('report.notAuthor');
+    }
+  }
+
+  private assertTransition(from: ReportStatus, to: ReportStatus) {
+    const allowed = ALLOWED_TRANSITIONS[from];
+    if (!allowed?.includes(to)) {
+      throw new BadRequestException('report.invalidTransition');
+    }
+  }
+
+  async create(dto: CreateReportDto, user: JwtUser) {
+    await this.assertCrewMember(dto.eventId, user.sub);
+
+    const data: Prisma.EventReportCreateInput = {
+      event: { connect: { id: dto.eventId } },
+      status: 'DRAFT',
+    };
+
+    if (dto.announcementDone !== undefined)
+      data.announcementDone = dto.announcementDone;
+    if (dto.materialShown !== undefined) data.materialShown = dto.materialShown;
+    if (dto.childrenCount !== undefined) data.childrenCount = dto.childrenCount;
+    if (dto.classesCount !== undefined) data.classesCount = dto.classesCount;
+    if (dto.privilegedCount !== undefined)
+      data.privilegedCount = dto.privilegedCount;
+    if (dto.showingsCount !== undefined) data.showingsCount = dto.showingsCount;
+    if (dto.totalSum !== undefined)
+      data.totalSum = new Prisma.Decimal(dto.totalSum);
+    if (dto.schoolSum !== undefined)
+      data.schoolSum = new Prisma.Decimal(dto.schoolSum);
+    if (dto.remainderSum !== undefined)
+      data.remainderSum = new Prisma.Decimal(dto.remainderSum);
+    if (dto.rating !== undefined) data.rating = dto.rating;
+    if (dto.directorSatisfied !== undefined)
+      data.directorSatisfied = dto.directorSatisfied;
+    if (dto.teachersSatisfied !== undefined)
+      data.teachersSatisfied = dto.teachersSatisfied;
+    if (dto.hadIssues !== undefined) data.hadIssues = dto.hadIssues;
+    if (dto.comment !== undefined) data.comment = dto.comment;
+
+    return this.prisma.eventReport.create({ data });
+  }
+
+  async update(id: string, dto: UpdateReportDto, user: JwtUser) {
+    const report = await this.prisma.eventReport.findUnique({
+      where: { id },
+      include: { event: { include: { crew: true } } },
+    });
+    if (!report) throw new NotFoundException('report.notFound');
+    if (report.status !== 'DRAFT' && report.status !== 'NEEDS_REVISION') {
+      throw new BadRequestException('report.notEditable');
+    }
+    await this.assertReportOwner(id, user.sub, report.eventId);
+
+    const data: Prisma.EventReportUpdateInput = {};
+
+    if (dto.announcementDone !== undefined)
+      data.announcementDone = dto.announcementDone;
+    if (dto.materialShown !== undefined) data.materialShown = dto.materialShown;
+    if (dto.childrenCount !== undefined) data.childrenCount = dto.childrenCount;
+    if (dto.classesCount !== undefined) data.classesCount = dto.classesCount;
+    if (dto.privilegedCount !== undefined)
+      data.privilegedCount = dto.privilegedCount;
+    if (dto.showingsCount !== undefined) data.showingsCount = dto.showingsCount;
+    if (dto.totalSum !== undefined)
+      data.totalSum = new Prisma.Decimal(dto.totalSum);
+    if (dto.schoolSum !== undefined)
+      data.schoolSum = new Prisma.Decimal(dto.schoolSum);
+    if (dto.remainderSum !== undefined)
+      data.remainderSum = new Prisma.Decimal(dto.remainderSum);
+    if (dto.rating !== undefined) data.rating = dto.rating;
+    if (dto.directorSatisfied !== undefined)
+      data.directorSatisfied = dto.directorSatisfied;
+    if (dto.teachersSatisfied !== undefined)
+      data.teachersSatisfied = dto.teachersSatisfied;
+    if (dto.hadIssues !== undefined) data.hadIssues = dto.hadIssues;
+    if (dto.comment !== undefined) data.comment = dto.comment;
+
+    return this.prisma.eventReport.update({ where: { id }, data });
+  }
+
+  async submit(id: string, user: JwtUser) {
+    const report = await this.prisma.eventReport.findUnique({
+      where: { id },
+      include: { event: { include: { crew: true } } },
+    });
+    if (!report) throw new NotFoundException('report.notFound');
+    this.assertTransition(report.status, 'SUBMITTED');
+    await this.assertReportOwner(id, user.sub, report.eventId);
+
+    return this.prisma.eventReport.update({
+      where: { id },
+      data: { status: 'SUBMITTED', submittedAt: new Date() },
+    });
+  }
+
+  async approve(id: string, user: JwtUser) {
+    if (
+      user.role !== 'MANAGER' &&
+      user.role !== 'SUPERADMIN' &&
+      user.role !== 'OWNER'
+    ) {
+      throw new ForbiddenException('report.notApprover');
+    }
+
+    const report = await this.prisma.eventReport.findUnique({
+      where: { id },
+      include: { event: { include: { crew: true } } },
+    });
+    if (!report) throw new NotFoundException('report.notFound');
+    this.assertTransition(report.status, 'APPROVED');
+
+    return this.prisma.eventReport.update({
+      where: { id },
+      data: {
+        status: 'APPROVED',
+        approvedAt: new Date(),
+        approvedBy: user.sub,
+      },
+    });
+  }
+
+  async requestRevision(id: string, dto: RevisionDto, user: JwtUser) {
+    if (
+      user.role !== 'MANAGER' &&
+      user.role !== 'SUPERADMIN' &&
+      user.role !== 'OWNER'
+    ) {
+      throw new ForbiddenException('report.notApprover');
+    }
+
+    const report = await this.prisma.eventReport.findUnique({
+      where: { id },
+      include: { event: { include: { crew: true } } },
+    });
+    if (!report) throw new NotFoundException('report.notFound');
+    this.assertTransition(report.status, 'NEEDS_REVISION');
+
+    return this.prisma.eventReport.update({
+      where: { id },
+      data: { status: 'NEEDS_REVISION', revisionComment: dto.comment },
+    });
+  }
+
+  async reject(id: string, dto: RevisionDto, user: JwtUser) {
+    if (
+      user.role !== 'MANAGER' &&
+      user.role !== 'SUPERADMIN' &&
+      user.role !== 'OWNER'
+    ) {
+      throw new ForbiddenException('report.notApprover');
+    }
+
+    const report = await this.prisma.eventReport.findUnique({
+      where: { id },
+      include: { event: { include: { crew: true } } },
+    });
+    if (!report) throw new NotFoundException('report.notFound');
+    this.assertTransition(report.status, 'REJECTED');
+
+    return this.prisma.eventReport.update({
+      where: { id },
+      data: { status: 'REJECTED', revisionComment: dto.comment },
+    });
+  }
+
+  async findByEvent(eventId: string) {
+    return this.prisma.eventReport.findUnique({
+      where: { eventId },
+      include: {
+        expenseItems: true,
+        salaryRecords: true,
+        photos: true,
+      },
+    });
+  }
+
+  async findSubmitted() {
+    return this.prisma.eventReport.findMany({
+      where: { status: 'SUBMITTED' },
+      include: {
+        expenseItems: true,
+        salaryRecords: true,
+        event: {
+          include: {
+            school: { select: { name: true, type: true } },
+            city: { select: { name: true } },
+            crew: {
+              include: {
+                host: { select: { id: true, name: true } },
+                driver: { select: { id: true, name: true } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { submittedAt: 'desc' },
+    });
+  }
+}
+
+```
+
+# FILE: apps/backend/src/salary/dto/create-salary.dto.ts
+
+```
+import {
+  IsString,
+  IsNumber,
+  IsArray,
+  IsOptional,
+  Min,
+  Max,
+  ValidateNested,
+  MinLength,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
+
+export class CreateSalaryItemDto {
+  @ApiProperty({ description: 'ID працівника' })
+  @IsString()
+  employeeId: string;
+
+  @ApiProperty({ description: 'Сума нарахування' })
+  @IsNumber()
+  @Min(1)
+  @Max(99999)
+  @Type(() => Number)
+  amount: number;
+
+  @ApiProperty({ description: 'Коментар', required: false })
+  @IsOptional()
+  @IsString()
+  comment?: string;
+}
+
+export class CreateSalaryDto {
+  @ApiProperty({ description: 'ID звіту (Approved)' })
+  @IsString()
+  reportId: string;
+
+  @ApiProperty({ type: [CreateSalaryItemDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateSalaryItemDto)
+  items: CreateSalaryItemDto[];
+}
+
+```
+
+# FILE: apps/backend/src/salary/dto/mark-paid.dto.ts
+
+```
+import { IsOptional, IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+
+export class MarkPaidDto {
+  @ApiProperty({ description: 'Коментар при виплаті', required: false })
+  @IsOptional()
+  @IsString()
+  comment?: string;
+}
+
+```
+
+# FILE: apps/backend/src/salary/salary.controller.ts
+
+```
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Param,
+  Body,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
+import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { SalaryService } from './salary.service';
+import { CreateSalaryDto } from './dto/create-salary.dto';
+
+@ApiTags('salary')
+@ApiCookieAuth('access_token')
+@UseGuards(AuthGuard, RolesGuard)
+@Controller('salary')
+export class SalaryController {
+  constructor(private readonly salaryService: SalaryService) {}
+
+  @Post()
+  @Roles('MANAGER', 'SUPERADMIN', 'OWNER')
+  @ApiOperation({ summary: 'Створити записи нарахувань за звітом' })
+  create(@Body() dto: CreateSalaryDto, @CurrentUser() user: JwtUser) {
+    return this.salaryService.create(dto, user);
+  }
+
+  @Get('mine')
+  @ApiOperation({ summary: 'Мої нарахування' })
+  findMine(@CurrentUser() user: JwtUser, @Query('cityId') cityId?: string) {
+    return this.salaryService.findMine(user, cityId);
+  }
+
+  @Get()
+  @Roles('MANAGER', 'SUPERADMIN', 'OWNER')
+  @ApiOperation({ summary: 'Всі нарахування (менеджер/адмін)' })
+  findAll(@CurrentUser() user: JwtUser, @Query('cityId') cityId?: string) {
+    return this.salaryService.findAll(user, cityId);
+  }
+
+  @Patch(':id/mark-paid')
+  @Roles('MANAGER', 'SUPERADMIN', 'OWNER')
+  @ApiOperation({ summary: 'Позначити нарахування як виплачене' })
+  markPaid(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.salaryService.markPaid(id, user);
+  }
+}
+
+```
+
+# FILE: apps/backend/src/salary/salary.module.ts
+
+```
+import { Module } from '@nestjs/common';
+import { SalaryController } from './salary.controller';
+import { SalaryService } from './salary.service';
+import { PrismaModule } from '../prisma/prisma.module';
+
+@Module({
+  imports: [PrismaModule],
+  controllers: [SalaryController],
+  providers: [SalaryService],
+  exports: [SalaryService],
+})
+export class SalaryModule {}
+
+```
+
+# FILE: apps/backend/src/salary/salary.service.ts
+
+```
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+import { CreateSalaryDto } from './dto/create-salary.dto';
+import { Prisma } from '@prisma/client';
+
+@Injectable()
+export class SalaryService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async create(dto: CreateSalaryDto, user: JwtUser) {
+    if (
+      user.role !== 'MANAGER' &&
+      user.role !== 'SUPERADMIN' &&
+      user.role !== 'OWNER'
+    ) {
+      throw new ForbiddenException('salary.notManager');
+    }
+
+    const report = await this.prisma.eventReport.findUnique({
+      where: { id: dto.reportId },
+      include: { event: { select: { id: true, cityId: true } } },
+    });
+    if (!report) throw new NotFoundException('report.notFound');
+    if (report.status !== 'APPROVED')
+      throw new BadRequestException('salary.reportNotApproved');
+
+    if (user.role === 'MANAGER') {
+      const cityIds = await this.prisma.user.findUnique({
+        where: { id: user.sub },
+        select: { managedCities: { select: { id: true } } },
+      });
+      const managedIds = cityIds?.managedCities.map((c) => c.id) ?? [];
+      if (!managedIds.includes(report.event.cityId)) {
+        throw new ForbiddenException('salary.notCityManager');
+      }
+    }
+
+    const hasLargeAmounts = dto.items.some((item) => item.amount >= 100000);
+    if (hasLargeAmounts && user.role !== 'SUPERADMIN') {
+      throw new BadRequestException('salary.amountTooLarge');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const records = await tx.salaryRecord.createManyAndReturn({
+        data: dto.items.map((item) => ({
+          employeeId: item.employeeId,
+          eventId: report.eventId,
+          reportId: dto.reportId,
+          amount: new Prisma.Decimal(item.amount),
+          comment: item.comment,
+          status: 'PENDING' as const,
+          createdBy: user.sub,
+        })),
+      });
+      return records;
+    });
+  }
+
+  async findMine(user: JwtUser, cityId?: string) {
+    const where: Record<string, unknown> = { employeeId: user.sub };
+    if (cityId) {
+      where.event = { cityId };
+    }
+    return this.prisma.salaryRecord.findMany({
+      where,
+      include: {
+        event: { select: { date: true, project: true, cityId: true } },
+        report: { select: { status: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findAll(user: JwtUser, cityId?: string) {
+    if (
+      user.role !== 'MANAGER' &&
+      user.role !== 'SUPERADMIN' &&
+      user.role !== 'OWNER'
+    ) {
+      throw new ForbiddenException('salary.notAllowed');
+    }
+
+    const where: Record<string, unknown> = {};
+    if (cityId) {
+      where.event = { cityId };
+    } else if (user.role === 'MANAGER') {
+      const cityIds = await this.prisma.user.findUnique({
+        where: { id: user.sub },
+        select: { managedCities: { select: { id: true } } },
+      });
+      const managedIds = cityIds?.managedCities.map((c) => c.id) ?? [];
+      where.event = { cityId: { in: managedIds } };
+    }
+
+    return this.prisma.salaryRecord.findMany({
+      where,
+      include: {
+        employee: { select: { id: true, name: true, role: true } },
+        event: {
+          select: { id: true, date: true, project: true, cityId: true },
+        },
+        report: { select: { status: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async markPaid(id: string, user: JwtUser) {
+    if (
+      user.role !== 'MANAGER' &&
+      user.role !== 'SUPERADMIN' &&
+      user.role !== 'OWNER'
+    ) {
+      throw new ForbiddenException('salary.notAllowed');
+    }
+
+    const record = await this.prisma.salaryRecord.findUnique({
+      where: { id },
+      include: { event: { select: { cityId: true } } },
+    });
+    if (!record) throw new NotFoundException('salary.notFound');
+    if (record.status !== 'PENDING')
+      throw new BadRequestException('salary.notPending');
+
+    if (user.role === 'MANAGER') {
+      const cityIds = await this.prisma.user.findUnique({
+        where: { id: user.sub },
+        select: { managedCities: { select: { id: true } } },
+      });
+      const managedIds = cityIds?.managedCities.map((c) => c.id) ?? [];
+      if (!managedIds.includes(record.event?.cityId ?? '')) {
+        throw new ForbiddenException('salary.notCityManager');
+      }
+    }
+
+    return this.prisma.salaryRecord.update({
+      where: { id },
+      data: { status: 'PAID', paidAt: new Date(), paidBy: user.sub },
+    });
+  }
+}
+
+```
+
+# FILE: apps/backend/src/school-comments/school-comments.controller.ts
+
+```
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Param,
+  Body,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
+import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { SchoolCommentsService } from './school-comments.service';
+import type { CommentType } from '@prisma/client';
+
+@ApiTags('school-comments')
+@ApiCookieAuth('access_token')
+@UseGuards(AuthGuard, RolesGuard)
+@Controller('schools/:schoolId/comments')
+export class SchoolCommentsController {
+  constructor(private readonly service: SchoolCommentsService) {}
+
+  @Post()
+  @Roles('MANAGER', 'SUPERADMIN', 'OWNER')
+  @ApiOperation({ summary: 'Додати коментар до школи' })
+  create(
+    @Param('schoolId') schoolId: string,
+    @Body() body: { type: CommentType; text: string },
+    @CurrentUser() user: JwtUser,
+  ) {
+    return this.service.create(schoolId, body.type, body.text, user);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Отримати коментарі школи' })
+  findAll(
+    @Param('schoolId') schoolId: string,
+    @Query('type') type?: CommentType,
+    @Query('page') page?: number,
+    @Query('take') take?: number,
+  ) {
+    return this.service.findAll(schoolId, type, page ?? 1, take ?? 20);
+  }
+
+  @Delete(':id')
+  @Roles('SUPERADMIN', 'OWNER')
+  @ApiOperation({ summary: 'Мʼяко видалити коментар' })
+  softDelete(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.service.softDelete(id, user);
+  }
+}
+
+```
+
+# FILE: apps/backend/src/school-comments/school-comments.module.ts
+
+```
+import { Module } from '@nestjs/common';
+import { SchoolCommentsController } from './school-comments.controller';
+import { SchoolCommentsService } from './school-comments.service';
+import { PrismaModule } from '../prisma/prisma.module';
+
+@Module({
+  imports: [PrismaModule],
+  controllers: [SchoolCommentsController],
+  providers: [SchoolCommentsService],
+  exports: [SchoolCommentsService],
+})
+export class SchoolCommentsModule {}
+
+```
+
+# FILE: apps/backend/src/school-comments/school-comments.service.ts
+
+```
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+import type { CommentType } from '@prisma/client';
+
+@Injectable()
+export class SchoolCommentsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async create(
+    schoolId: string,
+    type: CommentType,
+    text: string,
+    user: JwtUser,
+  ) {
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+    });
+    if (!school) throw new NotFoundException('school.notFound');
+
+    return this.prisma.schoolComment.create({
+      data: { schoolId, authorId: user.sub, type, text },
+      include: { author: { select: { id: true, name: true, role: true } } },
+    });
+  }
+
+  async findAll(schoolId: string, type?: CommentType, page = 1, take = 20) {
+    const where: Record<string, unknown> = { schoolId, deletedAt: null };
+    if (type) where.type = type;
+
+    const [items, total] = await Promise.all([
+      this.prisma.schoolComment.findMany({
+        where,
+        include: { author: { select: { id: true, name: true, role: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * take,
+        take,
+      }),
+      this.prisma.schoolComment.count({ where }),
+    ]);
+
+    return { items, total, page, take, pageCount: Math.ceil(total / take) };
+  }
+
+  async softDelete(id: string, user: JwtUser) {
+    if (user.role !== 'SUPERADMIN' && user.role !== 'OWNER') {
+      throw new ForbiddenException('comments.notAllowed');
+    }
+    const comment = await this.prisma.schoolComment.findUnique({
+      where: { id },
+    });
+    if (!comment) throw new NotFoundException('comment.notFound');
+
+    return this.prisma.schoolComment.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  }
+}
+
+```
+
+# FILE: apps/backend/src/schools/dto/bulk-import.dto.ts
+
+```
+import { IsString, IsNotEmpty, IsOptional, IsIn } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+export class BulkImportDto {
+  @ApiProperty({ example: 'a1b2c3d4-...' })
+  @IsString()
+  @IsNotEmpty()
+  cityId: string;
+
+  @ApiPropertyOptional({ example: 'Школа', enum: ['Школа', 'Садочок'] })
+  @IsOptional()
+  @IsIn(['Школа', 'Садочок'])
+  type?: 'Школа' | 'Садочок';
+}
+
+```
+
+# FILE: apps/backend/src/schools/dto/create-school.dto.ts
+
+```
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+export class CreateSchoolDto {
+  @ApiProperty({ example: 'Ліцей №5' })
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @ApiProperty({ example: 'school', enum: ['school', 'kindergarten'] })
+  @IsString()
+  @IsNotEmpty()
+  type: string;
+
+  @ApiProperty({ example: 'a1b2c3d4-...' })
+  @IsString()
+  @IsNotEmpty()
+  cityId: string;
+
+  @ApiPropertyOptional({ example: 'https://example.com/school-page' })
+  @IsOptional()
+  @IsString()
+  sourceUrl?: string;
+
+  @ApiPropertyOptional({ example: 'Іваненко Іван Іванович' })
+  @IsOptional()
+  @IsString()
+  director?: string;
+
+  @ApiPropertyOptional({ example: '+380501234567' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
+}
+
+```
+
+# FILE: apps/backend/src/schools/dto/find-contacts-query.dto.ts
+
+```
+import { IsOptional, IsString, MinLength } from 'class-validator';
+
+export class FindContactsQueryDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  q?: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
+}
+
+```
+
+# FILE: apps/backend/src/schools/dto/find-schools-query.dto.ts
+
+```
+import { IsOptional, IsString, MinLength, IsIn } from 'class-validator';
+
+export class FindSchoolsQueryDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  q?: string;
+
+  @IsOptional()
+  @IsIn(['Школа', 'Садочок'])
+  type?: 'Школа' | 'Садочок';
+}
+
+```
+
+# FILE: apps/backend/src/schools/dto/school-query.dto.ts
+
+```
+import { IsOptional, IsIn, IsString } from 'class-validator';
+import { PageOptionsDto } from '../../common/dto/page-options.dto';
+
+export class SchoolQueryDto extends PageOptionsDto {
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+
+  @IsOptional()
+  @IsIn(['Школа', 'Садочок'])
+  type?: 'Школа' | 'Садочок';
+
+  @IsOptional()
+  @IsIn(['new', 'planned', 'inProgress', 'done'])
+  stage?: 'new' | 'planned' | 'inProgress' | 'done';
+
+  @IsOptional()
+  @IsIn(['small', 'medium', 'large'])
+  size?: 'small' | 'medium' | 'large';
+}
+
+```
+
+# FILE: apps/backend/src/schools/dto/update-school.dto.ts
+
+```
+import {
+  IsString,
+  IsOptional,
+  IsInt,
+  IsBoolean,
+  IsEmail,
+  Min,
+} from 'class-validator';
+import { Type, Transform } from 'class-transformer';
+
+export class UpdateSchoolDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  type?: string;
+
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  director?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  childrenCount?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isHotClient?: boolean;
+}
+
+```
+
+# FILE: apps/backend/src/schools/parser.service.spec.ts
+
+```
+import { ParserService } from './parser.service';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+
+// Хелпер: генерує HTML-таблицю зі списком шкіл
+const buildTableHtml = (rows: { name: string; href: string }[]): string => {
+  const trs = rows
+    .map((r) => `<tr><td>1</td><td><a href="${r.href}">${r.name}</a></td></tr>`)
+    .join('');
+  return `<table class="zebra-stripe list">${trs}</table>`;
+};
+
+// Хелпер: генерує HTML-профіль школи
+const buildProfileHtml = (fields: Record<string, string>): string => {
+  const rows = Object.entries(fields)
+    .map(([label, value]) => `<tr><th>${label}</th><td>${value}</td></tr>`)
+    .join('');
+  return `<table>${rows}</table>`;
+};
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
+describe('ParserService — parseSchoolData', () => {
+  it('повертає address, director, childrenCount за прямим URL', async () => {
+    const profileHtml = buildProfileHtml({
+      'Поштова адреса': 'вул. Шевченка 1',
+      Директор: 'Іваненко Іван',
+      'Кількість учнів': '1023',
+    });
+    mockedAxios.get.mockResolvedValueOnce({ data: profileHtml });
+
+    const service = new ParserService();
+    const result = await service.parseSchoolData(
+      'Школа №1',
+      'https://lv.isuo.org/schools/123',
+    );
+
+    expect(result).toEqual({
+      address: 'вул. Шевченка 1',
+      director: 'Іваненко Іван',
+      childrenCount: 1023,
+    });
+  });
+
+  it('розпізнає альтернативні лейбли (Завідувач, Кількість дітей)', async () => {
+    const profileHtml = buildProfileHtml({
+      Адреса: 'вул. Лесі 10',
+      Завідувач: 'Петренко Оксана',
+      'Кількість дітей': '456 дітей',
+    });
+    mockedAxios.get.mockResolvedValueOnce({ data: profileHtml });
+
+    const service = new ParserService();
+    const result = await service.parseSchoolData(
+      'Садочок №2',
+      'https://lv.isuo.org/k/1',
+    );
+
+    expect(result?.director).toBe('Петренко Оксана');
+    expect(result?.childrenCount).toBe(456);
+  });
+
+  it('повертає 0 для childrenCount якщо число не розпізнано', async () => {
+    const profileHtml = buildProfileHtml({
+      Директор: 'Без дітей',
+    });
+    mockedAxios.get.mockResolvedValueOnce({ data: profileHtml });
+
+    const service = new ParserService();
+    const result = await service.parseSchoolData(
+      'Тест',
+      'https://lv.isuo.org/x/1',
+    );
+
+    expect(result?.childrenCount).toBe(0);
+  });
+
+  it('повертає null при мережевій помилці', async () => {
+    mockedAxios.get.mockRejectedValueOnce(new Error('Network Error'));
+
+    const service = new ParserService();
+    const result = await service.parseSchoolData(
+      'Школа',
+      'https://lv.isuo.org/x/1',
+    );
+
+    expect(result).toBeNull();
+  });
+
+  it('шукає школу у списку якщо URL не вказано', async () => {
+    const listHtml = buildTableHtml([
+      { name: 'Загальноосвітня школа №42', href: '/schools/42' },
+    ]);
+    const profileHtml = buildProfileHtml({ Директор: 'Тест' });
+
+    mockedAxios.get
+      .mockResolvedValueOnce({ data: listHtml }) // список
+      .mockResolvedValueOnce({ data: profileHtml }); // профіль
+
+    const service = new ParserService();
+    const result = await service.parseSchoolData('школа №42');
+
+    expect(mockedAxios.get).toHaveBeenCalledTimes(2);
+    expect(result?.director).toBe('Тест');
+  });
+
+  it('повертає null якщо школу не знайдено у списку', async () => {
+    const listHtml = buildTableHtml([
+      { name: 'Інша школа', href: '/schools/99' },
+    ]);
+    mockedAxios.get
+      .mockResolvedValueOnce({ data: listHtml })
+      .mockResolvedValueOnce({ data: listHtml }); // page 2
+
+    const service = new ParserService();
+    const result = await service.parseSchoolData('Неіснуюча школа');
+
+    expect(result).toBeNull();
+  });
+});
+
+describe('ParserService — searchSchools', () => {
+  it('повертає список шкіл що відповідають запиту', async () => {
+    const html = buildTableHtml([
+      { name: 'Гімназія №3', href: '/schools/3' },
+      { name: 'Ліцей №10', href: '/schools/10' },
+    ]);
+    mockedAxios.get
+      .mockResolvedValueOnce({ data: html })
+      .mockResolvedValueOnce({ data: html }); // page 2
+
+    const service = new ParserService();
+    const results = await service.searchSchools('гімназія');
+
+    expect(results).toHaveLength(2); // до 10, cheerio знаходить обидва по "гімназія"
+  });
+
+  it('числовий запит — шукає за номером школи точно (regex з word boundary)', async () => {
+    const html = buildTableHtml([
+      { name: 'Школа №5', href: '/schools/5' },
+      { name: 'Школа №15', href: '/schools/15' },
+      { name: 'Школа №50', href: '/schools/50' },
+    ]);
+    mockedAxios.get
+      .mockResolvedValueOnce({ data: html })
+      .mockResolvedValueOnce({ data: '<table></table>' });
+
+    const service = new ParserService();
+    const results = await service.searchSchools('5');
+
+    // Має знайти тільки "Школа №5", не "15" чи "50"
+    const names = results.map((r) => r.name);
+    expect(names).toContain('Школа №5');
+    expect(names).not.toContain('Школа №15');
+    expect(names).not.toContain('Школа №50');
+  });
+
+  it('повертає не більше 10 результатів', async () => {
+    const manyRows = Array.from({ length: 20 }, (_, i) => ({
+      name: `Тестова школа №${i + 1}`,
+      href: `/schools/${i + 1}`,
+    }));
+    const html = buildTableHtml(manyRows);
+    mockedAxios.get
+      .mockResolvedValueOnce({ data: html })
+      .mockResolvedValueOnce({ data: '<table></table>' });
+
+    const service = new ParserService();
+    const results = await service.searchSchools('тестова');
+
+    expect(results.length).toBeLessThanOrEqual(10);
+  });
+
+  it('повертає порожній масив при мережевій помилці', async () => {
+    mockedAxios.get.mockRejectedValueOnce(new Error('Network Error'));
+
+    const service = new ParserService();
+    const results = await service.searchSchools('щось');
+
+    expect(results).toEqual([]);
+  });
+
+  it('для type="Садочок" — використовує URL дошкільних закладів', async () => {
+    mockedAxios.get.mockResolvedValue({ data: '<table></table>' });
+
+    const service = new ParserService();
+    await service.searchSchools('садок', 'Садочок');
+
+    const url = mockedAxios.get.mock.calls[0][0];
+    expect(url).toContain('preschools');
+  });
+});
+
+describe('ParserService — getAllSchoolsForCity', () => {
+  it('повертає заклади для підтримуваного міста', async () => {
+    const page1 = buildTableHtml([
+      { name: 'Школа №1', href: '/schools/1' },
+      { name: 'Школа №2', href: '/schools/2' },
+    ]);
+    const emptyPage = '<table class="zebra-stripe list"></table>';
+
+    mockedAxios.get
+      .mockResolvedValueOnce({ data: page1 })
+      .mockResolvedValueOnce({ data: emptyPage });
+
+    const service = new ParserService();
+    const results = await service.getAllSchoolsForCity('Львів', 'Школа');
+
+    expect(results).toHaveLength(2);
+    expect(results[0].name).toBe('Школа №1');
+    expect(results[0].url).toContain('lv.isuo.org');
+  });
+
+  it('повертає порожній масив для непідтримуваного міста', async () => {
+    const service = new ParserService();
+    const results = await service.getAllSchoolsForCity('Атлантида');
+
+    expect(results).toEqual([]);
+    expect(mockedAxios.get).not.toHaveBeenCalled();
+  });
+
+  it('зупиняється якщо сторінка не містить результатів', async () => {
+    const page1 = buildTableHtml([{ name: 'Школа №1', href: '/schools/1' }]);
+    const emptyPage = '<table class="zebra-stripe list"></table>';
+
+    mockedAxios.get
+      .mockResolvedValueOnce({ data: page1 })
+      .mockResolvedValueOnce({ data: emptyPage });
+
+    const service = new ParserService();
+    const results = await service.getAllSchoolsForCity('Київ');
+
+    expect(results).toHaveLength(1);
+    expect(mockedAxios.get).toHaveBeenCalledTimes(2);
+  });
+
+  it('дедуплікує однакові заклади (за нормалізованою назвою)', async () => {
+    const html = buildTableHtml([
+      { name: 'Школа  №1', href: '/schools/1' },
+      { name: 'Школа №1', href: '/schools/1b' },
+    ]);
+    const emptyPage = '<table class="zebra-stripe list"></table>';
+
+    mockedAxios.get
+      .mockResolvedValueOnce({ data: html })
+      .mockResolvedValueOnce({ data: emptyPage });
+
+    const service = new ParserService();
+    const results = await service.getAllSchoolsForCity('Харків');
+
+    expect(results).toHaveLength(1);
+  });
+
+  it('зупиняється при мережевій помилці на конкретній сторінці', async () => {
+    mockedAxios.get.mockRejectedValueOnce(new Error('timeout'));
+
+    const service = new ParserService();
+    const results = await service.getAllSchoolsForCity('Одеса');
+
+    expect(results).toEqual([]);
+  });
+
+  it('для type="Садочок" — використовує URL kindergartens', async () => {
+    mockedAxios.get.mockResolvedValue({
+      data: '<table class="zebra-stripe list"></table>',
+    });
+
+    const service = new ParserService();
+    await service.getAllSchoolsForCity('Тернопіль', 'Садочок');
+
+    const url = mockedAxios.get.mock.calls[0][0];
+    expect(url).toContain('preschools');
+  });
+});
+
+describe('ParserService — getSupportedCities', () => {
+  it('повертає масив підтримуваних міст', () => {
+    const service = new ParserService();
+    const cities = service.getSupportedCities();
+
+    expect(cities).toBeInstanceOf(Array);
+    expect(cities.length).toBeGreaterThan(0);
+    expect(cities).toContain('Львів');
+    expect(cities).toContain('Київ');
+  });
+});
+
+```
+
+# FILE: apps/backend/src/schools/parser.service.ts
+
+```
+import { Injectable } from '@nestjs/common';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+
+const CITY_CONFIG: Record<
+  string,
+  { schools: string; kindergartens: string; domain: string }
+> = {
+  Львів: {
+    domain: 'https://lv.isuo.org',
+    schools: 'https://lv.isuo.org/authorities/schools-list/id/681',
+    kindergartens: 'https://lv.isuo.org/koatuu/preschools-list/id/4610100000',
+  },
+  'Івано-Франківськ': {
+    domain: 'https://if.isuo.org',
+    schools: 'https://if.isuo.org/koatuu/schools-list/id/2610100000',
+    kindergartens: 'https://if.isuo.org/koatuu/preschools-list/id/2610100000',
+  },
+  Чернівці: {
+    domain: 'https://cv.isuo.org',
+    schools: 'https://cv.isuo.org/koatuu/schools-list/id/7310100000',
+    kindergartens: 'https://cv.isuo.org/koatuu/preschools-list/id/7310100000',
+  },
+  Тернопіль: {
+    domain: 'https://te.isuo.org',
+    schools: 'https://te.isuo.org/koatuu/schools-list/id/6110100000',
+    kindergartens: 'https://te.isuo.org/koatuu/preschools-list/id/6110100000',
+  },
+  Ужгород: {
+    domain: 'https://zk.isuo.org',
+    schools: 'https://zk.isuo.org/koatuu/schools-list/id/2110100000',
+    kindergartens: 'https://zk.isuo.org/koatuu/preschools-list/id/2110100000',
+  },
+  Київ: {
+    domain: 'https://kv.isuo.org',
+    schools: 'https://kv.isuo.org/koatuu/schools-list/id/8000000000',
+    kindergartens: 'https://kv.isuo.org/koatuu/preschools-list/id/8000000000',
+  },
+  Харків: {
+    domain: 'https://kh.isuo.org',
+    schools: 'https://kh.isuo.org/koatuu/schools-list/id/6310100000',
+    kindergartens: 'https://kh.isuo.org/koatuu/preschools-list/id/6310100000',
+  },
+  Одеса: {
+    domain: 'https://od.isuo.org',
+    schools: 'https://od.isuo.org/koatuu/schools-list/id/5110100000',
+    kindergartens: 'https://od.isuo.org/koatuu/preschools-list/id/5110100000',
+  },
+  Дніпро: {
+    domain: 'https://dp.isuo.org',
+    schools: 'https://dp.isuo.org/koatuu/schools-list/id/1210100000',
+    kindergartens: 'https://dp.isuo.org/koatuu/preschools-list/id/1210100000',
+  },
+  Запоріжжя: {
+    domain: 'https://zp.isuo.org',
+    schools: 'https://zp.isuo.org/koatuu/schools-list/id/2310100000',
+    kindergartens: 'https://zp.isuo.org/koatuu/preschools-list/id/2310100000',
+  },
+  Миколаїв: {
+    domain: 'https://mk.isuo.org',
+    schools: 'https://mk.isuo.org/koatuu/schools-list/id/4810100000',
+    kindergartens: 'https://mk.isuo.org/koatuu/preschools-list/id/4810100000',
+  },
+  Вінниця: {
+    domain: 'https://vn.isuo.org',
+    schools: 'https://vn.isuo.org/koatuu/schools-list/id/0510100000',
+    kindergartens: 'https://vn.isuo.org/koatuu/preschools-list/id/0510100000',
+  },
+  Херсон: {
+    domain: 'https://ks.isuo.org',
+    schools: 'https://ks.isuo.org/koatuu/schools-list/id/6510100000',
+    kindergartens: 'https://ks.isuo.org/koatuu/preschools-list/id/6510100000',
+  },
+  Полтава: {
+    domain: 'https://pl.isuo.org',
+    schools: 'https://pl.isuo.org/koatuu/schools-list/id/5310100000',
+    kindergartens: 'https://pl.isuo.org/koatuu/preschools-list/id/5310100000',
+  },
+  Чернігів: {
+    domain: 'https://cg.isuo.org',
+    schools: 'https://cg.isuo.org/koatuu/schools-list/id/7410100000',
+    kindergartens: 'https://cg.isuo.org/koatuu/preschools-list/id/7410100000',
+  },
+  Черкаси: {
+    domain: 'https://ck.isuo.org',
+    schools: 'https://ck.isuo.org/koatuu/schools-list/id/7110100000',
+    kindergartens: 'https://ck.isuo.org/koatuu/preschools-list/id/7110100000',
+  },
+  Суми: {
+    domain: 'https://su.isuo.org',
+    schools: 'https://su.isuo.org/koatuu/schools-list/id/5910100000',
+    kindergartens: 'https://su.isuo.org/koatuu/preschools-list/id/5910100000',
+  },
+  Житомир: {
+    domain: 'https://zt.isuo.org',
+    schools: 'https://zt.isuo.org/koatuu/schools-list/id/1810100000',
+    kindergartens: 'https://zt.isuo.org/koatuu/preschools-list/id/1810100000',
+  },
+  Хмельницький: {
+    domain: 'https://km.isuo.org',
+    schools: 'https://km.isuo.org/koatuu/schools-list/id/6810100000',
+    kindergartens: 'https://km.isuo.org/koatuu/preschools-list/id/6810100000',
+  },
+  Рівне: {
+    domain: 'https://rv.isuo.org',
+    schools: 'https://rv.isuo.org/koatuu/schools-list/id/5610100000',
+    kindergartens: 'https://rv.isuo.org/koatuu/preschools-list/id/5610100000',
+  },
+  Кропивницький: {
+    domain: 'https://kr.isuo.org',
+    schools: 'https://kr.isuo.org/koatuu/schools-list/id/3510100000',
+    kindergartens: 'https://kr.isuo.org/koatuu/preschools-list/id/3510100000',
+  },
+  Луцьк: {
+    domain: 'https://vl.isuo.org',
+    schools: 'https://vl.isuo.org/koatuu/schools-list/id/0710100000',
+    kindergartens: 'https://vl.isuo.org/koatuu/preschools-list/id/0710100000',
+  },
+};
+
+@Injectable()
+export class ParserService {
+  async parseSchoolData(schoolName: string, schoolUrl?: string, type?: string) {
+    try {
+      let url = schoolUrl;
+      if (!url) {
+        const urls =
+          type === 'Садочок'
+            ? [
+                'https://lv.isuo.org/koatuu/preschools-list/id/4610100000',
+                'https://lv.isuo.org/koatuu/preschools-list/id/4610100000/page/2',
+              ]
+            : [
+                'https://lv.isuo.org/authorities/schools-list/id/681',
+                'https://lv.isuo.org/authorities/schools-list/id/681/page/2',
+              ];
+        const normalizedSearch = schoolName
+          .toLowerCase()
+          .replace(/\s+/g, ' ')
+          .trim();
+        for (const searchUrl of urls) {
+          const listResponse = await axios.get(searchUrl);
+          const $list = cheerio.load(listResponse.data);
+          $list('table.zebra-stripe.list tr').each((_, row) => {
+            const name = $list(row)
+              .find('td:nth-child(2) a')
+              .text()
+              .replace(/\s+/g, ' ')
+              .trim()
+              .toLowerCase();
+            if (name.includes(normalizedSearch)) {
+              const href = $list(row).find('td:nth-child(2) a').attr('href');
+              if (href) {
+                url = `https://lv.isuo.org${href}`;
+                return false;
+              }
+            }
+          });
+          if (url) break;
+        }
+      }
+      if (!url) {
+        console.log(`Заклад не знайдено: ${schoolName}`);
+        return null;
+      }
+      const response = await axios.get(url);
+      const $ = cheerio.load(response.data);
+      const getField = (labels: string[]): string => {
+        let result = '';
+        for (const label of labels) {
+          const th = $('th')
+            .filter((_, el) => $(el).text().trim().includes(label))
+            .first();
+          if (th.length) {
+            result = th.next('td').text().trim();
+            break;
+          }
+        }
+        return result;
+      };
+      const address = getField(['Поштова адреса', 'Адреса']);
+      const director = getField(['Директор', 'Завідувач', 'Керівник']);
+      const studentsRaw = getField([
+        'Кількість учнів',
+        'Кількість дітей',
+        'Кількість вихованців',
+      ]);
+      const childrenCount =
+        parseInt(studentsRaw.replace(/[^\d]/g, ''), 10) || 0;
+      return { address, director, childrenCount };
+    } catch (error) {
+      console.error('Помилка парсингу закладу:', error);
+      return null;
+    }
+  }
+
+  async searchSchools(
+    query: string,
+    type?: string,
+  ): Promise<{ name: string; url: string }[]> {
+    try {
+      const urls =
+        type === 'Садочок'
+          ? [
+              'https://lv.isuo.org/koatuu/preschools-list/id/4610100000',
+              'https://lv.isuo.org/koatuu/preschools-list/id/4610100000/page/2',
+            ]
+          : [
+              'https://lv.isuo.org/authorities/schools-list/id/681',
+              'https://lv.isuo.org/authorities/schools-list/id/681/page/2',
+            ];
+      const results: { name: string; url: string }[] = [];
+      const normalizedQuery = query.toLowerCase().replace(/\s+/g, ' ').trim();
+      const isNumericQuery = /^\d+$/.test(normalizedQuery);
+      const numericRegex = isNumericQuery
+        ? new RegExp(`(?<!\\d)${normalizedQuery}(?!\\d)`)
+        : null;
+      for (const url of urls) {
+        const response = await axios.get(url);
+        const $ = cheerio.load(response.data);
+        $('table.zebra-stripe.list tr').each((_, row) => {
+          const rawName = $(row).find('td:nth-child(2) a').text();
+          const name = rawName.replace(/\s+/g, ' ').trim();
+          const href = $(row).find('td:nth-child(2) a').attr('href');
+          if (name && href) {
+            const lowerName = name.toLowerCase();
+            let matches = false;
+            if (isNumericQuery && numericRegex) {
+              matches = numericRegex.test(lowerName);
+            } else {
+              matches = lowerName.includes(normalizedQuery);
+            }
+            if (matches)
+              results.push({ name, url: `https://lv.isuo.org${href}` });
+          }
+        });
+      }
+      return results.slice(0, 10);
+    } catch (error) {
+      console.error('Помилка пошуку закладів:', error);
+      return [];
+    }
+  }
+
+  async getAllSchoolsForCity(
+    cityName: string,
+    type: 'Школа' | 'Садочок' = 'Школа',
+  ): Promise<{ name: string; url: string }[]> {
+    const config = CITY_CONFIG[cityName];
+    if (!config) {
+      console.log(`Місто "${cityName}" не підтримується для імпорту`);
+      return [];
+    }
+
+    const baseUrl = type === 'Садочок' ? config.kindergartens : config.schools;
+    const domain = config.domain;
+
+    const resultsMap = new Map<string, { name: string; url: string }>();
+
+    for (let page = 1; page <= 20; page++) {
+      const url = page === 1 ? baseUrl : `${baseUrl}/page/${page}`;
+      try {
+        const response = await axios.get(url, { timeout: 15000 });
+        const $ = cheerio.load(response.data);
+        let foundOnPage = 0;
+
+        $('table.zebra-stripe.list tr').each((_, row) => {
+          const name = $(row)
+            .find('td:nth-child(2) a')
+            .text()
+            .replace(/\s+/g, ' ')
+            .trim();
+          const href = $(row).find('td:nth-child(2) a').attr('href');
+
+          if (name && href && name !== 'Fullname') {
+            const normalizedKey = name.toLowerCase().replace(/\s+/g, '');
+
+            if (!resultsMap.has(normalizedKey)) {
+              resultsMap.set(normalizedKey, { name, url: `${domain}${href}` });
+              foundOnPage++;
+            }
+          }
+        });
+
+        if (foundOnPage === 0) break;
+      } catch {
+        break;
+      }
+    }
+
+    return Array.from(resultsMap.values());
+  }
+  getSupportedCities(): string[] {
+    return Object.keys(CITY_CONFIG);
+  }
+}
+
+```
+
+# FILE: apps/backend/src/schools/school-contacts.seed.ts
+
+```
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+const contacts = [
+  {
+    schoolNumber: '1',
+    contactName: 'Надія Михайлівна',
+    phone: '0975695519',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '2',
+    contactName: 'Наталя',
+    phone: '0974064095',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '5',
+    contactName: 'Лариса',
+    phone: '0673622534',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '9',
+    contactName: 'Віра Ярославівна',
+    phone: '0674935124',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '9',
+    contactName: 'Леся',
+    phone: '0673380894',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '13',
+    contactName: 'Марта Романівна',
+    phone: '0675839806',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '15',
+    contactName: 'Ірина Андріївна',
+    phone: '0679062500',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '17',
+    contactName: 'Ельвіра',
+    phone: '0678578514',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: '18',
+    contactName: 'Роман',
+    phone: '0972587179',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '20',
+    contactName: 'Наталя Іванівна',
+    phone: '0506747111',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '23',
+    contactName: 'Микола Шостак',
+    phone: '0632232178',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: '27',
+    contactName: 'Романа Михайлівна',
+    phone: '0973113778',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '27',
+    contactName: 'Наталя Куліш',
+    phone: '0677552743',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '28',
+    contactName: 'Олена Олегівна',
+    phone: '0679243130',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '30',
+    contactName: 'Світлана Михальвіна',
+    phone: '0974436542',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '30',
+    contactName: 'Ольга Володимирівна',
+    phone: '0679596199',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '31',
+    contactName: 'Христина Ярославівна',
+    phone: '0983804403',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '31',
+    contactName: 'Леся Оресівна',
+    phone: '0673567679',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '34',
+    contactName: 'Мирон',
+    phone: '0938668520',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: '36',
+    contactName: 'Тетяна',
+    phone: '0990407941',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '40',
+    contactName: 'Юлія',
+    phone: '0976015839',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: '40',
+    contactName: 'Ірина',
+    phone: '0673021531',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: '44',
+    contactName: 'Стефанович Людмила Олександрівна',
+    phone: '0677838274',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '45',
+    contactName: 'Наталія Аркадіївна',
+    phone: '0677123961',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '46',
+    contactName: 'Ірина Іларіонівна',
+    phone: '0676969337',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '46',
+    contactName: 'Юля',
+    phone: '0961791595',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: '48',
+    contactName: 'Роман Васильович',
+    phone: '0982310957',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '49',
+    contactName: 'Уляна',
+    phone: '0681371457',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: '50',
+    contactName: "Мар'яна Іванівна",
+    phone: '0674901746',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '51',
+    contactName: 'Ірина Миколаївна',
+    phone: '0972595956',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '52',
+    contactName: 'Світлана',
+    phone: '0677070497',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '54',
+    contactName: 'Любов Іванівна',
+    phone: '0677715647',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '60',
+    contactName: 'Людмила',
+    phone: '0973888255',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '63',
+    contactName: 'Іванець Ольга Євгенівна',
+    phone: '0977345920',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '65',
+    contactName: 'Марія',
+    phone: '0975391164',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: '66',
+    contactName: 'Мирослава',
+    phone: '0977711381',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '66',
+    contactName: 'Назар Оксана',
+    phone: '0679686514',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '67',
+    contactName: 'Оксана Володимирівна',
+    phone: '0673705262',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '68',
+    contactName: 'Уляна',
+    phone: '0973004954',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: '69',
+    contactName: 'Тетяна Володимирівна',
+    phone: '0673041659',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '70',
+    contactName: 'Марта',
+    phone: '0676726984',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '70',
+    contactName: 'Марія',
+    phone: '0966063264',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '71',
+    contactName: 'Марія',
+    phone: '0676644983',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: '71',
+    contactName: 'Роман',
+    phone: '0677514127',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '72',
+    contactName: 'Олена Михайлівна',
+    phone: '0677948577',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '73',
+    contactName: 'Світлана Богданівна',
+    phone: '0971844043',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '73',
+    contactName: 'Інна Євгенівна',
+    phone: '0678829581',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '80',
+    contactName: 'Наталя',
+    phone: '0967331419',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '81',
+    contactName: 'Галина Антонівна',
+    phone: '0673662853',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '81',
+    contactName: 'Андріана',
+    phone: '0502867516',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '84',
+    contactName: 'Тетяна Іванівна',
+    phone: '0974437171',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '86',
+    contactName: 'Руслана Василівна',
+    phone: '0964066413',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '86',
+    contactName: 'Анна',
+    phone: '0638694484',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: '90',
+    contactName: 'Ірина Іванівна',
+    phone: '0974392839',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '90',
+    contactName: 'Людмила',
+    phone: '0676092693',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '93',
+    contactName: 'Ірина Петрівна',
+    phone: '0966591509',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '95',
+    contactName: 'Марія Орестівна',
+    phone: '0979515318',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '95',
+    contactName: 'Ірина',
+    phone: '0972392191',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: '96',
+    contactName: 'Любов',
+    phone: '0689529174',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: '97',
+    contactName: 'Наталя Любомирівна',
+    phone: '0961390913',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: '123',
+    contactName: 'Марія Андріївна',
+    phone: '0679334856',
+    role: 'Директор',
+  },
+
+  {
+    schoolNumber: 'Арніка',
+    contactName: 'Світлана Михайлівна',
+    phone: '0979325399',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: 'Гроно',
+    contactName: 'Оксана Теодорівна',
+    phone: '0971147211',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: 'Джерельце',
+    contactName: 'Світлана Петрівна',
+    phone: '0673140267',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: 'Дивосвіт',
+    contactName: 'Наталя Миколаївна',
+    phone: '0932196651',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: 'Європейський ліцей',
+    contactName: 'Галина Богданівна',
+    phone: '0974829920',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: 'Лідер',
+    contactName: 'Вадим',
+    phone: '0687584626',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: 'Лідер',
+    contactName: 'Іванка',
+    phone: '0965150436',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: 'Ліцей Львів',
+    contactName: 'Мирослава Іванівна',
+    phone: '0673536774',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: 'Ліцей Пулюя',
+    contactName: 'Наталя',
+    phone: '0671794604',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: 'Ліцей Стуса',
+    contactName: 'Тетяна',
+    phone: '0984989494',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: 'Оріяна',
+    contactName: 'Ірина Богданівна',
+    phone: '0673702402',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: 'Оріяна',
+    contactName: 'Юрій',
+    phone: '0974751935',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: 'Первоцвіт',
+    contactName: 'Христина Іванівна',
+    phone: '0677573109',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: 'Провесінь',
+    contactName: 'Сергій',
+    phone: '0506020447',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: 'Провесінь',
+    contactName: 'Анджела',
+    phone: '0676606897',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: 'Світанок',
+    contactName: 'Лідія Миколаївна',
+    phone: '0679269319',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: 'Світанок',
+    contactName: 'Ореста Шот',
+    phone: '0677018705',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: 'Світанок',
+    contactName: 'Ірина',
+    phone: '0674398980',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: 'Симоненка',
+    contactName: 'Уляна',
+    phone: '0969135903',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: 'Сихівський ліцей',
+    contactName: 'Надія',
+    phone: '0964667179',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: 'Початкова Школа Радості',
+    contactName: 'Тетяна',
+    phone: '0967320197',
+    role: 'Завуч',
+  },
+  {
+    schoolNumber: 'Початкова Школа Радості',
+    contactName: 'Наталя',
+    phone: '0674244920',
+    role: 'Педорг',
+  },
+  {
+    schoolNumber: 'Альфа',
+    contactName: 'Ірина',
+    phone: '0935122623',
+    role: 'Завуч',
+  },
+
+  {
+    schoolNumber: '52',
+    contactName: 'Олена Віталіївна Добранюк',
+    phone: '0964692943',
+    role: 'Завідувачка',
+  },
+  {
+    schoolNumber: 'Веселка',
+    contactName: 'Андриц Людмила Федорівна',
+    phone: '0632836453',
+    role: 'Завідувачка',
+  },
+  {
+    schoolNumber: '149',
+    contactName: 'Василина Тарасівна',
+    phone: '0987615106',
+    role: 'Завідувачка',
+  },
+  {
+    schoolNumber: '132',
+    contactName: 'Наталя',
+    phone: '0971620805',
+    role: 'Методист',
+  },
+  {
+    schoolNumber: 'Перші кроки',
+    contactName: 'Мирослава Ярославівна',
+    phone: '0963493423',
+    role: 'Завідувач',
+  },
+  {
+    schoolNumber: '130',
+    contactName: 'Ольга',
+    phone: '0638694484',
+    role: 'Методистка',
+  },
+  {
+    schoolNumber: '40',
+    contactName: 'Світлана',
+    phone: '0983365931',
+    role: 'Заступник',
+  },
+  {
+    schoolNumber: '144',
+    contactName: 'Наталя',
+    phone: '0677670485',
+    role: 'Методист',
+  },
+  {
+    schoolNumber: 'Барвінок',
+    contactName: 'Наталя Витрикуш',
+    phone: '0676809966',
+    role: 'Завідувачка',
+  },
+  {
+    schoolNumber: '45',
+    contactName: 'Наталя Шергіна',
+    phone: '0675814381',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '67',
+    contactName: 'Тетяна Юріївна',
+    phone: '0966063398',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '118',
+    contactName: 'Наталя Дмитрівна',
+    phone: '0969847495',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '118',
+    contactName: 'Оксана Ярославівна',
+    phone: '0677881629',
+    role: 'Методист',
+  },
+  {
+    schoolNumber: '169',
+    contactName: 'Галина Василівна',
+    phone: '0962817175',
+    role: null,
+  },
+  {
+    schoolNumber: '175',
+    contactName: 'Богдана',
+    phone: '0687096641',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '170',
+    contactName: 'Ірина',
+    phone: '0986373627',
+    role: null,
+  },
+  {
+    schoolNumber: '167',
+    contactName: 'Юлія',
+    phone: '0687096641',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '42',
+    contactName: 'Наталя Йосипівна',
+    phone: '0677453052',
+    role: null,
+  },
+  {
+    schoolNumber: '33',
+    contactName: 'Олександра Мирославівна',
+    phone: '0505049049',
+    role: null,
+  },
+  { schoolNumber: '134', contactName: 'Леся', phone: '0969740462', role: null },
+  {
+    schoolNumber: '165',
+    contactName: 'Марта Андріївна',
+    phone: '0639377896',
+    role: null,
+  },
+  {
+    schoolNumber: '159',
+    contactName: 'Ірина Олександрівна',
+    phone: '0972430286',
+    role: null,
+  },
+  {
+    schoolNumber: '163',
+    contactName: 'Оксана Ярославівна Сновидович',
+    phone: '0963943974',
+    role: null,
+  },
+  {
+    schoolNumber: '153',
+    contactName: 'Юля',
+    phone: '0939907888',
+    role: 'Методист',
+  },
+  {
+    schoolNumber: '39',
+    contactName: 'Оксана Антонівна',
+    phone: '0676820705',
+    role: null,
+  },
+  {
+    schoolNumber: '73',
+    contactName: 'Ярослава',
+    phone: '0679767575',
+    role: null,
+  },
+  {
+    schoolNumber: '134',
+    contactName: 'Ольга',
+    phone: '0679495251',
+    role: 'Заступник',
+  },
+  {
+    schoolNumber: '69',
+    contactName: 'Уляна',
+    phone: '0673392742',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '130',
+    contactName: 'Зоряна',
+    phone: '0677014722',
+    role: null,
+  },
+  {
+    schoolNumber: '52',
+    contactName: 'Софія',
+    phone: '0935428770',
+    role: 'Діловод',
+  },
+  {
+    schoolNumber: '181',
+    contactName: 'Марія Корпан',
+    phone: '0673142095',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '17',
+    contactName: 'Світлана',
+    phone: '0973047285',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '44',
+    contactName: 'Надія',
+    phone: '0932342106',
+    role: 'Методист',
+  },
+  {
+    schoolNumber: '170',
+    contactName: 'Ірина',
+    phone: '0986373627',
+    role: 'Методист',
+  },
+  {
+    schoolNumber: '3',
+    contactName: 'Наталя Ігорівна',
+    phone: '0973436380',
+    role: null,
+  },
+  {
+    schoolNumber: '176',
+    contactName: 'Юлія Андріївна',
+    phone: '0665244245',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '179',
+    contactName: 'Віра Володимирівна',
+    phone: '0672590052',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: 'Вільні',
+    contactName: 'Іванна Михайлівна',
+    phone: '0974788019',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '105',
+    contactName: 'Лідія Василівна',
+    phone: '0679592370',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '7',
+    contactName: 'Уляна Богданівна',
+    phone: '0674256644',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '168',
+    contactName: 'Ядельська Оксана Богданівна',
+    phone: '0969105724',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '139',
+    contactName: 'Ірина',
+    phone: '0970488672',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '167',
+    contactName: 'Зоряна Ярославівна',
+    phone: '0672684699',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '38',
+    contactName: 'Ірина Олегівна',
+    phone: '0679475122',
+    role: null,
+  },
+  {
+    schoolNumber: '132',
+    contactName: 'Надія Леонівна',
+    phone: '0974429599',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '92',
+    contactName: 'Ольга',
+    phone: '0679492252',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '33',
+    contactName: 'Леся Породько',
+    phone: '0505049049',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '155',
+    contactName: 'Ірина Михайлівна',
+    phone: '0677301582',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '183',
+    contactName: 'Володимир Михайлович',
+    phone: '0970256488',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '70',
+    contactName: 'Ольга Петрівна',
+    phone: '0936992997',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '18',
+    contactName: 'Наталя Бондаренко',
+    phone: '0505938826',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '131',
+    contactName: 'Любомира',
+    phone: '0673657490',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '9',
+    contactName: 'Зоряна Семенівна',
+    phone: '0677628687',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '26',
+    contactName: 'Ольга Іванівна',
+    phone: '0977476237',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '23',
+    contactName: 'Соломія Ігорівна',
+    phone: '0975616807',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '1',
+    contactName: 'Оксана',
+    phone: '0675937156',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '109',
+    contactName: 'Катерина Петрівна',
+    phone: '0975173313',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '30',
+    contactName: 'Олена Йосифівна',
+    phone: '0974649258',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '51',
+    contactName: 'Вікторія Романівна',
+    phone: '0974207708',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '21',
+    contactName: 'Анастасія Віталіївна',
+    phone: '0671727948',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '75',
+    contactName: 'Наталія Володимирівна',
+    phone: '0972431888',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '166',
+    contactName: "Мар'яна Михайлівна",
+    phone: '0975300502',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '127',
+    contactName: 'Галина Йосифівна',
+    phone: '0963460339',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '86',
+    contactName: 'Стефанія Миколаївна',
+    phone: '0674936394',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '114',
+    contactName: 'Ольга Володимирівна',
+    phone: '0983673279',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '128',
+    contactName: 'Лідія Михайлівна',
+    phone: '0979790881',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: 'Золотий ключик',
+    contactName: 'Галина',
+    phone: '0663914517',
+    role: 'Методист',
+  },
+  {
+    schoolNumber: 'Казка',
+    contactName: 'Ірина Михайлівна',
+    phone: '0677322435',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: 'Львівський 2 сад',
+    contactName: 'Олена Юріївна',
+    phone: '0677270402',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '160',
+    contactName: 'Віра Каролівна',
+    phone: '0968009925',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '129',
+    contactName: 'Оксана Зенонівна',
+    phone: '0678112120',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '93',
+    contactName: 'Марія Ярославівна',
+    phone: '0676950870',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '48',
+    contactName: 'Наталія Остапівна',
+    phone: '0974428307',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '135',
+    contactName: 'Галина Ярославівна',
+    phone: '0673994741',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '188',
+    contactName: 'Ірина Вікторівна',
+    phone: '0933054378',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '25',
+    contactName: 'Лілія Богданівна',
+    phone: '0680215346',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '32',
+    contactName: 'Наталія Василівна',
+    phone: '0678119933',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '171',
+    contactName: 'Ірина Корніївна',
+    phone: '0972576026',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '96',
+    contactName: 'Світлана Петрівна',
+    phone: '0676739477',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '94',
+    contactName: 'Оксана Ярославівна',
+    phone: '0671447681',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '156/162',
+    contactName: 'Оксана Ісламівна',
+    phone: '0985835819',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '71',
+    contactName: 'Валентина Гермогенівна',
+    phone: '0976781981',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '187',
+    contactName: 'Ольга Олексіївна',
+    phone: '0674599119',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '14',
+    contactName: 'Оксана Любомирівна',
+    phone: '0677247619',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: 'Любисток',
+    contactName: 'Марія',
+    phone: '0685227373',
+    role: 'Методист',
+  },
+  {
+    schoolNumber: '106',
+    contactName: 'Галина Володимирівна',
+    phone: '0675839839',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '104',
+    contactName: 'Тетяна Ярославівна',
+    phone: '0678034951',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '116',
+    contactName: 'Ірина Іванівна',
+    phone: '0968145853',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '57',
+    contactName: 'Руслана Володимирівна',
+    phone: '0966507883',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '184',
+    contactName: 'Марія Іванівна',
+    phone: '2546872',
+    role: 'Директор',
+  },
+  {
+    schoolNumber: '43',
+    contactName: 'Віра',
+    phone: '0984284448',
+    role: 'Методист',
+  },
+  {
+    schoolNumber: '29',
+    contactName: 'Вікторія Олександрівна',
+    phone: '0673041528',
+    role: 'Директор',
+  },
+];
+
+async function main() {
+  console.log('Seeding school contacts...');
+
+  await prisma.schoolContact.deleteMany({});
+
+  for (const c of contacts) {
+    await prisma.schoolContact.create({
+      data: { city: 'Львів', ...c },
+    });
+  }
+
+  console.log(`Done: ${contacts.length} contacts inserted`);
+}
+
+main()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());
+
+```
+
 # FILE: apps/backend/src/schools/schools.controller.spec.ts
 
 ```
@@ -65,9 +3010,7 @@ describe('SchoolsController', () => {
           'Немає доступу до ресурсу іншого міста',
         ),
       );
-      await request(app.getHttpServer())
-        .get('/schools/s-1')
-        .expect(403);
+      await request(app.getHttpServer()).get('/schools/s-1').expect(403);
     });
 
     it('SUPERADMIN отримує 200', async () => {
@@ -1303,7 +4246,10 @@ describe('TelegramService — sendMessage', () => {
   it('не кидає помилку якщо bot.sendMessage падає (помилка логується)', async () => {
     const service = makeService();
     const apiError = new Error('Bad Request: chat not found');
-    (apiError as any).response = { statusCode: 400, body: { description: 'chat not found' } };
+    (apiError as any).response = {
+      statusCode: 400,
+      body: { description: 'chat not found' },
+    };
     const mockBot = {
       sendMessage: jest.fn().mockRejectedValue(apiError),
     };
@@ -1376,9 +4322,11 @@ describe('TelegramService — retry логіка sendMessage', () => {
   it('після 3 невдалих мережевих спроб помилка логується (далі не кидається)', async () => {
     const service = makeService();
     const mockBot = {
-      sendMessage: jest.fn().mockRejectedValue(
-        Object.assign(new Error('ECONNREFUSED'), { code: 'ECONNREFUSED' }),
-      ),
+      sendMessage: jest
+        .fn()
+        .mockRejectedValue(
+          Object.assign(new Error('ECONNREFUSED'), { code: 'ECONNREFUSED' }),
+        ),
     };
     (service as any).bot = mockBot;
 
@@ -1392,7 +4340,10 @@ describe('TelegramService — retry логіка sendMessage', () => {
   it('при 4xx помилці (не мережева) retry НЕ відбувається', async () => {
     const service = makeService();
     const apiError = new Error('Bad Request: chat not found');
-    (apiError as any).response = { statusCode: 400, body: { description: 'chat not found' } };
+    (apiError as any).response = {
+      statusCode: 400,
+      body: { description: 'chat not found' },
+    };
     const mockBot = {
       sendMessage: jest.fn().mockRejectedValue(apiError),
     };
@@ -1598,7 +4549,13 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
   private isNetworkError(e: any): boolean {
     if (e.code === 'TIMEOUT') return true;
-    if (e.code === 'ECONNRESET' || e.code === 'ETIMEDOUT' || e.code === 'ECONNREFUSED' || e.code === 'ENOTFOUND') return true;
+    if (
+      e.code === 'ECONNRESET' ||
+      e.code === 'ETIMEDOUT' ||
+      e.code === 'ECONNREFUSED' ||
+      e.code === 'ENOTFOUND'
+    )
+      return true;
     if (e.response?.statusCode && e.response.statusCode < 500) return false;
     return !e.response;
   }
@@ -1614,12 +4571,16 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     }, SEND_TIMEOUT_MS);
 
     try {
-      const promise = this.bot!.sendMessage(chatId, text, { parse_mode: 'HTML' });
+      const promise = this.bot.sendMessage(chatId, text, {
+        parse_mode: 'HTML',
+      });
       await Promise.race([
         promise,
         new Promise<never>((_, reject) => {
           controller.signal.addEventListener('abort', () => {
-            reject(Object.assign(new Error('Request timeout'), { code: 'TIMEOUT' }));
+            reject(
+              Object.assign(new Error('Request timeout'), { code: 'TIMEOUT' }),
+            );
           });
         }),
       ]);
@@ -1987,6 +4948,16 @@ export class UsersService {
         );
       }
     }
+
+    this.prisma.notification
+      .create({
+        data: {
+          userId: user.id,
+          type: 'WELCOME',
+          payload: { name: data.fullName },
+        },
+      })
+      .catch(() => {});
 
     return user;
   }

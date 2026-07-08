@@ -208,24 +208,7 @@ export const checkmarkVariants: Variants = {
 # FILE: apps/frontend/src/App.tsx
 
 ```
-import { useState, Suspense, lazy } from "react";
-
-function lazyWithRetry(factory: () => Promise<any>) {
-  return lazy(async () => {
-    try {
-      return await factory();
-    } catch (err) {
-      const key = "chunk-reload-ts";
-      const last = Number(sessionStorage.getItem(key) || 0);
-      if (Date.now() - last > 10000) {
-        sessionStorage.setItem(key, String(Date.now()));
-        window.location.reload();
-        return new Promise(() => {});
-      }
-      throw err;
-    }
-  });
-}
+import { Suspense } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -236,6 +219,7 @@ import {
 import Layout from "./components/Layout";
 import { CityProvider } from "./context/CityContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { lazyWithRetry, TAB_PAGE_COMPONENTS } from "./pages/lazyTabPages";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -247,14 +231,20 @@ const CityProfile = lazyWithRetry(() => import("./pages/CityProfile"));
 const EventReport = lazyWithRetry(() => import("./pages/EventReport"));
 
 const Cities = lazyWithRetry(() => import("./pages/Cities"));
-const Schools = lazyWithRetry(() => import("./pages/Schools"));
 const SchoolProfile = lazyWithRetry(() => import("./pages/SchoolProfile"));
-const Employees = lazyWithRetry(() => import("./pages/Employees"));
-const Finance = lazyWithRetry(() => import("./pages/Finance"));
-const CalendarView = lazyWithRetry(() => import("./pages/CalendarView"));
-const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
-const Kindergartens = lazyWithRetry(() => import("./pages/Kindergartens"));
-const Analytics = lazyWithRetry(() => import("./pages/Analytics"));
+const ProjectProfile = lazyWithRetry(() => import("./pages/ProjectProfile"));
+const AuditLog = lazyWithRetry(() => import("./pages/AuditLog"));
+const ReportsReview = lazyWithRetry(() => import("./features/reports/pages/ReportsReviewPage"));
+const Inventory = lazyWithRetry(() => import("./pages/Inventory"));
+const CityLeaderboard = lazyWithRetry(() => import("./pages/CityLeaderboard"));
+
+const Dashboard = TAB_PAGE_COMPONENTS["/dashboard"];
+const Schools = TAB_PAGE_COMPONENTS["/schools"];
+const Kindergartens = TAB_PAGE_COMPONENTS["/kindergartens"];
+const Finance = TAB_PAGE_COMPONENTS["/finance"];
+const CalendarView = TAB_PAGE_COMPONENTS["/calendar"];
+const Employees = TAB_PAGE_COMPONENTS["/employees"];
+const Analytics = TAB_PAGE_COMPONENTS["/analytics"];
 
 const PageLoader = () => (
   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-4 md:p-8">
@@ -377,6 +367,28 @@ function AppRoutes() {
               }
             />
 
+            <Route
+              path="city-leaderboard"
+              element={
+                <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
+                  <Suspense fallback={<PageLoader />}>
+                    <CityLeaderboard />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="audit-log"
+              element={
+                <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER"]}>
+                  <Suspense fallback={<PageLoader />}>
+                    <AuditLog />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+
           <Route
             path="kindergartens"
             element={
@@ -396,11 +408,44 @@ function AppRoutes() {
           />
 
           <Route
+            path="projects/:id"
+            element={
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
+                <Suspense fallback={<PageLoader />}>
+                  <ProjectProfile />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="events/:id/report"
             element={
               <Suspense fallback={<PageLoader />}>
                 <EventReport />
               </Suspense>
+            }
+          />
+
+          <Route
+            path="reports/review"
+            element={
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
+                <Suspense fallback={<PageLoader />}>
+                  <ReportsReview />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="inventory"
+            element={
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
+                <Suspense fallback={<PageLoader />}>
+                  <Inventory />
+                </Suspense>
+              </ProtectedRoute>
             }
           />
         </Route>
@@ -4830,8 +4875,11 @@ import {
 } from "lucide-react";
 import BottomNavigationBar from "./BottomNavigationBar";
 import MobileTopNav from "./MobileTopNav";
+import NotificationBell from "./NotificationBell";
 import { NAV_TABS } from "../constants/navTabs";
+import { TAB_PAGE_COMPONENTS, rawImportFactories } from "../pages/lazyTabPages";
 import { hasRole } from "../utils/roles";
+import { SkeletonCard } from "./ui/Skeleton";
 
 function NavLink({
   to,
@@ -4875,6 +4923,14 @@ const desktopVariants = {
   exit: { opacity: 0 },
 };
 
+const PageLoader = () => (
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-4 md:p-8">
+    <SkeletonCard />
+    <SkeletonCard />
+    <SkeletonCard />
+  </div>
+);
+
 function MobileDragView({
   x,
   winWidth,
@@ -4882,6 +4938,10 @@ function MobileDragView({
   shouldIgnoreSwipe,
   handleDragEnd,
   outlet,
+  peekDir,
+  setPeekDir,
+  tabPaths,
+  currentIdx,
 }: {
   x: ReturnType<typeof useMotionValue<number>>;
   winWidth: number;
@@ -4889,25 +4949,48 @@ function MobileDragView({
   shouldIgnoreSwipe: (target: EventTarget | null) => boolean;
   handleDragEnd: (event: PointerEvent, info: PanInfo) => void;
   outlet: React.ReactNode;
+  peekDir: 1 | -1 | null;
+  setPeekDir: (dir: 1 | -1 | null) => void;
+  tabPaths: { to: string }[];
+  currentIdx: number;
 }) {
-  const ghostX = useTransform(x, [-winWidth, 0, winWidth], [0, -winWidth * 0.15, 0]);
-  const ghostScale = useTransform(x, [-winWidth, 0, winWidth], [1, 0.94, 1]);
-  const ghostFilter = useTransform(x, [-winWidth, 0, winWidth], ["brightness(1)", "brightness(0.85)", "brightness(1)"]);
+  const peekTab = peekDir ? tabPaths[currentIdx + peekDir] : null;
+  const peekTabComponent = peekTab ? TAB_PAGE_COMPONENTS[peekTab.to] : null;
+
+  const peekX = peekDir
+    ? useTransform(x, (v) => peekDir! * winWidth + v)
+    : useTransform(x, () => winWidth);
 
   return (
     <div className="relative min-h-full" style={{ overflowX: "visible" } as React.CSSProperties}>
+      {peekTabComponent && (
+        <motion.div
+          className="absolute inset-0 z-0"
+          style={{ x: peekX }}
+        >
+          <Suspense fallback={<PageLoader />}>
+            <peekTabComponent isPeek />
+          </Suspense>
+        </motion.div>
+      )}
       <motion.div
-        className="absolute inset-0 bg-surface-subtle"
-        style={{ x: ghostX, scale: ghostScale, filter: ghostFilter }}
-      />
-      <motion.div
-        className="absolute inset-0"
+        className="absolute inset-0 z-10"
         drag="x"
         dragConstraints={{ left: -winWidth, right: winWidth }}
         dragElastic={0.5}
         dragMomentum={false}
         onDragStart={(e) => {
           dragBlockedRef.current = shouldIgnoreSwipe(e.target as HTMLElement);
+        }}
+        onDrag={(_, info) => {
+          if (dragBlockedRef.current) return;
+          if (peekDir === null && Math.abs(info.offset.x) > 12) {
+            const dir: 1 | -1 = info.offset.x < 0 ? 1 : -1;
+            const targetIdx = currentIdx + dir;
+            if (targetIdx >= 0 && targetIdx < tabPaths.length) {
+              setPeekDir(dir);
+            }
+          }
         }}
         onDragEnd={handleDragEnd}
         style={{ x }}
@@ -4930,6 +5013,7 @@ export default function Layout() {
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches,
   );
+  const [peekDir, setPeekDir] = useState<1 | -1 | null>(null);
 
   const { user, logout } = useAuth();
   const { selectedCity } = useSelectedCity();
@@ -4956,6 +5040,33 @@ export default function Layout() {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
+  useEffect(() => {
+    const currentIdx = tabPaths.findIndex((t) =>
+      location.pathname.startsWith(t.to),
+    );
+    if (currentIdx === -1) return;
+
+    const preload = (idx: number) => {
+      const tab = tabPaths[idx];
+      if (!tab) return;
+      const factory = rawImportFactories[tab.to];
+      if (factory) factory().catch(() => {});
+    };
+
+    const doPreload = () => {
+      preload(currentIdx - 1);
+      preload(currentIdx + 1);
+    };
+
+    if ("requestIdleCallback" in window) {
+      const id = requestIdleCallback(doPreload, { timeout: 2000 });
+      return () => cancelIdleCallback(id);
+    } else {
+      const timer = setTimeout(doPreload, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [location.pathname, tabPaths]);
+
   const shouldIgnoreSwipe = useCallback((target: EventTarget | null): boolean => {
     if (!target || !(target instanceof HTMLElement)) return true;
     if (target.closest("[data-no-swipe]")) return true;
@@ -4975,6 +5086,7 @@ export default function Layout() {
 
   const handleDragEnd = useCallback(
     (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+      setPeekDir(null);
       if (dragBlockedRef.current) {
         dragBlockedRef.current = false;
         animate(x, 0, { type: "spring", stiffness: 400, damping: 35 });
@@ -5056,14 +5168,16 @@ export default function Layout() {
                   <p className="text-xs text-slate-400 truncate">{user?.role ?? ""}</p>
                 </div>
               </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-colors text-xs font-medium ml-2 shrink-0 px-2.5 py-2 rounded-lg"
-                title="Вийти"
-              >
-                <LogOut className="w-4 h-4" />
-                Вийти
-              </button>
+              <div className="flex items-center gap-1">
+                <NotificationBell />
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-colors text-xs font-medium shrink-0 px-2.5 py-2 rounded-lg"
+                  title="Вийти"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </aside>
@@ -5080,6 +5194,10 @@ export default function Layout() {
               shouldIgnoreSwipe={shouldIgnoreSwipe}
               handleDragEnd={handleDragEnd}
               outlet={outlet}
+              peekDir={peekDir}
+              setPeekDir={setPeekDir}
+              tabPaths={tabPaths}
+              currentIdx={tabPaths.findIndex((t) => location.pathname.startsWith(t.to))}
             />
           ) : (
             <AnimatePresence mode="wait">
@@ -5111,6 +5229,7 @@ export default function Layout() {
 ```
 import { GraduationCap } from "lucide-react";
 import { useSelectedCity } from "../context/CityContext";
+import NotificationBell from "./NotificationBell";
 
 export default function MobileTopNav() {
   const { selectedCity } = useSelectedCity();
@@ -5123,9 +5242,141 @@ export default function MobileTopNav() {
           СВІТЛО ЗНАНЬ
         </span>
       </div>
-      <span className="text-xs text-blue-300/80 whitespace-nowrap">
-        {selectedCity.name}
-      </span>
+      <div className="flex items-center gap-2">
+        <NotificationBell />
+        <span className="text-xs text-blue-300/80 whitespace-nowrap">
+          {selectedCity.name}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/NotificationBell.tsx
+
+```
+import { useState, useRef, useEffect } from "react";
+import { Bell } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useNotifications, useUnreadCount, useMarkRead, useMarkAllRead } from "../hooks/useNotifications";
+
+const TYPE_ICONS: Record<string, string> = {
+  EVENT_RESCHEDULED: "📅",
+  CREW_ASSIGNED: "🎯",
+  EVENT_REMINDER: "🔔",
+  ISSUE_CREATED: "🚨",
+  DAY_OFF_CREATED: "🌴",
+  DAY_OFF_REMOVED: "❌",
+  WELCOME: "👋",
+};
+
+function getIcon(type: string) {
+  return TYPE_ICONS[type] || "🔔";
+}
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "щойно";
+  if (mins < 60) return `${mins}хв тому`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}год тому`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}д тому`;
+  return new Date(dateStr).toLocaleDateString("uk-UA");
+}
+
+export default function NotificationBell() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const { data: unreadData } = useUnreadCount();
+  const { data: notifData } = useNotifications();
+  const markRead = useMarkRead();
+  const markAllRead = useMarkAllRead();
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const unread = unreadData?.count ?? 0;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="relative p-2 text-slate-400 hover:text-white transition-colors"
+        title="Сповіщення"
+      >
+        <Bell className="w-5 h-5" />
+        {unread > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+            {unread > 99 ? "99+" : unread}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-80 bg-[#0B1527] border border-slate-700/50 rounded-xl shadow-2xl z-50 max-h-[70vh] flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 shrink-0">
+            <h3 className="text-sm font-semibold text-white">Сповіщення</h3>
+            {unread > 0 && (
+              <button
+                onClick={() => markAllRead.mutate()}
+                className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Позначити всі прочитаними
+              </button>
+            )}
+          </div>
+
+          <div className="overflow-y-auto flex-1">
+            {(!notifData?.items || notifData.items.length === 0) ? (
+              <div className="px-4 py-8 text-center text-slate-500 text-sm">
+                Немає сповіщень
+              </div>
+            ) : (
+              notifData.items.map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => {
+                    if (!n.readAt) markRead.mutate(n.id);
+                    setOpen(false);
+                    const payload = n.payload as Record<string, unknown>;
+                    const entityType = payload?.entityType as string | undefined;
+                    const entityId = payload?.entityId as string | undefined;
+                    if (entityType && entityId) {
+                      navigate(`/${entityType}/${entityId}`);
+                    }
+                  }}
+                  className={`w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-slate-800/50 transition-colors border-b border-slate-800/30 last:border-0 ${!n.readAt ? "bg-blue-900/10" : ""}`}
+                >
+                  <span className="text-lg shrink-0 mt-0.5">{getIcon(n.type)}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-white truncate">
+                      {(n.payload as Record<string, unknown>)?.title as string || n.type}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {timeAgo(n.createdAt)}
+                    </p>
+                  </div>
+                  {!n.readAt && (
+                    <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-2" />
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -5272,11 +5523,239 @@ export default memo(function AssignedCrew({ currentEvent, employees }: AssignedC
 
 ```
 
+# FILE: apps/frontend/src/components/school-profile/CommentsTimeline.tsx
+
+```
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "../../context/AuthContext";
+import {
+  useSchoolComments,
+  useCreateSchoolComment,
+  useDeleteSchoolComment,
+} from "../../hooks/useSchoolComments";
+import type { CommentType, UserRole } from "../../types";
+
+const COMMENT_TYPES: { key: CommentType; label: string; icon: string }[] = [
+  { key: "NOTE", label: "Нотатка", icon: "📝" },
+  { key: "CALL", label: "Дзвінок", icon: "📞" },
+  { key: "RESCHEDULE", label: "Перенесення", icon: "📅" },
+  { key: "CONFIRMATION", label: "Підтвердження", icon: "✅" },
+  { key: "PROBLEM", label: "Проблема", icon: "⚠️" },
+];
+
+const TYPE_ICONS: Record<CommentType, string> = {
+  NOTE: "📝",
+  CALL: "📞",
+  RESCHEDULE: "📅",
+  CONFIRMATION: "✅",
+  PROBLEM: "⚠️",
+};
+
+export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
+  const { user } = useAuth();
+  const [filter, setFilter] = useState<CommentType | undefined>(undefined);
+  const [newType, setNewType] = useState<CommentType>("NOTE");
+  const [newText, setNewText] = useState("");
+  const [page, setPage] = useState(1);
+
+  const { data, isLoading } = useSchoolComments(schoolId, filter, page);
+  const createMutation = useCreateSchoolComment();
+  const deleteMutation = useDeleteSchoolComment();
+
+  const userRole = user?.role as UserRole | undefined;
+  const canWrite =
+    userRole === "MANAGER" || userRole === "SUPERADMIN" || userRole === "OWNER";
+  const canDelete = userRole === "SUPERADMIN" || userRole === "OWNER";
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newText.trim()) return;
+    createMutation.mutate(
+      { schoolId, type: newType, text: newText.trim() },
+      { onSuccess: () => { setNewText(""); setPage(1); } },
+    );
+  };
+
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleString("uk-UA", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+
+  return (
+    <motion.div
+      whileHover={{ y: -2, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.08)" }}
+      transition={{ duration: 0.2 }}
+      className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col"
+    >
+      <h3 className="font-bold text-slate-800 mb-5 flex items-center gap-2">
+        <span className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+          🕐
+        </span>
+        Хронологія роботи
+      </h3>
+
+      {/* Форма додавання */}
+      {canWrite && (
+        <form
+          onSubmit={handleSubmit}
+          className="mb-5 p-4 bg-slate-50/80 rounded-2xl border border-slate-100 space-y-3"
+        >
+          <div className="flex gap-2">
+            <select
+              value={newType}
+              onChange={(e) => setNewType(e.target.value as CommentType)}
+              className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+            >
+              {COMMENT_TYPES.map((ct) => (
+                <option key={ct.key} value={ct.key}>
+                  {ct.icon} {ct.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <textarea
+            value={newText}
+            onChange={(e) => setNewText(e.target.value)}
+            placeholder="Текст коментаря..."
+            rows={2}
+            className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 resize-none"
+          />
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={!newText.trim() || createMutation.isPending}
+              className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 px-4 py-2 rounded-xl transition-colors shadow-sm"
+            >
+              {createMutation.isPending ? "..." : "Додати"}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Фільтри */}
+      <div className="flex flex-wrap gap-1.5 mb-4">
+        <button
+          onClick={() => { setFilter(undefined); setPage(1); }}
+          className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
+            !filter
+              ? "bg-blue-600 text-white shadow-sm"
+              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+          }`}
+        >
+          Всі
+        </button>
+        {COMMENT_TYPES.map((ct) => (
+          <button
+            key={ct.key}
+            onClick={() => { setFilter(ct.key); setPage(1); }}
+            className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
+              filter === ct.key
+                ? "bg-blue-600 text-white shadow-sm"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            {ct.icon} {ct.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Список */}
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="animate-pulse h-16 bg-slate-100 rounded-xl" />
+          ))}
+        </div>
+      ) : !data || data.items.length === 0 ? (
+        <p className="text-sm text-slate-400 text-center py-6">
+          Ще немає коментарів.
+        </p>
+      ) : (
+        <div className="space-y-3 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-slate-100">
+          <AnimatePresence initial={false}>
+            {data.items.map((item, i) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -8 }}
+                transition={{ duration: 0.22, delay: i * 0.04 }}
+                className="relative pl-8 pr-3 py-2 text-sm hover:bg-slate-50 rounded-xl transition-colors group border border-transparent hover:border-slate-100"
+              >
+                <div className="absolute left-1.5 w-3 h-3 rounded-full top-3.5 bg-amber-500 ring-4 ring-amber-50 flex items-center justify-center text-[7px]">
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold text-slate-800 flex items-center gap-1.5">
+                    <span>{TYPE_ICONS[item.type]}</span>
+                    <span>{item.author.name}</span>
+                    <span className="text-[10px] text-slate-400 font-normal">
+                      ({item.author.role})
+                    </span>
+                  </p>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[11px] text-slate-400 font-medium">
+                      {formatDate(item.createdAt)}
+                    </span>
+                    {canDelete && (
+                      <button
+                        onClick={() =>
+                          deleteMutation.mutate({
+                            schoolId,
+                            commentId: item.id,
+                          })
+                        }
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-rose-400 hover:text-rose-600 text-xs"
+                        title="Видалити"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p className="text-slate-600 mt-1.5 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                  {item.text}
+                </p>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {/* Пагінація */}
+      {data && data.pageCount > 1 && (
+        <div className="flex justify-center gap-2 mt-4">
+          <button
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
+            className="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40"
+          >
+            ←
+          </button>
+          <span className="text-xs text-slate-500 self-center">
+            {data.page} / {data.pageCount}
+          </span>
+          <button
+            disabled={page >= data.pageCount}
+            onClick={() => setPage((p) => p + 1)}
+            className="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40"
+          >
+            →
+          </button>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+```
+
 # FILE: apps/frontend/src/components/school-profile/CompletedEventModal.tsx
 
 ```
 import React, { useEffect, useRef } from "react";
-import type { Event, ExpenseItem, SalaryItem } from "../../types";
+import type { Event, ExpenseItem, SalaryRecord } from "../../types";
 
 interface CompletedEventModalProps {
   isOpen: boolean;
@@ -5377,8 +5856,8 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
                   </span>
                 </div>
 
-                {Array.isArray(report?.expenses) &&
-                  report.expenses.map((exp: ExpenseItem, i: number) => (
+                {Array.isArray(report?.expenseItems) &&
+                  report.expenseItems.map((exp: ExpenseItem, i: number) => (
                     <div key={i} className="flex justify-between text-xs pl-2">
                       <span className="text-slate-400">
                         — {exp.name || exp.category || "Інше"}
@@ -5402,15 +5881,15 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
           </div>
 
           {/* Зарплати */}
-          {Array.isArray(report?.salaries) && report.salaries.length > 0 && (
+          {Array.isArray(report?.salaryRecords) && report.salaryRecords.length > 0 && (
             <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mt-4">
               <h4 className="font-bold text-slate-800 mb-4">👥 Зарплати</h4>
               <div className="space-y-2">
-                {report.salaries.map((s: SalaryItem, i: number) => (
+                {report.salaryRecords.map((s: SalaryRecord, i: number) => (
                   <div key={i} className="flex justify-between text-sm">
-                    <span>
-                      {s.name} {s.role ? `(${s.role})` : ""}
-                    </span>
+                      <span>
+                        {s.employee?.name ?? "—"}
+                      </span>
                     <span className="font-medium text-blue-600">
                       {fmt(s.amount)} грн
                     </span>
@@ -9136,6 +9615,10 @@ import {
   Users,
   MapPin,
   BarChart3,
+  ClipboardCheck,
+  History,
+  Package,
+  Trophy,
 } from "lucide-react";
 
 export interface NavTab {
@@ -9147,12 +9630,16 @@ export interface NavTab {
 
 export const NAV_TABS: NavTab[] = [
   { to: "/dashboard", icon: Home, label: "Дашборд", roles: ["SUPERADMIN", "MANAGER", "OWNER"] },
+  { to: "/reports/review", icon: ClipboardCheck, label: "Звіти", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
+  { to: "/inventory", icon: Package, label: "Склад", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
   { to: "/schools", icon: School, label: "Школи" },
   { to: "/kindergartens", icon: Baby, label: "Садочки" },
   { to: "/finance", icon: Wallet, label: "Фінанси" },
   { to: "/calendar", icon: Calendar, label: "Календар" },
   { to: "/employees", icon: Users, label: "Працівники", roles: ["SUPERADMIN"] },
   { to: "/analytics", icon: BarChart3, label: "Аналітика", roles: ["SUPERADMIN", "OWNER"] },
+  { to: "/city-leaderboard", icon: Trophy, label: "Рейтинг", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
+  { to: "/audit-log", icon: History, label: "Журнал дій", roles: ["SUPERADMIN", "OWNER"] },
 ];
 
 export const ADMIN_TABS: NavTab[] = [
@@ -10051,599 +10538,6 @@ export default function MobileDayDetailsPanel({
       </motion.div>
     </AnimatePresence>
   );
-}
-
-```
-
-# FILE: apps/frontend/src/features/calendar/constants.ts
-
-```
-export const STAFF_ROLES = ["HOST", "DRIVER"];
-export const MANAGER_ROLES = ["SUPERADMIN", "MANAGER"];
-
-export const PROJECT_HEX: Record<string, string> = {
-  blue: "#3b82f6",
-  emerald: "#10b981",
-  rose: "#f43f5e",
-  red: "#ef4444",
-  amber: "#f59e0b",
-  purple: "#a855f7",
-};
-
-export const ROLE_ICON_MAP: Record<string, string> = {
-  HOST: "🎙️",
-  DRIVER: "🚗",
-};
-
-export const MONTH_NAMES = [
-  "Січень",
-  "Лютий",
-  "Березень",
-  "Квітень",
-  "Травень",
-  "Червень",
-  "Липень",
-  "Серпень",
-  "Вересень",
-  "Жовтень",
-  "Листопад",
-  "Грудень",
-];
-
-export const WEEKDAY_HEADERS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"];
-
-export const PROJECT_BADGE_COLORS: Record<string, string> = {
-  blue: "bg-blue-400",
-  emerald: "bg-emerald-400",
-  rose: "bg-rose-400",
-  red: "bg-red-500",
-  amber: "bg-amber-400",
-  purple: "bg-purple-400",
-};
-
-```
-
-# FILE: apps/frontend/src/features/calendar/hooks/useCalendarData.ts
-
-```
-import { useMemo } from "react";
-import { useCalendarEvents, useCalendarProjects } from "../../../hooks/useCalendar";
-import { useUsers } from "../../../hooks/useEmployees";
-import { useCities } from "../../../hooks/useCities";
-import { PROJECT_HEX } from "../constants";
-import type { Event as CalendarEvent } from "../../../types";
-
-export function useCalendarData(filterCityId: string) {
-  const { data: events = [], isLoading: eventsLoading } = useCalendarEvents();
-  const { data: projects = [] } = useCalendarProjects();
-  const { data: cities = [] } = useCities();
-  const { data: allUsers = [] } = useUsers();
-
-  const filteredEvents = useMemo(() => {
-    return events.filter((ev: CalendarEvent) => {
-      if (ev.status === "RE_SALE") return false;
-      if (filterCityId !== "ALL" && ev.city?.id !== filterCityId) return false;
-      return true;
-    });
-  }, [events, filterCityId]);
-
-  const eventsByDate = useMemo(() => {
-    const map = new Map<string, CalendarEvent[]>();
-    for (const ev of filteredEvents) {
-      const key = ev.date.slice(0, 10);
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(ev);
-    }
-    return map;
-  }, [filteredEvents]);
-
-  const projectColorMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const p of projects) {
-      switch (p.color) {
-        case "emerald":
-          map.set(p.name, "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200 hover:border-emerald-300"); break;
-        case "rose":
-          map.set(p.name, "bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200 hover:border-rose-300"); break;
-        case "red":
-          map.set(p.name, "bg-red-100 text-red-700 border-red-300 hover:bg-red-200 hover:border-red-400"); break;
-        case "amber":
-          map.set(p.name, "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200 hover:border-amber-300"); break;
-        case "purple":
-          map.set(p.name, "bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200 hover:border-purple-300"); break;
-        default:
-          map.set(p.name, "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300");
-      }
-    }
-    return map;
-  }, [projects]);
-
-  const projectHexMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const p of projects) {
-      map.set(p.name, PROJECT_HEX[p.color] || PROJECT_HEX.blue);
-    }
-    return map;
-  }, [projects]);
-
-  return {
-    events,
-    eventsLoading,
-    projects,
-    cities,
-    allUsers,
-    filteredEvents,
-    eventsByDate,
-    projectColorMap,
-    projectHexMap,
-  };
-}
-
-```
-
-# FILE: apps/frontend/src/features/calendar/hooks/useCalendarMonth.ts
-
-```
-import { useState, useMemo } from "react";
-import { buildMonthDays, toISODate } from "../utils/date";
-
-export function useCalendarMonth() {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedMobileDate, setSelectedMobileDate] = useState<Date>(
-    new Date(),
-  );
-
-  const nextMonth = () =>
-    setCurrentDate(
-      new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1),
-    );
-  const prevMonth = () =>
-    setCurrentDate(
-      new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
-    );
-  const today = () => {
-    setCurrentDate(new Date());
-    setSelectedMobileDate(new Date());
-  };
-
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-
-  const days = useMemo(() => buildMonthDays(year, month), [year, month]);
-
-  const monthFrom = toISODate(new Date(year, month, 1));
-  const monthTo = toISODate(new Date(year, month + 1, 0));
-
-  return {
-    currentDate,
-    setCurrentDate,
-    selectedMobileDate,
-    setSelectedMobileDate,
-    nextMonth,
-    prevMonth,
-    today,
-    year,
-    month,
-    days,
-    monthFrom,
-    monthTo,
-  };
-}
-
-```
-
-# FILE: apps/frontend/src/features/calendar/hooks/useDayOffActions.ts
-
-```
-import { useState, useMemo, useCallback } from "react";
-import {
-  useDaysOff,
-  useCreateDayOff,
-  useDeleteDayOff,
-} from "../../../hooks/useDaysOff";
-import { STAFF_ROLES } from "../constants";
-import { toISODate, isPastDay } from "../utils/date";
-import type { User } from "../../../types";
-
-export function useDayOffActions(
-  monthFrom: string,
-  monthTo: string,
-  dayOffCityId: string | undefined,
-  isStaff: boolean,
-  isManagerOrAdmin: boolean,
-  user: { id: string } | null,
-  allUsers: User[],
-  filterCityId: string,
-  userRole: string,
-  userCityId: string | null | undefined,
-) {
-  const [dayOffModalDate, setDayOffModalDate] = useState<Date | null>(null);
-
-  const { data: dayOffs = [] } = useDaysOff(monthFrom, monthTo, dayOffCityId);
-  const createDayOff = useCreateDayOff();
-  const deleteDayOff = useDeleteDayOff();
-
-  const dayOffsByDate = useMemo(() => {
-    const map = new Map<string, typeof dayOffs>();
-    for (const d of dayOffs) {
-      const key = d.date.slice(0, 10);
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(d);
-    }
-    return map;
-  }, [dayOffs]);
-
-  const staffForModal = useMemo(() => {
-    const cityScope =
-      userRole === "MANAGER"
-        ? userCityId
-        : filterCityId !== "ALL"
-          ? filterCityId
-          : null;
-    return allUsers.filter(
-      (u: User) =>
-        STAFF_ROLES.includes(u.role) && (!cityScope || u.cityId === cityScope),
-    );
-  }, [allUsers, userRole, userCityId, filterCityId]);
-
-  const handleDayOffClick = useCallback(
-    (e: React.MouseEvent, date: Date) => {
-      e.stopPropagation();
-      if (isPastDay(date)) return;
-
-      if (isStaff && user) {
-        const key = toISODate(date);
-        const existing = dayOffsByDate
-          .get(key)
-          ?.find((d: { userId: string }) => d.userId === user.id);
-        if (existing) {
-          deleteDayOff.mutate(existing.id);
-        } else {
-          createDayOff.mutate({ date: key });
-        }
-        return;
-      }
-
-      if (isManagerOrAdmin) {
-        setDayOffModalDate(date);
-      }
-    },
-    [isStaff, isManagerOrAdmin, user, dayOffsByDate, createDayOff, deleteDayOff],
-  );
-
-  const handleToggleStaffDayOff = useCallback(
-    (targetUserId: string, existingId?: string) => {
-      if (existingId) {
-        deleteDayOff.mutate(existingId);
-      } else if (dayOffModalDate) {
-        createDayOff.mutate({
-          date: toISODate(dayOffModalDate),
-          userId: targetUserId,
-        });
-      }
-    },
-    [dayOffModalDate, createDayOff, deleteDayOff],
-  );
-
-  const handleLongPressDayOff = useCallback(
-    (day: Date) => {
-      if (isPastDay(day)) return;
-      if (isStaff && user) {
-        const key = toISODate(day);
-        const existing = dayOffsByDate
-          .get(key)
-          ?.find((d: { userId: string }) => d.userId === user.id);
-        if (existing) deleteDayOff.mutate(existing.id);
-        else createDayOff.mutate({ date: key });
-      } else if (isManagerOrAdmin) {
-        setDayOffModalDate(day);
-      }
-    },
-    [isStaff, isManagerOrAdmin, user, dayOffsByDate, createDayOff, deleteDayOff],
-  );
-
-  return {
-    dayOffsByDate,
-    staffForModal,
-    dayOffModalDate,
-    setDayOffModalDate,
-    handleDayOffClick,
-    handleToggleStaffDayOff,
-    handleLongPressDayOff,
-  };
-}
-
-```
-
-# FILE: apps/frontend/src/features/calendar/hooks/useLongPress.ts
-
-```
-import { useRef, useCallback, useState } from "react";
-
-const MOVE_THRESHOLD = 10;
-
-export function useLongPress(onTrigger: (day: Date) => void, delay = 550) {
-  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const longPressFired = useRef(false);
-  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
-  const [pressingDay, setPressingDay] = useState<Date | null>(null);
-  const [triggeredDay, setTriggeredDay] = useState<Date | null>(null);
-
-  const startLongPress = useCallback(
-    (day: Date, clientX?: number, clientY?: number) => {
-      touchStartPos.current = clientX != null && clientY != null ? { x: clientX, y: clientY } : null;
-      longPressFired.current = false;
-      setPressingDay(day);
-      pressTimer.current = setTimeout(() => {
-        longPressFired.current = true;
-        setPressingDay(null);
-        setTriggeredDay(day);
-        setTimeout(() => setTriggeredDay(null), 350);
-        if ("vibrate" in navigator) navigator.vibrate(15);
-        onTrigger(day);
-      }, delay);
-    },
-    [onTrigger, delay],
-  );
-
-  const cancelLongPress = useCallback(
-    (clientX?: number, clientY?: number) => {
-      if (clientX != null && clientY != null && touchStartPos.current) {
-        const dx = clientX - touchStartPos.current.x;
-        const dy = clientY - touchStartPos.current.y;
-        if (Math.hypot(dx, dy) <= MOVE_THRESHOLD) return;
-      }
-      if (pressTimer.current) clearTimeout(pressTimer.current);
-      touchStartPos.current = null;
-      longPressFired.current = false;
-      setPressingDay(null);
-    },
-    [],
-  );
-
-  const wasLongPress = useCallback(() => {
-    if (longPressFired.current) {
-      longPressFired.current = false;
-      return true;
-    }
-    return false;
-  }, []);
-
-  return { startLongPress, cancelLongPress, wasLongPress, pressingDay, triggeredDay };
-}
-
-```
-
-# FILE: apps/frontend/src/features/calendar/utils/color.ts
-
-```
-import { PROJECT_HEX } from "../constants";
-
-export const shadeHex = (hex: string, percent: number) => {
-  const n = parseInt(hex.replace("#", ""), 16);
-  const r = Math.min(255, Math.max(0, (n >> 16) + percent));
-  const g = Math.min(255, Math.max(0, ((n >> 8) & 0xff) + percent));
-  const b = Math.min(255, Math.max(0, (n & 0xff) + percent));
-  return `rgb(${r}, ${g}, ${b})`;
-};
-
-export const getDayColor = (
-  dayEvents: { project: string }[],
-  projectHexMap: Map<string, string>,
-): string | undefined => {
-  if (dayEvents.length === 0) return undefined;
-  const counts = new Map<string, number>();
-  for (const ev of dayEvents) {
-    const hex = projectHexMap.get(ev.project) ?? PROJECT_HEX.blue;
-    counts.set(hex, (counts.get(hex) || 0) + 1);
-  }
-  const total = dayEvents.length;
-  if (counts.size === 1) {
-    const [hex] = counts.keys();
-    return `linear-gradient(to bottom, ${shadeHex(hex, 35)}, ${shadeHex(hex, -25)})`;
-  }
-  let acc = 0;
-  const stops: string[] = [];
-  for (const [hex, count] of counts) {
-    const start = (acc / total) * 100;
-    acc += count;
-    const end = (acc / total) * 100;
-    stops.push(`${shadeHex(hex, 35)} ${start}%`);
-    stops.push(`${shadeHex(hex, -25)} ${end}%`);
-  }
-  return `linear-gradient(to bottom, ${stops.join(", ")})`;
-};
-
-```
-
-# FILE: apps/frontend/src/features/calendar/utils/date.ts
-
-```
-export const toISODate = (d: Date) => d.toLocaleDateString("en-CA");
-
-export const getDaysInMonth = (year: number, month: number) =>
-  new Date(year, month + 1, 0).getDate();
-
-export const getFirstDayOfMonth = (year: number, month: number) => {
-  const day = new Date(year, month, 1).getDay();
-  return day === 0 ? 6 : day - 1;
-};
-
-export const isPastDay = (date: Date) => {
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  return date < startOfToday;
-};
-
-export const buildMonthDays = (
-  year: number,
-  month: number,
-): (Date | null)[] => {
-  const daysInMonth = getDaysInMonth(year, month);
-  const firstDay = getFirstDayOfMonth(year, month);
-  const days: (Date | null)[] = [];
-  for (let i = 0; i < firstDay; i++) days.push(null);
-  for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
-  return days;
-};
-
-```
-
-# FILE: apps/frontend/src/hooks/useApi.ts
-
-```
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  useInfiniteQuery,
-} from "@tanstack/react-query";
-import { api } from "../config/api";
-import type { City, School } from "../types";
-
-export function useAddCity() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (name: string) =>
-      api.post<City>("/cities", { name }).then((r) => r.data),
-    onSuccess: (newCity) => {
-      qc.setQueryData(["cities"], (old: City[] = []) => [newCity, ...old]);
-    },
-  });
-}
-
-export interface SchoolFilters {
-  search?: string;
-  cityId?: string;
-  type?: "Школа" | "Садочок";
-  stage?: "new" | "planned" | "inProgress" | "done";
-  size?: "small" | "medium" | "large";
-}
-
-interface SchoolsPage {
-  data: School[];
-  meta: {
-    totalItems: number;
-    page: number;
-    take: number;
-    pageCount: number;
-    hasNextPage: boolean;
-  };
-}
-
-export function useSchools(filters: SchoolFilters = {}) {
-  return useInfiniteQuery({
-    queryKey: ["schools", filters],
-    queryFn: ({ pageParam = 1 }) =>
-      api
-        .get<SchoolsPage>("/schools", {
-          params: { ...filters, page: pageParam, take: 30 },
-        })
-        .then((r) => r.data),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) =>
-      lastPage.meta.hasNextPage ? lastPage.meta.page + 1 : undefined,
-    staleTime: 5 * 60 * 1000,
-  });
-}
-
-export function useSchoolStats(
-  filters: Pick<SchoolFilters, "cityId" | "type" | "stage"> = {},
-) {
-  return useQuery({
-    queryKey: ["schoolStats", filters],
-    queryFn: () =>
-      api
-        .get("/schools/stats", { params: filters })
-        .then((r) => r.data),
-    staleTime: 2 * 60 * 1000,
-  });
-}
-
-export function useSupportedCities() {
-  return useQuery({
-    queryKey: ["supportedCities"],
-    queryFn: () =>
-      api
-        .get<string[]>("/schools/supported-cities")
-        .then((r) => r.data),
-    staleTime: 60 * 60 * 1000,
-  });
-}
-
-export function useAddSchool() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (data: Partial<School>) =>
-      api
-        .post<School>("/schools", data)
-        .then((r) => r.data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["schools"] });
-      qc.invalidateQueries({ queryKey: ["schoolStats"] });
-    },
-  });
-}
-
-export function useDeleteSchool() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (schoolId: string) =>
-      api.delete(`/schools/${schoolId}`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["schools"] });
-      qc.invalidateQueries({ queryKey: ["schoolStats"] });
-    },
-  });
-}
-
-export function useEvents() {
-  return useQuery({
-    queryKey: ["events"],
-    queryFn: () => api.get("/events").then((r) => r.data),
-    staleTime: 2 * 60 * 1000,
-  });
-}
-
-export function usePrefetchSchool() {
-  const qc = useQueryClient();
-  return (schoolId: string) => {
-    qc.prefetchQuery({
-      queryKey: ["school", schoolId],
-      queryFn: () =>
-        api
-          .get<School>(`/schools/${schoolId}`)
-          .then((r) => r.data),
-      staleTime: 2 * 60 * 1000,
-    });
-  };
-}
-
-```
-
-# FILE: apps/frontend/src/hooks/useCalendar.ts
-
-```
-import { useQuery } from "@tanstack/react-query";
-import { api } from "../config/api";
-import type { Event, Project } from "../types";
-
-export function useCalendarEvents() {
-  return useQuery<Event[]>({
-    queryKey: ["calendarEvents"],
-    queryFn: () =>
-      api.get<{ data: Event[] }>("/events").then((r) => r.data.data),
-    staleTime: 60 * 1000,
-  });
-}
-
-export function useCalendarProjects() {
-  return useQuery<Project[]>({
-    queryKey: ["projects"],
-    queryFn: () =>
-      api.get<{ data: Project[] }>("/projects").then((r) => r.data.data),
-    staleTime: 5 * 60 * 1000,
-  });
 }
 
 ```

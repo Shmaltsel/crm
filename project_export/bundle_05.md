@@ -1,3 +1,2319 @@
+# FILE: apps/frontend/src/features/calendar/constants.ts
+
+```
+export const STAFF_ROLES = ["HOST", "DRIVER"];
+export const MANAGER_ROLES = ["SUPERADMIN", "MANAGER"];
+
+export const PROJECT_HEX: Record<string, string> = {
+  blue: "#3b82f6",
+  emerald: "#10b981",
+  rose: "#f43f5e",
+  red: "#ef4444",
+  amber: "#f59e0b",
+  purple: "#a855f7",
+};
+
+export const ROLE_ICON_MAP: Record<string, string> = {
+  HOST: "🎙️",
+  DRIVER: "🚗",
+};
+
+export const MONTH_NAMES = [
+  "Січень",
+  "Лютий",
+  "Березень",
+  "Квітень",
+  "Травень",
+  "Червень",
+  "Липень",
+  "Серпень",
+  "Вересень",
+  "Жовтень",
+  "Листопад",
+  "Грудень",
+];
+
+export const WEEKDAY_HEADERS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"];
+
+export const PROJECT_BADGE_COLORS: Record<string, string> = {
+  blue: "bg-blue-400",
+  emerald: "bg-emerald-400",
+  rose: "bg-rose-400",
+  red: "bg-red-500",
+  amber: "bg-amber-400",
+  purple: "bg-purple-400",
+};
+
+```
+
+# FILE: apps/frontend/src/features/calendar/hooks/useCalendarData.ts
+
+```
+import { useMemo } from "react";
+import { useCalendarEvents, useCalendarProjects } from "../../../hooks/useCalendar";
+import { useUsers } from "../../../hooks/useEmployees";
+import { useCities } from "../../../hooks/useCities";
+import { PROJECT_HEX } from "../constants";
+import type { Event as CalendarEvent } from "../../../types";
+
+export function useCalendarData(filterCityId: string) {
+  const { data: events = [], isLoading: eventsLoading } = useCalendarEvents();
+  const { data: projects = [] } = useCalendarProjects();
+  const { data: cities = [] } = useCities();
+  const { data: allUsers = [] } = useUsers();
+
+  const filteredEvents = useMemo(() => {
+    return events.filter((ev: CalendarEvent) => {
+      if (ev.status === "RE_SALE") return false;
+      if (filterCityId !== "ALL" && ev.city?.id !== filterCityId) return false;
+      return true;
+    });
+  }, [events, filterCityId]);
+
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>();
+    for (const ev of filteredEvents) {
+      const key = ev.date.slice(0, 10);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(ev);
+    }
+    return map;
+  }, [filteredEvents]);
+
+  const projectColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of projects) {
+      switch (p.color) {
+        case "emerald":
+          map.set(p.name, "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200 hover:border-emerald-300"); break;
+        case "rose":
+          map.set(p.name, "bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200 hover:border-rose-300"); break;
+        case "red":
+          map.set(p.name, "bg-red-100 text-red-700 border-red-300 hover:bg-red-200 hover:border-red-400"); break;
+        case "amber":
+          map.set(p.name, "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200 hover:border-amber-300"); break;
+        case "purple":
+          map.set(p.name, "bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200 hover:border-purple-300"); break;
+        default:
+          map.set(p.name, "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300");
+      }
+    }
+    return map;
+  }, [projects]);
+
+  const projectHexMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of projects) {
+      map.set(p.name, PROJECT_HEX[p.color] || PROJECT_HEX.blue);
+    }
+    return map;
+  }, [projects]);
+
+  return {
+    events,
+    eventsLoading,
+    projects,
+    cities,
+    allUsers,
+    filteredEvents,
+    eventsByDate,
+    projectColorMap,
+    projectHexMap,
+  };
+}
+
+```
+
+# FILE: apps/frontend/src/features/calendar/hooks/useCalendarMonth.ts
+
+```
+import { useState, useMemo } from "react";
+import { buildMonthDays, toISODate } from "../utils/date";
+
+export function useCalendarMonth() {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedMobileDate, setSelectedMobileDate] = useState<Date>(
+    new Date(),
+  );
+
+  const nextMonth = () =>
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1),
+    );
+  const prevMonth = () =>
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
+    );
+  const today = () => {
+    setCurrentDate(new Date());
+    setSelectedMobileDate(new Date());
+  };
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+
+  const days = useMemo(() => buildMonthDays(year, month), [year, month]);
+
+  const monthFrom = toISODate(new Date(year, month, 1));
+  const monthTo = toISODate(new Date(year, month + 1, 0));
+
+  return {
+    currentDate,
+    setCurrentDate,
+    selectedMobileDate,
+    setSelectedMobileDate,
+    nextMonth,
+    prevMonth,
+    today,
+    year,
+    month,
+    days,
+    monthFrom,
+    monthTo,
+  };
+}
+
+```
+
+# FILE: apps/frontend/src/features/calendar/hooks/useDayOffActions.ts
+
+```
+import { useState, useMemo, useCallback } from "react";
+import {
+  useDaysOff,
+  useCreateDayOff,
+  useDeleteDayOff,
+} from "../../../hooks/useDaysOff";
+import { STAFF_ROLES } from "../constants";
+import { toISODate, isPastDay } from "../utils/date";
+import type { User } from "../../../types";
+
+export function useDayOffActions(
+  monthFrom: string,
+  monthTo: string,
+  dayOffCityId: string | undefined,
+  isStaff: boolean,
+  isManagerOrAdmin: boolean,
+  user: { id: string } | null,
+  allUsers: User[],
+  filterCityId: string,
+  userRole: string,
+  userCityId: string | null | undefined,
+) {
+  const [dayOffModalDate, setDayOffModalDate] = useState<Date | null>(null);
+
+  const { data: dayOffs = [] } = useDaysOff(monthFrom, monthTo, dayOffCityId);
+  const createDayOff = useCreateDayOff();
+  const deleteDayOff = useDeleteDayOff();
+
+  const dayOffsByDate = useMemo(() => {
+    const map = new Map<string, typeof dayOffs>();
+    for (const d of dayOffs) {
+      const key = d.date.slice(0, 10);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(d);
+    }
+    return map;
+  }, [dayOffs]);
+
+  const staffForModal = useMemo(() => {
+    const cityScope =
+      userRole === "MANAGER"
+        ? userCityId
+        : filterCityId !== "ALL"
+          ? filterCityId
+          : null;
+    return allUsers.filter(
+      (u: User) =>
+        STAFF_ROLES.includes(u.role) && (!cityScope || u.cityId === cityScope),
+    );
+  }, [allUsers, userRole, userCityId, filterCityId]);
+
+  const handleDayOffClick = useCallback(
+    (e: React.MouseEvent, date: Date) => {
+      e.stopPropagation();
+      if (isPastDay(date)) return;
+
+      if (isStaff && user) {
+        const key = toISODate(date);
+        const existing = dayOffsByDate
+          .get(key)
+          ?.find((d: { userId: string }) => d.userId === user.id);
+        if (existing) {
+          deleteDayOff.mutate(existing.id);
+        } else {
+          createDayOff.mutate({ date: key });
+        }
+        return;
+      }
+
+      if (isManagerOrAdmin) {
+        setDayOffModalDate(date);
+      }
+    },
+    [isStaff, isManagerOrAdmin, user, dayOffsByDate, createDayOff, deleteDayOff],
+  );
+
+  const handleToggleStaffDayOff = useCallback(
+    (targetUserId: string, existingId?: string) => {
+      if (existingId) {
+        deleteDayOff.mutate(existingId);
+      } else if (dayOffModalDate) {
+        createDayOff.mutate({
+          date: toISODate(dayOffModalDate),
+          userId: targetUserId,
+        });
+      }
+    },
+    [dayOffModalDate, createDayOff, deleteDayOff],
+  );
+
+  const handleLongPressDayOff = useCallback(
+    (day: Date) => {
+      if (isPastDay(day)) return;
+      if (isStaff && user) {
+        const key = toISODate(day);
+        const existing = dayOffsByDate
+          .get(key)
+          ?.find((d: { userId: string }) => d.userId === user.id);
+        if (existing) deleteDayOff.mutate(existing.id);
+        else createDayOff.mutate({ date: key });
+      } else if (isManagerOrAdmin) {
+        setDayOffModalDate(day);
+      }
+    },
+    [isStaff, isManagerOrAdmin, user, dayOffsByDate, createDayOff, deleteDayOff],
+  );
+
+  return {
+    dayOffsByDate,
+    staffForModal,
+    dayOffModalDate,
+    setDayOffModalDate,
+    handleDayOffClick,
+    handleToggleStaffDayOff,
+    handleLongPressDayOff,
+  };
+}
+
+```
+
+# FILE: apps/frontend/src/features/calendar/hooks/useLongPress.ts
+
+```
+import { useRef, useCallback, useState } from "react";
+
+const MOVE_THRESHOLD = 10;
+
+export function useLongPress(onTrigger: (day: Date) => void, delay = 550) {
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  const [pressingDay, setPressingDay] = useState<Date | null>(null);
+  const [triggeredDay, setTriggeredDay] = useState<Date | null>(null);
+
+  const startLongPress = useCallback(
+    (day: Date, clientX?: number, clientY?: number) => {
+      touchStartPos.current = clientX != null && clientY != null ? { x: clientX, y: clientY } : null;
+      longPressFired.current = false;
+      setPressingDay(day);
+      pressTimer.current = setTimeout(() => {
+        longPressFired.current = true;
+        setPressingDay(null);
+        setTriggeredDay(day);
+        setTimeout(() => setTriggeredDay(null), 350);
+        if ("vibrate" in navigator) navigator.vibrate(15);
+        onTrigger(day);
+      }, delay);
+    },
+    [onTrigger, delay],
+  );
+
+  const cancelLongPress = useCallback(
+    (clientX?: number, clientY?: number) => {
+      if (clientX != null && clientY != null && touchStartPos.current) {
+        const dx = clientX - touchStartPos.current.x;
+        const dy = clientY - touchStartPos.current.y;
+        if (Math.hypot(dx, dy) <= MOVE_THRESHOLD) return;
+      }
+      if (pressTimer.current) clearTimeout(pressTimer.current);
+      touchStartPos.current = null;
+      longPressFired.current = false;
+      setPressingDay(null);
+    },
+    [],
+  );
+
+  const wasLongPress = useCallback(() => {
+    if (longPressFired.current) {
+      longPressFired.current = false;
+      return true;
+    }
+    return false;
+  }, []);
+
+  return { startLongPress, cancelLongPress, wasLongPress, pressingDay, triggeredDay };
+}
+
+```
+
+# FILE: apps/frontend/src/features/calendar/utils/color.ts
+
+```
+import { PROJECT_HEX } from "../constants";
+
+export const shadeHex = (hex: string, percent: number) => {
+  const n = parseInt(hex.replace("#", ""), 16);
+  const r = Math.min(255, Math.max(0, (n >> 16) + percent));
+  const g = Math.min(255, Math.max(0, ((n >> 8) & 0xff) + percent));
+  const b = Math.min(255, Math.max(0, (n & 0xff) + percent));
+  return `rgb(${r}, ${g}, ${b})`;
+};
+
+export const getDayColor = (
+  dayEvents: { project: string }[],
+  projectHexMap: Map<string, string>,
+): string | undefined => {
+  if (dayEvents.length === 0) return undefined;
+  const counts = new Map<string, number>();
+  for (const ev of dayEvents) {
+    const hex = projectHexMap.get(ev.project) ?? PROJECT_HEX.blue;
+    counts.set(hex, (counts.get(hex) || 0) + 1);
+  }
+  const total = dayEvents.length;
+  if (counts.size === 1) {
+    const [hex] = counts.keys();
+    return `linear-gradient(to bottom, ${shadeHex(hex, 35)}, ${shadeHex(hex, -25)})`;
+  }
+  let acc = 0;
+  const stops: string[] = [];
+  for (const [hex, count] of counts) {
+    const start = (acc / total) * 100;
+    acc += count;
+    const end = (acc / total) * 100;
+    stops.push(`${shadeHex(hex, 35)} ${start}%`);
+    stops.push(`${shadeHex(hex, -25)} ${end}%`);
+  }
+  return `linear-gradient(to bottom, ${stops.join(", ")})`;
+};
+
+```
+
+# FILE: apps/frontend/src/features/calendar/utils/date.ts
+
+```
+export const toISODate = (d: Date) => d.toLocaleDateString("en-CA");
+
+export const getDaysInMonth = (year: number, month: number) =>
+  new Date(year, month + 1, 0).getDate();
+
+export const getFirstDayOfMonth = (year: number, month: number) => {
+  const day = new Date(year, month, 1).getDay();
+  return day === 0 ? 6 : day - 1;
+};
+
+export const isPastDay = (date: Date) => {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  return date < startOfToday;
+};
+
+export const buildMonthDays = (
+  year: number,
+  month: number,
+): (Date | null)[] => {
+  const daysInMonth = getDaysInMonth(year, month);
+  const firstDay = getFirstDayOfMonth(year, month);
+  const days: (Date | null)[] = [];
+  for (let i = 0; i < firstDay; i++) days.push(null);
+  for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
+  return days;
+};
+
+```
+
+# FILE: apps/frontend/src/features/dashboard/ManagerDashboard.tsx
+
+```
+import { useMemo } from "react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../../config/api";
+import { useSubmittedReports } from "../../hooks/useReports";
+import { useSelectedCity } from "../../context/CityContext";
+import { useCity } from "../../hooks/useCities";
+import type { Event } from "../../types";
+
+function todayDateStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function SkeletonCard() {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 animate-pulse">
+      <div className="h-4 bg-slate-100 rounded-full w-1/3 mb-3" />
+      <div className="space-y-2">
+        <div className="h-3 bg-slate-100 rounded-full w-full" />
+        <div className="h-3 bg-slate-100 rounded-full w-4/5" />
+      </div>
+    </div>
+  );
+}
+
+export default function ManagerDashboard() {
+  const today = todayDateStr();
+  const { selectedCity } = useSelectedCity();
+
+  const { data: events, isLoading: eventsLoading } = useQuery<Event[]>({
+    queryKey: ["city-events", today, selectedCity.id],
+    queryFn: () =>
+      api
+        .get<{ data: Event[] }>("/events", {
+          params: { dateFrom: today, dateTo: today, cityId: selectedCity.id || undefined },
+        })
+        .then((r) => r.data.data),
+    enabled: !!selectedCity.id,
+    staleTime: 30 * 1000,
+  });
+
+  const { data: submittedReports, isLoading: reportsLoading } = useSubmittedReports();
+  const { data: cityProfile, isLoading: cityLoading } = useCity(selectedCity.id || undefined);
+
+  const todayEvents = useMemo(() => {
+    if (!events) return [];
+    return events.filter((e) => e.date === today);
+  }, [events, today]);
+
+  const cityReports = useMemo(() => {
+    if (!submittedReports || !selectedCity.id) return [];
+    return submittedReports.filter((r) => selectedCity.id === r.event?.cityId || false);
+  }, [submittedReports, selectedCity.id]);
+
+  const dateLabel = new Date().toLocaleDateString("uk-UA", {
+    day: "numeric",
+    month: "long",
+    weekday: "long",
+  });
+
+  if (!selectedCity.id) {
+    return (
+      <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-slate-800">Дашборд</h1>
+          <p className="text-sm text-content-muted mt-1">Оберіть місто для перегляду</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (eventsLoading || reportsLoading || cityLoading) {
+    return (
+      <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+        <div className="mb-6">
+          <div className="h-8 bg-slate-200 rounded-xl w-48 animate-pulse" />
+          <div className="h-4 bg-slate-100 rounded w-36 mt-2 animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-800">
+          Дашборд · {selectedCity.name}
+        </h1>
+        <p className="text-xs text-slate-400 mt-1">{dateLabel}</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Події сьогодні */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col">
+          <div className="flex justify-between items-start mb-3">
+            <p className="text-sm font-semibold text-slate-800">Події сьогодні</p>
+            <Link to="/calendar" className="text-xs text-blue-600 hover:underline shrink-0">
+              Календар
+            </Link>
+          </div>
+          {todayEvents.length === 0 ? (
+            <div className="py-6 text-center text-slate-400 text-sm">Сьогодні подій немає</div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {todayEvents.map((ev) => (
+                <div key={ev.id} className="rounded-xl border border-slate-100 bg-white p-3 flex flex-col gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold text-slate-800 tabular-nums">
+                      {ev.time ?? "—:——"}
+                    </span>
+                    <span className="text-xs text-slate-400 truncate">{ev.project}</span>
+                  </div>
+                  <p className="text-sm font-semibold text-slate-700 leading-snug line-clamp-2">
+                    {ev.school?.name ?? "—"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-50">
+            Усього на сьогодні: {todayEvents.length}
+          </p>
+        </div>
+
+        {/* Неперевірені звіти */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col">
+          <p className="text-sm font-semibold text-slate-800 mb-3">Неперевірені звіти</p>
+          <div className="flex items-baseline gap-1.5 mb-1">
+            <span className="text-3xl font-bold text-amber-600">{cityReports.length}</span>
+            <span className="text-sm text-slate-400">шт.</span>
+          </div>
+          <p className="text-xs text-slate-400">
+            {selectedCity.name}
+          </p>
+          <Link
+            to="/reports"
+            className="mt-auto pt-3 text-xs text-blue-600 hover:underline"
+          >
+            Переглянути →
+          </Link>
+        </div>
+
+        {/* Моє місто */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col">
+          <p className="text-sm font-semibold text-slate-800 mb-3">Моє місто</p>
+          <p className="text-lg font-bold text-slate-800">{cityProfile?.name ?? selectedCity.name}</p>
+          <div className="mt-2 space-y-1">
+            <p className="text-xs text-slate-500">
+              Шкіл: <span className="font-semibold text-slate-700">{cityProfile?.schoolsCount ?? cityProfile?.schools?.length ?? "—"}</span>
+            </p>
+            <p className="text-xs text-slate-500">
+              Команд: <span className="font-semibold text-slate-700">{cityProfile?.crews?.length ?? "—"}</span>
+            </p>
+          </div>
+          <Link
+            to={`/cities/${selectedCity.id}`}
+            className="mt-auto pt-3 text-xs text-blue-600 hover:underline"
+          >
+            Детальніше →
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/features/dashboard/OwnerDashboard.tsx
+
+```
+import { useFinanceDashboard } from "../../hooks/useDashboardData";
+
+function fmt(n: number): string {
+  return new Intl.NumberFormat("uk-UA").format(Math.round(n));
+}
+
+function pct(a: number, b: number): number | null {
+  if (!b) return null;
+  return Math.round(((a - b) / b) * 100);
+}
+
+function pctColor(v: number | null): string {
+  if (v === null) return "text-slate-400";
+  if (v > 0) return "text-emerald-600";
+  if (v < 0) return "text-red-500";
+  return "text-slate-400";
+}
+
+function pctArrow(v: number | null): string {
+  if (v === null) return "—";
+  if (v > 0) return `↑ ${v}%`;
+  if (v < 0) return `↓ ${Math.abs(v)}%`;
+  return "0%";
+}
+
+function SkeletonCard() {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 animate-pulse">
+      <div className="h-4 bg-slate-100 rounded-full w-1/3 mb-3" />
+      <div className="h-8 bg-slate-100 rounded w-2/3 mb-2" />
+      <div className="h-3 bg-slate-100 rounded w-1/2" />
+    </div>
+  );
+}
+
+export default function OwnerDashboard() {
+  const { data: dashboard, isLoading } = useFinanceDashboard("month");
+
+  if (isLoading) {
+    return (
+      <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+        <div className="mb-6">
+          <div className="h-8 bg-slate-200 rounded-xl w-48 animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!dashboard) {
+    return (
+      <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+        <div className="text-center py-20 text-slate-400 text-sm">
+          Не вдалося завантажити фінансові дані
+        </div>
+      </div>
+    );
+  }
+
+  const { kpi, monthly, expectedRevenue } = dashboard;
+  const prevMonth = monthly.length > 1 ? monthly[monthly.length - 2] : null;
+
+  const tiles = [
+    {
+      label: "Виручка",
+      value: `${fmt(kpi.totalRevenue)} грн`,
+      change: prevMonth ? pct(kpi.totalRevenue, prevMonth.revenue) : null,
+      icon: "💰",
+      bg: "bg-blue-50",
+      color: "text-blue-700",
+    },
+    {
+      label: "Витрати",
+      value: `${fmt(kpi.totalExpenses)} грн`,
+      change: null,
+      icon: "💳",
+      bg: "bg-rose-50",
+      color: "text-rose-700",
+    },
+    {
+      label: "Прибуток",
+      value: `${fmt(kpi.totalProfit)} грн`,
+      change: prevMonth ? pct(kpi.totalProfit, prevMonth.profit) : null,
+      icon: "📈",
+      bg: "bg-emerald-50",
+      color: "text-emerald-700",
+    },
+    {
+      label: "Подій",
+      value: fmt(kpi.totalEvents),
+      change: null,
+      icon: "📅",
+      bg: "bg-purple-50",
+      color: "text-purple-700",
+    },
+  ];
+
+  return (
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-800">Фінансовий дашборд</h1>
+        <p className="text-xs text-slate-400 mt-1">
+          {new Date().toLocaleDateString("uk-UA", {
+            month: "long",
+            year: "numeric",
+          })}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {tiles.map((tile) => (
+          <div key={tile.label} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+            <div className="flex items-center gap-1.5 mb-3">
+              <span className="text-base">{tile.icon}</span>
+              <span className={`text-xs font-medium ${tile.color}`}>{tile.label}</span>
+            </div>
+            <p className={`text-2xl font-bold leading-none ${tile.color}`}>{tile.value}</p>
+            {tile.change !== null && (
+              <p className={`text-xs mt-1.5 ${pctColor(tile.change)}`}>
+                {pctArrow(tile.change)} до минулого місяця
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {expectedRevenue > 0 && (
+        <div className="mt-4 bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+          <p className="text-sm font-semibold text-slate-800 mb-1">Очікувана виручка</p>
+          <p className="text-xl font-bold text-slate-800">{fmt(expectedRevenue)} грн</p>
+        </div>
+      )}
+
+      {monthly.length > 0 && (
+        <div className="mt-4 bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+          <p className="text-sm font-semibold text-slate-800 mb-3">Динаміка за місяцями</p>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {monthly.map((m) => (
+              <div key={m.month} className="min-w-[100px] shrink-0 rounded-xl bg-slate-50 p-3">
+                <p className="text-xs text-slate-500 mb-1">{m.month}</p>
+                <p className="text-sm font-bold text-blue-700">{fmt(m.revenue)} грн</p>
+                <p className={`text-xs font-medium ${m.profit >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                  {fmt(m.profit)} грн
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/features/dashboard/StaffDashboard.tsx
+
+```
+import { useMemo } from "react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../../config/api";
+import { useMySalary } from "../../hooks/useSalary";
+import type { Event } from "../../types";
+
+function fmt(n: number): string {
+  return new Intl.NumberFormat("uk-UA").format(Math.round(n));
+}
+
+function todayDateStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function SkeletonCard() {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 animate-pulse">
+      <div className="h-4 bg-slate-100 rounded-full w-1/3 mb-3" />
+      <div className="space-y-2">
+        <div className="h-3 bg-slate-100 rounded-full w-full" />
+        <div className="h-3 bg-slate-100 rounded-full w-4/5" />
+        <div className="h-3 bg-slate-100 rounded-full w-3/5" />
+      </div>
+    </div>
+  );
+}
+
+export default function StaffDashboard() {
+  const today = todayDateStr();
+
+  const { data: events, isLoading: eventsLoading } = useQuery<Event[]>({
+    queryKey: ["my-events", today],
+    queryFn: () =>
+      api.get<{ data: Event[] }>("/events", { params: { dateFrom: today, dateTo: today } }).then((r) => r.data.data),
+    staleTime: 30 * 1000,
+  });
+
+  const { data: salary, isLoading: salaryLoading } = useMySalary();
+
+  const pendingSalary = useMemo(() => {
+    if (!salary) return 0;
+    return salary
+      .filter((s) => s.status === "PENDING")
+      .reduce((sum, s) => sum + s.amount, 0);
+  }, [salary]);
+
+  const todayEvents = useMemo(() => {
+    if (!events) return [];
+    return events.filter((e) => e.date === today);
+  }, [events, today]);
+
+  const recentEvents = useMemo(() => {
+    if (!events) return [];
+    return [...events]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5);
+  }, [events]);
+
+  const dateLabel = new Date().toLocaleDateString("uk-UA", {
+    day: "numeric",
+    month: "long",
+    weekday: "long",
+  });
+
+  if (eventsLoading || salaryLoading) {
+    return (
+      <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+        <div className="mb-6">
+          <div className="h-8 bg-slate-200 rounded-xl w-48 animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-800">Мій дашборд</h1>
+        <p className="text-xs text-slate-400 mt-1">{dateLabel}</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Сьогодні */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col">
+          <div className="flex justify-between items-start mb-3">
+            <p className="text-sm font-semibold text-slate-800">Сьогодні</p>
+            <Link to="/calendar" className="text-xs text-blue-600 hover:underline shrink-0">
+              Календар
+            </Link>
+          </div>
+          {todayEvents.length === 0 ? (
+            <div className="py-6 text-center text-slate-400 text-sm">Сьогодні подій немає</div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {todayEvents.map((ev) => (
+                <div key={ev.id} className="rounded-xl border border-slate-100 bg-white p-3 flex flex-col gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold text-slate-800 tabular-nums">
+                      {ev.time ?? "—:——"}
+                    </span>
+                    <span className="text-xs text-slate-400 truncate">{ev.project}</span>
+                  </div>
+                  <p className="text-sm font-semibold text-slate-700 leading-snug line-clamp-2">
+                    {ev.school?.name ?? "—"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-50">
+            Усього на сьогодні: {todayEvents.length}
+          </p>
+        </div>
+
+        {/* Моя зарплата */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col">
+          <p className="text-sm font-semibold text-slate-800 mb-3">Моя зарплата</p>
+          <div className="flex items-baseline gap-1.5 mb-1">
+            <span className="text-3xl font-bold text-emerald-700">{fmt(pendingSalary)}</span>
+            <span className="text-sm text-slate-400">грн</span>
+          </div>
+          <p className="text-xs text-slate-400">до виплати (очікує)</p>
+          <Link
+            to="/salary"
+            className="mt-auto pt-3 text-xs text-blue-600 hover:underline"
+          >
+            Детальніше →
+          </Link>
+        </div>
+
+        {/* Останні події */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col">
+          <p className="text-sm font-semibold text-slate-800 mb-3">Останні події</p>
+          {recentEvents.length === 0 ? (
+            <div className="py-6 text-center text-slate-400 text-sm">Подій поки що немає</div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {recentEvents.map((ev) => (
+                <Link
+                  key={ev.id}
+                  to={`/events/${ev.id}`}
+                  className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 hover:bg-slate-50 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-700 truncate">
+                      {ev.school?.name ?? "—"}
+                    </p>
+                    <p className="text-xs text-slate-400">{ev.date}</p>
+                  </div>
+                  <span className="text-xs text-blue-600 shrink-0 ml-2">→</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/features/reports/components/ReportForm.tsx
+
+```
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import type { EventReport } from "../../../types";
+import ReportStatusBadge from "./ReportStatusBadge";
+import { useInventory } from "../../../hooks/useInventory";
+
+interface Expense {
+  name: string;
+  amount: number;
+}
+
+interface CrewInfo {
+  host?: { id: string; name: string } | null;
+  driver?: { id: string; name: string } | null;
+}
+
+interface ReportFormProps {
+  isOpen: boolean;
+  onClose: () => void;
+  eventId: string;
+  schoolName: string;
+  eventDate?: string;
+  crew?: CrewInfo;
+  report?: EventReport | null;
+  reportLoading?: boolean;
+  onCreateDraft: (data: {
+    eventId: string;
+    announcementDone: boolean;
+    materialShown: boolean;
+    childrenCount: number;
+    classesCount: number;
+    privilegedCount: number;
+    showingsCount: number;
+    totalSum: number;
+    schoolSum: number;
+    remainderSum: number;
+    rating: number;
+    directorSatisfied?: boolean;
+    teachersSatisfied?: boolean;
+    hadIssues?: boolean;
+    comment?: string;
+    expenses?: Expense[];
+    salaries?: { userId: string; name: string; amount: number; role: string }[];
+    inventoryUsages?: { itemId: string; quantity: number }[];
+  }) => void;
+  onSaveDraft: (data: {
+    id: string;
+    announcementDone?: boolean;
+    materialShown?: boolean;
+    childrenCount?: number;
+    classesCount?: number;
+    privilegedCount?: number;
+    showingsCount?: number;
+    totalSum?: number;
+    schoolSum?: number;
+    remainderSum?: number;
+    rating?: number;
+    directorSatisfied?: boolean;
+    teachersSatisfied?: boolean;
+    hadIssues?: boolean;
+    comment?: string;
+  }) => void;
+  onSubmit: (id: string) => void;
+  submitLoading?: boolean;
+}
+
+const WEEKDAY_FMT = new Intl.DateTimeFormat("uk-UA", { weekday: "long" });
+const DATE_FMT = new Intl.DateTimeFormat("uk-UA", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "2-digit",
+});
+
+function formatDate(dateStr?: string) {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return "—";
+  return `${DATE_FMT.format(d)} ${WEEKDAY_FMT.format(d)}`;
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("uk-UA").format(Math.round(value || 0));
+}
+
+function IconBadge({ color, children }: { color: string; children: React.ReactNode }) {
+  return (
+    <span className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center ${color}`}>
+      {children}
+    </span>
+  );
+}
+
+function CardHeader({ icon, color, title }: { icon: React.ReactNode; color: string; title: string }) {
+  return (
+    <div className="flex items-center gap-2.5 mb-4">
+      <IconBadge color={color}>{icon}</IconBadge>
+      <h4 className="text-sm font-bold text-slate-800">{title}</h4>
+    </div>
+  );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+      <span className="text-sm text-slate-500">{label}</span>
+      <div className="text-sm font-medium text-slate-800">{children}</div>
+    </div>
+  );
+}
+
+function TogglePill({ value, onChange, disabled }: { value: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+  return (
+    <div className="flex gap-1.5">
+      <button type="button" disabled={disabled} onClick={() => onChange(true)}
+        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${value ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400 hover:bg-slate-200"} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>Так</button>
+      <button type="button" disabled={disabled} onClick={() => onChange(false)}
+        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${!value ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-400 hover:bg-slate-200"} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>Ні</button>
+    </div>
+  );
+}
+
+function NumberField({ value, onChange, suffix, disabled }: { value: number; onChange: (v: number) => void; suffix?: string; disabled?: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <input type="number" min={0} value={value || ""} disabled={disabled}
+        onChange={(e) => onChange(+e.target.value)}
+        className={`w-16 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1 -mr-1 ${disabled ? "opacity-60" : ""}`}
+        placeholder="0" />
+      {suffix && <span className="text-slate-400 text-xs">{suffix}</span>}
+    </span>
+  );
+}
+
+export default function ReportForm({
+  isOpen, onClose, eventId, schoolName, eventDate, crew,
+  report, reportLoading, onCreateDraft, onSaveDraft, onSubmit, submitLoading,
+}: ReportFormProps) {
+  const headingId = "report-form-heading";
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [isOpen, onClose]);
+
+  const isEditable = report
+    ? report.status === "DRAFT" || report.status === "NEEDS_REVISION"
+    : true;
+
+  const [form, setForm] = useState({
+    announcementDone: true,
+    materialShown: true,
+    childrenCount: 0,
+    classesCount: 0,
+    privilegedCount: 0,
+    showingsCount: 0,
+    totalSum: 0,
+    schoolPercentage: 20,
+    rating: 8,
+    directorSatisfied: true,
+    teachersSatisfied: true,
+    hadIssues: false,
+    comment: "",
+  });
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [newExp, setNewExp] = useState({ name: "", amount: "" });
+  const [salaries, setSalaries] = useState<Record<string, number>>({});
+  const { data: inventoryItems } = useInventory();
+  const [inventoryUsages, setInventoryUsages] = useState<Record<string, number>>({});
+  const [autoSaveState, setAutoSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const lastReportId = useRef<string | undefined>();
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (report && report.id !== lastReportId.current) {
+      lastReportId.current = report.id;
+      setForm({
+        announcementDone: report.announcementDone,
+        materialShown: report.materialShown,
+        childrenCount: report.childrenCount,
+        classesCount: report.classesCount,
+        privilegedCount: report.privilegedCount,
+        showingsCount: report.showingsCount,
+        totalSum: report.totalSum,
+        schoolPercentage: report.totalSum > 0 && report.schoolSum > 0
+          ? Math.round((report.schoolSum / report.totalSum) * 100)
+          : 20,
+        rating: report.rating,
+        directorSatisfied: report.directorSatisfied ?? true,
+        teachersSatisfied: report.teachersSatisfied ?? true,
+        hadIssues: report.hadIssues ?? false,
+        comment: report.comment ?? "",
+      });
+      setExpenses(report.expenseItems?.map((e) => ({ name: e.name ?? e.category ?? "", amount: e.amount })) ?? []);
+      const salaryMap: Record<string, number> = {};
+      for (const s of report.salaryRecords ?? []) {
+        salaryMap[s.employeeId] = s.amount;
+      }
+      setSalaries(salaryMap);
+    }
+  }, [report]);
+
+  const schoolSum = (form.totalSum * form.schoolPercentage) / 100;
+  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+  const remainder = form.totalSum - schoolSum - totalExpenses;
+
+  const crewMembers = [
+    ...(crew?.host ? [{ id: crew.host.id, name: crew.host.name, role: "Ведучий" }] : []),
+    ...(crew?.driver ? [{ id: crew.driver.id, name: crew.driver.name, role: "Водій" }] : []),
+  ];
+
+  const salariesArr = crewMembers
+    .map((m) => ({ userId: m.id, name: m.name, amount: salaries[m.id] || 0, role: m.role }))
+    .filter((s) => s.amount > 0);
+
+  const handleAutoSave = useCallback(async () => {
+    if (!report?.id) return;
+    if (report.status !== "DRAFT" && report.status !== "NEEDS_REVISION") return;
+
+    setAutoSaveState("saving");
+    try {
+      const schoolSum = (form.totalSum * form.schoolPercentage) / 100;
+      const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+      const remainder = form.totalSum - schoolSum - totalExpenses;
+
+      await onSaveDraft({
+        id: report.id,
+        announcementDone: form.announcementDone,
+        materialShown: form.materialShown,
+        childrenCount: form.childrenCount,
+        classesCount: form.classesCount,
+        privilegedCount: form.privilegedCount,
+        showingsCount: form.showingsCount,
+        totalSum: form.totalSum,
+        schoolSum,
+        remainderSum: remainder,
+        rating: form.rating,
+        directorSatisfied: form.directorSatisfied,
+        teachersSatisfied: form.teachersSatisfied,
+        hadIssues: form.hadIssues,
+        comment: form.comment,
+      });
+      setAutoSaveState("saved");
+      setTimeout(() => setAutoSaveState("idle"), 3000);
+    } catch {
+      setAutoSaveState("idle");
+    }
+  }, [form, expenses, report?.id, report?.status, onSaveDraft]);
+
+  useEffect(() => {
+    if (!report?.id) return;
+    if (report.status !== "DRAFT" && report.status !== "NEEDS_REVISION") return;
+
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => {
+      handleAutoSave();
+    }, 20000);
+
+    return () => {
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    };
+  }, [form, expenses, report?.id, report?.status, handleAutoSave]);
+
+  const handleSaveDraft = () => {
+    if (report) {
+      onSaveDraft({
+        id: report.id,
+        announcementDone: form.announcementDone,
+        materialShown: form.materialShown,
+        childrenCount: form.childrenCount,
+        classesCount: form.classesCount,
+        privilegedCount: form.privilegedCount,
+        showingsCount: form.showingsCount,
+        totalSum: form.totalSum,
+        schoolSum,
+        remainderSum: remainder,
+        rating: form.rating,
+        directorSatisfied: form.directorSatisfied,
+        teachersSatisfied: form.teachersSatisfied,
+        hadIssues: form.hadIssues,
+        comment: form.comment,
+      });
+    } else {
+      onCreateDraft({
+        eventId,
+        announcementDone: form.announcementDone,
+        materialShown: form.materialShown,
+        childrenCount: form.childrenCount,
+        classesCount: form.classesCount,
+        privilegedCount: form.privilegedCount,
+        showingsCount: form.showingsCount,
+        totalSum: form.totalSum,
+        schoolSum,
+        remainderSum: remainder,
+        rating: form.rating,
+        directorSatisfied: form.directorSatisfied,
+        teachersSatisfied: form.teachersSatisfied,
+        hadIssues: form.hadIssues,
+        comment: form.comment,
+        expenses,
+        salaries: salariesArr,
+        inventoryUsages: Object.entries(inventoryUsages)
+          .filter(([, qty]) => qty > 0)
+          .map(([itemId, quantity]) => ({ itemId, quantity })),
+      });
+    }
+  };
+
+  const handleSubmit = () => {
+    if (report) {
+      onSaveDraft({
+        id: report.id,
+        announcementDone: form.announcementDone,
+        materialShown: form.materialShown,
+        childrenCount: form.childrenCount,
+        classesCount: form.classesCount,
+        privilegedCount: form.privilegedCount,
+        showingsCount: form.showingsCount,
+        totalSum: form.totalSum,
+        schoolSum,
+        remainderSum: remainder,
+        rating: form.rating,
+        directorSatisfied: form.directorSatisfied,
+        teachersSatisfied: form.teachersSatisfied,
+        hadIssues: form.hadIssues,
+        comment: form.comment,
+      });
+      onSubmit(report.id);
+    } else {
+      onCreateDraft({
+        eventId,
+        announcementDone: form.announcementDone,
+        materialShown: form.materialShown,
+        childrenCount: form.childrenCount,
+        classesCount: form.classesCount,
+        privilegedCount: form.privilegedCount,
+        showingsCount: form.showingsCount,
+        totalSum: form.totalSum,
+        schoolSum,
+        remainderSum: remainder,
+        rating: form.rating,
+        directorSatisfied: form.directorSatisfied,
+        teachersSatisfied: form.teachersSatisfied,
+        hadIssues: form.hadIssues,
+        comment: form.comment,
+        expenses,
+        salaries: salariesArr,
+        inventoryUsages: Object.entries(inventoryUsages)
+          .filter(([, qty]) => qty > 0)
+          .map(([itemId, quantity]) => ({ itemId, quantity })),
+      });
+      onSubmit(report?.id ?? "");
+    }
+  };
+
+  const addExpense = () => {
+    const amount = Number(newExp.amount);
+    if (!newExp.name.trim() || !amount) return;
+    setExpenses((prev) => [...prev, { name: newExp.name.trim(), amount }]);
+    setNewExp({ name: "", amount: "" });
+  };
+
+  const removeExpense = (index: number) => {
+    setExpenses((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  if (reportLoading) {
+    return (
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="bg-white rounded-2xl p-8 shadow-xl">Завантаження...</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div role="dialog" aria-modal="true" aria-labelledby={headingId}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          transition={{ duration: 0.25 }}
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+          <motion.div initial={{ opacity: 0, y: 24, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 24, scale: 0.97 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden">
+            <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+
+            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 bg-slate-50 flex items-start justify-between shrink-0">
+              <div className="min-w-0">
+                <h3 id={headingId} className="text-lg sm:text-xl font-bold text-slate-800 leading-tight">
+                  Звіт по події
+                </h3>
+                <p className="text-sm text-slate-500 mt-0.5 truncate">{schoolName}</p>
+                {eventDate && <p className="text-xs text-slate-400 mt-0.5">{formatDate(eventDate)}</p>}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {autoSaveState === "saving" && (
+                  <span className="text-xs text-slate-400">Збереження…</span>
+                )}
+                {autoSaveState === "saved" && (
+                  <span className="text-xs text-emerald-600">Збережено</span>
+                )}
+                {report && <ReportStatusBadge status={report.status} />}
+                <button ref={closeRef} onClick={onClose} aria-label="Закрити"
+                  className="text-slate-400 hover:text-slate-600 text-lg leading-none p-2 -mr-2">✕</button>
+              </div>
+            </div>
+
+            <div className="p-4 sm:p-6 overflow-y-auto bg-slate-50/50">
+              {report?.revisionComment && (
+                <div className="mb-4 p-3 bg-rose-50 border border-rose-100 rounded-xl text-sm text-rose-700">
+                  <p className="font-semibold mb-1">Коментар менеджера:</p>
+                  <p>{report.revisionComment}</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+                  <CardHeader icon={
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                      <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                    </svg>
+                  } color="bg-violet-50 text-violet-600" title="Охоплення та Проведення" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                    <Row label="Оголошення зроблено">
+                      <TogglePill value={form.announcementDone} onChange={(v) => setForm({ ...form, announcementDone: v })} disabled={!isEditable} />
+                    </Row>
+                    <Row label="Матеріал показано">
+                      <TogglePill value={form.materialShown} onChange={(v) => setForm({ ...form, materialShown: v })} disabled={!isEditable} />
+                    </Row>
+                    <Row label="Кількість дітей">
+                      <NumberField value={form.childrenCount} onChange={(v) => setForm({ ...form, childrenCount: v })} suffix="дітей" disabled={!isEditable} />
+                    </Row>
+                    <Row label="Класів">
+                      <NumberField value={form.classesCount} onChange={(v) => setForm({ ...form, classesCount: v })} suffix="кл." disabled={!isEditable} />
+                    </Row>
+                    <Row label="Пільгових дітей">
+                      <NumberField value={form.privilegedCount} onChange={(v) => setForm({ ...form, privilegedCount: v })} disabled={!isEditable} />
+                    </Row>
+                    <Row label="Кількість показів">
+                      <NumberField value={form.showingsCount} onChange={(v) => setForm({ ...form, showingsCount: v })} disabled={!isEditable} />
+                    </Row>
+                    <Row label="Директор задоволений">
+                      <TogglePill value={form.directorSatisfied} onChange={(v) => setForm({ ...form, directorSatisfied: v })} disabled={!isEditable} />
+                    </Row>
+                    <Row label="Вчителі задоволені">
+                      <TogglePill value={form.teachersSatisfied} onChange={(v) => setForm({ ...form, teachersSatisfied: v })} disabled={!isEditable} />
+                    </Row>
+                    <Row label="Були проблеми">
+                      <TogglePill value={form.hadIssues} onChange={(v) => setForm({ ...form, hadIssues: v })} disabled={!isEditable} />
+                    </Row>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+                  <CardHeader icon={
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                      <path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1" />
+                      <path d="M16 12h6v4h-6a2 2 0 1 1 0-4z" />
+                    </svg>
+                  } color="bg-amber-50 text-amber-600" title="Фінансовий результат" />
+                  <div className="flex items-center justify-between py-2 border-b border-slate-50">
+                    <span className="text-sm text-slate-500 font-medium">Загальна виручка</span>
+                    <span className="inline-flex items-center gap-1">
+                      <input type="number" min={0} value={form.totalSum || ""} disabled={!isEditable}
+                        onChange={(e) => setForm({ ...form, totalSum: +e.target.value })}
+                        className={`w-28 text-right bg-transparent outline-none font-bold text-lg text-slate-800 focus:bg-blue-50 rounded px-1 ${!isEditable ? "opacity-60" : ""}`}
+                        placeholder="0" />
+                      <span className="text-slate-400 text-sm">грн</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-2 border-b border-slate-50">
+                    <span className="text-sm text-slate-500">Відсоток закладу</span>
+                    <NumberField value={form.schoolPercentage} onChange={(v) => setForm({ ...form, schoolPercentage: v })} suffix="%" disabled={!isEditable} />
+                  </div>
+                  <Row label={`Сума закладу (${form.schoolPercentage}%)`}>
+                    <span>{formatMoney(schoolSum)} грн</span>
+                  </Row>
+                  <div className="py-3 border-b border-slate-50">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-slate-500">Додаткові витрати</span>
+                      <span className="text-sm font-medium text-rose-500">−{formatMoney(totalExpenses)} грн</span>
+                    </div>
+                    {expenses.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {expenses.map((exp, i) => (
+                          <span key={i} className="inline-flex items-center gap-1.5 bg-slate-100 rounded-full pl-3 pr-1.5 py-1 text-xs">
+                            <span className="text-slate-600">{exp.name}</span>
+                            <span className="font-semibold text-slate-700">{formatMoney(exp.amount)} грн</span>
+                            {isEditable && (
+                              <button onClick={() => removeExpense(i)} className="text-slate-400 hover:text-rose-500 w-4 h-4 rounded-full flex items-center justify-center hover:bg-white">✕</button>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {isEditable && (
+                      <div className="flex gap-2 mt-2">
+                        <input placeholder="Назва витрати" value={newExp.name}
+                          onChange={(e) => setNewExp({ ...newExp, name: e.target.value })}
+                          className="flex-1 min-w-0 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                        <input type="number" min={0} placeholder="грн" value={newExp.amount}
+                          onChange={(e) => setNewExp({ ...newExp, amount: e.target.value })}
+                          className="w-20 sm:w-24 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                        <button onClick={addExpense} type="button"
+                          className="px-3 shrink-0 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium text-sm">+</button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between bg-emerald-50 rounded-xl px-4 py-3 mt-3">
+                    <span className="text-sm font-semibold text-emerald-700">Залишок ({100 - form.schoolPercentage}%)</span>
+                    <span className="text-lg font-bold text-emerald-700">{formatMoney(remainder)} грн</span>
+                  </div>
+                </div>
+
+                {crewMembers.length > 0 && (
+                  <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+                    <CardHeader icon={
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                        <circle cx="12" cy="8" r="6" /><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+                      </svg>
+                    } color="bg-blue-50 text-blue-600" title="Заробітня плата" />
+                    <div className="space-y-1">
+                      {crewMembers.map((m) => (
+                        <Row key={m.id} label={`${m.name} (${m.role})`}>
+                          <span className="inline-flex items-center gap-1">
+                            <input type="number" min={0} value={salaries[m.id] || ""} disabled={!isEditable}
+                              onChange={(e) => setSalaries((prev) => ({ ...prev, [m.id]: +e.target.value }))}
+                              className={`w-24 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1 ${!isEditable ? "opacity-60" : ""}`}
+                              placeholder="0" />
+                            <span className="text-slate-400 text-xs">грн</span>
+                          </span>
+                        </Row>
+                      ))}
+                    </div>
+                    {crewMembers.some((m) => salaries[m.id] > 0) && (
+                      <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
+                        <span className="text-sm font-semibold text-slate-500">Разом ЗП</span>
+                        <span className="font-bold text-blue-600">{formatMoney(crewMembers.reduce((s, m) => s + (salaries[m.id] || 0), 0))} грн</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {inventoryItems && inventoryItems.length > 0 && (
+                  <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+                    <CardHeader icon={
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                        <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                      </svg>
+                    } color="bg-teal-50 text-teal-600" title="Витрата матеріалів" />
+                    <div className="space-y-2">
+                      {inventoryItems.map((item) => (
+                        <div key={item.id} className="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-slate-700">{item.name}</span>
+                            <span className="text-xs text-slate-400">({item.unit})</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-slate-400">
+                              {item.currentStock} {item.unit}
+                            </span>
+                            <input
+                              type="number"
+                              min={0}
+                              max={item.currentStock}
+                              value={inventoryUsages[item.id] || ""}
+                              disabled={!isEditable}
+                              onChange={(e) =>
+                                setInventoryUsages((prev) => ({
+                                  ...prev,
+                                  [item.id]: +e.target.value,
+                                }))
+                              }
+                              className={`w-16 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1 ${!isEditable ? "opacity-60" : ""}`}
+                              placeholder="0"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {isEditable && (
+                  <div className="md:col-span-2">
+                    <label className="text-sm text-slate-500 block mb-1">Коментар</label>
+                    <textarea value={form.comment}
+                      onChange={(e) => setForm({ ...form, comment: e.target.value })}
+                      rows={3} disabled={!isEditable}
+                      className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                      placeholder="Додаткові коментарі..." />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-white shrink-0">
+              <button onClick={onClose}
+                className="flex-1 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium py-3">
+                {isEditable ? "Скасувати" : "Закрити"}
+              </button>
+              {isEditable && (
+                <>
+                  <button onClick={handleSaveDraft} disabled={submitLoading}
+                    className="flex-1 bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 rounded-xl font-medium py-3 disabled:opacity-50">
+                    {report ? "Зберегти чернетку" : "Створити чернетку"}
+                  </button>
+                  <button onClick={handleSubmit} disabled={submitLoading}
+                    className="flex-1 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 py-3 disabled:opacity-50">
+                    {submitLoading ? "..." : "Подати"}
+                  </button>
+                </>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/features/reports/components/ReportStatusBadge.tsx
+
+```
+import type { ReportStatus } from "../../../types";
+
+const LABELS: Record<ReportStatus, string> = {
+  DRAFT: "Чернетка",
+  SUBMITTED: "На перевірці",
+  NEEDS_REVISION: "На доопрацюванні",
+  APPROVED: "Затверджено",
+  REJECTED: "Відхилено",
+  CLOSED: "Закрито",
+};
+
+const COLORS: Record<ReportStatus, string> = {
+  DRAFT: "bg-slate-100 text-slate-600",
+  SUBMITTED: "bg-amber-50 text-amber-700",
+  NEEDS_REVISION: "bg-rose-50 text-rose-600",
+  APPROVED: "bg-emerald-50 text-emerald-700",
+  REJECTED: "bg-red-50 text-red-600",
+  CLOSED: "bg-slate-200 text-slate-500",
+};
+
+export default function ReportStatusBadge({
+  status,
+  className = "",
+}: {
+  status: ReportStatus;
+  className?: string;
+}) {
+  return (
+    <span
+      className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${COLORS[status] ?? "bg-slate-100 text-slate-600"} ${className}`}
+    >
+      {LABELS[status] ?? status}
+    </span>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/features/reports/pages/ReportsReviewPage.tsx
+
+```
+import { useState } from "react";
+import { useSubmittedReports, useApproveReport, useRequestRevision, useRejectReport } from "../../../hooks/useReports";
+import ReportStatusBadge from "../components/ReportStatusBadge";
+import type { ExpenseItem, SalaryRecord } from "../../../types";
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("uk-UA", {
+    day: "2-digit", month: "long", year: "numeric",
+  });
+}
+
+function fmt(n: number) {
+  return new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+}
+
+export default function ReportsReviewPage() {
+  const { data: reports = [], isLoading } = useSubmittedReports();
+  const approveMutation = useApproveReport();
+  const revisionMutation = useRequestRevision();
+  const rejectMutation = useRejectReport();
+
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [comment, setComment] = useState("");
+  const [actionTarget, setActionTarget] = useState<{ id: string; action: "revision" | "reject" } | null>(null);
+
+  const handleApprove = (id: string) => {
+    approveMutation.mutate(id);
+  };
+
+  const handleRequestRevision = (id: string) => {
+    if (!comment.trim()) return;
+    revisionMutation.mutate({ id, comment: comment.trim() });
+    setComment("");
+    setActionTarget(null);
+  };
+
+  const handleReject = (id: string) => {
+    if (!comment.trim()) return;
+    rejectMutation.mutate({ id, comment: comment.trim() });
+    setComment("");
+    setActionTarget(null);
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedId(expandedId === id ? null : id);
+    setActionTarget(null);
+    setComment("");
+  };
+
+  return (
+    <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
+      <div className="mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Перевірка звітів</h1>
+        <p className="text-sm text-slate-500 mt-1">
+          {reports.length > 0
+            ? `${reports.length} звітів очікують перевірки`
+            : "Немає звітів, що очікують перевірки"}
+        </p>
+      </div>
+
+      {isLoading && (
+        <div className="text-center text-slate-400 py-16">Завантаження...</div>
+      )}
+
+      {!isLoading && reports.length === 0 && (
+        <div className="bg-white border border-slate-100 rounded-xl p-10 text-center text-slate-400">
+          Усі звіти перевірено
+        </div>
+      )}
+
+      {!isLoading && reports.length > 0 && (
+        <div className="space-y-4">
+          {reports.map((r) => {
+            const ev = (r as Record<string, unknown>).event as Record<string, unknown> | undefined;
+            const school = (ev?.school ?? {}) as Record<string, unknown>;
+            const city = (ev?.city ?? {}) as Record<string, unknown>;
+            const crew = (ev?.crew ?? {}) as Record<string, unknown>;
+            const isExpanded = expandedId === r.id;
+            const totalExpenses = (r.expenseItems ?? []).reduce((s: number, e: ExpenseItem) => s + e.amount, 0);
+
+            return (
+              <div key={r.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <button onClick={() => toggleExpand(r.id)} className="w-full text-left p-4 sm:p-5 hover:bg-slate-50 transition flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-slate-800">{school.name ?? "—"}</span>
+                      <span className="text-xs text-slate-400">· {city.name ?? "—"}</span>
+                      <span className="text-xs text-slate-400">· {school.type ?? ""}</span>
+                    </div>
+                    <div className="text-sm text-slate-500 mt-1">
+                      {ev.project ?? ""} · {ev.date ? formatDate(ev.date) : ""}
+                    </div>
+                    <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
+                      <span>Хост: {crew?.host?.name ?? "—"}</span>
+                      <span>Водій: {crew?.driver?.name ?? "—"}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <ReportStatusBadge status={r.status} />
+                    <span className={`transform transition-transform ${isExpanded ? "rotate-180" : ""}`}>▾</span>
+                  </div>
+                </button>
+
+                {isExpanded && (
+                  <div className="px-4 sm:px-5 pb-4 sm:pb-5 border-t border-slate-100 pt-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                      <div className="bg-slate-50 rounded-xl p-4">
+                        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Результати</h4>
+                        <div className="space-y-1.5 text-sm">
+                          <div className="flex justify-between"><span className="text-slate-500">Дітей:</span><span className="font-medium">{r.childrenCount}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">Класів:</span><span className="font-medium">{r.classesCount}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">Пільговиків:</span><span className="font-medium">{r.privilegedCount}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">Сеансів:</span><span className="font-medium">{r.showingsCount}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">Рейтинг:</span><span className="font-bold text-amber-600">{r.rating}/10</span></div>
+                        </div>
+                      </div>
+                      <div className="bg-slate-50 rounded-xl p-4">
+                        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Фінанси</h4>
+                        <div className="space-y-1.5 text-sm">
+                          <div className="flex justify-between"><span className="text-slate-500">Виручка:</span><span className="font-bold">{fmt(r.totalSum)} грн</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500">Закладу:</span><span className="text-rose-600">−{fmt(r.schoolSum)} грн</span></div>
+                          {totalExpenses > 0 && (
+                            <div className="flex justify-between"><span className="text-slate-500">Витрати:</span><span className="text-rose-600">−{fmt(totalExpenses)} грн</span></div>
+                          )}
+                          <div className="flex justify-between pt-1 border-t border-slate-200"><span className="font-semibold text-slate-700">Чистий прибуток:</span><span className="font-bold text-emerald-600">{fmt(r.remainderSum)} грн</span></div>
+                        </div>
+                        {(r.salaryRecords ?? []).length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-slate-200">
+                            <h5 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Зарплати</h5>
+                            {r.salaryRecords.map((s: SalaryRecord, i: number) => (
+                              <div key={i} className="flex justify-between text-xs"><span>{s.employee?.name ?? "—"}</span><span className="text-blue-600">{fmt(s.amount)} грн</span></div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {r.comment && (
+                      <div className="mb-4 p-3 bg-slate-50 rounded-xl text-sm text-slate-600 italic">
+                        {r.comment}
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap gap-2">
+                      <button onClick={() => handleApprove(r.id)} disabled={approveMutation.isPending}
+                        className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 disabled:opacity-50 transition">
+                        Затвердити
+                      </button>
+
+                      {actionTarget?.id === r.id && actionTarget.action === "revision" ? (
+                        <div className="w-full flex gap-2 items-start mt-2">
+                          <textarea value={comment} onChange={(e) => setComment(e.target.value)}
+                            rows={2} placeholder="Обов'язково вкажіть, що потрібно виправити"
+                            className="flex-1 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none resize-none" />
+                          <button onClick={() => handleRequestRevision(r.id)} disabled={!comment.trim() || revisionMutation.isPending}
+                            className="px-4 py-2 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 disabled:opacity-50 text-sm shrink-0">
+                            Відправити
+                          </button>
+                          <button onClick={() => { setActionTarget(null); setComment(""); }}
+                            className="px-3 py-2 text-slate-500 hover:text-slate-700 text-sm">✕</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => { setActionTarget({ id: r.id, action: "revision" }); setComment(""); }}
+                          className="px-5 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl font-medium hover:bg-amber-100 transition">
+                          На доопрацювання
+                        </button>
+                      )}
+
+                      {actionTarget?.id === r.id && actionTarget.action === "reject" ? (
+                        <div className="w-full flex gap-2 items-start mt-2">
+                          <textarea value={comment} onChange={(e) => setComment(e.target.value)}
+                            rows={2} placeholder="Обов'язково вкажіть причину відхилення"
+                            className="flex-1 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none resize-none" />
+                          <button onClick={() => handleReject(r.id)} disabled={!comment.trim() || rejectMutation.isPending}
+                            className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 text-sm shrink-0">
+                            Відхилити
+                          </button>
+                          <button onClick={() => { setActionTarget(null); setComment(""); }}
+                            className="px-3 py-2 text-slate-500 hover:text-slate-700 text-sm">✕</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => { setActionTarget({ id: r.id, action: "reject" }); setComment(""); }}
+                          className="px-5 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-xl font-medium hover:bg-red-100 transition">
+                          Відхилити
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/features/salary/components/SalaryStatusBadge.tsx
+
+```
+import type { SalaryStatus } from "../../../types";
+
+const config: Record<SalaryStatus, { bg: string; text: string; label: string }> = {
+  PENDING: { bg: "bg-amber-100", text: "text-amber-700", label: "Очікує" },
+  PAID: { bg: "bg-emerald-100", text: "text-emerald-700", label: "Виплачено" },
+  CANCELLED: { bg: "bg-slate-100", text: "text-slate-500", label: "Скасовано" },
+};
+
+export default function SalaryStatusBadge({ status }: { status: SalaryStatus }) {
+  const c = config[status] ?? config.PENDING;
+  return (
+    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${c.bg} ${c.text}`}>
+      {c.label}
+    </span>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/features/salary/pages/Company.tsx
+
+```
+import { useState, lazy, Suspense } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../../../config/api";
+import { useSelectedCity } from "../../../context/CityContext";
+import type { FinanceDashboardData } from "../../../types";
+
+const FinanceCharts = lazy(() => import("../../../components/finance/FinanceCharts"));
+
+function FinanceSkeleton() {
+  return (
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen flex flex-col gap-4 animate-pulse">
+      <div className="h-8 bg-slate-200 rounded-xl w-48" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-24 bg-white rounded-2xl border border-slate-100" />
+        ))}
+      </div>
+      <div className="h-64 bg-white rounded-2xl border border-slate-100" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="h-48 bg-white rounded-2xl border border-slate-100" />
+        <div className="h-48 bg-white rounded-2xl border border-slate-100" />
+      </div>
+    </div>
+  );
+}
+
+export default function Company() {
+  const { selectedCity } = useSelectedCity();
+  const [period, setPeriod] = useState("year");
+  const [projectFilter, setProjectFilter] = useState("");
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["finance", selectedCity.id, period, projectFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (period) params.set("period", period);
+      if (selectedCity?.id) params.set("cityId", selectedCity.id);
+      if (projectFilter) params.set("project", projectFilter);
+      const res = await api.get(`/finance/dashboard?${params}`);
+      return res.data as FinanceDashboardData;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  if (isLoading || !data) return <FinanceSkeleton />;
+
+  return (
+    <Suspense fallback={<FinanceSkeleton />}>
+      <FinanceCharts
+        data={data}
+        period={period}
+        setPeriod={setPeriod}
+        projectFilter={projectFilter}
+        setProjectFilter={setProjectFilter}
+        selectedCity={selectedCity}
+      />
+    </Suspense>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/features/salary/pages/MySalary.tsx
+
+```
+import { useMySalary } from "../../../hooks/useSalary";
+import { useAuth } from "../../../context/AuthContext";
+import { useSelectedCity } from "../../../context/CityContext";
+import SalaryStatusBadge from "../components/SalaryStatusBadge";
+
+const fmt = (n: number) => new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+
+export default function MySalary() {
+  const { user } = useAuth();
+  const { selectedCity } = useSelectedCity();
+  const { data: records = [], isLoading } = useMySalary(
+    user?.role === "MANAGER" || user?.role === "SUPERADMIN" ? undefined : selectedCity.id,
+  );
+
+  if (isLoading) {
+    return (
+      <div className="p-4 space-y-3 animate-pulse">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-20 bg-white rounded-2xl border border-slate-100" />
+        ))}
+      </div>
+    );
+  }
+
+  if (records.length === 0) {
+    return (
+      <div className="p-4">
+        <div className="bg-white border border-slate-100 rounded-xl p-10 text-center text-slate-400">
+          Ще немає нарахувань
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 space-y-3">
+      {records.map((r) => (
+        <div key={r.id} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold text-slate-800">{r.event?.project ?? "—"}</span>
+            <SalaryStatusBadge status={r.status} />
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-slate-500">{r.event?.date ? new Date(r.event.date).toLocaleDateString("uk-UA") : "—"}</span>
+            <span className="font-bold text-blue-600">{fmt(r.amount)} грн</span>
+          </div>
+          {r.comment && <p className="text-xs text-slate-400 mt-1">{r.comment}</p>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/features/salary/pages/TeamSalaries.tsx
+
+```
+import { useAllSalary, useMarkPaid } from "../../../hooks/useSalary";
+import { useSelectedCity } from "../../../context/CityContext";
+import SalaryStatusBadge from "../components/SalaryStatusBadge";
+
+const fmt = (n: number) => new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+
+export default function TeamSalaries() {
+  const { selectedCity } = useSelectedCity();
+  const { data: records = [], isLoading } = useAllSalary(selectedCity.id);
+  const markPaidMutation = useMarkPaid();
+
+  if (isLoading) {
+    return (
+      <div className="p-4 space-y-3 animate-pulse">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-24 bg-white rounded-2xl border border-slate-100" />
+        ))}
+      </div>
+    );
+  }
+
+  if (records.length === 0) {
+    return (
+      <div className="p-4">
+        <div className="bg-white border border-slate-100 rounded-xl p-10 text-center text-slate-400">
+          Немає нарахувань для цього міста
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 space-y-3">
+      {records.map((r) => (
+        <div key={r.id} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold text-slate-800">{r.employee?.name ?? "—"}</span>
+            <SalaryStatusBadge status={r.status} />
+          </div>
+          <div className="flex items-center justify-between text-sm mb-2">
+            <span className="text-slate-500">{r.event?.project ?? "—"} · {r.event?.date ? new Date(r.event.date).toLocaleDateString("uk-UA") : "—"}</span>
+            <span className="font-bold text-blue-600">{fmt(r.amount)} грн</span>
+          </div>
+          {r.comment && <p className="text-xs text-slate-400 mb-2">{r.comment}</p>}
+          {r.status === "PENDING" && (
+            <button
+              onClick={() => markPaidMutation.mutate(r.id)}
+              disabled={markPaidMutation.isPending}
+              className="w-full mt-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition"
+            >
+              Позначити виплаченим
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/hooks/useAnalytics.ts
+
+```
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../config/api";
+
+export interface MonthlyRevenue {
+  month: string;
+  revenue: number;
+  profit: number;
+  events: number;
+}
+
+export interface CityEvents {
+  cityId: string;
+  cityName: string;
+  events: number;
+}
+
+export interface CityProfit {
+  cityId: string;
+  cityName: string;
+  revenue: number;
+  profit: number;
+  expenses: number;
+  count: number;
+}
+
+export interface SalaryFund {
+  total: number;
+  month: number;
+  year: number;
+  byCity?: Record<string, number>;
+}
+
+export interface Roi {
+  totalRevenue: number;
+  totalExpenses: number;
+  salaryExpenses: number;
+  profit: number;
+  roi: number;
+}
+
+export function useRevenueByMonth(params?: { cityId?: string; projectId?: string; year?: number }) {
+  return useQuery({
+    queryKey: ["analytics", "revenue-by-month", params],
+    queryFn: () => api.get<MonthlyRevenue[]>("/analytics/revenue-by-month", { params }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useEventsByCity(params?: { year?: number }) {
+  return useQuery({
+    queryKey: ["analytics", "events-by-city", params],
+    queryFn: () => api.get<CityEvents[]>("/analytics/events-by-city", { params }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useProfitByCity(params?: { cityId?: string; year?: number }) {
+  return useQuery({
+    queryKey: ["analytics", "profit-by-city", params],
+    queryFn: () => api.get<CityProfit[]>("/analytics/profit-by-city", { params }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSalaryFund(params?: { month?: number; year?: number; cityId?: string }) {
+  return useQuery({
+    queryKey: ["analytics", "salary-fund", params],
+    queryFn: () => api.get<SalaryFund>("/analytics/salary-fund", { params }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useRoi(params?: { cityId?: string; year?: number }) {
+  return useQuery({
+    queryKey: ["analytics", "roi", params],
+    queryFn: () => api.get<Roi>("/analytics/roi", { params }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+```
+
+# FILE: apps/frontend/src/hooks/useApi.ts
+
+```
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  useInfiniteQuery,
+} from "@tanstack/react-query";
+import { api } from "../config/api";
+import type { City, School } from "../types";
+
+export function useAddCity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) =>
+      api.post<City>("/cities", { name }).then((r) => r.data),
+    onSuccess: (newCity) => {
+      qc.setQueryData(["cities"], (old: City[] = []) => [newCity, ...old]);
+    },
+  });
+}
+
+export interface SchoolFilters {
+  search?: string;
+  cityId?: string;
+  type?: "Школа" | "Садочок";
+  stage?: "new" | "planned" | "inProgress" | "done";
+  size?: "small" | "medium" | "large";
+}
+
+interface SchoolsPage {
+  data: School[];
+  meta: {
+    totalItems: number;
+    page: number;
+    take: number;
+    pageCount: number;
+    hasNextPage: boolean;
+  };
+}
+
+export function useSchools(filters: SchoolFilters = {}) {
+  return useInfiniteQuery({
+    queryKey: ["schools", filters],
+    queryFn: ({ pageParam = 1 }) =>
+      api
+        .get<SchoolsPage>("/schools", {
+          params: { ...filters, page: pageParam, take: 30 },
+        })
+        .then((r) => r.data),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.hasNextPage ? lastPage.meta.page + 1 : undefined,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSchoolStats(
+  filters: Pick<SchoolFilters, "cityId" | "type" | "stage"> = {},
+) {
+  return useQuery({
+    queryKey: ["schoolStats", filters],
+    queryFn: () =>
+      api
+        .get("/schools/stats", { params: filters })
+        .then((r) => r.data),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useSupportedCities() {
+  return useQuery({
+    queryKey: ["supportedCities"],
+    queryFn: () =>
+      api
+        .get<string[]>("/schools/supported-cities")
+        .then((r) => r.data),
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
+export function useAddSchool() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<School>) =>
+      api
+        .post<School>("/schools", data)
+        .then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["schools"] });
+      qc.invalidateQueries({ queryKey: ["schoolStats"] });
+    },
+  });
+}
+
+export function useDeleteSchool() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (schoolId: string) =>
+      api.delete(`/schools/${schoolId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["schools"] });
+      qc.invalidateQueries({ queryKey: ["schoolStats"] });
+    },
+  });
+}
+
+export function useEvents() {
+  return useQuery({
+    queryKey: ["events"],
+    queryFn: () => api.get("/events").then((r) => r.data),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function usePrefetchSchool() {
+  const qc = useQueryClient();
+  return (schoolId: string) => {
+    qc.prefetchQuery({
+      queryKey: ["school", schoolId],
+      queryFn: () =>
+        api
+          .get<School>(`/schools/${schoolId}`)
+          .then((r) => r.data),
+      staleTime: 2 * 60 * 1000,
+    });
+  };
+}
+
+```
+
+# FILE: apps/frontend/src/hooks/useAuditLog.ts
+
+```
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../config/api";
+
+export interface AuditLogEntry {
+  id: string;
+  userId: string | null;
+  userName: string | null;
+  action: string;
+  entity: string | null;
+  entityId: string | null;
+  ip: string | null;
+  createdAt: string;
+}
+
+export function useAuditLog(filters: { userId?: string; entity?: string; dateFrom?: string; dateTo?: string; page?: number }) {
+  return useQuery({
+    queryKey: ["audit-log", filters],
+    queryFn: () => api.get<{ items: AuditLogEntry[]; meta: { totalItems: number; page: number; pageCount: number; hasNextPage: boolean } }>("/audit-log", { params: filters }).then(r => r.data),
+    staleTime: 10 * 1000,
+  });
+}
+
+export function useAuditLogEntities() {
+  return useQuery({
+    queryKey: ["audit-log", "entities"],
+    queryFn: () => api.get<string[]>("/audit-log/entities").then(r => r.data),
+    staleTime: 60 * 1000,
+  });
+}
+
+```
+
+# FILE: apps/frontend/src/hooks/useCalendar.ts
+
+```
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../config/api";
+import type { Event, Project } from "../types";
+
+export function useCalendarEvents() {
+  return useQuery<Event[]>({
+    queryKey: ["calendarEvents"],
+    queryFn: () =>
+      api.get<{ data: Event[] }>("/events").then((r) => r.data.data),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useCalendarProjects() {
+  return useQuery<Project[]>({
+    queryKey: ["projects"],
+    queryFn: () =>
+      api.get<{ data: Project[] }>("/projects").then((r) => r.data.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+```
+
 # FILE: apps/frontend/src/hooks/useCities.ts
 
 ```
@@ -85,6 +2401,34 @@ export function useDeleteCrew(cityId: string | undefined) {
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData<CityProfile>(["city", cityId], ctx.prev);
     },
+  });
+}
+
+```
+
+# FILE: apps/frontend/src/hooks/useDashboardData.ts
+
+```
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../config/api";
+import type { FinanceDashboardData } from "../types";
+import { useSelectedCity } from "../context/CityContext";
+
+export function useFinanceDashboard(period = "month") {
+  const { selectedCity } = useSelectedCity();
+
+  return useQuery<FinanceDashboardData>({
+    queryKey: ["finance", "dashboard", period, selectedCity.id],
+    queryFn: () =>
+      api
+        .get<FinanceDashboardData>("/finance/dashboard", {
+          params: {
+            period,
+            cityId: selectedCity.id || undefined,
+          },
+        })
+        .then((r) => r.data),
+    staleTime: 60 * 1000,
   });
 }
 
@@ -329,6 +2673,358 @@ export function useDeleteProject() {
       qc.setQueryData(["projects"], (old: Project[] | undefined) =>
         Array.isArray(old) ? old.filter((p) => p.id !== id) : old,
       );
+    },
+  });
+}
+
+```
+
+# FILE: apps/frontend/src/hooks/useInventory.ts
+
+```
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "../config/api";
+
+export interface InventoryItem {
+  id: string;
+  name: string;
+  sku: string | null;
+  unit: string;
+  minStock: number;
+  currentStock: number;
+}
+
+export function useInventory() {
+  return useQuery({
+    queryKey: ["inventory"],
+    queryFn: () => api.get<InventoryItem[]>("/inventory").then(r => r.data),
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useAddStock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, quantity }: { id: string; quantity: number }) =>
+      api.post(`/inventory/${id}/add-stock`, { quantity }).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["inventory"] }),
+  });
+}
+
+```
+
+# FILE: apps/frontend/src/hooks/useNotifications.ts
+
+```
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "../config/api";
+
+export interface NotificationItem {
+  id: string;
+  userId: string;
+  type: string;
+  payload: Record<string, unknown>;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export function useNotifications(page = 1) {
+  return useQuery({
+    queryKey: ["notifications", page],
+    queryFn: () => api.get<{ items: NotificationItem[]; total: number; page: number; pageCount: number }>("/notifications", { params: { page } }).then(r => r.data),
+    refetchInterval: 30000,
+    staleTime: 10 * 1000,
+  });
+}
+
+export function useUnreadCount() {
+  return useQuery({
+    queryKey: ["notifications", "unread-count"],
+    queryFn: () => api.get<{ count: number }>("/notifications/unread-count").then(r => r.data),
+    refetchInterval: 30000,
+  });
+}
+
+export function useMarkRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.patch(`/notifications/${id}/read`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["notifications"] }); },
+  });
+}
+
+export function useMarkAllRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.patch("/notifications/read-all"),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["notifications"] }); },
+  });
+}
+
+```
+
+# FILE: apps/frontend/src/hooks/useReports.ts
+
+```
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "../config/api";
+import type { EventReport } from "../types";
+
+export function useReport(eventId: string | undefined) {
+  return useQuery({
+    queryKey: ["report", eventId],
+    queryFn: () =>
+      api
+        .get<EventReport>(`/reports/event/${eventId}`)
+        .then((r) => r.data),
+    enabled: !!eventId,
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useSubmittedReports() {
+  return useQuery({
+    queryKey: ["reports", "submitted"],
+    queryFn: () =>
+      api.get<EventReport[]>("/reports/submitted").then((r) => r.data),
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useCreateReport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: {
+      eventId: string;
+      announcementDone?: boolean;
+      materialShown?: boolean;
+      childrenCount?: number;
+      classesCount?: number;
+      privilegedCount?: number;
+      showingsCount?: number;
+      totalSum?: number;
+      schoolSum?: number;
+      remainderSum?: number;
+      rating?: number;
+      directorSatisfied?: boolean;
+      teachersSatisfied?: boolean;
+      hadIssues?: boolean;
+      comment?: string;
+    }) => api.post<EventReport>("/reports", dto).then((r) => r.data),
+    onSuccess: (data) => {
+      qc.setQueryData(["report", data.eventId], data);
+      qc.invalidateQueries({ queryKey: ["eventFull", data.eventId] });
+    },
+  });
+}
+
+export function useUpdateReport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...dto
+    }: {
+      id: string;
+      announcementDone?: boolean;
+      materialShown?: boolean;
+      childrenCount?: number;
+      classesCount?: number;
+      privilegedCount?: number;
+      showingsCount?: number;
+      totalSum?: number;
+      schoolSum?: number;
+      remainderSum?: number;
+      rating?: number;
+      directorSatisfied?: boolean;
+      teachersSatisfied?: boolean;
+      hadIssues?: boolean;
+      comment?: string;
+    }) => api.patch<EventReport>(`/reports/${id}`, dto).then((r) => r.data),
+    onSuccess: (data) => {
+      qc.setQueryData(["report", data.eventId], data);
+      qc.invalidateQueries({ queryKey: ["eventFull", data.eventId] });
+    },
+  });
+}
+
+export function useSubmitReport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.post<EventReport>(`/reports/${id}/submit`).then((r) => r.data),
+    onSuccess: (data) => {
+      qc.setQueryData(["report", data.eventId], data);
+      qc.invalidateQueries({ queryKey: ["eventFull", data.eventId] });
+      qc.invalidateQueries({ queryKey: ["reports", "submitted"] });
+    },
+  });
+}
+
+export function useApproveReport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.post<EventReport>(`/reports/${id}/approve`).then((r) => r.data),
+    onSuccess: (data) => {
+      qc.setQueryData(["report", data.eventId], data);
+      qc.invalidateQueries({ queryKey: ["eventFull", data.eventId] });
+      qc.invalidateQueries({ queryKey: ["reports", "submitted"] });
+    },
+  });
+}
+
+export function useRequestRevision() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, comment }: { id: string; comment: string }) =>
+      api
+        .post<EventReport>(`/reports/${id}/request-revision`, { comment })
+        .then((r) => r.data),
+    onSuccess: (data) => {
+      qc.setQueryData(["report", data.eventId], data);
+      qc.invalidateQueries({ queryKey: ["eventFull", data.eventId] });
+      qc.invalidateQueries({ queryKey: ["reports", "submitted"] });
+    },
+  });
+}
+
+export function useRejectReport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, comment }: { id: string; comment: string }) =>
+      api
+        .post<EventReport>(`/reports/${id}/reject`, { comment })
+        .then((r) => r.data),
+    onSuccess: (data) => {
+      qc.setQueryData(["report", data.eventId], data);
+      qc.invalidateQueries({ queryKey: ["eventFull", data.eventId] });
+      qc.invalidateQueries({ queryKey: ["reports", "submitted"] });
+    },
+  });
+}
+
+```
+
+# FILE: apps/frontend/src/hooks/useSalary.ts
+
+```
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "../config/api";
+import type { SalaryRecord } from "../types";
+
+export function useMySalary(cityId?: string) {
+  return useQuery({
+    queryKey: ["salary", "mine", cityId],
+    queryFn: () =>
+      api
+        .get<SalaryRecord[]>("/salary/mine", { params: { cityId } })
+        .then((r) => r.data),
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useAllSalary(cityId?: string) {
+  return useQuery({
+    queryKey: ["salary", "all", cityId],
+    queryFn: () =>
+      api
+        .get<SalaryRecord[]>("/salary", { params: { cityId } })
+        .then((r) => r.data),
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useCreateSalary() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: {
+      reportId: string;
+      items: { employeeId: string; amount: number; comment?: string }[];
+    }) => api.post("/salary", dto).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["salary"] });
+    },
+  });
+}
+
+export function useMarkPaid() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.patch(`/salary/${id}/mark-paid`).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["salary"] });
+    },
+  });
+}
+
+```
+
+# FILE: apps/frontend/src/hooks/useSchoolComments.ts
+
+```
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "../config/api";
+import type { CommentType } from "../types";
+
+export interface SchoolCommentItem {
+  id: string;
+  schoolId: string;
+  authorId: string;
+  type: CommentType;
+  text: string;
+  createdAt: string;
+  author: { id: string; name: string; role: string };
+}
+
+export function useSchoolComments(schoolId: string, type?: CommentType, page = 1) {
+  return useQuery({
+    queryKey: ["school-comments", schoolId, type, page],
+    queryFn: () =>
+      api
+        .get<{ items: SchoolCommentItem[]; total: number; page: number; pageCount: number }>(
+          `/schools/${schoolId}/comments`,
+          { params: { type, page, take: 20 } },
+        )
+        .then((r) => r.data),
+    enabled: !!schoolId,
+    staleTime: 10 * 1000,
+  });
+}
+
+export function useCreateSchoolComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      schoolId,
+      type,
+      text,
+    }: {
+      schoolId: string;
+      type: CommentType;
+      text: string;
+    }) =>
+      api
+        .post(`/schools/${schoolId}/comments`, { type, text })
+        .then((r) => r.data),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["school-comments", vars.schoolId] });
+    },
+  });
+}
+
+export function useDeleteSchoolComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      schoolId,
+      commentId,
+    }: {
+      schoolId: string;
+      commentId: string;
+    }) => api.delete(`/schools/${schoolId}/comments/${commentId}`).then((r) => r.data),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["school-comments", vars.schoolId] });
     },
   });
 }
@@ -760,11 +3456,523 @@ createRoot(document.getElementById("root")!).render(
 # FILE: apps/frontend/src/pages/Analytics.tsx
 
 ```
-export default function Analytics() {
+import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { useCities } from "../hooks/useCities";
+import {
+  useRevenueByMonth,
+  useEventsByCity,
+  useSalaryFund,
+  useRoi,
+} from "../hooks/useAnalytics";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../config/api";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from "recharts";
+
+const UA_MONTHS = [
+  "Січ", "Лют", "Бер", "Кві", "Трав", "Чер",
+  "Лип", "Сер", "Вер", "Жов", "Лис", "Гру",
+];
+
+function fmtMoney(n: number): string {
+  return new Intl.NumberFormat("uk-UA", {
+    style: "currency",
+    currency: "UAH",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
+const currentYear = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
+function SkeletonCard() {
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-4">Аналітика</h1>
-      <p className="text-muted-foreground">Сторінка в розробці</p>
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 animate-pulse">
+      <div className="h-4 bg-slate-100 rounded-full w-1/3 mb-3" />
+      <div className="h-8 bg-slate-100 rounded w-2/3 mb-2" />
+    </div>
+  );
+}
+
+function ChartSkeleton() {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 animate-pulse">
+      <div className="h-5 bg-slate-100 rounded w-1/4 mb-6" />
+      <div className="h-[280px] bg-slate-50 rounded-xl" />
+    </div>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="h-[280px] flex flex-col items-center justify-center text-slate-300">
+      <span className="text-3xl mb-2">📊</span>
+      <span className="text-sm text-slate-400">{text}</span>
+    </div>
+  );
+}
+
+export default function Analytics() {
+  const { user } = useAuth();
+  const isSuper = user?.role === "SUPERADMIN" || user?.role === "OWNER";
+
+  const [year, setYear] = useState(currentYear);
+  const [cityId, setCityId] = useState<string>("");
+  const [projectId, setProjectId] = useState<string>("");
+
+  const { data: cities } = useCities();
+  const { data: revenueData, isLoading: revenueLoading } = useRevenueByMonth({
+    cityId: cityId || undefined,
+    projectId: projectId || undefined,
+    year,
+  });
+  const { data: eventsByCity, isLoading: eventsLoading } = useEventsByCity({ year });
+  const { data: salaryFund } = useSalaryFund({ year, cityId: cityId || undefined });
+  const { data: roi } = useRoi({ cityId: cityId || undefined, year });
+
+  const totalRevenue = revenueData?.reduce((s, m) => s + m.revenue, 0) ?? 0;
+  const totalProfit = revenueData?.reduce((s, m) => s + m.profit, 0) ?? 0;
+
+  const chartData = (revenueData ?? []).map((m) => ({
+    ...m,
+    label: UA_MONTHS[Number(m.month) - 1] || m.month,
+  }));
+
+  return (
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-800">Аналітика</h1>
+        <p className="text-xs text-slate-400 mt-1">
+          {new Date().toLocaleDateString("uk-UA", {
+            month: "long",
+            year: "numeric",
+          })}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <select
+          value={year}
+          onChange={(e) => setYear(Number(e.target.value))}
+          className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+        >
+          {YEAR_OPTIONS.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+
+        {isSuper && (
+          <select
+            value={cityId}
+            onChange={(e) => setCityId(e.target.value)}
+            className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+          >
+            <option value="">Всі міста</option>
+            {cities?.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        )}
+
+        <input
+          type="text"
+          placeholder="Проєкт (фільтр)"
+          value={projectId}
+          onChange={(e) => setProjectId(e.target.value)}
+          className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 w-48"
+        />
+      </div>
+
+      {revenueLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <KPICard label="Загальний дохід" value={fmtMoney(totalRevenue)} color="text-blue-700" bg="bg-blue-50" />
+          <KPICard label="Прибуток" value={fmtMoney(totalProfit)} color="text-emerald-700" bg="bg-emerald-50" />
+          <KPICard label="ROI" value={roi ? `${roi.roi}%` : "—"} color="text-purple-700" bg="bg-purple-50" />
+          <KPICard label="Витрати на ЗП" value={fmtMoney(salaryFund?.total ?? 0)} color="text-rose-700" bg="bg-rose-50" />
+        </div>
+      )}
+
+      {revenueLoading ? (
+        <ChartSkeleton />
+      ) : (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 mb-6">
+          <h3 className="font-bold text-slate-800 mb-4">Дохід по місяцях</h3>
+          {chartData.length === 0 ? (
+            <EmptyState text="Немає даних за цей період" />
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} width={50} tickFormatter={(v: number) => v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`} />
+                <Tooltip
+                  formatter={(v: number) => [fmtMoney(v), ""]}
+                  contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
+                />
+                <Line type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={2} dot={{ r: 3, fill: "#2563eb" }} name="Дохід" />
+                <Line type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: "#10b981" }} name="Прибуток" />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      )}
+
+      {isSuper && (
+        eventsLoading ? (
+          <ChartSkeleton />
+        ) : (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+            <h3 className="font-bold text-slate-800 mb-4">Події по містах</h3>
+            {!eventsByCity || eventsByCity.length === 0 ? (
+              <EmptyState text="Немає подій за цей рік" />
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={eventsByCity} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="cityName" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} width={30} allowDecimals={false} />
+                  <Tooltip
+                    formatter={(v: number) => [v, "Подій"]}
+                    contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
+                  />
+                  <Bar dataKey="events" fill="#2563eb" radius={[8, 8, 0, 0]} maxBarSize={48} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        )
+      )}
+      {isSuper && (
+        <div className="mt-6">
+          <h3 className="font-bold text-slate-800 mb-4">KPI — Топ 10</h3>
+          <KpiTables />
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface KpiManager {
+  userId: string;
+  name: string;
+  approvedReports: number;
+}
+
+interface KpiHost {
+  userId: string;
+  name: string;
+  avgRating: number;
+  reportsCount: number;
+}
+
+interface KpiProject {
+  project: string;
+  eventsCount: number;
+  childrenTotal: number;
+  profit: number;
+}
+
+function KpiTables() {
+  const { data: managers } = useQuery<KpiManager[]>({
+    queryKey: ["analytics", "kpi", "managers"],
+    queryFn: () => api.get("/analytics/kpi/managers").then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+  const { data: hosts } = useQuery<KpiHost[]>({
+    queryKey: ["analytics", "kpi", "hosts"],
+    queryFn: () => api.get("/analytics/kpi/hosts").then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+  const { data: projects } = useQuery<KpiProject[]>({
+    queryKey: ["analytics", "kpi", "projects"],
+    queryFn: () => api.get("/analytics/kpi/projects").then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <KpiTable
+        title="Менеджери"
+        headers={["#", "Ім'я", "Затверджено"]}
+        rows={
+          managers?.map((m, i) => [
+            String(i + 1),
+            m.name,
+            String(m.approvedReports),
+          ]) ?? []
+        }
+      />
+      <KpiTable
+        title="Ведучі"
+        headers={["#", "Ім'я", "Рейтинг", "Звітів"]}
+        rows={
+          hosts?.map((h, i) => [
+            String(i + 1),
+            h.name,
+            String(h.avgRating),
+            String(h.reportsCount),
+          ]) ?? []
+        }
+      />
+      <KpiTable
+        title="Проєкти"
+        headers={["#", "Назва", "Подій", "Прибуток"]}
+        rows={
+          projects?.map((p, i) => [
+            String(i + 1),
+            p.project,
+            String(p.eventsCount),
+            fmtMoney(p.profit),
+          ]) ?? []
+        }
+      />
+    </div>
+  );
+}
+
+function KpiTable({
+  title,
+  headers,
+  rows,
+}: {
+  title: string;
+  headers: string[];
+  rows: string[][];
+}) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+      <h4 className="font-semibold text-slate-700 mb-3 text-sm">{title}</h4>
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-slate-400 border-b border-slate-100">
+            {headers.map((h) => (
+              <th key={h} className="text-left pb-2 font-medium">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={headers.length} className="text-center py-6 text-slate-300">
+                Немає даних
+              </td>
+            </tr>
+          ) : (
+            rows.map((row, i) => (
+              <tr key={i} className="border-b border-slate-50 last:border-0">
+                {row.map((cell, j) => (
+                  <td key={j} className={`py-2 ${j === 0 ? "text-slate-400 w-6" : "text-slate-700"}`}>
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function KPICard({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+      <p className={`text-xs font-medium ${color} mb-3`}>{label}</p>
+      <p className={`text-2xl font-bold leading-none ${color}`}>{value}</p>
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/pages/AuditLog.tsx
+
+```
+import { useState } from "react";
+import { useAuditLog, useAuditLogEntities } from "../hooks/useAuditLog";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
+export default function AuditLog() {
+  const [userId, setUserId] = useState("");
+  const [entity, setEntity] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [page, setPage] = useState(1);
+
+  const filters: Record<string, string | number | undefined> = {};
+  if (userId) filters.userId = userId;
+  if (entity) filters.entity = entity;
+  if (dateFrom) filters.dateFrom = dateFrom;
+  if (dateTo) filters.dateTo = dateTo;
+  filters.page = page;
+
+  const { data, isLoading } = useAuditLog(filters);
+  const { data: entityTypes } = useAuditLogEntities();
+
+  const items = data?.items ?? [];
+  const meta = data?.meta;
+
+  const handleFilter = () => {
+    setPage(1);
+  };
+
+  return (
+    <div className="p-4 md:p-8 space-y-6">
+      <h1 className="text-2xl font-bold">Журнал дій</h1>
+
+      <div className="bg-white rounded-xl shadow-sm border p-4 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Користувач (ID)
+            </label>
+            <input
+              type="text"
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+              placeholder="ID користувача"
+              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Сутність
+            </label>
+            <select
+              value={entity}
+              onChange={(e) => setEntity(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Всі</option>
+              {entityTypes?.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Від
+            </label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              До
+            </label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            onClick={handleFilter}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+          >
+            Застосувати
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-gray-50">
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Час</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Користувач</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Дія</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Сутність</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">ID</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                    Завантаження...
+                  </td>
+                </tr>
+              ) : items.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                    Немає записів
+                  </td>
+                </tr>
+              ) : (
+                items.map((entry) => (
+                  <tr key={entry.id} className="border-b last:border-b-0 hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                      {new Date(entry.createdAt).toLocaleString("uk-UA")}
+                    </td>
+                    <td className="px-4 py-3">
+                      {entry.userName ?? entry.userId ?? <span className="text-gray-400">—</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-block px-2 py-0.5 bg-gray-100 rounded text-xs font-medium">
+                        {entry.action}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">{entry.entity ?? "—"}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs font-mono">{entry.entityId ?? "—"}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {meta && meta.pageCount > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50">
+            <span className="text-sm text-gray-600">
+              Сторінка {meta.page} з {meta.pageCount} ({meta.totalItems} записів)
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={!meta.hasNextPage && meta.page === 1}
+                className="p-2 rounded-lg border hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setPage((p) => p + 1)}
+                disabled={!meta.hasNextPage}
+                className="p-2 rounded-lg border hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1112,6 +4320,175 @@ export default function Cities() {
           </div>,
           document.body,
         )}
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/pages/CityLeaderboard.tsx
+
+```
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
+import { api } from "../config/api";
+
+interface CityLeaderboardEntry {
+  cityId: string;
+  cityName: string;
+  events: number;
+  revenue: number;
+  profit: number;
+  children: number;
+  schools: number;
+}
+
+const METRICS: { key: string; label: string }[] = [
+  { key: "events", label: "Події" },
+  { key: "revenue", label: "Дохід" },
+  { key: "profit", label: "Прибуток" },
+  { key: "children", label: "Діти" },
+  { key: "schools", label: "Школи" },
+];
+
+function fmt(n: number): string {
+  return new Intl.NumberFormat("uk-UA").format(Math.round(n));
+}
+
+function fmtMoney(n: number): string {
+  return new Intl.NumberFormat("uk-UA", {
+    style: "currency",
+    currency: "UAH",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
+const BAR_COLORS = [
+  "bg-blue-600",
+  "bg-blue-500",
+  "bg-blue-400",
+  "bg-blue-300",
+  "bg-blue-200",
+];
+
+const currentYear = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
+function SkeletonBar() {
+  return (
+    <div className="flex items-center gap-3 mb-3 animate-pulse">
+      <div className="w-24 h-4 bg-slate-100 rounded-full shrink-0" />
+      <div className="h-8 bg-slate-100 rounded-full flex-1" />
+      <div className="w-16 h-4 bg-slate-100 rounded-full shrink-0" />
+    </div>
+  );
+}
+
+export default function CityLeaderboard() {
+  const [metric, setMetric] = useState("events");
+  const [year, setYear] = useState(currentYear);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["analytics", "city-leaderboard", metric, year],
+    queryFn: () =>
+      api
+        .get<CityLeaderboardEntry[]>("/analytics/city-leaderboard", {
+          params: { metric, year },
+        })
+        .then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const maxValue = data
+    ? Math.max(...data.map((d) => d[metric as keyof CityLeaderboardEntry] as number), 1)
+    : 1;
+
+  const formatValue = metric === "revenue" || metric === "profit" ? fmtMoney : fmt;
+
+  return (
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-800">Рейтинг міст</h1>
+        <p className="text-xs text-slate-400 mt-1">Порівняння міст за обраною метрикою</p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 mb-6">
+        {METRICS.map((m) => (
+          <button
+            key={m.key}
+            onClick={() => setMetric(m.key)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              metric === m.key
+                ? "bg-blue-600 text-white shadow-sm"
+                : "bg-white text-slate-600 border border-slate-200 hover:border-blue-300"
+            }`}
+          >
+            {m.label}
+          </button>
+        ))}
+
+        <select
+          value={year}
+          onChange={(e) => setYear(Number(e.target.value))}
+          className="ml-auto px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+        >
+          {YEAR_OPTIONS.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+      </div>
+
+      {isLoading ? (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          {Array.from({ length: 5 }).map((_, i) => <SkeletonBar key={i} />)}
+        </div>
+      ) : !data || data.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <div className="h-[200px] flex flex-col items-center justify-center text-slate-300">
+            <span className="text-3xl mb-2">🏆</span>
+            <span className="text-sm text-slate-400">Немає даних за {year} рік</span>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={metric}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25 }}
+            >
+              {data.map((entry, i) => {
+                const value = entry[metric as keyof CityLeaderboardEntry] as number;
+                const pct = maxValue > 0 ? (value / maxValue) * 100 : 0;
+                const colorIndex = Math.min(i, BAR_COLORS.length - 1);
+
+                return (
+                  <div key={entry.cityId} className="flex items-center gap-3 mb-3">
+                    <span className="w-24 text-xs text-slate-500 truncate shrink-0 text-right">
+                      {entry.cityName}
+                    </span>
+                    <div className="flex-1 h-8 bg-slate-100 rounded-full overflow-hidden">
+                      <motion.div
+                        className={`h-full rounded-full ${BAR_COLORS[colorIndex]}`}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.5, ease: "easeOut" }}
+                      />
+                    </div>
+                    <span className="w-20 text-xs font-semibold text-slate-700 text-right shrink-0">
+                      {formatValue(value)}
+                    </span>
+                  </div>
+                );
+              })}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 }
@@ -1814,13 +5191,13 @@ function CompletedEventModal({
                     − {fmt(report?.schoolSum)} грн
                   </span>
                 </div>
-                {Array.isArray(report?.expenses) &&
-                  report.expenses.length > 0 && (
+                {Array.isArray(report?.expenseItems) &&
+                  report.expenseItems.length > 0 && (
                     <div className="py-2 border-b border-slate-50">
                       <span className="text-slate-500 block mb-2">
                         Додаткові витрати:
                       </span>
-                      {report.expenses.map((exp: any, i: number) => (
+                      {report.expenseItems.map((exp: any, i: number) => (
                         <div
                           key={i}
                           className="flex justify-between text-xs mb-1 pl-2"
@@ -1901,255 +5278,48 @@ function CompletedEventModal({
 # FILE: apps/frontend/src/pages/Dashboard.tsx
 
 ```
-import { Suspense, lazy } from "react";
-import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { MapPin } from "lucide-react";
-import { api } from "../config/api";
-import { useSelectedCity } from "../context/CityContext";
+import { lazy, Suspense } from "react";
 import { useAuth } from "../context/AuthContext";
-const IssueCarousel = lazy(() => import("../components/IssueCarousel"));
-const FunnelBar = lazy(() => import("../components/dashboard/FunnelBar"));
-const TodayEvents = lazy(() => import("../components/dashboard/TodayEvents"));
-const UpcomingEvents = lazy(() => import("../components/dashboard/UpcomingEvents"));
-const StaleSchools = lazy(() => import("../components/dashboard/StaleSchools"));
-const MonthlyKpi = lazy(() => import("../components/dashboard/MonthlyKpi"));
-const ActivityFeed = lazy(() => import("../components/dashboard/ActivityFeed"));
-const CitiesTable = lazy(() => import("../components/dashboard/CitiesTable"));
 
-interface DashboardSummary {
-  todayEvents: any[];
-  upcomingEvents: any[];
-  funnel: Record<string, number>;
-  totalSchools: number;
-  monthlyKpi: {
-    revenue: number;
-    profit: number;
-    children: number;
-    count: number;
-  };
-  staleSchools: {
-    id: string;
-    name: string;
-    status: string | null;
-    lastActivity: string | null;
-    daysStale: number | null;
-  }[];
-  activityFeed: {
-    id: string;
-    userName: string;
-    role: string;
-    action: string;
-    comment: string | null;
-    createdAt: string;
-    schoolId: string | null;
-    schoolName: string | null;
-    eventId: string | null;
-  }[];
-  citiesStats: {
-    cityId: string;
-    cityName: string;
-    schoolsCount: number;
-    activeEvents: number;
-    monthRevenue: number;
-  }[];
-}
+const StaffDashboard = lazy(() => import("../features/dashboard/StaffDashboard"));
+const ManagerDashboard = lazy(() => import("../features/dashboard/ManagerDashboard"));
+const OwnerDashboard = lazy(() => import("../features/dashboard/OwnerDashboard"));
 
-
-function SkeletonCard({ className = "" }: { className?: string }) {
-  return (
-    <div className={`bg-white rounded-2xl border border-slate-100 shadow-sm p-4 animate-pulse ${className}`}>
-      <div className="h-4 bg-slate-100 rounded-full w-1/3 mb-3" />
-      <div className="space-y-2">
-        <div className="h-3 bg-slate-100 rounded-full w-full" />
-        <div className="h-3 bg-slate-100 rounded-full w-4/5" />
-        <div className="h-3 bg-slate-100 rounded-full w-3/5" />
-      </div>
-    </div>
-  );
-}
-
-function SkeletonEventCard() {
-  return (
-    <div className="bg-white rounded-xl border border-slate-100 p-3 animate-pulse">
-      <div className="flex justify-between mb-2">
-        <div className="h-5 bg-slate-100 rounded w-16" />
-        <div className="h-4 bg-slate-100 rounded w-24" />
-      </div>
-      <div className="h-4 bg-slate-100 rounded w-3/4 mb-3" />
-      <div className="flex justify-between items-center">
-        <div className="h-5 bg-slate-100 rounded-full w-28" />
-        <div className="h-7 bg-slate-100 rounded-lg w-20" />
-      </div>
-    </div>
-  );
-}
-
-function DashboardSkeleton({ isSuperAdmin }: { isSuperAdmin: boolean }) {
-  return (
-    <div className="flex flex-col gap-6">
-      {/* IssueCarousel placeholder */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 animate-pulse h-24" />
-
-      {/* Сьогодні + Потребують уваги */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* TodayEvents */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 animate-pulse">
-          <div className="flex justify-between mb-3">
-            <div>
-              <div className="h-4 bg-slate-100 rounded w-36 mb-1" />
-              <div className="h-3 bg-slate-100 rounded w-28" />
-            </div>
-            <div className="h-4 bg-slate-100 rounded w-16" />
-          </div>
-          <div className="flex flex-col gap-2">
-            <SkeletonEventCard />
-            <SkeletonEventCard />
-          </div>
-        </div>
-
-        {/* StaleSchools */}
-        <SkeletonCard />
-        {/* UpcomingEvents */}
-        <SkeletonCard />
-      </div>
-
-      <hr className="border-slate-200" />
-
-      {/* KPI + Воронка */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <SkeletonCard />
-        <SkeletonCard />
-      </div>
-
-      {/* Activity + Cities */}
-      <div className={`grid grid-cols-1 gap-4 ${isSuperAdmin ? "md:grid-cols-2" : ""}`}>
-        <SkeletonCard className="min-h-[200px]" />
-        {isSuperAdmin && <SkeletonCard className="min-h-[200px]" />}
-      </div>
-    </div>
-  );
-}
-
-
-export default function Dashboard() {
-  const { selectedCity } = useSelectedCity();
-  const { user } = useAuth();
-
-  const isSuperAdmin = user?.role === "SUPERADMIN";
-
-  const { data: summary, isLoading } = useQuery<DashboardSummary>({
-    queryKey: ["dashboardSummary", selectedCity.id],
-    queryFn: async () => {
-      const params = selectedCity.id ? `?cityId=${selectedCity.id}` : "";
-      const res = await api.get(`/dashboard/summary${params}`);
-      return res.data;
-    },
-    enabled: Boolean(selectedCity.id || isSuperAdmin),
-  });
-
-  if (!selectedCity.id && !isSuperAdmin) {
-    return (
-      <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-800">Дашборд</h1>
-          <p className="text-sm text-content-muted mt-1 flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> Оберіть місто</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center">
-          <MapPin className="w-10 h-10 mx-auto mb-3 text-content-muted" />
-          <p className="font-semibold text-slate-700 mb-2">Місто не обрано</p>
-          <p className="text-sm text-slate-500 mb-4">
-            Оберіть місто у розділі «Міста», щоб бачити активність
-          </p>
-          <Link
-            to="/cities"
-            className="inline-block px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-          >
-            Перейти до міст
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
+function PageLoader() {
   return (
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
-      {/* Шапка */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">
-          Дашборд
-          {selectedCity.name && (
-            <span className="ml-2 text-base font-normal text-blue-500">
-              · {selectedCity.name}
-            </span>
-          )}
-          {isSuperAdmin && !selectedCity.name && (
-            <span className="ml-2 text-base font-normal text-purple-500">
-              · Усі міста
-            </span>
-          )}
-        </h1>
-        <p className="text-xs text-slate-400 mt-1">
-          {new Date().toLocaleDateString("uk-UA", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          })}
-        </p>
+        <div className="h-8 bg-slate-200 rounded-xl w-48 animate-pulse" />
       </div>
-
-      {isLoading ? (
-        <DashboardSkeleton isSuperAdmin={isSuperAdmin} />
-      ) : summary ? (
-        <div className="flex flex-col gap-6">
-          {/* ── ЗОНА ДІЇ ── */}
-          <Suspense fallback={<div className="h-24 bg-white rounded-2xl animate-pulse border border-slate-100" />}>
-            <IssueCarousel />
-          </Suspense>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Suspense fallback={<SkeletonCard />}>
-              <TodayEvents events={summary.todayEvents} />
-            </Suspense>
-            <Suspense fallback={<SkeletonCard />}>
-              <StaleSchools schools={summary.staleSchools} />
-            </Suspense>
-            <Suspense fallback={<SkeletonCard />}>
-              <UpcomingEvents events={summary.upcomingEvents} />
-            </Suspense>
-          </div>
-
-          <hr className="border-slate-200" />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Suspense fallback={<SkeletonCard />}>
-              <MonthlyKpi kpi={summary.monthlyKpi} />
-            </Suspense>
-            <Suspense fallback={<SkeletonCard />}>
-              <FunnelBar funnel={summary.funnel} />
-            </Suspense>
-          </div>
-
-          <div className={`grid grid-cols-1 gap-4 ${isSuperAdmin ? "md:grid-cols-2" : ""}`}>
-            <Suspense fallback={<SkeletonCard className="min-h-[200px]" />}>
-              <ActivityFeed items={summary.activityFeed} />
-            </Suspense>
-            {isSuperAdmin && summary.citiesStats.length > 0 && (
-              <Suspense fallback={<SkeletonCard className="min-h-[200px]" />}>
-                <CitiesTable rows={summary.citiesStats} />
-              </Suspense>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="text-center py-20 text-slate-400 text-sm">
-          Не вдалося завантажити дані
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-28 bg-white rounded-2xl border border-slate-100 animate-pulse" />
+        ))}
+      </div>
     </div>
   );
 }
+
+export default function Dashboard() {
+  const { user } = useAuth();
+
+  if (!user) return <PageLoader />;
+
+  const role = user.role;
+
+  return (
+    <Suspense fallback={<PageLoader />}>
+      {role === "SUPERADMIN" || role === "OWNER" ? (
+        <OwnerDashboard />
+      ) : role === "MANAGER" ? (
+        <ManagerDashboard />
+      ) : (
+        <StaffDashboard />
+      )}
+    </Suspense>
+  );
+}
+
 ```
 
 # FILE: apps/frontend/src/pages/Employees.tsx
@@ -2935,6 +6105,7 @@ interface EventListItem {
     host?: CrewMember | null;
     driver?: CrewMember | null;
   } | null;
+  report?: { status: string } | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -2964,6 +6135,24 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const FIELD_ROLES = ["DRIVER", "HOST"];
+
+const REPORT_STATUS_LABELS: Record<string, string> = {
+  DRAFT: "Чернетка",
+  SUBMITTED: "На перевірці",
+  NEEDS_REVISION: "На доопрацюванні",
+  APPROVED: "Затверджено",
+  REJECTED: "Відхилено",
+  CLOSED: "Закрито",
+};
+
+const REPORT_STATUS_COLORS: Record<string, string> = {
+  DRAFT: "bg-slate-100 text-slate-500",
+  SUBMITTED: "bg-amber-50 text-amber-600",
+  NEEDS_REVISION: "bg-rose-50 text-rose-600",
+  APPROVED: "bg-emerald-50 text-emerald-600",
+  REJECTED: "bg-red-50 text-red-500",
+  CLOSED: "bg-slate-200 text-slate-400",
+};
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("uk-UA", {
@@ -3054,13 +6243,24 @@ export default function Events() {
               >
                 <div className="flex justify-between items-start gap-2">
                   <p className="font-semibold text-gray-800">{ev.project}</p>
-                  <span
-                    className={`shrink-0 inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                      STATUS_COLORS[ev.status] ?? "bg-slate-100 text-slate-600"
-                    }`}
-                  >
-                    {STATUS_LABELS[ev.status] ?? ev.status}
-                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                        STATUS_COLORS[ev.status] ?? "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {STATUS_LABELS[ev.status] ?? ev.status}
+                    </span>
+                    {ev.report?.status && (
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                          REPORT_STATUS_COLORS[ev.report.status] ?? "bg-slate-100 text-slate-500"
+                        }`}
+                      >
+                        {REPORT_STATUS_LABELS[ev.report.status] ?? ev.report.status}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {formatDate(ev.date)}
@@ -3139,14 +6339,25 @@ export default function Events() {
                       <div className="flex items-center gap-1"><Truck className="w-3 h-3 shrink-0" /> {ev.crew?.driver?.name ?? "—"}</div>
                     </td>
                     <td className="p-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm ${
-                          STATUS_COLORS[ev.status] ??
-                          "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        {STATUS_LABELS[ev.status] ?? ev.status}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span
+                          className={`px-3 py-1 rounded-full text-sm ${
+                            STATUS_COLORS[ev.status] ??
+                            "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {STATUS_LABELS[ev.status] ?? ev.status}
+                        </span>
+                        {ev.report?.status && (
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                              REPORT_STATUS_COLORS[ev.report.status] ?? "bg-slate-100 text-slate-500"
+                            }`}
+                          >
+                            {REPORT_STATUS_LABELS[ev.report.status] ?? ev.report.status}
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -3164,92 +6375,199 @@ export default function Events() {
 # FILE: apps/frontend/src/pages/Finance.tsx
 
 ```
-import { useState, useEffect, lazy, Suspense } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "../config/api";
-import { useSelectedCity } from "../context/CityContext";
+import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import MySalary from "../features/salary/pages/MySalary";
+import TeamSalaries from "../features/salary/pages/TeamSalaries";
+import Company from "../features/salary/pages/Company";
 
-const FinanceCharts = lazy(() => import("../components/finance/FinanceCharts"));
-const StaffFinanceView = lazy(
-  () => import("../components/finance/StaffFinanceView"),
-);
+type Tab = "my-salary" | "team" | "company";
 
-function FinanceSkeleton() {
+function PeekSkeleton() {
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen flex flex-col gap-4 animate-pulse">
+    <div className="p-4 space-y-4 animate-pulse">
       <div className="h-8 bg-slate-200 rounded-xl w-48" />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-24 bg-white rounded-2xl border border-slate-100"
-          />
+          <div key={i} className="h-24 bg-white rounded-2xl border border-slate-100" />
         ))}
       </div>
       <div className="h-64 bg-white rounded-2xl border border-slate-100" />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="h-48 bg-white rounded-2xl border border-slate-100" />
-        <div className="h-48 bg-white rounded-2xl border border-slate-100" />
-      </div>
     </div>
   );
 }
 
-export default function Finance() {
-  const { selectedCity } = useSelectedCity();
-  const { user: currentUser } = useAuth();
-  const [period, setPeriod] = useState("year");
-  const [projectFilter, setProjectFilter] = useState("");
-  const [myBalance, setMyBalance] = useState<number | null>(null);
+export default function Finance({ isPeek }: { isPeek?: boolean }) {
+  const { user } = useAuth();
+  const isManagerOrAdmin = user?.role === "MANAGER" || user?.role === "SUPERADMIN" || user?.role === "OWNER";
 
-  const isManagerOrAdmin =
-    currentUser?.role === "MANAGER" || currentUser?.role === "SUPERADMIN";
+  const tabs: { key: Tab; label: string; managerOnly?: boolean }[] = [
+    { key: "my-salary", label: "Мої нарахування" },
+    { key: "team", label: "Нарахування команди", managerOnly: true },
+    { key: "company", label: "Фінанси компанії", managerOnly: true },
+  ];
 
-   useEffect(() => {
-    if (isManagerOrAdmin === false) {
-      api
-        .get("/finance/my-balance")
-        .then((r) => setMyBalance(r.data.balance))
-        .catch(() => {});
-    }
-  }, [isManagerOrAdmin]);
+  const availableTabs = tabs.filter((t) => !t.managerOnly || isManagerOrAdmin);
+  const [activeTab, setActiveTab] = useState<Tab>(availableTabs[0]?.key ?? "my-salary");
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["finance", selectedCity.id, period, projectFilter],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (period) params.set("period", period);
-      if (selectedCity?.id) params.set("cityId", selectedCity.id);
-      if (projectFilter) params.set("project", projectFilter);
-      const res = await api.get(`/finance/dashboard?${params}`);
-      return res.data;
-    },
-    enabled: !!isManagerOrAdmin,
-    staleTime: 5 * 60 * 1000,
-  });
-  
-  if (!isManagerOrAdmin) {
-    return (
-      <Suspense fallback={<FinanceSkeleton />}>
-        <StaffFinanceView myBalance={myBalance} selectedCity={selectedCity} />
-      </Suspense>
-    );
+  if (isPeek) {
+    return <PeekSkeleton />;
   }
 
-  if (isLoading || !data) return <FinanceSkeleton />;
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <div className="sticky top-0 z-10 bg-white border-b border-slate-200">
+        <div className="flex overflow-x-auto scrollbar-none">
+          {availableTabs.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              className={`shrink-0 px-4 py-3 text-sm font-medium transition-colors ${
+                activeTab === t.key
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {activeTab === "my-salary" && <MySalary />}
+      {activeTab === "team" && isManagerOrAdmin && <TeamSalaries />}
+      {activeTab === "company" && isManagerOrAdmin && <Company />}
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/pages/Inventory.tsx
+
+```
+import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { useInventory, useAddStock } from "../hooks/useInventory";
+
+function StockBadge({ current, min }: { current: number; min: number }) {
+  let color = "bg-green-100 text-green-700";
+  if (current < min) color = "bg-red-100 text-red-700";
+  else if (current === min) color = "bg-yellow-100 text-yellow-700";
+  return (
+    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${color}`}>
+      {current}
+    </span>
+  );
+}
+
+export default function InventoryPage() {
+  const { user } = useAuth();
+  const { data: items, isLoading } = useInventory();
+  const addStock = useAddStock();
+  const [stockModal, setStockModal] = useState<{ id: string; name: string } | null>(null);
+  const [quantity, setQuantity] = useState(0);
+
+  const canAddStock = user?.role === "MANAGER" || user?.role === "SUPERADMIN" || user?.role === "OWNER";
+
+  const handleAddStock = async () => {
+    if (!stockModal || quantity <= 0) return;
+    await addStock.mutateAsync({ id: stockModal.id, quantity });
+    setStockModal(null);
+    setQuantity(0);
+  };
 
   return (
-    <Suspense fallback={<FinanceSkeleton />}>
-      <FinanceCharts
-        data={data}
-        period={period}
-        setPeriod={setPeriod}
-        projectFilter={projectFilter}
-        setProjectFilter={setProjectFilter}
-        selectedCity={selectedCity}
-      />
-    </Suspense>
+    <div className="p-4 md:p-8 max-w-5xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-slate-800">Склад</h1>
+      </div>
+
+      {isLoading ? (
+        <div className="text-slate-500">Завантаження...</div>
+      ) : (
+        <div className="overflow-x-auto bg-white rounded-2xl border border-slate-200">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50">
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Назва</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Артикул</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Од.</th>
+                <th className="text-center px-4 py-3 font-semibold text-slate-600">На складі</th>
+                <th className="text-center px-4 py-3 font-semibold text-slate-600">Мін.</th>
+                <th className="text-right px-4 py-3 font-semibold text-slate-600">Дії</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items?.map((item) => (
+                <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50/50">
+                  <td className="px-4 py-3 font-medium text-slate-800">{item.name}</td>
+                  <td className="px-4 py-3 text-slate-500">{item.sku || "—"}</td>
+                  <td className="px-4 py-3 text-slate-500">{item.unit}</td>
+                  <td className="px-4 py-3 text-center">
+                    <StockBadge current={item.currentStock} min={item.minStock} />
+                  </td>
+                  <td className="px-4 py-3 text-center text-slate-600">{item.minStock}</td>
+                  <td className="px-4 py-3 text-right space-x-2">
+                    {canAddStock && (
+                      <button
+                        onClick={() => setStockModal({ id: item.id, name: item.name })}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium"
+                      >
+                        Поповнити
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {(!items || items.length === 0) && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                    Склад порожній
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {stockModal && (
+        <div
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center"
+          onClick={(e) => { if (e.target === e.currentTarget) setStockModal(null); }}
+        >
+          <div className="bg-white rounded-2xl p-6 shadow-xl w-full max-w-sm mx-4">
+            <h2 className="text-lg font-bold text-slate-800 mb-1">Поповнення складу</h2>
+            <p className="text-sm text-slate-500 mb-4">{stockModal.name}</p>
+            <input
+              type="number"
+              min={1}
+              value={quantity || ""}
+              onChange={(e) => setQuantity(+e.target.value)}
+              placeholder="Кількість"
+              className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none mb-4"
+              autoFocus
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setStockModal(null)}
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-medium text-sm"
+              >
+                Скасувати
+              </button>
+              <button
+                onClick={handleAddStock}
+                disabled={quantity <= 0 || addStock.isPending}
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-medium text-sm disabled:opacity-50"
+              >
+                {addStock.isPending ? "..." : "Додати"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -3871,6 +7189,58 @@ export default function Kindergartens() {
 
 ```
 
+# FILE: apps/frontend/src/pages/lazyTabPages.ts
+
+```
+import { lazy } from "react";
+
+export function lazyWithRetry(factory: () => Promise<any>) {
+  return lazy(async () => {
+    try {
+      return await factory();
+    } catch (err) {
+      const key = "chunk-reload-ts";
+      const last = Number(sessionStorage.getItem(key) || 0);
+      if (Date.now() - last > 10000) {
+        sessionStorage.setItem(key, String(Date.now()));
+        window.location.reload();
+        return new Promise(() => {});
+      }
+      throw err;
+    }
+  });
+}
+
+export const rawImportFactories: Record<string, () => Promise<any>> = {
+  "/dashboard": () => import("./Dashboard"),
+  "/schools": () => import("./Schools"),
+  "/kindergartens": () => import("./Kindergartens"),
+  "/finance": () => import("./Finance"),
+  "/calendar": () => import("./CalendarView"),
+  "/employees": () => import("./Employees"),
+  "/analytics": () => import("./Analytics"),
+};
+
+const Dashboard = lazyWithRetry(rawImportFactories["/dashboard"]);
+const Schools = lazyWithRetry(rawImportFactories["/schools"]);
+const Kindergartens = lazyWithRetry(rawImportFactories["/kindergartens"]);
+const Finance = lazyWithRetry(rawImportFactories["/finance"]);
+const CalendarView = lazyWithRetry(rawImportFactories["/calendar"]);
+const Employees = lazyWithRetry(rawImportFactories["/employees"]);
+const Analytics = lazyWithRetry(rawImportFactories["/analytics"]);
+
+export const TAB_PAGE_COMPONENTS: Record<string, React.LazyExoticComponent<any>> = {
+  "/dashboard": Dashboard,
+  "/schools": Schools,
+  "/kindergartens": Kindergartens,
+  "/finance": Finance,
+  "/calendar": CalendarView,
+  "/employees": Employees,
+  "/analytics": Analytics,
+};
+
+```
+
 # FILE: apps/frontend/src/pages/Login.tsx
 
 ```
@@ -4084,6 +7454,109 @@ export default function NotFound() {
 
 ```
 
+# FILE: apps/frontend/src/pages/ProjectProfile.tsx
+
+```
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
+import { api } from "../config/api";
+import { useAuth } from "../context/AuthContext";
+import { useCities } from "../hooks/useCities";
+import type { Project } from "../types";
+
+interface ProjectStats {
+  totalEvents: number;
+  completedEvents: number;
+  totalRevenue: number;
+  totalProfit: number;
+  totalSchoolSum: number;
+  avgRating: number;
+}
+
+const fmt = (n: number) => new Intl.NumberFormat("uk-UA").format(Math.round(n));
+
+export default function ProjectProfile() {
+  const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const { data: cities = [] } = useCities();
+  const isSuperAdminOrOwner = user?.role === "SUPERADMIN" || user?.role === "OWNER";
+
+  const { data: project } = useQuery<Project>({
+    queryKey: ["project", id],
+    queryFn: () => api.get<Project>(`/projects/${id}`).then((r) => r.data),
+    enabled: !!id,
+  });
+
+  const [cityId, setCityId] = useState("");
+
+  const { data: stats } = useQuery<ProjectStats>({
+    queryKey: ["projectStats", id, cityId],
+    queryFn: () =>
+      api
+        .get<ProjectStats>(`/projects/${id}/stats`, {
+          params: cityId ? { cityId } : {},
+        })
+        .then((r) => r.data),
+    enabled: !!id,
+  });
+
+  if (!project) {
+    return <div className="p-8 text-slate-500">Завантаження...</div>;
+  }
+
+  const cards = [
+    { label: "Всього подій", value: stats?.totalEvents ?? "—", color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "Завершено", value: stats?.completedEvents ?? "—", color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "Дохід", value: stats ? `${fmt(stats.totalRevenue)} грн` : "—", color: "text-violet-600", bg: "bg-violet-50" },
+    { label: "Прибуток", value: stats ? `${fmt(stats.totalProfit)} грн` : "—", color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "Середній рейтинг", value: stats?.avgRating ? `${stats.avgRating}/10` : "—", color: "text-amber-600", bg: "bg-amber-50" },
+  ];
+
+  return (
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+      <div className="flex items-center gap-3 mb-6">
+        <div
+          className="w-5 h-5 rounded-full shrink-0"
+          style={{ backgroundColor: project.color }}
+        />
+        <h1 className="text-2xl font-bold text-slate-800">{project.name}</h1>
+      </div>
+
+      {isSuperAdminOrOwner && cities.length > 0 && (
+        <div className="mb-6">
+          <select
+            value={cityId}
+            onChange={(e) => setCityId(e.target.value)}
+            className="w-full sm:max-w-xs p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          >
+            <option value="">Всі міста</option>
+            {cities.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {cards.map((card) => (
+          <div
+            key={card.label}
+            className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5"
+          >
+            <p className="text-xs text-slate-400 font-medium mb-2">{card.label}</p>
+            <p className={`text-2xl font-bold ${card.color}`}>{card.value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+```
+
 # FILE: apps/frontend/src/pages/SchoolProfile.tsx
 
 ```
@@ -4117,6 +7590,9 @@ import CompletedEventModal from "../components/school-profile/CompletedEventModa
 const Pipeline = lazy(() => import("../components/school-profile/Pipeline"));
 const HistoryTimeline = lazy(
   () => import("../components/school-profile/HistoryTimeline"),
+);
+const CommentsTimeline = lazy(
+  () => import("../components/school-profile/CommentsTimeline"),
 );
 const EventDetails = lazy(
   () => import("../components/school-profile/EventDetails"),
@@ -4531,6 +8007,16 @@ export default function SchoolProfile() {
                 onHistoryClick={handleHistoryClick}
                 onAddCommentClick={handleAddCommentClick}
               />
+            </Suspense>
+          </motion.div>
+
+          <motion.div {...stagger(2)}>
+            <Suspense
+              fallback={
+                <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+              }
+            >
+              <CommentsTimeline schoolId={schoolData.id} />
             </Suspense>
           </motion.div>
         </div>
@@ -5691,16 +9177,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
 import { http, HttpResponse } from "msw";
 import { server } from "../mocks/server";
-import { vi } from "vitest";
-
-vi.mock("../../components/IssueCarousel", () => ({ default: () => <div data-testid="issue-carousel" /> }));
-vi.mock("../../components/dashboard/FunnelBar", () => ({ default: () => <div data-testid="funnel-bar" /> }));
-vi.mock("../../components/dashboard/TodayEvents", () => ({ default: () => <div data-testid="today-events" /> }));
-vi.mock("../../components/dashboard/UpcomingEvents", () => ({ default: () => <div data-testid="upcoming-events" /> }));
-vi.mock("../../components/dashboard/StaleSchools", () => ({ default: () => <div data-testid="stale-schools" /> }));
-vi.mock("../../components/dashboard/MonthlyKpi", () => ({ default: () => <div data-testid="monthly-kpi" /> }));
-vi.mock("../../components/dashboard/ActivityFeed", () => ({ default: () => <div data-testid="activity-feed" /> }));
-vi.mock("../../components/dashboard/CitiesTable", () => ({ default: () => <div data-testid="cities-table" /> }));
 
 vi.mock("../../context/CityContext", () => ({
   useSelectedCity: () => ({ selectedCity: { id: "city-1", name: "Львів" } })
@@ -5720,18 +9196,14 @@ const createWrapper = () => {
 };
 
 describe("Dashboard", () => {
-  it("fetches and renders dashboard components", async () => {
+  it("renders owner dashboard for SUPERADMIN role", async () => {
     server.use(
-      http.get("http://localhost:3000/api/dashboard/summary", () =>
+      http.get("http://localhost:3000/api/finance/dashboard", () =>
         HttpResponse.json({
-          todayEvents: [],
-          upcomingEvents: [],
-          funnel: {},
-          totalSchools: 10,
-          monthlyKpi: { revenue: 0, profit: 0, children: 0, count: 0 },
-          staleSchools: [],
-          activityFeed: [],
-          citiesStats: []
+          kpi: { totalRevenue: 100000, totalExpenses: 40000, totalProfit: 60000, totalEvents: 25 },
+          monthly: [],
+          expectedRevenue: 120000,
+          filters: { projects: [], cities: [] },
         })
       )
     );
@@ -5739,13 +9211,11 @@ describe("Dashboard", () => {
     render(<Dashboard />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByTestId("issue-carousel")).toBeInTheDocument();
-      expect(screen.getByTestId("funnel-bar")).toBeInTheDocument();
-      expect(screen.getByTestId("today-events")).toBeInTheDocument();
-      expect(screen.getByTestId("upcoming-events")).toBeInTheDocument();
-      expect(screen.getByTestId("stale-schools")).toBeInTheDocument();
-      expect(screen.getByTestId("monthly-kpi")).toBeInTheDocument();
-      expect(screen.getByTestId("activity-feed")).toBeInTheDocument();
+      expect(screen.getByText("Фінансовий дашборд")).toBeInTheDocument();
+      expect(screen.getByText("100 000 грн")).toBeInTheDocument();
+      expect(screen.getByText("40 000 грн")).toBeInTheDocument();
+      expect(screen.getByText("60 000 грн")).toBeInTheDocument();
+      expect(screen.getByText("25")).toBeInTheDocument();
     });
   });
 });
@@ -6497,17 +9967,22 @@ describe("Login", () => {
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import MobileTopNav from "../../components/MobileTopNav";
 import { AuthProvider } from "../../context/AuthContext";
 import { CityProvider } from "../../context/CityContext";
 import type { ReactNode } from "react";
 
+const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
 function Wrapper({ children }: { children: ReactNode }) {
   return (
     <MemoryRouter initialEntries={["/schools"]}>
-      <AuthProvider>
-        <CityProvider>{children}</CityProvider>
-      </AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <CityProvider>{children}</CityProvider>
+        </AuthProvider>
+      </QueryClientProvider>
     </MemoryRouter>
   );
 }
@@ -6881,2132 +10356,5 @@ describe("VirtualSchoolList", () => {
   });
 });
 
-```
-
-# FILE: apps/frontend/src/tests/mocks/handlers.ts
-
-```
-import { http, HttpResponse } from "msw";
-
-const BASE = "http://localhost:3000/api";
-
-export const handlers = [
-  http.get(`${BASE}/cities`, () =>
-    HttpResponse.json([
-      { id: "city-1", name: "Львів", plannedEvents: 3, completedEvents: 10, schoolsCount: 50 },
-      { id: "city-2", name: "Київ", plannedEvents: 1, completedEvents: 5, schoolsCount: 30 },
-    ])
-  ),
-
-  http.get(`${BASE}/schools`, () =>
-    HttpResponse.json([
-      { id: "school-1", name: "Школа №1", type: "Школа", cityId: "city-1", childrenCount: 300, events: [] },
-      { id: "school-2", name: "Школа №5", type: "Школа", cityId: "city-1", childrenCount: 100, events: [] },
-    ])
-  ),
-
-  http.get(`${BASE}/schools/:id`, ({ params }) =>
-    HttpResponse.json({
-      id: params.id,
-      name: "Школа №1",
-      type: "Школа",
-      cityId: "city-1",
-      city: { id: "city-1", name: "Львів" },
-      director: "Іван Петренко",
-      phone: "0671234567",
-      address: "вул. Тестова 1",
-      childrenCount: 300,
-    })
-  ),
-
-  http.get(`${BASE}/events/school/:schoolId`, () =>
-    HttpResponse.json([
-      {
-        id: "event-1",
-        project: "Голограма для школи",
-        date: "2026-07-01T10:00:00Z",
-        time: "10:00",
-        status: "BASE",
-        price: 5000,
-        childrenPlanned: 100,
-        address: "вул. Тестова 1",
-        contactPerson: "Іван",
-        contactPhone: "0671234567",
-      },
-    ])
-  ),
-
-  http.get(`${BASE}/users`, () =>
-    HttpResponse.json([
-      { id: "user-1", name: "Адміністратор", email: "admin@crm.com", role: "SUPERADMIN" },
-    ])
-  ),
-
-  http.get(`${BASE}/dashboard/summary`, () =>
-    HttpResponse.json({
-      todayEvents: [],
-      upcomingEvents: [],
-      funnel: { BASE: 10, FIRST_CONTACT: 5 },
-      totalSchools: 50,
-      monthlyKpi: { revenue: 50000, profit: 20000, children: 500, count: 10 },
-      staleSchools: [],
-      activityFeed: [],
-      citiesStats: [],
-    })
-  ),
-
-  http.post(`${BASE}/auth/login`, () =>
-    HttpResponse.json({ access_token: "test-token" })
-  ),
-];
-```
-
-# FILE: apps/frontend/src/tests/mocks/server.ts
-
-```
-import { setupServer } from "msw/node";
-import { handlers } from "./handlers";
-
-export const server = setupServer(...handlers);
-```
-
-# FILE: apps/frontend/src/tests/setup.ts
-
-```
-import "@testing-library/jest-dom";
-import { afterEach, beforeAll, afterAll } from "vitest";
-import { cleanup } from "@testing-library/react";
-import { server } from "./mocks/server";
-import { api } from "../config/api";
-import { vi } from "vitest";
-
-api.defaults.baseURL = "http://localhost:3000/api";
-
-const localStorageMock = {
-  getItem: vi.fn(() => "mock-token"),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
-};
-Object.defineProperty(global, "localStorage", { value: localStorageMock });
-
-beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => {
-  cleanup();
-  server.resetHandlers();
-});
-afterAll(() => server.close());
-```
-
-# FILE: apps/frontend/src/tests/unit/api.test.ts
-
-```
-import { api } from "../../config/api";
-import { server } from "../mocks/server";
-import { http, HttpResponse } from "msw";
-
-describe("api client (axios config)", () => {
-  beforeEach(() => {
-    document.cookie = "csrf_token=test-csrf-token; path=/";
-  });
-
-  afterEach(() => {
-    document.cookie = "csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-  });
-
-  it("appends X-CSRF-Token header to non-GET requests if cookie exists", async () => {
-    let receivedHeader: string | null = null;
-    server.use(
-      http.post("http://localhost:3000/api/test-csrf", ({ request }) => {
-        receivedHeader = request.headers.get("X-CSRF-Token");
-        return HttpResponse.json({ success: true });
-      })
-    );
-
-    await api.post("/test-csrf");
-    expect(receivedHeader).toBe("test-csrf-token");
-  });
-
-  it("does not append X-CSRF-Token header to GET requests", async () => {
-    let receivedHeader: string | null = null;
-    server.use(
-      http.get("http://localhost:3000/api/test-csrf", ({ request }) => {
-        receivedHeader = request.headers.get("X-CSRF-Token");
-        return HttpResponse.json({ success: true });
-      })
-    );
-
-    await api.get("/test-csrf");
-    expect(receivedHeader).toBeNull();
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/unit/apiRefresh.test.ts
-
-```
-import { describe, it, expect, vi, afterEach } from "vitest";
-import axios from "axios";
-
-function buildAxiosResponse(status: number, data: unknown, url: string) {
-  return {
-    status,
-    data,
-    statusText: status === 200 ? "OK" : "Unauthorized",
-    headers: {},
-    config: { url } as any,
-  };
-}
-
-function rejectingAdapter(responseStatus: number, responseData: unknown) {
-  return (config: any) => {
-    const err: any = new Error("Request failed");
-    err.response = buildAxiosResponse(responseStatus, responseData, config.url);
-    err.config = config;
-    return Promise.reject(err);
-  };
-}
-
-function okAdapter(responseData: unknown) {
-  return (config: any) =>
-    Promise.resolve(buildAxiosResponse(200, responseData, config.url));
-}
-
-describe("API auto-refresh interceptor", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("ретранслює запит після успішного refresh", async () => {
-    let callCount = 0;
-
-    const instance = axios.create({ baseURL: "/api", withCredentials: true });
-
-    let refreshPromise: Promise<void> | null = null;
-
-    instance.interceptors.response.use(
-      (res) => res,
-      async (error: any) => {
-        const original = error.config;
-        const isAuth =
-          original?.url?.includes("/auth/login") ||
-          original?.url?.includes("/auth/refresh");
-
-        if (
-          error.response?.status === 401 &&
-          original &&
-          !original._retry &&
-          !isAuth
-        ) {
-          original._retry = true;
-          try {
-            if (!refreshPromise) {
-              refreshPromise = instance
-                .post("/auth/refresh")
-                .then(() => undefined)
-                .finally(() => {
-                  refreshPromise = null;
-                });
-            }
-            await refreshPromise;
-            return instance(original);
-          } catch {
-            window.dispatchEvent(new Event("auth:expired"));
-            return Promise.reject(error);
-          }
-        }
-        return Promise.reject(error);
-      },
-    );
-
-    instance.defaults.adapter = (config: any) => {
-      callCount++;
-      if (config.url === "/schools" && !config._retry) {
-        return rejectingAdapter(401, null)(config);
-      }
-      if (config.url === "/auth/refresh") {
-        return okAdapter({ ok: true })(config);
-      }
-      if (config.url === "/schools" && config._retry) {
-        return okAdapter([{ id: 1 }])(config);
-      }
-      return okAdapter(null)(config);
-    };
-
-    const result = await instance.get("/schools");
-    expect(result.status).toBe(200);
-    expect(result.data).toEqual([{ id: 1 }]);
-    expect(callCount).toBe(3);
-  });
-
-  it("диспатчить auth:expired якщо refresh теж 401", async () => {
-    const dispatchSpy = vi.fn();
-    window.addEventListener("auth:expired", dispatchSpy);
-
-    const instance = axios.create({ baseURL: "/api", withCredentials: true });
-
-    let refreshPromise: Promise<void> | null = null;
-
-    instance.interceptors.response.use(
-      (res) => res,
-      async (error: any) => {
-        const original = error.config;
-        const isAuth =
-          original?.url?.includes("/auth/login") ||
-          original?.url?.includes("/auth/refresh");
-
-        if (
-          error.response?.status === 401 &&
-          original &&
-          !original._retry &&
-          !isAuth
-        ) {
-          original._retry = true;
-          try {
-            if (!refreshPromise) {
-              refreshPromise = instance
-                .post("/auth/refresh")
-                .then(() => undefined)
-                .finally(() => {
-                  refreshPromise = null;
-                });
-            }
-            await refreshPromise;
-            return instance(original);
-          } catch {
-            window.dispatchEvent(new Event("auth:expired"));
-            return Promise.reject(error);
-          }
-        }
-        return Promise.reject(error);
-      },
-    );
-
-    instance.defaults.adapter = (config: any) => {
-      if (config.url === "/auth/refresh") {
-        return rejectingAdapter(401, null)(config);
-      }
-      return rejectingAdapter(401, null)(config);
-    };
-
-    await expect(instance.get("/schools")).rejects.toThrow();
-    expect(dispatchSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it("паралельні 401-запити — лише один refresh (single-flight)", async () => {
-    let refreshCalls = 0;
-
-    const instance = axios.create({ baseURL: "/api", withCredentials: true });
-
-    let refreshPromise: Promise<void> | null = null;
-
-    instance.interceptors.response.use(
-      (res) => res,
-      async (error: any) => {
-        const original = error.config;
-        const isAuth =
-          original?.url?.includes("/auth/login") ||
-          original?.url?.includes("/auth/refresh");
-
-        if (
-          error.response?.status === 401 &&
-          original &&
-          !original._retry &&
-          !isAuth
-        ) {
-          original._retry = true;
-          try {
-            if (!refreshPromise) {
-              refreshPromise = instance
-                .post("/auth/refresh")
-                .then(() => undefined)
-                .finally(() => {
-                  refreshPromise = null;
-                });
-            }
-            await refreshPromise;
-            return instance(original);
-          } catch {
-            window.dispatchEvent(new Event("auth:expired"));
-            return Promise.reject(error);
-          }
-        }
-        return Promise.reject(error);
-      },
-    );
-
-    instance.defaults.adapter = (config: any) => {
-      if (config.url === "/auth/refresh") {
-        refreshCalls++;
-        return okAdapter({ ok: true })(config);
-      }
-      if (config.url?.startsWith("/data/") && config._retry) {
-        return okAdapter({ id: config.url.split("/").pop() })(config);
-      }
-      return rejectingAdapter(401, null)(config);
-    };
-
-    const results = await Promise.all([
-      instance.get("/data/1"),
-      instance.get("/data/2"),
-      instance.get("/data/3"),
-    ]);
-
-    expect(results).toHaveLength(3);
-    results.forEach((r) => expect(r.status).toBe(200));
-    expect(refreshCalls).toBe(1);
-  });
-
-  it("не рефрешить на auth-ендпоінтах", async () => {
-    const instance = axios.create({ baseURL: "/api", withCredentials: true });
-
-    instance.interceptors.response.use(
-      (res) => res,
-      async (error: any) => {
-        const original = error.config;
-        const isAuth =
-          original?.url?.includes("/auth/login") ||
-          original?.url?.includes("/auth/refresh");
-
-        if (
-          error.response?.status === 401 &&
-          original &&
-          !original._retry &&
-          !isAuth
-        ) {
-          original._retry = true;
-          try {
-            const rp = instance.post("/auth/refresh").then(() => undefined);
-            await rp;
-            return instance(original);
-          } catch {
-            window.dispatchEvent(new Event("auth:expired"));
-            return Promise.reject(error);
-          }
-        }
-        return Promise.reject(error);
-      },
-    );
-
-    instance.defaults.adapter = (config: any) => {
-      return rejectingAdapter(401, null)(config);
-    };
-
-    await expect(instance.post("/auth/login", {})).rejects.toThrow();
-  });
-
-  it("/auth/me не тригерить refresh — захист від безкінечного редиректу", async () => {
-    let refreshCalled = false;
-    const dispatchSpy = vi.fn();
-    window.addEventListener("auth:expired", dispatchSpy);
-
-    const instance = axios.create({ baseURL: "/api", withCredentials: true });
-
-    instance.interceptors.response.use(
-      (res) => res,
-      async (error: any) => {
-        const original = error.config;
-        const isAuth =
-          original?.url?.includes("/auth/login") ||
-          original?.url?.includes("/auth/refresh") ||
-          original?.url?.includes("/auth/me");
-
-        if (
-          error.response?.status === 401 &&
-          original &&
-          !original._retry &&
-          !isAuth
-        ) {
-          original._retry = true;
-          try {
-            const rp = instance.post("/auth/refresh").then(() => undefined);
-            await rp;
-            return instance(original);
-          } catch {
-            window.dispatchEvent(new Event("auth:expired"));
-            return Promise.reject(error);
-          }
-        }
-        return Promise.reject(error);
-      },
-    );
-
-    instance.defaults.adapter = (config: any) => {
-      if (config.url === "/auth/refresh") {
-        refreshCalled = true;
-        return rejectingAdapter(401, null)(config);
-      }
-      return rejectingAdapter(401, null)(config);
-    };
-
-    await expect(instance.get("/auth/me")).rejects.toThrow();
-    expect(refreshCalled).toBe(false);
-    expect(dispatchSpy).not.toHaveBeenCalled();
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/unit/calendar/color.test.ts
-
-```
-import { describe, it, expect } from "vitest";
-import { shadeHex, getDayColor } from "../../../features/calendar/utils/color";
-import { PROJECT_HEX } from "../../../features/calendar/constants";
-
-describe("shadeHex", () => {
-  it("освітлює колір (позитивний percent)", () => {
-    const result = shadeHex("#3b82f6", 50);
-    expect(result).toMatch(/^rgb\(\d{1,3}, \d{1,3}, \d{1,3}\)$/);
-    expect(result).toBe("rgb(109, 180, 255)");
-  });
-
-  it("затіняє колір (негативний percent)", () => {
-    const result = shadeHex("#3b82f6", -50);
-    expect(result).toBe("rgb(9, 80, 196)");
-  });
-
-  it("повертає rgb рядок", () => {
-    const result = shadeHex("#10b981", 0);
-    expect(result).toBe("rgb(16, 185, 129)");
-  });
-});
-
-describe("getDayColor", () => {
-  it("повертає undefined для порожнього масиву подій", () => {
-    const hexMap = new Map<string, string>([["Проєкт A", "#3b82f6"]]);
-    const result = getDayColor([], hexMap);
-    expect(result).toBeUndefined();
-  });
-
-  it("повертає градієнт для однієї події", () => {
-    const hexMap = new Map<string, string>([["Проєкт A", "#3b82f6"]]);
-    const events = [{ project: "Проєкт A" }];
-    const result = getDayColor(events, hexMap);
-    expect(result).toContain("linear-gradient(to bottom");
-    expect(result).toContain("rgb");
-  });
-
-  it("повертає градієнт для кількох подій одного проєкту", () => {
-    const hexMap = new Map<string, string>([["Проєкт A", "#10b981"]]);
-    const events = [{ project: "Проєкт A" }, { project: "Проєкт A" }];
-    const result = getDayColor(events, hexMap);
-    expect(result).toContain("linear-gradient(to bottom");
-  });
-
-  it("повертає багатоколірний градієнт для різних проєктів", () => {
-    const hexMap = new Map<string, string>([
-      ["Проєкт A", "#3b82f6"],
-      ["Проєкт B", "#ef4444"],
-    ]);
-    const events = [{ project: "Проєкт A" }, { project: "Проєкт B" }];
-    const result = getDayColor(events, hexMap);
-    expect(result).toContain("linear-gradient(to bottom");
-    expect(result).toContain("rgb");
-  });
-
-  it("використовує PROJECT_HEX.blue як fallback при відсутньому проєкті", () => {
-    const hexMap = new Map<string, string>();
-    const events = [{ project: "Невідомий" }];
-    const result = getDayColor(events, hexMap);
-    expect(result).toContain(shadeHex(PROJECT_HEX.blue, 35).split(",")[0]);
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/unit/calendar/date.test.ts
-
-```
-import { describe, it, expect } from "vitest";
-import {
-  toISODate,
-  getDaysInMonth,
-  getFirstDayOfMonth,
-  isPastDay,
-  buildMonthDays,
-} from "../../../features/calendar/utils/date";
-
-describe("toISODate", () => {
-  it("форматує дату в ISO без часу", () => {
-    expect(toISODate(new Date(2026, 6, 10))).toBe("2026-07-10");
-  });
-});
-
-describe("getDaysInMonth", () => {
-  it("повертає 31 для січня", () => {
-    expect(getDaysInMonth(2026, 0)).toBe(31);
-  });
-
-  it("повертає 28 для лютого невисокосного року", () => {
-    expect(getDaysInMonth(2026, 1)).toBe(28);
-  });
-
-  it("повертає 29 для лютого високосного року", () => {
-    expect(getDaysInMonth(2024, 1)).toBe(29);
-  });
-
-  it("повертає 30 для квітня", () => {
-    expect(getDaysInMonth(2026, 3)).toBe(30);
-  });
-});
-
-describe("getFirstDayOfMonth", () => {
-  it("понеділок (0) для 2026-06-01 (перший день місяця)", () => {
-    expect(getFirstDayOfMonth(2026, 5)).toBe(0);
-  });
-
-  it("правильний день для 2026-07-01 (середа = 2)", () => {
-    expect(getFirstDayOfMonth(2026, 6)).toBe(2);
-  });
-});
-
-describe("isPastDay", () => {
-  it("минулий день повертає true", () => {
-    expect(isPastDay(new Date(2020, 0, 1))).toBe(true);
-  });
-
-  it("сьогодні повертає false", () => {
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    expect(isPastDay(today)).toBe(false);
-  });
-});
-
-describe("buildMonthDays", () => {
-  it("повертає масив з 33 елементів для липня 2026 (31 день, початок з середи)", () => {
-    const days = buildMonthDays(2026, 6);
-    expect(days.length).toBe(33);
-    expect(days[0]).toBeNull();
-    expect(days[1]).toBeNull();
-    expect(days[2]?.getDate()).toBe(1);
-  });
-
-  it("перші null елементи відповідають зміщенню", () => {
-    const days = buildMonthDays(2026, 6);
-    const firstDay = getFirstDayOfMonth(2026, 6);
-    const nulls = days.filter((d) => d === null).length;
-    expect(nulls).toBe(firstDay);
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/unit/exportCsv.test.ts
-
-```
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { exportCsv } from "../../utils/exportCsv";
-
-let capturedBlob: Blob | undefined;
-const revokeObjectURL = vi.fn();
-
-beforeEach(() => {
-  vi.restoreAllMocks();
-  capturedBlob = undefined;
-  revokeObjectURL.mockClear();
-  vi.stubGlobal("URL", {
-    createObjectURL: vi.fn((blob: Blob) => {
-      capturedBlob = blob;
-      return "blob:mock";
-    }),
-    revokeObjectURL,
-  });
-});
-
-describe("exportCsv", () => {
-  it("нічого не робить для порожнього масиву", () => {
-    exportCsv([]);
-    expect(capturedBlob).toBeUndefined();
-  });
-
-  it("створює Blob з заголовками", async () => {
-    exportCsv([{ name: "Test" }]);
-    expect(capturedBlob).toBeDefined();
-    expect(capturedBlob!.type).toBe("text/csv;charset=utf-8;bom=true");
-    const text = await capturedBlob!.text();
-    expect(text).toContain("name");
-    expect(text).toMatch(/Test/);
-  });
-
-  it("генерує правильний CSV для простих даних", async () => {
-    exportCsv([{ name: "Test", city: "Lviv" }]);
-    const text = await capturedBlob!.text();
-    expect(text).toContain("name,city");
-    expect(text).toContain("Test,Lviv");
-  });
-
-  it("екранує коми, лапки та перенесення рядків", async () => {
-    exportCsv([
-      { name: "Smith, John", note: 'he said "hi"', desc: "line1\nline2" },
-    ]);
-    const text = await capturedBlob!.text();
-    expect(text).toContain('"Smith, John"');
-    expect(text).toContain('"he said ""hi"""');
-    expect(text).toContain('"line1\nline2"');
-  });
-
-  it("додає елемент <a> в document.body і клікає", () => {
-    const clickSpy = vi.fn();
-    const origCreate = Element.prototype.cloneNode.name
-      ? document.createElement
-      : document.createElement;
-    const realCreate = document.createElement.bind(document);
-    vi.spyOn(document, "createElement").mockImplementation((tag) => {
-      const el = realCreate(tag);
-      el.click = clickSpy;
-      return el;
-    });
-    const appendSpy = vi.spyOn(document.body, "appendChild");
-    const removeSpy = vi.spyOn(document.body, "removeChild");
-
-    exportCsv([{ col: "val" }]);
-
-    expect(capturedBlob).toBeDefined();
-    expect(appendSpy).toHaveBeenCalled();
-    expect(removeSpy).toHaveBeenCalled();
-    expect(clickSpy).toHaveBeenCalled();
-    expect(appendSpy.mock.calls[0][0]).toBe(removeSpy.mock.calls[0][0]);
-  });
-
-  it("встановлює filename на <a>.download", () => {
-    let anchor: HTMLAnchorElement | undefined;
-    const realCreate = document.createElement.bind(document);
-    vi.spyOn(document, "createElement").mockImplementation((tag) => {
-      const el = realCreate(tag) as HTMLAnchorElement;
-      anchor = el;
-      return el;
-    });
-
-    exportCsv([{ col: "val" }], "my-report.csv");
-    expect(anchor?.download).toBe("my-report.csv");
-  });
-
-  it("використовує дефолтний filename export.csv", () => {
-    let anchor: HTMLAnchorElement | undefined;
-    const realCreate = document.createElement.bind(document);
-    vi.spyOn(document, "createElement").mockImplementation((tag) => {
-      const el = realCreate(tag) as HTMLAnchorElement;
-      anchor = el;
-      return el;
-    });
-
-    exportCsv([{ col: "val" }]);
-    expect(anchor?.download).toBe("export.csv");
-  });
-
-  it("викликає URL.revokeObjectURL після кліка", () => {
-    const realCreate = document.createElement.bind(document);
-    vi.spyOn(document, "createElement").mockImplementation((tag) => {
-      return realCreate(tag);
-    });
-
-    exportCsv([{ col: "val" }]);
-    expect(revokeObjectURL).toHaveBeenCalledWith("blob:mock");
-  });
-
-  it("порожні значення замінює на порожній рядок", async () => {
-    exportCsv([
-      { name: "Test", city: undefined as any, note: undefined as any },
-    ]);
-    const text = await capturedBlob!.text();
-    expect(text).toContain("Test,,");
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/unit/formatCurrency.test.ts
-
-```
-import { describe, it, expect } from "vitest";
-import { formatCurrency } from "../../utils/formatCurrency";
-
-describe("formatCurrency", () => {
-  it("форматує ціле число з розділювачем тисяч (uk-UA)", () => {
-    expect(formatCurrency(10000)).toBe("10\u00A0000");
-  });
-
-  it("округлює дробові суми вгору/вниз коректно", () => {
-    expect(formatCurrency(9999.6)).toBe("10\u00A0000");
-    expect(formatCurrency(9999.4)).toBe("9\u00A0999");
-  });
-
-  it("повертає 0 для undefined", () => {
-    expect(formatCurrency(undefined)).toBe("0");
-  });
-
-  it("повертає 0 для null", () => {
-    expect(formatCurrency(null)).toBe("0");
-  });
-
-  it("повертає 0 для NaN", () => {
-    expect(formatCurrency(NaN)).toBe("0");
-  });
-
-  it("коректно форматує 0", () => {
-    expect(formatCurrency(0)).toBe("0");
-  });
-
-  it("не ламається на дуже великих сумах", () => {
-    expect(formatCurrency(12345678)).toBe("12\u00A0345\u00A0678");
-  });
-
-  it("від'ємні суми форматуються з мінусом", () => {
-    expect(formatCurrency(-500)).toBe("-500");
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/unit/hooks/useCities.test.tsx
-
-```
-import { renderHook, waitFor } from "@testing-library/react";
-import { useCities } from "../../../hooks/useCities";
-import { useAddCity } from "../../../hooks/useApi";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactNode } from "react";
-import { http, HttpResponse } from "msw";
-import { server } from "../../mocks/server";
-
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
-};
-
-describe("useCities", () => {
-  it("fetches cities successfully", async () => {
-    const { result } = renderHook(() => useCities(), { wrapper: createWrapper() });
-    
-    await waitFor(() => {
-      if (result.current.isError) throw result.current.error;
-      expect(result.current.isSuccess).toBe(true);
-    });
-    
-    expect(result.current.data).toBeDefined();
-    expect(result.current.data?.length).toBeGreaterThan(0);
-    expect(result.current.data?.[0].name).toBe("Львів");
-  });
-});
-
-describe("useAddCity", () => {
-  it("mutates and updates query cache with new city", async () => {
-    let addedCity: any;
-    server.use(
-      http.post("http://localhost:3000/api/cities", async ({ request }) => {
-        const body = await request.json();
-        addedCity = { id: "new-city-1", name: (body as any).name };
-        return HttpResponse.json(addedCity);
-      })
-    );
-
-    const { result } = renderHook(() => useAddCity(), { wrapper: createWrapper() });
-    
-    result.current.mutate("Тернопіль");
-    
-    await waitFor(() => {
-      if (result.current.isError) throw result.current.error;
-      expect(result.current.isSuccess).toBe(true);
-    });
-    expect(result.current.data).toEqual({ id: "new-city-1", name: "Тернопіль" });
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/unit/hooks/useSchoolProfile.test.tsx
-
-```
-import { renderHook, waitFor } from "@testing-library/react";
-import { useSchool, useSchoolEvents, useCreateEvent, useUpdateEventStatus } from "../../../hooks/useSchoolProfile";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactNode } from "react";
-import { http, HttpResponse } from "msw";
-import { server } from "../../mocks/server";
-
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
-};
-
-describe("useSchoolProfile hooks", () => {
-  describe("useSchool", () => {
-    it("fetches school details successfully", async () => {
-      const { result } = renderHook(() => useSchool("school-1"), { wrapper: createWrapper() });
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(result.current.data?.name).toBe("Школа №1");
-      expect(result.current.data?.childrenCount).toBe(300);
-    });
-
-    it("does not fetch if id is undefined", () => {
-      const { result } = renderHook(() => useSchool(undefined), { wrapper: createWrapper() });
-      expect(result.current.isFetching).toBe(false);
-    });
-  });
-
-  describe("useSchoolEvents", () => {
-    it("fetches school events successfully", async () => {
-      const { result } = renderHook(() => useSchoolEvents("school-1"), { wrapper: createWrapper() });
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(result.current.data?.length).toBeGreaterThan(0);
-      expect(result.current.data?.[0].project).toBe("Голограма для школи");
-    });
-  });
-
-  describe("useCreateEvent", () => {
-    it("mutates and invalidates schoolEvents query", async () => {
-      let createdEvent: any;
-      server.use(
-        http.post("http://localhost:3000/api/events", async ({ request }) => {
-          const body = await request.json();
-          createdEvent = { id: "new-event", ...(body as any) };
-          return HttpResponse.json(createdEvent);
-        })
-      );
-
-      const { result } = renderHook(() => useCreateEvent(), { wrapper: createWrapper() });
-      
-      result.current.mutate({
-        schoolId: "school-1",
-        project: "New Project",
-        date: "2026-08-01",
-      } as any);
-
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(result.current.data).toEqual(createdEvent);
-    });
-  });
-
-  describe("useUpdateEventStatus", () => {
-    it("updates status and applies optimistic updates", async () => {
-      let patchedStatus: string | undefined;
-      server.use(
-        http.patch("http://localhost:3000/api/events/:eventId/status", async ({ request }) => {
-          const body = await request.json() as any;
-          patchedStatus = body.status;
-          return HttpResponse.json({ id: "event-1", status: body.status });
-        })
-      );
-
-      const { result } = renderHook(() => useUpdateEventStatus(), { wrapper: createWrapper() });
-      
-      result.current.mutate({
-        eventId: "event-1",
-        status: "DONE",
-        actionName: "Завершено",
-      });
-
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(patchedStatus).toBe("DONE");
-    });
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/unit/navTabs.test.ts
-
-```
-import { describe, it, expect } from "vitest";
-import { NAV_TABS, ADMIN_TABS } from "../../constants/navTabs";
-
-describe("NAV_TABS", () => {
-  it("має правильну кількість вкладок", () => {
-    expect(NAV_TABS.length).toBe(6);
-  });
-
-  it("всі вкладки мають to, icon, label", () => {
-    for (const tab of NAV_TABS) {
-      expect(tab.to).toBeTruthy();
-      expect(tab.icon).toBeTruthy();
-      expect(tab.label).toBeTruthy();
-    }
-  });
-
-  it("/employees доступний лише для SUPERADMIN", () => {
-    const emp = NAV_TABS.find((t) => t.to === "/employees");
-    expect(emp?.roles).toEqual(["SUPERADMIN"]);
-  });
-
-  it("/dashboard доступний для SUPERADMIN та MANAGER", () => {
-    const dash = NAV_TABS.find((t) => t.to === "/dashboard");
-    expect(dash?.roles).toEqual(["SUPERADMIN", "MANAGER"]);
-  });
-
-  it("вкладки без roles доступні всім", () => {
-    const publicTabs = NAV_TABS.filter((t) => !t.roles);
-    expect(publicTabs.length).toBeGreaterThanOrEqual(3);
-    for (const t of publicTabs) {
-      expect(t.roles).toBeUndefined();
-    }
-  });
-
-  it("/schools, /kindergartens, /finance, /calendar не мають обмежень", () => {
-    for (const path of ["/schools", "/kindergartens", "/finance", "/calendar"]) {
-      const tab = NAV_TABS.find((t) => t.to === path);
-      expect(tab?.roles).toBeUndefined();
-    }
-  });
-});
-
-describe("ADMIN_TABS", () => {
-  it("має лише /cities для SUPERADMIN", () => {
-    expect(ADMIN_TABS.length).toBe(1);
-    expect(ADMIN_TABS[0].to).toBe("/cities");
-    expect(ADMIN_TABS[0].roles).toEqual(["SUPERADMIN"]);
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/unit/reactImports.test.ts
-
-```
-import { describe, it, expect } from "vitest";
-import fs from "fs";
-import path from "path";
-
-const HOOKS = [
-  "useState", "useEffect", "useCallback", "useMemo", "useRef",
-  "useContext", "useReducer", "useLayoutEffect", "useImperativeHandle",
-  "useDebugValue", "useTransition", "useDeferredValue", "useId",
-  "useSyncExternalStore", "useInsertionEffect",
-];
-
-const pagesDir = path.resolve(__dirname, "../../pages");
-
-function getAllImportedFromReact(content: string): Set<string> {
-  const imported = new Set<string>();
-
-  // Normalize multi-line imports: join lines from `import` to `;`
-  const normalized = content.replace(/import\s+[\s\S]*?;/g, (match) =>
-    match.replace(/\n\s*/g, " "),
-  );
-
-  for (const line of normalized.split("\n")) {
-    if (!/from\s+["']react["']/.test(line)) continue;
-
-    // default import: import React from "react" or import React, { ... }
-    const defaultMatch = line.match(/^import\s+(\w+)/);
-    if (defaultMatch) imported.add(defaultMatch[1]);
-
-    // named imports: { useState, useEffect }
-    const namedMatch = line.match(/\{([^}]+)\}/);
-    if (namedMatch) {
-      const raw = namedMatch[1].replace(/\s+/g, " ");
-      for (const name of raw.split(",")) {
-        const trimmed = name.trim();
-        if (trimmed) imported.add(trimmed);
-      }
-    }
-  }
-
-  return imported;
-}
-
-function getUsedHooks(content: string): string[] {
-  const used: string[] = [];
-  for (const hook of HOOKS) {
-    const regex = new RegExp(`\\b${hook}\\b`, "g");
-    if (regex.test(content)) {
-      used.push(hook);
-    }
-  }
-  return used;
-}
-
-describe("React hooks imports in page files", () => {
-  const files = fs.readdirSync(pagesDir).filter((f) => f.endsWith(".tsx"));
-
-  for (const file of files) {
-    it(`${file} має всі необхідні імпорти React-хуків`, () => {
-      const content = fs.readFileSync(path.join(pagesDir, file), "utf-8");
-      const imported = getAllImportedFromReact(content);
-      const usedHooks = getUsedHooks(content);
-      const missingHooks = usedHooks.filter((hook) => !imported.has(hook));
-
-      expect(
-        missingHooks,
-        `${file}: використовує ${missingHooks.join(", ")}, але не імпортує з "react"`,
-      ).toEqual([]);
-    });
-  }
-});
-
-```
-
-# FILE: apps/frontend/src/tests/unit/roles.test.ts
-
-```
-import { describe, it, expect } from "vitest";
-import { hasRole } from "../../utils/roles";
-
-describe("hasRole", () => {
-  it("повертає true, якщо allowedRoles не задано", () => {
-    expect(hasRole("SUPERADMIN")).toBe(true);
-    expect(hasRole("HOST")).toBe(true);
-    expect(hasRole(undefined)).toBe(true);
-  });
-
-  it("повертає true, якщо роль користувача в списку", () => {
-    expect(hasRole("SUPERADMIN", ["SUPERADMIN"])).toBe(true);
-    expect(hasRole("MANAGER", ["SUPERADMIN", "MANAGER"])).toBe(true);
-  });
-
-  it("повертає false, якщо роль користувача не в списку", () => {
-    expect(hasRole("HOST", ["SUPERADMIN"])).toBe(false);
-    expect(hasRole("DRIVER", ["SUPERADMIN", "MANAGER"])).toBe(false);
-  });
-
-  it("повертає false, якщо userRole undefined, а allowedRoles задано", () => {
-    expect(hasRole(undefined, ["SUPERADMIN"])).toBe(false);
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/unit/schoolUtils.test.ts
-
-```
-import { describe, it, expect } from "vitest";
-import {
-  classifySchool,
-  classifySize,
-} from "../../components/schools/schoolUtils";
-
-describe("classifySchool", () => {
-  it("повертає 'new' якщо немає подій", () => {
-    expect(classifySchool({ events: [] })).toBe("new");
-    expect(classifySchool({})).toBe("new");
-  });
-
-  it("повертає 'planned' якщо остання подія FIRST_CONTACT або DATE_CONFIRMED", () => {
-    expect(classifySchool({ events: [{ status: "FIRST_CONTACT" }] })).toBe(
-      "planned",
-    );
-    expect(classifySchool({ events: [{ status: "DATE_CONFIRMED" }] })).toBe(
-      "planned",
-    );
-  });
-
-  it("повертає 'inProgress' якщо подія в процесі", () => {
-    expect(classifySchool({ events: [{ status: "IN_PROGRESS" }] })).toBe(
-      "inProgress",
-    );
-    expect(classifySchool({ events: [{ status: "PREPARATION" }] })).toBe(
-      "inProgress",
-    );
-  });
-
-  it("повертає 'done' якщо подія завершена", () => {
-    expect(classifySchool({ events: [{ status: "RE_SALE" }] })).toBe("done");
-  });
-});
-
-describe("classifySize для школи", () => {
-  it("малі < 500", () => {
-    expect(classifySize({ childrenCount: 300 }, "Школа")).toBe("small");
-  });
-
-  it("середні 500-900", () => {
-    expect(classifySize({ childrenCount: 700 }, "Школа")).toBe("medium");
-  });
-
-  it("великі 900+", () => {
-    expect(classifySize({ childrenCount: 1000 }, "Школа")).toBe("large");
-  });
-});
-
-describe("classifySize для садочку", () => {
-  it("малі < 50", () => {
-    expect(classifySize({ childrenCount: 30 }, "Садочок")).toBe("small");
-  });
-
-  it("середні 50-100", () => {
-    expect(classifySize({ childrenCount: 75 }, "Садочок")).toBe("medium");
-  });
-
-  it("великі 100+", () => {
-    expect(classifySize({ childrenCount: 120 }, "Садочок")).toBe("large");
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/unit/useDaysOff.test.tsx
-
-```
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, waitFor, act } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { ReactNode } from "react";
-import {
-  useDaysOff,
-  useCreateDayOff,
-  useDeleteDayOff,
-} from "../../hooks/useDaysOff";
-
-const { apiMock } = vi.hoisted(() => ({
-  apiMock: {
-    get: vi.fn(),
-    post: vi.fn(),
-    delete: vi.fn(),
-  },
-}));
-
-vi.mock("../../config/api", () => ({
-  api: apiMock,
-}));
-
-function createTestClient() {
-  return new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  });
-}
-
-function createWrapper(client: QueryClient) {
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  );
-}
-
-describe("useDaysOff", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("формує queryKey з from/to/cityId і staleTime=30000", async () => {
-    apiMock.get.mockResolvedValueOnce({ data: [] });
-    const client = createTestClient();
-
-    const { result } = renderHook(
-      () => useDaysOff("2026-07-01", "2026-07-31", "city-1"),
-      { wrapper: createWrapper(client) },
-    );
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-    expect(apiMock.get).toHaveBeenCalledWith(
-      "/days-off?from=2026-07-01&to=2026-07-31&cityId=city-1",
-    );
-
-    const query = client
-      .getQueryCache()
-      .find({ queryKey: ["daysOff", "2026-07-01", "2026-07-31", "city-1"] });
-    expect(query?.options.staleTime).toBe(30 * 1000);
-  });
-
-  it("без фільтрів викликає /days-off?", async () => {
-    apiMock.get.mockResolvedValueOnce({ data: [] });
-    const client = createTestClient();
-
-    const { result } = renderHook(() => useDaysOff(), {
-      wrapper: createWrapper(client),
-    });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(apiMock.get).toHaveBeenCalledWith("/days-off?");
-  });
-
-  it("лише from додає from-параметр", async () => {
-    apiMock.get.mockResolvedValueOnce({ data: [] });
-    const client = createTestClient();
-
-    const { result } = renderHook(() => useDaysOff("2026-07-01"), {
-      wrapper: createWrapper(client),
-    });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(apiMock.get).toHaveBeenCalledWith("/days-off?from=2026-07-01");
-  });
-
-  it("лише to додає to-параметр", async () => {
-    apiMock.get.mockResolvedValueOnce({ data: [] });
-    const client = createTestClient();
-
-    const { result } = renderHook(
-      () => useDaysOff(undefined, "2026-07-31"),
-      { wrapper: createWrapper(client) },
-    );
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(apiMock.get).toHaveBeenCalledWith("/days-off?to=2026-07-31");
-  });
-
-  it("лише cityId додає cityId-параметр", async () => {
-    apiMock.get.mockResolvedValueOnce({ data: [] });
-    const client = createTestClient();
-
-    const { result } = renderHook(() => useDaysOff(undefined, undefined, "city-1"), {
-      wrapper: createWrapper(client),
-    });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(apiMock.get).toHaveBeenCalledWith("/days-off?cityId=city-1");
-  });
-
-  it("пробрасыває помилку API у query state", async () => {
-    apiMock.get.mockRejectedValueOnce(new Error("days-off failed"));
-    const client = createTestClient();
-
-    const { result } = renderHook(() => useDaysOff(), {
-      wrapper: createWrapper(client),
-    });
-
-    await waitFor(() => expect(result.current.isError).toBe(true));
-    expect(result.current.error).toBeInstanceOf(Error);
-  });
-});
-
-describe("useCreateDayOff", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("POST /days-off з payload {date} і invalidateQueries на success", async () => {
-    apiMock.post.mockResolvedValueOnce({ data: { id: "d1" } });
-    const client = createTestClient();
-    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
-    const setQueryDataSpy = vi.spyOn(client, "setQueryData");
-
-    const { result } = renderHook(() => useCreateDayOff(), {
-      wrapper: createWrapper(client),
-    });
-
-    await act(async () => {
-      await result.current.mutateAsync({ date: "2026-07-10" });
-    });
-
-    expect(apiMock.post).toHaveBeenCalledWith("/days-off", { date: "2026-07-10" });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["daysOff"] });
-    expect(setQueryDataSpy).not.toHaveBeenCalled();
-  });
-
-  it("POST /days-off з payload {date,userId}", async () => {
-    apiMock.post.mockResolvedValueOnce({ data: { id: "d2" } });
-    const client = createTestClient();
-
-    const { result } = renderHook(() => useCreateDayOff(), {
-      wrapper: createWrapper(client),
-    });
-
-    await act(async () => {
-      await result.current.mutateAsync({ date: "2026-07-10", userId: "user-1" });
-    });
-
-    expect(apiMock.post).toHaveBeenCalledWith("/days-off", {
-      date: "2026-07-10",
-      userId: "user-1",
-    });
-  });
-
-  it("на error не викликає invalidateQueries", async () => {
-    apiMock.post.mockRejectedValueOnce(new Error("create failed"));
-    const client = createTestClient();
-    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
-
-    const { result } = renderHook(() => useCreateDayOff(), {
-      wrapper: createWrapper(client),
-    });
-
-    await expect(
-      act(async () => {
-        await result.current.mutateAsync({ date: "2026-07-10" });
-      }),
-    ).rejects.toThrow("create failed");
-
-    expect(invalidateSpy).not.toHaveBeenCalled();
-  });
-});
-
-describe("useDeleteDayOff", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("DELETE /days-off/:id і invalidateQueries на success", async () => {
-    apiMock.delete.mockResolvedValueOnce({ data: { success: true } });
-    const client = createTestClient();
-    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
-    const setQueryDataSpy = vi.spyOn(client, "setQueryData");
-
-    const { result } = renderHook(() => useDeleteDayOff(), {
-      wrapper: createWrapper(client),
-    });
-
-    await act(async () => {
-      await result.current.mutateAsync("dayoff-1");
-    });
-
-    expect(apiMock.delete).toHaveBeenCalledWith("/days-off/dayoff-1");
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["daysOff"] });
-    expect(setQueryDataSpy).not.toHaveBeenCalled();
-  });
-
-  it("на error не викликає invalidateQueries", async () => {
-    apiMock.delete.mockRejectedValueOnce(new Error("delete failed"));
-    const client = createTestClient();
-    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
-
-    const { result } = renderHook(() => useDeleteDayOff(), {
-      wrapper: createWrapper(client),
-    });
-
-    await expect(
-      act(async () => {
-        await result.current.mutateAsync("dayoff-1");
-      }),
-    ).rejects.toThrow("delete failed");
-
-    expect(invalidateSpy).not.toHaveBeenCalled();
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/unit/useDebounce.test.ts
-
-```
-import { describe, it, expect, vi } from "vitest";
-import { renderHook, act } from "@testing-library/react";
-import { useDebounce } from "../../hooks/useDebounce";
-
-describe("useDebounce", () => {
-  it("повертає початкове значення одразу", () => {
-    const { result } = renderHook(() => useDebounce("hello", 500));
-    expect(result.current).toBe("hello");
-  });
-
-  it("оновлює debouncedValue після затримки", async () => {
-    vi.useFakeTimers();
-    const { result, rerender } = renderHook(
-      ({ value }) => useDebounce(value, 500),
-      { initialProps: { value: "a" } },
-    );
-
-    expect(result.current).toBe("a");
-
-    rerender({ value: "b" });
-    expect(result.current).toBe("a");
-
-    act(() => vi.advanceTimersByTime(500));
-    expect(result.current).toBe("b");
-
-    vi.useRealTimers();
-  });
-
-  it("скидає таймер при повторному виклику до завершення затримки", () => {
-    vi.useFakeTimers();
-    const { result, rerender } = renderHook(
-      ({ value }) => useDebounce(value, 500),
-      { initialProps: { value: "a" } },
-    );
-
-    rerender({ value: "b" });
-    act(() => vi.advanceTimersByTime(300));
-    rerender({ value: "c" });
-    act(() => vi.advanceTimersByTime(300));
-    expect(result.current).toBe("a");
-
-    act(() => vi.advanceTimersByTime(200));
-    expect(result.current).toBe("c");
-
-    vi.useRealTimers();
-  });
-
-  it("працює з числовими значеннями", () => {
-    vi.useFakeTimers();
-    const { result, rerender } = renderHook(
-      ({ value }) => useDebounce(value, 100),
-      { initialProps: { value: 0 } },
-    );
-
-    rerender({ value: 42 });
-    act(() => vi.advanceTimersByTime(100));
-    expect(result.current).toBe(42);
-
-    vi.useRealTimers();
-  });
-
-  it("працює з delay=0", () => {
-    vi.useFakeTimers();
-    const { result, rerender } = renderHook(
-      ({ value }) => useDebounce(value, 0),
-      { initialProps: { value: "x" } },
-    );
-
-    rerender({ value: "y" });
-    act(() => vi.advanceTimersByTime(0));
-    expect(result.current).toBe("y");
-
-    vi.useRealTimers();
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/types/index.ts
-
-```
-export interface City {
-  id: string;
-  name: string;
-  manager?: { id: string; name: string; phone: string } | null;
-  plannedEvents?: number;
-  completedEvents?: number;
-  schoolsCount?: number;
-}
-
-export interface School {
-  id: string;
-  name: string;
-  type: string;
-  cityId: string;
-  address?: string;
-  director?: string;
-  phone?: string;
-  email?: string;
-  childrenCount?: number;
-  notes?: string;
-  isHotClient?: boolean;
-  city?: { id: string; name: string };
-  events?: Event[];
-}
-
-export interface SchoolProfileData {
-  id: string;
-  cityId: string;
-  name: string;
-  type: string;
-  city: string;
-  address: string;
-  director: string;
-  phone: string;
-  email: string;
-  childrenCount: number;
-  notes: string;
-}
-
-export interface SchoolContact {
-  contactName: string;
-  phone: string;
-  role?: string;
-}
-
-export interface Project {
-  id: string;
-  name: string;
-  color: string;
-}
-
-export interface EventFormData {
-  project: string;
-  date: string;
-  time: string;
-  childrenPlanned: string;
-  price: string;
-  address: string;
-  contactPerson: string;
-  contactPhone: string;
-}
-
-export interface CreateEventPayload {
-  project: string;
-  date: string;
-  time: string;
-  childrenPlanned: number;
-  price: number;
-  address: string;
-  contactPerson: string;
-  contactPhone: string;
-  schoolId: string;
-  cityId: string;
-}
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  role: UserRole;
-  cityId?: string;
-  city?: { id: string; name: string };
-}
-
-export interface EventHistory {
-  id: string;
-  action: string;
-  comment?: string;
-  userName: string;
-  role: string;
-  createdAt: string;
-}
-
-export interface ExpenseItem {
-  category?: string;
-  name?: string;
-  amount: number;
-}
-
-export interface SalaryItem {
-  userId: string;
-  name: string;
-  amount: number;
-  role?: string;
-}
-
-export interface EventReport {
-  childrenCount: number;
-  totalSum: number;
-  schoolSum: number;
-  remainderSum: number;
-  directorSatisfied?: boolean;
-  teachersSatisfied?: boolean;
-  hadIssues?: boolean;
-  comment?: string;
-  rating?: number;
-  expenses: ExpenseItem[];
-  salaries: SalaryItem[];
-}
-
-export interface Event {
-  id: string;
-  schoolId: string;
-  cityId: string;
-  project: string;
-  date: string;
-  time?: string;
-  status: string;
-  childrenPlanned?: number;
-  price?: number;
-  paymentMethod?: string;
-  address?: string;
-  contactPerson?: string;
-  contactPhone?: string;
-  crew?: Crew;
-  report?: EventReport;
-  history?: EventHistory[];
-  preparation?: EventPreparation;
-  school?: { id: string; name: string; type: string };
-  city?: { id: string; name: string };
-}
-
-export interface Crew {
-  id: string;
-  name: string;
-  cityId: string;
-  hostId?: string;
-  driverId?: string;
-  host?: { id: string; name: string };
-  driver?: { id: string; name: string };
-  car?: string;
-  phone?: string;
-}
-
-import type { PreparationStatus } from '../utils/preparationStatus';
-
-export interface EventPreparation {
-  assignCrew: PreparationStatus;
-  bookEquipment: PreparationStatus;
-  prepareDocs: PreparationStatus;
-  prepareMaterials: PreparationStatus;
-  remindSchool: PreparationStatus;
-}
-
-export interface CityProfile extends City {
-  events: Event[];
-  crews: Crew[];
-  schools?: School[];
-}
-
-export interface PipelineStage {
-  key: string;
-  name: string;
-}
-
-export interface DayOff {
-  id: string;
-  userId: string;
-  date: string;
-  user: { id: string; name: string; role: string; cityId: string | null };
-}
-
-export interface IssueReport {
-  id: string;
-  eventId: string;
-  schoolName: string;
-  eventName: string;
-  message: string;
-  cityId: string;
-  status: string;
-  createdAt: string;
-}
-
-export interface FinanceKpi {
-  totalRevenue: number;
-  totalExpenses: number;
-  totalProfit: number;
-  totalEvents: number;
-}
-
-export interface MonthlyFinance {
-  month: string;
-  revenue: number;
-  profit: number;
-}
-
-export interface FinanceByProject {
-  name: string;
-  value: number;
-}
-
-export interface FinanceByCategory {
-  name: string;
-  value: number;
-}
-
-export interface FinanceTopSchool {
-  name: string;
-  count: number;
-  revenue: number;
-}
-
-export interface FinanceEventItem {
-  id: string;
-  date: string;
-  school: string;
-  profit: number;
-  revenue: number;
-}
-
-export interface FinanceFilterOptions {
-  projects: string[];
-  cities: { id: string; name: string }[];
-}
-
-export interface FinanceDashboardData {
-  kpi: FinanceKpi;
-  monthly: MonthlyFinance[];
-  expectedRevenue: number;
-  filters: FinanceFilterOptions;
-  byProject?: FinanceByProject[];
-  byExpenseCategory?: FinanceByCategory[];
-  topSchools?: FinanceTopSchool[];
-  topEvents?: FinanceEventItem[];
-  worstEvents?: FinanceEventItem[];
-}
-
-export type UserRole = "SUPERADMIN" | "OWNER" | "MANAGER" | "HOST" | "DRIVER";
-
-```
-
-# FILE: apps/frontend/src/utils/exportCsv.ts
-
-```
-type Row = Record<string, string>;
-
-export function exportCsv(data: Row[], filename = "export.csv") {
-  if (data.length === 0) return;
-
-  const headers = Object.keys(data[0]);
-  const csvRows = [
-    headers.join(","),
-    ...data.map((row) =>
-      headers.map((h) => {
-        const val = row[h] ?? "";
-        if (val.includes(",") || val.includes('"') || val.includes("\n")) {
-          return `"${val.replace(/"/g, '""')}"`;
-        }
-        return val;
-      }).join(","),
-    ),
-  ];
-
-  const bom = "\uFEFF";
-  const blob = new Blob([bom + csvRows.join("\n")], { type: "text/csv;charset=utf-8;bom=true" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-```
-
-# FILE: apps/frontend/src/utils/formatCurrency.ts
-
-```
-/**
- * Форматує суму у форматі uk-UA (для відображення в грн).
- * Захищає від NaN/undefined/null — завжди повертає валідний рядок.
- */
-export function formatCurrency(amount: number | null | undefined): string {
-  return new Intl.NumberFormat("uk-UA").format(Math.round(amount || 0));
-}
-```
-
-# FILE: apps/frontend/src/utils/preparationStatus.ts
-
-```
-export type PreparationStatus = "PLANNED" | "IN_PROGRESS" | "DONE";
-
-export const PREPARATION_STATUS_ORDER: PreparationStatus[] = [
-  "PLANNED",
-  "IN_PROGRESS",
-  "DONE",
-];
-
-export const PREPARATION_STATUS_LABELS: Record<PreparationStatus, string> = {
-  PLANNED: "Заплановано",
-  IN_PROGRESS: "В процесі",
-  DONE: "Виконано",
-};
-
-export function getNextPreparationStatus(
-  current: PreparationStatus,
-): PreparationStatus {
-  const idx = PREPARATION_STATUS_ORDER.indexOf(current || "PLANNED");
-  return PREPARATION_STATUS_ORDER[(idx + 1) % PREPARATION_STATUS_ORDER.length];
-}
-
-```
-
-# FILE: apps/frontend/src/utils/roles.ts
-
-```
-export function hasRole(userRole: string | undefined, allowedRoles?: string[]): boolean {
-  return !allowedRoles || (!!userRole && allowedRoles.includes(userRole));
-}
-
-```
-
-# FILE: apps/frontend/tailwind.config.js
-
-```
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {
-      colors: {
-        surface: {
-          DEFAULT: "#ffffff",
-          subtle: "#f8fafc",
-          muted: "#f1f5f9",
-        },
-        border: {
-          DEFAULT: "#f1f5f9",
-          strong: "#e2e8f0",
-        },
-        content: {
-          primary: "#1e293b",
-          secondary: "#475569",
-          muted: "#94a3b8",
-        },
-        brand: {
-          50: "#eff6ff",
-          100: "#dbeafe",
-          200: "#bfdbfe",
-          300: "#93c5fd",
-          400: "#60a5fa",
-          DEFAULT: "#2563eb",
-          600: "#1d4ed8",
-          hover: "#1d4ed8",
-          700: "#1e40af",
-          800: "#1e3a8a",
-          900: "#172554",
-        },
-        success: {
-          50: "#ecfdf5",
-          100: "#d1fae5",
-          200: "#a7f3d0",
-          DEFAULT: "#10b981",
-          600: "#059669",
-          700: "#047857",
-          subtle: "#ecfdf5",
-        },
-        danger: {
-          50: "#fff1f2",
-          100: "#ffe4e6",
-          200: "#fecdd3",
-          DEFAULT: "#e11d48",
-          600: "#be123c",
-          700: "#9f1239",
-          subtle: "#fff1f2",
-        },
-        warning: {
-          50: "#fffbeb",
-          100: "#fef3c7",
-          DEFAULT: "#f59e0b",
-          600: "#d97706",
-          subtle: "#fffbeb",
-        },
-        neutral: {
-          50: "#f8fafc",
-          100: "#f1f5f9",
-          200: "#e2e8f0",
-          300: "#cbd5e1",
-          400: "#94a3b8",
-          500: "#64748b",
-          600: "#475569",
-          700: "#334155",
-          800: "#1e293b",
-          900: "#0f172a",
-        },
-        role: {
-          admin: { bg: "#eef2ff", text: "#4338ca" },
-          manager: { bg: "#eff6ff", text: "#2563eb" },
-          host: { bg: "#f5f3ff", text: "#7c3aed" },
-          driver: { bg: "#ecfdf5", text: "#059669" },
-        },
-      },
-      borderRadius: {
-        card: "1rem",
-        "card-lg": "1.5rem",
-        modal: "1.5rem",
-        control: "0.75rem",
-        pill: "9999px",
-      },
-      boxShadow: {
-        card: "0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06)",
-        "card-hover": "0 8px 24px -4px rgb(0 0 0 / 0.10)",
-        modal: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
-        dropdown: "0 4px 12px -2px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.04)",
-        popover: "0 12px 28px -4px rgb(0 0 0 / 0.12), 0 4px 8px -4px rgb(0 0 0 / 0.06)",
-        lift: "0 4px 12px rgb(0 0 0 / 0.08)",
-      },
-      fontSize: {
-        "2xs": ["10px", { lineHeight: "14px" }],
-        xs: ["12px", { lineHeight: "16px" }],
-        sm: ["14px", { lineHeight: "20px" }],
-        base: ["16px", { lineHeight: "24px" }],
-        lg: ["18px", { lineHeight: "28px" }],
-        xl: ["20px", { lineHeight: "28px" }],
-        "2xl": ["24px", { lineHeight: "32px" }],
-        "3xl": ["30px", { lineHeight: "36px" }],
-      },
-      transitionDuration: {
-        fast: "150ms",
-        base: "200ms",
-        slow: "300ms",
-      },
-      animation: {
-        shimmer: "shimmer 1.4s linear infinite",
-        "fade-in": "fadeIn 0.2s ease-out forwards",
-        "modal-scale": "modalScale 0.3s ease-out forwards",
-        "pop-in": "popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-      },
-      keyframes: {
-        shimmer: {
-          "0%": { transform: "translateX(-100%)" },
-          "100%": { transform: "translateX(100%)" },
-        },
-        fadeIn: {
-          from: { opacity: "0" },
-          to: { opacity: "1" },
-        },
-        modalScale: {
-          from: { opacity: "0", transform: "scale(0.95) translateY(15px)" },
-          to: { opacity: "1", transform: "scale(1) translateY(0)" },
-        },
-        popIn: {
-          "0%": { transform: "scale(0.7)", opacity: "0" },
-          "60%": { transform: "scale(1.15)", opacity: "1" },
-          "100%": { transform: "scale(1)", opacity: "1" },
-        },
-      },
-    },
-  },
-  darkMode: "class",
-  plugins: [],
-};
-
-```
-
-# FILE: apps/frontend/tsconfig.app.json
-
-```
-
-
-{
-  "compilerOptions": {
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-    "target": "es2023",
-    "lib": ["ES2023", "DOM"],
-    "module": "esnext",
-    "types": ["vite/client"],
-    "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
-    "moduleDetection": "force",
-    "noEmit": true,
-    "jsx": "react-jsx",
-
-    /* Linting */
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
-  },
-  "include": ["src"]
-}
-
-
-
-```
-
-# FILE: apps/frontend/tsconfig.json
-
-```
-
-
-{
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ]
-}
-
-
-
-```
-
-# FILE: apps/frontend/tsconfig.node.json
-
-```
-
-
-{
-  "compilerOptions": {
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
-    "target": "es2023",
-    "lib": ["ES2023"],
-    "module": "esnext",
-    "types": ["node"],
-    "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
-    "moduleDetection": "force",
-    "noEmit": true,
-
-    /* Linting */
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
-  },
-  "include": ["vite.config.ts"]
-}
-
-
-
-```
-
-# FILE: apps/frontend/vercel.json
-
-```
-
-
-{
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://api.svitlo-znan.app/:path*"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ]
-}
-
-
-```
-
-# FILE: apps/frontend/vite.config.ts
-
-```
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-
-export default defineConfig({
-  plugins: [react()],
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes("recharts")) return "recharts";
-          if (id.includes("@tanstack/react-virtual")) return "tanstack";
-        },
-      },
-    },
-  },
-  test: {
-    globals: true,
-    environment: "jsdom",
-    setupFiles: ["./src/tests/setup.ts"],
-    include: ["src/**/*.{test,spec}.{ts,tsx}"],
-    coverage: {
-      reporter: ["text", "html"],
-      exclude: ["src/tests/**", "src/main.tsx"],
-      thresholds: {
-        statements: 70,
-        branches: 50,
-        functions: 60,
-        lines: 70,
-      },
-    },
-  },
-});
-
-```
-
-# FILE: scripts/backup.sh
-
-```
-#!/usr/bin/env bash
-set -euo pipefail
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_DIR="${BACKUP_DIR:-./backups}"
-mkdir -p "$BACKUP_DIR"
-pg_dump -F c -f "$BACKUP_DIR/backup_${TIMESTAMP}.dump" "$DIRECT_URL"
-find "$BACKUP_DIR" -name "backup_*.dump" -mtime +14 -delete
-echo "Backup saved: $BACKUP_DIR/backup_${TIMESTAMP}.dump"
-```
-
-# FILE: scripts/restore.sh
-
-```
-#!/usr/bin/env bash
-set -euo pipefail
-FILE="${1:?Usage: restore.sh <path-to-dump>}"
-pg_restore --clean --if-exists --no-owner --no-privileges -d "$DIRECT_URL" "$FILE"
-echo "Restore completed from $FILE"
 ```
 

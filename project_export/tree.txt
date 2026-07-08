@@ -45,16 +45,32 @@ apps
 │   │   │   │   └── migration.sql
 │   │   │   ├── 20260708205543_add_owner_role
 │   │   │   │   └── migration.sql
+│   │   │   ├── 20260708210633_add_report_status
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20260708213844_replace_salaryitem_with_salaryrecord
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20260708215231_add_school_comment
+│   │   │   │   └── migration.sql
+│   │   │   ├── 20260708221238_add_inventory_notification_models
+│   │   │   │   └── migration.sql
 │   │   │   └── migration_lock.toml
 │   │   ├── schema.prisma
 │   │   ├── seed-admin.js
 │   │   └── seed-demo.js
 │   ├── README.md
 │   ├── src
+│   │   ├── analytics
+│   │   │   ├── analytics.controller.ts
+│   │   │   ├── analytics.module.ts
+│   │   │   └── analytics.service.ts
 │   │   ├── app.controller.spec.ts
 │   │   ├── app.controller.ts
 │   │   ├── app.module.ts
 │   │   ├── app.service.ts
+│   │   ├── audit-log
+│   │   │   ├── audit-log.controller.ts
+│   │   │   ├── audit-log.module.ts
+│   │   │   └── audit-log.service.ts
 │   │   ├── auth
 │   │   │   ├── auth.controller.spec.ts
 │   │   │   ├── auth.controller.ts
@@ -167,6 +183,10 @@ apps
 │   │   │   └── indicators
 │   │   │       └── redis.health.ts
 │   │   ├── instrument.ts
+│   │   ├── inventory
+│   │   │   ├── inventory.controller.ts
+│   │   │   ├── inventory.module.ts
+│   │   │   └── inventory.service.ts
 │   │   ├── issues
 │   │   │   ├── dto
 │   │   │   │   ├── create-issue.dto.ts
@@ -184,6 +204,10 @@ apps
 │   │   │   ├── metrics.interceptor.ts
 │   │   │   ├── metrics.module.ts
 │   │   │   └── metrics.service.ts
+│   │   ├── notifications
+│   │   │   ├── notifications.controller.ts
+│   │   │   ├── notifications.module.ts
+│   │   │   └── notifications.service.ts
 │   │   ├── prisma
 │   │   │   ├── prisma.mock.ts
 │   │   │   ├── prisma.module.ts
@@ -196,6 +220,25 @@ apps
 │   │   │   ├── projects.controller.ts
 │   │   │   ├── projects.module.ts
 │   │   │   └── projects.service.ts
+│   │   ├── reports
+│   │   │   ├── dto
+│   │   │   │   ├── create-report.dto.ts
+│   │   │   │   ├── revision.dto.ts
+│   │   │   │   └── update-report.dto.ts
+│   │   │   ├── reports.controller.ts
+│   │   │   ├── reports.module.ts
+│   │   │   └── reports.service.ts
+│   │   ├── salary
+│   │   │   ├── dto
+│   │   │   │   ├── create-salary.dto.ts
+│   │   │   │   └── mark-paid.dto.ts
+│   │   │   ├── salary.controller.ts
+│   │   │   ├── salary.module.ts
+│   │   │   └── salary.service.ts
+│   │   ├── school-comments
+│   │   │   ├── school-comments.controller.ts
+│   │   │   ├── school-comments.module.ts
+│   │   │   └── school-comments.service.ts
 │   │   ├── schools
 │   │   │   ├── dto
 │   │   │   │   ├── bulk-import.dto.ts
@@ -297,10 +340,12 @@ apps
     │   │   ├── Layout.tsx
     │   │   ├── MobileTopNav.tsx
     │   │   ├── modals
+    │   │   ├── NotificationBell.tsx
     │   │   ├── PhoneLink.tsx
     │   │   ├── ProtectedRoute.tsx
     │   │   ├── school-profile
     │   │   │   ├── AssignedCrew.tsx
+    │   │   │   ├── CommentsTimeline.tsx
     │   │   │   ├── CompletedEventModal.tsx
     │   │   │   ├── EventDetails.tsx
     │   │   │   ├── EventPreparation.tsx
@@ -349,47 +394,77 @@ apps
     │   │   ├── AuthContext.tsx
     │   │   └── CityContext.tsx
     │   ├── features
-    │   │   └── calendar
+    │   │   ├── calendar
+    │   │   │   ├── components
+    │   │   │   │   ├── CalendarHeader.tsx
+    │   │   │   │   ├── CalendarSkeleton.tsx
+    │   │   │   │   ├── DesktopCalendarGrid.tsx
+    │   │   │   │   ├── EventTooltip.tsx
+    │   │   │   │   ├── MobileCalendarGrid.tsx
+    │   │   │   │   └── MobileDayDetailsPanel.tsx
+    │   │   │   ├── constants.ts
+    │   │   │   ├── hooks
+    │   │   │   │   ├── useCalendarData.ts
+    │   │   │   │   ├── useCalendarMonth.ts
+    │   │   │   │   ├── useDayOffActions.ts
+    │   │   │   │   └── useLongPress.ts
+    │   │   │   └── utils
+    │   │   │       ├── color.ts
+    │   │   │       └── date.ts
+    │   │   ├── dashboard
+    │   │   │   ├── ManagerDashboard.tsx
+    │   │   │   ├── OwnerDashboard.tsx
+    │   │   │   └── StaffDashboard.tsx
+    │   │   ├── reports
+    │   │   │   ├── components
+    │   │   │   │   ├── ReportForm.tsx
+    │   │   │   │   └── ReportStatusBadge.tsx
+    │   │   │   └── pages
+    │   │   │       └── ReportsReviewPage.tsx
+    │   │   └── salary
     │   │       ├── components
-    │   │       │   ├── CalendarHeader.tsx
-    │   │       │   ├── CalendarSkeleton.tsx
-    │   │       │   ├── DesktopCalendarGrid.tsx
-    │   │       │   ├── EventTooltip.tsx
-    │   │       │   ├── MobileCalendarGrid.tsx
-    │   │       │   └── MobileDayDetailsPanel.tsx
-    │   │       ├── constants.ts
-    │   │       ├── hooks
-    │   │       │   ├── useCalendarData.ts
-    │   │       │   ├── useCalendarMonth.ts
-    │   │       │   ├── useDayOffActions.ts
-    │   │       │   └── useLongPress.ts
-    │   │       └── utils
-    │   │           ├── color.ts
-    │   │           └── date.ts
+    │   │       │   └── SalaryStatusBadge.tsx
+    │   │       └── pages
+    │   │           ├── Company.tsx
+    │   │           ├── MySalary.tsx
+    │   │           └── TeamSalaries.tsx
     │   ├── hooks
+    │   │   ├── useAnalytics.ts
     │   │   ├── useApi.ts
+    │   │   ├── useAuditLog.ts
     │   │   ├── useCalendar.ts
     │   │   ├── useCities.ts
+    │   │   ├── useDashboardData.ts
     │   │   ├── useDaysOff.ts
     │   │   ├── useDebounce.ts
     │   │   ├── useEmployees.ts
+    │   │   ├── useInventory.ts
+    │   │   ├── useNotifications.ts
+    │   │   ├── useReports.ts
+    │   │   ├── useSalary.ts
+    │   │   ├── useSchoolComments.ts
     │   │   └── useSchoolProfile.ts
     │   ├── index.css
     │   ├── instrument.ts
     │   ├── main.tsx
     │   ├── pages
     │   │   ├── Analytics.tsx
+    │   │   ├── AuditLog.tsx
     │   │   ├── CalendarView.tsx
     │   │   ├── Cities.tsx
+    │   │   ├── CityLeaderboard.tsx
     │   │   ├── CityProfile.tsx
     │   │   ├── Dashboard.tsx
     │   │   ├── Employees.tsx
     │   │   ├── EventReport.tsx
     │   │   ├── Events.tsx
     │   │   ├── Finance.tsx
+    │   │   ├── Inventory.tsx
     │   │   ├── Kindergartens.tsx
+    │   │   ├── lazyTabPages.ts
     │   │   ├── Login.tsx
     │   │   ├── NotFound.tsx
+    │   │   ├── ProjectProfile.tsx
     │   │   ├── SchoolProfile.tsx
     │   │   └── Schools.tsx
     │   ├── tests

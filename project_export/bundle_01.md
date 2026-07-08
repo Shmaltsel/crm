@@ -795,6 +795,174 @@ ALTER TYPE "UserRole" ADD VALUE 'OWNER';
 
 ```
 
+# FILE: apps/backend/prisma/migrations/20260708210633_add_report_status/migration.sql
+
+```
+-- CreateEnum
+CREATE TYPE "ReportStatus" AS ENUM ('DRAFT', 'SUBMITTED', 'NEEDS_REVISION', 'APPROVED', 'REJECTED', 'CLOSED');
+
+-- AlterTable: add columns as nullable first, fill data, then set NOT NULL
+ALTER TABLE "EventReport" ADD COLUMN     "approvedAt" TIMESTAMP(3),
+ADD COLUMN     "approvedBy" TEXT,
+ADD COLUMN     "revisionComment" TEXT,
+ADD COLUMN     "status" "ReportStatus" NOT NULL DEFAULT 'DRAFT',
+ADD COLUMN     "submittedAt" TIMESTAMP(3),
+ADD COLUMN     "updatedAt" TIMESTAMP(3);
+
+UPDATE "EventReport" SET "updatedAt" = NOW() WHERE "updatedAt" IS NULL;
+
+ALTER TABLE "EventReport" ALTER COLUMN "updatedAt" SET NOT NULL;
+
+```
+
+# FILE: apps/backend/prisma/migrations/20260708213844_replace_salaryitem_with_salaryrecord/migration.sql
+
+```
+/*
+  Warnings:
+
+  - You are about to drop the `SalaryItem` table. If the table is not empty, all the data it contains will be lost.
+
+*/
+-- CreateEnum
+CREATE TYPE "SalaryStatus" AS ENUM ('PENDING', 'PAID', 'CANCELLED');
+
+-- DropForeignKey
+ALTER TABLE "SalaryItem" DROP CONSTRAINT "SalaryItem_reportId_fkey";
+
+-- DropForeignKey
+ALTER TABLE "SalaryItem" DROP CONSTRAINT "SalaryItem_userId_fkey";
+
+-- DropTable
+DROP TABLE "SalaryItem";
+
+-- CreateTable
+CREATE TABLE "SalaryRecord" (
+    "id" TEXT NOT NULL,
+    "employeeId" TEXT NOT NULL,
+    "eventId" TEXT,
+    "reportId" TEXT,
+    "amount" DECIMAL(12,2) NOT NULL,
+    "comment" TEXT,
+    "status" "SalaryStatus" NOT NULL DEFAULT 'PENDING',
+    "paidAt" TIMESTAMP(3),
+    "paidBy" TEXT,
+    "createdBy" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "SalaryRecord_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE INDEX "SalaryRecord_employeeId_idx" ON "SalaryRecord"("employeeId");
+
+-- CreateIndex
+CREATE INDEX "SalaryRecord_reportId_idx" ON "SalaryRecord"("reportId");
+
+-- CreateIndex
+CREATE INDEX "SalaryRecord_status_idx" ON "SalaryRecord"("status");
+
+-- AddForeignKey
+ALTER TABLE "SalaryRecord" ADD CONSTRAINT "SalaryRecord_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SalaryRecord" ADD CONSTRAINT "SalaryRecord_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SalaryRecord" ADD CONSTRAINT "SalaryRecord_reportId_fkey" FOREIGN KEY ("reportId") REFERENCES "EventReport"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+```
+
+# FILE: apps/backend/prisma/migrations/20260708215231_add_school_comment/migration.sql
+
+```
+-- CreateEnum
+CREATE TYPE "CommentType" AS ENUM ('NOTE', 'CALL', 'RESCHEDULE', 'CONFIRMATION', 'PROBLEM');
+
+-- CreateTable
+CREATE TABLE "SchoolComment" (
+    "id" TEXT NOT NULL,
+    "schoolId" TEXT NOT NULL,
+    "authorId" TEXT NOT NULL,
+    "type" "CommentType" NOT NULL,
+    "text" TEXT NOT NULL,
+    "deletedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "SchoolComment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE INDEX "SchoolComment_schoolId_createdAt_idx" ON "SchoolComment"("schoolId", "createdAt");
+
+-- AddForeignKey
+ALTER TABLE "SchoolComment" ADD CONSTRAINT "SchoolComment_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "School"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SchoolComment" ADD CONSTRAINT "SchoolComment_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+```
+
+# FILE: apps/backend/prisma/migrations/20260708221238_add_inventory_notification_models/migration.sql
+
+```
+-- CreateTable
+CREATE TABLE "InventoryItem" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "sku" TEXT,
+    "unit" TEXT NOT NULL DEFAULT 'шт',
+    "minStock" INTEGER NOT NULL DEFAULT 5,
+    "currentStock" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "InventoryItem_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "InventoryUsage" (
+    "id" TEXT NOT NULL,
+    "itemId" TEXT NOT NULL,
+    "reportId" TEXT NOT NULL,
+    "quantity" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "InventoryUsage_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Notification" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "payload" JSONB NOT NULL,
+    "readAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE INDEX "InventoryItem_name_idx" ON "InventoryItem"("name");
+
+-- CreateIndex
+CREATE INDEX "InventoryUsage_itemId_idx" ON "InventoryUsage"("itemId");
+
+-- CreateIndex
+CREATE INDEX "InventoryUsage_reportId_idx" ON "InventoryUsage"("reportId");
+
+-- CreateIndex
+CREATE INDEX "Notification_userId_readAt_createdAt_idx" ON "Notification"("userId", "readAt", "createdAt");
+
+-- AddForeignKey
+ALTER TABLE "InventoryUsage" ADD CONSTRAINT "InventoryUsage_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "InventoryItem"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InventoryUsage" ADD CONSTRAINT "InventoryUsage_reportId_fkey" FOREIGN KEY ("reportId") REFERENCES "EventReport"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+```
+
 # FILE: apps/backend/prisma/schema.prisma
 
 ```
@@ -827,8 +995,9 @@ model User {
   crewAsDriver   Crew[]         @relation("DriverCrew")
   crewAsHost     Crew[]         @relation("HostCrew")
   city           City?          @relation(fields: [cityId], references: [id])
-  salaryItems    SalaryItem[]
+  salaryRecords  SalaryRecord[]
   daysOff        DayOff[]
+  schoolComments SchoolComment[]
 
   @@index([role])
   @@index([cityId])
@@ -875,6 +1044,7 @@ model School {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   events        Event[]
+  comments      SchoolComment[]
   city          City     @relation(fields: [cityId], references: [id])
 
   @@index([cityId])
@@ -932,6 +1102,7 @@ model Event {
   report          EventReport?
   files           File[]
   issues          IssueReport[]
+  salaryRecords   SalaryRecord[]
 
   @@index([cityId])
   @@index([cityId, date])
@@ -944,12 +1115,18 @@ model Event {
 model EventReport {
   id                String        @id @default(uuid())
   eventId           String        @unique
+  status            ReportStatus  @default(DRAFT)
   directorSatisfied Boolean?
   teachersSatisfied Boolean?
   hadIssues         Boolean       @default(false)
   comment           String?
+  revisionComment   String?
   rating            Float?
+  submittedAt       DateTime?
+  approvedAt        DateTime?
+  approvedBy        String?
   createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
   announcementDone  Boolean       @default(false)
   materialShown     Boolean       @default(false)
   childrenCount     Int           @default(0)
@@ -962,7 +1139,8 @@ model EventReport {
   event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
   photos            File[]
   expenseItems      ExpenseItem[]
-  salaryItems       SalaryItem[]
+  salaryRecords     SalaryRecord[]
+  inventoryUsages   InventoryUsage[]
 }
 
 model File {
@@ -1055,20 +1233,26 @@ model ExpenseItem {
   @@index([reportId])
 }
 
-model SalaryItem {
-  id        String   @id @default(uuid())
-  reportId  String
-  userId    String?
-  userName  String
-  amount    Decimal  @db.Decimal(12, 2)
-  role      String?
-  createdAt DateTime @default(now())
+model SalaryRecord {
+  id         String        @id @default(cuid())
+  employeeId String
+  eventId    String?
+  reportId   String?
+  amount     Decimal       @db.Decimal(12, 2)
+  comment    String?
+  status     SalaryStatus  @default(PENDING)
+  paidAt     DateTime?
+  paidBy     String?
+  createdBy  String
+  createdAt  DateTime      @default(now())
 
-  report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  user   User?       @relation(fields: [userId], references: [id])
+  employee User        @relation(fields: [employeeId], references: [id])
+  event    Event?      @relation(fields: [eventId], references: [id])
+  report   EventReport? @relation(fields: [reportId], references: [id], onDelete: SetNull)
 
+  @@index([employeeId])
   @@index([reportId])
-  @@index([userId])
+  @@index([status])
 }
 
 model RefreshToken {
@@ -1114,6 +1298,84 @@ enum PreparationStatus {
   PLANNED
   IN_PROGRESS
   DONE
+}
+
+enum ReportStatus {
+  DRAFT
+  SUBMITTED
+  NEEDS_REVISION
+  APPROVED
+  REJECTED
+  CLOSED
+}
+
+enum SalaryStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum CommentType {
+  NOTE
+  CALL
+  RESCHEDULE
+  CONFIRMATION
+  PROBLEM
+}
+
+model SchoolComment {
+  id        String      @id @default(cuid())
+  schoolId  String
+  authorId  String
+  type      CommentType
+  text      String
+  deletedAt DateTime?
+  createdAt DateTime    @default(now())
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@index([schoolId, createdAt])
+}
+
+model InventoryItem {
+  id           String   @id @default(cuid())
+  name         String
+  sku          String?
+  unit         String   @default("шт")
+  minStock     Int      @default(5)
+  currentStock Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  usages InventoryUsage[]
+
+  @@index([name])
+}
+
+model InventoryUsage {
+  id        String   @id @default(cuid())
+  itemId    String
+  reportId  String
+  quantity  Int
+  createdAt DateTime @default(now())
+
+  item   InventoryItem @relation(fields: [itemId], references: [id])
+  report EventReport   @relation(fields: [reportId], references: [id])
+
+  @@index([itemId])
+  @@index([reportId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  payload   Json
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, readAt, createdAt])
 }
 
 enum EventStatus {
@@ -1457,15 +1719,10 @@ async function main() {
       expenseItems: {
         create: [{ category: 'Пальне', name: 'Заправка авто', amount: 800 }],
       },
-      salaryItems: {
+      salaryRecords: {
         create: [
-          { userId: host.id, userName: host.name, amount: 2500, role: 'HOST' },
-          {
-            userId: driver.id,
-            userName: driver.name,
-            amount: 1500,
-            role: 'DRIVER',
-          },
+          { employeeId: host.id, amount: 2500, status: 'PAID', createdBy: manager.id },
+          { employeeId: driver.id, amount: 1500, status: 'PAID', createdBy: manager.id },
         ],
       },
     },
@@ -1604,6 +1861,655 @@ Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 
 ```
 
+# FILE: apps/backend/src/analytics/analytics.controller.ts
+
+```
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiCookieAuth,
+  ApiPropertyOptional,
+} from '@nestjs/swagger';
+import { AnalyticsService } from './analytics.service';
+import { AuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+import { PrismaService } from '../prisma/prisma.service';
+import { IsOptional, IsString, IsInt, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+
+class RevenueByMonthDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  projectId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+}
+
+class YearQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+}
+
+class ProfitByCityDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+}
+
+class SalaryFundDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  month?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+}
+
+class CityLeaderboardDto {
+  @ApiPropertyOptional({ default: 'events' })
+  @IsOptional()
+  @IsString()
+  metric?: string = 'events';
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+}
+
+class RoiDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+}
+
+@ApiTags('Analytics')
+@ApiCookieAuth('access_token')
+@Controller('analytics')
+@UseGuards(AuthGuard, RolesGuard)
+export class AnalyticsController {
+  constructor(
+    private readonly analyticsService: AnalyticsService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  @ApiOperation({ summary: 'Дохід по місяцях' })
+  @Get('revenue-by-month')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async revenueByMonth(
+    @CurrentUser() user: JwtUser,
+    @Query() query: RevenueByMonthDto,
+  ) {
+    const effectiveCityId = await this.resolveCityId(user, query.cityId);
+    return this.analyticsService.revenueByMonth(
+      effectiveCityId,
+      query.projectId,
+      query.year,
+    );
+  }
+
+  @ApiOperation({ summary: 'Події по містах' })
+  @Get('events-by-city')
+  @Roles('SUPERADMIN', 'OWNER')
+  async eventsByCity(@Query() query: YearQueryDto) {
+    return this.analyticsService.eventsByCity(query.year);
+  }
+
+  @ApiOperation({ summary: 'Прибуток по містах' })
+  @Get('profit-by-city')
+  @Roles('SUPERADMIN', 'OWNER')
+  async profitByCity(@Query() query: ProfitByCityDto) {
+    return this.analyticsService.profitByCity(query.cityId, query.year);
+  }
+
+  @ApiOperation({ summary: 'Фонд зарплати' })
+  @Get('salary-fund')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async salaryFund(
+    @CurrentUser() user: JwtUser,
+    @Query() query: SalaryFundDto,
+  ) {
+    const effectiveCityId = await this.resolveCityId(user, query.cityId);
+    return this.analyticsService.salaryFund(
+      query.month,
+      query.year,
+      effectiveCityId,
+    );
+  }
+
+  @ApiOperation({ summary: 'Рейтинг міст за метрикою' })
+  @Get('city-leaderboard')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async cityLeaderboard(@Query() query: CityLeaderboardDto) {
+    return this.analyticsService.cityLeaderboard(query.metric, query.year);
+  }
+
+  @ApiOperation({ summary: 'ROI' })
+  @Get('roi')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async roi(@CurrentUser() user: JwtUser, @Query() query: RoiDto) {
+    const effectiveCityId = await this.resolveCityId(user, query.cityId);
+    return this.analyticsService.roi(effectiveCityId, query.year);
+  }
+
+  @ApiOperation({ summary: 'Топ менеджерів за кількістю затверджених звітів' })
+  @Get('kpi/managers')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async kpiManagers() {
+    return this.analyticsService.kpiManagers();
+  }
+
+  @ApiOperation({ summary: 'Топ ведучих за рейтингом' })
+  @Get('kpi/hosts')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async kpiHosts() {
+    return this.analyticsService.kpiHosts();
+  }
+
+  @ApiOperation({ summary: 'Топ проєктів за подіями' })
+  @Get('kpi/projects')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async kpiProjects() {
+    return this.analyticsService.kpiProjects();
+  }
+
+  private async resolveCityId(
+    user: JwtUser,
+    requestedCityId?: string,
+  ): Promise<string | undefined> {
+    if (user.role === 'SUPERADMIN' || user.role === 'OWNER') {
+      return requestedCityId;
+    }
+    const me = await this.prisma.user.findUnique({
+      where: { id: user.sub },
+      select: { cityId: true },
+    });
+    return me?.cityId ?? undefined;
+  }
+}
+
+```
+
+# FILE: apps/backend/src/analytics/analytics.module.ts
+
+```
+import { Module } from '@nestjs/common';
+import { AnalyticsController } from './analytics.controller';
+import { AnalyticsService } from './analytics.service';
+import { PrismaModule } from '../prisma/prisma.module';
+
+@Module({
+  imports: [PrismaModule],
+  controllers: [AnalyticsController],
+  providers: [AnalyticsService],
+})
+export class AnalyticsModule {}
+
+```
+
+# FILE: apps/backend/src/analytics/analytics.service.ts
+
+```
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class AnalyticsService {
+  constructor(private prisma: PrismaService) {}
+
+  async revenueByMonth(cityId?: string, projectId?: string, year?: number) {
+    const yearFilter = year ?? new Date().getFullYear();
+    const where: Record<string, unknown> = {
+      date: {
+        gte: new Date(`${yearFilter}-01-01`),
+        lt: new Date(`${yearFilter + 1}-01-01`),
+      },
+      status: { in: ['REPORT', 'DONE'] },
+    };
+    if (cityId) where.cityId = cityId;
+    if (projectId) where.project = projectId;
+
+    const events = await this.prisma.event.findMany({
+      where,
+      select: {
+        date: true,
+        report: {
+          select: { totalSum: true, remainderSum: true, schoolSum: true },
+        },
+      },
+    });
+
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const monthEvents = events.filter(
+        (e) => new Date(e.date).getMonth() === i,
+      );
+      return {
+        month: (i + 1).toString().padStart(2, '0'),
+        revenue: monthEvents.reduce(
+          (s, e) => s + Number(e.report?.totalSum ?? 0),
+          0,
+        ),
+        profit: monthEvents.reduce(
+          (s, e) => s + Number(e.report?.remainderSum ?? 0),
+          0,
+        ),
+        events: monthEvents.length,
+      };
+    });
+
+    return months;
+  }
+
+  async eventsByCity(year?: number) {
+    const yearFilter = year ?? new Date().getFullYear();
+    const events = await this.prisma.event.groupBy({
+      by: ['cityId'],
+      where: {
+        date: {
+          gte: new Date(`${yearFilter}-01-01`),
+          lt: new Date(`${yearFilter + 1}-01-01`),
+        },
+      },
+      _count: { id: true },
+    });
+
+    const cities = await this.prisma.city.findMany({
+      select: { id: true, name: true },
+    });
+    const cityMap = new Map(cities.map((c) => [c.id, c.name]));
+
+    return events.map((e) => ({
+      cityId: e.cityId,
+      cityName: cityMap.get(e.cityId) ?? '—',
+      events: e._count.id,
+    }));
+  }
+
+  async profitByCity(cityId?: string, year?: number) {
+    const yearFilter = year ?? new Date().getFullYear();
+    const where: Record<string, unknown> = {
+      date: {
+        gte: new Date(`${yearFilter}-01-01`),
+        lt: new Date(`${yearFilter + 1}-01-01`),
+      },
+      status: { in: ['REPORT', 'DONE'] },
+    };
+    if (cityId) where.cityId = cityId;
+
+    const events = await this.prisma.event.findMany({
+      where,
+      select: {
+        cityId: true,
+        report: {
+          select: { totalSum: true, schoolSum: true, remainderSum: true },
+        },
+      },
+    });
+
+    const byCity = new Map<
+      string,
+      { revenue: number; profit: number; expenses: number; count: number }
+    >();
+    for (const e of events) {
+      const curr = byCity.get(e.cityId) ?? {
+        revenue: 0,
+        profit: 0,
+        expenses: 0,
+        count: 0,
+      };
+      curr.revenue += Number(e.report?.totalSum ?? 0);
+      curr.profit += Number(e.report?.remainderSum ?? 0);
+      curr.expenses += Number(e.report?.schoolSum ?? 0);
+      curr.count++;
+      byCity.set(e.cityId, curr);
+    }
+
+    const cities = await this.prisma.city.findMany({
+      select: { id: true, name: true },
+    });
+    const cityMap = new Map(cities.map((c) => [c.id, c.name]));
+
+    return Array.from(byCity.entries()).map(([cityId, data]) => ({
+      cityId,
+      cityName: cityMap.get(cityId) ?? '—',
+      ...data,
+    }));
+  }
+
+  async salaryFund(month?: number, year?: number, cityId?: string) {
+    const now = new Date();
+    const m = month ?? now.getMonth() + 1;
+    const y = year ?? now.getFullYear();
+    const start = new Date(y, m - 1, 1);
+    const end = new Date(y, m, 1);
+
+    const where: Record<string, unknown> = {
+      createdAt: { gte: start, lt: end },
+      status: 'PAID',
+    };
+
+    const records = await this.prisma.salaryRecord.findMany({
+      where,
+      select: { amount: true, event: { select: { cityId: true } } },
+    });
+
+    let total = records.reduce((s, r) => s + Number(r.amount), 0);
+    const byCity: Record<string, number> = {};
+
+    if (cityId) {
+      const filtered = records.filter((r) => r.event?.cityId === cityId);
+      total = filtered.reduce((s, r) => s + Number(r.amount), 0);
+    } else {
+      for (const r of records) {
+        const cid = r.event?.cityId ?? 'unknown';
+        byCity[cid] = (byCity[cid] ?? 0) + Number(r.amount);
+      }
+    }
+
+    return {
+      total,
+      month: m,
+      year: y,
+      byCity: Object.keys(byCity).length ? byCity : undefined,
+    };
+  }
+
+  async cityLeaderboard(metric?: string, year?: number) {
+    const yearFilter = year ?? new Date().getFullYear();
+    const where: Record<string, unknown> = {
+      date: {
+        gte: new Date(`${yearFilter}-01-01`),
+        lt: new Date(`${yearFilter + 1}-01-01`),
+      },
+      status: { in: ['REPORT', 'DONE'] },
+    };
+
+    const events = await this.prisma.event.findMany({
+      where,
+      select: {
+        cityId: true,
+        schoolId: true,
+        childrenActual: true,
+        report: {
+          select: { totalSum: true, remainderSum: true, childrenCount: true },
+        },
+      },
+    });
+
+    const byCity = new Map<
+      string,
+      {
+        events: number;
+        revenue: number;
+        profit: number;
+        children: number;
+        schools: Set<string>;
+      }
+    >();
+    for (const e of events) {
+      const cityId = e.cityId;
+      if (!byCity.has(cityId))
+        byCity.set(cityId, {
+          events: 0,
+          revenue: 0,
+          profit: 0,
+          children: 0,
+          schools: new Set(),
+        });
+      const d = byCity.get(cityId)!;
+      d.events++;
+      d.revenue += Number(e.report?.totalSum ?? 0);
+      d.profit += Number(e.report?.remainderSum ?? 0);
+      d.children += Number(e.report?.childrenCount ?? e.childrenActual ?? 0);
+      d.schools.add(e.schoolId);
+    }
+
+    const cities = await this.prisma.city.findMany({
+      select: { id: true, name: true },
+    });
+    const cityMap = new Map(cities.map((c) => [c.id, c.name]));
+
+    const metricMap = {
+      events: 'events',
+      revenue: 'revenue',
+      profit: 'profit',
+      children: 'children',
+      schools: 'schools',
+    };
+    const sortKey = metricMap[metric as keyof typeof metricMap] || 'events';
+
+    const result = Array.from(byCity.entries())
+      .map(([cityId, data]) => ({
+        cityId,
+        cityName: cityMap.get(cityId) ?? '—',
+        events: data.events,
+        revenue: data.revenue,
+        profit: data.profit,
+        children: data.children,
+        schools: data.schools.size,
+      }))
+      .sort(
+        (a, b) =>
+          (b[sortKey as keyof typeof a] as number) -
+          (a[sortKey as keyof typeof a] as number),
+      );
+
+    return result;
+  }
+
+  async kpiManagers() {
+    const managers = await this.prisma.eventReport.groupBy({
+      by: ['approvedBy'],
+      where: { status: 'APPROVED', approvedBy: { not: null } },
+      _count: { id: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: 10,
+    });
+
+    const userIds = managers
+      .map((m) => m.approvedBy)
+      .filter(Boolean) as string[];
+    const users = userIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const userMap = new Map(users.map((u) => [u.id, u.name]));
+
+    return managers.map((m) => ({
+      userId: m.approvedBy,
+      name: userMap.get(m.approvedBy!) ?? '—',
+      approvedReports: m._count.id,
+    }));
+  }
+
+  async kpiHosts() {
+    const events = await this.prisma.event.findMany({
+      where: {
+        status: { in: ['REPORT', 'DONE'] },
+        crew: { hostId: { not: null } },
+        report: { rating: { not: null } },
+      },
+      select: {
+        crew: { select: { hostId: true } },
+        report: { select: { rating: true } },
+      },
+    });
+
+    const byHost = new Map<string, { totalRating: number; count: number }>();
+    for (const e of events) {
+      const hostId = e.crew!.hostId!;
+      if (!byHost.has(hostId)) byHost.set(hostId, { totalRating: 0, count: 0 });
+      const d = byHost.get(hostId)!;
+      d.totalRating += Number(e.report!.rating);
+      d.count++;
+    }
+
+    const userIds = Array.from(byHost.keys());
+    const users = userIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const userMap = new Map(users.map((u) => [u.id, u.name]));
+
+    return Array.from(byHost.entries())
+      .map(([userId, data]) => ({
+        userId,
+        name: userMap.get(userId) ?? '—',
+        avgRating: Math.round((data.totalRating / data.count) * 100) / 100,
+        reportsCount: data.count,
+      }))
+      .sort((a, b) => b.avgRating - a.avgRating)
+      .slice(0, 10);
+  }
+
+  async kpiProjects() {
+    const year = new Date().getFullYear();
+    const projects = await this.prisma.event.groupBy({
+      by: ['project'],
+      where: {
+        date: {
+          gte: new Date(`${year}-01-01`),
+          lt: new Date(`${year + 1}-01-01`),
+        },
+        status: { in: ['REPORT', 'DONE'] },
+      },
+      _count: { id: true },
+      _sum: { childrenActual: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: 10,
+    });
+
+    const projectNames = projects.map((p) => p.project);
+    const revenueByProject = new Map<string, number>();
+    if (projectNames.length) {
+      const events = await this.prisma.event.findMany({
+        where: {
+          project: { in: projectNames },
+          status: { in: ['REPORT', 'DONE'] },
+        },
+        select: {
+          project: true,
+          report: { select: { totalSum: true, remainderSum: true } },
+        },
+      });
+      for (const e of events) {
+        const curr = revenueByProject.get(e.project) ?? 0;
+        revenueByProject.set(
+          e.project,
+          curr + Number(e.report?.remainderSum ?? 0),
+        );
+      }
+    }
+
+    return projects.map((p) => ({
+      project: p.project,
+      eventsCount: p._count.id,
+      childrenTotal: p._sum.childrenActual ?? 0,
+      profit: revenueByProject.get(p.project) ?? 0,
+    }));
+  }
+
+  async roi(cityId?: string, year?: number) {
+    const y = year ?? new Date().getFullYear();
+    const start = new Date(y, 0, 1);
+    const end = new Date(y + 1, 0, 1);
+
+    const where: Record<string, unknown> = {
+      date: { gte: start, lt: end },
+      status: { in: ['REPORT', 'DONE'] },
+    };
+    if (cityId) where.cityId = cityId;
+
+    const events = await this.prisma.event.findMany({
+      where,
+      select: {
+        report: {
+          select: { totalSum: true, schoolSum: true, remainderSum: true },
+        },
+      },
+    });
+
+    const totalRevenue = events.reduce(
+      (s, e) => s + Number(e.report?.totalSum ?? 0),
+      0,
+    );
+    const totalSchoolSum = events.reduce(
+      (s, e) => s + Number(e.report?.schoolSum ?? 0),
+      0,
+    );
+
+    const salaryRecords = await this.prisma.salaryRecord.findMany({
+      where: { createdAt: { gte: start, lt: end }, status: 'PAID' },
+      select: { amount: true },
+    });
+    const salaryExpenses = salaryRecords.reduce(
+      (s, r) => s + Number(r.amount),
+      0,
+    );
+
+    const totalExpenses = totalSchoolSum + salaryExpenses;
+    const profit = totalRevenue - totalExpenses;
+    const roiValue = totalExpenses > 0 ? (profit / totalExpenses) * 100 : 0;
+
+    return {
+      totalRevenue,
+      totalExpenses,
+      salaryExpenses,
+      profit,
+      roi: Math.round(roiValue * 100) / 100,
+    };
+  }
+}
+
+```
+
 # FILE: apps/backend/src/app.controller.spec.ts
 
 ```
@@ -1680,8 +2586,15 @@ import { IssuesModule } from './issues/issues.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ProjectsModule } from './projects/projects.module';
 import { HealthModule } from './health/health.module';
+import { InventoryModule } from './inventory/inventory.module';
 import { DaysOffModule } from './days-off/days-off.module';
+import { ReportsModule } from './reports/reports.module';
+import { SalaryModule } from './salary/salary.module';
+import { SchoolCommentsModule } from './school-comments/school-comments.module';
+import { AuditLogModule } from './audit-log/audit-log.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { FeatureFlagsModule } from './common/feature-flags/feature-flags.module';
 import { I18nModule } from './common/i18n/i18n.module';
 import { LocalizedValidationPipe } from './common/pipes/localized-validation.pipe';
@@ -1723,6 +2636,13 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     DashboardModule,
     ProjectsModule,
     DaysOffModule,
+    InventoryModule,
+    ReportsModule,
+    SalaryModule,
+    SchoolCommentsModule,
+    AuditLogModule,
+    NotificationsModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [
@@ -1763,6 +2683,143 @@ import { Injectable } from '@nestjs/common';
 export class AppService {
   getHello(): string {
     return 'Hello World!';
+  }
+}
+
+```
+
+# FILE: apps/backend/src/audit-log/audit-log.controller.ts
+
+```
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiCookieAuth, ApiOperation } from '@nestjs/swagger';
+import { AuditLogService } from './audit-log.service';
+import { AuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+
+@ApiTags('audit-log')
+@ApiCookieAuth('access_token')
+@UseGuards(AuthGuard, RolesGuard)
+@Roles('SUPERADMIN', 'OWNER')
+@Controller('audit-log')
+export class AuditLogController {
+  constructor(private readonly auditLogService: AuditLogService) {}
+
+  @ApiOperation({ summary: 'Отримати журнал дій' })
+  @Get()
+  findAll(
+    @Query('userId') userId?: string,
+    @Query('entity') entity?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+    @Query('page') page?: number,
+    @Query('take') take?: number,
+  ) {
+    return this.auditLogService.findAll({
+      userId,
+      entity,
+      dateFrom,
+      dateTo,
+      page,
+      take,
+    });
+  }
+
+  @ApiOperation({ summary: 'Список типів сутностей' })
+  @Get('entities')
+  findEntityTypes() {
+    return this.auditLogService.findEntityTypes();
+  }
+}
+
+```
+
+# FILE: apps/backend/src/audit-log/audit-log.module.ts
+
+```
+import { Module } from '@nestjs/common';
+import { AuditLogController } from './audit-log.controller';
+import { AuditLogService } from './audit-log.service';
+import { PrismaModule } from '../prisma/prisma.module';
+
+@Module({
+  imports: [PrismaModule],
+  controllers: [AuditLogController],
+  providers: [AuditLogService],
+})
+export class AuditLogModule {}
+
+```
+
+# FILE: apps/backend/src/audit-log/audit-log.service.ts
+
+```
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { PageMetaDto } from '../common/dto/page-meta.dto';
+
+@Injectable()
+export class AuditLogService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async findAll(params: {
+    userId?: string;
+    entity?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    page?: number;
+    take?: number;
+  }) {
+    const page = params.page ?? 1;
+    const take = params.take ?? 10;
+    const skip = (page - 1) * take;
+
+    const where: Record<string, unknown> = {};
+
+    if (params.userId) {
+      where.userId = params.userId;
+    }
+
+    if (params.entity) {
+      where.entity = params.entity;
+    }
+
+    if (params.dateFrom || params.dateTo) {
+      const createdAt: Record<string, Date> = {};
+      if (params.dateFrom) createdAt.gte = new Date(params.dateFrom);
+      if (params.dateTo) {
+        const end = new Date(params.dateTo);
+        end.setHours(23, 59, 59, 999);
+        createdAt.lte = end;
+      }
+      where.createdAt = createdAt;
+    }
+
+    const [items, totalItems] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+      }),
+      this.prisma.auditLog.count({ where }),
+    ]);
+
+    const meta = new PageMetaDto(totalItems, page, take);
+
+    return { items, meta };
+  }
+
+  async findEntityTypes(): Promise<string[]> {
+    const result = await this.prisma.auditLog.findMany({
+      select: { entity: true },
+      where: { entity: { not: null } },
+      distinct: ['entity'],
+      orderBy: { entity: 'asc' },
+    });
+
+    return result.map((r) => r.entity as string);
   }
 }
 
@@ -2524,25 +3581,19 @@ describe('CsrfGuard', () => {
 
   it('@SkipCsrf — пропускає без перевірки', () => {
     reflector.getAllAndOverride.mockReturnValueOnce(true);
-    const ok = guard.canActivate(
-      createContext('POST', '/some-path', {}, {}),
-    );
+    const ok = guard.canActivate(createContext('POST', '/some-path', {}, {}));
     expect(ok).toBe(true);
   });
 
   it('GET/HEAD/OPTIONS пропускає без перевірки', () => {
     reflector.getAllAndOverride.mockReturnValueOnce(undefined);
-    const ok = guard.canActivate(
-      createContext('GET', '/any-path'),
-    );
+    const ok = guard.canActivate(createContext('GET', '/any-path'));
     expect(ok).toBe(true);
   });
 
   it('/auth/login пропускає без перевірки', () => {
     reflector.getAllAndOverride.mockReturnValueOnce(undefined);
-    const ok = guard.canActivate(
-      createContext('POST', '/auth/login'),
-    );
+    const ok = guard.canActivate(createContext('POST', '/auth/login'));
     expect(ok).toBe(true);
   });
 
@@ -2566,7 +3617,12 @@ describe('CsrfGuard', () => {
     reflector.getAllAndOverride.mockReturnValueOnce(undefined);
     expect(() =>
       guard.canActivate(
-        createContext('POST', '/some-path', { csrf_token: 'token123' }, { 'x-csrf-token': 'wrong' }),
+        createContext(
+          'POST',
+          '/some-path',
+          { csrf_token: 'token123' },
+          { 'x-csrf-token': 'wrong' },
+        ),
       ),
     ).toThrow(ForbiddenException);
   });
@@ -2574,7 +3630,12 @@ describe('CsrfGuard', () => {
   it('POST зі співпадінням токенів пропускає', () => {
     reflector.getAllAndOverride.mockReturnValueOnce(undefined);
     const ok = guard.canActivate(
-      createContext('POST', '/some-path', { csrf_token: 'token123' }, { 'x-csrf-token': 'token123' }),
+      createContext(
+        'POST',
+        '/some-path',
+        { csrf_token: 'token123' },
+        { 'x-csrf-token': 'token123' },
+      ),
     );
     expect(ok).toBe(true);
   });
@@ -4013,7 +5074,10 @@ export class AuditLogInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap(() => {
         const user = req.user as { sub?: string; name?: string } | undefined;
-        const entity = context.getClass().name.replace(/Controller$/, '').toLowerCase();
+        const entity = context
+          .getClass()
+          .name.replace(/Controller$/, '')
+          .toLowerCase();
         const entityId =
           (Object.values(req.params ?? {}).find(
             (v) => typeof v === 'string' && /^\d+$/.test(v),
@@ -5102,9 +6166,10 @@ import { Module } from '@nestjs/common';
 import { DaysOffService } from './days-off.service';
 import { DaysOffController } from './days-off.controller';
 import { TelegramModule } from '../telegram/telegram.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TelegramModule],
+  imports: [TelegramModule, NotificationsModule],
   controllers: [DaysOffController],
   providers: [DaysOffService],
 })
@@ -5120,6 +6185,7 @@ import { HttpStatus } from '@nestjs/common';
 import { DaysOffService } from './days-off.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { AppException } from '../common/exceptions/app.exception';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
@@ -5138,6 +6204,10 @@ const mockPrisma = {
 
 const mockTelegram = {
   sendMessage: jest.fn(),
+};
+
+const mockNotifications = {
+  create: jest.fn().mockResolvedValue(undefined),
 };
 
 const hostUser: JwtUser = {
@@ -5179,6 +6249,7 @@ describe('DaysOffService', () => {
         DaysOffService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: TelegramService, useValue: mockTelegram },
+        { provide: NotificationsService, useValue: mockNotifications },
       ],
     }).compile();
 
@@ -5717,6 +6788,7 @@ describe('DaysOffService', () => {
 import { Injectable, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { AppException } from '../common/exceptions/app.exception';
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
@@ -5728,6 +6800,7 @@ export class DaysOffService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly telegramService: TelegramService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async findAll(from?: string, to?: string, cityId?: string) {
@@ -5772,9 +6845,7 @@ export class DaysOffService {
         currentUser.role === 'MANAGER' &&
         target.cityId !== currentUser.cityId
       ) {
-        throw new AppException(
-          'CROSS_CITY_DAY_OFF', HttpStatus.FORBIDDEN,
-        );
+        throw new AppException('CROSS_CITY_DAY_OFF', HttpStatus.FORBIDDEN);
       }
       targetUserId = target.id;
     } else {
@@ -5834,9 +6905,7 @@ export class DaysOffService {
 
     if (currentUser.role === 'MANAGER' && !isOwner) {
       if (dayOff.user.cityId !== currentUser.cityId) {
-        throw new AppException(
-          'CROSS_CITY_DAY_OFF', HttpStatus.FORBIDDEN,
-        );
+        throw new AppException('CROSS_CITY_DAY_OFF', HttpStatus.FORBIDDEN);
       }
     }
 
@@ -5891,6 +6960,18 @@ export class DaysOffService {
         : `❌ <b>Скасовано вихідний</b>\n\n👤 <b>Співробітник:</b> ${staffName}\n📅 <b>Дата:</b> ${dateStr}`;
 
     await this.telegramService.sendMessage(chatId, msg);
+
+    this.notificationsService
+      .create(
+        manager.id,
+        action === 'created' ? 'DAY_OFF_CREATED' : 'DAY_OFF_REMOVED',
+        {
+          staffName,
+          date: dateStr,
+          action,
+        },
+      )
+      .catch(() => {});
   }
 }
 
@@ -6213,7 +7294,7 @@ export class ExpenseItemDto {
   amount: number;
 }
 
-export class SalaryItemDto {
+export class SalaryRecordDto {
   @IsString()
   userId: string;
 
@@ -6228,6 +7309,16 @@ export class SalaryItemDto {
   @IsOptional()
   @IsString()
   role?: string;
+}
+
+export class InventoryUsageDto {
+  @IsString()
+  itemId: string;
+
+  @IsNumber()
+  @Min(1)
+  @Type(() => Number)
+  quantity: number;
 }
 
 export class SubmitReportDto {
@@ -6285,8 +7376,14 @@ export class SubmitReportDto {
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => SalaryItemDto)
-  salaries: SalaryItemDto[];
+  @Type(() => SalaryRecordDto)
+  salaries: SalaryRecordDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => InventoryUsageDto)
+  inventoryUsages?: InventoryUsageDto[];
 }
 
 ```
@@ -6320,7 +7417,18 @@ export class UpdatePreparationDto {
 ```
 import { IsString, IsNotEmpty, IsOptional, IsIn } from 'class-validator';
 
-const EVENT_STATUSES = ['BASE', 'FIRST_CONTACT', 'INTERESTED', 'PRE_APPROVAL', 'DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS', 'DONE', 'REPORT', 'RE_SALE'] as const;
+const EVENT_STATUSES = [
+  'BASE',
+  'FIRST_CONTACT',
+  'INTERESTED',
+  'PRE_APPROVAL',
+  'DATE_CONFIRMED',
+  'PREPARATION',
+  'IN_PROGRESS',
+  'DONE',
+  'REPORT',
+  'RE_SALE',
+] as const;
 
 export class UpdateStatusDto {
   @IsString()
@@ -6381,7 +7489,7 @@ describe('EventsReportService', () => {
     mockTx = {
       eventReport: { upsert: jest.fn() },
       expenseItem: { deleteMany: jest.fn(), createMany: jest.fn() },
-      salaryItem: { deleteMany: jest.fn(), createMany: jest.fn() },
+      salaryRecord: { deleteMany: jest.fn(), createMany: jest.fn() },
       user: { update: jest.fn() },
       event: { update: jest.fn() },
     };
@@ -6545,7 +7653,7 @@ describe('EventsReportService', () => {
       expect(mockTx.expenseItem.deleteMany).toHaveBeenCalledWith({
         where: { reportId: 'report-1' },
       });
-      expect(mockTx.salaryItem.deleteMany).toHaveBeenCalledWith({
+      expect(mockTx.salaryRecord.deleteMany).toHaveBeenCalledWith({
         where: { reportId: 'report-1' },
       });
     });
@@ -6566,9 +7674,9 @@ describe('EventsReportService', () => {
       );
 
       expect(mockTx.expenseItem.deleteMany).toHaveBeenCalled();
-      expect(mockTx.salaryItem.deleteMany).toHaveBeenCalled();
+      expect(mockTx.salaryRecord.deleteMany).toHaveBeenCalled();
       expect(mockTx.expenseItem.createMany).not.toHaveBeenCalled();
-      expect(mockTx.salaryItem.createMany).not.toHaveBeenCalled();
+      expect(mockTx.salaryRecord.createMany).not.toHaveBeenCalled();
     });
 
     it('підставляє категорію "Інше" для витрати без вказаної категорії', async () => {
@@ -6661,7 +7769,7 @@ describe('EventsReportService', () => {
         mockUser,
       );
 
-      expect(mockTx.salaryItem.createMany).toHaveBeenCalled();
+      expect(mockTx.salaryRecord.createMany).toHaveBeenCalled();
       expect(mockTx.user.update).not.toHaveBeenCalled();
     });
 
@@ -6677,8 +7785,8 @@ describe('EventsReportService', () => {
 
       await service.submitReport('ev-1', reportData, mockUser);
 
-      expect(mockTx.salaryItem.createMany).toHaveBeenCalledTimes(1);
-      const call = mockTx.salaryItem.createMany.mock.calls[0][0];
+      expect(mockTx.salaryRecord.createMany).toHaveBeenCalledTimes(1);
+      const call = mockTx.salaryRecord.createMany.mock.calls[0][0];
       expect(call.data).toHaveLength(2);
     });
 
@@ -6751,13 +7859,22 @@ describe('EventsReportService', () => {
 # FILE: apps/backend/src/events/events-report.service.ts
 
 ```
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  Inject,
+  BadRequestException,
+} from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheVersionService } from '../common/cache/cache-version.service';
 import { Prisma } from '@prisma/client';
-import { SubmitReportDto, ExpenseItemDto } from './dto/submit-report.dto';
+import {
+  SubmitReportDto,
+  ExpenseItemDto,
+  InventoryUsageDto,
+} from './dto/submit-report.dto';
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
 @Injectable()
@@ -6817,6 +7934,8 @@ export class EventsReportService {
         const report = await tx.eventReport.upsert({
           where: { eventId },
           update: {
+            status: 'SUBMITTED' as never,
+            submittedAt: new Date(),
             announcementDone: reportData.announcementDone,
             materialShown: reportData.materialShown,
             childrenCount: reportData.childrenCount,
@@ -6830,6 +7949,8 @@ export class EventsReportService {
           },
           create: {
             eventId,
+            status: 'SUBMITTED' as never,
+            submittedAt: new Date(),
             announcementDone: reportData.announcementDone,
             materialShown: reportData.materialShown,
             childrenCount: reportData.childrenCount,
@@ -6846,7 +7967,7 @@ export class EventsReportService {
         await tx.expenseItem.deleteMany({
           where: { reportId: report.id },
         });
-        await tx.salaryItem.deleteMany({
+        await tx.salaryRecord.deleteMany({
           where: { reportId: report.id },
         });
 
@@ -6864,12 +7985,14 @@ export class EventsReportService {
         if (reportData.salaries?.length) {
           const salariesWithUser = reportData.salaries.filter((s) => s.userId);
           if (salariesWithUser.length) {
-            await tx.salaryItem.createMany({
+            await tx.salaryRecord.createMany({
               data: salariesWithUser.map((s) => ({
                 reportId: report.id,
-                userId: s.userId,
-                userName: s.name,
+                employeeId: s.userId,
                 amount: new Prisma.Decimal(s.amount),
+                status: 'PAID',
+                createdBy: user.sub,
+                eventId,
               })),
             });
 
@@ -6881,6 +8004,41 @@ export class EventsReportService {
                 where: { id: s.userId },
                 data: { balance: { increment: s.amount } },
               });
+            }
+          }
+        }
+
+        if (reportData.inventoryUsages?.length) {
+          for (const usage of reportData.inventoryUsages) {
+            const item = await tx.inventoryItem.findUnique({
+              where: { id: usage.itemId },
+            });
+            if (!item) {
+              throw new BadRequestException(
+                `Товар з id ${usage.itemId} не знайдено`,
+              );
+            }
+            if (item.currentStock < usage.quantity) {
+              throw new BadRequestException('inventory.insufficientStock');
+            }
+            await tx.inventoryItem.update({
+              where: { id: usage.itemId },
+              data: { currentStock: { decrement: usage.quantity } },
+            });
+            await tx.inventoryUsage.create({
+              data: {
+                itemId: usage.itemId,
+                reportId: report.id,
+                quantity: usage.quantity,
+              },
+            });
+            const updated = await tx.inventoryItem.findUnique({
+              where: { id: usage.itemId },
+            });
+            if (updated && updated.currentStock < updated.minStock) {
+              this.logger.warn(
+                `Inventory item "${item.name}" (${item.id}) below min stock: ${updated.currentStock}/${updated.minStock}`,
+              );
             }
           }
         }
@@ -6924,16 +8082,19 @@ export class EventsReportService {
 import { EventsSchedulerService } from './events-scheduler.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const mockPrisma = {
   event: { findMany: jest.fn() },
 };
 const mockTelegram = { sendMessage: jest.fn() };
+const mockNotifications = { create: jest.fn().mockResolvedValue(undefined) };
 
 const makeService = () =>
   new EventsSchedulerService(
     mockPrisma as unknown as PrismaService,
     mockTelegram as unknown as TelegramService,
+    mockNotifications as unknown as NotificationsService,
   );
 
 beforeEach(() => {
@@ -7136,6 +8297,7 @@ describe('EventsSchedulerService', () => {
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class EventsSchedulerService implements OnModuleInit {
@@ -7144,6 +8306,7 @@ export class EventsSchedulerService implements OnModuleInit {
   constructor(
     private prisma: PrismaService,
     private telegramService: TelegramService,
+    private notificationsService: NotificationsService,
   ) {}
 
   onModuleInit() {
@@ -7160,11 +8323,14 @@ export class EventsSchedulerService implements OnModuleInit {
       this.logger.error('Помилка першої перевірки подій:', err),
     );
 
-    setInterval(() => {
-      check().catch((err) =>
-        this.logger.error('Помилка перевірки подій:', err),
-      );
-    }, 24 * 60 * 60 * 1000);
+    setInterval(
+      () => {
+        check().catch((err) =>
+          this.logger.error('Помилка перевірки подій:', err),
+        );
+      },
+      24 * 60 * 60 * 1000,
+    );
   }
 
   async checkEventsForTomorrow() {
@@ -7211,6 +8377,15 @@ export class EventsSchedulerService implements OnModuleInit {
     } catch (e) {
       this.logger.error(`Помилка відправки: ${e}`);
     }
+
+    this.notificationsService
+      .create(user.id, 'EVENT_REMINDER', {
+        eventId: event.id,
+        project: event.project,
+        schoolName: event.school?.name,
+        role: roleLabel,
+      })
+      .catch(() => {});
   }
 }
 
@@ -7223,18 +8398,22 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EventsSchedulingService } from './events-scheduling.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
+const mockTx = {
+  event: { update: jest.fn() },
+  schoolComment: { create: jest.fn() },
+};
 const mockPrisma = {
-  event: {
-    update: jest.fn(),
-  },
+  $transaction: jest.fn((cb: (tx: typeof mockTx) => unknown) => cb(mockTx)),
   user: {
     findUnique: jest.fn(),
   },
 };
 
 const mockTelegram = { sendMessage: jest.fn() };
+const mockNotifications = { create: jest.fn().mockResolvedValue(undefined) };
 
 const mockUser = { sub: 'user-1', name: 'Менеджер', role: 'MANAGER' } as const;
 
@@ -7249,6 +8428,7 @@ describe('EventsSchedulingService', () => {
         EventsSchedulingService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: TelegramService, useValue: mockTelegram },
+        { provide: NotificationsService, useValue: mockNotifications },
         {
           provide: CACHE_MANAGER,
           useValue: {
@@ -7275,7 +8455,7 @@ describe('EventsSchedulingService', () => {
         crew: null,
         history: [{ id: 'h-1', action: 'Подію перенесено' }],
       };
-      mockPrisma.event.update.mockResolvedValueOnce(updatedEvent);
+      mockTx.event.update.mockResolvedValueOnce(updatedEvent);
 
       const result = await service.rescheduleEvent(
         'ev-1',
@@ -7284,7 +8464,7 @@ describe('EventsSchedulingService', () => {
         mockUser,
       );
 
-      expect(mockPrisma.event.update).toHaveBeenCalledWith(
+      expect(mockTx.event.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'ev-1' },
           data: expect.objectContaining({
@@ -7297,7 +8477,7 @@ describe('EventsSchedulingService', () => {
     });
 
     it('надсилає Telegram сповіщення якщо є екіпаж з chatId', async () => {
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         project: 'Голограма',
         date: new Date('2025-10-15'),
@@ -7323,7 +8503,7 @@ describe('EventsSchedulingService', () => {
     });
 
     it('не надсилає сповіщення якщо екіпаж не призначений', async () => {
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         project: 'Голограма',
         date: new Date('2025-10-15'),
@@ -7340,7 +8520,7 @@ describe('EventsSchedulingService', () => {
     });
 
     it('інвалідує кеш школи після перенесення', async () => {
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         schoolId: 'school-1',
         project: 'Голограма',
@@ -7351,10 +8531,7 @@ describe('EventsSchedulingService', () => {
         crew: null,
         history: [],
       });
-      const cacheDelSpy = jest.spyOn(
-        (service as any).cacheManager,
-        'del',
-      );
+      const cacheDelSpy = jest.spyOn((service as any).cacheManager, 'del');
 
       await service.rescheduleEvent('ev-1', '2025-10-15', '14:00', mockUser);
 
@@ -7376,6 +8553,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
 @Injectable()
@@ -7385,6 +8563,7 @@ export class EventsSchedulingService {
   constructor(
     private readonly prisma: PrismaService,
     private telegramService: TelegramService,
+    private notificationsService: NotificationsService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
@@ -7431,26 +8610,39 @@ export class EventsSchedulingService {
     newTime: string,
     user: JwtUser,
   ) {
-    const event = await this.prisma.event.update({
-      where: { id: eventId },
-      data: {
-        date: new Date(newDate),
-        time: newTime,
-        history: {
-          create: {
-            action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
-            userId: user.sub,
-            userName: user.name,
-            role: user.role,
+    const event = await this.prisma.$transaction(async (tx) => {
+      const ev = await tx.event.update({
+        where: { id: eventId },
+        data: {
+          date: new Date(newDate),
+          time: newTime,
+          history: {
+            create: {
+              action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
+              userId: user.sub,
+              userName: user.name,
+              role: user.role,
+            },
           },
         },
-      },
-      include: {
-        crew: { include: { host: true, driver: true } },
-        school: true,
-        city: true,
-        history: { orderBy: { createdAt: 'desc' } },
-      },
+        include: {
+          crew: { include: { host: true, driver: true } },
+          school: true,
+          city: true,
+          history: { orderBy: { createdAt: 'desc' } },
+        },
+      });
+
+      await tx.schoolComment.create({
+        data: {
+          schoolId: ev.schoolId,
+          authorId: user.sub,
+          type: 'RESCHEDULE',
+          text: `Подію "${ev.project}" перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
+        },
+      });
+
+      return ev;
     });
 
     const dateStr = new Date(newDate).toLocaleDateString('uk-UA', {
@@ -7478,6 +8670,24 @@ export class EventsSchedulingService {
 
     await sendTo(event.crew?.hostId);
     await sendTo(event.crew?.driverId);
+
+    const payload = {
+      eventId: event.id,
+      project: event.project,
+      schoolName: event.school?.name,
+      newDate: dateStr,
+      newTime,
+    };
+    if (event.crew?.hostId) {
+      this.notificationsService
+        .create(event.crew.hostId, 'EVENT_RESCHEDULED', payload)
+        .catch(() => {});
+    }
+    if (event.crew?.driverId) {
+      this.notificationsService
+        .create(event.crew.driverId, 'EVENT_RESCHEDULED', payload)
+        .catch(() => {});
+    }
 
     await this.invalidateSchoolEventsCache(event.schoolId);
     return this.serializeEvent(event);
@@ -7532,7 +8742,10 @@ describe('EventsController (HTTP)', () => {
       providers: [
         { provide: EventsService, useValue: mockEventsService },
         { provide: EventsReportService, useValue: mockEventsReportService },
-        { provide: EventsSchedulingService, useValue: mockEventsSchedulingService },
+        {
+          provide: EventsSchedulingService,
+          useValue: mockEventsSchedulingService,
+        },
         { provide: JwtService, useValue: mockJwtService },
       ],
     })
@@ -7562,9 +8775,7 @@ describe('EventsController (HTTP)', () => {
           'Немає доступу до ресурсу іншого міста',
         ),
       );
-      await request(app.getHttpServer())
-        .get('/events/school/s-1')
-        .expect(403);
+      await request(app.getHttpServer()).get('/events/school/s-1').expect(403);
     });
 
     it('OWNERSHIP: HOST отримує 403 (resourceType=school не дозволено для HOST)', async () => {
@@ -7573,9 +8784,7 @@ describe('EventsController (HTTP)', () => {
           'Немає доступу до цього типу ресурсу',
         ),
       );
-      await request(app.getHttpServer())
-        .get('/events/school/s-1')
-        .expect(403);
+      await request(app.getHttpServer()).get('/events/school/s-1').expect(403);
     });
 
     it('SUPERADMIN отримує 200', async () => {
@@ -7603,7 +8812,7 @@ describe('EventsController (HTTP)', () => {
     it('MANAGER без cityId отримує 403', async () => {
       mockGuard.canActivate.mockRejectedValueOnce(
         new (require('@nestjs/common').ForbiddenException)(
-          'Менеджер не прив\'язаний до міста',
+          "Менеджер не прив'язаний до міста",
         ),
       );
       await request(app.getHttpServer())
@@ -7861,7 +9070,12 @@ export class EventsController {
     @Body() body: RescheduleEventDto,
     @CurrentUser() user: JwtUser,
   ) {
-    return this.eventsSchedulingService.rescheduleEvent(id, body.date, body.time, user);
+    return this.eventsSchedulingService.rescheduleEvent(
+      id,
+      body.date,
+      body.time,
+      user,
+    );
   }
 }
 
@@ -7877,11 +9091,17 @@ import { EventsSchedulingService } from './events-scheduling.service';
 import { EventsController } from './events.controller';
 import { SchoolsModule } from '../schools/schools.module';
 import { TelegramModule } from '../telegram/telegram.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { RedisCacheModule } from '../common/cache/redis-cache.module';
 import { EventsSchedulerService } from './events-scheduler.service';
 
 @Module({
-  imports: [forwardRef(() => SchoolsModule), TelegramModule, RedisCacheModule],
+  imports: [
+    forwardRef(() => SchoolsModule),
+    TelegramModule,
+    NotificationsModule,
+    RedisCacheModule,
+  ],
   controllers: [EventsController],
   providers: [
     EventsService,
@@ -7904,6 +9124,7 @@ import { EventsService } from './events.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CacheVersionService } from '../common/cache/cache-version.service';
 
 const mockPrisma = {
@@ -7930,7 +9151,7 @@ const mockPrisma = {
   },
   eventReport: { upsert: jest.fn() },
   expenseItem: { deleteMany: jest.fn(), createMany: jest.fn() },
-  salaryItem: { deleteMany: jest.fn(), createMany: jest.fn() },
+  salaryRecord: { deleteMany: jest.fn(), createMany: jest.fn() },
   user: {
     findUnique: jest.fn(),
     update: jest.fn(),
@@ -7939,6 +9160,7 @@ const mockPrisma = {
 };
 
 const mockTelegram = { sendMessage: jest.fn() };
+const mockNotifications = { create: jest.fn().mockResolvedValue(undefined) };
 
 const mockUser = { sub: 'user-1', name: 'Менеджер', role: 'MANAGER' } as const;
 
@@ -7952,6 +9174,7 @@ describe('EventsService', () => {
         EventsService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: TelegramService, useValue: mockTelegram },
+        { provide: NotificationsService, useValue: mockNotifications },
         {
           provide: CACHE_MANAGER,
           useValue: {
@@ -8072,8 +9295,6 @@ describe('EventsService', () => {
       expect(result?.history).toHaveLength(1);
     });
   });
-
-
 
   describe('findBySchool', () => {
     it('minimal=true — використовує select без history/preparation', async () => {
@@ -8361,6 +9582,7 @@ import type { Cache } from 'cache-manager';
 import { AppException } from '../common/exceptions/app.exception';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CacheVersionService } from '../common/cache/cache-version.service';
 import { Prisma, PreparationStatus } from '@prisma/client';
 
@@ -8379,6 +9601,7 @@ export class EventsService {
   constructor(
     private readonly prisma: PrismaService,
     private telegramService: TelegramService,
+    private notificationsService: NotificationsService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     private readonly cacheVersion: CacheVersionService,
   ) {}
@@ -8427,6 +9650,7 @@ export class EventsService {
           driver: { select: { id: true, name: true } },
         },
       },
+      report: { select: { status: true } },
     };
 
     if (!query?.page) {
@@ -8610,6 +9834,30 @@ export class EventsService {
       }
     }
 
+    const notificationPayload = {
+      eventId: event.id,
+      project: event.project,
+      schoolName: event.school?.name,
+      date: dateStr,
+      time: event.time,
+    };
+    if (hostId) {
+      this.notificationsService
+        .create(hostId, 'CREW_ASSIGNED', {
+          ...notificationPayload,
+          role: 'ведучий',
+        })
+        .catch(() => {});
+    }
+    if (driverId) {
+      this.notificationsService
+        .create(driverId, 'CREW_ASSIGNED', {
+          ...notificationPayload,
+          role: 'водій',
+        })
+        .catch(() => {});
+    }
+
     await this.invalidateSchoolEventsCache(event.schoolId);
     return this.serializeEvent(event);
   }
@@ -8645,9 +9893,7 @@ export class EventsService {
     const compute = this.computeBySchool(key, schoolId, minimal).then(
       (result) =>
         Array.isArray(result)
-          ? result.map((e: Record<string, unknown>) =>
-              this.serializeEvent(e),
-            )
+          ? result.map((e: Record<string, unknown>) => this.serializeEvent(e))
           : result,
     );
     this.pendingSchoolEvents.set(key, compute);
@@ -8667,7 +9913,7 @@ export class EventsService {
         crew: { include: { host: true, driver: true } },
         preparation: true,
         history: { orderBy: { createdAt: 'desc' } },
-        report: { include: { expenseItems: true, salaryItems: true } },
+        report: { include: { expenseItems: true, salaryRecords: true } },
       },
     });
     if (!event) throw new AppException('EVENT_NOT_FOUND', HttpStatus.NOT_FOUND);
@@ -8792,6 +10038,9 @@ export class EventsService {
             rating: true,
             expenseItems: {
               select: { category: true, name: true, amount: true },
+            },
+            salaryRecords: {
+              select: { employeeId: true, amount: true, status: true },
             },
           },
         },
@@ -8985,7 +10234,7 @@ const mockPrisma = {
     aggregate: jest.fn(),
   },
 
-  salaryItem: {
+  salaryRecord: {
     findMany: jest.fn(),
     aggregate: jest.fn(),
   },
@@ -9049,7 +10298,7 @@ describe('FinanceService', () => {
       .mockResolvedValueOnce([]);
     mockPrisma.expenseItem.findMany.mockResolvedValueOnce([]);
 
-    mockPrisma.salaryItem.findMany.mockResolvedValueOnce([]);
+    mockPrisma.salaryRecord.findMany.mockResolvedValueOnce([]);
 
     mockPrisma.expenseItem.aggregate.mockResolvedValueOnce({
       _sum: {
@@ -9057,7 +10306,7 @@ describe('FinanceService', () => {
       },
     });
 
-    mockPrisma.salaryItem.aggregate.mockResolvedValueOnce({
+    mockPrisma.salaryRecord.aggregate.mockResolvedValueOnce({
       _sum: {
         amount: 0,
       },
@@ -9789,6 +11038,159 @@ Sentry.init({
 
 ```
 
+# FILE: apps/backend/src/inventory/inventory.controller.ts
+
+```
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
+import { AuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { InventoryService } from './inventory.service';
+
+@ApiTags('Inventory')
+@ApiCookieAuth('access_token')
+@Controller('inventory')
+@UseGuards(AuthGuard, RolesGuard)
+export class InventoryController {
+  constructor(private readonly inventoryService: InventoryService) {}
+
+  @ApiOperation({ summary: 'Список товарів на складі' })
+  @Get()
+  findAll() {
+    return this.inventoryService.findAll();
+  }
+
+  @ApiOperation({ summary: 'Створити товар' })
+  @Post()
+  @Roles('SUPERADMIN', 'OWNER')
+  create(
+    @Body()
+    dto: {
+      name: string;
+      sku?: string;
+      unit?: string;
+      minStock?: number;
+      currentStock?: number;
+    },
+  ) {
+    return this.inventoryService.create(dto);
+  }
+
+  @ApiOperation({ summary: 'Оновити товар' })
+  @Patch(':id')
+  @Roles('SUPERADMIN', 'OWNER')
+  update(
+    @Param('id') id: string,
+    @Body()
+    dto: { name?: string; sku?: string; unit?: string; minStock?: number },
+  ) {
+    return this.inventoryService.update(id, dto);
+  }
+
+  @ApiOperation({ summary: 'Поповнити склад' })
+  @Post(':id/add-stock')
+  @Roles('MANAGER', 'SUPERADMIN', 'OWNER')
+  addStock(@Param('id') id: string, @Body() dto: { quantity: number }) {
+    return this.inventoryService.addStock(id, dto.quantity);
+  }
+}
+
+```
+
+# FILE: apps/backend/src/inventory/inventory.module.ts
+
+```
+import { Module } from '@nestjs/common';
+import { InventoryController } from './inventory.controller';
+import { InventoryService } from './inventory.service';
+import { PrismaModule } from '../prisma/prisma.module';
+
+@Module({
+  imports: [PrismaModule],
+  controllers: [InventoryController],
+  providers: [InventoryService],
+  exports: [InventoryService],
+})
+export class InventoryModule {}
+
+```
+
+# FILE: apps/backend/src/inventory/inventory.service.ts
+
+```
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class InventoryService {
+  private readonly logger = new Logger(InventoryService.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  async create(dto: {
+    name: string;
+    sku?: string;
+    unit?: string;
+    minStock?: number;
+    currentStock?: number;
+  }) {
+    return this.prisma.inventoryItem.create({
+      data: {
+        name: dto.name,
+        sku: dto.sku,
+        unit: dto.unit ?? 'шт',
+        minStock: dto.minStock ?? 5,
+        currentStock: dto.currentStock ?? 0,
+      },
+    });
+  }
+
+  async findAll() {
+    return this.prisma.inventoryItem.findMany({ orderBy: { name: 'asc' } });
+  }
+
+  async update(
+    id: string,
+    dto: { name?: string; sku?: string; unit?: string; minStock?: number },
+  ) {
+    const item = await this.prisma.inventoryItem.findUnique({ where: { id } });
+    if (!item) throw new NotFoundException('Товар не знайдено');
+
+    return this.prisma.inventoryItem.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  async addStock(id: string, quantity: number) {
+    const item = await this.prisma.inventoryItem.findUnique({ where: { id } });
+    if (!item) throw new NotFoundException('Товар не знайдено');
+    if (quantity <= 0)
+      throw new BadRequestException('Кількість має бути більше 0');
+
+    return this.prisma.inventoryItem.update({
+      where: { id },
+      data: { currentStock: { increment: quantity } },
+    });
+  }
+}
+
+```
+
 # FILE: apps/backend/src/issues/dto/create-issue.dto.ts
 
 ```
@@ -9921,9 +11323,10 @@ import { Module } from '@nestjs/common';
 import { IssuesController } from './issues.controller';
 import { IssuesService } from './issues.service';
 import { TelegramModule } from '../telegram/telegram.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TelegramModule],
+  imports: [TelegramModule, NotificationsModule],
   controllers: [IssuesController],
   providers: [IssuesService],
 })
@@ -9937,6 +11340,7 @@ export class IssuesModule {}
 import { IssuesService } from './issues.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const mockPrisma = {
   issueReport: {
@@ -9950,11 +11354,13 @@ const mockPrisma = {
 };
 
 const mockTelegram = { sendMessage: jest.fn() };
+const mockNotifications = { create: jest.fn().mockResolvedValue(undefined) };
 
 const makeService = () =>
   new IssuesService(
     mockPrisma as unknown as PrismaService,
     mockTelegram as unknown as TelegramService,
+    mockNotifications as unknown as NotificationsService,
   );
 
 const baseData = {
@@ -10236,12 +11642,14 @@ describe('IssuesService — updateStatus', () => {
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class IssuesService {
   constructor(
     private prisma: PrismaService,
     private telegramService: TelegramService,
+    private notificationsService: NotificationsService,
   ) {}
 
   async create(data: {
@@ -10344,6 +11752,23 @@ export class IssuesService {
 
     if (assigneeChatId && assigneeChatId !== managerChatId) {
       await this.telegramService.sendMessage(assigneeChatId, text);
+    }
+
+    const notificationPayload = {
+      issueId: issue.id,
+      schoolName: data.schoolName,
+      eventName: data.eventName,
+      message: data.message,
+    };
+    if (manager?.id) {
+      this.notificationsService
+        .create(manager.id, 'ISSUE_CREATED', notificationPayload)
+        .catch(() => {});
+    }
+    if (data.assignedUserId) {
+      this.notificationsService
+        .create(data.assignedUserId, 'ISSUE_CREATED', notificationPayload)
+        .catch(() => {});
     }
 
     return issue;
@@ -10474,9 +11899,7 @@ describe('MetricsController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [MetricsController],
-      providers: [
-        { provide: MetricsService, useValue: mockMetricsService },
-      ],
+      providers: [{ provide: MetricsService, useValue: mockMetricsService }],
     })
       .overrideGuard(MetricsGuard)
       .useValue(mockGuard)
@@ -10548,7 +11971,9 @@ import { MetricsGuard } from './metrics.guard';
 describe('MetricsGuard', () => {
   let guard: MetricsGuard;
 
-  const createContext = (headers: Record<string, string> = {}): ExecutionContext =>
+  const createContext = (
+    headers: Record<string, string> = {},
+  ): ExecutionContext =>
     ({
       switchToHttp: () => ({
         getRequest: () => ({ headers }),
@@ -10570,7 +11995,9 @@ describe('MetricsGuard', () => {
 
   it('з METRICS_TOKEN і правильним X-Metrics-Token пропускає', () => {
     process.env.METRICS_TOKEN = 'secret123';
-    const ok = guard.canActivate(createContext({ 'x-metrics-token': 'secret123' }));
+    const ok = guard.canActivate(
+      createContext({ 'x-metrics-token': 'secret123' }),
+    );
     expect(ok).toBe(true);
   });
 
@@ -10583,7 +12010,9 @@ describe('MetricsGuard', () => {
 
   it('з METRICS_TOKEN і без заголовка кидає Forbidden', () => {
     process.env.METRICS_TOKEN = 'secret123';
-    expect(() => guard.canActivate(createContext({}))).toThrow(ForbiddenException);
+    expect(() => guard.canActivate(createContext({}))).toThrow(
+      ForbiddenException,
+    );
   });
 });
 
@@ -10705,6 +12134,123 @@ export class MetricsService {
   }
   getContentType() {
     return registry.contentType;
+  }
+}
+
+```
+
+# FILE: apps/backend/src/notifications/notifications.controller.ts
+
+```
+import {
+  Controller,
+  Get,
+  Patch,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiTags, ApiCookieAuth } from '@nestjs/swagger';
+import { AuthGuard } from '../auth/auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+import { NotificationsService } from './notifications.service';
+
+@ApiTags('notifications')
+@ApiCookieAuth('access_token')
+@UseGuards(AuthGuard)
+@Controller('notifications')
+export class NotificationsController {
+  constructor(private readonly service: NotificationsService) {}
+
+  @Get()
+  findAll(@CurrentUser() user: JwtUser, @Query('page') page?: number) {
+    return this.service.findAll(user.sub, page ?? 1);
+  }
+
+  @Get('unread-count')
+  unreadCount(@CurrentUser() user: JwtUser) {
+    return this.service.unreadCount(user.sub).then((c) => ({ count: c }));
+  }
+
+  @Patch(':id/read')
+  markRead(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.service.markRead(id, user.sub);
+  }
+
+  @Patch('read-all')
+  markAllRead(@CurrentUser() user: JwtUser) {
+    return this.service.markAllRead(user.sub);
+  }
+}
+
+```
+
+# FILE: apps/backend/src/notifications/notifications.module.ts
+
+```
+import { Module } from '@nestjs/common';
+import { NotificationsController } from './notifications.controller';
+import { NotificationsService } from './notifications.service';
+
+@Module({
+  controllers: [NotificationsController],
+  providers: [NotificationsService],
+  exports: [NotificationsService],
+})
+export class NotificationsModule {}
+
+```
+
+# FILE: apps/backend/src/notifications/notifications.service.ts
+
+```
+import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class NotificationsService {
+  constructor(private prisma: PrismaService) {}
+
+  async create(userId: string, type: string, payload: Record<string, unknown>) {
+    return this.prisma.notification.create({
+      data: { userId, type, payload: payload as Prisma.InputJsonValue },
+    });
+  }
+
+  async findAll(userId: string, page = 1, take = 20) {
+    const where = { userId };
+    const [items, total] = await Promise.all([
+      this.prisma.notification.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * take,
+        take,
+      }),
+      this.prisma.notification.count({ where }),
+    ]);
+    return { items, total, page, pageCount: Math.ceil(total / take) };
+  }
+
+  async unreadCount(userId: string) {
+    return this.prisma.notification.count({
+      where: { userId, readAt: null },
+    });
+  }
+
+  async markRead(id: string, userId: string) {
+    return this.prisma.notification.updateMany({
+      where: { id, userId },
+      data: { readAt: new Date() },
+    });
+  }
+
+  async markAllRead(userId: string) {
+    return this.prisma.notification.updateMany({
+      where: { userId, readAt: null },
+      data: { readAt: new Date() },
+    });
   }
 }
 
@@ -10857,27 +12403,72 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiCookieAuth,
+  ApiPropertyOptional,
+} from '@nestjs/swagger';
 import { ProjectsService } from './projects.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
+import { PrismaService } from '../prisma/prisma.service';
+import { IsOptional, IsString } from 'class-validator';
+
+class ProjectStatsQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+}
 
 @ApiTags('Projects')
 @ApiCookieAuth('access_token')
 @Controller('projects')
 @UseGuards(AuthGuard, RolesGuard)
 export class ProjectsController {
-  constructor(private readonly projectsService: ProjectsService) {}
+  constructor(
+    private readonly projectsService: ProjectsService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @ApiOperation({ summary: 'Список проєктів (типів шоу)' })
   @Get()
   findAll() {
     return this.projectsService.findAll();
+  }
+
+  @ApiOperation({ summary: 'Отримати проєкт за ID' })
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.projectsService.findOne(id);
+  }
+
+  @ApiOperation({ summary: 'Статистика проєкту' })
+  @Get(':id/stats')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async getStats(
+    @Param('id') id: string,
+    @Query() query: ProjectStatsQueryDto,
+    @CurrentUser() user: JwtUser,
+  ) {
+    let effectiveCityId: string | undefined = query.cityId;
+    if (user.role === 'MANAGER') {
+      const me = await this.prisma.user.findUnique({
+        where: { id: user.sub },
+        select: { cityId: true },
+      });
+      effectiveCityId = me?.cityId ?? undefined;
+    }
+    return this.projectsService.getStats(id, effectiveCityId);
   }
 
   @ApiOperation({ summary: 'Створити проєкт' })
@@ -10916,1912 +12507,6 @@ import { ProjectsController } from './projects.controller';
   controllers: [ProjectsController],
 })
 export class ProjectsModule {}
-
-```
-
-# FILE: apps/backend/src/projects/projects.service.ts
-
-```
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-
-@Injectable()
-export class ProjectsService {
-  constructor(private prisma: PrismaService) {}
-
-  findAll() {
-    return this.prisma.project.findMany({ orderBy: { createdAt: 'asc' } });
-  }
-
-  create(data: { name: string; color?: string; pricePerChild?: number }) {
-    return this.prisma.project.create({
-      data: {
-        name: data.name,
-        color: data.color ?? '#3b82f6',
-        pricePerChild: data.pricePerChild ?? 0,
-      },
-    });
-  }
-
-  update(
-    id: string,
-    data: { name?: string; color?: string; pricePerChild?: number },
-  ) {
-    return this.prisma.project.update({ where: { id }, data });
-  }
-
-  remove(id: string) {
-    return this.prisma.project.delete({ where: { id } });
-  }
-}
-
-```
-
-# FILE: apps/backend/src/schools/dto/bulk-import.dto.ts
-
-```
-import { IsString, IsNotEmpty, IsOptional, IsIn } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
-export class BulkImportDto {
-  @ApiProperty({ example: 'a1b2c3d4-...' })
-  @IsString()
-  @IsNotEmpty()
-  cityId: string;
-
-  @ApiPropertyOptional({ example: 'Школа', enum: ['Школа', 'Садочок'] })
-  @IsOptional()
-  @IsIn(['Школа', 'Садочок'])
-  type?: 'Школа' | 'Садочок';
-}
-
-```
-
-# FILE: apps/backend/src/schools/dto/create-school.dto.ts
-
-```
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
-export class CreateSchoolDto {
-  @ApiProperty({ example: 'Ліцей №5' })
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-
-  @ApiProperty({ example: 'school', enum: ['school', 'kindergarten'] })
-  @IsString()
-  @IsNotEmpty()
-  type: string;
-
-  @ApiProperty({ example: 'a1b2c3d4-...' })
-  @IsString()
-  @IsNotEmpty()
-  cityId: string;
-
-  @ApiPropertyOptional({ example: 'https://example.com/school-page' })
-  @IsOptional()
-  @IsString()
-  sourceUrl?: string;
-
-  @ApiPropertyOptional({ example: 'Іваненко Іван Іванович' })
-  @IsOptional()
-  @IsString()
-  director?: string;
-
-  @ApiPropertyOptional({ example: '+380501234567' })
-  @IsOptional()
-  @IsString()
-  phone?: string;
-}
-
-```
-
-# FILE: apps/backend/src/schools/dto/find-contacts-query.dto.ts
-
-```
-import { IsOptional, IsString, MinLength } from 'class-validator';
-
-export class FindContactsQueryDto {
-  @IsOptional()
-  @IsString()
-  @MinLength(1)
-  q?: string;
-
-  @IsOptional()
-  @IsString()
-  city?: string;
-}
-
-```
-
-# FILE: apps/backend/src/schools/dto/find-schools-query.dto.ts
-
-```
-import { IsOptional, IsString, MinLength, IsIn } from 'class-validator';
-
-export class FindSchoolsQueryDto {
-  @IsOptional()
-  @IsString()
-  @MinLength(2)
-  q?: string;
-
-  @IsOptional()
-  @IsIn(['Школа', 'Садочок'])
-  type?: 'Школа' | 'Садочок';
-}
-
-```
-
-# FILE: apps/backend/src/schools/dto/school-query.dto.ts
-
-```
-import { IsOptional, IsIn, IsString } from 'class-validator';
-import { PageOptionsDto } from '../../common/dto/page-options.dto';
-
-export class SchoolQueryDto extends PageOptionsDto {
-  @IsOptional()
-  @IsString()
-  search?: string;
-
-  @IsOptional()
-  @IsString()
-  cityId?: string;
-
-  @IsOptional()
-  @IsIn(['Школа', 'Садочок'])
-  type?: 'Школа' | 'Садочок';
-
-  @IsOptional()
-  @IsIn(['new', 'planned', 'inProgress', 'done'])
-  stage?: 'new' | 'planned' | 'inProgress' | 'done';
-
-  @IsOptional()
-  @IsIn(['small', 'medium', 'large'])
-  size?: 'small' | 'medium' | 'large';
-}
-
-```
-
-# FILE: apps/backend/src/schools/dto/update-school.dto.ts
-
-```
-import {
-  IsString,
-  IsOptional,
-  IsInt,
-  IsBoolean,
-  IsEmail,
-  Min,
-} from 'class-validator';
-import { Type, Transform } from 'class-transformer';
-
-export class UpdateSchoolDto {
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @IsOptional()
-  @IsString()
-  type?: string;
-
-  @IsOptional()
-  @IsString()
-  cityId?: string;
-
-  @IsOptional()
-  @IsString()
-  address?: string;
-
-  @IsOptional()
-  @IsString()
-  director?: string;
-
-  @IsOptional()
-  @IsString()
-  phone?: string;
-
-  @IsOptional()
-  @Transform(({ value }) => (value === '' ? undefined : value))
-  @IsEmail()
-  email?: string;
-
-  @IsOptional()
-  @IsString()
-  notes?: string;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  @Type(() => Number)
-  childrenCount?: number;
-
-  @IsOptional()
-  @IsBoolean()
-  isHotClient?: boolean;
-}
-
-```
-
-# FILE: apps/backend/src/schools/parser.service.spec.ts
-
-```
-import { ParserService } from './parser.service';
-import axios from 'axios';
-import * as cheerio from 'cheerio';
-
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
-
-// Хелпер: генерує HTML-таблицю зі списком шкіл
-const buildTableHtml = (rows: { name: string; href: string }[]): string => {
-  const trs = rows
-    .map((r) => `<tr><td>1</td><td><a href="${r.href}">${r.name}</a></td></tr>`)
-    .join('');
-  return `<table class="zebra-stripe list">${trs}</table>`;
-};
-
-// Хелпер: генерує HTML-профіль школи
-const buildProfileHtml = (fields: Record<string, string>): string => {
-  const rows = Object.entries(fields)
-    .map(([label, value]) => `<tr><th>${label}</th><td>${value}</td></tr>`)
-    .join('');
-  return `<table>${rows}</table>`;
-};
-
-beforeEach(() => {
-  jest.clearAllMocks();
-});
-
-describe('ParserService — parseSchoolData', () => {
-  it('повертає address, director, childrenCount за прямим URL', async () => {
-    const profileHtml = buildProfileHtml({
-      'Поштова адреса': 'вул. Шевченка 1',
-      Директор: 'Іваненко Іван',
-      'Кількість учнів': '1023',
-    });
-    mockedAxios.get.mockResolvedValueOnce({ data: profileHtml });
-
-    const service = new ParserService();
-    const result = await service.parseSchoolData(
-      'Школа №1',
-      'https://lv.isuo.org/schools/123',
-    );
-
-    expect(result).toEqual({
-      address: 'вул. Шевченка 1',
-      director: 'Іваненко Іван',
-      childrenCount: 1023,
-    });
-  });
-
-  it('розпізнає альтернативні лейбли (Завідувач, Кількість дітей)', async () => {
-    const profileHtml = buildProfileHtml({
-      Адреса: 'вул. Лесі 10',
-      Завідувач: 'Петренко Оксана',
-      'Кількість дітей': '456 дітей',
-    });
-    mockedAxios.get.mockResolvedValueOnce({ data: profileHtml });
-
-    const service = new ParserService();
-    const result = await service.parseSchoolData(
-      'Садочок №2',
-      'https://lv.isuo.org/k/1',
-    );
-
-    expect(result?.director).toBe('Петренко Оксана');
-    expect(result?.childrenCount).toBe(456);
-  });
-
-  it('повертає 0 для childrenCount якщо число не розпізнано', async () => {
-    const profileHtml = buildProfileHtml({
-      Директор: 'Без дітей',
-    });
-    mockedAxios.get.mockResolvedValueOnce({ data: profileHtml });
-
-    const service = new ParserService();
-    const result = await service.parseSchoolData(
-      'Тест',
-      'https://lv.isuo.org/x/1',
-    );
-
-    expect(result?.childrenCount).toBe(0);
-  });
-
-  it('повертає null при мережевій помилці', async () => {
-    mockedAxios.get.mockRejectedValueOnce(new Error('Network Error'));
-
-    const service = new ParserService();
-    const result = await service.parseSchoolData(
-      'Школа',
-      'https://lv.isuo.org/x/1',
-    );
-
-    expect(result).toBeNull();
-  });
-
-  it('шукає школу у списку якщо URL не вказано', async () => {
-    const listHtml = buildTableHtml([
-      { name: 'Загальноосвітня школа №42', href: '/schools/42' },
-    ]);
-    const profileHtml = buildProfileHtml({ Директор: 'Тест' });
-
-    mockedAxios.get
-      .mockResolvedValueOnce({ data: listHtml }) // список
-      .mockResolvedValueOnce({ data: profileHtml }); // профіль
-
-    const service = new ParserService();
-    const result = await service.parseSchoolData('школа №42');
-
-    expect(mockedAxios.get).toHaveBeenCalledTimes(2);
-    expect(result?.director).toBe('Тест');
-  });
-
-  it('повертає null якщо школу не знайдено у списку', async () => {
-    const listHtml = buildTableHtml([
-      { name: 'Інша школа', href: '/schools/99' },
-    ]);
-    mockedAxios.get
-      .mockResolvedValueOnce({ data: listHtml })
-      .mockResolvedValueOnce({ data: listHtml }); // page 2
-
-    const service = new ParserService();
-    const result = await service.parseSchoolData('Неіснуюча школа');
-
-    expect(result).toBeNull();
-  });
-});
-
-describe('ParserService — searchSchools', () => {
-  it('повертає список шкіл що відповідають запиту', async () => {
-    const html = buildTableHtml([
-      { name: 'Гімназія №3', href: '/schools/3' },
-      { name: 'Ліцей №10', href: '/schools/10' },
-    ]);
-    mockedAxios.get
-      .mockResolvedValueOnce({ data: html })
-      .mockResolvedValueOnce({ data: html }); // page 2
-
-    const service = new ParserService();
-    const results = await service.searchSchools('гімназія');
-
-    expect(results).toHaveLength(2); // до 10, cheerio знаходить обидва по "гімназія"
-  });
-
-  it('числовий запит — шукає за номером школи точно (regex з word boundary)', async () => {
-    const html = buildTableHtml([
-      { name: 'Школа №5', href: '/schools/5' },
-      { name: 'Школа №15', href: '/schools/15' },
-      { name: 'Школа №50', href: '/schools/50' },
-    ]);
-    mockedAxios.get
-      .mockResolvedValueOnce({ data: html })
-      .mockResolvedValueOnce({ data: '<table></table>' });
-
-    const service = new ParserService();
-    const results = await service.searchSchools('5');
-
-    // Має знайти тільки "Школа №5", не "15" чи "50"
-    const names = results.map((r) => r.name);
-    expect(names).toContain('Школа №5');
-    expect(names).not.toContain('Школа №15');
-    expect(names).not.toContain('Школа №50');
-  });
-
-  it('повертає не більше 10 результатів', async () => {
-    const manyRows = Array.from({ length: 20 }, (_, i) => ({
-      name: `Тестова школа №${i + 1}`,
-      href: `/schools/${i + 1}`,
-    }));
-    const html = buildTableHtml(manyRows);
-    mockedAxios.get
-      .mockResolvedValueOnce({ data: html })
-      .mockResolvedValueOnce({ data: '<table></table>' });
-
-    const service = new ParserService();
-    const results = await service.searchSchools('тестова');
-
-    expect(results.length).toBeLessThanOrEqual(10);
-  });
-
-  it('повертає порожній масив при мережевій помилці', async () => {
-    mockedAxios.get.mockRejectedValueOnce(new Error('Network Error'));
-
-    const service = new ParserService();
-    const results = await service.searchSchools('щось');
-
-    expect(results).toEqual([]);
-  });
-
-  it('для type="Садочок" — використовує URL дошкільних закладів', async () => {
-    mockedAxios.get.mockResolvedValue({ data: '<table></table>' });
-
-    const service = new ParserService();
-    await service.searchSchools('садок', 'Садочок');
-
-    const url = mockedAxios.get.mock.calls[0][0];
-    expect(url).toContain('preschools');
-  });
-});
-
-describe('ParserService — getAllSchoolsForCity', () => {
-  it('повертає заклади для підтримуваного міста', async () => {
-    const page1 = buildTableHtml([
-      { name: 'Школа №1', href: '/schools/1' },
-      { name: 'Школа №2', href: '/schools/2' },
-    ]);
-    const emptyPage = '<table class="zebra-stripe list"></table>';
-
-    mockedAxios.get
-      .mockResolvedValueOnce({ data: page1 })
-      .mockResolvedValueOnce({ data: emptyPage });
-
-    const service = new ParserService();
-    const results = await service.getAllSchoolsForCity('Львів', 'Школа');
-
-    expect(results).toHaveLength(2);
-    expect(results[0].name).toBe('Школа №1');
-    expect(results[0].url).toContain('lv.isuo.org');
-  });
-
-  it('повертає порожній масив для непідтримуваного міста', async () => {
-    const service = new ParserService();
-    const results = await service.getAllSchoolsForCity('Атлантида');
-
-    expect(results).toEqual([]);
-    expect(mockedAxios.get).not.toHaveBeenCalled();
-  });
-
-  it('зупиняється якщо сторінка не містить результатів', async () => {
-    const page1 = buildTableHtml([{ name: 'Школа №1', href: '/schools/1' }]);
-    const emptyPage = '<table class="zebra-stripe list"></table>';
-
-    mockedAxios.get
-      .mockResolvedValueOnce({ data: page1 })
-      .mockResolvedValueOnce({ data: emptyPage });
-
-    const service = new ParserService();
-    const results = await service.getAllSchoolsForCity('Київ');
-
-    expect(results).toHaveLength(1);
-    expect(mockedAxios.get).toHaveBeenCalledTimes(2);
-  });
-
-  it('дедуплікує однакові заклади (за нормалізованою назвою)', async () => {
-    const html = buildTableHtml([
-      { name: 'Школа  №1', href: '/schools/1' },
-      { name: 'Школа №1', href: '/schools/1b' },
-    ]);
-    const emptyPage = '<table class="zebra-stripe list"></table>';
-
-    mockedAxios.get
-      .mockResolvedValueOnce({ data: html })
-      .mockResolvedValueOnce({ data: emptyPage });
-
-    const service = new ParserService();
-    const results = await service.getAllSchoolsForCity('Харків');
-
-    expect(results).toHaveLength(1);
-  });
-
-  it('зупиняється при мережевій помилці на конкретній сторінці', async () => {
-    mockedAxios.get.mockRejectedValueOnce(new Error('timeout'));
-
-    const service = new ParserService();
-    const results = await service.getAllSchoolsForCity('Одеса');
-
-    expect(results).toEqual([]);
-  });
-
-  it('для type="Садочок" — використовує URL kindergartens', async () => {
-    mockedAxios.get.mockResolvedValue({
-      data: '<table class="zebra-stripe list"></table>',
-    });
-
-    const service = new ParserService();
-    await service.getAllSchoolsForCity('Тернопіль', 'Садочок');
-
-    const url = mockedAxios.get.mock.calls[0][0];
-    expect(url).toContain('preschools');
-  });
-});
-
-describe('ParserService — getSupportedCities', () => {
-  it('повертає масив підтримуваних міст', () => {
-    const service = new ParserService();
-    const cities = service.getSupportedCities();
-
-    expect(cities).toBeInstanceOf(Array);
-    expect(cities.length).toBeGreaterThan(0);
-    expect(cities).toContain('Львів');
-    expect(cities).toContain('Київ');
-  });
-});
-
-```
-
-# FILE: apps/backend/src/schools/parser.service.ts
-
-```
-import { Injectable } from '@nestjs/common';
-import axios from 'axios';
-import * as cheerio from 'cheerio';
-
-const CITY_CONFIG: Record<
-  string,
-  { schools: string; kindergartens: string; domain: string }
-> = {
-  Львів: {
-    domain: 'https://lv.isuo.org',
-    schools: 'https://lv.isuo.org/authorities/schools-list/id/681',
-    kindergartens: 'https://lv.isuo.org/koatuu/preschools-list/id/4610100000',
-  },
-  'Івано-Франківськ': {
-    domain: 'https://if.isuo.org',
-    schools: 'https://if.isuo.org/koatuu/schools-list/id/2610100000',
-    kindergartens: 'https://if.isuo.org/koatuu/preschools-list/id/2610100000',
-  },
-  Чернівці: {
-    domain: 'https://cv.isuo.org',
-    schools: 'https://cv.isuo.org/koatuu/schools-list/id/7310100000',
-    kindergartens: 'https://cv.isuo.org/koatuu/preschools-list/id/7310100000',
-  },
-  Тернопіль: {
-    domain: 'https://te.isuo.org',
-    schools: 'https://te.isuo.org/koatuu/schools-list/id/6110100000',
-    kindergartens: 'https://te.isuo.org/koatuu/preschools-list/id/6110100000',
-  },
-  Ужгород: {
-    domain: 'https://zk.isuo.org',
-    schools: 'https://zk.isuo.org/koatuu/schools-list/id/2110100000',
-    kindergartens: 'https://zk.isuo.org/koatuu/preschools-list/id/2110100000',
-  },
-  Київ: {
-    domain: 'https://kv.isuo.org',
-    schools: 'https://kv.isuo.org/koatuu/schools-list/id/8000000000',
-    kindergartens: 'https://kv.isuo.org/koatuu/preschools-list/id/8000000000',
-  },
-  Харків: {
-    domain: 'https://kh.isuo.org',
-    schools: 'https://kh.isuo.org/koatuu/schools-list/id/6310100000',
-    kindergartens: 'https://kh.isuo.org/koatuu/preschools-list/id/6310100000',
-  },
-  Одеса: {
-    domain: 'https://od.isuo.org',
-    schools: 'https://od.isuo.org/koatuu/schools-list/id/5110100000',
-    kindergartens: 'https://od.isuo.org/koatuu/preschools-list/id/5110100000',
-  },
-  Дніпро: {
-    domain: 'https://dp.isuo.org',
-    schools: 'https://dp.isuo.org/koatuu/schools-list/id/1210100000',
-    kindergartens: 'https://dp.isuo.org/koatuu/preschools-list/id/1210100000',
-  },
-  Запоріжжя: {
-    domain: 'https://zp.isuo.org',
-    schools: 'https://zp.isuo.org/koatuu/schools-list/id/2310100000',
-    kindergartens: 'https://zp.isuo.org/koatuu/preschools-list/id/2310100000',
-  },
-  Миколаїв: {
-    domain: 'https://mk.isuo.org',
-    schools: 'https://mk.isuo.org/koatuu/schools-list/id/4810100000',
-    kindergartens: 'https://mk.isuo.org/koatuu/preschools-list/id/4810100000',
-  },
-  Вінниця: {
-    domain: 'https://vn.isuo.org',
-    schools: 'https://vn.isuo.org/koatuu/schools-list/id/0510100000',
-    kindergartens: 'https://vn.isuo.org/koatuu/preschools-list/id/0510100000',
-  },
-  Херсон: {
-    domain: 'https://ks.isuo.org',
-    schools: 'https://ks.isuo.org/koatuu/schools-list/id/6510100000',
-    kindergartens: 'https://ks.isuo.org/koatuu/preschools-list/id/6510100000',
-  },
-  Полтава: {
-    domain: 'https://pl.isuo.org',
-    schools: 'https://pl.isuo.org/koatuu/schools-list/id/5310100000',
-    kindergartens: 'https://pl.isuo.org/koatuu/preschools-list/id/5310100000',
-  },
-  Чернігів: {
-    domain: 'https://cg.isuo.org',
-    schools: 'https://cg.isuo.org/koatuu/schools-list/id/7410100000',
-    kindergartens: 'https://cg.isuo.org/koatuu/preschools-list/id/7410100000',
-  },
-  Черкаси: {
-    domain: 'https://ck.isuo.org',
-    schools: 'https://ck.isuo.org/koatuu/schools-list/id/7110100000',
-    kindergartens: 'https://ck.isuo.org/koatuu/preschools-list/id/7110100000',
-  },
-  Суми: {
-    domain: 'https://su.isuo.org',
-    schools: 'https://su.isuo.org/koatuu/schools-list/id/5910100000',
-    kindergartens: 'https://su.isuo.org/koatuu/preschools-list/id/5910100000',
-  },
-  Житомир: {
-    domain: 'https://zt.isuo.org',
-    schools: 'https://zt.isuo.org/koatuu/schools-list/id/1810100000',
-    kindergartens: 'https://zt.isuo.org/koatuu/preschools-list/id/1810100000',
-  },
-  Хмельницький: {
-    domain: 'https://km.isuo.org',
-    schools: 'https://km.isuo.org/koatuu/schools-list/id/6810100000',
-    kindergartens: 'https://km.isuo.org/koatuu/preschools-list/id/6810100000',
-  },
-  Рівне: {
-    domain: 'https://rv.isuo.org',
-    schools: 'https://rv.isuo.org/koatuu/schools-list/id/5610100000',
-    kindergartens: 'https://rv.isuo.org/koatuu/preschools-list/id/5610100000',
-  },
-  Кропивницький: {
-    domain: 'https://kr.isuo.org',
-    schools: 'https://kr.isuo.org/koatuu/schools-list/id/3510100000',
-    kindergartens: 'https://kr.isuo.org/koatuu/preschools-list/id/3510100000',
-  },
-  Луцьк: {
-    domain: 'https://vl.isuo.org',
-    schools: 'https://vl.isuo.org/koatuu/schools-list/id/0710100000',
-    kindergartens: 'https://vl.isuo.org/koatuu/preschools-list/id/0710100000',
-  },
-};
-
-@Injectable()
-export class ParserService {
-  async parseSchoolData(schoolName: string, schoolUrl?: string, type?: string) {
-    try {
-      let url = schoolUrl;
-      if (!url) {
-        const urls =
-          type === 'Садочок'
-            ? [
-                'https://lv.isuo.org/koatuu/preschools-list/id/4610100000',
-                'https://lv.isuo.org/koatuu/preschools-list/id/4610100000/page/2',
-              ]
-            : [
-                'https://lv.isuo.org/authorities/schools-list/id/681',
-                'https://lv.isuo.org/authorities/schools-list/id/681/page/2',
-              ];
-        const normalizedSearch = schoolName
-          .toLowerCase()
-          .replace(/\s+/g, ' ')
-          .trim();
-        for (const searchUrl of urls) {
-          const listResponse = await axios.get(searchUrl);
-          const $list = cheerio.load(listResponse.data);
-          $list('table.zebra-stripe.list tr').each((_, row) => {
-            const name = $list(row)
-              .find('td:nth-child(2) a')
-              .text()
-              .replace(/\s+/g, ' ')
-              .trim()
-              .toLowerCase();
-            if (name.includes(normalizedSearch)) {
-              const href = $list(row).find('td:nth-child(2) a').attr('href');
-              if (href) {
-                url = `https://lv.isuo.org${href}`;
-                return false;
-              }
-            }
-          });
-          if (url) break;
-        }
-      }
-      if (!url) {
-        console.log(`Заклад не знайдено: ${schoolName}`);
-        return null;
-      }
-      const response = await axios.get(url);
-      const $ = cheerio.load(response.data);
-      const getField = (labels: string[]): string => {
-        let result = '';
-        for (const label of labels) {
-          const th = $('th')
-            .filter((_, el) => $(el).text().trim().includes(label))
-            .first();
-          if (th.length) {
-            result = th.next('td').text().trim();
-            break;
-          }
-        }
-        return result;
-      };
-      const address = getField(['Поштова адреса', 'Адреса']);
-      const director = getField(['Директор', 'Завідувач', 'Керівник']);
-      const studentsRaw = getField([
-        'Кількість учнів',
-        'Кількість дітей',
-        'Кількість вихованців',
-      ]);
-      const childrenCount =
-        parseInt(studentsRaw.replace(/[^\d]/g, ''), 10) || 0;
-      return { address, director, childrenCount };
-    } catch (error) {
-      console.error('Помилка парсингу закладу:', error);
-      return null;
-    }
-  }
-
-  async searchSchools(
-    query: string,
-    type?: string,
-  ): Promise<{ name: string; url: string }[]> {
-    try {
-      const urls =
-        type === 'Садочок'
-          ? [
-              'https://lv.isuo.org/koatuu/preschools-list/id/4610100000',
-              'https://lv.isuo.org/koatuu/preschools-list/id/4610100000/page/2',
-            ]
-          : [
-              'https://lv.isuo.org/authorities/schools-list/id/681',
-              'https://lv.isuo.org/authorities/schools-list/id/681/page/2',
-            ];
-      const results: { name: string; url: string }[] = [];
-      const normalizedQuery = query.toLowerCase().replace(/\s+/g, ' ').trim();
-      const isNumericQuery = /^\d+$/.test(normalizedQuery);
-      const numericRegex = isNumericQuery
-        ? new RegExp(`(?<!\\d)${normalizedQuery}(?!\\d)`)
-        : null;
-      for (const url of urls) {
-        const response = await axios.get(url);
-        const $ = cheerio.load(response.data);
-        $('table.zebra-stripe.list tr').each((_, row) => {
-          const rawName = $(row).find('td:nth-child(2) a').text();
-          const name = rawName.replace(/\s+/g, ' ').trim();
-          const href = $(row).find('td:nth-child(2) a').attr('href');
-          if (name && href) {
-            const lowerName = name.toLowerCase();
-            let matches = false;
-            if (isNumericQuery && numericRegex) {
-              matches = numericRegex.test(lowerName);
-            } else {
-              matches = lowerName.includes(normalizedQuery);
-            }
-            if (matches)
-              results.push({ name, url: `https://lv.isuo.org${href}` });
-          }
-        });
-      }
-      return results.slice(0, 10);
-    } catch (error) {
-      console.error('Помилка пошуку закладів:', error);
-      return [];
-    }
-  }
-
-  async getAllSchoolsForCity(
-    cityName: string,
-    type: 'Школа' | 'Садочок' = 'Школа',
-  ): Promise<{ name: string; url: string }[]> {
-    const config = CITY_CONFIG[cityName];
-    if (!config) {
-      console.log(`Місто "${cityName}" не підтримується для імпорту`);
-      return [];
-    }
-
-    const baseUrl = type === 'Садочок' ? config.kindergartens : config.schools;
-    const domain = config.domain;
-
-    const resultsMap = new Map<string, { name: string; url: string }>();
-
-    for (let page = 1; page <= 20; page++) {
-      const url = page === 1 ? baseUrl : `${baseUrl}/page/${page}`;
-      try {
-        const response = await axios.get(url, { timeout: 15000 });
-        const $ = cheerio.load(response.data);
-        let foundOnPage = 0;
-
-        $('table.zebra-stripe.list tr').each((_, row) => {
-          const name = $(row)
-            .find('td:nth-child(2) a')
-            .text()
-            .replace(/\s+/g, ' ')
-            .trim();
-          const href = $(row).find('td:nth-child(2) a').attr('href');
-
-          if (name && href && name !== 'Fullname') {
-            const normalizedKey = name.toLowerCase().replace(/\s+/g, '');
-
-            if (!resultsMap.has(normalizedKey)) {
-              resultsMap.set(normalizedKey, { name, url: `${domain}${href}` });
-              foundOnPage++;
-            }
-          }
-        });
-
-        if (foundOnPage === 0) break;
-      } catch {
-        break;
-      }
-    }
-
-    return Array.from(resultsMap.values());
-  }
-  getSupportedCities(): string[] {
-    return Object.keys(CITY_CONFIG);
-  }
-}
-
-```
-
-# FILE: apps/backend/src/schools/school-contacts.seed.ts
-
-```
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
-const contacts = [
-  {
-    schoolNumber: '1',
-    contactName: 'Надія Михайлівна',
-    phone: '0975695519',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '2',
-    contactName: 'Наталя',
-    phone: '0974064095',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '5',
-    contactName: 'Лариса',
-    phone: '0673622534',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '9',
-    contactName: 'Віра Ярославівна',
-    phone: '0674935124',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '9',
-    contactName: 'Леся',
-    phone: '0673380894',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '13',
-    contactName: 'Марта Романівна',
-    phone: '0675839806',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '15',
-    contactName: 'Ірина Андріївна',
-    phone: '0679062500',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '17',
-    contactName: 'Ельвіра',
-    phone: '0678578514',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: '18',
-    contactName: 'Роман',
-    phone: '0972587179',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '20',
-    contactName: 'Наталя Іванівна',
-    phone: '0506747111',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '23',
-    contactName: 'Микола Шостак',
-    phone: '0632232178',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: '27',
-    contactName: 'Романа Михайлівна',
-    phone: '0973113778',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '27',
-    contactName: 'Наталя Куліш',
-    phone: '0677552743',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '28',
-    contactName: 'Олена Олегівна',
-    phone: '0679243130',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '30',
-    contactName: 'Світлана Михальвіна',
-    phone: '0974436542',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '30',
-    contactName: 'Ольга Володимирівна',
-    phone: '0679596199',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '31',
-    contactName: 'Христина Ярославівна',
-    phone: '0983804403',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '31',
-    contactName: 'Леся Оресівна',
-    phone: '0673567679',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '34',
-    contactName: 'Мирон',
-    phone: '0938668520',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: '36',
-    contactName: 'Тетяна',
-    phone: '0990407941',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '40',
-    contactName: 'Юлія',
-    phone: '0976015839',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: '40',
-    contactName: 'Ірина',
-    phone: '0673021531',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: '44',
-    contactName: 'Стефанович Людмила Олександрівна',
-    phone: '0677838274',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '45',
-    contactName: 'Наталія Аркадіївна',
-    phone: '0677123961',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '46',
-    contactName: 'Ірина Іларіонівна',
-    phone: '0676969337',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '46',
-    contactName: 'Юля',
-    phone: '0961791595',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: '48',
-    contactName: 'Роман Васильович',
-    phone: '0982310957',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '49',
-    contactName: 'Уляна',
-    phone: '0681371457',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: '50',
-    contactName: "Мар'яна Іванівна",
-    phone: '0674901746',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '51',
-    contactName: 'Ірина Миколаївна',
-    phone: '0972595956',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '52',
-    contactName: 'Світлана',
-    phone: '0677070497',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '54',
-    contactName: 'Любов Іванівна',
-    phone: '0677715647',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '60',
-    contactName: 'Людмила',
-    phone: '0973888255',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '63',
-    contactName: 'Іванець Ольга Євгенівна',
-    phone: '0977345920',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '65',
-    contactName: 'Марія',
-    phone: '0975391164',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: '66',
-    contactName: 'Мирослава',
-    phone: '0977711381',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '66',
-    contactName: 'Назар Оксана',
-    phone: '0679686514',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '67',
-    contactName: 'Оксана Володимирівна',
-    phone: '0673705262',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '68',
-    contactName: 'Уляна',
-    phone: '0973004954',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: '69',
-    contactName: 'Тетяна Володимирівна',
-    phone: '0673041659',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '70',
-    contactName: 'Марта',
-    phone: '0676726984',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '70',
-    contactName: 'Марія',
-    phone: '0966063264',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '71',
-    contactName: 'Марія',
-    phone: '0676644983',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: '71',
-    contactName: 'Роман',
-    phone: '0677514127',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '72',
-    contactName: 'Олена Михайлівна',
-    phone: '0677948577',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '73',
-    contactName: 'Світлана Богданівна',
-    phone: '0971844043',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '73',
-    contactName: 'Інна Євгенівна',
-    phone: '0678829581',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '80',
-    contactName: 'Наталя',
-    phone: '0967331419',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '81',
-    contactName: 'Галина Антонівна',
-    phone: '0673662853',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '81',
-    contactName: 'Андріана',
-    phone: '0502867516',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '84',
-    contactName: 'Тетяна Іванівна',
-    phone: '0974437171',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '86',
-    contactName: 'Руслана Василівна',
-    phone: '0964066413',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '86',
-    contactName: 'Анна',
-    phone: '0638694484',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: '90',
-    contactName: 'Ірина Іванівна',
-    phone: '0974392839',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '90',
-    contactName: 'Людмила',
-    phone: '0676092693',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '93',
-    contactName: 'Ірина Петрівна',
-    phone: '0966591509',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '95',
-    contactName: 'Марія Орестівна',
-    phone: '0979515318',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '95',
-    contactName: 'Ірина',
-    phone: '0972392191',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: '96',
-    contactName: 'Любов',
-    phone: '0689529174',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: '97',
-    contactName: 'Наталя Любомирівна',
-    phone: '0961390913',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: '123',
-    contactName: 'Марія Андріївна',
-    phone: '0679334856',
-    role: 'Директор',
-  },
-
-  {
-    schoolNumber: 'Арніка',
-    contactName: 'Світлана Михайлівна',
-    phone: '0979325399',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: 'Гроно',
-    contactName: 'Оксана Теодорівна',
-    phone: '0971147211',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: 'Джерельце',
-    contactName: 'Світлана Петрівна',
-    phone: '0673140267',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: 'Дивосвіт',
-    contactName: 'Наталя Миколаївна',
-    phone: '0932196651',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: 'Європейський ліцей',
-    contactName: 'Галина Богданівна',
-    phone: '0974829920',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: 'Лідер',
-    contactName: 'Вадим',
-    phone: '0687584626',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: 'Лідер',
-    contactName: 'Іванка',
-    phone: '0965150436',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: 'Ліцей Львів',
-    contactName: 'Мирослава Іванівна',
-    phone: '0673536774',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: 'Ліцей Пулюя',
-    contactName: 'Наталя',
-    phone: '0671794604',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: 'Ліцей Стуса',
-    contactName: 'Тетяна',
-    phone: '0984989494',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: 'Оріяна',
-    contactName: 'Ірина Богданівна',
-    phone: '0673702402',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: 'Оріяна',
-    contactName: 'Юрій',
-    phone: '0974751935',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: 'Первоцвіт',
-    contactName: 'Христина Іванівна',
-    phone: '0677573109',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: 'Провесінь',
-    contactName: 'Сергій',
-    phone: '0506020447',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: 'Провесінь',
-    contactName: 'Анджела',
-    phone: '0676606897',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: 'Світанок',
-    contactName: 'Лідія Миколаївна',
-    phone: '0679269319',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: 'Світанок',
-    contactName: 'Ореста Шот',
-    phone: '0677018705',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: 'Світанок',
-    contactName: 'Ірина',
-    phone: '0674398980',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: 'Симоненка',
-    contactName: 'Уляна',
-    phone: '0969135903',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: 'Сихівський ліцей',
-    contactName: 'Надія',
-    phone: '0964667179',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: 'Початкова Школа Радості',
-    contactName: 'Тетяна',
-    phone: '0967320197',
-    role: 'Завуч',
-  },
-  {
-    schoolNumber: 'Початкова Школа Радості',
-    contactName: 'Наталя',
-    phone: '0674244920',
-    role: 'Педорг',
-  },
-  {
-    schoolNumber: 'Альфа',
-    contactName: 'Ірина',
-    phone: '0935122623',
-    role: 'Завуч',
-  },
-
-  {
-    schoolNumber: '52',
-    contactName: 'Олена Віталіївна Добранюк',
-    phone: '0964692943',
-    role: 'Завідувачка',
-  },
-  {
-    schoolNumber: 'Веселка',
-    contactName: 'Андриц Людмила Федорівна',
-    phone: '0632836453',
-    role: 'Завідувачка',
-  },
-  {
-    schoolNumber: '149',
-    contactName: 'Василина Тарасівна',
-    phone: '0987615106',
-    role: 'Завідувачка',
-  },
-  {
-    schoolNumber: '132',
-    contactName: 'Наталя',
-    phone: '0971620805',
-    role: 'Методист',
-  },
-  {
-    schoolNumber: 'Перші кроки',
-    contactName: 'Мирослава Ярославівна',
-    phone: '0963493423',
-    role: 'Завідувач',
-  },
-  {
-    schoolNumber: '130',
-    contactName: 'Ольга',
-    phone: '0638694484',
-    role: 'Методистка',
-  },
-  {
-    schoolNumber: '40',
-    contactName: 'Світлана',
-    phone: '0983365931',
-    role: 'Заступник',
-  },
-  {
-    schoolNumber: '144',
-    contactName: 'Наталя',
-    phone: '0677670485',
-    role: 'Методист',
-  },
-  {
-    schoolNumber: 'Барвінок',
-    contactName: 'Наталя Витрикуш',
-    phone: '0676809966',
-    role: 'Завідувачка',
-  },
-  {
-    schoolNumber: '45',
-    contactName: 'Наталя Шергіна',
-    phone: '0675814381',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '67',
-    contactName: 'Тетяна Юріївна',
-    phone: '0966063398',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '118',
-    contactName: 'Наталя Дмитрівна',
-    phone: '0969847495',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '118',
-    contactName: 'Оксана Ярославівна',
-    phone: '0677881629',
-    role: 'Методист',
-  },
-  {
-    schoolNumber: '169',
-    contactName: 'Галина Василівна',
-    phone: '0962817175',
-    role: null,
-  },
-  {
-    schoolNumber: '175',
-    contactName: 'Богдана',
-    phone: '0687096641',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '170',
-    contactName: 'Ірина',
-    phone: '0986373627',
-    role: null,
-  },
-  {
-    schoolNumber: '167',
-    contactName: 'Юлія',
-    phone: '0687096641',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '42',
-    contactName: 'Наталя Йосипівна',
-    phone: '0677453052',
-    role: null,
-  },
-  {
-    schoolNumber: '33',
-    contactName: 'Олександра Мирославівна',
-    phone: '0505049049',
-    role: null,
-  },
-  { schoolNumber: '134', contactName: 'Леся', phone: '0969740462', role: null },
-  {
-    schoolNumber: '165',
-    contactName: 'Марта Андріївна',
-    phone: '0639377896',
-    role: null,
-  },
-  {
-    schoolNumber: '159',
-    contactName: 'Ірина Олександрівна',
-    phone: '0972430286',
-    role: null,
-  },
-  {
-    schoolNumber: '163',
-    contactName: 'Оксана Ярославівна Сновидович',
-    phone: '0963943974',
-    role: null,
-  },
-  {
-    schoolNumber: '153',
-    contactName: 'Юля',
-    phone: '0939907888',
-    role: 'Методист',
-  },
-  {
-    schoolNumber: '39',
-    contactName: 'Оксана Антонівна',
-    phone: '0676820705',
-    role: null,
-  },
-  {
-    schoolNumber: '73',
-    contactName: 'Ярослава',
-    phone: '0679767575',
-    role: null,
-  },
-  {
-    schoolNumber: '134',
-    contactName: 'Ольга',
-    phone: '0679495251',
-    role: 'Заступник',
-  },
-  {
-    schoolNumber: '69',
-    contactName: 'Уляна',
-    phone: '0673392742',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '130',
-    contactName: 'Зоряна',
-    phone: '0677014722',
-    role: null,
-  },
-  {
-    schoolNumber: '52',
-    contactName: 'Софія',
-    phone: '0935428770',
-    role: 'Діловод',
-  },
-  {
-    schoolNumber: '181',
-    contactName: 'Марія Корпан',
-    phone: '0673142095',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '17',
-    contactName: 'Світлана',
-    phone: '0973047285',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '44',
-    contactName: 'Надія',
-    phone: '0932342106',
-    role: 'Методист',
-  },
-  {
-    schoolNumber: '170',
-    contactName: 'Ірина',
-    phone: '0986373627',
-    role: 'Методист',
-  },
-  {
-    schoolNumber: '3',
-    contactName: 'Наталя Ігорівна',
-    phone: '0973436380',
-    role: null,
-  },
-  {
-    schoolNumber: '176',
-    contactName: 'Юлія Андріївна',
-    phone: '0665244245',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '179',
-    contactName: 'Віра Володимирівна',
-    phone: '0672590052',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: 'Вільні',
-    contactName: 'Іванна Михайлівна',
-    phone: '0974788019',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '105',
-    contactName: 'Лідія Василівна',
-    phone: '0679592370',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '7',
-    contactName: 'Уляна Богданівна',
-    phone: '0674256644',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '168',
-    contactName: 'Ядельська Оксана Богданівна',
-    phone: '0969105724',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '139',
-    contactName: 'Ірина',
-    phone: '0970488672',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '167',
-    contactName: 'Зоряна Ярославівна',
-    phone: '0672684699',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '38',
-    contactName: 'Ірина Олегівна',
-    phone: '0679475122',
-    role: null,
-  },
-  {
-    schoolNumber: '132',
-    contactName: 'Надія Леонівна',
-    phone: '0974429599',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '92',
-    contactName: 'Ольга',
-    phone: '0679492252',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '33',
-    contactName: 'Леся Породько',
-    phone: '0505049049',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '155',
-    contactName: 'Ірина Михайлівна',
-    phone: '0677301582',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '183',
-    contactName: 'Володимир Михайлович',
-    phone: '0970256488',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '70',
-    contactName: 'Ольга Петрівна',
-    phone: '0936992997',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '18',
-    contactName: 'Наталя Бондаренко',
-    phone: '0505938826',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '131',
-    contactName: 'Любомира',
-    phone: '0673657490',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '9',
-    contactName: 'Зоряна Семенівна',
-    phone: '0677628687',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '26',
-    contactName: 'Ольга Іванівна',
-    phone: '0977476237',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '23',
-    contactName: 'Соломія Ігорівна',
-    phone: '0975616807',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '1',
-    contactName: 'Оксана',
-    phone: '0675937156',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '109',
-    contactName: 'Катерина Петрівна',
-    phone: '0975173313',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '30',
-    contactName: 'Олена Йосифівна',
-    phone: '0974649258',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '51',
-    contactName: 'Вікторія Романівна',
-    phone: '0974207708',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '21',
-    contactName: 'Анастасія Віталіївна',
-    phone: '0671727948',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '75',
-    contactName: 'Наталія Володимирівна',
-    phone: '0972431888',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '166',
-    contactName: "Мар'яна Михайлівна",
-    phone: '0975300502',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '127',
-    contactName: 'Галина Йосифівна',
-    phone: '0963460339',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '86',
-    contactName: 'Стефанія Миколаївна',
-    phone: '0674936394',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '114',
-    contactName: 'Ольга Володимирівна',
-    phone: '0983673279',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '128',
-    contactName: 'Лідія Михайлівна',
-    phone: '0979790881',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: 'Золотий ключик',
-    contactName: 'Галина',
-    phone: '0663914517',
-    role: 'Методист',
-  },
-  {
-    schoolNumber: 'Казка',
-    contactName: 'Ірина Михайлівна',
-    phone: '0677322435',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: 'Львівський 2 сад',
-    contactName: 'Олена Юріївна',
-    phone: '0677270402',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '160',
-    contactName: 'Віра Каролівна',
-    phone: '0968009925',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '129',
-    contactName: 'Оксана Зенонівна',
-    phone: '0678112120',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '93',
-    contactName: 'Марія Ярославівна',
-    phone: '0676950870',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '48',
-    contactName: 'Наталія Остапівна',
-    phone: '0974428307',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '135',
-    contactName: 'Галина Ярославівна',
-    phone: '0673994741',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '188',
-    contactName: 'Ірина Вікторівна',
-    phone: '0933054378',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '25',
-    contactName: 'Лілія Богданівна',
-    phone: '0680215346',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '32',
-    contactName: 'Наталія Василівна',
-    phone: '0678119933',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '171',
-    contactName: 'Ірина Корніївна',
-    phone: '0972576026',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '96',
-    contactName: 'Світлана Петрівна',
-    phone: '0676739477',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '94',
-    contactName: 'Оксана Ярославівна',
-    phone: '0671447681',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '156/162',
-    contactName: 'Оксана Ісламівна',
-    phone: '0985835819',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '71',
-    contactName: 'Валентина Гермогенівна',
-    phone: '0976781981',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '187',
-    contactName: 'Ольга Олексіївна',
-    phone: '0674599119',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '14',
-    contactName: 'Оксана Любомирівна',
-    phone: '0677247619',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: 'Любисток',
-    contactName: 'Марія',
-    phone: '0685227373',
-    role: 'Методист',
-  },
-  {
-    schoolNumber: '106',
-    contactName: 'Галина Володимирівна',
-    phone: '0675839839',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '104',
-    contactName: 'Тетяна Ярославівна',
-    phone: '0678034951',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '116',
-    contactName: 'Ірина Іванівна',
-    phone: '0968145853',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '57',
-    contactName: 'Руслана Володимирівна',
-    phone: '0966507883',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '184',
-    contactName: 'Марія Іванівна',
-    phone: '2546872',
-    role: 'Директор',
-  },
-  {
-    schoolNumber: '43',
-    contactName: 'Віра',
-    phone: '0984284448',
-    role: 'Методист',
-  },
-  {
-    schoolNumber: '29',
-    contactName: 'Вікторія Олександрівна',
-    phone: '0673041528',
-    role: 'Директор',
-  },
-];
-
-async function main() {
-  console.log('Seeding school contacts...');
-
-  await prisma.schoolContact.deleteMany({});
-
-  for (const c of contacts) {
-    await prisma.schoolContact.create({
-      data: { city: 'Львів', ...c },
-    });
-  }
-
-  console.log(`Done: ${contacts.length} contacts inserted`);
-}
-
-main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
 
 ```
 

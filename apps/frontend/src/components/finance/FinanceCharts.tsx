@@ -21,6 +21,7 @@ import type {
   FinanceTopSchool,
   FinanceEventItem,
 } from "../../types";
+import { fmtAmount as fmt, calcProjectTotals, calcBarPercent } from "../../utils/financeCalculations";
 
 const PALETTE = [
   "#3b82f6",
@@ -39,10 +40,6 @@ const PIE_COLORS = [
   "#10b981",
   "#0ea5e9",
 ];
-
-const fmt = (n: number) =>
-  new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
-
 
 interface KpiCardProps {
   title: string;
@@ -384,7 +381,7 @@ const TopSchools = memo(function TopSchools({
   return (
     <div className="space-y-5">
       {topSchools.map((school: FinanceTopSchool, idx: number) => {
-        const percent = Math.max((school.revenue / maxRev) * 100, 2);
+        const percent = calcBarPercent(school.revenue, maxRev);
         return (
           <div key={idx} className="relative">
             <div className="flex justify-between items-end mb-2 text-sm">
@@ -442,14 +439,7 @@ export default memo(function FinanceCharts({
     filters,
   } = data;
 
-  const projectTotals = useMemo(() => {
-    const total =
-      byProject?.reduce((sum: number, p: FinanceByProject) => sum + p.value, 0) ?? 0;
-    const percents = (byProject ?? []).map((item: FinanceByProject) =>
-      total > 0 ? Math.round((item.value / total) * 100) : 0,
-    );
-    return { total, percents };
-  }, [byProject]);
+  const projectTotals = useMemo(() => calcProjectTotals(byProject ?? []), [byProject]);
 
   return (
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen font-sans overflow-x-hidden">

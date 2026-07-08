@@ -70,4 +70,14 @@ export const handlers = [
   http.post(`${BASE}/auth/login`, () =>
     HttpResponse.json({ access_token: "test-token" })
   ),
+
+  http.get(`${BASE}/auth/me`, () =>
+    HttpResponse.json({
+      user: { id: "user-1", name: "Тестовий", email: "test@crm.com", role: "SUPERADMIN", cityId: "city-1", cityName: "Львів" },
+    })
+  ),
+
+  http.post(`${BASE}/auth/logout`, () =>
+    HttpResponse.json({ ok: true })
+  ),
 ];
