@@ -29,8 +29,7 @@ export class OwnershipGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
-    // SUPERADMIN бачить усе — перевірка не потрібна
-    if (user?.role === 'SUPERADMIN') return true;
+    if (user?.role === 'SUPERADMIN' || user?.role === 'OWNER') return true;
 
     let paramId: string | undefined =
       request.params.id ??

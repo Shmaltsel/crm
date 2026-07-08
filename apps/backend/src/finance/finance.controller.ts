@@ -24,7 +24,8 @@ export class FinanceController {
     user: JwtUser,
     requestedCityId?: string,
   ): Promise<string | undefined> {
-    if (user.role === 'SUPERADMIN') return requestedCityId;
+    if (user.role === 'SUPERADMIN' || user.role === 'OWNER')
+      return requestedCityId;
     const me = await this.prisma.user.findUnique({
       where: { id: user.sub },
       select: { cityId: true },
@@ -34,7 +35,7 @@ export class FinanceController {
 
   @ApiOperation({ summary: 'Фінансовий дашборд (KPI, динаміка, топ)' })
   @Get('dashboard')
-  @Roles('SUPERADMIN', 'MANAGER')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   async getDashboard(
     @Query() query: FinanceDashboardQueryDto,
     @CurrentUser() user: JwtUser,
@@ -56,7 +57,7 @@ export class FinanceController {
 
   @ApiOperation({ summary: 'Виручка по співробітниках' })
   @Get('staff-revenue')
-  @Roles('SUPERADMIN', 'MANAGER')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   async getStaffRevenue(
     @Query() query: StaffRevenueQueryDto,
     @CurrentUser() user: JwtUser,

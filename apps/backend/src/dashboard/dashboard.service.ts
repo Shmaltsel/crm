@@ -120,7 +120,7 @@ export class DashboardService {
     const now = new Date();
     const windows = this.buildTimeWindows(now);
     const cityFilter = cityId ? { cityId } : {};
-    const isSuperAdmin = role === 'SUPERADMIN';
+    const canSeeAllCities = role === 'SUPERADMIN' || role === 'OWNER';
 
     const [eventsWindow, funnelStats, monthlyKpi, staleSchools, activityFeed] =
       await Promise.all([
@@ -131,7 +131,9 @@ export class DashboardService {
         this.getActivityFeed(cityId, windows.todayStart),
       ]);
 
-    const citiesStats = isSuperAdmin ? await this.getCitiesStats(windows) : [];
+    const citiesStats = canSeeAllCities
+      ? await this.getCitiesStats(windows)
+      : [];
 
     const result: DashboardSummary = {
       ...eventsWindow,

@@ -31,7 +31,7 @@ export class IssuesController {
   }
 
   @ApiOperation({ summary: 'Список проблем по місту' })
-  @Roles('SUPERADMIN', 'MANAGER')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   @Get()
   findByCityId(@Query('cityId') cityId: string) {
     return this.issuesService.findByCityId(cityId);

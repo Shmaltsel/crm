@@ -304,6 +304,7 @@ model AuditLog {
 
 enum UserRole {
   SUPERADMIN
+  OWNER
   MANAGER
   HOST
   DRIVER
