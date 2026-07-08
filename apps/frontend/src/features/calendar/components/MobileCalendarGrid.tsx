@@ -101,9 +101,15 @@ export default function MobileCalendarGrid({
               >
                 {day && (
                   <button
-                    onTouchStart={() => startLongPress(day)}
+                    onTouchStart={(e) => {
+                      const t = e.touches[0];
+                      startLongPress(day, t.clientX, t.clientY);
+                    }}
                     onTouchEnd={() => cancelLongPress()}
-                    onTouchMove={cancelLongPress}
+                    onTouchMove={(e) => {
+                      const t = e.touches[0];
+                      cancelLongPress(t.clientX, t.clientY);
+                    }}
                     onTouchCancel={() => cancelLongPress()}
                     onContextMenu={(e) => e.preventDefault()}
                     onClick={() => handleMobileDayTap(day)}
