@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import type { Event, ExpenseItem, SalaryItem } from "../../types";
+import type { Event, ExpenseItem, SalaryRecord } from "../../types";
 
 interface CompletedEventModalProps {
   isOpen: boolean;
@@ -125,14 +125,14 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
           </div>
 
           {/* Зарплати */}
-          {Array.isArray(report?.salaryItems) && report.salaryItems.length > 0 && (
+          {Array.isArray(report?.salaryRecords) && report.salaryRecords.length > 0 && (
             <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mt-4">
               <h4 className="font-bold text-slate-800 mb-4">👥 Зарплати</h4>
               <div className="space-y-2">
-                {report.salaryItems.map((s: SalaryItem, i: number) => (
+                {report.salaryRecords.map((s: SalaryRecord, i: number) => (
                   <div key={i} className="flex justify-between text-sm">
                       <span>
-                        {s.userName} {s.role ? `(${s.role})` : ""}
+                        {s.employee?.name ?? "—"}
                       </span>
                     <span className="font-medium text-blue-600">
                       {fmt(s.amount)} грн

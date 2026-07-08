@@ -255,15 +255,10 @@ async function main() {
       expenseItems: {
         create: [{ category: 'Пальне', name: 'Заправка авто', amount: 800 }],
       },
-      salaryItems: {
+      salaryRecords: {
         create: [
-          { userId: host.id, userName: host.name, amount: 2500, role: 'HOST' },
-          {
-            userId: driver.id,
-            userName: driver.name,
-            amount: 1500,
-            role: 'DRIVER',
-          },
+          { employeeId: host.id, amount: 2500, status: 'PAID', createdBy: manager.id },
+          { employeeId: driver.id, amount: 1500, status: 'PAID', createdBy: manager.id },
         ],
       },
     },

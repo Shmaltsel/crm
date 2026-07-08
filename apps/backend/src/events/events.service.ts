@@ -309,7 +309,7 @@ export class EventsService {
         crew: { include: { host: true, driver: true } },
         preparation: true,
         history: { orderBy: { createdAt: 'desc' } },
-        report: { include: { expenseItems: true, salaryItems: true } },
+        report: { include: { expenseItems: true, salaryRecords: true } },
       },
     });
     if (!event) throw new AppException('EVENT_NOT_FOUND', HttpStatus.NOT_FOUND);
@@ -435,8 +435,8 @@ export class EventsService {
             expenseItems: {
               select: { category: true, name: true, amount: true },
             },
-            salaryItems: {
-              select: { userId: true, userName: true, amount: true, role: true },
+            salaryRecords: {
+              select: { employeeId: true, amount: true, status: true },
             },
           },
         },

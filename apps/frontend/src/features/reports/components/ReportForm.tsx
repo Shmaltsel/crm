@@ -193,8 +193,8 @@ export default function ReportForm({
       });
       setExpenses(report.expenseItems?.map((e) => ({ name: e.name ?? e.category ?? "", amount: e.amount })) ?? []);
       const salaryMap: Record<string, number> = {};
-      for (const s of report.salaryItems ?? []) {
-        salaryMap[s.userId] = s.amount;
+      for (const s of report.salaryRecords ?? []) {
+        salaryMap[s.employeeId] = s.amount;
       }
       setSalaries(salaryMap);
     }

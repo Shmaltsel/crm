@@ -223,7 +223,7 @@ export class ReportsService {
       where: { eventId },
       include: {
         expenseItems: true,
-        salaryItems: true,
+        salaryRecords: true,
         photos: true,
       },
     });
@@ -234,7 +234,7 @@ export class ReportsService {
       where: { status: 'SUBMITTED' },
       include: {
         expenseItems: true,
-        salaryItems: true,
+        salaryRecords: true,
         event: {
           include: {
             school: { select: { name: true, type: true } },

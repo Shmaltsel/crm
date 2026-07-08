@@ -27,7 +27,7 @@ model User {
   crewAsDriver   Crew[]         @relation("DriverCrew")
   crewAsHost     Crew[]         @relation("HostCrew")
   city           City?          @relation(fields: [cityId], references: [id])
-  salaryItems    SalaryItem[]
+  salaryRecords  SalaryRecord[]
   daysOff        DayOff[]
 
   @@index([role])
@@ -132,6 +132,7 @@ model Event {
   report          EventReport?
   files           File[]
   issues          IssueReport[]
+  salaryRecords   SalaryRecord[]
 
   @@index([cityId])
   @@index([cityId, date])
@@ -168,7 +169,7 @@ model EventReport {
   event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
   photos            File[]
   expenseItems      ExpenseItem[]
-  salaryItems       SalaryItem[]
+  salaryRecords     SalaryRecord[]
 }
 
 model File {
@@ -261,20 +262,26 @@ model ExpenseItem {
   @@index([reportId])
 }
 
-model SalaryItem {
-  id        String   @id @default(uuid())
-  reportId  String
-  userId    String?
-  userName  String
-  amount    Decimal  @db.Decimal(12, 2)
-  role      String?
-  createdAt DateTime @default(now())
+model SalaryRecord {
+  id         String        @id @default(cuid())
+  employeeId String
+  eventId    String?
+  reportId   String?
+  amount     Decimal       @db.Decimal(12, 2)
+  comment    String?
+  status     SalaryStatus  @default(PENDING)
+  paidAt     DateTime?
+  paidBy     String?
+  createdBy  String
+  createdAt  DateTime      @default(now())
 
-  report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  user   User?       @relation(fields: [userId], references: [id])
+  employee User        @relation(fields: [employeeId], references: [id])
+  event    Event?      @relation(fields: [eventId], references: [id])
+  report   EventReport? @relation(fields: [reportId], references: [id], onDelete: SetNull)
 
+  @@index([employeeId])
   @@index([reportId])
-  @@index([userId])
+  @@index([status])
 }
 
 model RefreshToken {
@@ -329,6 +336,12 @@ enum ReportStatus {
   APPROVED
   REJECTED
   CLOSED
+}
+
+enum SalaryStatus {
+  PENDING
+  PAID
+  CANCELLED
 }
 
 enum EventStatus {

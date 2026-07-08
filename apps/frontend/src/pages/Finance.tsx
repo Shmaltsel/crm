@@ -1,88 +1,47 @@
-import { useState, useEffect, lazy, Suspense } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "../config/api";
-import { useSelectedCity } from "../context/CityContext";
+import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import MySalary from "../features/salary/pages/MySalary";
+import TeamSalaries from "../features/salary/pages/TeamSalaries";
+import Company from "../features/salary/pages/Company";
 
-const FinanceCharts = lazy(() => import("../components/finance/FinanceCharts"));
-const StaffFinanceView = lazy(
-  () => import("../components/finance/StaffFinanceView"),
-);
-
-function FinanceSkeleton() {
-  return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen flex flex-col gap-4 animate-pulse">
-      <div className="h-8 bg-slate-200 rounded-xl w-48" />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-24 bg-white rounded-2xl border border-slate-100"
-          />
-        ))}
-      </div>
-      <div className="h-64 bg-white rounded-2xl border border-slate-100" />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="h-48 bg-white rounded-2xl border border-slate-100" />
-        <div className="h-48 bg-white rounded-2xl border border-slate-100" />
-      </div>
-    </div>
-  );
-}
+type Tab = "my-salary" | "team" | "company";
 
 export default function Finance() {
-  const { selectedCity } = useSelectedCity();
-  const { user: currentUser } = useAuth();
-  const [period, setPeriod] = useState("year");
-  const [projectFilter, setProjectFilter] = useState("");
-  const [myBalance, setMyBalance] = useState<number | null>(null);
+  const { user } = useAuth();
+  const isManagerOrAdmin = user?.role === "MANAGER" || user?.role === "SUPERADMIN" || user?.role === "OWNER";
 
-  const isManagerOrAdmin =
-    currentUser?.role === "MANAGER" || currentUser?.role === "SUPERADMIN";
+  const tabs: { key: Tab; label: string; managerOnly?: boolean }[] = [
+    { key: "my-salary", label: "Мої нарахування" },
+    { key: "team", label: "Нарахування команди", managerOnly: true },
+    { key: "company", label: "Фінанси компанії", managerOnly: true },
+  ];
 
-   useEffect(() => {
-    if (isManagerOrAdmin === false) {
-      api
-        .get("/finance/my-balance")
-        .then((r) => setMyBalance(r.data.balance))
-        .catch(() => {});
-    }
-  }, [isManagerOrAdmin]);
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["finance", selectedCity.id, period, projectFilter],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (period) params.set("period", period);
-      if (selectedCity?.id) params.set("cityId", selectedCity.id);
-      if (projectFilter) params.set("project", projectFilter);
-      const res = await api.get(`/finance/dashboard?${params}`);
-      return res.data;
-    },
-    enabled: !!isManagerOrAdmin,
-    staleTime: 5 * 60 * 1000,
-  });
-  
-  if (!isManagerOrAdmin) {
-    return (
-      <Suspense fallback={<FinanceSkeleton />}>
-        <StaffFinanceView myBalance={myBalance} selectedCity={selectedCity} />
-      </Suspense>
-    );
-  }
-
-  if (isLoading || !data) return <FinanceSkeleton />;
+  const availableTabs = tabs.filter((t) => !t.managerOnly || isManagerOrAdmin);
+  const [activeTab, setActiveTab] = useState<Tab>(availableTabs[0]?.key ?? "my-salary");
 
   return (
-    <Suspense fallback={<FinanceSkeleton />}>
-      <FinanceCharts
-        data={data}
-        period={period}
-        setPeriod={setPeriod}
-        projectFilter={projectFilter}
-        setProjectFilter={setProjectFilter}
-        selectedCity={selectedCity}
-      />
-    </Suspense>
+    <div className="min-h-screen bg-slate-50">
+      <div className="sticky top-0 z-10 bg-white border-b border-slate-200">
+        <div className="flex overflow-x-auto scrollbar-none">
+          {availableTabs.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              className={`shrink-0 px-4 py-3 text-sm font-medium transition-colors ${
+                activeTab === t.key
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {activeTab === "my-salary" && <MySalary />}
+      {activeTab === "team" && isManagerOrAdmin && <TeamSalaries />}
+      {activeTab === "company" && isManagerOrAdmin && <Company />}
+    </div>
   );
 }

@@ -98,13 +98,23 @@ export interface ExpenseItem {
   amount: number;
 }
 
-export interface SalaryItem {
-  id?: string;
+export type SalaryStatus = "PENDING" | "PAID" | "CANCELLED";
+
+export interface SalaryRecord {
+  id: string;
+  employeeId: string;
+  eventId?: string;
   reportId?: string;
-  userId: string;
-  userName: string;
   amount: number;
-  role?: string;
+  comment?: string;
+  status: SalaryStatus;
+  paidAt?: string;
+  paidBy?: string;
+  createdBy: string;
+  createdAt: string;
+  employee?: { id: string; name: string; role: string };
+  event?: { id: string; date: string; project: string; cityId: string };
+  report?: { status: string };
 }
 
 export type ReportStatus =
@@ -140,7 +150,7 @@ export interface EventReport {
   createdAt: string;
   updatedAt: string;
   expenseItems: ExpenseItem[];
-  salaryItems: SalaryItem[];
+  salaryRecords: SalaryRecord[];
 }
 
 export interface Event {

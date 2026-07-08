@@ -37,7 +37,7 @@ describe('EventsReportService', () => {
     mockTx = {
       eventReport: { upsert: jest.fn() },
       expenseItem: { deleteMany: jest.fn(), createMany: jest.fn() },
-      salaryItem: { deleteMany: jest.fn(), createMany: jest.fn() },
+      salaryRecord: { deleteMany: jest.fn(), createMany: jest.fn() },
       user: { update: jest.fn() },
       event: { update: jest.fn() },
     };
@@ -201,7 +201,7 @@ describe('EventsReportService', () => {
       expect(mockTx.expenseItem.deleteMany).toHaveBeenCalledWith({
         where: { reportId: 'report-1' },
       });
-      expect(mockTx.salaryItem.deleteMany).toHaveBeenCalledWith({
+      expect(mockTx.salaryRecord.deleteMany).toHaveBeenCalledWith({
         where: { reportId: 'report-1' },
       });
     });
@@ -222,9 +222,9 @@ describe('EventsReportService', () => {
       );
 
       expect(mockTx.expenseItem.deleteMany).toHaveBeenCalled();
-      expect(mockTx.salaryItem.deleteMany).toHaveBeenCalled();
+      expect(mockTx.salaryRecord.deleteMany).toHaveBeenCalled();
       expect(mockTx.expenseItem.createMany).not.toHaveBeenCalled();
-      expect(mockTx.salaryItem.createMany).not.toHaveBeenCalled();
+      expect(mockTx.salaryRecord.createMany).not.toHaveBeenCalled();
     });
 
     it('підставляє категорію "Інше" для витрати без вказаної категорії', async () => {
@@ -317,7 +317,7 @@ describe('EventsReportService', () => {
         mockUser,
       );
 
-      expect(mockTx.salaryItem.createMany).toHaveBeenCalled();
+      expect(mockTx.salaryRecord.createMany).toHaveBeenCalled();
       expect(mockTx.user.update).not.toHaveBeenCalled();
     });
 
@@ -333,8 +333,8 @@ describe('EventsReportService', () => {
 
       await service.submitReport('ev-1', reportData, mockUser);
 
-      expect(mockTx.salaryItem.createMany).toHaveBeenCalledTimes(1);
-      const call = mockTx.salaryItem.createMany.mock.calls[0][0];
+      expect(mockTx.salaryRecord.createMany).toHaveBeenCalledTimes(1);
+      const call = mockTx.salaryRecord.createMany.mock.calls[0][0];
       expect(call.data).toHaveLength(2);
     });
 

@@ -21,7 +21,7 @@ const mockPrisma = {
     aggregate: jest.fn(),
   },
 
-  salaryItem: {
+  salaryRecord: {
     findMany: jest.fn(),
     aggregate: jest.fn(),
   },
@@ -85,7 +85,7 @@ describe('FinanceService', () => {
       .mockResolvedValueOnce([]);
     mockPrisma.expenseItem.findMany.mockResolvedValueOnce([]);
 
-    mockPrisma.salaryItem.findMany.mockResolvedValueOnce([]);
+    mockPrisma.salaryRecord.findMany.mockResolvedValueOnce([]);
 
     mockPrisma.expenseItem.aggregate.mockResolvedValueOnce({
       _sum: {
@@ -93,7 +93,7 @@ describe('FinanceService', () => {
       },
     });
 
-    mockPrisma.salaryItem.aggregate.mockResolvedValueOnce({
+    mockPrisma.salaryRecord.aggregate.mockResolvedValueOnce({
       _sum: {
         amount: 0,
       },

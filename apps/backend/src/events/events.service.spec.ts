@@ -30,7 +30,7 @@ const mockPrisma = {
   },
   eventReport: { upsert: jest.fn() },
   expenseItem: { deleteMany: jest.fn(), createMany: jest.fn() },
-  salaryItem: { deleteMany: jest.fn(), createMany: jest.fn() },
+  salaryRecord: { deleteMany: jest.fn(), createMany: jest.fn() },
   user: {
     findUnique: jest.fn(),
     update: jest.fn(),

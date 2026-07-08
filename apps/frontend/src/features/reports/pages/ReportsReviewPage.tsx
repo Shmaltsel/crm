@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSubmittedReports, useApproveReport, useRequestRevision, useRejectReport } from "../../../hooks/useReports";
 import ReportStatusBadge from "../components/ReportStatusBadge";
-import type { ExpenseItem, SalaryItem } from "../../../types";
+import type { ExpenseItem, SalaryRecord } from "../../../types";
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("uk-UA", {
@@ -124,11 +124,11 @@ export default function ReportsReviewPage() {
                           )}
                           <div className="flex justify-between pt-1 border-t border-slate-200"><span className="font-semibold text-slate-700">Чистий прибуток:</span><span className="font-bold text-emerald-600">{fmt(r.remainderSum)} грн</span></div>
                         </div>
-                        {(r.salaryItems ?? []).length > 0 && (
+                        {(r.salaryRecords ?? []).length > 0 && (
                           <div className="mt-3 pt-3 border-t border-slate-200">
                             <h5 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Зарплати</h5>
-                            {r.salaryItems.map((s: SalaryItem, i: number) => (
-                              <div key={i} className="flex justify-between text-xs"><span>{s.userName}</span><span className="text-blue-600">{fmt(s.amount)} грн</span></div>
+                            {r.salaryRecords.map((s: SalaryRecord, i: number) => (
+                              <div key={i} className="flex justify-between text-xs"><span>{s.employee?.name ?? "—"}</span><span className="text-blue-600">{fmt(s.amount)} грн</span></div>
                             ))}
                           </div>
                         )}

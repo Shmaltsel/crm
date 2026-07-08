@@ -25,7 +25,7 @@ export class ExpenseItemDto {
   amount: number;
 }
 
-export class SalaryItemDto {
+export class SalaryRecordDto {
   @IsString()
   userId: string;
 
@@ -97,6 +97,6 @@ export class SubmitReportDto {
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => SalaryItemDto)
-  salaries: SalaryItemDto[];
+  @Type(() => SalaryRecordDto)
+  salaries: SalaryRecordDto[];
 }

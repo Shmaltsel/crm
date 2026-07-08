@@ -97,7 +97,7 @@ export class EventsReportService {
         await tx.expenseItem.deleteMany({
           where: { reportId: report.id },
         });
-        await tx.salaryItem.deleteMany({
+        await tx.salaryRecord.deleteMany({
           where: { reportId: report.id },
         });
 
@@ -115,12 +115,14 @@ export class EventsReportService {
         if (reportData.salaries?.length) {
           const salariesWithUser = reportData.salaries.filter((s) => s.userId);
           if (salariesWithUser.length) {
-            await tx.salaryItem.createMany({
+            await tx.salaryRecord.createMany({
               data: salariesWithUser.map((s) => ({
                 reportId: report.id,
-                userId: s.userId,
-                userName: s.name,
+                employeeId: s.userId,
                 amount: new Prisma.Decimal(s.amount),
+                status: 'PAID',
+                createdBy: user.sub,
+                eventId,
               })),
             });
 
