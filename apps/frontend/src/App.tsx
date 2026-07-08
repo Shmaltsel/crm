@@ -44,6 +44,7 @@ const Finance = lazyWithRetry(() => import("./pages/Finance"));
 const CalendarView = lazyWithRetry(() => import("./pages/CalendarView"));
 const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
 const Kindergartens = lazyWithRetry(() => import("./pages/Kindergartens"));
+const Analytics = lazyWithRetry(() => import("./pages/Analytics"));
 
 const PageLoader = () => (
   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-4 md:p-8">
@@ -144,16 +145,27 @@ function AppRoutes() {
               </Suspense>
             }
           />
-          <Route
-            path="dashboard"
-            element={
-              <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER"]}>
-                <Suspense fallback={<PageLoader />}>
-                  <Dashboard />
-                </Suspense>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER", "OWNER"]}>
+                  <Suspense fallback={<PageLoader />}>
+                    <Dashboard />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="analytics"
+              element={
+                <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER"]}>
+                  <Suspense fallback={<PageLoader />}>
+                    <Analytics />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
 
           <Route
             path="kindergartens"

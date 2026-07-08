@@ -78,7 +78,7 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
-  role: string;
+  role: UserRole;
   cityId?: string;
   city?: { id: string; name: string };
 }
@@ -245,3 +245,5 @@ export interface FinanceDashboardData {
   topEvents?: FinanceEventItem[];
   worstEvents?: FinanceEventItem[];
 }
+
+export type UserRole = "SUPERADMIN" | "OWNER" | "MANAGER" | "HOST" | "DRIVER";
