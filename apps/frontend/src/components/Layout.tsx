@@ -1,6 +1,6 @@
 import { Link, useOutlet, useLocation, useNavigate } from "react-router-dom";
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
-import { AnimatePresence, motion, MotionConfig } from "framer-motion";
+import { AnimatePresence, motion, MotionConfig, useMotionValue, useTransform, animate, type PanInfo } from "framer-motion";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -61,49 +61,58 @@ const desktopVariants = {
   exit: { opacity: 0 },
 };
 
-function stackVariants(dir: 1 | -1, w: number) {
-  return {
-    initial: {
-      x: dir * w,
-      scale: 1,
-      opacity: 1,
-      boxShadow:
-        dir > 0
-          ? "-12px 0 32px rgba(0,0,0,0.18)"
-          : "12px 0 32px rgba(0,0,0,0.18)",
-    },
-    animate: {
-      x: 0,
-      scale: 1,
-      opacity: 1,
-      boxShadow: "0 0 0 rgba(0,0,0,0)",
-    },
-    exit: {
-      x: dir * w * -0.15,
-      scale: 0.94,
-      filter: "brightness(0.85)",
-    },
-  };
+function MobileDragView({
+  x,
+  winWidth,
+  dragBlockedRef,
+  shouldIgnoreSwipe,
+  handleDragEnd,
+  outlet,
+}: {
+  x: ReturnType<typeof useMotionValue<number>>;
+  winWidth: number;
+  dragBlockedRef: React.MutableRefObject<boolean>;
+  shouldIgnoreSwipe: (target: EventTarget | null) => boolean;
+  handleDragEnd: (event: PointerEvent, info: PanInfo) => void;
+  outlet: React.ReactNode;
+}) {
+  const ghostX = useTransform(x, [-winWidth, 0, winWidth], [0, -winWidth * 0.15, 0]);
+  const ghostScale = useTransform(x, [-winWidth, 0, winWidth], [1, 0.94, 1]);
+  const ghostFilter = useTransform(x, [-winWidth, 0, winWidth], ["brightness(1)", "brightness(0.85)", "brightness(1)"]);
+
+  return (
+    <div className="relative min-h-full" style={{ overflowX: "visible" } as React.CSSProperties}>
+      <motion.div
+        className="absolute inset-0 bg-surface-subtle"
+        style={{ x: ghostX, scale: ghostScale, filter: ghostFilter }}
+      />
+      <motion.div
+        className="absolute inset-0"
+        drag="x"
+        dragConstraints={{ left: -winWidth, right: winWidth }}
+        dragElastic={0.5}
+        dragMomentum={false}
+        onDragStart={(e) => {
+          dragBlockedRef.current = shouldIgnoreSwipe(e.target as HTMLElement);
+        }}
+        onDragEnd={handleDragEnd}
+        style={{ x }}
+      >
+        {outlet}
+      </motion.div>
+    </div>
+  );
 }
 
 export default function Layout() {
   const outlet = useOutlet();
   const location = useLocation();
   const navigate = useNavigate();
-  const swipeStartRef = useRef(0);
-  const touchStartYRef = useRef(0);
-  const lastMoveTimeRef = useRef(0);
-  const lastMoveXRef = useRef(0);
-  const swipeVelocityRef = useRef(0);
+  const dragBlockedRef = useRef(false);
+  const x = useMotionValue(0);
   const [winWidth, setWinWidth] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth : 360,
   );
-  const [swipeDir, setSwipeDir] = useState<1 | -1>(1);
-  const [transitionConfig, setTransitionConfig] = useState({
-    type: "tween" as const,
-    duration: 0.27,
-    ease: [0.32, 0.72, 0, 1],
-  });
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches,
   );
@@ -133,7 +142,7 @@ export default function Layout() {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  const shouldIgnoreSwipe = (target: EventTarget | null): boolean => {
+  const shouldIgnoreSwipe = useCallback((target: EventTarget | null): boolean => {
     if (!target || !(target instanceof HTMLElement)) return true;
     if (target.closest("[data-no-swipe]")) return true;
     if (target.closest('[style*="overflow-x: auto"]')) return true;
@@ -144,66 +153,48 @@ export default function Layout() {
       if (e.scrollWidth > e.clientWidth) return true;
     }
     return false;
-  };
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (shouldIgnoreSwipe(e.target)) return;
-    swipeStartRef.current = e.touches[0].clientX;
-    touchStartYRef.current = e.touches[0].clientY;
-    lastMoveTimeRef.current = e.timeStamp;
-    lastMoveXRef.current = e.touches[0].clientX;
   }, []);
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (swipeStartRef.current === 0) return;
-    const dx = e.touches[0].clientX - swipeStartRef.current;
-    const dy = Math.abs(e.touches[0].clientY - touchStartYRef.current);
-    if (Math.abs(dx) < 5) return;
-    if (Math.abs(dx) < dy * 1.5) {
-      swipeStartRef.current = 0;
-      return;
-    }
-    const dt = e.timeStamp - lastMoveTimeRef.current;
-    if (dt > 1) {
-      swipeVelocityRef.current = Math.abs(e.touches[0].clientX - lastMoveXRef.current) / dt;
-    }
-    lastMoveTimeRef.current = e.timeStamp;
-    lastMoveXRef.current = e.touches[0].clientX;
-  }, []);
+  useEffect(() => {
+    x.jump(0);
+  }, [location.pathname, x]);
 
-  const handleTouchEnd = useCallback(() => {
-    if (swipeStartRef.current === 0) return;
-    const xStart = swipeStartRef.current;
-    const xEnd = lastMoveXRef.current;
-    swipeStartRef.current = 0;
-
-    const dx = xEnd - xStart;
-    const absDx = Math.abs(dx);
-    const velocity = swipeVelocityRef.current;
-    swipeVelocityRef.current = 0;
-
-    if (absDx < 28 && velocity < 0.5) return;
-
-    const dir: 1 | -1 = dx < 0 ? 1 : -1;
-    setSwipeDir(dir);
-
-    const dur = Math.max(0.12, 0.27 - velocity * 0.15);
-    setTransitionConfig({
-      type: "tween",
-      duration: dur,
-      ease: [0.32, 0.72, 0, 1],
-    });
-
-    const currentIdx = tabPaths.findIndex((t) =>
-      location.pathname.startsWith(t.to),
-    );
-    if (currentIdx === -1) return;
-
-    const targetIdx = currentIdx + dir;
-    if (targetIdx < 0 || targetIdx >= tabPaths.length) return;
-
-    navigate(tabPaths[targetIdx].to);
-  }, [navigate, tabPaths, location.pathname]);
+  const handleDragEnd = useCallback(
+    (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+      if (dragBlockedRef.current) {
+        dragBlockedRef.current = false;
+        animate(x, 0, { type: "spring", stiffness: 400, damping: 35 });
+        return;
+      }
+      const dx = info.offset.x;
+      const velocity = info.velocity.x;
+      if (Math.abs(dx) < 28 && Math.abs(velocity) < 500) {
+        animate(x, 0, { type: "spring", stiffness: 400, damping: 35 });
+        return;
+      }
+      const dir: 1 | -1 = dx < 0 ? 1 : -1;
+      const currentIdx = tabPaths.findIndex((t) =>
+        location.pathname.startsWith(t.to),
+      );
+      if (currentIdx === -1) return;
+      const targetIdx = currentIdx + dir;
+      if (targetIdx < 0 || targetIdx >= tabPaths.length) {
+        animate(x, 0, { type: "spring", stiffness: 400, damping: 35 });
+        return;
+      }
+      const commitX = dir * -winWidth;
+      animate(x, commitX, {
+        type: "spring",
+        velocity: -velocity,
+        stiffness: 300,
+        damping: 30,
+      }).then(() => {
+        x.jump(0);
+        navigate(tabPaths[targetIdx].to);
+      });
+    },
+    [navigate, tabPaths, location.pathname, winWidth, x],
+  );
 
   return (
     <MotionConfig reducedMotion="user">
@@ -266,27 +257,16 @@ export default function Layout() {
         <main
           className="flex-1 overflow-y-auto mt-16 md:mt-0 relative w-full min-w-0 pb-16 md:pb-0"
           style={{ marginTop: isMobile ? "calc(4rem + env(safe-area-inset-top, 0px))" : undefined }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
         >
           {isMobile ? (
-            <div className="relative min-h-full" style={{ overflowX: "visible" } as React.CSSProperties}>
-              <AnimatePresence custom={swipeDir}>
-                <motion.div
-                  key={location.pathname}
-                  className="absolute inset-0"
-                  custom={swipeDir}
-                  variants={stackVariants(swipeDir, winWidth)}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  transition={transitionConfig}
-                >
-                  {outlet}
-                </motion.div>
-              </AnimatePresence>
-            </div>
+            <MobileDragView
+              x={x}
+              winWidth={winWidth}
+              dragBlockedRef={dragBlockedRef}
+              shouldIgnoreSwipe={shouldIgnoreSwipe}
+              handleDragEnd={handleDragEnd}
+              outlet={outlet}
+            />
           ) : (
             <AnimatePresence mode="wait">
               <motion.div
