@@ -265,6 +265,7 @@ export default function Layout() {
 
         <main
           className="flex-1 overflow-y-auto mt-16 md:mt-0 relative w-full min-w-0 pb-16 md:pb-0"
+          style={{ marginTop: isMobile ? "calc(4rem + env(safe-area-inset-top, 0px))" : undefined }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}

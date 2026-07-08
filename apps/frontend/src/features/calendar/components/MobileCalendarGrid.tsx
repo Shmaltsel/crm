@@ -49,7 +49,7 @@ export default function MobileCalendarGrid({
   return (
     <>
       <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
-        <div className="flex items-center justify-between px-3 py-3.5 border-b border-slate-100">
+        <div className="flex items-center justify-between px-3 py-3.5 border-b border-slate-100" data-no-swipe>
           <button
             onClick={prevMonth}
             className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 active:bg-slate-100 transition-colors"
@@ -79,7 +79,7 @@ export default function MobileCalendarGrid({
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-y-1.5 px-2 pb-3">
+        <div className="grid grid-cols-7 gap-y-2.5 px-2 pb-3" data-no-swipe>
           {days.map((day, idx) => {
             const isToday =
               day && day.toDateString() === new Date().toDateString();
@@ -154,7 +154,7 @@ export default function MobileCalendarGrid({
                     </svg>
                     {day.getDate()}
                     {dayOffEntries.length > 0 && (
-                      <span className="pointer-events-none absolute -top-2.5 -right-2.5 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white flex items-center justify-center">
+                      <span className="pointer-events-none absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white flex items-center justify-center">
                         <span className="text-white text-[6px] font-bold leading-none">
                           ✕
                         </span>
