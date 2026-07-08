@@ -45,6 +45,7 @@ const CalendarView = lazyWithRetry(() => import("./pages/CalendarView"));
 const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
 const Kindergartens = lazyWithRetry(() => import("./pages/Kindergartens"));
 const Analytics = lazyWithRetry(() => import("./pages/Analytics"));
+const ReportsReview = lazyWithRetry(() => import("./features/reports/pages/ReportsReviewPage"));
 
 const PageLoader = () => (
   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-4 md:p-8">
@@ -191,6 +192,17 @@ function AppRoutes() {
               <Suspense fallback={<PageLoader />}>
                 <EventReport />
               </Suspense>
+            }
+          />
+
+          <Route
+            path="reports/review"
+            element={
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
+                <Suspense fallback={<PageLoader />}>
+                  <ReportsReview />
+                </Suspense>
+              </ProtectedRoute>
             }
           />
         </Route>

@@ -25,11 +25,14 @@ export class EventsSchedulerService implements OnModuleInit {
       this.logger.error('Помилка першої перевірки подій:', err),
     );
 
-    setInterval(() => {
-      check().catch((err) =>
-        this.logger.error('Помилка перевірки подій:', err),
-      );
-    }, 24 * 60 * 60 * 1000);
+    setInterval(
+      () => {
+        check().catch((err) =>
+          this.logger.error('Помилка перевірки подій:', err),
+        );
+      },
+      24 * 60 * 60 * 1000,
+    );
   }
 
   async checkEventsForTomorrow() {

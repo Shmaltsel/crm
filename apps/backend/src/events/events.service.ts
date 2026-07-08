@@ -70,6 +70,7 @@ export class EventsService {
           driver: { select: { id: true, name: true } },
         },
       },
+      report: { select: { status: true } },
     };
 
     if (!query?.page) {
@@ -288,9 +289,7 @@ export class EventsService {
     const compute = this.computeBySchool(key, schoolId, minimal).then(
       (result) =>
         Array.isArray(result)
-          ? result.map((e: Record<string, unknown>) =>
-              this.serializeEvent(e),
-            )
+          ? result.map((e: Record<string, unknown>) => this.serializeEvent(e))
           : result,
     );
     this.pendingSchoolEvents.set(key, compute);
@@ -435,6 +434,9 @@ export class EventsService {
             rating: true,
             expenseItems: {
               select: { category: true, name: true, amount: true },
+            },
+            salaryItems: {
+              select: { userId: true, userName: true, amount: true, role: true },
             },
           },
         },

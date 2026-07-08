@@ -130,10 +130,7 @@ describe('EventsSchedulingService', () => {
         crew: null,
         history: [],
       });
-      const cacheDelSpy = jest.spyOn(
-        (service as any).cacheManager,
-        'del',
-      );
+      const cacheDelSpy = jest.spyOn((service as any).cacheManager, 'del');
 
       await service.rescheduleEvent('ev-1', '2025-10-15', '14:00', mockUser);
 

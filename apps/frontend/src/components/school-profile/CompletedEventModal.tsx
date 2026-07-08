@@ -100,8 +100,8 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
                   </span>
                 </div>
 
-                {Array.isArray(report?.expenses) &&
-                  report.expenses.map((exp: ExpenseItem, i: number) => (
+                {Array.isArray(report?.expenseItems) &&
+                  report.expenseItems.map((exp: ExpenseItem, i: number) => (
                     <div key={i} className="flex justify-between text-xs pl-2">
                       <span className="text-slate-400">
                         — {exp.name || exp.category || "Інше"}
@@ -125,15 +125,15 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
           </div>
 
           {/* Зарплати */}
-          {Array.isArray(report?.salaries) && report.salaries.length > 0 && (
+          {Array.isArray(report?.salaryItems) && report.salaryItems.length > 0 && (
             <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mt-4">
               <h4 className="font-bold text-slate-800 mb-4">👥 Зарплати</h4>
               <div className="space-y-2">
-                {report.salaries.map((s: SalaryItem, i: number) => (
+                {report.salaryItems.map((s: SalaryItem, i: number) => (
                   <div key={i} className="flex justify-between text-sm">
-                    <span>
-                      {s.name} {s.role ? `(${s.role})` : ""}
-                    </span>
+                      <span>
+                        {s.userName} {s.role ? `(${s.role})` : ""}
+                      </span>
                     <span className="font-medium text-blue-600">
                       {fmt(s.amount)} грн
                     </span>

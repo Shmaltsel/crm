@@ -3174,6 +3174,7 @@ module.exports = {
     "@tanstack/react-query": "^5.101.0",
     "@tanstack/react-virtual": "^3.14.3",
     "axios": "^1.18.0",
+    "formik": "^2.4.9",
     "framer-motion": "^12.41.0",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^1.20.0",
@@ -3182,6 +3183,7 @@ module.exports = {
     "react-hook-form": "^7.79.0",
     "react-router-dom": "^7.18.0",
     "recharts": "^3.8.1",
+    "yup": "^1.7.1",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },

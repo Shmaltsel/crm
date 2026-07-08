@@ -165,6 +165,11 @@ export class EventsController {
     @Body() body: RescheduleEventDto,
     @CurrentUser() user: JwtUser,
   ) {
-    return this.eventsSchedulingService.rescheduleEvent(id, body.date, body.time, user);
+    return this.eventsSchedulingService.rescheduleEvent(
+      id,
+      body.date,
+      body.time,
+      user,
+    );
   }
 }

@@ -64,6 +64,8 @@ export class EventsReportService {
         const report = await tx.eventReport.upsert({
           where: { eventId },
           update: {
+            status: 'SUBMITTED' as never,
+            submittedAt: new Date(),
             announcementDone: reportData.announcementDone,
             materialShown: reportData.materialShown,
             childrenCount: reportData.childrenCount,
@@ -77,6 +79,8 @@ export class EventsReportService {
           },
           create: {
             eventId,
+            status: 'SUBMITTED' as never,
+            submittedAt: new Date(),
             announcementDone: reportData.announcementDone,
             materialShown: reportData.materialShown,
             childrenCount: reportData.childrenCount,

@@ -173,8 +173,6 @@ describe('EventsService', () => {
     });
   });
 
-
-
   describe('findBySchool', () => {
     it('minimal=true — використовує select без history/preparation', async () => {
       mockPrisma.event.findMany.mockResolvedValueOnce([]);

@@ -30,7 +30,10 @@ export class AuditLogInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap(() => {
         const user = req.user as { sub?: string; name?: string } | undefined;
-        const entity = context.getClass().name.replace(/Controller$/, '').toLowerCase();
+        const entity = context
+          .getClass()
+          .name.replace(/Controller$/, '')
+          .toLowerCase();
         const entityId =
           (Object.values(req.params ?? {}).find(
             (v) => typeof v === 'string' && /^\d+$/.test(v),

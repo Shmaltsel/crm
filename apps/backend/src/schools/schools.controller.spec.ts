@@ -62,9 +62,7 @@ describe('SchoolsController', () => {
           'Немає доступу до ресурсу іншого міста',
         ),
       );
-      await request(app.getHttpServer())
-        .get('/schools/s-1')
-        .expect(403);
+      await request(app.getHttpServer()).get('/schools/s-1').expect(403);
     });
 
     it('SUPERADMIN отримує 200', async () => {

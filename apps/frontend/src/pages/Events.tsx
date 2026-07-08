@@ -32,6 +32,7 @@ interface EventListItem {
     host?: CrewMember | null;
     driver?: CrewMember | null;
   } | null;
+  report?: { status: string } | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -61,6 +62,24 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const FIELD_ROLES = ["DRIVER", "HOST"];
+
+const REPORT_STATUS_LABELS: Record<string, string> = {
+  DRAFT: "Чернетка",
+  SUBMITTED: "На перевірці",
+  NEEDS_REVISION: "На доопрацюванні",
+  APPROVED: "Затверджено",
+  REJECTED: "Відхилено",
+  CLOSED: "Закрито",
+};
+
+const REPORT_STATUS_COLORS: Record<string, string> = {
+  DRAFT: "bg-slate-100 text-slate-500",
+  SUBMITTED: "bg-amber-50 text-amber-600",
+  NEEDS_REVISION: "bg-rose-50 text-rose-600",
+  APPROVED: "bg-emerald-50 text-emerald-600",
+  REJECTED: "bg-red-50 text-red-500",
+  CLOSED: "bg-slate-200 text-slate-400",
+};
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("uk-UA", {
@@ -151,13 +170,24 @@ export default function Events() {
               >
                 <div className="flex justify-between items-start gap-2">
                   <p className="font-semibold text-gray-800">{ev.project}</p>
-                  <span
-                    className={`shrink-0 inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                      STATUS_COLORS[ev.status] ?? "bg-slate-100 text-slate-600"
-                    }`}
-                  >
-                    {STATUS_LABELS[ev.status] ?? ev.status}
-                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                        STATUS_COLORS[ev.status] ?? "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {STATUS_LABELS[ev.status] ?? ev.status}
+                    </span>
+                    {ev.report?.status && (
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                          REPORT_STATUS_COLORS[ev.report.status] ?? "bg-slate-100 text-slate-500"
+                        }`}
+                      >
+                        {REPORT_STATUS_LABELS[ev.report.status] ?? ev.report.status}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {formatDate(ev.date)}
@@ -236,14 +266,25 @@ export default function Events() {
                       <div className="flex items-center gap-1"><Truck className="w-3 h-3 shrink-0" /> {ev.crew?.driver?.name ?? "—"}</div>
                     </td>
                     <td className="p-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm ${
-                          STATUS_COLORS[ev.status] ??
-                          "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        {STATUS_LABELS[ev.status] ?? ev.status}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span
+                          className={`px-3 py-1 rounded-full text-sm ${
+                            STATUS_COLORS[ev.status] ??
+                            "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {STATUS_LABELS[ev.status] ?? ev.status}
+                        </span>
+                        {ev.report?.status && (
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                              REPORT_STATUS_COLORS[ev.report.status] ?? "bg-slate-100 text-slate-500"
+                            }`}
+                          >
+                            {REPORT_STATUS_LABELS[ev.report.status] ?? ev.report.status}
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

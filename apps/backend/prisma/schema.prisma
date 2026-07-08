@@ -144,12 +144,18 @@ model Event {
 model EventReport {
   id                String        @id @default(uuid())
   eventId           String        @unique
+  status            ReportStatus  @default(DRAFT)
   directorSatisfied Boolean?
   teachersSatisfied Boolean?
   hadIssues         Boolean       @default(false)
   comment           String?
+  revisionComment   String?
   rating            Float?
+  submittedAt       DateTime?
+  approvedAt        DateTime?
+  approvedBy        String?
   createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
   announcementDone  Boolean       @default(false)
   materialShown     Boolean       @default(false)
   childrenCount     Int           @default(0)
@@ -314,6 +320,15 @@ enum PreparationStatus {
   PLANNED
   IN_PROGRESS
   DONE
+}
+
+enum ReportStatus {
+  DRAFT
+  SUBMITTED
+  NEEDS_REVISION
+  APPROVED
+  REJECTED
+  CLOSED
 }
 
 enum EventStatus {

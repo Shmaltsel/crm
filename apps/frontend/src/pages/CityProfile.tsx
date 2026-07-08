@@ -691,13 +691,13 @@ function CompletedEventModal({
                     − {fmt(report?.schoolSum)} грн
                   </span>
                 </div>
-                {Array.isArray(report?.expenses) &&
-                  report.expenses.length > 0 && (
+                {Array.isArray(report?.expenseItems) &&
+                  report.expenseItems.length > 0 && (
                     <div className="py-2 border-b border-slate-50">
                       <span className="text-slate-500 block mb-2">
                         Додаткові витрати:
                       </span>
-                      {report.expenses.map((exp: any, i: number) => (
+                      {report.expenseItems.map((exp: any, i: number) => (
                         <div
                           key={i}
                           className="flex justify-between text-xs mb-1 pl-2"

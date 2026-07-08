@@ -8,6 +8,7 @@ import {
   Users,
   MapPin,
   BarChart3,
+  ClipboardCheck,
 } from "lucide-react";
 
 export interface NavTab {
@@ -19,6 +20,7 @@ export interface NavTab {
 
 export const NAV_TABS: NavTab[] = [
   { to: "/dashboard", icon: Home, label: "Дашборд", roles: ["SUPERADMIN", "MANAGER", "OWNER"] },
+  { to: "/reports/review", icon: ClipboardCheck, label: "Звіти", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
   { to: "/schools", icon: School, label: "Школи" },
   { to: "/kindergartens", icon: Baby, label: "Садочки" },
   { to: "/finance", icon: Wallet, label: "Фінанси" },

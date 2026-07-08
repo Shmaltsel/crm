@@ -99,24 +99,48 @@ export interface ExpenseItem {
 }
 
 export interface SalaryItem {
+  id?: string;
+  reportId?: string;
   userId: string;
-  name: string;
+  userName: string;
   amount: number;
   role?: string;
 }
 
+export type ReportStatus =
+  | "DRAFT"
+  | "SUBMITTED"
+  | "NEEDS_REVISION"
+  | "APPROVED"
+  | "REJECTED"
+  | "CLOSED";
+
 export interface EventReport {
+  id: string;
+  eventId: string;
+  status: ReportStatus;
+  announcementDone: boolean;
+  materialShown: boolean;
   childrenCount: number;
+  classesCount: number;
+  privilegedCount: number;
+  showingsCount: number;
   totalSum: number;
   schoolSum: number;
   remainderSum: number;
+  rating: number;
   directorSatisfied?: boolean;
   teachersSatisfied?: boolean;
   hadIssues?: boolean;
   comment?: string;
-  rating?: number;
-  expenses: ExpenseItem[];
-  salaries: SalaryItem[];
+  revisionComment?: string;
+  submittedAt?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+  expenseItems: ExpenseItem[];
+  salaryItems: SalaryItem[];
 }
 
 export interface Event {

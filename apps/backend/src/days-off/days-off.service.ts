@@ -56,9 +56,7 @@ export class DaysOffService {
         currentUser.role === 'MANAGER' &&
         target.cityId !== currentUser.cityId
       ) {
-        throw new AppException(
-          'CROSS_CITY_DAY_OFF', HttpStatus.FORBIDDEN,
-        );
+        throw new AppException('CROSS_CITY_DAY_OFF', HttpStatus.FORBIDDEN);
       }
       targetUserId = target.id;
     } else {
@@ -118,9 +116,7 @@ export class DaysOffService {
 
     if (currentUser.role === 'MANAGER' && !isOwner) {
       if (dayOff.user.cityId !== currentUser.cityId) {
-        throw new AppException(
-          'CROSS_CITY_DAY_OFF', HttpStatus.FORBIDDEN,
-        );
+        throw new AppException('CROSS_CITY_DAY_OFF', HttpStatus.FORBIDDEN);
       }
     }
 

@@ -4,7 +4,9 @@ import { MetricsGuard } from './metrics.guard';
 describe('MetricsGuard', () => {
   let guard: MetricsGuard;
 
-  const createContext = (headers: Record<string, string> = {}): ExecutionContext =>
+  const createContext = (
+    headers: Record<string, string> = {},
+  ): ExecutionContext =>
     ({
       switchToHttp: () => ({
         getRequest: () => ({ headers }),
@@ -26,7 +28,9 @@ describe('MetricsGuard', () => {
 
   it('з METRICS_TOKEN і правильним X-Metrics-Token пропускає', () => {
     process.env.METRICS_TOKEN = 'secret123';
-    const ok = guard.canActivate(createContext({ 'x-metrics-token': 'secret123' }));
+    const ok = guard.canActivate(
+      createContext({ 'x-metrics-token': 'secret123' }),
+    );
     expect(ok).toBe(true);
   });
 
@@ -39,6 +43,8 @@ describe('MetricsGuard', () => {
 
   it('з METRICS_TOKEN і без заголовка кидає Forbidden', () => {
     process.env.METRICS_TOKEN = 'secret123';
-    expect(() => guard.canActivate(createContext({}))).toThrow(ForbiddenException);
+    expect(() => guard.canActivate(createContext({}))).toThrow(
+      ForbiddenException,
+    );
   });
 });

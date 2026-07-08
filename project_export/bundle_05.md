@@ -1,3 +1,1123 @@
+# FILE: apps/frontend/src/hooks/useCities.ts
+
+```
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "../config/api";
+import type { City, CityProfile } from "../types";
+
+export function useCities() {
+  return useQuery<City[]>({
+    queryKey: ["cities"],
+    queryFn: () => api.get<City[]>("/cities").then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCity(id: string | undefined) {
+  return useQuery<CityProfile>({
+    queryKey: ["city", id],
+    queryFn: () => api.get<CityProfile>(`/cities/${id}`).then((r) => r.data),
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useCreateCity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) =>
+      api.post("/cities", { name }).then((r) => r.data),
+    onSuccess: (data) => {
+      qc.setQueryData<City[]>(["cities"], (old) =>
+        Array.isArray(old) ? [data, ...old] : [data],
+      );
+    },
+  });
+}
+
+export function useCreateCrew(cityId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (form: { name: string; hostId: string; driverId: string }) =>
+      api.post(`/cities/${cityId}/crews`, form).then((r) => r.data),
+    onMutate: async (form) => {
+      await qc.cancelQueries({ queryKey: ["city", cityId] });
+      const prev = qc.getQueryData<CityProfile>(["city", cityId]);
+      const optimistic: Crew = { id: `temp-${Date.now()}`, ...form, name: form.name, cityId: cityId! };
+      qc.setQueryData<CityProfile>(["city", cityId], (old) =>
+        old ? { ...old, crews: [...(old.crews || []), optimistic] } : old,
+      );
+      return { prev };
+    },
+    onSuccess: (data) => {
+      qc.setQueryData<CityProfile>(["city", cityId], (old) =>
+        old
+          ? {
+              ...old,
+              crews: old.crews?.map((c: Crew) =>
+                c.id?.startsWith("temp-") ? data : c,
+              ),
+            }
+          : old,
+      );
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData<CityProfile>(["city", cityId], ctx.prev);
+    },
+  });
+}
+
+export function useDeleteCrew(cityId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (crewId: string) =>
+      api.delete(`/cities/crews/${crewId}`).then((r) => r.data),
+    onMutate: async (crewId) => {
+      await qc.cancelQueries({ queryKey: ["city", cityId] });
+      const prev = qc.getQueryData<CityProfile>(["city", cityId]);
+      qc.setQueryData<CityProfile>(["city", cityId], (old) =>
+        old
+          ? { ...old, crews: old.crews?.filter((c: Crew) => c.id !== crewId) }
+          : old,
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData<CityProfile>(["city", cityId], ctx.prev);
+    },
+  });
+}
+
+```
+
+# FILE: apps/frontend/src/hooks/useDaysOff.ts
+
+```
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "../config/api";
+
+export interface DayOff {
+  id: string;
+  userId: string;
+  date: string;
+  user: { id: string; name: string; role: string; cityId: string | null };
+}
+
+export function useDaysOff(from?: string, to?: string, cityId?: string) {
+  return useQuery({
+    queryKey: ["daysOff", from, to, cityId],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
+      if (cityId) params.set("cityId", cityId);
+      return api.get<DayOff[]>(`/days-off?${params}`).then((r) => r.data);
+    },
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useCreateDayOff() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { date: string; userId?: string }) =>
+      api.post<DayOff>("/days-off", payload).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["daysOff"] });
+    },
+  });
+}
+
+export function useDeleteDayOff() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/days-off/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["daysOff"] });
+    },
+  });
+}
+
+```
+
+# FILE: apps/frontend/src/hooks/useDebounce.ts
+
+```
+import { useState, useEffect } from "react";
+
+export function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+```
+
+# FILE: apps/frontend/src/hooks/useEmployees.ts
+
+```
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "../config/api";
+import type { User, Project } from "../types";
+
+export interface UserFormData {
+  fullName: string;
+  phone: string;
+  email: string;
+  cityId: string;
+  role: string;
+  password: string;
+  telegramId: string;
+  car: string;
+}
+
+export function useUsers() {
+  return useQuery({
+    queryKey: ["users"],
+    queryFn: () =>
+      api.get<User[]>("/users", undefined).then((r) => r.data),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useProjects() {
+  return useQuery({
+    queryKey: ["projects"],
+    queryFn: () =>
+      api.get<Project[]>("/projects", undefined).then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCreateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (form: UserFormData) =>
+      api.post<User>("/users", form, undefined).then((r) => r.data),
+    onMutate: async (form) => {
+      await qc.cancelQueries({ queryKey: ["users"] });
+      const prev = qc.getQueryData<User[]>(["users"]);
+      const optimistic = {
+        id: `temp-${Date.now()}`,
+        name: form.fullName,
+        ...form,
+      };
+      qc.setQueryData(["users"], (old: User[] | undefined) =>
+        Array.isArray(old) ? [...old, optimistic] : [optimistic],
+      );
+      return { prev };
+    },
+    onSuccess: (data) => {
+      qc.setQueryData(["users"], (old: User[] | undefined) =>
+        Array.isArray(old)
+          ? old.map((u) => (u.id?.startsWith("temp-") ? data : u))
+          : [data],
+      );
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["users"], ctx.prev);
+    },
+  });
+}
+
+export function useUpdateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, form }: { id: string; form: Partial<UserFormData> }) =>
+      api
+        .patch<User>(`/users/${id}`, form, undefined)
+        .then((r) => r.data),
+    onMutate: async ({ id, form }) => {
+      await qc.cancelQueries({ queryKey: ["users"] });
+      const prev = qc.getQueryData<User[]>(["users"]);
+      qc.setQueryData(["users"], (old: User[] | undefined) =>
+        Array.isArray(old)
+          ? old.map((u) =>
+              u.id === id
+                ? { ...u, name: form.fullName ?? u.name, ...form }
+                : u,
+            )
+          : old,
+      );
+      return { prev };
+    },
+    onSuccess: (data, vars) => {
+      qc.setQueryData(["users"], (old: User[] | undefined) =>
+        Array.isArray(old)
+          ? old.map((u) => (u.id === vars.id ? { ...u, ...data } : u))
+          : old,
+      );
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["users"], ctx.prev);
+    },
+  });
+}
+
+export function useDeleteUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.delete(`/users/${id}`, undefined).then((r) => r.data),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ["users"] });
+      const prev = qc.getQueryData<User[]>(["users"]);
+      qc.setQueryData(["users"], (old: User[] | undefined) =>
+        Array.isArray(old) ? old.filter((u) => u.id !== id) : old,
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["users"], ctx.prev);
+    },
+  });
+}
+
+export function useCreateProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (form: {
+      name: string;
+      color: string;
+      pricePerChild?: number;
+    }) =>
+      api
+        .post<Project>("/projects", form, undefined)
+        .then((r) => r.data),
+    onSuccess: (data) => {
+      qc.setQueryData(["projects"], (old: Project[] | undefined) =>
+        Array.isArray(old) ? [...old, data] : [data],
+      );
+    },
+  });
+}
+
+export function useUpdateProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      form,
+    }: {
+      id: string;
+      form: { name?: string; color?: string; pricePerChild?: number };
+    }) =>
+      api
+        .patch<Project>(`/projects/${id}`, form, undefined)
+        .then((r) => r.data),
+    onSuccess: (data, vars) => {
+      qc.setQueryData(["projects"], (old: Project[] | undefined) =>
+        Array.isArray(old)
+          ? old.map((p) => (p.id === vars.id ? { ...p, ...data } : p))
+          : old,
+      );
+    },
+  });
+}
+
+export function useDeleteProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.delete(`/projects/${id}`, undefined).then((r) => r.data),
+    onSuccess: (_data, id) => {
+      qc.setQueryData(["projects"], (old: Project[] | undefined) =>
+        Array.isArray(old) ? old.filter((p) => p.id !== id) : old,
+      );
+    },
+  });
+}
+
+```
+
+# FILE: apps/frontend/src/hooks/useSchoolProfile.ts
+
+```
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "../config/api";
+import type {
+  Event,
+  EventHistory,
+  SchoolProfileData,
+  CreateEventPayload,
+} from "../types";
+import type { ReportData } from "../components/school-profile/modals/ReportModal";
+
+export function useSchool(id: string | undefined) {
+  return useQuery({
+    queryKey: ["school", id],
+    queryFn: async () => {
+      const res = await api.get(`/schools/${id}`);
+      return res.data;
+    },
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useSchoolCompletedEvents(schoolId: string | undefined) {
+  return useQuery({
+    queryKey: ["schoolCompletedEvents", schoolId],
+    queryFn: async () => {
+      const res = await api.get<Event[]>(
+        `/events/school/${schoolId}/completed`,
+      );
+      return res.data;
+    },
+    enabled: !!schoolId,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useSchoolEvents(schoolId: string | undefined, full = false) {
+  return useQuery({
+    queryKey: ["schoolEvents", schoolId, full],
+    queryFn: async () => {
+      const url = full
+        ? `/events/school/${schoolId}`
+        : `/events/school/${schoolId}?minimal=true`;
+      const res = await api.get<Event[]>(url, undefined);
+      return res.data.filter((ev) => ev.status !== "RE_SALE");
+    },
+    enabled: !!schoolId,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useEventFull(eventId: string | undefined) {
+  return useQuery({
+    queryKey: ["eventFull", eventId],
+    queryFn: async () => {
+      const res = await api.get<Event>(`/events/${eventId}`);
+      return res.data;
+    },
+    enabled: !!eventId,
+    staleTime: 30 * 1000,
+  });
+}
+
+export { useUsers } from "./useEmployees";
+
+export function useUpdateEventStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      status,
+      actionName,
+      comment,
+    }: {
+      eventId: string;
+      status: string;
+      actionName: string;
+      comment?: string;
+    }) =>
+      api
+        .patch(
+          `/events/${eventId}/status`,
+          { status, actionName, comment },
+          undefined,
+        )
+        .then((r) => r.data),
+    onSuccess: (data, vars) => {
+      qc.setQueryData(["eventFull", vars.eventId], data);
+      qc.setQueriesData(
+        { queryKey: ["schoolEvents"] },
+        (old: Event[] | undefined) =>
+          Array.isArray(old)
+            ? old
+                .map((ev) =>
+                  ev.id === vars.eventId
+                    ? { ...ev, status: vars.status, ...data }
+                    : ev,
+                )
+                .filter((ev) => ev.status !== "RE_SALE")
+            : old,
+      );
+    },
+  });
+}
+
+export function useUpdatePreparation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      field,
+      status,
+    }: {
+      eventId: string;
+      field: string;
+      status: string;
+    }) =>
+      api
+        .patch(
+          `/events/${eventId}/preparation`,
+          { field, status },
+          undefined,
+        )
+        .then((r) => r.data),
+    onSuccess: (_data, vars) => {
+      qc.setQueryData(["eventFull", vars.eventId], (old: Event | undefined) =>
+        old
+          ? {
+              ...old,
+              preparation: {
+                ...(old.preparation || {}),
+                [vars.field]: vars.status,
+              },
+            }
+          : old,
+      );
+    },
+  });
+}
+
+export function useAssignCrew() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventId, crewId }: { eventId: string; crewId: string }) =>
+      api
+        .post(
+          `/events/${eventId}/assign-crew`,
+          { crewId },
+          undefined,
+        )
+        .then((r) => r.data),
+    onSuccess: (data, vars) => {
+      qc.setQueryData(["eventFull", vars.eventId], data);
+      qc.setQueriesData(
+        { queryKey: ["schoolEvents"] },
+        (old: Event[] | undefined) =>
+          Array.isArray(old)
+            ? old.map((ev) =>
+                ev.id === vars.eventId
+                  ? { ...ev, crewId: vars.crewId, crew: data.crew }
+                  : ev,
+              )
+            : old,
+      );
+    },
+  });
+}
+
+export function useSubmitReport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      reportData,
+    }: {
+      eventId: string;
+      reportData: ReportData;
+    }) =>
+      api
+        .post(`/events/${eventId}/report`, reportData)
+        .then((r) => r.data)
+        .catch((err) => {
+          console.error("submitReport failed:", err.response?.data ?? err);
+          throw err;
+        }),
+    onSuccess: (_data, vars) => {
+      qc.setQueriesData(
+        { queryKey: ["schoolEvents"] },
+        (old: Event[] | undefined) =>
+          Array.isArray(old) ? old.filter((ev) => ev.id !== vars.eventId) : old,
+      );
+      qc.removeQueries({ queryKey: ["eventFull", vars.eventId] });
+    },
+  });
+}
+
+export function useAddComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventId, comment }: { eventId: string; comment: string }) =>
+      api
+        .post(
+          `/events/${eventId}/history`,
+          { comment },
+          undefined,
+        )
+        .then((r) => r.data),
+    onSuccess: (data, vars) => {
+      qc.setQueryData(["eventFull", vars.eventId], (old: Event | undefined) =>
+        old ? { ...old, history: data.history } : old,
+      );
+    },
+  });
+}
+
+export const useUpdateSchool = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      ...payload
+    }: { id: string } & Omit<SchoolProfileData, "id" | "city">) => {
+      const res = await api.patch(`/schools/${id}`, payload);
+      return res.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["school", variables.id] });
+    },
+  });
+};
+
+export function useDeleteEvent(schoolId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (eventId: string) => {
+      await api.delete(`/events/${eventId}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["school", schoolId] });
+      qc.invalidateQueries({ queryKey: ["schoolCompletedEvents", schoolId] });
+    },
+  });
+}
+
+export const useCreateEvent = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: CreateEventPayload) => {
+      const res = await api.post<Event>("/events", payload);
+      return res.data;
+    },
+    onSuccess: (_newEvent, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["schoolEvents", variables.schoolId],
+      });
+    },
+  });
+};
+
+export function useUpdateHistoryComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      historyId,
+      comment,
+      eventId,
+    }: {
+      historyId: string;
+      comment: string;
+      eventId: string;
+    }) =>
+      api
+        .patch(
+          `/events/history/${historyId}`,
+          { comment },
+          undefined,
+        )
+        .then((r) => r.data),
+    onSuccess: (_data, vars) => {
+      qc.setQueryData(["eventFull", vars.eventId], (old: Event | undefined) =>
+        old
+          ? {
+              ...old,
+              history: old.history?.map((h: EventHistory) =>
+                h.id === vars.historyId ? { ...h, comment: vars.comment } : h,
+              ),
+            }
+          : old,
+      );
+    },
+  });
+}
+
+```
+
+# FILE: apps/frontend/src/index.css
+
+```
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *:focus-visible {
+    outline: 2px solid theme('colors.brand.DEFAULT');
+    outline-offset: 2px;
+  }
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 20px;
+}
+
+@keyframes headerFadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.header-enter { animation: headerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.header-btn-enter { animation: headerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
+@keyframes fabPop {
+  from { opacity: 0; transform: scale(0.5) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modalScale {
+  from { opacity: 0; transform: scale(0.95) translateY(15px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes schoolRowIn {
+  from { opacity: 0; transform: translateX(-14px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.school-row-enter {
+  animation: schoolRowIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
+
+.no-select-ios {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+@keyframes dayOffPop {
+  0% { transform: scale(0.7); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.dayoff-cell-enter {
+  animation: dayOffPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+```
+
+# FILE: apps/frontend/src/instrument.ts
+
+```
+import * as Sentry from '@sentry/react';
+
+Sentry.init({
+  dsn: import.meta.env.VITE_SENTRY_DSN,
+  environment: import.meta.env.VITE_SENTRY_ENVIRONMENT ?? import.meta.env.MODE,
+  integrations: [Sentry.replayIntegration()],
+  tracesSampleRate: import.meta.env.PROD ? 0.2 : 1.0,
+  replaysSessionSampleRate: import.meta.env.PROD ? 0.1 : 0,
+  replaysOnErrorSampleRate: 1.0,
+});
+
+```
+
+# FILE: apps/frontend/src/main.tsx
+
+```
+import "./instrument";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import "./index.css";
+import App from "./App";
+import { ToastProvider } from "./components/ui/Toast";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      retry: 1,
+    },
+  },
+});
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    </QueryClientProvider>
+  </StrictMode>,
+);
+
+```
+
+# FILE: apps/frontend/src/pages/Analytics.tsx
+
+```
+export default function Analytics() {
+  return (
+    <div className="p-8">
+      <h1 className="text-2xl font-bold mb-4">Аналітика</h1>
+      <p className="text-muted-foreground">Сторінка в розробці</p>
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/pages/CalendarView.tsx
+
+```
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { useState, useCallback } from "react";
+import DayOffModal from "../components/calendar/DayOffModal";
+import { STAFF_ROLES, MANAGER_ROLES } from "../features/calendar/constants";
+import { toISODate } from "../features/calendar/utils/date";
+import { useCalendarMonth } from "../features/calendar/hooks/useCalendarMonth";
+import { useCalendarData } from "../features/calendar/hooks/useCalendarData";
+import { useDayOffActions } from "../features/calendar/hooks/useDayOffActions";
+import { useLongPress } from "../features/calendar/hooks/useLongPress";
+import CalendarSkeleton from "../features/calendar/components/CalendarSkeleton";
+import CalendarHeader from "../features/calendar/components/CalendarHeader";
+import DesktopCalendarGrid from "../features/calendar/components/DesktopCalendarGrid";
+import MobileCalendarGrid from "../features/calendar/components/MobileCalendarGrid";
+import MobileDayDetailsPanel from "../features/calendar/components/MobileDayDetailsPanel";
+
+export default function CalendarView() {
+  const {
+    days, year, month, monthFrom, monthTo,
+    selectedMobileDate, setSelectedMobileDate,
+    nextMonth, prevMonth,
+  } = useCalendarMonth();
+
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const userRole = user?.role || "GUEST";
+  const isStaff = STAFF_ROLES.includes(userRole);
+  const isManagerOrAdmin = MANAGER_ROLES.includes(userRole);
+
+  const [filterCityId, setFilterCityId] = useState<string>(() =>
+    userRole === "MANAGER" && user?.cityId ? user.cityId : "ALL",
+  );
+
+  const {
+    eventsLoading, projects, cities, allUsers,
+    eventsByDate, projectColorMap, projectHexMap,
+  } = useCalendarData(filterCityId);
+
+  const dayOffCityId = isManagerOrAdmin
+    ? filterCityId !== "ALL" ? filterCityId : undefined
+    : undefined;
+
+  const {
+    dayOffsByDate, staffForModal, dayOffModalDate,
+    setDayOffModalDate, handleDayOffClick,
+    handleToggleStaffDayOff, handleLongPressDayOff,
+  } = useDayOffActions(
+    monthFrom, monthTo, dayOffCityId, isStaff, isManagerOrAdmin,
+    user, allUsers, filterCityId, userRole, user?.cityId,
+  );
+
+  const { startLongPress, cancelLongPress, wasLongPress, pressingDay, triggeredDay } = useLongPress(handleLongPressDayOff);
+
+  const handleMobileDayTap = useCallback(
+    (day: Date) => {
+      if (wasLongPress()) return;
+      setSelectedMobileDate(day);
+    },
+    [setSelectedMobileDate, wasLongPress],
+  );
+
+  const selectedDayEvents = eventsByDate.get(toISODate(selectedMobileDate)) ?? [];
+
+  if (eventsLoading) return <CalendarSkeleton />;
+
+  return (
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen pb-24">
+      <CalendarHeader
+        projects={projects}
+        filterCityId={filterCityId}
+        setFilterCityId={setFilterCityId}
+        cities={cities}
+        userRole={userRole}
+      />
+
+      <div className="hidden md:block">
+        <DesktopCalendarGrid
+          days={days}
+          year={year}
+          month={month}
+          selectedMobileDate={selectedMobileDate}
+          setSelectedMobileDate={setSelectedMobileDate}
+          eventsByDate={eventsByDate}
+          dayOffsByDate={dayOffsByDate}
+          projectColorMap={projectColorMap}
+          projectHexMap={projectHexMap}
+          isStaff={isStaff}
+          isManagerOrAdmin={isManagerOrAdmin}
+          user={user}
+          allUsers={allUsers}
+          handleDayOffClick={handleDayOffClick}
+          prevMonth={prevMonth}
+          nextMonth={nextMonth}
+        />
+      </div>
+
+      <div className="md:hidden mt-4">
+        <MobileCalendarGrid
+          days={days}
+          year={year}
+          month={month}
+          selectedMobileDate={selectedMobileDate}
+          eventsByDate={eventsByDate}
+          dayOffsByDate={dayOffsByDate}
+          projectHexMap={projectHexMap}
+          projects={projects}
+          filterCityId={filterCityId}
+          setFilterCityId={setFilterCityId}
+          cities={cities}
+          userRole={userRole}
+          handleMobileDayTap={handleMobileDayTap}
+          startLongPress={startLongPress}
+          cancelLongPress={cancelLongPress}
+          pressingDay={pressingDay}
+          triggeredDay={triggeredDay}
+          prevMonth={prevMonth}
+          nextMonth={nextMonth}
+        />
+
+        <MobileDayDetailsPanel
+          selectedMobileDate={selectedMobileDate}
+          selectedDayEvents={selectedDayEvents}
+          dayOffsByDate={dayOffsByDate}
+          allUsers={allUsers}
+          projectHexMap={projectHexMap}
+          navigate={navigate}
+        />
+      </div>
+
+      <DayOffModal
+        isOpen={!!dayOffModalDate}
+        onClose={() => setDayOffModalDate(null)}
+        date={dayOffModalDate}
+        staff={staffForModal}
+        dayOffs={
+          dayOffModalDate
+            ? (dayOffsByDate.get(toISODate(dayOffModalDate)) ?? [])
+            : []
+        }
+        onToggle={handleToggleStaffDayOff}
+      />
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/pages/Cities.tsx
+
+```
+import React, { useState, useCallback, lazy, Suspense } from "react";
+import { createPortal } from "react-dom";
+import { useSelectedCity } from "../context/CityContext";
+import { useAddCity } from "../hooks/useApi";
+import { useCities } from "../hooks/useCities";
+import { useAuth } from "../context/AuthContext";
+
+const IssueCarousel = lazy(() => import("../components/IssueCarousel"));
+const CityMobileHeader = lazy(
+  () => import("../components/cities/CityMobileHeader"),
+);
+const CityMobileList = lazy(
+  () => import("../components/cities/CityMobileList"),
+);
+const CityDesktopGrid = lazy(
+  () => import("../components/cities/CityDesktopGrid"),
+);
+
+const CitiesSkeleton = () => (
+  <div className="w-full animate-pulse">
+    {/* Мобільний скелетон */}
+    <div className="md:hidden flex flex-col gap-4 mt-4">
+      <div className="h-28 bg-slate-200 rounded-2xl w-full"></div>
+      <div className="h-16 bg-slate-200 rounded-2xl w-full"></div>
+      <div className="h-16 bg-slate-200 rounded-2xl w-full"></div>
+    </div>
+    {/* Десктопний скелетон */}
+    <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {[...Array(3)].map((_, i) => (
+        <div
+          key={i}
+          className="bg-white rounded-2xl shadow-sm border border-slate-100 h-72 overflow-hidden"
+        >
+          <div className="h-44 bg-slate-200 w-full"></div>
+          <div className="p-5 flex flex-col gap-3">
+            <div className="h-6 bg-slate-200 rounded w-1/2"></div>
+            <div className="h-4 bg-slate-200 rounded w-3/4 mt-2"></div>
+            <div className="h-10 bg-slate-200 rounded w-full mt-auto"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+export default function Cities() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newCityName, setNewCityName] = useState("");
+
+  const { selectedCity, setSelectedCity } = useSelectedCity();
+  const { data: cities = [], isLoading: isFetching } = useCities();
+  const addCity = useAddCity();
+
+  const handleSelectCity = useCallback(
+    (city: any) => {
+      setSelectedCity(city);
+    },
+    [setSelectedCity],
+  );
+  const { user } = useAuth();
+  const userRole = user?.role ?? null;
+  const handleAddCity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCityName.trim()) return;
+    try {
+      await addCity.mutateAsync(newCityName.trim());
+      setNewCityName("");
+      setIsModalOpen(false);
+    } catch (err: any) {
+      setNewCityName("");
+      setIsModalOpen(false);
+    }
+  };
+
+  return (
+    <div
+      className="p-4 md:p-8 bg-slate-50 min-h-screen"
+      style={{ contentVisibility: "auto" }}
+    >
+      <div className="hidden md:flex justify-between items-center mb-8">
+        <h1 className="header-enter text-3xl font-bold text-slate-800">
+          Міста
+        </h1>
+        {userRole === "SUPERADMIN" && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="header-btn-enter bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm flex items-center transition-all duration-150"
+          >
+            <span className="mr-2">+</span> Додати місто
+          </button>
+        )}
+      </div>
+
+      {isFetching ? (
+        <CitiesSkeleton />
+      ) : (
+        /* Оптимізація 6: Suspense обгортка для лінивих компонентів */
+        <Suspense fallback={<CitiesSkeleton />}>
+          
+          <div className="md:hidden">
+            <CityMobileHeader selectedCity={selectedCity} cities={cities} />
+            <CityMobileList
+              cities={cities}
+              selectedCity={selectedCity}
+              onSelectCity={handleSelectCity}
+            />
+          </div>
+
+          
+          <div className="hidden md:block">
+            <IssueCarousel />
+            <CityDesktopGrid
+              cities={cities}
+              selectedCity={selectedCity}
+              onSelectCity={handleSelectCity}
+            />
+          </div>
+        </Suspense>
+      )}
+
+      {/* Мобільна плаваюча кнопка FAB */}
+      {userRole === "SUPERADMIN" && (
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 active:scale-95 transition-transform opacity-0"
+          style={{
+            animation:
+              "fabPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) 0.2s forwards",
+          }}
+          aria-label="Додати місто"
+        >
+          +
+        </button>
+      )}
+
+      {/* Модалка додавання */}
+      {isModalOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
+            style={{ animation: "fadeIn 0.2s ease-out forwards" }}
+          >
+            
+            <div
+              className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
+              style={{ animation: "modalScale 0.3s ease-out forwards" }}
+            >
+              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 className="text-xl font-bold text-slate-800">Нове місто</h3>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+              <form onSubmit={handleAddCity} className="p-6">
+                <input
+                  type="text"
+                  value={newCityName}
+                  onChange={(e) => setNewCityName(e.target.value)}
+                  placeholder="Наприклад: Львів"
+                  className="w-full p-3 mb-6 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+                  autoFocus
+                  required
+                />
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors"
+                  >
+                    Скасувати
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={addCity.isPending}
+                    className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {addCity.isPending ? "Збереження..." : "Зберегти"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </div>
+  );
+}
+
+```
+
 # FILE: apps/frontend/src/pages/CityProfile.tsx
 
 ```
@@ -1035,8 +2155,10 @@ export default function Dashboard() {
 # FILE: apps/frontend/src/pages/Employees.tsx
 
 ```
-import { useState } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence, MotionConfig } from "framer-motion";
+import { X, Search, UserPlus } from "lucide-react";
 import {
   useUsers,
   useProjects,
@@ -1048,42 +2170,36 @@ import {
   useDeleteProject,
 } from "../hooks/useEmployees";
 import { useCities } from "../hooks/useCities";
+import { useDebounce } from "../hooks/useDebounce";
 import EmployeeCard from "../components/employees/EmployeeCard";
+import EmployeesTable from "../components/employees/EmployeesTable";
 import UserModal from "../components/employees/UserModal";
 import ProjectModal from "../components/employees/ProjectModal";
+import { EmployeesHeader } from "../components/employees/EmployeesHeader";
+import { FilterPanel } from "../components/employees/FilterPanel";
+import { EmptyState } from "../components/ui/EmptyState";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { LoadingBar } from "../components/ui/LoadingBar";
+import { useToast } from "../components/ui/Toast";
+import { exportCsv } from "../utils/exportCsv";
 import { sectionVariants } from "../animations/employees";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
 
 type Role = "MANAGER" | "DRIVER" | "HOST" | "SUPERADMIN" | "GUEST";
+type ViewMode = "cards" | "table";
 
-interface City {
-  id: string;
-  name: string;
-}
+interface City { id: string; name: string }
 interface User {
-  id: string;
-  name: string;
-  phone: string | null;
-  email: string;
-  cityId: string | null;
-  city?: City;
-  role: Role;
-  telegramId?: string | null;
-  car?: string | null;
+  id: string; name: string; phone: string | null; email: string;
+  cityId: string | null; city?: City; role: Role;
+  telegramId?: string | null; car?: string | null;
 }
-interface Project {
-  id: string;
-  name: string;
-  color: string;
-}
+interface Project { id: string; name: string; color: string }
 
 const ROLE_LABELS: Record<string, string> = {
-  MANAGER: "Менеджер",
-  DRIVER: "Водій",
-  HOST: "Ведучий",
-  SUPERADMIN: "Суперадмін",
-  GUEST: "Гість",
+  MANAGER: "Менеджер", DRIVER: "Водій", HOST: "Ведучий",
+  SUPERADMIN: "Суперадмін", GUEST: "Гість",
 };
 const ROLE_COLORS: Record<string, string> = {
   MANAGER: "bg-blue-50 text-blue-700 border-blue-200",
@@ -1091,38 +2207,22 @@ const ROLE_COLORS: Record<string, string> = {
   HOST: "bg-violet-50 text-violet-700 border-violet-200",
 };
 const ROLE_HEADER_COLORS: Record<string, string> = {
-  MANAGER: "bg-blue-600",
-  DRIVER: "bg-emerald-600",
-  HOST: "bg-violet-600",
+  MANAGER: "bg-blue-600", DRIVER: "bg-emerald-600", HOST: "bg-violet-600",
 };
 const EMPTY_FORM = {
-  fullName: "",
-  phone: "",
-  email: "",
-  cityId: "",
-  role: "MANAGER" as Role,
-  password: "",
-  telegramId: "",
-  car: "",
+  fullName: "", phone: "", email: "", cityId: "", role: "MANAGER" as Role,
+  password: "", telegramId: "", car: "",
 };
-
 const PROJECT_COLORS: Record<string, string> = {
-  blue: "bg-blue-500",
-  emerald: "bg-emerald-500",
-  rose: "bg-rose-500",
-  red: "bg-red-500",
-  amber: "bg-amber-500",
-  purple: "bg-purple-500",
+  blue: "bg-blue-500", emerald: "bg-emerald-500", rose: "bg-rose-500",
+  red: "bg-red-500", amber: "bg-amber-500", purple: "bg-purple-500",
 };
 
 function Shimmer() {
   return (
     <motion.div
       className="absolute inset-0 -translate-x-full"
-      style={{
-        background:
-          "linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent)",
-      }}
+      style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent)" }}
       animate={{ translateX: ["-100%", "100%"] }}
       transition={{ duration: 1.4, repeat: Infinity, ease: "linear" }}
     />
@@ -1132,7 +2232,6 @@ function Shimmer() {
 function EmployeesSkeleton() {
   return (
     <div className="p-4 md:p-8">
-      {" "}
       <div className="flex justify-between items-center mb-8">
         <div>
           <div className="h-7 w-56 bg-slate-200 rounded-lg mb-2" />
@@ -1153,10 +2252,7 @@ function EmployeesSkeleton() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="relative overflow-hidden bg-white border border-slate-100 rounded-3xl p-5 flex items-start gap-4"
-              >
+              <div key={i} className="relative overflow-hidden bg-white border border-slate-100 rounded-3xl p-5 flex items-start gap-4">
                 <Shimmer />
                 <div className="w-12 h-12 rounded-2xl bg-slate-200 shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -1175,6 +2271,7 @@ function EmployeesSkeleton() {
     </div>
   );
 }
+
 export default function Employees() {
   const { data: users = [], isLoading: usersLoading } = useUsers();
   const { data: cities = [] } = useCities();
@@ -1185,119 +2282,238 @@ export default function Employees() {
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
+  const toast = useToast();
+  const { selectedCity: contextCity } = useSelectedCity();
+  const { user: authUser } = useAuth();
+  const isSuperAdmin = authUser?.role === "SUPERADMIN";
 
-  const isLoading = usersLoading;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawSearch = searchParams.get("search") ?? "";
+  const rawRoles = searchParams.get("roles") ?? "";
+  const rawCity = searchParams.get("city") ?? "";
+
+  const updateParams = useCallback((updates: Record<string, string | null>) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === null || value === "") next.delete(key);
+        else next.set(key, value);
+      }
+      return next;
+    });
+  }, [setSearchParams]);
+
+  const debouncedSearch = useDebounce(rawSearch, 300);
+
+  const selectedRoles = useMemo(
+    () => rawRoles ? rawRoles.split(",").filter(Boolean) : [],
+    [rawRoles],
+  );
+  const selectedCity = rawCity;
+
+  const [viewMode, setViewMode] = useState<ViewMode>(
+    (searchParams.get("view") as ViewMode) ?? "cards",
+  );
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+    updateParams({ view: mode });
+  }, [updateParams]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
+  const [userFormValues, setUserFormValues] = useState(EMPTY_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [projectForm, setProjectForm] = useState({
-    name: "",
-    color: "blue",
-    pricePerChild: "",
-  });
+  const [projectForm, setProjectForm] = useState({ name: "", color: "blue", pricePerChild: "" });
 
-  const handleOpenProjectModal = (project: Project | null = null) => {
+  const [formError, setFormError] = useState("");
+  const [isMutating, setIsMutating] = useState(false);
+
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (confirmDelete) setConfirmDelete(null);
+        else if (isModalOpen) setIsModalOpen(false);
+        else if (isProjectModalOpen) { setIsProjectModalOpen(false); setEditingProject(null); }
+        else if (filterPanelOpen) setFilterPanelOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [confirmDelete, isModalOpen, isProjectModalOpen, filterPanelOpen]);
+
+  const handleOpenProjectModal = useCallback((project: Project | null = null) => {
     setEditingProject(project);
     setProjectForm(
       project
-        ? {
-            name: project.name,
-            color: project.color,
-            pricePerChild: String((project as any).pricePerChild ?? ""),
-          }
+        ? { name: project.name, color: project.color, pricePerChild: String((project as any).pricePerChild ?? "") }
         : { name: "", color: "blue", pricePerChild: "" },
     );
     setIsProjectModalOpen(true);
-  };
+  }, []);
 
-  const { selectedCity } = useSelectedCity();
+  const cityFilteredUsers = useMemo(
+    () => contextCity.id ? users.filter((u) => u.cityId === contextCity.id) : users,
+    [users, contextCity.id],
+  );
 
-  const { user } = useAuth();
-  const isSuperAdmin = user?.role === "SUPERADMIN";
+  const filteredUsers = useMemo(() => {
+    let result = cityFilteredUsers;
 
-  const cityFilteredUsers = selectedCity.id
-    ? users.filter((u) => u.cityId === selectedCity.id)
-    : users;
-  const grouped = (["MANAGER", "DRIVER", "HOST"] as Role[]).map((role) => ({
-    role,
-    label: ROLE_LABELS[role],
-    items: cityFilteredUsers.filter((u) => u.role === role),
-  }));
+    if (selectedRoles.length > 0) {
+      result = result.filter((u) => selectedRoles.includes(u.role));
+    }
 
-  const handleOpenModal = (user: User | null = null) => {
+    if (selectedCity && selectedCity !== "all") {
+      result = result.filter((u) => u.cityId === selectedCity || u.city?.id === selectedCity);
+    }
+
+    if (debouncedSearch.trim()) {
+      const q = debouncedSearch.trim().toLowerCase();
+      result = result.filter(
+        (u) =>
+          u.name.toLowerCase().includes(q) ||
+          u.email.toLowerCase().includes(q) ||
+          (u.phone ?? "").toLowerCase().includes(q),
+      );
+    }
+
+    return result;
+  }, [cityFilteredUsers, selectedRoles, selectedCity, debouncedSearch]);
+
+  const grouped = useMemo(
+    () => (["MANAGER", "DRIVER", "HOST"] as Role[]).map((role) => ({
+      role,
+      label: ROLE_LABELS[role],
+      items: filteredUsers.filter((u) => u.role === role),
+    })),
+    [filteredUsers],
+  );
+
+  const hasActiveFilters = selectedRoles.length > 0 || (selectedCity !== "" && selectedCity !== "all");
+
+  const handleResetFilters = useCallback(() => {
+    updateParams({ roles: null, city: null });
+  }, [updateParams]);
+
+  const activeFilterChips = useMemo(() => {
+    const chips: { key: string; label: string; onRemove: () => void }[] = [];
+
+    if (debouncedSearch.trim()) {
+      chips.push({
+        key: "search",
+        label: `Пошук: "${debouncedSearch.trim()}"`,
+        onRemove: () => updateParams({ search: null }),
+      });
+    }
+
+    selectedRoles.forEach((r) => {
+      chips.push({
+        key: `role-${r}`,
+        label: ROLE_LABELS[r] ?? r,
+        onRemove: () => {
+          const next = selectedRoles.filter((x) => x !== r);
+          updateParams({ roles: next.length > 0 ? next.join(",") : null });
+        },
+      });
+    });
+
+    if (selectedCity && selectedCity !== "all") {
+      const cityName = cities.find((c) => c.id === selectedCity)?.name || selectedCity;
+      chips.push({
+        key: "city",
+        label: cityName,
+        onRemove: () => updateParams({ city: null }),
+      });
+    }
+
+    return chips;
+  }, [debouncedSearch, selectedRoles, selectedCity, cities, updateParams]);
+
+  const handleOpenModal = useCallback((user: User | null = null) => {
     setFormError("");
     setEditingUser(user);
-    if (user) {
-      setForm({
-        fullName: user.name,
-        phone: user.phone || "",
-        email: user.email,
-        cityId: user.cityId || "",
-        role: user.role,
-        password: "",
-        telegramId: user.telegramId || "",
-        car: user.car || "",
-      });
-    } else {
-      setForm({ ...EMPTY_FORM });
-    }
+    setUserFormValues(
+      user
+        ? {
+            fullName: user.name, phone: user.phone || "", email: user.email,
+            cityId: user.cityId || "", role: user.role, password: "",
+            telegramId: user.telegramId || "", car: user.car || "",
+          }
+        : { ...EMPTY_FORM },
+    );
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const [formError, setFormError] = useState("");
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.fullName.trim()) return;
+  const handleSaveUser = useCallback(async (values: Record<string, string>) => {
     setFormError("");
     setIsSubmitting(true);
+    setIsMutating(true);
     try {
       if (editingUser) {
-        const { password, ...rest } = form;
-        const payload = password.trim() ? form : rest;
+        const { password, ...rest } = values;
+        const payload = password.trim() ? values : rest;
         await updateUser.mutateAsync({ id: editingUser.id, form: payload });
+        toast("Користувача оновлено", "success");
       } else {
-        await createUser.mutateAsync(form);
+        await createUser.mutateAsync(values);
+        toast("Користувача створено", "success");
       }
       setShowSuccess(true);
-      setTimeout(() => {
-        setShowSuccess(false);
-        setIsModalOpen(false);
-      }, 700);
+      setTimeout(() => { setShowSuccess(false); setIsModalOpen(false); }, 700);
     } catch (err: any) {
       const messages = err?.response?.data?.message;
-      setFormError(
-        Array.isArray(messages)
-          ? messages.join(", ")
-          : messages || "Помилка збереження",
-      );
+      const errorMsg = Array.isArray(messages) ? messages.join(", ") : messages || "Помилка збереження";
+      setFormError(errorMsg);
+      toast(errorMsg, "error");
     } finally {
       setIsSubmitting(false);
+      setIsMutating(false);
     }
-  };
+  }, [editingUser, createUser, updateUser, toast]);
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Видалити користувача "${name}"?`)) return;
+  const handleExport = useCallback(() => {
+    if (filteredUsers.length === 0) {
+      toast("Немає даних для експорту", "info");
+      return;
+    }
+    const rows = filteredUsers.map((u) => ({
+      "Ім'я": u.name,
+      "Email": u.email,
+      "Телефон": u.phone ?? "",
+      "Роль": ROLE_LABELS[u.role] ?? u.role,
+      "Місто": u.city?.name ?? "",
+    }));
+    exportCsv(rows, `employees-${new Date().toISOString().slice(0, 10)}.csv`);
+    toast(`Експортовано ${rows.length} записів`, "success");
+  }, [filteredUsers, toast]);
+
+  const handleDelete = useCallback(async () => {
+    if (!confirmDelete) return;
+    setIsMutating(true);
     try {
-      await deleteUser.mutateAsync(id);
-    } catch (e) {
-      alert("Помилка видалення");
+      await deleteUser.mutateAsync(confirmDelete.id);
+      toast("Користувача видалено", "success");
+    } catch {
+      toast("Помилка видалення", "error");
+    } finally {
+      setConfirmDelete(null);
+      setIsMutating(false);
     }
-  };
+  }, [confirmDelete, deleteUser, toast]);
 
-  const handleCreateProject = (e: React.FormEvent) => {
+  const handleCreateProject = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (!projectForm.name.trim()) return;
     setIsProjectModalOpen(false);
-    const payload = {
-      ...projectForm,
-      pricePerChild: Number(projectForm.pricePerChild) || 0,
-    };
+    const payload = { ...projectForm, pricePerChild: Number(projectForm.pricePerChild) || 0 };
     setProjectForm({ name: "", color: "blue", pricePerChild: "" });
     if (editingProject) {
       updateProject.mutate({ id: editingProject.id, form: payload });
@@ -1305,208 +2521,216 @@ export default function Employees() {
     } else {
       createProject.mutate(payload);
     }
-  };
+  }, [projectForm, editingProject, updateProject, createProject]);
 
-  const handleDeleteProject = async (id: string, name: string) => {
-    if (
-      !window.confirm(
-        `Видалити вид події "${name}"? Існуючі події з цією назвою збережуться.`,
-      )
-    )
-      return;
-    try {
-      await deleteProject.mutateAsync(id);
-    } catch (e) {
-      alert("Помилка видалення");
-    }
-  };
+  const handleDeleteProject = useCallback(async (id: string, name: string) => {
+    if (!window.confirm(`Видалити вид події "${name}"? Існуючі події з цією назвою збережуться.`)) return;
+    try { await deleteProject.mutateAsync(id); }
+    catch { alert("Помилка видалення"); }
+  }, [deleteProject]);
 
-  if (isLoading) return <EmployeesSkeleton />;
+  const cityOptions = useMemo(
+    () => [{ value: "all", label: "Всі міста" }, ...cities.map((c: City) => ({ value: c.id, label: c.name }))],
+    [cities],
+  );
+
+  if (usersLoading) return <EmployeesSkeleton />;
 
   return (
-    <MotionConfig reducedMotion="user">
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: "easeOut" }}
-        className="p-4 md:p-8 h-full"
-      >
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-          >
-            <h1 className="text-2xl font-bold text-slate-800">
-              Акаунти та Проєкти{" "}
-              {selectedCity.id && (
-                <span className="ml-2 text-base font-normal text-blue-500">
-                  · {selectedCity.name}
-                </span>
-              )}
-            </h1>
-            <p className="text-sm text-slate-400 mt-1">
-              Керування доступами, працівниками та видами подій
-            </p>
-          </motion.div>
-          {isSuperAdmin && (
-            <motion.button
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => handleOpenModal()}
-              className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-blue-700 w-full sm:w-auto"
-            >
-              + Створити користувача
-            </motion.button>
-          )}
-        </div>
+    <>
+      <LoadingBar isLoading={isMutating} />
+      <MotionConfig reducedMotion="user">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
+          className="p-4 md:p-8 h-full"
+        >
+        <EmployeesHeader
+          isSuperAdmin={isSuperAdmin}
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
+          onAddUser={() => handleOpenModal()}
+          onToggleFilter={() => setFilterPanelOpen((p) => !p)}
+          searchQuery={rawSearch}
+          onSearchChange={(q) => updateParams({ search: q || null })}
+          onExport={handleExport}
+        />
 
-        <div className="space-y-8">
-          {grouped.map(({ role, label, items }, gi) => (
-            <motion.div
-              key={role}
-              variants={sectionVariants}
-              initial="hidden"
-              animate="visible"
-            >
-              <div className={`flex items-center gap-3 mb-4`}>
-                <div
-                  className={`w-1 h-6 rounded-full ${ROLE_HEADER_COLORS[role]}`}
-                ></div>
-                <h2 className="text-lg font-bold text-slate-700">{label}</h2>
-                <motion.span
-                  key={items.length}
-                  initial={{ scale: 0.7, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ duration: 0.2 }}
-                  className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_COLORS[role]}`}
-                >
-                  {items.length}
-                </motion.span>
-              </div>
-              {items.length === 0 ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.97 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.25 }}
-                  className="bg-white rounded-2xl border border-dashed border-slate-200 p-8 text-center"
-                >
-                  <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 text-lg">
-                    👤
-                  </div>
-                  <p className="text-slate-400 text-sm mb-3">
-                    Немає {label.toLowerCase()}ів
-                  </p>
-                  {isSuperAdmin && (
-                    <button
-                      onClick={() => handleOpenModal()}
-                      className="text-xs font-semibold text-blue-600 hover:text-blue-700"
-                    >
-                      + Додати {label.toLowerCase()}а
-                    </button>
-                  )}
-                </motion.div>
-              ) : (
-                <motion.div
-                  variants={sectionVariants}
-                  className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"
-                >
-                  <AnimatePresence initial={false}>
-                    {items.map((u) => (
-                      <EmployeeCard
-                        key={u.id}
-                        user={u}
-                        role={role}
-                        isSuperAdmin={isSuperAdmin}
-                        onEdit={handleOpenModal}
-                        onDelete={handleDelete}
-                      />
-                    ))}
-                  </AnimatePresence>
-                </motion.div>
-              )}{" "}
-            </motion.div>
-          ))}
-        </div>
-
-        {/* --- СЕКЦІЯ ПРОЄКТІВ (ВИДІВ ПОДІЙ) --- */}
-        <div className="mt-16 border-t border-slate-200 pt-10">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-800">
-                Види подій (Проєкти)
-              </h2>
-              <p className="text-sm text-slate-400 mt-1">
-                Ці проєкти відображатимуться у випадаючому списку при створенні
-                події
-              </p>
-            </div>
-            {isSuperAdmin && (
-              <button
-                onClick={() => handleOpenProjectModal()}
-                className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 transition-colors w-full sm:w-auto"
+        {activeFilterChips.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            {activeFilterChips.map((chip) => (
+              <span
+                key={chip.key}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 border border-brand-200"
               >
-                + Створити вид події
+                {chip.label}
+                <button onClick={chip.onRemove} className="hover:text-brand-900 transition-colors">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+            {hasActiveFilters && (
+              <button
+                onClick={handleResetFilters}
+                className="text-xs font-semibold text-content-muted hover:text-content-primary transition-colors"
+              >
+                Очистити всі
               </button>
             )}
           </div>
+        )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.map((p, pi) => (
-              <motion.div
-                key={p.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, delay: pi * 0.05 }}
-                whileHover={{
-                  y: -3,
-                  boxShadow: "0 8px 24px -4px rgba(0,0,0,0.10)",
-                }}
-                className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default hover:border-slate-200 transition-colors"
-              >
-                <div className="flex items-center gap-3">
+        <div className="flex gap-6">
+          <FilterPanel
+            isMobileOpen={filterPanelOpen}
+            onMobileClose={() => setFilterPanelOpen(false)}
+            selectedRoles={selectedRoles}
+            onRolesChange={(roles) => updateParams({ roles: roles.length > 0 ? roles.join(",") : null })}
+            selectedCity={selectedCity || "all"}
+            onCityChange={(city) => updateParams({ city: city === "all" ? null : city })}
+            cityOptions={cityOptions}
+            onReset={handleResetFilters}
+            hasActiveFilters={hasActiveFilters}
+          />
+
+          <div className="flex-1 min-w-0">
+            {filteredUsers.length === 0 ? (
+              <EmptyState
+                icon={Search}
+                title="Нічого не знайдено"
+                description="Спробуйте змінити параметри пошуку або фільтри"
+                action={
+                  hasActiveFilters || debouncedSearch.trim() ? (
+                    <button
+                      onClick={handleResetFilters}
+                      className="text-sm font-semibold text-brand hover:text-brand-700 transition-colors"
+                    >
+                      Очистити фільтри
+                    </button>
+                  ) : isSuperAdmin ? (
+                    <button
+                      onClick={() => handleOpenModal()}
+                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:text-brand-700 transition-colors"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Додати працівника
+                    </button>
+                  ) : undefined
+                }
+              />
+            ) : viewMode === "cards" ? (
+              <div className="space-y-8">
+                {grouped.map(({ role, label, items }) => (
                   <motion.div
-                    whileHover={{ scale: 1.15 }}
-                    transition={{ duration: 0.15 }}
-                    className={`w-10 h-10 rounded-2xl flex items-center justify-center ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm ring-4 ring-offset-1 ring-slate-50`}
+                    key={role}
+                    variants={sectionVariants}
+                    initial="hidden"
+                    animate="visible"
                   >
-                    <span className="w-2.5 h-2.5 rounded-full bg-white/80" />
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className={`w-1 h-6 rounded-full ${ROLE_HEADER_COLORS[role]}`} />
+                      <h2 className="text-lg font-bold text-slate-700">{label}</h2>
+                      <motion.span
+                        key={items.length}
+                        initial={{ scale: 0.7, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.2 }}
+                        className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_COLORS[role]}`}
+                      >
+                        {items.length}
+                      </motion.span>
+                    </div>
+                    {items.length === 0 ? (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.97 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.25 }}
+                        className="bg-white rounded-2xl border border-dashed border-slate-200 p-8 text-center"
+                      >
+                        <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 text-lg">👤</div>
+                        <p className="text-slate-400 text-sm mb-3">Немає {label.toLowerCase()}ів</p>
+                        {isSuperAdmin && (
+                          <button onClick={() => handleOpenModal()} className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                            + Додати {label.toLowerCase()}а
+                          </button>
+                        )}
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        variants={sectionVariants}
+                        className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"
+                      >
+                        <AnimatePresence initial={false}>
+                          {items.map((u) => (
+                            <EmployeeCard
+                              key={u.id}
+                              user={u}
+                              role={role}
+                              isSuperAdmin={isSuperAdmin}
+                              onEdit={handleOpenModal}
+                              onDelete={(id, name) => setConfirmDelete({ id, name })}
+                            />
+                          ))}
+                        </AnimatePresence>
+                      </motion.div>
+                    )}
                   </motion.div>
-                  <div>
-                    <span className="font-bold text-slate-800">{p.name}</span>
-                    {!!(p as any).pricePerChild && (
-                      <p className="text-xs text-slate-400">
-                        {(p as any).pricePerChild} грн / дитина
-                      </p>
+                ))}
+
+                <div className="border-t border-slate-200 pt-10">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-slate-800">Види подій (Проєкти)</h2>
+                      <p className="text-sm text-slate-400 mt-1">Ці проєкти відображатимуться у випадаючому списку при створенні події</p>
+                    </div>
+                    {isSuperAdmin && (
+                      <button onClick={() => handleOpenProjectModal()} className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 transition-colors w-full sm:w-auto">
+                        + Створити вид події
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {projects.map((p, pi) => (
+                      <motion.div
+                        key={p.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.25, delay: pi * 0.05 }}
+                        whileHover={{ y: -3, boxShadow: "0 8px 24px -4px rgba(0,0,0,0.10)" }}
+                        className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default hover:border-slate-200 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <motion.div
+                            whileHover={{ scale: 1.15 }}
+                            transition={{ duration: 0.15 }}
+                            className={`w-10 h-10 rounded-2xl flex items-center justify-center ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm ring-4 ring-offset-1 ring-slate-50`}
+                          >
+                            <span className="w-2.5 h-2.5 rounded-full bg-white/80" />
+                          </motion.div>
+                          <div>
+                            <span className="font-bold text-slate-800">{p.name}</span>
+                            {!!(p as any).pricePerChild && (
+                              <p className="text-xs text-slate-400">{(p as any).pricePerChild} грн / дитина</p>
+                            )}
+                          </div>
+                        </div>
+                        {isSuperAdmin && (
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => handleOpenProjectModal(p)} className="text-slate-300 hover:text-blue-500 p-2 -mr-1" title="Редагувати">✏️</button>
+                            <button onClick={() => handleDeleteProject(p.id, p.name)} className="text-slate-300 hover:text-red-500 p-2 -mr-2" title="Видалити">🗑</button>
+                          </div>
+                        )}
+                      </motion.div>
+                    ))}
+                    {projects.length === 0 && (
+                      <div className="col-span-full text-center py-10 text-slate-400">Ви ще не додали жодного виду події</div>
                     )}
                   </div>
                 </div>
-                {isSuperAdmin && (
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => handleOpenProjectModal(p)}
-                      className="text-slate-300 hover:text-blue-500 p-2 -mr-1"
-                      title="Редагувати"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => handleDeleteProject(p.id, p.name)}
-                      className="text-slate-300 hover:text-red-500 p-2 -mr-2"
-                      title="Видалити"
-                    >
-                      🗑
-                    </button>
-                  </div>
-                )}
-              </motion.div>
-            ))}
-            {projects.length === 0 && (
-              <div className="col-span-full text-center py-10 text-slate-400">
-                Ви ще не додали жодного виду події
               </div>
+            ) : (
+              <EmployeesTable users={filteredUsers} onSelect={(user) => console.log("select", user)} />
             )}
           </div>
         </div>
@@ -1516,27 +2740,32 @@ export default function Employees() {
           isEditing={!!editingProject}
           form={projectForm}
           setForm={setProjectForm}
-          onClose={() => {
-            setIsProjectModalOpen(false);
-            setEditingProject(null);
-          }}
+          onClose={() => { setIsProjectModalOpen(false); setEditingProject(null); }}
           onSubmit={handleCreateProject}
         />
-
         <UserModal
           isOpen={isModalOpen}
           isEditing={!!editingUser}
-          form={form}
-          setForm={setForm}
+          initialValues={userFormValues}
           cities={cities}
           formError={formError}
           isSubmitting={isSubmitting}
           showSuccess={showSuccess}
-          onClose={() => setIsModalOpen(false)}
-          onSubmit={handleSubmit}
+          onClose={() => { setIsModalOpen(false); setEditingUser(null); }}
+          onSave={handleSaveUser}
         />
-      </motion.div>
-    </MotionConfig>
+        <ConfirmDialog
+          isOpen={!!confirmDelete}
+          title="Видалити користувача"
+          message={`Ви впевнені, що хочете видалити "${confirmDelete?.name}"?`}
+          confirmLabel="Видалити"
+          variant="danger"
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
+        </motion.div>
+      </MotionConfig>
+    </>
   );
 }
 
@@ -1935,7 +3164,7 @@ export default function Events() {
 # FILE: apps/frontend/src/pages/Finance.tsx
 
 ```
-import { useState, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
@@ -4208,6 +5437,251 @@ export default function Schools() {
 
 ```
 
+# FILE: apps/frontend/src/tests/component/calendar/CalendarComponents.test.tsx
+
+```
+import { describe, it, expect, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import CalendarSkeleton from "../../../features/calendar/components/CalendarSkeleton";
+import CalendarHeader from "../../../features/calendar/components/CalendarHeader";
+import EventTooltip from "../../../features/calendar/components/EventTooltip";
+import type { Project, City } from "../../../types";
+
+describe("CalendarSkeleton", () => {
+  it("рендерить skeleton без помилок", () => {
+    const { container } = render(<CalendarSkeleton />);
+    expect(container.querySelector(".animate-pulse")).toBeInTheDocument();
+  });
+
+  it("містить 35 клітинок-скелетів", () => {
+    const { container } = render(<CalendarSkeleton />);
+    const cells = container.querySelectorAll(".min-h-\\[80px\\]");
+    expect(cells.length).toBeGreaterThanOrEqual(30);
+  });
+});
+
+describe("CalendarHeader", () => {
+  const projects: Project[] = [
+    { id: "p1", name: "Проєкт A", color: "blue" },
+    { id: "p2", name: "Проєкт B", color: "emerald" },
+  ];
+  const cities: City[] = [
+    { id: "c1", name: "Київ" },
+    { id: "c2", name: "Львів" },
+  ];
+  const defaultProps = {
+    projects,
+    filterCityId: "ALL",
+    setFilterCityId: vi.fn(),
+    cities,
+    userRole: "MANAGER",
+  };
+
+  it("рендерить заголовок Календар подій", () => {
+    render(<CalendarHeader {...defaultProps} />);
+    expect(screen.getByText("Календар подій")).toBeInTheDocument();
+  });
+
+  it("рендерить бейджі проєктів", () => {
+    render(<CalendarHeader {...defaultProps} />);
+    expect(screen.getByText("Проєкт A")).toBeInTheDocument();
+    expect(screen.getByText("Проєкт B")).toBeInTheDocument();
+  });
+
+  it("не показує city-select для MANAGER", () => {
+    render(<CalendarHeader {...defaultProps} userRole="MANAGER" />);
+    expect(screen.queryByText("Місто:")).not.toBeInTheDocument();
+  });
+
+  it("показує city-select для SUPERADMIN", () => {
+    render(<CalendarHeader {...defaultProps} userRole="SUPERADMIN" />);
+    expect(screen.getByText("Місто:")).toBeInTheDocument();
+    expect(screen.getByText("🌍 Всі міста")).toBeInTheDocument();
+  });
+});
+
+describe("EventTooltip", () => {
+  it("рендерить назву школи та проєкт", () => {
+    const event = {
+      id: "e1",
+      project: "Проєкт A",
+      time: "10:00",
+      school: { id: "s1", name: "Школа №1", type: "school" },
+      crew: { id: "c1", name: "Екіпаж 1", cityId: "city-1" },
+    } as any;
+
+    render(<EventTooltip event={event} />);
+    expect(screen.getByText("Школа №1")).toBeInTheDocument();
+    expect(screen.getByText(/Проєкт A/)).toBeInTheDocument();
+    expect(screen.getByText("10:00")).toBeInTheDocument();
+  });
+
+  it("рендерить fallback при відсутніх даних", () => {
+    const event = { id: "e2", project: "Проєкт B", time: "" } as any;
+
+    render(<EventTooltip event={event} />);
+    expect(screen.getByText("Невідомий заклад")).toBeInTheDocument();
+    expect(screen.getByText("—")).toBeInTheDocument();
+  });
+});
+
+```
+
+# FILE: apps/frontend/src/tests/component/ConfirmDialog.test.tsx
+
+```
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
+
+describe("ConfirmDialog", () => {
+  it("не рендериться, якщо isOpen=false", () => {
+    render(
+      <ConfirmDialog
+        isOpen={false}
+        title="Видалити"
+        message="Справді?"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText("Видалити")).not.toBeInTheDocument();
+    expect(screen.queryByText("Справді?")).not.toBeInTheDocument();
+  });
+
+  it("рендериться, коли isOpen=true", () => {
+    render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Видалити"
+        message="Справді?"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Видалити")).toBeInTheDocument();
+    expect(screen.getByText("Справді?")).toBeInTheDocument();
+  });
+
+  it("кнопка Підтвердити викликає onConfirm", () => {
+    const onConfirm = vi.fn();
+    render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Видалити"
+        message="Справді?"
+        onConfirm={onConfirm}
+        onCancel={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByText("Підтвердити"));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it("кнопка Скасувати викликає onCancel", () => {
+    const onCancel = vi.fn();
+    render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Видалити"
+        message="Справді?"
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+    fireEvent.click(screen.getByText("Скасувати"));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("клік на backdrop викликає onCancel", () => {
+    const onCancel = vi.fn();
+    const { container } = render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Видалити"
+        message="Справді?"
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+    const backdrop = container.querySelector(".fixed.inset-0")!;
+    fireEvent.click(backdrop);
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("клік всередині модалки не викликає onCancel", () => {
+    const onCancel = vi.fn();
+    render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Видалити"
+        message="Справді?"
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+    fireEvent.click(screen.getByText("Видалити"));
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it("показує іконку Trash2 для variant=danger", () => {
+    const { container } = render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Видалити"
+        message="Справді?"
+        variant="danger"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(container.innerHTML).toContain("lucide-trash2");
+  });
+
+  it("показує іконку AlertTriangle для variant=warning", () => {
+    const { container } = render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Увага"
+        message="Перевірте дані"
+        variant="warning"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(container.innerHTML).toContain("lucide-triangle-alert");
+  });
+
+  it("використовує confirmLabel за замовчуванням", () => {
+    render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Видалити"
+        message="Справді?"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Підтвердити")).toBeInTheDocument();
+  });
+
+  it("використовує кастомний confirmLabel", () => {
+    render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Видалити"
+        message="Справді?"
+        confirmLabel="Так, видалити"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Так, видалити")).toBeInTheDocument();
+  });
+});
+
+```
+
 # FILE: apps/frontend/src/tests/component/Dashboard.test.tsx
 
 ```
@@ -4484,8 +5958,8 @@ describe("DayOffModal", () => {
     expect(onToggle).toHaveBeenCalledWith("u-host", "d-host-1");
   });
 
-  it("не враховує dayOff з іншої дати (перевіряє і userId, і date)", () => {
-    const mismatchDate: DayOff = {
+  it("шукає existing dayOff лише за userId (дата ігнорується — upstream вже відфільтрував)", () => {
+    const dayOffOtherDate: DayOff = {
       ...dayOff,
       id: "d-date-mismatch",
       date: "1999-01-01",
@@ -4497,12 +5971,12 @@ describe("DayOffModal", () => {
         onClose={vi.fn()}
         date={makeDate()}
         staff={staff}
-        dayOffs={[mismatchDate]}
+        dayOffs={[dayOffOtherDate]}
         onToggle={vi.fn()}
       />,
     );
 
-    expect(screen.queryByText("Вихідний ✕")).not.toBeInTheDocument();
+    expect(screen.getByText("Вихідний ✕")).toBeInTheDocument();
   });
 });
 
@@ -4924,6 +6398,33 @@ describe("IssueCarousel", () => {
 
 ```
 
+# FILE: apps/frontend/src/tests/component/LoadingBar.test.tsx
+
+```
+import { describe, it, expect } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { LoadingBar } from "../../components/ui/LoadingBar";
+
+describe("LoadingBar", () => {
+  it("рендериться, коли isLoading=true", () => {
+    const { container } = render(<LoadingBar isLoading={true} />);
+    expect(container.querySelector(".fixed.top-0")).toBeInTheDocument();
+  });
+
+  it("не рендериться, коли isLoading=false", () => {
+    const { container } = render(<LoadingBar isLoading={false} />);
+    expect(container.querySelector(".fixed.top-0")).not.toBeInTheDocument();
+  });
+
+  it("має правильні CSS-класи для позиціонування", () => {
+    const { container } = render(<LoadingBar isLoading={true} />);
+    const bar = container.querySelector(".fixed.top-0")!;
+    expect(bar).toHaveClass("left-0", "right-0", "z-[60]", "h-0.5");
+  });
+});
+
+```
+
 # FILE: apps/frontend/src/tests/component/Login.test.tsx
 
 ```
@@ -4985,6 +6486,48 @@ describe("Login", () => {
     await waitFor(() => {
       expect(onLogin).toHaveBeenCalledWith(mockUser);
     }, { timeout: 3000 });
+  });
+});
+
+```
+
+# FILE: apps/frontend/src/tests/component/MobileTopNav.test.tsx
+
+```
+import { describe, it, expect } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import MobileTopNav from "../../components/MobileTopNav";
+import { AuthProvider } from "../../context/AuthContext";
+import { CityProvider } from "../../context/CityContext";
+import type { ReactNode } from "react";
+
+function Wrapper({ children }: { children: ReactNode }) {
+  return (
+    <MemoryRouter initialEntries={["/schools"]}>
+      <AuthProvider>
+        <CityProvider>{children}</CityProvider>
+      </AuthProvider>
+    </MemoryRouter>
+  );
+}
+
+describe("MobileTopNav", () => {
+  it("рендерить назву СВІТЛО ЗНАНЬ", () => {
+    render(<MobileTopNav />, { wrapper: Wrapper });
+    expect(screen.getByText("СВІТЛО ЗНАНЬ")).toBeTruthy();
+  });
+
+  it("рендерить назву міста", () => {
+    render(<MobileTopNav />, { wrapper: Wrapper });
+    const cityTexts = screen.getAllByText(/.+/);
+    expect(cityTexts.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("не містить клікабельних посилань", () => {
+    render(<MobileTopNav />, { wrapper: Wrapper });
+    const links = screen.queryAllByRole("link");
+    expect(links.length).toBe(0);
   });
 });
 
@@ -5805,6 +7348,275 @@ describe("API auto-refresh interceptor", () => {
 
 ```
 
+# FILE: apps/frontend/src/tests/unit/calendar/color.test.ts
+
+```
+import { describe, it, expect } from "vitest";
+import { shadeHex, getDayColor } from "../../../features/calendar/utils/color";
+import { PROJECT_HEX } from "../../../features/calendar/constants";
+
+describe("shadeHex", () => {
+  it("освітлює колір (позитивний percent)", () => {
+    const result = shadeHex("#3b82f6", 50);
+    expect(result).toMatch(/^rgb\(\d{1,3}, \d{1,3}, \d{1,3}\)$/);
+    expect(result).toBe("rgb(109, 180, 255)");
+  });
+
+  it("затіняє колір (негативний percent)", () => {
+    const result = shadeHex("#3b82f6", -50);
+    expect(result).toBe("rgb(9, 80, 196)");
+  });
+
+  it("повертає rgb рядок", () => {
+    const result = shadeHex("#10b981", 0);
+    expect(result).toBe("rgb(16, 185, 129)");
+  });
+});
+
+describe("getDayColor", () => {
+  it("повертає undefined для порожнього масиву подій", () => {
+    const hexMap = new Map<string, string>([["Проєкт A", "#3b82f6"]]);
+    const result = getDayColor([], hexMap);
+    expect(result).toBeUndefined();
+  });
+
+  it("повертає градієнт для однієї події", () => {
+    const hexMap = new Map<string, string>([["Проєкт A", "#3b82f6"]]);
+    const events = [{ project: "Проєкт A" }];
+    const result = getDayColor(events, hexMap);
+    expect(result).toContain("linear-gradient(to bottom");
+    expect(result).toContain("rgb");
+  });
+
+  it("повертає градієнт для кількох подій одного проєкту", () => {
+    const hexMap = new Map<string, string>([["Проєкт A", "#10b981"]]);
+    const events = [{ project: "Проєкт A" }, { project: "Проєкт A" }];
+    const result = getDayColor(events, hexMap);
+    expect(result).toContain("linear-gradient(to bottom");
+  });
+
+  it("повертає багатоколірний градієнт для різних проєктів", () => {
+    const hexMap = new Map<string, string>([
+      ["Проєкт A", "#3b82f6"],
+      ["Проєкт B", "#ef4444"],
+    ]);
+    const events = [{ project: "Проєкт A" }, { project: "Проєкт B" }];
+    const result = getDayColor(events, hexMap);
+    expect(result).toContain("linear-gradient(to bottom");
+    expect(result).toContain("rgb");
+  });
+
+  it("використовує PROJECT_HEX.blue як fallback при відсутньому проєкті", () => {
+    const hexMap = new Map<string, string>();
+    const events = [{ project: "Невідомий" }];
+    const result = getDayColor(events, hexMap);
+    expect(result).toContain(shadeHex(PROJECT_HEX.blue, 35).split(",")[0]);
+  });
+});
+
+```
+
+# FILE: apps/frontend/src/tests/unit/calendar/date.test.ts
+
+```
+import { describe, it, expect } from "vitest";
+import {
+  toISODate,
+  getDaysInMonth,
+  getFirstDayOfMonth,
+  isPastDay,
+  buildMonthDays,
+} from "../../../features/calendar/utils/date";
+
+describe("toISODate", () => {
+  it("форматує дату в ISO без часу", () => {
+    expect(toISODate(new Date(2026, 6, 10))).toBe("2026-07-10");
+  });
+});
+
+describe("getDaysInMonth", () => {
+  it("повертає 31 для січня", () => {
+    expect(getDaysInMonth(2026, 0)).toBe(31);
+  });
+
+  it("повертає 28 для лютого невисокосного року", () => {
+    expect(getDaysInMonth(2026, 1)).toBe(28);
+  });
+
+  it("повертає 29 для лютого високосного року", () => {
+    expect(getDaysInMonth(2024, 1)).toBe(29);
+  });
+
+  it("повертає 30 для квітня", () => {
+    expect(getDaysInMonth(2026, 3)).toBe(30);
+  });
+});
+
+describe("getFirstDayOfMonth", () => {
+  it("понеділок (0) для 2026-06-01 (перший день місяця)", () => {
+    expect(getFirstDayOfMonth(2026, 5)).toBe(0);
+  });
+
+  it("правильний день для 2026-07-01 (середа = 2)", () => {
+    expect(getFirstDayOfMonth(2026, 6)).toBe(2);
+  });
+});
+
+describe("isPastDay", () => {
+  it("минулий день повертає true", () => {
+    expect(isPastDay(new Date(2020, 0, 1))).toBe(true);
+  });
+
+  it("сьогодні повертає false", () => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    expect(isPastDay(today)).toBe(false);
+  });
+});
+
+describe("buildMonthDays", () => {
+  it("повертає масив з 33 елементів для липня 2026 (31 день, початок з середи)", () => {
+    const days = buildMonthDays(2026, 6);
+    expect(days.length).toBe(33);
+    expect(days[0]).toBeNull();
+    expect(days[1]).toBeNull();
+    expect(days[2]?.getDate()).toBe(1);
+  });
+
+  it("перші null елементи відповідають зміщенню", () => {
+    const days = buildMonthDays(2026, 6);
+    const firstDay = getFirstDayOfMonth(2026, 6);
+    const nulls = days.filter((d) => d === null).length;
+    expect(nulls).toBe(firstDay);
+  });
+});
+
+```
+
+# FILE: apps/frontend/src/tests/unit/exportCsv.test.ts
+
+```
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { exportCsv } from "../../utils/exportCsv";
+
+let capturedBlob: Blob | undefined;
+const revokeObjectURL = vi.fn();
+
+beforeEach(() => {
+  vi.restoreAllMocks();
+  capturedBlob = undefined;
+  revokeObjectURL.mockClear();
+  vi.stubGlobal("URL", {
+    createObjectURL: vi.fn((blob: Blob) => {
+      capturedBlob = blob;
+      return "blob:mock";
+    }),
+    revokeObjectURL,
+  });
+});
+
+describe("exportCsv", () => {
+  it("нічого не робить для порожнього масиву", () => {
+    exportCsv([]);
+    expect(capturedBlob).toBeUndefined();
+  });
+
+  it("створює Blob з заголовками", async () => {
+    exportCsv([{ name: "Test" }]);
+    expect(capturedBlob).toBeDefined();
+    expect(capturedBlob!.type).toBe("text/csv;charset=utf-8;bom=true");
+    const text = await capturedBlob!.text();
+    expect(text).toContain("name");
+    expect(text).toMatch(/Test/);
+  });
+
+  it("генерує правильний CSV для простих даних", async () => {
+    exportCsv([{ name: "Test", city: "Lviv" }]);
+    const text = await capturedBlob!.text();
+    expect(text).toContain("name,city");
+    expect(text).toContain("Test,Lviv");
+  });
+
+  it("екранує коми, лапки та перенесення рядків", async () => {
+    exportCsv([
+      { name: "Smith, John", note: 'he said "hi"', desc: "line1\nline2" },
+    ]);
+    const text = await capturedBlob!.text();
+    expect(text).toContain('"Smith, John"');
+    expect(text).toContain('"he said ""hi"""');
+    expect(text).toContain('"line1\nline2"');
+  });
+
+  it("додає елемент <a> в document.body і клікає", () => {
+    const clickSpy = vi.fn();
+    const origCreate = Element.prototype.cloneNode.name
+      ? document.createElement
+      : document.createElement;
+    const realCreate = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation((tag) => {
+      const el = realCreate(tag);
+      el.click = clickSpy;
+      return el;
+    });
+    const appendSpy = vi.spyOn(document.body, "appendChild");
+    const removeSpy = vi.spyOn(document.body, "removeChild");
+
+    exportCsv([{ col: "val" }]);
+
+    expect(capturedBlob).toBeDefined();
+    expect(appendSpy).toHaveBeenCalled();
+    expect(removeSpy).toHaveBeenCalled();
+    expect(clickSpy).toHaveBeenCalled();
+    expect(appendSpy.mock.calls[0][0]).toBe(removeSpy.mock.calls[0][0]);
+  });
+
+  it("встановлює filename на <a>.download", () => {
+    let anchor: HTMLAnchorElement | undefined;
+    const realCreate = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation((tag) => {
+      const el = realCreate(tag) as HTMLAnchorElement;
+      anchor = el;
+      return el;
+    });
+
+    exportCsv([{ col: "val" }], "my-report.csv");
+    expect(anchor?.download).toBe("my-report.csv");
+  });
+
+  it("використовує дефолтний filename export.csv", () => {
+    let anchor: HTMLAnchorElement | undefined;
+    const realCreate = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation((tag) => {
+      const el = realCreate(tag) as HTMLAnchorElement;
+      anchor = el;
+      return el;
+    });
+
+    exportCsv([{ col: "val" }]);
+    expect(anchor?.download).toBe("export.csv");
+  });
+
+  it("викликає URL.revokeObjectURL після кліка", () => {
+    const realCreate = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation((tag) => {
+      return realCreate(tag);
+    });
+
+    exportCsv([{ col: "val" }]);
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:mock");
+  });
+
+  it("порожні значення замінює на порожній рядок", async () => {
+    exportCsv([
+      { name: "Test", city: undefined as any, note: undefined as any },
+    ]);
+    const text = await capturedBlob!.text();
+    expect(text).toContain("Test,,");
+  });
+});
+
+```
+
 # FILE: apps/frontend/src/tests/unit/formatCurrency.test.ts
 
 ```
@@ -5997,6 +7809,167 @@ describe("useSchoolProfile hooks", () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(patchedStatus).toBe("DONE");
     });
+  });
+});
+
+```
+
+# FILE: apps/frontend/src/tests/unit/navTabs.test.ts
+
+```
+import { describe, it, expect } from "vitest";
+import { NAV_TABS, ADMIN_TABS } from "../../constants/navTabs";
+
+describe("NAV_TABS", () => {
+  it("має правильну кількість вкладок", () => {
+    expect(NAV_TABS.length).toBe(6);
+  });
+
+  it("всі вкладки мають to, icon, label", () => {
+    for (const tab of NAV_TABS) {
+      expect(tab.to).toBeTruthy();
+      expect(tab.icon).toBeTruthy();
+      expect(tab.label).toBeTruthy();
+    }
+  });
+
+  it("/employees доступний лише для SUPERADMIN", () => {
+    const emp = NAV_TABS.find((t) => t.to === "/employees");
+    expect(emp?.roles).toEqual(["SUPERADMIN"]);
+  });
+
+  it("/dashboard доступний для SUPERADMIN та MANAGER", () => {
+    const dash = NAV_TABS.find((t) => t.to === "/dashboard");
+    expect(dash?.roles).toEqual(["SUPERADMIN", "MANAGER"]);
+  });
+
+  it("вкладки без roles доступні всім", () => {
+    const publicTabs = NAV_TABS.filter((t) => !t.roles);
+    expect(publicTabs.length).toBeGreaterThanOrEqual(3);
+    for (const t of publicTabs) {
+      expect(t.roles).toBeUndefined();
+    }
+  });
+
+  it("/schools, /kindergartens, /finance, /calendar не мають обмежень", () => {
+    for (const path of ["/schools", "/kindergartens", "/finance", "/calendar"]) {
+      const tab = NAV_TABS.find((t) => t.to === path);
+      expect(tab?.roles).toBeUndefined();
+    }
+  });
+});
+
+describe("ADMIN_TABS", () => {
+  it("має лише /cities для SUPERADMIN", () => {
+    expect(ADMIN_TABS.length).toBe(1);
+    expect(ADMIN_TABS[0].to).toBe("/cities");
+    expect(ADMIN_TABS[0].roles).toEqual(["SUPERADMIN"]);
+  });
+});
+
+```
+
+# FILE: apps/frontend/src/tests/unit/reactImports.test.ts
+
+```
+import { describe, it, expect } from "vitest";
+import fs from "fs";
+import path from "path";
+
+const HOOKS = [
+  "useState", "useEffect", "useCallback", "useMemo", "useRef",
+  "useContext", "useReducer", "useLayoutEffect", "useImperativeHandle",
+  "useDebugValue", "useTransition", "useDeferredValue", "useId",
+  "useSyncExternalStore", "useInsertionEffect",
+];
+
+const pagesDir = path.resolve(__dirname, "../../pages");
+
+function getAllImportedFromReact(content: string): Set<string> {
+  const imported = new Set<string>();
+
+  // Normalize multi-line imports: join lines from `import` to `;`
+  const normalized = content.replace(/import\s+[\s\S]*?;/g, (match) =>
+    match.replace(/\n\s*/g, " "),
+  );
+
+  for (const line of normalized.split("\n")) {
+    if (!/from\s+["']react["']/.test(line)) continue;
+
+    // default import: import React from "react" or import React, { ... }
+    const defaultMatch = line.match(/^import\s+(\w+)/);
+    if (defaultMatch) imported.add(defaultMatch[1]);
+
+    // named imports: { useState, useEffect }
+    const namedMatch = line.match(/\{([^}]+)\}/);
+    if (namedMatch) {
+      const raw = namedMatch[1].replace(/\s+/g, " ");
+      for (const name of raw.split(",")) {
+        const trimmed = name.trim();
+        if (trimmed) imported.add(trimmed);
+      }
+    }
+  }
+
+  return imported;
+}
+
+function getUsedHooks(content: string): string[] {
+  const used: string[] = [];
+  for (const hook of HOOKS) {
+    const regex = new RegExp(`\\b${hook}\\b`, "g");
+    if (regex.test(content)) {
+      used.push(hook);
+    }
+  }
+  return used;
+}
+
+describe("React hooks imports in page files", () => {
+  const files = fs.readdirSync(pagesDir).filter((f) => f.endsWith(".tsx"));
+
+  for (const file of files) {
+    it(`${file} має всі необхідні імпорти React-хуків`, () => {
+      const content = fs.readFileSync(path.join(pagesDir, file), "utf-8");
+      const imported = getAllImportedFromReact(content);
+      const usedHooks = getUsedHooks(content);
+      const missingHooks = usedHooks.filter((hook) => !imported.has(hook));
+
+      expect(
+        missingHooks,
+        `${file}: використовує ${missingHooks.join(", ")}, але не імпортує з "react"`,
+      ).toEqual([]);
+    });
+  }
+});
+
+```
+
+# FILE: apps/frontend/src/tests/unit/roles.test.ts
+
+```
+import { describe, it, expect } from "vitest";
+import { hasRole } from "../../utils/roles";
+
+describe("hasRole", () => {
+  it("повертає true, якщо allowedRoles не задано", () => {
+    expect(hasRole("SUPERADMIN")).toBe(true);
+    expect(hasRole("HOST")).toBe(true);
+    expect(hasRole(undefined)).toBe(true);
+  });
+
+  it("повертає true, якщо роль користувача в списку", () => {
+    expect(hasRole("SUPERADMIN", ["SUPERADMIN"])).toBe(true);
+    expect(hasRole("MANAGER", ["SUPERADMIN", "MANAGER"])).toBe(true);
+  });
+
+  it("повертає false, якщо роль користувача не в списку", () => {
+    expect(hasRole("HOST", ["SUPERADMIN"])).toBe(false);
+    expect(hasRole("DRIVER", ["SUPERADMIN", "MANAGER"])).toBe(false);
+  });
+
+  it("повертає false, якщо userRole undefined, а allowedRoles задано", () => {
+    expect(hasRole(undefined, ["SUPERADMIN"])).toBe(false);
   });
 });
 
@@ -6304,6 +8277,87 @@ describe("useDeleteDayOff", () => {
 
 ```
 
+# FILE: apps/frontend/src/tests/unit/useDebounce.test.ts
+
+```
+import { describe, it, expect, vi } from "vitest";
+import { renderHook, act } from "@testing-library/react";
+import { useDebounce } from "../../hooks/useDebounce";
+
+describe("useDebounce", () => {
+  it("повертає початкове значення одразу", () => {
+    const { result } = renderHook(() => useDebounce("hello", 500));
+    expect(result.current).toBe("hello");
+  });
+
+  it("оновлює debouncedValue після затримки", async () => {
+    vi.useFakeTimers();
+    const { result, rerender } = renderHook(
+      ({ value }) => useDebounce(value, 500),
+      { initialProps: { value: "a" } },
+    );
+
+    expect(result.current).toBe("a");
+
+    rerender({ value: "b" });
+    expect(result.current).toBe("a");
+
+    act(() => vi.advanceTimersByTime(500));
+    expect(result.current).toBe("b");
+
+    vi.useRealTimers();
+  });
+
+  it("скидає таймер при повторному виклику до завершення затримки", () => {
+    vi.useFakeTimers();
+    const { result, rerender } = renderHook(
+      ({ value }) => useDebounce(value, 500),
+      { initialProps: { value: "a" } },
+    );
+
+    rerender({ value: "b" });
+    act(() => vi.advanceTimersByTime(300));
+    rerender({ value: "c" });
+    act(() => vi.advanceTimersByTime(300));
+    expect(result.current).toBe("a");
+
+    act(() => vi.advanceTimersByTime(200));
+    expect(result.current).toBe("c");
+
+    vi.useRealTimers();
+  });
+
+  it("працює з числовими значеннями", () => {
+    vi.useFakeTimers();
+    const { result, rerender } = renderHook(
+      ({ value }) => useDebounce(value, 100),
+      { initialProps: { value: 0 } },
+    );
+
+    rerender({ value: 42 });
+    act(() => vi.advanceTimersByTime(100));
+    expect(result.current).toBe(42);
+
+    vi.useRealTimers();
+  });
+
+  it("працює з delay=0", () => {
+    vi.useFakeTimers();
+    const { result, rerender } = renderHook(
+      ({ value }) => useDebounce(value, 0),
+      { initialProps: { value: "x" } },
+    );
+
+    rerender({ value: "y" });
+    act(() => vi.advanceTimersByTime(0));
+    expect(result.current).toBe("y");
+
+    vi.useRealTimers();
+  });
+});
+
+```
+
 # FILE: apps/frontend/src/types/index.ts
 
 ```
@@ -6387,7 +8441,7 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
-  role: string;
+  role: UserRole;
   cityId?: string;
   city?: { id: string; name: string };
 }
@@ -6555,6 +8609,44 @@ export interface FinanceDashboardData {
   worstEvents?: FinanceEventItem[];
 }
 
+export type UserRole = "SUPERADMIN" | "OWNER" | "MANAGER" | "HOST" | "DRIVER";
+
+```
+
+# FILE: apps/frontend/src/utils/exportCsv.ts
+
+```
+type Row = Record<string, string>;
+
+export function exportCsv(data: Row[], filename = "export.csv") {
+  if (data.length === 0) return;
+
+  const headers = Object.keys(data[0]);
+  const csvRows = [
+    headers.join(","),
+    ...data.map((row) =>
+      headers.map((h) => {
+        const val = row[h] ?? "";
+        if (val.includes(",") || val.includes('"') || val.includes("\n")) {
+          return `"${val.replace(/"/g, '""')}"`;
+        }
+        return val;
+      }).join(","),
+    ),
+  ];
+
+  const bom = "\uFEFF";
+  const blob = new Blob([bom + csvRows.join("\n")], { type: "text/csv;charset=utf-8;bom=true" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 ```
 
 # FILE: apps/frontend/src/utils/formatCurrency.ts
@@ -6595,10 +8687,18 @@ export function getNextPreparationStatus(
 
 ```
 
-# FILE: apps/frontend/tailwind.config.js
+# FILE: apps/frontend/src/utils/roles.ts
+
+```
+export function hasRole(userRole: string | undefined, allowedRoles?: string[]): boolean {
+  return !allowedRoles || (!!userRole && allowedRoles.includes(userRole));
+}
 
 ```
 
+# FILE: apps/frontend/tailwind.config.js
+
+```
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -6623,30 +8723,122 @@ export default {
           muted: "#94a3b8",
         },
         brand: {
+          50: "#eff6ff",
+          100: "#dbeafe",
+          200: "#bfdbfe",
+          300: "#93c5fd",
+          400: "#60a5fa",
           DEFAULT: "#2563eb",
+          600: "#1d4ed8",
           hover: "#1d4ed8",
-          subtle: "#eff6ff",
+          700: "#1e40af",
+          800: "#1e3a8a",
+          900: "#172554",
         },
-        success: { DEFAULT: "#10b981", subtle: "#ecfdf5" },
-        danger:  { DEFAULT: "#ef4444", subtle: "#fef2f2" },
-        warning: { DEFAULT: "#f59e0b", subtle: "#fffbeb" },
+        success: {
+          50: "#ecfdf5",
+          100: "#d1fae5",
+          200: "#a7f3d0",
+          DEFAULT: "#10b981",
+          600: "#059669",
+          700: "#047857",
+          subtle: "#ecfdf5",
+        },
+        danger: {
+          50: "#fff1f2",
+          100: "#ffe4e6",
+          200: "#fecdd3",
+          DEFAULT: "#e11d48",
+          600: "#be123c",
+          700: "#9f1239",
+          subtle: "#fff1f2",
+        },
+        warning: {
+          50: "#fffbeb",
+          100: "#fef3c7",
+          DEFAULT: "#f59e0b",
+          600: "#d97706",
+          subtle: "#fffbeb",
+        },
+        neutral: {
+          50: "#f8fafc",
+          100: "#f1f5f9",
+          200: "#e2e8f0",
+          300: "#cbd5e1",
+          400: "#94a3b8",
+          500: "#64748b",
+          600: "#475569",
+          700: "#334155",
+          800: "#1e293b",
+          900: "#0f172a",
+        },
+        role: {
+          admin: { bg: "#eef2ff", text: "#4338ca" },
+          manager: { bg: "#eff6ff", text: "#2563eb" },
+          host: { bg: "#f5f3ff", text: "#7c3aed" },
+          driver: { bg: "#ecfdf5", text: "#059669" },
+        },
       },
       borderRadius: {
         card: "1rem",
+        "card-lg": "1.5rem",
         modal: "1.5rem",
         control: "0.75rem",
         pill: "9999px",
       },
       boxShadow: {
         card: "0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06)",
+        "card-hover": "0 8px 24px -4px rgb(0 0 0 / 0.10)",
         modal: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+        dropdown: "0 4px 12px -2px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.04)",
+        popover: "0 12px 28px -4px rgb(0 0 0 / 0.12), 0 4px 8px -4px rgb(0 0 0 / 0.06)",
+        lift: "0 4px 12px rgb(0 0 0 / 0.08)",
       },
-      transitionDuration: { fast: "150ms", base: "200ms", slow: "300ms" },
+      fontSize: {
+        "2xs": ["10px", { lineHeight: "14px" }],
+        xs: ["12px", { lineHeight: "16px" }],
+        sm: ["14px", { lineHeight: "20px" }],
+        base: ["16px", { lineHeight: "24px" }],
+        lg: ["18px", { lineHeight: "28px" }],
+        xl: ["20px", { lineHeight: "28px" }],
+        "2xl": ["24px", { lineHeight: "32px" }],
+        "3xl": ["30px", { lineHeight: "36px" }],
+      },
+      transitionDuration: {
+        fast: "150ms",
+        base: "200ms",
+        slow: "300ms",
+      },
+      animation: {
+        shimmer: "shimmer 1.4s linear infinite",
+        "fade-in": "fadeIn 0.2s ease-out forwards",
+        "modal-scale": "modalScale 0.3s ease-out forwards",
+        "pop-in": "popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+      },
+      keyframes: {
+        shimmer: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
+        },
+        fadeIn: {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        modalScale: {
+          from: { opacity: "0", transform: "scale(0.95) translateY(15px)" },
+          to: { opacity: "1", transform: "scale(1) translateY(0)" },
+        },
+        popIn: {
+          "0%": { transform: "scale(0.7)", opacity: "0" },
+          "60%": { transform: "scale(1.15)", opacity: "1" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+      },
     },
   },
   darkMode: "class",
   plugins: [],
-}
+};
 
 ```
 

@@ -43,6 +43,8 @@ apps
 │   │   │   │   └── migration.sql
 │   │   │   ├── 20260706120000_event_report_decimal_money
 │   │   │   │   └── migration.sql
+│   │   │   ├── 20260708205543_add_owner_role
+│   │   │   │   └── migration.sql
 │   │   │   └── migration_lock.toml
 │   │   ├── schema.prisma
 │   │   ├── seed-admin.js
@@ -263,6 +265,7 @@ apps
     │   │   └── vite.svg
     │   ├── components
     │   │   ├── AddressLink.tsx
+    │   │   ├── BottomNavigationBar.tsx
     │   │   ├── calendar
     │   │   │   └── DayOffModal.tsx
     │   │   ├── cities
@@ -281,6 +284,9 @@ apps
     │   │   │   └── UpcomingEvents.tsx
     │   │   ├── employees
     │   │   │   ├── EmployeeCard.tsx
+    │   │   │   ├── EmployeesHeader.tsx
+    │   │   │   ├── EmployeesTable.tsx
+    │   │   │   ├── FilterPanel.tsx
     │   │   │   ├── ProjectModal.tsx
     │   │   │   └── UserModal.tsx
     │   │   ├── ErrorBoundary.tsx
@@ -289,6 +295,7 @@ apps
     │   │   │   └── StaffFinanceView.tsx
     │   │   ├── IssueCarousel.tsx
     │   │   ├── Layout.tsx
+    │   │   ├── MobileTopNav.tsx
     │   │   ├── modals
     │   │   ├── PhoneLink.tsx
     │   │   ├── ProtectedRoute.tsx
@@ -319,9 +326,13 @@ apps
     │   │   │   ├── StatsBar.tsx
     │   │   │   └── VirtualDesktopTable.tsx
     │   │   ├── ui
+    │   │   │   ├── Badge.tsx
     │   │   │   ├── Button.tsx
     │   │   │   ├── Card.tsx
+    │   │   │   ├── ConfirmDialog.tsx
+    │   │   │   ├── EmptyState.tsx
     │   │   │   ├── Input.tsx
+    │   │   │   ├── LoadingBar.tsx
     │   │   │   ├── Modal.tsx
     │   │   │   ├── OptimizedImage.tsx
     │   │   │   ├── Skeleton.tsx
@@ -332,6 +343,7 @@ apps
     │   ├── constants
     │   │   ├── categoryBadges.ts
     │   │   ├── cityIcons.ts
+    │   │   ├── navTabs.ts
     │   │   └── pipelineStages.ts
     │   ├── context
     │   │   ├── AuthContext.tsx
@@ -339,6 +351,12 @@ apps
     │   ├── features
     │   │   └── calendar
     │   │       ├── components
+    │   │       │   ├── CalendarHeader.tsx
+    │   │       │   ├── CalendarSkeleton.tsx
+    │   │       │   ├── DesktopCalendarGrid.tsx
+    │   │       │   ├── EventTooltip.tsx
+    │   │       │   ├── MobileCalendarGrid.tsx
+    │   │       │   └── MobileDayDetailsPanel.tsx
     │   │       ├── constants.ts
     │   │       ├── hooks
     │   │       │   ├── useCalendarData.ts
@@ -353,12 +371,14 @@ apps
     │   │   ├── useCalendar.ts
     │   │   ├── useCities.ts
     │   │   ├── useDaysOff.ts
+    │   │   ├── useDebounce.ts
     │   │   ├── useEmployees.ts
     │   │   └── useSchoolProfile.ts
     │   ├── index.css
     │   ├── instrument.ts
     │   ├── main.tsx
     │   ├── pages
+    │   │   ├── Analytics.tsx
     │   │   ├── CalendarView.tsx
     │   │   ├── Cities.tsx
     │   │   ├── CityProfile.tsx
@@ -374,12 +394,17 @@ apps
     │   │   └── Schools.tsx
     │   ├── tests
     │   │   ├── component
+    │   │   │   ├── calendar
+    │   │   │   │   └── CalendarComponents.test.tsx
+    │   │   │   ├── ConfirmDialog.test.tsx
     │   │   │   ├── Dashboard.test.tsx
     │   │   │   ├── DayOffModal.test.tsx
     │   │   │   ├── EventReport.test.tsx
     │   │   │   ├── EventsTable.test.tsx
     │   │   │   ├── IssueCarousel.test.tsx
+    │   │   │   ├── LoadingBar.test.tsx
     │   │   │   ├── Login.test.tsx
+    │   │   │   ├── MobileTopNav.test.tsx
     │   │   │   ├── Pipeline.test.tsx
     │   │   │   ├── ProtectedRoute.test.tsx
     │   │   │   ├── SchoolCard.test.tsx
@@ -392,17 +417,27 @@ apps
     │   │   └── unit
     │   │       ├── api.test.ts
     │   │       ├── apiRefresh.test.ts
+    │   │       ├── calendar
+    │   │       │   ├── color.test.ts
+    │   │       │   └── date.test.ts
+    │   │       ├── exportCsv.test.ts
     │   │       ├── formatCurrency.test.ts
     │   │       ├── hooks
     │   │       │   ├── useCities.test.tsx
     │   │       │   └── useSchoolProfile.test.tsx
+    │   │       ├── navTabs.test.ts
+    │   │       ├── reactImports.test.ts
+    │   │       ├── roles.test.ts
     │   │       ├── schoolUtils.test.ts
-    │   │       └── useDaysOff.test.tsx
+    │   │       ├── useDaysOff.test.tsx
+    │   │       └── useDebounce.test.ts
     │   ├── types
     │   │   └── index.ts
     │   └── utils
+    │       ├── exportCsv.ts
     │       ├── formatCurrency.ts
-    │       └── preparationStatus.ts
+    │       ├── preparationStatus.ts
+    │       └── roles.ts
     ├── tailwind.config.js
     ├── tsconfig.app.json
     ├── tsconfig.json

@@ -82,7 +82,10 @@ describe('TelegramService — sendMessage', () => {
   it('не кидає помилку якщо bot.sendMessage падає (помилка логується)', async () => {
     const service = makeService();
     const apiError = new Error('Bad Request: chat not found');
-    (apiError as any).response = { statusCode: 400, body: { description: 'chat not found' } };
+    (apiError as any).response = {
+      statusCode: 400,
+      body: { description: 'chat not found' },
+    };
     const mockBot = {
       sendMessage: jest.fn().mockRejectedValue(apiError),
     };
@@ -155,9 +158,11 @@ describe('TelegramService — retry логіка sendMessage', () => {
   it('після 3 невдалих мережевих спроб помилка логується (далі не кидається)', async () => {
     const service = makeService();
     const mockBot = {
-      sendMessage: jest.fn().mockRejectedValue(
-        Object.assign(new Error('ECONNREFUSED'), { code: 'ECONNREFUSED' }),
-      ),
+      sendMessage: jest
+        .fn()
+        .mockRejectedValue(
+          Object.assign(new Error('ECONNREFUSED'), { code: 'ECONNREFUSED' }),
+        ),
     };
     (service as any).bot = mockBot;
 
@@ -171,7 +176,10 @@ describe('TelegramService — retry логіка sendMessage', () => {
   it('при 4xx помилці (не мережева) retry НЕ відбувається', async () => {
     const service = makeService();
     const apiError = new Error('Bad Request: chat not found');
-    (apiError as any).response = { statusCode: 400, body: { description: 'chat not found' } };
+    (apiError as any).response = {
+      statusCode: 400,
+      body: { description: 'chat not found' },
+    };
     const mockBot = {
       sendMessage: jest.fn().mockRejectedValue(apiError),
     };

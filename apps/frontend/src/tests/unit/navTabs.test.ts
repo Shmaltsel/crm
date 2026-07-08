@@ -3,7 +3,7 @@ import { NAV_TABS, ADMIN_TABS } from "../../constants/navTabs";
 
 describe("NAV_TABS", () => {
   it("має правильну кількість вкладок", () => {
-    expect(NAV_TABS.length).toBe(6);
+    expect(NAV_TABS.length).toBe(8);
   });
 
   it("всі вкладки мають to, icon, label", () => {
@@ -19,9 +19,11 @@ describe("NAV_TABS", () => {
     expect(emp?.roles).toEqual(["SUPERADMIN"]);
   });
 
-  it("/dashboard доступний для SUPERADMIN та MANAGER", () => {
+  it("/dashboard та /reports/review доступні для керівників", () => {
     const dash = NAV_TABS.find((t) => t.to === "/dashboard");
-    expect(dash?.roles).toEqual(["SUPERADMIN", "MANAGER"]);
+    expect(dash?.roles).toEqual(["SUPERADMIN", "MANAGER", "OWNER"]);
+    const review = NAV_TABS.find((t) => t.to === "/reports/review");
+    expect(review?.roles).toEqual(["SUPERADMIN", "OWNER", "MANAGER"]);
   });
 
   it("вкладки без roles доступні всім", () => {

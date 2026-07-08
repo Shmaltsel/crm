@@ -28,25 +28,19 @@ describe('CsrfGuard', () => {
 
   it('@SkipCsrf — пропускає без перевірки', () => {
     reflector.getAllAndOverride.mockReturnValueOnce(true);
-    const ok = guard.canActivate(
-      createContext('POST', '/some-path', {}, {}),
-    );
+    const ok = guard.canActivate(createContext('POST', '/some-path', {}, {}));
     expect(ok).toBe(true);
   });
 
   it('GET/HEAD/OPTIONS пропускає без перевірки', () => {
     reflector.getAllAndOverride.mockReturnValueOnce(undefined);
-    const ok = guard.canActivate(
-      createContext('GET', '/any-path'),
-    );
+    const ok = guard.canActivate(createContext('GET', '/any-path'));
     expect(ok).toBe(true);
   });
 
   it('/auth/login пропускає без перевірки', () => {
     reflector.getAllAndOverride.mockReturnValueOnce(undefined);
-    const ok = guard.canActivate(
-      createContext('POST', '/auth/login'),
-    );
+    const ok = guard.canActivate(createContext('POST', '/auth/login'));
     expect(ok).toBe(true);
   });
 
@@ -70,7 +64,12 @@ describe('CsrfGuard', () => {
     reflector.getAllAndOverride.mockReturnValueOnce(undefined);
     expect(() =>
       guard.canActivate(
-        createContext('POST', '/some-path', { csrf_token: 'token123' }, { 'x-csrf-token': 'wrong' }),
+        createContext(
+          'POST',
+          '/some-path',
+          { csrf_token: 'token123' },
+          { 'x-csrf-token': 'wrong' },
+        ),
       ),
     ).toThrow(ForbiddenException);
   });
@@ -78,7 +77,12 @@ describe('CsrfGuard', () => {
   it('POST зі співпадінням токенів пропускає', () => {
     reflector.getAllAndOverride.mockReturnValueOnce(undefined);
     const ok = guard.canActivate(
-      createContext('POST', '/some-path', { csrf_token: 'token123' }, { 'x-csrf-token': 'token123' }),
+      createContext(
+        'POST',
+        '/some-path',
+        { csrf_token: 'token123' },
+        { 'x-csrf-token': 'token123' },
+      ),
     );
     expect(ok).toBe(true);
   });

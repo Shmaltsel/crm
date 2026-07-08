@@ -41,7 +41,10 @@ describe('EventsController (HTTP)', () => {
       providers: [
         { provide: EventsService, useValue: mockEventsService },
         { provide: EventsReportService, useValue: mockEventsReportService },
-        { provide: EventsSchedulingService, useValue: mockEventsSchedulingService },
+        {
+          provide: EventsSchedulingService,
+          useValue: mockEventsSchedulingService,
+        },
         { provide: JwtService, useValue: mockJwtService },
       ],
     })
@@ -71,9 +74,7 @@ describe('EventsController (HTTP)', () => {
           'Немає доступу до ресурсу іншого міста',
         ),
       );
-      await request(app.getHttpServer())
-        .get('/events/school/s-1')
-        .expect(403);
+      await request(app.getHttpServer()).get('/events/school/s-1').expect(403);
     });
 
     it('OWNERSHIP: HOST отримує 403 (resourceType=school не дозволено для HOST)', async () => {
@@ -82,9 +83,7 @@ describe('EventsController (HTTP)', () => {
           'Немає доступу до цього типу ресурсу',
         ),
       );
-      await request(app.getHttpServer())
-        .get('/events/school/s-1')
-        .expect(403);
+      await request(app.getHttpServer()).get('/events/school/s-1').expect(403);
     });
 
     it('SUPERADMIN отримує 200', async () => {
@@ -112,7 +111,7 @@ describe('EventsController (HTTP)', () => {
     it('MANAGER без cityId отримує 403', async () => {
       mockGuard.canActivate.mockRejectedValueOnce(
         new (require('@nestjs/common').ForbiddenException)(
-          'Менеджер не прив\'язаний до міста',
+          "Менеджер не прив'язаний до міста",
         ),
       );
       await request(app.getHttpServer())

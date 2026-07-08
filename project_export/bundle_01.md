@@ -787,6 +787,14 @@ ALTER TABLE "EventReport" ALTER COLUMN "remainderSum" TYPE numeric(12,2) USING "
 
 ```
 
+# FILE: apps/backend/prisma/migrations/20260708205543_add_owner_role/migration.sql
+
+```
+-- AlterEnum
+ALTER TYPE "UserRole" ADD VALUE 'OWNER';
+
+```
+
 # FILE: apps/backend/prisma/schema.prisma
 
 ```
@@ -1096,6 +1104,7 @@ model AuditLog {
 
 enum UserRole {
   SUPERADMIN
+  OWNER
   MANAGER
   HOST
   DRIVER
@@ -2967,8 +2976,7 @@ export class OwnershipGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
-    // SUPERADMIN бачить усе — перевірка не потрібна
-    if (user?.role === 'SUPERADMIN') return true;
+    if (user?.role === 'SUPERADMIN' || user?.role === 'OWNER') return true;
 
     let paramId: string | undefined =
       request.params.id ??
@@ -4234,6 +4242,8 @@ import {
 } from '@nestjs/swagger';
 import { DashboardService, DashboardSummary } from './dashboard.service';
 import { AuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 import { IsOptional, IsString } from 'class-validator';
@@ -4249,7 +4259,7 @@ class DashboardSummaryQueryDto {
 @ApiTags('Dashboard')
 @ApiCookieAuth('access_token')
 @Controller('dashboard')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
 export class DashboardController {
   constructor(
     private readonly dashboardService: DashboardService,
@@ -4258,12 +4268,13 @@ export class DashboardController {
 
   @ApiOperation({ summary: 'Загальна аналітика для дашборда' })
   @Get('summary')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   async getSummary(
     @CurrentUser() user: JwtUser,
     @Query() query: DashboardSummaryQueryDto,
   ): Promise<DashboardSummary> {
     let effectiveCityId: string | undefined;
-    if (user.role === 'SUPERADMIN') {
+    if (user.role === 'SUPERADMIN' || user.role === 'OWNER') {
       effectiveCityId = query.cityId;
     } else {
       const me = await this.prisma.user.findUnique({
@@ -4716,7 +4727,7 @@ export class DashboardService {
     const now = new Date();
     const windows = this.buildTimeWindows(now);
     const cityFilter = cityId ? { cityId } : {};
-    const isSuperAdmin = role === 'SUPERADMIN';
+    const canSeeAllCities = role === 'SUPERADMIN' || role === 'OWNER';
 
     const [eventsWindow, funnelStats, monthlyKpi, staleSchools, activityFeed] =
       await Promise.all([
@@ -4727,7 +4738,9 @@ export class DashboardService {
         this.getActivityFeed(cityId, windows.todayStart),
       ]);
 
-    const citiesStats = isSuperAdmin ? await this.getCitiesStats(windows) : [];
+    const citiesStats = canSeeAllCities
+      ? await this.getCitiesStats(windows)
+      : [];
 
     const result: DashboardSummary = {
       ...eventsWindow,
@@ -8884,7 +8897,8 @@ export class FinanceController {
     user: JwtUser,
     requestedCityId?: string,
   ): Promise<string | undefined> {
-    if (user.role === 'SUPERADMIN') return requestedCityId;
+    if (user.role === 'SUPERADMIN' || user.role === 'OWNER')
+      return requestedCityId;
     const me = await this.prisma.user.findUnique({
       where: { id: user.sub },
       select: { cityId: true },
@@ -8894,7 +8908,7 @@ export class FinanceController {
 
   @ApiOperation({ summary: 'Фінансовий дашборд (KPI, динаміка, топ)' })
   @Get('dashboard')
-  @Roles('SUPERADMIN', 'MANAGER')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   async getDashboard(
     @Query() query: FinanceDashboardQueryDto,
     @CurrentUser() user: JwtUser,
@@ -8916,7 +8930,7 @@ export class FinanceController {
 
   @ApiOperation({ summary: 'Виручка по співробітниках' })
   @Get('staff-revenue')
-  @Roles('SUPERADMIN', 'MANAGER')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   async getStaffRevenue(
     @Query() query: StaffRevenueQueryDto,
     @CurrentUser() user: JwtUser,
@@ -9884,7 +9898,7 @@ export class IssuesController {
   }
 
   @ApiOperation({ summary: 'Список проблем по місту' })
-  @Roles('SUPERADMIN', 'MANAGER')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   @Get()
   findByCityId(@Query('cityId') cityId: string) {
     return this.issuesService.findByCityId(cityId);

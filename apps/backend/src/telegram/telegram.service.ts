@@ -136,7 +136,13 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
   private isNetworkError(e: any): boolean {
     if (e.code === 'TIMEOUT') return true;
-    if (e.code === 'ECONNRESET' || e.code === 'ETIMEDOUT' || e.code === 'ECONNREFUSED' || e.code === 'ENOTFOUND') return true;
+    if (
+      e.code === 'ECONNRESET' ||
+      e.code === 'ETIMEDOUT' ||
+      e.code === 'ECONNREFUSED' ||
+      e.code === 'ENOTFOUND'
+    )
+      return true;
     if (e.response?.statusCode && e.response.statusCode < 500) return false;
     return !e.response;
   }
@@ -152,12 +158,16 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     }, SEND_TIMEOUT_MS);
 
     try {
-      const promise = this.bot!.sendMessage(chatId, text, { parse_mode: 'HTML' });
+      const promise = this.bot.sendMessage(chatId, text, {
+        parse_mode: 'HTML',
+      });
       await Promise.race([
         promise,
         new Promise<never>((_, reject) => {
           controller.signal.addEventListener('abort', () => {
-            reject(Object.assign(new Error('Request timeout'), { code: 'TIMEOUT' }));
+            reject(
+              Object.assign(new Error('Request timeout'), { code: 'TIMEOUT' }),
+            );
           });
         }),
       ]);

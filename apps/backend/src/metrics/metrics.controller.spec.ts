@@ -19,9 +19,7 @@ describe('MetricsController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [MetricsController],
-      providers: [
-        { provide: MetricsService, useValue: mockMetricsService },
-      ],
+      providers: [{ provide: MetricsService, useValue: mockMetricsService }],
     })
       .overrideGuard(MetricsGuard)
       .useValue(mockGuard)
