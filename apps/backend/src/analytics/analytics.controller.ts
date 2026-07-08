@@ -74,6 +74,19 @@ class SalaryFundDto {
   cityId?: string;
 }
 
+class CityLeaderboardDto {
+  @ApiPropertyOptional({ default: 'events' })
+  @IsOptional()
+  @IsString()
+  metric?: string = 'events';
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+}
+
 class RoiDto {
   @ApiPropertyOptional()
   @IsOptional()
@@ -141,12 +154,40 @@ export class AnalyticsController {
     );
   }
 
+  @ApiOperation({ summary: 'Рейтинг міст за метрикою' })
+  @Get('city-leaderboard')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async cityLeaderboard(@Query() query: CityLeaderboardDto) {
+    return this.analyticsService.cityLeaderboard(query.metric, query.year);
+  }
+
   @ApiOperation({ summary: 'ROI' })
   @Get('roi')
   @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   async roi(@CurrentUser() user: JwtUser, @Query() query: RoiDto) {
     const effectiveCityId = await this.resolveCityId(user, query.cityId);
     return this.analyticsService.roi(effectiveCityId, query.year);
+  }
+
+  @ApiOperation({ summary: 'Топ менеджерів за кількістю затверджених звітів' })
+  @Get('kpi/managers')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async kpiManagers() {
+    return this.analyticsService.kpiManagers();
+  }
+
+  @ApiOperation({ summary: 'Топ ведучих за рейтингом' })
+  @Get('kpi/hosts')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async kpiHosts() {
+    return this.analyticsService.kpiHosts();
+  }
+
+  @ApiOperation({ summary: 'Топ проєктів за подіями' })
+  @Get('kpi/projects')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async kpiProjects() {
+    return this.analyticsService.kpiProjects();
   }
 
   private async resolveCityId(

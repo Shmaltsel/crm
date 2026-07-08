@@ -26,6 +26,7 @@ const ProjectProfile = lazyWithRetry(() => import("./pages/ProjectProfile"));
 const AuditLog = lazyWithRetry(() => import("./pages/AuditLog"));
 const ReportsReview = lazyWithRetry(() => import("./features/reports/pages/ReportsReviewPage"));
 const Inventory = lazyWithRetry(() => import("./pages/Inventory"));
+const CityLeaderboard = lazyWithRetry(() => import("./pages/CityLeaderboard"));
 
 const Dashboard = TAB_PAGE_COMPONENTS["/dashboard"];
 const Schools = TAB_PAGE_COMPONENTS["/schools"];
@@ -151,6 +152,17 @@ function AppRoutes() {
                 <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER"]}>
                   <Suspense fallback={<PageLoader />}>
                     <Analytics />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="city-leaderboard"
+              element={
+                <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
+                  <Suspense fallback={<PageLoader />}>
+                    <CityLeaderboard />
                   </Suspense>
                 </ProtectedRoute>
               }

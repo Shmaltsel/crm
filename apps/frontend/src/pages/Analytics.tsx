@@ -4,10 +4,11 @@ import { useCities } from "../hooks/useCities";
 import {
   useRevenueByMonth,
   useEventsByCity,
-  useProfitByCity,
   useSalaryFund,
   useRoi,
 } from "../hooks/useAnalytics";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../config/api";
 import {
   ResponsiveContainer,
   LineChart,
@@ -24,10 +25,6 @@ const UA_MONTHS = [
   "Січ", "Лют", "Бер", "Кві", "Трав", "Чер",
   "Лип", "Сер", "Вер", "Жов", "Лис", "Гру",
 ];
-
-function fmt(n: number): string {
-  return new Intl.NumberFormat("uk-UA").format(Math.round(n));
-}
 
 function fmtMoney(n: number): string {
   return new Intl.NumberFormat("uk-UA", {
@@ -83,7 +80,6 @@ export default function Analytics() {
     year,
   });
   const { data: eventsByCity, isLoading: eventsLoading } = useEventsByCity({ year });
-  const { data: profitByCity } = useProfitByCity({ cityId: cityId || undefined, year });
   const { data: salaryFund } = useSalaryFund({ year, cityId: cityId || undefined });
   const { data: roi } = useRoi({ cityId: cityId || undefined, year });
 
@@ -203,11 +199,139 @@ export default function Analytics() {
           </div>
         )
       )}
+      {isSuper && (
+        <div className="mt-6">
+          <h3 className="font-bold text-slate-800 mb-4">KPI — Топ 10</h3>
+          <KpiTables />
+        </div>
+      )}
     </div>
   );
 }
 
-function KPICard({ label, value, color, bg }: { label: string; value: string; color: string; bg: string }) {
+interface KpiManager {
+  userId: string;
+  name: string;
+  approvedReports: number;
+}
+
+interface KpiHost {
+  userId: string;
+  name: string;
+  avgRating: number;
+  reportsCount: number;
+}
+
+interface KpiProject {
+  project: string;
+  eventsCount: number;
+  childrenTotal: number;
+  profit: number;
+}
+
+function KpiTables() {
+  const { data: managers } = useQuery<KpiManager[]>({
+    queryKey: ["analytics", "kpi", "managers"],
+    queryFn: () => api.get("/analytics/kpi/managers").then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+  const { data: hosts } = useQuery<KpiHost[]>({
+    queryKey: ["analytics", "kpi", "hosts"],
+    queryFn: () => api.get("/analytics/kpi/hosts").then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+  const { data: projects } = useQuery<KpiProject[]>({
+    queryKey: ["analytics", "kpi", "projects"],
+    queryFn: () => api.get("/analytics/kpi/projects").then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <KpiTable
+        title="Менеджери"
+        headers={["#", "Ім'я", "Затверджено"]}
+        rows={
+          managers?.map((m, i) => [
+            String(i + 1),
+            m.name,
+            String(m.approvedReports),
+          ]) ?? []
+        }
+      />
+      <KpiTable
+        title="Ведучі"
+        headers={["#", "Ім'я", "Рейтинг", "Звітів"]}
+        rows={
+          hosts?.map((h, i) => [
+            String(i + 1),
+            h.name,
+            String(h.avgRating),
+            String(h.reportsCount),
+          ]) ?? []
+        }
+      />
+      <KpiTable
+        title="Проєкти"
+        headers={["#", "Назва", "Подій", "Прибуток"]}
+        rows={
+          projects?.map((p, i) => [
+            String(i + 1),
+            p.project,
+            String(p.eventsCount),
+            fmtMoney(p.profit),
+          ]) ?? []
+        }
+      />
+    </div>
+  );
+}
+
+function KpiTable({
+  title,
+  headers,
+  rows,
+}: {
+  title: string;
+  headers: string[];
+  rows: string[][];
+}) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+      <h4 className="font-semibold text-slate-700 mb-3 text-sm">{title}</h4>
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-slate-400 border-b border-slate-100">
+            {headers.map((h) => (
+              <th key={h} className="text-left pb-2 font-medium">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={headers.length} className="text-center py-6 text-slate-300">
+                Немає даних
+              </td>
+            </tr>
+          ) : (
+            rows.map((row, i) => (
+              <tr key={i} className="border-b border-slate-50 last:border-0">
+                {row.map((cell, j) => (
+                  <td key={j} className={`py-2 ${j === 0 ? "text-slate-400 w-6" : "text-slate-700"}`}>
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function KPICard({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
       <p className={`text-xs font-medium ${color} mb-3`}>{label}</p>
