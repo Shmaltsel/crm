@@ -25,12 +25,15 @@ import { IssuesModule } from './issues/issues.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ProjectsModule } from './projects/projects.module';
 import { HealthModule } from './health/health.module';
+import { InventoryModule } from './inventory/inventory.module';
 import { DaysOffModule } from './days-off/days-off.module';
 import { ReportsModule } from './reports/reports.module';
 import { SalaryModule } from './salary/salary.module';
 import { SchoolCommentsModule } from './school-comments/school-comments.module';
 import { AuditLogModule } from './audit-log/audit-log.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { FeatureFlagsModule } from './common/feature-flags/feature-flags.module';
 import { I18nModule } from './common/i18n/i18n.module';
 import { LocalizedValidationPipe } from './common/pipes/localized-validation.pipe';
@@ -72,10 +75,13 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     DashboardModule,
     ProjectsModule,
     DaysOffModule,
+    InventoryModule,
     ReportsModule,
     SalaryModule,
     SchoolCommentsModule,
     AuditLogModule,
+    NotificationsModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -77,6 +77,16 @@ export class UsersService {
       }
     }
 
+    this.prisma.notification
+      .create({
+        data: {
+          userId: user.id,
+          type: 'WELCOME',
+          payload: { name: data.fullName },
+        },
+      })
+      .catch(() => {});
+
     return user;
   }
 

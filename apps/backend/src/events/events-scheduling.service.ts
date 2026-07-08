@@ -3,6 +3,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
 @Injectable()
@@ -12,6 +13,7 @@ export class EventsSchedulingService {
   constructor(
     private readonly prisma: PrismaService,
     private telegramService: TelegramService,
+    private notificationsService: NotificationsService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
@@ -118,6 +120,24 @@ export class EventsSchedulingService {
 
     await sendTo(event.crew?.hostId);
     await sendTo(event.crew?.driverId);
+
+    const payload = {
+      eventId: event.id,
+      project: event.project,
+      schoolName: event.school?.name,
+      newDate: dateStr,
+      newTime,
+    };
+    if (event.crew?.hostId) {
+      this.notificationsService
+        .create(event.crew.hostId, 'EVENT_RESCHEDULED', payload)
+        .catch(() => {});
+    }
+    if (event.crew?.driverId) {
+      this.notificationsService
+        .create(event.crew.driverId, 'EVENT_RESCHEDULED', payload)
+        .catch(() => {});
+    }
 
     await this.invalidateSchoolEventsCache(event.schoolId);
     return this.serializeEvent(event);

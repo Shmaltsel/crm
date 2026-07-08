@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import BottomNavigationBar from "./BottomNavigationBar";
 import MobileTopNav from "./MobileTopNav";
+import NotificationBell from "./NotificationBell";
 import { NAV_TABS } from "../constants/navTabs";
 import { TAB_PAGE_COMPONENTS, rawImportFactories } from "../pages/lazyTabPages";
 import { hasRole } from "../utils/roles";
@@ -308,14 +309,16 @@ export default function Layout() {
                   <p className="text-xs text-slate-400 truncate">{user?.role ?? ""}</p>
                 </div>
               </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-colors text-xs font-medium ml-2 shrink-0 px-2.5 py-2 rounded-lg"
-                title="Вийти"
-              >
-                <LogOut className="w-4 h-4" />
-                Вийти
-              </button>
+              <div className="flex items-center gap-1">
+                <NotificationBell />
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-colors text-xs font-medium shrink-0 px-2.5 py-2 rounded-lg"
+                  title="Вийти"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </aside>

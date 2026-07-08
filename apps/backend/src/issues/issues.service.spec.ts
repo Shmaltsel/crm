@@ -1,6 +1,7 @@
 import { IssuesService } from './issues.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const mockPrisma = {
   issueReport: {
@@ -14,11 +15,13 @@ const mockPrisma = {
 };
 
 const mockTelegram = { sendMessage: jest.fn() };
+const mockNotifications = { create: jest.fn().mockResolvedValue(undefined) };
 
 const makeService = () =>
   new IssuesService(
     mockPrisma as unknown as PrismaService,
     mockTelegram as unknown as TelegramService,
+    mockNotifications as unknown as NotificationsService,
   );
 
 const baseData = {

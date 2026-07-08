@@ -1,5 +1,6 @@
 import { GraduationCap } from "lucide-react";
 import { useSelectedCity } from "../context/CityContext";
+import NotificationBell from "./NotificationBell";
 
 export default function MobileTopNav() {
   const { selectedCity } = useSelectedCity();
@@ -12,9 +13,12 @@ export default function MobileTopNav() {
           СВІТЛО ЗНАНЬ
         </span>
       </div>
-      <span className="text-xs text-blue-300/80 whitespace-nowrap">
-        {selectedCity.name}
-      </span>
+      <div className="flex items-center gap-2">
+        <NotificationBell />
+        <span className="text-xs text-blue-300/80 whitespace-nowrap">
+          {selectedCity.name}
+        </span>
+      </div>
     </div>
   );
 }

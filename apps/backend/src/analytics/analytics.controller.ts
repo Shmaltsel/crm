@@ -1,0 +1,165 @@
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiCookieAuth,
+  ApiPropertyOptional,
+} from '@nestjs/swagger';
+import { AnalyticsService } from './analytics.service';
+import { AuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+import { PrismaService } from '../prisma/prisma.service';
+import { IsOptional, IsString, IsInt, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+
+class RevenueByMonthDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  projectId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+}
+
+class YearQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+}
+
+class ProfitByCityDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+}
+
+class SalaryFundDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  month?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+}
+
+class RoiDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+}
+
+@ApiTags('Analytics')
+@ApiCookieAuth('access_token')
+@Controller('analytics')
+@UseGuards(AuthGuard, RolesGuard)
+export class AnalyticsController {
+  constructor(
+    private readonly analyticsService: AnalyticsService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  @ApiOperation({ summary: 'Дохід по місяцях' })
+  @Get('revenue-by-month')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async revenueByMonth(
+    @CurrentUser() user: JwtUser,
+    @Query() query: RevenueByMonthDto,
+  ) {
+    const effectiveCityId = await this.resolveCityId(user, query.cityId);
+    return this.analyticsService.revenueByMonth(
+      effectiveCityId,
+      query.projectId,
+      query.year,
+    );
+  }
+
+  @ApiOperation({ summary: 'Події по містах' })
+  @Get('events-by-city')
+  @Roles('SUPERADMIN', 'OWNER')
+  async eventsByCity(@Query() query: YearQueryDto) {
+    return this.analyticsService.eventsByCity(query.year);
+  }
+
+  @ApiOperation({ summary: 'Прибуток по містах' })
+  @Get('profit-by-city')
+  @Roles('SUPERADMIN', 'OWNER')
+  async profitByCity(@Query() query: ProfitByCityDto) {
+    return this.analyticsService.profitByCity(query.cityId, query.year);
+  }
+
+  @ApiOperation({ summary: 'Фонд зарплати' })
+  @Get('salary-fund')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async salaryFund(
+    @CurrentUser() user: JwtUser,
+    @Query() query: SalaryFundDto,
+  ) {
+    const effectiveCityId = await this.resolveCityId(user, query.cityId);
+    return this.analyticsService.salaryFund(
+      query.month,
+      query.year,
+      effectiveCityId,
+    );
+  }
+
+  @ApiOperation({ summary: 'ROI' })
+  @Get('roi')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async roi(@CurrentUser() user: JwtUser, @Query() query: RoiDto) {
+    const effectiveCityId = await this.resolveCityId(user, query.cityId);
+    return this.analyticsService.roi(effectiveCityId, query.year);
+  }
+
+  private async resolveCityId(
+    user: JwtUser,
+    requestedCityId?: string,
+  ): Promise<string | undefined> {
+    if (user.role === 'SUPERADMIN' || user.role === 'OWNER') {
+      return requestedCityId;
+    }
+    const me = await this.prisma.user.findUnique({
+      where: { id: user.sub },
+      select: { cityId: true },
+    });
+    return me?.cityId ?? undefined;
+  }
+}

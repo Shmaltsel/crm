@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class IssuesService {
   constructor(
     private prisma: PrismaService,
     private telegramService: TelegramService,
+    private notificationsService: NotificationsService,
   ) {}
 
   async create(data: {
@@ -109,6 +111,23 @@ export class IssuesService {
 
     if (assigneeChatId && assigneeChatId !== managerChatId) {
       await this.telegramService.sendMessage(assigneeChatId, text);
+    }
+
+    const notificationPayload = {
+      issueId: issue.id,
+      schoolName: data.schoolName,
+      eventName: data.eventName,
+      message: data.message,
+    };
+    if (manager?.id) {
+      this.notificationsService
+        .create(manager.id, 'ISSUE_CREATED', notificationPayload)
+        .catch(() => {});
+    }
+    if (data.assignedUserId) {
+      this.notificationsService
+        .create(data.assignedUserId, 'ISSUE_CREATED', notificationPayload)
+        .catch(() => {});
     }
 
     return issue;

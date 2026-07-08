@@ -3,7 +3,7 @@ import { NAV_TABS, ADMIN_TABS } from "../../constants/navTabs";
 
 describe("NAV_TABS", () => {
   it("має правильну кількість вкладок", () => {
-    expect(NAV_TABS.length).toBe(9);
+    expect(NAV_TABS.length).toBe(10);
   });
 
   it("всі вкладки мають to, icon, label", () => {

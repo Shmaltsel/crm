@@ -22,8 +22,10 @@ const EventReport = lazyWithRetry(() => import("./pages/EventReport"));
 
 const Cities = lazyWithRetry(() => import("./pages/Cities"));
 const SchoolProfile = lazyWithRetry(() => import("./pages/SchoolProfile"));
+const ProjectProfile = lazyWithRetry(() => import("./pages/ProjectProfile"));
 const AuditLog = lazyWithRetry(() => import("./pages/AuditLog"));
 const ReportsReview = lazyWithRetry(() => import("./features/reports/pages/ReportsReviewPage"));
+const Inventory = lazyWithRetry(() => import("./pages/Inventory"));
 
 const Dashboard = TAB_PAGE_COMPONENTS["/dashboard"];
 const Schools = TAB_PAGE_COMPONENTS["/schools"];
@@ -184,6 +186,17 @@ function AppRoutes() {
           />
 
           <Route
+            path="projects/:id"
+            element={
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
+                <Suspense fallback={<PageLoader />}>
+                  <ProjectProfile />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="events/:id/report"
             element={
               <Suspense fallback={<PageLoader />}>
@@ -198,6 +211,17 @@ function AppRoutes() {
               <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
                 <Suspense fallback={<PageLoader />}>
                   <ReportsReview />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="inventory"
+            element={
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
+                <Suspense fallback={<PageLoader />}>
+                  <Inventory />
                 </Suspense>
               </ProtectedRoute>
             }

@@ -172,6 +172,7 @@ model EventReport {
   photos            File[]
   expenseItems      ExpenseItem[]
   salaryRecords     SalaryRecord[]
+  inventoryUsages   InventoryUsage[]
 }
 
 model File {
@@ -367,6 +368,46 @@ model SchoolComment {
   author User   @relation(fields: [authorId], references: [id])
 
   @@index([schoolId, createdAt])
+}
+
+model InventoryItem {
+  id           String   @id @default(cuid())
+  name         String
+  sku          String?
+  unit         String   @default("шт")
+  minStock     Int      @default(5)
+  currentStock Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  usages InventoryUsage[]
+
+  @@index([name])
+}
+
+model InventoryUsage {
+  id        String   @id @default(cuid())
+  itemId    String
+  reportId  String
+  quantity  Int
+  createdAt DateTime @default(now())
+
+  item   InventoryItem @relation(fields: [itemId], references: [id])
+  report EventReport   @relation(fields: [reportId], references: [id])
+
+  @@index([itemId])
+  @@index([reportId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  payload   Json
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, readAt, createdAt])
 }
 
 enum EventStatus {

@@ -1,17 +1,22 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import MobileTopNav from "../../components/MobileTopNav";
 import { AuthProvider } from "../../context/AuthContext";
 import { CityProvider } from "../../context/CityContext";
 import type { ReactNode } from "react";
 
+const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
 function Wrapper({ children }: { children: ReactNode }) {
   return (
     <MemoryRouter initialEntries={["/schools"]}>
-      <AuthProvider>
-        <CityProvider>{children}</CityProvider>
-      </AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <CityProvider>{children}</CityProvider>
+        </AuthProvider>
+      </QueryClientProvider>
     </MemoryRouter>
   );
 }

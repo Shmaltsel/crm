@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EventsSchedulingService } from './events-scheduling.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
 const mockTx = {
@@ -16,6 +17,7 @@ const mockPrisma = {
 };
 
 const mockTelegram = { sendMessage: jest.fn() };
+const mockNotifications = { create: jest.fn().mockResolvedValue(undefined) };
 
 const mockUser = { sub: 'user-1', name: 'Менеджер', role: 'MANAGER' } as const;
 
@@ -30,6 +32,7 @@ describe('EventsSchedulingService', () => {
         EventsSchedulingService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: TelegramService, useValue: mockTelegram },
+        { provide: NotificationsService, useValue: mockNotifications },
         {
           provide: CACHE_MANAGER,
           useValue: {

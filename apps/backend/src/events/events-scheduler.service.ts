@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class EventsSchedulerService implements OnModuleInit {
@@ -9,6 +10,7 @@ export class EventsSchedulerService implements OnModuleInit {
   constructor(
     private prisma: PrismaService,
     private telegramService: TelegramService,
+    private notificationsService: NotificationsService,
   ) {}
 
   onModuleInit() {
@@ -79,5 +81,14 @@ export class EventsSchedulerService implements OnModuleInit {
     } catch (e) {
       this.logger.error(`Помилка відправки: ${e}`);
     }
+
+    this.notificationsService
+      .create(user.id, 'EVENT_REMINDER', {
+        eventId: event.id,
+        project: event.project,
+        schoolName: event.school?.name,
+        role: roleLabel,
+      })
+      .catch(() => {});
   }
 }

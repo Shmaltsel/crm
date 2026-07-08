@@ -1,6 +1,7 @@
 import { Injectable, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { AppException } from '../common/exceptions/app.exception';
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
@@ -12,6 +13,7 @@ export class DaysOffService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly telegramService: TelegramService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async findAll(from?: string, to?: string, cityId?: string) {
@@ -171,5 +173,17 @@ export class DaysOffService {
         : `❌ <b>Скасовано вихідний</b>\n\n👤 <b>Співробітник:</b> ${staffName}\n📅 <b>Дата:</b> ${dateStr}`;
 
     await this.telegramService.sendMessage(chatId, msg);
+
+    this.notificationsService
+      .create(
+        manager.id,
+        action === 'created' ? 'DAY_OFF_CREATED' : 'DAY_OFF_REMOVED',
+        {
+          staffName,
+          date: dateStr,
+          action,
+        },
+      )
+      .catch(() => {});
   }
 }

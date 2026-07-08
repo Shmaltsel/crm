@@ -1,10 +1,19 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  Inject,
+  BadRequestException,
+} from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheVersionService } from '../common/cache/cache-version.service';
 import { Prisma } from '@prisma/client';
-import { SubmitReportDto, ExpenseItemDto } from './dto/submit-report.dto';
+import {
+  SubmitReportDto,
+  ExpenseItemDto,
+  InventoryUsageDto,
+} from './dto/submit-report.dto';
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
 @Injectable()
@@ -134,6 +143,41 @@ export class EventsReportService {
                 where: { id: s.userId },
                 data: { balance: { increment: s.amount } },
               });
+            }
+          }
+        }
+
+        if (reportData.inventoryUsages?.length) {
+          for (const usage of reportData.inventoryUsages) {
+            const item = await tx.inventoryItem.findUnique({
+              where: { id: usage.itemId },
+            });
+            if (!item) {
+              throw new BadRequestException(
+                `Товар з id ${usage.itemId} не знайдено`,
+              );
+            }
+            if (item.currentStock < usage.quantity) {
+              throw new BadRequestException('inventory.insufficientStock');
+            }
+            await tx.inventoryItem.update({
+              where: { id: usage.itemId },
+              data: { currentStock: { decrement: usage.quantity } },
+            });
+            await tx.inventoryUsage.create({
+              data: {
+                itemId: usage.itemId,
+                reportId: report.id,
+                quantity: usage.quantity,
+              },
+            });
+            const updated = await tx.inventoryItem.findUnique({
+              where: { id: usage.itemId },
+            });
+            if (updated && updated.currentStock < updated.minStock) {
+              this.logger.warn(
+                `Inventory item "${item.name}" (${item.id}) below min stock: ${updated.currentStock}/${updated.minStock}`,
+              );
             }
           }
         }

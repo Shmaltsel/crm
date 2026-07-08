@@ -5,11 +5,17 @@ import { EventsSchedulingService } from './events-scheduling.service';
 import { EventsController } from './events.controller';
 import { SchoolsModule } from '../schools/schools.module';
 import { TelegramModule } from '../telegram/telegram.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { RedisCacheModule } from '../common/cache/redis-cache.module';
 import { EventsSchedulerService } from './events-scheduler.service';
 
 @Module({
-  imports: [forwardRef(() => SchoolsModule), TelegramModule, RedisCacheModule],
+  imports: [
+    forwardRef(() => SchoolsModule),
+    TelegramModule,
+    NotificationsModule,
+    RedisCacheModule,
+  ],
   controllers: [EventsController],
   providers: [
     EventsService,

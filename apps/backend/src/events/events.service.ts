@@ -4,6 +4,7 @@ import type { Cache } from 'cache-manager';
 import { AppException } from '../common/exceptions/app.exception';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CacheVersionService } from '../common/cache/cache-version.service';
 import { Prisma, PreparationStatus } from '@prisma/client';
 
@@ -22,6 +23,7 @@ export class EventsService {
   constructor(
     private readonly prisma: PrismaService,
     private telegramService: TelegramService,
+    private notificationsService: NotificationsService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     private readonly cacheVersion: CacheVersionService,
   ) {}
@@ -252,6 +254,30 @@ export class EventsService {
           `[assignCrew] Не вдалося надіслати повідомлення водію ${driverId}: chatId не знайдено`,
         );
       }
+    }
+
+    const notificationPayload = {
+      eventId: event.id,
+      project: event.project,
+      schoolName: event.school?.name,
+      date: dateStr,
+      time: event.time,
+    };
+    if (hostId) {
+      this.notificationsService
+        .create(hostId, 'CREW_ASSIGNED', {
+          ...notificationPayload,
+          role: 'ведучий',
+        })
+        .catch(() => {});
+    }
+    if (driverId) {
+      this.notificationsService
+        .create(driverId, 'CREW_ASSIGNED', {
+          ...notificationPayload,
+          role: 'водій',
+        })
+        .catch(() => {});
     }
 
     await this.invalidateSchoolEventsCache(event.schoolId);

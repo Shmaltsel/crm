@@ -3,6 +3,7 @@ import { HttpStatus } from '@nestjs/common';
 import { DaysOffService } from './days-off.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { AppException } from '../common/exceptions/app.exception';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
@@ -21,6 +22,10 @@ const mockPrisma = {
 
 const mockTelegram = {
   sendMessage: jest.fn(),
+};
+
+const mockNotifications = {
+  create: jest.fn().mockResolvedValue(undefined),
 };
 
 const hostUser: JwtUser = {
@@ -62,6 +67,7 @@ describe('DaysOffService', () => {
         DaysOffService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: TelegramService, useValue: mockTelegram },
+        { provide: NotificationsService, useValue: mockNotifications },
       ],
     }).compile();
 

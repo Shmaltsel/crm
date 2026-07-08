@@ -42,6 +42,16 @@ export class SalaryRecordDto {
   role?: string;
 }
 
+export class InventoryUsageDto {
+  @IsString()
+  itemId: string;
+
+  @IsNumber()
+  @Min(1)
+  @Type(() => Number)
+  quantity: number;
+}
+
 export class SubmitReportDto {
   @IsBoolean()
   announcementDone: boolean;
@@ -99,4 +109,10 @@ export class SubmitReportDto {
   @ValidateNested({ each: true })
   @Type(() => SalaryRecordDto)
   salaries: SalaryRecordDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => InventoryUsageDto)
+  inventoryUsages?: InventoryUsageDto[];
 }

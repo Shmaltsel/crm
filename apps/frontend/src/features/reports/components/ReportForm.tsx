@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { EventReport } from "../../../types";
 import ReportStatusBadge from "./ReportStatusBadge";
+import { useInventory } from "../../../hooks/useInventory";
 
 interface Expense {
   name: string;
@@ -40,6 +41,7 @@ interface ReportFormProps {
     comment?: string;
     expenses?: Expense[];
     salaries?: { userId: string; name: string; amount: number; role: string }[];
+    inventoryUsages?: { itemId: string; quantity: number }[];
   }) => void;
   onSaveDraft: (data: {
     id: string;
@@ -169,7 +171,11 @@ export default function ReportForm({
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [newExp, setNewExp] = useState({ name: "", amount: "" });
   const [salaries, setSalaries] = useState<Record<string, number>>({});
+  const { data: inventoryItems } = useInventory();
+  const [inventoryUsages, setInventoryUsages] = useState<Record<string, number>>({});
+  const [autoSaveState, setAutoSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const lastReportId = useRef<string | undefined>();
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (report && report.id !== lastReportId.current) {
@@ -213,6 +219,54 @@ export default function ReportForm({
     .map((m) => ({ userId: m.id, name: m.name, amount: salaries[m.id] || 0, role: m.role }))
     .filter((s) => s.amount > 0);
 
+  const handleAutoSave = useCallback(async () => {
+    if (!report?.id) return;
+    if (report.status !== "DRAFT" && report.status !== "NEEDS_REVISION") return;
+
+    setAutoSaveState("saving");
+    try {
+      const schoolSum = (form.totalSum * form.schoolPercentage) / 100;
+      const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+      const remainder = form.totalSum - schoolSum - totalExpenses;
+
+      await onSaveDraft({
+        id: report.id,
+        announcementDone: form.announcementDone,
+        materialShown: form.materialShown,
+        childrenCount: form.childrenCount,
+        classesCount: form.classesCount,
+        privilegedCount: form.privilegedCount,
+        showingsCount: form.showingsCount,
+        totalSum: form.totalSum,
+        schoolSum,
+        remainderSum: remainder,
+        rating: form.rating,
+        directorSatisfied: form.directorSatisfied,
+        teachersSatisfied: form.teachersSatisfied,
+        hadIssues: form.hadIssues,
+        comment: form.comment,
+      });
+      setAutoSaveState("saved");
+      setTimeout(() => setAutoSaveState("idle"), 3000);
+    } catch {
+      setAutoSaveState("idle");
+    }
+  }, [form, expenses, report?.id, report?.status, onSaveDraft]);
+
+  useEffect(() => {
+    if (!report?.id) return;
+    if (report.status !== "DRAFT" && report.status !== "NEEDS_REVISION") return;
+
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => {
+      handleAutoSave();
+    }, 20000);
+
+    return () => {
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    };
+  }, [form, expenses, report?.id, report?.status, handleAutoSave]);
+
   const handleSaveDraft = () => {
     if (report) {
       onSaveDraft({
@@ -251,6 +305,9 @@ export default function ReportForm({
         comment: form.comment,
         expenses,
         salaries: salariesArr,
+        inventoryUsages: Object.entries(inventoryUsages)
+          .filter(([, qty]) => qty > 0)
+          .map(([itemId, quantity]) => ({ itemId, quantity })),
       });
     }
   };
@@ -294,6 +351,9 @@ export default function ReportForm({
         comment: form.comment,
         expenses,
         salaries: salariesArr,
+        inventoryUsages: Object.entries(inventoryUsages)
+          .filter(([, qty]) => qty > 0)
+          .map(([itemId, quantity]) => ({ itemId, quantity })),
       });
       onSubmit(report?.id ?? "");
     }
@@ -346,6 +406,12 @@ export default function ReportForm({
                 {eventDate && <p className="text-xs text-slate-400 mt-0.5">{formatDate(eventDate)}</p>}
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                {autoSaveState === "saving" && (
+                  <span className="text-xs text-slate-400">Збереження…</span>
+                )}
+                {autoSaveState === "saved" && (
+                  <span className="text-xs text-emerald-600">Збережено</span>
+                )}
                 {report && <ReportStatusBadge status={report.status} />}
                 <button ref={closeRef} onClick={onClose} aria-label="Закрити"
                   className="text-slate-400 hover:text-slate-600 text-lg leading-none p-2 -mr-2">✕</button>
@@ -485,6 +551,46 @@ export default function ReportForm({
                         <span className="font-bold text-blue-600">{formatMoney(crewMembers.reduce((s, m) => s + (salaries[m.id] || 0), 0))} грн</span>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {inventoryItems && inventoryItems.length > 0 && (
+                  <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+                    <CardHeader icon={
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                        <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                      </svg>
+                    } color="bg-teal-50 text-teal-600" title="Витрата матеріалів" />
+                    <div className="space-y-2">
+                      {inventoryItems.map((item) => (
+                        <div key={item.id} className="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-slate-700">{item.name}</span>
+                            <span className="text-xs text-slate-400">({item.unit})</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-slate-400">
+                              {item.currentStock} {item.unit}
+                            </span>
+                            <input
+                              type="number"
+                              min={0}
+                              max={item.currentStock}
+                              value={inventoryUsages[item.id] || ""}
+                              disabled={!isEditable}
+                              onChange={(e) =>
+                                setInventoryUsages((prev) => ({
+                                  ...prev,
+                                  [item.id]: +e.target.value,
+                                }))
+                              }
+                              className={`w-16 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1 ${!isEditable ? "opacity-60" : ""}`}
+                              placeholder="0"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
