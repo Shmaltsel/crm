@@ -4,16 +4,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
 import { http, HttpResponse } from "msw";
 import { server } from "../mocks/server";
-import { vi } from "vitest";
-
-vi.mock("../../components/IssueCarousel", () => ({ default: () => <div data-testid="issue-carousel" /> }));
-vi.mock("../../components/dashboard/FunnelBar", () => ({ default: () => <div data-testid="funnel-bar" /> }));
-vi.mock("../../components/dashboard/TodayEvents", () => ({ default: () => <div data-testid="today-events" /> }));
-vi.mock("../../components/dashboard/UpcomingEvents", () => ({ default: () => <div data-testid="upcoming-events" /> }));
-vi.mock("../../components/dashboard/StaleSchools", () => ({ default: () => <div data-testid="stale-schools" /> }));
-vi.mock("../../components/dashboard/MonthlyKpi", () => ({ default: () => <div data-testid="monthly-kpi" /> }));
-vi.mock("../../components/dashboard/ActivityFeed", () => ({ default: () => <div data-testid="activity-feed" /> }));
-vi.mock("../../components/dashboard/CitiesTable", () => ({ default: () => <div data-testid="cities-table" /> }));
 
 vi.mock("../../context/CityContext", () => ({
   useSelectedCity: () => ({ selectedCity: { id: "city-1", name: "Львів" } })
@@ -33,18 +23,14 @@ const createWrapper = () => {
 };
 
 describe("Dashboard", () => {
-  it("fetches and renders dashboard components", async () => {
+  it("renders owner dashboard for SUPERADMIN role", async () => {
     server.use(
-      http.get("http://localhost:3000/api/dashboard/summary", () =>
+      http.get("http://localhost:3000/api/finance/dashboard", () =>
         HttpResponse.json({
-          todayEvents: [],
-          upcomingEvents: [],
-          funnel: {},
-          totalSchools: 10,
-          monthlyKpi: { revenue: 0, profit: 0, children: 0, count: 0 },
-          staleSchools: [],
-          activityFeed: [],
-          citiesStats: []
+          kpi: { totalRevenue: 100000, totalExpenses: 40000, totalProfit: 60000, totalEvents: 25 },
+          monthly: [],
+          expectedRevenue: 120000,
+          filters: { projects: [], cities: [] },
         })
       )
     );
@@ -52,13 +38,11 @@ describe("Dashboard", () => {
     render(<Dashboard />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByTestId("issue-carousel")).toBeInTheDocument();
-      expect(screen.getByTestId("funnel-bar")).toBeInTheDocument();
-      expect(screen.getByTestId("today-events")).toBeInTheDocument();
-      expect(screen.getByTestId("upcoming-events")).toBeInTheDocument();
-      expect(screen.getByTestId("stale-schools")).toBeInTheDocument();
-      expect(screen.getByTestId("monthly-kpi")).toBeInTheDocument();
-      expect(screen.getByTestId("activity-feed")).toBeInTheDocument();
+      expect(screen.getByText("Фінансовий дашборд")).toBeInTheDocument();
+      expect(screen.getByText("100 000 грн")).toBeInTheDocument();
+      expect(screen.getByText("40 000 грн")).toBeInTheDocument();
+      expect(screen.getByText("60 000 грн")).toBeInTheDocument();
+      expect(screen.getByText("25")).toBeInTheDocument();
     });
   });
 });

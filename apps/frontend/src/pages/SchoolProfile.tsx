@@ -29,6 +29,9 @@ const Pipeline = lazy(() => import("../components/school-profile/Pipeline"));
 const HistoryTimeline = lazy(
   () => import("../components/school-profile/HistoryTimeline"),
 );
+const CommentsTimeline = lazy(
+  () => import("../components/school-profile/CommentsTimeline"),
+);
 const EventDetails = lazy(
   () => import("../components/school-profile/EventDetails"),
 );
@@ -442,6 +445,16 @@ export default function SchoolProfile() {
                 onHistoryClick={handleHistoryClick}
                 onAddCommentClick={handleAddCommentClick}
               />
+            </Suspense>
+          </motion.div>
+
+          <motion.div {...stagger(2)}>
+            <Suspense
+              fallback={
+                <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+              }
+            >
+              <CommentsTimeline schoolId={schoolData.id} />
             </Suspense>
           </motion.div>
         </div>

@@ -280,4 +280,6 @@ export interface FinanceDashboardData {
   worstEvents?: FinanceEventItem[];
 }
 
+export type CommentType = "NOTE" | "CALL" | "RESCHEDULE" | "CONFIRMATION" | "PROBLEM";
+
 export type UserRole = "SUPERADMIN" | "OWNER" | "MANAGER" | "HOST" | "DRIVER";

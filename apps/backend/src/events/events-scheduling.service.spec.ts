@@ -4,10 +4,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
+const mockTx = {
+  event: { update: jest.fn() },
+  schoolComment: { create: jest.fn() },
+};
 const mockPrisma = {
-  event: {
-    update: jest.fn(),
-  },
+  $transaction: jest.fn((cb: (tx: typeof mockTx) => unknown) => cb(mockTx)),
   user: {
     findUnique: jest.fn(),
   },
@@ -54,7 +56,7 @@ describe('EventsSchedulingService', () => {
         crew: null,
         history: [{ id: 'h-1', action: 'Подію перенесено' }],
       };
-      mockPrisma.event.update.mockResolvedValueOnce(updatedEvent);
+      mockTx.event.update.mockResolvedValueOnce(updatedEvent);
 
       const result = await service.rescheduleEvent(
         'ev-1',
@@ -63,7 +65,7 @@ describe('EventsSchedulingService', () => {
         mockUser,
       );
 
-      expect(mockPrisma.event.update).toHaveBeenCalledWith(
+      expect(mockTx.event.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'ev-1' },
           data: expect.objectContaining({
@@ -76,7 +78,7 @@ describe('EventsSchedulingService', () => {
     });
 
     it('надсилає Telegram сповіщення якщо є екіпаж з chatId', async () => {
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         project: 'Голограма',
         date: new Date('2025-10-15'),
@@ -102,7 +104,7 @@ describe('EventsSchedulingService', () => {
     });
 
     it('не надсилає сповіщення якщо екіпаж не призначений', async () => {
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         project: 'Голограма',
         date: new Date('2025-10-15'),
@@ -119,7 +121,7 @@ describe('EventsSchedulingService', () => {
     });
 
     it('інвалідує кеш школи після перенесення', async () => {
-      mockPrisma.event.update.mockResolvedValueOnce({
+      mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         schoolId: 'school-1',
         project: 'Голограма',

@@ -28,6 +28,8 @@ import { HealthModule } from './health/health.module';
 import { DaysOffModule } from './days-off/days-off.module';
 import { ReportsModule } from './reports/reports.module';
 import { SalaryModule } from './salary/salary.module';
+import { SchoolCommentsModule } from './school-comments/school-comments.module';
+import { AuditLogModule } from './audit-log/audit-log.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { FeatureFlagsModule } from './common/feature-flags/feature-flags.module';
 import { I18nModule } from './common/i18n/i18n.module';
@@ -72,6 +74,8 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     DaysOffModule,
     ReportsModule,
     SalaryModule,
+    SchoolCommentsModule,
+    AuditLogModule,
   ],
   controllers: [AppController],
   providers: [

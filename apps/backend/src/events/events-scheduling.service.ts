@@ -58,26 +58,39 @@ export class EventsSchedulingService {
     newTime: string,
     user: JwtUser,
   ) {
-    const event = await this.prisma.event.update({
-      where: { id: eventId },
-      data: {
-        date: new Date(newDate),
-        time: newTime,
-        history: {
-          create: {
-            action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
-            userId: user.sub,
-            userName: user.name,
-            role: user.role,
+    const event = await this.prisma.$transaction(async (tx) => {
+      const ev = await tx.event.update({
+        where: { id: eventId },
+        data: {
+          date: new Date(newDate),
+          time: newTime,
+          history: {
+            create: {
+              action: `Подію перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
+              userId: user.sub,
+              userName: user.name,
+              role: user.role,
+            },
           },
         },
-      },
-      include: {
-        crew: { include: { host: true, driver: true } },
-        school: true,
-        city: true,
-        history: { orderBy: { createdAt: 'desc' } },
-      },
+        include: {
+          crew: { include: { host: true, driver: true } },
+          school: true,
+          city: true,
+          history: { orderBy: { createdAt: 'desc' } },
+        },
+      });
+
+      await tx.schoolComment.create({
+        data: {
+          schoolId: ev.schoolId,
+          authorId: user.sub,
+          type: 'RESCHEDULE',
+          text: `Подію "${ev.project}" перенесено на ${new Date(newDate).toLocaleDateString('uk-UA')} о ${newTime}`,
+        },
+      });
+
+      return ev;
     });
 
     const dateStr = new Date(newDate).toLocaleDateString('uk-UA', {

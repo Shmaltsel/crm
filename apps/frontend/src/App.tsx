@@ -45,6 +45,7 @@ const CalendarView = lazyWithRetry(() => import("./pages/CalendarView"));
 const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
 const Kindergartens = lazyWithRetry(() => import("./pages/Kindergartens"));
 const Analytics = lazyWithRetry(() => import("./pages/Analytics"));
+const AuditLog = lazyWithRetry(() => import("./pages/AuditLog"));
 const ReportsReview = lazyWithRetry(() => import("./features/reports/pages/ReportsReviewPage"));
 
 const PageLoader = () => (
@@ -163,6 +164,17 @@ function AppRoutes() {
                 <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER"]}>
                   <Suspense fallback={<PageLoader />}>
                     <Analytics />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="audit-log"
+              element={
+                <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER"]}>
+                  <Suspense fallback={<PageLoader />}>
+                    <AuditLog />
                   </Suspense>
                 </ProtectedRoute>
               }

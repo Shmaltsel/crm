@@ -29,6 +29,7 @@ model User {
   city           City?          @relation(fields: [cityId], references: [id])
   salaryRecords  SalaryRecord[]
   daysOff        DayOff[]
+  schoolComments SchoolComment[]
 
   @@index([role])
   @@index([cityId])
@@ -75,6 +76,7 @@ model School {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   events        Event[]
+  comments      SchoolComment[]
   city          City     @relation(fields: [cityId], references: [id])
 
   @@index([cityId])
@@ -342,6 +344,29 @@ enum SalaryStatus {
   PENDING
   PAID
   CANCELLED
+}
+
+enum CommentType {
+  NOTE
+  CALL
+  RESCHEDULE
+  CONFIRMATION
+  PROBLEM
+}
+
+model SchoolComment {
+  id        String      @id @default(cuid())
+  schoolId  String
+  authorId  String
+  type      CommentType
+  text      String
+  deletedAt DateTime?
+  createdAt DateTime    @default(now())
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@index([schoolId, createdAt])
 }
 
 enum EventStatus {
