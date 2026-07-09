@@ -1,55 +1,67 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+
+const CACHE_TTL = 300_000;
 
 @Injectable()
 export class AnalyticsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   async revenueByMonth(cityId?: string, projectId?: string, year?: number) {
     const yearFilter = year ?? new Date().getFullYear();
-    const where: Record<string, unknown> = {
-      date: {
-        gte: new Date(`${yearFilter}-01-01`),
-        lt: new Date(`${yearFilter + 1}-01-01`),
-      },
-      status: { in: ['REPORT', 'DONE'] },
-    };
-    if (cityId) where.cityId = cityId;
-    if (projectId) where.project = projectId;
+    const cacheKey = `analytics:revenueByMonth:${cityId ?? ''}:${projectId ?? ''}:${yearFilter}`;
+    const cached = await this.cacheManager.get<ReturnType<typeof this.revenueByMonth>>(cacheKey);
+    if (cached) return cached;
 
-    const events = await this.prisma.event.findMany({
-      where,
-      select: {
-        date: true,
-        report: {
-          select: { totalSum: true, remainderSum: true, schoolSum: true },
-        },
-      },
-    });
+    const conditions = Prisma.sql`
+      AND e.date >= ${new Date(`${yearFilter}-01-01`)}::date
+      AND e.date < ${new Date(`${yearFilter + 1}-01-01`)}::date
+      AND e.status IN ('REPORT', 'DONE')
+    `;
+    const cityCond = cityId ? Prisma.sql`AND e."cityId" = ${cityId}` : Prisma.empty;
+    const projectCond = projectId ? Prisma.sql`AND e.project = ${projectId}` : Prisma.empty;
 
-    const months = Array.from({ length: 12 }, (_, i) => {
-      const monthEvents = events.filter(
-        (e) => new Date(e.date).getMonth() === i,
-      );
+    type Row = { month: number; revenue: number; profit: number; events: bigint };
+    const rows = await this.prisma.$queryRaw<Row[]>`
+      SELECT
+        EXTRACT(MONTH FROM e.date)::int AS month,
+        COALESCE(SUM(r."totalSum"), 0)::float AS revenue,
+        COALESCE(SUM(r."remainderSum"), 0)::float AS profit,
+        COUNT(*)::bigint AS events
+      FROM "Event" e
+      LEFT JOIN "EventReport" r ON r."eventId" = e.id
+      WHERE 1=1 ${conditions} ${cityCond} ${projectCond}
+      GROUP BY month
+      ORDER BY month
+    `;
+
+    const monthMap = new Map(rows.map((r) => [r.month, r]));
+    const result = Array.from({ length: 12 }, (_, i) => {
+      const m = monthMap.get(i + 1);
       return {
         month: (i + 1).toString().padStart(2, '0'),
-        revenue: monthEvents.reduce(
-          (s, e) => s + Number(e.report?.totalSum ?? 0),
-          0,
-        ),
-        profit: monthEvents.reduce(
-          (s, e) => s + Number(e.report?.remainderSum ?? 0),
-          0,
-        ),
-        events: monthEvents.length,
+        revenue: m?.revenue ?? 0,
+        profit: m?.profit ?? 0,
+        events: Number(m?.events ?? 0),
       };
     });
 
-    return months;
+    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
+    return result;
   }
 
   async eventsByCity(year?: number) {
     const yearFilter = year ?? new Date().getFullYear();
+    const cacheKey = `analytics:eventsByCity:${yearFilter}`;
+    const cached = await this.cacheManager.get<ReturnType<typeof this.eventsByCity>>(cacheKey);
+    if (cached) return cached;
+
     const events = await this.prisma.event.groupBy({
       by: ['cityId'],
       where: {
@@ -66,62 +78,59 @@ export class AnalyticsService {
     });
     const cityMap = new Map(cities.map((c) => [c.id, c.name]));
 
-    return events.map((e) => ({
+    const result = events.map((e) => ({
       cityId: e.cityId,
       cityName: cityMap.get(e.cityId) ?? '—',
       events: e._count.id,
     }));
+
+    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
+    return result;
   }
 
   async profitByCity(cityId?: string, year?: number) {
     const yearFilter = year ?? new Date().getFullYear();
-    const where: Record<string, unknown> = {
-      date: {
-        gte: new Date(`${yearFilter}-01-01`),
-        lt: new Date(`${yearFilter + 1}-01-01`),
-      },
-      status: { in: ['REPORT', 'DONE'] },
-    };
-    if (cityId) where.cityId = cityId;
+    const cacheKey = `analytics:profitByCity:${cityId ?? ''}:${yearFilter}`;
+    const cached = await this.cacheManager.get<ReturnType<typeof this.profitByCity>>(cacheKey);
+    if (cached) return cached;
 
-    const events = await this.prisma.event.findMany({
-      where,
-      select: {
-        cityId: true,
-        report: {
-          select: { totalSum: true, schoolSum: true, remainderSum: true },
-        },
-      },
-    });
+    const conditions = Prisma.sql`
+      AND e.date >= ${new Date(`${yearFilter}-01-01`)}::date
+      AND e.date < ${new Date(`${yearFilter + 1}-01-01`)}::date
+      AND e.status IN ('REPORT', 'DONE')
+    `;
+    const cityCond = cityId ? Prisma.sql`AND e."cityId" = ${cityId}` : Prisma.empty;
 
-    const byCity = new Map<
-      string,
-      { revenue: number; profit: number; expenses: number; count: number }
-    >();
-    for (const e of events) {
-      const curr = byCity.get(e.cityId) ?? {
-        revenue: 0,
-        profit: 0,
-        expenses: 0,
-        count: 0,
-      };
-      curr.revenue += Number(e.report?.totalSum ?? 0);
-      curr.profit += Number(e.report?.remainderSum ?? 0);
-      curr.expenses += Number(e.report?.schoolSum ?? 0);
-      curr.count++;
-      byCity.set(e.cityId, curr);
-    }
+    type Row = { cityId: string; revenue: number; profit: number; expenses: number; count: bigint };
+    const rows = await this.prisma.$queryRaw<Row[]>`
+      SELECT
+        e."cityId",
+        COALESCE(SUM(r."totalSum"), 0)::float AS revenue,
+        COALESCE(SUM(r."remainderSum"), 0)::float AS profit,
+        COALESCE(SUM(r."schoolSum"), 0)::float AS expenses,
+        COUNT(*)::bigint AS count
+      FROM "Event" e
+      LEFT JOIN "EventReport" r ON r."eventId" = e.id
+      WHERE 1=1 ${conditions} ${cityCond}
+      GROUP BY e."cityId"
+    `;
 
     const cities = await this.prisma.city.findMany({
       select: { id: true, name: true },
     });
     const cityMap = new Map(cities.map((c) => [c.id, c.name]));
 
-    return Array.from(byCity.entries()).map(([cityId, data]) => ({
-      cityId,
-      cityName: cityMap.get(cityId) ?? '—',
-      ...data,
+    const result = rows.map((r) => ({
+      cityId: r.cityId,
+      cityName: cityMap.get(r.cityId) ?? '—',
+      revenue: r.revenue,
+      profit: r.profit,
+      expenses: r.expenses,
+      count: Number(r.count),
     }));
+
+    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
+    return result;
   }
 
   async salaryFund(month?: number, year?: number, cityId?: string) {
@@ -131,121 +140,110 @@ export class AnalyticsService {
     const start = new Date(y, m - 1, 1);
     const end = new Date(y, m, 1);
 
-    const where: Record<string, unknown> = {
-      createdAt: { gte: start, lt: end },
-      status: 'PAID',
-    };
-
-    const records = await this.prisma.salaryRecord.findMany({
-      where,
-      select: { amount: true, event: { select: { cityId: true } } },
-    });
-
-    let total = records.reduce((s, r) => s + Number(r.amount), 0);
-    const byCity: Record<string, number> = {};
+    const cacheKey = `analytics:salaryFund:${m}:${y}:${cityId ?? ''}`;
+    const cached = await this.cacheManager.get<ReturnType<typeof this.salaryFund>>(cacheKey);
+    if (cached) return cached;
 
     if (cityId) {
-      const filtered = records.filter((r) => r.event?.cityId === cityId);
-      total = filtered.reduce((s, r) => s + Number(r.amount), 0);
-    } else {
-      for (const r of records) {
-        const cid = r.event?.cityId ?? 'unknown';
-        byCity[cid] = (byCity[cid] ?? 0) + Number(r.amount);
-      }
+      const agg = await this.prisma.salaryRecord.aggregate({
+        where: {
+          createdAt: { gte: start, lt: end },
+          status: 'PAID',
+          event: { cityId },
+        },
+        _sum: { amount: true },
+      });
+      const result = {
+        total: Number(agg._sum.amount ?? 0),
+        month: m,
+        year: y,
+        byCity: undefined,
+      };
+      await this.cacheManager.set(cacheKey, result, CACHE_TTL);
+      return result;
     }
 
-    return {
-      total,
-      month: m,
-      year: y,
-      byCity: Object.keys(byCity).length ? byCity : undefined,
-    };
+    type Row = { cityId: string; total: number };
+    const rows = await this.prisma.$queryRaw<Row[]>`
+      SELECT
+        COALESCE(e."cityId", 'unknown') AS "cityId",
+        COALESCE(SUM(s."amount"), 0)::float AS total
+      FROM "SalaryRecord" s
+      LEFT JOIN "Event" e ON e.id = s."eventId"
+      WHERE s."createdAt" >= ${start} AND s."createdAt" < ${end} AND s.status = 'PAID'
+      GROUP BY e."cityId"
+    `;
+
+    const totalSum = rows.reduce((s, r) => s + r.total, 0);
+    const byCity: Record<string, number> = {};
+    for (const r of rows) byCity[r.cityId] = r.total;
+
+    const result = { total: totalSum, month: m, year: y, byCity };
+    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
+    return result;
   }
 
   async cityLeaderboard(metric?: string, year?: number) {
     const yearFilter = year ?? new Date().getFullYear();
-    const where: Record<string, unknown> = {
-      date: {
-        gte: new Date(`${yearFilter}-01-01`),
-        lt: new Date(`${yearFilter + 1}-01-01`),
-      },
-      status: { in: ['REPORT', 'DONE'] },
+    const cacheKey = `analytics:cityLeaderboard:${metric ?? ''}:${yearFilter}`;
+    const cached = await this.cacheManager.get<ReturnType<typeof this.cityLeaderboard>>(cacheKey);
+    if (cached) return cached;
+
+    const metricKey = metric ?? 'events';
+
+    type Row = {
+      cityId: string;
+      events: bigint;
+      revenue: number;
+      profit: number;
+      children: bigint;
+      schools: bigint;
     };
-
-    const events = await this.prisma.event.findMany({
-      where,
-      select: {
-        cityId: true,
-        schoolId: true,
-        childrenActual: true,
-        report: {
-          select: { totalSum: true, remainderSum: true, childrenCount: true },
-        },
-      },
-    });
-
-    const byCity = new Map<
-      string,
-      {
-        events: number;
-        revenue: number;
-        profit: number;
-        children: number;
-        schools: Set<string>;
-      }
-    >();
-    for (const e of events) {
-      const cityId = e.cityId;
-      if (!byCity.has(cityId))
-        byCity.set(cityId, {
-          events: 0,
-          revenue: 0,
-          profit: 0,
-          children: 0,
-          schools: new Set(),
-        });
-      const d = byCity.get(cityId)!;
-      d.events++;
-      d.revenue += Number(e.report?.totalSum ?? 0);
-      d.profit += Number(e.report?.remainderSum ?? 0);
-      d.children += Number(e.report?.childrenCount ?? e.childrenActual ?? 0);
-      d.schools.add(e.schoolId);
-    }
+    const rows = await this.prisma.$queryRaw<Row[]>`
+      SELECT
+        e."cityId",
+        COUNT(*)::bigint AS events,
+        COALESCE(SUM(r."totalSum"), 0)::float AS revenue,
+        COALESCE(SUM(r."remainderSum"), 0)::float AS profit,
+        COALESCE(SUM(COALESCE(r."childrenCount", e."childrenActual", 0)), 0)::bigint AS children,
+        COUNT(DISTINCT e."schoolId")::bigint AS schools
+      FROM "Event" e
+      LEFT JOIN "EventReport" r ON r."eventId" = e.id
+      WHERE e.date >= ${new Date(`${yearFilter}-01-01`)}::date
+        AND e.date < ${new Date(`${yearFilter + 1}-01-01`)}::date
+        AND e.status IN ('REPORT', 'DONE')
+      GROUP BY e."cityId"
+    `;
 
     const cities = await this.prisma.city.findMany({
       select: { id: true, name: true },
     });
     const cityMap = new Map(cities.map((c) => [c.id, c.name]));
 
-    const metricMap = {
-      events: 'events',
-      revenue: 'revenue',
-      profit: 'profit',
-      children: 'children',
-      schools: 'schools',
-    };
-    const sortKey = metricMap[metric as keyof typeof metricMap] || 'events';
-
-    const result = Array.from(byCity.entries())
-      .map(([cityId, data]) => ({
-        cityId,
-        cityName: cityMap.get(cityId) ?? '—',
-        events: data.events,
-        revenue: data.revenue,
-        profit: data.profit,
-        children: data.children,
-        schools: data.schools.size,
+    const result = rows
+      .map((r) => ({
+        cityId: r.cityId,
+        cityName: cityMap.get(r.cityId) ?? '—',
+        events: Number(r.events),
+        revenue: r.revenue,
+        profit: r.profit,
+        children: Number(r.children),
+        schools: Number(r.schools),
       }))
-      .sort(
-        (a, b) =>
-          (b[sortKey as keyof typeof a] as number) -
-          (a[sortKey as keyof typeof a] as number),
-      );
+      .sort((a, b) => {
+        const key = metricKey as keyof typeof a;
+        return Number(b[key]) - Number(a[key]);
+      });
 
+    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
     return result;
   }
 
   async kpiManagers() {
+    const cacheKey = 'analytics:kpiManagers';
+    const cached = await this.cacheManager.get<ReturnType<typeof this.kpiManagers>>(cacheKey);
+    if (cached) return cached;
+
     const managers = await this.prisma.eventReport.groupBy({
       by: ['approvedBy'],
       where: { status: 'APPROVED', approvedBy: { not: null } },
@@ -254,9 +252,7 @@ export class AnalyticsService {
       take: 10,
     });
 
-    const userIds = managers
-      .map((m) => m.approvedBy)
-      .filter(Boolean) as string[];
+    const userIds = managers.map((m) => m.approvedBy).filter(Boolean) as string[];
     const users = userIds.length
       ? await this.prisma.user.findMany({
           where: { id: { in: userIds } },
@@ -265,36 +261,46 @@ export class AnalyticsService {
       : [];
     const userMap = new Map(users.map((u) => [u.id, u.name]));
 
-    return managers.map((m) => ({
+    const result = managers.map((m) => ({
       userId: m.approvedBy,
       name: userMap.get(m.approvedBy!) ?? '—',
       approvedReports: m._count.id,
     }));
+
+    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
+    return result;
   }
 
   async kpiHosts() {
-    const events = await this.prisma.event.findMany({
-      where: {
-        status: { in: ['REPORT', 'DONE'] },
-        crew: { hostId: { not: null } },
-        report: { rating: { not: null } },
-      },
-      select: {
-        crew: { select: { hostId: true } },
-        report: { select: { rating: true } },
-      },
-    });
+    const cacheKey = 'analytics:kpiHosts';
+    const cached = await this.cacheManager.get<ReturnType<typeof this.kpiHosts>>(cacheKey);
+    if (cached) return cached;
 
-    const byHost = new Map<string, { totalRating: number; count: number }>();
-    for (const e of events) {
-      const hostId = e.crew!.hostId!;
-      if (!byHost.has(hostId)) byHost.set(hostId, { totalRating: 0, count: 0 });
-      const d = byHost.get(hostId)!;
-      d.totalRating += Number(e.report!.rating);
-      d.count++;
-    }
+    type Row = { hostId: string; avgRating: number; reportsCount: bigint };
+    const rows = await this.prisma.$queryRaw<Row[]>`
+      SELECT
+        e."crewId" as "hostId",
+        AVG(r.rating)::float AS "avgRating",
+        COUNT(*)::bigint AS "reportsCount"
+      FROM "Event" e
+      JOIN "EventReport" r ON r."eventId" = e.id
+      WHERE e.status IN ('REPORT', 'DONE')
+        AND r.rating IS NOT NULL
+      GROUP BY e."crewId"
+      ORDER BY "avgRating" DESC
+      LIMIT 10
+    `;
 
-    const userIds = Array.from(byHost.keys());
+    const crewIds = rows.map((r) => r.hostId).filter(Boolean);
+    const crews = crewIds.length
+      ? await this.prisma.crew.findMany({
+          where: { id: { in: crewIds } },
+          select: { id: true, hostId: true },
+        })
+      : [];
+    const crewMap = new Map(crews.map((c) => [c.id, c.hostId]));
+
+    const userIds = [...new Set(crews.map((c) => c.hostId).filter(Boolean) as string[])];
     const users = userIds.length
       ? await this.prisma.user.findMany({
           where: { id: { in: userIds } },
@@ -303,112 +309,96 @@ export class AnalyticsService {
       : [];
     const userMap = new Map(users.map((u) => [u.id, u.name]));
 
-    return Array.from(byHost.entries())
-      .map(([userId, data]) => ({
-        userId,
-        name: userMap.get(userId) ?? '—',
-        avgRating: Math.round((data.totalRating / data.count) * 100) / 100,
-        reportsCount: data.count,
-      }))
-      .sort((a, b) => b.avgRating - a.avgRating)
-      .slice(0, 10);
+    const result = rows.map((r) => ({
+      userId: crewMap.get(r.hostId) ?? r.hostId,
+      name: userMap.get(crewMap.get(r.hostId) ?? '') ?? '—',
+      avgRating: Math.round(r.avgRating * 100) / 100,
+      reportsCount: Number(r.reportsCount),
+    }));
+
+    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
+    return result;
   }
 
   async kpiProjects() {
+    const cacheKey = 'analytics:kpiProjects';
+    const cached = await this.cacheManager.get<ReturnType<typeof this.kpiProjects>>(cacheKey);
+    if (cached) return cached;
+
     const year = new Date().getFullYear();
-    const projects = await this.prisma.event.groupBy({
-      by: ['project'],
-      where: {
-        date: {
-          gte: new Date(`${year}-01-01`),
-          lt: new Date(`${year + 1}-01-01`),
-        },
-        status: { in: ['REPORT', 'DONE'] },
-      },
-      _count: { id: true },
-      _sum: { childrenActual: true },
-      orderBy: { _count: { id: 'desc' } },
-      take: 10,
-    });
 
-    const projectNames = projects.map((p) => p.project);
-    const revenueByProject = new Map<string, number>();
-    if (projectNames.length) {
-      const events = await this.prisma.event.findMany({
-        where: {
-          project: { in: projectNames },
-          status: { in: ['REPORT', 'DONE'] },
-        },
-        select: {
-          project: true,
-          report: { select: { totalSum: true, remainderSum: true } },
-        },
-      });
-      for (const e of events) {
-        const curr = revenueByProject.get(e.project) ?? 0;
-        revenueByProject.set(
-          e.project,
-          curr + Number(e.report?.remainderSum ?? 0),
-        );
-      }
-    }
+    type Row = { project: string; eventsCount: bigint; childrenTotal: bigint; profit: number };
+    const rows = await this.prisma.$queryRaw<Row[]>`
+      SELECT
+        e.project,
+        COUNT(*)::bigint AS "eventsCount",
+        COALESCE(SUM(e."childrenActual"), 0)::bigint AS "childrenTotal",
+        COALESCE(SUM(r."remainderSum"), 0)::float AS profit
+      FROM "Event" e
+      LEFT JOIN "EventReport" r ON r."eventId" = e.id
+      WHERE e.date >= ${new Date(`${year}-01-01`)}::date
+        AND e.date < ${new Date(`${year + 1}-01-01`)}::date
+        AND e.status IN ('REPORT', 'DONE')
+      GROUP BY e.project
+      ORDER BY "eventsCount" DESC
+      LIMIT 10
+    `;
 
-    return projects.map((p) => ({
-      project: p.project,
-      eventsCount: p._count.id,
-      childrenTotal: p._sum.childrenActual ?? 0,
-      profit: revenueByProject.get(p.project) ?? 0,
+    const result = rows.map((r) => ({
+      project: r.project,
+      eventsCount: Number(r.eventsCount),
+      childrenTotal: Number(r.childrenTotal),
+      profit: r.profit,
     }));
+
+    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
+    return result;
   }
 
   async roi(cityId?: string, year?: number) {
     const y = year ?? new Date().getFullYear();
+    const cacheKey = `analytics:roi:${cityId ?? ''}:${y}`;
+    const cached = await this.cacheManager.get<ReturnType<typeof this.roi>>(cacheKey);
+    if (cached) return cached;
+
     const start = new Date(y, 0, 1);
     const end = new Date(y + 1, 0, 1);
 
-    const where: Record<string, unknown> = {
-      date: { gte: start, lt: end },
-      status: { in: ['REPORT', 'DONE'] },
-    };
-    if (cityId) where.cityId = cityId;
+    const cityCond = cityId ? Prisma.sql`AND e."cityId" = ${cityId}` : Prisma.empty;
 
-    const events = await this.prisma.event.findMany({
-      where,
-      select: {
-        report: {
-          select: { totalSum: true, schoolSum: true, remainderSum: true },
-        },
-      },
-    });
+    type EventAgg = { totalRevenue: number; schoolSum: number; remainderSum: number };
+    const [eventAgg] = await this.prisma.$queryRaw<EventAgg[]>`
+      SELECT
+        COALESCE(SUM(r."totalSum"), 0)::float AS "totalRevenue",
+        COALESCE(SUM(r."schoolSum"), 0)::float AS "schoolSum",
+        COALESCE(SUM(r."remainderSum"), 0)::float AS "remainderSum"
+      FROM "Event" e
+      JOIN "EventReport" r ON r."eventId" = e.id
+      WHERE e.date >= ${start}::date AND e.date < ${end}::date AND e.status IN ('REPORT', 'DONE')
+      ${cityCond}
+    `;
 
-    const totalRevenue = events.reduce(
-      (s, e) => s + Number(e.report?.totalSum ?? 0),
-      0,
-    );
-    const totalSchoolSum = events.reduce(
-      (s, e) => s + Number(e.report?.schoolSum ?? 0),
-      0,
-    );
-
-    const salaryRecords = await this.prisma.salaryRecord.findMany({
+    const salaryAgg = await this.prisma.salaryRecord.aggregate({
       where: { createdAt: { gte: start, lt: end }, status: 'PAID' },
-      select: { amount: true },
+      _sum: { amount: true },
     });
-    const salaryExpenses = salaryRecords.reduce(
-      (s, r) => s + Number(r.amount),
-      0,
-    );
 
-    const totalExpenses = totalSchoolSum + salaryExpenses;
+    const totalRevenue = eventAgg.totalRevenue;
+    const schoolSum = eventAgg.schoolSum;
+    const salaryExpenses = Number(salaryAgg._sum.amount ?? 0);
+    const totalExpenses = schoolSum + salaryExpenses;
     const profit = totalRevenue - totalExpenses;
     const roiValue = totalExpenses > 0 ? (profit / totalExpenses) * 100 : 0;
 
-    return {
+    const result = {
       totalRevenue,
       totalExpenses,
       salaryExpenses,
       profit,
       roi: Math.round(roiValue * 100) / 100,
     };
+
+    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
+    return result;
   }
 }
