@@ -30,7 +30,6 @@ const CityLeaderboard = lazyWithRetry(() => import("./pages/CityLeaderboard"));
 
 const Dashboard = TAB_PAGE_COMPONENTS["/dashboard"];
 const Schools = TAB_PAGE_COMPONENTS["/schools"];
-const Kindergartens = TAB_PAGE_COMPONENTS["/kindergartens"];
 const Finance = TAB_PAGE_COMPONENTS["/finance"];
 const CalendarView = TAB_PAGE_COMPONENTS["/calendar"];
 const Employees = TAB_PAGE_COMPONENTS["/employees"];
@@ -183,7 +182,7 @@ function AppRoutes() {
             path="kindergartens"
             element={
               <Suspense fallback={<PageLoader />}>
-                <Kindergartens />
+                <Schools />
               </Suspense>
             }
           />

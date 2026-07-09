@@ -7,6 +7,8 @@ import {
   lazy,
   Suspense,
 } from "react";
+import { useSearchParams, useLocation } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
 import {
@@ -22,8 +24,16 @@ import VirtualSchoolList from "../components/VirtualSchoolList";
 import { SchoolCard } from "../components/schools/SchoolMobileList";
 import type { SchoolContact } from "../types";
 import { useAuth } from "../context/AuthContext";
-import { Download } from "lucide-react";
+import { Download, ArrowLeftRight } from "lucide-react";
 import { PIPELINE_STAGES } from "../constants/pipelineStages";
+
+const INSTITUTION_TYPES = {
+  school: { apiType: "Школа" as const, label: "Школи", countLabel: "шкіл" },
+  kindergarten: { apiType: "Садочок" as const, label: "Садочки", countLabel: "садочків" },
+} as const;
+
+type InstitutionType = keyof typeof INSTITUTION_TYPES;
+
 interface NewSchoolPayload {
   name: string;
   cityId: string;
@@ -44,12 +54,29 @@ interface City {
 
 export default function Schools() {
   const { selectedCity } = useSelectedCity();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { user } = useAuth();
   const userRole = user?.role ?? null;
   const qc = useQueryClient();
+
+  const institutionType = useMemo<InstitutionType>(() => {
+    const fromUrl = searchParams.get("type");
+    if (fromUrl === "kindergarten") return "kindergarten";
+    if (fromUrl === "school") return "school";
+    if (location.pathname.includes("kindergarten")) return "kindergarten";
+    return "school";
+  }, [searchParams, location.pathname]);
+
+  const typeInfo = INSTITUTION_TYPES[institutionType];
+
+  const toggleType = useCallback(() => {
+    const next = institutionType === "school" ? "kindergarten" : "school";
+    setSearchParams({ type: next }, { replace: true });
+  }, [institutionType, setSearchParams]);
   const [form, setForm] = useState({
     name: "",
     cityId: "",
@@ -83,7 +110,7 @@ export default function Schools() {
     mutationFn: (cityId: string) =>
       api.post(
         "/schools/bulk-import",
-        { cityId, type: "Школа" },
+        { cityId, type: typeInfo.apiType },
         { timeout: 120000 },
       ),
     onSuccess: (res) => {
@@ -104,11 +131,11 @@ export default function Schools() {
     () => ({
       search: debouncedQuery || undefined,
       cityId: selectedCity.id || undefined,
-      type: "Школа" as const,
+      type: typeInfo.apiType,
       stage: (activeFilter as any) || undefined,
       size: (sizeFilter as any) || undefined,
     }),
-    [debouncedQuery, selectedCity.id, activeFilter, sizeFilter],
+    [debouncedQuery, selectedCity.id, activeFilter, sizeFilter, typeInfo],
   );
 
   const {
@@ -120,7 +147,7 @@ export default function Schools() {
   } = useSchools(schoolFilters);
   const { data: stats } = useSchoolStats({
     cityId: selectedCity.id || undefined,
-    type: "Школа",
+    type: typeInfo.apiType,
     stage: (activeFilter as any) || undefined,
   });
   const { data: cities = [] } = useCities();
@@ -254,16 +281,30 @@ export default function Schools() {
       {/* Шапка */}
       <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-content-primary leading-tight">
-            Школи
+          <h1
+            onClick={toggleType}
+            className="text-2xl font-bold tracking-tight text-content-primary leading-tight cursor-pointer select-none group inline-flex items-center gap-1.5"
+          >
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={institutionType}
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 6 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+              >
+                {typeInfo.label}
+              </motion.span>
+            </AnimatePresence>
+            <ArrowLeftRight className="w-4 h-4 text-content-muted/50 group-hover:text-content-muted transition-colors duration-200 shrink-0" />
             {selectedCity.id && (
-              <span className="ml-2 text-sm font-normal text-brand">
+              <span className="ml-1 text-sm font-normal text-brand">
                 · {selectedCity.name}
               </span>
             )}
           </h1>
           <p className="text-sm text-content-muted mt-0.5">
-            {filteredSchools.length} шкіл у місті
+            {filteredSchools.length} {typeInfo.countLabel} у місті
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
@@ -333,7 +374,7 @@ export default function Schools() {
             onFilterChange={setActiveFilter}
             sizeFilter={sizeFilter}
             onSizeFilterChange={setSizeFilter}
-            schoolType="Школа"
+            schoolType={typeInfo.apiType}
           />
         </Suspense>
       </div>
