@@ -181,7 +181,7 @@ export class ReportsService {
         .catch(() => {});
     }
 
-    const notifyUserId = report.event.responsibleId || report.event.cityId;
+    const notifyUserId = report.event.responsibleId || report.event.city.managerId;
     if (notifyUserId) {
       this.notificationsService
         .create(notifyUserId, 'REPORT_SUBMITTED', {
