@@ -509,6 +509,7 @@ export default function SchoolProfile() {
                       data={currentEvent.preparation || {}}
                       onUpdate={handleUpdatePreparation}
                       onOpenCrewModal={() => setIsCrewModalOpen(true)}
+                      project={currentEvent.project}
                     />
                   </Suspense>
                 )}

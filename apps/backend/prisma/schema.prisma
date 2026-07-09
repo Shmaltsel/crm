@@ -378,6 +378,7 @@ model InventoryItem {
   sku          String?
   category     String   @default("Інше")
   unit         String   @default("шт")
+  project      String?
   minStock     Int      @default(5)
   currentStock Int      @default(0)
   notes        String?
@@ -393,6 +394,7 @@ model InventoryItem {
   @@index([name])
   @@index([category])
   @@index([cityId])
+  @@index([project])
 }
 
 model InventoryUsage {

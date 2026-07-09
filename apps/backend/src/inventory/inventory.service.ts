@@ -17,6 +17,7 @@ export class InventoryService {
     sku?: string;
     category?: string;
     unit?: string;
+    project?: string;
     minStock?: number;
     currentStock?: number;
     notes?: string;
@@ -29,6 +30,7 @@ export class InventoryService {
         sku: dto.sku,
         category: dto.category ?? 'Інше',
         unit: dto.unit ?? 'шт',
+        project: dto.project,
         minStock: dto.minStock ?? 5,
         currentStock: dto.currentStock ?? 0,
         notes: dto.notes,
@@ -90,6 +92,7 @@ export class InventoryService {
       sku?: string;
       category?: string;
       unit?: string;
+      project?: string;
       minStock?: number;
       currentStock?: number;
       notes?: string;
@@ -113,6 +116,14 @@ export class InventoryService {
 
     await this.prisma.inventoryUsage.deleteMany({ where: { itemId: id } });
     return this.prisma.inventoryItem.delete({ where: { id } });
+  }
+
+  async findByProject(project: string) {
+    return this.prisma.inventoryItem.findMany({
+      where: { project },
+      orderBy: { name: 'asc' },
+      include: { city: true, school: true },
+    });
   }
 
   async addStock(id: string, quantity: number) {

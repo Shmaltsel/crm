@@ -290,6 +290,7 @@ export interface InventoryItem {
   sku: string | null;
   category: string;
   unit: string;
+  project: string | null;
   minStock: number;
   currentStock: number;
   notes: string | null;
@@ -306,6 +307,7 @@ export interface CreateInventoryPayload {
   sku?: string;
   category?: string;
   unit?: string;
+  project?: string;
   minStock?: number;
   currentStock?: number;
   notes?: string;

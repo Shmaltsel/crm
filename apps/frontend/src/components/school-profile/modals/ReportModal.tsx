@@ -248,7 +248,7 @@ export default function ReportModal({
     showingsCount: 0,
     totalSum: 0,
     schoolPercentage: 20,
-    rating: 8,
+    rating: 5,
   });
 
   const [expenses, setExpenses] = useState<Expense[]>([]);

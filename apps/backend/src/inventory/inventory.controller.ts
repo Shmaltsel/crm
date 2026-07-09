@@ -59,6 +59,13 @@ export class InventoryController {
     return this.inventoryService.findLowStock();
   }
 
+  @ApiOperation({ summary: 'Список товарів за проєктом' })
+  @ApiQuery({ name: 'project', required: true })
+  @Get('by-project')
+  findByProject(@Query('project') project: string) {
+    return this.inventoryService.findByProject(project);
+  }
+
   @ApiOperation({ summary: 'Створити товар' })
   @Post()
   @Roles('SUPERADMIN', 'OWNER')
@@ -69,6 +76,7 @@ export class InventoryController {
       sku?: string;
       category?: string;
       unit?: string;
+      project?: string;
       minStock?: number;
       currentStock?: number;
       notes?: string;
@@ -90,6 +98,7 @@ export class InventoryController {
       sku?: string;
       category?: string;
       unit?: string;
+      project?: string;
       minStock?: number;
       currentStock?: number;
       notes?: string;

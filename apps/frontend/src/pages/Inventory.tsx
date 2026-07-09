@@ -66,7 +66,7 @@ export default function InventoryPage() {
     setModalOpen(true);
   };
 
-  const handleSave = async (data: { name: string; sku?: string; category: string; unit: string; minStock: number; currentStock: number; notes?: string }) => {
+  const handleSave = async (data: { name: string; category: string; project?: string; minStock: number; currentStock: number; notes?: string }) => {
     if (editItem) {
       await updateItem.mutateAsync({ id: editItem.id, ...data });
     } else {
@@ -99,7 +99,7 @@ export default function InventoryPage() {
       </div>
       <div className="flex items-center gap-3 text-xs text-slate-500">
         <span className="bg-slate-100 px-2 py-0.5 rounded">{item.category}</span>
-        <span>{item.unit}</span>
+        {item.project && <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded">{item.project}</span>}
         {item.city && <span>{item.city.name}</span>}
       </div>
       <div className="flex items-center gap-2 pt-1">
@@ -196,9 +196,8 @@ export default function InventoryPage() {
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50">
                   <th className="text-left px-4 py-3 font-semibold text-slate-600">Назва</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Артикул</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600">Категорія</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Од.</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Проєкт</th>
                   <th className="text-center px-4 py-3 font-semibold text-slate-600">На складі</th>
                   <th className="text-center px-4 py-3 font-semibold text-slate-600">Мін.</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600">Місто</th>
@@ -209,9 +208,8 @@ export default function InventoryPage() {
                 {items.map((item) => (
                   <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50/50">
                     <td className="px-4 py-3 font-medium text-slate-800">{item.name}</td>
-                    <td className="px-4 py-3 text-slate-500">{item.sku || "—"}</td>
                     <td className="px-4 py-3 text-slate-500">{item.category}</td>
-                    <td className="px-4 py-3 text-slate-500">{item.unit}</td>
+                    <td className="px-4 py-3 text-slate-500">{item.project || "—"}</td>
                     <td className="px-4 py-3 text-center">
                       <StockBadge current={item.currentStock} min={item.minStock} />
                     </td>

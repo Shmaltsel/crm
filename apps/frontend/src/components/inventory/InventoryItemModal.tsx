@@ -4,12 +4,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Modal } from "../ui/Modal";
 import type { InventoryItem } from "../../types";
+import { useProjects } from "../../hooks/useEmployees";
 
 const schema = z.object({
   name: z.string().min(1, "Введіть назву товару"),
-  sku: z.string().optional().default(""),
   category: z.string().min(1, "Введіть категорію"),
-  unit: z.string().min(1, "Введіть одиницю виміру"),
+  project: z.string().optional().default(""),
   minStock: z.coerce.number().min(0, "Мінімум не може бути від'ємним"),
   currentStock: z.coerce.number().min(0, "Кількість не може бути від'ємною"),
   notes: z.string().optional().default(""),
@@ -25,6 +25,8 @@ interface InventoryItemModalProps {
 }
 
 export function InventoryItemModal({ isOpen, onClose, onSave, item }: InventoryItemModalProps) {
+  const { data: projects } = useProjects();
+
   const {
     register,
     handleSubmit,
@@ -34,9 +36,8 @@ export function InventoryItemModal({ isOpen, onClose, onSave, item }: InventoryI
     resolver: zodResolver(schema),
     defaultValues: {
       name: "",
-      sku: "",
       category: "Інше",
-      unit: "шт",
+      project: "",
       minStock: 5,
       currentStock: 0,
       notes: "",
@@ -47,9 +48,8 @@ export function InventoryItemModal({ isOpen, onClose, onSave, item }: InventoryI
     if (isOpen) {
       reset({
         name: item?.name ?? "",
-        sku: item?.sku ?? "",
         category: item?.category ?? "Інше",
-        unit: item?.unit ?? "шт",
+        project: item?.project ?? "",
         minStock: item?.minStock ?? 5,
         currentStock: item?.currentStock ?? 0,
         notes: item?.notes ?? "",
@@ -72,16 +72,16 @@ export function InventoryItemModal({ isOpen, onClose, onSave, item }: InventoryI
             {errors.category && <p className="text-xs text-red-500 mt-1">{errors.category.message}</p>}
           </div>
           <div>
-            <label className="block text-sm mb-1 text-slate-600">Артикул</label>
-            <input {...register("sku")} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+            <label className="block text-sm mb-1 text-slate-600">Проєкт</label>
+            <select {...register("project")} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+              <option value="">— Без проєкту —</option>
+              {projects?.map((p) => (
+                <option key={p.id} value={p.name}>{p.name}</option>
+              ))}
+            </select>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm mb-1 text-slate-600">Одиниця *</label>
-            <input {...register("unit")} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-            {errors.unit && <p className="text-xs text-red-500 mt-1">{errors.unit.message}</p>}
-          </div>
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm mb-1 text-slate-600">Мінімум</label>
             <input type="number" {...register("minStock")} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />

@@ -52,6 +52,18 @@ export function useDeleteInventoryItem() {
   });
 }
 
+export function useInventoryByProject(project: string | undefined) {
+  return useQuery({
+    queryKey: ["inventory", "by-project", project],
+    queryFn: () =>
+      api
+        .get<InventoryItem[]>(`/inventory/by-project?project=${encodeURIComponent(project ?? "")}`)
+        .then((r) => r.data),
+    enabled: !!project,
+    staleTime: 30 * 1000,
+  });
+}
+
 export function useAddStock() {
   const qc = useQueryClient();
   return useMutation({

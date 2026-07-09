@@ -6,19 +6,23 @@ import {
   getNextPreparationStatus,
   type PreparationStatus,
 } from "../../utils/preparationStatus";
+import { useInventoryByProject } from "../../hooks/useInventory";
 
 interface PreparationProps {
   data: Partial<EventPreparationData>;
   onUpdate: (field: string, status: PreparationStatus) => void;
   onOpenCrewModal: () => void;
+  project?: string;
 }
 
 export default memo(function EventPreparation({
   data,
   onUpdate,
   onOpenCrewModal,
+  project,
 }: PreparationProps) {
   const [optimistic, setOptimistic] = useState<Record<string, string>>({});
+  const { data: projectItems } = useInventoryByProject(project);
 
   const tasks = [
     { key: "assignCrew", label: "Призначити екіпаж" },
@@ -94,6 +98,24 @@ export default memo(function EventPreparation({
           );
         })}
       </div>
+
+      {project && projectItems && projectItems.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-slate-100">
+          <h4 className="text-sm font-semibold text-slate-700 mb-2">
+            Предмети для проєкту «{project}»
+          </h4>
+          <div className="space-y-1.5">
+            {projectItems.map((item) => (
+              <div key={item.id} className="flex items-center justify-between text-sm py-1">
+                <span className="text-slate-600">{item.name}</span>
+                <span className="text-xs text-slate-400">
+                  {item.currentStock} {item.unit}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 });
