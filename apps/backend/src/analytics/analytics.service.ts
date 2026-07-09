@@ -16,7 +16,10 @@ export class AnalyticsService {
   async revenueByMonth(cityId?: string, projectId?: string, year?: number) {
     const yearFilter = year ?? new Date().getFullYear();
     const cacheKey = `analytics:revenueByMonth:${cityId ?? ''}:${projectId ?? ''}:${yearFilter}`;
-    const cached = await this.cacheManager.get<ReturnType<typeof this.revenueByMonth>>(cacheKey);
+    const cached =
+      await this.cacheManager.get<ReturnType<typeof this.revenueByMonth>>(
+        cacheKey,
+      );
     if (cached) return cached;
 
     const conditions = Prisma.sql`
@@ -24,10 +27,19 @@ export class AnalyticsService {
       AND e.date < ${new Date(`${yearFilter + 1}-01-01`)}::date
       AND e.status IN ('REPORT', 'DONE')
     `;
-    const cityCond = cityId ? Prisma.sql`AND e."cityId" = ${cityId}` : Prisma.empty;
-    const projectCond = projectId ? Prisma.sql`AND e.project = ${projectId}` : Prisma.empty;
+    const cityCond = cityId
+      ? Prisma.sql`AND e."cityId" = ${cityId}`
+      : Prisma.empty;
+    const projectCond = projectId
+      ? Prisma.sql`AND e.project = ${projectId}`
+      : Prisma.empty;
 
-    type Row = { month: number; revenue: number; profit: number; events: bigint };
+    type Row = {
+      month: number;
+      revenue: number;
+      profit: number;
+      events: bigint;
+    };
     const rows = await this.prisma.$queryRaw<Row[]>`
       SELECT
         EXTRACT(MONTH FROM e.date)::int AS month,
@@ -59,7 +71,10 @@ export class AnalyticsService {
   async eventsByCity(year?: number) {
     const yearFilter = year ?? new Date().getFullYear();
     const cacheKey = `analytics:eventsByCity:${yearFilter}`;
-    const cached = await this.cacheManager.get<ReturnType<typeof this.eventsByCity>>(cacheKey);
+    const cached =
+      await this.cacheManager.get<ReturnType<typeof this.eventsByCity>>(
+        cacheKey,
+      );
     if (cached) return cached;
 
     const events = await this.prisma.event.groupBy({
@@ -91,7 +106,10 @@ export class AnalyticsService {
   async profitByCity(cityId?: string, year?: number) {
     const yearFilter = year ?? new Date().getFullYear();
     const cacheKey = `analytics:profitByCity:${cityId ?? ''}:${yearFilter}`;
-    const cached = await this.cacheManager.get<ReturnType<typeof this.profitByCity>>(cacheKey);
+    const cached =
+      await this.cacheManager.get<ReturnType<typeof this.profitByCity>>(
+        cacheKey,
+      );
     if (cached) return cached;
 
     const conditions = Prisma.sql`
@@ -99,9 +117,17 @@ export class AnalyticsService {
       AND e.date < ${new Date(`${yearFilter + 1}-01-01`)}::date
       AND e.status IN ('REPORT', 'DONE')
     `;
-    const cityCond = cityId ? Prisma.sql`AND e."cityId" = ${cityId}` : Prisma.empty;
+    const cityCond = cityId
+      ? Prisma.sql`AND e."cityId" = ${cityId}`
+      : Prisma.empty;
 
-    type Row = { cityId: string; revenue: number; profit: number; expenses: number; count: bigint };
+    type Row = {
+      cityId: string;
+      revenue: number;
+      profit: number;
+      expenses: number;
+      count: bigint;
+    };
     const rows = await this.prisma.$queryRaw<Row[]>`
       SELECT
         e."cityId",
@@ -141,7 +167,8 @@ export class AnalyticsService {
     const end = new Date(y, m, 1);
 
     const cacheKey = `analytics:salaryFund:${m}:${y}:${cityId ?? ''}`;
-    const cached = await this.cacheManager.get<ReturnType<typeof this.salaryFund>>(cacheKey);
+    const cached =
+      await this.cacheManager.get<ReturnType<typeof this.salaryFund>>(cacheKey);
     if (cached) return cached;
 
     if (cityId) {
@@ -186,7 +213,10 @@ export class AnalyticsService {
   async cityLeaderboard(metric?: string, year?: number) {
     const yearFilter = year ?? new Date().getFullYear();
     const cacheKey = `analytics:cityLeaderboard:${metric ?? ''}:${yearFilter}`;
-    const cached = await this.cacheManager.get<ReturnType<typeof this.cityLeaderboard>>(cacheKey);
+    const cached =
+      await this.cacheManager.get<ReturnType<typeof this.cityLeaderboard>>(
+        cacheKey,
+      );
     if (cached) return cached;
 
     const metricKey = metric ?? 'events';
@@ -241,7 +271,10 @@ export class AnalyticsService {
 
   async kpiManagers() {
     const cacheKey = 'analytics:kpiManagers';
-    const cached = await this.cacheManager.get<ReturnType<typeof this.kpiManagers>>(cacheKey);
+    const cached =
+      await this.cacheManager.get<ReturnType<typeof this.kpiManagers>>(
+        cacheKey,
+      );
     if (cached) return cached;
 
     const managers = await this.prisma.eventReport.groupBy({
@@ -252,7 +285,9 @@ export class AnalyticsService {
       take: 10,
     });
 
-    const userIds = managers.map((m) => m.approvedBy).filter(Boolean) as string[];
+    const userIds = managers
+      .map((m) => m.approvedBy)
+      .filter(Boolean) as string[];
     const users = userIds.length
       ? await this.prisma.user.findMany({
           where: { id: { in: userIds } },
@@ -273,7 +308,8 @@ export class AnalyticsService {
 
   async kpiHosts() {
     const cacheKey = 'analytics:kpiHosts';
-    const cached = await this.cacheManager.get<ReturnType<typeof this.kpiHosts>>(cacheKey);
+    const cached =
+      await this.cacheManager.get<ReturnType<typeof this.kpiHosts>>(cacheKey);
     if (cached) return cached;
 
     type Row = { hostId: string; avgRating: number; reportsCount: bigint };
@@ -300,7 +336,9 @@ export class AnalyticsService {
       : [];
     const crewMap = new Map(crews.map((c) => [c.id, c.hostId]));
 
-    const userIds = [...new Set(crews.map((c) => c.hostId).filter(Boolean) as string[])];
+    const userIds = [
+      ...new Set(crews.map((c) => c.hostId).filter(Boolean) as string[]),
+    ];
     const users = userIds.length
       ? await this.prisma.user.findMany({
           where: { id: { in: userIds } },
@@ -322,12 +360,20 @@ export class AnalyticsService {
 
   async kpiProjects() {
     const cacheKey = 'analytics:kpiProjects';
-    const cached = await this.cacheManager.get<ReturnType<typeof this.kpiProjects>>(cacheKey);
+    const cached =
+      await this.cacheManager.get<ReturnType<typeof this.kpiProjects>>(
+        cacheKey,
+      );
     if (cached) return cached;
 
     const year = new Date().getFullYear();
 
-    type Row = { project: string; eventsCount: bigint; childrenTotal: bigint; profit: number };
+    type Row = {
+      project: string;
+      eventsCount: bigint;
+      childrenTotal: bigint;
+      profit: number;
+    };
     const rows = await this.prisma.$queryRaw<Row[]>`
       SELECT
         e.project,
@@ -358,15 +404,22 @@ export class AnalyticsService {
   async roi(cityId?: string, year?: number) {
     const y = year ?? new Date().getFullYear();
     const cacheKey = `analytics:roi:${cityId ?? ''}:${y}`;
-    const cached = await this.cacheManager.get<ReturnType<typeof this.roi>>(cacheKey);
+    const cached =
+      await this.cacheManager.get<ReturnType<typeof this.roi>>(cacheKey);
     if (cached) return cached;
 
     const start = new Date(y, 0, 1);
     const end = new Date(y + 1, 0, 1);
 
-    const cityCond = cityId ? Prisma.sql`AND e."cityId" = ${cityId}` : Prisma.empty;
+    const cityCond = cityId
+      ? Prisma.sql`AND e."cityId" = ${cityId}`
+      : Prisma.empty;
 
-    type EventAgg = { totalRevenue: number; schoolSum: number; remainderSum: number };
+    type EventAgg = {
+      totalRevenue: number;
+      schoolSum: number;
+      remainderSum: number;
+    };
     const [eventAgg] = await this.prisma.$queryRaw<EventAgg[]>`
       SELECT
         COALESCE(SUM(r."totalSum"), 0)::float AS "totalRevenue",

@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 import { NotificationsService } from '../notifications/notifications.service';
+import { TelegramService } from '../telegram/telegram.service';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { RevisionDto } from './dto/revision.dto';
@@ -27,6 +28,7 @@ export class ReportsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
+    private readonly telegramService: TelegramService,
   ) {}
 
   private async assertCrewMember(
@@ -140,16 +142,57 @@ export class ReportsService {
   async submit(id: string, user: JwtUser) {
     const report = await this.prisma.eventReport.findUnique({
       where: { id },
-      include: { event: { include: { crew: true } } },
+      include: {
+        event: {
+          include: {
+            crew: true,
+            school: { select: { name: true } },
+            city: {
+              include: {
+                manager: { select: { telegramChatId: true, telegramId: true } },
+              },
+            },
+          },
+        },
+      },
     });
     if (!report) throw new NotFoundException('report.notFound');
     this.assertTransition(report.status, 'SUBMITTED');
     await this.assertReportOwner(id, user.sub, report.eventId);
 
-    return this.prisma.eventReport.update({
+    const updated = await this.prisma.eventReport.update({
       where: { id },
       data: { status: 'SUBMITTED', submittedAt: new Date() },
     });
+
+    const manager = report.event.city.manager;
+    const chatId =
+      manager?.telegramChatId ||
+      (manager?.telegramId && /^\d+$/.test(manager.telegramId)
+        ? manager.telegramId
+        : null);
+    if (chatId) {
+      const schoolName = report.event.school?.name || 'Невідома школа';
+      this.telegramService
+        .sendMessage(
+          chatId,
+          `🚨 Новий звіт потребує затвердження: ${schoolName}`,
+        )
+        .catch(() => {});
+    }
+
+    const notifyUserId = report.event.responsibleId || report.event.cityId;
+    if (notifyUserId) {
+      this.notificationsService
+        .create(notifyUserId, 'REPORT_SUBMITTED', {
+          eventId: report.eventId,
+          schoolName: report.event.school?.name,
+          title: 'Звіт надіслано на затвердження',
+        })
+        .catch(() => {});
+    }
+
+    return updated;
   }
 
   async approve(id: string, user: JwtUser) {
@@ -183,7 +226,8 @@ export class ReportsService {
       }),
     ]);
 
-    const notifyUserId = report.event.responsibleId || report.event.city.managerId;
+    const notifyUserId =
+      report.event.responsibleId || report.event.city.managerId;
     if (notifyUserId) {
       this.notificationsService
         .create(notifyUserId, 'REPORT_APPROVED', {

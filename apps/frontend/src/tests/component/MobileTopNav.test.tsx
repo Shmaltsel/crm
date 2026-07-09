@@ -22,9 +22,9 @@ function Wrapper({ children }: { children: ReactNode }) {
 }
 
 describe("MobileTopNav", () => {
-  it("рендерить назву СВІТЛО ЗНАНЬ", () => {
+  it("рендерить назву розділу за маршрутом /schools", () => {
     render(<MobileTopNav />, { wrapper: Wrapper });
-    expect(screen.getByText("СВІТЛО ЗНАНЬ")).toBeTruthy();
+    expect(screen.getByText("Школи")).toBeTruthy();
   });
 
   it("рендерить назву міста", () => {

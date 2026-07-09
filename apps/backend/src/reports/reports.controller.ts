@@ -93,10 +93,7 @@ export class ReportsController {
   @ApiOperation({ summary: 'Список поданих звітів (для MANAGER)' })
   @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   @Get('submitted')
-  findSubmitted(
-    @Query('page') page?: string,
-    @Query('take') take?: string,
-  ) {
+  findSubmitted(@Query('page') page?: string, @Query('take') take?: string) {
     return this.reportsService.findSubmitted(
       page ? Number(page) : 1,
       take ? Number(take) : 20,
