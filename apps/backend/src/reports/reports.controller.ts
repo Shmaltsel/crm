@@ -5,6 +5,7 @@ import {
   Patch,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
@@ -92,7 +93,13 @@ export class ReportsController {
   @ApiOperation({ summary: 'Список поданих звітів (для MANAGER)' })
   @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   @Get('submitted')
-  findSubmitted() {
-    return this.reportsService.findSubmitted();
+  findSubmitted(
+    @Query('page') page?: string,
+    @Query('take') take?: string,
+  ) {
+    return this.reportsService.findSubmitted(
+      page ? Number(page) : 1,
+      take ? Number(take) : 20,
+    );
   }
 }

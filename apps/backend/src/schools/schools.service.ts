@@ -280,19 +280,18 @@ export class SchoolsService {
 
     const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
       SELECT s.*, c.id as city_id, c.name as city_name, latest.status as "latestStatus",
-        EXISTS (
-          SELECT 1 FROM "Event" e
-          WHERE e."schoolId" = s.id AND e.status::text IN (${Prisma.join(PLANNED_STAGES)})
-        ) as "isPlanned",
-        EXISTS (
-          SELECT 1 FROM "Event" e
-          WHERE e."schoolId" = s.id AND e.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})
-        ) as "isInProgress",
-        EXISTS (
-          SELECT 1 FROM "Event" e
-          WHERE e."schoolId" = s.id AND e.status::text = 'RE_SALE'
-        ) as "isDone"
+        COALESCE(ef."isPlanned", false) as "isPlanned",
+        COALESCE(ef."isInProgress", false) as "isInProgress",
+        COALESCE(ef."isDone", false) as "isDone"
       ${baseFrom}
+      LEFT JOIN LATERAL (
+        SELECT
+          bool_or(e.status::text IN (${Prisma.join(PLANNED_STAGES)})) as "isPlanned",
+          bool_or(e.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})) as "isInProgress",
+          bool_or(e.status::text = 'RE_SALE') as "isDone"
+        FROM "Event" e
+        WHERE e."schoolId" = s.id
+      ) ef ON true
       ${whereClause}
       ORDER BY s."createdAt" DESC
       OFFSET ${skip} LIMIT ${take}
@@ -342,31 +341,19 @@ export class SchoolsService {
         { new: bigint; planned: bigint; inProgress: bigint; done: bigint }[]
       >(Prisma.sql`
         SELECT
-          COUNT(*) FILTER (
-            WHERE NOT EXISTS (
-              SELECT 1 FROM "Event" e
-              WHERE e."schoolId" = s.id AND e.status::text NOT IN ('INTERESTED','PRE_APPROVAL')
-            )
-          )::bigint as new,
-          COUNT(*) FILTER (
-            WHERE EXISTS (
-              SELECT 1 FROM "Event" e
-              WHERE e."schoolId" = s.id AND e.status::text IN (${Prisma.join(PLANNED_STAGES)})
-            )
-          )::bigint as planned,
-          COUNT(*) FILTER (
-            WHERE EXISTS (
-              SELECT 1 FROM "Event" e
-              WHERE e."schoolId" = s.id AND e.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})
-            )
-          )::bigint as "inProgress",
-          COUNT(*) FILTER (
-            WHERE EXISTS (
-              SELECT 1 FROM "Event" e
-              WHERE e."schoolId" = s.id AND e.status::text = 'RE_SALE'
-            )
-          )::bigint as done
+          COUNT(*) FILTER (WHERE NOT ef."isPlanned" AND NOT ef."isInProgress" AND NOT ef."isDone")::bigint as new,
+          COUNT(*) FILTER (WHERE ef."isPlanned")::bigint as planned,
+          COUNT(*) FILTER (WHERE ef."isInProgress")::bigint as "inProgress",
+          COUNT(*) FILTER (WHERE ef."isDone")::bigint as done
         FROM "School" s
+        LEFT JOIN LATERAL (
+          SELECT
+            bool_or(e.status::text IN (${Prisma.join(PLANNED_STAGES)})) as "isPlanned",
+            bool_or(e.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})) as "isInProgress",
+            bool_or(e.status::text = 'RE_SALE') as "isDone"
+          FROM "Event" e
+          WHERE e."schoolId" = s.id
+        ) ef ON true
         ${baseWhere}
       `),
       this.prisma.$queryRaw<{ size: string; count: bigint }[]>(Prisma.sql`

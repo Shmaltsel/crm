@@ -252,26 +252,33 @@ export class ReportsService {
     });
   }
 
-  async findSubmitted() {
-    return this.prisma.eventReport.findMany({
-      where: { status: 'SUBMITTED' },
-      include: {
-        expenseItems: true,
-        salaryRecords: true,
-        event: {
-          include: {
-            school: { select: { name: true, type: true } },
-            city: { select: { name: true } },
-            crew: {
-              include: {
-                host: { select: { id: true, name: true } },
-                driver: { select: { id: true, name: true } },
+  async findSubmitted(page = 1, take = 20) {
+    const skip = (page - 1) * take;
+    const [items, total] = await Promise.all([
+      this.prisma.eventReport.findMany({
+        where: { status: 'SUBMITTED' },
+        include: {
+          expenseItems: true,
+          salaryRecords: true,
+          event: {
+            include: {
+              school: { select: { name: true, type: true } },
+              city: { select: { name: true } },
+              crew: {
+                include: {
+                  host: { select: { id: true, name: true } },
+                  driver: { select: { id: true, name: true } },
+                },
               },
             },
           },
         },
-      },
-      orderBy: { submittedAt: 'desc' },
-    });
+        orderBy: { submittedAt: 'desc' },
+        skip,
+        take,
+      }),
+      this.prisma.eventReport.count({ where: { status: 'SUBMITTED' } }),
+    ]);
+    return { items, total, page, pageCount: Math.ceil(total / take) };
   }
 }

@@ -30,15 +30,12 @@ export class AuditLogInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap(() => {
         const user = req.user as { sub?: string; name?: string } | undefined;
-        const entity = context
-          .getClass()
-          .name.replace(/Controller$/, '')
-          .toLowerCase();
-        const entityId =
-          (Object.values(req.params ?? {}).find(
-            (v) => typeof v === 'string' && /^\d+$/.test(v),
-          ) as string | undefined) ?? undefined;
-
+        const entity =
+          context
+            .getClass()
+            .name.replace(/Controller$/, '')
+            .toLowerCase();
+        const entityId = (typeof req.params?.id === 'string' ? req.params.id : undefined) ?? undefined;
         this.prisma.auditLog
           .create({
             data: {
