@@ -1,12 +1,12 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { Swiper, SwiperSlide } from "swiper/react";
+import "swiper/css";
 import { useAuth } from "../context/AuthContext";
 import { DASHBOARD_TABS } from "../constants/navTabs";
 import { hasRole } from "../utils/roles";
 import DashboardTopNav from "../components/dashboard/DashboardTopNav";
 import TabErrorBoundary from "../components/dashboard/TabErrorBoundary";
-import { SkeletonCard } from "../components/ui/Skeleton";
 
 const OverviewTab = lazy(() => import("./OverviewTab"));
 const ReportsTab = lazy(() => import("../features/reports/pages/ReportsReviewPage"));
@@ -20,30 +20,11 @@ const TAB_COMPONENTS: Record<string, React.LazyExoticComponent<React.ComponentTy
   analytics: AnalyticsTab,
 };
 
-const SWIPE_THRESHOLD = 60;
-
-function PageLoader() {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-4 md:p-8">
-      <SkeletonCard />
-      <SkeletonCard />
-      <SkeletonCard />
-    </div>
-  );
-}
-
-const tabVariants = {
-  initial: { opacity: 0, x: 20 },
-  animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -20 },
-};
-
 export default function Dashboard() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const touchStartX = useRef(0);
-  const [ready, setReady] = useState(false);
+  const swiperRef = useRef<any>(null);
+  const prevTabRef = useRef<string>("");
 
   const allowedTabs = useMemo(
     () => DASHBOARD_TABS.filter((t) => hasRole(user?.role, t.roles)),
@@ -60,94 +41,83 @@ export default function Dashboard() {
   }, [searchParams, allowedIds]);
 
   const [activeTab, setActiveTab] = useState(() => resolveInitial());
-  const prevTabRef = useRef(activeTab);
 
   useEffect(() => {
-    if (prevTabRef.current !== activeTab) {
+    if (prevTabRef.current && prevTabRef.current !== activeTab) {
       window.dispatchEvent(
         new CustomEvent("tab_switch", {
           detail: { from: prevTabRef.current, to: activeTab },
         }),
       );
-      prevTabRef.current = activeTab;
     }
+    prevTabRef.current = activeTab;
   }, [activeTab]);
 
   useEffect(() => {
-    if (!ready) {
-      setReady(true);
-      return;
-    }
     if (!allowedIds.includes(activeTab)) {
       const fallback = allowedIds[0] ?? "overview";
       setActiveTab(fallback);
       setSearchParams({ tab: fallback }, { replace: true });
     }
-  }, [allowedIds, activeTab, ready, setSearchParams]);
+  }, [allowedIds, activeTab, setSearchParams]);
 
   const handleTabChange = useCallback(
     (id: string) => {
+      const idx = allowedIds.indexOf(id);
+      if (idx !== -1 && swiperRef.current) {
+        swiperRef.current.slideTo(idx);
+      }
       setActiveTab(id);
       setSearchParams({ tab: id }, { replace: true });
       sessionStorage.setItem("dashboard:lastTab", id);
     },
-    [setSearchParams],
+    [allowedIds, setSearchParams],
   );
 
-  const activeIdx = useMemo(
-    () => allowedIds.indexOf(activeTab),
-    [allowedIds, activeTab],
-  );
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  }, []);
-
-  const handleTouchEnd = useCallback(
-    (e: React.TouchEvent) => {
-      const dx = e.changedTouches[0].clientX - touchStartX.current;
-      if (Math.abs(dx) < SWIPE_THRESHOLD) return;
-      const dir = dx < 0 ? 1 : -1;
-      const targetIdx = activeIdx + dir;
-      if (targetIdx < 0 || targetIdx >= allowedIds.length) return;
-      handleTabChange(allowedIds[targetIdx]);
+  const handleSlideChange = useCallback(
+    (swiper: any) => {
+      const id = allowedIds[swiper.activeIndex];
+      if (id && id !== activeTab) {
+        setActiveTab(id);
+        setSearchParams({ tab: id }, { replace: true });
+        sessionStorage.setItem("dashboard:lastTab", id);
+      }
     },
-    [activeIdx, allowedIds, handleTabChange],
+    [allowedIds, activeTab, setSearchParams],
   );
-
-  const TabContent = TAB_COMPONENTS[activeTab];
 
   return (
-    <div
-      ref={containerRef}
-      className="bg-gradient-subtle min-h-screen flex flex-col"
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-    >
+    <div className="bg-gradient-subtle min-h-screen flex flex-col">
       <DashboardTopNav
         tabs={allowedTabs}
         activeTab={activeTab}
         onChange={handleTabChange}
       />
 
-      <div className="flex-1 relative">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            variants={tabVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.15 }}
-            className="absolute inset-0"
-          >
-            <TabErrorBoundary label={allowedTabs.find((t) => t.id === activeTab)?.label}>
-              <Suspense fallback={<PageLoader />}>
-                {TabContent ? <TabContent /> : <PageLoader />}
-              </Suspense>
-            </TabErrorBoundary>
-          </motion.div>
-        </AnimatePresence>
+      <div className="flex-1">
+        <Swiper
+          onSwiper={(swiper) => { swiperRef.current = swiper; }}
+          initialSlide={allowedIds.indexOf(activeTab)}
+          onSlideChange={handleSlideChange}
+          speed={280}
+          allowTouchMove={true}
+          className="dashboard-swiper"
+        >
+          {allowedTabs.map((tab) => {
+            const Component = TAB_COMPONENTS[tab.id];
+            return (
+              <SwiperSlide key={tab.id}>
+                <div className="p-4 md:p-8">
+                  <TabErrorBoundary label={tab.label}>
+                    <Suspense fallback={<div className="text-sm text-content-muted">Завантаження...</div>}>
+                      <Component />
+                    </Suspense>
+                  </TabErrorBoundary>
+                </div>
+              </SwiperSlide>
+            );
+          })}
+        </Swiper>
       </div>
     </div>
   );

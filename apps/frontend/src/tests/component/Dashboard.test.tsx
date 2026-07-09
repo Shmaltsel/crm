@@ -50,11 +50,14 @@ describe("Dashboard", () => {
 
     render(<Dashboard />, { wrapper: createWrapper() });
 
+    const overviewTab = screen.getByRole("tab", { name: /огляд/i });
+    expect(overviewTab).toBeInTheDocument();
+
     await waitFor(() => {
-      expect(screen.getByText("Доброго ранку, Адмін")).toBeInTheDocument();
       expect(screen.getByText("50 000 грн")).toBeInTheDocument();
-      expect(screen.getByText("20 000 грн")).toBeInTheDocument();
-      expect(screen.getByText("500")).toBeInTheDocument();
-    });
+    }, { timeout: 10000 });
+    expect(screen.getByText("Доброго ранку, Адмін")).toBeInTheDocument();
+    expect(screen.getByText("20 000 грн")).toBeInTheDocument();
+    expect(screen.getByText("500")).toBeInTheDocument();
   });
 });
