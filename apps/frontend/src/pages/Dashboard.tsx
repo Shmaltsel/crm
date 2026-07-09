@@ -60,6 +60,18 @@ export default function Dashboard() {
   }, [searchParams, allowedIds]);
 
   const [activeTab, setActiveTab] = useState(() => resolveInitial());
+  const prevTabRef = useRef(activeTab);
+
+  useEffect(() => {
+    if (prevTabRef.current !== activeTab) {
+      window.dispatchEvent(
+        new CustomEvent("tab_switch", {
+          detail: { from: prevTabRef.current, to: activeTab },
+        }),
+      );
+      prevTabRef.current = activeTab;
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     if (!ready) {

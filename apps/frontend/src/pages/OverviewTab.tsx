@@ -50,7 +50,7 @@ function KpiCard({
 export default function OverviewTab() {
   const { user } = useAuth();
   const { selectedCity, setSelectedCity } = useSelectedCity();
-  const { data: summary, isLoading, isError } = useDashboardSummary();
+  const { data: summary, isError } = useDashboardSummary();
   const { data: cities } = useCities();
 
   const greeting = useMemo(() => {
