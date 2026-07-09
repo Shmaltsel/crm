@@ -21,6 +21,7 @@ export interface NavTab {
   label: string;
   roles?: string[];
   bottomNav?: boolean;
+  swipeable?: boolean;
 }
 
 export interface DashboardTab {
@@ -31,7 +32,7 @@ export interface DashboardTab {
 }
 
 export const NAV_TABS: NavTab[] = [
-  { to: "/dashboard", icon: Home, label: "Дашборд", roles: ["SUPERADMIN", "MANAGER", "OWNER"], bottomNav: true },
+  { to: "/dashboard", icon: Home, label: "Дашборд", roles: ["SUPERADMIN", "MANAGER", "OWNER"], bottomNav: true, swipeable: false },
   { to: "/reports/review", icon: ClipboardCheck, label: "Звіти", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
   { to: "/inventory", icon: Package, label: "Склад", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
   { to: "/schools", icon: School, label: "Школи", bottomNav: true },

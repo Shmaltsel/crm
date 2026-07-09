@@ -120,7 +120,6 @@ export default function Dashboard() {
   return (
     <div
       ref={containerRef}
-      data-no-swipe
       className="bg-slate-50 min-h-screen flex flex-col"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}

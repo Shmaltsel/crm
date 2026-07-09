@@ -95,12 +95,17 @@ function MobileDragView({
   tabPaths: { to: string }[];
   currentIdx: number;
 }) {
-  const peekTab = peekDir ? tabPaths[currentIdx + peekDir] : null;
+  const peekTab = peekDir && currentIdx !== -1 ? tabPaths[currentIdx + peekDir] : null;
   const peekTabComponent = peekTab ? TAB_PAGE_COMPONENTS[peekTab.to] : null;
 
-  const peekX = peekDir
-    ? useTransform(x, (v) => peekDir! * winWidth + v)
-    : useTransform(x, () => winWidth);
+  const peekX = useTransform(x, (v: number) => {
+    if (peekDir) return peekDir * winWidth + v;
+    return winWidth;
+  });
+
+  if (currentIdx === -1) {
+    return <div className="relative min-h-full">{outlet}</div>;
+  }
 
   return (
     <div className="relative min-h-full">
@@ -162,7 +167,9 @@ export default function Layout() {
   const { selectedCity } = useSelectedCity();
 
   const tabPaths = useMemo(
-    () => NAV_TABS.filter((t) => t.bottomNav && hasRole(user?.role, t.roles)),
+    () => NAV_TABS.filter(
+      (t) => t.bottomNav && t.swipeable !== false && hasRole(user?.role, t.roles),
+    ),
     [user],
   );
 

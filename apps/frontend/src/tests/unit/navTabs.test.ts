@@ -42,6 +42,31 @@ describe("NAV_TABS", () => {
   });
 });
 
+describe("swipeable filter (Dashboard excluded from carousel)", () => {
+  it("/dashboard має swipeable: false", () => {
+    const dash = NAV_TABS.find((t) => t.to === "/dashboard");
+    expect(dash?.swipeable).toBe(false);
+  });
+
+  it("bottomNav-таби swipeable за замовчуванням (true або undefined)", () => {
+    for (const t of NAV_TABS) {
+      if (t.to === "/dashboard") continue;
+      if (t.bottomNav) {
+        expect(t.swipeable).not.toBe(false);
+      }
+    }
+  });
+
+  it("фільтр виключає /dashboard з табів, доступних для свайпу", () => {
+    const userRole = "SUPERADMIN";
+    const swipeTabs = NAV_TABS.filter(
+      (t) => t.bottomNav && t.swipeable !== false && (!t.roles || t.roles.includes(userRole)),
+    );
+    expect(swipeTabs.find((t) => t.to === "/dashboard")).toBeUndefined();
+    expect(swipeTabs.length).toBe(3); // schools, finance, calendar
+  });
+});
+
 describe("ADMIN_TABS", () => {
   it("має лише /cities для SUPERADMIN", () => {
     expect(ADMIN_TABS.length).toBe(1);
