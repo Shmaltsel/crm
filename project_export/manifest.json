@@ -162,10 +162,16 @@
     "lines": 18
   },
   {
+    "file": "apps/backend/prisma/migrations/20260709004525_add_project_to_inventory_item/migration.sql",
+    "bundle": "bundle_01.md",
+    "tokens": 68,
+    "lines": 6
+  },
+  {
     "file": "apps/backend/prisma/schema.prisma",
     "bundle": "bundle_01.md",
-    "tokens": 2905,
-    "lines": 435
+    "tokens": 2916,
+    "lines": 437
   },
   {
     "file": "apps/backend/prisma/seed-admin.js",
@@ -752,8 +758,8 @@
   {
     "file": "apps/backend/src/inventory/inventory.controller.ts",
     "bundle": "bundle_01.md",
-    "tokens": 703,
-    "lines": 117
+    "tokens": 776,
+    "lines": 126
   },
   {
     "file": "apps/backend/src/inventory/inventory.module.ts",
@@ -764,8 +770,8 @@
   {
     "file": "apps/backend/src/inventory/inventory.service.ts",
     "bundle": "bundle_01.md",
-    "tokens": 878,
-    "lines": 130
+    "tokens": 949,
+    "lines": 141
   },
   {
     "file": "apps/backend/src/issues/dto/create-issue.dto.ts",
@@ -901,7 +907,7 @@
   },
   {
     "file": "apps/backend/src/projects/dto/update-project.dto.ts",
-    "bundle": "bundle_01.md",
+    "bundle": "bundle_02.md",
     "tokens": 62,
     "lines": 5
   },
@@ -950,14 +956,14 @@
   {
     "file": "apps/backend/src/reports/reports.module.ts",
     "bundle": "bundle_02.md",
-    "tokens": 81,
-    "lines": 10
+    "tokens": 109,
+    "lines": 12
   },
   {
     "file": "apps/backend/src/reports/reports.service.ts",
     "bundle": "bundle_02.md",
-    "tokens": 2180,
-    "lines": 255
+    "tokens": 2368,
+    "lines": 278
   },
   {
     "file": "apps/backend/src/salary/dto/create-salary.dto.ts",
@@ -1206,6 +1212,12 @@
     "lines": 55
   },
   {
+    "file": "apps/frontend/e2e/dashboard-swipe.spec.ts",
+    "bundle": "bundle_02.md",
+    "tokens": 569,
+    "lines": 67
+  },
+  {
     "file": "apps/frontend/e2e/login.spec.ts",
     "bundle": "bundle_02.md",
     "tokens": 729,
@@ -1238,8 +1250,8 @@
   {
     "file": "apps/frontend/package.json",
     "bundle": "bundle_02.md",
-    "tokens": 493,
-    "lines": 68
+    "tokens": 499,
+    "lines": 69
   },
   {
     "file": "apps/frontend/playwright-report/index.html",
@@ -1274,8 +1286,8 @@
   {
     "file": "apps/frontend/src/App.tsx",
     "bundle": "bundle_04.md",
-    "tokens": 1861,
-    "lines": 259
+    "tokens": 1849,
+    "lines": 258
   },
   {
     "file": "apps/frontend/src/components/AddressLink.tsx",
@@ -1286,8 +1298,8 @@
   {
     "file": "apps/frontend/src/components/BottomNavigationBar.tsx",
     "bundle": "bundle_04.md",
-    "tokens": 553,
-    "lines": 59
+    "tokens": 820,
+    "lines": 93
   },
   {
     "file": "apps/frontend/src/components/calendar/DayOffModal.tsx",
@@ -1332,6 +1344,12 @@
     "lines": 129
   },
   {
+    "file": "apps/frontend/src/components/dashboard/DashboardTopNav.tsx",
+    "bundle": "bundle_04.md",
+    "tokens": 414,
+    "lines": 49
+  },
+  {
     "file": "apps/frontend/src/components/dashboard/FunnelBar.tsx",
     "bundle": "bundle_04.md",
     "tokens": 955,
@@ -1348,6 +1366,12 @@
     "bundle": "bundle_04.md",
     "tokens": 1404,
     "lines": 188
+  },
+  {
+    "file": "apps/frontend/src/components/dashboard/TabErrorBoundary.tsx",
+    "bundle": "bundle_04.md",
+    "tokens": 337,
+    "lines": 47
   },
   {
     "file": "apps/frontend/src/components/dashboard/TodayEvents.tsx",
@@ -1418,8 +1442,8 @@
   {
     "file": "apps/frontend/src/components/inventory/InventoryItemModal.tsx",
     "bundle": "bundle_04.md",
-    "tokens": 1240,
-    "lines": 112
+    "tokens": 1210,
+    "lines": 111
   },
   {
     "file": "apps/frontend/src/components/IssueCarousel.tsx",
@@ -1430,20 +1454,26 @@
   {
     "file": "apps/frontend/src/components/Layout.tsx",
     "bundle": "bundle_04.md",
-    "tokens": 3105,
-    "lines": 365
+    "tokens": 3182,
+    "lines": 376
   },
   {
     "file": "apps/frontend/src/components/MobileTopNav.tsx",
     "bundle": "bundle_04.md",
-    "tokens": 258,
-    "lines": 25
+    "tokens": 363,
+    "lines": 34
+  },
+  {
+    "file": "apps/frontend/src/components/MoreSheet.tsx",
+    "bundle": "bundle_04.md",
+    "tokens": 656,
+    "lines": 78
   },
   {
     "file": "apps/frontend/src/components/NotificationBell.tsx",
     "bundle": "bundle_04.md",
-    "tokens": 1192,
-    "lines": 124
+    "tokens": 1198,
+    "lines": 125
   },
   {
     "file": "apps/frontend/src/components/PhoneLink.tsx",
@@ -1484,8 +1514,8 @@
   {
     "file": "apps/frontend/src/components/school-profile/EventPreparation.tsx",
     "bundle": "bundle_04.md",
-    "tokens": 909,
-    "lines": 100
+    "tokens": 1127,
+    "lines": 122
   },
   {
     "file": "apps/frontend/src/components/school-profile/EventsTable.tsx",
@@ -1610,14 +1640,14 @@
   {
     "file": "apps/frontend/src/components/ui/Button.tsx",
     "bundle": "bundle_04.md",
-    "tokens": 410,
-    "lines": 42
+    "tokens": 433,
+    "lines": 44
   },
   {
     "file": "apps/frontend/src/components/ui/Card.tsx",
     "bundle": "bundle_04.md",
-    "tokens": 146,
-    "lines": 24
+    "tokens": 169,
+    "lines": 26
   },
   {
     "file": "apps/frontend/src/components/ui/ConfirmDialog.tsx",
@@ -1694,8 +1724,8 @@
   {
     "file": "apps/frontend/src/constants/navTabs.ts",
     "bundle": "bundle_04.md",
-    "tokens": 362,
-    "lines": 41
+    "tokens": 569,
+    "lines": 59
   },
   {
     "file": "apps/frontend/src/constants/pipelineStages.ts",
@@ -1729,13 +1759,13 @@
   },
   {
     "file": "apps/frontend/src/features/calendar/components/DesktopCalendarGrid.tsx",
-    "bundle": "bundle_04.md",
+    "bundle": "bundle_05.md",
     "tokens": 2283,
     "lines": 209
   },
   {
     "file": "apps/frontend/src/features/calendar/components/EventTooltip.tsx",
-    "bundle": "bundle_04.md",
+    "bundle": "bundle_05.md",
     "tokens": 327,
     "lines": 33
   },
@@ -1890,6 +1920,12 @@
     "lines": 23
   },
   {
+    "file": "apps/frontend/src/hooks/useDashboardSummary.ts",
+    "bundle": "bundle_05.md",
+    "tokens": 517,
+    "lines": 90
+  },
+  {
     "file": "apps/frontend/src/hooks/useDaysOff.ts",
     "bundle": "bundle_05.md",
     "tokens": 334,
@@ -1910,8 +1946,8 @@
   {
     "file": "apps/frontend/src/hooks/useInventory.ts",
     "bundle": "bundle_05.md",
-    "tokens": 581,
-    "lines": 63
+    "tokens": 671,
+    "lines": 75
   },
   {
     "file": "apps/frontend/src/hooks/useNotifications.ts",
@@ -1946,8 +1982,8 @@
   {
     "file": "apps/frontend/src/index.css",
     "bundle": "bundle_05.md",
-    "tokens": 429,
-    "lines": 68
+    "tokens": 492,
+    "lines": 85
   },
   {
     "file": "apps/frontend/src/instrument.ts",
@@ -2000,8 +2036,8 @@
   {
     "file": "apps/frontend/src/pages/Dashboard.tsx",
     "bundle": "bundle_05.md",
-    "tokens": 321,
-    "lines": 42
+    "tokens": 1074,
+    "lines": 125
   },
   {
     "file": "apps/frontend/src/pages/Employees.tsx",
@@ -2018,7 +2054,7 @@
   {
     "file": "apps/frontend/src/pages/Events.tsx",
     "bundle": "bundle_05.md",
-    "tokens": 2851,
+    "tokens": 2882,
     "lines": 299
   },
   {
@@ -2030,8 +2066,8 @@
   {
     "file": "apps/frontend/src/pages/Inventory.tsx",
     "bundle": "bundle_05.md",
-    "tokens": 3607,
-    "lines": 341
+    "tokens": 3583,
+    "lines": 339
   },
   {
     "file": "apps/frontend/src/pages/Kindergartens.tsx",
@@ -2058,6 +2094,12 @@
     "lines": 26
   },
   {
+    "file": "apps/frontend/src/pages/OverviewTab.tsx",
+    "bundle": "bundle_05.md",
+    "tokens": 1331,
+    "lines": 162
+  },
+  {
     "file": "apps/frontend/src/pages/ProjectProfile.tsx",
     "bundle": "bundle_05.md",
     "tokens": 880,
@@ -2066,42 +2108,42 @@
   {
     "file": "apps/frontend/src/pages/SchoolProfile.tsx",
     "bundle": "bundle_05.md",
-    "tokens": 6372,
-    "lines": 734
+    "tokens": 6409,
+    "lines": 735
   },
   {
     "file": "apps/frontend/src/pages/Schools.tsx",
-    "bundle": "bundle_05.md",
-    "tokens": 5578,
-    "lines": 622
+    "bundle": "bundle_06.md",
+    "tokens": 6123,
+    "lines": 666
   },
   {
     "file": "apps/frontend/src/tests/component/calendar/CalendarComponents.test.tsx",
-    "bundle": "bundle_05.md",
+    "bundle": "bundle_06.md",
     "tokens": 766,
     "lines": 85
   },
   {
     "file": "apps/frontend/src/tests/component/ConfirmDialog.test.tsx",
-    "bundle": "bundle_05.md",
+    "bundle": "bundle_06.md",
     "tokens": 988,
     "lines": 150
   },
   {
     "file": "apps/frontend/src/tests/component/Dashboard.test.tsx",
-    "bundle": "bundle_05.md",
-    "tokens": 454,
-    "lines": 49
+    "bundle": "bundle_06.md",
+    "tokens": 554,
+    "lines": 64
   },
   {
     "file": "apps/frontend/src/tests/component/DayOffModal.test.tsx",
-    "bundle": "bundle_05.md",
+    "bundle": "bundle_06.md",
     "tokens": 1396,
     "lines": 225
   },
   {
     "file": "apps/frontend/src/tests/component/EventReport.test.tsx",
-    "bundle": "bundle_05.md",
+    "bundle": "bundle_06.md",
     "tokens": 1136,
     "lines": 164
   },
@@ -2240,8 +2282,8 @@
   {
     "file": "apps/frontend/src/tests/unit/navTabs.test.ts",
     "bundle": "bundle_06.md",
-    "tokens": 446,
-    "lines": 52
+    "tokens": 716,
+    "lines": 82
   },
   {
     "file": "apps/frontend/src/tests/unit/reactImports.test.ts",
@@ -2276,14 +2318,20 @@
   {
     "file": "apps/frontend/src/types/index.ts",
     "bundle": "bundle_06.md",
-    "tokens": 1608,
-    "lines": 319
+    "tokens": 1620,
+    "lines": 321
   },
   {
     "file": "apps/frontend/src/utils/exportCsv.ts",
     "bundle": "bundle_06.md",
     "tokens": 226,
     "lines": 31
+  },
+  {
+    "file": "apps/frontend/src/utils/financeCalculations.ts",
+    "bundle": "bundle_06.md",
+    "tokens": 172,
+    "lines": 22
   },
   {
     "file": "apps/frontend/src/utils/formatCurrency.ts",
@@ -2306,8 +2354,8 @@
   {
     "file": "apps/frontend/tailwind.config.js",
     "bundle": "bundle_06.md",
-    "tokens": 1026,
-    "lines": 141
+    "tokens": 1086,
+    "lines": 146
   },
   {
     "file": "apps/frontend/tsconfig.app.json",

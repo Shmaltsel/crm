@@ -55,6 +55,8 @@ apps
 │   │   │   │   └── migration.sql
 │   │   │   ├── 20260708233051_add_inventory_category_city
 │   │   │   │   └── migration.sql
+│   │   │   ├── 20260709004525_add_project_to_inventory_item
+│   │   │   │   └── migration.sql
 │   │   │   └── migration_lock.toml
 │   │   ├── schema.prisma
 │   │   ├── seed-admin.js
@@ -285,6 +287,7 @@ apps
 ├── Dockerfile
 └── frontend
     ├── e2e
+    │   ├── dashboard-swipe.spec.ts
     │   ├── login.spec.ts
     │   └── schools.spec.ts
     ├── eslint.config.js
@@ -322,9 +325,11 @@ apps
     │   │   ├── dashboard
     │   │   │   ├── ActivityFeed.tsx
     │   │   │   ├── CitiesTable.tsx
+    │   │   │   ├── DashboardTopNav.tsx
     │   │   │   ├── FunnelBar.tsx
     │   │   │   ├── MonthlyKpi.tsx
     │   │   │   ├── StaleSchools.tsx
+    │   │   │   ├── TabErrorBoundary.tsx
     │   │   │   ├── TodayEvents.tsx
     │   │   │   └── UpcomingEvents.tsx
     │   │   ├── employees
@@ -343,6 +348,7 @@ apps
     │   │   ├── IssueCarousel.tsx
     │   │   ├── Layout.tsx
     │   │   ├── MobileTopNav.tsx
+    │   │   ├── MoreSheet.tsx
     │   │   ├── NotificationBell.tsx
     │   │   ├── PhoneLink.tsx
     │   │   ├── ProtectedRoute.tsx
@@ -438,6 +444,7 @@ apps
     │   │   ├── useCalendar.ts
     │   │   ├── useCities.ts
     │   │   ├── useDashboardData.ts
+    │   │   ├── useDashboardSummary.ts
     │   │   ├── useDaysOff.ts
     │   │   ├── useDebounce.ts
     │   │   ├── useEmployees.ts
@@ -467,6 +474,7 @@ apps
     │   │   ├── lazyTabPages.ts
     │   │   ├── Login.tsx
     │   │   ├── NotFound.tsx
+    │   │   ├── OverviewTab.tsx
     │   │   ├── ProjectProfile.tsx
     │   │   ├── SchoolProfile.tsx
     │   │   └── Schools.tsx
@@ -514,6 +522,7 @@ apps
     │   │   └── index.ts
     │   └── utils
     │       ├── exportCsv.ts
+    │       ├── financeCalculations.ts
     │       ├── formatCurrency.ts
     │       ├── preparationStatus.ts
     │       └── roles.ts

@@ -986,6 +986,17 @@ ALTER TABLE "InventoryItem" ADD CONSTRAINT "InventoryItem_schoolId_fkey" FOREIGN
 
 ```
 
+# FILE: apps/backend/prisma/migrations/20260709004525_add_project_to_inventory_item/migration.sql
+
+```
+-- AlterTable
+ALTER TABLE "InventoryItem" ADD COLUMN     "project" TEXT;
+
+-- CreateIndex
+CREATE INDEX "InventoryItem_project_idx" ON "InventoryItem"("project");
+
+```
+
 # FILE: apps/backend/prisma/schema.prisma
 
 ```
@@ -1369,6 +1380,7 @@ model InventoryItem {
   sku          String?
   category     String   @default("Інше")
   unit         String   @default("шт")
+  project      String?
   minStock     Int      @default(5)
   currentStock Int      @default(0)
   notes        String?
@@ -1384,6 +1396,7 @@ model InventoryItem {
   @@index([name])
   @@index([category])
   @@index([cityId])
+  @@index([project])
 }
 
 model InventoryUsage {
@@ -11135,6 +11148,13 @@ export class InventoryController {
     return this.inventoryService.findLowStock();
   }
 
+  @ApiOperation({ summary: 'Список товарів за проєктом' })
+  @ApiQuery({ name: 'project', required: true })
+  @Get('by-project')
+  findByProject(@Query('project') project: string) {
+    return this.inventoryService.findByProject(project);
+  }
+
   @ApiOperation({ summary: 'Створити товар' })
   @Post()
   @Roles('SUPERADMIN', 'OWNER')
@@ -11145,6 +11165,7 @@ export class InventoryController {
       sku?: string;
       category?: string;
       unit?: string;
+      project?: string;
       minStock?: number;
       currentStock?: number;
       notes?: string;
@@ -11166,6 +11187,7 @@ export class InventoryController {
       sku?: string;
       category?: string;
       unit?: string;
+      project?: string;
       minStock?: number;
       currentStock?: number;
       notes?: string;
@@ -11233,6 +11255,7 @@ export class InventoryService {
     sku?: string;
     category?: string;
     unit?: string;
+    project?: string;
     minStock?: number;
     currentStock?: number;
     notes?: string;
@@ -11245,6 +11268,7 @@ export class InventoryService {
         sku: dto.sku,
         category: dto.category ?? 'Інше',
         unit: dto.unit ?? 'шт',
+        project: dto.project,
         minStock: dto.minStock ?? 5,
         currentStock: dto.currentStock ?? 0,
         notes: dto.notes,
@@ -11306,6 +11330,7 @@ export class InventoryService {
       sku?: string;
       category?: string;
       unit?: string;
+      project?: string;
       minStock?: number;
       currentStock?: number;
       notes?: string;
@@ -11329,6 +11354,14 @@ export class InventoryService {
 
     await this.prisma.inventoryUsage.deleteMany({ where: { itemId: id } });
     return this.prisma.inventoryItem.delete({ where: { id } });
+  }
+
+  async findByProject(project: string) {
+    return this.prisma.inventoryItem.findMany({
+      where: { project },
+      orderBy: { name: 'asc' },
+      include: { city: true, school: true },
+    });
   }
 
   async addStock(id: string, quantity: number) {
@@ -12534,16 +12567,6 @@ export class CreateProjectDto {
   @Type(() => Number)
   pricePerChild?: number;
 }
-
-```
-
-# FILE: apps/backend/src/projects/dto/update-project.dto.ts
-
-```
-import { PartialType } from '@nestjs/swagger';
-import { CreateProjectDto } from './create-project.dto';
-
-export class UpdateProjectDto extends PartialType(CreateProjectDto) {}
 
 ```
 

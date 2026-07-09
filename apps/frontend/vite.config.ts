@@ -9,6 +9,9 @@ export default defineConfig({
         manualChunks(id) {
           if (id.includes("recharts")) return "recharts";
           if (id.includes("@tanstack/react-virtual")) return "tanstack";
+          if (id.includes("framer-motion")) return "motion";
+          if (id.includes("lucide-react")) return "icons";
+          if (id.includes("node_modules/react")) return "vendor";
         },
       },
     },

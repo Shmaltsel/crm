@@ -14,8 +14,8 @@ export function useNotifications(page = 1) {
   return useQuery({
     queryKey: ["notifications", page],
     queryFn: () => api.get<{ items: NotificationItem[]; total: number; page: number; pageCount: number }>("/notifications", { params: { page } }).then(r => r.data),
-    refetchInterval: 30000,
-    staleTime: 10 * 1000,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
   });
 }
 
@@ -23,7 +23,8 @@ export function useUnreadCount() {
   return useQuery({
     queryKey: ["notifications", "unread-count"],
     queryFn: () => api.get<{ count: number }>("/notifications/unread-count").then(r => r.data),
-    refetchInterval: 30000,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
   });
 }
 

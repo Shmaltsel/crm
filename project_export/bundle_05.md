@@ -1,3 +1,255 @@
+# FILE: apps/frontend/src/features/calendar/components/DesktopCalendarGrid.tsx
+
+```
+import { toISODate, isPastDay } from "../utils/date";
+import { MONTH_NAMES, ROLE_ICON_MAP } from "../constants";
+import { getDayColor } from "../utils/color";
+import EventTooltip from "./EventTooltip";
+import type { Event as CalendarEvent, DayOff, User } from "../../../types";
+
+interface DesktopCalendarGridProps {
+  days: (Date | null)[];
+  year: number;
+  month: number;
+  selectedMobileDate: Date;
+  setSelectedMobileDate: (date: Date) => void;
+  eventsByDate: Map<string, CalendarEvent[]>;
+  dayOffsByDate: Map<string, DayOff[]>;
+  projectColorMap: Map<string, string>;
+  projectHexMap: Map<string, string>;
+  isStaff: boolean;
+  isManagerOrAdmin: boolean;
+  user: { id: string } | null;
+  allUsers: User[];
+  handleDayOffClick: (e: React.MouseEvent, date: Date) => void;
+  prevMonth: () => void;
+  nextMonth: () => void;
+}
+
+export default function DesktopCalendarGrid({
+  days,
+  year,
+  month,
+  selectedMobileDate,
+  setSelectedMobileDate,
+  eventsByDate,
+  dayOffsByDate,
+  projectColorMap,
+  projectHexMap,
+  isStaff,
+  isManagerOrAdmin,
+  user,
+  allUsers,
+  handleDayOffClick,
+  prevMonth,
+  nextMonth,
+}: DesktopCalendarGridProps) {
+  return (
+    <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+        <div className="flex items-center justify-center p-5 md:p-6 border-b border-slate-100 bg-white">
+          <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+            <button
+              onClick={prevMonth}
+              className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium"
+            >
+              ◀
+            </button>
+            <span className="px-4 md:px-6 py-2 text-slate-800 font-bold capitalize tracking-tight">
+              {MONTH_NAMES[month]}{" "}
+              <span className="text-slate-400 font-medium">{year}</span>
+            </span>
+            <button
+              onClick={nextMonth}
+              className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium"
+            >
+              ▶
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-7 bg-slate-50/50">
+          {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((dayName) => (
+            <div
+              key={dayName}
+              className="py-3 text-center text-[10px] md:text-xs font-bold tracking-widest text-slate-400 uppercase border-b border-slate-100"
+            >
+              {dayName}
+            </div>
+          ))}
+
+          {days.map((day, idx) => {
+            const isToday =
+              day && day.toDateString() === new Date().toDateString();
+            const isSelected =
+              day && day.toDateString() === selectedMobileDate.toDateString();
+            const dayKey = day ? toISODate(day) : "";
+            const dayEvents = day ? (eventsByDate.get(dayKey) ?? []) : [];
+            const dayOffEntries = day ? (dayOffsByDate.get(dayKey) ?? []) : [];
+
+            const dayColor = day
+              ? getDayColor(dayEvents, projectHexMap)
+              : undefined;
+
+            const myDayOff = isStaff
+              ? dayOffEntries.find((d) => d.userId === user?.id)
+              : undefined;
+            const hasAnyDayOff = isStaff
+              ? !!myDayOff
+              : dayOffEntries.length > 0;
+
+            const showCross =
+              day && !isPastDay(day) && (isStaff || isManagerOrAdmin);
+
+            return (
+              <div
+                key={idx}
+                onClick={() => day && setSelectedMobileDate(day)}
+                className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group select-none no-select-ios
+                  ${day ? "bg-white hover:bg-slate-50 cursor-pointer" : "bg-slate-50/30"}
+                  ${isSelected ? "ring-2 ring-inset ring-blue-500/20 bg-blue-50/10" : ""}
+                  ${hasAnyDayOff ? "dayoff-cell-enter bg-rose-50/70" : ""}
+                `}
+              >
+                {day && (
+                  <>
+                    {showCross && (
+                      <div className="absolute top-1 left-1 z-10 group/dayoff">
+                        <button
+                          onClick={(e) => handleDayOffClick(e, day)}
+                          title={
+                            hasAnyDayOff
+                              ? "Скасувати вихідний"
+                              : "Призначити вихідний"
+                          }
+                          className={`w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold transition-all
+                            ${
+                              hasAnyDayOff
+                                ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600"
+                                : "bg-slate-100 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-rose-100 hover:text-rose-500"
+                            }`}
+                        >
+                          ✕
+                        </button>
+
+                        {isManagerOrAdmin && dayOffEntries.length > 0 && (
+                          <div className="hidden md:block absolute top-full left-0 mt-2 w-48 bg-slate-800 text-white p-2.5 rounded-xl shadow-2xl opacity-0 invisible group-hover/dayoff:opacity-100 group-hover/dayoff:visible transition-all duration-200 pointer-events-none">
+                            <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1.5">
+                              Вихідний ({dayOffEntries.length})
+                            </p>
+                            <div className="space-y-1">
+                              {dayOffEntries.map((d: DayOff) => {
+                                const u = allUsers.find(
+                                  (au: User) => au.id === d.userId,
+                                );
+                                return (
+                                  <p
+                                    key={d.id}
+                                    className="text-xs font-medium truncate"
+                                  >
+                                    {u
+                                      ? `${ROLE_ICON_MAP[u.role] || "👤"} ${u.name}`
+                                      : "Невідомий"}
+                                  </p>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex justify-center md:justify-end mb-1.5">
+                      <span
+                        className={`w-7 h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-semibold transition-colors
+                        ${isToday && !dayColor ? "bg-blue-600 text-white shadow-md" : !dayColor ? "text-slate-500 md:group-hover:text-blue-600" : "text-white"}
+                      `}
+                        style={{
+                          background: dayColor || undefined,
+                          textShadow: dayColor ? "0 1px 2px rgba(0,0,0,0.35)" : "none",
+                        }}
+                      >
+                        {day.getDate()}
+                      </span>
+                    </div>
+
+                    {hasAnyDayOff && !isStaff && dayOffEntries.length > 0 && (
+                      <p className="text-[9px] md:text-[10px] text-rose-600 font-semibold text-center mb-1 truncate px-1">
+                        🌴 {dayOffEntries.length}{" "}
+                        {dayOffEntries.length === 1 ? "вихідний" : "вихідних"}
+                      </p>
+                    )}
+
+                    <div className="space-y-1.5">
+                      {dayEvents.slice(0, 3).map((ev: CalendarEvent) => (
+                        <div
+                          key={ev.id}
+                          className="relative group/event z-0 hover:z-50"
+                        >
+                          <button
+                            className={`w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${projectColorMap.get(ev.project) ?? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300"}`}
+                          >
+                            {ev.time || "—"}
+                          </button>
+
+                          <EventTooltip event={ev} />
+                        </div>
+                      ))}
+                      {dayEvents.length > 3 && (
+                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 text-center">
+                          +{dayEvents.length - 3} ще
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/features/calendar/components/EventTooltip.tsx
+
+```
+import type { Event as CalendarEvent } from "../../../types";
+
+interface EventTooltipProps {
+  event: CalendarEvent;
+}
+
+export default function EventTooltip({ event: ev }: EventTooltipProps) {
+  return (
+    <div className="hidden md:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-800 text-white p-3 rounded-xl shadow-2xl opacity-0 invisible group-hover/event:opacity-100 group-hover/event:visible transition-all duration-200 pointer-events-none">
+      <p className="font-bold text-sm mb-1 truncate">
+        {ev.school?.name || "Невідомий заклад"}
+      </p>
+      <div className="space-y-1 text-xs text-slate-300">
+        <p>
+          <span className="text-slate-400">Проєкт:</span>{" "}
+          {ev.project}
+        </p>
+        <p>
+          <span className="text-slate-400">Екіпаж:</span>{" "}
+          {ev.crew?.name || "Не призначено"}
+        </p>
+        <p>
+          <span className="text-slate-400">Час:</span>{" "}
+          <span className="font-bold text-white">
+            {ev.time || "—"}
+          </span>
+        </p>
+      </div>
+      <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-slate-800"></div>
+    </div>
+  );
+}
+
+```
+
 # FILE: apps/frontend/src/features/calendar/components/MobileCalendarGrid.tsx
 
 ```
@@ -2755,6 +3007,101 @@ export function useFinanceDashboard(period = "month") {
 
 ```
 
+# FILE: apps/frontend/src/hooks/useDashboardSummary.ts
+
+```
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../config/api";
+import { useSelectedCity } from "../context/CityContext";
+
+export interface DashboardSummary {
+  todayEvents: TodayEvent[];
+  upcomingEvents: UpcomingEvent[];
+  funnel: Record<string, number>;
+  totalSchools: number;
+  monthlyKpi: {
+    revenue: number;
+    profit: number;
+    children: number;
+    count: number;
+  };
+  staleSchools: StaleSchool[];
+  activityFeed: ActivityFeedItem[];
+  citiesStats: CityStat[];
+}
+
+interface TodayEvent {
+  id: string;
+  time?: string | null;
+  project: string;
+  school?: { id: string; name: string } | null;
+  crew?: {
+    id: string;
+    name?: string;
+    host?: { id: string; name: string } | null;
+    driver?: { id: string; name: string } | null;
+  } | null;
+}
+
+interface UpcomingEvent {
+  id: string;
+  date: string;
+  time?: string | null;
+  project: string;
+  school?: { id: string; name: string } | null;
+  crew?: {
+    id: string;
+    name?: string;
+    host?: { id: string; name: string } | null;
+    driver?: { id: string; name: string } | null;
+  } | null;
+}
+
+interface StaleSchool {
+  id: string;
+  name: string;
+  status: string | null;
+  lastActivity: string | null;
+  daysStale: number | null;
+}
+
+interface ActivityFeedItem {
+  id: string;
+  userName: string;
+  role: string;
+  action: string;
+  comment: string | null;
+  createdAt: string;
+  schoolId: string | null;
+  schoolName: string | null;
+  eventId: string | null;
+}
+
+interface CityStat {
+  cityId: string;
+  cityName: string;
+  schoolsCount: number;
+  activeEvents: number;
+  monthRevenue: number;
+}
+
+export function useDashboardSummary() {
+  const { selectedCity } = useSelectedCity();
+
+  return useQuery<DashboardSummary>({
+    queryKey: ["dashboard", "summary", selectedCity.id],
+    queryFn: () =>
+      api
+        .get<DashboardSummary>("/dashboard/summary", {
+          params: { cityId: selectedCity.id || undefined },
+        })
+        .then((r) => r.data),
+    staleTime: 60 * 1000,
+  });
+}
+
+```
+
 # FILE: apps/frontend/src/hooks/useDaysOff.ts
 
 ```
@@ -3054,6 +3401,18 @@ export function useDeleteInventoryItem() {
     mutationFn: (id: string) =>
       api.delete(`/inventory/${id}`).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["inventory"] }),
+  });
+}
+
+export function useInventoryByProject(project: string | undefined) {
+  return useQuery({
+    queryKey: ["inventory", "by-project", project],
+    queryFn: () =>
+      api
+        .get<InventoryItem[]>(`/inventory/by-project?project=${encodeURIComponent(project ?? "")}`)
+        .then((r) => r.data),
+    enabled: !!project,
+    staleTime: 30 * 1000,
   });
 }
 
@@ -3755,6 +4114,23 @@ export function useUpdateHistoryComment() {
 }
 .dayoff-cell-enter {
   animation: dayOffPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.dashboard-swiper {
+  width: 100%;
+  height: 100%;
+}
+.dashboard-swiper .swiper-slide {
+  height: auto;
+  overflow-y: auto;
 }
 
 ```
@@ -5633,45 +6009,128 @@ function CompletedEventModal({
 # FILE: apps/frontend/src/pages/Dashboard.tsx
 
 ```
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Swiper, SwiperSlide } from "swiper/react";
+import "swiper/css";
 import { useAuth } from "../context/AuthContext";
+import { DASHBOARD_TABS } from "../constants/navTabs";
+import { hasRole } from "../utils/roles";
+import DashboardTopNav from "../components/dashboard/DashboardTopNav";
+import TabErrorBoundary from "../components/dashboard/TabErrorBoundary";
 
-const StaffDashboard = lazy(() => import("../features/dashboard/StaffDashboard"));
-const ManagerDashboard = lazy(() => import("../features/dashboard/ManagerDashboard"));
-const OwnerDashboard = lazy(() => import("../features/dashboard/OwnerDashboard"));
+const OverviewTab = lazy(() => import("./OverviewTab"));
+const ReportsTab = lazy(() => import("../features/reports/pages/ReportsReviewPage"));
+const LeaderboardTab = lazy(() => import("./CityLeaderboard"));
+const AnalyticsTab = lazy(() => import("./Analytics"));
 
-function PageLoader() {
-  return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
-      <div className="mb-6">
-        <div className="h-8 bg-slate-200 rounded-xl w-48 animate-pulse" />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-28 bg-white rounded-2xl border border-slate-100 animate-pulse" />
-        ))}
-      </div>
-    </div>
-  );
-}
+const TAB_COMPONENTS: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
+  overview: OverviewTab,
+  reports: ReportsTab,
+  leaderboard: LeaderboardTab,
+  analytics: AnalyticsTab,
+};
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const swiperRef = useRef<any>(null);
+  const prevTabRef = useRef<string>("");
 
-  if (!user) return <PageLoader />;
+  const allowedTabs = useMemo(
+    () => DASHBOARD_TABS.filter((t) => hasRole(user?.role, t.roles)),
+    [user],
+  );
+  const allowedIds = useMemo(() => allowedTabs.map((t) => t.id), [allowedTabs]);
 
-  const role = user.role;
+  const resolveInitial = useCallback(() => {
+    const fromUrl = searchParams.get("tab");
+    if (fromUrl && allowedIds.includes(fromUrl)) return fromUrl;
+    const fromStorage = sessionStorage.getItem("dashboard:lastTab");
+    if (fromStorage && allowedIds.includes(fromStorage)) return fromStorage;
+    return allowedIds[0] ?? "overview";
+  }, [searchParams, allowedIds]);
+
+  const [activeTab, setActiveTab] = useState(() => resolveInitial());
+
+  useEffect(() => {
+    if (prevTabRef.current && prevTabRef.current !== activeTab) {
+      window.dispatchEvent(
+        new CustomEvent("tab_switch", {
+          detail: { from: prevTabRef.current, to: activeTab },
+        }),
+      );
+    }
+    prevTabRef.current = activeTab;
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (!allowedIds.includes(activeTab)) {
+      const fallback = allowedIds[0] ?? "overview";
+      setActiveTab(fallback);
+      setSearchParams({ tab: fallback }, { replace: true });
+    }
+  }, [allowedIds, activeTab, setSearchParams]);
+
+  const handleTabChange = useCallback(
+    (id: string) => {
+      const idx = allowedIds.indexOf(id);
+      if (idx !== -1 && swiperRef.current) {
+        swiperRef.current.slideTo(idx);
+      }
+      setActiveTab(id);
+      setSearchParams({ tab: id }, { replace: true });
+      sessionStorage.setItem("dashboard:lastTab", id);
+    },
+    [allowedIds, setSearchParams],
+  );
+
+  const handleSlideChange = useCallback(
+    (swiper: any) => {
+      const id = allowedIds[swiper.activeIndex];
+      if (id && id !== activeTab) {
+        setActiveTab(id);
+        setSearchParams({ tab: id }, { replace: true });
+        sessionStorage.setItem("dashboard:lastTab", id);
+      }
+    },
+    [allowedIds, activeTab, setSearchParams],
+  );
 
   return (
-    <Suspense fallback={<PageLoader />}>
-      {role === "SUPERADMIN" || role === "OWNER" ? (
-        <OwnerDashboard />
-      ) : role === "MANAGER" ? (
-        <ManagerDashboard />
-      ) : (
-        <StaffDashboard />
-      )}
-    </Suspense>
+    <div className="bg-gradient-subtle min-h-screen flex flex-col">
+      <DashboardTopNav
+        tabs={allowedTabs}
+        activeTab={activeTab}
+        onChange={handleTabChange}
+      />
+
+      <div className="flex-1">
+        <Swiper
+          onSwiper={(swiper) => { swiperRef.current = swiper; }}
+          initialSlide={allowedIds.indexOf(activeTab)}
+          onSlideChange={handleSlideChange}
+          speed={280}
+          allowTouchMove={true}
+          className="dashboard-swiper"
+        >
+          {allowedTabs.map((tab) => {
+            const Component = TAB_COMPONENTS[tab.id];
+            return (
+              <SwiperSlide key={tab.id}>
+                <div className="p-4 md:p-8">
+                  <TabErrorBoundary label={tab.label}>
+                    <Suspense fallback={<div className="text-sm text-content-muted">Завантаження...</div>}>
+                      <Component />
+                    </Suspense>
+                  </TabErrorBoundary>
+                </div>
+              </SwiperSlide>
+            );
+          })}
+        </Swiper>
+      </div>
+    </div>
   );
 }
 
@@ -6545,23 +7004,23 @@ export default function Events() {
   };
 
   return (
-    <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
+    <div className="p-4 md:p-8 bg-gradient-subtle min-h-screen">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-content-primary">
             {title}
             {selectedCity.id && !isFieldStaff && (
-              <span className="ml-2 text-base font-normal text-blue-500">
+              <span className="ml-2 text-base font-normal text-brand">
                 · {selectedCity.name}
               </span>
             )}
           </h1>{" "}
-          <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
+          <p className="text-sm text-content-muted mt-1">{subtitle}</p>
         </div>
         {!isFieldStaff && (
           <button
             onClick={() => navigate("/schools")}
-            className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg hover:bg-blue-700 transition w-full sm:w-auto"
+            className="bg-brand text-white px-4 py-2.5 sm:py-2.5 rounded-lg text-sm font-medium hover:bg-brand-hover hover:shadow-lift hover:-translate-y-0.5 active:scale-95 transition-all duration-200 w-full sm:w-auto"
           >
             + Додати подію
           </button>
@@ -6869,7 +7328,7 @@ export default function InventoryPage() {
     setModalOpen(true);
   };
 
-  const handleSave = async (data: { name: string; sku?: string; category: string; unit: string; minStock: number; currentStock: number; notes?: string }) => {
+  const handleSave = async (data: { name: string; category: string; project?: string; minStock: number; currentStock: number; notes?: string }) => {
     if (editItem) {
       await updateItem.mutateAsync({ id: editItem.id, ...data });
     } else {
@@ -6902,7 +7361,7 @@ export default function InventoryPage() {
       </div>
       <div className="flex items-center gap-3 text-xs text-slate-500">
         <span className="bg-slate-100 px-2 py-0.5 rounded">{item.category}</span>
-        <span>{item.unit}</span>
+        {item.project && <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded">{item.project}</span>}
         {item.city && <span>{item.city.name}</span>}
       </div>
       <div className="flex items-center gap-2 pt-1">
@@ -6999,9 +7458,8 @@ export default function InventoryPage() {
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50">
                   <th className="text-left px-4 py-3 font-semibold text-slate-600">Назва</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Артикул</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600">Категорія</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Од.</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Проєкт</th>
                   <th className="text-center px-4 py-3 font-semibold text-slate-600">На складі</th>
                   <th className="text-center px-4 py-3 font-semibold text-slate-600">Мін.</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600">Місто</th>
@@ -7012,9 +7470,8 @@ export default function InventoryPage() {
                 {items.map((item) => (
                   <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50/50">
                     <td className="px-4 py-3 font-medium text-slate-800">{item.name}</td>
-                    <td className="px-4 py-3 text-slate-500">{item.sku || "—"}</td>
                     <td className="px-4 py-3 text-slate-500">{item.category}</td>
-                    <td className="px-4 py-3 text-slate-500">{item.unit}</td>
+                    <td className="px-4 py-3 text-slate-500">{item.project || "—"}</td>
                     <td className="px-4 py-3 text-center">
                       <StockBadge current={item.currentStock} min={item.minStock} />
                     </td>
@@ -8025,6 +8482,173 @@ export default function NotFound() {
 
 ```
 
+# FILE: apps/frontend/src/pages/OverviewTab.tsx
+
+```
+import { useMemo } from "react";
+import { useAuth } from "../context/AuthContext";
+import { useSelectedCity } from "../context/CityContext";
+import { useDashboardSummary } from "../hooks/useDashboardSummary";
+import { useCities } from "../hooks/useCities";
+import TodayEvents from "../components/dashboard/TodayEvents";
+import ActivityFeed from "../components/dashboard/ActivityFeed";
+
+function fmtAmount(value: number): string {
+  return new Intl.NumberFormat("uk-UA").format(Math.round(value));
+}
+
+function KpiCard({
+  title,
+  value,
+  subtitle,
+  icon,
+  loading,
+}: {
+  title: string;
+  value: string;
+  subtitle?: string;
+  icon: string;
+  loading?: boolean;
+}) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col justify-between min-h-[100px]">
+      {loading ? (
+        <div className="animate-pulse space-y-3">
+          <div className="h-4 bg-slate-100 rounded w-1/2" />
+          <div className="h-7 bg-slate-100 rounded w-2/3" />
+          <div className="h-3 bg-slate-100 rounded w-1/3" />
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center gap-1.5 mb-2">
+            <span className="text-base">{icon}</span>
+            <span className="text-xs font-semibold text-slate-500">{title}</span>
+          </div>
+          <p className="text-xl font-bold text-slate-800 leading-none">{value}</p>
+          {subtitle && (
+            <p className="text-[11px] text-slate-400 mt-1.5 font-medium">{subtitle}</p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function OverviewTab() {
+  const { user } = useAuth();
+  const { selectedCity, setSelectedCity } = useSelectedCity();
+  const { data: summary, isError } = useDashboardSummary();
+  const { data: cities } = useCities();
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Доброго ранку";
+    if (hour < 18) return "Доброго дня";
+    return "Доброго вечора";
+  }, []);
+
+  const kpiCards = useMemo(() => {
+    if (!summary) return null;
+    return [
+      {
+        title: "Виручка",
+        value: `${fmtAmount(summary.monthlyKpi.revenue)} грн`,
+        icon: "💰",
+      },
+      {
+        title: "Прибуток",
+        value: `${fmtAmount(summary.monthlyKpi.profit)} грн`,
+        icon: "📈",
+      },
+      {
+        title: "Дітей",
+        value: fmtAmount(summary.monthlyKpi.children),
+        subtitle: `за ${summary.monthlyKpi.count} подіями`,
+        icon: "👶",
+      },
+      {
+        title: "Активних шкіл",
+        value: fmtAmount(summary.totalSchools),
+        icon: "🏫",
+      },
+    ];
+  }, [summary]);
+
+  return (
+    <div className="bg-slate-50 min-h-screen">
+      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 md:px-8 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-slate-800">
+              {greeting}, {user?.name ?? "Користувач"}
+            </h1>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {new Date().toLocaleDateString("uk-UA", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              })}
+            </p>
+          </div>
+
+          {cities && cities.length > 0 && (
+            <select
+              value={selectedCity.id || ""}
+              onChange={(e) => {
+                const city = cities.find((c) => c.id === e.target.value);
+                if (city) setSelectedCity({ id: city.id, name: city.name });
+              }}
+              className="bg-white border border-slate-200 text-slate-700 text-xs font-medium rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 shadow-sm max-w-[140px] truncate"
+              aria-label="Вибір міста"
+            >
+              <option value="">Всі міста</option>
+              {cities.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      </div>
+
+      <div className="p-4 md:p-8 space-y-6">
+        {isError ? (
+          <div className="text-center py-16 text-slate-400">
+            <span className="text-3xl block mb-3 opacity-50">⚠️</span>
+            <p className="text-sm font-medium">Не вдалося завантажити дані дашборду</p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+              {kpiCards
+                ? kpiCards.map((kpi) => (
+                    <KpiCard key={kpi.title} {...kpi} loading={false} />
+                  ))
+                : Array.from({ length: 4 }).map((_, i) => (
+                    <KpiCard
+                      key={i}
+                      title=""
+                      value=""
+                      icon=""
+                      loading={true}
+                    />
+                  ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <TodayEvents events={summary?.todayEvents ?? []} />
+              <ActivityFeed items={summary?.activityFeed ?? []} />
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+```
+
 # FILE: apps/frontend/src/pages/ProjectProfile.tsx
 
 ```
@@ -8517,7 +9141,7 @@ export default function SchoolProfile() {
     <motion.div
       animate={{ opacity: isLeavingPage ? 0 : 1 }}
       transition={{ duration: 0.3 }}
-      className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8"
+      className="p-4 md:p-8 bg-gradient-subtle min-h-screen text-content-primary font-sans w-full overflow-x-hidden pb-24 md:pb-8"
     >
       <SchoolProfileHeader
         schoolData={schoolData}
@@ -8548,15 +9172,15 @@ export default function SchoolProfile() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.25 }}
-                className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
+                className="bg-gradient-card rounded-card shadow-card border border-border p-6 hover:shadow-card-hover transition-all duration-200"
               >
-                <h3 className="font-bold text-slate-800 mb-4">
+                <h3 className="font-bold text-content-primary mb-4 tracking-tight">
                   Відповідальна особа
                 </h3>
                 <ul className="space-y-2 text-sm">
                   <li className="flex justify-between">
-                    <span className="text-slate-500">Остання дія:</span>
-                    <span className="font-medium text-blue-600">
+                    <span className="text-content-muted">Остання дія:</span>
+                    <span className="font-medium text-brand">
                       {creatorName}
                     </span>
                   </li>
@@ -8642,6 +9266,7 @@ export default function SchoolProfile() {
                       data={currentEvent.preparation || {}}
                       onUpdate={handleUpdatePreparation}
                       onOpenCrewModal={() => setIsCrewModalOpen(true)}
+                      project={currentEvent.project}
                     />
                   </Suspense>
                 )}
@@ -8864,1331 +9489,6 @@ export default function SchoolProfile() {
     </motion.div>
   );
 }
-
-```
-
-# FILE: apps/frontend/src/pages/Schools.tsx
-
-```
-import {
-  useState,
-  useRef,
-  useEffect,
-  useMemo,
-  useCallback,
-  lazy,
-  Suspense,
-} from "react";
-import { api } from "../config/api";
-import { useSelectedCity } from "../context/CityContext";
-import {
-  useSchools,
-  useSchoolStats,
-  useDeleteSchool,
-  usePrefetchSchool,
-  useSupportedCities,
-} from "../hooks/useApi";
-import { useCities } from "../hooks/useCities";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
-import VirtualSchoolList from "../components/VirtualSchoolList";
-import { SchoolCard } from "../components/schools/SchoolMobileList";
-import type { SchoolContact } from "../types";
-import { useAuth } from "../context/AuthContext";
-import { Download } from "lucide-react";
-import { PIPELINE_STAGES } from "../constants/pipelineStages";
-interface NewSchoolPayload {
-  name: string;
-  cityId: string;
-  sourceUrl: string;
-  director: string;
-  phone: string;
-  type: string;
-}
-
-const StatsBar = lazy(() => import("../components/schools/StatsBar"));
-const VirtualDesktopTable = lazy(
-  () => import("../components/schools/VirtualDesktopTable"),
-);
-interface City {
-  id: string;
-  name: string;
-}
-
-export default function Schools() {
-  const { selectedCity } = useSelectedCity();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const { user } = useAuth();
-  const userRole = user?.role ?? null;
-  const qc = useQueryClient();
-  const [form, setForm] = useState({
-    name: "",
-    cityId: "",
-    sourceUrl: "",
-    director: "",
-    phone: "",
-  });
-  const [matchedContacts, setMatchedContacts] = useState<SchoolContact[]>([]);
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
-  const [sizeFilter, setSizeFilter] = useState<string | null>(null);
-  const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<
-    { name: string; url: string }[]
-  >([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
-  const [dotCount, setDotCount] = useState(3);
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const addSchoolMutation = useMutation({
-    mutationFn: (newSchool: NewSchoolPayload) =>
-      api.post("/schools", newSchool),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["schools"] });
-      setIsModalOpen(false);
-    },
-    onError: () => alert("Не вдалося створити заклад"),
-  });
-
-  const bulkImportMutation = useMutation({
-    mutationFn: (cityId: string) =>
-      api.post(
-        "/schools/bulk-import",
-        { cityId, type: "Школа" },
-        { timeout: 120000 },
-      ),
-    onSuccess: (res) => {
-      alert(
-        `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
-      );
-      qc.invalidateQueries({ queryKey: ["schools"] });
-    },
-    onError: () => alert("Помилка імпорту."),
-  });
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 350);
-    return () => clearTimeout(t);
-  }, [searchQuery]);
-
-  const schoolFilters = useMemo(
-    () => ({
-      search: debouncedQuery || undefined,
-      cityId: selectedCity.id || undefined,
-      type: "Школа" as const,
-      stage: (activeFilter as any) || undefined,
-      size: (sizeFilter as any) || undefined,
-    }),
-    [debouncedQuery, selectedCity.id, activeFilter, sizeFilter],
-  );
-
-  const {
-    data: schoolsPages,
-    isLoading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useSchools(schoolFilters);
-  const { data: stats } = useSchoolStats({
-    cityId: selectedCity.id || undefined,
-    type: "Школа",
-    stage: (activeFilter as any) || undefined,
-  });
-  const { data: cities = [] } = useCities();
-  const { data: supportedCities = [] } = useSupportedCities();
-  const deleteSchool = useDeleteSchool();
-  const prefetchSchool = usePrefetchSchool();
-
-  const handleLoadMore = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  const filteredSchools = useMemo(
-    () => schoolsPages?.pages.flatMap((p) => p.data) ?? [],
-    [schoolsPages],
-  );
-  const totalItems = schoolsPages?.pages[0]?.meta.totalItems ?? 0;
-
-  const handleOpenModal = useCallback(() => {
-    setForm({
-      name: "",
-      cityId: selectedCity.id || cities[0]?.id || "",
-      sourceUrl: "",
-      director: "",
-      phone: "",
-    });
-    setMatchedContacts([]);
-    setIsModalOpen(true);
-  }, [selectedCity.id, cities]);
-
-  const fetchContacts = async (schoolName: string) => {
-    if (!schoolName || schoolName.trim().length < 1)
-      return setMatchedContacts([]);
-    const currentCityName =
-      selectedCity.name || cities.find((c) => c.id === form.cityId)?.name || "";
-    if (currentCityName.toLowerCase() !== "львів")
-      return setMatchedContacts([]);
-    try {
-      const data = await qc.fetchQuery<SchoolContact[]>({
-        queryKey: ["schoolContacts", schoolName, currentCityName],
-        queryFn: async () => {
-          const res = await api.get<SchoolContact[]>(
-            `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=Школа`,
-          );
-          return res.data;
-        },
-        staleTime: 1000 * 60 * 5,
-      });
-
-      setMatchedContacts(data);
-      if (data.length > 0) {
-        const director =
-          data.find(
-            (c: SchoolContact) =>
-              c.role?.includes("Директор") || c.role?.includes("Завідувач"),
-          ) || data[0];
-        setForm((f) => ({
-          ...f,
-          director: director.contactName,
-          phone: director.phone,
-        }));
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleNameChange = (value: string) => {
-    setForm({ ...form, name: value });
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    if (value.length < 2) {
-      setShowSuggestions(false);
-      setIsSearching(false);
-      setMatchedContacts([]);
-      return;
-    }
-    setIsSearching(true);
-    setShowSuggestions(true);
-    debounceTimer.current = setTimeout(async () => {
-      try {
-        const [externalData] = await Promise.all([
-          qc.fetchQuery({
-            queryKey: ["schoolSearchExternal", value],
-            queryFn: async () => {
-              const res = await api.get(
-                `/schools/search?q=${encodeURIComponent(value)}&type=Школа`,
-              );
-              return res.data;
-            },
-            staleTime: 1000 * 60 * 5,
-          }),
-          fetchContacts(value),
-        ]);
-        setSuggestions(externalData);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 400);
-  };
-
-  const handleSelectSuggestion = (name: string, url: string) => {
-    setForm({ ...form, name, sourceUrl: url });
-    setShowSuggestions(false);
-    fetchContacts(name);
-  };
-
-  const handleAddSchool = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name.trim() || !form.cityId) return;
-    addSchoolMutation.mutate({ ...form, type: "Школа" });
-  };
-
-  const handleDeleteSchool = useCallback(
-    async (e: React.MouseEvent, schoolId: string, schoolName: string) => {
-      e.stopPropagation();
-      if (userRole !== "SUPERADMIN") return;
-      if (
-        !window.confirm(
-          `Видалити школу "${schoolName}"? Це видалить також усі її події.`,
-        )
-      )
-        return;
-      await deleteSchool.mutateAsync(schoolId);
-    },
-    [deleteSchool, userRole],
-  );
-
-  return (
-    <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-slate-50 min-h-screen">
-      {/* Шапка */}
-      <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold text-slate-800 leading-tight">
-            Школи
-            {selectedCity.id && (
-              <span className="ml-2 text-sm font-normal text-blue-500">
-                · {selectedCity.name}
-              </span>
-            )}
-          </h1>
-        </div>
-        <div className="flex gap-2 shrink-0">
-          {(userRole === "SUPERADMIN" || userRole === "MANAGER") && (
-            <button
-              onClick={() => {
-                if (!selectedCity.id) return alert("Спочатку оберіть місто");
-                if (!supportedCities.includes(selectedCity.name))
-                  return alert(
-                    `Місто "${selectedCity.name}" не підтримується для імпорту.`,
-                  );
-                if (
-                  !window.confirm(
-                    `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`,
-                  )
-                )
-                  return;
-
-                setDotCount(3);
-                const dotInterval = setInterval(() => {
-                  setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
-                }, 500);
-
-                bulkImportMutation.mutate(selectedCity.id, {
-                  onSettled: () => clearInterval(dotInterval),
-                });
-              }}
-              disabled={bulkImportMutation.isPending}
-              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
-            >
-              {bulkImportMutation.isPending ? (
-                <span className="font-medium">
-                  Імпортую{"·".repeat(dotCount)}
-                </span>
-              ) : (
-                <><Download className="w-4 h-4" /> Імпорт з isuo</>
-              )}
-            </button>
-          )}
-          <button
-            onClick={handleOpenModal}
-            className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-          >
-            + Додати
-          </button>
-        </div>
-      </div>
-
-      {/* StatsBar */}
-      <div className="shrink-0">
-        <Suspense
-          fallback={
-            <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
-          }
-        >
-          <StatsBar
-            statusStats={
-              stats?.statusStats ?? {
-                new: 0,
-                planned: 0,
-                inProgress: 0,
-                done: 0,
-              }
-            }
-            sizeStats={stats?.sizeStats ?? { small: 0, medium: 0, large: 0 }}
-            activeFilter={activeFilter}
-            onFilterChange={setActiveFilter}
-            sizeFilter={sizeFilter}
-            onSizeFilterChange={setSizeFilter}
-            schoolType="Школа"
-          />
-        </Suspense>
-      </div>
-
-      {/* Пошук */}
-      <div className="relative shrink-0 mb-4 mt-2">
-        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-          <svg
-            className="w-5 h-5 text-slate-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
-            />
-          </svg>
-        </div>
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Пошук за назвою школи..."
-          className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border-none sm:border sm:border-slate-200 rounded-2xl sm:rounded-xl text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery("")}
-            className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600 transition"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        )}
-      </div>
-
-      {/* Лічильник */}
-      <p className="text-xs font-semibold text-slate-400 mb-4 shrink-0 uppercase tracking-wide px-1">
-        {`${filteredSchools.length} з ${totalItems} шкіл`}
-        {(activeFilter || sizeFilter) && (
-          <button
-            onClick={() => {
-              setActiveFilter(null);
-              setSizeFilter(null);
-            }}
-            className="ml-3 text-blue-500 hover:text-blue-700 lowercase"
-          >
-            скинути фільтри
-          </button>
-        )}
-      </p>
-
-      {/* Компоненти списків */}
-      {isLoading ? (
-        <div className="flex flex-col gap-2.5 flex-1">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              className="bg-white rounded-2xl border border-slate-100 p-3.5 animate-pulse"
-              style={{ opacity: 1 - i * 0.1 }}
-            >
-              <div className="h-4 bg-slate-200 rounded-lg w-3/4 mb-3" />
-              <div className="flex justify-between">
-                <div className="h-3 bg-slate-100 rounded-lg w-1/3" />
-                <div className="h-3 bg-slate-100 rounded-lg w-1/4" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <>
-          {/* Мобільний: віртуалізований список карток */}
-          <div className="md:hidden flex-1 w-full overflow-hidden">
-            <VirtualSchoolList
-              schools={filteredSchools}
-              itemHeight={110}
-              onEndReached={handleLoadMore}
-              animationKey={`${activeFilter}-${sizeFilter}`}
-              renderItem={(school, index) => (
-                <div
-                  className="pb-2.5"
-                  onMouseEnter={() => prefetchSchool(school.id)}
-                >
-                  <SchoolCard
-                    school={school}
-                    index={index}
-                    onDelete={handleDeleteSchool}
-                    stages={PIPELINE_STAGES}
-                  />
-                </div>
-              )}
-            />
-          </div>
-
-          {/* Десктоп: таблиця з віртуалізованим tbody */}
-          <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0 min-w-0">
-            <Suspense
-              fallback={<div className="flex-1 animate-pulse bg-slate-50" />}
-            >
-              <VirtualDesktopTable
-                schools={filteredSchools}
-                searchQuery={searchQuery}
-                onDelete={handleDeleteSchool}
-                stages={PIPELINE_STAGES}
-                onEndReached={handleLoadMore}
-              />
-            </Suspense>
-          </div>
-        </>
-      )}
-
-      {/* Мобільна плаваюча кнопка FAB */}
-      <button
-        onClick={handleOpenModal}
-        className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
-      >
-        +
-      </button>
-
-      {/* Модальне вікно */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <h3 className="text-xl font-bold text-slate-800">Нова школа</h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-2 -mr-2 leading-none text-xl"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form
-              onSubmit={handleAddSchool}
-              className="p-6 flex flex-col gap-4 overflow-y-auto"
-            >
-              <div className="relative">
-                <label className="block text-sm font-medium text-slate-600 mb-1.5">
-                  Назва школи
-                </label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  onBlur={() =>
-                    setTimeout(() => setShowSuggestions(false), 150)
-                  }
-                  placeholder="Наприклад: Школа №1"
-                  required
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                {showSuggestions && (
-                  <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto overflow-hidden">
-                    {isSearching ? (
-                      <li className="px-4 py-3 text-sm text-slate-400 italic">
-                        Пошук...
-                      </li>
-                    ) : suggestions.length > 0 ? (
-                      suggestions.map((s, i) => (
-                        <li
-                          key={i}
-                          onMouseDown={() =>
-                            handleSelectSuggestion(s.name, s.url)
-                          }
-                          className="px-4 py-3 text-sm hover:bg-blue-50 cursor-pointer font-medium border-b border-slate-50 last:border-0"
-                        >
-                          {s.name}
-                        </li>
-                      ))
-                    ) : (
-                      <li className="px-4 py-3 text-sm text-slate-400 italic">
-                        Нічого не знайдено
-                      </li>
-                    )}
-                  </ul>
-                )}
-              </div>
-
-              {!selectedCity.id && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1.5">
-                    Місто
-                  </label>
-                  <select
-                    value={form.cityId}
-                    onChange={(e) =>
-                      setForm({ ...form, cityId: e.target.value })
-                    }
-                    required
-                    className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                  >
-                    <option value="">— Оберіть місто —</option>
-                    {cities.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1.5">
-                  Контакт{" "}
-                  <span className="ml-1 text-xs font-normal text-slate-400">
-                    (автозаповнення)
-                  </span>
-                </label>
-                {matchedContacts.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {matchedContacts.map((c, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() =>
-                          setForm((f) => ({
-                            ...f,
-                            director: c.contactName,
-                            phone: c.phone,
-                          }))
-                        }
-                        className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${form.director === c.contactName ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
-                      >
-                        {c.role ? `${c.role}: ` : ""}
-                        {c.contactName}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <input
-                  type="text"
-                  value={form.director}
-                  onChange={(e) =>
-                    setForm({ ...form, director: e.target.value })
-                  }
-                  placeholder="Микола Петренко"
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
-                />
-                <label className="block text-sm font-medium text-slate-600 mb-1.5">
-                  Телефон
-                </label>
-                <input
-                  type="text"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="0671234567"
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="flex gap-3 mt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-5 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors"
-                >
-                  Скасувати
-                </button>
-                <button
-                  type="submit"
-                  disabled={addSchoolMutation.isPending}
-                  className="flex-1 px-5 py-3.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                  {addSchoolMutation.isPending ? "Збереження..." : "Створити"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-```
-
-# FILE: apps/frontend/src/tests/component/calendar/CalendarComponents.test.tsx
-
-```
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
-import CalendarSkeleton from "../../../features/calendar/components/CalendarSkeleton";
-import CalendarHeader from "../../../features/calendar/components/CalendarHeader";
-import EventTooltip from "../../../features/calendar/components/EventTooltip";
-import type { Project, City } from "../../../types";
-
-describe("CalendarSkeleton", () => {
-  it("рендерить skeleton без помилок", () => {
-    const { container } = render(<CalendarSkeleton />);
-    expect(container.querySelector(".animate-pulse")).toBeInTheDocument();
-  });
-
-  it("містить 35 клітинок-скелетів", () => {
-    const { container } = render(<CalendarSkeleton />);
-    const cells = container.querySelectorAll(".min-h-\\[80px\\]");
-    expect(cells.length).toBeGreaterThanOrEqual(30);
-  });
-});
-
-describe("CalendarHeader", () => {
-  const projects: Project[] = [
-    { id: "p1", name: "Проєкт A", color: "blue" },
-    { id: "p2", name: "Проєкт B", color: "emerald" },
-  ];
-  const cities: City[] = [
-    { id: "c1", name: "Київ" },
-    { id: "c2", name: "Львів" },
-  ];
-  const defaultProps = {
-    projects,
-    filterCityId: "ALL",
-    setFilterCityId: vi.fn(),
-    cities,
-    userRole: "MANAGER",
-  };
-
-  it("рендерить заголовок Календар подій", () => {
-    render(<CalendarHeader {...defaultProps} />);
-    expect(screen.getByText("Календар подій")).toBeInTheDocument();
-  });
-
-  it("рендерить бейджі проєктів", () => {
-    render(<CalendarHeader {...defaultProps} />);
-    expect(screen.getByText("Проєкт A")).toBeInTheDocument();
-    expect(screen.getByText("Проєкт B")).toBeInTheDocument();
-  });
-
-  it("не показує city-select для MANAGER", () => {
-    render(<CalendarHeader {...defaultProps} userRole="MANAGER" />);
-    expect(screen.queryByText("Місто:")).not.toBeInTheDocument();
-  });
-
-  it("показує city-select для SUPERADMIN", () => {
-    render(<CalendarHeader {...defaultProps} userRole="SUPERADMIN" />);
-    expect(screen.getByText("Місто:")).toBeInTheDocument();
-    expect(screen.getByText("🌍 Всі міста")).toBeInTheDocument();
-  });
-});
-
-describe("EventTooltip", () => {
-  it("рендерить назву школи та проєкт", () => {
-    const event = {
-      id: "e1",
-      project: "Проєкт A",
-      time: "10:00",
-      school: { id: "s1", name: "Школа №1", type: "school" },
-      crew: { id: "c1", name: "Екіпаж 1", cityId: "city-1" },
-    } as any;
-
-    render(<EventTooltip event={event} />);
-    expect(screen.getByText("Школа №1")).toBeInTheDocument();
-    expect(screen.getByText(/Проєкт A/)).toBeInTheDocument();
-    expect(screen.getByText("10:00")).toBeInTheDocument();
-  });
-
-  it("рендерить fallback при відсутніх даних", () => {
-    const event = { id: "e2", project: "Проєкт B", time: "" } as any;
-
-    render(<EventTooltip event={event} />);
-    expect(screen.getByText("Невідомий заклад")).toBeInTheDocument();
-    expect(screen.getByText("—")).toBeInTheDocument();
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/component/ConfirmDialog.test.tsx
-
-```
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
-
-describe("ConfirmDialog", () => {
-  it("не рендериться, якщо isOpen=false", () => {
-    render(
-      <ConfirmDialog
-        isOpen={false}
-        title="Видалити"
-        message="Справді?"
-        onConfirm={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-    );
-    expect(screen.queryByText("Видалити")).not.toBeInTheDocument();
-    expect(screen.queryByText("Справді?")).not.toBeInTheDocument();
-  });
-
-  it("рендериться, коли isOpen=true", () => {
-    render(
-      <ConfirmDialog
-        isOpen={true}
-        title="Видалити"
-        message="Справді?"
-        onConfirm={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("Видалити")).toBeInTheDocument();
-    expect(screen.getByText("Справді?")).toBeInTheDocument();
-  });
-
-  it("кнопка Підтвердити викликає onConfirm", () => {
-    const onConfirm = vi.fn();
-    render(
-      <ConfirmDialog
-        isOpen={true}
-        title="Видалити"
-        message="Справді?"
-        onConfirm={onConfirm}
-        onCancel={vi.fn()}
-      />,
-    );
-    fireEvent.click(screen.getByText("Підтвердити"));
-    expect(onConfirm).toHaveBeenCalledTimes(1);
-  });
-
-  it("кнопка Скасувати викликає onCancel", () => {
-    const onCancel = vi.fn();
-    render(
-      <ConfirmDialog
-        isOpen={true}
-        title="Видалити"
-        message="Справді?"
-        onConfirm={vi.fn()}
-        onCancel={onCancel}
-      />,
-    );
-    fireEvent.click(screen.getByText("Скасувати"));
-    expect(onCancel).toHaveBeenCalledTimes(1);
-  });
-
-  it("клік на backdrop викликає onCancel", () => {
-    const onCancel = vi.fn();
-    const { container } = render(
-      <ConfirmDialog
-        isOpen={true}
-        title="Видалити"
-        message="Справді?"
-        onConfirm={vi.fn()}
-        onCancel={onCancel}
-      />,
-    );
-    const backdrop = container.querySelector(".fixed.inset-0")!;
-    fireEvent.click(backdrop);
-    expect(onCancel).toHaveBeenCalledTimes(1);
-  });
-
-  it("клік всередині модалки не викликає onCancel", () => {
-    const onCancel = vi.fn();
-    render(
-      <ConfirmDialog
-        isOpen={true}
-        title="Видалити"
-        message="Справді?"
-        onConfirm={vi.fn()}
-        onCancel={onCancel}
-      />,
-    );
-    fireEvent.click(screen.getByText("Видалити"));
-    expect(onCancel).not.toHaveBeenCalled();
-  });
-
-  it("показує іконку Trash2 для variant=danger", () => {
-    const { container } = render(
-      <ConfirmDialog
-        isOpen={true}
-        title="Видалити"
-        message="Справді?"
-        variant="danger"
-        onConfirm={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-    );
-    expect(container.innerHTML).toContain("lucide-trash2");
-  });
-
-  it("показує іконку AlertTriangle для variant=warning", () => {
-    const { container } = render(
-      <ConfirmDialog
-        isOpen={true}
-        title="Увага"
-        message="Перевірте дані"
-        variant="warning"
-        onConfirm={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-    );
-    expect(container.innerHTML).toContain("lucide-triangle-alert");
-  });
-
-  it("використовує confirmLabel за замовчуванням", () => {
-    render(
-      <ConfirmDialog
-        isOpen={true}
-        title="Видалити"
-        message="Справді?"
-        onConfirm={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("Підтвердити")).toBeInTheDocument();
-  });
-
-  it("використовує кастомний confirmLabel", () => {
-    render(
-      <ConfirmDialog
-        isOpen={true}
-        title="Видалити"
-        message="Справді?"
-        confirmLabel="Так, видалити"
-        onConfirm={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("Так, видалити")).toBeInTheDocument();
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/component/Dashboard.test.tsx
-
-```
-import { render, screen, waitFor } from "@testing-library/react";
-import Dashboard from "../../pages/Dashboard";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter } from "react-router-dom";
-import { http, HttpResponse } from "msw";
-import { server } from "../mocks/server";
-
-vi.mock("../../context/CityContext", () => ({
-  useSelectedCity: () => ({ selectedCity: { id: "city-1", name: "Львів" } })
-}));
-
-vi.mock("../../context/AuthContext", () => ({
-  useAuth: () => ({ user: { role: "SUPERADMIN" } })
-}));
-
-const createWrapper = () => {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>{children}</BrowserRouter>
-    </QueryClientProvider>
-  );
-};
-
-describe("Dashboard", () => {
-  it("renders owner dashboard for SUPERADMIN role", async () => {
-    server.use(
-      http.get("http://localhost:3000/api/finance/dashboard", () =>
-        HttpResponse.json({
-          kpi: { totalRevenue: 100000, totalExpenses: 40000, totalProfit: 60000, totalEvents: 25 },
-          monthly: [],
-          expectedRevenue: 120000,
-          filters: { projects: [], cities: [] },
-        })
-      )
-    );
-
-    render(<Dashboard />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByText("Фінансовий дашборд")).toBeInTheDocument();
-      expect(screen.getByText("100 000 грн")).toBeInTheDocument();
-      expect(screen.getByText("40 000 грн")).toBeInTheDocument();
-      expect(screen.getByText("60 000 грн")).toBeInTheDocument();
-      expect(screen.getByText("25")).toBeInTheDocument();
-    });
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/component/DayOffModal.test.tsx
-
-```
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import DayOffModal from "../../components/calendar/DayOffModal";
-import type { DayOff } from "../../hooks/useDaysOff";
-
-function makeDate() {
-  return new Date(2026, 6, 10);
-}
-
-const staff = [
-  { id: "u-host", name: "Ведучий 1", role: "HOST" },
-  { id: "u-driver", name: "Водій 1", role: "DRIVER" },
-  { id: "u-other", name: "Інший 1", role: "OTHER" },
-];
-
-const dayOff: DayOff = {
-  id: "d-host-1",
-  userId: "u-host",
-  date: "2026-07-10",
-  user: { id: "u-host", name: "Ведучий 1", role: "HOST", cityId: "city-1" },
-};
-
-describe("DayOffModal", () => {
-  it("не рендериться, якщо isOpen=false", () => {
-    render(
-      <DayOffModal
-        isOpen={false}
-        onClose={vi.fn()}
-        date={makeDate()}
-        staff={staff}
-        dayOffs={[dayOff]}
-        onToggle={vi.fn()}
-      />,
-    );
-
-    expect(screen.queryByText(/Оберіть співробітника/)).not.toBeInTheDocument();
-  });
-
-  it("не рендериться, якщо date=null", () => {
-    render(
-      <DayOffModal
-        isOpen={true}
-        onClose={vi.fn()}
-        date={null}
-        staff={staff}
-        dayOffs={[dayOff]}
-        onToggle={vi.fn()}
-      />,
-    );
-
-    expect(screen.queryByText(/Оберіть співробітника/)).not.toBeInTheDocument();
-  });
-
-  it("рендериться в document.body через portal і показує форматовану дату", () => {
-    const date = makeDate();
-    const expectedDate = date.toLocaleDateString("uk-UA", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    });
-
-    render(
-      <DayOffModal
-        isOpen={true}
-        onClose={vi.fn()}
-        date={date}
-        staff={staff}
-        dayOffs={[dayOff]}
-        onToggle={vi.fn()}
-      />,
-    );
-
-    expect(document.body).toContainElement(
-      screen.getByText(`Вихідний на ${expectedDate}`),
-    );
-  });
-
-  it("кнопка закриття викликає onClose", () => {
-    const onClose = vi.fn();
-
-    render(
-      <DayOffModal
-        isOpen={true}
-        onClose={onClose}
-        date={makeDate()}
-        staff={staff}
-        dayOffs={[dayOff]}
-        onToggle={vi.fn()}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Закрити" }));
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it("для порожнього staff показує повідомлення про відсутність співробітників", () => {
-    render(
-      <DayOffModal
-        isOpen={true}
-        onClose={vi.fn()}
-        date={makeDate()}
-        staff={[]}
-        dayOffs={[]}
-        onToggle={vi.fn()}
-      />,
-    );
-
-    expect(
-      screen.getByText("Немає співробітників у цьому місті"),
-    ).toBeInTheDocument();
-  });
-
-  it("рендерить іконки ролей HOST/DRIVER і fallback для невідомої ролі", () => {
-    render(
-      <DayOffModal
-        isOpen={true}
-        onClose={vi.fn()}
-        date={makeDate()}
-        staff={staff}
-        dayOffs={[]}
-        onToggle={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText("🎙️")).toBeInTheDocument();
-    expect(screen.getByText("🚗")).toBeInTheDocument();
-    expect(screen.getByText("👤")).toBeInTheDocument();
-  });
-
-  it("для existing dayOff показує статус 'Вихідний ✕', інакше 'Призначити'", () => {
-    render(
-      <DayOffModal
-        isOpen={true}
-        onClose={vi.fn()}
-        date={makeDate()}
-        staff={staff}
-        dayOffs={[dayOff]}
-        onToggle={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText("Вихідний ✕")).toBeInTheDocument();
-    expect(screen.getAllByText("Призначити").length).toBeGreaterThan(0);
-  });
-
-  it("клік по staff без existing викликає onToggle(userId, undefined)", () => {
-    const onToggle = vi.fn();
-
-    render(
-      <DayOffModal
-        isOpen={true}
-        onClose={vi.fn()}
-        date={makeDate()}
-        staff={staff}
-        dayOffs={[dayOff]}
-        onToggle={onToggle}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: /Водій 1/ }));
-    expect(onToggle).toHaveBeenCalledWith("u-driver", undefined);
-  });
-
-  it("клік по staff з existing викликає onToggle(userId, existingId)", () => {
-    const onToggle = vi.fn();
-
-    render(
-      <DayOffModal
-        isOpen={true}
-        onClose={vi.fn()}
-        date={makeDate()}
-        staff={staff}
-        dayOffs={[dayOff]}
-        onToggle={onToggle}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: /Ведучий 1/ }));
-    expect(onToggle).toHaveBeenCalledWith("u-host", "d-host-1");
-  });
-
-  it("якщо у dayOffs дубль по userId — бере перший знайдений", () => {
-    const onToggle = vi.fn();
-    const duplicate: DayOff[] = [
-      dayOff,
-      { ...dayOff, id: "d-host-2" },
-    ];
-
-    render(
-      <DayOffModal
-        isOpen={true}
-        onClose={vi.fn()}
-        date={makeDate()}
-        staff={staff}
-        dayOffs={duplicate}
-        onToggle={onToggle}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: /Ведучий 1/ }));
-    expect(onToggle).toHaveBeenCalledWith("u-host", "d-host-1");
-  });
-
-  it("шукає existing dayOff лише за userId (дата ігнорується — upstream вже відфільтрував)", () => {
-    const dayOffOtherDate: DayOff = {
-      ...dayOff,
-      id: "d-date-mismatch",
-      date: "1999-01-01",
-    };
-
-    render(
-      <DayOffModal
-        isOpen={true}
-        onClose={vi.fn()}
-        date={makeDate()}
-        staff={staff}
-        dayOffs={[dayOffOtherDate]}
-        onToggle={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText("Вихідний ✕")).toBeInTheDocument();
-  });
-});
-
-```
-
-# FILE: apps/frontend/src/tests/component/EventReport.test.tsx
-
-```
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
-
-const mockUseEventFull = vi.fn();
-vi.mock("../../hooks/useSchoolProfile", () => ({
-  useEventFull: (id: string | undefined) => mockUseEventFull(id),
-}));
-
-import EventReport from "../../pages/EventReport";
-
-function renderPage() {
-  return render(
-    <MemoryRouter initialEntries={["/events/ev-1/report"]}>
-      <Routes>
-        <Route path="/events/:eventId/report" element={<EventReport />} />
-      </Routes>
-    </MemoryRouter>,
-  );
-}
-
-const baseEvent = {
-  id: "ev-1",
-  cityId: "city-1",
-  city: { name: "Львів" },
-  school: { name: "Школа №1" },
-  address: "вул. Тестова 1",
-  date: "2026-07-01T10:00:00Z",
-  time: "10:00",
-  project: "Голограма",
-  price: 12345,
-  childrenPlanned: 100,
-  paymentMethod: "Готівка",
-  crew: {
-    name: "Екіпаж 1",
-    host: { name: "Ведучий" },
-    driver: { name: "Водій" },
-  },
-  report: {
-    childrenCount: 95,
-    totalSum: 9800,
-    directorSatisfied: true,
-    teachersSatisfied: false,
-    hadIssues: false,
-    comment: "Все пройшло добре",
-  },
-};
-
-describe("EventReport", () => {
-  it("показує стан завантаження", () => {
-    mockUseEventFull.mockReturnValue({
-      data: undefined,
-      isLoading: true,
-      isError: false,
-    });
-    renderPage();
-    expect(screen.getByText("Завантаження...")).toBeInTheDocument();
-  });
-
-  it("показує 'Подію не знайдено' якщо event відсутній", () => {
-    mockUseEventFull.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      isError: false,
-    });
-    renderPage();
-    expect(screen.getByText("Подію не знайдено")).toBeInTheDocument();
-  });
-
-  it("показує 'Подію не знайдено' при помилці запиту", () => {
-    mockUseEventFull.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      isError: true,
-    });
-    renderPage();
-    expect(screen.getByText("Подію не знайдено")).toBeInTheDocument();
-  });
-
-  it("форматує вартість події (price) з розділювачем тисяч", () => {
-    mockUseEventFull.mockReturnValue({
-      data: baseEvent,
-      isLoading: false,
-      isError: false,
-    });
-    renderPage();
-    expect(screen.getByText("12 345 грн")).toBeInTheDocument();
-  });
-
-  it("форматує отриману суму (report.totalSum) окремо від price", () => {
-    mockUseEventFull.mockReturnValue({
-      data: baseEvent,
-      isLoading: false,
-      isError: false,
-    });
-    renderPage();
-    expect(screen.getByText("9 800 грн")).toBeInTheDocument();
-  });
-
-  it("форматує 0 грн, якщо totalSum дорівнює 0", () => {
-    mockUseEventFull.mockReturnValue({
-      data: { ...baseEvent, report: { ...baseEvent.report, totalSum: 0 } },
-      isLoading: false,
-      isError: false,
-    });
-    renderPage();
-    expect(screen.getByText("0 грн")).toBeInTheDocument();
-  });
-
-  it("показує '—' якщо звіту ще немає (report undefined)", () => {
-    mockUseEventFull.mockReturnValue({
-      data: { ...baseEvent, report: undefined },
-      isLoading: false,
-      isError: false,
-    });
-    renderPage();
-    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
-  });
-
-  it("показує 'Так'/'Ні' відповідно до directorSatisfied/teachersSatisfied", () => {
-    mockUseEventFull.mockReturnValue({
-      data: baseEvent,
-      isLoading: false,
-      isError: false,
-    });
-    renderPage();
-    expect(screen.getAllByText("Так").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Ні").length).toBeGreaterThan(0);
-  });
-
-  it("показує коментар у лапках, якщо він є", () => {
-    mockUseEventFull.mockReturnValue({
-      data: baseEvent,
-      isLoading: false,
-      isError: false,
-    });
-    renderPage();
-    expect(screen.getByText('"Все пройшло добре"')).toBeInTheDocument();
-  });
-
-  it("не показує блок 'Коментар:', якщо коментаря немає", () => {
-    mockUseEventFull.mockReturnValue({
-      data: {
-        ...baseEvent,
-        report: { ...baseEvent.report, comment: undefined },
-      },
-      isLoading: false,
-      isError: false,
-    });
-    renderPage();
-    expect(screen.queryByText(/Коментар:/)).not.toBeInTheDocument();
-  });
-
-  it("childrenPlanned=0 показує '0' (виправлено: використовуємо ?? замість ||)", () => {
-    mockUseEventFull.mockReturnValue({
-      data: { ...baseEvent, childrenPlanned: 0 },
-      isLoading: false,
-      isError: false,
-    });
-    renderPage();
-    expect(screen.getByText("0")).toBeInTheDocument();
-  });
-});
 
 ```
 

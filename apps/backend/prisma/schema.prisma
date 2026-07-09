@@ -59,6 +59,8 @@ model City {
   schools        School[]
   users          User[]
   inventoryItems InventoryItem[]
+
+  @@index([managerId])
 }
 
 model School {
@@ -103,6 +105,8 @@ model Crew {
   driver    User?    @relation("DriverCrew", fields: [driverId], references: [id])
   host      User?    @relation("HostCrew", fields: [hostId], references: [id])
   events    Event[]
+
+  @@index([cityId])
 }
 
 model Event {
@@ -144,6 +148,7 @@ model Event {
   @@index([schoolId])
   @@index([schoolId, date])
   @@index([date, status, cityId])
+  @@index([project])
 }
 
 model EventReport {
@@ -175,6 +180,10 @@ model EventReport {
   expenseItems      ExpenseItem[]
   salaryRecords     SalaryRecord[]
   inventoryUsages   InventoryUsage[]
+
+  @@index([status])
+  @@index([submittedAt])
+  @@index([approvedBy])
 }
 
 model File {

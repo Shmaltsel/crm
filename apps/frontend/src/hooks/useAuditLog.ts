@@ -16,7 +16,7 @@ export function useAuditLog(filters: { userId?: string; entity?: string; dateFro
   return useQuery({
     queryKey: ["audit-log", filters],
     queryFn: () => api.get<{ items: AuditLogEntry[]; meta: { totalItems: number; page: number; pageCount: number; hasNextPage: boolean } }>("/audit-log", { params: filters }).then(r => r.data),
-    staleTime: 10 * 1000,
+    staleTime: 60 * 1000,
   });
 }
 

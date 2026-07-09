@@ -240,7 +240,6 @@ const CityLeaderboard = lazyWithRetry(() => import("./pages/CityLeaderboard"));
 
 const Dashboard = TAB_PAGE_COMPONENTS["/dashboard"];
 const Schools = TAB_PAGE_COMPONENTS["/schools"];
-const Kindergartens = TAB_PAGE_COMPONENTS["/kindergartens"];
 const Finance = TAB_PAGE_COMPONENTS["/finance"];
 const CalendarView = TAB_PAGE_COMPONENTS["/calendar"];
 const Employees = TAB_PAGE_COMPONENTS["/employees"];
@@ -291,7 +290,7 @@ function AppRoutes() {
           <Route
             path="cities"
             element={
-              <ProtectedRoute allowedRoles={["SUPERADMIN"]}>
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER", "OWNER"]}>
                 <Suspense fallback={<PageLoader />}>
                   <Cities />
                 </Suspense>
@@ -393,7 +392,7 @@ function AppRoutes() {
             path="kindergartens"
             element={
               <Suspense fallback={<PageLoader />}>
-                <Kindergartens />
+                <Schools />
               </Suspense>
             }
           />
@@ -525,22 +524,33 @@ export default function AddressLink({ address, className }: AddressLinkProps) {
 # FILE: apps/frontend/src/components/BottomNavigationBar.tsx
 
 ```
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { MoreHorizontal } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { NAV_TABS } from "../constants/navTabs";
 import { hasRole } from "../utils/roles";
 import type { NavTab } from "../constants/navTabs";
+import MoreSheet from "./MoreSheet";
 
 export function useFilteredTabs(): NavTab[] {
   const { user } = useAuth();
   return useMemo(() => NAV_TABS.filter((t) => hasRole(user?.role, t.roles)), [user]);
 }
 
+export function useBottomTabs(): NavTab[] {
+  const { user } = useAuth();
+  return useMemo(
+    () => NAV_TABS.filter((t) => t.bottomNav && hasRole(user?.role, t.roles)),
+    [user],
+  );
+}
+
 export default function BottomNavigationBar() {
   const location = useLocation();
-  const tabs = useFilteredTabs();
+  const tabs = useBottomTabs();
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const activeIndex = useMemo(
     () => tabs.findIndex((t) => location.pathname.startsWith(t.to)),
@@ -548,39 +558,62 @@ export default function BottomNavigationBar() {
   );
 
   return (
-    <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border flex items-center justify-around px-2 pb-safe pt-1 h-16 overflow-visible"
-      role="tablist"
-      aria-label="Основна навігація"
-    >
-      {tabs.map((tab, i) => {
-        const isActive = i === activeIndex;
-        const Icon = tab.icon;
-        return (
-          <Link
-            key={tab.to}
-            to={tab.to}
-            role="tab"
-            aria-selected={isActive}
-            className={`relative flex flex-col items-center gap-0.5 px-3 py-1 min-w-0 flex-1 transition-colors
-              ${isActive ? "text-white" : "text-content-muted hover:text-content-secondary"}`}
-          >
-            {isActive && (
+    <>
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border flex items-center justify-around px-2 pb-safe pt-1 h-16 overflow-visible"
+        role="tablist"
+        aria-label="Основна навігація"
+      >
+        {tabs.map((tab, i) => {
+          const isActive = i === activeIndex;
+          const Icon = tab.icon;
+          return (
+            <Link
+              key={tab.to}
+              to={tab.to}
+              role="tab"
+              aria-selected={isActive}
+              aria-label={tab.label}
+              className="relative flex items-center justify-center min-w-[48px] min-h-[48px] flex-1 transition-colors"
+            >
+              {isActive && (
+                <motion.div
+                  layoutId="active-tab-pill"
+                  className="absolute inset-0 bg-brand rounded-full shadow-lg shadow-brand/30"
+                  style={{ translateY: "-6px", scale: 1.08 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
               <motion.div
-                layoutId="active-tab-pill"
-                className="absolute inset-0 bg-brand rounded-full shadow-lg shadow-brand/30"
-                style={{ translateY: "-12px", scale: 1.08 }}
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
-            )}
-            <Icon className={`relative z-10 ${isActive ? "w-6 h-6" : "w-5 h-5"}`} />
-            <span className={`relative z-10 text-[10px] font-medium truncate w-full text-center ${isActive ? "text-white" : ""}`}>
-              {tab.label}
-            </span>
-          </Link>
-        );
-      })}
-    </nav>
+                className="relative z-10 flex items-center justify-center"
+                whileTap={{ scale: 0.9 }}
+              >
+                <Icon className={isActive ? "w-7 h-7" : "w-7 h-7 text-content-muted"} />
+              </motion.div>
+              <span className="sr-only">{tab.label}</span>
+            </Link>
+          );
+        })}
+
+        <button
+          onClick={() => setSheetOpen(true)}
+          className="relative flex items-center justify-center min-w-[48px] min-h-[48px] flex-1 transition-colors"
+          aria-label="Більше розділів"
+          role="tab"
+        >
+          <motion.div
+            className="relative z-10 flex items-center justify-center"
+            whileTap={{ scale: 0.9 }}
+          >
+            <MoreHorizontal className="w-7 h-7 text-content-muted" />
+          </motion.div>
+        </button>
+      </nav>
+
+      <AnimatePresence>
+        {sheetOpen && <MoreSheet onClose={() => setSheetOpen(false)} />}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -2061,6 +2094,60 @@ export default function CitiesTable({ rows }: Props) {
 
 ```
 
+# FILE: apps/frontend/src/components/dashboard/DashboardTopNav.tsx
+
+```
+import { motion } from "framer-motion";
+import type { DashboardTab } from "../../constants/navTabs";
+
+interface Props {
+  tabs: DashboardTab[];
+  activeTab: string;
+  onChange: (id: string) => void;
+}
+
+export default function DashboardTopNav({ tabs, activeTab, onChange }: Props) {
+  return (
+    <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-100">
+      <nav
+        className="flex overflow-x-auto no-scrollbar gap-1 px-4 md:px-8"
+        role="tablist"
+        aria-label="Вкладки дашборду"
+      >
+        {tabs.map((tab) => {
+          const isActive = tab.id === activeTab;
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => onChange(tab.id)}
+              role="tab"
+              aria-selected={isActive}
+              className={`relative flex items-center gap-2 px-3 py-3.5 text-sm font-medium whitespace-nowrap transition-colors shrink-0 ${
+                isActive
+                  ? "text-brand"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label}
+              {isActive && (
+                <motion.div
+                  layoutId="dashboard-active-tab"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-full"
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
+            </button>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
+
+```
+
 # FILE: apps/frontend/src/components/dashboard/FunnelBar.tsx
 
 ```
@@ -2454,6 +2541,58 @@ export default function StaleSchools({ schools }: Props) {
       )}
     </div>
   );
+}
+
+```
+
+# FILE: apps/frontend/src/components/dashboard/TabErrorBoundary.tsx
+
+```
+import { Component, type ReactNode } from "react";
+import * as Sentry from "@sentry/react";
+
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
+  label?: string;
+}
+
+interface State {
+  hasError: boolean;
+}
+
+export default class TabErrorBoundary extends Component<Props, State> {
+  state: State = { hasError: false };
+
+  static getDerivedStateFromProps(nextProps: Props, prevState: State): State | null {
+    if (prevState.hasError) {
+      return { hasError: false };
+    }
+    return null;
+  }
+
+  componentDidCatch(error: Error, info: { componentStack?: string }) {
+    Sentry.captureException(error, {
+      extra: { componentStack: info.componentStack, tab: this.props.label },
+    });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        this.props.fallback ?? (
+          <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+            <span className="text-3xl mb-3 opacity-50">⚠️</span>
+            <p className="text-sm font-medium">
+              Не вдалося завантажити вкладку{this.props.label ? ` «${this.props.label}»` : ""}
+            </p>
+            <p className="text-xs mt-1">Спробуйте оновити сторінку</p>
+          </div>
+        )
+      );
+    }
+    return this.props.children;
+  }
 }
 
 ```
@@ -4700,12 +4839,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Modal } from "../ui/Modal";
 import type { InventoryItem } from "../../types";
+import { useProjects } from "../../hooks/useEmployees";
 
 const schema = z.object({
   name: z.string().min(1, "Введіть назву товару"),
-  sku: z.string().optional().default(""),
   category: z.string().min(1, "Введіть категорію"),
-  unit: z.string().min(1, "Введіть одиницю виміру"),
+  project: z.string().optional().default(""),
   minStock: z.coerce.number().min(0, "Мінімум не може бути від'ємним"),
   currentStock: z.coerce.number().min(0, "Кількість не може бути від'ємною"),
   notes: z.string().optional().default(""),
@@ -4721,6 +4860,8 @@ interface InventoryItemModalProps {
 }
 
 export function InventoryItemModal({ isOpen, onClose, onSave, item }: InventoryItemModalProps) {
+  const { data: projects } = useProjects();
+
   const {
     register,
     handleSubmit,
@@ -4730,9 +4871,8 @@ export function InventoryItemModal({ isOpen, onClose, onSave, item }: InventoryI
     resolver: zodResolver(schema),
     defaultValues: {
       name: "",
-      sku: "",
       category: "Інше",
-      unit: "шт",
+      project: "",
       minStock: 5,
       currentStock: 0,
       notes: "",
@@ -4743,9 +4883,8 @@ export function InventoryItemModal({ isOpen, onClose, onSave, item }: InventoryI
     if (isOpen) {
       reset({
         name: item?.name ?? "",
-        sku: item?.sku ?? "",
         category: item?.category ?? "Інше",
-        unit: item?.unit ?? "шт",
+        project: item?.project ?? "",
         minStock: item?.minStock ?? 5,
         currentStock: item?.currentStock ?? 0,
         notes: item?.notes ?? "",
@@ -4768,16 +4907,16 @@ export function InventoryItemModal({ isOpen, onClose, onSave, item }: InventoryI
             {errors.category && <p className="text-xs text-red-500 mt-1">{errors.category.message}</p>}
           </div>
           <div>
-            <label className="block text-sm mb-1 text-slate-600">Артикул</label>
-            <input {...register("sku")} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+            <label className="block text-sm mb-1 text-slate-600">Проєкт</label>
+            <select {...register("project")} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+              <option value="">— Без проєкту —</option>
+              {projects?.map((p) => (
+                <option key={p.id} value={p.name}>{p.name}</option>
+              ))}
+            </select>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm mb-1 text-slate-600">Одиниця *</label>
-            <input {...register("unit")} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-            {errors.unit && <p className="text-xs text-red-500 mt-1">{errors.unit.message}</p>}
-          </div>
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm mb-1 text-slate-600">Мінімум</label>
             <input type="number" {...register("minStock")} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
@@ -4805,7 +4944,6 @@ export function InventoryItemModal({ isOpen, onClose, onSave, item }: InventoryI
     </Modal>
   );
 }
-
 ```
 
 # FILE: apps/frontend/src/components/IssueCarousel.tsx
@@ -5061,15 +5199,20 @@ function MobileDragView({
   tabPaths: { to: string }[];
   currentIdx: number;
 }) {
-  const peekTab = peekDir ? tabPaths[currentIdx + peekDir] : null;
+  const peekTab = peekDir && currentIdx !== -1 ? tabPaths[currentIdx + peekDir] : null;
   const peekTabComponent = peekTab ? TAB_PAGE_COMPONENTS[peekTab.to] : null;
 
-  const peekX = peekDir
-    ? useTransform(x, (v) => peekDir! * winWidth + v)
-    : useTransform(x, () => winWidth);
+  const peekX = useTransform(x, (v: number) => {
+    if (peekDir) return peekDir * winWidth + v;
+    return winWidth;
+  });
+
+  if (currentIdx === -1) {
+    return <div className="relative min-h-full">{outlet}</div>;
+  }
 
   return (
-    <div className="relative min-h-full" style={{ overflowX: "visible" } as React.CSSProperties}>
+    <div className="relative min-h-full">
       {peekTabComponent && (
         <motion.div
           className="absolute inset-0 z-0"
@@ -5102,7 +5245,9 @@ function MobileDragView({
         onDragEnd={handleDragEnd}
         style={{ x }}
       >
-        {outlet}
+        <div className="h-full overflow-y-auto" style={{ touchAction: "pan-y" as React.CSSProperties["touchAction"] }}>
+          {outlet}
+        </div>
       </motion.div>
     </div>
   );
@@ -5126,7 +5271,9 @@ export default function Layout() {
   const { selectedCity } = useSelectedCity();
 
   const tabPaths = useMemo(
-    () => NAV_TABS.filter((t) => hasRole(user?.role, t.roles)),
+    () => NAV_TABS.filter(
+      (t) => t.bottomNav && t.swipeable !== false && hasRole(user?.role, t.roles),
+    ),
     [user],
   );
 
@@ -5252,7 +5399,7 @@ export default function Layout() {
             {hasRole(user?.role, ["SUPERADMIN", "MANAGER"]) && (
               <NavLink to="/dashboard" icon={Home} label="Дашборд" currentPath={location.pathname} />
             )}
-            {hasRole(user?.role, ["SUPERADMIN"]) && (
+            {hasRole(user?.role, ["SUPERADMIN", "MANAGER", "OWNER"]) && (
               <NavLink to="/cities" icon={MapPin} label="Міста" currentPath={location.pathname} />
             )}
             <NavLink to="/schools" icon={School} label="Школи" currentPath={location.pathname} />
@@ -5290,7 +5437,9 @@ export default function Layout() {
         </aside>
 
         <main
-          className="flex-1 overflow-y-auto mt-16 md:mt-0 relative w-full min-w-0 pb-16 md:pb-0"
+          className={`flex-1 relative w-full min-w-0 pb-16 md:pb-0 ${
+            isMobile ? "" : "overflow-y-auto"
+          }`}
           style={{ marginTop: isMobile ? "calc(4rem + env(safe-area-inset-top, 0px))" : undefined }}
         >
           {isMobile ? (
@@ -5334,12 +5483,15 @@ export default function Layout() {
 # FILE: apps/frontend/src/components/MobileTopNav.tsx
 
 ```
+import { Link } from "react-router-dom";
 import { GraduationCap } from "lucide-react";
 import { useSelectedCity } from "../context/CityContext";
+import { useAuth } from "../context/AuthContext";
 import NotificationBell from "./NotificationBell";
 
 export default function MobileTopNav() {
   const { selectedCity } = useSelectedCity();
+  const { user } = useAuth();
 
   return (
     <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0B1527] text-white flex items-center justify-between px-4 z-40" style={{ paddingTop: "env(safe-area-inset-top, 0px)", height: "calc(4rem + env(safe-area-inset-top, 0px))" }}>
@@ -5351,11 +5503,100 @@ export default function MobileTopNav() {
       </div>
       <div className="flex items-center gap-2">
         <NotificationBell />
-        <span className="text-xs text-blue-300/80 whitespace-nowrap">
-          {selectedCity.name}
-        </span>
+        {user?.role === "SUPERADMIN" || user?.role === "MANAGER" || user?.role === "OWNER" ? (
+          <Link to="/cities" className="text-xs text-blue-300/80 whitespace-nowrap hover:text-blue-200 transition-colors">
+            {selectedCity.name}
+          </Link>
+        ) : (
+          <span className="text-xs text-blue-300/80 whitespace-nowrap">
+            {selectedCity.name}
+          </span>
+        )}
       </div>
     </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/MoreSheet.tsx
+
+```
+import { useMemo } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
+import { useAuth } from "../context/AuthContext";
+import { NAV_TABS } from "../constants/navTabs";
+import { hasRole } from "../utils/roles";
+
+interface Props {
+  onClose: () => void;
+}
+
+export default function MoreSheet({ onClose }: Props) {
+  const { user } = useAuth();
+  const location = useLocation();
+
+  const items = useMemo(
+    () => NAV_TABS.filter((t) => !t.bottomNav && hasRole(user?.role, t.roles)),
+    [user],
+  );
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-[60] flex flex-col justify-end"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+
+      <motion.div
+        className="relative bg-white rounded-t-2xl shadow-xl pb-safe pb-4 max-h-[70vh] overflow-y-auto"
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", stiffness: 400, damping: 35 }}
+      >
+        <div className="flex items-center justify-between px-5 pt-4 pb-2">
+          <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+            Розділи
+          </h2>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600"
+            aria-label="Закрити"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="px-3 pb-3 space-y-0.5">
+          {items.map((tab) => {
+            const isActive = location.pathname.startsWith(tab.to);
+            const Icon = tab.icon;
+            return (
+              <Link
+                key={tab.to}
+                to={tab.to}
+                onClick={onClose}
+                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-brand/10 text-brand"
+                    : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                <Icon className="w-5 h-5 shrink-0" />
+                {tab.label}
+              </Link>
+            );
+          })}
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -5376,6 +5617,7 @@ const TYPE_ICONS: Record<string, string> = {
   ISSUE_CREATED: "🚨",
   DAY_OFF_CREATED: "🌴",
   DAY_OFF_REMOVED: "❌",
+  REPORT_APPROVED: "✅",
   WELCOME: "👋",
 };
 
@@ -6221,19 +6463,23 @@ import {
   getNextPreparationStatus,
   type PreparationStatus,
 } from "../../utils/preparationStatus";
+import { useInventoryByProject } from "../../hooks/useInventory";
 
 interface PreparationProps {
   data: Partial<EventPreparationData>;
   onUpdate: (field: string, status: PreparationStatus) => void;
   onOpenCrewModal: () => void;
+  project?: string;
 }
 
 export default memo(function EventPreparation({
   data,
   onUpdate,
   onOpenCrewModal,
+  project,
 }: PreparationProps) {
   const [optimistic, setOptimistic] = useState<Record<string, string>>({});
+  const { data: projectItems } = useInventoryByProject(project);
 
   const tasks = [
     { key: "assignCrew", label: "Призначити екіпаж" },
@@ -6309,6 +6555,24 @@ export default memo(function EventPreparation({
           );
         })}
       </div>
+
+      {project && projectItems && projectItems.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-slate-100">
+          <h4 className="text-sm font-semibold text-slate-700 mb-2">
+            Предмети для проєкту «{project}»
+          </h4>
+          <div className="space-y-1.5">
+            {projectItems.map((item) => (
+              <div key={item.id} className="flex items-center justify-between text-sm py-1">
+                <span className="text-slate-600">{item.name}</span>
+                <span className="text-xs text-slate-400">
+                  {item.currentStock} {item.unit}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 });
@@ -7660,7 +7924,7 @@ export default function ReportModal({
     showingsCount: 0,
     totalSum: 0,
     schoolPercentage: 20,
-    rating: 8,
+    rating: 5,
   });
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -9085,10 +9349,12 @@ export const Button = forwardRef<HTMLButtonElement, Props>(
   ({ variant = "primary", size = "md", isLoading, className = "", children, disabled, ...props }, ref) => (
     <motion.button
       ref={ref}
+      whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.97 }}
-      transition={{ duration: 0.1 }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
       disabled={disabled || isLoading}
-      className={`rounded-control font-medium transition-colors duration-fast
+      className={`rounded-control font-medium transition-all duration-200
+        hover:shadow-lift active:shadow-none
         focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-2
         ${variants[variant]} ${sizes[size]} ${className}`}
       {...props}
@@ -9119,7 +9385,9 @@ const paddings = {
 export function Card({ children, padding = "md", className = "", ...props }: Props) {
   return (
     <div
-      className={`bg-surface rounded-card shadow-card border border-border ${paddings[padding]} ${className}`}
+      className={`bg-surface rounded-card shadow-card border border-border
+        hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200
+        ${paddings[padding]} ${className}`}
       {...props}
     >
       {children}
@@ -9726,6 +9994,7 @@ import {
   History,
   Package,
   Trophy,
+  LayoutDashboard,
 } from "lucide-react";
 
 export interface NavTab {
@@ -9733,16 +10002,26 @@ export interface NavTab {
   icon: ComponentType<{ className?: string }>;
   label: string;
   roles?: string[];
+  bottomNav?: boolean;
+  swipeable?: boolean;
+}
+
+export interface DashboardTab {
+  id: string;
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  roles?: string[];
 }
 
 export const NAV_TABS: NavTab[] = [
-  { to: "/dashboard", icon: Home, label: "Дашборд", roles: ["SUPERADMIN", "MANAGER", "OWNER"] },
+  { to: "/dashboard", icon: Home, label: "Дашборд", roles: ["SUPERADMIN", "MANAGER", "OWNER"], bottomNav: true, swipeable: false },
   { to: "/reports/review", icon: ClipboardCheck, label: "Звіти", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
   { to: "/inventory", icon: Package, label: "Склад", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
-  { to: "/schools", icon: School, label: "Школи" },
+  { to: "/schools", icon: School, label: "Школи", bottomNav: true },
   { to: "/kindergartens", icon: Baby, label: "Садочки" },
-  { to: "/finance", icon: Wallet, label: "Фінанси" },
-  { to: "/calendar", icon: Calendar, label: "Календар" },
+  { to: "/finance", icon: Wallet, label: "Фінанси", bottomNav: true },
+  { to: "/calendar", icon: Calendar, label: "Календар", bottomNav: true },
+  { to: "/cities", icon: MapPin, label: "Міста", roles: ["SUPERADMIN", "MANAGER", "OWNER"] },
   { to: "/employees", icon: Users, label: "Працівники", roles: ["SUPERADMIN"] },
   { to: "/analytics", icon: BarChart3, label: "Аналітика", roles: ["SUPERADMIN", "OWNER"] },
   { to: "/city-leaderboard", icon: Trophy, label: "Рейтинг", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
@@ -9751,6 +10030,13 @@ export const NAV_TABS: NavTab[] = [
 
 export const ADMIN_TABS: NavTab[] = [
   { to: "/cities", icon: MapPin, label: "Міста", roles: ["SUPERADMIN"] },
+];
+
+export const DASHBOARD_TABS: DashboardTab[] = [
+  { id: "overview", icon: LayoutDashboard, label: "Огляд", roles: ["SUPERADMIN", "MANAGER", "OWNER"] },
+  { id: "reports", icon: ClipboardCheck, label: "Звіти", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
+  { id: "leaderboard", icon: Trophy, label: "Рейтинг", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
+  { id: "analytics", icon: BarChart3, label: "Аналітика", roles: ["SUPERADMIN", "OWNER"] },
 ];
 
 ```
@@ -10070,258 +10356,6 @@ export default function CalendarSkeleton() {
           ))}
         </div>
       </div>
-    </div>
-  );
-}
-
-```
-
-# FILE: apps/frontend/src/features/calendar/components/DesktopCalendarGrid.tsx
-
-```
-import { toISODate, isPastDay } from "../utils/date";
-import { MONTH_NAMES, ROLE_ICON_MAP } from "../constants";
-import { getDayColor } from "../utils/color";
-import EventTooltip from "./EventTooltip";
-import type { Event as CalendarEvent, DayOff, User } from "../../../types";
-
-interface DesktopCalendarGridProps {
-  days: (Date | null)[];
-  year: number;
-  month: number;
-  selectedMobileDate: Date;
-  setSelectedMobileDate: (date: Date) => void;
-  eventsByDate: Map<string, CalendarEvent[]>;
-  dayOffsByDate: Map<string, DayOff[]>;
-  projectColorMap: Map<string, string>;
-  projectHexMap: Map<string, string>;
-  isStaff: boolean;
-  isManagerOrAdmin: boolean;
-  user: { id: string } | null;
-  allUsers: User[];
-  handleDayOffClick: (e: React.MouseEvent, date: Date) => void;
-  prevMonth: () => void;
-  nextMonth: () => void;
-}
-
-export default function DesktopCalendarGrid({
-  days,
-  year,
-  month,
-  selectedMobileDate,
-  setSelectedMobileDate,
-  eventsByDate,
-  dayOffsByDate,
-  projectColorMap,
-  projectHexMap,
-  isStaff,
-  isManagerOrAdmin,
-  user,
-  allUsers,
-  handleDayOffClick,
-  prevMonth,
-  nextMonth,
-}: DesktopCalendarGridProps) {
-  return (
-    <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-        <div className="flex items-center justify-center p-5 md:p-6 border-b border-slate-100 bg-white">
-          <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
-            <button
-              onClick={prevMonth}
-              className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium"
-            >
-              ◀
-            </button>
-            <span className="px-4 md:px-6 py-2 text-slate-800 font-bold capitalize tracking-tight">
-              {MONTH_NAMES[month]}{" "}
-              <span className="text-slate-400 font-medium">{year}</span>
-            </span>
-            <button
-              onClick={nextMonth}
-              className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium"
-            >
-              ▶
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-7 bg-slate-50/50">
-          {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((dayName) => (
-            <div
-              key={dayName}
-              className="py-3 text-center text-[10px] md:text-xs font-bold tracking-widest text-slate-400 uppercase border-b border-slate-100"
-            >
-              {dayName}
-            </div>
-          ))}
-
-          {days.map((day, idx) => {
-            const isToday =
-              day && day.toDateString() === new Date().toDateString();
-            const isSelected =
-              day && day.toDateString() === selectedMobileDate.toDateString();
-            const dayKey = day ? toISODate(day) : "";
-            const dayEvents = day ? (eventsByDate.get(dayKey) ?? []) : [];
-            const dayOffEntries = day ? (dayOffsByDate.get(dayKey) ?? []) : [];
-
-            const dayColor = day
-              ? getDayColor(dayEvents, projectHexMap)
-              : undefined;
-
-            const myDayOff = isStaff
-              ? dayOffEntries.find((d) => d.userId === user?.id)
-              : undefined;
-            const hasAnyDayOff = isStaff
-              ? !!myDayOff
-              : dayOffEntries.length > 0;
-
-            const showCross =
-              day && !isPastDay(day) && (isStaff || isManagerOrAdmin);
-
-            return (
-              <div
-                key={idx}
-                onClick={() => day && setSelectedMobileDate(day)}
-                className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group select-none no-select-ios
-                  ${day ? "bg-white hover:bg-slate-50 cursor-pointer" : "bg-slate-50/30"}
-                  ${isSelected ? "ring-2 ring-inset ring-blue-500/20 bg-blue-50/10" : ""}
-                  ${hasAnyDayOff ? "dayoff-cell-enter bg-rose-50/70" : ""}
-                `}
-              >
-                {day && (
-                  <>
-                    {showCross && (
-                      <div className="absolute top-1 left-1 z-10 group/dayoff">
-                        <button
-                          onClick={(e) => handleDayOffClick(e, day)}
-                          title={
-                            hasAnyDayOff
-                              ? "Скасувати вихідний"
-                              : "Призначити вихідний"
-                          }
-                          className={`w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold transition-all
-                            ${
-                              hasAnyDayOff
-                                ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600"
-                                : "bg-slate-100 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-rose-100 hover:text-rose-500"
-                            }`}
-                        >
-                          ✕
-                        </button>
-
-                        {isManagerOrAdmin && dayOffEntries.length > 0 && (
-                          <div className="hidden md:block absolute top-full left-0 mt-2 w-48 bg-slate-800 text-white p-2.5 rounded-xl shadow-2xl opacity-0 invisible group-hover/dayoff:opacity-100 group-hover/dayoff:visible transition-all duration-200 pointer-events-none">
-                            <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1.5">
-                              Вихідний ({dayOffEntries.length})
-                            </p>
-                            <div className="space-y-1">
-                              {dayOffEntries.map((d: DayOff) => {
-                                const u = allUsers.find(
-                                  (au: User) => au.id === d.userId,
-                                );
-                                return (
-                                  <p
-                                    key={d.id}
-                                    className="text-xs font-medium truncate"
-                                  >
-                                    {u
-                                      ? `${ROLE_ICON_MAP[u.role] || "👤"} ${u.name}`
-                                      : "Невідомий"}
-                                  </p>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="flex justify-center md:justify-end mb-1.5">
-                      <span
-                        className={`w-7 h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-semibold transition-colors
-                        ${isToday && !dayColor ? "bg-blue-600 text-white shadow-md" : !dayColor ? "text-slate-500 md:group-hover:text-blue-600" : "text-white"}
-                      `}
-                        style={{
-                          background: dayColor || undefined,
-                          textShadow: dayColor ? "0 1px 2px rgba(0,0,0,0.35)" : "none",
-                        }}
-                      >
-                        {day.getDate()}
-                      </span>
-                    </div>
-
-                    {hasAnyDayOff && !isStaff && dayOffEntries.length > 0 && (
-                      <p className="text-[9px] md:text-[10px] text-rose-600 font-semibold text-center mb-1 truncate px-1">
-                        🌴 {dayOffEntries.length}{" "}
-                        {dayOffEntries.length === 1 ? "вихідний" : "вихідних"}
-                      </p>
-                    )}
-
-                    <div className="space-y-1.5">
-                      {dayEvents.slice(0, 3).map((ev: CalendarEvent) => (
-                        <div
-                          key={ev.id}
-                          className="relative group/event z-0 hover:z-50"
-                        >
-                          <button
-                            className={`w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${projectColorMap.get(ev.project) ?? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300"}`}
-                          >
-                            {ev.time || "—"}
-                          </button>
-
-                          <EventTooltip event={ev} />
-                        </div>
-                      ))}
-                      {dayEvents.length > 3 && (
-                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 text-center">
-                          +{dayEvents.length - 3} ще
-                        </p>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-  );
-}
-
-```
-
-# FILE: apps/frontend/src/features/calendar/components/EventTooltip.tsx
-
-```
-import type { Event as CalendarEvent } from "../../../types";
-
-interface EventTooltipProps {
-  event: CalendarEvent;
-}
-
-export default function EventTooltip({ event: ev }: EventTooltipProps) {
-  return (
-    <div className="hidden md:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-800 text-white p-3 rounded-xl shadow-2xl opacity-0 invisible group-hover/event:opacity-100 group-hover/event:visible transition-all duration-200 pointer-events-none">
-      <p className="font-bold text-sm mb-1 truncate">
-        {ev.school?.name || "Невідомий заклад"}
-      </p>
-      <div className="space-y-1 text-xs text-slate-300">
-        <p>
-          <span className="text-slate-400">Проєкт:</span>{" "}
-          {ev.project}
-        </p>
-        <p>
-          <span className="text-slate-400">Екіпаж:</span>{" "}
-          {ev.crew?.name || "Не призначено"}
-        </p>
-        <p>
-          <span className="text-slate-400">Час:</span>{" "}
-          <span className="font-bold text-white">
-            {ev.time || "—"}
-          </span>
-        </p>
-      </div>
-      <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-slate-800"></div>
     </div>
   );
 }

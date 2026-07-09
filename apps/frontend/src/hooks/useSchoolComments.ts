@@ -23,7 +23,7 @@ export function useSchoolComments(schoolId: string, type?: CommentType, page = 1
         )
         .then((r) => r.data),
     enabled: !!schoolId,
-    staleTime: 10 * 1000,
+    staleTime: 60 * 1000,
   });
 }
 

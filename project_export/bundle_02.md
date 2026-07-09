@@ -1,3 +1,13 @@
+# FILE: apps/backend/src/projects/dto/update-project.dto.ts
+
+```
+import { PartialType } from '@nestjs/swagger';
+import { CreateProjectDto } from './create-project.dto';
+
+export class UpdateProjectDto extends PartialType(CreateProjectDto) {}
+
+```
+
 # FILE: apps/backend/src/projects/projects.controller.ts
 
 ```
@@ -483,8 +493,10 @@ export class ReportsController {
 import { Module } from '@nestjs/common';
 import { ReportsController } from './reports.controller';
 import { ReportsService } from './reports.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
+  imports: [NotificationsModule],
   controllers: [ReportsController],
   providers: [ReportsService],
 })
@@ -503,6 +515,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { RevisionDto } from './dto/revision.dto';
@@ -520,7 +533,10 @@ const ALLOWED_TRANSITIONS: Record<ReportStatus, ReportStatus[]> = {
 
 @Injectable()
 export class ReportsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   private async assertCrewMember(
     eventId: string,
@@ -656,19 +672,38 @@ export class ReportsService {
 
     const report = await this.prisma.eventReport.findUnique({
       where: { id },
-      include: { event: { include: { crew: true } } },
+      include: { event: { include: { crew: true, school: true, city: true } } },
     });
     if (!report) throw new NotFoundException('report.notFound');
     this.assertTransition(report.status, 'APPROVED');
 
-    return this.prisma.eventReport.update({
-      where: { id },
-      data: {
-        status: 'APPROVED',
-        approvedAt: new Date(),
-        approvedBy: user.sub,
-      },
-    });
+    const [approved] = await this.prisma.$transaction([
+      this.prisma.eventReport.update({
+        where: { id },
+        data: {
+          status: 'APPROVED',
+          approvedAt: new Date(),
+          approvedBy: user.sub,
+        },
+      }),
+      this.prisma.event.update({
+        where: { id: report.eventId },
+        data: { status: 'RE_SALE' },
+      }),
+    ]);
+
+    const notifyUserId = report.event.responsibleId || report.event.city.managerId;
+    if (notifyUserId) {
+      this.notificationsService
+        .create(notifyUserId, 'REPORT_APPROVED', {
+          eventId: report.eventId,
+          schoolName: report.event.school?.name,
+          title: 'Звіт підтверджено',
+        })
+        .catch(() => {});
+    }
+
+    return approved;
   }
 
   async requestRevision(id: string, dto: RevisionDto, user: JwtUser) {
@@ -5935,6 +5970,78 @@ volumes:
   redis_data:
 ```
 
+# FILE: apps/frontend/e2e/dashboard-swipe.spec.ts
+
+```
+import { test, expect, Page } from "@playwright/test";
+
+async function login(page: Page) {
+  await page.goto("/login");
+  await page.fill('input[type="email"]', "admin@crm.com");
+  await page.fill('input[type="password"]', "admin123");
+  await page.click('button[type="submit"]');
+  await page.waitForURL(/cities/, { timeout: 8000 });
+}
+
+async function navigateToDashboard(page: Page) {
+  await page.goto("/dashboard");
+  await page.waitForLoadState("networkidle");
+}
+
+async function swipeLeft(page: Page) {
+  const dashboard = page.locator('[data-no-swipe]');
+  const box = await dashboard.boundingBox();
+  if (!box) throw new Error("Dashboard not found");
+  const startX = box.x + box.width * 0.8;
+  const endX = box.x + box.width * 0.2;
+  const y = box.y + box.height * 0.4;
+  await page.mouse.move(startX, y);
+  await page.mouse.down();
+  await page.mouse.move(endX, y, { steps: 10 });
+  await page.mouse.up();
+}
+
+async function swipeRight(page: Page) {
+  const dashboard = page.locator('[data-no-swipe]');
+  const box = await dashboard.boundingBox();
+  if (!box) throw new Error("Dashboard not found");
+  const startX = box.x + box.width * 0.2;
+  const endX = box.x + box.width * 0.8;
+  const y = box.y + box.height * 0.4;
+  await page.mouse.move(startX, y);
+  await page.mouse.down();
+  await page.mouse.move(endX, y, { steps: 10 });
+  await page.mouse.up();
+}
+
+test.describe("Dashboard swipe-навігація", () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+    await navigateToDashboard(page);
+  });
+
+  test("свайп вліво перемикає на Reports", async ({ page }) => {
+    await expect(page).toHaveURL(/tab=overview/);
+    await swipeLeft(page);
+    await expect(page).toHaveURL(/tab=reports/, { timeout: 3000 });
+  });
+
+  test("свайп вліво двічі перемикає на Leaderboard", async ({ page }) => {
+    await swipeLeft(page);
+    await swipeLeft(page);
+    await expect(page).toHaveURL(/tab=leaderboard/, { timeout: 3000 });
+  });
+
+  test("свайп вправо повертає назад", async ({ page }) => {
+    await swipeLeft(page);
+    await expect(page).toHaveURL(/tab=reports/, { timeout: 3000 });
+    await swipeRight(page);
+    await expect(page).toHaveURL(/tab=overview/, { timeout: 3000 });
+  });
+});
+
+```
+
 # FILE: apps/frontend/e2e/login.spec.ts
 
 ```
@@ -6272,6 +6379,7 @@ module.exports = {
     "react-hook-form": "^7.79.0",
     "react-router-dom": "^7.18.0",
     "recharts": "^3.8.1",
+    "swiper": "^14.0.2",
     "yup": "^1.7.1",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
