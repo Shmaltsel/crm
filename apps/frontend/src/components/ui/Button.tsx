@@ -27,10 +27,12 @@ export const Button = forwardRef<HTMLButtonElement, Props>(
   ({ variant = "primary", size = "md", isLoading, className = "", children, disabled, ...props }, ref) => (
     <motion.button
       ref={ref}
+      whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.97 }}
-      transition={{ duration: 0.1 }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
       disabled={disabled || isLoading}
-      className={`rounded-control font-medium transition-colors duration-fast
+      className={`rounded-control font-medium transition-all duration-200
+        hover:shadow-lift active:shadow-none
         focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-2
         ${variants[variant]} ${sizes[size]} ${className}`}
       {...props}

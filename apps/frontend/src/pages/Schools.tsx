@@ -250,18 +250,21 @@ export default function Schools() {
   );
 
   return (
-    <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-slate-50 min-h-screen">
+    <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-gradient-subtle min-h-screen">
       {/* Шапка */}
       <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold text-slate-800 leading-tight">
+          <h1 className="text-2xl font-bold tracking-tight text-content-primary leading-tight">
             Школи
             {selectedCity.id && (
-              <span className="ml-2 text-sm font-normal text-blue-500">
+              <span className="ml-2 text-sm font-normal text-brand">
                 · {selectedCity.name}
               </span>
             )}
           </h1>
+          <p className="text-sm text-content-muted mt-0.5">
+            {filteredSchools.length} шкіл у місті
+          </p>
         </div>
         <div className="flex gap-2 shrink-0">
           {(userRole === "SUPERADMIN" || userRole === "MANAGER") && (
@@ -289,7 +292,7 @@ export default function Schools() {
                 });
               }}
               disabled={bulkImportMutation.isPending}
-              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 hover:shadow-lift hover:-translate-y-0.5 active:scale-95 disabled:opacity-70 transition-all duration-200"
             >
               {bulkImportMutation.isPending ? (
                 <span className="font-medium">
@@ -302,7 +305,7 @@ export default function Schools() {
           )}
           <button
             onClick={handleOpenModal}
-            className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+            className="hidden md:flex items-center gap-1 px-4 py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-hover hover:shadow-lift hover:-translate-y-0.5 active:scale-95 transition-all duration-200"
           >
             + Додати
           </button>
@@ -357,7 +360,7 @@ export default function Schools() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Пошук за назвою школи..."
-          className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border-none sm:border sm:border-slate-200 rounded-2xl sm:rounded-xl text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition"
+          className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border border-border rounded-2xl sm:rounded-xl text-sm font-medium text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand shadow-soft transition-all duration-200"
         />
         {searchQuery && (
           <button

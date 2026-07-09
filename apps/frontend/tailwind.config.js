@@ -86,12 +86,17 @@ export default {
         pill: "9999px",
       },
       boxShadow: {
-        card: "0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06)",
-        "card-hover": "0 8px 24px -4px rgb(0 0 0 / 0.10)",
-        modal: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+        card: "0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05)",
+        "card-hover": "0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08)",
+        modal: "0 25px 50px -12px rgb(0 0 0 / 0.15)",
         dropdown: "0 4px 12px -2px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.04)",
         popover: "0 12px 28px -4px rgb(0 0 0 / 0.12), 0 4px 8px -4px rgb(0 0 0 / 0.06)",
         lift: "0 4px 12px rgb(0 0 0 / 0.08)",
+        soft: "0 2px 8px -2px rgb(0 0 0 / 0.06)",
+      },
+      backgroundImage: {
+        "gradient-subtle": "linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%)",
+        "gradient-card": "linear-gradient(145deg, #ffffff, #f8fafc)",
       },
       fontSize: {
         "2xs": ["10px", { lineHeight: "14px" }],

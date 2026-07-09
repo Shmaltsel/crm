@@ -14,7 +14,9 @@ const paddings = {
 export function Card({ children, padding = "md", className = "", ...props }: Props) {
   return (
     <div
-      className={`bg-surface rounded-card shadow-card border border-border ${paddings[padding]} ${className}`}
+      className={`bg-surface rounded-card shadow-card border border-border
+        hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200
+        ${paddings[padding]} ${className}`}
       {...props}
     >
       {children}

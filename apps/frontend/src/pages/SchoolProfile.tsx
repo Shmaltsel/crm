@@ -384,7 +384,7 @@ export default function SchoolProfile() {
     <motion.div
       animate={{ opacity: isLeavingPage ? 0 : 1 }}
       transition={{ duration: 0.3 }}
-      className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800 font-sans w-full overflow-x-hidden pb-24 md:pb-8"
+      className="p-4 md:p-8 bg-gradient-subtle min-h-screen text-content-primary font-sans w-full overflow-x-hidden pb-24 md:pb-8"
     >
       <SchoolProfileHeader
         schoolData={schoolData}
@@ -415,15 +415,15 @@ export default function SchoolProfile() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.25 }}
-                className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
+                className="bg-gradient-card rounded-card shadow-card border border-border p-6 hover:shadow-card-hover transition-all duration-200"
               >
-                <h3 className="font-bold text-slate-800 mb-4">
+                <h3 className="font-bold text-content-primary mb-4 tracking-tight">
                   Відповідальна особа
                 </h3>
                 <ul className="space-y-2 text-sm">
                   <li className="flex justify-between">
-                    <span className="text-slate-500">Остання дія:</span>
-                    <span className="font-medium text-blue-600">
+                    <span className="text-content-muted">Остання дія:</span>
+                    <span className="font-medium text-brand">
                       {creatorName}
                     </span>
                   </li>

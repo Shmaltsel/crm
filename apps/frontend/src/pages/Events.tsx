@@ -117,23 +117,23 @@ export default function Events() {
   };
 
   return (
-    <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
+    <div className="p-4 md:p-8 bg-gradient-subtle min-h-screen">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-content-primary">
             {title}
             {selectedCity.id && !isFieldStaff && (
-              <span className="ml-2 text-base font-normal text-blue-500">
+              <span className="ml-2 text-base font-normal text-brand">
                 · {selectedCity.name}
               </span>
             )}
           </h1>{" "}
-          <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
+          <p className="text-sm text-content-muted mt-1">{subtitle}</p>
         </div>
         {!isFieldStaff && (
           <button
             onClick={() => navigate("/schools")}
-            className="bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg hover:bg-blue-700 transition w-full sm:w-auto"
+            className="bg-brand text-white px-4 py-2.5 sm:py-2.5 rounded-lg text-sm font-medium hover:bg-brand-hover hover:shadow-lift hover:-translate-y-0.5 active:scale-95 transition-all duration-200 w-full sm:w-auto"
           >
             + Додати подію
           </button>
