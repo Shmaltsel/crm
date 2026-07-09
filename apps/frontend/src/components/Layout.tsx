@@ -160,7 +160,7 @@ export default function Layout() {
   const { selectedCity } = useSelectedCity();
 
   const tabPaths = useMemo(
-    () => NAV_TABS.filter((t) => hasRole(user?.role, t.roles)),
+    () => NAV_TABS.filter((t) => t.bottomNav && hasRole(user?.role, t.roles)),
     [user],
   );
 
