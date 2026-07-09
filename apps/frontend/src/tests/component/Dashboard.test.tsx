@@ -6,11 +6,14 @@ import { http, HttpResponse } from "msw";
 import { server } from "../mocks/server";
 
 vi.mock("../../context/CityContext", () => ({
-  useSelectedCity: () => ({ selectedCity: { id: "city-1", name: "Львів" } })
+  useSelectedCity: () => ({
+    selectedCity: { id: "city-1", name: "Львів" },
+    setSelectedCity: vi.fn(),
+  }),
 }));
 
 vi.mock("../../context/AuthContext", () => ({
-  useAuth: () => ({ user: { role: "SUPERADMIN" } })
+  useAuth: () => ({ user: { role: "SUPERADMIN", name: "Адмін" } }),
 }));
 
 const createWrapper = () => {
@@ -23,26 +26,35 @@ const createWrapper = () => {
 };
 
 describe("Dashboard", () => {
-  it("renders owner dashboard for SUPERADMIN role", async () => {
+  it("renders overview tab for SUPERADMIN role", async () => {
     server.use(
-      http.get("http://localhost:3000/api/finance/dashboard", () =>
+      http.get("http://localhost:3000/api/dashboard/summary", () =>
         HttpResponse.json({
-          kpi: { totalRevenue: 100000, totalExpenses: 40000, totalProfit: 60000, totalEvents: 25 },
-          monthly: [],
-          expectedRevenue: 120000,
-          filters: { projects: [], cities: [] },
+          todayEvents: [],
+          upcomingEvents: [],
+          funnel: { BASE: 10, FIRST_CONTACT: 5 },
+          totalSchools: 50,
+          monthlyKpi: { revenue: 50000, profit: 20000, children: 500, count: 10 },
+          staleSchools: [],
+          activityFeed: [],
+          citiesStats: [],
         })
-      )
+      ),
+      http.get("http://localhost:3000/api/cities", () =>
+        HttpResponse.json([
+          { id: "city-1", name: "Львів" },
+          { id: "city-2", name: "Київ" },
+        ])
+      ),
     );
 
     render(<Dashboard />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByText("Фінансовий дашборд")).toBeInTheDocument();
-      expect(screen.getByText("100 000 грн")).toBeInTheDocument();
-      expect(screen.getByText("40 000 грн")).toBeInTheDocument();
-      expect(screen.getByText("60 000 грн")).toBeInTheDocument();
-      expect(screen.getByText("25")).toBeInTheDocument();
+      expect(screen.getByText("Доброго ранку, Адмін")).toBeInTheDocument();
+      expect(screen.getByText("50 000 грн")).toBeInTheDocument();
+      expect(screen.getByText("20 000 грн")).toBeInTheDocument();
+      expect(screen.getByText("500")).toBeInTheDocument();
     });
   });
 });
