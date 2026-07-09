@@ -103,7 +103,7 @@ function MobileDragView({
     : useTransform(x, () => winWidth);
 
   return (
-    <div className="relative min-h-full" style={{ overflowX: "visible" } as React.CSSProperties}>
+    <div className="relative min-h-full">
       {peekTabComponent && (
         <motion.div
           className="absolute inset-0 z-0"
@@ -136,7 +136,9 @@ function MobileDragView({
         onDragEnd={handleDragEnd}
         style={{ x }}
       >
-        {outlet}
+        <div className="h-full overflow-y-auto" style={{ touchAction: "pan-y" as React.CSSProperties["touchAction"] }}>
+          {outlet}
+        </div>
       </motion.div>
     </div>
   );
@@ -324,7 +326,9 @@ export default function Layout() {
         </aside>
 
         <main
-          className="flex-1 overflow-y-auto mt-16 md:mt-0 relative w-full min-w-0 pb-16 md:pb-0"
+          className={`flex-1 relative w-full min-w-0 pb-16 md:pb-0 ${
+            isMobile ? "" : "overflow-y-auto"
+          }`}
           style={{ marginTop: isMobile ? "calc(4rem + env(safe-area-inset-top, 0px))" : undefined }}
         >
           {isMobile ? (
