@@ -10,6 +10,7 @@ const TYPE_ICONS: Record<string, string> = {
   ISSUE_CREATED: "🚨",
   DAY_OFF_CREATED: "🌴",
   DAY_OFF_REMOVED: "❌",
+  REPORT_APPROVED: "✅",
   WELCOME: "👋",
 };
 

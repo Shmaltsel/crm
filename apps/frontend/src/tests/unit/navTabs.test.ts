@@ -3,7 +3,7 @@ import { NAV_TABS, ADMIN_TABS } from "../../constants/navTabs";
 
 describe("NAV_TABS", () => {
   it("має правильну кількість вкладок", () => {
-    expect(NAV_TABS.length).toBe(11);
+    expect(NAV_TABS.length).toBe(12);
   });
 
   it("всі вкладки мають to, icon, label", () => {
@@ -17,6 +17,11 @@ describe("NAV_TABS", () => {
   it("/employees доступний лише для SUPERADMIN", () => {
     const emp = NAV_TABS.find((t) => t.to === "/employees");
     expect(emp?.roles).toEqual(["SUPERADMIN"]);
+  });
+
+  it("/cities доступний для SUPERADMIN, MANAGER, OWNER", () => {
+    const cities = NAV_TABS.find((t) => t.to === "/cities");
+    expect(cities?.roles).toEqual(["SUPERADMIN", "MANAGER", "OWNER"]);
   });
 
   it("/dashboard та /reports/review доступні для керівників", () => {

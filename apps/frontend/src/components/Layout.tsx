@@ -295,7 +295,7 @@ export default function Layout() {
             {hasRole(user?.role, ["SUPERADMIN", "MANAGER"]) && (
               <NavLink to="/dashboard" icon={Home} label="Дашборд" currentPath={location.pathname} />
             )}
-            {hasRole(user?.role, ["SUPERADMIN"]) && (
+            {hasRole(user?.role, ["SUPERADMIN", "MANAGER", "OWNER"]) && (
               <NavLink to="/cities" icon={MapPin} label="Міста" currentPath={location.pathname} />
             )}
             <NavLink to="/schools" icon={School} label="Школи" currentPath={location.pathname} />

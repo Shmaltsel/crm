@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { RevisionDto } from './dto/revision.dto';
@@ -23,7 +24,10 @@ const ALLOWED_TRANSITIONS: Record<ReportStatus, ReportStatus[]> = {
 
 @Injectable()
 export class ReportsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   private async assertCrewMember(
     eventId: string,
@@ -159,19 +163,38 @@ export class ReportsService {
 
     const report = await this.prisma.eventReport.findUnique({
       where: { id },
-      include: { event: { include: { crew: true } } },
+      include: { event: { include: { crew: true, school: true, city: true } } },
     });
     if (!report) throw new NotFoundException('report.notFound');
     this.assertTransition(report.status, 'APPROVED');
 
-    return this.prisma.eventReport.update({
-      where: { id },
-      data: {
-        status: 'APPROVED',
-        approvedAt: new Date(),
-        approvedBy: user.sub,
-      },
-    });
+    const [approved] = await this.prisma.$transaction([
+      this.prisma.eventReport.update({
+        where: { id },
+        data: {
+          status: 'APPROVED',
+          approvedAt: new Date(),
+          approvedBy: user.sub,
+        },
+      }),
+      this.prisma.event.update({
+        where: { id: report.eventId },
+        data: { status: 'RE_SALE' },
+      }),
+    ]);
+
+    const notifyUserId = report.event.responsibleId || report.event.city.managerId;
+    if (notifyUserId) {
+      this.notificationsService
+        .create(notifyUserId, 'REPORT_APPROVED', {
+          eventId: report.eventId,
+          schoolName: report.event.school?.name,
+          title: 'Звіт підтверджено',
+        })
+        .catch(() => {});
+    }
+
+    return approved;
   }
 
   async requestRevision(id: string, dto: RevisionDto, user: JwtUser) {
