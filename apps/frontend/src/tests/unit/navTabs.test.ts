@@ -3,7 +3,7 @@ import { NAV_TABS, ADMIN_TABS } from "../../constants/navTabs";
 
 describe("NAV_TABS", () => {
   it("має правильну кількість вкладок", () => {
-    expect(NAV_TABS.length).toBe(12);
+    expect(NAV_TABS.length).toBe(11);
   });
 
   it("всі вкладки мають to, icon, label", () => {
@@ -44,31 +44,6 @@ describe("NAV_TABS", () => {
       const tab = NAV_TABS.find((t) => t.to === path);
       expect(tab?.roles).toBeUndefined();
     }
-  });
-});
-
-describe("swipeable filter (Dashboard excluded from carousel)", () => {
-  it("/dashboard має swipeable: false", () => {
-    const dash = NAV_TABS.find((t) => t.to === "/dashboard");
-    expect(dash?.swipeable).toBe(false);
-  });
-
-  it("bottomNav-таби swipeable за замовчуванням (true або undefined)", () => {
-    for (const t of NAV_TABS) {
-      if (t.to === "/dashboard") continue;
-      if (t.bottomNav) {
-        expect(t.swipeable).not.toBe(false);
-      }
-    }
-  });
-
-  it("фільтр виключає /dashboard з табів, доступних для свайпу", () => {
-    const userRole = "SUPERADMIN";
-    const swipeTabs = NAV_TABS.filter(
-      (t) => t.bottomNav && t.swipeable !== false && (!t.roles || t.roles.includes(userRole)),
-    );
-    expect(swipeTabs.find((t) => t.to === "/dashboard")).toBeUndefined();
-    expect(swipeTabs.length).toBe(3); // schools, finance, calendar
   });
 });
 

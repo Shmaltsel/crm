@@ -15,10 +15,16 @@ export function useFilteredTabs(): NavTab[] {
 
 export function useBottomTabs(): NavTab[] {
   const { user } = useAuth();
-  return useMemo(
-    () => NAV_TABS.filter((t) => t.bottomNav && hasRole(user?.role, t.roles)),
-    [user],
-  );
+  return useMemo(() => {
+    const role = user?.role;
+    const allTabs = NAV_TABS.filter((t) => hasRole(role, t.roles));
+    if (role === "DRIVER" || role === "HOST") {
+      const keys = ["/schools", "/calendar", "/finance"];
+      return allTabs.filter((t) => keys.includes(t.to));
+    }
+    const keys = ["/dashboard", "/schools", "/calendar"];
+    return allTabs.filter((t) => keys.includes(t.to));
+  }, [user]);
 }
 
 export default function BottomNavigationBar() {

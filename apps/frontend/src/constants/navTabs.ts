@@ -9,7 +9,6 @@ import {
   MapPin,
   BarChart3,
   ClipboardCheck,
-  History,
   Package,
   Trophy,
   LayoutDashboard,
@@ -20,8 +19,6 @@ export interface NavTab {
   icon: ComponentType<{ className?: string }>;
   label: string;
   roles?: string[];
-  bottomNav?: boolean;
-  swipeable?: boolean;
 }
 
 export interface DashboardTab {
@@ -32,18 +29,17 @@ export interface DashboardTab {
 }
 
 export const NAV_TABS: NavTab[] = [
-  { to: "/dashboard", icon: Home, label: "Дашборд", roles: ["SUPERADMIN", "MANAGER", "OWNER"], bottomNav: true, swipeable: false },
+  { to: "/dashboard", icon: Home, label: "Дашборд", roles: ["SUPERADMIN", "MANAGER", "OWNER"] },
   { to: "/reports/review", icon: ClipboardCheck, label: "Звіти", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
   { to: "/inventory", icon: Package, label: "Склад", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
-  { to: "/schools", icon: School, label: "Школи", bottomNav: true },
+  { to: "/schools", icon: School, label: "Школи" },
   { to: "/kindergartens", icon: Baby, label: "Садочки" },
-  { to: "/finance", icon: Wallet, label: "Фінанси", bottomNav: true },
-  { to: "/calendar", icon: Calendar, label: "Календар", bottomNav: true },
+  { to: "/finance", icon: Wallet, label: "Фінанси" },
+  { to: "/calendar", icon: Calendar, label: "Календар" },
   { to: "/cities", icon: MapPin, label: "Міста", roles: ["SUPERADMIN", "MANAGER", "OWNER"] },
   { to: "/employees", icon: Users, label: "Працівники", roles: ["SUPERADMIN"] },
   { to: "/analytics", icon: BarChart3, label: "Аналітика", roles: ["SUPERADMIN", "OWNER"] },
   { to: "/city-leaderboard", icon: Trophy, label: "Рейтинг", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
-  { to: "/audit-log", icon: History, label: "Журнал дій", roles: ["SUPERADMIN", "OWNER"] },
 ];
 
 export const ADMIN_TABS: NavTab[] = [

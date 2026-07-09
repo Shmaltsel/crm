@@ -23,7 +23,6 @@ const EventReport = lazyWithRetry(() => import("./pages/EventReport"));
 const Cities = lazyWithRetry(() => import("./pages/Cities"));
 const SchoolProfile = lazyWithRetry(() => import("./pages/SchoolProfile"));
 const ProjectProfile = lazyWithRetry(() => import("./pages/ProjectProfile"));
-const AuditLog = lazyWithRetry(() => import("./pages/AuditLog"));
 const ReportsReview = lazyWithRetry(() => import("./features/reports/pages/ReportsReviewPage"));
 const Inventory = lazyWithRetry(() => import("./pages/Inventory"));
 const CityLeaderboard = lazyWithRetry(() => import("./pages/CityLeaderboard"));
@@ -162,17 +161,6 @@ function AppRoutes() {
                 <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
                   <Suspense fallback={<PageLoader />}>
                     <CityLeaderboard />
-                  </Suspense>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="audit-log"
-              element={
-                <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER"]}>
-                  <Suspense fallback={<PageLoader />}>
-                    <AuditLog />
                   </Suspense>
                 </ProtectedRoute>
               }

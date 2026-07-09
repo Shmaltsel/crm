@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
-import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
 import { SanitizeInterceptor } from './common/interceptors/sanitize.interceptor';
 import { CsrfGuard } from './auth/csrf.guard';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -30,7 +29,6 @@ import { DaysOffModule } from './days-off/days-off.module';
 import { ReportsModule } from './reports/reports.module';
 import { SalaryModule } from './salary/salary.module';
 import { SchoolCommentsModule } from './school-comments/school-comments.module';
-import { AuditLogModule } from './audit-log/audit-log.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AnalyticsModule } from './analytics/analytics.module';
@@ -79,7 +77,6 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     ReportsModule,
     SalaryModule,
     SchoolCommentsModule,
-    AuditLogModule,
     NotificationsModule,
     AnalyticsModule,
   ],
@@ -102,10 +99,6 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     {
       provide: APP_INTERCEPTOR,
       useClass: SanitizeInterceptor,
-    },
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: AuditLogInterceptor,
     },
   ],
 })
