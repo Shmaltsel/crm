@@ -1,4 +1,4 @@
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 // import { '<your provider here>' } from '<your provider package here>';
 
 // Vercel AI SDK is used to connect to AI providers.
@@ -10,17 +10,16 @@ const openrouter = createOpenRouter({
 
 const config = {
   web: {
-    // use application host without path prefix (e.g., http://localhost:3000)
-    url: 'http://<your-app-host-here>',
-  },
+  url: 'https://app.svitlo-znan.app',
+},
 
   ai: {
     // fast model with tool calling capabilities
-    model: openrouter('openai/gpt-oss-20b:nitro'),
+    model: openrouter("openai/gpt-oss-20b:nitro"),
     // vision model for screenshot analysis
-    visionModel: openrouter('meta-llama/llama-4-scout-17b-16e-instruct'),
+    visionModel: openrouter("meta-llama/llama-4-scout-17b-16e-instruct"),
     // agentic model for decision making
-    agenticModel: openrouter('minimax/minimax-m2.5:nitro'),
+    agenticModel: openrouter("minimax/minimax-m2.5:nitro"),
   },
 
   reporter: {

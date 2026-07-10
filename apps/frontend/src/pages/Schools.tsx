@@ -8,7 +8,6 @@ import {
   Suspense,
 } from "react";
 import { useSearchParams, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import { api } from "../config/api";
@@ -76,8 +75,6 @@ export default function Schools() {
     return "school";
   }, [searchParams, location.pathname]);
 
-  const typeInfo = INSTITUTION_TYPES[institutionType];
-
   const swiperRef = useRef<any>(null);
 
   const handleTabChange = useCallback(
@@ -131,10 +128,10 @@ export default function Schools() {
   });
 
   const bulkImportMutation = useMutation({
-    mutationFn: (cityId: string) =>
+    mutationFn: ({ cityId, type }: { cityId: string; type: "Школа" | "Садочок" }) =>
       api.post(
         "/schools/bulk-import",
-        { cityId, type: typeInfo.apiType },
+        { cityId, type },
         { timeout: 120000 },
       ),
     onSuccess: (res) => {
@@ -151,43 +148,76 @@ export default function Schools() {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
-  const schoolFilters = useMemo(
+  const baseFilters = useMemo(
     () => ({
       search: debouncedQuery || undefined,
       cityId: selectedCity.id || undefined,
-      type: typeInfo.apiType,
       stage: (activeFilter as any) || undefined,
       size: (sizeFilter as any) || undefined,
     }),
-    [debouncedQuery, selectedCity.id, activeFilter, sizeFilter, typeInfo],
+    [debouncedQuery, selectedCity.id, activeFilter, sizeFilter],
+  );
+
+  const schoolFilters = useMemo(
+    () => ({ ...baseFilters, type: "Школа" as const }),
+    [baseFilters],
+  );
+
+  const kindergartenFilters = useMemo(
+    () => ({ ...baseFilters, type: "Садочок" as const }),
+    [baseFilters],
   );
 
   const {
-    data: schoolsPages,
-    isLoading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
+    data: schoolPages,
+    isLoading: isSchoolsLoading,
+    fetchNextPage: fetchNextSchools,
+    hasNextPage: hasNextSchools,
+    isFetchingNextPage: isFetchingNextSchools,
   } = useSchools(schoolFilters);
-  const { data: stats } = useSchoolStats({
+
+  const {
+    data: kindergartenPages,
+    isLoading: isKindergartenLoading,
+    fetchNextPage: fetchNextKindergartens,
+    hasNextPage: hasNextKindergartens,
+    isFetchingNextPage: isFetchingNextKindergartens,
+  } = useSchools(kindergartenFilters);
+
+  const { data: schoolStats } = useSchoolStats({
     cityId: selectedCity.id || undefined,
-    type: typeInfo.apiType,
+    type: "Школа" as const,
     stage: (activeFilter as any) || undefined,
   });
+
+  const { data: kindergartenStats } = useSchoolStats({
+    cityId: selectedCity.id || undefined,
+    type: "Садочок" as const,
+    stage: (activeFilter as any) || undefined,
+  });
+
   const { data: cities = [] } = useCities();
   const { data: supportedCities = [] } = useSupportedCities();
   const deleteSchool = useDeleteSchool();
   const prefetchSchool = usePrefetchSchool();
 
-  const handleLoadMore = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  const schoolData = useMemo(() => ({
+    filtered: schoolPages?.pages.flatMap((p) => p.data) ?? [],
+    totalItems: schoolPages?.pages[0]?.meta.totalItems ?? 0,
+  }), [schoolPages]);
 
-  const filteredSchools = useMemo(
-    () => schoolsPages?.pages.flatMap((p) => p.data) ?? [],
-    [schoolsPages],
-  );
-  const totalItems = schoolsPages?.pages[0]?.meta.totalItems ?? 0;
+  const kindergartenData = useMemo(() => ({
+    filtered: kindergartenPages?.pages.flatMap((p) => p.data) ?? [],
+    totalItems: kindergartenPages?.pages[0]?.meta.totalItems ?? 0,
+  }), [kindergartenPages]);
+
+  const handleLoadMoreSchools = useCallback(() => {
+    if (hasNextSchools && !isFetchingNextSchools) fetchNextSchools();
+  }, [hasNextSchools, isFetchingNextSchools, fetchNextSchools]);
+
+  const handleLoadMoreKindergartens = useCallback(() => {
+    if (hasNextKindergartens && !isFetchingNextKindergartens) fetchNextKindergartens();
+  }, [hasNextKindergartens, isFetchingNextKindergartens, fetchNextKindergartens]);
 
   const handleOpenModal = useCallback(() => {
     setForm({
@@ -317,6 +347,12 @@ export default function Schools() {
       >
         {ESTABLISHMENT_IDS.map((id) => {
           const info = INSTITUTION_TYPES[id];
+          const isSchool = id === "school";
+          const data = isSchool ? schoolData : kindergartenData;
+          const stats = isSchool ? schoolStats : kindergartenStats;
+          const isLoading = isSchool ? isSchoolsLoading : isKindergartenLoading;
+          const handleLoadMore = isSchool ? handleLoadMoreSchools : handleLoadMoreKindergartens;
+
           return (
             <SwiperSlide key={id} className="flex flex-col overflow-hidden">
               <div className="p-4 md:p-8 flex flex-col flex-1 max-w-[100vw]">
@@ -332,7 +368,7 @@ export default function Schools() {
                       )}
                     </h1>
                     <p className="text-sm text-content-muted mt-0.5">
-                      {filteredSchools.length} {info.countLabel} у місті
+                      {data.filtered.length} {info.countLabel} у місті
                     </p>
                   </div>
                   <div className="flex gap-2 shrink-0">
@@ -346,7 +382,7 @@ export default function Schools() {
                             );
                           if (
                             !window.confirm(
-                              `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`,
+                              `Імпортувати всі ${info.countLabel} з isuo.org для міста ${selectedCity.name}?`,
                             )
                           )
                             return;
@@ -356,9 +392,10 @@ export default function Schools() {
                             setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
                           }, 500);
 
-                          bulkImportMutation.mutate(selectedCity.id, {
-                            onSettled: () => clearInterval(dotInterval),
-                          });
+                          bulkImportMutation.mutate(
+                            { cityId: selectedCity.id, type: info.apiType },
+                            { onSettled: () => clearInterval(dotInterval) },
+                          );
                         }}
                         disabled={bulkImportMutation.isPending}
                         className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 hover:shadow-lift hover:-translate-y-0.5 active:scale-95 disabled:opacity-70 transition-all duration-200"
@@ -402,7 +439,7 @@ export default function Schools() {
                       onFilterChange={setActiveFilter}
                       sizeFilter={sizeFilter}
                       onSizeFilterChange={setSizeFilter}
-                      schoolType={typeInfo.apiType}
+                      schoolType={info.apiType}
                     />
                   </Suspense>
                 </div>
@@ -411,8 +448,8 @@ export default function Schools() {
                 <div className="flex-1 w-full min-h-0 mt-3">
                   <EstablishmentList
                     isLoading={isLoading}
-                    filteredSchools={filteredSchools}
-                    totalItems={totalItems}
+                    filteredSchools={data.filtered}
+                    totalItems={data.totalItems}
                     activeFilter={activeFilter}
                     sizeFilter={sizeFilter}
                     searchQuery={searchQuery}
