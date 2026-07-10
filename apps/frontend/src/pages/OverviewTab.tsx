@@ -24,22 +24,22 @@ function KpiCard({
   loading?: boolean;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col justify-between min-h-[100px]">
+    <div className="mobile-kpi-card min-h-[80px]">
       {loading ? (
-        <div className="animate-pulse space-y-3">
-          <div className="h-4 bg-slate-100 rounded w-1/2" />
-          <div className="h-7 bg-slate-100 rounded w-2/3" />
-          <div className="h-3 bg-slate-100 rounded w-1/3" />
+        <div className="animate-pulse space-y-2">
+          <div className="h-3 bg-neutral-100 rounded w-1/2" />
+          <div className="h-6 bg-neutral-100 rounded w-2/3" />
+          <div className="h-2.5 bg-neutral-100 rounded w-1/3" />
         </div>
       ) : (
         <>
-          <div className="flex items-center gap-1.5 mb-2">
-            <span className="text-base">{icon}</span>
-            <span className="text-xs font-semibold text-slate-500">{title}</span>
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="text-sm">{icon}</span>
+            <span className="mobile-stat-label">{title}</span>
           </div>
-          <p className="text-xl font-bold text-slate-800 leading-none">{value}</p>
+          <p className="text-xl font-bold text-content-primary leading-none">{value}</p>
           {subtitle && (
-            <p className="text-[11px] text-slate-400 mt-1.5 font-medium">{subtitle}</p>
+            <p className="text-2xs text-content-muted mt-1">{subtitle}</p>
           )}
         </>
       )}
@@ -88,14 +88,14 @@ export default function OverviewTab() {
   }, [summary]);
 
   return (
-    <div className="bg-slate-50 min-h-screen">
-      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 md:px-8 py-4">
+    <div className="min-h-0">
+      <div className="bg-white/80 backdrop-blur-md border-b border-border px-4 md:px-8 py-3">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-slate-800">
+            <h1 className="text-base font-bold text-content-primary">
               {greeting}, {user?.name ?? "Користувач"}
             </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-2xs text-content-muted mt-0.5">
               {new Date().toLocaleDateString("uk-UA", {
                 weekday: "long",
                 day: "numeric",
@@ -111,7 +111,7 @@ export default function OverviewTab() {
                 const city = cities.find((c) => c.id === e.target.value);
                 if (city) setSelectedCity({ id: city.id, name: city.name });
               }}
-              className="bg-white border border-slate-200 text-slate-700 text-xs font-medium rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 shadow-sm max-w-[140px] truncate"
+              className="bg-surface border border-border-strong text-content-secondary text-2xs font-medium rounded-control px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand shadow-soft max-w-[120px] truncate"
               aria-label="Вибір міста"
             >
               <option value="">Всі міста</option>
@@ -125,15 +125,15 @@ export default function OverviewTab() {
         </div>
       </div>
 
-      <div className="p-4 md:p-8 space-y-6">
+      <div className="p-4 md:p-8 space-y-4">
         {isError ? (
-          <div className="text-center py-16 text-slate-400">
-            <span className="text-3xl block mb-3 opacity-50">⚠️</span>
+          <div className="text-center py-12 text-content-muted">
+            <span className="text-2xl block mb-2 opacity-50">⚠️</span>
             <p className="text-sm font-medium">Не вдалося завантажити дані дашборду</p>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {kpiCards
                 ? kpiCards.map((kpi) => (
                     <KpiCard key={kpi.title} {...kpi} loading={false} />
@@ -149,7 +149,7 @@ export default function OverviewTab() {
                   ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <TodayEvents events={summary?.todayEvents ?? []} />
               <ActivityFeed items={summary?.activityFeed ?? []} />
             </div>

@@ -106,15 +106,15 @@ export default function Dashboard() {
           {allowedTabs.map((tab) => {
             const Component = TAB_COMPONENTS[tab.id];
             return (
-              <SwiperSlide key={tab.id}>
-                <div className="p-4 md:p-8">
-                  <TabErrorBoundary label={tab.label}>
-                    <Suspense fallback={<div className="text-sm text-content-muted">Завантаження...</div>}>
-                      <Component />
-                    </Suspense>
-                  </TabErrorBoundary>
-                </div>
-              </SwiperSlide>
+            <SwiperSlide key={tab.id}>
+              <div className="md:p-4 lg:p-8">
+                <TabErrorBoundary label={tab.label}>
+                  <Suspense fallback={<div className="text-sm text-content-muted p-4">Завантаження...</div>}>
+                    <Component />
+                  </Suspense>
+                </TabErrorBoundary>
+              </div>
+            </SwiperSlide>
             );
           })}
         </Swiper>

@@ -46,31 +46,30 @@ export default function TodayEvents({ events }: Props) {
   });
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col">
-      {/* Хедер */}
-      <div className="flex justify-between items-start mb-3">
+    <div className="mobile-card flex flex-col">
+      <div className="flex justify-between items-start mb-2.5">
         <div>
-          <p className="text-sm font-semibold text-slate-800">
+          <p className="text-sm font-semibold text-content-primary">
             Сьогоднішні події
           </p>
-          <p className="text-xs text-slate-400 mt-0.5 capitalize">
+          <p className="text-2xs text-content-muted mt-0.5 capitalize">
             {dateLabel}
           </p>
         </div>
         <button
           onClick={() => navigate("/calendar")}
-          className="text-xs text-blue-600 hover:underline shrink-0"
+          className="text-2xs text-brand hover:underline shrink-0"
         >
           Календар
         </button>
       </div>
 
       {events.length === 0 ? (
-        <div className="py-6 text-center text-slate-400 text-sm">
+        <div className="py-5 text-center text-content-muted text-sm">
           Сьогодні подій немає
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5">
           {events.map((ev) => {
             const hasCrew = !!ev.crew;
             const crewLabel = ev.crew?.name ?? ev.crew?.host?.name ?? null;
@@ -78,36 +77,33 @@ export default function TodayEvents({ events }: Props) {
             return (
               <div
                 key={ev.id}
-                className={`rounded-xl border p-3 flex flex-col gap-2.5 ${
+                className={`rounded-control border p-3 flex flex-col gap-2 ${
                   hasCrew
-                    ? "border-slate-100 bg-white"
-                    : "border-amber-200 bg-amber-50/40"
+                    ? "border-border bg-surface"
+                    : "border-warning/30 bg-warning-subtle"
                 }`}
               >
-                {/* Час + проєкт в один рядок */}
                 <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold text-slate-800 tabular-nums shrink-0">
+                  <span className="text-base font-bold text-content-primary tabular-nums shrink-0">
                     {ev.time ?? "—:——"}
                   </span>
-                  <span className="text-xs text-slate-400 truncate">
+                  <span className="text-2xs text-content-muted truncate">
                     {ev.project}
                   </span>
                 </div>
 
-                {/* Назва школи — дозволяємо переноситись, не обрізаємо */}
-                <p className="text-sm font-semibold text-slate-700 leading-snug line-clamp-2">
+                <p className="text-sm font-semibold text-content-primary leading-snug line-clamp-2">
                   {ev.school?.name ?? "—"}
                 </p>
 
-                {/* Статус екіпажу + кнопка в один рядок */}
                 <div className="flex items-center justify-between gap-2">
                   {hasCrew ? (
-                    <span className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-medium shrink-0">
-                      ✅ {crewLabel ?? "Екіпаж призначено"}
+                    <span className="badge-success text-2xs px-2 py-0.5 rounded-pill font-medium shrink-0">
+                      {crewLabel ?? "Екіпаж призначено"}
                     </span>
                   ) : (
-                    <span className="text-[11px] text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full font-medium shrink-0">
-                      ⚠️ Немає екіпажу
+                    <span className="badge-warning text-2xs px-2 py-0.5 rounded-pill font-medium shrink-0">
+                      Немає екіпажу
                     </span>
                   )}
 
@@ -115,10 +111,10 @@ export default function TodayEvents({ events }: Props) {
                     onClick={() =>
                       ev.school && navigate(`/schools/${ev.school.id}`)
                     }
-                    className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors shrink-0 ${
+                    className={`text-2xs font-semibold px-2.5 py-1 rounded-control transition-colors shrink-0 ${
                       hasCrew
-                        ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                        : "bg-white border border-amber-400 text-amber-700 hover:bg-amber-50"
+                        ? "bg-surface-muted text-content-secondary hover:bg-border-strong"
+                        : "bg-surface border border-warning text-warning-600 hover:bg-warning-subtle"
                     }`}
                   >
                     {hasCrew ? "Відкрити →" : "Призначити →"}
@@ -130,7 +126,7 @@ export default function TodayEvents({ events }: Props) {
         </div>
       )}
 
-      <p className="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-50">
+      <p className="text-2xs text-content-muted mt-2.5 pt-2.5 border-t border-border">
         Усього на сьогодні: {events.length} {plural(events.length)}
       </p>
     </div>

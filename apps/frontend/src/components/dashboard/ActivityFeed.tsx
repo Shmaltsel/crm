@@ -9,9 +9,9 @@ const ROLE_INITIALS: Record<string, string> = {
 };
 
 const ROLE_COLORS: Record<string, string> = {
-  MANAGER:    'bg-blue-50 text-blue-700',
+  MANAGER:    'bg-brand-50 text-brand-700',
   SUPERADMIN: 'bg-purple-50 text-purple-700',
-  DRIVER:     'bg-emerald-50 text-emerald-700',
+  DRIVER:     'bg-success-50 text-success-700',
   HOST:       'bg-violet-50 text-violet-700',
 };
 
@@ -97,47 +97,42 @@ export default function ActivityFeed({ items }: Props) {
   const hasMore  = groups.length > COLLAPSED_COUNT;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col">
+    <div className="mobile-card flex flex-col">
 
-      {/* Хедер */}
-      <div className="flex justify-between items-center mb-3">
-        <p className="text-sm font-semibold text-slate-800">Активність команди</p>
-        <span className="text-xs text-slate-400">{formatDate(items[0]?.createdAt ?? new Date().toISOString())}</span>
+      <div className="flex justify-between items-center mb-2.5">
+        <p className="text-sm font-semibold text-content-primary">Активність команди</p>
+        <span className="text-2xs text-content-muted">{formatDate(items[0]?.createdAt ?? new Date().toISOString())}</span>
       </div>
 
       {items.length === 0 ? (
-        <div className="py-6 text-center text-slate-400 text-sm">
+        <div className="py-5 text-center text-content-muted text-sm">
           Сьогодні активності ще немає
         </div>
       ) : (
         <>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-0.5">
             {visible.map((group) => {
-              const avatarColor = ROLE_COLORS[group.role] ?? 'bg-slate-100 text-slate-600';
+              const avatarColor = ROLE_COLORS[group.role] ?? 'bg-neutral-100 text-neutral-600';
               const shownActions = group.actions.slice(-3);
               const hiddenCount  = group.actions.length - shownActions.length;
               const lastTime     = formatTime(group.actions[group.actions.length - 1].createdAt);
 
               return (
-                <div key={group.key} className="flex items-start gap-3 py-2 px-2 -mx-1 rounded-xl hover:bg-slate-50/60 transition-colors">
+                <div key={group.key} className="flex items-start gap-2.5 py-2 px-2 -mx-1 rounded-control hover:bg-surface-muted/60 transition-colors">
 
-                  {/* Аватар */}
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5 ${avatarColor}`}>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-2xs font-semibold shrink-0 mt-0.5 ${avatarColor}`}>
                     {getInitials(group.userName)}
                   </div>
 
-                  {/* Контент */}
                   <div className="min-w-0 flex-1">
-
-                    {/* Ім'я + школа */}
-                    <p className="text-xs font-semibold text-slate-800 leading-tight">
+                    <p className="text-xs font-semibold text-content-primary leading-tight">
                       {group.userName}
                       {group.schoolName && (
                         <>
                           {' · '}
                           <button
                             onClick={() => group.schoolId && navigate(`/schools/${group.schoolId}`)}
-                            className="text-blue-600 hover:underline font-medium"
+                            className="text-brand hover:underline font-medium"
                           >
                             {group.schoolName}
                           </button>
@@ -145,35 +140,32 @@ export default function ActivityFeed({ items }: Props) {
                       )}
                     </p>
 
-                    {/* Дії */}
-                    <div className="mt-1 flex flex-col gap-0.5">
+                    <div className="mt-0.5 flex flex-col gap-0.5">
                       {hiddenCount > 0 && (
-                        <p className="text-xs text-slate-400 italic">+{hiddenCount} раніше</p>
+                        <p className="text-2xs text-content-muted italic">+{hiddenCount} раніше</p>
                       )}
                       {shownActions.map((a) => (
-                        <p key={a.id} className="text-xs text-slate-500 leading-snug">
+                        <p key={a.id} className="text-2xs text-content-secondary leading-snug">
                           — {a.action.replace(/\.$/, '')}
                           {a.comment && (
-                            <span className="text-slate-400 italic"> «{a.comment}»</span>
+                            <span className="text-content-muted italic"> «{a.comment}»</span>
                           )}
                         </p>
                       ))}
                     </div>
                   </div>
 
-                  {/* Час останньої дії */}
-                  <span className="text-xs text-slate-400 shrink-0 pt-0.5">{lastTime}</span>
+                  <span className="text-2xs text-content-muted shrink-0 pt-0.5">{lastTime}</span>
 
                 </div>
               );
             })}
           </div>
 
-          {/* Кнопка згорнути/розгорнути */}
           {hasMore && (
             <button
               onClick={() => setExpanded(v => !v)}
-              className="mt-3 pt-3 border-t border-slate-50 text-xs text-blue-600 hover:underline text-center w-full"
+              className="mt-2.5 pt-2.5 border-t border-border text-2xs text-brand hover:underline text-center w-full"
             >
               {expanded
                 ? '↑ Згорнути'
