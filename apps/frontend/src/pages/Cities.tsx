@@ -4,6 +4,7 @@ import { useSelectedCity } from "../context/CityContext";
 import { useAddCity } from "../hooks/useApi";
 import { useCities } from "../hooks/useCities";
 import { useAuth } from "../context/AuthContext";
+import { Modal } from "../components/ui/Modal";
 
 const IssueCarousel = lazy(() => import("../components/IssueCarousel"));
 const CityMobileHeader = lazy(
@@ -18,24 +19,19 @@ const CityDesktopGrid = lazy(
 
 const CitiesSkeleton = () => (
   <div className="w-full animate-pulse">
-    {/* Мобільний скелетон */}
-    <div className="md:hidden flex flex-col gap-4 mt-4">
-      <div className="h-28 bg-slate-200 rounded-2xl w-full"></div>
-      <div className="h-16 bg-slate-200 rounded-2xl w-full"></div>
-      <div className="h-16 bg-slate-200 rounded-2xl w-full"></div>
+    <div className="md:hidden flex flex-col gap-3 mt-4">
+      <div className="h-24 bg-neutral-100 rounded-card w-full" />
+      <div className="h-14 bg-neutral-100 rounded-card w-full" />
+      <div className="h-14 bg-neutral-100 rounded-card w-full" />
     </div>
-    {/* Десктопний скелетон */}
     <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {[...Array(3)].map((_, i) => (
-        <div
-          key={i}
-          className="bg-white rounded-2xl shadow-sm border border-slate-100 h-72 overflow-hidden"
-        >
-          <div className="h-44 bg-slate-200 w-full"></div>
+        <div key={i} className="bg-surface rounded-card shadow-card border border-border h-72 overflow-hidden">
+          <div className="h-44 bg-neutral-100 w-full" />
           <div className="p-5 flex flex-col gap-3">
-            <div className="h-6 bg-slate-200 rounded w-1/2"></div>
-            <div className="h-4 bg-slate-200 rounded w-3/4 mt-2"></div>
-            <div className="h-10 bg-slate-200 rounded w-full mt-auto"></div>
+            <div className="h-6 bg-neutral-100 rounded w-1/2" />
+            <div className="h-4 bg-neutral-100 rounded w-3/4 mt-2" />
+            <div className="h-10 bg-neutral-100 rounded w-full mt-auto" />
           </div>
         </div>
       ))}
@@ -52,13 +48,14 @@ export default function Cities() {
   const addCity = useAddCity();
 
   const handleSelectCity = useCallback(
-    (city: any) => {
+    (city: { id: string; name: string }) => {
       setSelectedCity(city);
     },
     [setSelectedCity],
   );
   const { user } = useAuth();
   const userRole = user?.role ?? null;
+
   const handleAddCity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCityName.trim()) return;
@@ -66,25 +63,20 @@ export default function Cities() {
       await addCity.mutateAsync(newCityName.trim());
       setNewCityName("");
       setIsModalOpen(false);
-    } catch (err: any) {
+    } catch {
       setNewCityName("");
       setIsModalOpen(false);
     }
   };
 
   return (
-    <div
-      className="p-4 md:p-8 bg-slate-50 min-h-screen"
-      style={{ contentVisibility: "auto" }}
-    >
+    <div className="p-4 md:p-8 bg-surface-subtle min-h-screen" style={{ contentVisibility: "auto" }}>
       <div className="hidden md:flex justify-between items-center mb-8">
-        <h1 className="header-enter text-3xl font-bold text-slate-800">
-          Міста
-        </h1>
+        <h1 className="header-enter text-3xl font-bold text-content-primary">Міста</h1>
         {userRole === "SUPERADMIN" && (
           <button
             onClick={() => setIsModalOpen(true)}
-            className="header-btn-enter bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm flex items-center transition-all duration-150"
+            className="header-btn-enter bg-brand hover:bg-brand-hover active:scale-95 text-white px-5 py-2.5 rounded-control font-medium shadow-sm flex items-center transition-all duration-fast"
           >
             <span className="mr-2">+</span> Додати місто
           </button>
@@ -94,9 +86,7 @@ export default function Cities() {
       {isFetching ? (
         <CitiesSkeleton />
       ) : (
-        /* Оптимізація 6: Suspense обгортка для лінивих компонентів */
         <Suspense fallback={<CitiesSkeleton />}>
-          
           <div className="md:hidden">
             <CityMobileHeader selectedCity={selectedCity} cities={cities} />
             <CityMobileList
@@ -106,7 +96,6 @@ export default function Cities() {
             />
           </div>
 
-          
           <div className="hidden md:block">
             <IssueCarousel />
             <CityDesktopGrid
@@ -118,74 +107,45 @@ export default function Cities() {
         </Suspense>
       )}
 
-      {/* Мобільна плаваюча кнопка FAB */}
       {userRole === "SUPERADMIN" && (
         <button
           onClick={() => setIsModalOpen(true)}
-          className="md:hidden fixed right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 active:scale-95 transition-transform opacity-0"
-          style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
-          style={{
-            animation:
-              "fabPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) 0.2s forwards",
-          }}
+          className="fab"
           aria-label="Додати місто"
         >
           +
         </button>
       )}
 
-      {/* Модалка додавання */}
-      {isModalOpen &&
-        createPortal(
-          <div
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
-            style={{ animation: "fadeIn 0.2s ease-out forwards" }}
-          >
-            
-            <div
-              className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
-              style={{ animation: "modalScale 0.3s ease-out forwards" }}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Нове місто">
+        <form onSubmit={handleAddCity} className="flex flex-col gap-4">
+          <input
+            type="text"
+            value={newCityName}
+            onChange={(e) => setNewCityName(e.target.value)}
+            placeholder="Наприклад: Львів"
+            className="w-full p-3 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none transition-shadow text-sm"
+            autoFocus
+            required
+          />
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="flex-1 bg-surface-muted text-content-secondary py-2.5 rounded-control font-medium hover:bg-border-strong transition-colors text-sm"
             >
-              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <h3 className="text-xl font-bold text-slate-800">Нове місто</h3>
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-              <form onSubmit={handleAddCity} className="p-6">
-                <input
-                  type="text"
-                  value={newCityName}
-                  onChange={(e) => setNewCityName(e.target.value)}
-                  placeholder="Наприклад: Львів"
-                  className="w-full p-3 mb-6 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
-                  autoFocus
-                  required
-                />
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors"
-                  >
-                    Скасувати
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={addCity.isPending}
-                    className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                  >
-                    {addCity.isPending ? "Збереження..." : "Зберегти"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>,
-          document.body,
-        )}
+              Скасувати
+            </button>
+            <button
+              type="submit"
+              disabled={addCity.isPending}
+              className="flex-1 bg-brand text-white py-2.5 rounded-control font-medium hover:bg-brand-hover disabled:opacity-50 transition-colors text-sm"
+            >
+              {addCity.isPending ? "Збереження..." : "Зберегти"}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
