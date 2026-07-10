@@ -341,10 +341,10 @@ export class SchoolsService {
         { new: bigint; planned: bigint; inProgress: bigint; done: bigint }[]
       >(Prisma.sql`
         SELECT
-          COUNT(*) FILTER (WHERE NOT ef."isPlanned" AND NOT ef."isInProgress" AND NOT ef."isDone")::bigint as new,
-          COUNT(*) FILTER (WHERE ef."isPlanned")::bigint as planned,
-          COUNT(*) FILTER (WHERE ef."isInProgress")::bigint as "inProgress",
-          COUNT(*) FILTER (WHERE ef."isDone")::bigint as done
+          COUNT(*) FILTER (WHERE NOT COALESCE(ef."isPlanned", false) AND NOT COALESCE(ef."isInProgress", false) AND NOT COALESCE(ef."isDone", false))::bigint as new,
+          COUNT(*) FILTER (WHERE COALESCE(ef."isPlanned", false))::bigint as planned,
+          COUNT(*) FILTER (WHERE COALESCE(ef."isInProgress", false))::bigint as "inProgress",
+          COUNT(*) FILTER (WHERE COALESCE(ef."isDone", false))::bigint as done
         FROM "School" s
         LEFT JOIN LATERAL (
           SELECT

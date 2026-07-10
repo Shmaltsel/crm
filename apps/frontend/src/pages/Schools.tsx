@@ -307,109 +307,108 @@ export default function Schools() {
         onChange={handleTabChange}
       />
 
-      <div className="p-4 md:p-8 flex flex-col flex-1 max-w-[100vw]">
-        {/* Шапка */}
-        <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight text-content-primary leading-tight">
-              {typeInfo.label}
-              {selectedCity.id && (
-                <span className="ml-1 text-sm font-normal text-brand">
-                  · {selectedCity.name}
-                </span>
-              )}
-            </h1>
-            <p className="text-sm text-content-muted mt-0.5">
-              {filteredSchools.length} {typeInfo.countLabel} у місті
-            </p>
-          </div>
-          <div className="flex gap-2 shrink-0">
-            {(userRole === "SUPERADMIN" || userRole === "MANAGER") && (
-              <button
-                onClick={() => {
-                  if (!selectedCity.id) return alert("Спочатку оберіть місто");
-                  if (!supportedCities.includes(selectedCity.name))
-                    return alert(
-                      `Місто "${selectedCity.name}" не підтримується для імпорту.`,
-                    );
-                  if (
-                    !window.confirm(
-                      `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`,
-                    )
-                  )
-                    return;
+      <Swiper
+        onSwiper={(swiper) => { swiperRef.current = swiper; }}
+        initialSlide={ESTABLISHMENT_IDS.findIndex((t) => t === institutionType)}
+        onSlideChange={handleSlideChange}
+        speed={280}
+        allowTouchMove={true}
+        className="flex-1 flex flex-col overflow-hidden"
+      >
+        {ESTABLISHMENT_IDS.map((id) => {
+          const info = INSTITUTION_TYPES[id];
+          return (
+            <SwiperSlide key={id} className="flex flex-col overflow-hidden">
+              <div className="p-4 md:p-8 flex flex-col flex-1 max-w-[100vw]">
+                {/* Шапка */}
+                <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
+                  <div className="min-w-0">
+                    <h1 className="text-2xl font-bold tracking-tight text-content-primary leading-tight">
+                      {info.label}
+                      {selectedCity.id && (
+                        <span className="ml-1 text-sm font-normal text-brand">
+                          · {selectedCity.name}
+                        </span>
+                      )}
+                    </h1>
+                    <p className="text-sm text-content-muted mt-0.5">
+                      {filteredSchools.length} {info.countLabel} у місті
+                    </p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    {(userRole === "SUPERADMIN" || userRole === "MANAGER") && (
+                      <button
+                        onClick={() => {
+                          if (!selectedCity.id) return alert("Спочатку оберіть місто");
+                          if (!supportedCities.includes(selectedCity.name))
+                            return alert(
+                              `Місто "${selectedCity.name}" не підтримується для імпорту.`,
+                            );
+                          if (
+                            !window.confirm(
+                              `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`,
+                            )
+                          )
+                            return;
 
-                  setDotCount(3);
-                  const dotInterval = setInterval(() => {
-                    setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
-                  }, 500);
+                          setDotCount(3);
+                          const dotInterval = setInterval(() => {
+                            setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
+                          }, 500);
 
-                  bulkImportMutation.mutate(selectedCity.id, {
-                    onSettled: () => clearInterval(dotInterval),
-                  });
-                }}
-                disabled={bulkImportMutation.isPending}
-                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 hover:shadow-lift hover:-translate-y-0.5 active:scale-95 disabled:opacity-70 transition-all duration-200"
-              >
-                {bulkImportMutation.isPending ? (
-                  <span className="font-medium">
-                    Імпортую{"·".repeat(dotCount)}
-                  </span>
-                ) : (
-                  <><Download className="w-4 h-4" /> Імпорт з isuo</>
-                )}
-              </button>
-            )}
-            <button
-              onClick={handleOpenModal}
-              className="hidden md:flex items-center gap-1 px-4 py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-hover hover:shadow-lift hover:-translate-y-0.5 active:scale-95 transition-all duration-200"
-            >
-              + Додати
-            </button>
-          </div>
-        </div>
+                          bulkImportMutation.mutate(selectedCity.id, {
+                            onSettled: () => clearInterval(dotInterval),
+                          });
+                        }}
+                        disabled={bulkImportMutation.isPending}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 hover:shadow-lift hover:-translate-y-0.5 active:scale-95 disabled:opacity-70 transition-all duration-200"
+                      >
+                        {bulkImportMutation.isPending ? (
+                          <span className="font-medium">
+                            Імпортую{"·".repeat(dotCount)}
+                          </span>
+                        ) : (
+                          <><Download className="w-4 h-4" /> Імпорт з isuo</>
+                        )}
+                      </button>
+                    )}
+                    <button
+                      onClick={handleOpenModal}
+                      className="hidden md:flex items-center gap-1 px-4 py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-hover hover:shadow-lift hover:-translate-y-0.5 active:scale-95 transition-all duration-200"
+                    >
+                      + Додати
+                    </button>
+                  </div>
+                </div>
 
-        {/* StatsBar */}
-        <div className="shrink-0">
-          <Suspense
-            fallback={
-              <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
-            }
-          >
-            <StatsBar
-              statusStats={
-                stats?.statusStats ?? {
-                  new: 0,
-                  planned: 0,
-                  inProgress: 0,
-                  done: 0,
-                }
-              }
-              sizeStats={stats?.sizeStats ?? { small: 0, medium: 0, large: 0 }}
-              activeFilter={activeFilter}
-              onFilterChange={setActiveFilter}
-              sizeFilter={sizeFilter}
-              onSizeFilterChange={setSizeFilter}
-              schoolType={typeInfo.apiType}
-            />
-          </Suspense>
-        </div>
+                {/* StatsBar */}
+                <div className="shrink-0">
+                  <Suspense
+                    fallback={
+                      <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
+                    }
+                  >
+                    <StatsBar
+                      statusStats={
+                        stats?.statusStats ?? {
+                          new: 0,
+                          planned: 0,
+                          inProgress: 0,
+                          done: 0,
+                        }
+                      }
+                      sizeStats={stats?.sizeStats ?? { small: 0, medium: 0, large: 0 }}
+                      activeFilter={activeFilter}
+                      onFilterChange={setActiveFilter}
+                      sizeFilter={sizeFilter}
+                      onSizeFilterChange={setSizeFilter}
+                      schoolType={typeInfo.apiType}
+                    />
+                  </Suspense>
+                </div>
 
-        {/* Swipeable списки */}
-        <div className="flex-1 w-full min-h-0 mt-3">
-          <Swiper
-            onSwiper={(swiper) => { swiperRef.current = swiper; }}
-            initialSlide={ESTABLISHMENT_IDS.findIndex((t) => t === institutionType)}
-            onSlideChange={handleSlideChange}
-            speed={280}
-            allowTouchMove={true}
-            className="w-full h-full"
-            style={{ willChange: "transform" }}
-          >
-            {ESTABLISHMENT_IDS.map((id) => {
-              const info = INSTITUTION_TYPES[id];
-              return (
-                <SwiperSlide key={id} className="overflow-y-auto">
+                {/* Список */}
+                <div className="flex-1 w-full min-h-0 mt-3">
                   <EstablishmentList
                     isLoading={isLoading}
                     filteredSchools={filteredSchools}
@@ -428,20 +427,21 @@ export default function Schools() {
                     searchPlaceholder={`Пошук за назвою ${id === "school" ? "школи" : "садочка"}...`}
                     countLabel={info.countLabel}
                   />
-                </SwiperSlide>
-              );
-            })}
-          </Swiper>
-        </div>
+                </div>
+              </div>
+            </SwiperSlide>
+          );
+        })}
+      </Swiper>
 
-        {/* Мобільна плаваюча кнопка FAB */}
-        <button
-          onClick={handleOpenModal}
-          className="md:hidden fixed right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
-          style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
-        >
-          +
-        </button>
+      {/* Мобільна плаваюча кнопка FAB */}
+      <button
+        onClick={handleOpenModal}
+        className="md:hidden fixed right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
+        style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
+      >
+        +
+      </button>
 
       {/* Модальне вікно */}
       {isModalOpen && (
@@ -595,7 +595,6 @@ export default function Schools() {
           </div>
         </div>
       )}
-    </div>
     </div>
   );
 }

@@ -2,11 +2,16 @@ packages:
   - 'apps/*'
   - 'packages/*'
 allowBuilds:
+  '@mongodb-js/zstd': true
   '@prisma/client': true
   '@prisma/engines': true
   '@scarf/scarf': false
   '@sentry-internal/node-cpu-profiler': true
   bcrypt: false
+  detox: true
+  dtrace-provider: true
   msw: true
+  node-liblzma: true
   prisma: true
+  protobufjs: true
   unrs-resolver: true
