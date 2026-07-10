@@ -83,7 +83,7 @@ export default function Layout() {
   }, []);
 
   return (
-    <div className="flex h-screen bg-surface-subtle font-sans">
+    <div className="flex h-dvh bg-surface-subtle font-sans">
       <MobileTopNav />
 
       <aside className="hidden md:flex md:relative w-64 flex-col bg-[#0B1527] text-white shrink-0">

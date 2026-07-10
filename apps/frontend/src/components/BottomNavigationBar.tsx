@@ -42,7 +42,8 @@ export default function BottomNavigationBar() {
   return (
     <>
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border flex items-center justify-around px-1 pb-safe h-14 overflow-visible"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border flex items-center justify-around px-1 h-14 overflow-visible"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
         role="tablist"
         aria-label="Основна навігація"
       >

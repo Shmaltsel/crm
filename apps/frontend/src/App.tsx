@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -233,6 +233,10 @@ function AppRoutes() {
   );
 }
 export default function App() {
+  useEffect(() => {
+    window.Telegram?.WebApp?.expand();
+  }, []);
+
   return (
     <ErrorBoundary>
       <Router>
