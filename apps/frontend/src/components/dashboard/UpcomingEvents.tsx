@@ -59,7 +59,7 @@ export default function UpcomingEvents({ events }: Props) {
               <div
                 key={ev.id}
                 onClick={() => ev.school && navigate(`/schools/${ev.school.id}`)}
-                className="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-slate-50/60 rounded-lg px-1 -mx-1 transition-colors"
+                className="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-slate-50/60 rounded-lg px-1 -mx-1 transition-colors active:scale-[0.98]"
               >
                 <div className="shrink-0 text-right w-24">
                   <p className="text-xs font-medium text-slate-600">

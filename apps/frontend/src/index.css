@@ -4,9 +4,18 @@
 @tailwind utilities;
 
 @layer base {
+  html, body {
+    overscroll-behavior: none;
+  }
+  input, textarea, select {
+    @apply text-base;
+  }
   *:focus-visible {
     outline: 2px solid theme('colors.brand.DEFAULT');
     outline-offset: 2px;
+  }
+  *, *::before, *::after {
+    -webkit-tap-highlight-color: transparent;
   }
 }
 

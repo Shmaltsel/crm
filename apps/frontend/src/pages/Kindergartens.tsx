@@ -350,7 +350,8 @@ export default function Kindergartens() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Пошук за назвою садочка..."
-          className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-surface border-none sm:border sm:border-border-strong rounded-card sm:rounded-control text-sm font-medium text-content-secondary placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand shadow-sm transition"
+          className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-surface border-none sm:border sm:border-border-strong rounded-card sm:rounded-control text-base font-medium text-content-secondary placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand shadow-sm transition"
+          enterKeyHint="search"
         />
         {searchQuery && (
           <button
@@ -485,7 +486,7 @@ export default function Kindergartens() {
                   }
                   placeholder="Наприклад: Садочок №1"
                   required
-                  className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                  className="w-full p-3 border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand"
                 />
                 {showSuggestions && (
                   <ul className="absolute z-10 w-full bg-surface border border-border-strong rounded-control shadow-lg mt-1 max-h-48 overflow-y-auto overflow-hidden">
@@ -525,7 +526,7 @@ export default function Kindergartens() {
                       setForm({ ...form, cityId: e.target.value })
                     }
                     required
-                    className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand bg-surface"
+                    className="w-full p-3 border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand bg-surface"
                   >
                     <option value="">— Оберіть місто —</option>
                     {cities.map((c) => (
@@ -572,7 +573,7 @@ export default function Kindergartens() {
                     setForm({ ...form, director: e.target.value })
                   }
                   placeholder="Микола Петренко"
-                  className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand mb-4"
+                  className="w-full p-3 border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand mb-4"
                 />
                 <label className="block text-sm font-medium text-content-secondary mb-1.5">
                   Телефон
@@ -582,7 +583,7 @@ export default function Kindergartens() {
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   placeholder="0671234567"
-                  className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                  className="w-full p-3 border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand"
                 />
               </div>
 

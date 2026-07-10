@@ -107,7 +107,7 @@ export default function Analytics() {
         <select
           value={year}
           onChange={(e) => setYear(Number(e.target.value))}
-          className="px-3 py-2.5 bg-surface border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand min-h-[44px]"
+          className="px-3 py-2.5 bg-surface border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand min-h-[44px]"
         >
           {YEAR_OPTIONS.map((y) => (
             <option key={y} value={y}>{y}</option>
@@ -118,7 +118,7 @@ export default function Analytics() {
           <select
             value={cityId}
             onChange={(e) => setCityId(e.target.value)}
-            className="px-3 py-2.5 bg-surface border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand min-h-[44px]"
+            className="px-3 py-2.5 bg-surface border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand min-h-[44px]"
           >
             <option value="">Всі міста</option>
             {cities?.map((c) => (
@@ -132,7 +132,7 @@ export default function Analytics() {
           placeholder="Проєкт (фільтр)"
           value={projectId}
           onChange={(e) => setProjectId(e.target.value)}
-          className="px-3 py-2.5 bg-surface border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand w-48 min-h-[44px]"
+          className="px-3 py-2.5 bg-surface border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand w-48 min-h-[44px]"
         />
       </div>
 

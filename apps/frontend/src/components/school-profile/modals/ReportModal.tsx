@@ -206,9 +206,10 @@ function NumberField({
       <input
         type="number"
         min={0}
+        inputMode="decimal"
         value={value || ""}
         onChange={(e) => onChange(+e.target.value)}
-        className="w-16 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1 -mr-1"
+        className="w-16 text-right bg-transparent outline-none font-medium text-base text-slate-800 focus:bg-blue-50 rounded px-1 -mr-1"
         placeholder="0"
       />
       {suffix && <span className="text-slate-400 text-xs">{suffix}</span>}
@@ -407,11 +408,12 @@ export default function ReportModal({
                   <input
                     type="number"
                     min={0}
+                    inputMode="decimal"
                     value={form.totalSum || ""}
                     onChange={(e) =>
                       setForm({ ...form, totalSum: +e.target.value })
                     }
-                    className="w-28 text-right bg-transparent outline-none font-bold text-lg text-slate-800 focus:bg-blue-50 rounded px-1"
+                    className="w-28 text-right bg-transparent outline-none font-bold text-lg text-base text-slate-800 focus:bg-blue-50 rounded px-1"
                     placeholder="0"
                   />
                   <span className="text-slate-400 text-sm">грн</span>
@@ -469,17 +471,18 @@ export default function ReportModal({
                     onChange={(e) =>
                       setNewExp({ ...newExp, name: e.target.value })
                     }
-                    className="flex-1 min-w-0 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="flex-1 min-w-0 p-2 border border-slate-200 rounded-lg text-base focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                   <input
                     type="number"
                     min={0}
+                    inputMode="decimal"
                     placeholder="грн"
                     value={newExp.amount}
                     onChange={(e) =>
                       setNewExp({ ...newExp, amount: e.target.value })
                     }
-                    className="w-20 sm:w-24 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-20 sm:w-24 p-2 border border-slate-200 rounded-lg text-base focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                   <button
                     onClick={addExpense}
@@ -526,6 +529,7 @@ export default function ReportModal({
                         <input
                           type="number"
                           min={0}
+                          inputMode="decimal"
                           value={salaries[m.id] || ""}
                           onChange={(e) =>
                             setSalaries((prev) => ({
@@ -533,7 +537,7 @@ export default function ReportModal({
                               [m.id]: +e.target.value,
                             }))
                           }
-                          className="w-24 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1"
+                          className="w-24 text-right bg-transparent outline-none font-medium text-base text-slate-800 focus:bg-blue-50 rounded px-1"
                           placeholder="0"
                         />
                         <span className="text-slate-400 text-xs">грн</span>

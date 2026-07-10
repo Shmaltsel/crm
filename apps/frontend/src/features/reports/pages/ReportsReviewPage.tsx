@@ -151,7 +151,7 @@ export default function ReportsReviewPage() {
                         <div className="w-full flex gap-2 items-start mt-2">
                           <textarea value={comment} onChange={(e) => setComment(e.target.value)}
                             rows={2} placeholder="Обов'язково вкажіть, що потрібно виправити"
-                            className="flex-1 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none resize-none" />
+                            className="flex-1 p-2 border border-slate-200 rounded-lg text-base focus:ring-2 focus:ring-amber-500 outline-none resize-none" />
                           <button onClick={() => handleRequestRevision(r.id)} disabled={!comment.trim() || revisionMutation.isPending}
                             className="px-4 py-2 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 disabled:opacity-50 text-sm shrink-0">
                             Відправити
@@ -170,7 +170,7 @@ export default function ReportsReviewPage() {
                         <div className="w-full flex gap-2 items-start mt-2">
                           <textarea value={comment} onChange={(e) => setComment(e.target.value)}
                             rows={2} placeholder="Обов'язково вкажіть причину відхилення"
-                            className="flex-1 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none resize-none" />
+                            className="flex-1 p-2 border border-slate-200 rounded-lg text-base focus:ring-2 focus:ring-red-500 outline-none resize-none" />
                           <button onClick={() => handleReject(r.id)} disabled={!comment.trim() || rejectMutation.isPending}
                             className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 text-sm shrink-0">
                             Відхилити

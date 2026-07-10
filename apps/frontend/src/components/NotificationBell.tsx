@@ -55,7 +55,7 @@ export default function NotificationBell() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="relative p-2 text-slate-400 hover:text-white transition-colors"
+        className="relative p-2 text-slate-400 hover:text-white transition-colors active:scale-90"
         title="Сповіщення"
       >
         <Bell className="w-5 h-5" />
@@ -99,7 +99,7 @@ export default function NotificationBell() {
                       navigate(`/${entityType}/${entityId}`);
                     }
                   }}
-                  className={`w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-slate-800/50 transition-colors border-b border-slate-800/30 last:border-0 ${!n.readAt ? "bg-blue-900/10" : ""}`}
+                  className={`w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-slate-800/50 transition-colors active:scale-[0.98] border-b border-slate-800/30 last:border-0 ${!n.readAt ? "bg-blue-900/10" : ""}`}
                 >
                   <span className="text-lg shrink-0 mt-0.5">{getIcon(n.type)}</span>
                   <div className="min-w-0 flex-1">

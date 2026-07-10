@@ -46,12 +46,14 @@ export function EmployeesHeader({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted pointer-events-none" />
           <input
             type="search"
+            inputMode="search"
+            enterKeyHint="search"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Пошук за ім'ям, email, телефоном..."
             aria-label="Пошук працівників"
             className="w-full pl-9 pr-3 py-2.5 md:py-2 rounded-control border border-border-strong bg-surface
-              text-sm text-content-primary placeholder:text-content-muted
+              text-base text-content-primary placeholder:text-content-muted
               focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/30 focus-visible:border-brand"
           />
         </div>

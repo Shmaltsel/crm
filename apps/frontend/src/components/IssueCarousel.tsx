@@ -96,7 +96,7 @@ export default function IssueCarousel() {
       </h2>
 
       {}
-      <div className="flex overflow-x-auto pb-4 -mx-1 px-1">
+      <div className="flex overflow-x-auto pb-4 -mx-1 px-1 no-scrollbar">
         {issues.map((issue) => {
           const isExiting = exitingIssueId === issue.id;
 

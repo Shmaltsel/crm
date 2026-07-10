@@ -95,7 +95,7 @@ export default function RescheduleModal({
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+              className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-base"
             />
           </div>
           <div>
@@ -106,7 +106,7 @@ export default function RescheduleModal({
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+              className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-base"
             />
           </div>
           <div className="flex gap-3 mt-2">

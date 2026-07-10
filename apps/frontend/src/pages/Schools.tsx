@@ -511,7 +511,7 @@ export default function Schools() {
                   }
                   placeholder="Наприклад: Школа №1"
                   required
-                  className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  className="w-full p-3 border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30"
                 />
                 {showSuggestions && (
                   <ul className="absolute z-10 w-full bg-surface border border-border-strong rounded-control shadow-dropdown mt-1 max-h-48 overflow-y-auto overflow-hidden">
@@ -551,7 +551,7 @@ export default function Schools() {
                       setForm({ ...form, cityId: e.target.value })
                     }
                     required
-                    className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 bg-surface"
+                    className="w-full p-3 border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30 bg-surface"
                   >
                     <option value="">— Оберіть місто —</option>
                     {cities.map((c) => (
@@ -598,7 +598,7 @@ export default function Schools() {
                     setForm({ ...form, director: e.target.value })
                   }
                   placeholder="Микола Петренко"
-                  className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 mb-4"
+                  className="w-full p-3 border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30 mb-4"
                 />
                 <label className="block text-sm font-medium text-content-secondary mb-1.5">
                   Телефон
@@ -608,7 +608,7 @@ export default function Schools() {
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   placeholder="0671234567"
-                  className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  className="w-full p-3 border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30"
                 />
               </div>
 
@@ -689,7 +689,8 @@ function EstablishmentList({
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={searchPlaceholder}
-          className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border border-border rounded-2xl sm:rounded-xl text-sm font-medium text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand shadow-soft transition-all duration-200"
+          className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border border-border rounded-2xl sm:rounded-xl text-base font-medium text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand shadow-soft transition-all duration-200"
+          enterKeyHint="search"
         />
         {searchQuery && (
           <button

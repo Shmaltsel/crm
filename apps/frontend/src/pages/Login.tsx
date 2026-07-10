@@ -111,9 +111,12 @@ export default function Login({ onLogin }: LoginProps) {
             <input
               id="login-email"
               type="email"
+              inputMode="email"
+              autoComplete="email"
+              autoCapitalize="none"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3.5 py-3 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none text-sm transition-colors"
+              className="w-full px-3.5 py-3 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none text-base transition-colors"
               required
             />
           </div>
@@ -124,9 +127,10 @@ export default function Login({ onLogin }: LoginProps) {
             <input
               id="login-password"
               type="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3.5 py-3 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none text-sm transition-colors"
+              className="w-full px-3.5 py-3 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none text-base transition-colors"
               required
             />
           </div>

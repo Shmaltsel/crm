@@ -127,6 +127,7 @@ export default function EditSchoolModal({
               <input
                 type="number"
                 {...register("childrenCount")}
+                inputMode="numeric"
                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
               />
               {errors.childrenCount && (

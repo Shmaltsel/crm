@@ -47,7 +47,7 @@ export default function CityMobileList({
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 py-2 text-sm font-medium rounded-control transition-all duration-fast ${
+            className={`flex-1 py-2 text-sm font-medium rounded-control transition-all duration-fast active:scale-95 ${
               activeTab === tab.key
                 ? "bg-surface shadow-soft text-content-primary"
                 : "text-content-muted hover:text-content-secondary"
@@ -66,7 +66,7 @@ export default function CityMobileList({
           return (
             <div
               key={city.id}
-              className={`flex items-center p-3 border-b border-border transition-colors duration-fast active:bg-surface-muted ${
+              className={`flex items-center p-3 border-b border-border transition-colors duration-fast active:bg-surface-muted active:scale-[0.98] transition-transform ${
                 isSelected ? "bg-brand-50/30" : ""
               }`}
               onClick={() => onSelectCity({ id: city.id, name: city.name })}
@@ -91,7 +91,7 @@ export default function CityMobileList({
                   e.stopPropagation();
                   navigate(`/cities/${city.id}`);
                 }}
-                className="p-2.5 text-content-muted hover:text-brand text-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                className="p-2.5 text-content-muted hover:text-brand text-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center active:scale-90"
               >
                 ›
               </button>

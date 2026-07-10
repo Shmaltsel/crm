@@ -111,7 +111,7 @@ export default function IssueModal({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Опишіть проблему або запит..."
-            className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none resize-none h-32 text-sm"
+            className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none resize-none h-32 text-base"
             autoFocus
           />
 
@@ -127,7 +127,7 @@ export default function IssueModal({
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
               min={new Date().toISOString().slice(0, 10)}
-              className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none text-sm"
+              className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none text-base"
             />
           </div>
 
@@ -142,7 +142,7 @@ export default function IssueModal({
               <select
                 value={assignedUserId}
                 onChange={(e) => setAssignedUserId(e.target.value)}
-                className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none text-sm bg-white"
+                className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none text-base bg-white"
               >
                 <option value="">— Оберіть працівника —</option>
                 {employees.map((emp) => (

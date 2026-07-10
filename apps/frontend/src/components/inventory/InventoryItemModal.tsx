@@ -84,12 +84,12 @@ export function InventoryItemModal({ isOpen, onClose, onSave, item }: InventoryI
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm mb-1 text-slate-600">Мінімум</label>
-            <input type="number" {...register("minStock")} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+            <input type="number" {...register("minStock")} inputMode="numeric" className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
             {errors.minStock && <p className="text-xs text-red-500 mt-1">{errors.minStock.message}</p>}
           </div>
           <div>
             <label className="block text-sm mb-1 text-slate-600">На складі</label>
-            <input type="number" {...register("currentStock")} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+            <input type="number" {...register("currentStock")} inputMode="numeric" className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
             {errors.currentStock && <p className="text-xs text-red-500 mt-1">{errors.currentStock.message}</p>}
           </div>
         </div>

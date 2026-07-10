@@ -124,7 +124,7 @@ export default function Cities() {
             value={newCityName}
             onChange={(e) => setNewCityName(e.target.value)}
             placeholder="Наприклад: Львів"
-            className="w-full p-3 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none transition-shadow text-sm"
+            className="w-full p-3 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none transition-shadow text-base"
             autoFocus
             required
           />

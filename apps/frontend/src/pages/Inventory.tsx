@@ -145,7 +145,8 @@ export default function InventoryPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Пошук товару..."
-            className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            enterKeyHint="search"
+            className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-base focus:ring-2 focus:ring-blue-500 outline-none"
           />
           {search && (
             <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -156,7 +157,7 @@ export default function InventoryPage() {
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="p-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+          className="p-2.5 border border-slate-200 rounded-xl text-base focus:ring-2 focus:ring-blue-500 outline-none bg-white"
         >
           <option value="">Всі категорії</option>
           {uniqueCategories.map((c) => (
@@ -285,7 +286,8 @@ export default function InventoryPage() {
               value={stockQty || ""}
               onChange={(e) => setStockQty(+e.target.value)}
               placeholder="Кількість"
-              className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none mb-4"
+              className="w-full p-3 border border-slate-200 rounded-xl text-base focus:ring-2 focus:ring-blue-500 outline-none mb-4"
+              inputMode="numeric"
               autoFocus
             />
             <div className="flex gap-3">

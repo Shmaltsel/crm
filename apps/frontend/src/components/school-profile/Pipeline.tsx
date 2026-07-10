@@ -16,7 +16,7 @@ export default memo(function Pipeline({ currentStageIndex, currentEvent, onPipel
       className="bg-surface p-4 md:p-6 rounded-card shadow-card border border-border w-full"
     >
       <h3 className="font-bold text-content-primary mb-4 md:hidden">Етап події</h3>
-      <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0">
+      <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 no-scrollbar">
         <div className="flex items-start min-w-[600px] justify-between relative">
           <div className="absolute top-4 left-0 w-full h-[2px] bg-border -z-10"></div>
           {stages.map((step, index) => {

@@ -183,6 +183,7 @@ export default function EventModal({
               <input
                 type="number"
                 {...register("childrenPlanned")}
+                inputMode="numeric"
                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
               />
               {errors.childrenPlanned && (
@@ -198,6 +199,7 @@ export default function EventModal({
               <input
                 type="number"
                 {...register("price")}
+                inputMode="decimal"
                 onInput={() => setPriceTouched(true)}
                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
               />

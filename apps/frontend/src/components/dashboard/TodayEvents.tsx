@@ -111,7 +111,7 @@ export default function TodayEvents({ events }: Props) {
                     onClick={() =>
                       ev.school && navigate(`/schools/${ev.school.id}`)
                     }
-                    className={`text-2xs font-semibold px-2.5 py-1 rounded-control transition-colors shrink-0 ${
+                    className={`text-2xs font-semibold px-2.5 py-1 rounded-control transition-colors shrink-0 active:scale-95 ${
                       hasCrew
                         ? "bg-surface-muted text-content-secondary hover:bg-border-strong"
                         : "bg-surface border border-warning text-warning-600 hover:bg-warning-subtle"

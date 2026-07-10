@@ -95,6 +95,7 @@ export default function ProjectModal({
                 <input
                   type="number"
                   min={0}
+                  inputMode="decimal"
                   value={form.pricePerChild}
                   onChange={(e) =>
                     setForm({ ...form, pricePerChild: e.target.value })

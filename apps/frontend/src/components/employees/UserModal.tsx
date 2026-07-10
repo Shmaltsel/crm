@@ -148,7 +148,7 @@ export default function UserModal({
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   placeholder="ПІБ"
-                  className="w-full p-2.5 border rounded-lg text-sm"
+                  className="w-full p-2.5 border rounded-lg text-base"
                 />
                 {formik.touched.fullName && formik.errors.fullName && (
                   <p className="text-xs text-red-500 mt-1">{formik.errors.fullName}</p>
@@ -164,7 +164,7 @@ export default function UserModal({
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
                     placeholder="Пошта"
-                    className="w-full p-2.5 border rounded-lg text-sm"
+                    className="w-full p-2.5 border rounded-lg text-base"
                   />
                   {formik.touched.email && formik.errors.email && (
                     <p className="text-xs text-red-500 mt-1">{formik.errors.email}</p>
@@ -178,7 +178,7 @@ export default function UserModal({
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
                     placeholder="Пароль"
-                    className="w-full p-2.5 border rounded-lg text-sm"
+                    className="w-full p-2.5 border rounded-lg text-base"
                   />
                   {formik.touched.password && formik.errors.password && (
                     <p className="text-xs text-red-500 mt-1">{formik.errors.password}</p>
@@ -195,7 +195,7 @@ export default function UserModal({
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
                     placeholder="Телефон (+380...)"
-                    className="w-full p-2.5 border rounded-lg text-sm"
+                    className="w-full p-2.5 border rounded-lg text-base"
                   />
                   {formik.touched.phone && formik.errors.phone && (
                     <p className="text-xs text-red-500 mt-1">{formik.errors.phone}</p>
@@ -208,7 +208,7 @@ export default function UserModal({
                     value={formik.values.telegramId}
                     onChange={formik.handleChange}
                     placeholder="Telegram ID або @username"
-                    className="w-full p-2.5 border rounded-lg text-sm"
+                    className="w-full p-2.5 border rounded-lg text-base"
                   />
                 </div>
               </div>
@@ -219,7 +219,7 @@ export default function UserModal({
                     name="role"
                     value={formik.values.role}
                     onChange={formik.handleChange}
-                    className="w-full p-2.5 border rounded-lg text-sm"
+                    className="w-full p-2.5 border rounded-lg text-base"
                   >
                     <option value="MANAGER">Менеджер</option>
                     <option value="DRIVER">Водій</option>
@@ -232,7 +232,7 @@ export default function UserModal({
                     name="cityId"
                     value={formik.values.cityId}
                     onChange={formik.handleChange}
-                    className="w-full p-2.5 border rounded-lg text-sm"
+                    className="w-full p-2.5 border rounded-lg text-base"
                   >
                     <option value="">Всі міста</option>
                     {cities.map((c) => (
@@ -250,7 +250,7 @@ export default function UserModal({
                     value={formik.values.car ?? ""}
                     onChange={formik.handleChange}
                     placeholder="Автомобіль (напр. Renault Trafic)"
-                    className="w-full p-2.5 border rounded-lg text-sm"
+                    className="w-full p-2.5 border rounded-lg text-base"
                   />
                 </div>
               )}

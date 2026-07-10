@@ -146,11 +146,11 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     <div>
                       <label className="block text-xs text-content-muted mb-1">Від</label>
-                      <input type="date" value={draftFrom} onChange={e => setDraftFrom(e.target.value)} className="w-full p-2 border border-border-strong rounded-control text-xs focus:outline-none focus:border-brand-300" />
+                      <input type="date" value={draftFrom} onChange={e => setDraftFrom(e.target.value)} className="w-full p-2 border border-border-strong rounded-control text-base focus:outline-none focus:border-brand-300" />
                     </div>
                     <div>
                       <label className="block text-xs text-content-muted mb-1">До</label>
-                      <input type="date" value={draftTo} onChange={e => setDraftTo(e.target.value)} className="w-full p-2 border border-border-strong rounded-control text-xs focus:outline-none focus:border-brand-300" />
+                      <input type="date" value={draftTo} onChange={e => setDraftTo(e.target.value)} className="w-full p-2 border border-border-strong rounded-control text-base focus:outline-none focus:border-brand-300" />
                     </div>
                   </div>
                   <button onClick={applyRange} className="w-full bg-brand text-white py-2.5 rounded-control text-sm font-medium hover:bg-brand-hover transition-colors">

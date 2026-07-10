@@ -77,7 +77,7 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
             <select
               value={newType}
               onChange={(e) => setNewType(e.target.value as CommentType)}
-              className="text-sm border border-border-strong rounded-control px-3 py-2 bg-surface focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand-300"
+              className="text-base border border-border-strong rounded-control px-3 py-2 bg-surface focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand-300"
             >
               {COMMENT_TYPES.map((ct) => (
                 <option key={ct.key} value={ct.key}>
@@ -91,7 +91,7 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
             onChange={(e) => setNewText(e.target.value)}
             placeholder="Текст коментаря..."
             rows={2}
-            className="w-full text-sm border border-border-strong rounded-control px-3 py-2 bg-surface focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand-300 resize-none"
+            className="w-full text-base border border-border-strong rounded-control px-3 py-2 bg-surface focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand-300 resize-none"
           />
           <div className="flex justify-end">
             <button

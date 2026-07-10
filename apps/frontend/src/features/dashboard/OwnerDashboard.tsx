@@ -138,7 +138,7 @@ export default function OwnerDashboard() {
       {monthly.length > 0 && (
         <div className="mt-4 bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
           <p className="text-sm font-semibold text-slate-800 mb-3">Динаміка за місяцями</p>
-          <div className="flex gap-3 overflow-x-auto pb-2">
+          <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
             {monthly.map((m) => (
               <div key={m.month} className="min-w-[100px] shrink-0 rounded-xl bg-slate-50 p-3">
                 <p className="text-xs text-slate-500 mb-1">{m.month}</p>

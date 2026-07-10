@@ -122,9 +122,9 @@ function TogglePill({ value, onChange, disabled }: { value: boolean; onChange: (
 function NumberField({ value, onChange, suffix, disabled }: { value: number; onChange: (v: number) => void; suffix?: string; disabled?: boolean }) {
   return (
     <span className="inline-flex items-center gap-1">
-      <input type="number" min={0} value={value || ""} disabled={disabled}
+      <input type="number" min={0} inputMode="decimal" value={value || ""} disabled={disabled}
         onChange={(e) => onChange(+e.target.value)}
-        className={`w-16 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1 -mr-1 ${disabled ? "opacity-60" : ""}`}
+        className={`w-16 text-right bg-transparent outline-none font-medium text-base text-slate-800 focus:bg-blue-50 rounded px-1 -mr-1 ${disabled ? "opacity-60" : ""}`}
         placeholder="0" />
       {suffix && <span className="text-slate-400 text-xs">{suffix}</span>}
     </span>
@@ -475,9 +475,9 @@ export default function ReportForm({
                   <div className="flex items-center justify-between py-2 border-b border-slate-50">
                     <span className="text-sm text-slate-500 font-medium">Загальна виручка</span>
                     <span className="inline-flex items-center gap-1">
-                      <input type="number" min={0} value={form.totalSum || ""} disabled={!isEditable}
+                      <input type="number" min={0} inputMode="decimal" value={form.totalSum || ""} disabled={!isEditable}
                         onChange={(e) => setForm({ ...form, totalSum: +e.target.value })}
-                        className={`w-28 text-right bg-transparent outline-none font-bold text-lg text-slate-800 focus:bg-blue-50 rounded px-1 ${!isEditable ? "opacity-60" : ""}`}
+                        className={`w-28 text-right bg-transparent outline-none font-bold text-lg text-base text-slate-800 focus:bg-blue-50 rounded px-1 ${!isEditable ? "opacity-60" : ""}`}
                         placeholder="0" />
                       <span className="text-slate-400 text-sm">грн</span>
                     </span>
@@ -511,10 +511,10 @@ export default function ReportForm({
                       <div className="flex gap-2 mt-2">
                         <input placeholder="Назва витрати" value={newExp.name}
                           onChange={(e) => setNewExp({ ...newExp, name: e.target.value })}
-                          className="flex-1 min-w-0 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-                        <input type="number" min={0} placeholder="грн" value={newExp.amount}
+                          className="flex-1 min-w-0 p-2 border border-slate-200 rounded-lg text-base focus:ring-2 focus:ring-blue-500 outline-none" />
+                        <input type="number" min={0} inputMode="decimal" placeholder="грн" value={newExp.amount}
                           onChange={(e) => setNewExp({ ...newExp, amount: e.target.value })}
-                          className="w-20 sm:w-24 p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                          className="w-20 sm:w-24 p-2 border border-slate-200 rounded-lg text-base focus:ring-2 focus:ring-blue-500 outline-none" />
                         <button onClick={addExpense} type="button"
                           className="px-3 shrink-0 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium text-sm">+</button>
                       </div>
@@ -537,9 +537,9 @@ export default function ReportForm({
                       {crewMembers.map((m) => (
                         <Row key={m.id} label={`${m.name} (${m.role})`}>
                           <span className="inline-flex items-center gap-1">
-                            <input type="number" min={0} value={salaries[m.id] || ""} disabled={!isEditable}
+                            <input type="number" min={0} inputMode="decimal" value={salaries[m.id] || ""} disabled={!isEditable}
                               onChange={(e) => setSalaries((prev) => ({ ...prev, [m.id]: +e.target.value }))}
-                              className={`w-24 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1 ${!isEditable ? "opacity-60" : ""}`}
+                              className={`w-24 text-right bg-transparent outline-none font-medium text-base text-slate-800 focus:bg-blue-50 rounded px-1 ${!isEditable ? "opacity-60" : ""}`}
                               placeholder="0" />
                             <span className="text-slate-400 text-xs">грн</span>
                           </span>
@@ -577,6 +577,7 @@ export default function ReportForm({
                               type="number"
                               min={0}
                               max={item.currentStock}
+                              inputMode="numeric"
                               value={inventoryUsages[item.id] || ""}
                               disabled={!isEditable}
                               onChange={(e) =>
@@ -585,7 +586,7 @@ export default function ReportForm({
                                   [item.id]: +e.target.value,
                                 }))
                               }
-                              className={`w-16 text-right bg-transparent outline-none font-medium text-slate-800 focus:bg-blue-50 rounded px-1 ${!isEditable ? "opacity-60" : ""}`}
+                              className={`w-16 text-right bg-transparent outline-none font-medium text-base text-slate-800 focus:bg-blue-50 rounded px-1 ${!isEditable ? "opacity-60" : ""}`}
                               placeholder="0"
                             />
                           </div>
@@ -601,7 +602,7 @@ export default function ReportForm({
                     <textarea value={form.comment}
                       onChange={(e) => setForm({ ...form, comment: e.target.value })}
                       rows={3} disabled={!isEditable}
-                      className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                      className="w-full p-3 border border-slate-200 rounded-xl text-base focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                       placeholder="Додаткові коментарі..." />
                   </div>
                 )}
