@@ -82,3 +82,33 @@ Call log:
 [2026-07-10T17:45:22.248Z] [SUCCESS] Browser started, ready to explore
 [2026-07-10T17:45:26.651Z] [STEP] I.amOnPage("https://app.svitlo-znan.app/dashboard")
 [2026-07-10T17:45:27.351Z] [INFO] AI Navigator resolving state at /login
+
+
+=== ExplorBot Session Started at 2026-07-10T17:50:46.269Z ===
+
+[2026-07-10T17:50:46.268Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+[2026-07-10T17:50:48.075Z] [INFO] chromium starting in headless mode
+[2026-07-10T17:50:48.076Z] [SUBSTEP] Enabling debug protocol for Chromium at http://localhost:9222
+[2026-07-10T17:50:50.050Z] [SUCCESS] Browser started, ready to explore
+[2026-07-10T17:50:51.933Z] [STEP] I.amOnPage("https://app.svitlo-znan.app/dashboard")
+[2026-07-10T17:50:52.735Z] [INFO] AI Navigator resolving state at /login
+
+
+=== ExplorBot Session Started at 2026-07-10T17:54:04.033Z ===
+
+[2026-07-10T17:54:04.032Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+[2026-07-10T17:54:06.225Z] [INFO] chromium starting in headless mode
+[2026-07-10T17:54:06.226Z] [SUBSTEP] Enabling debug protocol for Chromium at http://localhost:9222
+[2026-07-10T17:54:06.725Z] [SUCCESS] Browser started, ready to explore
+[2026-07-10T17:54:07.965Z] [STEP] I.amOnPage("https://app.svitlo-znan.app/dashboard")
+[2026-07-10T17:54:08.512Z] [INFO] AI Navigator resolving state at /login
+
+
+=== ExplorBot Session Started at 2026-07-10T18:00:53.144Z ===
+
+[2026-07-10T18:00:53.143Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+[2026-07-10T18:00:55.372Z] [INFO] chromium starting in headless mode
+[2026-07-10T18:00:55.373Z] [SUBSTEP] Enabling debug protocol for Chromium at http://localhost:9222
+[2026-07-10T18:00:56.056Z] [SUCCESS] Browser started, ready to explore
+[2026-07-10T18:00:57.226Z] [STEP] I.amOnPage("https://app.svitlo-znan.app")
+[2026-07-10T18:00:57.811Z] [INFO] AI Navigator resolving state at /login

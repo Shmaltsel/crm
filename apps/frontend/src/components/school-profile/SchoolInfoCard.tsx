@@ -13,7 +13,7 @@ export default memo(function SchoolInfoCard({
     <motion.div
       whileHover={{ y: -4, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.10)" }}
       transition={{ duration: 0.2 }}
-      className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
+      className="bg-surface p-6 rounded-card shadow-card border border-border"
     >
       <ul className="space-y-4 text-sm">
         {[
@@ -39,10 +39,10 @@ export default memo(function SchoolInfoCard({
             transition={{ duration: 0.25, delay: i * 0.05 }}
             className="flex gap-3"
           >
-            <span className="text-slate-400">{icon}</span>
+            <span className="text-content-muted">{icon}</span>
             <div>
-              <span className="text-slate-500">{label}:</span>{" "}
-              <span className="font-medium">{value}</span>
+              <span className="text-content-muted">{label}:</span>{" "}
+              <span className="font-medium text-content-primary">{value}</span>
             </div>
           </motion.li>
         ))}

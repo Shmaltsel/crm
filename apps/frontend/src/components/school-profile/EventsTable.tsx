@@ -29,13 +29,12 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
   if (events.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mt-2 w-full">
-      <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-        <h3 className="font-bold text-slate-800">Всі події ({events.length})</h3>
+    <div className="bg-surface rounded-card shadow-card border border-border overflow-hidden mt-2 w-full">
+      <div className="p-4 sm:p-6 border-b border-border bg-surface-muted flex justify-between items-center">
+        <h3 className="font-bold text-content-primary">Всі події ({events.length})</h3>
       </div>
 
-      {/* Картки — мобільний вигляд */}
-      <div className="md:hidden divide-y divide-slate-50">
+      <div className="md:hidden divide-y divide-border">
         <AnimatePresence initial={false}>
         {events.map((ev, i) => (
           <motion.div
@@ -45,17 +44,17 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.2, delay: i * 0.04 }}
             onClick={() => onEventSelect(ev.id)}
-            className={`flex items-center justify-between gap-3 p-4 transition-colors cursor-pointer ${selectedEventId === ev.id ? 'bg-blue-50/50' : 'active:bg-slate-50'}`}
+            className={`flex items-center justify-between gap-3 p-4 transition-colors cursor-pointer ${selectedEventId === ev.id ? 'bg-brand-50/50' : 'active:bg-surface-muted'}`}
           >
             <div className="min-w-0">
-              <p className="font-medium text-slate-800">{ev.project}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{new Date(ev.date).toLocaleDateString()}</p>
+              <p className="font-medium text-content-primary">{ev.project}</p>
+              <p className="text-xs text-content-muted mt-0.5">{new Date(ev.date).toLocaleDateString()}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span className="font-medium text-sm text-slate-700">{ev.price} грн</span>
+              <span className="font-medium text-sm text-content-secondary">{ev.price} грн</span>
               <button
                 onClick={(e) => handleDelete(e, ev.id)}
-                className="text-red-500 active:text-red-700 p-2"
+                className="text-danger-600 active:text-danger p-2.5 rounded-control"
               >
                 🗑
               </button>
@@ -65,11 +64,10 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
         </AnimatePresence>
       </div>
 
-      {/* Таблиця — десктоп */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="bg-white border-b border-slate-100 text-slate-500">
+            <tr className="bg-surface border-b border-border text-content-muted">
               <th className="p-4">Дата</th>
               <th className="p-4">Проєкт</th>
               <th className="p-4">Вартість</th>
@@ -86,15 +84,15 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.18, delay: i * 0.03 }}
                 onClick={() => onEventSelect(ev.id)}
-                className={`border-b transition-colors cursor-pointer ${selectedEventId === ev.id ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}
+                className={`border-b transition-colors cursor-pointer ${selectedEventId === ev.id ? 'bg-brand-50/50' : 'hover:bg-surface-muted'}`}
               >
                 <td className="p-4 font-medium">{new Date(ev.date).toLocaleDateString()}</td>
                 <td className="p-4">{ev.project}</td>
                 <td className="p-4">{ev.price} грн</td>
                 <td className="p-4 text-center">
-                  <button 
+                  <button
                     onClick={(e) => handleDelete(e, ev.id)}
-                    className="text-red-500 hover:text-red-700 p-2"
+                    className="text-danger-600 hover:text-danger p-2.5"
                   >
                     🗑
                   </button>

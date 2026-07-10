@@ -59,26 +59,25 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
     <motion.div
       whileHover={{ y: -2, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.08)" }}
       transition={{ duration: 0.2 }}
-      className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col"
+      className="bg-surface p-6 rounded-card shadow-card border border-border flex flex-col"
     >
-      <h3 className="font-bold text-slate-800 mb-5 flex items-center gap-2">
-        <span className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+      <h3 className="font-bold text-content-primary mb-5 flex items-center gap-2">
+        <span className="w-8 h-8 rounded-full bg-warning-subtle text-warning-600 flex items-center justify-center">
           🕐
         </span>
         Хронологія роботи
       </h3>
 
-      {/* Форма додавання */}
       {canWrite && (
         <form
           onSubmit={handleSubmit}
-          className="mb-5 p-4 bg-slate-50/80 rounded-2xl border border-slate-100 space-y-3"
+          className="mb-5 p-4 bg-surface-muted rounded-card border border-border space-y-3"
         >
           <div className="flex gap-2">
             <select
               value={newType}
               onChange={(e) => setNewType(e.target.value as CommentType)}
-              className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+              className="text-sm border border-border-strong rounded-control px-3 py-2 bg-surface focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand-300"
             >
               {COMMENT_TYPES.map((ct) => (
                 <option key={ct.key} value={ct.key}>
@@ -92,13 +91,13 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
             onChange={(e) => setNewText(e.target.value)}
             placeholder="Текст коментаря..."
             rows={2}
-            className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 resize-none"
+            className="w-full text-sm border border-border-strong rounded-control px-3 py-2 bg-surface focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand-300 resize-none"
           />
           <div className="flex justify-end">
             <button
               type="submit"
               disabled={!newText.trim() || createMutation.isPending}
-              className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 px-4 py-2 rounded-xl transition-colors shadow-sm"
+              className="text-xs font-bold text-white bg-brand hover:bg-brand-hover disabled:bg-neutral-300 px-4 py-2.5 rounded-control transition-colors shadow-sm"
             >
               {createMutation.isPending ? "..." : "Додати"}
             </button>
@@ -106,14 +105,13 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
         </form>
       )}
 
-      {/* Фільтри */}
       <div className="flex flex-wrap gap-1.5 mb-4">
         <button
           onClick={() => { setFilter(undefined); setPage(1); }}
-          className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
+          className={`text-xs font-medium px-3 py-1.5 rounded-pill transition-colors ${
             !filter
-              ? "bg-blue-600 text-white shadow-sm"
-              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              ? "bg-brand text-white shadow-sm"
+              : "bg-surface-muted text-content-secondary hover:bg-neutral-200"
           }`}
         >
           Всі
@@ -122,10 +120,10 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
           <button
             key={ct.key}
             onClick={() => { setFilter(ct.key); setPage(1); }}
-            className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
+            className={`text-xs font-medium px-3 py-1.5 rounded-pill transition-colors ${
               filter === ct.key
-                ? "bg-blue-600 text-white shadow-sm"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                ? "bg-brand text-white shadow-sm"
+                : "bg-surface-muted text-content-secondary hover:bg-neutral-200"
             }`}
           >
             {ct.icon} {ct.label}
@@ -133,19 +131,18 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
         ))}
       </div>
 
-      {/* Список */}
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse h-16 bg-slate-100 rounded-xl" />
+            <div key={i} className="animate-pulse h-16 bg-surface-muted rounded-card" />
           ))}
         </div>
       ) : !data || data.items.length === 0 ? (
-        <p className="text-sm text-slate-400 text-center py-6">
+        <p className="text-sm text-content-muted text-center py-6">
           Ще немає коментарів.
         </p>
       ) : (
-        <div className="space-y-3 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-slate-100">
+        <div className="space-y-3 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-border">
           <AnimatePresence initial={false}>
             {data.items.map((item, i) => (
               <motion.div
@@ -154,20 +151,20 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -8 }}
                 transition={{ duration: 0.22, delay: i * 0.04 }}
-                className="relative pl-8 pr-3 py-2 text-sm hover:bg-slate-50 rounded-xl transition-colors group border border-transparent hover:border-slate-100"
+                className="relative pl-8 pr-3 py-2 text-sm hover:bg-surface-muted rounded-card transition-colors group border border-transparent hover:border-border"
               >
-                <div className="absolute left-1.5 w-3 h-3 rounded-full top-3.5 bg-amber-500 ring-4 ring-amber-50 flex items-center justify-center text-[7px]">
+                <div className="absolute left-1.5 w-3 h-3 rounded-full top-3.5 bg-warning ring-4 ring-warning-subtle flex items-center justify-center text-[7px]">
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-semibold text-slate-800 flex items-center gap-1.5">
+                  <p className="font-semibold text-content-primary flex items-center gap-1.5">
                     <span>{TYPE_ICONS[item.type]}</span>
                     <span>{item.author.name}</span>
-                    <span className="text-[10px] text-slate-400 font-normal">
+                    <span className="text-2xs text-content-muted font-normal">
                       ({item.author.role})
                     </span>
                   </p>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[11px] text-slate-400 font-medium">
+                    <span className="text-xs text-content-muted font-medium">
                       {formatDate(item.createdAt)}
                     </span>
                     {canDelete && (
@@ -178,7 +175,7 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
                             commentId: item.id,
                           })
                         }
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-rose-400 hover:text-rose-600 text-xs"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-danger-600 hover:text-danger text-xs p-2.5"
                         title="Видалити"
                       >
                         ✕
@@ -186,7 +183,7 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
                     )}
                   </div>
                 </div>
-                <p className="text-slate-600 mt-1.5 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                <p className="text-content-secondary mt-1.5 bg-surface p-3 rounded-card border border-border shadow-sm">
                   {item.text}
                 </p>
               </motion.div>
@@ -195,23 +192,22 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
         </div>
       )}
 
-      {/* Пагінація */}
       {data && data.pageCount > 1 && (
         <div className="flex justify-center gap-2 mt-4">
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40"
+            className="text-xs font-medium px-3 py-2.5 rounded-control bg-surface-muted text-content-secondary hover:bg-neutral-200 disabled:opacity-40"
           >
             ←
           </button>
-          <span className="text-xs text-slate-500 self-center">
+          <span className="text-xs text-content-muted self-center">
             {data.page} / {data.pageCount}
           </span>
           <button
             disabled={page >= data.pageCount}
             onClick={() => setPage((p) => p + 1)}
-            className="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40"
+            className="text-xs font-medium px-3 py-2.5 rounded-control bg-surface-muted text-content-secondary hover:bg-neutral-200 disabled:opacity-40"
           >
             →
           </button>

@@ -398,7 +398,7 @@ export default function SchoolProfile() {
           <motion.div {...stagger(0)}>
             <Suspense
               fallback={
-                <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+                <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
               }
             >
               <SchoolInfoCard schoolData={schoolData} />
@@ -435,7 +435,7 @@ export default function SchoolProfile() {
           <motion.div {...stagger(1)}>
             <Suspense
               fallback={
-                <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+                <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
               }
             >
               <HistoryTimeline
@@ -451,7 +451,7 @@ export default function SchoolProfile() {
           <motion.div {...stagger(2)}>
             <Suspense
               fallback={
-                <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+                <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
               }
             >
               <CommentsTimeline schoolId={schoolData.id} />
@@ -473,7 +473,7 @@ export default function SchoolProfile() {
           {currentEvent && (
             <Suspense
               fallback={
-                <div className="bg-white rounded-2xl h-24 animate-pulse border border-slate-100" />
+                <div className="bg-surface rounded-card shadow-card h-24 animate-pulse border border-border" />
               }
             >
               <Pipeline
@@ -498,11 +498,11 @@ export default function SchoolProfile() {
                 className="grid grid-cols-1 xl:grid-cols-2 gap-6"
               >
                 {eventFullLoading ? (
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-pulse h-48" />
+                  <div className="bg-surface p-6 rounded-card shadow-card border border-border animate-pulse h-48" />
                 ) : (
                   <Suspense
                     fallback={
-                      <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+                      <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
                     }
                   >
                     <EventPreparation
@@ -525,12 +525,12 @@ export default function SchoolProfile() {
           </AnimatePresence>
 
           <motion.div {...stagger(2)}>
-            <Suspense
-              fallback={
-                <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
-              }
-            >
-              <EventDetails
+                <Suspense
+                  fallback={
+                    <div className="bg-surface rounded-card shadow-card h-32 animate-pulse border border-border" />
+                  }
+                >
+                  <EventDetails
                 currentEvent={currentEvent}
                 schoolName={schoolData.name}
                 cityId={schoolData.cityId}
@@ -544,7 +544,7 @@ export default function SchoolProfile() {
           <motion.div {...stagger(3)}>
             <Suspense
               fallback={
-                <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
+                <div className="bg-surface rounded-card shadow-card h-32 animate-pulse border border-border" />
               }
             >
               <EventsTable
@@ -559,27 +559,27 @@ export default function SchoolProfile() {
             </Suspense>
             {completedEvents.length > 0 && (
               <motion.div {...stagger(4)}>
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                  <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-                    <h3 className="font-bold text-slate-800">
+                <div className="bg-surface rounded-card shadow-card border border-border overflow-hidden">
+                  <div className="p-6 border-b border-border bg-surface-muted">
+                    <h3 className="font-bold text-content-primary">
                       Завершені події ({completedEvents.length})
                     </h3>
                   </div>
-                  <div className="md:hidden divide-y divide-slate-50">
+                  <div className="md:hidden divide-y divide-border">
                     {completedEvents.map((ev: Event) => (
                       <div
                         key={ev.id}
                         onClick={() => setSelectedReportEvent(ev)}
-                        className="flex items-center justify-between gap-3 p-4 active:bg-slate-50 cursor-pointer"
+                        className="flex items-center justify-between gap-3 p-4 active:bg-surface-muted cursor-pointer"
                       >
                         <div className="min-w-0">
-                          <p className="font-medium text-blue-600 truncate">
+                          <p className="font-medium text-brand truncate">
                             {ev.project}
                           </p>
-                          <p className="text-xs text-slate-400 mt-0.5">
+                          <p className="text-xs text-content-muted mt-0.5">
                             {new Date(ev.date).toLocaleDateString("uk-UA")}
                           </p>
-                          <p className="text-xs text-slate-500 mt-1">
+                          <p className="text-xs text-content-secondary mt-1">
                             👶{" "}
                             {ev.report?.childrenCount ||
                               ev.childrenPlanned ||
@@ -588,13 +588,13 @@ export default function SchoolProfile() {
                           </p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="font-semibold text-slate-800 text-sm">
+                          <p className="font-semibold text-content-primary text-sm">
                             {new Intl.NumberFormat("uk-UA").format(
                               ev.report?.totalSum || ev.price || 0,
                             )}{" "}
                             грн
                           </p>
-                          <p className="text-xs font-medium text-emerald-600 mt-0.5">
+                          <p className="text-xs font-medium text-success-600 mt-0.5">
                             +
                             {new Intl.NumberFormat("uk-UA").format(
                               ev.report?.remainderSum || 0,
@@ -608,7 +608,7 @@ export default function SchoolProfile() {
                   <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left text-sm">
                       <thead>
-                        <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+                        <tr className="bg-surface border-b border-border text-content-muted text-xs font-semibold uppercase tracking-wider">
                           <th className="p-4">Проєкт</th>
                           <th className="p-4">Дата</th>
                           <th className="p-4">Дітей</th>
@@ -621,12 +621,12 @@ export default function SchoolProfile() {
                           <tr
                             key={ev.id}
                             onClick={() => setSelectedReportEvent(ev)}
-                            className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
+                            className="border-b border-surface-muted hover:bg-surface-muted transition-colors cursor-pointer"
                           >
-                            <td className="p-4 text-slate-700 font-medium">
+                            <td className="p-4 text-content-secondary font-medium">
                               {ev.project}
                             </td>
-                            <td className="p-4 text-slate-600">
+                            <td className="p-4 text-content-muted">
                               {new Date(ev.date).toLocaleDateString("uk-UA")}
                             </td>
                             <td className="p-4 font-medium">
@@ -634,13 +634,13 @@ export default function SchoolProfile() {
                                 ev.childrenPlanned ||
                                 "—"}
                             </td>
-                            <td className="p-4 font-medium text-slate-800">
+                            <td className="p-4 font-medium text-content-primary">
                               {new Intl.NumberFormat("uk-UA").format(
                                 ev.report?.totalSum || ev.price || 0,
                               )}{" "}
                               грн
                             </td>
-                            <td className="p-4 font-medium text-emerald-600">
+                            <td className="p-4 font-medium text-success-600">
                               {new Intl.NumberFormat("uk-UA").format(
                                 ev.report?.remainderSum || 0,
                               )}{" "}
@@ -661,7 +661,7 @@ export default function SchoolProfile() {
       {/* Мобільна FAB */}
       <button
         onClick={openAddEventModal}
-        className="md:hidden fixed right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
+        className="md:hidden fixed right-6 w-14 h-14 bg-brand text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
         style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
       >
         +
