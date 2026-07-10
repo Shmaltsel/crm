@@ -1,255 +1,3 @@
-# FILE: apps/frontend/src/features/calendar/components/DesktopCalendarGrid.tsx
-
-```
-import { toISODate, isPastDay } from "../utils/date";
-import { MONTH_NAMES, ROLE_ICON_MAP } from "../constants";
-import { getDayColor } from "../utils/color";
-import EventTooltip from "./EventTooltip";
-import type { Event as CalendarEvent, DayOff, User } from "../../../types";
-
-interface DesktopCalendarGridProps {
-  days: (Date | null)[];
-  year: number;
-  month: number;
-  selectedMobileDate: Date;
-  setSelectedMobileDate: (date: Date) => void;
-  eventsByDate: Map<string, CalendarEvent[]>;
-  dayOffsByDate: Map<string, DayOff[]>;
-  projectColorMap: Map<string, string>;
-  projectHexMap: Map<string, string>;
-  isStaff: boolean;
-  isManagerOrAdmin: boolean;
-  user: { id: string } | null;
-  allUsers: User[];
-  handleDayOffClick: (e: React.MouseEvent, date: Date) => void;
-  prevMonth: () => void;
-  nextMonth: () => void;
-}
-
-export default function DesktopCalendarGrid({
-  days,
-  year,
-  month,
-  selectedMobileDate,
-  setSelectedMobileDate,
-  eventsByDate,
-  dayOffsByDate,
-  projectColorMap,
-  projectHexMap,
-  isStaff,
-  isManagerOrAdmin,
-  user,
-  allUsers,
-  handleDayOffClick,
-  prevMonth,
-  nextMonth,
-}: DesktopCalendarGridProps) {
-  return (
-    <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-        <div className="flex items-center justify-center p-5 md:p-6 border-b border-slate-100 bg-white">
-          <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
-            <button
-              onClick={prevMonth}
-              className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium"
-            >
-              ◀
-            </button>
-            <span className="px-4 md:px-6 py-2 text-slate-800 font-bold capitalize tracking-tight">
-              {MONTH_NAMES[month]}{" "}
-              <span className="text-slate-400 font-medium">{year}</span>
-            </span>
-            <button
-              onClick={nextMonth}
-              className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium"
-            >
-              ▶
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-7 bg-slate-50/50">
-          {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((dayName) => (
-            <div
-              key={dayName}
-              className="py-3 text-center text-[10px] md:text-xs font-bold tracking-widest text-slate-400 uppercase border-b border-slate-100"
-            >
-              {dayName}
-            </div>
-          ))}
-
-          {days.map((day, idx) => {
-            const isToday =
-              day && day.toDateString() === new Date().toDateString();
-            const isSelected =
-              day && day.toDateString() === selectedMobileDate.toDateString();
-            const dayKey = day ? toISODate(day) : "";
-            const dayEvents = day ? (eventsByDate.get(dayKey) ?? []) : [];
-            const dayOffEntries = day ? (dayOffsByDate.get(dayKey) ?? []) : [];
-
-            const dayColor = day
-              ? getDayColor(dayEvents, projectHexMap)
-              : undefined;
-
-            const myDayOff = isStaff
-              ? dayOffEntries.find((d) => d.userId === user?.id)
-              : undefined;
-            const hasAnyDayOff = isStaff
-              ? !!myDayOff
-              : dayOffEntries.length > 0;
-
-            const showCross =
-              day && !isPastDay(day) && (isStaff || isManagerOrAdmin);
-
-            return (
-              <div
-                key={idx}
-                onClick={() => day && setSelectedMobileDate(day)}
-                className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group select-none no-select-ios
-                  ${day ? "bg-white hover:bg-slate-50 cursor-pointer" : "bg-slate-50/30"}
-                  ${isSelected ? "ring-2 ring-inset ring-blue-500/20 bg-blue-50/10" : ""}
-                  ${hasAnyDayOff ? "dayoff-cell-enter bg-rose-50/70" : ""}
-                `}
-              >
-                {day && (
-                  <>
-                    {showCross && (
-                      <div className="absolute top-1 left-1 z-10 group/dayoff">
-                        <button
-                          onClick={(e) => handleDayOffClick(e, day)}
-                          title={
-                            hasAnyDayOff
-                              ? "Скасувати вихідний"
-                              : "Призначити вихідний"
-                          }
-                          className={`w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold transition-all
-                            ${
-                              hasAnyDayOff
-                                ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600"
-                                : "bg-slate-100 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-rose-100 hover:text-rose-500"
-                            }`}
-                        >
-                          ✕
-                        </button>
-
-                        {isManagerOrAdmin && dayOffEntries.length > 0 && (
-                          <div className="hidden md:block absolute top-full left-0 mt-2 w-48 bg-slate-800 text-white p-2.5 rounded-xl shadow-2xl opacity-0 invisible group-hover/dayoff:opacity-100 group-hover/dayoff:visible transition-all duration-200 pointer-events-none">
-                            <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1.5">
-                              Вихідний ({dayOffEntries.length})
-                            </p>
-                            <div className="space-y-1">
-                              {dayOffEntries.map((d: DayOff) => {
-                                const u = allUsers.find(
-                                  (au: User) => au.id === d.userId,
-                                );
-                                return (
-                                  <p
-                                    key={d.id}
-                                    className="text-xs font-medium truncate"
-                                  >
-                                    {u
-                                      ? `${ROLE_ICON_MAP[u.role] || "👤"} ${u.name}`
-                                      : "Невідомий"}
-                                  </p>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="flex justify-center md:justify-end mb-1.5">
-                      <span
-                        className={`w-7 h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-semibold transition-colors
-                        ${isToday && !dayColor ? "bg-blue-600 text-white shadow-md" : !dayColor ? "text-slate-500 md:group-hover:text-blue-600" : "text-white"}
-                      `}
-                        style={{
-                          background: dayColor || undefined,
-                          textShadow: dayColor ? "0 1px 2px rgba(0,0,0,0.35)" : "none",
-                        }}
-                      >
-                        {day.getDate()}
-                      </span>
-                    </div>
-
-                    {hasAnyDayOff && !isStaff && dayOffEntries.length > 0 && (
-                      <p className="text-[9px] md:text-[10px] text-rose-600 font-semibold text-center mb-1 truncate px-1">
-                        🌴 {dayOffEntries.length}{" "}
-                        {dayOffEntries.length === 1 ? "вихідний" : "вихідних"}
-                      </p>
-                    )}
-
-                    <div className="space-y-1.5">
-                      {dayEvents.slice(0, 3).map((ev: CalendarEvent) => (
-                        <div
-                          key={ev.id}
-                          className="relative group/event z-0 hover:z-50"
-                        >
-                          <button
-                            className={`w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${projectColorMap.get(ev.project) ?? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300"}`}
-                          >
-                            {ev.time || "—"}
-                          </button>
-
-                          <EventTooltip event={ev} />
-                        </div>
-                      ))}
-                      {dayEvents.length > 3 && (
-                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 text-center">
-                          +{dayEvents.length - 3} ще
-                        </p>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-  );
-}
-
-```
-
-# FILE: apps/frontend/src/features/calendar/components/EventTooltip.tsx
-
-```
-import type { Event as CalendarEvent } from "../../../types";
-
-interface EventTooltipProps {
-  event: CalendarEvent;
-}
-
-export default function EventTooltip({ event: ev }: EventTooltipProps) {
-  return (
-    <div className="hidden md:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-800 text-white p-3 rounded-xl shadow-2xl opacity-0 invisible group-hover/event:opacity-100 group-hover/event:visible transition-all duration-200 pointer-events-none">
-      <p className="font-bold text-sm mb-1 truncate">
-        {ev.school?.name || "Невідомий заклад"}
-      </p>
-      <div className="space-y-1 text-xs text-slate-300">
-        <p>
-          <span className="text-slate-400">Проєкт:</span>{" "}
-          {ev.project}
-        </p>
-        <p>
-          <span className="text-slate-400">Екіпаж:</span>{" "}
-          {ev.crew?.name || "Не призначено"}
-        </p>
-        <p>
-          <span className="text-slate-400">Час:</span>{" "}
-          <span className="font-bold text-white">
-            {ev.time || "—"}
-          </span>
-        </p>
-      </div>
-      <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-slate-800"></div>
-    </div>
-  );
-}
-
-```
-
 # FILE: apps/frontend/src/features/calendar/components/MobileCalendarGrid.tsx
 
 ```
@@ -1909,13 +1657,14 @@ export default function ReportForm({
       {isOpen && (
         <motion.div role="dialog" aria-modal="true" aria-labelledby={headingId}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          transition={{ duration: 0.25 }}
+          transition={{ duration: 0.15 }}
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-          <motion.div initial={{ opacity: 0, y: 24, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 24, scale: 0.97 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden">
+          <motion.div initial={{ opacity: 0, y: 32 }}
+            animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 32 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden pb-safe"
+            style={{ willChange: "transform" }}>
             <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
 
             <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 bg-slate-50 flex items-start justify-between shrink-0">
@@ -2825,41 +2574,6 @@ export function usePrefetchSchool() {
 
 ```
 
-# FILE: apps/frontend/src/hooks/useAuditLog.ts
-
-```
-import { useQuery } from "@tanstack/react-query";
-import { api } from "../config/api";
-
-export interface AuditLogEntry {
-  id: string;
-  userId: string | null;
-  userName: string | null;
-  action: string;
-  entity: string | null;
-  entityId: string | null;
-  ip: string | null;
-  createdAt: string;
-}
-
-export function useAuditLog(filters: { userId?: string; entity?: string; dateFrom?: string; dateTo?: string; page?: number }) {
-  return useQuery({
-    queryKey: ["audit-log", filters],
-    queryFn: () => api.get<{ items: AuditLogEntry[]; meta: { totalItems: number; page: number; pageCount: number; hasNextPage: boolean } }>("/audit-log", { params: filters }).then(r => r.data),
-    staleTime: 10 * 1000,
-  });
-}
-
-export function useAuditLogEntities() {
-  return useQuery({
-    queryKey: ["audit-log", "entities"],
-    queryFn: () => api.get<string[]>("/audit-log/entities").then(r => r.data),
-    staleTime: 60 * 1000,
-  });
-}
-
-```
-
 # FILE: apps/frontend/src/hooks/useCalendar.ts
 
 ```
@@ -3446,8 +3160,8 @@ export function useNotifications(page = 1) {
   return useQuery({
     queryKey: ["notifications", page],
     queryFn: () => api.get<{ items: NotificationItem[]; total: number; page: number; pageCount: number }>("/notifications", { params: { page } }).then(r => r.data),
-    refetchInterval: 30000,
-    staleTime: 10 * 1000,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
   });
 }
 
@@ -3455,7 +3169,8 @@ export function useUnreadCount() {
   return useQuery({
     queryKey: ["notifications", "unread-count"],
     queryFn: () => api.get<{ count: number }>("/notifications/unread-count").then(r => r.data),
-    refetchInterval: 30000,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
   });
 }
 
@@ -3702,7 +3417,7 @@ export function useSchoolComments(schoolId: string, type?: CommentType, page = 1
         )
         .then((r) => r.data),
     enabled: !!schoolId,
-    staleTime: 10 * 1000,
+    staleTime: 60 * 1000,
   });
 }
 
@@ -4124,11 +3839,24 @@ export function useUpdateHistoryComment() {
   display: none;
 }
 
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 .dashboard-swiper {
   width: 100%;
   height: 100%;
 }
 .dashboard-swiper .swiper-slide {
+  height: auto;
+  overflow-y: auto;
+}
+
+.establishments-swiper {
+  width: 100%;
+  height: 100%;
+}
+.establishments-swiper .swiper-slide {
   height: auto;
   overflow-y: auto;
 }
@@ -4531,185 +4259,6 @@ function KPICard({ label, value, color }: { label: string; value: string; color:
 
 ```
 
-# FILE: apps/frontend/src/pages/AuditLog.tsx
-
-```
-import { useState } from "react";
-import { useAuditLog, useAuditLogEntities } from "../hooks/useAuditLog";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-
-export default function AuditLog() {
-  const [userId, setUserId] = useState("");
-  const [entity, setEntity] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [page, setPage] = useState(1);
-
-  const filters: Record<string, string | number | undefined> = {};
-  if (userId) filters.userId = userId;
-  if (entity) filters.entity = entity;
-  if (dateFrom) filters.dateFrom = dateFrom;
-  if (dateTo) filters.dateTo = dateTo;
-  filters.page = page;
-
-  const { data, isLoading } = useAuditLog(filters);
-  const { data: entityTypes } = useAuditLogEntities();
-
-  const items = data?.items ?? [];
-  const meta = data?.meta;
-
-  const handleFilter = () => {
-    setPage(1);
-  };
-
-  return (
-    <div className="p-4 md:p-8 space-y-6">
-      <h1 className="text-2xl font-bold">Журнал дій</h1>
-
-      <div className="bg-white rounded-xl shadow-sm border p-4 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Користувач (ID)
-            </label>
-            <input
-              type="text"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder="ID користувача"
-              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Сутність
-            </label>
-            <select
-              value={entity}
-              onChange={(e) => setEntity(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Всі</option>
-              {entityTypes?.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Від
-            </label>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              До
-            </label>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-end">
-          <button
-            onClick={handleFilter}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
-          >
-            Застосувати
-          </button>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Час</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Користувач</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Дія</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Сутність</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">ID</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
-                    Завантаження...
-                  </td>
-                </tr>
-              ) : items.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
-                    Немає записів
-                  </td>
-                </tr>
-              ) : (
-                items.map((entry) => (
-                  <tr key={entry.id} className="border-b last:border-b-0 hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                      {new Date(entry.createdAt).toLocaleString("uk-UA")}
-                    </td>
-                    <td className="px-4 py-3">
-                      {entry.userName ?? entry.userId ?? <span className="text-gray-400">—</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-block px-2 py-0.5 bg-gray-100 rounded text-xs font-medium">
-                        {entry.action}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{entry.entity ?? "—"}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs font-mono">{entry.entityId ?? "—"}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {meta && meta.pageCount > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50">
-            <span className="text-sm text-gray-600">
-              Сторінка {meta.page} з {meta.pageCount} ({meta.totalItems} записів)
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={!meta.hasNextPage && meta.page === 1}
-                className="p-2 rounded-lg border hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setPage((p) => p + 1)}
-                disabled={!meta.hasNextPage}
-                className="p-2 rounded-lg border hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-```
-
 # FILE: apps/frontend/src/pages/CalendarView.tsx
 
 ```
@@ -4988,7 +4537,8 @@ export default function Cities() {
       {userRole === "SUPERADMIN" && (
         <button
           onClick={() => setIsModalOpen(true)}
-          className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 active:scale-95 transition-transform opacity-0"
+          className="md:hidden fixed right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 active:scale-95 transition-transform opacity-0"
+          style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
           style={{
             animation:
               "fabPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) 0.2s forwards",
@@ -7516,7 +7066,8 @@ export default function InventoryPage() {
       {canEdit && (
         <button
           onClick={handleOpenCreate}
-          className="sm:hidden fixed bottom-20 right-4 z-40 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors"
+          className="sm:hidden fixed right-4 z-40 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors"
+          style={{ bottom: "calc(5rem + env(safe-area-inset-bottom, 0px))" }}
           aria-label="Додати товар"
         >
           <Plus className="w-6 h-6" />
@@ -8053,7 +7604,8 @@ export default function Kindergartens() {
 
       <button
         onClick={handleOpenModal}
-        className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
+        className="md:hidden fixed right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
+        style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
       >
         +
       </button>
@@ -9418,7 +8970,8 @@ export default function SchoolProfile() {
       {/* Мобільна FAB */}
       <button
         onClick={openAddEventModal}
-        className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
+        className="md:hidden fixed right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
+        style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
       >
         +
       </button>
@@ -9489,6 +9042,1046 @@ export default function SchoolProfile() {
     </motion.div>
   );
 }
+
+```
+
+# FILE: apps/frontend/src/pages/Schools.tsx
+
+```
+import {
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useCallback,
+  lazy,
+  Suspense,
+} from "react";
+import { useSearchParams, useLocation } from "react-router-dom";
+import { Swiper, SwiperSlide } from "swiper/react";
+import "swiper/css";
+import { api } from "../config/api";
+import { useSelectedCity } from "../context/CityContext";
+import {
+  useSchools,
+  useSchoolStats,
+  useDeleteSchool,
+  usePrefetchSchool,
+  useSupportedCities,
+} from "../hooks/useApi";
+import { useCities } from "../hooks/useCities";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import VirtualSchoolList from "../components/VirtualSchoolList";
+import { SchoolCard } from "../components/schools/SchoolMobileList";
+import type { SchoolContact } from "../types";
+import { useAuth } from "../context/AuthContext";
+import { Download } from "lucide-react";
+import { PIPELINE_STAGES } from "../constants/pipelineStages";
+import EstablishmentsTopNav from "../components/establishments/EstablishmentsTopNav";
+
+const INSTITUTION_TYPES = {
+  school: { apiType: "Школа" as const, label: "Школи", countLabel: "шкіл" },
+  kindergarten: { apiType: "Садочок" as const, label: "Садочки", countLabel: "садочків" },
+} as const;
+
+type InstitutionType = keyof typeof INSTITUTION_TYPES;
+
+const ESTABLISHMENT_IDS: InstitutionType[] = ["school", "kindergarten"];
+
+interface NewSchoolPayload {
+  name: string;
+  cityId: string;
+  sourceUrl: string;
+  director: string;
+  phone: string;
+  type: string;
+}
+
+const StatsBar = lazy(() => import("../components/schools/StatsBar"));
+const VirtualDesktopTable = lazy(
+  () => import("../components/schools/VirtualDesktopTable"),
+);
+interface City {
+  id: string;
+  name: string;
+}
+
+export default function Schools() {
+  const { selectedCity } = useSelectedCity();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const { user } = useAuth();
+  const userRole = user?.role ?? null;
+  const qc = useQueryClient();
+
+  const institutionType = useMemo<InstitutionType>(() => {
+    const fromUrl = searchParams.get("type");
+    if (fromUrl === "kindergarten") return "kindergarten";
+    if (fromUrl === "school") return "school";
+    if (location.pathname.includes("kindergarten")) return "kindergarten";
+    return "school";
+  }, [searchParams, location.pathname]);
+
+  const swiperRef = useRef<any>(null);
+
+  const handleTabChange = useCallback(
+    (id: string) => {
+      const idx = ESTABLISHMENT_IDS.findIndex((t) => t === id);
+      if (idx !== -1 && swiperRef.current) {
+        swiperRef.current.slideTo(idx);
+      }
+      setSearchParams({ type: id }, { replace: true });
+    },
+    [setSearchParams],
+  );
+
+  const handleSlideChange = useCallback(
+    (swiper: any) => {
+      const tabId = ESTABLISHMENT_IDS[swiper.activeIndex];
+      if (tabId && tabId !== institutionType) {
+        setSearchParams({ type: tabId }, { replace: true });
+      }
+    },
+    [institutionType, setSearchParams],
+  );
+
+  const [form, setForm] = useState({
+    name: "",
+    cityId: "",
+    sourceUrl: "",
+    director: "",
+    phone: "",
+  });
+  const [matchedContacts, setMatchedContacts] = useState<SchoolContact[]>([]);
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [sizeFilter, setSizeFilter] = useState<string | null>(null);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<
+    { name: string; url: string }[]
+  >([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [dotCount, setDotCount] = useState(3);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const addSchoolMutation = useMutation({
+    mutationFn: (newSchool: NewSchoolPayload) =>
+      api.post("/schools", newSchool),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["schools"] });
+      setIsModalOpen(false);
+    },
+    onError: () => alert("Не вдалося створити заклад"),
+  });
+
+  const bulkImportMutation = useMutation({
+    mutationFn: ({ cityId, type }: { cityId: string; type: "Школа" | "Садочок" }) =>
+      api.post(
+        "/schools/bulk-import",
+        { cityId, type },
+        { timeout: 120000 },
+      ),
+    onSuccess: (res) => {
+      alert(
+        `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
+      );
+      qc.invalidateQueries({ queryKey: ["schools"] });
+    },
+    onError: () => alert("Помилка імпорту."),
+  });
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 350);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const baseFilters = useMemo(
+    () => ({
+      search: debouncedQuery || undefined,
+      cityId: selectedCity.id || undefined,
+      stage: (activeFilter as any) || undefined,
+      size: (sizeFilter as any) || undefined,
+    }),
+    [debouncedQuery, selectedCity.id, activeFilter, sizeFilter],
+  );
+
+  const schoolFilters = useMemo(
+    () => ({ ...baseFilters, type: "Школа" as const }),
+    [baseFilters],
+  );
+
+  const kindergartenFilters = useMemo(
+    () => ({ ...baseFilters, type: "Садочок" as const }),
+    [baseFilters],
+  );
+
+  const {
+    data: schoolPages,
+    isLoading: isSchoolsLoading,
+    fetchNextPage: fetchNextSchools,
+    hasNextPage: hasNextSchools,
+    isFetchingNextPage: isFetchingNextSchools,
+  } = useSchools(schoolFilters);
+
+  const {
+    data: kindergartenPages,
+    isLoading: isKindergartenLoading,
+    fetchNextPage: fetchNextKindergartens,
+    hasNextPage: hasNextKindergartens,
+    isFetchingNextPage: isFetchingNextKindergartens,
+  } = useSchools(kindergartenFilters);
+
+  const { data: schoolStats } = useSchoolStats({
+    cityId: selectedCity.id || undefined,
+    type: "Школа" as const,
+    stage: (activeFilter as any) || undefined,
+  });
+
+  const { data: kindergartenStats } = useSchoolStats({
+    cityId: selectedCity.id || undefined,
+    type: "Садочок" as const,
+    stage: (activeFilter as any) || undefined,
+  });
+
+  const { data: cities = [] } = useCities();
+  const { data: supportedCities = [] } = useSupportedCities();
+  const deleteSchool = useDeleteSchool();
+  const prefetchSchool = usePrefetchSchool();
+
+  const schoolData = useMemo(() => ({
+    filtered: schoolPages?.pages.flatMap((p) => p.data) ?? [],
+    totalItems: schoolPages?.pages[0]?.meta.totalItems ?? 0,
+  }), [schoolPages]);
+
+  const kindergartenData = useMemo(() => ({
+    filtered: kindergartenPages?.pages.flatMap((p) => p.data) ?? [],
+    totalItems: kindergartenPages?.pages[0]?.meta.totalItems ?? 0,
+  }), [kindergartenPages]);
+
+  const handleLoadMoreSchools = useCallback(() => {
+    if (hasNextSchools && !isFetchingNextSchools) fetchNextSchools();
+  }, [hasNextSchools, isFetchingNextSchools, fetchNextSchools]);
+
+  const handleLoadMoreKindergartens = useCallback(() => {
+    if (hasNextKindergartens && !isFetchingNextKindergartens) fetchNextKindergartens();
+  }, [hasNextKindergartens, isFetchingNextKindergartens, fetchNextKindergartens]);
+
+  const handleOpenModal = useCallback(() => {
+    setForm({
+      name: "",
+      cityId: selectedCity.id || cities[0]?.id || "",
+      sourceUrl: "",
+      director: "",
+      phone: "",
+    });
+    setMatchedContacts([]);
+    setIsModalOpen(true);
+  }, [selectedCity.id, cities]);
+
+  const fetchContacts = async (schoolName: string) => {
+    if (!schoolName || schoolName.trim().length < 1)
+      return setMatchedContacts([]);
+    const currentCityName =
+      selectedCity.name || cities.find((c) => c.id === form.cityId)?.name || "";
+    if (currentCityName.toLowerCase() !== "львів")
+      return setMatchedContacts([]);
+    try {
+      const data = await qc.fetchQuery<SchoolContact[]>({
+        queryKey: ["schoolContacts", schoolName, currentCityName],
+        queryFn: async () => {
+          const res = await api.get<SchoolContact[]>(
+            `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=Школа`,
+          );
+          return res.data;
+        },
+        staleTime: 1000 * 60 * 5,
+      });
+
+      setMatchedContacts(data);
+      if (data.length > 0) {
+        const director =
+          data.find(
+            (c: SchoolContact) =>
+              c.role?.includes("Директор") || c.role?.includes("Завідувач"),
+          ) || data[0];
+        setForm((f) => ({
+          ...f,
+          director: director.contactName,
+          phone: director.phone,
+        }));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleNameChange = (value: string) => {
+    setForm({ ...form, name: value });
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    if (value.length < 2) {
+      setShowSuggestions(false);
+      setIsSearching(false);
+      setMatchedContacts([]);
+      return;
+    }
+    setIsSearching(true);
+    setShowSuggestions(true);
+    debounceTimer.current = setTimeout(async () => {
+      try {
+        const [externalData] = await Promise.all([
+          qc.fetchQuery({
+            queryKey: ["schoolSearchExternal", value],
+            queryFn: async () => {
+              const res = await api.get(
+                `/schools/search?q=${encodeURIComponent(value)}&type=Школа`,
+              );
+              return res.data;
+            },
+            staleTime: 1000 * 60 * 5,
+          }),
+          fetchContacts(value),
+        ]);
+        setSuggestions(externalData);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 400);
+  };
+
+  const handleSelectSuggestion = (name: string, url: string) => {
+    setForm({ ...form, name, sourceUrl: url });
+    setShowSuggestions(false);
+    fetchContacts(name);
+  };
+
+  const handleAddSchool = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.cityId) return;
+    addSchoolMutation.mutate({ ...form, type: "Школа" });
+  };
+
+  const handleDeleteSchool = useCallback(
+    async (e: React.MouseEvent, schoolId: string, schoolName: string) => {
+      e.stopPropagation();
+      if (userRole !== "SUPERADMIN") return;
+      if (
+        !window.confirm(
+          `Видалити школу "${schoolName}"? Це видалить також усі її події.`,
+        )
+      )
+        return;
+      await deleteSchool.mutateAsync(schoolId);
+    },
+    [deleteSchool, userRole],
+  );
+
+  return (
+    <div className="bg-gradient-subtle min-h-screen flex flex-col">
+      <EstablishmentsTopNav
+        activeTab={institutionType}
+        onChange={handleTabChange}
+      />
+
+      <Swiper
+        onSwiper={(swiper) => { swiperRef.current = swiper; }}
+        initialSlide={ESTABLISHMENT_IDS.findIndex((t) => t === institutionType)}
+        onSlideChange={handleSlideChange}
+        speed={280}
+        allowTouchMove={true}
+        className="establishments-swiper"
+      >
+        {ESTABLISHMENT_IDS.map((id) => {
+          const info = INSTITUTION_TYPES[id];
+          const isSchool = id === "school";
+          const data = isSchool ? schoolData : kindergartenData;
+          const stats = isSchool ? schoolStats : kindergartenStats;
+          const isLoading = isSchool ? isSchoolsLoading : isKindergartenLoading;
+          const handleLoadMore = isSchool ? handleLoadMoreSchools : handleLoadMoreKindergartens;
+
+          return (
+            <SwiperSlide key={id}>
+              <div className="p-4 md:p-8 max-w-[100vw] min-h-[calc(100dvh-5rem)] md:min-h-0 flex flex-col">
+                {/* Шапка */}
+                <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
+                  <div className="min-w-0">
+                    <h1 className="text-2xl font-bold tracking-tight text-content-primary leading-tight">
+                      {info.label}
+                      {selectedCity.id && (
+                        <span className="ml-1 text-sm font-normal text-brand">
+                          · {selectedCity.name}
+                        </span>
+                      )}
+                    </h1>
+                    <p className="text-sm text-content-muted mt-0.5">
+                      {data.filtered.length} {info.countLabel} у місті
+                    </p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    {(userRole === "SUPERADMIN" || userRole === "MANAGER") && (
+                      <button
+                        onClick={() => {
+                          if (!selectedCity.id) return alert("Спочатку оберіть місто");
+                          if (!supportedCities.includes(selectedCity.name))
+                            return alert(
+                              `Місто "${selectedCity.name}" не підтримується для імпорту.`,
+                            );
+                          if (
+                            !window.confirm(
+                              `Імпортувати всі ${info.countLabel} з isuo.org для міста ${selectedCity.name}?`,
+                            )
+                          )
+                            return;
+
+                          setDotCount(3);
+                          const dotInterval = setInterval(() => {
+                            setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
+                          }, 500);
+
+                          bulkImportMutation.mutate(
+                            { cityId: selectedCity.id, type: info.apiType },
+                            { onSettled: () => clearInterval(dotInterval) },
+                          );
+                        }}
+                        disabled={bulkImportMutation.isPending}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 hover:shadow-lift hover:-translate-y-0.5 active:scale-95 disabled:opacity-70 transition-all duration-200"
+                      >
+                        {bulkImportMutation.isPending ? (
+                          <span className="font-medium">
+                            Імпортую{"·".repeat(dotCount)}
+                          </span>
+                        ) : (
+                          <><Download className="w-4 h-4" /> Імпорт з isuo</>
+                        )}
+                      </button>
+                    )}
+                    <button
+                      onClick={handleOpenModal}
+                      className="hidden md:flex items-center gap-1 px-4 py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-hover hover:shadow-lift hover:-translate-y-0.5 active:scale-95 transition-all duration-200"
+                    >
+                      + Додати
+                    </button>
+                  </div>
+                </div>
+
+                {/* StatsBar */}
+                <div className="shrink-0">
+                  <Suspense
+                    fallback={
+                      <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
+                    }
+                  >
+                    <StatsBar
+                      statusStats={
+                        stats?.statusStats ?? {
+                          new: 0,
+                          planned: 0,
+                          inProgress: 0,
+                          done: 0,
+                        }
+                      }
+                      sizeStats={stats?.sizeStats ?? { small: 0, medium: 0, large: 0 }}
+                      activeFilter={activeFilter}
+                      onFilterChange={setActiveFilter}
+                      sizeFilter={sizeFilter}
+                      onSizeFilterChange={setSizeFilter}
+                      schoolType={info.apiType}
+                    />
+                  </Suspense>
+                </div>
+
+                {/* Список */}
+                <div className="flex-1 w-full min-h-0 mt-3">
+                  <EstablishmentList
+                    isLoading={isLoading}
+                    filteredSchools={data.filtered}
+                    totalItems={data.totalItems}
+                    activeFilter={activeFilter}
+                    sizeFilter={sizeFilter}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    onClearFilters={() => {
+                      setActiveFilter(null);
+                      setSizeFilter(null);
+                    }}
+                    handleLoadMore={handleLoadMore}
+                    prefetchSchool={prefetchSchool}
+                    handleDeleteSchool={handleDeleteSchool}
+                    searchPlaceholder={`Пошук за назвою ${id === "school" ? "школи" : "садочка"}...`}
+                    countLabel={info.countLabel}
+                  />
+                </div>
+              </div>
+            </SwiperSlide>
+          );
+        })}
+      </Swiper>
+
+      {/* Мобільна плаваюча кнопка FAB */}
+      <button
+        onClick={handleOpenModal}
+        className="md:hidden fixed right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
+        style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
+      >
+        +
+      </button>
+
+      {/* Модальне вікно */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+              <h3 className="text-xl font-bold text-slate-800">Нова школа</h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-2 -mr-2 leading-none text-xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleAddSchool}
+              className="p-6 flex flex-col gap-4 overflow-y-auto"
+            >
+              <div className="relative">
+                <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                  Назва школи
+                </label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  onBlur={() =>
+                    setTimeout(() => setShowSuggestions(false), 150)
+                  }
+                  placeholder="Наприклад: Школа №1"
+                  required
+                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {showSuggestions && (
+                  <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto overflow-hidden">
+                    {isSearching ? (
+                      <li className="px-4 py-3 text-sm text-slate-400 italic">
+                        Пошук...
+                      </li>
+                    ) : suggestions.length > 0 ? (
+                      suggestions.map((s, i) => (
+                        <li
+                          key={i}
+                          onMouseDown={() =>
+                            handleSelectSuggestion(s.name, s.url)
+                          }
+                          className="px-4 py-3 text-sm hover:bg-blue-50 cursor-pointer font-medium border-b border-slate-50 last:border-0"
+                        >
+                          {s.name}
+                        </li>
+                      ))
+                    ) : (
+                      <li className="px-4 py-3 text-sm text-slate-400 italic">
+                        Нічого не знайдено
+                      </li>
+                    )}
+                  </ul>
+                )}
+              </div>
+
+              {!selectedCity.id && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                    Місто
+                  </label>
+                  <select
+                    value={form.cityId}
+                    onChange={(e) =>
+                      setForm({ ...form, cityId: e.target.value })
+                    }
+                    required
+                    className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="">— Оберіть місто —</option>
+                    {cities.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                  Контакт{" "}
+                  <span className="ml-1 text-xs font-normal text-slate-400">
+                    (автозаповнення)
+                  </span>
+                </label>
+                {matchedContacts.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {matchedContacts.map((c, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            director: c.contactName,
+                            phone: c.phone,
+                          }))
+                        }
+                        className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${form.director === c.contactName ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                      >
+                        {c.role ? `${c.role}: ` : ""}
+                        {c.contactName}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <input
+                  type="text"
+                  value={form.director}
+                  onChange={(e) =>
+                    setForm({ ...form, director: e.target.value })
+                  }
+                  placeholder="Микола Петренко"
+                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+                />
+                <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                  Телефон
+                </label>
+                <input
+                  type="text"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="0671234567"
+                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex gap-3 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 px-5 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+                >
+                  Скасувати
+                </button>
+                <button
+                  type="submit"
+                  disabled={addSchoolMutation.isPending}
+                  className="flex-1 px-5 py-3.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {addSchoolMutation.isPending ? "Збереження..." : "Створити"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EstablishmentList({
+  isLoading,
+  filteredSchools,
+  totalItems,
+  activeFilter,
+  sizeFilter,
+  searchQuery,
+  onSearchChange,
+  onClearFilters,
+  handleLoadMore,
+  prefetchSchool,
+  handleDeleteSchool,
+  searchPlaceholder,
+  countLabel,
+}: {
+  isLoading: boolean;
+  filteredSchools: any[];
+  totalItems: number;
+  activeFilter: string | null;
+  sizeFilter: string | null;
+  searchQuery: string;
+  onSearchChange: (v: string) => void;
+  onClearFilters: () => void;
+  handleLoadMore: () => void;
+  prefetchSchool: (id: string) => void;
+  handleDeleteSchool: (e: React.MouseEvent, id: string, name: string) => void;
+  searchPlaceholder: string;
+  countLabel: string;
+}) {
+  return (
+    <div className="flex flex-col h-full">
+      {/* Пошук */}
+      <div className="relative shrink-0 mb-4 mt-2">
+        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+          <svg
+            className="w-5 h-5 text-slate-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
+            />
+          </svg>
+        </div>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder={searchPlaceholder}
+          className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border border-border rounded-2xl sm:rounded-xl text-sm font-medium text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand shadow-soft transition-all duration-200"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => onSearchChange("")}
+            className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600 transition"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {/* Лічильник */}
+      <p className="text-xs font-semibold text-slate-400 mb-4 shrink-0 uppercase tracking-wide px-1">
+        {`${filteredSchools.length} з ${totalItems} ${countLabel}`}
+        {(activeFilter || sizeFilter) && (
+          <button
+            onClick={onClearFilters}
+            className="ml-3 text-blue-500 hover:text-blue-700 lowercase"
+          >
+            скинути фільтри
+          </button>
+        )}
+      </p>
+
+      {/* Компоненти списків */}
+      {isLoading ? (
+        <div className="flex flex-col gap-2.5 flex-1">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-white rounded-2xl border border-slate-100 p-3.5 animate-pulse"
+              style={{ opacity: 1 - i * 0.1 }}
+            >
+              <div className="h-4 bg-slate-200 rounded-lg w-3/4 mb-3" />
+              <div className="flex justify-between">
+                <div className="h-3 bg-slate-100 rounded-lg w-1/3" />
+                <div className="h-3 bg-slate-100 rounded-lg w-1/4" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          {/* Мобільний */}
+          <div className="md:hidden flex-1 w-full overflow-hidden">
+            <VirtualSchoolList
+              schools={filteredSchools}
+              itemHeight={110}
+              onEndReached={handleLoadMore}
+              animationKey={`${activeFilter}-${sizeFilter}`}
+              renderItem={(school, index) => (
+                <div
+                  className="pb-2.5"
+                  onMouseEnter={() => prefetchSchool(school.id)}
+                >
+                  <SchoolCard
+                    school={school}
+                    index={index}
+                    onDelete={handleDeleteSchool}
+                    stages={PIPELINE_STAGES}
+                  />
+                </div>
+              )}
+            />
+          </div>
+
+          {/* Десктоп */}
+          <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0 min-w-0">
+            <Suspense
+              fallback={<div className="flex-1 animate-pulse bg-slate-50" />}
+            >
+              <VirtualDesktopTable
+                schools={filteredSchools}
+                searchQuery={searchQuery}
+                onDelete={handleDeleteSchool}
+                stages={PIPELINE_STAGES}
+                onEndReached={handleLoadMore}
+              />
+            </Suspense>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/tests/component/calendar/CalendarComponents.test.tsx
+
+```
+import { describe, it, expect, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import CalendarSkeleton from "../../../features/calendar/components/CalendarSkeleton";
+import CalendarHeader from "../../../features/calendar/components/CalendarHeader";
+import EventTooltip from "../../../features/calendar/components/EventTooltip";
+import type { Project, City } from "../../../types";
+
+describe("CalendarSkeleton", () => {
+  it("рендерить skeleton без помилок", () => {
+    const { container } = render(<CalendarSkeleton />);
+    expect(container.querySelector(".animate-pulse")).toBeInTheDocument();
+  });
+
+  it("містить 35 клітинок-скелетів", () => {
+    const { container } = render(<CalendarSkeleton />);
+    const cells = container.querySelectorAll(".min-h-\\[80px\\]");
+    expect(cells.length).toBeGreaterThanOrEqual(30);
+  });
+});
+
+describe("CalendarHeader", () => {
+  const projects: Project[] = [
+    { id: "p1", name: "Проєкт A", color: "blue" },
+    { id: "p2", name: "Проєкт B", color: "emerald" },
+  ];
+  const cities: City[] = [
+    { id: "c1", name: "Київ" },
+    { id: "c2", name: "Львів" },
+  ];
+  const defaultProps = {
+    projects,
+    filterCityId: "ALL",
+    setFilterCityId: vi.fn(),
+    cities,
+    userRole: "MANAGER",
+  };
+
+  it("рендерить заголовок Календар подій", () => {
+    render(<CalendarHeader {...defaultProps} />);
+    expect(screen.getByText("Календар подій")).toBeInTheDocument();
+  });
+
+  it("рендерить бейджі проєктів", () => {
+    render(<CalendarHeader {...defaultProps} />);
+    expect(screen.getByText("Проєкт A")).toBeInTheDocument();
+    expect(screen.getByText("Проєкт B")).toBeInTheDocument();
+  });
+
+  it("не показує city-select для MANAGER", () => {
+    render(<CalendarHeader {...defaultProps} userRole="MANAGER" />);
+    expect(screen.queryByText("Місто:")).not.toBeInTheDocument();
+  });
+
+  it("показує city-select для SUPERADMIN", () => {
+    render(<CalendarHeader {...defaultProps} userRole="SUPERADMIN" />);
+    expect(screen.getByText("Місто:")).toBeInTheDocument();
+    expect(screen.getByText("🌍 Всі міста")).toBeInTheDocument();
+  });
+});
+
+describe("EventTooltip", () => {
+  it("рендерить назву школи та проєкт", () => {
+    const event = {
+      id: "e1",
+      project: "Проєкт A",
+      time: "10:00",
+      school: { id: "s1", name: "Школа №1", type: "school" },
+      crew: { id: "c1", name: "Екіпаж 1", cityId: "city-1" },
+    } as any;
+
+    render(<EventTooltip event={event} />);
+    expect(screen.getByText("Школа №1")).toBeInTheDocument();
+    expect(screen.getByText(/Проєкт A/)).toBeInTheDocument();
+    expect(screen.getByText("10:00")).toBeInTheDocument();
+  });
+
+  it("рендерить fallback при відсутніх даних", () => {
+    const event = { id: "e2", project: "Проєкт B", time: "" } as any;
+
+    render(<EventTooltip event={event} />);
+    expect(screen.getByText("Невідомий заклад")).toBeInTheDocument();
+    expect(screen.getByText("—")).toBeInTheDocument();
+  });
+});
+
+```
+
+# FILE: apps/frontend/src/tests/component/ConfirmDialog.test.tsx
+
+```
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
+
+describe("ConfirmDialog", () => {
+  it("не рендериться, якщо isOpen=false", () => {
+    render(
+      <ConfirmDialog
+        isOpen={false}
+        title="Видалити"
+        message="Справді?"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText("Видалити")).not.toBeInTheDocument();
+    expect(screen.queryByText("Справді?")).not.toBeInTheDocument();
+  });
+
+  it("рендериться, коли isOpen=true", () => {
+    render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Видалити"
+        message="Справді?"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Видалити")).toBeInTheDocument();
+    expect(screen.getByText("Справді?")).toBeInTheDocument();
+  });
+
+  it("кнопка Підтвердити викликає onConfirm", () => {
+    const onConfirm = vi.fn();
+    render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Видалити"
+        message="Справді?"
+        onConfirm={onConfirm}
+        onCancel={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByText("Підтвердити"));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it("кнопка Скасувати викликає onCancel", () => {
+    const onCancel = vi.fn();
+    render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Видалити"
+        message="Справді?"
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+    fireEvent.click(screen.getByText("Скасувати"));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("клік на backdrop викликає onCancel", () => {
+    const onCancel = vi.fn();
+    const { container } = render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Видалити"
+        message="Справді?"
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+    const backdrop = container.querySelector(".fixed.inset-0")!;
+    fireEvent.click(backdrop);
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("клік всередині модалки не викликає onCancel", () => {
+    const onCancel = vi.fn();
+    render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Видалити"
+        message="Справді?"
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+    fireEvent.click(screen.getByText("Видалити"));
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it("показує іконку Trash2 для variant=danger", () => {
+    const { container } = render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Видалити"
+        message="Справді?"
+        variant="danger"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(container.innerHTML).toContain("lucide-trash2");
+  });
+
+  it("показує іконку AlertTriangle для variant=warning", () => {
+    const { container } = render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Увага"
+        message="Перевірте дані"
+        variant="warning"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(container.innerHTML).toContain("lucide-triangle-alert");
+  });
+
+  it("використовує confirmLabel за замовчуванням", () => {
+    render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Видалити"
+        message="Справді?"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Підтвердити")).toBeInTheDocument();
+  });
+
+  it("використовує кастомний confirmLabel", () => {
+    render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Видалити"
+        message="Справді?"
+        confirmLabel="Так, видалити"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Так, видалити")).toBeInTheDocument();
+  });
+});
 
 ```
 

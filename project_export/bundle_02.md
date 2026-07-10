@@ -1,13 +1,3 @@
-# FILE: apps/backend/src/projects/dto/update-project.dto.ts
-
-```
-import { PartialType } from '@nestjs/swagger';
-import { CreateProjectDto } from './create-project.dto';
-
-export class UpdateProjectDto extends PartialType(CreateProjectDto) {}
-
-```
-
 # FILE: apps/backend/src/projects/projects.controller.ts
 
 ```
@@ -393,6 +383,7 @@ import {
   Patch,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
@@ -480,8 +471,11 @@ export class ReportsController {
   @ApiOperation({ summary: 'Список поданих звітів (для MANAGER)' })
   @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   @Get('submitted')
-  findSubmitted() {
-    return this.reportsService.findSubmitted();
+  findSubmitted(@Query('page') page?: string, @Query('take') take?: string) {
+    return this.reportsService.findSubmitted(
+      page ? Number(page) : 1,
+      take ? Number(take) : 20,
+    );
   }
 }
 
@@ -494,9 +488,10 @@ import { Module } from '@nestjs/common';
 import { ReportsController } from './reports.controller';
 import { ReportsService } from './reports.service';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { TelegramModule } from '../telegram/telegram.module';
 
 @Module({
-  imports: [NotificationsModule],
+  imports: [NotificationsModule, TelegramModule],
   controllers: [ReportsController],
   providers: [ReportsService],
 })
@@ -516,6 +511,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 import { NotificationsService } from '../notifications/notifications.service';
+import { TelegramService } from '../telegram/telegram.service';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { RevisionDto } from './dto/revision.dto';
@@ -536,6 +532,7 @@ export class ReportsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
+    private readonly telegramService: TelegramService,
   ) {}
 
   private async assertCrewMember(
@@ -649,16 +646,58 @@ export class ReportsService {
   async submit(id: string, user: JwtUser) {
     const report = await this.prisma.eventReport.findUnique({
       where: { id },
-      include: { event: { include: { crew: true } } },
+      include: {
+        event: {
+          include: {
+            crew: true,
+            school: { select: { name: true } },
+            city: {
+              include: {
+                manager: { select: { telegramChatId: true, telegramId: true } },
+              },
+            },
+          },
+        },
+      },
     });
     if (!report) throw new NotFoundException('report.notFound');
     this.assertTransition(report.status, 'SUBMITTED');
     await this.assertReportOwner(id, user.sub, report.eventId);
 
-    return this.prisma.eventReport.update({
+    const updated = await this.prisma.eventReport.update({
       where: { id },
       data: { status: 'SUBMITTED', submittedAt: new Date() },
     });
+
+    const manager = report.event.city.manager;
+    const chatId =
+      manager?.telegramChatId ||
+      (manager?.telegramId && /^\d+$/.test(manager.telegramId)
+        ? manager.telegramId
+        : null);
+    if (chatId) {
+      const schoolName = report.event.school?.name || 'Невідома школа';
+      this.telegramService
+        .sendMessage(
+          chatId,
+          `🚨 Новий звіт потребує затвердження: ${schoolName}`,
+        )
+        .catch(() => {});
+    }
+
+    const notifyUserId =
+      report.event.responsibleId || report.event.city.managerId;
+    if (notifyUserId) {
+      this.notificationsService
+        .create(notifyUserId, 'REPORT_SUBMITTED', {
+          eventId: report.eventId,
+          schoolName: report.event.school?.name,
+          title: 'Звіт надіслано на затвердження',
+        })
+        .catch(() => {});
+    }
+
+    return updated;
   }
 
   async approve(id: string, user: JwtUser) {
@@ -692,7 +731,8 @@ export class ReportsService {
       }),
     ]);
 
-    const notifyUserId = report.event.responsibleId || report.event.city.managerId;
+    const notifyUserId =
+      report.event.responsibleId || report.event.city.managerId;
     if (notifyUserId) {
       this.notificationsService
         .create(notifyUserId, 'REPORT_APPROVED', {
@@ -761,27 +801,34 @@ export class ReportsService {
     });
   }
 
-  async findSubmitted() {
-    return this.prisma.eventReport.findMany({
-      where: { status: 'SUBMITTED' },
-      include: {
-        expenseItems: true,
-        salaryRecords: true,
-        event: {
-          include: {
-            school: { select: { name: true, type: true } },
-            city: { select: { name: true } },
-            crew: {
-              include: {
-                host: { select: { id: true, name: true } },
-                driver: { select: { id: true, name: true } },
+  async findSubmitted(page = 1, take = 20) {
+    const skip = (page - 1) * take;
+    const [items, total] = await Promise.all([
+      this.prisma.eventReport.findMany({
+        where: { status: 'SUBMITTED' },
+        include: {
+          expenseItems: true,
+          salaryRecords: true,
+          event: {
+            include: {
+              school: { select: { name: true, type: true } },
+              city: { select: { name: true } },
+              crew: {
+                include: {
+                  host: { select: { id: true, name: true } },
+                  driver: { select: { id: true, name: true } },
+                },
               },
             },
           },
         },
-      },
-      orderBy: { submittedAt: 'desc' },
-    });
+        orderBy: { submittedAt: 'desc' },
+        skip,
+        take,
+      }),
+      this.prisma.eventReport.count({ where: { status: 'SUBMITTED' } }),
+    ]);
+    return { items, total, page, pageCount: Math.ceil(total / take) };
   }
 }
 
@@ -3965,19 +4012,18 @@ export class SchoolsService {
 
     const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
       SELECT s.*, c.id as city_id, c.name as city_name, latest.status as "latestStatus",
-        EXISTS (
-          SELECT 1 FROM "Event" e
-          WHERE e."schoolId" = s.id AND e.status::text IN (${Prisma.join(PLANNED_STAGES)})
-        ) as "isPlanned",
-        EXISTS (
-          SELECT 1 FROM "Event" e
-          WHERE e."schoolId" = s.id AND e.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})
-        ) as "isInProgress",
-        EXISTS (
-          SELECT 1 FROM "Event" e
-          WHERE e."schoolId" = s.id AND e.status::text = 'RE_SALE'
-        ) as "isDone"
+        COALESCE(ef."isPlanned", false) as "isPlanned",
+        COALESCE(ef."isInProgress", false) as "isInProgress",
+        COALESCE(ef."isDone", false) as "isDone"
       ${baseFrom}
+      LEFT JOIN LATERAL (
+        SELECT
+          bool_or(e.status::text IN (${Prisma.join(PLANNED_STAGES)})) as "isPlanned",
+          bool_or(e.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})) as "isInProgress",
+          bool_or(e.status::text = 'RE_SALE') as "isDone"
+        FROM "Event" e
+        WHERE e."schoolId" = s.id
+      ) ef ON true
       ${whereClause}
       ORDER BY s."createdAt" DESC
       OFFSET ${skip} LIMIT ${take}
@@ -4027,31 +4073,19 @@ export class SchoolsService {
         { new: bigint; planned: bigint; inProgress: bigint; done: bigint }[]
       >(Prisma.sql`
         SELECT
-          COUNT(*) FILTER (
-            WHERE NOT EXISTS (
-              SELECT 1 FROM "Event" e
-              WHERE e."schoolId" = s.id AND e.status::text NOT IN ('INTERESTED','PRE_APPROVAL')
-            )
-          )::bigint as new,
-          COUNT(*) FILTER (
-            WHERE EXISTS (
-              SELECT 1 FROM "Event" e
-              WHERE e."schoolId" = s.id AND e.status::text IN (${Prisma.join(PLANNED_STAGES)})
-            )
-          )::bigint as planned,
-          COUNT(*) FILTER (
-            WHERE EXISTS (
-              SELECT 1 FROM "Event" e
-              WHERE e."schoolId" = s.id AND e.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})
-            )
-          )::bigint as "inProgress",
-          COUNT(*) FILTER (
-            WHERE EXISTS (
-              SELECT 1 FROM "Event" e
-              WHERE e."schoolId" = s.id AND e.status::text = 'RE_SALE'
-            )
-          )::bigint as done
+          COUNT(*) FILTER (WHERE NOT COALESCE(ef."isPlanned", false) AND NOT COALESCE(ef."isInProgress", false) AND NOT COALESCE(ef."isDone", false))::bigint as new,
+          COUNT(*) FILTER (WHERE COALESCE(ef."isPlanned", false))::bigint as planned,
+          COUNT(*) FILTER (WHERE COALESCE(ef."isInProgress", false))::bigint as "inProgress",
+          COUNT(*) FILTER (WHERE COALESCE(ef."isDone", false))::bigint as done
         FROM "School" s
+        LEFT JOIN LATERAL (
+          SELECT
+            bool_or(e.status::text IN (${Prisma.join(PLANNED_STAGES)})) as "isPlanned",
+            bool_or(e.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})) as "isInProgress",
+            bool_or(e.status::text = 'RE_SALE') as "isDone"
+          FROM "Event" e
+          WHERE e."schoolId" = s.id
+        ) ef ON true
         ${baseWhere}
       `),
       this.prisma.$queryRaw<{ size: string; count: bigint }[]>(Prisma.sql`
@@ -5602,6 +5636,7 @@ describe('Events API (contract)', () => {
 
 ```
 {
+  "reporters": ["default", ["@testomatio/reporter/jest", { "apiKey": "process.env.TESTOMATIO" }]],
   "moduleFileExtensions": ["js", "json", "ts"],
   "rootDir": ".",
   "testEnvironment": "node",
@@ -5609,10 +5644,12 @@ describe('Events API (contract)', () => {
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
+  
   "testTimeout": 30000,
   "moduleNameMapper": {
     "^src/(.*)$": "<rootDir>/../src/$1"
   }
+  
 }
 
 ```

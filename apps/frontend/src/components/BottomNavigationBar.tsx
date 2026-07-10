@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { MoreHorizontal } from "lucide-react";
@@ -37,10 +37,12 @@ export default function BottomNavigationBar() {
     [tabs, location.pathname],
   );
 
+  const isMoreActive = activeIndex === -1;
+
   return (
     <>
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border flex items-center justify-around px-2 pb-safe pt-1 h-16 overflow-visible"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border flex items-center justify-around px-1 pb-safe h-14 overflow-visible"
         role="tablist"
         aria-label="Основна навігація"
       >
@@ -54,40 +56,62 @@ export default function BottomNavigationBar() {
               role="tab"
               aria-selected={isActive}
               aria-label={tab.label}
-              className="relative flex items-center justify-center min-w-[48px] min-h-[48px] flex-1 transition-colors"
+              className="relative flex items-center justify-center min-w-[44px] min-h-[44px] flex-1"
             >
               <AnimatePresence>
                 {isActive && (
                   <motion.div
                     key="active-pill"
-                    initial={{ opacity: 0, scale: 0.8 }}
+                    initial={{ opacity: 0, scale: 0.7 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{ duration: 0.12, ease: "easeOut" }}
-                    className="absolute inset-0 bg-brand rounded-full shadow-lg shadow-brand/30"
-                    style={{ translateY: "-6px", willChange: "transform" }}
+                    exit={{ opacity: 0, scale: 0.7 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    className="absolute inset-x-1 inset-y-1 bg-brand/10 rounded-control"
                   />
                 )}
               </AnimatePresence>
-              <div className="relative z-10 flex items-center justify-center">
-                <Icon className={isActive ? "w-7 h-7" : "w-7 h-7 text-content-muted"} />
-              </div>
-              <span className="sr-only">{tab.label}</span>
+              <motion.div
+                className="relative z-10 flex flex-col items-center justify-center gap-0.5"
+                whileTap={{ scale: 0.9 }}
+                transition={{ duration: 0.1 }}
+              >
+                <Icon className={`w-5 h-5 ${isActive ? "text-brand" : "text-content-muted"}`} />
+                <span className={`text-2xs font-medium ${isActive ? "text-brand" : "text-content-muted"}`}>
+                  {tab.label}
+                </span>
+              </motion.div>
             </Link>
           );
         })}
 
         <button
           onClick={() => setSheetOpen(true)}
-          className="relative flex items-center justify-center min-w-[48px] min-h-[48px] flex-1 transition-colors"
+          className="relative flex items-center justify-center min-w-[44px] min-h-[44px] flex-1"
           aria-label="Більше розділів"
           role="tab"
+          aria-selected={isMoreActive}
         >
+          <AnimatePresence>
+            {isMoreActive && (
+              <motion.div
+                key="active-pill"
+                initial={{ opacity: 0, scale: 0.7 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.7 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                className="absolute inset-x-1 inset-y-1 bg-brand/10 rounded-control"
+              />
+            )}
+          </AnimatePresence>
           <motion.div
-            className="relative z-10 flex items-center justify-center"
+            className="relative z-10 flex flex-col items-center justify-center gap-0.5"
             whileTap={{ scale: 0.9 }}
+            transition={{ duration: 0.1 }}
           >
-            <MoreHorizontal className="w-7 h-7 text-content-muted" />
+            <MoreHorizontal className={`w-5 h-5 ${isMoreActive ? "text-brand" : "text-content-muted"}`} />
+            <span className={`text-2xs font-medium ${isMoreActive ? "text-brand" : "text-content-muted"}`}>
+              Більше
+            </span>
           </motion.div>
         </button>
       </nav>

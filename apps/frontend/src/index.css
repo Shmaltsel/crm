@@ -10,6 +10,30 @@
   }
 }
 
+@layer components {
+  .mobile-card {
+    @apply bg-surface rounded-card shadow-card border border-border p-4;
+  }
+  .mobile-section-title {
+    @apply text-xl font-bold text-content-primary;
+  }
+  .mobile-stat-value {
+    @apply text-2xl font-bold text-content-primary;
+  }
+  .mobile-stat-label {
+    @apply text-xs font-medium text-content-muted;
+  }
+  .mobile-kpi-card {
+    @apply bg-surface rounded-card shadow-card border border-border p-3 flex flex-col justify-between;
+  }
+  .fab {
+    @apply md:hidden fixed z-40 w-14 h-14 rounded-full bg-brand text-white
+           shadow-lg active:scale-95 transition-transform duration-fast
+           flex items-center justify-center;
+    bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 transparent;

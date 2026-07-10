@@ -233,7 +233,6 @@ const EventReport = lazyWithRetry(() => import("./pages/EventReport"));
 const Cities = lazyWithRetry(() => import("./pages/Cities"));
 const SchoolProfile = lazyWithRetry(() => import("./pages/SchoolProfile"));
 const ProjectProfile = lazyWithRetry(() => import("./pages/ProjectProfile"));
-const AuditLog = lazyWithRetry(() => import("./pages/AuditLog"));
 const ReportsReview = lazyWithRetry(() => import("./features/reports/pages/ReportsReviewPage"));
 const Inventory = lazyWithRetry(() => import("./pages/Inventory"));
 const CityLeaderboard = lazyWithRetry(() => import("./pages/CityLeaderboard"));
@@ -377,17 +376,6 @@ function AppRoutes() {
               }
             />
 
-            <Route
-              path="audit-log"
-              element={
-                <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER"]}>
-                  <Suspense fallback={<PageLoader />}>
-                    <AuditLog />
-                  </Suspense>
-                </ProtectedRoute>
-              }
-            />
-
           <Route
             path="kindergartens"
             element={
@@ -524,7 +512,7 @@ export default function AddressLink({ address, className }: AddressLinkProps) {
 # FILE: apps/frontend/src/components/BottomNavigationBar.tsx
 
 ```
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { MoreHorizontal } from "lucide-react";
@@ -541,10 +529,16 @@ export function useFilteredTabs(): NavTab[] {
 
 export function useBottomTabs(): NavTab[] {
   const { user } = useAuth();
-  return useMemo(
-    () => NAV_TABS.filter((t) => t.bottomNav && hasRole(user?.role, t.roles)),
-    [user],
-  );
+  return useMemo(() => {
+    const role = user?.role;
+    const allTabs = NAV_TABS.filter((t) => hasRole(role, t.roles));
+    if (role === "DRIVER" || role === "HOST") {
+      const keys = ["/schools", "/calendar", "/finance"];
+      return allTabs.filter((t) => keys.includes(t.to));
+    }
+    const keys = ["/dashboard", "/schools", "/calendar"];
+    return allTabs.filter((t) => keys.includes(t.to));
+  }, [user]);
 }
 
 export default function BottomNavigationBar() {
@@ -576,20 +570,22 @@ export default function BottomNavigationBar() {
               aria-label={tab.label}
               className="relative flex items-center justify-center min-w-[48px] min-h-[48px] flex-1 transition-colors"
             >
-              {isActive && (
-                <motion.div
-                  layoutId="active-tab-pill"
-                  className="absolute inset-0 bg-brand rounded-full shadow-lg shadow-brand/30"
-                  style={{ translateY: "-6px", scale: 1.08 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-              )}
-              <motion.div
-                className="relative z-10 flex items-center justify-center"
-                whileTap={{ scale: 0.9 }}
-              >
+              <AnimatePresence>
+                {isActive && (
+                  <motion.div
+                    key="active-pill"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.12, ease: "easeOut" }}
+                    className="absolute inset-0 bg-brand rounded-full shadow-lg shadow-brand/30"
+                    style={{ translateY: "-6px", willChange: "transform" }}
+                  />
+                )}
+              </AnimatePresence>
+              <div className="relative z-10 flex items-center justify-center">
                 <Icon className={isActive ? "w-7 h-7" : "w-7 h-7 text-content-muted"} />
-              </motion.div>
+              </div>
               <span className="sr-only">{tab.label}</span>
             </Link>
           );
@@ -616,7 +612,6 @@ export default function BottomNavigationBar() {
     </>
   );
 }
-
 ```
 
 # FILE: apps/frontend/src/components/calendar/DayOffModal.tsx
@@ -3963,6 +3958,64 @@ export default class ErrorBoundary extends React.Component<Props, State> {
 
 ```
 
+# FILE: apps/frontend/src/components/establishments/EstablishmentsTopNav.tsx
+
+```
+import { motion } from "framer-motion";
+import { School, Baby } from "lucide-react";
+
+interface Props {
+  activeTab: string;
+  onChange: (id: string) => void;
+}
+
+const ESTABLISHMENT_TABS = [
+  { id: "school", icon: School, label: "Школи" },
+  { id: "kindergarten", icon: Baby, label: "Садочки" },
+];
+
+export default function EstablishmentsTopNav({ activeTab, onChange }: Props) {
+  return (
+    <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-100">
+      <nav
+        className="flex px-4 md:px-8"
+        role="tablist"
+        aria-label="Вкладки закладів"
+      >
+        {ESTABLISHMENT_TABS.map((tab) => {
+          const isActive = tab.id === activeTab;
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => onChange(tab.id)}
+              role="tab"
+              aria-selected={isActive}
+              className={`relative flex items-center gap-2 px-4 py-3.5 text-sm font-medium transition-colors ${
+                isActive
+                  ? "text-brand"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label}
+              {isActive && (
+                <motion.div
+                  layoutId="establishment-active-tab"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-full"
+                  transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                />
+              )}
+            </button>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
+
+```
+
 # FILE: apps/frontend/src/components/finance/FinanceCharts.tsx
 
 ```
@@ -5102,9 +5155,9 @@ export default function IssueCarousel() {
 # FILE: apps/frontend/src/components/Layout.tsx
 
 ```
-import { Link, useOutlet, useLocation, useNavigate } from "react-router-dom";
-import { useState, useRef, useMemo, useCallback, useEffect, Suspense } from "react";
-import { AnimatePresence, motion, MotionConfig, useMotionValue, useTransform, animate, type PanInfo } from "framer-motion";
+import { Link, useOutlet, useLocation } from "react-router-dom";
+import { useState, useCallback, useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -5121,10 +5174,7 @@ import {
 import BottomNavigationBar from "./BottomNavigationBar";
 import MobileTopNav from "./MobileTopNav";
 import NotificationBell from "./NotificationBell";
-import { NAV_TABS } from "../constants/navTabs";
-import { TAB_PAGE_COMPONENTS, rawImportFactories } from "../pages/lazyTabPages";
 import { hasRole } from "../utils/roles";
-import { SkeletonCard } from "./ui/Skeleton";
 
 function NavLink({
   to,
@@ -5156,136 +5206,31 @@ function NavLink({
   );
 }
 
-const pageTransitionDesktop = {
+const pageTransition = {
   type: "spring",
   stiffness: 300,
   damping: 30,
 } as const;
 
-const desktopVariants = {
+const pageVariants = {
   initial: { opacity: 0 },
   animate: { opacity: 1 },
   exit: { opacity: 0 },
 };
 
-const PageLoader = () => (
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-4 md:p-8">
-    <SkeletonCard />
-    <SkeletonCard />
-    <SkeletonCard />
-  </div>
-);
-
-function MobileDragView({
-  x,
-  winWidth,
-  dragBlockedRef,
-  shouldIgnoreSwipe,
-  handleDragEnd,
-  outlet,
-  peekDir,
-  setPeekDir,
-  tabPaths,
-  currentIdx,
-}: {
-  x: ReturnType<typeof useMotionValue<number>>;
-  winWidth: number;
-  dragBlockedRef: React.MutableRefObject<boolean>;
-  shouldIgnoreSwipe: (target: EventTarget | null) => boolean;
-  handleDragEnd: (event: PointerEvent, info: PanInfo) => void;
-  outlet: React.ReactNode;
-  peekDir: 1 | -1 | null;
-  setPeekDir: (dir: 1 | -1 | null) => void;
-  tabPaths: { to: string }[];
-  currentIdx: number;
-}) {
-  const peekTab = peekDir && currentIdx !== -1 ? tabPaths[currentIdx + peekDir] : null;
-  const peekTabComponent = peekTab ? TAB_PAGE_COMPONENTS[peekTab.to] : null;
-
-  const peekX = useTransform(x, (v: number) => {
-    if (peekDir) return peekDir * winWidth + v;
-    return winWidth;
-  });
-
-  if (currentIdx === -1) {
-    return <div className="relative min-h-full">{outlet}</div>;
-  }
-
-  return (
-    <div className="relative min-h-full">
-      {peekTabComponent && (
-        <motion.div
-          className="absolute inset-0 z-0"
-          style={{ x: peekX }}
-        >
-          <Suspense fallback={<PageLoader />}>
-            <peekTabComponent isPeek />
-          </Suspense>
-        </motion.div>
-      )}
-      <motion.div
-        className="absolute inset-0 z-10"
-        drag="x"
-        dragConstraints={{ left: -winWidth, right: winWidth }}
-        dragElastic={0.5}
-        dragMomentum={false}
-        onDragStart={(e) => {
-          dragBlockedRef.current = shouldIgnoreSwipe(e.target as HTMLElement);
-        }}
-        onDrag={(_, info) => {
-          if (dragBlockedRef.current) return;
-          if (peekDir === null && Math.abs(info.offset.x) > 12) {
-            const dir: 1 | -1 = info.offset.x < 0 ? 1 : -1;
-            const targetIdx = currentIdx + dir;
-            if (targetIdx >= 0 && targetIdx < tabPaths.length) {
-              setPeekDir(dir);
-            }
-          }
-        }}
-        onDragEnd={handleDragEnd}
-        style={{ x }}
-      >
-        <div className="h-full overflow-y-auto" style={{ touchAction: "pan-y" as React.CSSProperties["touchAction"] }}>
-          {outlet}
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
 export default function Layout() {
   const outlet = useOutlet();
   const location = useLocation();
-  const navigate = useNavigate();
-  const dragBlockedRef = useRef(false);
-  const x = useMotionValue(0);
-  const [winWidth, setWinWidth] = useState(() =>
-    typeof window !== "undefined" ? window.innerWidth : 360,
-  );
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches,
   );
-  const [peekDir, setPeekDir] = useState<1 | -1 | null>(null);
 
   const { user, logout } = useAuth();
   const { selectedCity } = useSelectedCity();
 
-  const tabPaths = useMemo(
-    () => NAV_TABS.filter(
-      (t) => t.bottomNav && t.swipeable !== false && hasRole(user?.role, t.roles),
-    ),
-    [user],
-  );
-
   const handleLogout = useCallback(async () => {
     await logout();
   }, [logout]);
-
-  useEffect(() => {
-    const handleResize = () => setWinWidth(window.innerWidth);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -5294,196 +5239,95 @@ export default function Layout() {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  useEffect(() => {
-    const currentIdx = tabPaths.findIndex((t) =>
-      location.pathname.startsWith(t.to),
-    );
-    if (currentIdx === -1) return;
-
-    const preload = (idx: number) => {
-      const tab = tabPaths[idx];
-      if (!tab) return;
-      const factory = rawImportFactories[tab.to];
-      if (factory) factory().catch(() => {});
-    };
-
-    const doPreload = () => {
-      preload(currentIdx - 1);
-      preload(currentIdx + 1);
-    };
-
-    if ("requestIdleCallback" in window) {
-      const id = requestIdleCallback(doPreload, { timeout: 2000 });
-      return () => cancelIdleCallback(id);
-    } else {
-      const timer = setTimeout(doPreload, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [location.pathname, tabPaths]);
-
-  const shouldIgnoreSwipe = useCallback((target: EventTarget | null): boolean => {
-    if (!target || !(target instanceof HTMLElement)) return true;
-    if (target.closest("[data-no-swipe]")) return true;
-    if (target.closest('[style*="overflow-x: auto"]')) return true;
-    if (target.closest('[style*="overflow-x: scroll"]')) return true;
-    const el = target.closest(".overflow-x-auto, .overflow-x-scroll");
-    if (el) {
-      const e = el as HTMLElement;
-      if (e.scrollWidth > e.clientWidth) return true;
-    }
-    return false;
-  }, []);
-
-  useEffect(() => {
-    x.jump(0);
-  }, [location.pathname, x]);
-
-  const handleDragEnd = useCallback(
-    (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-      setPeekDir(null);
-      if (dragBlockedRef.current) {
-        dragBlockedRef.current = false;
-        animate(x, 0, { type: "spring", stiffness: 400, damping: 35 });
-        return;
-      }
-      const dx = info.offset.x;
-      const velocity = info.velocity.x;
-      if (Math.abs(dx) < 28 && Math.abs(velocity) < 500) {
-        animate(x, 0, { type: "spring", stiffness: 400, damping: 35 });
-        return;
-      }
-      const dir: 1 | -1 = dx < 0 ? 1 : -1;
-      const currentIdx = tabPaths.findIndex((t) =>
-        location.pathname.startsWith(t.to),
-      );
-      if (currentIdx === -1) return;
-      const targetIdx = currentIdx + dir;
-      if (targetIdx < 0 || targetIdx >= tabPaths.length) {
-        animate(x, 0, { type: "spring", stiffness: 400, damping: 35 });
-        return;
-      }
-      const commitX = dir * -winWidth;
-      animate(x, commitX, {
-        type: "spring",
-        velocity: -velocity,
-        stiffness: 300,
-        damping: 30,
-      }).then(() => {
-        x.jump(0);
-        navigate(tabPaths[targetIdx].to);
-      });
-    },
-    [navigate, tabPaths, location.pathname, winWidth, x],
-  );
-
   return (
-    <MotionConfig reducedMotion="user">
-      <div className="flex h-screen bg-surface-subtle font-sans">
-        <MobileTopNav />
+    <div className="flex h-screen bg-surface-subtle font-sans">
+      <MobileTopNav />
 
-        <aside
-          className="hidden md:flex md:relative w-64 flex-col bg-[#0B1527] text-white shrink-0"
-        >
-          <div className="p-6 flex flex-col items-center border-b border-slate-700/50">
-            <div className="w-16 h-16 bg-blue-500 rounded-full mb-3 flex items-center justify-center">
-              <GraduationCap className="w-8 h-8" />
-            </div>
-            <h2 className="text-sm font-semibold tracking-wider">СВІТЛО ЗНАНЬ</h2>
-            <p className="text-xs text-blue-300 mt-1 tracking-wide flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
-              {selectedCity.name}
-            </p>
+      <aside className="hidden md:flex md:relative w-64 flex-col bg-[#0B1527] text-white shrink-0">
+        <div className="p-6 flex flex-col items-center border-b border-slate-700/50">
+          <div className="w-16 h-16 bg-blue-500 rounded-full mb-3 flex items-center justify-center">
+            <GraduationCap className="w-8 h-8" />
           </div>
+          <h2 className="text-sm font-semibold tracking-wider">СВІТЛО ЗНАНЬ</h2>
+          <p className="text-xs text-blue-300 mt-1 tracking-wide flex items-center gap-1">
+            <MapPin className="w-3 h-3" />
+            {selectedCity.name}
+          </p>
+        </div>
 
-          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-            {hasRole(user?.role, ["SUPERADMIN", "MANAGER"]) && (
-              <NavLink to="/dashboard" icon={Home} label="Дашборд" currentPath={location.pathname} />
-            )}
-            {hasRole(user?.role, ["SUPERADMIN", "MANAGER", "OWNER"]) && (
-              <NavLink to="/cities" icon={MapPin} label="Міста" currentPath={location.pathname} />
-            )}
-            <NavLink to="/schools" icon={School} label="Школи" currentPath={location.pathname} />
-            <NavLink to="/kindergartens" icon={Baby} label="Садочки" currentPath={location.pathname} />
-            <NavLink to="/finance" icon={Wallet} label="Фінанси" currentPath={location.pathname} />
-            <NavLink to="/calendar" icon={Calendar} label="Календар" currentPath={location.pathname} />
-            {hasRole(user?.role, ["SUPERADMIN"]) && (
-              <NavLink to="/employees" icon={Users} label="Працівники" currentPath={location.pathname} />
-            )}
-          </nav>
-
-          <div className="p-4 border-t border-slate-700/50 pb-8 md:pb-4">
-            <div className="flex items-center px-4 py-2 text-slate-300 justify-between">
-              <div className="flex items-center min-w-0">
-                <div className="w-8 h-8 bg-slate-600 rounded-full mr-3 flex items-center justify-center text-xs font-bold shrink-0">
-                  {user?.name?.charAt(0) ?? "?"}
-                </div>
-                <div className="text-sm truncate min-w-0">
-                  <p className="font-medium text-white truncate">{user?.name ?? "Користувач"}</p>
-                  <p className="text-xs text-slate-400 truncate">{user?.role ?? ""}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1">
-                <NotificationBell />
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-colors text-xs font-medium shrink-0 px-2.5 py-2 rounded-lg"
-                  title="Вийти"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        <main
-          className={`flex-1 relative w-full min-w-0 pb-16 md:pb-0 ${
-            isMobile ? "" : "overflow-y-auto"
-          }`}
-          style={{ marginTop: isMobile ? "calc(4rem + env(safe-area-inset-top, 0px))" : undefined }}
-        >
-          {isMobile ? (
-            <MobileDragView
-              x={x}
-              winWidth={winWidth}
-              dragBlockedRef={dragBlockedRef}
-              shouldIgnoreSwipe={shouldIgnoreSwipe}
-              handleDragEnd={handleDragEnd}
-              outlet={outlet}
-              peekDir={peekDir}
-              setPeekDir={setPeekDir}
-              tabPaths={tabPaths}
-              currentIdx={tabPaths.findIndex((t) => location.pathname.startsWith(t.to))}
-            />
-          ) : (
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={location.pathname}
-                variants={desktopVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={pageTransitionDesktop}
-                style={{ willChange: "transform, opacity" }}
-              >
-                {outlet}
-              </motion.div>
-            </AnimatePresence>
+        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+          {hasRole(user?.role, ["SUPERADMIN", "MANAGER"]) && (
+            <NavLink to="/dashboard" icon={Home} label="Дашборд" currentPath={location.pathname} />
           )}
-        </main>
+          {hasRole(user?.role, ["SUPERADMIN", "MANAGER", "OWNER"]) && (
+            <NavLink to="/cities" icon={MapPin} label="Міста" currentPath={location.pathname} />
+          )}
+          <NavLink to="/schools" icon={School} label="Школи" currentPath={location.pathname} />
+          <NavLink to="/kindergartens" icon={Baby} label="Садочки" currentPath={location.pathname} />
+          <NavLink to="/finance" icon={Wallet} label="Фінанси" currentPath={location.pathname} />
+          <NavLink to="/calendar" icon={Calendar} label="Календар" currentPath={location.pathname} />
+          {hasRole(user?.role, ["SUPERADMIN"]) && (
+            <NavLink to="/employees" icon={Users} label="Працівники" currentPath={location.pathname} />
+          )}
+        </nav>
 
-        <BottomNavigationBar />
-      </div>
-    </MotionConfig>
+        <div className="p-4 border-t border-slate-700/50 pb-8 md:pb-4">
+          <div className="flex items-center px-4 py-2 text-slate-300 justify-between">
+            <div className="flex items-center min-w-0">
+              <div className="w-8 h-8 bg-slate-600 rounded-full mr-3 flex items-center justify-center text-xs font-bold shrink-0">
+                {user?.name?.charAt(0) ?? "?"}
+              </div>
+              <div className="text-sm truncate min-w-0">
+                <p className="font-medium text-white truncate">{user?.name ?? "Користувач"}</p>
+                <p className="text-xs text-slate-400 truncate">{user?.role ?? ""}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <NotificationBell />
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-colors text-xs font-medium shrink-0 px-2.5 py-2 rounded-lg"
+                title="Вийти"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main
+        className={`flex-1 relative w-full min-w-0 md:pb-0 ${isMobile ? "" : "overflow-y-auto"}`}
+        style={{
+          marginTop: isMobile ? "calc(4rem + env(safe-area-inset-top, 0px))" : undefined,
+          paddingBottom: isMobile ? "calc(4rem + env(safe-area-inset-bottom, 0px))" : undefined,
+        }}
+      >
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={pageTransition}
+            style={{ willChange: "opacity" }}
+          >
+            {outlet}
+          </motion.div>
+        </AnimatePresence>
+      </main>
+
+      <BottomNavigationBar />
+    </div>
   );
 }
-
 ```
 
 # FILE: apps/frontend/src/components/MobileTopNav.tsx
 
 ```
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { GraduationCap } from "lucide-react";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
@@ -5492,13 +5336,19 @@ import NotificationBell from "./NotificationBell";
 export default function MobileTopNav() {
   const { selectedCity } = useSelectedCity();
   const { user } = useAuth();
+  const location = useLocation();
+
+  const pageTitle =
+    location.pathname.startsWith("/schools") ? "Школи"
+    : location.pathname.startsWith("/kindergartens") ? "Садочки"
+    : "СВІТЛО ЗНАНЬ";
 
   return (
-    <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0B1527] text-white flex items-center justify-between px-4 z-40" style={{ paddingTop: "env(safe-area-inset-top, 0px)", height: "calc(4rem + env(safe-area-inset-top, 0px))" }}>
-      <div className="flex items-center gap-2">
+    <div className="md:hidden fixed top-0 left-0 right-0 bg-[#0B1527] text-white flex items-center justify-between px-4 z-40" style={{ paddingTop: "env(safe-area-inset-top, 0px)", height: "calc(4rem + env(safe-area-inset-top, 0px))" }}>
+      <div className="flex items-center gap-2 min-w-0">
         <GraduationCap className="w-5 h-5 text-blue-300 shrink-0" />
-        <span className="font-bold tracking-wider text-sm leading-tight">
-          СВІТЛО ЗНАНЬ
+        <span className="font-bold tracking-wider text-sm leading-tight truncate">
+          {pageTitle}
         </span>
       </div>
       <div className="flex items-center gap-2">
@@ -5538,7 +5388,7 @@ export default function MoreSheet({ onClose }: Props) {
   const location = useLocation();
 
   const items = useMemo(
-    () => NAV_TABS.filter((t) => !t.bottomNav && hasRole(user?.role, t.roles)),
+    () => NAV_TABS.filter((t) => hasRole(user?.role, t.roles)),
     [user],
   );
 
@@ -5599,7 +5449,6 @@ export default function MoreSheet({ onClose }: Props) {
     </motion.div>
   );
 }
-
 ```
 
 # FILE: apps/frontend/src/components/NotificationBell.tsx
@@ -6145,7 +5994,7 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
       className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col pb-safe">
         {/* Header */}
         <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
           <div>
@@ -6806,7 +6655,7 @@ export default function CommentModal({ isOpen, onClose, mode, text, setText, onS
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
     >
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden max-h-[90vh] flex flex-col pb-safe">
         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
         <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
           <h3 id={headingId} className="text-xl font-bold text-slate-800">
@@ -7086,7 +6935,7 @@ export default function EditSchoolModal({
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       {/* Bottom-sheet на мобільному, центрований діалог на десктопі */}
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl overflow-hidden max-h-[92vh] flex flex-col">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl overflow-hidden max-h-[92vh] flex flex-col pb-safe">
         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
 
         {/* Шапка не зжимається (shrink-0) */}
@@ -7999,16 +7848,17 @@ export default function ReportModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.25 }}
+          transition={{ duration: 0.15 }}
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
           <motion.div
-            initial={{ opacity: 0, y: 24, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 24, scale: 0.97 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden"
+            initial={{ opacity: 0, y: 32 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 32 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden pb-safe"
+            style={{ willChange: "transform" }}
           >
         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
 
@@ -9632,11 +9482,12 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-md" 
           onClick={(e) => e.target === e.currentTarget && onClose()}
         >
           <motion.div
-            initial={{ y: 24, opacity: 0, scale: 0.98 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: 24, opacity: 0, scale: 0.98 }}
+            initial={{ y: 32, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 32, opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className={`bg-surface rounded-t-3xl sm:rounded-modal shadow-modal w-full sm:${maxWidth} overflow-hidden max-h-[90vh] flex flex-col`}
+            className={`bg-surface rounded-t-3xl sm:rounded-modal shadow-modal w-full sm:${maxWidth} overflow-hidden max-h-[90vh] flex flex-col pb-safe`}
+            style={{ willChange: "transform" }}
           >
             <div className="sm:hidden w-10 h-1.5 bg-border-strong rounded-pill mx-auto mt-3" />
             <div className="p-5 sm:p-6 border-b border-border flex justify-between items-center bg-surface-subtle shrink-0">
@@ -9759,7 +9610,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={push}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none" role="alert" aria-live="polite">
+      <div className="fixed right-4 z-[100] flex flex-col gap-2 pointer-events-none" style={{ bottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }} role="alert" aria-live="polite">
         <AnimatePresence>
           {toasts.map((t) => (
             <motion.div
@@ -9991,7 +9842,6 @@ import {
   MapPin,
   BarChart3,
   ClipboardCheck,
-  History,
   Package,
   Trophy,
   LayoutDashboard,
@@ -10002,8 +9852,6 @@ export interface NavTab {
   icon: ComponentType<{ className?: string }>;
   label: string;
   roles?: string[];
-  bottomNav?: boolean;
-  swipeable?: boolean;
 }
 
 export interface DashboardTab {
@@ -10014,18 +9862,17 @@ export interface DashboardTab {
 }
 
 export const NAV_TABS: NavTab[] = [
-  { to: "/dashboard", icon: Home, label: "Дашборд", roles: ["SUPERADMIN", "MANAGER", "OWNER"], bottomNav: true, swipeable: false },
+  { to: "/dashboard", icon: Home, label: "Дашборд", roles: ["SUPERADMIN", "MANAGER", "OWNER"] },
   { to: "/reports/review", icon: ClipboardCheck, label: "Звіти", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
   { to: "/inventory", icon: Package, label: "Склад", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
-  { to: "/schools", icon: School, label: "Школи", bottomNav: true },
+  { to: "/schools", icon: School, label: "Школи" },
   { to: "/kindergartens", icon: Baby, label: "Садочки" },
-  { to: "/finance", icon: Wallet, label: "Фінанси", bottomNav: true },
-  { to: "/calendar", icon: Calendar, label: "Календар", bottomNav: true },
+  { to: "/finance", icon: Wallet, label: "Фінанси" },
+  { to: "/calendar", icon: Calendar, label: "Календар" },
   { to: "/cities", icon: MapPin, label: "Міста", roles: ["SUPERADMIN", "MANAGER", "OWNER"] },
   { to: "/employees", icon: Users, label: "Працівники", roles: ["SUPERADMIN"] },
   { to: "/analytics", icon: BarChart3, label: "Аналітика", roles: ["SUPERADMIN", "OWNER"] },
   { to: "/city-leaderboard", icon: Trophy, label: "Рейтинг", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
-  { to: "/audit-log", icon: History, label: "Журнал дій", roles: ["SUPERADMIN", "OWNER"] },
 ];
 
 export const ADMIN_TABS: NavTab[] = [
@@ -10038,7 +9885,6 @@ export const DASHBOARD_TABS: DashboardTab[] = [
   { id: "leaderboard", icon: Trophy, label: "Рейтинг", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
   { id: "analytics", icon: BarChart3, label: "Аналітика", roles: ["SUPERADMIN", "OWNER"] },
 ];
-
 ```
 
 # FILE: apps/frontend/src/constants/pipelineStages.ts
@@ -10356,6 +10202,258 @@ export default function CalendarSkeleton() {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/features/calendar/components/DesktopCalendarGrid.tsx
+
+```
+import { toISODate, isPastDay } from "../utils/date";
+import { MONTH_NAMES, ROLE_ICON_MAP } from "../constants";
+import { getDayColor } from "../utils/color";
+import EventTooltip from "./EventTooltip";
+import type { Event as CalendarEvent, DayOff, User } from "../../../types";
+
+interface DesktopCalendarGridProps {
+  days: (Date | null)[];
+  year: number;
+  month: number;
+  selectedMobileDate: Date;
+  setSelectedMobileDate: (date: Date) => void;
+  eventsByDate: Map<string, CalendarEvent[]>;
+  dayOffsByDate: Map<string, DayOff[]>;
+  projectColorMap: Map<string, string>;
+  projectHexMap: Map<string, string>;
+  isStaff: boolean;
+  isManagerOrAdmin: boolean;
+  user: { id: string } | null;
+  allUsers: User[];
+  handleDayOffClick: (e: React.MouseEvent, date: Date) => void;
+  prevMonth: () => void;
+  nextMonth: () => void;
+}
+
+export default function DesktopCalendarGrid({
+  days,
+  year,
+  month,
+  selectedMobileDate,
+  setSelectedMobileDate,
+  eventsByDate,
+  dayOffsByDate,
+  projectColorMap,
+  projectHexMap,
+  isStaff,
+  isManagerOrAdmin,
+  user,
+  allUsers,
+  handleDayOffClick,
+  prevMonth,
+  nextMonth,
+}: DesktopCalendarGridProps) {
+  return (
+    <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+        <div className="flex items-center justify-center p-5 md:p-6 border-b border-slate-100 bg-white">
+          <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+            <button
+              onClick={prevMonth}
+              className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium"
+            >
+              ◀
+            </button>
+            <span className="px-4 md:px-6 py-2 text-slate-800 font-bold capitalize tracking-tight">
+              {MONTH_NAMES[month]}{" "}
+              <span className="text-slate-400 font-medium">{year}</span>
+            </span>
+            <button
+              onClick={nextMonth}
+              className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium"
+            >
+              ▶
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-7 bg-slate-50/50">
+          {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((dayName) => (
+            <div
+              key={dayName}
+              className="py-3 text-center text-[10px] md:text-xs font-bold tracking-widest text-slate-400 uppercase border-b border-slate-100"
+            >
+              {dayName}
+            </div>
+          ))}
+
+          {days.map((day, idx) => {
+            const isToday =
+              day && day.toDateString() === new Date().toDateString();
+            const isSelected =
+              day && day.toDateString() === selectedMobileDate.toDateString();
+            const dayKey = day ? toISODate(day) : "";
+            const dayEvents = day ? (eventsByDate.get(dayKey) ?? []) : [];
+            const dayOffEntries = day ? (dayOffsByDate.get(dayKey) ?? []) : [];
+
+            const dayColor = day
+              ? getDayColor(dayEvents, projectHexMap)
+              : undefined;
+
+            const myDayOff = isStaff
+              ? dayOffEntries.find((d) => d.userId === user?.id)
+              : undefined;
+            const hasAnyDayOff = isStaff
+              ? !!myDayOff
+              : dayOffEntries.length > 0;
+
+            const showCross =
+              day && !isPastDay(day) && (isStaff || isManagerOrAdmin);
+
+            return (
+              <div
+                key={idx}
+                onClick={() => day && setSelectedMobileDate(day)}
+                className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group select-none no-select-ios
+                  ${day ? "bg-white hover:bg-slate-50 cursor-pointer" : "bg-slate-50/30"}
+                  ${isSelected ? "ring-2 ring-inset ring-blue-500/20 bg-blue-50/10" : ""}
+                  ${hasAnyDayOff ? "dayoff-cell-enter bg-rose-50/70" : ""}
+                `}
+              >
+                {day && (
+                  <>
+                    {showCross && (
+                      <div className="absolute top-1 left-1 z-10 group/dayoff">
+                        <button
+                          onClick={(e) => handleDayOffClick(e, day)}
+                          title={
+                            hasAnyDayOff
+                              ? "Скасувати вихідний"
+                              : "Призначити вихідний"
+                          }
+                          className={`w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold transition-all
+                            ${
+                              hasAnyDayOff
+                                ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600"
+                                : "bg-slate-100 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-rose-100 hover:text-rose-500"
+                            }`}
+                        >
+                          ✕
+                        </button>
+
+                        {isManagerOrAdmin && dayOffEntries.length > 0 && (
+                          <div className="hidden md:block absolute top-full left-0 mt-2 w-48 bg-slate-800 text-white p-2.5 rounded-xl shadow-2xl opacity-0 invisible group-hover/dayoff:opacity-100 group-hover/dayoff:visible transition-all duration-200 pointer-events-none">
+                            <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1.5">
+                              Вихідний ({dayOffEntries.length})
+                            </p>
+                            <div className="space-y-1">
+                              {dayOffEntries.map((d: DayOff) => {
+                                const u = allUsers.find(
+                                  (au: User) => au.id === d.userId,
+                                );
+                                return (
+                                  <p
+                                    key={d.id}
+                                    className="text-xs font-medium truncate"
+                                  >
+                                    {u
+                                      ? `${ROLE_ICON_MAP[u.role] || "👤"} ${u.name}`
+                                      : "Невідомий"}
+                                  </p>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex justify-center md:justify-end mb-1.5">
+                      <span
+                        className={`w-7 h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-semibold transition-colors
+                        ${isToday && !dayColor ? "bg-blue-600 text-white shadow-md" : !dayColor ? "text-slate-500 md:group-hover:text-blue-600" : "text-white"}
+                      `}
+                        style={{
+                          background: dayColor || undefined,
+                          textShadow: dayColor ? "0 1px 2px rgba(0,0,0,0.35)" : "none",
+                        }}
+                      >
+                        {day.getDate()}
+                      </span>
+                    </div>
+
+                    {hasAnyDayOff && !isStaff && dayOffEntries.length > 0 && (
+                      <p className="text-[9px] md:text-[10px] text-rose-600 font-semibold text-center mb-1 truncate px-1">
+                        🌴 {dayOffEntries.length}{" "}
+                        {dayOffEntries.length === 1 ? "вихідний" : "вихідних"}
+                      </p>
+                    )}
+
+                    <div className="space-y-1.5">
+                      {dayEvents.slice(0, 3).map((ev: CalendarEvent) => (
+                        <div
+                          key={ev.id}
+                          className="relative group/event z-0 hover:z-50"
+                        >
+                          <button
+                            className={`w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${projectColorMap.get(ev.project) ?? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300"}`}
+                          >
+                            {ev.time || "—"}
+                          </button>
+
+                          <EventTooltip event={ev} />
+                        </div>
+                      ))}
+                      {dayEvents.length > 3 && (
+                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 text-center">
+                          +{dayEvents.length - 3} ще
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/features/calendar/components/EventTooltip.tsx
+
+```
+import type { Event as CalendarEvent } from "../../../types";
+
+interface EventTooltipProps {
+  event: CalendarEvent;
+}
+
+export default function EventTooltip({ event: ev }: EventTooltipProps) {
+  return (
+    <div className="hidden md:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-800 text-white p-3 rounded-xl shadow-2xl opacity-0 invisible group-hover/event:opacity-100 group-hover/event:visible transition-all duration-200 pointer-events-none">
+      <p className="font-bold text-sm mb-1 truncate">
+        {ev.school?.name || "Невідомий заклад"}
+      </p>
+      <div className="space-y-1 text-xs text-slate-300">
+        <p>
+          <span className="text-slate-400">Проєкт:</span>{" "}
+          {ev.project}
+        </p>
+        <p>
+          <span className="text-slate-400">Екіпаж:</span>{" "}
+          {ev.crew?.name || "Не призначено"}
+        </p>
+        <p>
+          <span className="text-slate-400">Час:</span>{" "}
+          <span className="font-bold text-white">
+            {ev.time || "—"}
+          </span>
+        </p>
+      </div>
+      <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-slate-800"></div>
     </div>
   );
 }

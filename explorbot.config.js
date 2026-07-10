@@ -1,35 +1,17 @@
-import { createOpenRouter } from "@openrouter/ai-sdk-provider"
-// import { '<your provider here>' } from '<your provider package here>';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 
-// Vercel AI SDK is used to connect to AI providers.
-// Bring your own provider or use OpenRouter (one API key, many providers).
-// https://github.com/testomatio/explorbot/blob/main/docs/providers.md
+// Ініціалізуємо провайдер з явним ключем
 const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
+  apiKey: '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',
 });
 
-const config = {
+export default {
   web: {
-  url: 'https://app.svitlo-znan.app',
-},
-
-  ai: {
-    // fast model with tool calling capabilities
-    model: openrouter("openai/gpt-oss-20b:nitro"),
-    // vision model for screenshot analysis
-    visionModel: openrouter("meta-llama/llama-4-scout-17b-16e-instruct"),
-    // agentic model for decision making
-    agenticModel: openrouter("minimax/minimax-m2.5:nitro"),
+    url: 'https://app.svitlo-znan.app',
   },
-
-  reporter: {
-    // Save a local HTML report after each run.
-    html: true,
-    // Save a local markdown report after each run.
-    markdown: true,
-    // Group runs by title in Testomat.io / HTML reports. Defaults to today's date — customize or remove.
-    runGroup: new Date().toISOString().slice(0, 10),
+  ai: {
+    model: openrouter('tencent/hy3:free'),
+    visionModel: openrouter('google/gemma-4-31b-it:free'),
+    agenticModel: openrouter('google/gemini-2.0-flash-001'),
   },
 };
-
-export default config;

@@ -71,10 +71,6 @@ apps
 │   │   ├── app.controller.ts
 │   │   ├── app.module.ts
 │   │   ├── app.service.ts
-│   │   ├── audit-log
-│   │   │   ├── audit-log.controller.ts
-│   │   │   ├── audit-log.module.ts
-│   │   │   └── audit-log.service.ts
 │   │   ├── auth
 │   │   │   ├── auth.controller.spec.ts
 │   │   │   ├── auth.controller.ts
@@ -340,6 +336,8 @@ apps
     │   │   │   ├── ProjectModal.tsx
     │   │   │   └── UserModal.tsx
     │   │   ├── ErrorBoundary.tsx
+    │   │   ├── establishments
+    │   │   │   └── EstablishmentsTopNav.tsx
     │   │   ├── finance
     │   │   │   ├── FinanceCharts.tsx
     │   │   │   └── StaffFinanceView.tsx
@@ -440,7 +438,6 @@ apps
     │   ├── hooks
     │   │   ├── useAnalytics.ts
     │   │   ├── useApi.ts
-    │   │   ├── useAuditLog.ts
     │   │   ├── useCalendar.ts
     │   │   ├── useCities.ts
     │   │   ├── useDashboardData.ts
@@ -459,7 +456,6 @@ apps
     │   ├── main.tsx
     │   ├── pages
     │   │   ├── Analytics.tsx
-    │   │   ├── AuditLog.tsx
     │   │   ├── CalendarView.tsx
     │   │   ├── Cities.tsx
     │   │   ├── CityLeaderboard.tsx

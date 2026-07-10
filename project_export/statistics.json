@@ -1,10 +1,10 @@
 {
   "mode": "audit",
-  "generatedAt": "2026-07-09T01:28:45.711Z",
+  "generatedAt": "2026-07-10T17:19:58.002Z",
   "totals": {
-    "files": 400,
-    "lines": 41480,
-    "estimatedTokens": 474003,
+    "files": 396,
+    "lines": 41206,
+    "estimatedTokens": 472224,
     "bundles": 7
   },
   "byExtension": {
@@ -14,7 +14,7 @@
     ".prisma": 1,
     ".js": 5,
     ".md": 2,
-    ".ts": 225,
+    ".ts": 221,
     ".yml": 1,
     ".html": 2,
     ".cjs": 1,
@@ -23,7 +23,7 @@
     ".sh": 2
   },
   "byRootFolder": {
-    "apps": 398,
+    "apps": 394,
     "scripts": 2
   }
 }

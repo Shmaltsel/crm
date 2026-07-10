@@ -142,8 +142,8 @@ export default function Layout() {
       <main
         className={`flex-1 relative w-full min-w-0 md:pb-0 ${isMobile ? "" : "overflow-y-auto"}`}
         style={{
-          marginTop: isMobile ? "calc(4rem + env(safe-area-inset-top, 0px))" : undefined,
-          paddingBottom: isMobile ? "calc(4rem + env(safe-area-inset-bottom, 0px))" : undefined,
+          marginTop: isMobile ? "calc(3.5rem + env(safe-area-inset-top, 0px))" : undefined,
+          paddingBottom: isMobile ? "calc(3.5rem + env(safe-area-inset-bottom, 0px))" : undefined,
         }}
       >
         <AnimatePresence mode="wait">

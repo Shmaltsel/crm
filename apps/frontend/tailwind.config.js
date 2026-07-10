@@ -82,7 +82,7 @@ export default {
         card: "1rem",
         "card-lg": "1.5rem",
         modal: "1.5rem",
-        control: "0.75rem",
+        control: "0.875rem",
         pill: "9999px",
       },
       boxShadow: {

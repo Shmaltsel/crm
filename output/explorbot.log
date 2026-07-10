@@ -1,0 +1,74 @@
+
+
+=== ExplorBot Session Started at 2026-07-10T17:05:13.554Z ===
+
+[2026-07-10T17:05:13.553Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+
+
+=== ExplorBot Session Started at 2026-07-10T17:09:11.974Z ===
+
+[2026-07-10T17:09:11.974Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+
+
+=== ExplorBot Session Started at 2026-07-10T17:10:33.617Z ===
+
+[2026-07-10T17:10:33.617Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+
+
+=== ExplorBot Session Started at 2026-07-10T17:12:18.704Z ===
+
+[2026-07-10T17:12:18.703Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+[2026-07-10T17:12:20.579Z] [INFO] chromium starting in headed mode
+[2026-07-10T17:12:22.572Z] [SUCCESS] Browser started, ready to explore
+[2026-07-10T17:12:22.713Z] [STEP] I.amOnPage("C:/Program Files/Git/dashboard")
+[2026-07-10T17:12:22.716Z] [ERROR] Failed to start: page.goto: net::ERR_FILE_NOT_FOUND at c:/Program%20Files/Git/dashboard
+Call log:
+[2m  - navigating to "c:/Program%20Files/Git/dashboard", waiting until "load"[22m
+
+
+
+=== ExplorBot Session Started at 2026-07-10T17:13:01.529Z ===
+
+[2026-07-10T17:13:01.529Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+[2026-07-10T17:13:03.375Z] [INFO] chromium starting in headed mode
+[2026-07-10T17:13:04.145Z] [SUCCESS] Browser started, ready to explore
+[2026-07-10T17:13:04.255Z] [STEP] I.amOnPage("C:/Program Files/Git/dashboard")
+[2026-07-10T17:13:04.258Z] [ERROR] Failed to start: page.goto: net::ERR_FILE_NOT_FOUND at c:/Program%20Files/Git/dashboard
+Call log:
+[2m  - navigating to "c:/Program%20Files/Git/dashboard", waiting until "load"[22m
+
+
+
+=== ExplorBot Session Started at 2026-07-10T17:15:47.002Z ===
+
+[2026-07-10T17:15:47.002Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+[2026-07-10T17:15:48.917Z] [INFO] chromium starting in headed mode
+[2026-07-10T17:15:49.908Z] [SUCCESS] Browser started, ready to explore
+[2026-07-10T17:15:51.578Z] [STEP] I.amOnPage("https://app.svitlo-znan.app/dashboard")
+[2026-07-10T17:15:52.279Z] [INFO] AI Navigator resolving state at /login
+
+
+=== ExplorBot Session Started at 2026-07-10T17:19:21.625Z ===
+
+[2026-07-10T17:19:21.624Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+[2026-07-10T17:19:23.355Z] [INFO] chromium starting in headed mode
+
+
+=== ExplorBot Session Started at 2026-07-10T17:35:13.032Z ===
+
+[2026-07-10T17:35:13.031Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+[2026-07-10T17:35:14.869Z] [INFO] chromium starting in headed mode
+[2026-07-10T17:35:16.067Z] [SUCCESS] Browser started, ready to explore
+[2026-07-10T17:35:17.470Z] [STEP] I.amOnPage("https://app.svitlo-znan.app")
+[2026-07-10T17:35:18.042Z] [INFO] AI Navigator resolving state at /login
+
+
+=== ExplorBot Session Started at 2026-07-10T17:37:09.447Z ===
+
+[2026-07-10T17:37:09.446Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+[2026-07-10T17:37:11.284Z] [INFO] chromium starting in headed mode
+[2026-07-10T17:37:12.270Z] [SUCCESS] Browser started, ready to explore
+[2026-07-10T17:37:13.422Z] [STEP] I.amOnPage("https://app.svitlo-znan.app/dashboard")
+[2026-07-10T17:37:13.989Z] [INFO] AI Navigator resolving state at /login
+[2026-07-10T17:37:37.845Z] [ERROR] Navigator stopped: The app redirected from /dashboard to /login, presenting the "Вхід у CRM" form (Email, Password, "Увійти" button), which means authentication is required to reach the dashboard. No credentials (email/password) were provided in the available knowledge/hint context, so I cannot perform a real login. Please provide valid credentials or log in manually, after which navigation to /dashboard can proceed.
+[2026-07-10T17:37:38.852Z] [ERROR] Navigator stopped: The app redirected from /dashboard to /login, presenting the "Вхід у CRM" form (Email, Password, "Увійти" button), which means authentication is required to reach the dashboard. No credentials (email/password) were provided in the available knowledge/hint context, so I cannot perform a real login. Please provide valid credentials or log in manually, after which navigation to /dashboard can proceed.
