@@ -122,7 +122,8 @@ export default function Cities() {
       {userRole === "SUPERADMIN" && (
         <button
           onClick={() => setIsModalOpen(true)}
-          className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 active:scale-95 transition-transform opacity-0"
+          className="md:hidden fixed right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 active:scale-95 transition-transform opacity-0"
+          style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
           style={{
             animation:
               "fabPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) 0.2s forwards",

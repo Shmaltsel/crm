@@ -58,7 +58,7 @@ export default function EditSchoolModal({
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       {/* Bottom-sheet на мобільному, центрований діалог на десктопі */}
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl overflow-hidden max-h-[92vh] flex flex-col">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl overflow-hidden max-h-[92vh] flex flex-col pb-safe">
         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
 
         {/* Шапка не зжимається (shrink-0) */}

@@ -8,7 +8,9 @@ import {
   Suspense,
 } from "react";
 import { useSearchParams, useLocation } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
+import { Swiper, SwiperSlide } from "swiper/react";
+import "swiper/css";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
 import {
@@ -24,8 +26,9 @@ import VirtualSchoolList from "../components/VirtualSchoolList";
 import { SchoolCard } from "../components/schools/SchoolMobileList";
 import type { SchoolContact } from "../types";
 import { useAuth } from "../context/AuthContext";
-import { Download, ArrowLeftRight } from "lucide-react";
+import { Download } from "lucide-react";
 import { PIPELINE_STAGES } from "../constants/pipelineStages";
+import EstablishmentsTopNav from "../components/establishments/EstablishmentsTopNav";
 
 const INSTITUTION_TYPES = {
   school: { apiType: "Школа" as const, label: "Школи", countLabel: "шкіл" },
@@ -33,6 +36,8 @@ const INSTITUTION_TYPES = {
 } as const;
 
 type InstitutionType = keyof typeof INSTITUTION_TYPES;
+
+const ESTABLISHMENT_IDS: InstitutionType[] = ["school", "kindergarten"];
 
 interface NewSchoolPayload {
   name: string;
@@ -73,10 +78,29 @@ export default function Schools() {
 
   const typeInfo = INSTITUTION_TYPES[institutionType];
 
-  const toggleType = useCallback(() => {
-    const next = institutionType === "school" ? "kindergarten" : "school";
-    setSearchParams({ type: next }, { replace: true });
-  }, [institutionType, setSearchParams]);
+  const swiperRef = useRef<any>(null);
+
+  const handleTabChange = useCallback(
+    (id: string) => {
+      const idx = ESTABLISHMENT_IDS.findIndex((t) => t === id);
+      if (idx !== -1 && swiperRef.current) {
+        swiperRef.current.slideTo(idx);
+      }
+      setSearchParams({ type: id }, { replace: true });
+    },
+    [setSearchParams],
+  );
+
+  const handleSlideChange = useCallback(
+    (swiper: any) => {
+      const tabId = ESTABLISHMENT_IDS[swiper.activeIndex];
+      if (tabId && tabId !== institutionType) {
+        setSearchParams({ type: tab.id }, { replace: true });
+      }
+    },
+    [institutionType, setSearchParams],
+  );
+
   const [form, setForm] = useState({
     name: "",
     cityId: "",
@@ -277,236 +301,147 @@ export default function Schools() {
   );
 
   return (
-    <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-gradient-subtle min-h-screen">
-      {/* Шапка */}
-      <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
-        <div className="min-w-0">
-          <h1
-            onClick={toggleType}
-            className="text-2xl font-bold tracking-tight text-content-primary leading-tight cursor-pointer select-none group inline-flex items-center gap-1.5"
-          >
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={institutionType}
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 6 }}
-                transition={{ duration: 0.15, ease: "easeOut" }}
-              >
-                {typeInfo.label}
-              </motion.span>
-            </AnimatePresence>
-            <ArrowLeftRight className="w-4 h-4 text-content-muted/50 group-hover:text-content-muted transition-colors duration-200 shrink-0" />
-            {selectedCity.id && (
-              <span className="ml-1 text-sm font-normal text-brand">
-                · {selectedCity.name}
-              </span>
-            )}
-          </h1>
-          <p className="text-sm text-content-muted mt-0.5">
-            {filteredSchools.length} {typeInfo.countLabel} у місті
-          </p>
-        </div>
-        <div className="flex gap-2 shrink-0">
-          {(userRole === "SUPERADMIN" || userRole === "MANAGER") && (
-            <button
-              onClick={() => {
-                if (!selectedCity.id) return alert("Спочатку оберіть місто");
-                if (!supportedCities.includes(selectedCity.name))
-                  return alert(
-                    `Місто "${selectedCity.name}" не підтримується для імпорту.`,
-                  );
-                if (
-                  !window.confirm(
-                    `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`,
-                  )
-                )
-                  return;
+    <div className="bg-gradient-subtle min-h-screen flex flex-col">
+      <EstablishmentsTopNav
+        activeTab={institutionType}
+        onChange={handleTabChange}
+      />
 
-                setDotCount(3);
-                const dotInterval = setInterval(() => {
-                  setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
-                }, 500);
-
-                bulkImportMutation.mutate(selectedCity.id, {
-                  onSettled: () => clearInterval(dotInterval),
-                });
-              }}
-              disabled={bulkImportMutation.isPending}
-              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 hover:shadow-lift hover:-translate-y-0.5 active:scale-95 disabled:opacity-70 transition-all duration-200"
-            >
-              {bulkImportMutation.isPending ? (
-                <span className="font-medium">
-                  Імпортую{"·".repeat(dotCount)}
+      <div className="p-4 md:p-8 flex flex-col flex-1 max-w-[100vw]">
+        {/* Шапка */}
+        <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight text-content-primary leading-tight">
+              {typeInfo.label}
+              {selectedCity.id && (
+                <span className="ml-1 text-sm font-normal text-brand">
+                  · {selectedCity.name}
                 </span>
-              ) : (
-                <><Download className="w-4 h-4" /> Імпорт з isuo</>
               )}
+            </h1>
+            <p className="text-sm text-content-muted mt-0.5">
+              {filteredSchools.length} {typeInfo.countLabel} у місті
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            {(userRole === "SUPERADMIN" || userRole === "MANAGER") && (
+              <button
+                onClick={() => {
+                  if (!selectedCity.id) return alert("Спочатку оберіть місто");
+                  if (!supportedCities.includes(selectedCity.name))
+                    return alert(
+                      `Місто "${selectedCity.name}" не підтримується для імпорту.`,
+                    );
+                  if (
+                    !window.confirm(
+                      `Імпортувати всі школи з isuo.org для міста ${selectedCity.name}?`,
+                    )
+                  )
+                    return;
+
+                  setDotCount(3);
+                  const dotInterval = setInterval(() => {
+                    setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
+                  }, 500);
+
+                  bulkImportMutation.mutate(selectedCity.id, {
+                    onSettled: () => clearInterval(dotInterval),
+                  });
+                }}
+                disabled={bulkImportMutation.isPending}
+                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 hover:shadow-lift hover:-translate-y-0.5 active:scale-95 disabled:opacity-70 transition-all duration-200"
+              >
+                {bulkImportMutation.isPending ? (
+                  <span className="font-medium">
+                    Імпортую{"·".repeat(dotCount)}
+                  </span>
+                ) : (
+                  <><Download className="w-4 h-4" /> Імпорт з isuo</>
+                )}
+              </button>
+            )}
+            <button
+              onClick={handleOpenModal}
+              className="hidden md:flex items-center gap-1 px-4 py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-hover hover:shadow-lift hover:-translate-y-0.5 active:scale-95 transition-all duration-200"
+            >
+              + Додати
             </button>
-          )}
-          <button
-            onClick={handleOpenModal}
-            className="hidden md:flex items-center gap-1 px-4 py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-hover hover:shadow-lift hover:-translate-y-0.5 active:scale-95 transition-all duration-200"
-          >
-            + Додати
-          </button>
+          </div>
         </div>
-      </div>
 
-      {/* StatsBar */}
-      <div className="shrink-0">
-        <Suspense
-          fallback={
-            <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
-          }
-        >
-          <StatsBar
-            statusStats={
-              stats?.statusStats ?? {
-                new: 0,
-                planned: 0,
-                inProgress: 0,
-                done: 0,
-              }
+        {/* StatsBar */}
+        <div className="shrink-0">
+          <Suspense
+            fallback={
+              <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
             }
-            sizeStats={stats?.sizeStats ?? { small: 0, medium: 0, large: 0 }}
-            activeFilter={activeFilter}
-            onFilterChange={setActiveFilter}
-            sizeFilter={sizeFilter}
-            onSizeFilterChange={setSizeFilter}
-            schoolType={typeInfo.apiType}
-          />
-        </Suspense>
-      </div>
-
-      {/* Пошук */}
-      <div className="relative shrink-0 mb-4 mt-2">
-        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-          <svg
-            className="w-5 h-5 text-slate-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
+            <StatsBar
+              statusStats={
+                stats?.statusStats ?? {
+                  new: 0,
+                  planned: 0,
+                  inProgress: 0,
+                  done: 0,
+                }
+              }
+              sizeStats={stats?.sizeStats ?? { small: 0, medium: 0, large: 0 }}
+              activeFilter={activeFilter}
+              onFilterChange={setActiveFilter}
+              sizeFilter={sizeFilter}
+              onSizeFilterChange={setSizeFilter}
+              schoolType={typeInfo.apiType}
             />
-          </svg>
+          </Suspense>
         </div>
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Пошук за назвою школи..."
-          className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border border-border rounded-2xl sm:rounded-xl text-sm font-medium text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand shadow-soft transition-all duration-200"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery("")}
-            className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600 transition"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        )}
-      </div>
 
-      {/* Лічильник */}
-      <p className="text-xs font-semibold text-slate-400 mb-4 shrink-0 uppercase tracking-wide px-1">
-        {`${filteredSchools.length} з ${totalItems} шкіл`}
-        {(activeFilter || sizeFilter) && (
-          <button
-            onClick={() => {
-              setActiveFilter(null);
-              setSizeFilter(null);
-            }}
-            className="ml-3 text-blue-500 hover:text-blue-700 lowercase"
+        {/* Swipeable списки */}
+        <div className="flex-1 w-full min-h-0 mt-3">
+          <Swiper
+            onSwiper={(swiper) => { swiperRef.current = swiper; }}
+            initialSlide={ESTABLISHMENT_IDS.findIndex((t) => t === institutionType)}
+            onSlideChange={handleSlideChange}
+            speed={280}
+            allowTouchMove={true}
+            className="w-full h-full"
+            style={{ willChange: "transform" }}
           >
-            скинути фільтри
-          </button>
-        )}
-      </p>
-
-      {/* Компоненти списків */}
-      {isLoading ? (
-        <div className="flex flex-col gap-2.5 flex-1">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              className="bg-white rounded-2xl border border-slate-100 p-3.5 animate-pulse"
-              style={{ opacity: 1 - i * 0.1 }}
-            >
-              <div className="h-4 bg-slate-200 rounded-lg w-3/4 mb-3" />
-              <div className="flex justify-between">
-                <div className="h-3 bg-slate-100 rounded-lg w-1/3" />
-                <div className="h-3 bg-slate-100 rounded-lg w-1/4" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <>
-          {/* Мобільний: віртуалізований список карток */}
-          <div className="md:hidden flex-1 w-full overflow-hidden">
-            <VirtualSchoolList
-              schools={filteredSchools}
-              itemHeight={110}
-              onEndReached={handleLoadMore}
-              animationKey={`${activeFilter}-${sizeFilter}`}
-              renderItem={(school, index) => (
-                <div
-                  className="pb-2.5"
-                  onMouseEnter={() => prefetchSchool(school.id)}
-                >
-                  <SchoolCard
-                    school={school}
-                    index={index}
-                    onDelete={handleDeleteSchool}
-                    stages={PIPELINE_STAGES}
+            {ESTABLISHMENT_IDS.map((id) => {
+              const info = INSTITUTION_TYPES[id];
+              return (
+                <SwiperSlide key={id} className="overflow-y-auto">
+                  <EstablishmentList
+                    isLoading={isLoading}
+                    filteredSchools={filteredSchools}
+                    totalItems={totalItems}
+                    activeFilter={activeFilter}
+                    sizeFilter={sizeFilter}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    onClearFilters={() => {
+                      setActiveFilter(null);
+                      setSizeFilter(null);
+                    }}
+                    handleLoadMore={handleLoadMore}
+                    prefetchSchool={prefetchSchool}
+                    handleDeleteSchool={handleDeleteSchool}
+                    searchPlaceholder={`Пошук за назвою ${id === "school" ? "школи" : "садочка"}...`}
+                    countLabel={info.countLabel}
                   />
-                </div>
-              )}
-            />
-          </div>
+                </SwiperSlide>
+              );
+            })}
+          </Swiper>
+        </div>
 
-          {/* Десктоп: таблиця з віртуалізованим tbody */}
-          <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0 min-w-0">
-            <Suspense
-              fallback={<div className="flex-1 animate-pulse bg-slate-50" />}
-            >
-              <VirtualDesktopTable
-                schools={filteredSchools}
-                searchQuery={searchQuery}
-                onDelete={handleDeleteSchool}
-                stages={PIPELINE_STAGES}
-                onEndReached={handleLoadMore}
-              />
-            </Suspense>
-          </div>
-        </>
-      )}
-
-      {/* Мобільна плаваюча кнопка FAB */}
-      <button
-        onClick={handleOpenModal}
-        className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
-      >
-        +
-      </button>
+        {/* Мобільна плаваюча кнопка FAB */}
+        <button
+          onClick={handleOpenModal}
+          className="md:hidden fixed right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
+          style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
+        >
+          +
+        </button>
 
       {/* Модальне вікно */}
       {isModalOpen && (
@@ -659,6 +594,159 @@ export default function Schools() {
             </form>
           </div>
         </div>
+      )}
+    </div>
+    </div>
+  );
+}
+
+function EstablishmentList({
+  isLoading,
+  filteredSchools,
+  totalItems,
+  activeFilter,
+  sizeFilter,
+  searchQuery,
+  onSearchChange,
+  onClearFilters,
+  handleLoadMore,
+  prefetchSchool,
+  handleDeleteSchool,
+  searchPlaceholder,
+  countLabel,
+}: {
+  isLoading: boolean;
+  filteredSchools: any[];
+  totalItems: number;
+  activeFilter: string | null;
+  sizeFilter: string | null;
+  searchQuery: string;
+  onSearchChange: (v: string) => void;
+  onClearFilters: () => void;
+  handleLoadMore: () => void;
+  prefetchSchool: (id: string) => void;
+  handleDeleteSchool: (e: React.MouseEvent, id: string, name: string) => void;
+  searchPlaceholder: string;
+  countLabel: string;
+}) {
+  return (
+    <div className="flex flex-col h-full">
+      {/* Пошук */}
+      <div className="relative shrink-0 mb-4 mt-2">
+        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+          <svg
+            className="w-5 h-5 text-slate-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
+            />
+          </svg>
+        </div>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder={searchPlaceholder}
+          className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border border-border rounded-2xl sm:rounded-xl text-sm font-medium text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand shadow-soft transition-all duration-200"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => onSearchChange("")}
+            className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600 transition"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {/* Лічильник */}
+      <p className="text-xs font-semibold text-slate-400 mb-4 shrink-0 uppercase tracking-wide px-1">
+        {`${filteredSchools.length} з ${totalItems} ${countLabel}`}
+        {(activeFilter || sizeFilter) && (
+          <button
+            onClick={onClearFilters}
+            className="ml-3 text-blue-500 hover:text-blue-700 lowercase"
+          >
+            скинути фільтри
+          </button>
+        )}
+      </p>
+
+      {/* Компоненти списків */}
+      {isLoading ? (
+        <div className="flex flex-col gap-2.5 flex-1">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-white rounded-2xl border border-slate-100 p-3.5 animate-pulse"
+              style={{ opacity: 1 - i * 0.1 }}
+            >
+              <div className="h-4 bg-slate-200 rounded-lg w-3/4 mb-3" />
+              <div className="flex justify-between">
+                <div className="h-3 bg-slate-100 rounded-lg w-1/3" />
+                <div className="h-3 bg-slate-100 rounded-lg w-1/4" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          {/* Мобільний */}
+          <div className="md:hidden flex-1 w-full overflow-hidden">
+            <VirtualSchoolList
+              schools={filteredSchools}
+              itemHeight={110}
+              onEndReached={handleLoadMore}
+              animationKey={`${activeFilter}-${sizeFilter}`}
+              renderItem={(school, index) => (
+                <div
+                  className="pb-2.5"
+                  onMouseEnter={() => prefetchSchool(school.id)}
+                >
+                  <SchoolCard
+                    school={school}
+                    index={index}
+                    onDelete={handleDeleteSchool}
+                    stages={PIPELINE_STAGES}
+                  />
+                </div>
+              )}
+            />
+          </div>
+
+          {/* Десктоп */}
+          <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0 min-w-0">
+            <Suspense
+              fallback={<div className="flex-1 animate-pulse bg-slate-50" />}
+            >
+              <VirtualDesktopTable
+                schools={filteredSchools}
+                searchQuery={searchQuery}
+                onDelete={handleDeleteSchool}
+                stages={PIPELINE_STAGES}
+                onEndReached={handleLoadMore}
+              />
+            </Suspense>
+          </div>
+        </>
       )}
     </div>
   );

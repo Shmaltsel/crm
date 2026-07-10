@@ -1,4 +1,5 @@
 {
+  "reporters": ["default", ["@testomatio/reporter/jest", { "apiKey": "process.env.TESTOMATIO" }]],
   "moduleFileExtensions": ["js", "json", "ts"],
   "rootDir": ".",
   "testEnvironment": "node",
@@ -6,8 +7,10 @@
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
+  
   "testTimeout": 30000,
   "moduleNameMapper": {
     "^src/(.*)$": "<rootDir>/../src/$1"
   }
+  
 }

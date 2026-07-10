@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { MoreHorizontal } from "lucide-react";
@@ -56,20 +56,22 @@ export default function BottomNavigationBar() {
               aria-label={tab.label}
               className="relative flex items-center justify-center min-w-[48px] min-h-[48px] flex-1 transition-colors"
             >
-              {isActive && (
-                <motion.div
-                  layoutId="active-tab-pill"
-                  className="absolute inset-0 bg-brand rounded-full shadow-lg shadow-brand/30"
-                  style={{ translateY: "-6px", scale: 1.08 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-              )}
-              <motion.div
-                className="relative z-10 flex items-center justify-center"
-                whileTap={{ scale: 0.9 }}
-              >
+              <AnimatePresence>
+                {isActive && (
+                  <motion.div
+                    key="active-pill"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.12, ease: "easeOut" }}
+                    className="absolute inset-0 bg-brand rounded-full shadow-lg shadow-brand/30"
+                    style={{ translateY: "-6px", willChange: "transform" }}
+                  />
+                )}
+              </AnimatePresence>
+              <div className="relative z-10 flex items-center justify-center">
                 <Icon className={isActive ? "w-7 h-7" : "w-7 h-7 text-content-muted"} />
-              </motion.div>
+              </div>
               <span className="sr-only">{tab.label}</span>
             </Link>
           );

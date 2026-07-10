@@ -254,7 +254,8 @@ export default function InventoryPage() {
       {canEdit && (
         <button
           onClick={handleOpenCreate}
-          className="sm:hidden fixed bottom-20 right-4 z-40 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors"
+          className="sm:hidden fixed right-4 z-40 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors"
+          style={{ bottom: "calc(5rem + env(safe-area-inset-bottom, 0px))" }}
           aria-label="Додати товар"
         >
           <Plus className="w-6 h-6" />

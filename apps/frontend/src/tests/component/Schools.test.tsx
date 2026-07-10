@@ -53,12 +53,11 @@ describe("Schools Page", () => {
 
     render(<Schools />, { wrapper: createWrapper() });
 
-    expect(screen.getByText(/Школи/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Школи/i).length).toBeGreaterThanOrEqual(1);
     
     await waitFor(() => {
-      expect(screen.getByTestId("stats-bar")).toBeInTheDocument();
-      // On desktop (default JSDOM width might hide mobile list, but let's check desktop table)
-      expect(screen.getByTestId("virtual-desktop-table")).toBeInTheDocument();
+      expect(screen.getAllByTestId("stats-bar").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByTestId("virtual-desktop-table").length).toBeGreaterThanOrEqual(1);
     });
   });
 });
