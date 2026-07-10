@@ -325,7 +325,7 @@ export default function ReportModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center sm:p-4"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
           <motion.div
@@ -567,7 +567,7 @@ export default function ReportModal({
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-white shrink-0">
+        <div className="flex gap-3 px-4 sm:px-6 py-4 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] sm:pb-4 border-t border-slate-100 bg-white shrink-0">
           <button
             onClick={onClose}
             className="flex-1 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium py-3"

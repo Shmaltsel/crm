@@ -68,7 +68,7 @@ export class InventoryController {
 
   @ApiOperation({ summary: 'Створити товар' })
   @Post()
-  @Roles('SUPERADMIN', 'OWNER')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   create(
     @Body()
     dto: {

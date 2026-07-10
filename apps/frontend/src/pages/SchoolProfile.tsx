@@ -392,6 +392,23 @@ export default function SchoolProfile() {
         onAddEvent={openAddEventModal}
       />
 
+      {currentEvent && (
+        <div className="xl:hidden">
+          <Suspense
+            fallback={
+              <div className="bg-surface rounded-card shadow-card h-24 animate-pulse border border-border" />
+            }
+          >
+            <Pipeline
+              currentStageIndex={currentStageIndex}
+              currentEvent={currentEvent}
+              onPipelineClick={handlePipelineClick}
+              stages={PIPELINE_STAGES}
+            />
+          </Suspense>
+        </div>
+      )}
+
       <div className="flex flex-col xl:flex-row gap-6">
         {/* Ліва колонка */}
         <div className="w-full xl:w-80 flex flex-col gap-6">
@@ -471,18 +488,20 @@ export default function SchoolProfile() {
           transition={{ duration: 0.3, delay: 0.15 }}
         >
           {currentEvent && (
-            <Suspense
-              fallback={
-                <div className="bg-surface rounded-card shadow-card h-24 animate-pulse border border-border" />
-              }
-            >
-              <Pipeline
-                currentStageIndex={currentStageIndex}
-                currentEvent={currentEvent}
-                onPipelineClick={handlePipelineClick}
-                stages={PIPELINE_STAGES}
-              />
-            </Suspense>
+            <div className="hidden xl:block">
+              <Suspense
+                fallback={
+                  <div className="bg-surface rounded-card shadow-card h-24 animate-pulse border border-border" />
+                }
+              >
+                <Pipeline
+                  currentStageIndex={currentStageIndex}
+                  currentEvent={currentEvent}
+                  onPipelineClick={handlePipelineClick}
+                  stages={PIPELINE_STAGES}
+                />
+              </Suspense>
+            </div>
           )}
 
           <AnimatePresence>

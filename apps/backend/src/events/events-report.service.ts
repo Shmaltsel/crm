@@ -8,6 +8,8 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheVersionService } from '../common/cache/cache-version.service';
+import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { Prisma } from '@prisma/client';
 import {
   SubmitReportDto,
@@ -24,6 +26,8 @@ export class EventsReportService {
     private readonly prisma: PrismaService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     private readonly cacheVersion: CacheVersionService,
+    private readonly telegramService: TelegramService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   private toOptionalNumber(value: unknown): number | null {
@@ -209,6 +213,49 @@ export class EventsReportService {
       this.cacheVersion.bumpVersion('finance'),
       this.cacheVersion.bumpVersion('dashboard'),
     ]);
+
+    const eventWithCity = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        school: { select: { name: true } },
+        city: {
+          include: {
+            manager: { select: { telegramChatId: true, telegramId: true } },
+          },
+        },
+      },
+    });
+
+    if (eventWithCity) {
+      const manager = eventWithCity.city?.manager;
+      const chatId =
+        manager?.telegramChatId ||
+        (manager?.telegramId && /^\d+$/.test(manager.telegramId)
+          ? manager.telegramId
+          : null);
+      if (chatId) {
+        const schoolName = eventWithCity.school?.name || 'Невідома школа';
+        this.telegramService
+          .sendMessage(
+            chatId,
+            `🚨 Новий звіт потребує затвердження: ${schoolName}`,
+          )
+          .catch(() => {});
+      }
+
+      const notifyUserId =
+        event.responsibleId || eventWithCity.city?.managerId;
+      if (notifyUserId) {
+        this.notificationsService
+          .create(notifyUserId, 'REPORT_SUBMITTED', {
+            eventId,
+            schoolName: eventWithCity.school?.name,
+            title: 'Звіт надіслано на затвердження',
+          })
+          .catch(() => {});
+      }
+    }
+
     return this.serializeEvent(event);
   }
 }

@@ -48,7 +48,8 @@ export default function InventoryPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const canEdit = user?.role === "SUPERADMIN" || user?.role === "OWNER";
-  const canAddStock = canEdit || user?.role === "MANAGER";
+  const canCreate = canEdit || user?.role === "MANAGER";
+  const canAddStock = canCreate;
 
   const uniqueCategories = useMemo(() => {
     if (!items) return CATEGORIES;
@@ -127,7 +128,7 @@ export default function InventoryPage() {
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Склад</h1>
-        {canEdit && (
+        {canCreate && (
           <button
             onClick={handleOpenCreate}
             className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
@@ -180,7 +181,7 @@ export default function InventoryPage() {
       ) : !items || items.length === 0 ? (
         <div className="text-slate-400 py-16 text-center">
           <p className="text-lg mb-2">Склад порожній</p>
-          {canEdit && (
+          {canCreate && (
             <button onClick={handleOpenCreate} className="text-blue-600 font-medium text-sm hover:underline">
               + Додати перший товар
             </button>
@@ -252,7 +253,7 @@ export default function InventoryPage() {
       )}
 
       {/* FAB for mobile */}
-      {canEdit && (
+      {canCreate && (
         <button
           onClick={handleOpenCreate}
           className="sm:hidden fixed right-4 z-40 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors"
