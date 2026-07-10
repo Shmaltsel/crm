@@ -343,7 +343,7 @@ export default function Schools() {
         onSlideChange={handleSlideChange}
         speed={280}
         allowTouchMove={true}
-        className="flex-1 flex flex-col overflow-hidden"
+        className="establishments-swiper"
       >
         {ESTABLISHMENT_IDS.map((id) => {
           const info = INSTITUTION_TYPES[id];
@@ -354,8 +354,8 @@ export default function Schools() {
           const handleLoadMore = isSchool ? handleLoadMoreSchools : handleLoadMoreKindergartens;
 
           return (
-            <SwiperSlide key={id} className="flex flex-col overflow-hidden">
-              <div className="p-4 md:p-8 flex flex-col flex-1 max-w-[100vw]">
+            <SwiperSlide key={id}>
+              <div className="p-4 md:p-8 max-w-[100vw] min-h-[calc(100dvh-5rem)] md:min-h-0 flex flex-col">
                 {/* Шапка */}
                 <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
                   <div className="min-w-0">
