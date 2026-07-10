@@ -28,9 +28,9 @@ export default function MobileDayDetailsPanel({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
         transition={{ duration: 0.2 }}
-        className="mt-4 select-none"
+        className="mt-3 select-none"
       >
-        <h3 className="text-sm font-bold text-slate-800 mb-2.5">
+        <h3 className="text-sm font-bold text-content-primary mb-2">
           {selectedMobileDate.toLocaleDateString("uk-UA", {
             day: "2-digit",
             month: "long",
@@ -43,13 +43,13 @@ export default function MobileDayDetailsPanel({
           const dayOffEntries = dayOffsByDate.get(key) ?? [];
           if (dayOffEntries.length === 0) return null;
           return (
-            <div className="mb-3 flex flex-wrap gap-1.5">
+            <div className="mb-2.5 flex flex-wrap gap-1">
               {dayOffEntries.map((d: DayOff) => {
                 const u = allUsers.find((au: User) => au.id === d.userId);
                 return (
                   <span
                     key={d.id}
-                    className="text-[11px] font-semibold text-rose-600 bg-rose-50 border border-rose-100 px-2 py-1 rounded-full"
+                    className="text-2xs font-semibold text-danger-600 bg-danger-50 border border-danger-100 px-2 py-0.5 rounded-pill"
                   >
                     🌴 {u?.name || "Вихідний"}
                   </span>
@@ -60,35 +60,30 @@ export default function MobileDayDetailsPanel({
         })()}
 
         {selectedDayEvents.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-400 text-sm">
+          <div className="bg-surface rounded-card border border-border p-6 text-center text-content-muted text-sm">
             На цей день подій не заплановано
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="flex flex-col gap-2">
             {selectedDayEvents.map((ev: CalendarEvent) => (
               <div
                 key={ev.id}
-                onClick={() =>
-                  ev.school && navigate(`/schools/${ev.school.id}`)
-                }
-                className="bg-white p-4 rounded-2xl border-l-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
-                style={{
-                  borderLeftColor:
-                    projectHexMap.get(ev.project) ?? PROJECT_HEX.blue,
-                }}
+                onClick={() => ev.school && navigate(`/schools/${ev.school.id}`)}
+                className="bg-surface p-3 rounded-card border-l-4 shadow-soft active:scale-[0.98] transition-transform cursor-pointer"
+                style={{ borderLeftColor: projectHexMap.get(ev.project) ?? PROJECT_HEX.blue }}
               >
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-xs font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-600">
+                <div className="flex justify-between items-start mb-1.5">
+                  <span className="text-2xs font-bold px-2 py-0.5 rounded-control bg-surface-muted text-content-secondary">
                     🕒 {ev.time || "Не вказано"}
                   </span>
-                  <span className="text-xs font-medium text-slate-500">
+                  <span className="text-2xs font-medium text-content-muted">
                     {ev.project}
                   </span>
                 </div>
-                <p className="font-bold text-slate-800">
+                <p className="text-sm font-semibold text-content-primary">
                   {ev.school?.name}
                 </p>
-                <p className="text-sm text-slate-500 mt-1">
+                <p className="text-2xs text-content-secondary mt-1">
                   🚐 Екіпаж: {ev.crew?.name || "Не призначено"}
                 </p>
               </div>
