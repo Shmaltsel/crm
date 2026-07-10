@@ -28,6 +28,12 @@ describe("classifySchool", () => {
     );
   });
 
+  it("повертає 'notConfirmed' якщо звіт подано на затвердження", () => {
+    expect(classifySchool({ events: [{ status: "REPORT" }] })).toBe(
+      "notConfirmed",
+    );
+  });
+
   it("повертає 'done' якщо подія завершена", () => {
     expect(classifySchool({ events: [{ status: "RE_SALE" }] })).toBe("done");
   });

@@ -7,6 +7,10 @@ export const CATEGORY_BADGES: Record<string, { label: string; className: string 
     label: "У процесі",
     className: "bg-amber-50 text-amber-600 border-amber-100",
   },
+  notConfirmed: {
+    label: "Не Підтверджені",
+    className: "bg-rose-50 text-rose-600 border-rose-100",
+  },
   done: {
     label: "Проведено",
     className: "bg-emerald-50 text-emerald-600 border-emerald-100",

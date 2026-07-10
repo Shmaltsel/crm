@@ -35,6 +35,13 @@ const STATUS_ITEMS = [
     inactive: "text-blue-600",
   },
   {
+    key: "notConfirmed",
+    label: "Не підтв.",
+    dot: "bg-rose-400",
+    active: "bg-rose-600 text-white",
+    inactive: "text-rose-600",
+  },
+  {
     key: "done",
     label: "Проведені",
     dot: "bg-emerald-500",

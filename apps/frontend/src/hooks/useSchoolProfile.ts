@@ -190,6 +190,9 @@ export function useSubmitReport() {
           Array.isArray(old) ? old.filter((ev) => ev.id !== vars.eventId) : old,
       );
       qc.removeQueries({ queryKey: ["eventFull", vars.eventId] });
+      qc.invalidateQueries({ queryKey: ["reports", "submitted"] });
+      qc.invalidateQueries({ queryKey: ["schools"] });
+      qc.invalidateQueries({ queryKey: ["schoolStats"] });
     },
   });
 }
