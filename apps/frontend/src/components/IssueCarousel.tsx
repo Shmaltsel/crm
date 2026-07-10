@@ -96,7 +96,10 @@ export default function IssueCarousel() {
       </h2>
 
       {}
-      <div className="flex overflow-x-auto pb-4 -mx-1 px-1 no-scrollbar">
+      <div
+        className="flex overflow-x-auto pb-4 -mx-1 px-1 no-scrollbar swiper-no-swiping"
+        style={{ touchAction: "pan-x", WebkitOverflowScrolling: "touch" as const }}
+      >
         {issues.map((issue) => {
           const isExiting = exitingIssueId === issue.id;
 

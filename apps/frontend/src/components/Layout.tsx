@@ -83,7 +83,7 @@ export default function Layout() {
   }, []);
 
   return (
-    <div className="flex h-dvh bg-surface-subtle font-sans">
+    <div className="flex h-dvh bg-surface-subtle font-sans overflow-hidden">
       <MobileTopNav />
 
       <aside className="hidden md:flex md:relative w-64 flex-col bg-[#0B1527] text-white shrink-0">
@@ -140,10 +140,12 @@ export default function Layout() {
       </aside>
 
       <main
-        className={`flex-1 relative w-full min-w-0 md:pb-0 ${isMobile ? "" : "overflow-y-auto"}`}
+        className="flex-1 relative w-full min-w-0 md:pb-0 overflow-y-auto"
         style={{
           marginTop: isMobile ? "calc(3.5rem + env(safe-area-inset-top, 0px))" : undefined,
           paddingBottom: isMobile ? "calc(3.5rem + env(safe-area-inset-bottom, 0px))" : undefined,
+          WebkitOverflowScrolling: "touch",
+          overscrollBehavior: "contain",
         }}
       >
         <AnimatePresence mode="wait">
