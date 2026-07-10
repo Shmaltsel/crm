@@ -246,10 +246,10 @@ export default function Kindergartens() {
   );
 
   return (
-    <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-slate-50 min-h-screen">
+    <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-surface-subtle min-h-screen">
       <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold text-slate-800 leading-tight">
+          <h1 className="text-xl font-bold text-content-primary leading-tight">
             Садочки
             {selectedCity.id && (
               <span className="ml-2 text-sm font-normal text-blue-500">
@@ -284,7 +284,7 @@ export default function Kindergartens() {
                 });
               }}
               disabled={bulkImportMutation.isPending}
-              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 bg-success text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
             >
               {bulkImportMutation.isPending ? (
                 <span className="font-medium">
@@ -297,7 +297,7 @@ export default function Kindergartens() {
           )}
           <button
             onClick={handleOpenModal}
-            className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+            className="hidden md:flex items-center gap-1 px-3 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-hover"
           >
             + Додати
           </button>
@@ -307,7 +307,7 @@ export default function Kindergartens() {
       <div className="shrink-0">
         <Suspense
           fallback={
-            <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
+            <div className="h-[72px] bg-surface rounded-card animate-pulse mb-4" />
           }
         >
           <StatsBar
@@ -332,7 +332,7 @@ export default function Kindergartens() {
       <div className="relative shrink-0 mb-4 mt-2">
         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
           <svg
-            className="w-5 h-5 text-slate-400"
+            className="w-5 h-5 text-content-muted"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -350,12 +350,12 @@ export default function Kindergartens() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Пошук за назвою садочка..."
-          className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border-none sm:border sm:border-slate-200 rounded-2xl sm:rounded-xl text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition"
+          className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-surface border-none sm:border sm:border-border-strong rounded-card sm:rounded-control text-sm font-medium text-content-secondary placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand shadow-sm transition"
         />
         {searchQuery && (
           <button
             onClick={() => setSearchQuery("")}
-            className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600 transition"
+            className="absolute inset-y-0 right-4 flex items-center text-content-muted hover:text-content-secondary transition"
           >
             <svg
               className="w-5 h-5"
@@ -374,7 +374,7 @@ export default function Kindergartens() {
         )}
       </div>
 
-      <p className="text-xs font-semibold text-slate-400 mb-4 shrink-0 uppercase tracking-wide px-1">
+      <p className="text-xs font-semibold text-content-muted mb-4 shrink-0 uppercase tracking-wide px-1">
         {`${filteredSchools.length} з ${totalItems} садочків`}
         {(activeFilter || sizeFilter) && (
           <button
@@ -394,13 +394,13 @@ export default function Kindergartens() {
           {Array.from({ length: 8 }).map((_, i) => (
             <div
               key={i}
-              className="bg-white rounded-2xl border border-slate-100 p-3.5 animate-pulse"
+              className="bg-surface rounded-card border border-border p-3.5 animate-pulse"
               style={{ opacity: 1 - i * 0.1 }}
             >
               <div className="h-4 bg-slate-200 rounded-lg w-3/4 mb-3" />
               <div className="flex justify-between">
-                <div className="h-3 bg-slate-100 rounded-lg w-1/3" />
-                <div className="h-3 bg-slate-100 rounded-lg w-1/4" />
+                <div className="h-3 bg-surface-muted rounded-lg w-1/3" />
+                <div className="h-3 bg-surface-muted rounded-lg w-1/4" />
               </div>
             </div>
           ))}
@@ -429,9 +429,9 @@ export default function Kindergartens() {
             />
           </div>
 
-          <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
+          <div className="hidden md:flex flex-col flex-1 bg-surface rounded-card shadow-card border border-border overflow-hidden min-h-0">
             <Suspense
-              fallback={<div className="flex-1 animate-pulse bg-slate-50" />}
+              fallback={<div className="flex-1 animate-pulse bg-surface-subtle" />}
             >
               <VirtualDesktopTable
                 schools={filteredSchools}
@@ -447,22 +447,22 @@ export default function Kindergartens() {
 
       <button
         onClick={handleOpenModal}
-        className="md:hidden fixed right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
+        className="md:hidden fixed right-6 w-14 h-14 bg-brand text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-brand-hover active:scale-95 transition-transform"
         style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
       >
         +
       </button>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <h3 className="text-xl font-bold text-slate-800">
+        <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-surface rounded-card shadow-modal w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-border flex justify-between items-center bg-surface-subtle shrink-0">
+              <h3 className="text-xl font-bold text-content-primary">
                 Новий садочок
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-2 -mr-2 leading-none text-xl"
+                className="text-content-muted hover:text-content-secondary p-2 -mr-2 leading-none text-xl"
               >
                 ✕
               </button>
@@ -473,7 +473,7 @@ export default function Kindergartens() {
               className="p-6 flex flex-col gap-4 overflow-y-auto"
             >
               <div className="relative">
-                <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                <label className="block text-sm font-medium text-content-secondary mb-1.5">
                   Назва садочка
                 </label>
                 <input
@@ -485,12 +485,12 @@ export default function Kindergartens() {
                   }
                   placeholder="Наприклад: Садочок №1"
                   required
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand"
                 />
                 {showSuggestions && (
-                  <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto overflow-hidden">
+                  <ul className="absolute z-10 w-full bg-surface border border-border-strong rounded-control shadow-lg mt-1 max-h-48 overflow-y-auto overflow-hidden">
                     {isSearching ? (
-                      <li className="px-4 py-3 text-sm text-slate-400 italic">
+                      <li className="px-4 py-3 text-sm text-content-muted italic">
                         Пошук...
                       </li>
                     ) : suggestions.length > 0 ? (
@@ -506,7 +506,7 @@ export default function Kindergartens() {
                         </li>
                       ))
                     ) : (
-                      <li className="px-4 py-3 text-sm text-slate-400 italic">
+                      <li className="px-4 py-3 text-sm text-content-muted italic">
                         Нічого не знайдено
                       </li>
                     )}
@@ -516,7 +516,7 @@ export default function Kindergartens() {
 
               {!selectedCity.id && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                  <label className="block text-sm font-medium text-content-secondary mb-1.5">
                     Місто
                   </label>
                   <select
@@ -525,7 +525,7 @@ export default function Kindergartens() {
                       setForm({ ...form, cityId: e.target.value })
                     }
                     required
-                    className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand bg-surface"
                   >
                     <option value="">— Оберіть місто —</option>
                     {cities.map((c) => (
@@ -538,9 +538,9 @@ export default function Kindergartens() {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                <label className="block text-sm font-medium text-content-secondary mb-1.5">
                   Контакт{" "}
-                  <span className="ml-1 text-xs font-normal text-slate-400">
+                  <span className="ml-1 text-xs font-normal text-content-muted">
                     (автозаповнення)
                   </span>
                 </label>
@@ -557,7 +557,7 @@ export default function Kindergartens() {
                             phone: c.phone,
                           }))
                         }
-                        className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${form.director === c.contactName ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                        className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${form.director === c.contactName ? "bg-brand text-white border-blue-600 shadow-sm" : "bg-surface text-content-secondary border-border-strong hover:bg-surface-subtle"}`}
                       >
                         {c.role ? `${c.role}: ` : ""}
                         {c.contactName}
@@ -572,9 +572,9 @@ export default function Kindergartens() {
                     setForm({ ...form, director: e.target.value })
                   }
                   placeholder="Микола Петренко"
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+                  className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand mb-4"
                 />
-                <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                <label className="block text-sm font-medium text-content-secondary mb-1.5">
                   Телефон
                 </label>
                 <input
@@ -582,7 +582,7 @@ export default function Kindergartens() {
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   placeholder="0671234567"
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand"
                 />
               </div>
 
@@ -590,14 +590,14 @@ export default function Kindergartens() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-5 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+                  className="flex-1 px-5 py-3.5 bg-surface-muted rounded-control text-sm font-bold text-content-secondary hover:bg-slate-200 transition-colors"
                 >
                   Скасувати
                 </button>
                 <button
                   type="submit"
                   disabled={addSchoolMutation.isPending}
-                  className="flex-1 px-5 py-3.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="flex-1 px-5 py-3.5 bg-brand text-white rounded-control text-sm font-bold hover:bg-brand-hover disabled:opacity-50 transition-colors"
                 >
                   {addSchoolMutation.isPending ? "Збереження..." : "Створити"}
                 </button>

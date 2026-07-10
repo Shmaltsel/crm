@@ -10,10 +10,11 @@ export default {
     headless: true,           // або false, якщо хочеш бачити браузер
   },
 
-  ai: {
-    model: openrouter('tencent/hy3:free'),
-    visionModel: openrouter('google/gemma-4-31b-it:free'),
-    agenticModel: openrouter('google/gemini-2.0-flash-001'),
+ ai: {
+    // Використовуємо модель, яка стабільно доступна безкоштовно
+    model: openrouter('qwen/qwen-2.5-7b-instruct'),
+    visionModel: openrouter('qwen/qwen-2.5-7b-instruct'),
+    agenticModel: openrouter('qwen/qwen-2.5-7b-instruct'),
   },
 
   // === НАЛАШТУВАННЯ АВТОЛОГІНУ ===

@@ -48,9 +48,9 @@ const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => currentYear - i);
 function SkeletonBar() {
   return (
     <div className="flex items-center gap-3 mb-3 animate-pulse">
-      <div className="w-24 h-4 bg-slate-100 rounded-full shrink-0" />
-      <div className="h-8 bg-slate-100 rounded-full flex-1" />
-      <div className="w-16 h-4 bg-slate-100 rounded-full shrink-0" />
+      <div className="w-24 h-4 bg-surface-muted rounded-full shrink-0" />
+      <div className="h-8 bg-surface-muted rounded-full flex-1" />
+      <div className="w-16 h-4 bg-surface-muted rounded-full shrink-0" />
     </div>
   );
 }
@@ -77,10 +77,10 @@ export default function CityLeaderboard() {
   const formatValue = metric === "revenue" || metric === "profit" ? fmtMoney : fmt;
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+    <div className="p-4 md:p-8 bg-surface-subtle min-h-screen">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Рейтинг міст</h1>
-        <p className="text-xs text-slate-400 mt-1">Порівняння міст за обраною метрикою</p>
+        <h1 className="text-2xl font-bold text-content-primary">Рейтинг міст</h1>
+        <p className="text-xs text-content-muted mt-1">Порівняння міст за обраною метрикою</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-6">
@@ -88,10 +88,10 @@ export default function CityLeaderboard() {
           <button
             key={m.key}
             onClick={() => setMetric(m.key)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               metric === m.key
-                ? "bg-blue-600 text-white shadow-sm"
-                : "bg-white text-slate-600 border border-slate-200 hover:border-blue-300"
+                ? "bg-brand text-white shadow-sm"
+                : "bg-surface text-content-secondary border border-border-strong hover:border-blue-300"
             }`}
           >
             {m.label}
@@ -101,7 +101,7 @@ export default function CityLeaderboard() {
         <select
           value={year}
           onChange={(e) => setYear(Number(e.target.value))}
-          className="ml-auto px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+          className="ml-auto px-3 py-2.5 bg-surface border border-border-strong rounded-lg text-sm focus:outline-none focus:border-blue-400"
         >
           {YEAR_OPTIONS.map((y) => (
             <option key={y} value={y}>{y}</option>
@@ -110,18 +110,18 @@ export default function CityLeaderboard() {
       </div>
 
       {isLoading ? (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="bg-surface rounded-card border border-border shadow-card p-6">
           {Array.from({ length: 5 }).map((_, i) => <SkeletonBar key={i} />)}
         </div>
       ) : !data || data.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="bg-surface rounded-card border border-border shadow-card p-6">
           <div className="h-[200px] flex flex-col items-center justify-center text-slate-300">
             <span className="text-3xl mb-2">🏆</span>
-            <span className="text-sm text-slate-400">Немає даних за {year} рік</span>
+            <span className="text-sm text-content-muted">Немає даних за {year} рік</span>
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="bg-surface rounded-card border border-border shadow-card p-6">
           <AnimatePresence mode="wait">
             <motion.div
               key={metric}
@@ -137,10 +137,10 @@ export default function CityLeaderboard() {
 
                 return (
                   <div key={entry.cityId} className="flex items-center gap-3 mb-3">
-                    <span className="w-24 text-xs text-slate-500 truncate shrink-0 text-right">
+                    <span className="w-24 text-xs text-content-muted truncate shrink-0 text-right">
                       {entry.cityName}
                     </span>
-                    <div className="flex-1 h-8 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="flex-1 h-8 bg-surface-muted rounded-full overflow-hidden">
                       <motion.div
                         className={`h-full rounded-full ${BAR_COLORS[colorIndex]}`}
                         initial={{ width: 0 }}
@@ -148,7 +148,7 @@ export default function CityLeaderboard() {
                         transition={{ duration: 0.5, ease: "easeOut" }}
                       />
                     </div>
-                    <span className="w-20 text-xs font-semibold text-slate-700 text-right shrink-0">
+                    <span className="w-20 text-xs font-semibold text-content-secondary text-right shrink-0">
                       {formatValue(value)}
                     </span>
                   </div>

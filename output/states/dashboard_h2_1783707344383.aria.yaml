@@ -1,0 +1,31 @@
+- complementary:
+  - heading "СВІТЛО ЗНАНЬ" [level=2]
+  - paragraph: Львів
+  - navigation:
+    - link "Дашборд":
+      - /url: /dashboard
+    - link "Міста":
+      - /url: /cities
+    - link "Школи":
+      - /url: /schools
+    - link "Садочки":
+      - /url: /kindergartens
+    - link "Фінанси":
+      - /url: /finance
+    - link "Календар":
+      - /url: /calendar
+    - link "Працівники":
+      - /url: /employees
+  - text: А
+  - paragraph: Адміністратор
+  - paragraph: SUPERADMIN
+  - button "Сповіщення"
+  - button "Вийти"
+- main:
+  - tablist "Вкладки дашборду":
+    - tab "Огляд" [selected]
+    - tab "Звіти"
+    - tab "Рейтинг"
+    - tab "Аналітика"
+  - text: Завантаження... Завантаження... Завантаження... Завантаження...
+- alert

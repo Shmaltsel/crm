@@ -160,3 +160,157 @@ Call log:
 [2026-07-10T18:10:44.088Z] [STEP] I.click("button[type="submit"]")
 [2026-07-10T18:10:45.671Z] [SUCCESS] Navigation resolved successfully
 [2026-07-10T18:10:45.675Z] [OPERATION] Added FLOW to: login_h1_crm.md
+[2026-07-10T18:10:48.771Z] [INFO] Researching https://app.svitlo-znan.app/dashboard to understand the context...
+
+
+=== ExplorBot Session Started at 2026-07-10T18:13:14.194Z ===
+
+[2026-07-10T18:13:14.193Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+
+
+=== ExplorBot Session Started at 2026-07-10T18:14:18.620Z ===
+
+[2026-07-10T18:14:18.618Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+
+
+=== ExplorBot Session Started at 2026-07-10T18:14:59.976Z ===
+
+[2026-07-10T18:14:59.975Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+
+
+=== ExplorBot Session Started at 2026-07-10T18:15:25.537Z ===
+
+[2026-07-10T18:15:25.536Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+[2026-07-10T18:15:29.903Z] [INFO] chromium starting in headed mode
+[2026-07-10T18:15:31.261Z] [SUCCESS] Browser started, ready to explore
+[2026-07-10T18:15:33.146Z] [STEP] I.amOnPage("https://app.svitlo-znan.app/dashboard")
+[2026-07-10T18:15:33.777Z] [INFO] AI Navigator resolving state at /login
+[2026-07-10T18:15:33.795Z] [OPERATION] Found 1 experience file for: /login
+[2026-07-10T18:15:42.099Z] [STEP] I.fillField({"role":"textbox","text":"Email"}, "admin@crm.com")
+[2026-07-10T18:15:42.932Z] [STEP] I.fillField({"role":"textbox","text":"Пароль"}, "123!PASSWORD!321")
+[2026-07-10T18:15:43.493Z] [STEP] I.click({"role":"button","text":"Увійти"})
+[2026-07-10T18:15:44.175Z] [SUCCESS] Navigation resolved successfully
+[2026-07-10T18:15:44.347Z] [INFO] Researching https://app.svitlo-znan.app/dashboard to understand the context...
+[2026-07-10T18:15:57.296Z] [OPERATION] Validated 2 locators: 0 valid, 2 broken
+[2026-07-10T18:15:57.297Z] [WARNING] All 2 containers broken, retrying research (1/2)...
+[2026-07-10T18:15:59.308Z] [INFO] Researching https://app.svitlo-znan.app/dashboard to understand the context...
+[2026-07-10T18:16:35.245Z] [OPERATION] Validated 4 locators: 3 valid, 1 broken
+[2026-07-10T18:16:35.336Z] [OPERATION] Validated 29 locators: 2 valid, 27 broken
+[2026-07-10T18:16:35.336Z] [WARNING] 95% locators broken, waiting 3s and retrying research (2/2)...
+[2026-07-10T18:16:38.342Z] [INFO] Researching https://app.svitlo-znan.app/dashboard to understand the context...
+[2026-07-10T18:16:38.348Z] [STEP] Navigating to URL...
+[2026-07-10T18:16:39.125Z] [STEP] I.amOnPage("https://app.svitlo-znan.app/dashboard")
+[2026-07-10T18:17:01.001Z] [OPERATION] Validated 3 locators: 1 valid, 2 broken
+[2026-07-10T18:17:01.037Z] [OPERATION] Validated 12 locators: 0 valid, 12 broken
+[2026-07-10T18:17:01.039Z] [SUBSTEP] Fixing 19 broken locators via AI conversation...
+[2026-07-10T18:17:36.711Z] [OPERATION] Validated 19 locators: 0 valid, 19 broken
+[2026-07-10T18:17:36.742Z] [OPERATION] Validated 3 locators: 1 valid, 2 broken
+[2026-07-10T18:17:40.137Z] [OPERATION] Validated 19 locators: 0 valid, 19 broken
+[2026-07-10T18:17:40.144Z] [SUBSTEP] Backfilled XPath for 1 elements missing working locators
+[2026-07-10T18:17:40.161Z] [INFO] Starting deep analysis of expandable elements
+[2026-07-10T18:17:41.161Z] [STEP] I.amOnPage("https://app.svitlo-znan.app/dashboard")
+[2026-07-10T18:17:46.161Z] [SUBSTEP] Clicking 4 expandable elements
+[2026-07-10T18:17:46.177Z] [STEP] I.moveCursorTo(".swiper-slide-active button[aria-label="Огляд"]", ".swiper-wrapper")
+[2026-07-10T18:17:46.799Z] [STEP] I.click(".swiper-slide-active button[aria-label="Огляд"]", ".swiper-wrapper")
+[2026-07-10T18:17:46.804Z] [STEP] I.click(".swiper-slide-active button[aria-label="Огляд"]")
+[2026-07-10T18:17:46.819Z] [STEP] I.moveCursorTo(".swiper-slide button[aria-label="Звіти"]", ".swiper-wrapper")
+[2026-07-10T18:17:47.407Z] [STEP] I.click(".swiper-slide button[aria-label="Звіти"]", ".swiper-wrapper")
+[2026-07-10T18:17:47.418Z] [STEP] I.click(".swiper-slide button[aria-label="Звіти"]")
+[2026-07-10T18:17:47.445Z] [STEP] I.moveCursorTo(".swiper-slide button[aria-label="Рейтинг"]", ".swiper-wrapper")
+[2026-07-10T18:17:48.066Z] [STEP] I.click(".swiper-slide button[aria-label="Рейтинг"]", ".swiper-wrapper")
+[2026-07-10T18:17:48.070Z] [STEP] I.click(".swiper-slide button[aria-label="Рейтинг"]")
+[2026-07-10T18:17:48.082Z] [STEP] I.moveCursorTo(".swiper-slide button[aria-label="Аналітика"]", ".swiper-wrapper")
+[2026-07-10T18:17:48.669Z] [STEP] I.click(".swiper-slide button[aria-label="Аналітика"]", ".swiper-wrapper")
+[2026-07-10T18:17:48.674Z] [STEP] I.click(".swiper-slide button[aria-label="Аналітика"]")
+[2026-07-10T18:17:48.676Z] [INFO] Deep analysis complete. Sections: 0, navigation links: 0
+[2026-07-10T18:17:48.685Z] [SUCCESS] Research complete
+[2026-07-10T18:17:48.685Z] [OPERATION] Research file saved to: C:\CRM\output\research\dashboard_h2.md
+[2026-07-10T18:17:49.067Z] [INFO] Planning style: normal
+[2026-07-10T18:17:49.075Z] [INFO] Researching https://app.svitlo-znan.app/dashboard to understand the context...
+[2026-07-10T18:18:01.680Z] [OPERATION] Validated 2 locators: 0 valid, 2 broken
+[2026-07-10T18:18:01.680Z] [WARNING] All 2 containers broken, retrying research (1/2)...
+[2026-07-10T18:18:03.700Z] [INFO] Researching https://app.svitlo-znan.app/dashboard to understand the context...
+[2026-07-10T18:18:33.759Z] [OPERATION] Validated 3 locators: 2 valid, 1 broken
+[2026-07-10T18:18:33.827Z] [OPERATION] Validated 21 locators: 6 valid, 15 broken
+[2026-07-10T18:18:33.829Z] [SUBSTEP] Fixing 23 broken locators via AI conversation...
+[2026-07-10T18:19:31.148Z] [OPERATION] Validated 29 locators: 6 valid, 23 broken
+[2026-07-10T18:19:31.245Z] [OPERATION] Validated 29 locators: 6 valid, 23 broken
+[2026-07-10T18:19:31.255Z] [SUBSTEP] Backfilled XPath for 5 elements missing working locators
+[2026-07-10T18:19:31.266Z] [INFO] Starting deep analysis of expandable elements
+[2026-07-10T18:19:35.233Z] [STEP] I.amOnPage("https://app.svitlo-znan.app/dashboard")
+[2026-07-10T18:19:40.157Z] [SUBSTEP] Clicking 4 expandable elements
+[2026-07-10T18:19:40.177Z] [STEP] I.moveCursorTo("a[aria-label="Дашборд"]")
+[2026-07-10T18:19:43.931Z] [STEP] I.click("a[aria-label="Дашборд"]")
+[2026-07-10T18:19:44.500Z] [STEP] I.clickXY(331, 20)
+[2026-07-10T18:19:46.465Z] [STEP] I.amOnPage("/dashboard")
+[2026-07-10T18:19:47.600Z] [STEP] I.moveCursorTo("button[aria-label="Огляд"]", ".no-scrollbar")
+[2026-07-10T18:19:48.219Z] [STEP] I.click("button[aria-label="Огляд"]", ".no-scrollbar")
+[2026-07-10T18:19:48.367Z] [STEP] I.click("button[aria-label="Огляд"]")
+[2026-07-10T18:19:48.966Z] [STEP] I.clickXY(415, 20)
+[2026-07-10T18:19:51.347Z] [STEP] I.amOnPage("/dashboard")
+[2026-07-10T18:19:55.020Z] [STEP] I.moveCursorTo("button[aria-label="Звіти"]", ".no-scrollbar")
+[2026-07-10T18:19:55.620Z] [STEP] I.click("button[aria-label="Звіти"]", ".no-scrollbar")
+[2026-07-10T18:19:55.755Z] [STEP] I.click("button[aria-label="Звіти"]")
+[2026-07-10T18:19:56.307Z] [STEP] I.clickXY(506, 20)
+[2026-07-10T18:20:10.283Z] [STEP] I.amOnPage("/dashboard")
+[2026-07-10T18:20:11.700Z] [STEP] I.moveCursorTo("button[aria-label="Рейтинг"]", ".no-scrollbar")
+[2026-07-10T18:20:12.311Z] [STEP] I.click("button[aria-label="Рейтинг"]", ".no-scrollbar")
+[2026-07-10T18:20:12.510Z] [STEP] I.click("button[aria-label="Рейтинг"]")
+[2026-07-10T18:20:13.065Z] [STEP] I.clickXY(612, 20)
+[2026-07-10T18:20:15.031Z] [STEP] I.amOnPage("/dashboard")
+[2026-07-10T18:20:18.057Z] [INFO] Deep analysis complete. Sections: 0, navigation links: 4
+[2026-07-10T18:20:18.066Z] [SUCCESS] Research complete
+[2026-07-10T18:20:18.066Z] [OPERATION] Research file saved to: C:\CRM\output\research\dashboard_h1_h2.md
+[2026-07-10T18:20:18.074Z] [STEP] Focusing on main content of this page
+[2026-07-10T18:20:28.572Z] [SUCCESS] Planning complete! 3 tests in plan: Dashboard Overview Testing
+[2026-07-10T18:20:28.608Z] [SUBSTEP] Pilot planning test...
+[2026-07-10T18:20:35.465Z] [STEP] I.amOnPage("https://app.svitlo-znan.app/dashboard")
+[2026-07-10T18:20:49.921Z] [ERROR] Browser execution error: Upstream error from Phala: Expecting ':' delimiter: line 3 column 5 (char 8)
+[2026-07-10T18:20:49.922Z] [INFO] Browser supervisor: continue - Previous execution error: Upstream error from Phala: Expecting ':' delimiter: line 3 column 5 (char 8). Investigate the current state and choose a different approach.
+[2026-07-10T18:22:15.197Z] [ERROR] Browser execution error: AI request timeout
+[2026-07-10T18:22:15.198Z] [INFO] Browser supervisor: continue - Previous execution error: AI request timeout. Investigate the current state and choose a different approach.
+[2026-07-10T18:22:15.206Z] [SUBSTEP] Pilot analyzing progress...
+[2026-07-10T18:23:47.208Z] [ERROR] Browser execution error: Failed after 2 attempts with non-retryable error: 'AI_APICallError: Upstream error from Phala: Expecting ':' delimiter: line 3 column 5 (char 8)'
+[2026-07-10T18:23:47.208Z] [INFO] Browser supervisor: continue - Previous execution error: Failed after 2 attempts with non-retryable error: 'AI_APICallError: Upstream error from Phala: Expecting ':' delimiter: line 3 column 5 (char 8)'. Investigate the current state and choose a different approach.
+[2026-07-10T18:23:47.210Z] [OPERATION] Historian saved session for: Switching Between Dashboard Overview Panels
+[2026-07-10T18:23:47.213Z] [OPERATION] Saved plan tests to: output\tests\dashboard_overview_testing.js
+[2026-07-10T18:23:47.214Z] [ERROR] Failed test: Switching Between Dashboard Overview Panels
+[2026-07-10T18:23:47.232Z] [SUBSTEP] Pilot planning test...
+[2026-07-10T18:23:53.440Z] [STEP] I.amOnPage("https://app.svitlo-znan.app/dashboard")
+[2026-07-10T18:23:53.442Z] [ERROR] Browser execution error: page.goto: net::ERR_INSUFFICIENT_RESOURCES at https://app.svitlo-znan.app/dashboard
+Call log:
+[2m  - navigating to "https://app.svitlo-znan.app/dashboard", waiting until "load"[22m
+
+[2026-07-10T18:23:53.443Z] [INFO] Browser supervisor: continue - Previous execution error: page.goto: net::ERR_INSUFFICIENT_RESOURCES at https://app.svitlo-znan.app/dashboard
+Call log:
+[2m  - navigating to "https://app.svitlo-znan.app/dashboard", waiting until "load"[22m
+. Investigate the current state and choose a different approach.
+[2026-07-10T18:24:00.383Z] [ERROR] Browser execution error: Upstream error from Phala: Expecting ':' delimiter: line 3 column 5 (char 8)
+[2026-07-10T18:24:00.392Z] [INFO] Browser supervisor: continue - Previous execution error: Upstream error from Phala: Expecting ':' delimiter: line 3 column 5 (char 8). Investigate the current state and choose a different approach.
+[2026-07-10T18:24:00.393Z] [INFO] Researching chrome-error://chromewebdata/ to understand the context...
+[2026-07-10T18:24:00.395Z] [STEP] Navigating to URL...
+[2026-07-10T18:24:02.990Z] [STEP] I.amOnPage("chrome-error://chromewebdata/")
+[2026-07-10T18:24:02.992Z] [ERROR] Browser execution error: page.goto: net::ERR_INSUFFICIENT_RESOURCES at https://app.svitlo-znan.app/chrome-error://chromewebdata/
+Call log:
+[2m  - navigating to "https://app.svitlo-znan.app/chrome-error://chromewebdata/", waiting until "load"[22m
+
+[2026-07-10T18:24:02.993Z] [INFO] Browser supervisor: continue - Previous execution error: page.goto: net::ERR_INSUFFICIENT_RESOURCES at https://app.svitlo-znan.app/chrome-error://chromewebdata/
+Call log:
+[2m  - navigating to "https://app.svitlo-znan.app/chrome-error://chromewebdata/", waiting until "load"[22m
+. Investigate the current state and choose a different approach.
+[2026-07-10T18:24:02.994Z] [OPERATION] Historian saved session for: Changing Active City and Verifying Changes
+[2026-07-10T18:24:02.996Z] [OPERATION] Saved plan tests to: output\tests\dashboard_overview_testing.js
+[2026-07-10T18:24:02.997Z] [ERROR] Failed test: Changing Active City and Verifying Changes
+[2026-07-10T18:24:03.000Z] [INFO] Researching chrome-error://chromewebdata/ to understand the context...
+[2026-07-10T18:24:03.001Z] [STEP] Navigating to URL...
+[2026-07-10T18:24:03.923Z] [STEP] I.amOnPage("chrome-error://chromewebdata/")
+[2026-07-10T18:24:16.708Z] [OPERATION] Validated 1 locators: 1 valid, 0 broken
+[2026-07-10T18:24:16.738Z] [OPERATION] Validated 8 locators: 6 valid, 2 broken
+[2026-07-10T18:24:16.739Z] [SUBSTEP] Fixing 2 broken locators via AI conversation...
+[2026-07-10T18:24:32.442Z] [OPERATION] Validated 8 locators: 6 valid, 2 broken
+[2026-07-10T18:24:32.468Z] [OPERATION] Validated 8 locators: 6 valid, 2 broken
+[2026-07-10T18:24:32.473Z] [SUBSTEP] Backfilled XPath for 2 elements missing working locators
+[2026-07-10T18:24:32.481Z] [SUCCESS] Research complete
+[2026-07-10T18:24:32.482Z] [SUBSTEP] Pilot planning test...
+[2026-07-10T18:24:35.433Z] [INFO] Precondition: 1 active school in Kyiv
+[2026-07-10T18:24:43.023Z] [STEP] I.amOnPage("https://app.svitlo-znan.app/dashboard")

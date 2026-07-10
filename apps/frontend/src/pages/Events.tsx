@@ -141,17 +141,17 @@ export default function Events() {
       </div>
 
       {isLoading && (
-        <div className="text-center text-slate-400 py-16">Завантаження...</div>
+        <div className="text-center text-content-muted py-16">Завантаження...</div>
       )}
 
       {!isLoading && error && (
-        <div className="bg-red-50 text-red-600 border border-red-100 rounded-xl p-4 text-sm">
+        <div className="bg-red-50 text-red-600 border border-red-100 rounded-card p-4 text-sm">
           {error}
         </div>
       )}
 
       {!isLoading && !error && filteredEvents.length === 0 && (
-        <div className="bg-white border border-slate-100 rounded-xl p-10 text-center text-slate-400">
+        <div className="bg-surface border border-border rounded-card p-10 text-center text-content-muted">
           {isFieldStaff
             ? "Поки що немає подій, на які вас призначено."
             : "Подій ще немає."}
@@ -166,10 +166,10 @@ export default function Events() {
               <div
                 key={ev.id}
                 onClick={() => goToEvent(ev)}
-                className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer active:bg-slate-50"
+                className="bg-surface rounded-card shadow-card border border-border p-4 cursor-pointer active:bg-surface-subtle"
               >
                 <div className="flex justify-between items-start gap-2">
-                  <p className="font-semibold text-gray-800">{ev.project}</p>
+                  <p className="font-semibold text-content-primary">{ev.project}</p>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span
                       className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
@@ -180,7 +180,7 @@ export default function Events() {
                     </span>
                     {ev.report?.status && (
                       <span
-                        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                        className={`inline-block px-2 py-0.5 rounded-full text-2xs font-medium ${
                           REPORT_STATUS_COLORS[ev.report.status] ?? "bg-slate-100 text-slate-500"
                         }`}
                       >
@@ -189,26 +189,26 @@ export default function Events() {
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-content-muted mt-1">
                   {formatDate(ev.date)}
                   {ev.time ? `, ${ev.time}` : ""} · {ev.city?.name ?? "—"}
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                <p className="text-xs text-content-muted mt-0.5 flex items-center gap-1">
                   <School className="w-3 h-3 shrink-0" /> {ev.school?.name ?? "—"}
                 </p>
                 {ev.address && (
-                  <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                  <p className="text-xs text-content-muted mt-0.5 flex items-center gap-1">
                     <MapPin className="w-3 h-3 shrink-0" /> <AddressLink address={ev.address} />
                   </p>
                 )}
                 {(ev.crew?.host || ev.crew?.driver) && (
-                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                  <p className="text-xs text-content-muted mt-1 flex items-center gap-1">
                     <User className="w-3 h-3 shrink-0" /> {ev.crew?.host?.name ?? "—"} <Truck className="w-3 h-3 shrink-0" />{" "}
                     {ev.crew?.driver?.name ?? "—"}
                   </p>
                 )}
                 {isFieldStaff && (ev.contactPerson || ev.contactPhone) && (
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-xs text-content-muted mt-0.5">
                     {ev.contactPerson ?? "—"}
                     {ev.contactPhone ? (
                       <>
@@ -223,15 +223,15 @@ export default function Events() {
           </div>
 
           {/* Таблиця — десктоп */}
-          <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+          <div className="hidden md:block bg-surface rounded-card shadow-card border border-border overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="p-4 font-medium text-gray-600">Подія</th>
-                  <th className="p-4 font-medium text-gray-600">Дата</th>
-                  <th className="p-4 font-medium text-gray-600">Локація</th>
-                  <th className="p-4 font-medium text-gray-600">Екіпаж</th>
-                  <th className="p-4 font-medium text-gray-600">Статус</th>
+                <tr className="bg-surface-muted border-b border-border">
+                  <th className="p-4 font-medium text-content-secondary">Подія</th>
+                  <th className="p-4 font-medium text-content-secondary">Дата</th>
+                  <th className="p-4 font-medium text-content-secondary">Локація</th>
+                  <th className="p-4 font-medium text-content-secondary">Екіпаж</th>
+                  <th className="p-4 font-medium text-content-secondary">Статус</th>
                 </tr>
               </thead>
               <tbody>
@@ -239,29 +239,29 @@ export default function Events() {
                   <tr
                     key={ev.id}
                     onClick={() => goToEvent(ev)}
-                    className="border-b border-gray-50 hover:bg-gray-50/50 transition cursor-pointer"
+                    className="border-b border-border hover:bg-surface-muted/50 transition cursor-pointer"
                   >
-                    <td className="p-4 text-gray-800 font-medium">
+                    <td className="p-4 text-content-primary font-medium">
                       {ev.project}
-                      <div className="text-xs text-gray-400 font-normal mt-0.5">
+                      <div className="text-xs text-content-muted font-normal mt-0.5">
                         {ev.school?.name ?? "—"}
                       </div>
                     </td>
-                    <td className="p-4 text-gray-600">
+                    <td className="p-4 text-content-secondary">
                       {formatDate(ev.date)}
                       {ev.time && (
-                        <div className="text-xs text-gray-400">{ev.time}</div>
+                        <div className="text-xs text-content-muted">{ev.time}</div>
                       )}
                     </td>
-                    <td className="p-4 text-gray-600">
+                    <td className="p-4 text-content-secondary">
                       {ev.city?.name ?? "—"}
                       {ev.address && (
-                        <div className="text-xs text-gray-400">
+                        <div className="text-xs text-content-muted">
                           <AddressLink address={ev.address} />
                         </div>
                       )}
                     </td>
-                    <td className="p-4 text-gray-600 text-sm">
+                    <td className="p-4 text-content-secondary text-sm">
                       <div className="flex items-center gap-1"><User className="w-3 h-3 shrink-0" /> {ev.crew?.host?.name ?? "—"}</div>
                       <div className="flex items-center gap-1"><Truck className="w-3 h-3 shrink-0" /> {ev.crew?.driver?.name ?? "—"}</div>
                     </td>
@@ -277,7 +277,7 @@ export default function Events() {
                         </span>
                         {ev.report?.status && (
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                               REPORT_STATUS_COLORS[ev.report.status] ?? "bg-slate-100 text-slate-500"
                             }`}
                           >
