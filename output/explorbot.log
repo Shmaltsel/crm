@@ -72,3 +72,13 @@ Call log:
 [2026-07-10T17:37:13.989Z] [INFO] AI Navigator resolving state at /login
 [2026-07-10T17:37:37.845Z] [ERROR] Navigator stopped: The app redirected from /dashboard to /login, presenting the "Вхід у CRM" form (Email, Password, "Увійти" button), which means authentication is required to reach the dashboard. No credentials (email/password) were provided in the available knowledge/hint context, so I cannot perform a real login. Please provide valid credentials or log in manually, after which navigation to /dashboard can proceed.
 [2026-07-10T17:37:38.852Z] [ERROR] Navigator stopped: The app redirected from /dashboard to /login, presenting the "Вхід у CRM" form (Email, Password, "Увійти" button), which means authentication is required to reach the dashboard. No credentials (email/password) were provided in the available knowledge/hint context, so I cannot perform a real login. Please provide valid credentials or log in manually, after which navigation to /dashboard can proceed.
+
+
+=== ExplorBot Session Started at 2026-07-10T17:45:18.475Z ===
+
+[2026-07-10T17:45:18.473Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+[2026-07-10T17:45:20.361Z] [INFO] chromium starting in headless mode
+[2026-07-10T17:45:20.362Z] [SUBSTEP] Enabling debug protocol for Chromium at http://localhost:9222
+[2026-07-10T17:45:22.248Z] [SUCCESS] Browser started, ready to explore
+[2026-07-10T17:45:26.651Z] [STEP] I.amOnPage("https://app.svitlo-znan.app/dashboard")
+[2026-07-10T17:45:27.351Z] [INFO] AI Navigator resolving state at /login

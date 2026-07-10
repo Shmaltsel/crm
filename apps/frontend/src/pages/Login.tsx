@@ -49,7 +49,6 @@ export default function Login({ onLogin }: LoginProps) {
 
     try {
       const response = await api.post("/auth/login", { email, password });
-
       setLoggedInUser(response.data.user);
       setIsTransitioning(true);
     } catch {
@@ -61,7 +60,7 @@ export default function Login({ onLogin }: LoginProps) {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+    <div className="flex items-center justify-center min-h-screen bg-surface-subtle p-4">
       <AnimatePresence>
         {isTransitioning && (
           <motion.div
@@ -75,7 +74,7 @@ export default function Login({ onLogin }: LoginProps) {
               borderRadius: "9999px",
               willChange: "transform",
             }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-blue-600"
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-brand"
           />
         )}
       </AnimatePresence>
@@ -88,9 +87,9 @@ export default function Login({ onLogin }: LoginProps) {
               : { opacity: 1, scale: 1 }
         }
         transition={{ duration: 0.4 }}
-        className="p-6 sm:p-8 bg-white rounded-2xl shadow-lg w-full max-w-sm sm:max-w-md"
+        className="p-6 sm:p-8 bg-surface rounded-card shadow-modal w-full max-w-sm sm:max-w-md"
       >
-        <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
+        <h1 className="text-2xl font-bold text-center text-content-primary mb-6">
           Вхід у CRM
         </h1>
 
@@ -98,7 +97,7 @@ export default function Login({ onLogin }: LoginProps) {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center"
+            className="mb-4 p-3 bg-danger-50 text-danger-600 rounded-control text-sm text-center"
           >
             {error}
           </motion.div>
@@ -106,7 +105,7 @@ export default function Login({ onLogin }: LoginProps) {
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div>
-            <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="login-email" className="block text-sm font-medium text-content-primary mb-1.5">
               Email
             </label>
             <input
@@ -114,12 +113,12 @@ export default function Login({ onLogin }: LoginProps) {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full px-3.5 py-3 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none text-sm transition-colors"
               required
             />
           </div>
           <div>
-            <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="login-password" className="block text-sm font-medium text-content-primary mb-1.5">
               Пароль
             </label>
             <input
@@ -127,7 +126,7 @@ export default function Login({ onLogin }: LoginProps) {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full px-3.5 py-3 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none text-sm transition-colors"
               required
             />
           </div>
@@ -135,7 +134,7 @@ export default function Login({ onLogin }: LoginProps) {
             type="submit"
             disabled={isLoading}
             whileTap={{ scale: 0.97 }}
-            className="mt-2 bg-blue-600 text-white font-medium p-2.5 rounded-lg hover:bg-blue-700 transition disabled:opacity-80 disabled:cursor-not-allowed flex items-center justify-center gap-2 h-[42px]"
+            className="mt-2 bg-brand text-white font-medium px-5 py-3 rounded-control hover:bg-brand-hover transition disabled:opacity-80 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[48px]"
           >
             <AnimatePresence mode="wait" initial={false}>
               {isLoading ? (
@@ -148,22 +147,13 @@ export default function Login({ onLogin }: LoginProps) {
                 >
                   <motion.span
                     animate={{ rotate: 360 }}
-                    transition={{
-                      duration: 0.7,
-                      repeat: Infinity,
-                      ease: "linear",
-                    }}
+                    transition={{ duration: 0.7, repeat: Infinity, ease: "linear" }}
                     className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full"
                   />
                   Вхід...
                 </motion.span>
               ) : (
-                <motion.span
-                  key="idle"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
+                <motion.span key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                   Увійти
                 </motion.span>
               )}

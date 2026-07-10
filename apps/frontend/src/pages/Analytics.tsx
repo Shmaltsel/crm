@@ -40,27 +40,27 @@ const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
 function SkeletonCard() {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 animate-pulse">
-      <div className="h-4 bg-slate-100 rounded-full w-1/3 mb-3" />
-      <div className="h-8 bg-slate-100 rounded w-2/3 mb-2" />
+    <div className="mobile-card animate-pulse">
+      <div className="h-3 bg-neutral-100 rounded-full w-1/3 mb-2.5" />
+      <div className="h-7 bg-neutral-100 rounded w-2/3 mb-1.5" />
     </div>
   );
 }
 
 function ChartSkeleton() {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 animate-pulse">
-      <div className="h-5 bg-slate-100 rounded w-1/4 mb-6" />
-      <div className="h-[280px] bg-slate-50 rounded-xl" />
+    <div className="mobile-card animate-pulse">
+      <div className="h-4 bg-neutral-100 rounded w-1/4 mb-5" />
+      <div className="h-[280px] bg-surface-muted rounded-xl" />
     </div>
   );
 }
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="h-[280px] flex flex-col items-center justify-center text-slate-300">
-      <span className="text-3xl mb-2">📊</span>
-      <span className="text-sm text-slate-400">{text}</span>
+    <div className="h-[280px] flex flex-col items-center justify-center text-content-muted">
+      <span className="text-2xl mb-2">📊</span>
+      <span className="text-sm text-content-muted">{text}</span>
     </div>
   );
 }
@@ -92,10 +92,10 @@ export default function Analytics() {
   }));
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Аналітика</h1>
-        <p className="text-xs text-slate-400 mt-1">
+    <div className="p-4 md:p-8 bg-surface-subtle min-h-screen">
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold text-content-primary">Аналітика</h1>
+        <p className="text-2xs text-content-muted mt-1">
           {new Date().toLocaleDateString("uk-UA", {
             month: "long",
             year: "numeric",
@@ -103,11 +103,11 @@ export default function Analytics() {
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 mb-6">
+      <div className="flex flex-wrap items-center gap-2 mb-5">
         <select
           value={year}
           onChange={(e) => setYear(Number(e.target.value))}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+          className="px-3 py-2.5 bg-surface border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand min-h-[44px]"
         >
           {YEAR_OPTIONS.map((y) => (
             <option key={y} value={y}>{y}</option>
@@ -118,7 +118,7 @@ export default function Analytics() {
           <select
             value={cityId}
             onChange={(e) => setCityId(e.target.value)}
-            className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+            className="px-3 py-2.5 bg-surface border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand min-h-[44px]"
           >
             <option value="">Всі міста</option>
             {cities?.map((c) => (
@@ -132,32 +132,32 @@ export default function Analytics() {
           placeholder="Проєкт (фільтр)"
           value={projectId}
           onChange={(e) => setProjectId(e.target.value)}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 w-48"
+          className="px-3 py-2.5 bg-surface border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand w-48 min-h-[44px]"
         />
       </div>
 
       {revenueLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
           {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <KPICard label="Загальний дохід" value={fmtMoney(totalRevenue)} color="text-blue-700" bg="bg-blue-50" />
-          <KPICard label="Прибуток" value={fmtMoney(totalProfit)} color="text-emerald-700" bg="bg-emerald-50" />
-          <KPICard label="ROI" value={roi ? `${roi.roi}%` : "—"} color="text-purple-700" bg="bg-purple-50" />
-          <KPICard label="Витрати на ЗП" value={fmtMoney(salaryFund?.total ?? 0)} color="text-rose-700" bg="bg-rose-50" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+          <KPICard label="Загальний дохід" value={fmtMoney(totalRevenue)} color="text-brand" />
+          <KPICard label="Прибуток" value={fmtMoney(totalProfit)} color="text-success" />
+          <KPICard label="ROI" value={roi ? `${roi.roi}%` : "—"} color="text-purple-600" />
+          <KPICard label="Витрати на ЗП" value={fmtMoney(salaryFund?.total ?? 0)} color="text-danger" />
         </div>
       )}
 
       {revenueLoading ? (
         <ChartSkeleton />
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 mb-6">
-          <h3 className="font-bold text-slate-800 mb-4">Дохід по місяцях</h3>
+        <div className="mobile-card mb-5">
+          <h3 className="font-bold text-content-primary mb-3 text-sm">Дохід по місяцях</h3>
           {chartData.length === 0 ? (
             <EmptyState text="Немає даних за цей період" />
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={280}>
               <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
@@ -178,12 +178,12 @@ export default function Analytics() {
         eventsLoading ? (
           <ChartSkeleton />
         ) : (
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-            <h3 className="font-bold text-slate-800 mb-4">Події по містах</h3>
+          <div className="mobile-card">
+            <h3 className="font-bold text-content-primary mb-3 text-sm">Події по містах</h3>
             {!eventsByCity || eventsByCity.length === 0 ? (
               <EmptyState text="Немає подій за цей рік" />
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={eventsByCity} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="cityName" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
@@ -200,8 +200,8 @@ export default function Analytics() {
         )
       )}
       {isSuper && (
-        <div className="mt-6">
-          <h3 className="font-bold text-slate-800 mb-4">KPI — Топ 10</h3>
+        <div className="mt-5">
+          <h3 className="font-bold text-content-primary mb-3 text-sm">KPI — Топ 10</h3>
           <KpiTables />
         </div>
       )}
@@ -247,7 +247,7 @@ function KpiTables() {
   });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
       <KpiTable
         title="Менеджери"
         headers={["#", "Ім'я", "Затверджено"]}
@@ -297,28 +297,28 @@ function KpiTable({
   rows: string[][];
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-      <h4 className="font-semibold text-slate-700 mb-3 text-sm">{title}</h4>
+    <div className="mobile-card">
+      <h4 className="font-semibold text-content-secondary mb-2 text-sm">{title}</h4>
       <table className="w-full text-xs">
         <thead>
-          <tr className="text-slate-400 border-b border-slate-100">
+          <tr className="text-content-muted border-b border-border">
             {headers.map((h) => (
-              <th key={h} className="text-left pb-2 font-medium">{h}</th>
+              <th key={h} className="text-left pb-1.5 font-medium">{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={headers.length} className="text-center py-6 text-slate-300">
+              <td colSpan={headers.length} className="text-center py-5 text-content-muted">
                 Немає даних
               </td>
             </tr>
           ) : (
             rows.map((row, i) => (
-              <tr key={i} className="border-b border-slate-50 last:border-0">
+              <tr key={i} className="border-b border-border last:border-0">
                 {row.map((cell, j) => (
-                  <td key={j} className={`py-2 ${j === 0 ? "text-slate-400 w-6" : "text-slate-700"}`}>
+                  <td key={j} className={`py-1.5 ${j === 0 ? "text-content-muted w-6" : "text-content-primary"}`}>
                     {cell}
                   </td>
                 ))}
@@ -333,8 +333,8 @@ function KpiTable({
 
 function KPICard({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-      <p className={`text-xs font-medium ${color} mb-3`}>{label}</p>
+    <div className="mobile-card">
+      <p className={`text-2xs font-medium ${color} mb-1.5`}>{label}</p>
       <p className={`text-2xl font-bold leading-none ${color}`}>{value}</p>
     </div>
   );
