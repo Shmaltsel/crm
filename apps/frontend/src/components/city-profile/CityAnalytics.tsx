@@ -119,41 +119,41 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
       {/* Контроли */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h3 className="font-bold text-slate-800 text-lg">Аналітика по місяцях</h3>
-          <p className="text-sm text-slate-400 mt-0.5">На основі завершених подій закладу</p>
+          <h3 className="font-bold text-content-primary text-lg">Аналітика по місяцях</h3>
+          <p className="text-sm text-content-muted mt-0.5">На основі завершених подій закладу</p>
         </div>
 
         <div className="flex items-center gap-2">
           <div className="relative flex-1 sm:flex-none">
             <button
               onClick={() => { setDraftFrom(from); setDraftTo(to); setIsOpen(v => !v); }}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-surface border border-border-strong rounded-control text-xs sm:text-sm font-medium text-content-secondary hover:bg-surface-muted transition-colors"
             >
-              📅 <span className="truncate">{rangeLabel}</span> <span className="text-slate-400">⌄</span>
+              📅 <span className="truncate">{rangeLabel}</span> <span className="text-content-muted">⌄</span>
             </button>
 
             {isOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-                <div className="absolute right-0 top-full mt-2 z-20 bg-white rounded-xl shadow-lg border border-slate-100 p-4 w-72">
+                <div className="absolute right-0 top-full mt-2 z-20 bg-surface rounded-xl shadow-lg border border-border p-4 w-72">
                   <div className="flex flex-wrap gap-2 mb-4">
-                    <button onClick={() => applyPreset(3)} className="px-3 py-1.5 rounded-full text-xs bg-slate-100 hover:bg-slate-200 font-medium transition-colors">3 міс.</button>
-                    <button onClick={() => applyPreset(6)} className="px-3 py-1.5 rounded-full text-xs bg-slate-100 hover:bg-slate-200 font-medium transition-colors">6 міс.</button>
-                    <button onClick={() => applyPreset(12)} className="px-3 py-1.5 rounded-full text-xs bg-slate-100 hover:bg-slate-200 font-medium transition-colors">12 міс.</button>
-                    <button onClick={() => applyPreset(null, 'year')} className="px-3 py-1.5 rounded-full text-xs bg-slate-100 hover:bg-slate-200 font-medium transition-colors">Цей рік</button>
-                    <button onClick={() => applyPreset(null, 'all')} className="px-3 py-1.5 rounded-full text-xs bg-slate-100 hover:bg-slate-200 font-medium transition-colors">Весь час</button>
+                    <button onClick={() => applyPreset(3)} className="px-3 py-1.5 rounded-pill text-xs bg-surface-muted hover:bg-neutral-200 font-medium transition-colors">3 міс.</button>
+                    <button onClick={() => applyPreset(6)} className="px-3 py-1.5 rounded-pill text-xs bg-surface-muted hover:bg-neutral-200 font-medium transition-colors">6 міс.</button>
+                    <button onClick={() => applyPreset(12)} className="px-3 py-1.5 rounded-pill text-xs bg-surface-muted hover:bg-neutral-200 font-medium transition-colors">12 міс.</button>
+                    <button onClick={() => applyPreset(null, 'year')} className="px-3 py-1.5 rounded-pill text-xs bg-surface-muted hover:bg-neutral-200 font-medium transition-colors">Цей рік</button>
+                    <button onClick={() => applyPreset(null, 'all')} className="px-3 py-1.5 rounded-pill text-xs bg-surface-muted hover:bg-neutral-200 font-medium transition-colors">Весь час</button>
                   </div>
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1">Від</label>
-                      <input type="date" value={draftFrom} onChange={e => setDraftFrom(e.target.value)} className="w-full p-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-400" />
+                      <label className="block text-xs text-content-muted mb-1">Від</label>
+                      <input type="date" value={draftFrom} onChange={e => setDraftFrom(e.target.value)} className="w-full p-2 border border-border-strong rounded-control text-xs focus:outline-none focus:border-brand-300" />
                     </div>
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1">До</label>
-                      <input type="date" value={draftTo} onChange={e => setDraftTo(e.target.value)} className="w-full p-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-400" />
+                      <label className="block text-xs text-content-muted mb-1">До</label>
+                      <input type="date" value={draftTo} onChange={e => setDraftTo(e.target.value)} className="w-full p-2 border border-border-strong rounded-control text-xs focus:outline-none focus:border-brand-300" />
                     </div>
                   </div>
-                  <button onClick={applyRange} className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                  <button onClick={applyRange} className="w-full bg-brand text-white py-2.5 rounded-control text-sm font-medium hover:bg-brand-hover transition-colors">
                     Застосувати
                   </button>
                 </div>
@@ -163,7 +163,7 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
 
           <button
             onClick={exportCsv}
-            className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-100 transition-colors"
+            className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 bg-brand-50 text-brand rounded-control text-xs sm:text-sm font-medium hover:bg-blue-100 transition-colors"
           >
             ⬇ <span className="hidden sm:inline">Експорт</span>
           </button>
@@ -171,7 +171,7 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
       </div>
 
       {/* Загальна інформація */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 sm:p-6">
+      <div className="bg-surface rounded-card shadow-card border border-border p-5 sm:p-6">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-5">
           <Stat label="Загальна виручка" value={`${fmt(totalRevenue)} грн`} />
           <Stat label="Загальний прибуток" value={`${fmt(totalProfit)} грн`} />
@@ -183,8 +183,8 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
       {/* Графіки */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Виручка по місяцях */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 sm:p-6">
-          <h4 className="font-bold text-slate-800 mb-4">Виручка по місяцях</h4>
+        <div className="bg-surface rounded-card shadow-card border border-border p-5 sm:p-6">
+          <h4 className="font-bold text-content-primary mb-4">Виручка по місяцях</h4>
           {!hasRevenue ? (
             <EmptyChart />
           ) : (
@@ -211,8 +211,8 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
         </div>
 
         {/* Проведено подій по місяцях */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 sm:p-6">
-          <h4 className="font-bold text-slate-800 mb-4">Проведено подій по місяцях</h4>
+        <div className="bg-surface rounded-card shadow-card border border-border p-5 sm:p-6">
+          <h4 className="font-bold text-content-primary mb-4">Проведено подій по місяцях</h4>
           {pieData.length === 0 ? (
             <EmptyChart />
           ) : (
@@ -227,16 +227,16 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-xs text-slate-400">Всього</span>
-                  <span className="text-xl font-bold text-slate-800">{pieTotal}</span>
+                  <span className="text-xs text-content-muted">Всього</span>
+                  <span className="text-xl font-bold text-content-primary">{pieTotal}</span>
                 </div>
               </div>
               <ul className="flex-1 flex flex-col gap-2 text-sm w-full min-w-0">
                 {pieData.map((m, i) => (
                   <li key={m.key} className="flex items-center gap-2 min-w-0">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} />
-                    <span className="text-slate-600 truncate flex-1">{m.label}</span>
-                    <span className="font-medium text-slate-800 shrink-0">{m.count} ({Math.round((m.count / pieTotal) * 100)}%)</span>
+                    <span className="w-2.5 h-2.5 rounded-pill shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} />
+                    <span className="text-content-secondary truncate flex-1">{m.label}</span>
+                    <span className="font-medium text-content-primary shrink-0">{m.count} ({Math.round((m.count / pieTotal) * 100)}%)</span>
                   </li>
                 ))}
               </ul>
@@ -251,8 +251,8 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="min-w-0">
-      <p className="text-xs text-slate-400 font-medium mb-1.5 truncate">{label}</p>
-      <p className="text-lg sm:text-2xl font-bold text-slate-800 truncate">{value}</p>
+      <p className="text-xs text-content-muted font-medium mb-1.5 truncate">{label}</p>
+      <p className="text-lg sm:text-2xl font-bold text-content-primary truncate">{value}</p>
     </div>
   );
 }
@@ -261,7 +261,7 @@ function EmptyChart() {
   return (
     <div className="h-[280px] flex flex-col items-center justify-center text-slate-300">
       <span className="text-3xl mb-2">📊</span>
-      <span className="text-sm text-slate-400">Немає даних за цей період</span>
+      <span className="text-sm text-content-muted">Немає даних за цей період</span>
     </div>
   );
 }

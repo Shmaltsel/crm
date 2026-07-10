@@ -112,3 +112,51 @@ Call log:
 [2026-07-10T18:00:56.056Z] [SUCCESS] Browser started, ready to explore
 [2026-07-10T18:00:57.226Z] [STEP] I.amOnPage("https://app.svitlo-znan.app")
 [2026-07-10T18:00:57.811Z] [INFO] AI Navigator resolving state at /login
+
+
+=== ExplorBot Session Started at 2026-07-10T18:02:36.693Z ===
+
+[2026-07-10T18:02:36.692Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+[2026-07-10T18:02:38.274Z] [INFO] chromium starting in headless mode
+[2026-07-10T18:02:38.275Z] [SUBSTEP] Enabling debug protocol for Chromium at http://localhost:9222
+[2026-07-10T18:02:38.736Z] [SUCCESS] Browser started, ready to explore
+[2026-07-10T18:02:40.652Z] [STEP] I.amOnPage("https://app.svitlo-znan.app/login")
+
+
+=== ExplorBot Session Started at 2026-07-10T18:04:40.043Z ===
+
+[2026-07-10T18:04:40.042Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+
+
+=== ExplorBot Session Started at 2026-07-10T18:05:00.790Z ===
+
+[2026-07-10T18:05:00.789Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+[2026-07-10T18:05:02.780Z] [INFO] chromium starting in headed mode
+[2026-07-10T18:05:04.342Z] [SUCCESS] Browser started, ready to explore
+[2026-07-10T18:05:05.568Z] [STEP] I.amOnPage("https://app.svitlo-znan.app/dashboard")
+[2026-07-10T18:05:06.134Z] [INFO] AI Navigator resolving state at /login
+[2026-07-10T18:05:27.138Z] [STEP] I.fillField({"role":"textbox","text":"Email"}, "admin@crm.com")
+[2026-07-10T18:05:27.965Z] [STEP] I.fillField({"role":"textbox","text":"Пароль"}, "123!PASSWORD!321")
+[2026-07-10T18:05:29.696Z] [STEP] I.click({"role":"button","text":"Увійти"})
+[2026-07-10T18:05:31.290Z] [SUCCESS] Navigation resolved successfully
+[2026-07-10T18:05:31.293Z] [OPERATION] Added FLOW to: login_h1_crm.md
+[2026-07-10T18:05:34.796Z] [INFO] Planning style: normal
+[2026-07-10T18:05:34.806Z] [INFO] Researching https://app.svitlo-znan.app/dashboard to understand the context...
+
+
+=== ExplorBot Session Started at 2026-07-10T18:09:30.905Z ===
+
+[2026-07-10T18:09:30.904Z] [INFO] Configuration loaded from: C:\CRM\explorbot.config.js
+[2026-07-10T18:09:32.735Z] [INFO] chromium starting in headed mode
+[2026-07-10T18:09:33.872Z] [SUCCESS] Browser started, ready to explore
+[2026-07-10T18:09:35.275Z] [STEP] I.amOnPage("https://app.svitlo-znan.app/dashboard")
+[2026-07-10T18:09:35.855Z] [INFO] AI Navigator resolving state at /login
+[2026-07-10T18:09:35.871Z] [OPERATION] Found 1 experience file for: /login
+[2026-07-10T18:10:35.243Z] [STEP] I.fillField({"role":"textbox","text":"Email"}, "admin@crm.com")
+[2026-07-10T18:10:35.245Z] [STEP] I.fillField({"role":"textbox","text":"Пароль"}, "123!PASSWORD!321")
+[2026-07-10T18:10:35.247Z] [STEP] I.click({"role":"button","text":"Увійти"})
+[2026-07-10T18:10:41.125Z] [STEP] I.fillField("#login-email", "admin@crm.com")
+[2026-07-10T18:10:42.392Z] [STEP] I.fillField("#login-password", "123!PASSWORD!321")
+[2026-07-10T18:10:44.088Z] [STEP] I.click("button[type="submit"]")
+[2026-07-10T18:10:45.671Z] [SUCCESS] Navigation resolved successfully
+[2026-07-10T18:10:45.675Z] [OPERATION] Added FLOW to: login_h1_crm.md

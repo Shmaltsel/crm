@@ -13,7 +13,7 @@ const ESTABLISHMENT_TABS = [
 
 export default function EstablishmentsTopNav({ activeTab, onChange }: Props) {
   return (
-    <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-100">
+    <div className="sticky top-0 z-30 bg-surface/80 backdrop-blur-md border-b border-border">
       <nav
         className="flex px-4 md:px-8"
         role="tablist"
@@ -31,7 +31,7 @@ export default function EstablishmentsTopNav({ activeTab, onChange }: Props) {
               className={`relative flex items-center gap-2 px-4 py-3.5 text-sm font-medium transition-colors ${
                 isActive
                   ? "text-brand"
-                  : "text-slate-500 hover:text-slate-700"
+                  : "text-content-muted hover:text-content-secondary"
               }`}
             >
               <Icon className="w-4 h-4" />

@@ -28,11 +28,11 @@ export const SchoolCard = React.memo(
 
     return (
       <div
-        className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm transition-all hover:shadow-md hover:border-blue-200 cursor-pointer active:scale-[0.99]"
+        className="bg-surface rounded-card border border-border p-4 shadow-card transition-all hover:shadow-card-hover hover:border-brand-200 cursor-pointer active:scale-[0.99]"
         onClick={() => navigate(`/schools/${school.id}`)}
       >
         <div className="flex items-start justify-between gap-2">
-          <p className="font-semibold text-slate-800 leading-snug text-sm line-clamp-2 flex-1">
+          <p className="font-semibold text-content-primary leading-snug text-sm line-clamp-2 flex-1">
             {school.name}
           </p>
           <button
@@ -40,7 +40,7 @@ export const SchoolCard = React.memo(
               e.stopPropagation();
               onDelete(e, school.id, school.name);
             }}
-            className="text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all p-2 rounded-lg"
+            className="text-neutral-300 hover:text-danger hover:bg-danger-subtle transition-all p-2.5 rounded-control"
           >
             🗑
           </button>
@@ -50,12 +50,12 @@ export const SchoolCard = React.memo(
             <a
               href={`tel:${school.phone}`}
               onClick={(e) => e.stopPropagation()}
-              className="text-xs text-blue-600 font-medium truncate"
+              className="text-xs text-brand font-medium truncate"
             >
               📞 {school.director || school.phone}
             </a>
           ) : (
-            <span className="text-xs text-slate-500 truncate">
+            <span className="text-xs text-content-muted truncate">
               👤 {school.director || "Контакт не вказано"}
             </span>
           )}
@@ -64,7 +64,7 @@ export const SchoolCard = React.memo(
               {categories.map((cat) => (
                 <span
                   key={cat}
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${CATEGORY_BADGES[cat]?.className ?? "bg-slate-50 text-slate-500 border-slate-100"}`}
+                  className={`text-2xs px-2 py-0.5 rounded-pill font-medium border ${CATEGORY_BADGES[cat]?.className ?? "bg-surface-muted text-content-muted border-border"}`}
                 >
                   {CATEGORY_BADGES[cat]?.label ?? cat}
                 </span>
@@ -72,7 +72,7 @@ export const SchoolCard = React.memo(
             </div>
           ) : (
             stage && (
-              <span className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full font-medium border border-blue-100">
+              <span className="text-2xs px-2 py-0.5 bg-brand-50 text-brand rounded-pill font-medium border border-brand-100">
                 {stage.name}
               </span>
             )
@@ -105,7 +105,7 @@ export default function SchoolMobileList({
         ))}
 
         {schools.length === 0 && (
-          <div className="text-center py-10 text-slate-400">
+          <div className="text-center py-10 text-content-muted">
             <p>
               {searchQuery
                 ? `Нічого не знайдено за «${searchQuery}»`
