@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useAuth } from "../context/AuthContext";
 import MySalary from "../features/salary/pages/MySalary";
 import TeamSalaries from "../features/salary/pages/TeamSalaries";
 import Company from "../features/salary/pages/Company";
 
-type Tab = "my-salary" | "team" | "company";
+const Expenses = lazy(() => import("../features/salary/pages/Expenses"));
+
+type Tab = "my-salary" | "team" | "company" | "expenses";
 
 function PeekSkeleton() {
   return (
@@ -28,6 +30,7 @@ export default function Finance({ isPeek }: { isPeek?: boolean }) {
     { key: "my-salary", label: "Мої нарахування" },
     { key: "team", label: "Нарахування команди", managerOnly: true },
     { key: "company", label: "Фінанси компанії", managerOnly: true },
+    { key: "expenses", label: "Витрати", managerOnly: true },
   ];
 
   const availableTabs = tabs.filter((t) => !t.managerOnly || isManagerOrAdmin);
@@ -40,26 +43,34 @@ export default function Finance({ isPeek }: { isPeek?: boolean }) {
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="sticky top-0 z-10 bg-white border-b border-slate-200">
-        <div className="flex overflow-x-auto scrollbar-none">
-          {availableTabs.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              className={`shrink-0 px-4 py-3 text-sm font-medium transition-colors ${
-                activeTab === t.key
-                  ? "text-blue-600 border-b-2 border-blue-600"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="relative">
+          <div className="flex overflow-x-auto scrollbar-none">
+            {availableTabs.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`shrink-0 px-4 py-3 text-sm font-medium transition-colors ${
+                  activeTab === t.key
+                    ? "text-blue-600 border-b-2 border-blue-600"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent pointer-events-none" />
         </div>
       </div>
 
       {activeTab === "my-salary" && <MySalary />}
       {activeTab === "team" && isManagerOrAdmin && <TeamSalaries />}
       {activeTab === "company" && isManagerOrAdmin && <Company />}
+      {activeTab === "expenses" && isManagerOrAdmin && (
+        <Suspense fallback={<div className="p-8 text-center text-sm text-slate-400">Завантаження...</div>}>
+          <Expenses />
+        </Suspense>
+      )}
     </div>
   );
 }

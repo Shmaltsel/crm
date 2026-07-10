@@ -12,6 +12,7 @@ import {
   Package,
   Trophy,
   LayoutDashboard,
+  AlertTriangle,
 } from "lucide-react";
 
 export interface NavTab {
@@ -50,5 +51,6 @@ export const DASHBOARD_TABS: DashboardTab[] = [
   { id: "overview", icon: LayoutDashboard, label: "Огляд", roles: ["SUPERADMIN", "MANAGER", "OWNER"] },
   { id: "reports", icon: ClipboardCheck, label: "Звіти", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
   { id: "leaderboard", icon: Trophy, label: "Рейтинг", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
+  { id: "issues", icon: AlertTriangle, label: "Проблеми", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
   { id: "analytics", icon: BarChart3, label: "Аналітика", roles: ["SUPERADMIN", "OWNER"] },
 ];

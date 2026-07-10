@@ -595,3 +595,5 @@ export default memo(function FinanceCharts({
     </div>
   );
 });
+
+export { ExpenseChart };

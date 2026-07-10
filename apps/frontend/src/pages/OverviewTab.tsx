@@ -1,8 +1,6 @@
 import { useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useSelectedCity } from "../context/CityContext";
 import { useDashboardSummary } from "../hooks/useDashboardSummary";
-import { useCities } from "../hooks/useCities";
 import TodayEvents from "../components/dashboard/TodayEvents";
 import ActivityFeed from "../components/dashboard/ActivityFeed";
 
@@ -49,9 +47,7 @@ function KpiCard({
 
 export default function OverviewTab() {
   const { user } = useAuth();
-  const { selectedCity, setSelectedCity } = useSelectedCity();
   const { data: summary, isError } = useDashboardSummary();
-  const { data: cities } = useCities();
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -103,25 +99,6 @@ export default function OverviewTab() {
               })}
             </p>
           </div>
-
-          {cities && cities.length > 0 && (
-            <select
-              value={selectedCity.id || ""}
-              onChange={(e) => {
-                const city = cities.find((c) => c.id === e.target.value);
-                if (city) setSelectedCity({ id: city.id, name: city.name });
-              }}
-              className="bg-surface border border-border-strong text-content-secondary text-2xs font-medium rounded-control px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand shadow-soft max-w-[120px] truncate"
-              aria-label="Вибір міста"
-            >
-              <option value="">Всі міста</option>
-              {cities.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          )}
         </div>
       </div>
 

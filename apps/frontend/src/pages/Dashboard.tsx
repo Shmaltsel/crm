@@ -11,12 +11,14 @@ import TabErrorBoundary from "../components/dashboard/TabErrorBoundary";
 const OverviewTab = lazy(() => import("./OverviewTab"));
 const ReportsTab = lazy(() => import("../features/reports/pages/ReportsReviewPage"));
 const LeaderboardTab = lazy(() => import("./CityLeaderboard"));
+const IssuesTab = lazy(() => import("./IssuesTab"));
 const AnalyticsTab = lazy(() => import("./Analytics"));
 
 const TAB_COMPONENTS: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   overview: OverviewTab,
   reports: ReportsTab,
   leaderboard: LeaderboardTab,
+  issues: IssuesTab,
   analytics: AnalyticsTab,
 };
 

@@ -1,4 +1,4 @@
-import { useMemo, lazy, Suspense } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../config/api";
@@ -6,8 +6,6 @@ import { useSubmittedReports } from "../../hooks/useReports";
 import { useSelectedCity } from "../../context/CityContext";
 import { useCity } from "../../hooks/useCities";
 import type { Event } from "../../types";
-
-const IssueCarousel = lazy(() => import("../../components/IssueCarousel"));
 
 function todayDateStr(): string {
   const d = new Date();
@@ -96,10 +94,6 @@ export default function ManagerDashboard() {
         </h1>
         <p className="text-xs text-slate-400 mt-1">{dateLabel}</p>
       </div>
-
-      <Suspense fallback={null}>
-        <IssueCarousel />
-      </Suspense>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Події сьогодні */}
