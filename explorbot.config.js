@@ -1,4 +1,4 @@
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 // import { '<your provider here>' } from '<your provider package here>';
 
 // Vercel AI SDK is used to connect to AI providers.

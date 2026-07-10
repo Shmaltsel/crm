@@ -1,0 +1,30 @@
+diff --git a/dist/src/config.js b/dist/src/config.js
+index 7c7c76474203c32c25014c69a5947342d0935298..44fec719b18a9c38570591827d07157294ab2b1d 100644
+--- a/dist/src/config.js
++++ b/dist/src/config.js
+@@ -10,6 +10,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+ import path, { dirname, join, resolve } from 'node:path';
+ import { parseEnv } from 'node:util';
+ import { log } from './utils/logger.js';
++import { pathToFileURL } from 'node:url';
+ const config = {
+     playwright: {
+         browser: 'chromium',
+@@ -171,7 +172,7 @@ export class ConfigParser {
+         const ext = configPath.split('.').pop();
+         if (ext === 'ts') {
+             try {
+-                const module = await import(__rewriteRelativeImportExtension(configPath));
++                const module = await import(pathToFileURL(__rewriteRelativeImportExtension(configPath)).href);
+                 return module;
+             }
+             catch (error) {
+@@ -180,7 +181,7 @@ export class ConfigParser {
+             }
+         }
+         else if (ext === 'js' || ext === 'mjs') {
+-            const module = await import(__rewriteRelativeImportExtension(configPath));
++            const module = await import(pathToFileURL(__rewriteRelativeImportExtension(configPath)).href);
+             return module;
+         }
+         else {

@@ -92,7 +92,7 @@ export default function Schools() {
     (swiper: any) => {
       const tabId = ESTABLISHMENT_IDS[swiper.activeIndex];
       if (tabId && tabId !== institutionType) {
-        setSearchParams({ type: tab.id }, { replace: true });
+        setSearchParams({ type: tabId }, { replace: true });
       }
     },
     [institutionType, setSearchParams],
