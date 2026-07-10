@@ -291,7 +291,42 @@ apps
     ├── lighthouserc.cjs
     ├── package.json
     ├── playwright-report
-    │   └── index.html
+    │   ├── data
+    │   │   ├── 0af93771251a1aac7eba3c4b3e7e07e20f9f3521.md
+    │   │   ├── 2e45628e67a7c7aa8598b044237f5921c62dc420.zip
+    │   │   ├── 75a9fc13ee294237be80ebf5013470510bbd6087.md
+    │   │   ├── 78485ad26ab49de2007fe98b0854715a58aaf5b6.png
+    │   │   ├── 814cbc9fc8c8a6b7fc3d9a6f2d90c9719ce22f6e.md
+    │   │   ├── 95add6a817da409963558925ad047a5192a75ca1.md
+    │   │   ├── b2de2e736f397f46870eab410161dfa347340a37.md
+    │   │   ├── b32117b91cb80d1e99978a9dbb9e317ff7af56c0.md
+    │   │   ├── c8b7640d36b3f876304087947dc26980e13c6577.zip
+    │   │   ├── d99940007cea90847b829dff2e41aa75ab4a3e08.md
+    │   │   ├── df54e0f3bc6f89037926d574382c690d5fb7deec.zip
+    │   │   ├── ec67af4a65cf19b4bea582775bd23559f63e070c.md
+    │   │   ├── fa8aa3a6c58cc27c2371abea1a93dd3abf06ffdd.md
+    │   │   └── fed8368a6f789f9dfce439714ecef9fbdf6acf5c.zip
+    │   ├── index.html
+    │   └── trace
+    │       ├── assets
+    │       │   ├── codeMirrorModule-LEHpjmcn.js
+    │       │   ├── defaultSettingsView-BNmKHKpQ.js
+    │       │   └── urlMatch-BYQrIQwR.js
+    │       ├── codeMirrorModule.DYBRYzYX.css
+    │       ├── codicon.DCmgc-ay.ttf
+    │       ├── defaultSettingsView.CjdS-WJx.css
+    │       ├── index.CzXZzn5A.css
+    │       ├── index.DMMX1gXU.js
+    │       ├── index.html
+    │       ├── manifest.webmanifest
+    │       ├── playwright-logo.svg
+    │       ├── snapshot.html
+    │       ├── snapshot.v8KI4P3m.js
+    │       ├── sw.bundle.js
+    │       ├── uiMode.BZQ54Kgt.css
+    │       ├── uiMode.html
+    │       ├── uiMode.Ut8wwJNp.js
+    │       └── xtermModule.DYP7pi_n.css
     ├── playwright.config.ts
     ├── postcss.config.js
     ├── public
@@ -433,6 +468,7 @@ apps
     │   │       │   └── SalaryStatusBadge.tsx
     │   │       └── pages
     │   │           ├── Company.tsx
+    │   │           ├── Expenses.tsx
     │   │           ├── MySalary.tsx
     │   │           └── TeamSalaries.tsx
     │   ├── hooks
@@ -466,6 +502,7 @@ apps
     │   │   ├── Events.tsx
     │   │   ├── Finance.tsx
     │   │   ├── Inventory.tsx
+    │   │   ├── IssuesTab.tsx
     │   │   ├── Kindergartens.tsx
     │   │   ├── lazyTabPages.ts
     │   │   ├── Login.tsx
@@ -515,7 +552,8 @@ apps
     │   │       ├── useDaysOff.test.tsx
     │   │       └── useDebounce.test.ts
     │   ├── types
-    │   │   └── index.ts
+    │   │   ├── index.ts
+    │   │   └── telegram.d.ts
     │   └── utils
     │       ├── exportCsv.ts
     │       ├── financeCalculations.ts
@@ -523,6 +561,12 @@ apps
     │       ├── preparationStatus.ts
     │       └── roles.ts
     ├── tailwind.config.js
+    ├── tests
+    │   └── e2e
+    │       ├── debug.spec.ts
+    │       ├── mocks
+    │       │   └── api.ts
+    │       └── visual.spec.ts
     ├── tsconfig.app.json
     ├── tsconfig.json
     ├── tsconfig.node.json

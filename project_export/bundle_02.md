@@ -1,3 +1,86 @@
+# FILE: apps/backend/src/prisma/prisma.service.ts
+
+```
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
+import { dbQueryDuration } from '../metrics/metrics.service';
+
+@Injectable()
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
+  constructor() {
+    super();
+    return this.$extends({
+      query: {
+        $allModels: {
+          async $allOperations({ model, operation, args, query }) {
+            const start = process.hrtime.bigint();
+            const result = await query(args);
+            const durationSec = Number(process.hrtime.bigint() - start) / 1e9;
+            dbQueryDuration.observe(
+              { model: model ?? 'unknown', action: operation },
+              durationSec,
+            );
+            return result;
+          },
+        },
+      },
+    }) as unknown as PrismaService;
+  }
+
+  async onModuleInit() {
+    await this.$connect();
+  }
+
+  async onModuleDestroy() {
+    await this.$disconnect();
+  }
+}
+
+```
+
+# FILE: apps/backend/src/projects/dto/create-project.dto.ts
+
+```
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsNumber,
+  Min,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class CreateProjectDto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  color?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  pricePerChild?: number;
+}
+
+```
+
+# FILE: apps/backend/src/projects/dto/update-project.dto.ts
+
+```
+import { PartialType } from '@nestjs/swagger';
+import { CreateProjectDto } from './create-project.dto';
+
+export class UpdateProjectDto extends PartialType(CreateProjectDto) {}
+
+```
+
 # FILE: apps/backend/src/projects/projects.controller.ts
 
 ```
@@ -6320,9 +6403,10 @@ export default defineConfig([
     <meta name="description" content="CRM система для управління подіями, школами та фінансами">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <title>CRM</title>
   </head>
-  <body>
+  <body class="overscroll-none">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
@@ -6424,6 +6508,8 @@ module.exports = {
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@lhci/cli": "^0.15.1",
+    "@percy/cli": "^1.32.3",
+    "@percy/playwright": "^1.1.0",
     "@playwright/test": "^1.61.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -6452,5 +6538,505 @@ module.exports = {
   }
 }
 
+```
+
+# FILE: apps/frontend/playwright-report/data/0af93771251a1aac7eba3c4b3e7e07e20f9f3521.md
+
+```
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: debug.spec.ts >> debug schools
+- Location: tests\e2e\debug.spec.ts:28:1
+
+# Error details
+
+```
+Test timeout of 30000ms exceeded while setting up "page".
+```
+```
+
+# FILE: apps/frontend/playwright-report/data/75a9fc13ee294237be80ebf5013470510bbd6087.md
+
+```
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: debug.spec.ts >> debug dashboard
+- Location: tests\e2e\debug.spec.ts:24:1
+
+# Error details
+
+```
+Test timeout of 30000ms exceeded while setting up "page".
+```
+```
+
+# FILE: apps/frontend/playwright-report/data/814cbc9fc8c8a6b7fc3d9a6f2d90c9719ce22f6e.md
+
+```
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: debug.spec.ts >> debug dashboard
+- Location: tests\e2e\debug.spec.ts:24:1
+
+# Error details
+
+```
+Error: page.goto: net::ERR_INSUFFICIENT_RESOURCES at http://localhost:5173/dashboard
+Call log:
+  - navigating to "http://localhost:5173/dashboard", waiting until "networkidle"
+
+```
+
+# Test source
+
+```ts
+  1  | import { test, type Page } from "@playwright/test";
+  2  | import { setupApiMocking } from "./mocks/api";
+  3  | 
+  4  | async function dump(page: Page, path: string): Promise<void> {
+  5  |   const errors: string[] = [];
+  6  |   page.on("console", (m) => { if (m.type() === "error") errors.push("CONSOLE: " + m.text()); });
+  7  |   page.on("pageerror", (e) => errors.push("PAGEERROR: " + (e.stack ?? e.message)));
+  8  | 
+  9  |   await setupApiMocking(page, "MANAGER");
+> 10 |   await page.goto(path, { waitUntil: "networkidle" });
+     |              ^ Error: page.goto: net::ERR_INSUFFICIENT_RESOURCES at http://localhost:5173/dashboard
+  11 |   await page.waitForTimeout(1500);
+  12 | 
+  13 |   const url = page.url();
+  14 |   const navCount = await page.getByRole("tablist", { name: "Основна навігація" }).count();
+  15 |   const bodyText = (await page.locator("body").innerText()).slice(0, 300);
+  16 | 
+  17 |   console.log(`\n=== ${path} ===`);
+  18 |   console.log("URL:", url);
+  19 |   console.log("tablist count:", navCount);
+  20 |   console.log("BODY:", JSON.stringify(bodyText));
+  21 |   console.log("ERRORS:", errors.length ? errors.join("\n") : "none");
+  22 | }
+  23 | 
+  24 | test("debug dashboard", async ({ page }) => {
+  25 |   await dump(page, "/dashboard");
+  26 | });
+  27 | 
+  28 | test("debug schools", async ({ page }) => {
+  29 |   await dump(page, "/schools");
+  30 | });
+  31 | 
+```
+```
+
+# FILE: apps/frontend/playwright-report/data/95add6a817da409963558925ad047a5192a75ca1.md
+
+```
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: visual.spec.ts >> Mobile visual · iPhone 12 >> collect screenshots — SUPERADMIN
+- Location: tests\e2e\visual.spec.ts:86:7
+
+# Error details
+
+```
+Test timeout of 30000ms exceeded while setting up "page".
+```
+```
+
+# FILE: apps/frontend/playwright-report/data/b2de2e736f397f46870eab410161dfa347340a37.md
+
+```
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: visual.spec.ts >> Mobile visual · Pixel 5 >> collect screenshots — MANAGER
+- Location: tests\e2e\visual.spec.ts:86:7
+
+# Error details
+
+```
+Error: expect(locator).toBeVisible() failed
+
+Locator: getByRole('tablist', { name: 'Основна навігація' })
+Expected: visible
+Error: element(s) not found
+
+Call log:
+  - Expect "toBeVisible" with timeout 5000ms
+  - waiting for getByRole('tablist', { name: 'Основна навігація' })
+
+```
+
+# Test source
+
+```ts
+  1   | import { test, expect, type Page } from "@playwright/test";
+  2   | import { percySnapshot } from "@percy/playwright";
+  3   | import { setupApiMocking, type MockRole } from "./mocks/api";
+  4   | 
+  5   | interface Device {
+  6   |   name: string;
+  7   |   width: number;
+  8   |   height: number;
+  9   | }
+  10  | 
+  11  | const DEVICES: Device[] = [
+  12  |   { name: "iPhone 12", width: 390, height: 844 },
+  13  |   { name: "Pixel 5", width: 393, height: 851 },
+  14  |   { name: "iPhone SE", width: 375, height: 667 },
+  15  | ];
+  16  | 
+  17  | interface RouteSpec {
+  18  |   path: string;
+  19  |   label: string;
+  20  | }
+  21  | 
+  22  | const ROUTES_BY_ROLE: Record<MockRole, RouteSpec[]> = {
+  23  |   MANAGER: [
+  24  |     { path: "/dashboard", label: "Dashboard" },
+  25  |     { path: "/schools", label: "Schools" },
+  26  |     { path: "/kindergartens", label: "Kindergartens" },
+  27  |     { path: "/finance", label: "Finance" },
+  28  |     { path: "/calendar", label: "Calendar" },
+  29  |     { path: "/cities", label: "Cities" },
+  30  |     { path: "/reports/review", label: "Reports Review" },
+  31  |     { path: "/inventory", label: "Inventory" },
+  32  |     { path: "/city-leaderboard", label: "City Leaderboard" },
+  33  |     { path: "/schools/sch-1", label: "School Profile" },
+  34  |     { path: "/cities/city-1", label: "City Profile" },
+  35  |   ],
+  36  |   SUPERADMIN: [
+  37  |     { path: "/dashboard", label: "Dashboard" },
+  38  |     { path: "/schools", label: "Schools" },
+  39  |     { path: "/kindergartens", label: "Kindergartens" },
+  40  |     { path: "/finance", label: "Finance" },
+  41  |     { path: "/calendar", label: "Calendar" },
+  42  |     { path: "/cities", label: "Cities" },
+  43  |     { path: "/reports/review", label: "Reports Review" },
+  44  |     { path: "/inventory", label: "Inventory" },
+  45  |     { path: "/analytics", label: "Analytics" },
+  46  |     { path: "/employees", label: "Employees" },
+  47  |     { path: "/city-leaderboard", label: "City Leaderboard" },
+  48  |     { path: "/schools/sch-1", label: "School Profile" },
+  49  |     { path: "/cities/city-1", label: "City Profile" },
+  50  |   ],
+  51  | };
+  52  | 
+  53  | const ROLES: MockRole[] = ["MANAGER", "SUPERADMIN"];
+  54  | 
+  55  | async function snapshotRoute(page: Page, role: MockRole, device: Device, spec: RouteSpec): Promise<void> {
+  56  |   await page.goto(spec.path, { waitUntil: "networkidle" });
+  57  |   const nav = page.getByRole("tablist", { name: "Основна навігація" });
+> 58  |   await expect(nav).toBeVisible();
+      |                     ^ Error: expect(locator).toBeVisible() failed
+  59  |   await page.waitForTimeout(600);
+  60  |   await percySnapshot(page, `${role} · ${device.name} · ${spec.label}`);
+  61  | }
+  62  | 
+  63  | async function captureMoreSheet(page: Page, role: MockRole, device: Device): Promise<void> {
+  64  |   const more = page.getByLabel("Більше розділів");
+  65  |   await more.click();
+  66  |   await page.waitForTimeout(500);
+  67  |   await percySnapshot(page, `${role} · ${device.name} · More Sheet`);
+  68  |   await page.keyboard.press("Escape");
+  69  |   await page.waitForTimeout(300);
+  70  | }
+  71  | 
+  72  | async function captureNotifications(page: Page, role: MockRole, device: Device): Promise<void> {
+  73  |   const bell = page.getByRole("button", { name: "Сповіщення" });
+  74  |   await bell.click();
+  75  |   await page.waitForTimeout(500);
+  76  |   await percySnapshot(page, `${role} · ${device.name} · Notifications`);
+  77  |   await page.keyboard.press("Escape");
+  78  |   await page.waitForTimeout(300);
+  79  | }
+  80  | 
+  81  | for (const device of DEVICES) {
+  82  |   test.describe(`Mobile visual · ${device.name}`, () => {
+  83  |     test.use({ viewport: { width: device.width, height: device.height } });
+  84  | 
+  85  |     for (const role of ROLES) {
+  86  |       test(`collect screenshots — ${role}`, async ({ page }) => {
+  87  |         await setupApiMocking(page, role);
+  88  | 
+  89  |         for (const spec of ROUTES_BY_ROLE[role]) {
+  90  |           await snapshotRoute(page, role, device, spec);
+  91  |         }
+  92  | 
+  93  |         await page.goto("/dashboard", { waitUntil: "networkidle" });
+  94  |         await expect(page.getByRole("tablist", { name: "Основна навігація" })).toBeVisible();
+  95  |         await page.waitForTimeout(400);
+  96  | 
+  97  |         await captureMoreSheet(page, role, device);
+  98  |         await captureNotifications(page, role, device);
+  99  |       });
+  100 |     }
+  101 | 
+  102 |     test("collect screenshots — logged out (login)", async ({ page }) => {
+  103 |       await setupApiMocking(page, null);
+  104 |       await page.goto("/login", { waitUntil: "networkidle" });
+  105 |       await expect(page.getByRole("heading", { name: "Вхід у CRM" })).toBeVisible();
+  106 |       await page.waitForTimeout(400);
+  107 |       await percySnapshot(page, `Logged out · ${device.name} · Login`);
+  108 |     });
+  109 | 
+  110 |     test("collect screenshots — 404", async ({ page }) => {
+  111 |       await setupApiMocking(page, "MANAGER");
+  112 |       await page.goto("/tsi-y-shche-yakyy-shlyah", { waitUntil: "networkidle" });
+  113 |       await expect(page.getByText("Сторінку не знайдено")).toBeVisible();
+  114 |       await page.waitForTimeout(300);
+  115 |       await percySnapshot(page, `MANAGER · ${device.name} · 404`);
+  116 |     });
+  117 |   });
+  118 | }
+  119 | 
+```
+```
+
+# FILE: apps/frontend/playwright-report/data/b32117b91cb80d1e99978a9dbb9e317ff7af56c0.md
+
+```
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: debug.spec.ts >> debug schools
+- Location: tests\e2e\debug.spec.ts:28:1
+
+# Error details
+
+```
+Error: browserType.launch: spawn UNKNOWN
+Call log:
+  - <launching> C:\Users\shmal\AppData\Local\ms-playwright\chromium_headless_shell-1228\chrome-headless-shell-win64\chrome-headless-shell.exe --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --user-data-dir=C:\Users\shmal\AppData\Local\Temp\playwright_chromiumdev_profile-kyMBBY --remote-debugging-pipe --no-startup-window
+
+```
+```
+
+# FILE: apps/frontend/playwright-report/data/d99940007cea90847b829dff2e41aa75ab4a3e08.md
+
+```
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: visual.spec.ts >> Mobile visual · iPhone 12 >> collect screenshots — SUPERADMIN
+- Location: tests\e2e\visual.spec.ts:86:7
+
+# Error details
+
+```
+Error: browserContext.newPage: Target page, context or browser has been closed
+```
+```
+
+# FILE: apps/frontend/playwright-report/data/ec67af4a65cf19b4bea582775bd23559f63e070c.md
+
+```
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: visual.spec.ts >> Mobile visual · iPhone 12 >> collect screenshots — MANAGER
+- Location: tests\e2e\visual.spec.ts:86:7
+
+# Error details
+
+```
+Error: browserContext.newPage: Target page, context or browser has been closed
+```
+```
+
+# FILE: apps/frontend/playwright-report/data/fa8aa3a6c58cc27c2371abea1a93dd3abf06ffdd.md
+
+```
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: visual.spec.ts >> Mobile visual · Pixel 5 >> collect screenshots — SUPERADMIN
+- Location: tests\e2e\visual.spec.ts:86:7
+
+# Error details
+
+```
+Error: expect(locator).toBeVisible() failed
+
+Locator:  getByRole('tablist', { name: 'Основна навігація' })
+Expected: visible
+Received: undefined
+
+Call log:
+  - Expect "toBeVisible" with timeout 5000ms
+  - waiting for getByRole('tablist', { name: 'Основна навігація' })
+
+```
+
+# Test source
+
+```ts
+  1   | import { test, expect, type Page } from "@playwright/test";
+  2   | import { percySnapshot } from "@percy/playwright";
+  3   | import { setupApiMocking, type MockRole } from "./mocks/api";
+  4   | 
+  5   | interface Device {
+  6   |   name: string;
+  7   |   width: number;
+  8   |   height: number;
+  9   | }
+  10  | 
+  11  | const DEVICES: Device[] = [
+  12  |   { name: "iPhone 12", width: 390, height: 844 },
+  13  |   { name: "Pixel 5", width: 393, height: 851 },
+  14  |   { name: "iPhone SE", width: 375, height: 667 },
+  15  | ];
+  16  | 
+  17  | interface RouteSpec {
+  18  |   path: string;
+  19  |   label: string;
+  20  | }
+  21  | 
+  22  | const ROUTES_BY_ROLE: Record<MockRole, RouteSpec[]> = {
+  23  |   MANAGER: [
+  24  |     { path: "/dashboard", label: "Dashboard" },
+  25  |     { path: "/schools", label: "Schools" },
+  26  |     { path: "/kindergartens", label: "Kindergartens" },
+  27  |     { path: "/finance", label: "Finance" },
+  28  |     { path: "/calendar", label: "Calendar" },
+  29  |     { path: "/cities", label: "Cities" },
+  30  |     { path: "/reports/review", label: "Reports Review" },
+  31  |     { path: "/inventory", label: "Inventory" },
+  32  |     { path: "/city-leaderboard", label: "City Leaderboard" },
+  33  |     { path: "/schools/sch-1", label: "School Profile" },
+  34  |     { path: "/cities/city-1", label: "City Profile" },
+  35  |   ],
+  36  |   SUPERADMIN: [
+  37  |     { path: "/dashboard", label: "Dashboard" },
+  38  |     { path: "/schools", label: "Schools" },
+  39  |     { path: "/kindergartens", label: "Kindergartens" },
+  40  |     { path: "/finance", label: "Finance" },
+  41  |     { path: "/calendar", label: "Calendar" },
+  42  |     { path: "/cities", label: "Cities" },
+  43  |     { path: "/reports/review", label: "Reports Review" },
+  44  |     { path: "/inventory", label: "Inventory" },
+  45  |     { path: "/analytics", label: "Analytics" },
+  46  |     { path: "/employees", label: "Employees" },
+  47  |     { path: "/city-leaderboard", label: "City Leaderboard" },
+  48  |     { path: "/schools/sch-1", label: "School Profile" },
+  49  |     { path: "/cities/city-1", label: "City Profile" },
+  50  |   ],
+  51  | };
+  52  | 
+  53  | const ROLES: MockRole[] = ["MANAGER", "SUPERADMIN"];
+  54  | 
+  55  | async function snapshotRoute(page: Page, role: MockRole, device: Device, spec: RouteSpec): Promise<void> {
+  56  |   await page.goto(spec.path, { waitUntil: "networkidle" });
+  57  |   const nav = page.getByRole("tablist", { name: "Основна навігація" });
+> 58  |   await expect(nav).toBeVisible();
+      |                     ^ Error: expect(locator).toBeVisible() failed
+  59  |   await page.waitForTimeout(600);
+  60  |   await percySnapshot(page, `${role} · ${device.name} · ${spec.label}`);
+  61  | }
+  62  | 
+  63  | async function captureMoreSheet(page: Page, role: MockRole, device: Device): Promise<void> {
+  64  |   const more = page.getByLabel("Більше розділів");
+  65  |   await more.click();
+  66  |   await page.waitForTimeout(500);
+  67  |   await percySnapshot(page, `${role} · ${device.name} · More Sheet`);
+  68  |   await page.keyboard.press("Escape");
+  69  |   await page.waitForTimeout(300);
+  70  | }
+  71  | 
+  72  | async function captureNotifications(page: Page, role: MockRole, device: Device): Promise<void> {
+  73  |   const bell = page.getByRole("button", { name: "Сповіщення" });
+  74  |   await bell.click();
+  75  |   await page.waitForTimeout(500);
+  76  |   await percySnapshot(page, `${role} · ${device.name} · Notifications`);
+  77  |   await page.keyboard.press("Escape");
+  78  |   await page.waitForTimeout(300);
+  79  | }
+  80  | 
+  81  | for (const device of DEVICES) {
+  82  |   test.describe(`Mobile visual · ${device.name}`, () => {
+  83  |     test.use({ viewport: { width: device.width, height: device.height } });
+  84  | 
+  85  |     for (const role of ROLES) {
+  86  |       test(`collect screenshots — ${role}`, async ({ page }) => {
+  87  |         await setupApiMocking(page, role);
+  88  | 
+  89  |         for (const spec of ROUTES_BY_ROLE[role]) {
+  90  |           await snapshotRoute(page, role, device, spec);
+  91  |         }
+  92  | 
+  93  |         await page.goto("/dashboard", { waitUntil: "networkidle" });
+  94  |         await expect(page.getByRole("tablist", { name: "Основна навігація" })).toBeVisible();
+  95  |         await page.waitForTimeout(400);
+  96  | 
+  97  |         await captureMoreSheet(page, role, device);
+  98  |         await captureNotifications(page, role, device);
+  99  |       });
+  100 |     }
+  101 | 
+  102 |     test("collect screenshots — logged out (login)", async ({ page }) => {
+  103 |       await setupApiMocking(page, null);
+  104 |       await page.goto("/login", { waitUntil: "networkidle" });
+  105 |       await expect(page.getByRole("heading", { name: "Вхід у CRM" })).toBeVisible();
+  106 |       await page.waitForTimeout(400);
+  107 |       await percySnapshot(page, `Logged out · ${device.name} · Login`);
+  108 |     });
+  109 | 
+  110 |     test("collect screenshots — 404", async ({ page }) => {
+  111 |       await setupApiMocking(page, "MANAGER");
+  112 |       await page.goto("/tsi-y-shche-yakyy-shlyah", { waitUntil: "networkidle" });
+  113 |       await expect(page.getByText("Сторінку не знайдено")).toBeVisible();
+  114 |       await page.waitForTimeout(300);
+  115 |       await percySnapshot(page, `MANAGER · ${device.name} · 404`);
+  116 |     });
+  117 |   });
+  118 | }
+  119 | 
+```
 ```
 

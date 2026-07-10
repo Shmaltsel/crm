@@ -76,6 +76,38 @@
     "reason": "ignored directory"
   },
   {
+    "path": "apps/frontend/playwright-report/data/2e45628e67a7c7aa8598b044237f5921c62dc420.zip",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/frontend/playwright-report/data/78485ad26ab49de2007fe98b0854715a58aaf5b6.png",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/frontend/playwright-report/data/c8b7640d36b3f876304087947dc26980e13c6577.zip",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/frontend/playwright-report/data/df54e0f3bc6f89037926d574382c690d5fb7deec.zip",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/frontend/playwright-report/data/fed8368a6f789f9dfce439714ecef9fbdf6acf5c.zip",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/frontend/playwright-report/trace/codicon.DCmgc-ay.ttf",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/frontend/playwright-report/trace/manifest.webmanifest",
+    "reason": "extension"
+  },
+  {
+    "path": "apps/frontend/playwright-report/trace/playwright-logo.svg",
+    "reason": "extension"
+  },
+  {
     "path": "apps/frontend/public/favicon.svg",
     "reason": "extension"
   },

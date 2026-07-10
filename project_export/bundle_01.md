@@ -7823,6 +7823,8 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheVersionService } from '../common/cache/cache-version.service';
+import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { Prisma } from '@prisma/client';
 import {
   SubmitReportDto,
@@ -7839,6 +7841,8 @@ export class EventsReportService {
     private readonly prisma: PrismaService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     private readonly cacheVersion: CacheVersionService,
+    private readonly telegramService: TelegramService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   private toOptionalNumber(value: unknown): number | null {
@@ -8024,6 +8028,49 @@ export class EventsReportService {
       this.cacheVersion.bumpVersion('finance'),
       this.cacheVersion.bumpVersion('dashboard'),
     ]);
+
+    const eventWithCity = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        school: { select: { name: true } },
+        city: {
+          include: {
+            manager: { select: { telegramChatId: true, telegramId: true } },
+          },
+        },
+      },
+    });
+
+    if (eventWithCity) {
+      const manager = eventWithCity.city?.manager;
+      const chatId =
+        manager?.telegramChatId ||
+        (manager?.telegramId && /^\d+$/.test(manager.telegramId)
+          ? manager.telegramId
+          : null);
+      if (chatId) {
+        const schoolName = eventWithCity.school?.name || 'Невідома школа';
+        this.telegramService
+          .sendMessage(
+            chatId,
+            `🚨 Новий звіт потребує затвердження: ${schoolName}`,
+          )
+          .catch(() => {});
+      }
+
+      const notifyUserId =
+        event.responsibleId || eventWithCity.city?.managerId;
+      if (notifyUserId) {
+        this.notificationsService
+          .create(notifyUserId, 'REPORT_SUBMITTED', {
+            eventId,
+            schoolName: eventWithCity.school?.name,
+            title: 'Звіт надіслано на затвердження',
+          })
+          .catch(() => {});
+      }
+    }
+
     return this.serializeEvent(event);
   }
 }
@@ -11065,7 +11112,7 @@ export class InventoryController {
 
   @ApiOperation({ summary: 'Створити товар' })
   @Post()
-  @Roles('SUPERADMIN', 'OWNER')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   create(
     @Body()
     dto: {
@@ -12402,89 +12449,6 @@ describe('PrismaService', () => {
     expect(service).toBeDefined();
   });
 });
-
-```
-
-# FILE: apps/backend/src/prisma/prisma.service.ts
-
-```
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
-import { dbQueryDuration } from '../metrics/metrics.service';
-
-@Injectable()
-export class PrismaService
-  extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
-{
-  constructor() {
-    super();
-    return this.$extends({
-      query: {
-        $allModels: {
-          async $allOperations({ model, operation, args, query }) {
-            const start = process.hrtime.bigint();
-            const result = await query(args);
-            const durationSec = Number(process.hrtime.bigint() - start) / 1e9;
-            dbQueryDuration.observe(
-              { model: model ?? 'unknown', action: operation },
-              durationSec,
-            );
-            return result;
-          },
-        },
-      },
-    }) as unknown as PrismaService;
-  }
-
-  async onModuleInit() {
-    await this.$connect();
-  }
-
-  async onModuleDestroy() {
-    await this.$disconnect();
-  }
-}
-
-```
-
-# FILE: apps/backend/src/projects/dto/create-project.dto.ts
-
-```
-import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  IsNumber,
-  Min,
-} from 'class-validator';
-import { Type } from 'class-transformer';
-
-export class CreateProjectDto {
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-
-  @IsOptional()
-  @IsString()
-  color?: string;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Type(() => Number)
-  pricePerChild?: number;
-}
-
-```
-
-# FILE: apps/backend/src/projects/dto/update-project.dto.ts
-
-```
-import { PartialType } from '@nestjs/swagger';
-import { CreateProjectDto } from './create-project.dto';
-
-export class UpdateProjectDto extends PartialType(CreateProjectDto) {}
 
 ```
 
