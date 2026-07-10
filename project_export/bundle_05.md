@@ -51,21 +51,21 @@ export default function MobileCalendarGrid({
 }: MobileCalendarGridProps) {
   return (
     <>
-      <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
-        <div className="flex items-center justify-between px-3 py-3.5 border-b border-slate-100" data-no-swipe>
+      <div className="bg-surface rounded-card shadow-card border border-border overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-2.5 border-b border-border" data-no-swipe>
           <button
             onClick={prevMonth}
-            className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 active:bg-slate-100 transition-colors"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-control text-content-muted active:bg-surface-muted transition-colors"
           >
             ‹
           </button>
-          <span className="text-base font-bold text-slate-800 capitalize">
+          <span className="text-sm font-bold text-content-primary capitalize">
             {MONTH_NAMES[month]}{" "}
-            <span className="text-slate-400 font-medium">{year}</span>
+            <span className="text-content-muted font-medium">{year}</span>
           </span>
           <button
             onClick={nextMonth}
-            className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 active:bg-slate-100 transition-colors"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-control text-content-muted active:bg-surface-muted transition-colors"
           >
             ›
           </button>
@@ -75,33 +75,24 @@ export default function MobileCalendarGrid({
           {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((dayName) => (
             <div
               key={dayName}
-              className="text-center text-[10px] font-bold tracking-wide text-slate-400 uppercase pb-1.5"
+              className="text-center text-2xs font-bold tracking-wide text-content-muted uppercase pb-1"
             >
               {dayName}
             </div>
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-y-2.5 px-2 pb-3" data-no-swipe>
+        <div className="grid grid-cols-7 gap-y-1.5 px-2 pb-2.5" data-no-swipe>
           {days.map((day, idx) => {
-            const isToday =
-              day && day.toDateString() === new Date().toDateString();
-            const isSelected =
-              day && day.toDateString() === selectedMobileDate.toDateString();
+            const isToday = day && day.toDateString() === new Date().toDateString();
+            const isSelected = day && day.toDateString() === selectedMobileDate.toDateString();
             const dayKey = day ? toISODate(day) : "";
             const dayEvents = day ? (eventsByDate.get(dayKey) ?? []) : [];
-            const dayOffEntries = day
-              ? (dayOffsByDate.get(dayKey) ?? [])
-              : [];
-            const dayColor = day
-              ? getDayColor(dayEvents, projectHexMap)
-              : undefined;
+            const dayOffEntries = day ? (dayOffsByDate.get(dayKey) ?? []) : [];
+            const dayColor = day ? getDayColor(dayEvents, projectHexMap) : undefined;
 
             return (
-              <div
-                key={idx}
-                className="flex items-center justify-center py-0.5"
-              >
+              <div key={idx} className="flex items-center justify-center py-0.5">
                 {day && (
                   <button
                     onTouchStart={(e) => {
@@ -116,51 +107,35 @@ export default function MobileCalendarGrid({
                     onTouchCancel={() => cancelLongPress()}
                     onContextMenu={(e) => e.preventDefault()}
                     onClick={() => handleMobileDayTap(day)}
-                    className={`relative w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold select-none no-select-ios touch-manipulation active:scale-90
-                      ${isSelected ? "ring-2 ring-blue-600 ring-offset-2" : ""}
-                      ${isToday && !isSelected ? "ring-2 ring-blue-200" : ""}
+                    className={`relative min-w-[38px] min-h-[38px] w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold select-none no-select-ios touch-manipulation active:scale-90
+                      ${isSelected ? "ring-2 ring-brand ring-offset-2" : ""}
+                      ${isToday && !isSelected ? "ring-2 ring-brand/20" : ""}
                       ${triggeredDay === day ? "dayoff-cell-enter" : ""}
                     `}
                     style={{
                       background: dayColor || "#f1f5f9",
                       color: dayColor ? "#fff" : "#64748b",
-                      textShadow: dayColor
-                        ? "0 1px 2px rgba(0,0,0,0.35)"
-                        : "none",
+                      textShadow: dayColor ? "0 1px 2px rgba(0,0,0,0.35)" : "none",
                       transform: pressingDay === day ? "scale(0.9)" : "",
-                      transition: pressingDay === day
-                        ? "transform 550ms ease-out"
-                        : "transform 150ms ease-out",
+                      transition: pressingDay === day ? "transform 550ms ease-out" : "transform 150ms ease-out",
                     }}
                   >
-                    <svg
-                      className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none"
-                      viewBox="0 0 36 36"
-                    >
+                    <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 36 36">
                       <circle
-                        cx="18"
-                        cy="18"
-                        r="16"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
+                        cx="18" cy="18" r="16" fill="none"
+                        stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
                         strokeDasharray="100.53"
                         strokeDashoffset={pressingDay === day ? 0 : 100.53}
                         style={{
-                          transition: pressingDay === day
-                            ? "stroke-dashoffset 550ms linear"
-                            : "stroke-dashoffset 150ms ease-out",
+                          transition: pressingDay === day ? "stroke-dashoffset 550ms linear" : "stroke-dashoffset 150ms ease-out",
                         }}
-                        className="text-blue-500 opacity-70"
+                        className="text-brand opacity-70"
                       />
                     </svg>
                     {day.getDate()}
                     {dayOffEntries.length > 0 && (
-                      <span className="pointer-events-none absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white flex items-center justify-center">
-                        <span className="text-white text-[6px] font-bold leading-none">
-                          ✕
-                        </span>
+                      <span className="pointer-events-none absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-danger border-2 border-white flex items-center justify-center">
+                        <span className="text-white text-[6px] font-bold leading-none">✕</span>
                       </span>
                     )}
                   </button>
@@ -171,23 +146,21 @@ export default function MobileCalendarGrid({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 mt-3 px-1">
+      <div className="flex flex-wrap items-center gap-1.5 mt-2.5 px-1">
         {projects.map((p: Project) => (
           <span
             key={p.id}
-            className="flex items-center gap-1 text-[10px] font-medium text-slate-500"
+            className="inline-flex items-center gap-1 text-2xs font-medium text-content-secondary bg-surface-muted border border-border px-2 py-0.5 rounded-pill"
           >
             <span
-              className="w-2 h-2 rounded-full"
-              style={{
-                background: PROJECT_HEX[p.color] || PROJECT_HEX.blue,
-              }}
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ background: PROJECT_HEX[p.color] || PROJECT_HEX.blue }}
             />
             {p.name}
           </span>
         ))}
-        <span className="flex items-center gap-1 text-[10px] font-medium text-slate-500">
-          <span className="w-2 h-2 rounded-full bg-rose-500" />
+        <span className="inline-flex items-center gap-1 text-2xs font-medium text-danger-600 bg-danger-50 border border-danger-100 px-2 py-0.5 rounded-pill">
+          <span className="w-2 h-2 rounded-full bg-danger shrink-0" />
           Вихідний
         </span>
 
@@ -195,13 +168,11 @@ export default function MobileCalendarGrid({
           <select
             value={filterCityId}
             onChange={(e) => setFilterCityId(e.target.value)}
-            className="ml-auto text-[11px] font-semibold text-slate-700 outline-none bg-slate-50 border border-slate-200 rounded-lg px-2 py-1"
+            className="ml-auto text-2xs font-semibold text-content-secondary outline-none bg-surface-muted border border-border rounded-control px-2.5 py-1.5 min-h-[32px]"
           >
-            <option value="ALL">🌍 Всі міста</option>
+            <option value="ALL">Всі міста</option>
             {cities.map((c: City) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
+              <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
         )}
@@ -245,9 +216,9 @@ export default function MobileDayDetailsPanel({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
         transition={{ duration: 0.2 }}
-        className="mt-4 select-none"
+        className="mt-3 select-none"
       >
-        <h3 className="text-sm font-bold text-slate-800 mb-2.5">
+        <h3 className="text-sm font-bold text-content-primary mb-2">
           {selectedMobileDate.toLocaleDateString("uk-UA", {
             day: "2-digit",
             month: "long",
@@ -260,13 +231,13 @@ export default function MobileDayDetailsPanel({
           const dayOffEntries = dayOffsByDate.get(key) ?? [];
           if (dayOffEntries.length === 0) return null;
           return (
-            <div className="mb-3 flex flex-wrap gap-1.5">
+            <div className="mb-2.5 flex flex-wrap gap-1">
               {dayOffEntries.map((d: DayOff) => {
                 const u = allUsers.find((au: User) => au.id === d.userId);
                 return (
                   <span
                     key={d.id}
-                    className="text-[11px] font-semibold text-rose-600 bg-rose-50 border border-rose-100 px-2 py-1 rounded-full"
+                    className="text-2xs font-semibold text-danger-600 bg-danger-50 border border-danger-100 px-2 py-0.5 rounded-pill"
                   >
                     🌴 {u?.name || "Вихідний"}
                   </span>
@@ -277,35 +248,30 @@ export default function MobileDayDetailsPanel({
         })()}
 
         {selectedDayEvents.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-400 text-sm">
+          <div className="bg-surface rounded-card border border-border p-6 text-center text-content-muted text-sm">
             На цей день подій не заплановано
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="flex flex-col gap-2">
             {selectedDayEvents.map((ev: CalendarEvent) => (
               <div
                 key={ev.id}
-                onClick={() =>
-                  ev.school && navigate(`/schools/${ev.school.id}`)
-                }
-                className="bg-white p-4 rounded-2xl border-l-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
-                style={{
-                  borderLeftColor:
-                    projectHexMap.get(ev.project) ?? PROJECT_HEX.blue,
-                }}
+                onClick={() => ev.school && navigate(`/schools/${ev.school.id}`)}
+                className="bg-surface p-3 rounded-card border-l-4 shadow-soft active:scale-[0.98] transition-transform cursor-pointer"
+                style={{ borderLeftColor: projectHexMap.get(ev.project) ?? PROJECT_HEX.blue }}
               >
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-xs font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-600">
+                <div className="flex justify-between items-start mb-1.5">
+                  <span className="text-2xs font-bold px-2 py-0.5 rounded-control bg-surface-muted text-content-secondary">
                     🕒 {ev.time || "Не вказано"}
                   </span>
-                  <span className="text-xs font-medium text-slate-500">
+                  <span className="text-2xs font-medium text-content-muted">
                     {ev.project}
                   </span>
                 </div>
-                <p className="font-bold text-slate-800">
+                <p className="text-sm font-semibold text-content-primary">
                   {ev.school?.name}
                 </p>
-                <p className="text-sm text-slate-500 mt-1">
+                <p className="text-2xs text-content-secondary mt-1">
                   🚐 Екіпаж: {ev.crew?.name || "Не призначено"}
                 </p>
               </div>
@@ -3775,6 +3741,30 @@ export function useUpdateHistoryComment() {
   }
 }
 
+@layer components {
+  .mobile-card {
+    @apply bg-surface rounded-card shadow-card border border-border p-4;
+  }
+  .mobile-section-title {
+    @apply text-xl font-bold text-content-primary;
+  }
+  .mobile-stat-value {
+    @apply text-2xl font-bold text-content-primary;
+  }
+  .mobile-stat-label {
+    @apply text-xs font-medium text-content-muted;
+  }
+  .mobile-kpi-card {
+    @apply bg-surface rounded-card shadow-card border border-border p-3 flex flex-col justify-between;
+  }
+  .fab {
+    @apply md:hidden fixed z-40 w-14 h-14 rounded-full bg-brand text-white
+           shadow-lg active:scale-95 transition-transform duration-fast
+           flex items-center justify-center;
+    bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 transparent;
@@ -3957,27 +3947,27 @@ const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
 function SkeletonCard() {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 animate-pulse">
-      <div className="h-4 bg-slate-100 rounded-full w-1/3 mb-3" />
-      <div className="h-8 bg-slate-100 rounded w-2/3 mb-2" />
+    <div className="mobile-card animate-pulse">
+      <div className="h-3 bg-neutral-100 rounded-full w-1/3 mb-2.5" />
+      <div className="h-7 bg-neutral-100 rounded w-2/3 mb-1.5" />
     </div>
   );
 }
 
 function ChartSkeleton() {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 animate-pulse">
-      <div className="h-5 bg-slate-100 rounded w-1/4 mb-6" />
-      <div className="h-[280px] bg-slate-50 rounded-xl" />
+    <div className="mobile-card animate-pulse">
+      <div className="h-4 bg-neutral-100 rounded w-1/4 mb-5" />
+      <div className="h-[280px] bg-surface-muted rounded-xl" />
     </div>
   );
 }
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="h-[280px] flex flex-col items-center justify-center text-slate-300">
-      <span className="text-3xl mb-2">📊</span>
-      <span className="text-sm text-slate-400">{text}</span>
+    <div className="h-[280px] flex flex-col items-center justify-center text-content-muted">
+      <span className="text-2xl mb-2">📊</span>
+      <span className="text-sm text-content-muted">{text}</span>
     </div>
   );
 }
@@ -4009,10 +3999,10 @@ export default function Analytics() {
   }));
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Аналітика</h1>
-        <p className="text-xs text-slate-400 mt-1">
+    <div className="p-4 md:p-8 bg-surface-subtle min-h-screen">
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold text-content-primary">Аналітика</h1>
+        <p className="text-2xs text-content-muted mt-1">
           {new Date().toLocaleDateString("uk-UA", {
             month: "long",
             year: "numeric",
@@ -4020,11 +4010,11 @@ export default function Analytics() {
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 mb-6">
+      <div className="flex flex-wrap items-center gap-2 mb-5">
         <select
           value={year}
           onChange={(e) => setYear(Number(e.target.value))}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+          className="px-3 py-2.5 bg-surface border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand min-h-[44px]"
         >
           {YEAR_OPTIONS.map((y) => (
             <option key={y} value={y}>{y}</option>
@@ -4035,7 +4025,7 @@ export default function Analytics() {
           <select
             value={cityId}
             onChange={(e) => setCityId(e.target.value)}
-            className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+            className="px-3 py-2.5 bg-surface border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand min-h-[44px]"
           >
             <option value="">Всі міста</option>
             {cities?.map((c) => (
@@ -4049,32 +4039,32 @@ export default function Analytics() {
           placeholder="Проєкт (фільтр)"
           value={projectId}
           onChange={(e) => setProjectId(e.target.value)}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 w-48"
+          className="px-3 py-2.5 bg-surface border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand w-48 min-h-[44px]"
         />
       </div>
 
       {revenueLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
           {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <KPICard label="Загальний дохід" value={fmtMoney(totalRevenue)} color="text-blue-700" bg="bg-blue-50" />
-          <KPICard label="Прибуток" value={fmtMoney(totalProfit)} color="text-emerald-700" bg="bg-emerald-50" />
-          <KPICard label="ROI" value={roi ? `${roi.roi}%` : "—"} color="text-purple-700" bg="bg-purple-50" />
-          <KPICard label="Витрати на ЗП" value={fmtMoney(salaryFund?.total ?? 0)} color="text-rose-700" bg="bg-rose-50" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+          <KPICard label="Загальний дохід" value={fmtMoney(totalRevenue)} color="text-brand" />
+          <KPICard label="Прибуток" value={fmtMoney(totalProfit)} color="text-success" />
+          <KPICard label="ROI" value={roi ? `${roi.roi}%` : "—"} color="text-purple-600" />
+          <KPICard label="Витрати на ЗП" value={fmtMoney(salaryFund?.total ?? 0)} color="text-danger" />
         </div>
       )}
 
       {revenueLoading ? (
         <ChartSkeleton />
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 mb-6">
-          <h3 className="font-bold text-slate-800 mb-4">Дохід по місяцях</h3>
+        <div className="mobile-card mb-5">
+          <h3 className="font-bold text-content-primary mb-3 text-sm">Дохід по місяцях</h3>
           {chartData.length === 0 ? (
             <EmptyState text="Немає даних за цей період" />
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={280}>
               <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
@@ -4095,12 +4085,12 @@ export default function Analytics() {
         eventsLoading ? (
           <ChartSkeleton />
         ) : (
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-            <h3 className="font-bold text-slate-800 mb-4">Події по містах</h3>
+          <div className="mobile-card">
+            <h3 className="font-bold text-content-primary mb-3 text-sm">Події по містах</h3>
             {!eventsByCity || eventsByCity.length === 0 ? (
               <EmptyState text="Немає подій за цей рік" />
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={eventsByCity} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="cityName" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
@@ -4117,8 +4107,8 @@ export default function Analytics() {
         )
       )}
       {isSuper && (
-        <div className="mt-6">
-          <h3 className="font-bold text-slate-800 mb-4">KPI — Топ 10</h3>
+        <div className="mt-5">
+          <h3 className="font-bold text-content-primary mb-3 text-sm">KPI — Топ 10</h3>
           <KpiTables />
         </div>
       )}
@@ -4164,7 +4154,7 @@ function KpiTables() {
   });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
       <KpiTable
         title="Менеджери"
         headers={["#", "Ім'я", "Затверджено"]}
@@ -4214,28 +4204,28 @@ function KpiTable({
   rows: string[][];
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-      <h4 className="font-semibold text-slate-700 mb-3 text-sm">{title}</h4>
+    <div className="mobile-card">
+      <h4 className="font-semibold text-content-secondary mb-2 text-sm">{title}</h4>
       <table className="w-full text-xs">
         <thead>
-          <tr className="text-slate-400 border-b border-slate-100">
+          <tr className="text-content-muted border-b border-border">
             {headers.map((h) => (
-              <th key={h} className="text-left pb-2 font-medium">{h}</th>
+              <th key={h} className="text-left pb-1.5 font-medium">{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={headers.length} className="text-center py-6 text-slate-300">
+              <td colSpan={headers.length} className="text-center py-5 text-content-muted">
                 Немає даних
               </td>
             </tr>
           ) : (
             rows.map((row, i) => (
-              <tr key={i} className="border-b border-slate-50 last:border-0">
+              <tr key={i} className="border-b border-border last:border-0">
                 {row.map((cell, j) => (
-                  <td key={j} className={`py-2 ${j === 0 ? "text-slate-400 w-6" : "text-slate-700"}`}>
+                  <td key={j} className={`py-1.5 ${j === 0 ? "text-content-muted w-6" : "text-content-primary"}`}>
                     {cell}
                   </td>
                 ))}
@@ -4250,8 +4240,8 @@ function KpiTable({
 
 function KPICard({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-      <p className={`text-xs font-medium ${color} mb-3`}>{label}</p>
+    <div className="mobile-card">
+      <p className={`text-2xs font-medium ${color} mb-1.5`}>{label}</p>
       <p className={`text-2xl font-bold leading-none ${color}`}>{value}</p>
     </div>
   );
@@ -4419,6 +4409,7 @@ import { useSelectedCity } from "../context/CityContext";
 import { useAddCity } from "../hooks/useApi";
 import { useCities } from "../hooks/useCities";
 import { useAuth } from "../context/AuthContext";
+import { Modal } from "../components/ui/Modal";
 
 const IssueCarousel = lazy(() => import("../components/IssueCarousel"));
 const CityMobileHeader = lazy(
@@ -4433,24 +4424,19 @@ const CityDesktopGrid = lazy(
 
 const CitiesSkeleton = () => (
   <div className="w-full animate-pulse">
-    {/* Мобільний скелетон */}
-    <div className="md:hidden flex flex-col gap-4 mt-4">
-      <div className="h-28 bg-slate-200 rounded-2xl w-full"></div>
-      <div className="h-16 bg-slate-200 rounded-2xl w-full"></div>
-      <div className="h-16 bg-slate-200 rounded-2xl w-full"></div>
+    <div className="md:hidden flex flex-col gap-3 mt-4">
+      <div className="h-24 bg-neutral-100 rounded-card w-full" />
+      <div className="h-14 bg-neutral-100 rounded-card w-full" />
+      <div className="h-14 bg-neutral-100 rounded-card w-full" />
     </div>
-    {/* Десктопний скелетон */}
     <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {[...Array(3)].map((_, i) => (
-        <div
-          key={i}
-          className="bg-white rounded-2xl shadow-sm border border-slate-100 h-72 overflow-hidden"
-        >
-          <div className="h-44 bg-slate-200 w-full"></div>
+        <div key={i} className="bg-surface rounded-card shadow-card border border-border h-72 overflow-hidden">
+          <div className="h-44 bg-neutral-100 w-full" />
           <div className="p-5 flex flex-col gap-3">
-            <div className="h-6 bg-slate-200 rounded w-1/2"></div>
-            <div className="h-4 bg-slate-200 rounded w-3/4 mt-2"></div>
-            <div className="h-10 bg-slate-200 rounded w-full mt-auto"></div>
+            <div className="h-6 bg-neutral-100 rounded w-1/2" />
+            <div className="h-4 bg-neutral-100 rounded w-3/4 mt-2" />
+            <div className="h-10 bg-neutral-100 rounded w-full mt-auto" />
           </div>
         </div>
       ))}
@@ -4467,13 +4453,14 @@ export default function Cities() {
   const addCity = useAddCity();
 
   const handleSelectCity = useCallback(
-    (city: any) => {
+    (city: { id: string; name: string }) => {
       setSelectedCity(city);
     },
     [setSelectedCity],
   );
   const { user } = useAuth();
   const userRole = user?.role ?? null;
+
   const handleAddCity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCityName.trim()) return;
@@ -4481,25 +4468,20 @@ export default function Cities() {
       await addCity.mutateAsync(newCityName.trim());
       setNewCityName("");
       setIsModalOpen(false);
-    } catch (err: any) {
+    } catch {
       setNewCityName("");
       setIsModalOpen(false);
     }
   };
 
   return (
-    <div
-      className="p-4 md:p-8 bg-slate-50 min-h-screen"
-      style={{ contentVisibility: "auto" }}
-    >
+    <div className="p-4 md:p-8 bg-surface-subtle min-h-screen" style={{ contentVisibility: "auto" }}>
       <div className="hidden md:flex justify-between items-center mb-8">
-        <h1 className="header-enter text-3xl font-bold text-slate-800">
-          Міста
-        </h1>
+        <h1 className="header-enter text-3xl font-bold text-content-primary">Міста</h1>
         {userRole === "SUPERADMIN" && (
           <button
             onClick={() => setIsModalOpen(true)}
-            className="header-btn-enter bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm flex items-center transition-all duration-150"
+            className="header-btn-enter bg-brand hover:bg-brand-hover active:scale-95 text-white px-5 py-2.5 rounded-control font-medium shadow-sm flex items-center transition-all duration-fast"
           >
             <span className="mr-2">+</span> Додати місто
           </button>
@@ -4509,9 +4491,7 @@ export default function Cities() {
       {isFetching ? (
         <CitiesSkeleton />
       ) : (
-        /* Оптимізація 6: Suspense обгортка для лінивих компонентів */
         <Suspense fallback={<CitiesSkeleton />}>
-          
           <div className="md:hidden">
             <CityMobileHeader selectedCity={selectedCity} cities={cities} />
             <CityMobileList
@@ -4521,7 +4501,6 @@ export default function Cities() {
             />
           </div>
 
-          
           <div className="hidden md:block">
             <IssueCarousel />
             <CityDesktopGrid
@@ -4533,74 +4512,45 @@ export default function Cities() {
         </Suspense>
       )}
 
-      {/* Мобільна плаваюча кнопка FAB */}
       {userRole === "SUPERADMIN" && (
         <button
           onClick={() => setIsModalOpen(true)}
-          className="md:hidden fixed right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 active:scale-95 transition-transform opacity-0"
-          style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
-          style={{
-            animation:
-              "fabPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) 0.2s forwards",
-          }}
+          className="fab"
           aria-label="Додати місто"
         >
           +
         </button>
       )}
 
-      {/* Модалка додавання */}
-      {isModalOpen &&
-        createPortal(
-          <div
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
-            style={{ animation: "fadeIn 0.2s ease-out forwards" }}
-          >
-            
-            <div
-              className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
-              style={{ animation: "modalScale 0.3s ease-out forwards" }}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Нове місто">
+        <form onSubmit={handleAddCity} className="flex flex-col gap-4">
+          <input
+            type="text"
+            value={newCityName}
+            onChange={(e) => setNewCityName(e.target.value)}
+            placeholder="Наприклад: Львів"
+            className="w-full p-3 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none transition-shadow text-sm"
+            autoFocus
+            required
+          />
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="flex-1 bg-surface-muted text-content-secondary py-2.5 rounded-control font-medium hover:bg-border-strong transition-colors text-sm"
             >
-              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <h3 className="text-xl font-bold text-slate-800">Нове місто</h3>
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-              <form onSubmit={handleAddCity} className="p-6">
-                <input
-                  type="text"
-                  value={newCityName}
-                  onChange={(e) => setNewCityName(e.target.value)}
-                  placeholder="Наприклад: Львів"
-                  className="w-full p-3 mb-6 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
-                  autoFocus
-                  required
-                />
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors"
-                  >
-                    Скасувати
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={addCity.isPending}
-                    className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                  >
-                    {addCity.isPending ? "Збереження..." : "Зберегти"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>,
-          document.body,
-        )}
+              Скасувати
+            </button>
+            <button
+              type="submit"
+              disabled={addCity.isPending}
+              className="flex-1 bg-brand text-white py-2.5 rounded-control font-medium hover:bg-brand-hover disabled:opacity-50 transition-colors text-sm"
+            >
+              {addCity.isPending ? "Збереження..." : "Зберегти"}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
@@ -4660,9 +4610,9 @@ const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => currentYear - i);
 function SkeletonBar() {
   return (
     <div className="flex items-center gap-3 mb-3 animate-pulse">
-      <div className="w-24 h-4 bg-slate-100 rounded-full shrink-0" />
-      <div className="h-8 bg-slate-100 rounded-full flex-1" />
-      <div className="w-16 h-4 bg-slate-100 rounded-full shrink-0" />
+      <div className="w-24 h-4 bg-surface-muted rounded-full shrink-0" />
+      <div className="h-8 bg-surface-muted rounded-full flex-1" />
+      <div className="w-16 h-4 bg-surface-muted rounded-full shrink-0" />
     </div>
   );
 }
@@ -4689,10 +4639,10 @@ export default function CityLeaderboard() {
   const formatValue = metric === "revenue" || metric === "profit" ? fmtMoney : fmt;
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+    <div className="p-4 md:p-8 bg-surface-subtle min-h-screen">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Рейтинг міст</h1>
-        <p className="text-xs text-slate-400 mt-1">Порівняння міст за обраною метрикою</p>
+        <h1 className="text-2xl font-bold text-content-primary">Рейтинг міст</h1>
+        <p className="text-xs text-content-muted mt-1">Порівняння міст за обраною метрикою</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-6">
@@ -4700,10 +4650,10 @@ export default function CityLeaderboard() {
           <button
             key={m.key}
             onClick={() => setMetric(m.key)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               metric === m.key
-                ? "bg-blue-600 text-white shadow-sm"
-                : "bg-white text-slate-600 border border-slate-200 hover:border-blue-300"
+                ? "bg-brand text-white shadow-sm"
+                : "bg-surface text-content-secondary border border-border-strong hover:border-blue-300"
             }`}
           >
             {m.label}
@@ -4713,7 +4663,7 @@ export default function CityLeaderboard() {
         <select
           value={year}
           onChange={(e) => setYear(Number(e.target.value))}
-          className="ml-auto px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+          className="ml-auto px-3 py-2.5 bg-surface border border-border-strong rounded-lg text-sm focus:outline-none focus:border-blue-400"
         >
           {YEAR_OPTIONS.map((y) => (
             <option key={y} value={y}>{y}</option>
@@ -4722,18 +4672,18 @@ export default function CityLeaderboard() {
       </div>
 
       {isLoading ? (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="bg-surface rounded-card border border-border shadow-card p-6">
           {Array.from({ length: 5 }).map((_, i) => <SkeletonBar key={i} />)}
         </div>
       ) : !data || data.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="bg-surface rounded-card border border-border shadow-card p-6">
           <div className="h-[200px] flex flex-col items-center justify-center text-slate-300">
             <span className="text-3xl mb-2">🏆</span>
-            <span className="text-sm text-slate-400">Немає даних за {year} рік</span>
+            <span className="text-sm text-content-muted">Немає даних за {year} рік</span>
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="bg-surface rounded-card border border-border shadow-card p-6">
           <AnimatePresence mode="wait">
             <motion.div
               key={metric}
@@ -4749,10 +4699,10 @@ export default function CityLeaderboard() {
 
                 return (
                   <div key={entry.cityId} className="flex items-center gap-3 mb-3">
-                    <span className="w-24 text-xs text-slate-500 truncate shrink-0 text-right">
+                    <span className="w-24 text-xs text-content-muted truncate shrink-0 text-right">
                       {entry.cityName}
                     </span>
-                    <div className="flex-1 h-8 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="flex-1 h-8 bg-surface-muted rounded-full overflow-hidden">
                       <motion.div
                         className={`h-full rounded-full ${BAR_COLORS[colorIndex]}`}
                         initial={{ width: 0 }}
@@ -4760,7 +4710,7 @@ export default function CityLeaderboard() {
                         transition={{ duration: 0.5, ease: "easeOut" }}
                       />
                     </div>
-                    <span className="w-20 text-xs font-semibold text-slate-700 text-right shrink-0">
+                    <span className="w-20 text-xs font-semibold text-content-secondary text-right shrink-0">
                       {formatValue(value)}
                     </span>
                   </div>
@@ -4824,8 +4774,8 @@ export default function CityProfile() {
   };
 
   if (isLoading)
-    return <div className="p-8 text-slate-500">Завантаження...</div>;
-  if (!city) return <div className="p-8 text-slate-500">Місто не знайдено</div>;
+    return <div className="p-8 text-content-muted">Завантаження...</div>;
+  if (!city) return <div className="p-8 text-content-muted">Місто не знайдено</div>;
 
   const completedEvents: Event[] = city.events || [];
   const filteredCompletedEvents = completedEvents.filter((ev) =>
@@ -4872,27 +4822,27 @@ export default function CityProfile() {
   ];
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
-      <div className="text-sm text-slate-500 mb-6">
-        <Link to="/cities" className="hover:text-blue-600 transition-colors">
+    <div className="p-4 md:p-8 bg-surface-subtle min-h-screen">
+      <div className="text-sm text-content-muted mb-6">
+        <Link to="/cities" className="hover:text-brand transition-colors">
           Міста
         </Link>
         <span className="mx-2">›</span>
-        <span className="text-slate-800 font-medium">{city.name}</span>
+        <span className="text-content-primary font-medium">{city.name}</span>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6">
+      <div className="bg-surface rounded-card shadow-card border border-border p-6 mb-6">
         <div className="flex flex-col md:flex-row md:items-center gap-6">
           <div className="flex items-center gap-4 min-w-[220px]">
-            <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
+            <div className="w-12 h-12 rounded-full bg-brand flex items-center justify-center text-white font-bold text-lg shrink-0">
               {manager?.name?.charAt(0) ?? "?"}
             </div>
             <div>
-              <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-0.5">
+              <p className="text-xs text-content-muted font-medium uppercase tracking-wide mb-0.5">
                 Менеджер
               </p>
-              <p className="font-bold text-slate-800">{manager?.name ?? "—"}</p>
-              <p className="text-sm text-slate-500">
+              <p className="font-bold text-content-primary">{manager?.name ?? "—"}</p>
+              <p className="text-sm text-content-muted">
                 <PhoneLink phone={manager?.phone} />
               </p>
             </div>
@@ -4908,15 +4858,15 @@ export default function CityProfile() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 sm:flex sm:w-fit gap-1 bg-white rounded-xl p-1 border border-slate-100 shadow-sm mb-6">
+      <div className="grid grid-cols-3 sm:flex sm:w-fit gap-1 bg-white rounded-xl p-1 border border-border shadow-sm mb-6">
         {TABS.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+            className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2 sm:px-5 py-2.5 rounded-control text-xs sm:text-sm font-medium transition-colors ${
               activeTab === tab.key
-                ? "bg-blue-600 text-white shadow-sm"
-                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                ? "bg-brand text-white shadow-sm"
+                : "text-content-muted hover:text-content-secondary hover:bg-surface-muted"
             }`}
           >
             <span>{tab.icon}</span>{" "}
@@ -4926,9 +4876,9 @@ export default function CityProfile() {
       </div>
 
       {activeTab === "events" && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-            <h3 className="font-bold text-slate-800 mb-4">
+        <div className="bg-surface rounded-card shadow-card border border-border overflow-hidden">
+          <div className="p-6 border-b border-border bg-surface-muted">
+            <h3 className="font-bold text-content-primary mb-4">
               Завершені події ({completedEvents.length})
             </h3>
             <input
@@ -4936,11 +4886,11 @@ export default function CityProfile() {
               value={completedSearchQuery}
               onChange={(e) => setCompletedSearchQuery(e.target.value)}
               placeholder="Пошук за назвою закладу..."
-              className="w-full sm:max-w-xs p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full sm:max-w-xs p-2.5 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           {filteredCompletedEvents.length === 0 ? (
-            <div className="p-12 text-center text-slate-400">
+            <div className="p-12 text-center text-content-muted">
               <p className="text-4xl mb-3">📭</p>
               <p className="font-medium">
                 {completedSearchQuery
@@ -4950,32 +4900,32 @@ export default function CityProfile() {
             </div>
           ) : (
             <>
-              <div className="md:hidden divide-y divide-slate-50">
+              <div className="md:hidden divide-y divide-border">
                 {filteredCompletedEvents.map((ev) => (
                   <div
                     key={ev.id}
                     onClick={() => setSelectedReportEvent(ev)}
-                    className="flex items-center justify-between gap-3 p-4 active:bg-slate-50 cursor-pointer"
+                    className="flex items-center justify-between gap-3 p-4 active:bg-surface-muted cursor-pointer"
                   >
                     <div className="min-w-0">
-                      <p className="font-medium text-blue-600 truncate">
+                      <p className="font-medium text-brand truncate">
                         {ev.school?.name}
                       </p>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="text-xs text-content-muted mt-0.5">
                         {ev.project} ·{" "}
                         {new Date(ev.date).toLocaleDateString("uk-UA")}
                       </p>
-                      <p className="text-xs text-slate-500 mt-1">
+                      <p className="text-xs text-content-muted mt-1">
                         👶{" "}
                         {ev.report?.childrenCount || ev.childrenPlanned || "—"}{" "}
                         дітей
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="font-semibold text-slate-800 text-sm">
+                      <p className="font-semibold text-content-primary text-sm">
                         {fmt(ev.report?.totalSum || ev.price || 0)} грн
                       </p>
-                      <p className="text-xs font-medium text-emerald-600 mt-0.5">
+                      <p className="text-xs font-medium text-success-600 mt-0.5">
                         +{fmt(ev.report?.remainderSum || 0)} грн
                       </p>
                     </div>
@@ -4985,7 +4935,7 @@ export default function CityProfile() {
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
-                    <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+                    <tr className="bg-white border-b border-border text-content-muted text-xs font-semibold uppercase tracking-wider">
                       <th className="p-4">Заклад</th>
                       <th className="p-4">Проєкт</th>
                       <th className="p-4">Дата</th>
@@ -4999,18 +4949,18 @@ export default function CityProfile() {
                       <tr
                         key={ev.id}
                         onClick={() => setSelectedReportEvent(ev)}
-                        className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
+                        className="border-b border-slate-50 hover:bg-surface-muted transition-colors cursor-pointer"
                       >
                         <td className="p-4">
-                          <span className="font-medium text-blue-600">
+                          <span className="font-medium text-brand">
                             {ev.school?.name}
                           </span>
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-content-muted">
                             {ev.school?.type}
                           </p>
                         </td>
-                        <td className="p-4 text-slate-700">{ev.project}</td>
-                        <td className="p-4 text-slate-600">
+                        <td className="p-4 text-content-secondary">{ev.project}</td>
+                        <td className="p-4 text-content-secondary">
                           {new Date(ev.date).toLocaleDateString("uk-UA")}
                         </td>
                         <td className="p-4 font-medium">
@@ -5018,10 +4968,10 @@ export default function CityProfile() {
                             ev.childrenPlanned ||
                             "—"}
                         </td>
-                        <td className="p-4 font-medium text-slate-800">
+                        <td className="p-4 font-medium text-content-primary">
                           {fmt(ev.report?.totalSum || ev.price || 0)} грн
                         </td>
-                        <td className="p-4 font-medium text-emerald-600">
+                        <td className="p-4 font-medium text-success-600">
                           {fmt(ev.report?.remainderSum || 0)} грн
                         </td>
                       </tr>
@@ -5036,9 +4986,9 @@ export default function CityProfile() {
 
       {/* Вкладка ЕКІПАЖІ з новим дизайном */}
       {activeTab === "crews" && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
-            <h3 className="text-xl font-bold text-slate-800">
+        <div className="bg-surface rounded-card shadow-card border border-border overflow-hidden">
+          <div className="p-6 border-b border-border flex justify-between items-center bg-white">
+            <h3 className="text-xl font-bold text-content-primary">
               Екіпажі - {city.name}
             </h3>
             <button
@@ -5050,21 +5000,21 @@ export default function CityProfile() {
                 });
                 setIsCreateCrewModalOpen(true);
               }}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm"
+              className="bg-brand hover:bg-brand-hover text-white px-5 py-2.5 rounded-control text-sm font-medium transition-colors shadow-sm"
             >
               + Додати екіпаж
             </button>
           </div>
 
           {crews.length === 0 ? (
-            <div className="p-12 text-center text-slate-400">
+            <div className="p-12 text-center text-content-muted">
               <p className="text-4xl mb-3">🚐</p>
               <p className="font-medium">Екіпажів ще немає</p>
             </div>
           ) : (
             <>
               {/* Мобільний вигляд */}
-              <div className="md:hidden divide-y divide-slate-50">
+              <div className="md:hidden divide-y divide-border">
                 {crews.map((crew: any) => {
                   const hostObj = users.find((u) => u.id === crew.hostId);
                   const driverObj = users.find((u) => u.id === crew.driverId);
@@ -5080,51 +5030,51 @@ export default function CityProfile() {
                     <div key={crew.id} className="p-4">
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-16 h-10 rounded overflow-hidden bg-slate-100 shrink-0 shadow-sm border border-slate-200">
+                          <div className="w-16 h-10 rounded overflow-hidden bg-slate-100 shrink-0 shadow-sm border border-border-strong">
                             <OptimizedImage
                               src="https://images.unsplash.com/photo-1517026575980-3e1e2dedeab4?auto=format&fit=crop&q=80&w=120&h=80"
                               alt="van"
                               className="w-full h-full object-cover"
                             />
                           </div>
-                          <p className="font-bold text-slate-800">
+                          <p className="font-bold text-content-primary">
                             {crew.name}
                           </p>
                         </div>
-                        <span className="bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded text-xs font-medium">
+                        <span className="bg-success-subtle text-success-600 px-2.5 py-1 rounded text-xs font-medium">
                           Активний
                         </span>
                       </div>
 
                       <div className="grid grid-cols-2 gap-y-3 text-xs mt-4">
                         <div>
-                          <p className="font-medium text-slate-800">
+                          <p className="font-medium text-content-primary">
                             {hostObj?.name || crew.host?.name || "—"}
                           </p>
-                          <p className="text-slate-500 mt-0.5">
+                          <p className="text-content-muted mt-0.5">
                             {hostObj?.phone || "—"}
                           </p>
                         </div>
                         <div>
-                          <p className="font-medium text-slate-800">
+                          <p className="font-medium text-content-primary">
                             {driverObj?.name || crew.driver?.name || "—"}
                           </p>
-                          <p className="text-slate-500 mt-0.5">
+                          <p className="text-content-muted mt-0.5">
                             {driverObj?.phone || "—"}
                           </p>
                         </div>
                         <div>
-                          <p className="font-medium text-slate-800">
+                          <p className="font-medium text-content-primary">
                             {carName}
                           </p>
                           {carPlate && (
-                            <p className="text-slate-500 mt-0.5">{carPlate}</p>
+                            <p className="text-content-muted mt-0.5">{carPlate}</p>
                           )}
                         </div>
                         <div>
-                          <p className="text-slate-500">
+                          <p className="text-content-muted">
                             Подій:{" "}
-                            <span className="font-bold text-slate-800">
+                            <span className="font-bold text-content-primary">
                               {eventsCount}
                             </span>
                           </p>
@@ -5132,7 +5082,7 @@ export default function CityProfile() {
                       </div>
                       <button
                         onClick={() => handleDeleteCrew(crew.id)}
-                        className="w-full mt-4 py-2 border border-slate-200 text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 rounded-lg text-sm font-medium transition-colors"
+                        className="w-full mt-4 py-2 border border-border-strong text-content-secondary hover:bg-danger-subtle hover:text-danger hover:border-danger-200 rounded-control text-sm font-medium transition-colors"
                       >
                         Видалити екіпаж
                       </button>
@@ -5145,7 +5095,7 @@ export default function CityProfile() {
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
-                    <tr className="bg-white border-b border-slate-100 text-slate-800 font-bold">
+                    <tr className="bg-white border-b border-border text-content-primary font-bold">
                       <th className="p-5">Екіпаж</th>
                       <th className="p-5">Ведучий</th>
                       <th className="p-5">Водій</th>
@@ -5175,65 +5125,65 @@ export default function CityProfile() {
                       return (
                         <tr
                           key={crew.id}
-                          className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+                          className="border-b border-slate-50 hover:bg-surface-muted transition-colors"
                         >
                           <td className="p-5">
                             <div className="flex items-center gap-3">
                               {/* Універсальна фотографія буса */}
-                              <div className="w-[60px] h-[40px] rounded border border-slate-200 overflow-hidden bg-slate-100 shrink-0 shadow-sm">
+                              <div className="w-[60px] h-[40px] rounded border border-border-strong overflow-hidden bg-slate-100 shrink-0 shadow-sm">
                                 <OptimizedImage
                                   src="https://images.unsplash.com/photo-1517026575980-3e1e2dedeab4?auto=format&fit=crop&q=80&w=120&h=80"
                                   alt="van"
                                   className="w-full h-full object-cover"
                                 />
                               </div>
-                              <span className="font-bold text-slate-800">
+                              <span className="font-bold text-content-primary">
                                 {crew.name}
                               </span>
                             </div>
                           </td>
                           <td className="p-5">
-                            <div className="font-medium text-slate-800">
+                            <div className="font-medium text-content-primary">
                               {hostObj?.name || crew.host?.name || "—"}
                             </div>
-                            <div className="text-xs text-slate-500 mt-1 tracking-wide">
+                            <div className="text-xs text-content-muted mt-1 tracking-wide">
                               {hostObj?.phone || "—"}
                             </div>
                           </td>
                           <td className="p-5">
-                            <div className="font-medium text-slate-800">
+                            <div className="font-medium text-content-primary">
                               {driverObj?.name || crew.driver?.name || "—"}
                             </div>
-                            <div className="text-xs text-slate-500 mt-1 tracking-wide">
+                            <div className="text-xs text-content-muted mt-1 tracking-wide">
                               {driverObj?.phone || "—"}
                             </div>
                           </td>
                           <td className="p-5">
-                            <div className="font-medium text-slate-600">
+                            <div className="font-medium text-content-secondary">
                               {carName}
                             </div>
                             {carPlate ? (
-                              <div className="text-xs text-slate-500 mt-1 tracking-wider">
+                              <div className="text-xs text-content-muted mt-1 tracking-wider">
                                 {carPlate}
                               </div>
                             ) : (
-                              <div className="text-xs text-slate-400 mt-1">
+                              <div className="text-xs text-content-muted mt-1">
                                 —
                               </div>
                             )}
                           </td>
                           <td className="p-5">
-                            <span className="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-md text-xs font-semibold tracking-wide">
+                            <span className="bg-success-subtle text-success-600 px-3 py-1.5 rounded-md text-xs font-semibold tracking-wide">
                               Активний
                             </span>
                           </td>
-                          <td className="p-5 text-center font-bold text-slate-800 text-base">
+                          <td className="p-5 text-center font-bold text-content-primary text-base">
                             {eventsCount}
                           </td>
                           <td className="p-5 text-center">
                             <button
                               onClick={() => handleDeleteCrew(crew.id)}
-                              className="text-slate-400 hover:text-red-500 p-2 transition-colors rounded-lg hover:bg-red-50"
+                              className="text-content-muted hover:text-red-500 p-2 transition-colors rounded-control hover:bg-red-50"
                               title="Видалити екіпаж"
                             >
                               🗑
@@ -5253,7 +5203,7 @@ export default function CityProfile() {
       {activeTab === "analytics" && (
         <Suspense
           fallback={
-            <div className="bg-white rounded-2xl h-64 animate-pulse border border-slate-100" />
+            <div className="bg-white rounded-card h-64 animate-pulse border border-border" />
           }
         >
           <CityAnalytics events={completedEvents} />
@@ -5262,20 +5212,20 @@ export default function CityProfile() {
 
       {/* Модалка створення екіпажу */}
       {isCreateCrewModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
-            <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50">
-              <h3 className="text-xl font-bold text-slate-800">Новий екіпаж</h3>
+        <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-card shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+            <div className="p-5 sm:p-6 border-b border-border flex justify-between bg-surface-muted">
+              <h3 className="text-xl font-bold text-content-primary">Новий екіпаж</h3>
               <button
                 onClick={() => setIsCreateCrewModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-lg leading-none"
+                className="text-content-muted hover:text-content-secondary text-lg leading-none"
               >
                 ✕
               </button>
             </div>
             <form onSubmit={handleCreateCrew} className="p-5 sm:p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-content-secondary mb-1">
                   Назва екіпажу
                 </label>
                 <input
@@ -5284,12 +5234,12 @@ export default function CityProfile() {
                   onChange={(e) =>
                     setCrewForm({ ...crewForm, name: e.target.value })
                   }
-                  className="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full p-2.5 border border-border-strong rounded-control focus:ring-2 focus:ring-blue-500 outline-none"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-content-secondary mb-1">
                   Ведучий
                 </label>
                 <select
@@ -5298,7 +5248,7 @@ export default function CityProfile() {
                     setCrewForm({ ...crewForm, hostId: e.target.value })
                   }
                   required
-                  className="w-full p-2.5 border border-slate-200 rounded-lg bg-white outline-none"
+                  className="w-full p-2.5 border border-border-strong rounded-control bg-white outline-none"
                 >
                   <option value="" disabled>
                     Оберіть ведучого
@@ -5309,12 +5259,12 @@ export default function CityProfile() {
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-emerald-600 mt-1">
+                <p className="text-xs text-success-600 mt-1">
                   ✓ Доступно: {availableHosts.length} вільних
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-content-secondary mb-1">
                   Водій
                 </label>
                 <select
@@ -5323,7 +5273,7 @@ export default function CityProfile() {
                     setCrewForm({ ...crewForm, driverId: e.target.value })
                   }
                   required
-                  className="w-full p-2.5 border border-slate-200 rounded-lg bg-white outline-none"
+                  className="w-full p-2.5 border border-border-strong rounded-control bg-white outline-none"
                 >
                   <option value="" disabled>
                     Оберіть водія
@@ -5334,7 +5284,7 @@ export default function CityProfile() {
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-emerald-600 mt-1">
+                <p className="text-xs text-success-600 mt-1">
                   ✓ Доступно: {availableDrivers.length} вільних
                 </p>
               </div>
@@ -5342,13 +5292,13 @@ export default function CityProfile() {
                 <button
                   type="button"
                   onClick={() => setIsCreateCrewModalOpen(false)}
-                  className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg font-medium hover:bg-slate-200 transition-colors"
+                  className="flex-1 px-4 py-2.5 bg-slate-100 text-content-secondary rounded-control font-medium hover:bg-slate-200 transition-colors"
                 >
                   Скасувати
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                  className="flex-1 px-4 py-2.5 bg-brand text-white rounded-control font-medium hover:bg-brand-hover transition-colors"
                 >
                   Створити
                 </button>
@@ -5371,8 +5321,8 @@ export default function CityProfile() {
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div>
-      <p className="text-xs text-slate-400 font-medium mb-1">{label}</p>
-      <p className="text-2xl font-bold text-slate-800">{value}</p>
+      <p className="text-xs text-content-muted font-medium mb-1">{label}</p>
+      <p className="text-2xl font-bold text-content-primary">{value}</p>
     </div>
   );
 }
@@ -5392,90 +5342,90 @@ function CompletedEventModal({
   const report = event.report;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="bg-white rounded-t-3xl sm:rounded-card shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
-        <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
+        <div className="p-5 sm:p-6 border-b border-border flex justify-between bg-surface-muted shrink-0">
           <div>
-            <h3 className="text-xl font-bold text-slate-800">
+            <h3 className="text-xl font-bold text-content-primary">
               Звіт: {event.project}
             </h3>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-sm text-content-muted mt-1">
               {event.school?.name} ·{" "}
               {new Date(event.date).toLocaleDateString("uk-UA")}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg"
+            className="text-content-muted hover:text-content-secondary p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg"
           >
             ✕
           </button>
         </div>
-        <div className="p-5 sm:p-6 flex-1 overflow-y-auto bg-slate-50/30">
+        <div className="p-5 sm:p-6 flex-1 overflow-y-auto bg-surface-muted">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-              <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+            <div className="bg-white p-5 rounded-card border border-border shadow-sm">
+              <h4 className="font-bold text-content-primary mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full bg-blue-50 text-brand flex items-center justify-center">
                   📊
                 </span>
                 Результати
               </h4>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between border-b border-slate-50 pb-2">
-                  <span className="text-slate-500">Дітей (факт):</span>
+                  <span className="text-content-muted">Дітей (факт):</span>
                   <span className="font-bold">
                     {report?.childrenCount || 0}
                   </span>
                 </div>
                 <div className="flex justify-between border-b border-slate-50 pb-2">
-                  <span className="text-slate-500">Класів:</span>
+                  <span className="text-content-muted">Класів:</span>
                   <span className="font-medium">
                     {report?.classesCount || 0}
                   </span>
                 </div>
                 <div className="flex justify-between border-b border-slate-50 pb-2">
-                  <span className="text-slate-500">Пільговиків:</span>
+                  <span className="text-content-muted">Пільговиків:</span>
                   <span className="font-medium">
                     {report?.privilegedCount || 0}
                   </span>
                 </div>
                 <div className="flex justify-between border-b border-slate-50 pb-2">
-                  <span className="text-slate-500">Сеансів:</span>
+                  <span className="text-content-muted">Сеансів:</span>
                   <span className="font-medium">
                     {report?.showingsCount || 0}
                   </span>
                 </div>
                 <div className="flex justify-between pb-1">
-                  <span className="text-slate-500">Оцінка:</span>
+                  <span className="text-content-muted">Оцінка:</span>
                   <span className="font-bold text-amber-500">
                     ⭐ {report?.rating || 0}/10
                   </span>
                 </div>
               </div>
             </div>
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-              <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <div className="bg-white p-5 rounded-card border border-border shadow-sm">
+              <h4 className="font-bold text-content-primary mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full bg-success-subtle text-success-600 flex items-center justify-center">
                   💰
                 </span>
                 Фінанси
               </h4>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between border-b border-slate-50 pb-2">
-                  <span className="text-slate-500">Загальна виручка:</span>
+                  <span className="text-content-muted">Загальна виручка:</span>
                   <span className="font-bold">{fmt(report?.totalSum)} грн</span>
                 </div>
                 <div className="flex justify-between border-b border-slate-50 pb-2">
-                  <span className="text-slate-500">На заклад (20%):</span>
-                  <span className="font-medium text-rose-500">
+                  <span className="text-content-muted">На заклад (20%):</span>
+                  <span className="font-medium text-danger-600">
                     − {fmt(report?.schoolSum)} грн
                   </span>
                 </div>
                 {Array.isArray(report?.expenseItems) &&
                   report.expenseItems.length > 0 && (
                     <div className="py-2 border-b border-slate-50">
-                      <span className="text-slate-500 block mb-2">
+                      <span className="text-content-muted block mb-2">
                         Додаткові витрати:
                       </span>
                       {report.expenseItems.map((exp: any, i: number) => (
@@ -5483,10 +5433,10 @@ function CompletedEventModal({
                           key={i}
                           className="flex justify-between text-xs mb-1 pl-2"
                         >
-                          <span className="text-slate-400">
+                          <span className="text-content-muted">
                             — {exp.name || exp.category}
                           </span>
-                          <span className="text-rose-500 font-medium">
+                          <span className="text-danger-600 font-medium">
                             − {fmt(exp.amount)} грн
                           </span>
                         </div>
@@ -5494,25 +5444,25 @@ function CompletedEventModal({
                     </div>
                   )}
                 <div className="flex justify-between pt-1">
-                  <span className="font-bold text-slate-800">
+                  <span className="font-bold text-content-primary">
                     Чистий прибуток:
                   </span>
-                  <span className="font-bold text-emerald-600 text-base">
+                  <span className="font-bold text-success-600 text-base">
                     {fmt(report?.remainderSum)} грн
                   </span>
                 </div>
               </div>
             </div>
           </div>
-          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm">
-            <h4 className="font-bold text-slate-800 mb-5 flex items-center gap-2">
+          <div className="bg-white p-5 sm:p-6 rounded-card border border-border shadow-sm">
+            <h4 className="font-bold text-content-primary mb-5 flex items-center gap-2">
               <span className="w-8 h-8 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center">
                 ⏳
               </span>
               Історія пайплайну
             </h4>
             {!event.history || event.history.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-4">
+              <p className="text-sm text-content-muted text-center py-4">
                 Історія порожня.
               </p>
             ) : (
@@ -5526,10 +5476,10 @@ function CompletedEventModal({
                   .map((item: any) => (
                     <div key={item.id} className="relative pl-8 text-sm">
                       <div className="absolute left-1.5 w-3 h-3 rounded-full top-1 bg-violet-500 ring-4 ring-white"></div>
-                      <p className="font-semibold text-slate-800">
+                      <p className="font-semibold text-content-primary">
                         {item.action}
                       </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
+                      <p className="text-[11px] text-content-muted mt-0.5">
                         {new Date(item.createdAt).toLocaleString("uk-UA", {
                           day: "2-digit",
                           month: "2-digit",
@@ -5539,7 +5489,7 @@ function CompletedEventModal({
                         · 👤 {item.userName}
                       </p>
                       {item.comment && (
-                        <div className="mt-2 p-3 bg-slate-50/80 rounded-xl text-slate-600 italic border border-slate-100">
+                        <div className="mt-2 p-3 bg-surface-muted rounded-xl text-content-secondary italic border border-border">
                           {item.comment}
                         </div>
                       )}
@@ -5667,15 +5617,15 @@ export default function Dashboard() {
           {allowedTabs.map((tab) => {
             const Component = TAB_COMPONENTS[tab.id];
             return (
-              <SwiperSlide key={tab.id}>
-                <div className="p-4 md:p-8">
-                  <TabErrorBoundary label={tab.label}>
-                    <Suspense fallback={<div className="text-sm text-content-muted">Завантаження...</div>}>
-                      <Component />
-                    </Suspense>
-                  </TabErrorBoundary>
-                </div>
-              </SwiperSlide>
+            <SwiperSlide key={tab.id}>
+              <div className="md:p-4 lg:p-8">
+                <TabErrorBoundary label={tab.label}>
+                  <Suspense fallback={<div className="text-sm text-content-muted p-4">Завантаження...</div>}>
+                    <Component />
+                  </Suspense>
+                </TabErrorBoundary>
+              </div>
+            </SwiperSlide>
             );
           })}
         </Swiper>
@@ -6320,40 +6270,40 @@ export default function EventReport() {
   const { data: event, isLoading, isError } = useEventFull(eventId);
 
   if (isLoading)
-    return <div className="p-8 text-slate-500">Завантаження...</div>;
+    return <div className="p-8 text-content-muted">Завантаження...</div>;
   if (isError || !event)
-    return <div className="p-8 text-slate-500">Подію не знайдено</div>;
+    return <div className="p-8 text-content-muted">Подію не знайдено</div>;
 
   const report = event.report;
   const crew = event.crew;
   const fmt = formatCurrency;
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+    <div className="p-4 md:p-8 bg-surface-subtle min-h-screen">
       {/* Breadcrumb */}
-      <div className="text-xs sm:text-sm text-slate-500 mb-4 flex items-center gap-1 flex-wrap">
-        <Link to="/cities" className="hover:text-blue-600">
+      <div className="text-xs sm:text-sm text-content-muted mb-4 flex items-center gap-1 flex-wrap">
+        <Link to="/cities" className="hover:text-brand">
           Міста
         </Link>
         <span>›</span>
-        <Link to={`/cities/${event.cityId}`} className="hover:text-blue-600">
+        <Link to={`/cities/${event.cityId}`} className="hover:text-brand">
           {event.city?.name}
         </Link>
         <span>›</span>
         <span>Події</span>
         <span>›</span>
-        <span className="text-slate-800 font-medium">Звіт по події</span>
+        <span className="text-content-primary font-medium">Звіт по події</span>
       </div>
 
       <button
         onClick={() => window.history.back()}
-        className="mb-4 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2"
+        className="mb-4 px-4 py-2.5 bg-surface border border-border-strong rounded-lg text-sm text-content-secondary hover:bg-surface-subtle flex items-center gap-2"
       >
         ← Назад
       </button>
 
       <div className="flex items-center gap-3 mb-6 flex-wrap">
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">
+        <h1 className="text-xl sm:text-2xl font-bold text-content-primary">
           Звіт по події
         </h1>
         <span className="bg-green-100 text-green-700 text-xs font-semibold px-3 py-1 rounded-full">
@@ -6363,8 +6313,8 @@ export default function EventReport() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Інформація */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-6">
-          <h3 className="font-bold text-slate-800 mb-4">Інформація</h3>
+        <div className="bg-surface rounded-card border border-border shadow-card p-4 sm:p-6">
+          <h3 className="font-bold text-content-primary mb-4">Інформація</h3>
           <div className="space-y-2 text-sm">
             <Row label="Заклад" value={event.school?.name} />
             <Row
@@ -6384,8 +6334,8 @@ export default function EventReport() {
         </div>
 
         {/* Результат */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-6">
-          <h3 className="font-bold text-slate-800 mb-4">Результат</h3>
+        <div className="bg-surface rounded-card border border-border shadow-card p-4 sm:p-6">
+          <h3 className="font-bold text-content-primary mb-4">Результат</h3>
           <div className="space-y-2 text-sm">
             <Row label="Заплановано дітей" value={event.childrenPlanned} />
             <Row label="Фактично дітей" value={report?.childrenCount} />
@@ -6396,8 +6346,8 @@ export default function EventReport() {
         </div>
 
         {/* Оцінка */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-6">
-          <h3 className="font-bold text-slate-800 mb-4">Оцінка</h3>
+        <div className="bg-surface rounded-card border border-border shadow-card p-4 sm:p-6">
+          <h3 className="font-bold text-content-primary mb-4">Оцінка</h3>
           <div className="space-y-2 text-sm">
             <Row
               label="Директор задоволений"
@@ -6410,8 +6360,8 @@ export default function EventReport() {
             <Row label="Проблеми" value={report?.hadIssues ? "Так" : "Ні"} />
             {report?.comment && (
               <div className="pt-2">
-                <p className="text-slate-400 mb-1">Коментар:</p>
-                <p className="text-slate-700 italic">"{report.comment}"</p>
+                <p className="text-content-muted mb-1">Коментар:</p>
+                <p className="text-content-secondary italic">"{report.comment}"</p>
               </div>
             )}
           </div>
@@ -6424,8 +6374,8 @@ export default function EventReport() {
 function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex justify-between">
-      <span className="text-slate-400">{label}:</span>
-      <span className="font-medium text-slate-800">{value ?? "—"}</span>
+      <span className="text-content-muted">{label}:</span>
+      <span className="font-medium text-content-primary">{value ?? "—"}</span>
     </div>
   );
 }
@@ -6578,17 +6528,17 @@ export default function Events() {
       </div>
 
       {isLoading && (
-        <div className="text-center text-slate-400 py-16">Завантаження...</div>
+        <div className="text-center text-content-muted py-16">Завантаження...</div>
       )}
 
       {!isLoading && error && (
-        <div className="bg-red-50 text-red-600 border border-red-100 rounded-xl p-4 text-sm">
+        <div className="bg-red-50 text-red-600 border border-red-100 rounded-card p-4 text-sm">
           {error}
         </div>
       )}
 
       {!isLoading && !error && filteredEvents.length === 0 && (
-        <div className="bg-white border border-slate-100 rounded-xl p-10 text-center text-slate-400">
+        <div className="bg-surface border border-border rounded-card p-10 text-center text-content-muted">
           {isFieldStaff
             ? "Поки що немає подій, на які вас призначено."
             : "Подій ще немає."}
@@ -6603,10 +6553,10 @@ export default function Events() {
               <div
                 key={ev.id}
                 onClick={() => goToEvent(ev)}
-                className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer active:bg-slate-50"
+                className="bg-surface rounded-card shadow-card border border-border p-4 cursor-pointer active:bg-surface-subtle"
               >
                 <div className="flex justify-between items-start gap-2">
-                  <p className="font-semibold text-gray-800">{ev.project}</p>
+                  <p className="font-semibold text-content-primary">{ev.project}</p>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span
                       className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
@@ -6617,7 +6567,7 @@ export default function Events() {
                     </span>
                     {ev.report?.status && (
                       <span
-                        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                        className={`inline-block px-2 py-0.5 rounded-full text-2xs font-medium ${
                           REPORT_STATUS_COLORS[ev.report.status] ?? "bg-slate-100 text-slate-500"
                         }`}
                       >
@@ -6626,26 +6576,26 @@ export default function Events() {
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-content-muted mt-1">
                   {formatDate(ev.date)}
                   {ev.time ? `, ${ev.time}` : ""} · {ev.city?.name ?? "—"}
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                <p className="text-xs text-content-muted mt-0.5 flex items-center gap-1">
                   <School className="w-3 h-3 shrink-0" /> {ev.school?.name ?? "—"}
                 </p>
                 {ev.address && (
-                  <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                  <p className="text-xs text-content-muted mt-0.5 flex items-center gap-1">
                     <MapPin className="w-3 h-3 shrink-0" /> <AddressLink address={ev.address} />
                   </p>
                 )}
                 {(ev.crew?.host || ev.crew?.driver) && (
-                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                  <p className="text-xs text-content-muted mt-1 flex items-center gap-1">
                     <User className="w-3 h-3 shrink-0" /> {ev.crew?.host?.name ?? "—"} <Truck className="w-3 h-3 shrink-0" />{" "}
                     {ev.crew?.driver?.name ?? "—"}
                   </p>
                 )}
                 {isFieldStaff && (ev.contactPerson || ev.contactPhone) && (
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-xs text-content-muted mt-0.5">
                     {ev.contactPerson ?? "—"}
                     {ev.contactPhone ? (
                       <>
@@ -6660,15 +6610,15 @@ export default function Events() {
           </div>
 
           {/* Таблиця — десктоп */}
-          <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+          <div className="hidden md:block bg-surface rounded-card shadow-card border border-border overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="p-4 font-medium text-gray-600">Подія</th>
-                  <th className="p-4 font-medium text-gray-600">Дата</th>
-                  <th className="p-4 font-medium text-gray-600">Локація</th>
-                  <th className="p-4 font-medium text-gray-600">Екіпаж</th>
-                  <th className="p-4 font-medium text-gray-600">Статус</th>
+                <tr className="bg-surface-muted border-b border-border">
+                  <th className="p-4 font-medium text-content-secondary">Подія</th>
+                  <th className="p-4 font-medium text-content-secondary">Дата</th>
+                  <th className="p-4 font-medium text-content-secondary">Локація</th>
+                  <th className="p-4 font-medium text-content-secondary">Екіпаж</th>
+                  <th className="p-4 font-medium text-content-secondary">Статус</th>
                 </tr>
               </thead>
               <tbody>
@@ -6676,29 +6626,29 @@ export default function Events() {
                   <tr
                     key={ev.id}
                     onClick={() => goToEvent(ev)}
-                    className="border-b border-gray-50 hover:bg-gray-50/50 transition cursor-pointer"
+                    className="border-b border-border hover:bg-surface-muted/50 transition cursor-pointer"
                   >
-                    <td className="p-4 text-gray-800 font-medium">
+                    <td className="p-4 text-content-primary font-medium">
                       {ev.project}
-                      <div className="text-xs text-gray-400 font-normal mt-0.5">
+                      <div className="text-xs text-content-muted font-normal mt-0.5">
                         {ev.school?.name ?? "—"}
                       </div>
                     </td>
-                    <td className="p-4 text-gray-600">
+                    <td className="p-4 text-content-secondary">
                       {formatDate(ev.date)}
                       {ev.time && (
-                        <div className="text-xs text-gray-400">{ev.time}</div>
+                        <div className="text-xs text-content-muted">{ev.time}</div>
                       )}
                     </td>
-                    <td className="p-4 text-gray-600">
+                    <td className="p-4 text-content-secondary">
                       {ev.city?.name ?? "—"}
                       {ev.address && (
-                        <div className="text-xs text-gray-400">
+                        <div className="text-xs text-content-muted">
                           <AddressLink address={ev.address} />
                         </div>
                       )}
                     </td>
-                    <td className="p-4 text-gray-600 text-sm">
+                    <td className="p-4 text-content-secondary text-sm">
                       <div className="flex items-center gap-1"><User className="w-3 h-3 shrink-0" /> {ev.crew?.host?.name ?? "—"}</div>
                       <div className="flex items-center gap-1"><Truck className="w-3 h-3 shrink-0" /> {ev.crew?.driver?.name ?? "—"}</div>
                     </td>
@@ -6714,7 +6664,7 @@ export default function Events() {
                         </span>
                         {ev.report?.status && (
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                               REPORT_STATUS_COLORS[ev.report.status] ?? "bg-slate-100 text-slate-500"
                             }`}
                           >
@@ -7403,10 +7353,10 @@ export default function Kindergartens() {
   );
 
   return (
-    <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-slate-50 min-h-screen">
+    <div className="p-4 md:p-8 flex flex-col h-full max-w-[100vw] bg-surface-subtle min-h-screen">
       <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold text-slate-800 leading-tight">
+          <h1 className="text-xl font-bold text-content-primary leading-tight">
             Садочки
             {selectedCity.id && (
               <span className="ml-2 text-sm font-normal text-blue-500">
@@ -7441,7 +7391,7 @@ export default function Kindergartens() {
                 });
               }}
               disabled={bulkImportMutation.isPending}
-              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 bg-success text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-70 transition-all"
             >
               {bulkImportMutation.isPending ? (
                 <span className="font-medium">
@@ -7454,7 +7404,7 @@ export default function Kindergartens() {
           )}
           <button
             onClick={handleOpenModal}
-            className="hidden md:flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+            className="hidden md:flex items-center gap-1 px-3 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-hover"
           >
             + Додати
           </button>
@@ -7464,7 +7414,7 @@ export default function Kindergartens() {
       <div className="shrink-0">
         <Suspense
           fallback={
-            <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
+            <div className="h-[72px] bg-surface rounded-card animate-pulse mb-4" />
           }
         >
           <StatsBar
@@ -7489,7 +7439,7 @@ export default function Kindergartens() {
       <div className="relative shrink-0 mb-4 mt-2">
         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
           <svg
-            className="w-5 h-5 text-slate-400"
+            className="w-5 h-5 text-content-muted"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -7507,12 +7457,12 @@ export default function Kindergartens() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Пошук за назвою садочка..."
-          className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border-none sm:border sm:border-slate-200 rounded-2xl sm:rounded-xl text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition"
+          className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-surface border-none sm:border sm:border-border-strong rounded-card sm:rounded-control text-sm font-medium text-content-secondary placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand shadow-sm transition"
         />
         {searchQuery && (
           <button
             onClick={() => setSearchQuery("")}
-            className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600 transition"
+            className="absolute inset-y-0 right-4 flex items-center text-content-muted hover:text-content-secondary transition"
           >
             <svg
               className="w-5 h-5"
@@ -7531,7 +7481,7 @@ export default function Kindergartens() {
         )}
       </div>
 
-      <p className="text-xs font-semibold text-slate-400 mb-4 shrink-0 uppercase tracking-wide px-1">
+      <p className="text-xs font-semibold text-content-muted mb-4 shrink-0 uppercase tracking-wide px-1">
         {`${filteredSchools.length} з ${totalItems} садочків`}
         {(activeFilter || sizeFilter) && (
           <button
@@ -7551,13 +7501,13 @@ export default function Kindergartens() {
           {Array.from({ length: 8 }).map((_, i) => (
             <div
               key={i}
-              className="bg-white rounded-2xl border border-slate-100 p-3.5 animate-pulse"
+              className="bg-surface rounded-card border border-border p-3.5 animate-pulse"
               style={{ opacity: 1 - i * 0.1 }}
             >
               <div className="h-4 bg-slate-200 rounded-lg w-3/4 mb-3" />
               <div className="flex justify-between">
-                <div className="h-3 bg-slate-100 rounded-lg w-1/3" />
-                <div className="h-3 bg-slate-100 rounded-lg w-1/4" />
+                <div className="h-3 bg-surface-muted rounded-lg w-1/3" />
+                <div className="h-3 bg-surface-muted rounded-lg w-1/4" />
               </div>
             </div>
           ))}
@@ -7586,9 +7536,9 @@ export default function Kindergartens() {
             />
           </div>
 
-          <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0">
+          <div className="hidden md:flex flex-col flex-1 bg-surface rounded-card shadow-card border border-border overflow-hidden min-h-0">
             <Suspense
-              fallback={<div className="flex-1 animate-pulse bg-slate-50" />}
+              fallback={<div className="flex-1 animate-pulse bg-surface-subtle" />}
             >
               <VirtualDesktopTable
                 schools={filteredSchools}
@@ -7604,22 +7554,22 @@ export default function Kindergartens() {
 
       <button
         onClick={handleOpenModal}
-        className="md:hidden fixed right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
+        className="md:hidden fixed right-6 w-14 h-14 bg-brand text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-brand-hover active:scale-95 transition-transform"
         style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
       >
         +
       </button>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <h3 className="text-xl font-bold text-slate-800">
+        <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-surface rounded-card shadow-modal w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-border flex justify-between items-center bg-surface-subtle shrink-0">
+              <h3 className="text-xl font-bold text-content-primary">
                 Новий садочок
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-2 -mr-2 leading-none text-xl"
+                className="text-content-muted hover:text-content-secondary p-2 -mr-2 leading-none text-xl"
               >
                 ✕
               </button>
@@ -7630,7 +7580,7 @@ export default function Kindergartens() {
               className="p-6 flex flex-col gap-4 overflow-y-auto"
             >
               <div className="relative">
-                <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                <label className="block text-sm font-medium text-content-secondary mb-1.5">
                   Назва садочка
                 </label>
                 <input
@@ -7642,12 +7592,12 @@ export default function Kindergartens() {
                   }
                   placeholder="Наприклад: Садочок №1"
                   required
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand"
                 />
                 {showSuggestions && (
-                  <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto overflow-hidden">
+                  <ul className="absolute z-10 w-full bg-surface border border-border-strong rounded-control shadow-lg mt-1 max-h-48 overflow-y-auto overflow-hidden">
                     {isSearching ? (
-                      <li className="px-4 py-3 text-sm text-slate-400 italic">
+                      <li className="px-4 py-3 text-sm text-content-muted italic">
                         Пошук...
                       </li>
                     ) : suggestions.length > 0 ? (
@@ -7663,7 +7613,7 @@ export default function Kindergartens() {
                         </li>
                       ))
                     ) : (
-                      <li className="px-4 py-3 text-sm text-slate-400 italic">
+                      <li className="px-4 py-3 text-sm text-content-muted italic">
                         Нічого не знайдено
                       </li>
                     )}
@@ -7673,7 +7623,7 @@ export default function Kindergartens() {
 
               {!selectedCity.id && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                  <label className="block text-sm font-medium text-content-secondary mb-1.5">
                     Місто
                   </label>
                   <select
@@ -7682,7 +7632,7 @@ export default function Kindergartens() {
                       setForm({ ...form, cityId: e.target.value })
                     }
                     required
-                    className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand bg-surface"
                   >
                     <option value="">— Оберіть місто —</option>
                     {cities.map((c) => (
@@ -7695,9 +7645,9 @@ export default function Kindergartens() {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                <label className="block text-sm font-medium text-content-secondary mb-1.5">
                   Контакт{" "}
-                  <span className="ml-1 text-xs font-normal text-slate-400">
+                  <span className="ml-1 text-xs font-normal text-content-muted">
                     (автозаповнення)
                   </span>
                 </label>
@@ -7714,7 +7664,7 @@ export default function Kindergartens() {
                             phone: c.phone,
                           }))
                         }
-                        className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${form.director === c.contactName ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                        className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${form.director === c.contactName ? "bg-brand text-white border-blue-600 shadow-sm" : "bg-surface text-content-secondary border-border-strong hover:bg-surface-subtle"}`}
                       >
                         {c.role ? `${c.role}: ` : ""}
                         {c.contactName}
@@ -7729,9 +7679,9 @@ export default function Kindergartens() {
                     setForm({ ...form, director: e.target.value })
                   }
                   placeholder="Микола Петренко"
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+                  className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand mb-4"
                 />
-                <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                <label className="block text-sm font-medium text-content-secondary mb-1.5">
                   Телефон
                 </label>
                 <input
@@ -7739,7 +7689,7 @@ export default function Kindergartens() {
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   placeholder="0671234567"
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand"
                 />
               </div>
 
@@ -7747,14 +7697,14 @@ export default function Kindergartens() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-5 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+                  className="flex-1 px-5 py-3.5 bg-surface-muted rounded-control text-sm font-bold text-content-secondary hover:bg-slate-200 transition-colors"
                 >
                   Скасувати
                 </button>
                 <button
                   type="submit"
                   disabled={addSchoolMutation.isPending}
-                  className="flex-1 px-5 py-3.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="flex-1 px-5 py-3.5 bg-brand text-white rounded-control text-sm font-bold hover:bg-brand-hover disabled:opacity-50 transition-colors"
                 >
                   {addSchoolMutation.isPending ? "Збереження..." : "Створити"}
                 </button>
@@ -7875,7 +7825,6 @@ export default function Login({ onLogin }: LoginProps) {
 
     try {
       const response = await api.post("/auth/login", { email, password });
-
       setLoggedInUser(response.data.user);
       setIsTransitioning(true);
     } catch {
@@ -7887,7 +7836,7 @@ export default function Login({ onLogin }: LoginProps) {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+    <div className="flex items-center justify-center min-h-screen bg-surface-subtle p-4">
       <AnimatePresence>
         {isTransitioning && (
           <motion.div
@@ -7901,7 +7850,7 @@ export default function Login({ onLogin }: LoginProps) {
               borderRadius: "9999px",
               willChange: "transform",
             }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-blue-600"
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-brand"
           />
         )}
       </AnimatePresence>
@@ -7914,9 +7863,9 @@ export default function Login({ onLogin }: LoginProps) {
               : { opacity: 1, scale: 1 }
         }
         transition={{ duration: 0.4 }}
-        className="p-6 sm:p-8 bg-white rounded-2xl shadow-lg w-full max-w-sm sm:max-w-md"
+        className="p-6 sm:p-8 bg-surface rounded-card shadow-modal w-full max-w-sm sm:max-w-md"
       >
-        <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
+        <h1 className="text-2xl font-bold text-center text-content-primary mb-6">
           Вхід у CRM
         </h1>
 
@@ -7924,7 +7873,7 @@ export default function Login({ onLogin }: LoginProps) {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center"
+            className="mb-4 p-3 bg-danger-50 text-danger-600 rounded-control text-sm text-center"
           >
             {error}
           </motion.div>
@@ -7932,7 +7881,7 @@ export default function Login({ onLogin }: LoginProps) {
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div>
-            <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="login-email" className="block text-sm font-medium text-content-primary mb-1.5">
               Email
             </label>
             <input
@@ -7940,12 +7889,12 @@ export default function Login({ onLogin }: LoginProps) {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full px-3.5 py-3 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none text-sm transition-colors"
               required
             />
           </div>
           <div>
-            <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="login-password" className="block text-sm font-medium text-content-primary mb-1.5">
               Пароль
             </label>
             <input
@@ -7953,7 +7902,7 @@ export default function Login({ onLogin }: LoginProps) {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full px-3.5 py-3 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none text-sm transition-colors"
               required
             />
           </div>
@@ -7961,7 +7910,7 @@ export default function Login({ onLogin }: LoginProps) {
             type="submit"
             disabled={isLoading}
             whileTap={{ scale: 0.97 }}
-            className="mt-2 bg-blue-600 text-white font-medium p-2.5 rounded-lg hover:bg-blue-700 transition disabled:opacity-80 disabled:cursor-not-allowed flex items-center justify-center gap-2 h-[42px]"
+            className="mt-2 bg-brand text-white font-medium px-5 py-3 rounded-control hover:bg-brand-hover transition disabled:opacity-80 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[48px]"
           >
             <AnimatePresence mode="wait" initial={false}>
               {isLoading ? (
@@ -7974,22 +7923,13 @@ export default function Login({ onLogin }: LoginProps) {
                 >
                   <motion.span
                     animate={{ rotate: 360 }}
-                    transition={{
-                      duration: 0.7,
-                      repeat: Infinity,
-                      ease: "linear",
-                    }}
+                    transition={{ duration: 0.7, repeat: Infinity, ease: "linear" }}
                     className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full"
                   />
                   Вхід...
                 </motion.span>
               ) : (
-                <motion.span
-                  key="idle"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
+                <motion.span key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                   Увійти
                 </motion.span>
               )}
@@ -8063,22 +8003,22 @@ function KpiCard({
   loading?: boolean;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col justify-between min-h-[100px]">
+    <div className="mobile-kpi-card min-h-[80px]">
       {loading ? (
-        <div className="animate-pulse space-y-3">
-          <div className="h-4 bg-slate-100 rounded w-1/2" />
-          <div className="h-7 bg-slate-100 rounded w-2/3" />
-          <div className="h-3 bg-slate-100 rounded w-1/3" />
+        <div className="animate-pulse space-y-2">
+          <div className="h-3 bg-neutral-100 rounded w-1/2" />
+          <div className="h-6 bg-neutral-100 rounded w-2/3" />
+          <div className="h-2.5 bg-neutral-100 rounded w-1/3" />
         </div>
       ) : (
         <>
-          <div className="flex items-center gap-1.5 mb-2">
-            <span className="text-base">{icon}</span>
-            <span className="text-xs font-semibold text-slate-500">{title}</span>
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="text-sm">{icon}</span>
+            <span className="mobile-stat-label">{title}</span>
           </div>
-          <p className="text-xl font-bold text-slate-800 leading-none">{value}</p>
+          <p className="text-xl font-bold text-content-primary leading-none">{value}</p>
           {subtitle && (
-            <p className="text-[11px] text-slate-400 mt-1.5 font-medium">{subtitle}</p>
+            <p className="text-2xs text-content-muted mt-1">{subtitle}</p>
           )}
         </>
       )}
@@ -8127,14 +8067,14 @@ export default function OverviewTab() {
   }, [summary]);
 
   return (
-    <div className="bg-slate-50 min-h-screen">
-      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 md:px-8 py-4">
+    <div className="min-h-0">
+      <div className="bg-white/80 backdrop-blur-md border-b border-border px-4 md:px-8 py-3">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-slate-800">
+            <h1 className="text-base font-bold text-content-primary">
               {greeting}, {user?.name ?? "Користувач"}
             </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-2xs text-content-muted mt-0.5">
               {new Date().toLocaleDateString("uk-UA", {
                 weekday: "long",
                 day: "numeric",
@@ -8150,7 +8090,7 @@ export default function OverviewTab() {
                 const city = cities.find((c) => c.id === e.target.value);
                 if (city) setSelectedCity({ id: city.id, name: city.name });
               }}
-              className="bg-white border border-slate-200 text-slate-700 text-xs font-medium rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 shadow-sm max-w-[140px] truncate"
+              className="bg-surface border border-border-strong text-content-secondary text-2xs font-medium rounded-control px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand shadow-soft max-w-[120px] truncate"
               aria-label="Вибір міста"
             >
               <option value="">Всі міста</option>
@@ -8164,15 +8104,15 @@ export default function OverviewTab() {
         </div>
       </div>
 
-      <div className="p-4 md:p-8 space-y-6">
+      <div className="p-4 md:p-8 space-y-4">
         {isError ? (
-          <div className="text-center py-16 text-slate-400">
-            <span className="text-3xl block mb-3 opacity-50">⚠️</span>
+          <div className="text-center py-12 text-content-muted">
+            <span className="text-2xl block mb-2 opacity-50">⚠️</span>
             <p className="text-sm font-medium">Не вдалося завантажити дані дашборду</p>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {kpiCards
                 ? kpiCards.map((kpi) => (
                     <KpiCard key={kpi.title} {...kpi} loading={false} />
@@ -8188,7 +8128,7 @@ export default function OverviewTab() {
                   ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <TodayEvents events={summary?.todayEvents ?? []} />
               <ActivityFeed items={summary?.activityFeed ?? []} />
             </div>
@@ -8249,25 +8189,25 @@ export default function ProjectProfile() {
   });
 
   if (!project) {
-    return <div className="p-8 text-slate-500">Завантаження...</div>;
+    return <div className="p-8 text-content-muted">Завантаження...</div>;
   }
 
   const cards = [
-    { label: "Всього подій", value: stats?.totalEvents ?? "—", color: "text-blue-600", bg: "bg-blue-50" },
-    { label: "Завершено", value: stats?.completedEvents ?? "—", color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "Всього подій", value: stats?.totalEvents ?? "—", color: "text-brand", bg: "bg-brand-50" },
+    { label: "Завершено", value: stats?.completedEvents ?? "—", color: "text-success-600", bg: "bg-success-subtle" },
     { label: "Дохід", value: stats ? `${fmt(stats.totalRevenue)} грн` : "—", color: "text-violet-600", bg: "bg-violet-50" },
-    { label: "Прибуток", value: stats ? `${fmt(stats.totalProfit)} грн` : "—", color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "Прибуток", value: stats ? `${fmt(stats.totalProfit)} грн` : "—", color: "text-success-600", bg: "bg-success-subtle" },
     { label: "Середній рейтинг", value: stats?.avgRating ? `${stats.avgRating}/10` : "—", color: "text-amber-600", bg: "bg-amber-50" },
   ];
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+    <div className="p-4 md:p-8 bg-surface-subtle min-h-screen">
       <div className="flex items-center gap-3 mb-6">
         <div
           className="w-5 h-5 rounded-full shrink-0"
           style={{ backgroundColor: project.color }}
         />
-        <h1 className="text-2xl font-bold text-slate-800">{project.name}</h1>
+        <h1 className="text-2xl font-bold text-content-primary">{project.name}</h1>
       </div>
 
       {isSuperAdminOrOwner && cities.length > 0 && (
@@ -8275,7 +8215,7 @@ export default function ProjectProfile() {
           <select
             value={cityId}
             onChange={(e) => setCityId(e.target.value)}
-            className="w-full sm:max-w-xs p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            className="w-full sm:max-w-xs p-2.5 border border-border-strong rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand bg-surface"
           >
             <option value="">Всі міста</option>
             {cities.map((c) => (
@@ -8291,9 +8231,9 @@ export default function ProjectProfile() {
         {cards.map((card) => (
           <div
             key={card.label}
-            className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5"
+            className="bg-surface rounded-card shadow-card border border-border p-5"
           >
-            <p className="text-xs text-slate-400 font-medium mb-2">{card.label}</p>
+            <p className="text-xs text-content-muted font-medium mb-2">{card.label}</p>
             <p className={`text-2xl font-bold ${card.color}`}>{card.value}</p>
           </div>
         ))}
@@ -8707,7 +8647,7 @@ export default function SchoolProfile() {
           <motion.div {...stagger(0)}>
             <Suspense
               fallback={
-                <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+                <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
               }
             >
               <SchoolInfoCard schoolData={schoolData} />
@@ -8744,7 +8684,7 @@ export default function SchoolProfile() {
           <motion.div {...stagger(1)}>
             <Suspense
               fallback={
-                <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+                <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
               }
             >
               <HistoryTimeline
@@ -8760,7 +8700,7 @@ export default function SchoolProfile() {
           <motion.div {...stagger(2)}>
             <Suspense
               fallback={
-                <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+                <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
               }
             >
               <CommentsTimeline schoolId={schoolData.id} />
@@ -8782,7 +8722,7 @@ export default function SchoolProfile() {
           {currentEvent && (
             <Suspense
               fallback={
-                <div className="bg-white rounded-2xl h-24 animate-pulse border border-slate-100" />
+                <div className="bg-surface rounded-card shadow-card h-24 animate-pulse border border-border" />
               }
             >
               <Pipeline
@@ -8807,11 +8747,11 @@ export default function SchoolProfile() {
                 className="grid grid-cols-1 xl:grid-cols-2 gap-6"
               >
                 {eventFullLoading ? (
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-pulse h-48" />
+                  <div className="bg-surface p-6 rounded-card shadow-card border border-border animate-pulse h-48" />
                 ) : (
                   <Suspense
                     fallback={
-                      <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+                      <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
                     }
                   >
                     <EventPreparation
@@ -8834,12 +8774,12 @@ export default function SchoolProfile() {
           </AnimatePresence>
 
           <motion.div {...stagger(2)}>
-            <Suspense
-              fallback={
-                <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
-              }
-            >
-              <EventDetails
+                <Suspense
+                  fallback={
+                    <div className="bg-surface rounded-card shadow-card h-32 animate-pulse border border-border" />
+                  }
+                >
+                  <EventDetails
                 currentEvent={currentEvent}
                 schoolName={schoolData.name}
                 cityId={schoolData.cityId}
@@ -8853,7 +8793,7 @@ export default function SchoolProfile() {
           <motion.div {...stagger(3)}>
             <Suspense
               fallback={
-                <div className="bg-white rounded-2xl h-32 animate-pulse border border-slate-100" />
+                <div className="bg-surface rounded-card shadow-card h-32 animate-pulse border border-border" />
               }
             >
               <EventsTable
@@ -8868,27 +8808,27 @@ export default function SchoolProfile() {
             </Suspense>
             {completedEvents.length > 0 && (
               <motion.div {...stagger(4)}>
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                  <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-                    <h3 className="font-bold text-slate-800">
+                <div className="bg-surface rounded-card shadow-card border border-border overflow-hidden">
+                  <div className="p-6 border-b border-border bg-surface-muted">
+                    <h3 className="font-bold text-content-primary">
                       Завершені події ({completedEvents.length})
                     </h3>
                   </div>
-                  <div className="md:hidden divide-y divide-slate-50">
+                  <div className="md:hidden divide-y divide-border">
                     {completedEvents.map((ev: Event) => (
                       <div
                         key={ev.id}
                         onClick={() => setSelectedReportEvent(ev)}
-                        className="flex items-center justify-between gap-3 p-4 active:bg-slate-50 cursor-pointer"
+                        className="flex items-center justify-between gap-3 p-4 active:bg-surface-muted cursor-pointer"
                       >
                         <div className="min-w-0">
-                          <p className="font-medium text-blue-600 truncate">
+                          <p className="font-medium text-brand truncate">
                             {ev.project}
                           </p>
-                          <p className="text-xs text-slate-400 mt-0.5">
+                          <p className="text-xs text-content-muted mt-0.5">
                             {new Date(ev.date).toLocaleDateString("uk-UA")}
                           </p>
-                          <p className="text-xs text-slate-500 mt-1">
+                          <p className="text-xs text-content-secondary mt-1">
                             👶{" "}
                             {ev.report?.childrenCount ||
                               ev.childrenPlanned ||
@@ -8897,13 +8837,13 @@ export default function SchoolProfile() {
                           </p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="font-semibold text-slate-800 text-sm">
+                          <p className="font-semibold text-content-primary text-sm">
                             {new Intl.NumberFormat("uk-UA").format(
                               ev.report?.totalSum || ev.price || 0,
                             )}{" "}
                             грн
                           </p>
-                          <p className="text-xs font-medium text-emerald-600 mt-0.5">
+                          <p className="text-xs font-medium text-success-600 mt-0.5">
                             +
                             {new Intl.NumberFormat("uk-UA").format(
                               ev.report?.remainderSum || 0,
@@ -8917,7 +8857,7 @@ export default function SchoolProfile() {
                   <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left text-sm">
                       <thead>
-                        <tr className="bg-white border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+                        <tr className="bg-surface border-b border-border text-content-muted text-xs font-semibold uppercase tracking-wider">
                           <th className="p-4">Проєкт</th>
                           <th className="p-4">Дата</th>
                           <th className="p-4">Дітей</th>
@@ -8930,12 +8870,12 @@ export default function SchoolProfile() {
                           <tr
                             key={ev.id}
                             onClick={() => setSelectedReportEvent(ev)}
-                            className="border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
+                            className="border-b border-surface-muted hover:bg-surface-muted transition-colors cursor-pointer"
                           >
-                            <td className="p-4 text-slate-700 font-medium">
+                            <td className="p-4 text-content-secondary font-medium">
                               {ev.project}
                             </td>
-                            <td className="p-4 text-slate-600">
+                            <td className="p-4 text-content-muted">
                               {new Date(ev.date).toLocaleDateString("uk-UA")}
                             </td>
                             <td className="p-4 font-medium">
@@ -8943,13 +8883,13 @@ export default function SchoolProfile() {
                                 ev.childrenPlanned ||
                                 "—"}
                             </td>
-                            <td className="p-4 font-medium text-slate-800">
+                            <td className="p-4 font-medium text-content-primary">
                               {new Intl.NumberFormat("uk-UA").format(
                                 ev.report?.totalSum || ev.price || 0,
                               )}{" "}
                               грн
                             </td>
-                            <td className="p-4 font-medium text-emerald-600">
+                            <td className="p-4 font-medium text-success-600">
                               {new Intl.NumberFormat("uk-UA").format(
                                 ev.report?.remainderSum || 0,
                               )}{" "}
@@ -8970,7 +8910,7 @@ export default function SchoolProfile() {
       {/* Мобільна FAB */}
       <button
         onClick={openAddEventModal}
-        className="md:hidden fixed right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
+        className="md:hidden fixed right-6 w-14 h-14 bg-brand text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
         style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
       >
         +
@@ -9472,7 +9412,7 @@ export default function Schools() {
                 <div className="shrink-0">
                   <Suspense
                     fallback={
-                      <div className="h-[72px] bg-white rounded-2xl animate-pulse mb-4" />
+                      <div className="h-[72px] bg-surface rounded-card animate-pulse mb-4" />
                     }
                   >
                     <StatsBar
@@ -9524,7 +9464,7 @@ export default function Schools() {
       {/* Мобільна плаваюча кнопка FAB */}
       <button
         onClick={handleOpenModal}
-        className="md:hidden fixed right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-3xl z-40 pb-1 hover:bg-blue-700 active:scale-95 transition-transform"
+        className="md:hidden fixed right-6 w-14 h-14 bg-brand text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 pb-1 hover:bg-brand-hover active:scale-95 transition-transform"
         style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
       >
         +
@@ -9532,13 +9472,13 @@ export default function Schools() {
 
       {/* Модальне вікно */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <h3 className="text-xl font-bold text-slate-800">Нова школа</h3>
+        <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-surface rounded-modal shadow-modal w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-border flex justify-between items-center bg-surface-muted shrink-0">
+              <h3 className="text-xl font-bold text-content-primary">Нова школа</h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-2 -mr-2 leading-none text-xl"
+                className="text-content-muted hover:text-content-secondary p-2 -mr-2 leading-none text-xl"
               >
                 ✕
               </button>
@@ -9549,7 +9489,7 @@ export default function Schools() {
               className="p-6 flex flex-col gap-4 overflow-y-auto"
             >
               <div className="relative">
-                <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                <label className="block text-sm font-medium text-content-secondary mb-1.5">
                   Назва школи
                 </label>
                 <input
@@ -9561,12 +9501,12 @@ export default function Schools() {
                   }
                   placeholder="Наприклад: Школа №1"
                   required
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
                 />
                 {showSuggestions && (
-                  <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto overflow-hidden">
+                  <ul className="absolute z-10 w-full bg-surface border border-border-strong rounded-control shadow-dropdown mt-1 max-h-48 overflow-y-auto overflow-hidden">
                     {isSearching ? (
-                      <li className="px-4 py-3 text-sm text-slate-400 italic">
+                      <li className="px-4 py-3 text-sm text-content-muted italic">
                         Пошук...
                       </li>
                     ) : suggestions.length > 0 ? (
@@ -9576,13 +9516,13 @@ export default function Schools() {
                           onMouseDown={() =>
                             handleSelectSuggestion(s.name, s.url)
                           }
-                          className="px-4 py-3 text-sm hover:bg-blue-50 cursor-pointer font-medium border-b border-slate-50 last:border-0"
+                          className="px-4 py-3 text-sm hover:bg-brand-50 cursor-pointer font-medium border-b border-surface-muted last:border-0"
                         >
                           {s.name}
                         </li>
                       ))
                     ) : (
-                      <li className="px-4 py-3 text-sm text-slate-400 italic">
+                      <li className="px-4 py-3 text-sm text-content-muted italic">
                         Нічого не знайдено
                       </li>
                     )}
@@ -9592,7 +9532,7 @@ export default function Schools() {
 
               {!selectedCity.id && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                  <label className="block text-sm font-medium text-content-secondary mb-1.5">
                     Місто
                   </label>
                   <select
@@ -9601,7 +9541,7 @@ export default function Schools() {
                       setForm({ ...form, cityId: e.target.value })
                     }
                     required
-                    className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 bg-surface"
                   >
                     <option value="">— Оберіть місто —</option>
                     {cities.map((c) => (
@@ -9614,9 +9554,9 @@ export default function Schools() {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                <label className="block text-sm font-medium text-content-secondary mb-1.5">
                   Контакт{" "}
-                  <span className="ml-1 text-xs font-normal text-slate-400">
+                  <span className="ml-1 text-xs font-normal text-content-muted">
                     (автозаповнення)
                   </span>
                 </label>
@@ -9633,7 +9573,7 @@ export default function Schools() {
                             phone: c.phone,
                           }))
                         }
-                        className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${form.director === c.contactName ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                        className={`text-xs font-medium px-3 py-1.5 rounded-control border transition-colors ${form.director === c.contactName ? "bg-brand text-white border-brand shadow-sm" : "bg-surface text-content-secondary border-border-strong hover:bg-surface-muted"}`}
                       >
                         {c.role ? `${c.role}: ` : ""}
                         {c.contactName}
@@ -9648,9 +9588,9 @@ export default function Schools() {
                     setForm({ ...form, director: e.target.value })
                   }
                   placeholder="Микола Петренко"
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+                  className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 mb-4"
                 />
-                <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                <label className="block text-sm font-medium text-content-secondary mb-1.5">
                   Телефон
                 </label>
                 <input
@@ -9658,7 +9598,7 @@ export default function Schools() {
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   placeholder="0671234567"
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-3 border border-border-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
                 />
               </div>
 
@@ -9666,14 +9606,14 @@ export default function Schools() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-5 py-3.5 bg-slate-100 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+                  className="flex-1 px-5 py-3.5 bg-surface-muted rounded-control text-sm font-bold text-content-secondary hover:bg-neutral-200 transition-colors"
                 >
                   Скасувати
                 </button>
                 <button
                   type="submit"
                   disabled={addSchoolMutation.isPending}
-                  className="flex-1 px-5 py-3.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="flex-1 px-5 py-3.5 bg-brand text-white rounded-control text-sm font-bold hover:bg-brand-hover disabled:opacity-50 transition-colors"
                 >
                   {addSchoolMutation.isPending ? "Збереження..." : "Створити"}
                 </button>
@@ -9721,7 +9661,7 @@ function EstablishmentList({
       <div className="relative shrink-0 mb-4 mt-2">
         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
           <svg
-            className="w-5 h-5 text-slate-400"
+            className="w-5 h-5 text-content-muted"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -9744,7 +9684,7 @@ function EstablishmentList({
         {searchQuery && (
           <button
             onClick={() => onSearchChange("")}
-            className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600 transition"
+            className="absolute inset-y-0 right-4 flex items-center text-content-muted hover:text-content-secondary transition"
           >
             <svg
               className="w-5 h-5"
@@ -9764,12 +9704,12 @@ function EstablishmentList({
       </div>
 
       {/* Лічильник */}
-      <p className="text-xs font-semibold text-slate-400 mb-4 shrink-0 uppercase tracking-wide px-1">
+      <p className="text-xs font-semibold text-content-muted mb-4 shrink-0 uppercase tracking-wide px-1">
         {`${filteredSchools.length} з ${totalItems} ${countLabel}`}
         {(activeFilter || sizeFilter) && (
           <button
             onClick={onClearFilters}
-            className="ml-3 text-blue-500 hover:text-blue-700 lowercase"
+            className="ml-3 text-brand hover:text-brand-hover lowercase"
           >
             скинути фільтри
           </button>
@@ -9782,13 +9722,13 @@ function EstablishmentList({
           {Array.from({ length: 8 }).map((_, i) => (
             <div
               key={i}
-              className="bg-white rounded-2xl border border-slate-100 p-3.5 animate-pulse"
+              className="bg-surface rounded-card border border-border p-3.5 animate-pulse"
               style={{ opacity: 1 - i * 0.1 }}
             >
-              <div className="h-4 bg-slate-200 rounded-lg w-3/4 mb-3" />
+              <div className="h-4 bg-neutral-200 rounded-control w-3/4 mb-3" />
               <div className="flex justify-between">
-                <div className="h-3 bg-slate-100 rounded-lg w-1/3" />
-                <div className="h-3 bg-slate-100 rounded-lg w-1/4" />
+                <div className="h-3 bg-surface-muted rounded-control w-1/3" />
+                <div className="h-3 bg-surface-muted rounded-control w-1/4" />
               </div>
             </div>
           ))}
@@ -9819,9 +9759,9 @@ function EstablishmentList({
           </div>
 
           {/* Десктоп */}
-          <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0 min-w-0">
+          <div className="hidden md:flex flex-col flex-1 bg-surface rounded-card shadow-card border border-border overflow-hidden min-h-0 min-w-0">
             <Suspense
-              fallback={<div className="flex-1 animate-pulse bg-slate-50" />}
+              fallback={<div className="flex-1 animate-pulse bg-surface-muted" />}
             >
               <VirtualDesktopTable
                 schools={filteredSchools}

@@ -30,7 +30,7 @@ export default function MobileTopNav() {
 
   return (
     <div
-      className="md:hidden fixed top-0 left-0 right-0 bg-[#0B1527] text-white flex items-center justify-between px-4 z-40"
+      className="md:hidden fixed top-0 left-0 right-0 bg-[#0B1527] text-white flex items-center justify-between px-4 z-50"
       style={{ paddingTop: "env(safe-area-inset-top, 0px)", height: "calc(3.5rem + env(safe-area-inset-top, 0px))" }}
     >
       <div className="flex items-center gap-2 min-w-0">

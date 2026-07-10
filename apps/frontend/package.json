@@ -39,6 +39,8 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@lhci/cli": "^0.15.1",
+    "@percy/cli": "^1.32.3",
+    "@percy/playwright": "^1.1.0",
     "@playwright/test": "^1.61.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

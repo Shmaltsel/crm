@@ -512,7 +512,7 @@ export default function AddressLink({ address, className }: AddressLinkProps) {
 # FILE: apps/frontend/src/components/BottomNavigationBar.tsx
 
 ```
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { MoreHorizontal } from "lucide-react";
@@ -551,10 +551,12 @@ export default function BottomNavigationBar() {
     [tabs, location.pathname],
   );
 
+  const isMoreActive = activeIndex === -1;
+
   return (
     <>
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border flex items-center justify-around px-2 pb-safe pt-1 h-16 overflow-visible"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border flex items-center justify-around px-1 pb-safe h-14 overflow-visible"
         role="tablist"
         aria-label="Основна навігація"
       >
@@ -568,40 +570,62 @@ export default function BottomNavigationBar() {
               role="tab"
               aria-selected={isActive}
               aria-label={tab.label}
-              className="relative flex items-center justify-center min-w-[48px] min-h-[48px] flex-1 transition-colors"
+              className="relative flex items-center justify-center min-w-[44px] min-h-[44px] flex-1"
             >
               <AnimatePresence>
                 {isActive && (
                   <motion.div
                     key="active-pill"
-                    initial={{ opacity: 0, scale: 0.8 }}
+                    initial={{ opacity: 0, scale: 0.7 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{ duration: 0.12, ease: "easeOut" }}
-                    className="absolute inset-0 bg-brand rounded-full shadow-lg shadow-brand/30"
-                    style={{ translateY: "-6px", willChange: "transform" }}
+                    exit={{ opacity: 0, scale: 0.7 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    className="absolute inset-x-1 inset-y-1 bg-brand/10 rounded-control"
                   />
                 )}
               </AnimatePresence>
-              <div className="relative z-10 flex items-center justify-center">
-                <Icon className={isActive ? "w-7 h-7" : "w-7 h-7 text-content-muted"} />
-              </div>
-              <span className="sr-only">{tab.label}</span>
+              <motion.div
+                className="relative z-10 flex flex-col items-center justify-center gap-0.5"
+                whileTap={{ scale: 0.9 }}
+                transition={{ duration: 0.1 }}
+              >
+                <Icon className={`w-5 h-5 ${isActive ? "text-brand" : "text-content-muted"}`} />
+                <span className={`text-2xs font-medium ${isActive ? "text-brand" : "text-content-muted"}`}>
+                  {tab.label}
+                </span>
+              </motion.div>
             </Link>
           );
         })}
 
         <button
           onClick={() => setSheetOpen(true)}
-          className="relative flex items-center justify-center min-w-[48px] min-h-[48px] flex-1 transition-colors"
+          className="relative flex items-center justify-center min-w-[44px] min-h-[44px] flex-1"
           aria-label="Більше розділів"
           role="tab"
+          aria-selected={isMoreActive}
         >
+          <AnimatePresence>
+            {isMoreActive && (
+              <motion.div
+                key="active-pill"
+                initial={{ opacity: 0, scale: 0.7 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.7 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                className="absolute inset-x-1 inset-y-1 bg-brand/10 rounded-control"
+              />
+            )}
+          </AnimatePresence>
           <motion.div
-            className="relative z-10 flex items-center justify-center"
+            className="relative z-10 flex flex-col items-center justify-center gap-0.5"
             whileTap={{ scale: 0.9 }}
+            transition={{ duration: 0.1 }}
           >
-            <MoreHorizontal className="w-7 h-7 text-content-muted" />
+            <MoreHorizontal className={`w-5 h-5 ${isMoreActive ? "text-brand" : "text-content-muted"}`} />
+            <span className={`text-2xs font-medium ${isMoreActive ? "text-brand" : "text-content-muted"}`}>
+              Більше
+            </span>
           </motion.div>
         </button>
       </nav>
@@ -612,6 +636,7 @@ export default function BottomNavigationBar() {
     </>
   );
 }
+
 ```
 
 # FILE: apps/frontend/src/components/calendar/DayOffModal.tsx
@@ -1347,17 +1372,19 @@ interface CityMobileListProps {
   onSelectCity: (city: { id: string; name: string }) => void;
 }
 
+const TABS = [
+  { key: "ACTIVE" as const, label: "Активні" },
+  { key: "ALL" as const, label: "Усі" },
+  { key: "ARCHIVED" as const, label: "Архівні" },
+];
+
 export default function CityMobileList({
   cities,
   selectedCity,
   onSelectCity,
 }: CityMobileListProps) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"ACTIVE" | "ALL" | "ARCHIVED">(
-    "ACTIVE",
-  );
-
-  const [tabKey, setTabKey] = useState(0);
+  const [activeTab, setActiveTab] = useState<"ACTIVE" | "ALL" | "ARCHIVED">("ACTIVE");
 
   const filteredCities = useMemo(() => {
     return cities.filter((c: City) => {
@@ -1369,122 +1396,71 @@ export default function CityMobileList({
   }, [cities, activeTab]);
 
   return (
-    <>
-      {/* Stagger анімація для мобільних рядків */}
-      <style>{`
-        @keyframes cityRowIn {
-          from { opacity: 0; transform: translateX(-14px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
-        .city-row-enter {
-          animation: cityRowIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-          animation-fill-mode: both;
-        }
-        @keyframes tabSlideIn {
-          from { opacity: 0; transform: translateY(4px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes dotPop {
-          from { transform: scale(0); }
-          to   { transform: scale(1); }
-        }
-        .dot-pop {
-          animation: dotPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-      `}</style>
-
-      <div className="md:hidden flex flex-col gap-4 mb-24">
-        {/* Вкладки */}
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mt-1">
-          {["Активні", "Усі", "Архівні"].map((tab) => {
-            const tabKey =
-              tab === "Активні" ? "ACTIVE" : tab === "Усі" ? "ALL" : "ARCHIVED";
-            const isActive = activeTab === tabKey;
-            return (
-              <button
-                key={tab}
-                onClick={() => {
-                  setActiveTab(tabKey as typeof activeTab);
-                  setTabKey((k) => k + 1);
-                }}
-                className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-1.5 active:scale-95 ${
-                  isActive
-                    ? "bg-blue-50 text-blue-600 border border-blue-100 shadow-sm"
-                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                }`}
-              >
-                {isActive && (
-                  <span className="dot-pop w-1.5 h-1.5 rounded-full bg-blue-600" />
-                )}
-                {tab}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Список */}
-        <div
-          key={tabKey}
-          className="flex flex-col bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden"
-        >
-          {filteredCities.map((city: City, index: number) => {
-            const iconStyle = ICON_COLORS[index % ICON_COLORS.length];
-            const totalEvents =
-              (city.plannedEvents || 0) + (city.completedEvents || 0);
-            const isSelected = selectedCity?.id === city.id;
-
-            return (
-              <div
-                key={city.id}
-                style={{ animationDelay: `${index * 50}ms` }}
-                className={`
-                  city-row-enter
-                  flex items-center p-4 border-b border-slate-50
-                  transition-[background-color,transform] duration-150
-                  active:scale-[0.99] active:bg-slate-50
-                  ${isSelected ? "bg-blue-50/30" : ""}
-                `}
-                onClick={() => onSelectCity({ id: city.id, name: city.name })}
-              >
-                {/* Іконка */}
-                <div
-                  className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 text-xl shrink-0 ${ICON_COLORS[index % ICON_COLORS.length]}`}
-                >
-                  {CITY_ICONS[city.name] || DEFAULT_CITY_ICON}
-                </div>
-
-                {/* Текст */}
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-slate-800 text-base">
-                    {city.name}
-                  </p>
-                  <p className="text-xs font-medium text-slate-400 mt-0.5">
-                    {totalEvents} подій • {city.schoolsCount || 0} шкіл
-                  </p>
-                </div>
-
-                {/* Стрілка переходу */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/cities/${city.id}`);
-                  }}
-                  className="p-3 text-slate-400 hover:text-blue-600 text-2xl font-light leading-none transition-colors"
-                >
-                  ›
-                </button>
-              </div>
-            );
-          })}
-
-          {filteredCities.length === 0 && (
-            <div className="p-8 text-center text-slate-400 font-medium">
-              Міст не знайдено
-            </div>
-          )}
-        </div>
+    <div className="md:hidden flex flex-col gap-3 mb-24 mt-1">
+      <div className="flex bg-surface-muted rounded-control p-0.5">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex-1 py-2 text-sm font-medium rounded-control transition-all duration-fast ${
+              activeTab === tab.key
+                ? "bg-surface shadow-soft text-content-primary"
+                : "text-content-muted hover:text-content-secondary"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
-    </>
+
+      <div className="bg-surface rounded-card shadow-card border border-border overflow-hidden">
+        {filteredCities.map((city: City, index: number) => {
+          const totalEvents = (city.plannedEvents || 0) + (city.completedEvents || 0);
+          const isSelected = selectedCity?.id === city.id;
+
+          return (
+            <div
+              key={city.id}
+              className={`flex items-center p-3 border-b border-border transition-colors duration-fast active:bg-surface-muted ${
+                isSelected ? "bg-brand-50/30" : ""
+              }`}
+              onClick={() => onSelectCity({ id: city.id, name: city.name })}
+            >
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 text-lg shrink-0 ${ICON_COLORS[index % ICON_COLORS.length]}`}
+              >
+                {CITY_ICONS[city.name] || DEFAULT_CITY_ICON}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-content-primary text-sm">
+                  {city.name}
+                </p>
+                <p className="text-2xs text-content-muted mt-0.5">
+                  {totalEvents} подій · {city.schoolsCount || 0} шкіл
+                </p>
+              </div>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/cities/${city.id}`);
+                }}
+                className="p-2.5 text-content-muted hover:text-brand text-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+              >
+                ›
+              </button>
+            </div>
+          );
+        })}
+
+        {filteredCities.length === 0 && (
+          <div className="p-8 text-center text-content-muted font-medium text-sm">
+            Міст не знайдено
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -1614,41 +1590,41 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
       {/* Контроли */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h3 className="font-bold text-slate-800 text-lg">Аналітика по місяцях</h3>
-          <p className="text-sm text-slate-400 mt-0.5">На основі завершених подій закладу</p>
+          <h3 className="font-bold text-content-primary text-lg">Аналітика по місяцях</h3>
+          <p className="text-sm text-content-muted mt-0.5">На основі завершених подій закладу</p>
         </div>
 
         <div className="flex items-center gap-2">
           <div className="relative flex-1 sm:flex-none">
             <button
               onClick={() => { setDraftFrom(from); setDraftTo(to); setIsOpen(v => !v); }}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-surface border border-border-strong rounded-control text-xs sm:text-sm font-medium text-content-secondary hover:bg-surface-muted transition-colors"
             >
-              📅 <span className="truncate">{rangeLabel}</span> <span className="text-slate-400">⌄</span>
+              📅 <span className="truncate">{rangeLabel}</span> <span className="text-content-muted">⌄</span>
             </button>
 
             {isOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-                <div className="absolute right-0 top-full mt-2 z-20 bg-white rounded-xl shadow-lg border border-slate-100 p-4 w-72">
+                <div className="absolute right-0 top-full mt-2 z-20 bg-surface rounded-xl shadow-lg border border-border p-4 w-72">
                   <div className="flex flex-wrap gap-2 mb-4">
-                    <button onClick={() => applyPreset(3)} className="px-3 py-1.5 rounded-full text-xs bg-slate-100 hover:bg-slate-200 font-medium transition-colors">3 міс.</button>
-                    <button onClick={() => applyPreset(6)} className="px-3 py-1.5 rounded-full text-xs bg-slate-100 hover:bg-slate-200 font-medium transition-colors">6 міс.</button>
-                    <button onClick={() => applyPreset(12)} className="px-3 py-1.5 rounded-full text-xs bg-slate-100 hover:bg-slate-200 font-medium transition-colors">12 міс.</button>
-                    <button onClick={() => applyPreset(null, 'year')} className="px-3 py-1.5 rounded-full text-xs bg-slate-100 hover:bg-slate-200 font-medium transition-colors">Цей рік</button>
-                    <button onClick={() => applyPreset(null, 'all')} className="px-3 py-1.5 rounded-full text-xs bg-slate-100 hover:bg-slate-200 font-medium transition-colors">Весь час</button>
+                    <button onClick={() => applyPreset(3)} className="px-3 py-1.5 rounded-pill text-xs bg-surface-muted hover:bg-neutral-200 font-medium transition-colors">3 міс.</button>
+                    <button onClick={() => applyPreset(6)} className="px-3 py-1.5 rounded-pill text-xs bg-surface-muted hover:bg-neutral-200 font-medium transition-colors">6 міс.</button>
+                    <button onClick={() => applyPreset(12)} className="px-3 py-1.5 rounded-pill text-xs bg-surface-muted hover:bg-neutral-200 font-medium transition-colors">12 міс.</button>
+                    <button onClick={() => applyPreset(null, 'year')} className="px-3 py-1.5 rounded-pill text-xs bg-surface-muted hover:bg-neutral-200 font-medium transition-colors">Цей рік</button>
+                    <button onClick={() => applyPreset(null, 'all')} className="px-3 py-1.5 rounded-pill text-xs bg-surface-muted hover:bg-neutral-200 font-medium transition-colors">Весь час</button>
                   </div>
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1">Від</label>
-                      <input type="date" value={draftFrom} onChange={e => setDraftFrom(e.target.value)} className="w-full p-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-400" />
+                      <label className="block text-xs text-content-muted mb-1">Від</label>
+                      <input type="date" value={draftFrom} onChange={e => setDraftFrom(e.target.value)} className="w-full p-2 border border-border-strong rounded-control text-xs focus:outline-none focus:border-brand-300" />
                     </div>
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1">До</label>
-                      <input type="date" value={draftTo} onChange={e => setDraftTo(e.target.value)} className="w-full p-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-400" />
+                      <label className="block text-xs text-content-muted mb-1">До</label>
+                      <input type="date" value={draftTo} onChange={e => setDraftTo(e.target.value)} className="w-full p-2 border border-border-strong rounded-control text-xs focus:outline-none focus:border-brand-300" />
                     </div>
                   </div>
-                  <button onClick={applyRange} className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                  <button onClick={applyRange} className="w-full bg-brand text-white py-2.5 rounded-control text-sm font-medium hover:bg-brand-hover transition-colors">
                     Застосувати
                   </button>
                 </div>
@@ -1658,7 +1634,7 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
 
           <button
             onClick={exportCsv}
-            className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-100 transition-colors"
+            className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 bg-brand-50 text-brand rounded-control text-xs sm:text-sm font-medium hover:bg-blue-100 transition-colors"
           >
             ⬇ <span className="hidden sm:inline">Експорт</span>
           </button>
@@ -1666,7 +1642,7 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
       </div>
 
       {/* Загальна інформація */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 sm:p-6">
+      <div className="bg-surface rounded-card shadow-card border border-border p-5 sm:p-6">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-5">
           <Stat label="Загальна виручка" value={`${fmt(totalRevenue)} грн`} />
           <Stat label="Загальний прибуток" value={`${fmt(totalProfit)} грн`} />
@@ -1678,8 +1654,8 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
       {/* Графіки */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Виручка по місяцях */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 sm:p-6">
-          <h4 className="font-bold text-slate-800 mb-4">Виручка по місяцях</h4>
+        <div className="bg-surface rounded-card shadow-card border border-border p-5 sm:p-6">
+          <h4 className="font-bold text-content-primary mb-4">Виручка по місяцях</h4>
           {!hasRevenue ? (
             <EmptyChart />
           ) : (
@@ -1706,8 +1682,8 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
         </div>
 
         {/* Проведено подій по місяцях */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 sm:p-6">
-          <h4 className="font-bold text-slate-800 mb-4">Проведено подій по місяцях</h4>
+        <div className="bg-surface rounded-card shadow-card border border-border p-5 sm:p-6">
+          <h4 className="font-bold text-content-primary mb-4">Проведено подій по місяцях</h4>
           {pieData.length === 0 ? (
             <EmptyChart />
           ) : (
@@ -1722,16 +1698,16 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-xs text-slate-400">Всього</span>
-                  <span className="text-xl font-bold text-slate-800">{pieTotal}</span>
+                  <span className="text-xs text-content-muted">Всього</span>
+                  <span className="text-xl font-bold text-content-primary">{pieTotal}</span>
                 </div>
               </div>
               <ul className="flex-1 flex flex-col gap-2 text-sm w-full min-w-0">
                 {pieData.map((m, i) => (
                   <li key={m.key} className="flex items-center gap-2 min-w-0">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} />
-                    <span className="text-slate-600 truncate flex-1">{m.label}</span>
-                    <span className="font-medium text-slate-800 shrink-0">{m.count} ({Math.round((m.count / pieTotal) * 100)}%)</span>
+                    <span className="w-2.5 h-2.5 rounded-pill shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} />
+                    <span className="text-content-secondary truncate flex-1">{m.label}</span>
+                    <span className="font-medium text-content-primary shrink-0">{m.count} ({Math.round((m.count / pieTotal) * 100)}%)</span>
                   </li>
                 ))}
               </ul>
@@ -1746,8 +1722,8 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="min-w-0">
-      <p className="text-xs text-slate-400 font-medium mb-1.5 truncate">{label}</p>
-      <p className="text-lg sm:text-2xl font-bold text-slate-800 truncate">{value}</p>
+      <p className="text-xs text-content-muted font-medium mb-1.5 truncate">{label}</p>
+      <p className="text-lg sm:text-2xl font-bold text-content-primary truncate">{value}</p>
     </div>
   );
 }
@@ -1756,7 +1732,7 @@ function EmptyChart() {
   return (
     <div className="h-[280px] flex flex-col items-center justify-center text-slate-300">
       <span className="text-3xl mb-2">📊</span>
-      <span className="text-sm text-slate-400">Немає даних за цей період</span>
+      <span className="text-sm text-content-muted">Немає даних за цей період</span>
     </div>
   );
 }
@@ -1776,9 +1752,9 @@ const ROLE_INITIALS: Record<string, string> = {
 };
 
 const ROLE_COLORS: Record<string, string> = {
-  MANAGER:    'bg-blue-50 text-blue-700',
+  MANAGER:    'bg-brand-50 text-brand-700',
   SUPERADMIN: 'bg-purple-50 text-purple-700',
-  DRIVER:     'bg-emerald-50 text-emerald-700',
+  DRIVER:     'bg-success-50 text-success-700',
   HOST:       'bg-violet-50 text-violet-700',
 };
 
@@ -1864,47 +1840,42 @@ export default function ActivityFeed({ items }: Props) {
   const hasMore  = groups.length > COLLAPSED_COUNT;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col">
+    <div className="mobile-card flex flex-col">
 
-      {/* Хедер */}
-      <div className="flex justify-between items-center mb-3">
-        <p className="text-sm font-semibold text-slate-800">Активність команди</p>
-        <span className="text-xs text-slate-400">{formatDate(items[0]?.createdAt ?? new Date().toISOString())}</span>
+      <div className="flex justify-between items-center mb-2.5">
+        <p className="text-sm font-semibold text-content-primary">Активність команди</p>
+        <span className="text-2xs text-content-muted">{formatDate(items[0]?.createdAt ?? new Date().toISOString())}</span>
       </div>
 
       {items.length === 0 ? (
-        <div className="py-6 text-center text-slate-400 text-sm">
+        <div className="py-5 text-center text-content-muted text-sm">
           Сьогодні активності ще немає
         </div>
       ) : (
         <>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-0.5">
             {visible.map((group) => {
-              const avatarColor = ROLE_COLORS[group.role] ?? 'bg-slate-100 text-slate-600';
+              const avatarColor = ROLE_COLORS[group.role] ?? 'bg-neutral-100 text-neutral-600';
               const shownActions = group.actions.slice(-3);
               const hiddenCount  = group.actions.length - shownActions.length;
               const lastTime     = formatTime(group.actions[group.actions.length - 1].createdAt);
 
               return (
-                <div key={group.key} className="flex items-start gap-3 py-2 px-2 -mx-1 rounded-xl hover:bg-slate-50/60 transition-colors">
+                <div key={group.key} className="flex items-start gap-2.5 py-2 px-2 -mx-1 rounded-control hover:bg-surface-muted/60 transition-colors">
 
-                  {/* Аватар */}
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5 ${avatarColor}`}>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-2xs font-semibold shrink-0 mt-0.5 ${avatarColor}`}>
                     {getInitials(group.userName)}
                   </div>
 
-                  {/* Контент */}
                   <div className="min-w-0 flex-1">
-
-                    {/* Ім'я + школа */}
-                    <p className="text-xs font-semibold text-slate-800 leading-tight">
+                    <p className="text-xs font-semibold text-content-primary leading-tight">
                       {group.userName}
                       {group.schoolName && (
                         <>
                           {' · '}
                           <button
                             onClick={() => group.schoolId && navigate(`/schools/${group.schoolId}`)}
-                            className="text-blue-600 hover:underline font-medium"
+                            className="text-brand hover:underline font-medium"
                           >
                             {group.schoolName}
                           </button>
@@ -1912,35 +1883,32 @@ export default function ActivityFeed({ items }: Props) {
                       )}
                     </p>
 
-                    {/* Дії */}
-                    <div className="mt-1 flex flex-col gap-0.5">
+                    <div className="mt-0.5 flex flex-col gap-0.5">
                       {hiddenCount > 0 && (
-                        <p className="text-xs text-slate-400 italic">+{hiddenCount} раніше</p>
+                        <p className="text-2xs text-content-muted italic">+{hiddenCount} раніше</p>
                       )}
                       {shownActions.map((a) => (
-                        <p key={a.id} className="text-xs text-slate-500 leading-snug">
+                        <p key={a.id} className="text-2xs text-content-secondary leading-snug">
                           — {a.action.replace(/\.$/, '')}
                           {a.comment && (
-                            <span className="text-slate-400 italic"> «{a.comment}»</span>
+                            <span className="text-content-muted italic"> «{a.comment}»</span>
                           )}
                         </p>
                       ))}
                     </div>
                   </div>
 
-                  {/* Час останньої дії */}
-                  <span className="text-xs text-slate-400 shrink-0 pt-0.5">{lastTime}</span>
+                  <span className="text-2xs text-content-muted shrink-0 pt-0.5">{lastTime}</span>
 
                 </div>
               );
             })}
           </div>
 
-          {/* Кнопка згорнути/розгорнути */}
           {hasMore && (
             <button
               onClick={() => setExpanded(v => !v)}
-              className="mt-3 pt-3 border-t border-slate-50 text-xs text-blue-600 hover:underline text-center w-full"
+              className="mt-2.5 pt-2.5 border-t border-border text-2xs text-brand hover:underline text-center w-full"
             >
               {expanded
                 ? '↑ Згорнути'
@@ -1953,6 +1921,7 @@ export default function ActivityFeed({ items }: Props) {
     </div>
   );
 }
+
 ```
 
 # FILE: apps/frontend/src/components/dashboard/CitiesTable.tsx
@@ -2103,9 +2072,9 @@ interface Props {
 
 export default function DashboardTopNav({ tabs, activeTab, onChange }: Props) {
   return (
-    <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-100">
+    <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-border">
       <nav
-        className="flex overflow-x-auto no-scrollbar gap-1 px-4 md:px-8"
+        className="flex overflow-x-auto no-scrollbar gap-0.5 px-4 md:px-8"
         role="tablist"
         aria-label="Вкладки дашборду"
       >
@@ -2118,10 +2087,10 @@ export default function DashboardTopNav({ tabs, activeTab, onChange }: Props) {
               onClick={() => onChange(tab.id)}
               role="tab"
               aria-selected={isActive}
-              className={`relative flex items-center gap-2 px-3 py-3.5 text-sm font-medium whitespace-nowrap transition-colors shrink-0 ${
+              className={`relative flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors shrink-0 ${
                 isActive
                   ? "text-brand"
-                  : "text-slate-500 hover:text-slate-700"
+                  : "text-content-muted hover:text-content-secondary"
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -2129,8 +2098,8 @@ export default function DashboardTopNav({ tabs, activeTab, onChange }: Props) {
               {isActive && (
                 <motion.div
                   layoutId="dashboard-active-tab"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-full"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-pill"
+                  transition={{ type: "spring", stiffness: 500, damping: 35 }}
                 />
               )}
             </button>
@@ -2643,31 +2612,30 @@ export default function TodayEvents({ events }: Props) {
   });
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col">
-      {/* Хедер */}
-      <div className="flex justify-between items-start mb-3">
+    <div className="mobile-card flex flex-col">
+      <div className="flex justify-between items-start mb-2.5">
         <div>
-          <p className="text-sm font-semibold text-slate-800">
+          <p className="text-sm font-semibold text-content-primary">
             Сьогоднішні події
           </p>
-          <p className="text-xs text-slate-400 mt-0.5 capitalize">
+          <p className="text-2xs text-content-muted mt-0.5 capitalize">
             {dateLabel}
           </p>
         </div>
         <button
           onClick={() => navigate("/calendar")}
-          className="text-xs text-blue-600 hover:underline shrink-0"
+          className="text-2xs text-brand hover:underline shrink-0"
         >
           Календар
         </button>
       </div>
 
       {events.length === 0 ? (
-        <div className="py-6 text-center text-slate-400 text-sm">
+        <div className="py-5 text-center text-content-muted text-sm">
           Сьогодні подій немає
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5">
           {events.map((ev) => {
             const hasCrew = !!ev.crew;
             const crewLabel = ev.crew?.name ?? ev.crew?.host?.name ?? null;
@@ -2675,36 +2643,33 @@ export default function TodayEvents({ events }: Props) {
             return (
               <div
                 key={ev.id}
-                className={`rounded-xl border p-3 flex flex-col gap-2.5 ${
+                className={`rounded-control border p-3 flex flex-col gap-2 ${
                   hasCrew
-                    ? "border-slate-100 bg-white"
-                    : "border-amber-200 bg-amber-50/40"
+                    ? "border-border bg-surface"
+                    : "border-warning/30 bg-warning-subtle"
                 }`}
               >
-                {/* Час + проєкт в один рядок */}
                 <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold text-slate-800 tabular-nums shrink-0">
+                  <span className="text-base font-bold text-content-primary tabular-nums shrink-0">
                     {ev.time ?? "—:——"}
                   </span>
-                  <span className="text-xs text-slate-400 truncate">
+                  <span className="text-2xs text-content-muted truncate">
                     {ev.project}
                   </span>
                 </div>
 
-                {/* Назва школи — дозволяємо переноситись, не обрізаємо */}
-                <p className="text-sm font-semibold text-slate-700 leading-snug line-clamp-2">
+                <p className="text-sm font-semibold text-content-primary leading-snug line-clamp-2">
                   {ev.school?.name ?? "—"}
                 </p>
 
-                {/* Статус екіпажу + кнопка в один рядок */}
                 <div className="flex items-center justify-between gap-2">
                   {hasCrew ? (
-                    <span className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-medium shrink-0">
-                      ✅ {crewLabel ?? "Екіпаж призначено"}
+                    <span className="badge-success text-2xs px-2 py-0.5 rounded-pill font-medium shrink-0">
+                      {crewLabel ?? "Екіпаж призначено"}
                     </span>
                   ) : (
-                    <span className="text-[11px] text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full font-medium shrink-0">
-                      ⚠️ Немає екіпажу
+                    <span className="badge-warning text-2xs px-2 py-0.5 rounded-pill font-medium shrink-0">
+                      Немає екіпажу
                     </span>
                   )}
 
@@ -2712,10 +2677,10 @@ export default function TodayEvents({ events }: Props) {
                     onClick={() =>
                       ev.school && navigate(`/schools/${ev.school.id}`)
                     }
-                    className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors shrink-0 ${
+                    className={`text-2xs font-semibold px-2.5 py-1 rounded-control transition-colors shrink-0 ${
                       hasCrew
-                        ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                        : "bg-white border border-amber-400 text-amber-700 hover:bg-amber-50"
+                        ? "bg-surface-muted text-content-secondary hover:bg-border-strong"
+                        : "bg-surface border border-warning text-warning-600 hover:bg-warning-subtle"
                     }`}
                   >
                     {hasCrew ? "Відкрити →" : "Призначити →"}
@@ -2727,7 +2692,7 @@ export default function TodayEvents({ events }: Props) {
         </div>
       )}
 
-      <p className="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-50">
+      <p className="text-2xs text-content-muted mt-2.5 pt-2.5 border-t border-border">
         Усього на сьогодні: {events.length} {plural(events.length)}
       </p>
     </div>
@@ -3976,7 +3941,7 @@ const ESTABLISHMENT_TABS = [
 
 export default function EstablishmentsTopNav({ activeTab, onChange }: Props) {
   return (
-    <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-100">
+    <div className="sticky top-0 z-30 bg-surface/80 backdrop-blur-md border-b border-border">
       <nav
         className="flex px-4 md:px-8"
         role="tablist"
@@ -3994,7 +3959,7 @@ export default function EstablishmentsTopNav({ activeTab, onChange }: Props) {
               className={`relative flex items-center gap-2 px-4 py-3.5 text-sm font-medium transition-colors ${
                 isActive
                   ? "text-brand"
-                  : "text-slate-500 hover:text-slate-700"
+                  : "text-content-muted hover:text-content-secondary"
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -5299,8 +5264,8 @@ export default function Layout() {
       <main
         className={`flex-1 relative w-full min-w-0 md:pb-0 ${isMobile ? "" : "overflow-y-auto"}`}
         style={{
-          marginTop: isMobile ? "calc(4rem + env(safe-area-inset-top, 0px))" : undefined,
-          paddingBottom: isMobile ? "calc(4rem + env(safe-area-inset-bottom, 0px))" : undefined,
+          marginTop: isMobile ? "calc(3.5rem + env(safe-area-inset-top, 0px))" : undefined,
+          paddingBottom: isMobile ? "calc(3.5rem + env(safe-area-inset-bottom, 0px))" : undefined,
         }}
       >
         <AnimatePresence mode="wait">
@@ -5333,18 +5298,35 @@ import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
 import NotificationBell from "./NotificationBell";
 
+const PAGE_TITLES: Record<string, string> = {
+  "/dashboard": "Дашборд",
+  "/schools": "Школи",
+  "/kindergartens": "Садочки",
+  "/finance": "Фінанси",
+  "/calendar": "Календар",
+  "/cities": "Міста",
+  "/employees": "Працівники",
+  "/analytics": "Аналітика",
+  "/inventory": "Склад",
+  "/reports/review": "Звіти",
+  "/city-leaderboard": "Рейтинг",
+};
+
 export default function MobileTopNav() {
   const { selectedCity } = useSelectedCity();
   const { user } = useAuth();
   const location = useLocation();
 
   const pageTitle =
-    location.pathname.startsWith("/schools") ? "Школи"
-    : location.pathname.startsWith("/kindergartens") ? "Садочки"
-    : "СВІТЛО ЗНАНЬ";
+    PAGE_TITLES[location.pathname] ??
+    Object.entries(PAGE_TITLES).find(([path]) => location.pathname.startsWith(path))?.[1] ??
+    "Світло Знань";
 
   return (
-    <div className="md:hidden fixed top-0 left-0 right-0 bg-[#0B1527] text-white flex items-center justify-between px-4 z-40" style={{ paddingTop: "env(safe-area-inset-top, 0px)", height: "calc(4rem + env(safe-area-inset-top, 0px))" }}>
+    <div
+      className="md:hidden fixed top-0 left-0 right-0 bg-[#0B1527] text-white flex items-center justify-between px-4 z-40"
+      style={{ paddingTop: "env(safe-area-inset-top, 0px)", height: "calc(3.5rem + env(safe-area-inset-top, 0px))" }}
+    >
       <div className="flex items-center gap-2 min-w-0">
         <GraduationCap className="w-5 h-5 text-blue-300 shrink-0" />
         <span className="font-bold tracking-wider text-sm leading-tight truncate">
@@ -5353,14 +5335,10 @@ export default function MobileTopNav() {
       </div>
       <div className="flex items-center gap-2">
         <NotificationBell />
-        {user?.role === "SUPERADMIN" || user?.role === "MANAGER" || user?.role === "OWNER" ? (
+        {(user?.role === "SUPERADMIN" || user?.role === "MANAGER" || user?.role === "OWNER") && (
           <Link to="/cities" className="text-xs text-blue-300/80 whitespace-nowrap hover:text-blue-200 transition-colors">
             {selectedCity.name}
           </Link>
-        ) : (
-          <span className="text-xs text-blue-300/80 whitespace-nowrap">
-            {selectedCity.name}
-          </span>
         )}
       </div>
     </div>
@@ -5383,14 +5361,22 @@ interface Props {
   onClose: () => void;
 }
 
+const SECTIONS = [
+  { label: "Основне", routes: ["/dashboard", "/calendar", "/reports/review"] },
+  { label: "Управління", routes: ["/schools", "/kindergartens", "/cities", "/employees", "/inventory"] },
+  { label: "Бізнес", routes: ["/finance", "/analytics", "/city-leaderboard"] },
+];
+
 export default function MoreSheet({ onClose }: Props) {
   const { user } = useAuth();
   const location = useLocation();
 
-  const items = useMemo(
+  const allowedTabs = useMemo(
     () => NAV_TABS.filter((t) => hasRole(user?.role, t.roles)),
     [user],
   );
+
+  const allowedRoutes = new Set(allowedTabs.map((t) => t.to));
 
   return (
     <motion.div
@@ -5408,14 +5394,18 @@ export default function MoreSheet({ onClose }: Props) {
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", stiffness: 400, damping: 35 }}
+        drag="y"
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={0.2}
+        onDragEnd={(_, info) => { if (info.offset.y > 100) onClose(); }}
       >
         <div className="flex items-center justify-between px-5 pt-4 pb-2">
-          <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+          <h2 className="text-sm font-bold text-content-primary uppercase tracking-wider">
             Розділи
           </h2>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600"
+            className="w-8 h-8 flex items-center justify-center text-content-muted hover:text-content-primary rounded-control transition-colors"
             aria-label="Закрити"
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -5424,24 +5414,44 @@ export default function MoreSheet({ onClose }: Props) {
           </button>
         </div>
 
-        <div className="px-3 pb-3 space-y-0.5">
-          {items.map((tab) => {
-            const isActive = location.pathname.startsWith(tab.to);
-            const Icon = tab.icon;
+        <div className="px-3 pb-3">
+          {SECTIONS.map((section, sIdx) => {
+            const items = section.routes
+              .filter((r) => allowedRoutes.has(r))
+              .map((r) => allowedTabs.find((t) => t.to === r)!)
+              .filter(Boolean);
+
+            if (items.length === 0) return null;
+
             return (
-              <Link
-                key={tab.to}
-                to={tab.to}
-                onClick={onClose}
-                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-brand/10 text-brand"
-                    : "text-slate-600 hover:bg-slate-50"
-                }`}
-              >
-                <Icon className="w-5 h-5 shrink-0" />
-                {tab.label}
-              </Link>
+              <div key={section.label} className={sIdx > 0 ? "mt-3" : ""}>
+                <div className="px-3 py-1.5">
+                  <span className="text-2xs font-bold text-content-muted uppercase tracking-wider">
+                    {section.label}
+                  </span>
+                </div>
+                <div className="space-y-0.5">
+                  {items.map((tab) => {
+                    const isActive = location.pathname.startsWith(tab.to);
+                    const Icon = tab.icon;
+                    return (
+                      <Link
+                        key={tab.to}
+                        to={tab.to}
+                        onClick={onClose}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-control text-sm font-medium transition-colors ${
+                          isActive
+                            ? "bg-brand/10 text-brand"
+                            : "text-content-secondary hover:bg-surface-muted"
+                        }`}
+                      >
+                        <Icon className="w-5 h-5 shrink-0" />
+                        {tab.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </div>
@@ -5449,6 +5459,7 @@ export default function MoreSheet({ onClose }: Props) {
     </motion.div>
   );
 }
+
 ```
 
 # FILE: apps/frontend/src/components/NotificationBell.tsx
@@ -5669,7 +5680,7 @@ export default memo(function AssignedCrew({ currentEvent, employees }: AssignedC
 <motion.div
       whileHover={{ y: -4, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.10)" }}
       transition={{ duration: 0.2 }}
-      className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center items-center h-full text-slate-400 min-h-[250px]"
+      className="bg-surface p-6 rounded-card shadow-card border border-border flex flex-col justify-center items-center h-full text-content-muted min-h-[250px]"
     >        <span className="text-4xl mb-3 opacity-50">🚐</span>
         <p className="font-medium">Екіпаж ще не призначено</p>
         <p className="text-xs mt-1">Виконайте пункт "Призначити екіпаж" зліва</p>
@@ -5684,35 +5695,35 @@ export default memo(function AssignedCrew({ currentEvent, employees }: AssignedC
     <motion.div
       whileHover={{ y: -4, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.10)" }}
       transition={{ duration: 0.2 }}
-      className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-full flex flex-col"
+      className="bg-surface p-6 rounded-card shadow-card border border-border h-full flex flex-col"
     >
-      <h3 className="font-bold text-slate-800 mb-4 border-b pb-3 border-slate-100">Призначений екіпаж</h3>
+      <h3 className="font-bold text-content-primary mb-4 border-b pb-3 border-border">Призначений екіпаж</h3>
       <div className="space-y-4 text-sm flex-1">
         <div className="flex justify-between items-center">
-          <span className="text-slate-500">Назва:</span>
-          <span className="font-bold text-slate-800 bg-slate-100 px-3 py-1 rounded-lg">{crew.name || 'Екіпаж'}</span>
+          <span className="text-content-muted">Назва:</span>
+          <span className="font-bold text-content-primary bg-surface-muted px-3 py-1 rounded-control">{crew.name || 'Екіпаж'}</span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="text-slate-500">Ведучий:</span>
-          <span className="font-medium text-blue-600 flex items-center gap-2">
-            <span className="bg-blue-100 text-blue-600 w-6 h-6 flex items-center justify-center rounded-full text-xs">🎙️</span>
+          <span className="text-content-muted">Ведучий:</span>
+          <span className="font-medium text-brand flex items-center gap-2">
+            <span className="bg-brand-50 text-brand w-6 h-6 flex items-center justify-center rounded-full text-xs">🎙️</span>
             {host?.name || '—'} 
           </span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="text-slate-500">Водій:</span>
-          <span className="font-medium text-emerald-600 flex items-center gap-2">
-            <span className="bg-emerald-100 text-emerald-600 w-6 h-6 flex items-center justify-center rounded-full text-xs">🚗</span>
+          <span className="text-content-muted">Водій:</span>
+          <span className="font-medium text-success-600 flex items-center gap-2">
+            <span className="bg-success-subtle text-success-600 w-6 h-6 flex items-center justify-center rounded-full text-xs">🚗</span>
             {driver?.name || '—'}
           </span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="text-slate-500">Авто:</span>
-          <span className="font-medium">{crew.car || '—'}</span>
+          <span className="text-content-muted">Авто:</span>
+          <span className="font-medium text-content-primary">{crew.car || '—'}</span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="text-slate-500">Телефон:</span>
-          <span className="font-medium"><PhoneLink phone={crew.phone} /></span>
+          <span className="text-content-muted">Телефон:</span>
+          <span className="font-medium text-content-primary"><PhoneLink phone={crew.phone} /></span>
         </div>
       </div>
     </motion.div>
@@ -5785,26 +5796,25 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
     <motion.div
       whileHover={{ y: -2, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.08)" }}
       transition={{ duration: 0.2 }}
-      className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col"
+      className="bg-surface p-6 rounded-card shadow-card border border-border flex flex-col"
     >
-      <h3 className="font-bold text-slate-800 mb-5 flex items-center gap-2">
-        <span className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+      <h3 className="font-bold text-content-primary mb-5 flex items-center gap-2">
+        <span className="w-8 h-8 rounded-full bg-warning-subtle text-warning-600 flex items-center justify-center">
           🕐
         </span>
         Хронологія роботи
       </h3>
 
-      {/* Форма додавання */}
       {canWrite && (
         <form
           onSubmit={handleSubmit}
-          className="mb-5 p-4 bg-slate-50/80 rounded-2xl border border-slate-100 space-y-3"
+          className="mb-5 p-4 bg-surface-muted rounded-card border border-border space-y-3"
         >
           <div className="flex gap-2">
             <select
               value={newType}
               onChange={(e) => setNewType(e.target.value as CommentType)}
-              className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+              className="text-sm border border-border-strong rounded-control px-3 py-2 bg-surface focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand-300"
             >
               {COMMENT_TYPES.map((ct) => (
                 <option key={ct.key} value={ct.key}>
@@ -5818,13 +5828,13 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
             onChange={(e) => setNewText(e.target.value)}
             placeholder="Текст коментаря..."
             rows={2}
-            className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 resize-none"
+            className="w-full text-sm border border-border-strong rounded-control px-3 py-2 bg-surface focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand-300 resize-none"
           />
           <div className="flex justify-end">
             <button
               type="submit"
               disabled={!newText.trim() || createMutation.isPending}
-              className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 px-4 py-2 rounded-xl transition-colors shadow-sm"
+              className="text-xs font-bold text-white bg-brand hover:bg-brand-hover disabled:bg-neutral-300 px-4 py-2.5 rounded-control transition-colors shadow-sm"
             >
               {createMutation.isPending ? "..." : "Додати"}
             </button>
@@ -5832,14 +5842,13 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
         </form>
       )}
 
-      {/* Фільтри */}
       <div className="flex flex-wrap gap-1.5 mb-4">
         <button
           onClick={() => { setFilter(undefined); setPage(1); }}
-          className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
+          className={`text-xs font-medium px-3 py-1.5 rounded-pill transition-colors ${
             !filter
-              ? "bg-blue-600 text-white shadow-sm"
-              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              ? "bg-brand text-white shadow-sm"
+              : "bg-surface-muted text-content-secondary hover:bg-neutral-200"
           }`}
         >
           Всі
@@ -5848,10 +5857,10 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
           <button
             key={ct.key}
             onClick={() => { setFilter(ct.key); setPage(1); }}
-            className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
+            className={`text-xs font-medium px-3 py-1.5 rounded-pill transition-colors ${
               filter === ct.key
-                ? "bg-blue-600 text-white shadow-sm"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                ? "bg-brand text-white shadow-sm"
+                : "bg-surface-muted text-content-secondary hover:bg-neutral-200"
             }`}
           >
             {ct.icon} {ct.label}
@@ -5859,19 +5868,18 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
         ))}
       </div>
 
-      {/* Список */}
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse h-16 bg-slate-100 rounded-xl" />
+            <div key={i} className="animate-pulse h-16 bg-surface-muted rounded-card" />
           ))}
         </div>
       ) : !data || data.items.length === 0 ? (
-        <p className="text-sm text-slate-400 text-center py-6">
+        <p className="text-sm text-content-muted text-center py-6">
           Ще немає коментарів.
         </p>
       ) : (
-        <div className="space-y-3 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-slate-100">
+        <div className="space-y-3 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-border">
           <AnimatePresence initial={false}>
             {data.items.map((item, i) => (
               <motion.div
@@ -5880,20 +5888,20 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -8 }}
                 transition={{ duration: 0.22, delay: i * 0.04 }}
-                className="relative pl-8 pr-3 py-2 text-sm hover:bg-slate-50 rounded-xl transition-colors group border border-transparent hover:border-slate-100"
+                className="relative pl-8 pr-3 py-2 text-sm hover:bg-surface-muted rounded-card transition-colors group border border-transparent hover:border-border"
               >
-                <div className="absolute left-1.5 w-3 h-3 rounded-full top-3.5 bg-amber-500 ring-4 ring-amber-50 flex items-center justify-center text-[7px]">
+                <div className="absolute left-1.5 w-3 h-3 rounded-full top-3.5 bg-warning ring-4 ring-warning-subtle flex items-center justify-center text-[7px]">
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-semibold text-slate-800 flex items-center gap-1.5">
+                  <p className="font-semibold text-content-primary flex items-center gap-1.5">
                     <span>{TYPE_ICONS[item.type]}</span>
                     <span>{item.author.name}</span>
-                    <span className="text-[10px] text-slate-400 font-normal">
+                    <span className="text-2xs text-content-muted font-normal">
                       ({item.author.role})
                     </span>
                   </p>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[11px] text-slate-400 font-medium">
+                    <span className="text-xs text-content-muted font-medium">
                       {formatDate(item.createdAt)}
                     </span>
                     {canDelete && (
@@ -5904,7 +5912,7 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
                             commentId: item.id,
                           })
                         }
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-rose-400 hover:text-rose-600 text-xs"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-danger-600 hover:text-danger text-xs p-2.5"
                         title="Видалити"
                       >
                         ✕
@@ -5912,7 +5920,7 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
                     )}
                   </div>
                 </div>
-                <p className="text-slate-600 mt-1.5 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                <p className="text-content-secondary mt-1.5 bg-surface p-3 rounded-card border border-border shadow-sm">
                   {item.text}
                 </p>
               </motion.div>
@@ -5921,23 +5929,22 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
         </div>
       )}
 
-      {/* Пагінація */}
       {data && data.pageCount > 1 && (
         <div className="flex justify-center gap-2 mt-4">
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40"
+            className="text-xs font-medium px-3 py-2.5 rounded-control bg-surface-muted text-content-secondary hover:bg-neutral-200 disabled:opacity-40"
           >
             ←
           </button>
-          <span className="text-xs text-slate-500 self-center">
+          <span className="text-xs text-content-muted self-center">
             {data.page} / {data.pageCount}
           </span>
           <button
             disabled={page >= data.pageCount}
             onClick={() => setPage((p) => p + 1)}
-            className="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40"
+            className="text-xs font-medium px-3 py-2.5 rounded-control bg-surface-muted text-content-secondary hover:bg-neutral-200 disabled:opacity-40"
           >
             →
           </button>
@@ -5991,30 +5998,28 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby={headingId}
-      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+      className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col pb-safe">
-        {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
+      <div className="bg-surface rounded-t-modal sm:rounded-modal shadow-modal w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col pb-safe">
+        <div className="p-5 sm:p-6 border-b border-border flex justify-between bg-surface-muted shrink-0">
           <div>
-            <h3 id={headingId} className="text-xl font-bold text-slate-800">
+            <h3 id={headingId} className="text-xl font-bold text-content-primary">
               Звіт: {event.project}
             </h3>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-sm text-content-muted mt-1">
               {new Date(event.date).toLocaleDateString("uk-UA")}
             </p>
           </div>
-          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg">
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-content-muted hover:text-content-secondary p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg">
             ✕
           </button>
         </div>
 
-        <div className="p-5 sm:p-6 flex-1 overflow-y-auto bg-slate-50/30">
+        <div className="p-5 sm:p-6 flex-1 overflow-y-auto bg-surface-subtle">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            {/* Результати */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-              <h4 className="font-bold text-slate-800 mb-4">📊 Результати</h4>
+            <div className="bg-surface p-5 rounded-card border border-border shadow-card">
+              <h4 className="font-bold text-content-primary mb-4">📊 Результати</h4>
               <div className="space-y-3 text-sm">
                 {[
                   ["Дітей (факт)", report?.childrenCount || 0],
@@ -6024,32 +6029,31 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
                 ].map(([label, val]) => (
                   <div
                     key={label as string}
-                    className="flex justify-between border-b border-slate-50 pb-2"
+                    className="flex justify-between border-b border-surface-muted pb-2"
                   >
-                    <span className="text-slate-500">{label}:</span>
-                    <span className="font-medium">{val}</span>
+                    <span className="text-content-muted">{label}:</span>
+                    <span className="font-medium text-content-primary">{val}</span>
                   </div>
                 ))}
                 <div className="flex justify-between pb-1">
-                  <span className="text-slate-500">Оцінка:</span>
-                  <span className="font-bold text-amber-500">
+                  <span className="text-content-muted">Оцінка:</span>
+                  <span className="font-bold text-warning-600">
                     ⭐ {report?.rating || 0}/10
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Фінанси */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-              <h4 className="font-bold text-slate-800 mb-4">💰 Фінанси</h4>
+            <div className="bg-surface p-5 rounded-card border border-border shadow-card">
+              <h4 className="font-bold text-content-primary mb-4">💰 Фінанси</h4>
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between border-b border-slate-50 pb-2">
-                  <span className="text-slate-500">Загальна виручка:</span>
-                  <span className="font-bold">{fmt(report?.totalSum)} грн</span>
+                <div className="flex justify-between border-b border-surface-muted pb-2">
+                  <span className="text-content-muted">Загальна виручка:</span>
+                  <span className="font-bold text-content-primary">{fmt(report?.totalSum)} грн</span>
                 </div>
-                <div className="flex justify-between border-b border-slate-50 pb-2">
-                  <span className="text-slate-500">На заклад:</span>
-                  <span className="font-medium text-rose-500">
+                <div className="flex justify-between border-b border-surface-muted pb-2">
+                  <span className="text-content-muted">На заклад:</span>
+                  <span className="font-medium text-danger-600">
                     − {fmt(report?.schoolSum)} грн
                   </span>
                 </div>
@@ -6057,20 +6061,20 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
                 {Array.isArray(report?.expenseItems) &&
                   report.expenseItems.map((exp: ExpenseItem, i: number) => (
                     <div key={i} className="flex justify-between text-xs pl-2">
-                      <span className="text-slate-400">
+                      <span className="text-content-muted">
                         — {exp.name || exp.category || "Інше"}
                       </span>
-                      <span className="text-rose-500 font-medium">
+                      <span className="text-danger-600 font-medium">
                         − {fmt(exp.amount)} грн
                       </span>
                     </div>
                   ))}
 
-                <div className="flex justify-between pt-1 border-t border-slate-100">
-                  <span className="font-bold text-slate-800">
+                <div className="flex justify-between pt-1 border-t border-border">
+                  <span className="font-bold text-content-primary">
                     Чистий прибуток:
                   </span>
-                  <span className="font-bold text-emerald-600 text-base">
+                  <span className="font-bold text-success-600 text-base">
                     {fmt(report?.remainderSum)} грн
                   </span>
                 </div>
@@ -6078,17 +6082,16 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
             </div>
           </div>
 
-          {/* Зарплати */}
           {Array.isArray(report?.salaryRecords) && report.salaryRecords.length > 0 && (
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mt-4">
-              <h4 className="font-bold text-slate-800 mb-4">👥 Зарплати</h4>
+            <div className="bg-surface p-5 rounded-card border border-border shadow-card mt-4">
+              <h4 className="font-bold text-content-primary mb-4">👥 Зарплати</h4>
               <div className="space-y-2">
                 {report.salaryRecords.map((s: SalaryRecord, i: number) => (
                   <div key={i} className="flex justify-between text-sm">
-                      <span>
+                      <span className="text-content-secondary">
                         {s.employee?.name ?? "—"}
                       </span>
-                    <span className="font-medium text-blue-600">
+                    <span className="font-medium text-brand">
                       {fmt(s.amount)} грн
                     </span>
                   </div>
@@ -6097,20 +6100,19 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
             </div>
           )}
 
-          {/* Історія пайплайну */}
-          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm mt-4">
-            <h4 className="font-bold text-slate-800 mb-5 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center">
+          <div className="bg-surface p-5 sm:p-6 rounded-card border border-border shadow-card mt-4">
+            <h4 className="font-bold text-content-primary mb-5 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-full bg-brand-50 text-brand flex items-center justify-center">
                 ⏳
               </span>
               Історія пайплайну
             </h4>
             {!event.history || event.history.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-4">
+              <p className="text-sm text-content-muted text-center py-4">
                 Історія порожня.
               </p>
             ) : (
-              <div className="space-y-4 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-slate-100">
+              <div className="space-y-4 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-border">
                 {[...event.history]
                   .sort(
                     (a, b) =>
@@ -6119,11 +6121,11 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
                   )
                   .map((item) => (
                     <div key={item.id} className="relative pl-8 text-sm">
-                      <div className="absolute left-1.5 w-3 h-3 rounded-full top-1 bg-violet-500 ring-4 ring-white"></div>
-                      <p className="font-semibold text-slate-800">
+                      <div className="absolute left-1.5 w-3 h-3 rounded-full top-1 bg-brand ring-4 ring-surface"></div>
+                      <p className="font-semibold text-content-primary">
                         {item.action}
                       </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
+                      <p className="text-xs text-content-muted mt-0.5">
                         {new Date(item.createdAt).toLocaleString("uk-UA", {
                           day: "2-digit",
                           month: "2-digit",
@@ -6133,7 +6135,7 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
                         · 👤 {item.userName}
                       </p>
                       {item.comment && (
-                        <div className="mt-2 p-3 bg-slate-50/80 rounded-xl text-slate-600 italic border border-slate-100">
+                        <div className="mt-2 p-3 bg-surface-muted rounded-card text-content-secondary italic border border-border">
                           {item.comment}
                         </div>
                       )}
@@ -6180,7 +6182,7 @@ export default function EventDetails({ currentEvent, schoolName, cityId, onEvent
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center h-32 text-slate-400"
+        className="bg-surface p-6 rounded-card shadow-card border border-border flex items-center justify-center h-32 text-content-muted"
       >
         У цього закладу ще немає запланованих подій.
       </motion.div>
@@ -6194,84 +6196,78 @@ export default function EventDetails({ currentEvent, schoolName, cityId, onEvent
       <motion.div
         whileHover={{ y: -3, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.09)" }}
         transition={{ duration: 0.2 }}
-        className="bg-white rounded-2xl shadow-sm border border-slate-100 md:border-l-4 md:border-l-blue-600 relative"
+        className="bg-surface rounded-card shadow-card border border-border md:border-l-4 md:border-l-brand relative"
       >
         <div className="p-5 sm:p-6 pl-6 sm:pl-6">
-          
-          {/* Заголовок */}
-          <div className="flex justify-between items-center mb-2 md:mb-5 md:border-b border-slate-100 md:pb-4">
-            <h3 className="font-bold text-slate-800 text-lg">Деталі події</h3>
-            {/* Дата для мобільних (щоб була під заголовком) */}
-            <span className="md:hidden text-sm font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">
+          <div className="flex justify-between items-center mb-2 md:mb-5 md:border-b border-border md:pb-4">
+            <h3 className="font-bold text-content-primary text-lg">Деталі події</h3>
+            <span className="md:hidden text-sm font-bold text-brand bg-brand-50 px-2 py-1 rounded-control">
               {formattedDate}
             </span>
           </div>
 
-          {/* ВЕЛИКІ МОБІЛЬНІ КНОПКИ (Відображаються тільки на телефоні) */}
-          <div className="md:hidden grid grid-cols-2 gap-3 mb-5 border-b border-slate-100 pb-5 mt-3">
-            <button 
-              onClick={() => setRescheduleOpen(true)} 
-              className="flex flex-col items-center justify-center gap-2 p-4 bg-amber-50 text-amber-600 rounded-2xl font-bold border border-amber-100/50 active:bg-amber-100 transition-colors shadow-sm"
+          <div className="md:hidden grid grid-cols-2 gap-3 mb-5 border-b border-border pb-5 mt-3">
+            <button
+              onClick={() => setRescheduleOpen(true)}
+              className="flex flex-col items-center justify-center gap-2 p-4 bg-warning-subtle text-warning-600 rounded-card font-bold border border-warning-100/50 active:bg-warning-100 transition-colors shadow-sm"
             >
               <span className="text-2xl">📅</span>
-              <span className="text-[11px] uppercase tracking-wider">Перенести</span>
+              <span className="text-xs uppercase tracking-wider">Перенести</span>
             </button>
-            <button 
-              onClick={() => setIssueOpen(true)} 
-              className="flex flex-col items-center justify-center gap-2 p-4 bg-red-50 text-red-600 rounded-2xl font-bold border border-red-100/50 active:bg-red-100 transition-colors shadow-sm"
+            <button
+              onClick={() => setIssueOpen(true)}
+              className="flex flex-col items-center justify-center gap-2 p-4 bg-danger-subtle text-danger-600 rounded-card font-bold border border-danger-100/50 active:bg-danger-100 transition-colors shadow-sm"
             >
               <span className="text-2xl">🚨</span>
-              <span className="text-[11px] uppercase tracking-wider">Проблема</span>
+              <span className="text-xs uppercase tracking-wider">Проблема</span>
             </button>
           </div>
 
-          {/* ДЕСКТОПНІ КНОПКИ (Відображаються тільки на ПК) */}
           <div className="hidden md:flex items-center justify-end gap-3 absolute top-5 right-6">
-            <span className="text-sm font-medium text-blue-600 mr-2">{formattedDate}</span>
+            <span className="text-sm font-medium text-brand mr-2">{formattedDate}</span>
             <button
               onClick={() => setRescheduleOpen(true)}
-              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+              className="px-3 py-1.5 bg-warning hover:bg-warning-600 text-white text-xs font-bold rounded-control transition-colors shadow-sm"
             >
               📅 Перенести
             </button>
             <button
               onClick={() => setIssueOpen(true)}
-              className="px-3 py-1.5 bg-[#DC2626] hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+              className="px-3 py-1.5 bg-danger hover:bg-danger-600 text-white text-xs font-bold rounded-control transition-colors shadow-sm"
             >
               🚨 Проблема
             </button>
           </div>
 
-          {/* Інформація */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-4 text-sm mt-2 md:mt-0">
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0">
-              <span className="w-full sm:w-1/3 text-slate-500 font-medium">Проєкт:</span>
-              <span className="font-bold text-slate-800">{currentEvent.project}</span>
+              <span className="w-full sm:w-1/3 text-content-muted font-medium">Проєкт:</span>
+              <span className="font-bold text-content-primary">{currentEvent.project}</span>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0">
-              <span className="w-full sm:w-1/3 text-slate-500 font-medium">Час початку:</span>
-              <span className="font-bold text-slate-800">{currentEvent.time}</span>
+              <span className="w-full sm:w-1/3 text-content-muted font-medium">Час початку:</span>
+              <span className="font-bold text-content-primary">{currentEvent.time}</span>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0">
-              <span className="w-full sm:w-1/3 text-slate-500 font-medium">Кількість дітей:</span>
-              <span className="font-bold text-slate-800">{currentEvent.childrenPlanned}</span>
+              <span className="w-full sm:w-1/3 text-content-muted font-medium">Кількість дітей:</span>
+              <span className="font-bold text-content-primary">{currentEvent.childrenPlanned}</span>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0">
-              <span className="w-full sm:w-1/3 text-slate-500 font-medium">Вартість:</span>
-              <span className="font-bold text-slate-800">{currentEvent.price} грн</span>
+              <span className="w-full sm:w-1/3 text-content-muted font-medium">Вартість:</span>
+              <span className="font-bold text-content-primary">{currentEvent.price} грн</span>
             </div>
-            <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-0 mt-2 border-t border-slate-50 pt-3 md:border-0 md:pt-0 md:mt-0">
-              <span className="w-full sm:w-1/3 text-slate-500 font-medium mt-1">Адреса:</span>
-              <span className="font-bold text-slate-800 flex items-start gap-1.5 leading-snug">
-                 <span className="text-slate-400 mt-0.5 shrink-0">📍</span>
+            <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-0 mt-2 border-t border-surface-muted pt-3 md:border-0 md:pt-0 md:mt-0">
+              <span className="w-full sm:w-1/3 text-content-muted font-medium mt-1">Адреса:</span>
+              <span className="font-bold text-content-primary flex items-start gap-1.5 leading-snug">
+                 <span className="text-content-muted mt-0.5 shrink-0">📍</span>
                  <AddressLink address={currentEvent.address} />
               </span>
             </div>
-            <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-0 mt-2 border-t border-slate-50 pt-3 md:border-0 md:pt-0 md:mt-0">
-              <span className="w-full sm:w-1/3 text-slate-500 font-medium mt-1">Контакт:</span>
-              <span className="font-bold text-slate-800 flex flex-col gap-1 leading-snug">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-0 mt-2 border-t border-surface-muted pt-3 md:border-0 md:pt-0 md:mt-0">
+              <span className="w-full sm:w-1/3 text-content-muted font-medium mt-1">Контакт:</span>
+              <span className="font-bold text-content-primary flex flex-col gap-1 leading-snug">
                 <span>{currentEvent.contactPerson}</span>
-                <span className="w-6 border-b-2 border-slate-200 my-0.5"></span>
+                <span className="w-6 border-b-2 border-border-strong my-0.5"></span>
                 <PhoneLink phone={currentEvent.contactPhone} />
               </span>
             </div>
@@ -6368,9 +6364,9 @@ export default memo(function EventPreparation({
     <motion.div
       whileHover={{ y: -2, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.08)" }}
       transition={{ duration: 0.2 }}
-      className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
+      className="bg-surface p-6 rounded-card shadow-card border border-border"
     >
-      <h3 className="font-bold text-slate-800 mb-4 border-b pb-3 border-slate-100">
+      <h3 className="font-bold text-content-primary mb-4 border-b pb-3 border-border">
         Підготовка до події
       </h3>
       <div className="space-y-3 text-sm">
@@ -6382,10 +6378,10 @@ export default memo(function EventPreparation({
             <motion.div
               key={task.key}
               whileTap={{ scale: 0.98 }}
-              className="flex justify-between items-center cursor-pointer group hover:bg-slate-50 p-2 -mx-2 rounded-lg transition-colors"
+              className="flex justify-between items-center cursor-pointer group hover:bg-surface-muted p-2 -mx-2 rounded-control transition-colors"
               onClick={() => handleTaskClick(task.key)}
             >
-              <span className="text-slate-700 font-medium select-none">
+              <span className="text-content-secondary font-medium select-none">
                 {task.label}
               </span>
               <AnimatePresence mode="wait">
@@ -6406,15 +6402,15 @@ export default memo(function EventPreparation({
       </div>
 
       {project && projectItems && projectItems.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-slate-100">
-          <h4 className="text-sm font-semibold text-slate-700 mb-2">
+        <div className="mt-4 pt-4 border-t border-border">
+          <h4 className="text-sm font-semibold text-content-secondary mb-2">
             Предмети для проєкту «{project}»
           </h4>
           <div className="space-y-1.5">
             {projectItems.map((item) => (
               <div key={item.id} className="flex items-center justify-between text-sm py-1">
-                <span className="text-slate-600">{item.name}</span>
-                <span className="text-xs text-slate-400">
+                <span className="text-content-secondary">{item.name}</span>
+                <span className="text-xs text-content-muted">
                   {item.currentStock} {item.unit}
                 </span>
               </div>
@@ -6462,13 +6458,12 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
   if (events.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mt-2 w-full">
-      <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-        <h3 className="font-bold text-slate-800">Всі події ({events.length})</h3>
+    <div className="bg-surface rounded-card shadow-card border border-border overflow-hidden mt-2 w-full">
+      <div className="p-4 sm:p-6 border-b border-border bg-surface-muted flex justify-between items-center">
+        <h3 className="font-bold text-content-primary">Всі події ({events.length})</h3>
       </div>
 
-      {/* Картки — мобільний вигляд */}
-      <div className="md:hidden divide-y divide-slate-50">
+      <div className="md:hidden divide-y divide-border">
         <AnimatePresence initial={false}>
         {events.map((ev, i) => (
           <motion.div
@@ -6478,17 +6473,17 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.2, delay: i * 0.04 }}
             onClick={() => onEventSelect(ev.id)}
-            className={`flex items-center justify-between gap-3 p-4 transition-colors cursor-pointer ${selectedEventId === ev.id ? 'bg-blue-50/50' : 'active:bg-slate-50'}`}
+            className={`flex items-center justify-between gap-3 p-4 transition-colors cursor-pointer ${selectedEventId === ev.id ? 'bg-brand-50/50' : 'active:bg-surface-muted'}`}
           >
             <div className="min-w-0">
-              <p className="font-medium text-slate-800">{ev.project}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{new Date(ev.date).toLocaleDateString()}</p>
+              <p className="font-medium text-content-primary">{ev.project}</p>
+              <p className="text-xs text-content-muted mt-0.5">{new Date(ev.date).toLocaleDateString()}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span className="font-medium text-sm text-slate-700">{ev.price} грн</span>
+              <span className="font-medium text-sm text-content-secondary">{ev.price} грн</span>
               <button
                 onClick={(e) => handleDelete(e, ev.id)}
-                className="text-red-500 active:text-red-700 p-2"
+                className="text-danger-600 active:text-danger p-2.5 rounded-control"
               >
                 🗑
               </button>
@@ -6498,11 +6493,10 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
         </AnimatePresence>
       </div>
 
-      {/* Таблиця — десктоп */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="bg-white border-b border-slate-100 text-slate-500">
+            <tr className="bg-surface border-b border-border text-content-muted">
               <th className="p-4">Дата</th>
               <th className="p-4">Проєкт</th>
               <th className="p-4">Вартість</th>
@@ -6519,15 +6513,15 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.18, delay: i * 0.03 }}
                 onClick={() => onEventSelect(ev.id)}
-                className={`border-b transition-colors cursor-pointer ${selectedEventId === ev.id ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}
+                className={`border-b transition-colors cursor-pointer ${selectedEventId === ev.id ? 'bg-brand-50/50' : 'hover:bg-surface-muted'}`}
               >
                 <td className="p-4 font-medium">{new Date(ev.date).toLocaleDateString()}</td>
                 <td className="p-4">{ev.project}</td>
                 <td className="p-4">{ev.price} грн</td>
                 <td className="p-4 text-center">
-                  <button 
+                  <button
                     onClick={(e) => handleDelete(e, ev.id)}
-                    className="text-red-500 hover:text-red-700 p-2"
+                    className="text-danger-600 hover:text-danger p-2.5"
                   >
                     🗑
                   </button>
@@ -6563,22 +6557,22 @@ export default memo(function HistoryTimeline({ currentEvent, onHistoryClick, onA
     <motion.div
       whileHover={{ y: -2, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.08)" }}
       transition={{ duration: 0.2 }}
-      className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col"
+      className="bg-surface p-6 rounded-card shadow-card border border-border flex flex-col"
     >
       <div className="flex justify-between items-center mb-5">
-        <h3 className="font-bold text-slate-800">Історія взаємодії</h3>
+        <h3 className="font-bold text-content-primary">Історія взаємодії</h3>
         <button 
           onClick={onAddCommentClick}
-          className="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-sm"
+          className="text-xs font-bold text-brand bg-brand-50 hover:bg-brand-100 px-3 py-2.5 rounded-control transition-colors flex items-center gap-1 shadow-sm"
         >
           <span>+</span> Коментар
         </button>
       </div>
       
       {!currentEvent || !currentEvent.history || currentEvent.history.length === 0 ? (
-        <p className="text-sm text-slate-400">Історія порожня.</p>
+        <p className="text-sm text-content-muted">Історія порожня.</p>
       ) : (
-        <div className="space-y-3 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-slate-100">
+        <div className="space-y-3 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-border">
           <AnimatePresence initial={false}>
           {currentEvent.history.map((item: EventHistory, i: number) => (
             <motion.div
@@ -6588,21 +6582,21 @@ export default memo(function HistoryTimeline({ currentEvent, onHistoryClick, onA
               exit={{ opacity: 0, x: -8 }}
               transition={{ duration: 0.22, delay: i * 0.04 }}
               onClick={() => onHistoryClick(item)}
-              className="relative pl-8 pr-3 py-2 text-sm hover:bg-slate-50 rounded-xl cursor-pointer transition-colors group border border-transparent hover:border-slate-100"
+              className="relative pl-8 pr-3 py-2 text-sm hover:bg-surface-muted rounded-card cursor-pointer transition-colors group border border-transparent hover:border-border"
             >
-              <div className={`absolute left-1.5 w-3 h-3 rounded-full top-3.5 ${i === 0 ? 'bg-blue-600 ring-4 ring-blue-50' : 'bg-slate-300'}`}></div>
-              <p className="font-semibold text-slate-800">{item.action}</p>
+              <div className={`absolute left-1.5 w-3 h-3 rounded-full top-3.5 ${i === 0 ? 'bg-brand ring-4 ring-brand-50' : 'bg-neutral-300'}`}></div>
+              <p className="font-semibold text-content-primary">{item.action}</p>
               {item.comment && (
-                <p className="text-slate-600 mt-1.5 bg-white p-3 rounded-xl border border-slate-100 shadow-sm text-sm italic">
+                <p className="text-content-secondary mt-1.5 bg-surface p-3 rounded-card border border-border shadow-sm text-sm italic">
                   "{item.comment}"
                 </p>
               )}
-              <p className="text-[11px] text-slate-400 mt-2 flex justify-between items-center font-medium">
+              <p className="text-xs text-content-muted mt-2 flex justify-between items-center font-medium">
                 <span>
                   👤 {item.userName} <span className="mx-1">•</span> 
                   {new Date(item.createdAt).toLocaleString("uk-UA", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                 </span>
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-500">✏️ Редагувати</span>
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity text-brand">✏️ Редагувати</span>
               </p>
             </motion.div>
           ))}
@@ -8291,12 +8285,12 @@ export default memo(function Pipeline({ currentStageIndex, currentEvent, onPipel
     <motion.div
       whileHover={{ y: -2, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.08)" }}
       transition={{ duration: 0.2 }}
-      className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 w-full"
+      className="bg-surface p-4 md:p-6 rounded-card shadow-card border border-border w-full"
     >
-      <h3 className="font-bold text-slate-800 mb-4 md:hidden">Етап події</h3>
+      <h3 className="font-bold text-content-primary mb-4 md:hidden">Етап події</h3>
       <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0">
         <div className="flex items-start min-w-[600px] justify-between relative">
-          <div className="absolute top-4 left-0 w-full h-[2px] bg-slate-100 -z-10"></div>
+          <div className="absolute top-4 left-0 w-full h-[2px] bg-border -z-10"></div>
           {stages.map((step, index) => {
             const isCompleted = index < currentStageIndex;
             const isActive = index === currentStageIndex;
@@ -8312,18 +8306,18 @@ export default memo(function Pipeline({ currentStageIndex, currentEvent, onPipel
                   transition={{ duration: 0.15 }}
                   className={`w-8 h-8 md:w-9 md:h-9 shrink-0 rounded-full text-xs font-bold border-2 mb-2 transition-colors
                     ${isCompleted
-                      ? 'border-blue-600 text-blue-600 bg-white'
+                      ? 'border-brand text-brand bg-surface'
                       : isActive
-                      ? 'border-blue-600 bg-blue-600 text-white shadow-md'
+                      ? 'border-brand bg-brand text-white shadow-md'
                       : isNext
-                      ? 'border-blue-400 bg-white text-blue-400 cursor-pointer'
-                      : 'border-slate-200 text-slate-400 bg-white cursor-not-allowed opacity-50'
+                      ? 'border-brand-300 bg-surface text-brand-300 cursor-pointer'
+                      : 'border-border-strong text-content-muted bg-surface cursor-not-allowed opacity-50'
                     }`}
                 >
                   {isCompleted ? '✓' : step.id}
                 </motion.button>
-                <span className={`text-[10px] md:text-[11px] leading-tight font-medium text-center break-words max-w-[70px]
-                  ${isActive ? 'text-blue-600 font-bold' : isNext ? 'text-blue-400' : 'text-slate-400'}`}>
+                <span className={`text-2xs md:text-xs leading-tight font-medium text-center break-words max-w-[70px]
+                  ${isActive ? 'text-brand font-bold' : isNext ? 'text-brand-300' : 'text-content-muted'}`}>
                   {step.name}
                 </span>
               </div>
@@ -8355,7 +8349,7 @@ export default memo(function SchoolInfoCard({
     <motion.div
       whileHover={{ y: -4, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.10)" }}
       transition={{ duration: 0.2 }}
-      className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
+      className="bg-surface p-6 rounded-card shadow-card border border-border"
     >
       <ul className="space-y-4 text-sm">
         {[
@@ -8381,10 +8375,10 @@ export default memo(function SchoolInfoCard({
             transition={{ duration: 0.25, delay: i * 0.05 }}
             className="flex gap-3"
           >
-            <span className="text-slate-400">{icon}</span>
+            <span className="text-content-muted">{icon}</span>
             <div>
-              <span className="text-slate-500">{label}:</span>{" "}
-              <span className="font-medium">{value}</span>
+              <span className="text-content-muted">{label}:</span>{" "}
+              <span className="font-medium text-content-primary">{value}</span>
             </div>
           </motion.li>
         ))}
@@ -8419,88 +8413,80 @@ const fadeUp = (delay: number) => ({
 export default memo(function SchoolProfileHeader({ schoolData, onEdit, onAddEvent }: Props) {
   return (
     <div className="mb-6">
-      {/* Хлібні крихти */}
-      <motion.div {...fadeUp(0)} className="text-xs md:text-sm text-slate-500 mb-5 truncate">
-        <Link to="/schools" className="hover:text-blue-600 transition-colors">
+      <motion.div {...fadeUp(0)} className="text-xs md:text-sm text-content-muted mb-5 truncate">
+        <Link to="/schools" className="hover:text-brand transition-colors">
           Школи / Садочки
         </Link>
         <span className="mx-2">›</span>
-        <span className="text-slate-800 font-medium">
+        <span className="text-content-primary font-medium">
           {schoolData.type} "{schoolData.name}"
         </span>
       </motion.div>
 
-      {/* Hero Card */}
       <motion.div
         {...fadeUp(0.05)}
-        className="relative bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-2"
+        className="relative bg-surface rounded-card shadow-card border border-border overflow-hidden mb-2"
       >
-        {/* Градієнтна смужка зверху */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand-400 via-brand to-brand-700" />
 
         <div className="p-5 md:p-7">
           <div className="flex flex-col md:flex-row md:items-center gap-5">
-
-            {/* Іконка */}
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.3, delay: 0.1, ease: "easeOut" }}
-              className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-3xl shrink-0"
+              className="w-14 h-14 md:w-16 md:h-16 rounded-card bg-brand-50 flex items-center justify-center text-3xl shrink-0"
             >
               🏫
             </motion.div>
 
-            {/* Назва + місто */}
             <div className="flex-1 min-w-0">
               <motion.h1
                 {...fadeUp(0.12)}
-                className="text-2xl md:text-3xl font-bold text-slate-800 leading-tight"
+                className="text-2xl md:text-3xl font-bold text-content-primary leading-tight"
               >
                 {schoolData.type} «{schoolData.name}»
               </motion.h1>
               <motion.div {...fadeUp(0.18)} className="flex flex-wrap items-center gap-3 mt-2">
                 {schoolData.city && (
-                  <span className="text-sm text-slate-500 flex items-center gap-1">
+                  <span className="text-sm text-content-muted flex items-center gap-1">
                     📍 {schoolData.city}
                   </span>
                 )}
                 {schoolData.director && (
-                  <span className="text-sm text-slate-500 flex items-center gap-1">
+                  <span className="text-sm text-content-muted flex items-center gap-1">
                     👤 {schoolData.director}
                   </span>
                 )}
                 {schoolData.phone && (
-                  <span className="text-sm text-slate-500">
+                  <span className="text-sm text-content-muted">
                     <PhoneLink phone={schoolData.phone} />
                   </span>
                 )}
               </motion.div>
             </div>
 
-            {/* Quick Actions — десктоп */}
             <motion.div {...fadeUp(0.2)} className="hidden md:flex gap-2 shrink-0">
               <button
                 onClick={onAddEvent}
-                className="flex flex-col items-center gap-1 px-5 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 active:scale-95 transition-all shadow-sm text-xs font-semibold"
+                className="flex flex-col items-center gap-1 px-5 py-3 bg-brand text-white rounded-control hover:bg-brand-hover active:scale-95 transition-all shadow-sm text-xs font-semibold"
               >
                 <span className="text-lg leading-none">＋</span>
                 Подія
               </button>
               <button
                 onClick={onEdit}
-                className="flex flex-col items-center gap-1 px-5 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 hover:-translate-y-0.5 hover:shadow-md active:scale-95 transition-all text-xs font-semibold"
+                className="flex flex-col items-center gap-1 px-5 py-3 bg-surface border border-border-strong text-content-secondary rounded-control hover:bg-surface-muted hover:-translate-y-0.5 hover:shadow-md active:scale-95 transition-all text-xs font-semibold"
               >
                 <span className="text-lg leading-none">✏️</span>
                 Редагувати
               </button>
             </motion.div>
 
-            {/* Quick Actions — мобіл */}
             <motion.div {...fadeUp(0.2)} className="md:hidden flex gap-2">
               <button
                 onClick={onEdit}
-                className="w-10 h-10 bg-white border border-slate-200 text-slate-600 rounded-xl flex items-center justify-center shadow-sm active:bg-slate-50 active:scale-95 transition-all"
+                className="w-11 h-11 bg-surface border border-border-strong text-content-secondary rounded-control flex items-center justify-center shadow-sm active:bg-surface-muted active:scale-95 transition-all"
               >
                 ✏️
               </button>
@@ -8696,11 +8682,11 @@ export const SchoolCard = React.memo(
 
     return (
       <div
-        className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm transition-all hover:shadow-md hover:border-blue-200 cursor-pointer active:scale-[0.99]"
+        className="bg-surface rounded-card border border-border p-4 shadow-card transition-all hover:shadow-card-hover hover:border-brand-200 cursor-pointer active:scale-[0.99]"
         onClick={() => navigate(`/schools/${school.id}`)}
       >
         <div className="flex items-start justify-between gap-2">
-          <p className="font-semibold text-slate-800 leading-snug text-sm line-clamp-2 flex-1">
+          <p className="font-semibold text-content-primary leading-snug text-sm line-clamp-2 flex-1">
             {school.name}
           </p>
           <button
@@ -8708,7 +8694,7 @@ export const SchoolCard = React.memo(
               e.stopPropagation();
               onDelete(e, school.id, school.name);
             }}
-            className="text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all p-2 rounded-lg"
+            className="text-neutral-300 hover:text-danger hover:bg-danger-subtle transition-all p-2.5 rounded-control"
           >
             🗑
           </button>
@@ -8718,12 +8704,12 @@ export const SchoolCard = React.memo(
             <a
               href={`tel:${school.phone}`}
               onClick={(e) => e.stopPropagation()}
-              className="text-xs text-blue-600 font-medium truncate"
+              className="text-xs text-brand font-medium truncate"
             >
               📞 {school.director || school.phone}
             </a>
           ) : (
-            <span className="text-xs text-slate-500 truncate">
+            <span className="text-xs text-content-muted truncate">
               👤 {school.director || "Контакт не вказано"}
             </span>
           )}
@@ -8732,7 +8718,7 @@ export const SchoolCard = React.memo(
               {categories.map((cat) => (
                 <span
                   key={cat}
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${CATEGORY_BADGES[cat]?.className ?? "bg-slate-50 text-slate-500 border-slate-100"}`}
+                  className={`text-2xs px-2 py-0.5 rounded-pill font-medium border ${CATEGORY_BADGES[cat]?.className ?? "bg-surface-muted text-content-muted border-border"}`}
                 >
                   {CATEGORY_BADGES[cat]?.label ?? cat}
                 </span>
@@ -8740,7 +8726,7 @@ export const SchoolCard = React.memo(
             </div>
           ) : (
             stage && (
-              <span className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full font-medium border border-blue-100">
+              <span className="text-2xs px-2 py-0.5 bg-brand-50 text-brand rounded-pill font-medium border border-brand-100">
                 {stage.name}
               </span>
             )
@@ -8773,7 +8759,7 @@ export default function SchoolMobileList({
         ))}
 
         {schools.length === 0 && (
-          <div className="text-center py-10 text-slate-400">
+          <div className="text-center py-10 text-content-muted">
             <p>
               {searchQuery
                 ? `Нічого не знайдено за «${searchQuery}»`
@@ -8942,24 +8928,24 @@ export default function StatsBar({
   return (
     <div className="flex flex-col gap-2 mb-4">
       {/* Рядок 1: статус */}
-      <div className="flex items-center bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="flex items-center bg-surface rounded-card shadow-card border border-border overflow-hidden">
         {STATUS_ITEMS.map((item, i) => {
           const isActive = activeFilter === item.key;
           return (
             <React.Fragment key={item.key}>
-              {i > 0 && <div className="w-px h-8 bg-slate-100 shrink-0" />}
+              {i > 0 && <div className="w-px h-8 bg-border shrink-0" />}
               <button
                 onClick={() => onFilterChange(isActive ? null : item.key)}
                 className={`flex-1 flex flex-col items-center py-2.5 px-1 transition-colors min-w-0 ${
                   isActive
                     ? item.active
-                    : `bg-white ${item.inactive} hover:bg-slate-50`
+                    : `bg-surface ${item.inactive} hover:bg-surface-muted`
                 }`}
               >
                 <span className="text-base font-bold tabular-nums leading-none">
                   {statusStats[item.key] ?? 0}
                 </span>
-                <span className="text-[10px] mt-1 leading-none opacity-80 truncate w-full text-center">
+                <span className="text-2xs mt-1 leading-none opacity-80 truncate w-full text-center">
                   {item.label}
                 </span>
               </button>
@@ -8969,32 +8955,31 @@ export default function StatsBar({
         {activeFilter && (
           <button
             onClick={() => onFilterChange(null)}
-            className="px-3 text-slate-400 hover:text-slate-600 text-lg shrink-0 border-l border-slate-100 self-stretch flex items-center"
+            className="px-3 text-content-muted hover:text-content-secondary text-lg shrink-0 border-l border-border self-stretch flex items-center"
           >
             ✕
           </button>
         )}
       </div>
 
-      {/* Рядок 2: розмір */}
-      <div className="flex items-center bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="flex items-center bg-surface rounded-card shadow-card border border-border overflow-hidden">
         {sizeItems.map((item, i) => {
           const isActive = sizeFilter === item.key;
           return (
             <React.Fragment key={item.key}>
-              {i > 0 && <div className="w-px h-8 bg-slate-100 shrink-0" />}
+              {i > 0 && <div className="w-px h-8 bg-border shrink-0" />}
               <button
                 onClick={() => onSizeFilterChange(isActive ? null : item.key)}
                 className={`flex-1 flex flex-col items-center py-2.5 px-1 transition-colors min-w-0 ${
                   isActive
                     ? item.active
-                    : `bg-white ${item.inactive} hover:bg-slate-50`
+                    : `bg-surface ${item.inactive} hover:bg-surface-muted`
                 }`}
               >
                 <span className="text-base font-bold tabular-nums leading-none">
                   {sizeStats[item.key] ?? 0}
                 </span>
-                <span className="text-[10px] mt-1 leading-none opacity-80 truncate w-full text-center">
+                <span className="text-2xs mt-1 leading-none opacity-80 truncate w-full text-center">
                   {item.label}
                   <span className="opacity-60 ml-0.5">{item.sublabel}</span>
                 </span>
@@ -9005,7 +8990,7 @@ export default function StatsBar({
         {sizeFilter && (
           <button
             onClick={() => onSizeFilterChange(null)}
-            className="px-3 text-slate-400 hover:text-slate-600 text-lg shrink-0 border-l border-slate-100 self-stretch flex items-center"
+            className="px-3 text-content-muted hover:text-content-secondary text-lg shrink-0 border-l border-border self-stretch flex items-center"
           >
             ✕
           </button>

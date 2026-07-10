@@ -1,0 +1,143 @@
+- complementary:
+  - heading "СВІТЛО ЗНАНЬ" [level=2]
+  - paragraph: Львів
+  - navigation:
+    - link "Дашборд":
+      - /url: /dashboard
+    - link "Міста":
+      - /url: /cities
+    - link "Школи":
+      - /url: /schools
+    - link "Садочки":
+      - /url: /kindergartens
+    - link "Фінанси":
+      - /url: /finance
+    - link "Календар":
+      - /url: /calendar
+    - link "Працівники":
+      - /url: /employees
+  - text: А
+  - paragraph: Адміністратор
+  - paragraph: SUPERADMIN
+  - button "Сповіщення"
+  - button "Вийти"
+- main:
+  - tablist "Вкладки дашборду":
+    - tab "Огляд"
+    - tab "Звіти"
+    - tab "Рейтинг"
+    - tab "Аналітика" [selected]
+  - heading "Доброго вечора, Адміністратор" [level=1]
+  - paragraph: пʼятниця, 10 липня
+  - combobox "Вибір міста":
+    - option "Всі міста" [selected]
+    - option "Тернопіль"
+    - option "Тернопіль"
+    - option "Харків"
+    - option "Львів"
+  - text: 💰 Виручка
+  - paragraph: 45 333 грн
+  - text: 📈 Прибуток
+  - paragraph: 30 166 грн
+  - text: 👶 Дітей
+  - paragraph: 1 853
+  - paragraph: за 4 подіями
+  - text: 🏫 Активних шкіл
+  - paragraph: "956"
+  - paragraph: Сьогоднішні події
+  - paragraph: пʼятниця, 10 липня
+  - button "Календар"
+  - text: Сьогодні подій немає
+  - paragraph: "Усього на сьогодні: 0 подій"
+  - paragraph: Активність команди
+  - text: сьогодні Сьогодні активності ще немає
+  - heading "Перевірка звітів" [level=1]
+  - paragraph: Немає звітів, що очікують перевірки
+  - heading "Рейтинг міст" [level=1]
+  - paragraph: Порівняння міст за обраною метрикою
+  - button "Події"
+  - button "Дохід"
+  - button "Прибуток"
+  - button "Діти"
+  - button "Школи"
+  - combobox:
+    - option "2026" [selected]
+    - option "2025"
+    - option "2024"
+    - option "2023"
+    - option "2022"
+  - text: Львів 2
+  - heading "Аналітика" [level=1]
+  - paragraph: липень 2026 р.
+  - combobox:
+    - option "2026" [selected]
+    - option "2025"
+    - option "2024"
+    - option "2023"
+    - option "2022"
+  - combobox:
+    - option "Всі міста" [selected]
+    - option "Тернопіль"
+    - option "Тернопіль"
+    - option "Харків"
+    - option "Львів"
+  - textbox "Проєкт (фільтр)"
+  - paragraph: Загальний дохід
+  - paragraph: 12 332 грн
+  - paragraph: Прибуток
+  - paragraph: 9 766 грн
+  - paragraph: ROI
+  - paragraph: 400%
+  - paragraph: Витрати на ЗП
+  - paragraph: 0 грн
+  - heading "Дохід по місяцях" [level=3]
+  - application: Січ Лют Бер Кві Трав Чер Лип Сер Вер Жов Лис Гру 0 4k 7k 11k 14k
+  - heading "Події по містах" [level=3]
+  - application: Тернопіль Львів 0 2 4 6 8
+  - heading "KPI — Топ 10" [level=3]
+  - heading "Менеджери" [level=4]
+  - table:
+    - rowgroup:
+      - row "# Ім'я Затверджено":
+        - columnheader "#"
+        - columnheader "Ім'я"
+        - columnheader "Затверджено"
+    - rowgroup:
+      - 'row "1 MANAGER (Львів): 1"':
+        - cell "1"
+        - cell "MANAGER (Львів):"
+        - cell "1"
+  - heading "Ведучі" [level=4]
+  - table:
+    - rowgroup:
+      - row "# Ім'я Рейтинг Звітів":
+        - columnheader "#"
+        - columnheader "Ім'я"
+        - columnheader "Рейтинг"
+        - columnheader "Звітів"
+    - rowgroup:
+      - row "1 — 5 1":
+        - cell "1"
+        - cell "—"
+        - cell "5"
+        - cell "1"
+  - heading "Проєкти" [level=4]
+  - table:
+    - rowgroup:
+      - row "# Назва Подій Прибуток":
+        - columnheader "#"
+        - columnheader "Назва"
+        - columnheader "Подій"
+        - columnheader "Прибуток"
+    - rowgroup:
+      - row "1 Голограма 1 9 766 грн":
+        - cell "1"
+        - cell "Голограма"
+        - cell "1"
+        - cell "9 766 грн"
+      - row "2 Малювайка 1 0 грн":
+        - cell "2"
+        - cell "Малювайка"
+        - cell "1"
+        - cell "0 грн"
+- alert

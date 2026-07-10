@@ -6319,7 +6319,7 @@ export default defineConfig([
     <meta charset="UTF-8" />
     <meta name="description" content="CRM система для управління подіями, школами та фінансами">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>CRM</title>
   </head>
   <body>

@@ -314,3 +314,48 @@ Call log:
 [2026-07-10T18:24:32.482Z] [SUBSTEP] Pilot planning test...
 [2026-07-10T18:24:35.433Z] [INFO] Precondition: 1 active school in Kyiv
 [2026-07-10T18:24:43.023Z] [STEP] I.amOnPage("https://app.svitlo-znan.app/dashboard")
+[2026-07-10T18:24:56.595Z] [ERROR] Browser execution error: Upstream error from Phala: Expecting ':' delimiter: line 3 column 5 (char 8)
+[2026-07-10T18:24:56.597Z] [INFO] Browser supervisor: continue - Previous execution error: Upstream error from Phala: Expecting ':' delimiter: line 3 column 5 (char 8). Investigate the current state and choose a different approach.
+[2026-07-10T18:24:56.628Z] [SUBSTEP] Pilot reviewing new page...
+[2026-07-10T18:25:05.792Z] [ERROR] Browser execution error: Upstream error from Phala: Expecting ':' delimiter: line 3 column 5 (char 8)
+[2026-07-10T18:25:05.793Z] [INFO] Browser supervisor: continue - Previous execution error: Upstream error from Phala: Expecting ':' delimiter: line 3 column 5 (char 8). Investigate the current state and choose a different approach.
+[2026-07-10T18:25:05.801Z] [SUBSTEP] Pilot analyzing progress...
+[2026-07-10T18:25:32.354Z] [ERROR] Browser execution error: Upstream error from Phala: Expecting ':' delimiter: line 3 column 5 (char 8)
+[2026-07-10T18:25:32.354Z] [INFO] Browser supervisor: continue - Previous execution error: Upstream error from Phala: Expecting ':' delimiter: line 3 column 5 (char 8). Investigate the current state and choose a different approach.
+[2026-07-10T18:25:32.355Z] [OPERATION] Historian saved session for: Filtering and Verifying Active School Count
+[2026-07-10T18:25:32.358Z] [OPERATION] Saved plan tests to: output\tests\dashboard_overview_testing.js
+[2026-07-10T18:25:32.358Z] [ERROR] Failed test: Filtering and Verifying Active School Count
+[2026-07-10T18:25:33.091Z] [STEP] I.amOnPage("https://app.svitlo-znan.app/dashboard")
+[2026-07-10T18:25:36.804Z] [INFO] Different page detected, clearing previous plan
+[2026-07-10T18:25:36.804Z] [INFO] Similar page already planned: /dashboard (3 tests)
+[2026-07-10T18:25:42.587Z] [STEP] I.amOnPage("https://app.svitlo-znan.app/dashboard")
+[2026-07-10T18:25:48.228Z] [INFO] Different page detected, clearing previous plan
+[2026-07-10T18:25:48.229Z] [INFO] Similar page already planned: /dashboard (3 tests)
+[2026-07-10T18:25:51.137Z] [INFO] Exploring sub-page: /dashboard?tab=reports (This page has the highest visit count among the dashboard sub-pages and maintains the same page title and structure as the primary /dashboard page, indicating it is a relevant core feature page to test.)
+[2026-07-10T18:25:51.856Z] [STEP] I.amOnPage("/dashboard?tab=reports")
+[2026-07-10T18:25:56.153Z] [INFO] Page content similar to already-planned: /dashboard — skipping
+[2026-07-10T18:25:56.865Z] [STEP] I.amOnPage("/dashboard?tab=reports")
+[2026-07-10T18:25:59.512Z] [INFO] Different page detected, clearing previous plan
+[2026-07-10T18:25:59.533Z] [INFO] Page content similar to already-planned: /dashboard — skipping
+[2026-07-10T18:26:00.981Z] [STEP] I.amOnPage("/dashboard?tab=reports")
+[2026-07-10T18:26:04.621Z] [INFO] Different page detected, clearing previous plan
+[2026-07-10T18:26:04.648Z] [INFO] Page content similar to already-planned: /dashboard — skipping
+[2026-07-10T18:26:06.984Z] [INFO] Exploring sub-page: /dashboard?tab=overview (The /dashboard page has multiple variants with different tabs, and /dashboard?tab=overview has been visited once, making it a potentially important page to test. Given that the /dashboard page has already been tested, its variants are worth considering if they haven't been tested yet.)
+[2026-07-10T18:26:08.831Z] [STEP] I.amOnPage("/dashboard?tab=overview")
+[2026-07-10T18:26:11.444Z] [INFO] Page content similar to already-planned: /dashboard — skipping
+[2026-07-10T18:26:12.377Z] [STEP] I.amOnPage("/dashboard?tab=overview")
+[2026-07-10T18:26:16.245Z] [INFO] Different page detected, clearing previous plan
+[2026-07-10T18:26:16.283Z] [INFO] Planning style: curious
+[2026-07-10T18:26:16.299Z] [INFO] Researching https://app.svitlo-znan.app/dashboard?tab=overview to understand the context...
+[2026-07-10T18:27:35.764Z] [WARNING] playwrightLocatorCount: locator.count: Target page, context or browser has been closed
+[2026-07-10T18:27:35.765Z] [ERROR] Browser recovery failed: browserContext.newPage: Target page, context or browser has been closed
+[2026-07-10T18:27:35.766Z] [WARNING] playwrightLocatorCount: locator.count: Target page, context or browser has been closed
+[2026-07-10T18:27:35.767Z] [ERROR] Browser recovery failed: browserContext.newPage: Target page, context or browser has been closed
+[2026-07-10T18:27:35.768Z] [WARNING] playwrightLocatorCount: locator.count: Target page, context or browser has been closed
+[2026-07-10T18:27:35.769Z] [ERROR] Browser recovery failed: browserContext.newPage: Target page, context or browser has been closed
+[2026-07-10T18:27:35.770Z] [WARNING] playwrightLocatorCount: locator.count: Target page, context or browser has been closed
+[2026-07-10T18:27:35.772Z] [ERROR] Browser recovery failed: browserContext.newPage: Target page, context or browser has been closed
+[2026-07-10T18:27:35.774Z] [WARNING] playwrightLocatorCount: locator.count: Target page, context or browser has been closed
+[2026-07-10T18:27:35.777Z] [ERROR] Browser recovery failed: browserContext.newPage: Target page, context or browser has been closed
+[2026-07-10T18:27:35.777Z] [OPERATION] Validated 5 locators: 0 valid, 5 broken
+[2026-07-10T18:27:35.778Z] [WARNING] All 5 containers broken, retrying research (1/2)...
