@@ -1,7 +1,7 @@
 import { Link, useOutlet, useLocation } from "react-router-dom";
 import { useState, useCallback, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { pageVariants, DUR, EASE, useHoverCapable } from "../lib/motion";
+import { pageVariants, DUR, EASE, TRANSITION, useHoverCapable } from "../lib/motion";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
 import {
