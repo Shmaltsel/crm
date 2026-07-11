@@ -15,8 +15,19 @@ const mockPrisma = {
     delete: jest.fn(),
     count: jest.fn(),
   },
-  eventHistory: { create: jest.fn(), findMany: jest.fn(), update: jest.fn(), deleteMany: jest.fn() },
-  eventPreparation: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), deleteMany: jest.fn(), upsert: jest.fn() },
+  eventHistory: {
+    create: jest.fn(),
+    findMany: jest.fn(),
+    update: jest.fn(),
+    deleteMany: jest.fn(),
+  },
+  eventPreparation: {
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    deleteMany: jest.fn(),
+    upsert: jest.fn(),
+  },
   eventReport: { upsert: jest.fn() },
   expenseItem: { deleteMany: jest.fn(), createMany: jest.fn() },
   salaryRecord: { deleteMany: jest.fn(), createMany: jest.fn() },
@@ -60,7 +71,13 @@ describe('Smoke: EventsService', () => {
   });
 
   it('create створює подію зі статусом BASE та записом в історії', async () => {
-    const dto = { schoolId: 'school-1', cityId: 'city-1', project: 'Голограма', date: '2025-09-01', price: 5000 };
+    const dto = {
+      schoolId: 'school-1',
+      cityId: 'city-1',
+      project: 'Голограма',
+      date: '2025-09-01',
+      price: 5000,
+    };
     mockPrisma.event.create.mockResolvedValueOnce({
       id: 'ev-new',
       schoolId: 'school-1',
@@ -86,9 +103,35 @@ describe('Smoke: EventsService', () => {
       history: [],
     });
 
-    const result = await service.updateStatus('ev-1', 'FIRST_CONTACT', 'Дія', undefined, mockUser);
+    const result = await service.updateStatus(
+      'ev-1',
+      'FIRST_CONTACT',
+      'Дія',
+      undefined,
+      mockUser,
+    );
 
     expect(mockPrisma.event.update).toHaveBeenCalled();
     expect(result.status).toBe('FIRST_CONTACT');
+  });
+
+  it('findAllForUser фільтрує події за dateFrom/dateTo', async () => {
+    mockPrisma.event.findMany.mockResolvedValueOnce([]);
+
+    await service.findAllForUser(mockUser, {
+      dateFrom: '2025-09-01',
+      dateTo: '2025-09-30',
+    } as any);
+
+    expect(mockPrisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          date: {
+            gte: new Date('2025-09-01'),
+            lte: new Date('2025-09-30'),
+          },
+        }),
+      }),
+    );
   });
 });
