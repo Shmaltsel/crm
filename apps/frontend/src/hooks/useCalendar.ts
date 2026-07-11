@@ -2,11 +2,18 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
 import type { Event, Project } from "../types";
 
-export function useCalendarEvents() {
+export function useCalendarEvents(monthFrom?: string, monthTo?: string) {
   return useQuery<Event[]>({
-    queryKey: ["calendarEvents"],
-    queryFn: () =>
-      api.get<{ data: Event[] }>("/events").then((r) => r.data.data),
+    queryKey: ["calendarEvents", monthFrom, monthTo],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (monthFrom) params.set("dateFrom", monthFrom);
+      if (monthTo) params.set("dateTo", monthTo);
+      const qs = params.toString();
+      return api
+        .get<{ data: Event[] }>(`/events${qs ? `?${qs}` : ""}`)
+        .then((r) => r.data.data);
+    },
     staleTime: 60 * 1000,
   });
 }

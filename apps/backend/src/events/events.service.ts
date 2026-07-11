@@ -60,9 +60,18 @@ export class EventsService {
 
   async findAllForUser(user: JwtUser, query?: EventQueryDto) {
     const isFieldStaff = FIELD_ROLES.includes(user.role);
-    const where = isFieldStaff
+    const where: Record<string, unknown> = isFieldStaff
       ? { crew: { OR: [{ hostId: user.sub }, { driverId: user.sub }] } }
       : {};
+
+    if (query?.dateFrom || query?.dateTo) {
+      where.date = {};
+      if (query.dateFrom)
+        (where.date as Record<string, Date>).gte = new Date(query.dateFrom);
+      if (query.dateTo)
+        (where.date as Record<string, Date>).lte = new Date(query.dateTo);
+    }
+
     const include = {
       school: { select: { id: true, name: true, type: true } },
       city: { select: { id: true, name: true } },

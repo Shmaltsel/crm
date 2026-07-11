@@ -35,7 +35,7 @@ export default function CalendarView() {
   const {
     eventsLoading, projects, cities, allUsers,
     eventsByDate, projectColorMap, projectHexMap,
-  } = useCalendarData(filterCityId);
+  } = useCalendarData(filterCityId, monthFrom, monthTo);
 
   const dayOffCityId = isManagerOrAdmin
     ? filterCityId !== "ALL" ? filterCityId : undefined
