@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
@@ -6,6 +7,7 @@ import { api } from "../../../config/api";
 import type { Project } from "../../../types";
 import { eventSchema, type EventFormValues } from "./EventSchema";
 import { backdropVariants, modalContentVariants } from "../../../lib/motion";
+import { useMobileModalOffsets } from "./useMobileModalOffsets";
 
 interface EventModalProps {
   isOpen: boolean;
@@ -104,7 +106,9 @@ export default function EventModal({
     setValue,
   ]);
 
-  return (
+  const mobileOffsets = useMobileModalOffsets();
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -115,7 +119,13 @@ export default function EventModal({
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="fixed inset-0 bg-backdrop md:backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-backdrop md:backdrop-blur-sm z-[60] flex items-center justify-center"
+          style={{
+            paddingTop: mobileOffsets.paddingTop,
+            paddingBottom: mobileOffsets.paddingBottom,
+            paddingLeft: "1rem",
+            paddingRight: "1rem",
+          }}
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
           <motion.div
@@ -123,7 +133,7 @@ export default function EventModal({
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[92vh] flex flex-col"
+            className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90dvh] flex flex-col"
           >
         <div className="p-5 sm:p-6 border-b border-border flex justify-between bg-surface-muted shrink-0">
           <h3 id={headingId} className="text-xl font-bold text-content-primary">Нова подія</h3>
@@ -133,7 +143,7 @@ export default function EventModal({
         </div>
         <form
           onSubmit={handleSubmit(onSave)}
-          className="p-5 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-4"
+          className="p-5 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-4 pb-safe"
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
@@ -276,6 +286,7 @@ export default function EventModal({
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

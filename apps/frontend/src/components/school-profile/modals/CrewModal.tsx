@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../config/api";
@@ -6,6 +7,7 @@ import type { City, Crew } from "../../../types";
 import { useQuery } from "@tanstack/react-query";
 import { useDaysOff } from "../../../hooks/useDaysOff";
 import { backdropVariants, modalContentVariants } from "../../../lib/motion";
+import { useMobileModalOffsets } from "./useMobileModalOffsets";
 interface CrewModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -58,8 +60,9 @@ export default function CrewModal({
     [dayOffs],
   );
   const [selectedCrewId, setSelectedCrewId] = useState("");
+  const mobileOffsets = useMobileModalOffsets();
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -70,7 +73,13 @@ export default function CrewModal({
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="fixed inset-0 bg-backdrop md:backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-backdrop md:backdrop-blur-sm z-[60] flex items-center justify-center"
+          style={{
+            paddingTop: mobileOffsets.paddingTop,
+            paddingBottom: mobileOffsets.paddingBottom,
+            paddingLeft: "1rem",
+            paddingRight: "1rem",
+          }}
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
           <motion.div
@@ -184,6 +193,7 @@ export default function CrewModal({
         </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

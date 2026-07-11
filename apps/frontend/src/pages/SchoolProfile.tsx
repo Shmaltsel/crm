@@ -26,8 +26,7 @@ import type { ReportData } from "../components/school-profile/modals/ReportModal
 
 import SchoolProfileHeader from "../components/school-profile/SchoolProfileHeader";
 import CompletedEventModal from "../components/school-profile/CompletedEventModal";
-import ProfileTabs from "../components/school-profile/ProfileTabs";
-import TabContentSwitcher from "../components/school-profile/TabContentSwitcher";
+
 import QuickActionsBar from "../components/school-profile/QuickActionsBar";
 import SchoolActionSheet from "../components/school-profile/modals/SchoolActionSheet";
 import FloatingMobileNav from "../components/school-profile/FloatingMobileNav";
@@ -76,14 +75,11 @@ const PIPELINE_STAGES = [
   { id: 7, key: "REPORT", name: "Звіт" },
 ] as const;
 
-type TabKey = "events" | "notes" | "details";
-
 export default function SchoolProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [isLeavingPage, setIsLeavingPage] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabKey>("events");
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
 
   const { data: schoolRaw } = useSchool(id);
@@ -400,15 +396,6 @@ export default function SchoolProfile() {
     transition: { duration: 0.3, delay: 0.1 + i * 0.07, ease: "easeOut" },
   });
 
-  const profileTabs = useMemo(
-    () => [
-      { key: "events" as TabKey, label: "Події" },
-      { key: "notes" as TabKey, label: "Нотатки" },
-      { key: "details" as TabKey, label: "Деталі" },
-    ],
-    [],
-  );
-
   return (
     <motion.div
       animate={{ opacity: isLeavingPage ? 0 : 1 }}
@@ -424,272 +411,245 @@ export default function SchoolProfile() {
 
       <QuickActionsBar completedEvents={completedEvents} />
 
-      <ProfileTabs tabs={profileTabs} active={activeTab} onChange={setActiveTab} />
+      {/* --- Мобільна версія: всі секції одразу --- */}
+      <div className="xl:hidden space-y-6">
 
-      <TabContentSwitcher
-        activeTab={activeTab}
-        onChange={setActiveTab}
-        children={{
-          events: (
-            <>
-              {currentEvent && (
-                <div className="xl:hidden">
+        <section id="section-events" className="scroll-mt-20 space-y-6">
+          {currentEvent && (
+            <Suspense
+              fallback={
+                <div className="bg-surface rounded-card shadow-card h-24 animate-pulse border border-border" />
+              }
+            >
+              <Pipeline
+                currentStageIndex={currentStageIndex}
+                currentEvent={currentEvent}
+                onPipelineClick={handlePipelineClick}
+                stages={PIPELINE_STAGES}
+              />
+            </Suspense>
+          )}
+
+          <AnimatePresence>
+            {currentEvent &&
+              currentStageIndex >= 4 &&
+              exitingEventId !== currentEvent.id && (
+              <motion.div
+                key="preparation"
+                variants={pageVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="grid grid-cols-1 xl:grid-cols-2 gap-6"
+              >
+                {eventFullLoading ? (
+                  <div className="bg-surface p-6 rounded-card shadow-card border border-border animate-pulse h-48" />
+                ) : (
                   <Suspense
                     fallback={
-                      <div className="bg-surface rounded-card shadow-card h-24 animate-pulse border border-border" />
+                      <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
                     }
                   >
-                    <Pipeline
-                      currentStageIndex={currentStageIndex}
-                      currentEvent={currentEvent}
-                      onPipelineClick={handlePipelineClick}
-                      stages={PIPELINE_STAGES}
+                    <EventPreparation
+                      data={currentEvent.preparation || {}}
+                      onUpdate={handleUpdatePreparation}
+                      onOpenCrewModal={() => setIsCrewModalOpen(true)}
+                      project={currentEvent.project}
                     />
                   </Suspense>
-                </div>
-              )}
-
-              <div className="hidden xl:block">
+                )}
                 <Suspense
                   fallback={
-                    <div className="bg-surface rounded-card shadow-card h-24 animate-pulse border border-border" />
+                    <div className="bg-white rounded-2xl h-48 animate-pulse border border-border" />
                   }
                 >
-                  <Pipeline
-                    currentStageIndex={currentStageIndex}
-                    currentEvent={currentEvent}
-                    onPipelineClick={handlePipelineClick}
-                    stages={PIPELINE_STAGES}
-                  />
+                  <AssignedCrew currentEvent={currentEvent} employees={users} />
                 </Suspense>
-              </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-              <AnimatePresence>
-                {currentEvent &&
-                  currentStageIndex >= 4 &&
-                  exitingEventId !== currentEvent.id && (
-                  <motion.div
-                    key="preparation"
-                    variants={pageVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    className="grid grid-cols-1 xl:grid-cols-2 gap-6"
-                  >
-                    {eventFullLoading ? (
-                      <div className="bg-surface p-6 rounded-card shadow-card border border-border animate-pulse h-48" />
-                    ) : (
-                      <Suspense
-                        fallback={
-                          <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
-                        }
-                      >
-                        <EventPreparation
-                          data={currentEvent.preparation || {}}
-                          onUpdate={handleUpdatePreparation}
-                          onOpenCrewModal={() => setIsCrewModalOpen(true)}
-                          project={currentEvent.project}
-                        />
-                      </Suspense>
-                    )}
-                    <Suspense
-                      fallback={
-                        <div className="bg-white rounded-2xl h-48 animate-pulse border border-border" />
-                      }
+          <Suspense
+            fallback={
+              <div className="bg-surface rounded-card shadow-card h-32 animate-pulse border border-border" />
+            }
+          >
+            <EventDetails
+              currentEvent={currentEvent}
+              schoolName={schoolData.name}
+              cityId={schoolData.cityId}
+              onEventUpdated={() =>
+                qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
+              }
+            />
+          </Suspense>
+
+          <Suspense
+            fallback={
+              <div className="bg-surface rounded-card shadow-card h-32 animate-pulse border border-border" />
+            }
+          >
+            <EventsTable
+              events={events}
+              selectedEventId={selectedEventId}
+              onEventSelect={setSelectedEventId}
+              onDeleteSuccess={() =>
+                qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
+              }
+              schoolId={schoolData.id}
+              onAddEvent={openAddEventModal}
+            />
+          </Suspense>
+          {completedEvents.length > 0 && (
+            <motion.div>
+              <div className="bg-surface rounded-card shadow-card border border-border overflow-hidden">
+                <div className="p-6 border-b border-border bg-surface-muted">
+                  <h3 className="font-bold text-content-primary">
+                    Завершені події ({completedEvents.length})
+                  </h3>
+                </div>
+                <div className="md:hidden divide-y divide-border">
+                  {completedEvents.map((ev: Event) => (
+                    <div
+                      key={ev.id}
+                      onClick={() => setSelectedReportEvent(ev)}
+                      className="flex items-center justify-between gap-3 p-4 active:bg-surface-muted cursor-pointer"
                     >
-                      <AssignedCrew currentEvent={currentEvent} employees={users} />
-                    </Suspense>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <Suspense
-                fallback={
-                  <div className="bg-surface rounded-card shadow-card h-32 animate-pulse border border-border" />
-                }
-              >
-                <EventDetails
-                  currentEvent={currentEvent}
-                  schoolName={schoolData.name}
-                  cityId={schoolData.cityId}
-                  onEventUpdated={() =>
-                    qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
-                  }
-                />
-              </Suspense>
-
-              <Suspense
-                fallback={
-                  <div className="bg-surface rounded-card shadow-card h-32 animate-pulse border border-border" />
-                }
-              >
-                <EventsTable
-                  events={events}
-                  selectedEventId={selectedEventId}
-                  onEventSelect={setSelectedEventId}
-                  onDeleteSuccess={() =>
-                    qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
-                  }
-                  schoolId={schoolData.id}
-                  onAddEvent={openAddEventModal}
-                />
-              </Suspense>
-              {completedEvents.length > 0 && (
-                <motion.div>
-                  <div className="bg-surface rounded-card shadow-card border border-border overflow-hidden">
-                    <div className="p-6 border-b border-border bg-surface-muted">
-                      <h3 className="font-bold text-content-primary">
-                        Завершені події ({completedEvents.length})
-                      </h3>
+                      <div className="min-w-0">
+                        <p className="font-medium text-brand truncate">
+                          {ev.project}
+                        </p>
+                        <p className="text-xs text-content-muted mt-0.5">
+                          {new Date(ev.date).toLocaleDateString("uk-UA")}
+                        </p>
+                        <p className="text-xs text-content-secondary mt-1">
+                          👶{" "}
+                          {ev.report?.childrenCount ||
+                            ev.childrenPlanned ||
+                            "—"}{" "}
+                          дітей
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-semibold text-content-primary text-sm">
+                          {new Intl.NumberFormat("uk-UA").format(
+                            Math.round(Number(ev.report?.totalSum || ev.price || 0)),
+                          )}{" "}
+                          грн
+                        </p>
+                        <p className="text-xs font-medium text-success-600 mt-0.5">
+                          +
+                          {new Intl.NumberFormat("uk-UA").format(
+                            Math.round(Number(ev.report?.remainderSum || 0)),
+                          )}{" "}
+                          грн
+                        </p>
+                      </div>
                     </div>
-                    <div className="md:hidden divide-y divide-border">
-                      {completedEvents.map((ev: Event) => (
-                        <div
+                  ))}
+                </div>
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="bg-surface border-b border-border text-content-muted text-xs font-semibold uppercase tracking-wider">
+                        <th className="p-4">Проєкт</th>
+                        <th className="p-4">Дата</th>
+                        <th className="p-4">Дітей</th>
+                        <th className="p-4">Виручка</th>
+                        <th className="p-4">Прибуток</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {completedEvents.map((ev: any) => (
+                        <tr
                           key={ev.id}
                           onClick={() => setSelectedReportEvent(ev)}
-                          className="flex items-center justify-between gap-3 p-4 active:bg-surface-muted cursor-pointer"
+                          className="border-b border-surface-muted hover:bg-surface-muted transition-colors cursor-pointer"
                         >
-                          <div className="min-w-0">
-                            <p className="font-medium text-brand truncate">
-                              {ev.project}
-                            </p>
-                            <p className="text-xs text-content-muted mt-0.5">
-                              {new Date(ev.date).toLocaleDateString("uk-UA")}
-                            </p>
-                            <p className="text-xs text-content-secondary mt-1">
-                              👶{" "}
-                              {ev.report?.childrenCount ||
-                                ev.childrenPlanned ||
-                                "—"}{" "}
-                              дітей
-                            </p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="font-semibold text-content-primary text-sm">
-                              {new Intl.NumberFormat("uk-UA").format(
-                                Math.round(Number(ev.report?.totalSum || ev.price || 0)),
-                              )}{" "}
-                              грн
-                            </p>
-                            <p className="text-xs font-medium text-success-600 mt-0.5">
-                              +
-                              {new Intl.NumberFormat("uk-UA").format(
-                                Math.round(Number(ev.report?.remainderSum || 0)),
-                              )}{" "}
-                              грн
-                            </p>
-                          </div>
-                        </div>
+                          <td className="p-4 text-content-secondary font-medium">
+                            {ev.project}
+                          </td>
+                          <td className="p-4 text-content-muted">
+                            {new Date(ev.date).toLocaleDateString("uk-UA")}
+                          </td>
+                          <td className="p-4 font-medium">
+                            {ev.report?.childrenCount ||
+                              ev.childrenPlanned ||
+                              "—"}
+                          </td>
+                          <td className="p-4 font-medium text-content-primary">
+                            {new Intl.NumberFormat("uk-UA").format(
+                              Math.round(Number(ev.report?.totalSum || ev.price || 0)),
+                            )}{" "}
+                            грн
+                          </td>
+                          <td className="p-4 font-medium text-success-600">
+                            {new Intl.NumberFormat("uk-UA").format(
+                              Math.round(Number(ev.report?.remainderSum || 0)),
+                            )}{" "}
+                            грн
+                          </td>
+                        </tr>
                       ))}
-                    </div>
-                    <div className="hidden md:block overflow-x-auto">
-                      <table className="w-full text-left text-sm">
-                        <thead>
-                          <tr className="bg-surface border-b border-border text-content-muted text-xs font-semibold uppercase tracking-wider">
-                            <th className="p-4">Проєкт</th>
-                            <th className="p-4">Дата</th>
-                            <th className="p-4">Дітей</th>
-                            <th className="p-4">Виручка</th>
-                            <th className="p-4">Прибуток</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {completedEvents.map((ev: any) => (
-                            <tr
-                              key={ev.id}
-                              onClick={() => setSelectedReportEvent(ev)}
-                              className="border-b border-surface-muted hover:bg-surface-muted transition-colors cursor-pointer"
-                            >
-                              <td className="p-4 text-content-secondary font-medium">
-                                {ev.project}
-                              </td>
-                              <td className="p-4 text-content-muted">
-                                {new Date(ev.date).toLocaleDateString("uk-UA")}
-                              </td>
-                              <td className="p-4 font-medium">
-                                {ev.report?.childrenCount ||
-                                  ev.childrenPlanned ||
-                                  "—"}
-                              </td>
-                              <td className="p-4 font-medium text-content-primary">
-                                {new Intl.NumberFormat("uk-UA").format(
-                                  Math.round(Number(ev.report?.totalSum || ev.price || 0)),
-                                )}{" "}
-                                грн
-                              </td>
-                              <td className="p-4 font-medium text-success-600">
-                                {new Intl.NumberFormat("uk-UA").format(
-                                  Math.round(Number(ev.report?.remainderSum || 0)),
-                                )}{" "}
-                                грн
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </>
-          ),
-          notes: (
-            <>
-              {/* HistoryTimeline як акордеон на мобільній версії */}
-              <div className="xl:hidden mb-4">
-                <Suspense
-                  fallback={
-                    <div className="bg-surface rounded-card shadow-card h-24 animate-pulse border border-border" />
-                  }
-                >
-                  <HistoryAccordion
-                    currentEvent={eventFullLoading ? currentEventBase : currentEvent}
-                    onHistoryClick={handleHistoryClick}
-                    onAddCommentClick={handleAddCommentClick}
-                  />
-                </Suspense>
-              </div>
-              <Suspense
-                fallback={
-                  <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
-                }
-              >
-                <CommentsTimeline schoolId={schoolData.id} variant="chat" />
-              </Suspense>
-            </>
-          ),
-          details: (
-            <>
-              <Suspense
-                fallback={
-                  <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
-                }
-              >
-                <SchoolInfoCard schoolData={schoolData} />
-              </Suspense>
-              {schoolData.notes && (
-                <div className="bg-surface rounded-card shadow-card border border-border p-6 mt-4">
-                  <h4 className="font-bold text-content-primary mb-3">Додаткові нотатки</h4>
-                  <p className="text-content-secondary whitespace-pre-wrap">{schoolData.notes}</p>
+                    </tbody>
+                  </table>
                 </div>
-              )}
-              <Suspense
-                fallback={
-                  <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border mt-4" />
-                }
-              >
-                <HistoryTimeline
-                  currentEvent={
-                    eventFullLoading ? currentEventBase : currentEvent
-                  }
-                  onHistoryClick={handleHistoryClick}
-                  onAddCommentClick={handleAddCommentClick}
-                />
-              </Suspense>
-            </>
-          ),
-        }}
-      />
+              </div>
+            </motion.div>
+          )}
+        </section>
+
+        <section id="section-notes" className="scroll-mt-20 space-y-4">
+          <Suspense
+            fallback={
+              <div className="bg-surface rounded-card shadow-card h-24 animate-pulse border border-border" />
+            }
+          >
+            <HistoryAccordion
+              currentEvent={eventFullLoading ? currentEventBase : currentEvent}
+              onHistoryClick={handleHistoryClick}
+              onAddCommentClick={handleAddCommentClick}
+            />
+          </Suspense>
+          <Suspense
+            fallback={
+              <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
+            }
+          >
+            <CommentsTimeline schoolId={schoolData.id} variant="chat" />
+          </Suspense>
+        </section>
+
+        <section id="section-details" className="scroll-mt-20 space-y-4">
+          <Suspense
+            fallback={
+              <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
+            }
+          >
+            <SchoolInfoCard schoolData={schoolData} />
+          </Suspense>
+          {schoolData.notes && (
+            <div className="bg-surface rounded-card shadow-card border border-border p-6">
+              <h4 className="font-bold text-content-primary mb-3">Додаткові нотатки</h4>
+              <p className="text-content-secondary whitespace-pre-wrap">{schoolData.notes}</p>
+            </div>
+          )}
+          <Suspense
+            fallback={
+              <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
+            }
+          >
+            <HistoryTimeline
+              currentEvent={
+                eventFullLoading ? currentEventBase : currentEvent
+              }
+              onHistoryClick={handleHistoryClick}
+              onAddCommentClick={handleAddCommentClick}
+            />
+          </Suspense>
+        </section>
+
+      </div>
 
       {/* Десктопна версія (≥1280px): 2 колонки */}
       <div className="hidden xl:grid xl:grid-cols-2 xl:gap-6">
@@ -986,7 +946,7 @@ export default function SchoolProfile() {
         onClose={() => setSelectedReportEvent(null)}
         event={selectedReportEvent}
       />
-      <FloatingMobileNav activeTab={activeTab} onChange={setActiveTab} />
+      <FloatingMobileNav />
     </motion.div>
   );
 }
