@@ -292,10 +292,50 @@ pnpm --filter backend exec prisma migrate deploy
 ### Тестування
 
 ```bash
-pnpm test:unit          # unit-тести backend + frontend
-pnpm test:e2e            # e2e-тести
-pnpm test:coverage       # покриття коду
+pnpm test:unit          # unit-тести backend + frontend (повний прогін, fallback)
+pnpm test:e2e            # e2e-тести (backend jest + frontend Playwright)
+pnpm test:coverage       # покриття коду з гейтом 70/50/60/70
+pnpm test:smoke          # швидкий димовий набір (*.smoke.*)
+pnpm test:affected       # лише тести, зачеплені змінами (Turbo + --changed)
 ```
+
+#### Testing Strategy (affected-first)
+
+Замість послідовної бісекції (Smoke → Module → File → Unit) використовується
+affected-first підхід: реальний граф залежностей від самих раннерів (Vitest/Jest) +
+кешування Turbo на рівні пакетів. Це швидше (немає латентності між рівнями) і коректніше
+(не забуває спільні файли на кшталт `src/config/api.ts`, `common/` — на відміну від ручного regex-мапінгу).
+
+Рівні перевірки:
+
+| Рівень | Тригер | Команда | Coverage | Шардування |
+|---|---|---|---|---|
+| **smoke** | кожен PR (паралельно з affected, `fail-fast`) | `pnpm test:smoke` | ні | — |
+| **affected** | кожен PR (паралельно з smoke, `fail-fast`) | `turbo run test:affected --filter=...[origin/main]` | ні | — |
+| **full-tests** | лише `main` / `workflow_dispatch` | `pnpm test:coverage` | **так** (гейт 70/50/60/70) | — |
+| **e2e (backend)** | кожен PR | `pnpm --filter backend test:e2e` | ні | — |
+| **e2e (frontend)** | кожен PR, 4 шарди паралельно | `pnpm --filter frontend test:e2e -- --shard=N/4` | ні | так |
+
+- **Smoke** — окрема конвенція файлів `*.smoke.test.tsx` (frontend) та `*.smoke.spec.ts`
+  (backend), без grep за назвами. Покриває ключові flow: Login, Dashboard, Calendar month
+  switch, School create, Day-off (frontend) і health-check, `EventsService`, `FinanceService`
+  (backend).
+- **Affected** — Turbo обирає пакети (`apps/backend`, `apps/frontend`), реально змінені
+  відносно `origin/main`; усередині пакета Vitest (`--changed=origin/main`) та Jest
+  (`--changedSince=origin/main`) запускають лише тести файлів, що транзитивно залежать
+  від зміненого — **включно зі спільними модулями**. Результат кешується за хешем вхідних
+  файлів: якщо нічого не змінилось — `FULL TURBO` (прогін пропускається).
+- **Coverage** — лише на повному прогоні (`main` / manual), бо affected-набір неповний і
+  відсоток був би хибним.
+- **Playwright e2e** — фронтенд-суїт шардиться на 4 паралельні шарди просто в PR (сигнал
+  одразу, а не постфактум). `visual.spec.ts` (Percy) виключено з шардованого прогону —
+  потребує `PERCY_TOKEN`.
+
+Локально: `husky` pre-commit запускає `pnpm test:affected` (тільки зачеплені тести, без
+coverage/smoke). Якщо змінені лише non-код файли — крок миттєво пропускається через Turbo-кеш.
+
+Ризик-орієнтований порядок і позначка `flaky` через `@testomatio/reporter` (вже в
+`devDependencies` backend) — наступна ітерація (пріоритет 5).
 
 ### Структура монорепо
 

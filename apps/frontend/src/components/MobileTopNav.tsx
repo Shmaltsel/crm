@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import { useHoverCapable } from "../lib/motion";
 import { GraduationCap } from "lucide-react";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
@@ -20,6 +21,7 @@ const PAGE_TITLES: Record<string, string> = {
 };
 
 export default function MobileTopNav() {
+  const hoverCapable = useHoverCapable();
   const { selectedCity } = useSelectedCity();
   const { user } = useAuth();
   const location = useLocation();
@@ -36,7 +38,7 @@ export default function MobileTopNav() {
     >
       <div className="flex items-center gap-2 min-w-0">
         <motion.div
-          whileHover={{ rotate: -10 }}
+          whileHover={hoverCapable ? { rotate: -10 } : undefined}
           transition={{ type: "spring", stiffness: 300, damping: 15 }}
         >
           <GraduationCap className="w-5 h-5 text-blue-300 shrink-0" />

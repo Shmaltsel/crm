@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# Affected-first pre-commit: запускаємо лише тести, зачеплені змінами відносно origin/main.
+# Turbo кешує за хешем вхідних файлів — якщо зміни не кодові, крок миттєво пропускається (FULL TURBO).
+pnpm test:affected

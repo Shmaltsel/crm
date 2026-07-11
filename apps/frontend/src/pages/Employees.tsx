@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence, MotionConfig } from "framer-motion";
-import { DUR, skeletonPulse, pageVariants, popInVariants, scaleVariants, cardHoverVariants, TRANSITION } from "../lib/motion";
+import { DUR, skeletonPulse, pageVariants, popInVariants, scaleVariants, cardHoverVariants, TRANSITION, useHoverCapable } from "../lib/motion";
 import { X, Search, UserPlus, Users } from "lucide-react";
 import {
   useUsers,
@@ -116,6 +116,7 @@ function EmployeesSkeleton() {
 }
 
 export default function Employees() {
+  const hoverCapable = useHoverCapable();
   const { data: users = [], isLoading: usersLoading } = useUsers();
   const { data: cities = [] } = useCities();
   const { data: projects = [], isLoading: projectsLoading } = useProjects();
@@ -551,12 +552,12 @@ export default function Employees() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: DUR.moderate, delay: pi * 0.05 }}
                         variants={cardHoverVariants}
-                        whileHover="hover"
-                        className="bg-surface border border-border rounded-card p-5 shadow-soft flex justify-between items-center group cursor-default hover:border-border-strong transition-colors"
+                        whileHover={hoverCapable ? "hover" : undefined}
+                        className="bg-surface border border-border rounded-card p-5 card-shadow hover:card-shadow-hover flex justify-between items-center group cursor-default hover:border-border-strong transition-colors"
                       >
                         <div className="flex items-center gap-3">
                           <motion.div
-                            whileHover={{ scale: 1.15 }}
+                            whileHover={hoverCapable ? { scale: 1.15 } : undefined}
                             transition={TRANSITION.tap}
                             className={`w-10 h-10 rounded-2xl flex items-center justify-center ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm ring-4 ring-offset-1 ring-surface-muted`}
                           >

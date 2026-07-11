@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "concurrently \"pnpm --filter backend start:dev\" \"pnpm --filter frontend dev\"",
     "turbo": "turbo",
+    "prepare": "husky",
     "test": "concurrently --kill-others-on-fail \"pnpm --filter backend test\" \"pnpm --filter frontend test:run\"",
     "test:unit": "concurrently \"pnpm --filter backend test\" \"pnpm --filter frontend test:run\"",
     "test:affected": "turbo run test:affected --filter=...[origin/main]",
@@ -20,6 +21,7 @@
     "@openrouter/ai-sdk-provider": "^3.0.0",
     "concurrently": "^8.2.2",
     "explorbot": "^0.1.31",
+    "husky": "^9.1.7",
     "playwright": "^1.61.1",
     "turbo": "^2.10.4"
   },

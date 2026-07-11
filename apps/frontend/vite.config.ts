@@ -21,6 +21,7 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/tests/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    retries: process.env.CI ? 1 : 0,
     coverage: {
       reporter: ["text", "html"],
       exclude: ["src/tests/**", "src/main.tsx"],

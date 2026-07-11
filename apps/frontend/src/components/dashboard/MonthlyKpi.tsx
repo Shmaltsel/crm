@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { cardHoverVariants, staggerContainer, staggerItem } from '../../lib/motion';
+import { staggerContainer, staggerItem, useHoverCapable } from '../../lib/motion';
 
 function fmt(n: unknown): string {
   return new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
@@ -23,6 +23,7 @@ const UA_MONTHS = [
 ];
 
 export default function MonthlyKpi({ kpi }: Props) {
+  const hoverCapable = useHoverCapable();
   const navigate = useNavigate();
   const now = new Date();
   const monthLabel = UA_MONTHS[now.getMonth()];
@@ -83,7 +84,7 @@ export default function MonthlyKpi({ kpi }: Props) {
           <motion.div
             key={tile.label}
             variants={staggerItem}
-            whileHover="hover"
+            whileHover={hoverCapable ? "hover" : undefined}
             initial="rest"
             className={`rounded-xl p-3 ${tile.bg}`}
           >

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 
 import { api } from "../config/api";
-import { fadeVariants, staggerContainer, staggerItem, TRANSITION } from "../lib/motion";
+import { fadeVariants, staggerContainer, staggerItem, TRANSITION, useHoverCapable } from "../lib/motion";
 
 const CIRCLE_VARIANTS = {
   hidden: { scale: 0, opacity: 1 },
@@ -34,6 +34,7 @@ export default function Login({ onLogin }: LoginProps) {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [shake, setShake] = useState(false);
   const navigate = useNavigate();
+  const hoverCapable = useHoverCapable();
 
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
 
@@ -172,7 +173,7 @@ export default function Login({ onLogin }: LoginProps) {
               <motion.button
                 type="submit"
                 disabled={isLoading}
-                whileHover={{ scale: 1.015 }}
+                whileHover={hoverCapable ? { scale: 1.015 } : undefined}
                 whileTap={{ scale: 0.97 }}
                 transition={TRANSITION.hover}
                 className="mt-2 w-full bg-brand text-white font-medium px-5 py-3 rounded-control hover:bg-brand-hover transition disabled:opacity-80 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[48px]"

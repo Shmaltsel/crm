@@ -175,7 +175,7 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
               🔔
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-slate-800 text-sm">
+                    <p className="font-bold text-content-primary text-sm">
                 {issues.length} активн
                 {issues.length === 1
                   ? "а проблема"
@@ -190,7 +190,7 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
               )}
             </div>
             <button
-              className="text-slate-400 hover:text-slate-600 text-2xl font-light transition-transform duration-300"
+              className="text-content-muted hover:text-content-secondary text-2xl font-light transition-transform duration-300"
               style={{
                 transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
               }}
@@ -215,7 +215,7 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
                         : "opacity-100 scale-100"
                     }`}
                   >
-                    <p className="text-[11px] text-slate-400 mb-1">
+                    <p className="text-[11px] text-content-muted mb-1">
                       {new Date(issue.createdAt).toLocaleDateString("uk-UA", {
                         day: "2-digit",
                         month: "2-digit",
@@ -227,7 +227,7 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
               <p className="font-bold text-content-primary text-sm">
                       {issue.schoolName}
                     </p>
-                    <p className="text-[11px] text-slate-500 mb-3">
+                    <p className="text-[11px] text-content-muted mb-3">
                       {issue.eventName}
                     </p>
 

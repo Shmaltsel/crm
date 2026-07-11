@@ -173,7 +173,7 @@ const CustomTooltip = memo(function CustomTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white/90 backdrop-blur-md border border-border p-4 rounded-2xl shadow-xl text-sm min-w-[160px]">
+    <div className="bg-white/90 md:backdrop-blur-md border border-border p-4 rounded-2xl shadow-xl text-sm min-w-[160px]">
       <p className="font-bold text-content-primary mb-3 border-b border-border pb-2">
         {label}
       </p>

@@ -2,7 +2,7 @@ import { memo } from "react";
 import AddressLink from "../AddressLink";
 import PhoneLink from "../PhoneLink";
 import { motion } from "framer-motion";
-import { cardHoverVariants, DUR } from "../../lib/motion";
+import { cardHoverVariants, DUR, useHoverCapable } from "../../lib/motion";
 import type { SchoolProfileData } from "../../types";
 
 export default memo(function SchoolInfoCard({
@@ -10,12 +10,13 @@ export default memo(function SchoolInfoCard({
 }: {
   schoolData: SchoolProfileData;
 }) {
+  const hoverCapable = useHoverCapable();
   return (
     <motion.div
       variants={cardHoverVariants}
       initial="rest"
-      whileHover="hover"
-      className="bg-surface p-6 rounded-card shadow-card border border-border"
+      whileHover={hoverCapable ? "hover" : undefined}
+      className="bg-surface p-6 rounded-card card-shadow hover:card-shadow-hover border border-border"
     >
       <ul className="space-y-4 text-sm">
         {[

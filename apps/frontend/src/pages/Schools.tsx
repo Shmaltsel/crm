@@ -495,7 +495,7 @@ export default function Schools() {
 
       <AnimatePresence>
         {isModalOpen && (
-          <motion.div variants={backdropVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div variants={backdropVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 bg-neutral-900/40 md:backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <motion.div variants={modalContentVariants} initial="hidden" animate="visible" exit="exit" className="bg-surface rounded-modal shadow-modal w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
               <div className="p-5 border-b border-border flex justify-between items-center bg-surface-muted shrink-0">
                 <h3 className="text-xl font-bold text-content-primary">Нова школа</h3>

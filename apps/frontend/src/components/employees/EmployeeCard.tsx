@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Phone, Mail, MapPin, Eye, Edit3, UserX } from "lucide-react";
 import { Badge } from "../ui/Badge";
 import { cardVariants } from "../../animations/employees";
+import { useHoverCapable } from "../../lib/motion";
 
 type Role = "MANAGER" | "DRIVER" | "HOST" | "SUPERADMIN" | "GUEST";
 
@@ -55,15 +56,18 @@ export default function EmployeeCard({
   onEdit,
   onDelete,
 }: Props) {
+  const hoverCapable = useHoverCapable();
   return (
     <motion.div
       variants={cardVariants}
-      whileHover="hover"
+      whileHover={hoverCapable ? "hover" : undefined}
       whileTap={{ scale: 0.98 }}
       layoutId={`user-${user.id}`}
+      layout="position"
       role="article"
       aria-label={`${user.name}, ${ROLE_LABELS[role] ?? role}`}
       className="group relative bg-surface rounded-card shadow-card border border-border p-5 transition-shadow duration-200 hover:shadow-card-hover"
+      transition={{ duration: 0.15, ease: "easeOut" }}
     >
       <div className="flex items-start gap-4">
         <div className="relative shrink-0">

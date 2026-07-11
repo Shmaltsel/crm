@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { cardHoverVariants, DUR, EASE } from "../../lib/motion";
+import { cardHoverVariants, DUR, EASE, useHoverCapable } from "../../lib/motion";
 import type { Event, EventHistory } from "../../types";
 interface HistoryTimelineProps {
   currentEvent: Event | null;
@@ -9,12 +9,13 @@ interface HistoryTimelineProps {
 }
 
 export default memo(function HistoryTimeline({ currentEvent, onHistoryClick, onAddCommentClick }: HistoryTimelineProps) {
+  const hoverCapable = useHoverCapable();
   return (
     <motion.div
       variants={cardHoverVariants}
       initial="rest"
-      whileHover="hover"
-      className="bg-surface p-6 rounded-card shadow-card border border-border flex flex-col"
+      whileHover={hoverCapable ? "hover" : undefined}
+      className="bg-surface p-6 rounded-card card-shadow hover:card-shadow-hover border border-border flex flex-col"
     >
       <div className="flex justify-between items-center mb-5">
         <h3 className="font-bold text-content-primary">Історія взаємодії</h3>

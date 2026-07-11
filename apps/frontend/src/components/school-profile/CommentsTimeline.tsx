@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -6,7 +6,7 @@ import {
   useCreateSchoolComment,
   useDeleteSchoolComment,
 } from "../../hooks/useSchoolComments";
-import { cardHoverVariants, DUR, EASE } from "../../lib/motion";
+import { cardHoverVariants, DUR, EASE, useHoverCapable, emptyStateVariants } from "../../lib/motion";
 import type { CommentType, UserRole } from "../../types";
 
 const COMMENT_TYPES: { key: CommentType; label: string; icon: string }[] = [
@@ -25,12 +25,19 @@ const TYPE_ICONS: Record<CommentType, string> = {
   PROBLEM: "⚠️",
 };
 
-export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
+interface CommentsTimelineProps {
+  schoolId: string;
+  variant?: "card" | "chat";
+}
+
+export default function CommentsTimeline({ schoolId, variant = "card" }: CommentsTimelineProps) {
+  const hoverCapable = useHoverCapable();
   const { user } = useAuth();
   const [filter, setFilter] = useState<CommentType | undefined>(undefined);
   const [newType, setNewType] = useState<CommentType>("NOTE");
   const [newText, setNewText] = useState("");
   const [page, setPage] = useState(1);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const { data, isLoading } = useSchoolComments(schoolId, filter, page);
   const createMutation = useCreateSchoolComment();
@@ -41,12 +48,25 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
     userRole === "MANAGER" || userRole === "SUPERADMIN" || userRole === "OWNER";
   const canDelete = userRole === "SUPERADMIN" || userRole === "OWNER";
 
+  const isChat = variant === "chat";
+
+  useEffect(() => {
+    if (isChat && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [isChat]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newText.trim()) return;
     createMutation.mutate(
       { schoolId, type: newType, text: newText.trim() },
-      { onSuccess: () => { setNewText(""); setPage(1); } },
+      {
+        onSuccess: () => {
+          setNewText("");
+          setPage(1);
+        },
+      },
     );
   };
 
@@ -56,12 +76,119 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
       hour: "2-digit", minute: "2-digit",
     });
 
+  if (isChat) {
+    return (
+      <motion.div
+        variants={emptyStateVariants}
+        initial="hidden"
+        animate="visible"
+        className="flex flex-col h-full min-h-[calc(100vh-200px)] bg-surface rounded-card border border-border overflow-hidden"
+      >
+        <div className="p-4 border-b border-border bg-surface-muted flex-shrink-0">
+          <h3 className="font-bold text-content-primary flex items-center gap-2">
+            <span className="w-8 h-8 rounded-full bg-brand-subtle text-brand flex items-center justify-center">
+              💬
+            </span>
+            Нотатки
+          </h3>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 flex-col-reverse">
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="animate-pulse h-20 bg-surface-muted rounded-card" />
+              ))}
+            </div>
+          ) : !data || data.items.length === 0 ? (
+            <motion.div
+              variants={emptyStateVariants}
+              initial="hidden"
+              animate="visible"
+              className="flex flex-col items-center justify-center text-center py-12 px-4 text-content-muted"
+            >
+              <p className="text-sm mb-2">Ще немає записів.</p>
+              <p className="text-xs">Додайте перший запис нижче</p>
+            </motion.div>
+          ) : (
+            <AnimatePresence initial={false}>
+              {data.items
+                .slice()
+                .reverse()
+                .map((item, i) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: DUR.normal, ease: EASE.outExpo, delay: i * 0.04 }}
+                    className="flex gap-3 max-w-[85%] self-start"
+                  >
+                    <div className="w-7 h-7 rounded-full bg-brand-subtle text-brand flex items-center justify-center text-xs shrink-0 mt-0.5">
+                      {item.author.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="bg-surface p-3 rounded-2xl border border-border shadow-sm">
+                      <p className="text-xs text-content-muted mb-1 flex items-center gap-1">
+                        <span>{TYPE_ICONS[item.type]}</span>
+                        <span className="font-medium">{item.author.name}</span>
+                        <span>({item.author.role})</span>
+                        <span>·</span>
+                        <span>{formatDate(item.createdAt)}</span>
+                      </p>
+                      <p className="text-content-secondary">{item.text}</p>
+                    </div>
+                  </motion.div>
+                ))}
+            </AnimatePresence>
+          )}
+        </div>
+
+        {canWrite && (
+          <form
+            onSubmit={handleSubmit}
+            className="p-4 border-t border-border bg-surface sticky bottom-0 flex-shrink-0"
+            style={{ paddingBottom: "calc(16px + env(safe-area-inset-bottom))" }}
+          >
+            <div className="flex gap-2">
+              <select
+                value={newType}
+                onChange={(e) => setNewType(e.target.value as CommentType)}
+                className="text-sm border border-border-strong rounded-control px-3 py-2 bg-surface focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand-300 w-32 shrink-0"
+              >
+                {COMMENT_TYPES.map((ct) => (
+                  <option key={ct.key} value={ct.key}>
+                    {ct.icon} {ct.label}
+                  </option>
+                ))}
+              </select>
+              <textarea
+                ref={textareaRef}
+                value={newText}
+                onChange={(e) => setNewText(e.target.value)}
+                placeholder="Текст нотатки..."
+                rows={1}
+                className="flex-1 text-sm border border-border-strong rounded-control px-3 py-2 bg-surface focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand-300 resize-none min-h-[44px]"
+              />
+              <button
+                type="submit"
+                disabled={!newText.trim() || createMutation.isPending}
+                className="text-xs font-bold text-white bg-brand hover:bg-brand-hover disabled:bg-neutral-300 px-4 py-2.5 rounded-control transition-colors shadow-sm shrink-0"
+              >
+                {createMutation.isPending ? "..." : "Надіслати"}
+              </button>
+            </div>
+          </form>
+        )}
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       variants={cardHoverVariants}
       initial="rest"
-      whileHover="hover"
-      className="bg-surface p-6 rounded-card shadow-card border border-border flex flex-col"
+      whileHover={hoverCapable ? "hover" : undefined}
+      className="bg-surface p-6 rounded-card card-shadow hover:card-shadow-hover border border-border flex flex-col"
     >
       <h3 className="font-bold text-content-primary mb-5 flex items-center gap-2">
         <span className="w-8 h-8 rounded-full bg-warning-subtle text-warning-600 flex items-center justify-center">

@@ -27,6 +27,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
   };
 
   render() {
+    const hoverCapable = typeof window !== "undefined" && (window.matchMedia?.("(hover: hover) and (pointer: fine)").matches ?? false);
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
@@ -51,7 +52,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
               проблема повториться, зверніться до адміністратора.
             </p>
             <motion.button
-              whileHover={{ scale: 1.03 }}
+              whileHover={hoverCapable ? { scale: 1.03 } : undefined}
               whileTap={{ scale: 0.97 }}
               transition={TRANSITION.hover}
               onClick={this.handleReload}

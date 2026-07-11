@@ -483,7 +483,7 @@ export default function Kindergartens() {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-neutral-900/40 md:backdrop-blur-sm z-50 flex items-center justify-center p-4"
           >
             <motion.div
               key="modal-content"

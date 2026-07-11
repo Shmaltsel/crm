@@ -100,7 +100,7 @@ export default function OverviewTab() {
 
   return (
     <div className="min-h-0">
-      <div className="bg-white/80 backdrop-blur-md border-b border-border px-4 md:px-8 py-3">
+      <div className="bg-white/80 md:backdrop-blur-md border-b border-border px-4 md:px-8 py-3">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-base font-bold text-content-primary">

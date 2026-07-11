@@ -3,7 +3,7 @@ import { Bell } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useNotifications, useUnreadCount, useMarkRead, useMarkAllRead } from "../hooks/useNotifications";
-import { tooltipVariants, bellRingVariants, staggerContainer, staggerItem, SPRING, DUR, EASE } from "../lib/motion";
+import { tooltipVariants, bellRingVariants, staggerContainer, staggerItem, SPRING, DUR, EASE, useHoverCapable } from "../lib/motion";
 
 const TYPE_ICONS: Record<string, string> = {
   EVENT_RESCHEDULED: "📅",
@@ -33,6 +33,7 @@ function timeAgo(dateStr: string) {
 }
 
 export default function NotificationBell() {
+  const hoverCapable = useHoverCapable();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -111,7 +112,7 @@ export default function NotificationBell() {
                       <motion.button
                         key={n.id}
                         variants={staggerItem}
-                        whileHover={{ backgroundColor: "rgba(30,41,59,0.5)", y: -1 }}
+                        whileHover={hoverCapable ? { backgroundColor: "rgba(30,41,59,0.5)", y: -1 } : undefined}
                         transition={{ duration: DUR.fast, ease: EASE.standard }}
                         onClick={() => {
                           if (!n.readAt) markRead.mutate(n.id);

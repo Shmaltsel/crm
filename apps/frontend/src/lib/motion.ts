@@ -20,6 +20,24 @@ function getStoredReducedMotion(): boolean | null {
   return null;
 }
 
+/** React hook: returns true when the device is hover-capable (fine pointer). */
+export function useHoverCapable(): boolean {
+  const [capable, setCapable] = useState<boolean>(() =>
+    typeof window !== "undefined" &&
+    (window.matchMedia?.("(hover: hover) and (pointer: fine)").matches ?? false),
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia?.("(hover: hover) and (pointer: fine)");
+    if (!mq) return;
+    const handler = () => setCapable(mq.matches);
+    mq.addEventListener?.("change", handler);
+    return () => mq.removeEventListener?.("change", handler);
+  }, []);
+
+  return capable;
+}
+
 /** React hook: returns true if user prefers reduced motion. */
 export function useReducedMotion(): boolean {
   const [reduced, setReduced] = useState<boolean>(() => {
@@ -40,11 +58,29 @@ export function useReducedMotion(): boolean {
   return reduced;
 }
 
+/** React hook: true when reduced-motion is preferred OR the viewport is mobile (<768px). */
+export function useLightMotion(): boolean {
+  const reduced = useReducedMotion();
+  const [mobile, setMobile] = useState<boolean>(() =>
+    typeof window !== "undefined" && window.matchMedia?.("(max-width: 767px)").matches,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia?.("(max-width: 767px)");
+    if (!mq) return;
+    const handler = () => setMobile(mq.matches);
+    mq.addEventListener?.("change", handler);
+    return () => mq.removeEventListener?.("change", handler);
+  }, []);
+
+  return reduced || mobile;
+}
+
 /** React hook: staggered entrance for list items. */
 export function useStaggeredEntrance(
   opts?: { delayChildren?: number; stagger?: number },
 ) {
-  const reduced = useReducedMotion();
+  const reduced = useLightMotion();
   const { delayChildren = 0.04, stagger = 0.045 } = opts ?? {};
 
   return useMemo(
@@ -144,7 +180,7 @@ export const TRANSITION = {
   slideUp: { duration: DUR.moderate, ease: EASE.outExpo },
   slideDown: { duration: DUR.moderate, ease: EASE.outExpo },
   scale: { duration: DUR.normal, ease: EASE.outExpo },
-  layout: { type: "spring" as const, stiffness: 400, damping: 30 },
+  layout: { duration: DUR.fast, ease: EASE.standard },
 } as const;
 
 /* ─── Variant Presets ─── */
@@ -170,21 +206,21 @@ export const popInVariants: Variants = {
   exit: { opacity: 0, scale: 0.6, transition: { duration: DUR.fast, ease: EASE.accelerate } },
 };
 
-/** Card elevation hover (translate-y + shadow). */
+/** Card elevation hover (translate-y only — shadow handled via CSS class). */
 export const cardHoverVariants: Variants = {
-  rest: { y: 0, boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05)" },
+  rest: { y: 0, opacity: 1 },
   hover: {
     y: -4,
-    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08)",
+    opacity: 1,
     transition: { duration: DUR.normal, ease: EASE.standard },
   },
 };
 
-/** Page / route transitions (used with AnimatePresence mode="wait"). */
+/** Page / route transitions (opacity only — used with AnimatePresence mode="wait"). */
 export const pageVariants: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: { opacity: 1, y: 0, transition: { duration: DUR.page, ease: EASE.outExpo, delay: 0.03 } },
-  exit: { opacity: 0, y: -4, transition: { duration: DUR.fast, ease: EASE.accelerate } },
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: DUR.page, ease: EASE.outExpo, delay: 0.03 } },
+  exit: { opacity: 0, transition: { duration: DUR.fast, ease: EASE.accelerate } },
 };
 
 /** Simple fade transition. */

@@ -60,8 +60,9 @@ export default function Finance({ isPeek }: { isPeek?: boolean }) {
                 {activeTab === t.key && (
                   <motion.div
                     layoutId="finance-tab-indicator"
+                    layout="position"
                     className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand"
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
                   />
                 )}
               </button>

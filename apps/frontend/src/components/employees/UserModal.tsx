@@ -85,7 +85,7 @@ export default function UserModal({
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="fixed inset-0 bg-backdrop backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-backdrop md:backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={onClose}
         >
           <motion.div
@@ -117,11 +117,11 @@ export default function UserModal({
               )}
             </AnimatePresence>
 
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+            <div className="p-5 border-b border-border flex justify-between items-center bg-surface-muted shrink-0">
               <h3 className="text-xl font-bold">
                 {isEditing ? "Редагувати" : "Новий користувач"}
               </h3>
-              <button onClick={onClose} className="text-slate-400 text-xl p-2 -mr-2 active:scale-90 transition-transform duration-fast">
+              <button onClick={onClose} className="text-content-muted text-xl p-2 -mr-2 active:scale-90 transition-transform duration-fast">
                 ✕
               </button>
             </div>
@@ -268,7 +268,7 @@ export default function UserModal({
                   type="button"
                   onClick={onClose}
                   disabled={isSubmitting}
-                  className="flex-1 bg-slate-100 py-3 rounded-xl font-medium disabled:opacity-50 active:scale-[0.97] transition-transform duration-fast"
+                  className="flex-1 bg-surface-muted py-3 rounded-xl font-medium disabled:opacity-50 active:scale-[0.97] transition-transform duration-fast"
                 >
                   Скасувати
                 </button>

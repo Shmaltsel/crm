@@ -4,7 +4,7 @@ import AddressLink from "../AddressLink";
 import PhoneLink from "../PhoneLink";
 import IssueModal from "./modals/IssueModal";
 import RescheduleModal from "./modals/RescheduleModal";
-import { fadeVariants, cardHoverVariants } from "../../lib/motion";
+import { fadeVariants, cardHoverVariants, useHoverCapable } from "../../lib/motion";
 import type { Event, User } from '../../types';
 
 interface EventDetailsProps {
@@ -16,6 +16,7 @@ interface EventDetailsProps {
 }
 
 export default function EventDetails({ currentEvent, schoolName, cityId, onEventUpdated, employees }: EventDetailsProps) {
+  const hoverCapable = useHoverCapable();
   const [issueOpen, setIssueOpen] = useState(false);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
 
@@ -39,8 +40,8 @@ export default function EventDetails({ currentEvent, schoolName, cityId, onEvent
       <motion.div
         variants={cardHoverVariants}
         initial="rest"
-        whileHover="hover"
-        className="bg-surface rounded-card shadow-card border border-border md:border-l-4 md:border-l-brand relative"
+        whileHover={hoverCapable ? "hover" : undefined}
+        className="bg-surface rounded-card card-shadow hover:card-shadow-hover border border-border md:border-l-4 md:border-l-brand relative"
       >
         <div className="p-5 sm:p-6 pl-6 sm:pl-6">
           <div className="flex justify-between items-center mb-2 md:mb-5 md:border-b border-border md:pb-4">

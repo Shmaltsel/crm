@@ -1,66 +1,30 @@
 [
   {
     "path": "apps/backend/eslint-errors.txt",
-    "reason": "filtered"
+    "reason": "filtered extension/ignored file"
   },
   {
     "path": "apps/backend/eslint.config.mjs",
-    "reason": "filtered"
+    "reason": "filtered extension/ignored file"
   },
   {
     "path": "apps/backend/prisma/dev.db",
-    "reason": "filtered"
+    "reason": "filtered extension/ignored file"
   },
   {
     "path": "apps/backend/prisma/migrations/migration_lock.toml",
-    "reason": "filtered"
+    "reason": "filtered extension/ignored file"
   },
   {
     "path": "apps/backend/src/tests",
-    "reason": "filtered"
+    "reason": "filtered extension/ignored file"
   },
   {
     "path": "apps/backend/ts-errors.txt",
-    "reason": "filtered"
-  },
-  {
-    "path": "apps/Dockerfile",
-    "reason": "filtered"
-  },
-  {
-    "path": "apps/frontend/index.html",
-    "reason": "filtered"
+    "reason": "filtered extension/ignored file"
   },
   {
     "path": "apps/frontend/lighthouserc.cjs",
-    "reason": "filtered"
-  },
-  {
-    "path": "apps/frontend/public/favicon.svg",
-    "reason": "filtered"
-  },
-  {
-    "path": "apps/frontend/public/icons.svg",
-    "reason": "filtered"
-  },
-  {
-    "path": "apps/frontend/public/robots.txt",
-    "reason": "filtered"
-  },
-  {
-    "path": "apps/frontend/src/assets/hero.png",
-    "reason": "filtered"
-  },
-  {
-    "path": "apps/frontend/src/assets/react.svg",
-    "reason": "filtered"
-  },
-  {
-    "path": "apps/frontend/src/assets/vite.svg",
-    "reason": "filtered"
-  },
-  {
-    "path": "apps/frontend/src/index.css",
-    "reason": "filtered"
+    "reason": "filtered extension/ignored file"
   }
 ]

@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import PhoneLink from '../PhoneLink';
 import { motion } from "framer-motion";
-import { cardHoverVariants } from "../../lib/motion";
+import { cardHoverVariants, useHoverCapable } from "../../lib/motion";
 import type { Event, User } from '../../types';
 
 interface AssignedCrewProps {
@@ -10,6 +10,7 @@ interface AssignedCrewProps {
 }
 
 export default memo(function AssignedCrew({ currentEvent, employees }: AssignedCrewProps) {
+  const hoverCapable = useHoverCapable();
   const crew = currentEvent?.crew;
 
   if (!crew) {
@@ -17,8 +18,8 @@ export default memo(function AssignedCrew({ currentEvent, employees }: AssignedC
 <motion.div
       variants={cardHoverVariants}
       initial="rest"
-      whileHover="hover"
-      className="bg-surface p-6 rounded-card shadow-card border border-border flex flex-col justify-center items-center h-full text-content-muted min-h-[250px]"
+      whileHover={hoverCapable ? "hover" : undefined}
+      className="bg-surface p-6 rounded-card card-shadow hover:card-shadow-hover border border-border flex flex-col justify-center items-center h-full text-content-muted min-h-[250px]"
     >        <span className="text-4xl mb-3 opacity-50">🚐</span>
         <p className="font-medium">Екіпаж ще не призначено</p>
         <p className="text-xs mt-1">Виконайте пункт "Призначити екіпаж" зліва</p>
@@ -33,8 +34,8 @@ export default memo(function AssignedCrew({ currentEvent, employees }: AssignedC
     <motion.div
       variants={cardHoverVariants}
       initial="rest"
-      whileHover="hover"
-      className="bg-surface p-6 rounded-card shadow-card border border-border h-full flex flex-col"
+      whileHover={hoverCapable ? "hover" : undefined}
+      className="bg-surface p-6 rounded-card card-shadow hover:card-shadow-hover border border-border h-full flex flex-col"
     >
       <h3 className="font-bold text-content-primary mb-4 border-b pb-3 border-border">Призначений екіпаж</h3>
       <div className="space-y-4 text-sm flex-1">

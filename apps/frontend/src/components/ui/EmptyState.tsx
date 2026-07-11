@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
-import { emptyStateVariants, TRANSITION } from "../../lib/motion";
+import { emptyStateVariants, TRANSITION, useHoverCapable } from "../../lib/motion";
 
 interface EmptyStateProps {
   icon?: LucideIcon;
@@ -11,6 +11,7 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ icon: Icon, title, description, action }: EmptyStateProps) {
+  const hoverCapable = useHoverCapable();
   return (
     <motion.div
       variants={emptyStateVariants}
@@ -32,7 +33,7 @@ export function EmptyState({ icon: Icon, title, description, action }: EmptyStat
         <p className="text-sm text-content-muted max-w-xs mb-4">{description}</p>
       )}
       {action && (
-        <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} transition={TRANSITION.hover}>
+        <motion.div whileHover={hoverCapable ? { scale: 1.03 } : undefined} whileTap={{ scale: 0.97 }} transition={TRANSITION.hover}>
           {action}
         </motion.div>
       )}
