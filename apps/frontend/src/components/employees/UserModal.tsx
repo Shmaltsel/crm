@@ -85,7 +85,7 @@ export default function UserModal({
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-backdrop backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={onClose}
         >
           <motion.div
@@ -112,7 +112,7 @@ export default function UserModal({
                   >
                     ✓
                   </motion.div>
-                  <p className="text-slate-600 font-medium">Збережено</p>
+                  <p className="text-content-secondary font-medium">Збережено</p>
                 </motion.div>
               )}
             </AnimatePresence>

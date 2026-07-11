@@ -184,7 +184,7 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
                     : "их проблем"}
               </p>
               {!isExpanded && (
-                <p className="text-xs text-slate-600 truncate mt-0.5">
+                <p className="text-xs text-content-secondary truncate mt-0.5">
                   {issues[0]?.schoolName}
                 </p>
               )}
@@ -224,7 +224,7 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
                         minute: "2-digit",
                       })}
                     </p>
-                    <p className="font-bold text-slate-800 text-sm">
+              <p className="font-bold text-content-primary text-sm">
                       {issue.schoolName}
                     </p>
                     <p className="text-[11px] text-slate-500 mb-3">

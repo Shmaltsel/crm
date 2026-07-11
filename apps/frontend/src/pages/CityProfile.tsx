@@ -769,7 +769,7 @@ function CompletedEventModal({
                     Історія порожня.
                   </p>
                 ) : (
-                  <div className="space-y-4 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-slate-100">
+                  <div className="space-y-4 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-surface-muted">
                     {[...event.history]
                       .sort(
                         (a, b) =>

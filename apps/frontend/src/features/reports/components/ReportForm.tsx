@@ -113,9 +113,9 @@ function TogglePill({ value, onChange, disabled }: { value: boolean; onChange: (
   return (
     <div className="flex gap-1.5">
       <button type="button" disabled={disabled} onClick={() => onChange(true)}
-        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${value ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400 hover:bg-surface-muted"} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>Так</button>
+        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${value ? "bg-emerald-100 text-emerald-700" : "bg-surface-muted text-slate-400 hover:bg-surface-muted"} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>Так</button>
       <button type="button" disabled={disabled} onClick={() => onChange(false)}
-        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${!value ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-400 hover:bg-surface-muted"} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>Ні</button>
+        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${!value ? "bg-rose-100 text-rose-600" : "bg-surface-muted text-slate-400 hover:bg-surface-muted"} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>Ні</button>
     </div>
   );
 }
@@ -394,9 +394,9 @@ export default function ReportForm({
           <motion.div variants={modalContentVariants} initial="hidden" animate="visible" exit="exit"
             className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden pb-safe"
             style={{ willChange: "transform" }}>
-            <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+            <div className="sm:hidden w-10 h-1.5 bg-border-strong rounded-full mx-auto mt-3" />
 
-            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 bg-slate-50 flex items-start justify-between shrink-0">
+            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 bg-surface-muted flex items-start justify-between shrink-0">
               <div className="min-w-0">
                 <h3 id={headingId} className="text-lg sm:text-xl font-bold text-slate-800 leading-tight">
                   Звіт по події
@@ -417,7 +417,7 @@ export default function ReportForm({
               </div>
             </div>
 
-            <div className="p-4 sm:p-6 overflow-y-auto bg-slate-50/50">
+            <div className="p-4 sm:p-6 overflow-y-auto bg-surface-muted/50">
               {report?.revisionComment && (
                 <div className="mb-4 p-3 bg-rose-50 border border-rose-100 rounded-xl text-sm text-rose-700">
                   <p className="font-semibold mb-1">Коментар менеджера:</p>
@@ -495,7 +495,7 @@ export default function ReportForm({
                     {expenses.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mb-2">
                         {expenses.map((exp, i) => (
-                          <span key={i} className="inline-flex items-center gap-1.5 bg-slate-100 rounded-full pl-3 pr-1.5 py-1 text-xs">
+                          <span key={i} className="inline-flex items-center gap-1.5 bg-surface-muted rounded-full pl-3 pr-1.5 py-1 text-xs">
                             <span className="text-slate-600">{exp.name}</span>
                             <span className="font-semibold text-slate-700">{formatMoney(exp.amount)} грн</span>
                             {isEditable && (
@@ -514,7 +514,7 @@ export default function ReportForm({
                           onChange={(e) => setNewExp({ ...newExp, amount: e.target.value })}
                           className="w-20 sm:w-24 p-2 border border-slate-200 rounded-lg text-base focus:ring-2 focus:ring-blue-500 outline-none" />
                         <button onClick={addExpense} type="button"
-                          className="px-3 shrink-0 rounded-lg bg-slate-100 text-slate-600 hover:bg-surface-muted font-medium text-sm">+</button>
+                          className="px-3 shrink-0 rounded-lg bg-surface-muted text-slate-600 hover:bg-surface-muted font-medium text-sm">+</button>
                       </div>
                     )}
                   </div>
@@ -609,7 +609,7 @@ export default function ReportForm({
 
             <div className="flex gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-white shrink-0">
               <button onClick={onClose}
-                className="flex-1 text-slate-600 bg-slate-100 hover:bg-surface-muted rounded-xl font-medium py-3 active:scale-[0.97] transition-transform duration-fast">
+                className="flex-1 text-slate-600 bg-surface-muted hover:bg-surface-muted rounded-xl font-medium py-3 active:scale-[0.97] transition-transform duration-fast">
                 {isEditable ? "Скасувати" : "Закрити"}
               </button>
               {isEditable && (

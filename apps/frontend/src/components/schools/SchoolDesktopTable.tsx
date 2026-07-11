@@ -138,7 +138,7 @@ export default function SchoolDesktopTable({
             variants={fadeVariants}
             initial="hidden"
             animate="visible"
-            className="text-center py-16 text-slate-400 text-sm font-medium"
+            className="text-center py-16 text-content-muted text-sm font-medium"
           >
             {searchQuery
               ? `Нічого не знайдено за «${searchQuery}»`
