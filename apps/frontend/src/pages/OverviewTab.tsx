@@ -154,35 +154,37 @@ export default function OverviewTab() {
                   ))}
             </motion.div>
 
-            {/* Потребують уваги (StaleSchools) */}
-            <StaleSchools schools={summary?.staleSchools ?? []} />
+            <div className="lg:grid lg:grid-cols-2 lg:gap-6">
+              {/* Ліва колонка */}
+              <div className="space-y-6 mb-6 lg:mb-0">
+                <StaleSchools schools={summary?.staleSchools ?? []} loading={!summary} />
+                <EventsWidget 
+                  todayEvents={summary?.todayEvents ?? []} 
+                  upcomingEvents={summary?.upcomingEvents ?? []} 
+                />
+              </div>
 
-            {/* Події (EventsWidget - сьогодні + найближчі) */}
-            <EventsWidget 
-              todayEvents={summary?.todayEvents ?? []} 
-              upcomingEvents={summary?.upcomingEvents ?? []} 
-            />
+              {/* Права колонка */}
+              <div className="space-y-6">
+                <CollapsibleSection
+                  title="Воронка"
+                  subtitle={summary?.funnel ? `${summary.funnel.BASE ?? 0} шкіл · ${summary.funnel.DONE ?? 0} проведено` : undefined}
+                >
+                  <FunnelBar funnel={summary?.funnel ?? {}} />
+                </CollapsibleSection>
 
-            {/* Воронка (згорнута) */}
-            <CollapsibleSection
-              title="Воронка"
-              subtitle={summary?.funnel ? `${summary.funnel.BASE ?? 0} шкіл · ${summary.funnel.DONE ?? 0} проведено` : undefined}
-            >
-              <FunnelBar funnel={summary?.funnel ?? {}} />
-            </CollapsibleSection>
+                {showCitiesTable && summary?.citiesStats && (
+                  <CollapsibleSection
+                    title="По містах"
+                    subtitle={`${summary.citiesStats.length} міст`}
+                  >
+                    <CitiesTable rows={summary.citiesStats} />
+                  </CollapsibleSection>
+                )}
 
-            {/* По містах (умовно, тільки для SUPERADMIN/OWNER без вибраного міста) */}
-            {showCitiesTable && summary?.citiesStats && (
-              <CollapsibleSection
-                title="По містах"
-                subtitle={`${summary.citiesStats.length} міст`}
-              >
-                <CitiesTable rows={summary.citiesStats} />
-              </CollapsibleSection>
-            )}
-
-            {/* Активність команди */}
-            <ActivityFeed items={summary?.activityFeed ?? []} />
+                <ActivityFeed items={summary?.activityFeed ?? []} />
+              </div>
+            </div>
           </>
         )}
       </div>

@@ -29,7 +29,7 @@ export default function FunnelBar({ funnel }: Props) {
         Воронка роботи зі школами
       </p>
 
-      <div className="bg-white rounded-2xl border border-border shadow-sm p-4">
+      <div className="mobile-card">
 
         {/* Прогрес по місту */}
         <div className="mb-4">

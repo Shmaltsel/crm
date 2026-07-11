@@ -1,3 +1,4 @@
+// deprecated: замінено на EventsWidget, див. EventsWidget.tsx
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { staggerContainer, staggerItem, emptyStateVariants } from "../../lib/motion";

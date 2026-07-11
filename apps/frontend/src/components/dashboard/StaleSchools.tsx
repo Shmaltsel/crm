@@ -74,11 +74,12 @@ interface StaleSchool {
 
 interface Props {
   schools: StaleSchool[];
+  loading?: boolean;
 }
 
 const COLLAPSED_COUNT = 3;
 
-export default function StaleSchools({ schools }: Props) {
+export default function StaleSchools({ schools, loading }: Props) {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
 
@@ -116,7 +117,21 @@ export default function StaleSchools({ schools }: Props) {
         </button>
       </div>
 
-      {schools.length === 0 ? (
+      {loading ? (
+        <div className="animate-pulse space-y-3 py-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-border-strong" />
+              <div className="flex-1 space-y-1.5">
+                <div className="h-3 bg-neutral-100 rounded w-2/3" />
+                <div className="h-2 bg-neutral-100 rounded w-1/3" />
+                <div className="h-1 bg-neutral-100 rounded w-full" />
+              </div>
+              <div className="h-5 bg-neutral-100 rounded-full w-12" />
+            </div>
+          ))}
+        </div>
+      ) : schools.length === 0 ? (
         <motion.div variants={emptyStateVariants} initial="hidden" animate="visible" className="py-6 text-center">
           <p className="text-2xl mb-1">✅</p>
           <p className="text-sm text-content-muted">Усі школи в тонусі 🎉</p>

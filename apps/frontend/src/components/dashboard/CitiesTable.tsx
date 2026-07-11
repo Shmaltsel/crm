@@ -38,7 +38,7 @@ export default function CitiesTable({ rows }: Props) {
   );
 
   return (
-    <div className="bg-white rounded-2xl border border-border shadow-sm p-4">
+    <div className="mobile-card">
       <div className="flex justify-between items-center mb-3">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 rounded-md bg-purple-50 flex items-center justify-center">
