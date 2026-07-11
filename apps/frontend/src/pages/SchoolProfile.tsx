@@ -30,6 +30,7 @@ import ProfileTabs from "../components/school-profile/ProfileTabs";
 import TabContentSwitcher from "../components/school-profile/TabContentSwitcher";
 import QuickActionsBar from "../components/school-profile/QuickActionsBar";
 import SchoolActionSheet from "../components/school-profile/modals/SchoolActionSheet";
+import FloatingMobileNav from "../components/school-profile/FloatingMobileNav";
 
 const Pipeline = lazy(() => import("../components/school-profile/Pipeline"));
 const HistoryTimeline = lazy(
@@ -37,6 +38,9 @@ const HistoryTimeline = lazy(
 );
 const CommentsTimeline = lazy(
   () => import("../components/school-profile/CommentsTimeline"),
+);
+const HistoryAccordion = lazy(
+  () => import("../components/school-profile/HistoryAccordion"),
 );
 const EventDetails = lazy(
   () => import("../components/school-profile/EventDetails"),
@@ -418,7 +422,7 @@ export default function SchoolProfile() {
         onActionMenu={openActionSheet}
       />
 
-      <QuickActionsBar schoolData={schoolData} completedEvents={completedEvents} />
+      <QuickActionsBar completedEvents={completedEvents} />
 
       <ProfileTabs tabs={profileTabs} active={activeTab} onChange={setActiveTab} />
 
@@ -630,13 +634,29 @@ export default function SchoolProfile() {
             </>
           ),
           notes: (
-            <Suspense
-              fallback={
-                <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
-              }
-            >
-              <CommentsTimeline schoolId={schoolData.id} variant="chat" />
-            </Suspense>
+            <>
+              {/* HistoryTimeline як акордеон на мобільній версії */}
+              <div className="xl:hidden mb-4">
+                <Suspense
+                  fallback={
+                    <div className="bg-surface rounded-card shadow-card h-24 animate-pulse border border-border" />
+                  }
+                >
+                  <HistoryAccordion
+                    currentEvent={eventFullLoading ? currentEventBase : currentEvent}
+                    onHistoryClick={handleHistoryClick}
+                    onAddCommentClick={handleAddCommentClick}
+                  />
+                </Suspense>
+              </div>
+              <Suspense
+                fallback={
+                  <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
+                }
+              >
+                <CommentsTimeline schoolId={schoolData.id} variant="chat" />
+              </Suspense>
+            </>
           ),
           details: (
             <>
@@ -966,6 +986,7 @@ export default function SchoolProfile() {
         onClose={() => setSelectedReportEvent(null)}
         event={selectedReportEvent}
       />
+      <FloatingMobileNav activeTab={activeTab} onChange={setActiveTab} />
     </motion.div>
   );
 }

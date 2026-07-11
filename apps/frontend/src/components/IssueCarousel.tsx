@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { CheckCircle } from "lucide-react";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
+import { EmptyState } from "../components/ui/EmptyState";
 import type { IssueReport } from "../types";
 
 const STATUSES = ["Планується", "Виконується", "Виконано"];
@@ -73,7 +75,15 @@ export default function IssueCarousel() {
     }
   };
 
-  if (issues.length === 0) return null;
+  if (issues.length === 0) {
+    return (
+      <EmptyState
+        icon={CheckCircle}
+        title="Проблем немає"
+        description="Нові проблеми з'являться тут, щойно виникнуть"
+      />
+    );
+  }
 
   return (
     <div className="mb-6 animate-[slideDown_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards]">

@@ -71,7 +71,7 @@ export default memo(function SchoolProfileHeader({ schoolData, onEdit, onAddEven
                 initial="hidden"
                 animate="visible"
                 transition={{ duration: DUR.slow, delay: 0.1, ease: EASE.decelerate }}
-                className="w-14 h-14 md:w-16 md:h-16 rounded-card bg-brand-50 flex items-center justify-center text-3xl shrink-0"
+                className="hidden md:flex w-14 h-14 md:w-16 md:h-16 rounded-card bg-brand-50 items-center justify-center text-3xl shrink-0"
               >
                 🏫
               </motion.div>
@@ -83,26 +83,38 @@ export default memo(function SchoolProfileHeader({ schoolData, onEdit, onAddEven
                     fontSize: titleFontSize,
                     fontWeight: titleFontWeight,
                   }}
-                  className="text-content-primary leading-tight truncate"
+                  className="text-content-primary leading-tight break-words whitespace-normal text-lg md:text-2xl"
                 >
                   {schoolData.type} «{schoolData.name}»
                 </motion.h1>
                 <motion.div {...fadeUp(0.18)} className="flex flex-wrap items-center gap-3 mt-2">
                   {schoolData.city && (
-                    <span className="text-sm text-content-muted flex items-center gap-1">
+                    <span className="hidden md:flex text-sm text-content-muted items-center gap-1">
                       📍 {schoolData.city}
                     </span>
                   )}
-                  {schoolData.director && (
-                    <span className="hidden md:flex text-sm text-content-muted items-center gap-1">
-                      👤 {schoolData.director}
-                    </span>
-                  )}
-                  {schoolData.phone && (
-                    <span className="hidden md:inline text-sm text-content-muted">
-                      <PhoneLink phone={schoolData.phone} />
-                    </span>
-                  )}
+                </motion.div>
+
+                {/* Контакт директора + кнопка ⋮ в одному рядку на мобільній */}
+                <motion.div {...fadeUp(0.2)} className="flex items-center justify-between gap-3 mt-1.5 md:mt-2">
+                  <div className="flex-1 min-w-0">
+                    {schoolData.director && (
+                      <p className="text-sm font-medium text-content-primary truncate">
+                        {schoolData.director}
+                      </p>
+                    )}
+                    {schoolData.phone && (
+                      <p className="text-xs text-content-muted truncate mt-0.5">
+                        <PhoneLink phone={schoolData.phone} />
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={onActionMenu}
+                    className="md:hidden w-11 h-11 shrink-0 bg-surface border border-border-strong text-content-secondary rounded-control flex items-center justify-center shadow-sm active:bg-surface-muted active:scale-95 transition-all"
+                  >
+                    ⋮
+                  </button>
                 </motion.div>
               </div>
 
@@ -120,15 +132,6 @@ export default memo(function SchoolProfileHeader({ schoolData, onEdit, onAddEven
                 >
                   <span className="text-lg leading-none">✏️</span>
                   Редагувати
-                </button>
-              </motion.div>
-
-              <motion.div {...fadeUp(0.2)} className="md:hidden flex items-center gap-2">
-                <button
-                  onClick={onActionMenu}
-                  className="w-11 h-11 bg-surface border border-border-strong text-content-secondary rounded-control flex items-center justify-center shadow-sm active:bg-surface-muted active:scale-95 transition-all"
-                >
-                  ⋮
                 </button>
               </motion.div>
             </div>

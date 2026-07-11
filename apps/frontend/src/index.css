@@ -56,11 +56,13 @@
     @apply shadow-card-hover;
   }
   .fab {
-    @apply md:hidden fixed z-40 w-14 h-14 rounded-full bg-brand text-white
+    @apply md:hidden fixed w-14 h-14 rounded-full bg-brand text-white
            shadow-lg active:scale-95 transition-transform duration-fast
            motion-reduce:transition-none
            flex items-center justify-center;
-    bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+    z-index: 60;
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 16px);
+    right: 1.25rem;
   }
 }
 
