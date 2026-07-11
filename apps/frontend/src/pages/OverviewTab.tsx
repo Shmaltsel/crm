@@ -1,9 +1,13 @@
 import { useMemo } from "react";
-import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
+import { useSelectedCity } from "../context/CityContext";
 import { useDashboardSummary } from "../hooks/useDashboardSummary";
-import TodayEvents from "../components/dashboard/TodayEvents";
 import ActivityFeed from "../components/dashboard/ActivityFeed";
+import EventsWidget from "../components/dashboard/EventsWidget";
+import StaleSchools from "../components/dashboard/StaleSchools";
+import FunnelBar from "../components/dashboard/FunnelBar";
+import CitiesTable from "../components/dashboard/CitiesTable";
+import CollapsibleSection from "../components/dashboard/CollapsibleSection";
 import { staggerContainer, staggerItem, useCountUp, TRANSITION } from "../lib/motion";
 import { TrendingUp, DollarSign, Users, Building2 } from "lucide-react";
 
@@ -60,6 +64,7 @@ function KpiCard({
 
 export default function OverviewTab() {
   const { user } = useAuth();
+  const { selectedCity, isCityLocked } = useSelectedCity();
   const { data: summary, isError } = useDashboardSummary();
 
   const greeting = useMemo(() => {
@@ -68,6 +73,8 @@ export default function OverviewTab() {
     if (hour < 18) return "Доброго дня";
     return "Доброго вечора";
   }, []);
+
+  const showCitiesTable = !isCityLocked && selectedCity.id === "";
 
   const kpiCards = useMemo(() => {
     if (!summary) return null;
@@ -84,7 +91,7 @@ export default function OverviewTab() {
         suffix: "грн",
         icon: <TrendingUp className="w-4 h-4" />,
       },
-      {
+{
         title: "Дітей",
         numericValue: Number(summary.monthlyKpi.children) || 0,
         subtitle: `за ${summary.monthlyKpi.count} подіями`,
@@ -100,24 +107,23 @@ export default function OverviewTab() {
 
   return (
     <div className="min-h-0">
-      <div className="bg-white/80 backdrop-blur-md border-b border-border px-4 md:px-8 py-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-base font-bold text-content-primary">
-              {greeting}, {user?.name ?? "Користувач"}
-            </h1>
-            <p className="text-2xs text-content-muted mt-0.5">
-              {new Date().toLocaleDateString("uk-UA", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-              })}
-            </p>
-          </div>
+      {/* Привітання - без хрому */}
+      <div className="p-4 md:p-8 pb-0">
+        <div>
+          <h1 className="text-base font-bold text-content-primary">
+            {greeting}, {user?.name ?? "Користувач"}
+          </h1>
+          <p className="text-2xs text-content-muted mt-0.5">
+            {new Date().toLocaleDateString("uk-UA", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+            })}
+          </p>
         </div>
       </div>
 
-      <div className="p-4 md:p-8 space-y-4">
+      <div className="p-4 md:p-8 space-y-6">
         {isError ? (
           <div className="text-center py-12 text-content-muted">
             <span className="text-2xl block mb-2 opacity-50">⚠️</span>
@@ -125,6 +131,7 @@ export default function OverviewTab() {
           </div>
         ) : (
           <>
+            {/* KPI Grid */}
             <motion.div
               className="grid grid-cols-2 lg:grid-cols-4 gap-3"
               variants={staggerContainer}
@@ -146,15 +153,35 @@ export default function OverviewTab() {
                   ))}
             </motion.div>
 
-            <motion.div
-              className="grid grid-cols-1 lg:grid-cols-2 gap-4"
-              variants={staggerContainer}
-              initial="hidden"
-              animate="visible"
+            {/* Потребують уваги (StaleSchools) */}
+            <StaleSchools schools={summary?.staleSchools ?? []} />
+
+            {/* Події (EventsWidget - сьогодні + найближчі) */}
+            <EventsWidget 
+              todayEvents={summary?.todayEvents ?? []} 
+              upcomingEvents={summary?.upcomingEvents ?? []} 
+            />
+
+            {/* Воронка (згорнута) */}
+            <CollapsibleSection
+              title="Воронка"
+              subtitle={summary?.funnel ? `${summary.funnel.BASE ?? 0} шкіл · ${summary.funnel.DONE ?? 0} проведено` : undefined}
             >
-              <TodayEvents events={summary?.todayEvents ?? []} />
-              <ActivityFeed items={summary?.activityFeed ?? []} />
-            </motion.div>
+              <FunnelBar funnel={summary?.funnel ?? {}} />
+            </CollapsibleSection>
+
+            {/* По містах (умовно, тільки для SUPERADMIN/OWNER без вибраного міста) */}
+            {showCitiesTable && summary?.citiesStats && (
+              <CollapsibleSection
+                title="По містах"
+                subtitle={`${summary.citiesStats.length} міст`}
+              >
+                <CitiesTable rows={summary.citiesStats} />
+              </CollapsibleSection>
+            )}
+
+            {/* Активність команди */}
+            <ActivityFeed items={summary?.activityFeed ?? []} />
           </>
         )}
       </div>
