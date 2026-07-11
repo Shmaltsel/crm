@@ -18,6 +18,7 @@ import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { RevisionDto } from './dto/revision.dto';
+import { ApproveReportDto } from './dto/approve-report.dto';
 
 @ApiTags('Reports')
 @ApiCookieAuth('access_token')
@@ -56,8 +57,12 @@ export class ReportsController {
   })
   @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   @Post(':id/approve')
-  approve(@Param('id') id: string, @CurrentUser() user: JwtUser) {
-    return this.reportsService.approve(id, user);
+  approve(
+    @Param('id') id: string,
+    @Body() dto: ApproveReportDto,
+    @CurrentUser() user: JwtUser,
+  ) {
+    return this.reportsService.approve(id, dto, user);
   }
 
   @ApiOperation({

@@ -5,13 +5,17 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { SalaryPayoutService } from './salary-payout.service';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 import { CreateSalaryDto } from './dto/create-salary.dto';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class SalaryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly salaryPayout: SalaryPayoutService,
+  ) {}
 
   async create(dto: CreateSalaryDto, user: JwtUser) {
     if (
@@ -139,9 +143,8 @@ export class SalaryService {
       }
     }
 
-    return this.prisma.salaryRecord.update({
-      where: { id },
-      data: { status: 'PAID', paidAt: new Date(), paidBy: user.sub },
+    return this.prisma.$transaction(async (tx) => {
+      return this.salaryPayout.payout(tx, id, Number(record.amount), user.sub);
     });
   }
 }

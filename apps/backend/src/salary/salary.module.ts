@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 import { SalaryController } from './salary.controller';
 import { SalaryService } from './salary.service';
+import { SalaryPayoutService } from './salary-payout.service';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
   imports: [PrismaModule],
   controllers: [SalaryController],
-  providers: [SalaryService],
-  exports: [SalaryService],
+  providers: [SalaryService, SalaryPayoutService],
+  exports: [SalaryService, SalaryPayoutService],
 })
 export class SalaryModule {}

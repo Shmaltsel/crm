@@ -11,8 +11,10 @@ import { TelegramService } from '../telegram/telegram.service';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { RevisionDto } from './dto/revision.dto';
+import { ApproveReportDto } from './dto/approve-report.dto';
 import { ReportStatus } from '@prisma/client';
 import { Prisma } from '@prisma/client';
+import { SalaryPayoutService } from '../salary/salary-payout.service';
 
 const ALLOWED_TRANSITIONS: Record<ReportStatus, ReportStatus[]> = {
   DRAFT: ['SUBMITTED'],
@@ -29,6 +31,7 @@ export class ReportsService {
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
     private readonly telegramService: TelegramService,
+    private readonly salaryPayout: SalaryPayoutService,
   ) {}
 
   private async assertCrewMember(
@@ -196,7 +199,7 @@ export class ReportsService {
     return updated;
   }
 
-  async approve(id: string, user: JwtUser) {
+  async approve(id: string, dto: ApproveReportDto, user: JwtUser) {
     if (
       user.role !== 'MANAGER' &&
       user.role !== 'SUPERADMIN' &&
@@ -212,20 +215,38 @@ export class ReportsService {
     if (!report) throw new NotFoundException('report.notFound');
     this.assertTransition(report.status, 'APPROVED');
 
-    const [approved] = await this.prisma.$transaction([
-      this.prisma.eventReport.update({
+    const pendingRecords = await this.prisma.salaryRecord.findMany({
+      where: { reportId: id, status: 'PENDING' },
+      select: { id: true },
+    });
+    const pendingIds = pendingRecords.map((r) => r.id).sort();
+    const submittedIds = (dto.salaries ?? []).map((s) => s.id).sort();
+    const mismatch =
+      pendingIds.length !== submittedIds.length ||
+      pendingIds.some((pid, i) => pid !== submittedIds[i]);
+    if (mismatch) {
+      throw new BadRequestException('report.salariesMismatch');
+    }
+
+    const approved = await this.prisma.$transaction(async (tx) => {
+      for (const item of dto.salaries ?? []) {
+        await this.salaryPayout.payout(tx, item.id, item.amount, user.sub);
+      }
+
+      const updated = await tx.eventReport.update({
         where: { id },
         data: {
           status: 'APPROVED',
           approvedAt: new Date(),
           approvedBy: user.sub,
         },
-      }),
-      this.prisma.event.update({
+      });
+      await tx.event.update({
         where: { id: report.eventId },
         data: { status: 'RE_SALE' },
-      }),
-    ]);
+      });
+      return updated;
+    });
 
     const notifyUserId =
       report.event.responsibleId || report.event.city.managerId;
@@ -258,10 +279,16 @@ export class ReportsService {
     if (!report) throw new NotFoundException('report.notFound');
     this.assertTransition(report.status, 'NEEDS_REVISION');
 
-    return this.prisma.eventReport.update({
-      where: { id },
-      data: { status: 'NEEDS_REVISION', revisionComment: dto.comment },
-    });
+    return this.prisma.$transaction([
+      this.prisma.eventReport.update({
+        where: { id },
+        data: { status: 'NEEDS_REVISION', revisionComment: dto.comment },
+      }),
+      this.prisma.salaryRecord.updateMany({
+        where: { reportId: id, status: 'PENDING' },
+        data: { status: 'CANCELLED' },
+      }),
+    ]);
   }
 
   async reject(id: string, dto: RevisionDto, user: JwtUser) {
@@ -280,10 +307,16 @@ export class ReportsService {
     if (!report) throw new NotFoundException('report.notFound');
     this.assertTransition(report.status, 'REJECTED');
 
-    return this.prisma.eventReport.update({
-      where: { id },
-      data: { status: 'REJECTED', revisionComment: dto.comment },
-    });
+    return this.prisma.$transaction([
+      this.prisma.eventReport.update({
+        where: { id },
+        data: { status: 'REJECTED', revisionComment: dto.comment },
+      }),
+      this.prisma.salaryRecord.updateMany({
+        where: { reportId: id, status: 'PENDING' },
+        data: { status: 'CANCELLED' },
+      }),
+    ]);
   }
 
   async findByEvent(eventId: string) {
@@ -291,7 +324,9 @@ export class ReportsService {
       where: { eventId },
       include: {
         expenseItems: true,
-        salaryRecords: true,
+        salaryRecords: {
+          include: { employee: { select: { id: true, name: true } } },
+        },
         photos: true,
       },
     });
@@ -304,10 +339,14 @@ export class ReportsService {
         where: { status: 'SUBMITTED' },
         include: {
           expenseItems: true,
-          salaryRecords: true,
+          salaryRecords: {
+            include: { employee: { select: { id: true, name: true } } },
+          },
           event: {
             include: {
-              school: { select: { name: true, type: true, phone: true, director: true } },
+              school: {
+                select: { name: true, type: true, phone: true, director: true },
+              },
               city: { select: { name: true } },
               crew: {
                 include: {

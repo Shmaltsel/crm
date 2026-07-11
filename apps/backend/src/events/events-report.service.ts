@@ -11,11 +11,7 @@ import { CacheVersionService } from '../common/cache/cache-version.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Prisma } from '@prisma/client';
-import {
-  SubmitReportDto,
-  ExpenseItemDto,
-  InventoryUsageDto,
-} from './dto/submit-report.dto';
+import { SubmitReportDto, ExpenseItemDto } from './dto/submit-report.dto';
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
 @Injectable()
@@ -133,21 +129,11 @@ export class EventsReportService {
                 reportId: report.id,
                 employeeId: s.userId,
                 amount: new Prisma.Decimal(s.amount),
-                status: 'PAID',
+                status: 'PENDING',
                 createdBy: user.sub,
                 eventId,
               })),
             });
-
-            const positiveSalaries = salariesWithUser.filter(
-              (s) => s.amount > 0,
-            );
-            for (const s of positiveSalaries) {
-              await tx.user.update({
-                where: { id: s.userId },
-                data: { balance: { increment: s.amount } },
-              });
-            }
           }
         }
 
@@ -243,8 +229,7 @@ export class EventsReportService {
           .catch(() => {});
       }
 
-      const notifyUserId =
-        event.responsibleId || eventWithCity.city?.managerId;
+      const notifyUserId = event.responsibleId || eventWithCity.city?.managerId;
       if (notifyUserId) {
         this.notificationsService
           .create(notifyUserId, 'REPORT_SUBMITTED', {

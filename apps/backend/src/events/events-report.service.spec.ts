@@ -4,9 +4,12 @@ import { EventsReportService } from './events-report.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { CacheVersionService } from '../common/cache/cache-version.service';
+import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const mockPrisma = {
   $transaction: jest.fn(),
+  event: { findUnique: jest.fn().mockResolvedValue(null) },
 };
 
 const mockUser = { sub: 'user-1', name: 'Менеджер', role: 'MANAGER' } as const;
@@ -41,8 +44,8 @@ describe('EventsReportService', () => {
       user: { update: jest.fn() },
       event: { update: jest.fn() },
     };
-    mockPrisma.$transaction.mockImplementation(
-      async (fn: (tx: any) => unknown, _opts?: unknown) => fn(mockTx),
+    mockPrisma.$transaction.mockImplementation((fn: (tx: any) => unknown) =>
+      fn(mockTx),
     );
   };
 
@@ -68,6 +71,14 @@ describe('EventsReportService', () => {
             getVersion: jest.fn().mockResolvedValue(0),
             bumpVersion: jest.fn().mockResolvedValue(undefined),
           },
+        },
+        {
+          provide: TelegramService,
+          useValue: { sendMessage: jest.fn().mockResolvedValue(undefined) },
+        },
+        {
+          provide: NotificationsService,
+          useValue: { create: jest.fn().mockResolvedValue(undefined) },
         },
       ],
     }).compile();
@@ -103,9 +114,8 @@ describe('EventsReportService', () => {
       );
     });
 
-    it('нараховує зарплату користувачам', async () => {
+    it('створює salary records зі статусом PENDING і не інкрементує balance при поданні', async () => {
       mockTx.eventReport.upsert.mockResolvedValueOnce({});
-      mockTx.user.update.mockResolvedValue({});
       mockTx.event.update.mockResolvedValueOnce({
         id: 'ev-1',
         status: 'REPORT',
@@ -115,15 +125,13 @@ describe('EventsReportService', () => {
 
       await service.submitReport('ev-1', reportData, mockUser);
 
-      expect(mockTx.user.update).toHaveBeenCalledTimes(2);
-      expect(mockTx.user.update).toHaveBeenCalledWith({
-        where: { id: 'host-1' },
-        data: { balance: { increment: 1500 } },
-      });
-      expect(mockTx.user.update).toHaveBeenCalledWith({
-        where: { id: 'driver-1' },
-        data: { balance: { increment: 1000 } },
-      });
+      expect(mockTx.salaryRecord.createMany).toHaveBeenCalledTimes(1);
+      const call = mockTx.salaryRecord.createMany.mock.calls[0][0];
+      expect(call.data).toHaveLength(2);
+      expect(
+        call.data.every((d: { status: string }) => d.status === 'PENDING'),
+      ).toBe(true);
+      expect(mockTx.user.update).not.toHaveBeenCalled();
     });
 
     it('не нараховує зарплату якщо amount = 0', async () => {
@@ -364,7 +372,8 @@ describe('EventsReportService', () => {
     });
 
     it('коректно обробляє відсутній rating', async () => {
-      const { rating, ...withoutRating } = reportData;
+      const { rating: _rating, ...withoutRating } = reportData;
+      void _rating;
       mockTx.eventReport.upsert.mockResolvedValueOnce({});
       mockTx.user.update.mockResolvedValue({});
       mockTx.event.update.mockResolvedValueOnce({
