@@ -51,6 +51,7 @@ describe('ReportsService', () => {
       prisma,
       { create: jest.fn() } as unknown as NotificationsService,
       { sendMessage: jest.fn() } as unknown as TelegramService,
+      { bumpVersion: jest.fn().mockResolvedValue(undefined) } as any,
     );
   });
 

@@ -14,6 +14,7 @@ import { RevisionDto } from './dto/revision.dto';
 import { ApproveReportDto } from './dto/approve-report.dto';
 import { ReportStatus } from '@prisma/client';
 import { Prisma } from '@prisma/client';
+import { CacheVersionService } from '../common/cache/cache-version.service';
 
 const ALLOWED_TRANSITIONS: Record<ReportStatus, ReportStatus[]> = {
   DRAFT: ['SUBMITTED'],
@@ -30,6 +31,7 @@ export class ReportsService {
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
     private readonly telegramService: TelegramService,
+    private readonly cacheVersion: CacheVersionService,
   ) {}
 
   private async assertCrewMember(
@@ -248,6 +250,8 @@ export class ReportsService {
       });
       return updated;
     });
+
+    this.cacheVersion.bumpVersion('finance').catch(() => {});
 
     const notifyUserId =
       report.event.responsibleId || report.event.city.managerId;
