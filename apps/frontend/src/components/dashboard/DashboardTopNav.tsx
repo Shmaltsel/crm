@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import type { DashboardTab } from "../../constants/navTabs";
 
 interface Props {
@@ -33,14 +32,11 @@ export default function DashboardTopNav({ tabs, activeTab, onChange }: Props) {
               >
                 <Icon className="w-4 h-4" />
                 {tab.label}
-                {isActive && (
-                  <motion.div
-                    layoutId="dashboard-active-tab"
-                    layout="position"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-pill"
-                    transition={{ duration: 0.15, ease: "easeOut" }}
-                  />
-                )}
+                <span
+                  className={`absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-pill transition-opacity duration-150 ease-out ${
+                    isActive ? "opacity-100" : "opacity-0"
+                  }`}
+                />
               </button>
             );
           })}

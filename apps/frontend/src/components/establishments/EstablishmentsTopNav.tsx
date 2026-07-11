@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import { School, Baby } from "lucide-react";
 
 interface Props {
@@ -36,14 +35,11 @@ export default function EstablishmentsTopNav({ activeTab, onChange }: Props) {
             >
               <Icon className="w-4 h-4" />
               {tab.label}
-              {isActive && (
-                  <motion.div
-                    layoutId="establishment-active-tab"
-                    layout="position"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-full"
-                    transition={{ duration: 0.15, ease: "easeOut" }}
-                  />
-              )}
+              <span
+                className={`absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-full transition-opacity duration-150 ease-out ${
+                  isActive ? "opacity-100" : "opacity-0"
+                }`}
+              />
             </button>
           );
         })}

@@ -7,7 +7,7 @@
 - У фінальній відповіді — лише 1 речення що зроблено, без diff/коду
 - Перед задачею сформулюй план одним реченням; однозначні задачі виконуй одразу без підтвердження
 - Великі задачі розбивай на логічні кроки (кожен = окремий коміт)
-- після кожного виконаного завадння роби пуш
+- після кожного виконаного завдання роби пуш
 
 ## Commands (root, `C:\CRM`)
 | Дія | Команда |
@@ -18,7 +18,7 @@
 | Lint | `pnpm --filter <workspace> lint` |
 | Один тестовий файл | `pnpm --filter frontend test:run -- src/tests/path/to/File.test.tsx` |
 | Один backend тест | `pnpm --filter backend test -- src/module/file.service.spec.ts` |
-| Всі unit-тести | `pnpm test:unit` (backend + frontend паралельно, при помилці вбиває обидва) |
+| Всі unit-тести | `pnpm test:unit` (backend + frontend паралельно) |
 | Покриття | `pnpm test:coverage` |
 | E2E frontend | `pnpm --filter frontend test:e2e` (Playwright) |
 | E2E backend | `pnpm --filter backend test:e2e` (потребує PostgreSQL + Redis) |
@@ -35,7 +35,6 @@
 - **Frontend**: React 19, Router v7, TanStack Query 5, axios, framer-motion, Tailwind, Recharts, zustand
 - **Тести backend**: Jest (`*.spec.ts` in `src/`, e2e: `test/*.e2e-spec.ts` via `test/jest-e2e.json`); coverage thresholds 70/50/60/70
 - **Тести frontend**: Vitest + Testing Library + MSW (listen in `src/tests/setup.ts`, handlers in `src/tests/mocks/`); coverage thresholds 70/50/60/70
-- **CI** (`.github/workflows/ci.yml`): lint → tsc → build → unit+cov → e2e; повторювати цей порядок локально
 
 ## Key conventions
 1. **Cookie auth + CSRF**: backend sets `access_token`, `refresh_token`, `csrf_token` cookies; frontend sends `X-CSRF-Token` header on mutating requests (via `src/config/api.ts` axios interceptor)
@@ -44,9 +43,13 @@
 4. **AuditLog**: global interceptor logs mutating requests (except auth) to `AuditLog` table
 5. **React Query**: hooks in `src/hooks/` use stable `queryKey` + explicit `invalidateQueries` after mutations
 6. **ProtectedRoute**: role-gating via `allowedRoles` prop, used in `App.tsx`
-7. **MSW in tests**: `onUnhandledRequest: "error"` — unhandled requests fail the test; localStorage mocked as `mock-token`
+7. **MSW in tests**: `onUnhandledRequest: "bypass"` — unhandled requests are silently ignored; localStorage mocked as `mock-token`
 8. **Frontend ESLint**: `@typescript-eslint/no-explicit-any: error` — never use `any` without a comment
-9. **`test:unit` root script**: uses `concurrently --kill-others-on-fail` — if one workspace fails, both stop
+9. **Pre-commit hook** (`.husky/pre-commit`): runs `pnpm test:affected` (turbo affected tests vs `origin/main`)
+
+## TypeScript strictness
+- **Frontend** (`tsconfig.app.json`): `verbatimModuleSyntax: true`, `noUnusedLocals: true`, `noUnusedParameters: true`, `noEmit: true`, `jsx: "react-jsx"`
+- **Backend** (`tsconfig.json`): `noImplicitAny: false`, `strictNullChecks: true`, `emitDecoratorMetadata: true`, `experimentalDecorators: true`
 
 ## Frontend structure (key entrypoints)
 - `src/main.tsx` — QueryClient + root render
@@ -55,10 +58,27 @@
 - `src/constants/navTabs.ts` — single source of truth for all tab menus
 - `src/context/AuthContext.tsx` — session from `GET /auth/me`, logout
 - `src/config/api.ts` — axios instance with CSRF + auto‑refresh interceptor
-- `src/pages/` — pages; `src/features/calendar/` — calendar feature folder
+- `src/pages/` — pages; `src/features/` — feature folders (calendar, reports, salary)
 - `tests/` — mirrors `src/` structure; no `.env` needed (`VITE_API_URL` defaults to `/api`)
 
-## Verification & auto‑push protocol (mandatory after every task)
+## Available Skills (в `skills/` директорії)
+Агент повинен застосовувати відповідну навичку залежно від типу завдання:
+- `skills/new-backend-module.md`: Створення контролерів, сервісів та DTO у NestJS.
+- `skills/new-frontend-feature.md`: Створення UI-компонентів, хуків React Query.
+- `skills/ui-ux-refactoring.md`: Mobile-first редизайн, використання framer-motion та Tailwind токенів.
+- `skills/db-migration.md`: Внесення змін до `schema.prisma` та міграція БД.
+- `skills/pre-push-verification.md`: ПРОТОКОЛ БЕЗПЕКИ.
+- `skills/bug-fixing-protocol.md`: Локалізація та точкове виправлення багів (запобігання сліпому рефакторингу).
+- `skills/testing-protocol.md`: Правила написання тестів (MSW для фронтенду, prisma.mock.ts для бекенду).
+- `skills/fullstack-api-sync.md`: Синхронізація DTO, TypeScript-інтерфейсів та React Query між бекендом і фронтендом.
+
+## Memory Protocol (`apps/memory.md`)
+Агент ЗОБОВ'ЯЗАНИЙ:
+1. Прочитувати `apps/memory.md` на старті кожної сесії.
+2. Додавати нові записи (баг-паттерни, домовленості, нові архітектурні рішення) у форматі `[YYYY-MM-DD] факт`.
+3. Перевіряти описані граблі перед виконанням завдання.
+
+## Verification protocol (mandatory after every task)
 1. **Static check** (only changed workspace): `pnpm --filter <w> exec tsc --noEmit && pnpm --filter <w> lint` — fix any error before proceeding
 2. **Build**: `pnpm --filter <w> build` — failure = hard stop
 3. **Tests**: run relevant tests (point to changed files); full `pnpm test:unit` only for cross‑cutting changes; write minimal test for new non‑trivial logic; E2E only when covering task flow

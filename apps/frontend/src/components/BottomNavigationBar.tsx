@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { MoreHorizontal } from "lucide-react";
-import { SPRING, DUR } from "../lib/motion";
+import { DUR } from "../lib/motion";
 import { useAuth } from "../context/AuthContext";
 import { NAV_TABS } from "../constants/navTabs";
 import { hasRole } from "../utils/roles";
@@ -38,29 +38,21 @@ function TabItem({ tab, isActive }: { tab: NavTab; isActive: boolean }) {
       aria-label={tab.label}
       className="relative flex items-center justify-center min-w-[44px] min-h-[44px] flex-1"
     >
-      {isActive && (
-        <motion.div
-            layoutId="bottomnav-active-pill"
-            layout="position"
-            className="absolute inset-x-1 inset-y-1 bg-brand/10 rounded-control"
-            transition={{ duration: 0.15, ease: "easeOut" }}
-        />
-      )}
-      <motion.div
-        className="relative z-10 flex flex-col items-center justify-center gap-0.5"
-        whileTap={{ scale: 0.85 }}
-        transition={{ duration: DUR.micro }}
+      <span
+        className={`absolute inset-x-1 inset-y-1 rounded-control bg-brand/10 transition-all ${
+          isActive ? "scale-100 opacity-100" : "scale-90 opacity-0"
+        }`}
+        style={{ transitionDuration: `${DUR.fast}s`, transitionTimingFunction: "cubic-bezier(0.4,0,0.2,1)" }}
+      />
+      <div
+        className="relative z-10 flex flex-col items-center justify-center gap-0.5 active:scale-90 transition-transform"
+        style={{ transitionDuration: `${DUR.micro}s` }}
       >
-        <motion.div
-          animate={isActive ? { y: -1 } : { y: 0 }}
-          transition={SPRING.gentle}
-        >
-          <Icon className={`w-5 h-5 transition-colors duration-fast ${isActive ? "text-brand" : "text-content-muted"}`} />
-        </motion.div>
-        <span className={`text-2xs font-medium transition-colors duration-fast ${isActive ? "text-brand" : "text-content-muted"}`}>
+        <Icon className={`w-5 h-5 transition-colors ${isActive ? "text-brand" : "text-content-muted"}`} style={{ transitionDuration: `${DUR.fast}s` }} />
+        <span className={`text-2xs font-medium transition-colors ${isActive ? "text-brand" : "text-content-muted"}`} style={{ transitionDuration: `${DUR.fast}s` }}>
           {tab.label}
         </span>
-      </motion.div>
+      </div>
     </Link>
   );
 }
@@ -96,28 +88,21 @@ export default function BottomNavigationBar() {
           role="tab"
           aria-selected={isMoreActive}
         >
-          {isMoreActive && (
-            <motion.div
-              layoutId="bottomnav-active-pill"
-              className="absolute inset-x-1 inset-y-1 bg-brand/10 rounded-control"
-              transition={SPRING.snappy}
-            />
-          )}
-          <motion.div
-            className="relative z-10 flex flex-col items-center justify-center gap-0.5"
-            whileTap={{ scale: 0.85 }}
-            transition={{ duration: DUR.micro }}
+          <span
+            className={`absolute inset-x-1 inset-y-1 rounded-control bg-brand/10 transition-all ${
+              isMoreActive ? "scale-100 opacity-100" : "scale-90 opacity-0"
+            }`}
+            style={{ transitionDuration: `${DUR.fast}s`, transitionTimingFunction: "cubic-bezier(0.4,0,0.2,1)" }}
+          />
+          <div
+            className="relative z-10 flex flex-col items-center justify-center gap-0.5 active:scale-90 transition-transform"
+            style={{ transitionDuration: `${DUR.micro}s` }}
           >
-            <motion.div
-              animate={isMoreActive ? { rotate: 90, y: -1 } : { rotate: 0, y: 0 }}
-              transition={SPRING.gentle}
-            >
-              <MoreHorizontal className={`w-5 h-5 transition-colors duration-fast ${isMoreActive ? "text-brand" : "text-content-muted"}`} />
-            </motion.div>
-            <span className={`text-2xs font-medium transition-colors duration-fast ${isMoreActive ? "text-brand" : "text-content-muted"}`}>
+            <MoreHorizontal className={`w-5 h-5 transition-colors ${isMoreActive ? "text-brand" : "text-content-muted"}`} style={{ transitionDuration: `${DUR.fast}s` }} />
+            <span className={`text-2xs font-medium transition-colors ${isMoreActive ? "text-brand" : "text-content-muted"}`} style={{ transitionDuration: `${DUR.fast}s` }}>
               Більше
             </span>
-          </motion.div>
+          </div>
         </button>
       </nav>
 

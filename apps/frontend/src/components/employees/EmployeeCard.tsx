@@ -62,12 +62,9 @@ export default function EmployeeCard({
       variants={cardVariants}
       whileHover={hoverCapable ? "hover" : undefined}
       whileTap={{ scale: 0.98 }}
-      layoutId={`user-${user.id}`}
-      layout="position"
       role="article"
       aria-label={`${user.name}, ${ROLE_LABELS[role] ?? role}`}
       className="group relative bg-surface rounded-card shadow-card border border-border p-5 transition-shadow duration-200 hover:shadow-card-hover"
-      transition={{ duration: 0.15, ease: "easeOut" }}
     >
       <div className="flex items-start gap-4">
         <div className="relative shrink-0">

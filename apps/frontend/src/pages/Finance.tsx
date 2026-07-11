@@ -1,5 +1,4 @@
 import { useState, lazy, Suspense } from "react";
-import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import MySalary from "../features/salary/pages/MySalary";
 import TeamSalaries from "../features/salary/pages/TeamSalaries";
@@ -57,14 +56,11 @@ export default function Finance({ isPeek }: { isPeek?: boolean }) {
                 }`}
               >
                 {t.label}
-                {activeTab === t.key && (
-                  <motion.div
-                    layoutId="finance-tab-indicator"
-                    layout="position"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand"
-                    transition={{ duration: 0.15, ease: "easeOut" }}
-                  />
-                )}
+                <span
+                  className={`absolute bottom-0 left-0 right-0 h-0.5 bg-brand transition-opacity duration-150 ease-out ${
+                    activeTab === t.key ? "opacity-100" : "opacity-0"
+                  }`}
+                />
               </button>
             ))}
           </div>

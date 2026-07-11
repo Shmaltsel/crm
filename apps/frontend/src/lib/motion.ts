@@ -315,3 +315,8 @@ export const fabVariants: Variants = {
 export const noTransition = "transition-none";
 export const motionSafe = (cls: string) => `motion-safe:${cls}`;
 export const motionReduce = (cls: string) => `motion-reduce:${cls}`;
+
+/* ─── GPU acceleration ─── */
+
+/** Apply to animated elements to promote to composite layer and avoid layout thrash. */
+export const GPU_STYLE = { willChange: "transform" } as const;
