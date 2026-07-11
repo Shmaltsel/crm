@@ -307,7 +307,7 @@ export class ReportsService {
           salaryRecords: true,
           event: {
             include: {
-              school: { select: { name: true, type: true } },
+              school: { select: { name: true, type: true, phone: true, director: true } },
               city: { select: { name: true } },
               crew: {
                 include: {
