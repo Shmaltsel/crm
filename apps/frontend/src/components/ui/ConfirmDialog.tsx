@@ -17,12 +17,12 @@ interface ConfirmDialogProps {
 
 const variantStyles: Record<Variant, { icon: string; button: string }> = {
   danger: {
-    icon: "bg-red-100 text-red-600",
-    button: "bg-red-600 hover:bg-red-700 text-white",
+    icon: "bg-danger-50 text-danger",
+    button: "bg-danger hover:bg-danger-600 text-white",
   },
   warning: {
-    icon: "bg-amber-100 text-amber-600",
-    button: "bg-amber-600 hover:bg-amber-700 text-white",
+    icon: "bg-warning-50 text-warning-600",
+    button: "bg-warning hover:bg-warning-600 text-white",
   },
 };
 
@@ -62,7 +62,7 @@ export function ConfirmDialog({
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-backdrop backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={onCancel}
           whileTap={{ backgroundColor: "rgba(15, 23, 42, 0.55)" }}
           transition={{ duration: 0.15 }}
@@ -76,7 +76,7 @@ export function ConfirmDialog({
             animate="visible"
             exit="exit"
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6"
+            className="bg-surface rounded-modal shadow-modal w-full max-w-sm p-6"
           >
             <div className="flex items-start gap-4">
               <motion.div
@@ -95,7 +95,7 @@ export function ConfirmDialog({
             <div className="flex gap-3 mt-6">
               <motion.button
                 onClick={onCancel}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-neutral-100 text-content-secondary hover:bg-neutral-200 transition-colors"
+                className="flex-1 py-2.5 rounded-control text-sm font-semibold bg-surface-muted text-content-secondary hover:bg-border-strong transition-colors"
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
                 transition={TRANSITION.hover}
@@ -105,7 +105,7 @@ export function ConfirmDialog({
               <motion.button
                 ref={confirmRef}
                 onClick={onConfirm}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${variantStyles[variant].button}`}
+                className={`flex-1 py-2.5 rounded-control text-sm font-semibold transition-colors ${variantStyles[variant].button}`}
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
                 transition={TRANSITION.hover}

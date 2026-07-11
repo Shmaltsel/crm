@@ -35,7 +35,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-md" 
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+          className="fixed inset-0 bg-backdrop backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
           onClick={(e) => e.target === e.currentTarget && onClose()}
         >
           <motion.div

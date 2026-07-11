@@ -17,7 +17,7 @@ const TOAST_DURATION = 4000;
 const kindStyles: Record<ToastKind, string> = {
   success: "bg-success",
   error: "bg-danger",
-  info: "bg-slate-800",
+  info: "bg-neutral-800",
 };
 
 const ToastContext = createContext<(msg: string, kind?: ToastKind) => void>(() => {});
