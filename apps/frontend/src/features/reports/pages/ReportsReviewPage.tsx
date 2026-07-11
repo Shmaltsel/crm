@@ -8,9 +8,11 @@ import {
 import ReportStatusBadge from "../components/ReportStatusBadge";
 import PhoneLink from "../../../components/PhoneLink";
 import AddressLink from "../../../components/AddressLink";
-import type { ExpenseItem, SalaryRecord } from "../../../types";
+import type { ExpenseItem, SalaryRecord, EventReport } from "../../../types";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { Skeleton } from "../../../components/ui/Skeleton";
+import { Input } from "../../../components/ui/Input";
+import { useToast } from "../../../components/ui/Toast";
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("uk-UA", {
@@ -28,12 +30,24 @@ export default function ReportsReviewPage() {
   const { data: reports = [], isLoading } = useSubmittedReports();
   const approveMutation = useApproveReport();
   const rejectMutation = useRejectReport();
+  const toast = useToast();
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [salaryDrafts, setSalaryDrafts] = useState<Record<string, number>>({});
   const [comment, setComment] = useState("");
   const [actionTarget, setActionTarget] = useState<{ id: string; action: "reject" } | null>(null);
 
-  const handleApprove = (id: string) => approveMutation.mutate(id);
+  const handleApprove = (id: string, salaryRecords: SalaryRecord[]) => {
+    const salaries = (salaryRecords ?? []).map((s) => ({
+      id: s.id,
+      amount: salaryDrafts[s.id] ?? (Number(s.amount) || 0),
+    }));
+    if (salaries.some((s) => s.amount <= 0 || s.amount > 99999)) {
+      toast("Сума виплати має бути від 1 до 99999 грн", "error");
+      return;
+    }
+    approveMutation.mutate({ id, salaries });
+  };
 
   const handleReject = (id: string) => {
     if (!comment.trim()) return;
@@ -42,8 +56,17 @@ export default function ReportsReviewPage() {
     setActionTarget(null);
   };
 
-  const toggleExpand = (id: string) => {
-    setExpandedId(expandedId === id ? null : id);
+  const toggleExpand = (r: EventReport) => {
+    if (expandedId === r.id) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(r.id);
+      const drafts: Record<string, number> = {};
+      for (const s of r.salaryRecords ?? []) {
+        drafts[s.id] = Number(s.amount) || 0;
+      }
+      setSalaryDrafts(drafts);
+    }
     setActionTarget(null);
     setComment("");
   };
@@ -88,7 +111,10 @@ export default function ReportsReviewPage() {
             const ev = (r as Record<string, unknown>).event as Record<string, unknown> | undefined;
             const school = (ev?.school ?? {}) as Record<string, unknown>;
             const city = (ev?.city ?? {}) as Record<string, unknown>;
-            const crew = (ev?.crew ?? {}) as Record<string, unknown>;
+            const crew = (ev?.crew ?? {}) as {
+              host?: { name?: string } | null;
+              driver?: { name?: string } | null;
+            };
             const isExpanded = expandedId === r.id;
             const totalExpenses = (r.expenseItems ?? []).reduce(
               (s: number, e: ExpenseItem) => s + Number(e.amount) || 0,
@@ -107,7 +133,7 @@ export default function ReportsReviewPage() {
                 className="bg-surface rounded-card border border-border shadow-card overflow-hidden"
               >
                 <button
-                  onClick={() => toggleExpand(r.id)}
+                  onClick={() => toggleExpand(r)}
                   className="w-full text-left p-4 sm:p-5 hover:bg-surface-muted transition flex items-start justify-between gap-3"
                 >
                   <div className="min-w-0 flex-1">
@@ -129,7 +155,7 @@ export default function ReportsReviewPage() {
                     <div className="flex items-center gap-3 mt-2 text-xs text-content-muted flex-wrap">
                       <span className="inline-flex items-center gap-1">
                         <Users className="w-3.5 h-3.5" />
-                        {(crew as any)?.host?.name ?? "—"} / {(crew as any)?.driver?.name ?? "—"}
+                        {crew.host?.name ?? "—"} / {crew.driver?.name ?? "—"}
                       </span>
                       {contactPerson && (
                         <span className="text-content-secondary">👤 {contactPerson}</span>
@@ -218,12 +244,29 @@ export default function ReportsReviewPage() {
                         {(r.salaryRecords ?? []).length > 0 && (
                           <div className="mt-3 pt-3 border-t border-border">
                             <h5 className="text-2xs font-semibold text-content-muted uppercase tracking-wide mb-1.5">
-                              Зарплати
+                              Зарплати (редаговано менеджером)
                             </h5>
-                            {r.salaryRecords.map((s: SalaryRecord, i: number) => (
-                              <div key={i} className="flex justify-between text-xs">
-                                <span>{s.employee?.name ?? "—"}</span>
-                                <span className="text-brand font-medium">{fmt(s.amount)} грн</span>
+                            {r.salaryRecords.map((s: SalaryRecord) => (
+                              <div
+                                key={s.id}
+                                className="flex items-center justify-between gap-2 text-xs py-0.5"
+                              >
+                                <span className="min-w-0 truncate">
+                                  {s.employee?.name ?? "—"}
+                                </span>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  max={99999}
+                                  value={salaryDrafts[s.id] ?? (Number(s.amount) || 0)}
+                                  onChange={(e) =>
+                                    setSalaryDrafts((d) => ({
+                                      ...d,
+                                      [s.id]: Number(e.target.value),
+                                    }))
+                                  }
+                                  className="w-24 text-right"
+                                />
                               </div>
                             ))}
                           </div>
@@ -239,8 +282,14 @@ export default function ReportsReviewPage() {
 
                     <div className="flex flex-wrap gap-2">
                       <button
-                        onClick={() => handleApprove(r.id)}
-                        disabled={approveMutation.isPending}
+                        onClick={() => handleApprove(r.id, r.salaryRecords)}
+                        disabled={
+                          approveMutation.isPending ||
+                          (r.salaryRecords ?? []).some((s: SalaryRecord) => {
+                            const amt = salaryDrafts[s.id] ?? (Number(s.amount) || 0);
+                            return amt <= 0 || amt > 99999;
+                          })
+                        }
                         className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-success text-white rounded-xl font-medium hover:bg-success-700 disabled:opacity-50 transition"
                       >
                         <CheckCircle2 className="w-4 h-4" /> Затвердити

@@ -97,15 +97,23 @@ export function useSubmitReport() {
   });
 }
 
+export interface ApproveReportInput {
+  id: string;
+  salaries: { id: string; amount: number }[];
+}
+
 export function useApproveReport() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      api.post<EventReport>(`/reports/${id}/approve`).then((r) => r.data),
+    mutationFn: ({ id, salaries }: ApproveReportInput) =>
+      api
+        .post<EventReport>(`/reports/${id}/approve`, { salaries })
+        .then((r) => r.data),
     onSuccess: (data) => {
       qc.setQueryData(["report", data.eventId], data);
       qc.invalidateQueries({ queryKey: ["eventFull", data.eventId] });
       qc.invalidateQueries({ queryKey: ["reports", "submitted"] });
+      qc.invalidateQueries({ queryKey: ["salary"] });
     },
   });
 }
