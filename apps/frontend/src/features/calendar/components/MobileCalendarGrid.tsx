@@ -1,3 +1,4 @@
+import { motion, AnimatePresence } from "framer-motion";
 import { getDayColor } from "../utils/color";
 import { toISODate } from "../utils/date";
 import { MONTH_NAMES, PROJECT_HEX } from "../constants";
@@ -56,10 +57,19 @@ export default function MobileCalendarGrid({
           >
             ‹
           </button>
-          <span className="text-sm font-bold text-content-primary capitalize">
-            {MONTH_NAMES[month]}{" "}
-            <span className="text-content-muted font-medium">{year}</span>
-          </span>
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={`${month}-${year}`}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.2 }}
+              className="text-sm font-bold text-content-primary capitalize"
+            >
+              {MONTH_NAMES[month]}{" "}
+              <span className="text-content-muted font-medium">{year}</span>
+            </motion.span>
+          </AnimatePresence>
           <button
             onClick={nextMonth}
             className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-control text-content-muted active:bg-surface-muted transition-colors"

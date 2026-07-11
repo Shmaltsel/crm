@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Search, Edit3, Trash2, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -10,6 +11,14 @@ import {
 } from "../hooks/useInventory";
 import { InventoryItemModal } from "../components/inventory/InventoryItemModal";
 import type { InventoryItem } from "../types";
+import {
+  staggerContainer,
+  staggerItem,
+  backdropVariants,
+  modalContentVariants,
+  fabVariants,
+  TRANSITION,
+} from "../lib/motion";
 
 function StockBadge({ current, min }: { current: number; min: number }) {
   let color = "bg-green-100 text-green-700";
@@ -90,7 +99,7 @@ export default function InventoryPage() {
   };
 
   const cardView = (item: InventoryItem) => (
-    <div key={item.id} className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 sm:hidden">
+    <motion.div key={item.id} className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 sm:hidden" variants={staggerItem} whileTap={{ scale: 0.98 }} transition={TRANSITION.tap}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="font-semibold text-slate-800 truncate">{item.name}</div>
@@ -121,7 +130,7 @@ export default function InventoryPage() {
           </>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 
   return (
@@ -190,7 +199,12 @@ export default function InventoryPage() {
       ) : (
         <>
           {/* Mobile cards */}
-          <div className="flex flex-col gap-3 sm:hidden">{items.map(cardView)}</div>
+          <motion.div
+            className="flex flex-col gap-3 sm:hidden"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+          >{items.map(cardView)}</motion.div>
 
           {/* Desktop table */}
           <div className="hidden sm:block overflow-x-auto bg-white rounded-2xl border border-slate-200">
@@ -208,7 +222,7 @@ export default function InventoryPage() {
               </thead>
               <tbody>
                 {items.map((item) => (
-                  <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50/50">
+                  <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                     <td className="px-4 py-3 font-medium text-slate-800">{item.name}</td>
                     <td className="px-4 py-3 text-slate-500">{item.category}</td>
                     <td className="px-4 py-3 text-slate-500">{item.project || "—"}</td>
@@ -254,14 +268,18 @@ export default function InventoryPage() {
 
       {/* FAB for mobile */}
       {canCreate && (
-        <button
+        <motion.button
           onClick={handleOpenCreate}
           className="sm:hidden fixed right-4 z-40 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors"
           style={{ bottom: "calc(5rem + env(safe-area-inset-bottom, 0px))" }}
+          variants={fabVariants}
+          initial="hidden"
+          animate="visible"
+          whileTap={{ scale: 0.9 }}
           aria-label="Додати товар"
         >
           <Plus className="w-6 h-6" />
-        </button>
+        </motion.button>
       )}
 
       {/* Create/Edit Modal */}
@@ -273,12 +291,23 @@ export default function InventoryPage() {
       />
 
       {/* Stock modal */}
+      <AnimatePresence>
       {stockModal && (
-        <div
+        <motion.div
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center"
+          variants={backdropVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
           onClick={(e) => { if (e.target === e.currentTarget) setStockModal(null); }}
         >
-          <div className="bg-white rounded-2xl p-6 shadow-xl w-full max-w-sm mx-4">
+          <motion.div
+            className="bg-white rounded-2xl p-6 shadow-xl w-full max-w-sm mx-4"
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+          >
             <h2 className="text-lg font-bold text-slate-800 mb-1">Поповнення складу</h2>
             <p className="text-sm text-slate-500 mb-4">{stockModal.name}</p>
             <input
@@ -306,17 +335,29 @@ export default function InventoryPage() {
                 {addStock.isPending ? "..." : "Додати"}
               </button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Delete confirmation */}
+      <AnimatePresence>
       {deleteConfirm && (
-        <div
+        <motion.div
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center"
+          variants={backdropVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
           onClick={(e) => { if (e.target === e.currentTarget) setDeleteConfirm(null); }}
         >
-          <div className="bg-white rounded-2xl p-6 shadow-xl w-full max-w-sm mx-4">
+          <motion.div
+            className="bg-white rounded-2xl p-6 shadow-xl w-full max-w-sm mx-4"
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+          >
             <h2 className="text-lg font-bold text-slate-800 mb-2">Видалити товар?</h2>
             <p className="text-sm text-slate-500 mb-5">Цю дію не можна скасувати.</p>
             <div className="flex gap-3">
@@ -334,9 +375,10 @@ export default function InventoryPage() {
                 {deleteItem.isPending ? "..." : "Видалити"}
               </button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }

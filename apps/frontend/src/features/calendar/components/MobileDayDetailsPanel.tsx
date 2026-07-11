@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toISODate } from "../utils/date";
 import { PROJECT_HEX } from "../constants";
 import type { Event as CalendarEvent, DayOff, User } from "../../../types";
-import { pageVariants } from "../../../lib/motion";
+import { staggerContainer, staggerItem } from "../../../lib/motion";
 
 interface MobileDayDetailsPanelProps {
   selectedMobileDate: Date;
@@ -25,10 +25,10 @@ export default function MobileDayDetailsPanel({
     <AnimatePresence mode="wait">
       <motion.div
         key={toISODate(selectedMobileDate)}
-        variants={pageVariants}
-        initial="hidden"
-        animate="visible"
-        exit="exit"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.25 }}
         className="mt-3 select-none"
       >
         <h3 className="text-sm font-bold text-content-primary mb-2">
@@ -44,19 +44,25 @@ export default function MobileDayDetailsPanel({
           const dayOffEntries = dayOffsByDate.get(key) ?? [];
           if (dayOffEntries.length === 0) return null;
           return (
-            <div className="mb-2.5 flex flex-wrap gap-1">
+            <motion.div
+              className="mb-2.5 flex flex-wrap gap-1"
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+            >
               {dayOffEntries.map((d: DayOff) => {
                 const u = allUsers.find((au: User) => au.id === d.userId);
                 return (
-                  <span
+                  <motion.span
                     key={d.id}
                     className="text-2xs font-semibold text-danger-600 bg-danger-50 border border-danger-100 px-2 py-0.5 rounded-pill"
+                    variants={staggerItem}
                   >
                     🌴 {u?.name || "Вихідний"}
-                  </span>
+                  </motion.span>
                 );
               })}
-            </div>
+            </motion.div>
           );
         })()}
 
@@ -65,13 +71,19 @@ export default function MobileDayDetailsPanel({
             На цей день подій не заплановано
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
+          <motion.div
+            className="flex flex-col gap-2"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+          >
             {selectedDayEvents.map((ev: CalendarEvent) => (
-              <div
+              <motion.div
                 key={ev.id}
                 onClick={() => ev.school && navigate(`/schools/${ev.school.id}`)}
                 className="bg-surface p-3 rounded-card border-l-4 shadow-soft active:scale-[0.98] transition-transform cursor-pointer"
                 style={{ borderLeftColor: projectHexMap.get(ev.project) ?? PROJECT_HEX.blue }}
+                variants={staggerItem}
               >
                 <div className="flex justify-between items-start mb-1.5">
                   <span className="text-2xs font-bold px-2 py-0.5 rounded-control bg-surface-muted text-content-secondary">
@@ -87,9 +99,9 @@ export default function MobileDayDetailsPanel({
                 <p className="text-2xs text-content-secondary mt-1">
                   🚐 Екіпаж: {ev.crew?.name || "Не призначено"}
                 </p>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </motion.div>
     </AnimatePresence>

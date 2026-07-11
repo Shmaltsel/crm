@@ -1,7 +1,9 @@
+import { motion } from "framer-motion";
 import { useMySalary } from "../../../hooks/useSalary";
 import { useAuth } from "../../../context/AuthContext";
 import { useSelectedCity } from "../../../context/CityContext";
 import SalaryStatusBadge from "../components/SalaryStatusBadge";
+import { staggerContainer, staggerItem } from "../../../lib/motion";
 
 const fmt = (n: unknown) => new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
 
@@ -33,9 +35,14 @@ export default function MySalary() {
   }
 
   return (
-    <div className="p-4 space-y-3">
+    <motion.div
+      className="p-4 space-y-3"
+      variants={staggerContainer}
+      initial="hidden"
+      animate="visible"
+    >
       {records.map((r) => (
-        <div key={r.id} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+        <motion.div key={r.id} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm" variants={staggerItem} whileTap={{ scale: 0.98 }}>
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-semibold text-slate-800">{r.event?.project ?? "—"}</span>
             <SalaryStatusBadge status={r.status} />
@@ -45,8 +52,8 @@ export default function MySalary() {
             <span className="font-bold text-blue-600">{fmt(r.amount)} грн</span>
           </div>
           {r.comment && <p className="text-xs text-slate-400 mt-1">{r.comment}</p>}
-        </div>
+        </motion.div>
       ))}
-    </div>
+    </motion.div>
   );
 }

@@ -1,28 +1,38 @@
 import { useMemo } from "react";
+import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { useDashboardSummary } from "../hooks/useDashboardSummary";
 import TodayEvents from "../components/dashboard/TodayEvents";
 import ActivityFeed from "../components/dashboard/ActivityFeed";
+import { staggerContainer, staggerItem, useCountUp, TRANSITION } from "../lib/motion";
 
-function fmtAmount(value: unknown): string {
-  return new Intl.NumberFormat("uk-UA").format(Math.round(Number(value) || 0));
+function AnimatedAmount({ value, suffix }: { value: number; suffix?: string }) {
+  const display = useCountUp(value, { duration: 0.9 });
+  return (
+    <>
+      {new Intl.NumberFormat("uk-UA").format(display)}
+      {suffix ? ` ${suffix}` : ""}
+    </>
+  );
 }
 
 function KpiCard({
   title,
-  value,
+  numericValue,
+  suffix,
   subtitle,
   icon,
   loading,
 }: {
   title: string;
-  value: string;
+  numericValue: number;
+  suffix?: string;
   subtitle?: string;
   icon: string;
   loading?: boolean;
 }) {
   return (
-    <div className="mobile-kpi-card min-h-[80px]">
+    <motion.div className="mobile-kpi-card min-h-[80px]" variants={staggerItem} whileTap={{ scale: 0.97 }} transition={TRANSITION.tap}>
       {loading ? (
         <div className="animate-pulse space-y-2">
           <div className="h-3 bg-neutral-100 rounded w-1/2" />
@@ -35,13 +45,15 @@ function KpiCard({
             <span className="text-sm">{icon}</span>
             <span className="mobile-stat-label">{title}</span>
           </div>
-          <p className="text-xl font-bold text-content-primary leading-none">{value}</p>
+          <p className="text-xl font-bold text-content-primary leading-none">
+            <AnimatedAmount value={numericValue} suffix={suffix} />
+          </p>
           {subtitle && (
             <p className="text-2xs text-content-muted mt-1">{subtitle}</p>
           )}
         </>
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -61,23 +73,25 @@ export default function OverviewTab() {
     return [
       {
         title: "Виручка",
-        value: `${fmtAmount(summary.monthlyKpi.revenue)} грн`,
+        numericValue: Number(summary.monthlyKpi.revenue) || 0,
+        suffix: "грн",
         icon: "💰",
       },
       {
         title: "Прибуток",
-        value: `${fmtAmount(summary.monthlyKpi.profit)} грн`,
+        numericValue: Number(summary.monthlyKpi.profit) || 0,
+        suffix: "грн",
         icon: "📈",
       },
       {
         title: "Дітей",
-        value: fmtAmount(summary.monthlyKpi.children),
+        numericValue: Number(summary.monthlyKpi.children) || 0,
         subtitle: `за ${summary.monthlyKpi.count} подіями`,
         icon: "👶",
       },
       {
         title: "Активних шкіл",
-        value: fmtAmount(summary.totalSchools),
+        numericValue: Number(summary.totalSchools) || 0,
         icon: "🏫",
       },
     ];
@@ -110,7 +124,12 @@ export default function OverviewTab() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <motion.div
+              className="grid grid-cols-2 lg:grid-cols-4 gap-3"
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+            >
               {kpiCards
                 ? kpiCards.map((kpi) => (
                     <KpiCard key={kpi.title} {...kpi} loading={false} />
@@ -119,17 +138,22 @@ export default function OverviewTab() {
                     <KpiCard
                       key={i}
                       title=""
-                      value=""
+                      numericValue={0}
                       icon=""
                       loading={true}
                     />
                   ))}
-            </div>
+            </motion.div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <motion.div
+              className="grid grid-cols-1 lg:grid-cols-2 gap-4"
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+            >
               <TodayEvents events={summary?.todayEvents ?? []} />
               <ActivityFeed items={summary?.activityFeed ?? []} />
-            </div>
+            </motion.div>
           </>
         )}
       </div>

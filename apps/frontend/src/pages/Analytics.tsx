@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { useCities } from "../hooks/useCities";
 import {
@@ -20,6 +21,12 @@ import {
   CartesianGrid,
   Tooltip,
 } from "recharts";
+import {
+  staggerContainer,
+  staggerItem,
+  useCountUp,
+  TRANSITION,
+} from "../lib/motion";
 
 const UA_MONTHS = [
   "Січ", "Лют", "Бер", "Кві", "Трав", "Чер",
@@ -141,12 +148,17 @@ export default function Analytics() {
           {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-          <KPICard label="Загальний дохід" value={fmtMoney(totalRevenue)} color="text-brand" />
-          <KPICard label="Прибуток" value={fmtMoney(totalProfit)} color="text-success" />
-          <KPICard label="ROI" value={roi ? `${roi.roi}%` : "—"} color="text-purple-600" />
-          <KPICard label="Витрати на ЗП" value={fmtMoney(salaryFund?.total ?? 0)} color="text-danger" />
-        </div>
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5"
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+        >
+          <KPICard label="Загальний дохід" value={fmtMoney(totalRevenue)} color="text-brand" numericValue={totalRevenue} />
+          <KPICard label="Прибуток" value={fmtMoney(totalProfit)} color="text-success" numericValue={totalProfit} />
+          <KPICard label="ROI" value={roi ? `${roi.roi}%` : "—"} color="text-purple-600" numericValue={roi?.roi ? Number(roi.roi) : undefined} />
+          <KPICard label="Витрати на ЗП" value={fmtMoney(salaryFund?.total ?? 0)} color="text-danger" numericValue={salaryFund?.total ?? 0} />
+        </motion.div>
       )}
 
       {revenueLoading ? (
@@ -166,8 +178,8 @@ export default function Analytics() {
                   formatter={(v: number) => [fmtMoney(v), ""]}
                   contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
                 />
-                <Line type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={2} dot={{ r: 3, fill: "#2563eb" }} name="Дохід" />
-                <Line type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: "#10b981" }} name="Прибуток" />
+                <Line type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={2} dot={{ r: 3, fill: "#2563eb" }} name="Дохід" isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
+                <Line type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: "#10b981" }} name="Прибуток" isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -192,7 +204,7 @@ export default function Analytics() {
                     formatter={(v: number) => [v, "Подій"]}
                     contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
                   />
-                  <Bar dataKey="events" fill="#2563eb" radius={[8, 8, 0, 0]} maxBarSize={48} />
+                  <Bar dataKey="events" fill="#2563eb" radius={[8, 8, 0, 0]} maxBarSize={48} isAnimationActive={true} animationDuration={800} animationEasing="ease-out" />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -247,7 +259,12 @@ function KpiTables() {
   });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+    <motion.div
+      className="grid grid-cols-1 lg:grid-cols-3 gap-3"
+      variants={staggerContainer}
+      initial="hidden"
+      animate="visible"
+    >
       <KpiTable
         title="Менеджери"
         headers={["#", "Ім'я", "Затверджено"]}
@@ -283,7 +300,7 @@ function KpiTables() {
           ]) ?? []
         }
       />
-    </div>
+    </motion.div>
   );
 }
 
@@ -297,7 +314,7 @@ function KpiTable({
   rows: string[][];
 }) {
   return (
-    <div className="mobile-card">
+    <motion.div className="mobile-card" variants={staggerItem}>
       <h4 className="font-semibold text-content-secondary mb-2 text-sm">{title}</h4>
       <table className="w-full text-xs">
         <thead>
@@ -327,15 +344,19 @@ function KpiTable({
           )}
         </tbody>
       </table>
-    </div>
+    </motion.div>
   );
 }
 
-function KPICard({ label, value, color }: { label: string; value: string; color: string }) {
+function KPICard({ label, value, color, numericValue }: { label: string; value: string; color: string; numericValue?: number }) {
+  const display = useCountUp(numericValue ?? 0, { duration: 0.9, enabled: numericValue !== undefined });
+  const formatted = numericValue !== undefined
+    ? fmtMoney(display)
+    : value;
   return (
-    <div className="mobile-card">
+    <motion.div className="mobile-card" variants={staggerItem} whileTap={{ scale: 0.97 }} transition={TRANSITION.tap}>
       <p className={`text-2xs font-medium ${color} mb-1.5`}>{label}</p>
-      <p className={`text-2xl font-bold leading-none ${color}`}>{value}</p>
-    </div>
+      <p className={`text-2xl font-bold leading-none ${color}`}>{formatted}</p>
+    </motion.div>
   );
 }

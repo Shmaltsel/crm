@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
+import { motion } from "framer-motion";
 import { api } from "../../../config/api";
 import { useSelectedCity } from "../../../context/CityContext";
 import type { FinanceDashboardData } from "../../../types";
+import { staggerContainer, staggerItem, useCountUp } from "../../../lib/motion";
 
 const ExpenseChart = lazy(() =>
   import("../../../components/finance/FinanceCharts").then((m) => ({ default: m.ExpenseChart }))
@@ -58,10 +60,7 @@ export default function Expenses() {
         </select>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-        <p className="text-sm text-slate-400 mb-1">Загальні витрати</p>
-        <p className="text-3xl font-bold text-slate-800">{fmt(totalExpenses)} <span className="text-lg text-slate-400">грн</span></p>
-      </div>
+      <ExpensesTotal value={totalExpenses} />
 
       {categories.length > 0 && (
         <Suspense fallback={<div className="h-64 bg-white rounded-2xl animate-pulse" />}>
@@ -73,24 +72,39 @@ export default function Expenses() {
       )}
 
       {categories.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+        <motion.div
+          className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+        >
           <h3 className="text-sm font-semibold text-slate-800 mb-3">Деталізація</h3>
           <div className="space-y-2">
             {categories.map((cat) => {
               const pct = totalExpenses > 0 ? Math.round((Number(cat.amount) / Number(totalExpenses)) * 100) : 0;
               return (
-                <div key={cat.name} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+                <motion.div key={cat.name} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0" variants={staggerItem}>
                   <span className="text-sm text-slate-700">{cat.name}</span>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-slate-400">{pct}%</span>
                     <span className="text-sm font-semibold text-slate-800">{fmt(cat.amount)} грн</span>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
-        </div>
+        </motion.div>
       )}
+    </div>
+  );
+}
+
+function ExpensesTotal({ value }: { value: number }) {
+  const display = useCountUp(value, { duration: 0.9 });
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <p className="text-sm text-slate-400 mb-1">Загальні витрати</p>
+      <p className="text-3xl font-bold text-slate-800">{fmt(display)} <span className="text-lg text-slate-400">грн</span></p>
     </div>
   );
 }

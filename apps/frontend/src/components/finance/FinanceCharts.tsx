@@ -1,4 +1,5 @@
 import React, { useMemo, memo } from "react";
+import { motion } from "framer-motion";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -22,6 +23,7 @@ import type {
   FinanceEventItem,
 } from "../../types";
 import { fmtAmount as fmt, calcProjectTotals, calcBarPercent } from "../../utils/financeCalculations";
+import { staggerContainer, staggerItem, useCountUp, TRANSITION } from "../../lib/motion";
 
 const PALETTE = [
   "#3b82f6",
@@ -58,8 +60,14 @@ const KpiCard = memo(function KpiCard({
   icon,
   subtitle,
 }: KpiCardProps) {
+  const display = useCountUp(value, { duration: 0.9 });
   return (
-    <div className="bg-white rounded-[24px] p-5 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow duration-300">
+    <motion.div
+      className="bg-white rounded-[24px] p-5 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow duration-300"
+      variants={staggerItem}
+      whileTap={{ scale: 0.97 }}
+      transition={TRANSITION.tap}
+    >
       <div className="flex justify-between items-start mb-4">
         <p className="text-xs sm:text-sm font-semibold text-slate-500 leading-tight pr-2">
           {title}
@@ -74,7 +82,7 @@ const KpiCard = memo(function KpiCard({
         <p
           className={`text-xl sm:text-2xl md:text-3xl font-black tracking-tight ${color}`}
         >
-          {fmt(value)}{" "}
+          {fmt(display)}{" "}
           <span className="text-sm font-bold text-slate-400 opacity-60">
             грн
           </span>
@@ -85,7 +93,7 @@ const KpiCard = memo(function KpiCard({
           </p>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 });
 
@@ -245,7 +253,9 @@ const RevenueChart = memo(function RevenueChart({
           strokeWidth={3}
           fill="url(#colorRevenue)"
           activeDot={{ r: 6, strokeWidth: 0, fill: "#3b82f6" }}
-          isAnimationActive={false}
+          isAnimationActive={true}
+          animationDuration={1000}
+          animationEasing="ease-out"
         />
         <Area
           type="monotone"
@@ -255,7 +265,9 @@ const RevenueChart = memo(function RevenueChart({
           strokeWidth={3}
           fill="url(#colorProfit)"
           activeDot={{ r: 6, strokeWidth: 0, fill: "#10b981" }}
-          isAnimationActive={false}
+          isAnimationActive={true}
+          animationDuration={1000}
+          animationEasing="ease-out"
         />
       </AreaChart>
     </ResponsiveContainer>
@@ -283,7 +295,9 @@ const ProjectPieChart = memo(function ProjectPieChart({
               outerRadius={85}
               paddingAngle={3}
               stroke="none"
-              isAnimationActive={false}
+              isAnimationActive={true}
+              animationDuration={800}
+              animationEasing="ease-out"
             >
               {byProject.map((_: FinanceByProject, index: number) => (
                 <Cell
@@ -359,7 +373,9 @@ const ExpenseChart = memo(function ExpenseChart({
             fill="#f43f5e"
             radius={[0, 8, 8, 0]}
             barSize={20}
-            isAnimationActive={false}
+            isAnimationActive={true}
+            animationDuration={800}
+            animationEasing="ease-out"
           >
             {byExpenseCategory.map((_: FinanceByCategory, idx: number) => (
               <Cell key={`cell-${idx}`} fill={PALETTE[idx % PALETTE.length]} />
@@ -488,7 +504,12 @@ export default memo(function FinanceCharts({
       </div>
 
       {/* KPI Картки */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-8">
+      <motion.div
+        className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-8"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+      >
         <KpiCard
           title="Загальна виручка"
           value={kpi.totalRevenue}
@@ -518,10 +539,15 @@ export default memo(function FinanceCharts({
           icon="⏳"
           subtitle="Із запланованих подій"
         />
-      </div>
+      </motion.div>
 
       {/* Верхній ряд графіків */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+      <motion.div
+        className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+      >
         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 xl:col-span-2">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
             <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
@@ -546,10 +572,15 @@ export default memo(function FinanceCharts({
             projectTotals={projectTotals}
           />
         </div>
-      </div>
+      </motion.div>
 
       {/* Нижній ряд */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+      >
         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 overflow-x-auto">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
             <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
@@ -569,10 +600,15 @@ export default memo(function FinanceCharts({
           </h3>
           <TopSchools topSchools={topSchools} />
         </div>
-      </div>
+      </motion.div>
 
       {/* Найкращі і найгірші події */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <motion.div
+        className="grid grid-cols-1 md:grid-cols-2 gap-6"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+      >
         <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 overflow-x-auto">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
             <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
@@ -591,7 +627,7 @@ export default memo(function FinanceCharts({
           </h3>
           <EventTable events={worstEvents} positive={false} />
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 });

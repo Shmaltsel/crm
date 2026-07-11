@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Variants } from "framer-motion";
 
 /* ─── Reduced Motion ─── */
@@ -61,6 +61,40 @@ export function useStaggeredEntrance(
     }),
     [delayChildren, stagger, reduced],
   );
+}
+
+/** React hook: animates a number from 0 → target. Returns current display value. */
+export function useCountUp(
+  target: number,
+  opts?: { duration?: number; decimals?: number; enabled?: boolean },
+): number {
+  const { duration = 0.8, decimals = 0, enabled = true } = opts ?? {};
+  const reduced = useReducedMotion();
+  const skip = reduced || !enabled;
+  const [display, setDisplay] = useState(0);
+  const rafRef = useRef<number>(0);
+  const startRef = useRef<number>(0);
+  const fromRef = useRef(0);
+  const prevTargetRef = useRef(target);
+
+  useEffect(() => {
+    if (skip) return;
+    fromRef.current = prevTargetRef.current;
+    prevTargetRef.current = target;
+    startRef.current = 0;
+    const step = (ts: number) => {
+      if (!startRef.current) startRef.current = ts;
+      const progress = Math.min((ts - startRef.current) / (duration * 1000), 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = fromRef.current + (target - fromRef.current) * eased;
+      setDisplay(Number(current.toFixed(decimals)));
+      if (progress < 1) rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [target, duration, decimals, skip]);
+
+  return skip ? target : display;
 }
 
 /* ─── Durations ─── */
