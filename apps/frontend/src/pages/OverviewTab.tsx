@@ -4,8 +4,8 @@ import { useDashboardSummary } from "../hooks/useDashboardSummary";
 import TodayEvents from "../components/dashboard/TodayEvents";
 import ActivityFeed from "../components/dashboard/ActivityFeed";
 
-function fmtAmount(value: number): string {
-  return new Intl.NumberFormat("uk-UA").format(Math.round(value));
+function fmtAmount(value: unknown): string {
+  return new Intl.NumberFormat("uk-UA").format(Math.round(Number(value) || 0));
 }
 
 function KpiCard({

@@ -74,15 +74,15 @@ export default function CityProfile() {
     0,
   );
   const totalRevenue = completedEvents.reduce(
-    (sum, ev) => sum + (ev.report?.totalSum || ev.price || 0),
+    (sum, ev) => sum + Number(ev.report?.totalSum || ev.price || 0),
     0,
   );
   const totalProfit = completedEvents.reduce(
-    (sum, ev) => sum + (ev.report?.remainderSum || 0),
+    (sum, ev) => sum + Number(ev.report?.remainderSum || 0),
     0,
   );
-  const fmt = (n: number) =>
-    new Intl.NumberFormat("uk-UA").format(Math.round(n));
+  const fmt = (n: unknown) =>
+    new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
 
   const TABS: { key: Tab; label: string; icon: string }[] = [
     { key: "events", label: "Події", icon: "📅" },
@@ -606,8 +606,8 @@ function CompletedEventModal({
   event: any;
 }) {
   if (!isOpen || !event) return null;
-  const fmt = (n: number) =>
-    new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+  const fmt = (n: unknown) =>
+    new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
   const report = event.report;
 
   return (

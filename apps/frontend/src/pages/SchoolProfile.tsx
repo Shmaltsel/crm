@@ -609,14 +609,14 @@ export default function SchoolProfile() {
                         <div className="text-right shrink-0">
                           <p className="font-semibold text-content-primary text-sm">
                             {new Intl.NumberFormat("uk-UA").format(
-                              ev.report?.totalSum || ev.price || 0,
+                              Math.round(Number(ev.report?.totalSum || ev.price || 0)),
                             )}{" "}
                             грн
                           </p>
                           <p className="text-xs font-medium text-success-600 mt-0.5">
                             +
                             {new Intl.NumberFormat("uk-UA").format(
-                              ev.report?.remainderSum || 0,
+                              Math.round(Number(ev.report?.remainderSum || 0)),
                             )}{" "}
                             грн
                           </p>
@@ -655,13 +655,13 @@ export default function SchoolProfile() {
                             </td>
                             <td className="p-4 font-medium text-content-primary">
                               {new Intl.NumberFormat("uk-UA").format(
-                                ev.report?.totalSum || ev.price || 0,
+                                Math.round(Number(ev.report?.totalSum || ev.price || 0)),
                               )}{" "}
                               грн
                             </td>
                             <td className="p-4 font-medium text-success-600">
                               {new Intl.NumberFormat("uk-UA").format(
-                                ev.report?.remainderSum || 0,
+                                Math.round(Number(ev.report?.remainderSum || 0)),
                               )}{" "}
                               грн
                             </td>

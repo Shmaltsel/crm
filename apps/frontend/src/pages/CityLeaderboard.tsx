@@ -39,17 +39,17 @@ const PERIOD_LABELS: Record<string, string> = {
   all: "За весь час",
 };
 
-function fmt(n: number): string {
-  return new Intl.NumberFormat("uk-UA").format(Math.round(n));
+function fmt(n: unknown): string {
+  return new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
 }
 
-function fmtMoney(n: number): string {
+function fmtMoney(n: unknown): string {
   return new Intl.NumberFormat("uk-UA", {
     style: "currency",
     currency: "UAH",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(n);
+  }).format(Number(n) || 0);
 }
 
 const BAR_COLORS = [

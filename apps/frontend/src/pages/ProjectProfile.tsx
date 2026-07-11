@@ -15,7 +15,7 @@ interface ProjectStats {
   avgRating: number;
 }
 
-const fmt = (n: number) => new Intl.NumberFormat("uk-UA").format(Math.round(n));
+const fmt = (n: unknown) => new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
 
 export default function ProjectProfile() {
   const { id } = useParams<{ id: string }>();

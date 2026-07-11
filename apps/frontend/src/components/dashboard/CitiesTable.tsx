@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 
-function fmt(n: number): string {
-  return new Intl.NumberFormat('uk-UA').format(Math.round(n));
+function fmt(n: unknown): string {
+  return new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
 }
 
 function plural(n: number, one: string, few: string, many: string): string {

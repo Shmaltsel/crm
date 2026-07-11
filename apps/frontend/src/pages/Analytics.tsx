@@ -26,13 +26,13 @@ const UA_MONTHS = [
   "Лип", "Сер", "Вер", "Жов", "Лис", "Гру",
 ];
 
-function fmtMoney(n: number): string {
+function fmtMoney(n: unknown): string {
   return new Intl.NumberFormat("uk-UA", {
     style: "currency",
     currency: "UAH",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(n);
+  }).format(Number(n) || 0);
 }
 
 const currentYear = new Date().getFullYear();

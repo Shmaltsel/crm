@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { CheckCircle2, RotateCcw, XCircle, ChevronDown, Star, Users } from "lucide-react";
+import { CheckCircle2, XCircle, ChevronDown, Star, Users } from "lucide-react";
 import {
   useSubmittedReports,
   useApproveReport,
-  useRequestRevision,
   useRejectReport,
 } from "../../../hooks/useReports";
 import ReportStatusBadge from "../components/ReportStatusBadge";
@@ -19,28 +18,20 @@ function formatDate(dateStr: string) {
   });
 }
 
-function fmt(n: number) {
-  return new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+function fmt(n: unknown) {
+  return new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
 }
 
 export default function ReportsReviewPage() {
   const { data: reports = [], isLoading } = useSubmittedReports();
   const approveMutation = useApproveReport();
-  const revisionMutation = useRequestRevision();
   const rejectMutation = useRejectReport();
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [comment, setComment] = useState("");
-  const [actionTarget, setActionTarget] = useState<{ id: string; action: "revision" | "reject" } | null>(null);
+  const [actionTarget, setActionTarget] = useState<{ id: string; action: "reject" } | null>(null);
 
   const handleApprove = (id: string) => approveMutation.mutate(id);
-
-  const handleRequestRevision = (id: string) => {
-    if (!comment.trim()) return;
-    revisionMutation.mutate({ id, comment: comment.trim() });
-    setComment("");
-    setActionTarget(null);
-  };
 
   const handleReject = (id: string) => {
     if (!comment.trim()) return;
@@ -86,7 +77,7 @@ export default function ReportsReviewPage() {
             const crew = (ev?.crew ?? {}) as Record<string, unknown>;
             const isExpanded = expandedId === r.id;
             const totalExpenses = (r.expenseItems ?? []).reduce(
-              (s: number, e: ExpenseItem) => s + e.amount,
+              (s: number, e: ExpenseItem) => s + Number(e.amount) || 0,
               0,
             );
 
@@ -240,38 +231,6 @@ export default function ReportsReviewPage() {
                       >
                         <CheckCircle2 className="w-4 h-4" /> Затвердити
                       </button>
-
-                      {actionTarget?.id === r.id && actionTarget.action === "revision" ? (
-                        <div className="w-full flex gap-2 items-start mt-2">
-                          <textarea
-                            value={comment}
-                            onChange={(e) => setComment(e.target.value)}
-                            rows={2}
-                            placeholder="Обов'язково вкажіть, що потрібно виправити"
-                            className="flex-1 p-2 border border-border rounded-lg text-base focus:ring-2 focus:ring-warning outline-none resize-none"
-                          />
-                          <button
-                            onClick={() => handleRequestRevision(r.id)}
-                            disabled={!comment.trim() || revisionMutation.isPending}
-                            className="px-4 py-2 bg-warning text-white rounded-lg font-medium hover:bg-warning-600 disabled:opacity-50 text-sm shrink-0"
-                          >
-                            Відправити
-                          </button>
-                          <button
-                            onClick={() => { setActionTarget(null); setComment(""); }}
-                            className="px-3 py-2 text-content-muted hover:text-content-secondary text-sm"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => { setActionTarget({ id: r.id, action: "revision" }); setComment(""); }}
-                          className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-warning-subtle text-warning-600 border border-warning-100 rounded-xl font-medium hover:bg-warning-100 transition"
-                        >
-                          <RotateCcw className="w-4 h-4" /> На доопрацювання
-                        </button>
-                      )}
 
                       {actionTarget?.id === r.id && actionTarget.action === "reject" ? (
                         <div className="w-full flex gap-2 items-start mt-2">

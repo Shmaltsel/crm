@@ -22,8 +22,8 @@ function monthLabel(key: string) {
   return `${UA_MONTHS[m - 1]} ${String(y).slice(-2)}`;
 }
 
-function fmt(n: number) {
-  return new Intl.NumberFormat('uk-UA').format(Math.round(n || 0));
+function fmt(n: unknown) {
+  return new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
 }
 
 function toInputDate(d: Date) {
@@ -80,9 +80,9 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
     filtered.forEach(ev => {
       const key = toMonthKey(new Date(ev.date));
       const bucket = map.get(key) || { revenue: 0, profit: 0, children: 0, count: 0 };
-      bucket.revenue += ev.report?.totalSum || ev.price || 0;
-      bucket.profit += ev.report?.remainderSum || 0;
-      bucket.children += ev.report?.childrenCount || ev.childrenPlanned || 0;
+      bucket.revenue += Number(ev.report?.totalSum || ev.price || 0);
+      bucket.profit += Number(ev.report?.remainderSum || 0);
+      bucket.children += Number(ev.report?.childrenCount || ev.childrenPlanned || 0);
       bucket.count += 1;
       map.set(key, bucket);
     });
@@ -91,9 +91,9 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
       .map(([key, v]) => ({ key, label: monthLabel(key), ...v }));
   }, [filtered, from, to]);
 
-  const totalRevenue = filtered.reduce((s, ev) => s + (ev.report?.totalSum || ev.price || 0), 0);
-  const totalProfit = filtered.reduce((s, ev) => s + (ev.report?.remainderSum || 0), 0);
-  const totalChildren = filtered.reduce((s, ev) => s + (ev.report?.childrenCount || ev.childrenPlanned || 0), 0);
+  const totalRevenue = filtered.reduce((s, ev) => s + Number(ev.report?.totalSum || ev.price || 0), 0);
+  const totalProfit = filtered.reduce((s, ev) => s + Number(ev.report?.remainderSum || 0), 0);
+  const totalChildren = filtered.reduce((s, ev) => s + Number(ev.report?.childrenCount || ev.childrenPlanned || 0), 0);
   const totalCount = filtered.length;
 
   const pieData = monthly.filter(m => m.count > 0);

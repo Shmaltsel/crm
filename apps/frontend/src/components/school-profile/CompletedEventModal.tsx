@@ -29,8 +29,8 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
   if (!isOpen || !event) return null;
 
   const report = event.report;
-  const fmt = (n: number | null | undefined) =>
-    new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+  const fmt = (n: unknown) =>
+    new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
 
   return (
     <div

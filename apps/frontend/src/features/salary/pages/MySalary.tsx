@@ -3,7 +3,7 @@ import { useAuth } from "../../../context/AuthContext";
 import { useSelectedCity } from "../../../context/CityContext";
 import SalaryStatusBadge from "../components/SalaryStatusBadge";
 
-const fmt = (n: number) => new Intl.NumberFormat("uk-UA").format(Math.round(n || 0));
+const fmt = (n: unknown) => new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
 
 export default function MySalary() {
   const { user } = useAuth();

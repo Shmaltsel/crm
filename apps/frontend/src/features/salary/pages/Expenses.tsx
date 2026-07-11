@@ -19,7 +19,7 @@ function Skeleton() {
   );
 }
 
-const fmt = (n: number) => new Intl.NumberFormat("uk-UA").format(Math.round(n));
+const fmt = (n: unknown) => new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
 
 export default function Expenses() {
   const { selectedCity } = useSelectedCity();
@@ -40,7 +40,7 @@ export default function Expenses() {
   if (isLoading || !data) return <Skeleton />;
 
   const totalExpenses = data.kpi?.totalExpenses ?? 0;
-  const categories = [...(data.byExpenseCategory ?? [])].sort((a, b) => b.amount - a.amount);
+  const categories = [...(data.byExpenseCategory ?? [])].sort((a, b) => Number(b.amount) - Number(a.amount));
 
   return (
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen flex flex-col gap-4">
@@ -77,7 +77,7 @@ export default function Expenses() {
           <h3 className="text-sm font-semibold text-slate-800 mb-3">Деталізація</h3>
           <div className="space-y-2">
             {categories.map((cat) => {
-              const pct = totalExpenses > 0 ? Math.round((cat.amount / totalExpenses) * 100) : 0;
+              const pct = totalExpenses > 0 ? Math.round((Number(cat.amount) / Number(totalExpenses)) * 100) : 0;
               return (
                 <div key={cat.name} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
                   <span className="text-sm text-slate-700">{cat.name}</span>
