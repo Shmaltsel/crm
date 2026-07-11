@@ -28,7 +28,7 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
     return () => document.removeEventListener('keydown', handler);
   }, [isOpen, onClose]);
 
-  const report = event.report;
+  const report = event?.report ?? null;
   const fmt = (n: unknown) =>
     new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
 
