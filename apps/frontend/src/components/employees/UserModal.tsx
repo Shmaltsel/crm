@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFormik } from "formik";
 import * as Yup from "yup";
@@ -68,6 +69,13 @@ export default function UserModal({
       onSave(values);
     },
   });
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [isOpen, onClose]);
 
   return (
     <AnimatePresence>

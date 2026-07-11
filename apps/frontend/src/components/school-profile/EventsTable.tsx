@@ -1,8 +1,10 @@
 
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { staggerItem, fadeVariants } from '../../lib/motion';
 import type { Event } from '../../types';
 import { useDeleteEvent } from '../../hooks/useSchoolProfile';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 interface EventsTableProps {
   events: Event[];
@@ -14,16 +16,22 @@ interface EventsTableProps {
 
 export default function EventsTable({ events, selectedEventId, onEventSelect, onDeleteSuccess, schoolId }: EventsTableProps) {
   const deleteMutation = useDeleteEvent(schoolId);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
+  const handleDeleteClick = (e: React.MouseEvent, id: string, project: string) => {
     e.stopPropagation();
-    if (!window.confirm('Видалити цю подію?')) return;
+    setDeleteTarget({ id, name: project });
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await deleteMutation.mutateAsync(id);
+      await deleteMutation.mutateAsync(deleteTarget.id);
       onDeleteSuccess();
     } catch (error) {
       console.error('Помилка видалення:', error);
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
@@ -55,7 +63,7 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
             <div className="flex items-center gap-2 shrink-0">
               <span className="font-medium text-sm text-content-secondary">{ev.price} грн</span>
               <button
-                onClick={(e) => handleDelete(e, ev.id)}
+                onClick={(e) => handleDeleteClick(e, ev.id, ev.project)}
                 className="text-danger-600 active:text-danger p-2.5 rounded-control active:scale-90 transition-transform duration-fast"
               >
                 🗑
@@ -94,7 +102,7 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
                 <td className="p-4">{ev.price} грн</td>
                 <td className="p-4 text-center">
                   <button
-                    onClick={(e) => handleDelete(e, ev.id)}
+                    onClick={(e) => handleDeleteClick(e, ev.id, ev.project)}
                     className="text-danger-600 hover:text-danger p-2.5 active:scale-90 transition-transform duration-fast"
                   >
                     🗑
@@ -106,6 +114,16 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        title="Видалити подію?"
+        message={`Подію «${deleteTarget?.name ?? ''}» буде видалено назавжди.`}
+        confirmLabel="Видалити"
+        variant="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

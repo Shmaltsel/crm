@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, Trash2 } from "lucide-react";
 import { backdropVariants, modalContentVariants, SPRING, TRANSITION } from "../../lib/motion";
@@ -34,6 +35,25 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const confirmRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      const t = setTimeout(() => confirmRef.current?.focus(), 50);
+      return () => clearTimeout(t);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+      if (e.key === "Enter") { e.preventDefault(); onConfirm(); }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [isOpen, onCancel, onConfirm]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -48,6 +68,9 @@ export function ConfirmDialog({
           transition={{ duration: 0.15 }}
         >
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-dialog-title"
             variants={modalContentVariants}
             initial="hidden"
             animate="visible"
@@ -65,7 +88,7 @@ export function ConfirmDialog({
                 {variant === "danger" ? <Trash2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
               </motion.div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-bold text-content-primary">{title}</h3>
+                <h3 id="confirm-dialog-title" className="text-lg font-bold text-content-primary">{title}</h3>
                 <p className="text-sm text-content-secondary mt-1">{message}</p>
               </div>
             </div>
@@ -80,6 +103,7 @@ export function ConfirmDialog({
                 Скасувати
               </motion.button>
               <motion.button
+                ref={confirmRef}
                 onClick={onConfirm}
                 className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${variantStyles[variant].button}`}
                 whileHover={{ scale: 1.03 }}

@@ -1,4 +1,6 @@
 import React, { useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { backdropVariants, modalContentVariants } from "../../lib/motion";
 import type { Event, ExpenseItem, SalaryRecord } from "../../types";
 
 interface CompletedEventModalProps {
@@ -26,21 +28,31 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
     return () => document.removeEventListener('keydown', handler);
   }, [isOpen, onClose]);
 
-  if (!isOpen || !event) return null;
-
   const report = event.report;
   const fmt = (n: unknown) =>
     new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={headingId}
-      className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="bg-surface rounded-t-modal sm:rounded-modal shadow-modal w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col pb-safe">
+    <AnimatePresence>
+      {isOpen && event && (
+        <motion.div
+          variants={backdropVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        >
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={headingId}
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="bg-surface rounded-t-modal sm:rounded-modal shadow-modal w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col pb-safe"
+          >
         <div className="p-5 sm:p-6 border-b border-border flex justify-between bg-surface-muted shrink-0">
           <div>
             <h3 id={headingId} className="text-xl font-bold text-content-primary">
@@ -183,9 +195,9 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
               </div>
             )}
           </div>
-        </div>
-      </div>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 
