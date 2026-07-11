@@ -44,7 +44,7 @@ export default function MoreSheet({ onClose }: Props) {
 
   return (
     <motion.div
-      className="fixed inset-0 z-[60] flex flex-col justify-end"
+      className="fixed inset-0 z-modal flex flex-col justify-end"
       variants={fadeVariants}
       initial="hidden"
       animate="visible"

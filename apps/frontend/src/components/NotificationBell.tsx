@@ -79,13 +79,13 @@ export default function NotificationBell() {
       <AnimatePresence>
         {open && (
           <>
-            <div className="fixed inset-0 z-[55]" onClick={() => setOpen(false)} />
+            <div className="fixed inset-0 z-sheet" onClick={() => setOpen(false)} />
             <motion.div
               variants={tooltipVariants}
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="absolute right-0 top-full mt-2 w-80 bg-[#0B1527] border border-slate-700/50 rounded-xl shadow-2xl z-[60] max-h-[70vh] flex flex-col"
+              className="absolute right-0 top-full mt-2 w-80 bg-nav border border-slate-700/50 rounded-xl shadow-2xl z-sheet max-h-[70vh] flex flex-col"
             >
               <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 shrink-0">
                 <h3 className="text-sm font-semibold text-white">Сповіщення</h3>

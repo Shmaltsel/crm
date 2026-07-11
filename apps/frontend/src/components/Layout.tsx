@@ -90,7 +90,7 @@ export default function Layout() {
     <div className="flex h-dvh bg-surface-subtle font-sans overflow-hidden">
       <MobileTopNav />
 
-      <aside className="hidden md:flex md:relative w-64 flex-col bg-[#0B1527] text-white shrink-0">
+      <aside className="hidden md:flex md:relative w-64 flex-col bg-nav text-white shrink-0">
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}

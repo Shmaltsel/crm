@@ -41,6 +41,9 @@
   .mobile-kpi-card {
     @apply bg-surface rounded-card shadow-card border border-border p-3 flex flex-col justify-between;
   }
+  .modal-backdrop {
+    @apply fixed inset-0 bg-nav/40 backdrop-blur-sm z-modal;
+  }
   .fab {
     @apply md:hidden fixed z-40 w-14 h-14 rounded-full bg-brand text-white
            shadow-lg active:scale-95 transition-transform duration-fast
@@ -52,7 +55,7 @@
 
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: theme('colors.neutral.300') transparent;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -60,7 +63,7 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1;
+  background-color: theme('colors.neutral.300');
   border-radius: 20px;
 }
 

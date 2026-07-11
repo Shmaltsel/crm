@@ -77,6 +77,8 @@ export default {
           host: { bg: "#f5f3ff", text: "#7c3aed" },
           driver: { bg: "#ecfdf5", text: "#059669" },
         },
+        nav: "#0B1527",
+        backdrop: "rgba(15, 23, 42, 0.4)",
       },
       borderRadius: {
         card: "1rem",
@@ -112,6 +114,12 @@ export default {
         fast: "150ms",
         base: "200ms",
         slow: "300ms",
+      },
+      zIndex: {
+        nav: "50",
+        sheet: "55",
+        modal: "60",
+        toast: "100",
       },
       animation: {
         shimmer: "shimmer 1.4s linear infinite",

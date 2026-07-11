@@ -14,7 +14,7 @@ export function LoadingBar({ isLoading }: LoadingBarProps) {
           animate={{ scaleX: 1 }}
           exit={{ scaleX: 0 }}
           transition={{ duration: DUR.slow, ease: EASE.outExpo }}
-          className="fixed top-0 left-0 right-0 z-[60] h-0.5 bg-brand origin-left"
+          className="fixed top-0 left-0 right-0 z-modal h-0.5 bg-brand origin-left"
         >
           <motion.div
             className="absolute inset-0 bg-brand-300"

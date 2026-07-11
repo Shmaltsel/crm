@@ -178,11 +178,13 @@ export default function Employees() {
   const [isMutating, setIsMutating] = useState(false);
 
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+  const [confirmDeleteProject, setConfirmDeleteProject] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (confirmDelete) setConfirmDelete(null);
+        else if (confirmDeleteProject) setConfirmDeleteProject(null);
         else if (isModalOpen) setIsModalOpen(false);
         else if (isProjectModalOpen) { setIsProjectModalOpen(false); setEditingProject(null); }
         else if (filterPanelOpen) setFilterPanelOpen(false);
@@ -190,7 +192,7 @@ export default function Employees() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [confirmDelete, isModalOpen, isProjectModalOpen, filterPanelOpen]);
+  }, [confirmDelete, confirmDeleteProject, isModalOpen, isProjectModalOpen, filterPanelOpen]);
 
   const handleOpenProjectModal = useCallback((project: Project | null = null) => {
     setEditingProject(project);
@@ -366,11 +368,19 @@ export default function Employees() {
     }
   }, [projectForm, editingProject, updateProject, createProject]);
 
-  const handleDeleteProject = useCallback(async (id: string, name: string) => {
-    if (!window.confirm(`Видалити вид події "${name}"? Існуючі події з цією назвою збережуться.`)) return;
-    try { await deleteProject.mutateAsync(id); }
-    catch { alert("Помилка видалення"); }
-  }, [deleteProject]);
+  const handleDeleteProject = useCallback(async () => {
+    if (!confirmDeleteProject) return;
+    setIsMutating(true);
+    try {
+      await deleteProject.mutateAsync(confirmDeleteProject.id);
+      toast("Проєкт видалено", "success");
+    } catch {
+      toast("Помилка видалення", "error");
+    } finally {
+      setConfirmDeleteProject(null);
+      setIsMutating(false);
+    }
+  }, [confirmDeleteProject, deleteProject, toast]);
 
   const cityOptions = useMemo(
     () => [{ value: "all", label: "Всі міста" }, ...cities.map((c: City) => ({ value: c.id, label: c.name }))],
@@ -562,7 +572,7 @@ export default function Employees() {
                         {isSuperAdmin && (
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => handleOpenProjectModal(p)} className="text-slate-300 hover:text-blue-500 p-2 -mr-1 active:scale-90 transition-transform duration-fast" title="Редагувати">✏️</button>
-                            <button onClick={() => handleDeleteProject(p.id, p.name)} className="text-slate-300 hover:text-red-500 p-2 -mr-2 active:scale-90 transition-transform duration-fast" title="Видалити">🗑</button>
+                            <button onClick={() => setConfirmDeleteProject({ id: p.id, name: p.name })} className="text-slate-300 hover:text-red-500 p-2 -mr-2 active:scale-90 transition-transform duration-fast" title="Видалити">🗑</button>
                           </div>
                         )}
                       </motion.div>
@@ -606,6 +616,15 @@ export default function Employees() {
           variant="danger"
           onConfirm={handleDelete}
           onCancel={() => setConfirmDelete(null)}
+        />
+        <ConfirmDialog
+          isOpen={!!confirmDeleteProject}
+          title="Видалити вид події"
+          message={`Видалити вид події "${confirmDeleteProject?.name}"? Існуючі події з цією назвою збережуться.`}
+          confirmLabel="Видалити"
+          variant="danger"
+          onConfirm={handleDeleteProject}
+          onCancel={() => setConfirmDeleteProject(null)}
         />
         </motion.div>
       </MotionConfig>

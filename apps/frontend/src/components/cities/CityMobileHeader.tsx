@@ -155,7 +155,7 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
       {/* Сповіщення про проблему з розгортанням */}
       {issuesVisible && (
         <div
-          className={`bg-[#FFF4F4] border border-red-100 rounded-2xl p-4 flex flex-col gap-3 shadow-sm ${issuesExiting ? "issues-exit" : "issues-enter"}`}
+          className={`bg-danger-subtle border border-red-100 rounded-2xl p-4 flex flex-col gap-3 shadow-sm ${issuesExiting ? "issues-exit" : "issues-enter"}`}
         >
           <div
             className="flex items-center gap-4 cursor-pointer"
