@@ -2,6 +2,8 @@ import { useState, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../config/api";
 import { useSelectedCity } from "../../../context/CityContext";
+import { exportCsv } from "../../../utils/exportCsv";
+import { Download } from "lucide-react";
 import type { FinanceDashboardData } from "../../../types";
 
 const FinanceCharts = lazy(() => import("../../../components/finance/FinanceCharts"));
@@ -44,8 +46,26 @@ export default function Company() {
 
   if (isLoading || !data) return <FinanceSkeleton />;
 
+  const handleExport = () => {
+    const rows = data.monthly.map((m) => ({
+      Місяць: m.month,
+      "Дохід": String(m.revenue),
+      "Прибуток": String(m.profit),
+    }));
+    exportCsv(rows, `finance-${selectedCity.id || "all"}.csv`);
+  };
+
   return (
     <Suspense fallback={<FinanceSkeleton />}>
+      <div className="flex justify-end px-4 pt-3">
+        <button
+          onClick={handleExport}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-content-secondary bg-surface-muted rounded-lg hover:bg-surface border border-border transition"
+        >
+          <Download size={14} />
+          Експорт CSV
+        </button>
+      </div>
       <FinanceCharts
         data={data}
         period={period}
