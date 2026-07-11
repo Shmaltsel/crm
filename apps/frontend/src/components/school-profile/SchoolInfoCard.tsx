@@ -2,6 +2,7 @@ import { memo } from "react";
 import AddressLink from "../AddressLink";
 import PhoneLink from "../PhoneLink";
 import { motion } from "framer-motion";
+import { cardHoverVariants, DUR } from "../../lib/motion";
 import type { SchoolProfileData } from "../../types";
 
 export default memo(function SchoolInfoCard({
@@ -11,8 +12,9 @@ export default memo(function SchoolInfoCard({
 }) {
   return (
     <motion.div
-      whileHover={{ y: -4, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.10)" }}
-      transition={{ duration: 0.2 }}
+      variants={cardHoverVariants}
+      initial="rest"
+      whileHover="hover"
       className="bg-surface p-6 rounded-card shadow-card border border-border"
     >
       <ul className="space-y-4 text-sm">
@@ -36,7 +38,7 @@ export default memo(function SchoolInfoCard({
             key={label}
             initial={{ opacity: 0, x: -6 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.25, delay: i * 0.05 }}
+            transition={{ duration: DUR.normal, delay: i * 0.05 }}
             className="flex gap-3"
           >
             <span className="text-content-muted">{icon}</span>

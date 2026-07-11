@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import { DUR, EASE, pageVariants } from "../lib/motion";
 import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
@@ -182,7 +183,7 @@ export default function CityLeaderboard() {
                                 className={`h-full rounded-full ${isTop ? "bg-amber-400" : "bg-blue-400"}`}
                                 initial={{ width: 0 }}
                                 animate={{ width: `${pct}%` }}
-                                transition={{ duration: 0.5, ease: "easeOut" }}
+                                transition={{ duration: DUR.verySlow, ease: EASE.decelerate }}
                               />
                             </div>
                           </div>
@@ -244,10 +245,10 @@ export default function CityLeaderboard() {
           <AnimatePresence mode="wait">
             <motion.div
               key={metric}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25 }}
+              variants={pageVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
             >
               {data.map((entry, i) => {
                 const value = entry[metric as keyof CityLeaderboardEntry] as number;
@@ -264,7 +265,7 @@ export default function CityLeaderboard() {
                         className={`h-full rounded-full ${BAR_COLORS[colorIndex]}`}
                         initial={{ width: 0 }}
                         animate={{ width: `${pct}%` }}
-                        transition={{ duration: 0.5, ease: "easeOut" }}
+                        transition={{ duration: DUR.verySlow, ease: EASE.decelerate }}
                       />
                     </div>
                     <span className="w-20 text-xs font-semibold text-content-secondary text-right shrink-0">

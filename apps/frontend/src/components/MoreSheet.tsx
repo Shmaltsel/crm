@@ -5,6 +5,7 @@ import { LogOut } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { NAV_TABS } from "../constants/navTabs";
 import { hasRole } from "../utils/roles";
+import { fadeVariants, SPRING } from "../lib/motion";
 
 interface Props {
   onClose: () => void;
@@ -36,10 +37,10 @@ export default function MoreSheet({ onClose }: Props) {
   return (
     <motion.div
       className="fixed inset-0 z-[60] flex flex-col justify-end"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
+      variants={fadeVariants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
     >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
@@ -48,7 +49,7 @@ export default function MoreSheet({ onClose }: Props) {
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
-        transition={{ type: "spring", stiffness: 400, damping: 35 }}
+        transition={SPRING.snappy}
         drag="y"
         dragConstraints={{ top: 0, bottom: 0 }}
         dragElastic={0.2}

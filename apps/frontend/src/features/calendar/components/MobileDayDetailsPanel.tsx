@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toISODate } from "../utils/date";
 import { PROJECT_HEX } from "../constants";
 import type { Event as CalendarEvent, DayOff, User } from "../../../types";
+import { pageVariants } from "../../../lib/motion";
 
 interface MobileDayDetailsPanelProps {
   selectedMobileDate: Date;
@@ -24,10 +25,10 @@ export default function MobileDayDetailsPanel({
     <AnimatePresence mode="wait">
       <motion.div
         key={toISODate(selectedMobileDate)}
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 0.2 }}
+        variants={pageVariants}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
         className="mt-3 select-none"
       >
         <h3 className="text-sm font-bold text-content-primary mb-2">

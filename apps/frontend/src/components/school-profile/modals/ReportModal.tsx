@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { backdropVariants, modalContentVariants } from "../../../lib/motion";
 
 interface Expense {
   name: string;
@@ -321,18 +322,18 @@ export default function ReportModal({
           role="dialog"
           aria-modal="true"
           aria-labelledby={headingId}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
+          variants={backdropVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center sm:p-4"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
           <motion.div
-            initial={{ opacity: 0, y: 32 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 32 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
             className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden pb-safe"
             style={{ willChange: "transform" }}
           >

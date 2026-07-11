@@ -7,6 +7,7 @@ import {
   type PreparationStatus,
 } from "../../utils/preparationStatus";
 import { useInventoryByProject } from "../../hooks/useInventory";
+import { cardHoverVariants, TRANSITION, scaleVariants, DUR } from "../../lib/motion";
 
 interface PreparationProps {
   data: Partial<EventPreparationData>;
@@ -60,8 +61,9 @@ export default memo(function EventPreparation({
 
   return (
     <motion.div
-      whileHover={{ y: -2, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.08)" }}
-      transition={{ duration: 0.2 }}
+      variants={cardHoverVariants}
+      initial="rest"
+      whileHover="hover"
       className="bg-surface p-6 rounded-card shadow-card border border-border"
     >
       <h3 className="font-bold text-content-primary mb-4 border-b pb-3 border-border">
@@ -76,6 +78,7 @@ export default memo(function EventPreparation({
             <motion.div
               key={task.key}
               whileTap={{ scale: 0.98 }}
+              transition={TRANSITION.tap}
               className="flex justify-between items-center cursor-pointer group hover:bg-surface-muted p-2 -mx-2 rounded-control transition-colors"
               onClick={() => handleTaskClick(task.key)}
             >
@@ -85,10 +88,11 @@ export default memo(function EventPreparation({
               <AnimatePresence mode="wait">
                 <motion.span
                   key={currentStatus}
-                  initial={{ opacity: 0, scale: 0.85 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.85 }}
-                  transition={{ duration: 0.15 }}
+                  variants={scaleVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  transition={{ duration: DUR.fast }}
                   className={`px-2.5 py-1 rounded-full text-xs font-bold select-none ${getStatusColor(currentStatus)}`}
                 >
                   {PREPARATION_STATUS_LABELS[currentStatus]}

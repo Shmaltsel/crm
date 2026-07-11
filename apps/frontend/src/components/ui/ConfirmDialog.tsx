@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, Trash2 } from "lucide-react";
+import { backdropVariants, modalContentVariants } from "../../lib/motion";
 
 type Variant = "danger" | "warning";
 
@@ -37,17 +38,18 @@ export function ConfirmDialog({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          variants={backdropVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={onCancel}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 10 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
             onClick={(e) => e.stopPropagation()}
             className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6"
           >

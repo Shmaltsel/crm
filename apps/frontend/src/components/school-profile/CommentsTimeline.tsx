@@ -6,6 +6,7 @@ import {
   useCreateSchoolComment,
   useDeleteSchoolComment,
 } from "../../hooks/useSchoolComments";
+import { cardHoverVariants, DUR, EASE } from "../../lib/motion";
 import type { CommentType, UserRole } from "../../types";
 
 const COMMENT_TYPES: { key: CommentType; label: string; icon: string }[] = [
@@ -57,8 +58,9 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
 
   return (
     <motion.div
-      whileHover={{ y: -2, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.08)" }}
-      transition={{ duration: 0.2 }}
+      variants={cardHoverVariants}
+      initial="rest"
+      whileHover="hover"
       className="bg-surface p-6 rounded-card shadow-card border border-border flex flex-col"
     >
       <h3 className="font-bold text-content-primary mb-5 flex items-center gap-2">
@@ -150,7 +152,7 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: 0.22, delay: i * 0.04 }}
+                transition={{ duration: DUR.normal, ease: EASE.outExpo, delay: i * 0.04 }}
                 className="relative pl-8 pr-3 py-2 text-sm hover:bg-surface-muted rounded-card transition-colors group border border-transparent hover:border-border"
               >
                 <div className="absolute left-1.5 w-3 h-3 rounded-full top-3.5 bg-warning ring-4 ring-warning-subtle flex items-center justify-center text-[7px]">

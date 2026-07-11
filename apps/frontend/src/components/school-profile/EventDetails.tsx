@@ -4,6 +4,7 @@ import AddressLink from "../AddressLink";
 import PhoneLink from "../PhoneLink";
 import IssueModal from "./modals/IssueModal";
 import RescheduleModal from "./modals/RescheduleModal";
+import { fadeVariants, cardHoverVariants } from "../../lib/motion";
 import type { Event, User } from '../../types';
 
 interface EventDetailsProps {
@@ -21,8 +22,9 @@ export default function EventDetails({ currentEvent, schoolName, cityId, onEvent
   if (!currentEvent) {
     return (
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
+        variants={fadeVariants}
+        initial="hidden"
+        animate="visible"
         className="bg-surface p-6 rounded-card shadow-card border border-border flex items-center justify-center h-32 text-content-muted"
       >
         У цього закладу ще немає запланованих подій.
@@ -35,8 +37,9 @@ export default function EventDetails({ currentEvent, schoolName, cityId, onEvent
   return (
     <>
       <motion.div
-        whileHover={{ y: -3, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.09)" }}
-        transition={{ duration: 0.2 }}
+        variants={cardHoverVariants}
+        initial="rest"
+        whileHover="hover"
         className="bg-surface rounded-card shadow-card border border-border md:border-l-4 md:border-l-brand relative"
       >
         <div className="p-5 sm:p-6 pl-6 sm:pl-6">

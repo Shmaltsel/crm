@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { fadeVariants, SPRING } from "../../lib/motion";
 import { SlidersHorizontal, X } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
@@ -132,9 +133,10 @@ export function FilterPanel({
       <AnimatePresence>
         {isMobileOpen && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            variants={fadeVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
             className="fixed inset-0 bg-slate-900/40 z-40 lg:hidden"
             onClick={onMobileClose}
           >
@@ -145,7 +147,7 @@ export function FilterPanel({
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              transition={{ ...SPRING.gentle }}
               onClick={(e) => e.stopPropagation()}
               className="absolute right-0 top-0 bottom-0 w-72 bg-surface shadow-modal p-5 overflow-y-auto"
             >

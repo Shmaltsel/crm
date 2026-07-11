@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import { motion } from "framer-motion";
+import { emptyStateVariants } from "../../lib/motion";
 
 interface EmptyStateProps {
   icon?: LucideIcon;
@@ -10,7 +12,12 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon: Icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+    <motion.div
+      variants={emptyStateVariants}
+      initial="hidden"
+      animate="visible"
+      className="flex flex-col items-center justify-center py-12 px-4 text-center"
+    >
       {Icon && (
         <div className="w-12 h-12 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
           <Icon className="w-6 h-6 text-neutral-400" />
@@ -21,6 +28,6 @@ export function EmptyState({ icon: Icon, title, description, action }: EmptyStat
         <p className="text-sm text-content-muted max-w-xs mb-4">{description}</p>
       )}
       {action}
-    </div>
+    </motion.div>
   );
 }

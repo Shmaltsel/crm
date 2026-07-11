@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate, type NavigateFunction } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { fadeVariants } from "../../lib/motion";
 import type { School, PipelineStage } from "../../types";
 import { CATEGORY_BADGES } from "../../constants/categoryBadges";
 
@@ -28,9 +29,10 @@ export const SchoolRow = React.memo(
 
     return (
       <motion.tr
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        variants={fadeVariants}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
         onClick={() => navigate(`/schools/${school.id}`)}
         className="border-b border-slate-50 hover:bg-blue-50/50 transition-colors cursor-pointer"
       >
@@ -129,8 +131,9 @@ export default function SchoolDesktopTable({
         </table>
         {schools.length === 0 && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            variants={fadeVariants}
+            initial="hidden"
+            animate="visible"
             className="text-center py-16 text-slate-400 text-sm font-medium"
           >
             {searchQuery

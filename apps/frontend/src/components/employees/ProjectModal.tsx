@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import {
   backdropVariants,
-  modalVariants,
+  modalContentVariants,
   formVariants,
   fieldVariants,
 } from "../../animations/employees";
@@ -50,7 +50,7 @@ export default function ProjectModal({
           onClick={onClose}
         >
           <motion.div
-            variants={modalVariants}
+            variants={modalContentVariants}
             initial="hidden"
             animate="visible"
             exit="exit"

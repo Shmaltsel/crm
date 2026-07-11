@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useId, type ReactNode } from "react";
 import { X } from "lucide-react";
+import { backdropVariants, modalContentVariants } from "../../lib/motion";
 
 interface ModalProps {
   isOpen: boolean;
@@ -30,18 +31,18 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-md" 
           role="dialog"
           aria-modal="true"
           aria-labelledby={headingId}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
+          variants={backdropVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
           onClick={(e) => e.target === e.currentTarget && onClose()}
         >
           <motion.div
-            initial={{ y: 32, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 32, opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
             className={`bg-surface rounded-t-3xl sm:rounded-modal shadow-modal w-full sm:${maxWidth} overflow-hidden max-h-[90vh] flex flex-col pb-safe`}
             style={{ willChange: "transform" }}
           >

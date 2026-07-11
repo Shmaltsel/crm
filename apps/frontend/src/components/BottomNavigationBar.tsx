@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { MoreHorizontal } from "lucide-react";
+import { popInVariants, TRANSITION } from "../lib/motion";
 import { useAuth } from "../context/AuthContext";
 import { NAV_TABS } from "../constants/navTabs";
 import { hasRole } from "../utils/roles";
@@ -63,10 +64,11 @@ export default function BottomNavigationBar() {
                 {isActive && (
                   <motion.div
                     key="active-pill"
-                    initial={{ opacity: 0, scale: 0.7 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.7 }}
-                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    variants={popInVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    transition={TRANSITION.tap}
                     className="absolute inset-x-1 inset-y-1 bg-brand/10 rounded-control"
                   />
                 )}
@@ -74,7 +76,7 @@ export default function BottomNavigationBar() {
               <motion.div
                 className="relative z-10 flex flex-col items-center justify-center gap-0.5"
                 whileTap={{ scale: 0.9 }}
-                transition={{ duration: 0.1 }}
+                transition={TRANSITION.tap}
               >
                 <Icon className={`w-5 h-5 ${isActive ? "text-brand" : "text-content-muted"}`} />
                 <span className={`text-2xs font-medium ${isActive ? "text-brand" : "text-content-muted"}`}>
@@ -96,10 +98,11 @@ export default function BottomNavigationBar() {
             {isMoreActive && (
               <motion.div
                 key="active-pill"
-                initial={{ opacity: 0, scale: 0.7 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.7 }}
-                transition={{ duration: 0.15, ease: "easeOut" }}
+                variants={popInVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                transition={TRANSITION.tap}
                 className="absolute inset-x-1 inset-y-1 bg-brand/10 rounded-control"
               />
             )}
@@ -107,7 +110,7 @@ export default function BottomNavigationBar() {
           <motion.div
             className="relative z-10 flex flex-col items-center justify-center gap-0.5"
             whileTap={{ scale: 0.9 }}
-            transition={{ duration: 0.1 }}
+            transition={TRANSITION.tap}
           >
             <MoreHorizontal className={`w-5 h-5 ${isMoreActive ? "text-brand" : "text-content-muted"}`} />
             <span className={`text-2xs font-medium ${isMoreActive ? "text-brand" : "text-content-muted"}`}>

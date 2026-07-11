@@ -3,6 +3,7 @@ import { Bell } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useNotifications, useUnreadCount, useMarkRead, useMarkAllRead } from "../hooks/useNotifications";
+import { tooltipVariants } from "../lib/motion";
 
 const TYPE_ICONS: Record<string, string> = {
   EVENT_RESCHEDULED: "📅",
@@ -62,10 +63,10 @@ export default function NotificationBell() {
           <>
             <div className="fixed inset-0 z-[55]" onClick={() => setOpen(false)} />
             <motion.div
-              initial={{ opacity: 0, y: -8, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.98 }}
-              transition={{ duration: 0.15 }}
+              variants={tooltipVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
               className="absolute right-0 top-full mt-2 w-80 bg-[#0B1527] border border-slate-700/50 rounded-xl shadow-2xl z-[60] max-h-[70vh] flex flex-col"
             >
               <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 shrink-0">

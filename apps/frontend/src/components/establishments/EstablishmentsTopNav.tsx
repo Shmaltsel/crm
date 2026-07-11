@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { School, Baby } from "lucide-react";
+import { SPRING } from "../../lib/motion";
 
 interface Props {
   activeTab: string;
@@ -40,7 +41,7 @@ export default function EstablishmentsTopNav({ activeTab, onChange }: Props) {
                 <motion.div
                   layoutId="establishment-active-tab"
                   className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-full"
-                  transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                  transition={SPRING.stiff}
                 />
               )}
             </button>

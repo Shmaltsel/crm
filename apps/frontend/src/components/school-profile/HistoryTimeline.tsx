@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { cardHoverVariants, DUR, EASE } from "../../lib/motion";
 import type { Event, EventHistory } from "../../types";
 interface HistoryTimelineProps {
   currentEvent: Event | null;
@@ -10,8 +11,9 @@ interface HistoryTimelineProps {
 export default memo(function HistoryTimeline({ currentEvent, onHistoryClick, onAddCommentClick }: HistoryTimelineProps) {
   return (
     <motion.div
-      whileHover={{ y: -2, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.08)" }}
-      transition={{ duration: 0.2 }}
+      variants={cardHoverVariants}
+      initial="rest"
+      whileHover="hover"
       className="bg-surface p-6 rounded-card shadow-card border border-border flex flex-col"
     >
       <div className="flex justify-between items-center mb-5">
@@ -35,7 +37,7 @@ export default memo(function HistoryTimeline({ currentEvent, onHistoryClick, onA
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -8 }}
-              transition={{ duration: 0.22, delay: i * 0.04 }}
+              transition={{ duration: DUR.normal, ease: EASE.outExpo, delay: i * 0.04 }}
               onClick={() => onHistoryClick(item)}
               className="relative pl-8 pr-3 py-2 text-sm hover:bg-surface-muted rounded-card cursor-pointer transition-colors group border border-transparent hover:border-border"
             >

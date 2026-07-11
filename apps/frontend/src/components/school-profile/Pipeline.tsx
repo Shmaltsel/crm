@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { motion } from "framer-motion";
+import { cardHoverVariants, DUR } from "../../lib/motion";
 import type { Event } from "../../types";
 interface PipelineProps {
   currentStageIndex: number;
@@ -11,8 +12,9 @@ interface PipelineProps {
 export default memo(function Pipeline({ currentStageIndex, currentEvent, onPipelineClick, stages }: PipelineProps) {
   return (
     <motion.div
-      whileHover={{ y: -2, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.08)" }}
-      transition={{ duration: 0.2 }}
+      variants={cardHoverVariants}
+      initial="rest"
+      whileHover="hover"
       className="bg-surface p-4 md:p-6 rounded-card shadow-card border border-border w-full"
     >
       <h3 className="font-bold text-content-primary mb-4 md:hidden">Етап події</h3>
@@ -31,7 +33,7 @@ export default memo(function Pipeline({ currentStageIndex, currentEvent, onPipel
                   onClick={() => isClickable && onPipelineClick(step.id)}
                   whileHover={isClickable ? { scale: 1.15 } : {}}
                   whileTap={isClickable ? { scale: 0.95 } : {}}
-                  transition={{ duration: 0.15 }}
+                  transition={{ duration: DUR.fast }}
                   className={`w-8 h-8 md:w-9 md:h-9 shrink-0 rounded-full text-xs font-bold border-2 mb-2 transition-colors
                     ${isCompleted
                       ? 'border-brand text-brand bg-surface'

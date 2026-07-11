@@ -3,7 +3,7 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import {
   backdropVariants,
-  modalVariants,
+  modalContentVariants,
   formVariants,
   shakeVariants,
   checkmarkVariants,
@@ -81,7 +81,7 @@ export default function UserModal({
           onClick={onClose}
         >
           <motion.div
-            variants={modalVariants}
+            variants={modalContentVariants}
             initial="hidden"
             animate="visible"
             exit="exit"

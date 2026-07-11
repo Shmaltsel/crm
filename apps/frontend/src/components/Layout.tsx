@@ -1,6 +1,7 @@
 import { Link, useOutlet, useLocation } from "react-router-dom";
 import { useState, useCallback, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { pageVariants, TRANSITION } from "../lib/motion";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -48,18 +49,6 @@ function NavLink({
     </Link>
   );
 }
-
-const pageTransition = {
-  type: "spring",
-  stiffness: 300,
-  damping: 30,
-} as const;
-
-const pageVariants = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit: { opacity: 0 },
-};
 
 export default function Layout() {
   const outlet = useOutlet();
@@ -152,10 +141,10 @@ export default function Layout() {
           <motion.div
             key={location.pathname}
             variants={pageVariants}
-            initial="initial"
-            animate="animate"
+            initial="hidden"
+            animate="visible"
             exit="exit"
-            transition={pageTransition}
+            transition={TRANSITION.layout}
             style={{ willChange: "opacity" }}
           >
             {outlet}

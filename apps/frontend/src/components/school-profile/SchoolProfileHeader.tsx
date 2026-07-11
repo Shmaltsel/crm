@@ -2,6 +2,7 @@ import { memo } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import PhoneLink from "../PhoneLink";
+import { scaleVariants, DUR, EASE } from "../../lib/motion";
 import type { SchoolProfileData } from "../../types";
 
 interface Props {
@@ -38,9 +39,10 @@ export default memo(function SchoolProfileHeader({ schoolData, onEdit, onAddEven
         <div className="p-5 md:p-7">
           <div className="flex flex-col md:flex-row md:items-center gap-5">
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.3, delay: 0.1, ease: "easeOut" }}
+              variants={scaleVariants}
+              initial="hidden"
+              animate="visible"
+              transition={{ duration: DUR.slow, delay: 0.1, ease: EASE.decelerate }}
               className="w-14 h-14 md:w-16 md:h-16 rounded-card bg-brand-50 flex items-center justify-center text-3xl shrink-0"
             >
               🏫

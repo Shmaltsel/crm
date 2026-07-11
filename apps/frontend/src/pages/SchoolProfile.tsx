@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import { DUR, pageVariants, slideUpVariants } from "../lib/motion";
 
 import {
   useSchool,
@@ -383,7 +384,7 @@ export default function SchoolProfile() {
   return (
     <motion.div
       animate={{ opacity: isLeavingPage ? 0 : 1 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: DUR.slow }}
       className="p-4 md:p-8 bg-gradient-subtle min-h-screen text-content-primary font-sans w-full overflow-x-hidden pb-24 md:pb-8"
     >
       <SchoolProfileHeader
@@ -428,10 +429,10 @@ export default function SchoolProfile() {
               exitingEventId !== currentEvent.id && (
               <motion.div
                 key="responsible"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.25 }}
+                variants={pageVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
                 className="bg-gradient-card rounded-card shadow-card border border-border p-6 hover:shadow-card-hover transition-all duration-200"
               >
                 <h3 className="font-bold text-content-primary mb-4 tracking-tight">
@@ -483,9 +484,9 @@ export default function SchoolProfile() {
               ? "opacity-0 scale-95 -translate-y-4 pointer-events-none"
               : ""
           }`}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.15 }}
+          variants={slideUpVariants}
+          initial="hidden"
+          animate="visible"
         >
           {currentEvent && (
             <div className="hidden xl:block">
@@ -510,10 +511,10 @@ export default function SchoolProfile() {
               exitingEventId !== currentEvent.id && (
               <motion.div
                 key="preparation"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.25 }}
+                variants={pageVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
                 className="grid grid-cols-1 xl:grid-cols-2 gap-6"
               >
                 {eventFullLoading ? (

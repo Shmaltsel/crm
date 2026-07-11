@@ -1,5 +1,6 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
+import { staggerItem, fadeVariants } from '../../lib/motion';
 import type { Event } from '../../types';
 import { useDeleteEvent } from '../../hooks/useSchoolProfile';
 
@@ -39,10 +40,11 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
         {events.map((ev, i) => (
           <motion.div
             key={ev.id}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={staggerItem}
+            initial="hidden"
+            animate="visible"
             exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.2, delay: i * 0.04 }}
+            transition={{ delay: i * 0.04 }}
             onClick={() => onEventSelect(ev.id)}
             className={`flex items-center justify-between gap-3 p-4 transition-colors cursor-pointer ${selectedEventId === ev.id ? 'bg-brand-50/50' : 'active:bg-surface-muted'}`}
           >
@@ -79,10 +81,11 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
             {events.map((ev, i) => (
               <motion.tr
                 key={ev.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.18, delay: i * 0.03 }}
+                variants={fadeVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                transition={{ delay: i * 0.03 }}
                 onClick={() => onEventSelect(ev.id)}
                 className={`border-b transition-colors cursor-pointer ${selectedEventId === ev.id ? 'bg-brand-50/50' : 'hover:bg-surface-muted'}`}
               >

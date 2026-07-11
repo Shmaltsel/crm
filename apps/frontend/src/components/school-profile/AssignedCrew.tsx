@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import PhoneLink from '../PhoneLink';
 import { motion } from "framer-motion";
+import { cardHoverVariants } from "../../lib/motion";
 import type { Event, User } from '../../types';
 
 interface AssignedCrewProps {
@@ -14,8 +15,9 @@ export default memo(function AssignedCrew({ currentEvent, employees }: AssignedC
   if (!crew) {
     return (
 <motion.div
-      whileHover={{ y: -4, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.10)" }}
-      transition={{ duration: 0.2 }}
+      variants={cardHoverVariants}
+      initial="rest"
+      whileHover="hover"
       className="bg-surface p-6 rounded-card shadow-card border border-border flex flex-col justify-center items-center h-full text-content-muted min-h-[250px]"
     >        <span className="text-4xl mb-3 opacity-50">🚐</span>
         <p className="font-medium">Екіпаж ще не призначено</p>
@@ -29,8 +31,9 @@ export default memo(function AssignedCrew({ currentEvent, employees }: AssignedC
 
   return (
     <motion.div
-      whileHover={{ y: -4, boxShadow: "0 12px 32px -4px rgba(0,0,0,0.10)" }}
-      transition={{ duration: 0.2 }}
+      variants={cardHoverVariants}
+      initial="rest"
+      whileHover="hover"
       className="bg-surface p-6 rounded-card shadow-card border border-border h-full flex flex-col"
     >
       <h3 className="font-bold text-content-primary mb-4 border-b pb-3 border-border">Призначений екіпаж</h3>

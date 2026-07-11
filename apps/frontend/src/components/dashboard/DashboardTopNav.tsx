@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import type { DashboardTab } from "../../constants/navTabs";
+import { SPRING } from "../../lib/motion";
 
 interface Props {
   tabs: DashboardTab[];
@@ -37,7 +38,7 @@ export default function DashboardTopNav({ tabs, activeTab, onChange }: Props) {
                   <motion.div
                     layoutId="dashboard-active-tab"
                     className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-pill"
-                    transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                    transition={SPRING.stiff}
                   />
                 )}
               </button>

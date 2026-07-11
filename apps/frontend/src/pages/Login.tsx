@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { api } from "../config/api";
+import { fadeVariants, TRANSITION } from "../lib/motion";
 
 const CIRCLE_VARIANTS = {
   hidden: { scale: 0, opacity: 1 },
@@ -138,15 +139,17 @@ export default function Login({ onLogin }: LoginProps) {
             type="submit"
             disabled={isLoading}
             whileTap={{ scale: 0.97 }}
+            transition={TRANSITION.tap}
             className="mt-2 bg-brand text-white font-medium px-5 py-3 rounded-control hover:bg-brand-hover transition disabled:opacity-80 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[48px]"
           >
             <AnimatePresence mode="wait" initial={false}>
               {isLoading ? (
                 <motion.span
                   key="loading"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
+                  variants={fadeVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
                   className="flex items-center gap-2"
                 >
                   <motion.span
@@ -157,7 +160,7 @@ export default function Login({ onLogin }: LoginProps) {
                   Вхід...
                 </motion.span>
               ) : (
-                <motion.span key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <motion.span key="idle" variants={fadeVariants} initial="hidden" animate="visible" exit="exit">
                   Увійти
                 </motion.span>
               )}

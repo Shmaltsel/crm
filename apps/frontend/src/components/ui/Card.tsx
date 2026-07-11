@@ -1,4 +1,6 @@
 import type { ReactNode, HTMLAttributes } from "react";
+import { motion } from "framer-motion";
+import { cardHoverVariants, TRANSITION } from "../../lib/motion";
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
@@ -13,13 +15,16 @@ const paddings = {
 
 export function Card({ children, padding = "md", className = "", ...props }: Props) {
   return (
-    <div
-      className={`bg-surface rounded-card shadow-card border border-border
-        hover:shadow-card-hover hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200
+    <motion.div
+      variants={cardHoverVariants}
+      initial="rest"
+      whileHover="hover"
+      transition={TRANSITION.position}
+      className={`bg-surface rounded-card shadow-card border border-border active:scale-[0.98] transition-transform duration-fast
         ${paddings[padding]} ${className}`}
       {...props}
     >
       {children}
-    </div>
+    </motion.div>
   );
 }

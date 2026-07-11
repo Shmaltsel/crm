@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence, MotionConfig } from "framer-motion";
+import { DUR, skeletonPulse, pageVariants, popInVariants, scaleVariants, cardHoverVariants, TRANSITION } from "../lib/motion";
 import { X, Search, UserPlus } from "lucide-react";
 import {
   useUsers,
@@ -66,8 +67,7 @@ function Shimmer() {
     <motion.div
       className="absolute inset-0 -translate-x-full"
       style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent)" }}
-      animate={{ translateX: ["-100%", "100%"] }}
-      transition={{ duration: 1.4, repeat: Infinity, ease: "linear" }}
+      animate={skeletonPulse.animate}
     />
   );
 }
@@ -384,9 +384,9 @@ export default function Employees() {
       <LoadingBar isLoading={isMutating} />
       <MotionConfig reducedMotion="user">
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, ease: "easeOut" }}
+          variants={pageVariants}
+          initial="hidden"
+          animate="visible"
           className="p-4 md:p-8 h-full"
         >
         <EmployeesHeader
@@ -476,9 +476,9 @@ export default function Employees() {
                       <h2 className="text-lg font-bold text-slate-700">{label}</h2>
                       <motion.span
                         key={items.length}
-                        initial={{ scale: 0.7, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ duration: 0.2 }}
+                        variants={popInVariants}
+                        initial="hidden"
+                        animate="visible"
                         className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_COLORS[role]}`}
                       >
                         {items.length}
@@ -486,9 +486,9 @@ export default function Employees() {
                     </div>
                     {items.length === 0 ? (
                       <motion.div
-                        initial={{ opacity: 0, scale: 0.97 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.25 }}
+                        variants={scaleVariants}
+                        initial="hidden"
+                        animate="visible"
                         className="bg-white rounded-2xl border border-dashed border-slate-200 p-8 text-center"
                       >
                         <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 text-lg">👤</div>
@@ -539,14 +539,15 @@ export default function Employees() {
                         key={p.id}
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.25, delay: pi * 0.05 }}
-                        whileHover={{ y: -3, boxShadow: "0 8px 24px -4px rgba(0,0,0,0.10)" }}
+                        transition={{ duration: DUR.moderate, delay: pi * 0.05 }}
+                        variants={cardHoverVariants}
+                        whileHover="hover"
                         className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default hover:border-slate-200 transition-colors"
                       >
                         <div className="flex items-center gap-3">
                           <motion.div
                             whileHover={{ scale: 1.15 }}
-                            transition={{ duration: 0.15 }}
+                            transition={TRANSITION.tap}
                             className={`w-10 h-10 rounded-2xl flex items-center justify-center ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm ring-4 ring-offset-1 ring-slate-50`}
                           >
                             <span className="w-2.5 h-2.5 rounded-full bg-white/80" />
