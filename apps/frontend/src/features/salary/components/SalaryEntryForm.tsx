@@ -3,7 +3,7 @@ import { useCreateSalary } from "../../../hooks/useSalary";
 import { useUsers } from "../../../hooks/useEmployees";
 import { useToast } from "../../../components/ui/Toast";
 
-export default function SalaryEntryForm({ reportId }: { reportId: string }) {
+export default function SalaryEntryForm({ reportId, cityId }: { reportId: string; cityId?: string }) {
   const { data: users = [] } = useUsers();
   const createSalary = useCreateSalary();
   const toast = useToast();
@@ -12,7 +12,11 @@ export default function SalaryEntryForm({ reportId }: { reportId: string }) {
   const [amount, setAmount] = useState<number | "">("");
   const [comment, setComment] = useState("");
 
-  const staff = users.filter((u) => u.role === "HOST" || u.role === "DRIVER");
+  const staff = users.filter((u) => {
+    if (u.role !== "HOST" && u.role !== "DRIVER") return false;
+    if (cityId && u.cityId !== cityId) return false;
+    return true;
+  });
 
   const handleAdd = () => {
     if (!employeeId || !amount || Number(amount) <= 0 || Number(amount) > 99999) {

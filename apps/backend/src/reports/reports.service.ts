@@ -352,7 +352,7 @@ export class ReportsService {
               school: {
                 select: { name: true, type: true, phone: true, director: true },
               },
-              city: { select: { name: true } },
+              city: { select: { id: true, name: true } },
               crew: {
                 include: {
                   host: { select: { id: true, name: true } },

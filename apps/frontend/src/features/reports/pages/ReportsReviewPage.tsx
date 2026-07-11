@@ -276,7 +276,7 @@ export default function ReportsReviewPage() {
                           <h5 className="text-2xs font-semibold text-content-muted uppercase tracking-wide mb-1.5">
                             Додати нарахування
                           </h5>
-                          <SalaryEntryForm reportId={r.id} />
+                          <SalaryEntryForm reportId={r.id} cityId={r.event?.city?.id} />
                         </div>
                       </div>
                     </div>
