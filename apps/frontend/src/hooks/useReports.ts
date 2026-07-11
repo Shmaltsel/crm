@@ -18,7 +18,11 @@ export function useSubmittedReports() {
   return useQuery({
     queryKey: ["reports", "submitted"],
     queryFn: () =>
-      api.get<EventReport[]>("/reports/submitted").then((r) => r.data),
+      api
+        .get<{ items: EventReport[]; total: number; page: number; pageCount: number }>(
+          "/reports/submitted",
+        )
+        .then((r) => r.data.items),
     staleTime: 30 * 1000,
   });
 }
