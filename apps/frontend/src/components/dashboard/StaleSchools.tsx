@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { staggerContainer, staggerItem, emptyStateVariants } from "../../lib/motion";
-import CollapsibleSection from "./CollapsibleSection";
 
 const STAGE_LABELS: Record<string, string> = {
   BASE: "База",

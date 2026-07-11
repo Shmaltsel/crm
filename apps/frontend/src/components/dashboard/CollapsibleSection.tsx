@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { DUR, EASE, SPRING } from "../../lib/motion";
+import { DUR, EASE } from "../../lib/motion";
 
 interface Props {
   title: string;

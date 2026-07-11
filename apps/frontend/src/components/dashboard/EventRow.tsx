@@ -36,14 +36,18 @@ interface EventBase {
   crew?: Crew | null;
 }
 
-interface TodayEvent extends EventBase {}
+interface TodayEvent extends EventBase {
+  date?: never;
+}
 
 interface UpcomingEvent extends EventBase {
   date: string;
 }
 
+type EventRowEvent = TodayEvent | UpcomingEvent;
+
 interface Props {
-  event: TodayEvent | UpcomingEvent;
+  event: EventRowEvent;
   isUpcoming?: boolean;
 }
 
@@ -93,7 +97,7 @@ export default function EventRow({ event, isUpcoming = false }: Props) {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            event.school && navigate(`/schools/${event.school.id}`);
+            if (event.school) navigate(`/schools/${event.school.id}`);
           }}
           className={`text-2xs font-semibold px-2.5 py-1 rounded-control transition-colors shrink-0 active:scale-95 ${
             hasCrew
