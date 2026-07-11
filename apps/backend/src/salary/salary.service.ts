@@ -17,6 +17,22 @@ export class SalaryService {
     private readonly salaryPayout: SalaryPayoutService,
   ) {}
 
+  private async getManagerCityIds(userId: string): Promise<string[]> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { managedCities: { select: { id: true } } },
+    });
+    return user?.managedCities.map((c) => c.id) ?? [];
+  }
+
+  private async assertCityManager(user: JwtUser, cityId: string): Promise<void> {
+    if (user.role !== 'MANAGER') return;
+    const managedIds = await this.getManagerCityIds(user.sub);
+    if (!managedIds.includes(cityId)) {
+      throw new ForbiddenException('salary.notCityManager');
+    }
+  }
+
   async create(dto: CreateSalaryDto, user: JwtUser) {
     if (
       user.role !== 'MANAGER' &&
@@ -35,14 +51,7 @@ export class SalaryService {
       throw new BadRequestException('salary.reportNotApproved');
 
     if (user.role === 'MANAGER') {
-      const cityIds = await this.prisma.user.findUnique({
-        where: { id: user.sub },
-        select: { managedCities: { select: { id: true } } },
-      });
-      const managedIds = cityIds?.managedCities.map((c) => c.id) ?? [];
-      if (!managedIds.includes(report.event.cityId)) {
-        throw new ForbiddenException('salary.notCityManager');
-      }
+      await this.assertCityManager(user, report.event.cityId);
     }
 
     const hasLargeAmounts = dto.items.some((item) => item.amount >= 100000);
@@ -94,11 +103,7 @@ export class SalaryService {
     if (cityId) {
       where.event = { cityId };
     } else if (user.role === 'MANAGER') {
-      const cityIds = await this.prisma.user.findUnique({
-        where: { id: user.sub },
-        select: { managedCities: { select: { id: true } } },
-      });
-      const managedIds = cityIds?.managedCities.map((c) => c.id) ?? [];
+      const managedIds = await this.getManagerCityIds(user.sub);
       where.event = { cityId: { in: managedIds } };
     }
 
@@ -133,14 +138,7 @@ export class SalaryService {
       throw new BadRequestException('salary.notPending');
 
     if (user.role === 'MANAGER') {
-      const cityIds = await this.prisma.user.findUnique({
-        where: { id: user.sub },
-        select: { managedCities: { select: { id: true } } },
-      });
-      const managedIds = cityIds?.managedCities.map((c) => c.id) ?? [];
-      if (!managedIds.includes(record.event?.cityId ?? '')) {
-        throw new ForbiddenException('salary.notCityManager');
-      }
+      await this.assertCityManager(user, record.event?.cityId ?? '');
     }
 
     return this.prisma.$transaction(async (tx) => {
