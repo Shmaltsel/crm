@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
-import { emptyStateVariants } from "../../lib/motion";
+import { emptyStateVariants, TRANSITION } from "../../lib/motion";
 
 interface EmptyStateProps {
   icon?: LucideIcon;
@@ -19,15 +19,23 @@ export function EmptyState({ icon: Icon, title, description, action }: EmptyStat
       className="flex flex-col items-center justify-center py-12 px-4 text-center"
     >
       {Icon && (
-        <div className="w-12 h-12 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
+        <motion.div
+          animate={{ y: [0, -6, 0] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+          className="w-12 h-12 rounded-full bg-neutral-100 flex items-center justify-center mb-4"
+        >
           <Icon className="w-6 h-6 text-neutral-400" />
-        </div>
+        </motion.div>
       )}
       <h3 className="text-base font-semibold text-content-primary mb-1">{title}</h3>
       {description && (
         <p className="text-sm text-content-muted max-w-xs mb-4">{description}</p>
       )}
-      {action}
+      {action && (
+        <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} transition={TRANSITION.hover}>
+          {action}
+        </motion.div>
+      )}
     </motion.div>
   );
 }

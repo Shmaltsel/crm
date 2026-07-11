@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { GraduationCap } from "lucide-react";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
@@ -34,10 +35,24 @@ export default function MobileTopNav() {
       style={{ paddingTop: "env(safe-area-inset-top, 0px)", height: "calc(3.5rem + env(safe-area-inset-top, 0px))" }}
     >
       <div className="flex items-center gap-2 min-w-0">
-        <GraduationCap className="w-5 h-5 text-blue-300 shrink-0" />
-        <span className="font-bold tracking-wider text-sm leading-tight truncate">
-          {pageTitle}
-        </span>
+        <motion.div
+          whileHover={{ rotate: -10 }}
+          transition={{ type: "spring", stiffness: 300, damping: 15 }}
+        >
+          <GraduationCap className="w-5 h-5 text-blue-300 shrink-0" />
+        </motion.div>
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={location.pathname}
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="font-bold tracking-wider text-sm leading-tight truncate"
+          >
+            {pageTitle}
+          </motion.span>
+        </AnimatePresence>
       </div>
       <div className="flex items-center gap-2">
         <NotificationBell />

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import { useAuth } from "../context/AuthContext";
@@ -7,6 +8,7 @@ import { DASHBOARD_TABS } from "../constants/navTabs";
 import { hasRole } from "../utils/roles";
 import DashboardTopNav from "../components/dashboard/DashboardTopNav";
 import TabErrorBoundary from "../components/dashboard/TabErrorBoundary";
+import { pageVariants, skeletonPulse } from "../lib/motion";
 
 const OverviewTab = lazy(() => import("./OverviewTab"));
 const ReportsTab = lazy(() => import("../features/reports/pages/ReportsReviewPage"));
@@ -89,7 +91,12 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="bg-gradient-subtle min-h-screen flex flex-col">
+    <motion.div
+      className="bg-gradient-subtle min-h-screen flex flex-col"
+      variants={pageVariants}
+      initial="hidden"
+      animate="visible"
+    >
       <DashboardTopNav
         tabs={allowedTabs}
         activeTab={activeTab}
@@ -111,7 +118,17 @@ export default function Dashboard() {
             <SwiperSlide key={tab.id}>
               <div className="md:p-4 lg:p-8">
                 <TabErrorBoundary label={tab.label}>
-                  <Suspense fallback={<div className="text-sm text-content-muted p-4">Завантаження...</div>}>
+                  <Suspense
+                    fallback={
+                      <motion.div
+                        className="flex items-center gap-2 text-sm text-content-muted p-4"
+                        {...skeletonPulse}
+                      >
+                        <div className="w-4 h-4 rounded-full bg-slate-200" />
+                        Завантаження...
+                      </motion.div>
+                    }
+                  >
                     <Component />
                   </Suspense>
                 </TabErrorBoundary>
@@ -121,6 +138,6 @@ export default function Dashboard() {
           })}
         </Swiper>
       </div>
-    </div>
+    </motion.div>
   );
 }

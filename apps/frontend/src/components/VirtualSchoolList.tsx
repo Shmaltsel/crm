@@ -59,7 +59,7 @@ export default function VirtualSchoolList({
             }}
           >
             <div
-              className="school-row-enter"
+              className="school-row-enter transition-colors hover:bg-blue-50/50"
               style={{
                 animationDelay: `${Math.min(virtualRow.index * 40, 400)}ms`,
               }}

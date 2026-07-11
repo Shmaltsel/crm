@@ -1,7 +1,7 @@
 import { Link, useOutlet, useLocation } from "react-router-dom";
 import { useState, useCallback, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { pageVariants, TRANSITION } from "../lib/motion";
+import { pageVariants, TRANSITION, SPRING, DUR, EASE } from "../lib/motion";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -38,14 +38,29 @@ function NavLink({
     <Link
       to={to}
       onClick={onClick}
-      className={`relative flex items-center px-4 py-3 rounded-lg transition-colors group
-        ${active ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+      className="relative flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-colors group"
     >
       {active && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full" />
+        <motion.div
+          layoutId="sidebar-active-indicator"
+          className="absolute inset-0 bg-blue-600 rounded-lg"
+          transition={SPRING.snappy}
+          style={{ zIndex: 0 }}
+        />
       )}
-      <Icon className="w-4 h-4 mr-3 shrink-0" />
-      {label}
+      {!active && (
+        <div className="absolute inset-0 rounded-lg bg-transparent group-hover:bg-slate-800/60 transition-colors duration-fast" />
+      )}
+      <motion.div
+        className="relative z-10 flex items-center gap-3 w-full"
+        whileHover={!active ? { x: 2 } : undefined}
+        transition={TRANSITION.tap}
+      >
+        <Icon className={`w-4 h-4 shrink-0 transition-transform duration-fast ${active ? "text-white" : "text-slate-400 group-hover:text-slate-200"}`} />
+        <span className={`transition-colors duration-fast ${active ? "text-white" : "text-slate-400 group-hover:text-slate-200"}`}>
+          {label}
+        </span>
+      </motion.div>
     </Link>
   );
 }
@@ -76,8 +91,13 @@ export default function Layout() {
       <MobileTopNav />
 
       <aside className="hidden md:flex md:relative w-64 flex-col bg-[#0B1527] text-white shrink-0">
-        <div className="p-6 flex flex-col items-center border-b border-slate-700/50">
-          <div className="w-16 h-16 bg-blue-500 rounded-full mb-3 flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: DUR.slow, ease: EASE.outExpo }}
+          className="p-6 flex flex-col items-center border-b border-slate-700/50"
+        >
+          <div className="w-16 h-16 bg-blue-500 rounded-full mb-3 flex items-center justify-center shadow-lg shadow-blue-500/20">
             <GraduationCap className="w-8 h-8" />
           </div>
           <h2 className="text-sm font-semibold tracking-wider">СВІТЛО ЗНАНЬ</h2>
@@ -85,7 +105,7 @@ export default function Layout() {
             <MapPin className="w-3 h-3" />
             {selectedCity.name}
           </p>
-        </div>
+        </motion.div>
 
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
           {hasRole(user?.role, ["SUPERADMIN", "MANAGER"]) && (
@@ -106,9 +126,13 @@ export default function Layout() {
         <div className="p-4 border-t border-slate-700/50 pb-8 md:pb-4">
           <div className="flex items-center px-4 py-2 text-slate-300 justify-between">
             <div className="flex items-center min-w-0">
-              <div className="w-8 h-8 bg-slate-600 rounded-full mr-3 flex items-center justify-center text-xs font-bold shrink-0">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                transition={TRANSITION.hover}
+                className="w-8 h-8 bg-slate-600 rounded-full mr-3 flex items-center justify-center text-xs font-bold shrink-0"
+              >
                 {user?.name?.charAt(0) ?? "?"}
-              </div>
+              </motion.div>
               <div className="text-sm truncate min-w-0">
                 <p className="font-medium text-white truncate">{user?.name ?? "Користувач"}</p>
                 <p className="text-xs text-slate-400 truncate">{user?.role ?? ""}</p>
@@ -116,13 +140,16 @@ export default function Layout() {
             </div>
             <div className="flex items-center gap-1">
               <NotificationBell />
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05, backgroundColor: "rgba(239,68,68,0.1)" }}
+                whileTap={{ scale: 0.95 }}
+                transition={TRANSITION.tap}
                 onClick={handleLogout}
-                className="flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-colors text-xs font-medium shrink-0 px-2.5 py-2 rounded-lg"
+                className="flex items-center gap-1.5 text-slate-400 hover:text-red-400 border border-transparent hover:border-red-500/30 transition-colors text-xs font-medium shrink-0 px-2.5 py-2 rounded-lg"
                 title="Вийти"
               >
                 <LogOut className="w-4 h-4" />
-              </button>
+              </motion.button>
             </div>
           </div>
         </div>

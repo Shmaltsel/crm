@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, Trash2 } from "lucide-react";
-import { backdropVariants, modalContentVariants } from "../../lib/motion";
+import { backdropVariants, modalContentVariants, SPRING, TRANSITION } from "../../lib/motion";
 
 type Variant = "danger" | "warning";
 
@@ -44,6 +44,8 @@ export function ConfirmDialog({
           exit="exit"
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={onCancel}
+          whileTap={{ backgroundColor: "rgba(15, 23, 42, 0.55)" }}
+          transition={{ duration: 0.15 }}
         >
           <motion.div
             variants={modalContentVariants}
@@ -54,27 +56,38 @@ export function ConfirmDialog({
             className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6"
           >
             <div className="flex items-start gap-4">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${variantStyles[variant].icon}`}>
+              <motion.div
+                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${variantStyles[variant].icon}`}
+                initial={{ scale: 0, rotate: -20 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ ...SPRING.bouncy, delay: 0.15 }}
+              >
                 {variant === "danger" ? <Trash2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
-              </div>
+              </motion.div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-lg font-bold text-content-primary">{title}</h3>
                 <p className="text-sm text-content-secondary mt-1">{message}</p>
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button
+              <motion.button
                 onClick={onCancel}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-neutral-100 text-content-secondary hover:bg-neutral-200 transition-colors"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                transition={TRANSITION.hover}
               >
                 Скасувати
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 onClick={onConfirm}
                 className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${variantStyles[variant].button}`}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                transition={TRANSITION.hover}
               >
                 {confirmLabel}
-              </button>
+              </motion.button>
             </div>
           </motion.div>
         </motion.div>

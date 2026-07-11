@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 
 import { api } from "../config/api";
-import { fadeVariants, staggerContainer, staggerItem, TRANSITION, SPRING } from "../lib/motion";
+import { fadeVariants, staggerContainer, staggerItem, TRANSITION } from "../lib/motion";
 
 const CIRCLE_VARIANTS = {
   hidden: { scale: 0, opacity: 1 },

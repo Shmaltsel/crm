@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { MoreHorizontal } from "lucide-react";
-import { popInVariants, TRANSITION } from "../lib/motion";
+import { SPRING, DUR } from "../lib/motion";
 import { useAuth } from "../context/AuthContext";
 import { NAV_TABS } from "../constants/navTabs";
 import { hasRole } from "../utils/roles";
@@ -28,6 +28,42 @@ export function useBottomTabs(): NavTab[] {
   }, [user]);
 }
 
+function TabItem({ tab, isActive }: { tab: NavTab; isActive: boolean }) {
+  const Icon = tab.icon;
+  return (
+    <Link
+      to={tab.to}
+      role="tab"
+      aria-selected={isActive}
+      aria-label={tab.label}
+      className="relative flex items-center justify-center min-w-[44px] min-h-[44px] flex-1"
+    >
+      {isActive && (
+        <motion.div
+          layoutId="bottomnav-active-pill"
+          className="absolute inset-x-1 inset-y-1 bg-brand/10 rounded-control"
+          transition={SPRING.snappy}
+        />
+      )}
+      <motion.div
+        className="relative z-10 flex flex-col items-center justify-center gap-0.5"
+        whileTap={{ scale: 0.85 }}
+        transition={{ duration: DUR.micro }}
+      >
+        <motion.div
+          animate={isActive ? { y: -1 } : { y: 0 }}
+          transition={SPRING.gentle}
+        >
+          <Icon className={`w-5 h-5 transition-colors duration-fast ${isActive ? "text-brand" : "text-content-muted"}`} />
+        </motion.div>
+        <span className={`text-2xs font-medium transition-colors duration-fast ${isActive ? "text-brand" : "text-content-muted"}`}>
+          {tab.label}
+        </span>
+      </motion.div>
+    </Link>
+  );
+}
+
 export default function BottomNavigationBar() {
   const location = useLocation();
   const tabs = useBottomTabs();
@@ -48,44 +84,9 @@ export default function BottomNavigationBar() {
         role="tablist"
         aria-label="Основна навігація"
       >
-        {tabs.map((tab, i) => {
-          const isActive = i === activeIndex;
-          const Icon = tab.icon;
-          return (
-            <Link
-              key={tab.to}
-              to={tab.to}
-              role="tab"
-              aria-selected={isActive}
-              aria-label={tab.label}
-              className="relative flex items-center justify-center min-w-[44px] min-h-[44px] flex-1"
-            >
-              <AnimatePresence>
-                {isActive && (
-                  <motion.div
-                    key="active-pill"
-                    variants={popInVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    transition={TRANSITION.tap}
-                    className="absolute inset-x-1 inset-y-1 bg-brand/10 rounded-control"
-                  />
-                )}
-              </AnimatePresence>
-              <motion.div
-                className="relative z-10 flex flex-col items-center justify-center gap-0.5"
-                whileTap={{ scale: 0.9 }}
-                transition={TRANSITION.tap}
-              >
-                <Icon className={`w-5 h-5 ${isActive ? "text-brand" : "text-content-muted"}`} />
-                <span className={`text-2xs font-medium ${isActive ? "text-brand" : "text-content-muted"}`}>
-                  {tab.label}
-                </span>
-              </motion.div>
-            </Link>
-          );
-        })}
+        {tabs.map((tab, i) => (
+          <TabItem key={tab.to} tab={tab} isActive={i === activeIndex} />
+        ))}
 
         <button
           onClick={() => setSheetOpen(true)}
@@ -94,26 +95,25 @@ export default function BottomNavigationBar() {
           role="tab"
           aria-selected={isMoreActive}
         >
-          <AnimatePresence>
-            {isMoreActive && (
-              <motion.div
-                key="active-pill"
-                variants={popInVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                transition={TRANSITION.tap}
-                className="absolute inset-x-1 inset-y-1 bg-brand/10 rounded-control"
-              />
-            )}
-          </AnimatePresence>
+          {isMoreActive && (
+            <motion.div
+              layoutId="bottomnav-active-pill"
+              className="absolute inset-x-1 inset-y-1 bg-brand/10 rounded-control"
+              transition={SPRING.snappy}
+            />
+          )}
           <motion.div
             className="relative z-10 flex flex-col items-center justify-center gap-0.5"
-            whileTap={{ scale: 0.9 }}
-            transition={TRANSITION.tap}
+            whileTap={{ scale: 0.85 }}
+            transition={{ duration: DUR.micro }}
           >
-            <MoreHorizontal className={`w-5 h-5 ${isMoreActive ? "text-brand" : "text-content-muted"}`} />
-            <span className={`text-2xs font-medium ${isMoreActive ? "text-brand" : "text-content-muted"}`}>
+            <motion.div
+              animate={isMoreActive ? { rotate: 90, y: -1 } : { rotate: 0, y: 0 }}
+              transition={SPRING.gentle}
+            >
+              <MoreHorizontal className={`w-5 h-5 transition-colors duration-fast ${isMoreActive ? "text-brand" : "text-content-muted"}`} />
+            </motion.div>
+            <span className={`text-2xs font-medium transition-colors duration-fast ${isMoreActive ? "text-brand" : "text-content-muted"}`}>
               Більше
             </span>
           </motion.div>

@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate, type NavigateFunction } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { fadeVariants } from "../../lib/motion";
+import { fadeVariants, staggerContainer, staggerItem, TRANSITION } from "../../lib/motion";
 import type { School, PipelineStage } from "../../types";
 import { CATEGORY_BADGES } from "../../constants/categoryBadges";
 
@@ -29,12 +29,11 @@ export const SchoolRow = React.memo(
 
     return (
       <motion.tr
-        variants={fadeVariants}
-        initial="hidden"
-        animate="visible"
-        exit="exit"
+        variants={staggerItem}
         onClick={() => navigate(`/schools/${school.id}`)}
-        className="border-b border-slate-50 hover:bg-blue-50/50 transition-colors cursor-pointer"
+        className="border-b border-slate-50 transition-colors cursor-pointer"
+        whileHover={{ backgroundColor: "rgba(239, 246, 255, 0.5)" }}
+        transition={TRANSITION.hover}
       >
         <td className="p-4 font-bold text-slate-800 overflow-hidden">
           <span className="block truncate" title={school.name}>
@@ -115,7 +114,12 @@ export default function SchoolDesktopTable({
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50">
+          <motion.tbody
+            className="divide-y divide-slate-50"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+          >
             <AnimatePresence>
               {schools.map((school) => (
                 <SchoolRow
@@ -127,7 +131,7 @@ export default function SchoolDesktopTable({
                 />
               ))}
             </AnimatePresence>
-          </tbody>
+          </motion.tbody>
         </table>
         {schools.length === 0 && (
           <motion.div
