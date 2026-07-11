@@ -76,7 +76,7 @@ export default function UserModal({
           variants={backdropVariants}
           initial="hidden"
           animate="visible"
-          exit="hidden"
+          exit="exit"
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={onClose}
         >

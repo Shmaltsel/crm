@@ -1,10 +1,12 @@
 import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   schoolEditSchema,
   type SchoolEditFormValues,
 } from "./SchoolEditSchema";
+import { backdropVariants, modalContentVariants } from "../../../lib/motion";
 
 interface EditSchoolModalProps {
   isOpen: boolean;
@@ -47,18 +49,27 @@ export default function EditSchoolModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={headingId}
-      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center sm:p-4"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      {/* Bottom-sheet на мобільному, центрований діалог на десктопі */}
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl overflow-hidden max-h-[92vh] flex flex-col pb-safe">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={headingId}
+          variants={backdropVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center sm:p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        >
+          <motion.div
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl overflow-hidden max-h-[92vh] flex flex-col pb-safe"
+          >
         <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
 
         {/* Шапка не зжимається (shrink-0) */}
@@ -155,7 +166,9 @@ export default function EditSchoolModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

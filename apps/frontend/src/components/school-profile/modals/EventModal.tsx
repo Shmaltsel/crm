@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../config/api";
 import type { Project } from "../../../types";
 import { eventSchema, type EventFormValues } from "./EventSchema";
+import { backdropVariants, modalContentVariants } from "../../../lib/motion";
 
 interface EventModalProps {
   isOpen: boolean;
@@ -102,17 +104,27 @@ export default function EventModal({
     setValue,
   ]);
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={headingId}
-      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[92vh] flex flex-col">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={headingId}
+          variants={backdropVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        >
+          <motion.div
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[92vh] flex flex-col"
+          >
         <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
           <h3 id={headingId} className="text-xl font-bold text-slate-800">Нова подія</h3>
           <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 p-2 -mr-2 text-xl leading-none">
@@ -261,7 +273,9 @@ export default function EventModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

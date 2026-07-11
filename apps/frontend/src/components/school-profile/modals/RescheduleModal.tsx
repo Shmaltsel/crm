@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../config/api";
+import { backdropVariants, modalContentVariants } from "../../../lib/motion";
 
 interface RescheduleModalProps {
   isOpen: boolean;
@@ -43,8 +45,6 @@ export default function RescheduleModal({
     return () => document.removeEventListener('keydown', handler);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
   const handleSave = async () => {
     setLoading(true);
     try {
@@ -59,25 +59,26 @@ export default function RescheduleModal({
   };
 
   return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={headingId}
-      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 opacity-0"
-      style={{ animation: "fadeIn 0.2s ease-out forwards" }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes modalScale {
-          from { opacity: 0; transform: scale(0.95) translateY(15px); }
-          to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-      `}</style>
-      <div
-        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden opacity-0"
-        style={{ animation: "modalScale 0.3s ease-out forwards" }}
-      >
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={headingId}
+          variants={backdropVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        >
+          <motion.div
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
+          >
         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <h3 id={headingId} className="text-xl font-bold text-slate-800">
             📅 Перенести подію
@@ -125,8 +126,10 @@ export default function RescheduleModal({
             </button>
           </div>
         </div>
-      </div>
-    </div>,
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
     document.body,
   );
 }

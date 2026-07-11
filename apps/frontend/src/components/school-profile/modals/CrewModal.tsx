@@ -1,9 +1,11 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../config/api";
 import type { City, Crew } from "../../../types";
 import { useQuery } from "@tanstack/react-query";
 import { useDaysOff } from "../../../hooks/useDaysOff";
+import { backdropVariants, modalContentVariants } from "../../../lib/motion";
 interface CrewModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -57,17 +59,27 @@ export default function CrewModal({
   );
   const [selectedCrewId, setSelectedCrewId] = useState("");
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={headingId}
-      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={headingId}
+          variants={backdropVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        >
+          <motion.div
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
+          >
         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <h3 id={headingId} className="text-xl font-bold text-slate-800">
             Призначити екіпаж
@@ -168,8 +180,10 @@ export default function CrewModal({
               Призначити
             </button>
           </div>
-        </div>
-      </div>
-    </div>
+          </div>
+        </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
