@@ -19,7 +19,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "jsdom",
-    setupFiles: ["./src/tests/setup.ts"],
+    setupFiles: ["./src/tests/setup.tsx"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     retries: process.env.CI ? 1 : 0,
     coverage: {

@@ -22,17 +22,17 @@ describe("Login", () => {
 
   it("shows error on failed login", async () => {
     server.use(
-      http.post("http://localhost:3000/api/auth/login", () => {
+      http.post("/api/auth/login", () => {
         return new HttpResponse(null, { status: 401 });
       })
     );
 
     renderLogin();
     await userEvent.type(screen.getByLabelText(/email/i), "test@test.com");
-    await userEvent.type(screen.getByLabelText(/пароль/i), "wrong");
-    
+    await userEvent.type(screen.getByLabelText(/^Пароль$/i), "wrong");
+
     await userEvent.click(screen.getByRole("button", { name: /увійти/i }));
-    
+
     await waitFor(() => {
       expect(screen.getByText("Невірний email або пароль")).toBeInTheDocument();
     });
@@ -41,7 +41,7 @@ describe("Login", () => {
   it("calls onLogin on successful login", async () => {
     const mockUser = { id: "1", name: "Admin", email: "admin@crm.com", role: "SUPERADMIN" };
     server.use(
-      http.post("http://localhost:3000/api/auth/login", () => {
+      http.post("/api/auth/login", () => {
         return HttpResponse.json({ user: mockUser, token: "fake-token" });
       })
     );
@@ -49,7 +49,7 @@ describe("Login", () => {
     const onLogin = vi.fn();
     renderLogin(onLogin);
     await userEvent.type(screen.getByLabelText(/email/i), mockUser.email);
-    await userEvent.type(screen.getByLabelText(/пароль/i), "123!PASSWORD!321");
+    await userEvent.type(screen.getByLabelText(/^Пароль$/i), "123!PASSWORD!321");
     
     await userEvent.click(screen.getByRole("button", { name: /увійти/i }));
 

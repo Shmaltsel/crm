@@ -1135,9 +1135,24 @@
     "tokens": 1386
   },
   {
+    "file": "apps/frontend/src/components/dashboard/CollapsibleSection.tsx",
+    "bundle": "bundle_03.xml",
+    "tokens": 593
+  },
+  {
     "file": "apps/frontend/src/components/dashboard/DashboardTopNav.tsx",
     "bundle": "bundle_03.xml",
     "tokens": 560
+  },
+  {
+    "file": "apps/frontend/src/components/dashboard/EventRow.tsx",
+    "bundle": "bundle_03.xml",
+    "tokens": 964
+  },
+  {
+    "file": "apps/frontend/src/components/dashboard/EventsWidget.tsx",
+    "bundle": "bundle_03.xml",
+    "tokens": 1916
   },
   {
     "file": "apps/frontend/src/components/dashboard/FunnelBar.tsx",
@@ -1152,7 +1167,7 @@
   {
     "file": "apps/frontend/src/components/dashboard/StaleSchools.tsx",
     "bundle": "bundle_03.xml",
-    "tokens": 1726
+    "tokens": 1951
   },
   {
     "file": "apps/frontend/src/components/dashboard/TabErrorBoundary.tsx",
@@ -1262,7 +1277,7 @@
   {
     "file": "apps/frontend/src/components/school-profile/CommentsTimeline.tsx",
     "bundle": "bundle_03.xml",
-    "tokens": 2593
+    "tokens": 4063
   },
   {
     "file": "apps/frontend/src/components/school-profile/CompletedEventModal.tsx",
@@ -1282,7 +1297,7 @@
   {
     "file": "apps/frontend/src/components/school-profile/EventsTable.tsx",
     "bundle": "bundle_03.xml",
-    "tokens": 1454
+    "tokens": 1656
   },
   {
     "file": "apps/frontend/src/components/school-profile/HistoryTimeline.tsx",
@@ -1326,28 +1341,48 @@
   },
   {
     "file": "apps/frontend/src/components/school-profile/modals/RescheduleModal.tsx",
-    "bundle": "bundle_03.xml",
+    "bundle": "bundle_04.xml",
     "tokens": 1323
   },
   {
+    "file": "apps/frontend/src/components/school-profile/modals/SchoolActionSheet.tsx",
+    "bundle": "bundle_04.xml",
+    "tokens": 1449
+  },
+  {
     "file": "apps/frontend/src/components/school-profile/modals/SchoolEditSchema.ts",
-    "bundle": "bundle_03.xml",
+    "bundle": "bundle_04.xml",
     "tokens": 185
   },
   {
     "file": "apps/frontend/src/components/school-profile/Pipeline.tsx",
-    "bundle": "bundle_03.xml",
-    "tokens": 847
+    "bundle": "bundle_04.xml",
+    "tokens": 1553
+  },
+  {
+    "file": "apps/frontend/src/components/school-profile/ProfileTabs.tsx",
+    "bundle": "bundle_04.xml",
+    "tokens": 517
+  },
+  {
+    "file": "apps/frontend/src/components/school-profile/QuickActionsBar.tsx",
+    "bundle": "bundle_04.xml",
+    "tokens": 1018
   },
   {
     "file": "apps/frontend/src/components/school-profile/SchoolInfoCard.tsx",
-    "bundle": "bundle_03.xml",
+    "bundle": "bundle_04.xml",
     "tokens": 576
   },
   {
     "file": "apps/frontend/src/components/school-profile/SchoolProfileHeader.tsx",
-    "bundle": "bundle_03.xml",
-    "tokens": 1275
+    "bundle": "bundle_04.xml",
+    "tokens": 1781
+  },
+  {
+    "file": "apps/frontend/src/components/school-profile/TabContentSwitcher.tsx",
+    "bundle": "bundle_04.xml",
+    "tokens": 529
   },
   {
     "file": "apps/frontend/src/components/schools/SchoolDesktopTable.tsx",
@@ -1382,7 +1417,7 @@
   {
     "file": "apps/frontend/src/components/ui/Button.tsx",
     "bundle": "bundle_04.xml",
-    "tokens": 655
+    "tokens": 624
   },
   {
     "file": "apps/frontend/src/components/ui/Card.tsx",
@@ -1670,6 +1705,11 @@
     "tokens": 123
   },
   {
+    "file": "apps/frontend/src/lib/haptics.ts",
+    "bundle": "bundle_04.xml",
+    "tokens": 93
+  },
+  {
     "file": "apps/frontend/src/lib/motion.ts",
     "bundle": "bundle_04.xml",
     "tokens": 3152
@@ -1696,12 +1736,12 @@
   },
   {
     "file": "apps/frontend/src/pages/CityProfile.tsx",
-    "bundle": "bundle_04.xml",
+    "bundle": "bundle_05.xml",
     "tokens": 10512
   },
   {
     "file": "apps/frontend/src/pages/Dashboard.tsx",
-    "bundle": "bundle_04.xml",
+    "bundle": "bundle_05.xml",
     "tokens": 1403
   },
   {
@@ -1757,7 +1797,7 @@
   {
     "file": "apps/frontend/src/pages/OverviewTab.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 1502
+    "tokens": 1830
   },
   {
     "file": "apps/frontend/src/pages/ProjectProfile.tsx",
@@ -1767,7 +1807,7 @@
   {
     "file": "apps/frontend/src/pages/SchoolProfile.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 7502
+    "tokens": 7675
   },
   {
     "file": "apps/frontend/src/pages/Schools.tsx",
@@ -1802,7 +1842,7 @@
   {
     "file": "apps/frontend/src/tests/component/Dashboard.test.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 634
+    "tokens": 622
   },
   {
     "file": "apps/frontend/src/tests/component/DayOff.smoke.test.tsx",
@@ -1822,7 +1862,7 @@
   {
     "file": "apps/frontend/src/tests/component/EventsTable.test.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 1169
+    "tokens": 1212
   },
   {
     "file": "apps/frontend/src/tests/component/IssueCarousel.test.tsx",
@@ -1892,7 +1932,7 @@
   {
     "file": "apps/frontend/src/tests/mocks/handlers.ts",
     "bundle": "bundle_05.xml",
-    "tokens": 680
+    "tokens": 1234
   },
   {
     "file": "apps/frontend/src/tests/mocks/server.ts",
@@ -1900,9 +1940,9 @@
     "tokens": 55
   },
   {
-    "file": "apps/frontend/src/tests/setup.ts",
+    "file": "apps/frontend/src/tests/setup.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 207
+    "tokens": 238
   },
   {
     "file": "apps/frontend/src/tests/unit/api.test.ts",
@@ -1941,82 +1981,82 @@
   },
   {
     "file": "apps/frontend/src/tests/unit/hooks/useSchoolProfile.test.tsx",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 971
   },
   {
     "file": "apps/frontend/src/tests/unit/navTabs.test.ts",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 569
   },
   {
     "file": "apps/frontend/src/tests/unit/reactImports.test.ts",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 653
   },
   {
     "file": "apps/frontend/src/tests/unit/roles.test.ts",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 267
   },
   {
     "file": "apps/frontend/src/tests/unit/schoolUtils.test.ts",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 583
   },
   {
     "file": "apps/frontend/src/tests/unit/useDaysOff.test.tsx",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 2063
   },
   {
     "file": "apps/frontend/src/tests/unit/useDebounce.test.ts",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 604
   },
   {
     "file": "apps/frontend/src/types/index.ts",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 1853
   },
   {
     "file": "apps/frontend/src/types/telegram.d.ts",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 96
   },
   {
     "file": "apps/frontend/src/utils/exportCsv.ts",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 259
   },
   {
     "file": "apps/frontend/src/utils/financeCalculations.ts",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 198
   },
   {
     "file": "apps/frontend/src/utils/formatCurrency.ts",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 98
   },
   {
     "file": "apps/frontend/src/utils/preparationStatus.ts",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 186
   },
   {
     "file": "apps/frontend/src/utils/roles.ts",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 64
   },
   {
     "file": "apps/frontend/tailwind.config.js",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 1293
   },
   {
     "file": "apps/frontend/tests/e2e/debug.spec.ts",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 332
   },
   {
@@ -2086,27 +2126,27 @@
   },
   {
     "file": "final_diagnostic_bundle.md",
-    "bundle": "bundle_06.xml",
+    "bundle": "bundle_07.xml",
     "tokens": 30066
   },
   {
     "file": "package.json",
-    "bundle": "bundle_06.xml",
+    "bundle": "bundle_07.xml",
     "tokens": 419
   },
   {
     "file": "pnpm-workspace.yaml",
-    "bundle": "bundle_06.xml",
+    "bundle": "bundle_07.xml",
     "tokens": 140
   },
   {
     "file": "README.md",
-    "bundle": "bundle_06.xml",
+    "bundle": "bundle_07.xml",
     "tokens": 2510
   },
   {
     "file": "turbo.json",
-    "bundle": "bundle_06.xml",
+    "bundle": "bundle_07.xml",
     "tokens": 198
   }
 ]

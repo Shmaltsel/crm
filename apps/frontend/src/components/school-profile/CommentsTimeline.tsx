@@ -112,10 +112,7 @@ export default function CommentsTimeline({ schoolId, variant = "card" }: Comment
             </motion.div>
           ) : (
             <AnimatePresence initial={false}>
-              {data.items
-                .slice()
-                .reverse()
-                .map((item, i) => (
+              {data.items.map((item, i) => (
                   <motion.div
                     key={item.id}
                     initial={{ opacity: 0, y: 10 }}
@@ -146,7 +143,7 @@ export default function CommentsTimeline({ schoolId, variant = "card" }: Comment
         {canWrite && (
           <form
             onSubmit={handleSubmit}
-            className="p-4 border-t border-border bg-surface sticky bottom-0 flex-shrink-0"
+            className="p-4 border-t border-border bg-surface sticky bottom-16 md:bottom-0 flex-shrink-0"
             style={{ paddingBottom: "calc(16px + env(safe-area-inset-bottom))" }}
           >
             <div className="flex gap-2">

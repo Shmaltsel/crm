@@ -54,7 +54,7 @@ describe("EventReport", () => {
       isError: false,
     });
     renderPage();
-    expect(screen.getByText("Завантаження...")).toBeInTheDocument();
+    expect(document.querySelector(".animate-pulse")).toBeInTheDocument();
   });
 
   it("показує 'Подію не знайдено' якщо event відсутній", () => {

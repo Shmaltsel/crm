@@ -23,7 +23,7 @@ describe("Smoke: Login", () => {
   it("успішний логін викликає onLogin", async () => {
     const mockUser = { id: "1", name: "Admin", email: "admin@crm.com", role: "SUPERADMIN" };
     server.use(
-      http.post("http://localhost:3000/api/auth/login", () =>
+      http.post("/api/auth/login", () =>
         HttpResponse.json({ user: mockUser, token: "fake-token" })
       )
     );

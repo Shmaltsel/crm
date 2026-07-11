@@ -1,6 +1,6 @@
 import { http, HttpResponse } from "msw";
 
-const BASE = "http://localhost:3000/api";
+const BASE = "/api";
 
 export const handlers = [
   http.get(`${BASE}/cities`, () =>
@@ -65,6 +65,80 @@ export const handlers = [
       activityFeed: [],
       citiesStats: [],
     })
+  ),
+
+  // Finance endpoints
+  http.get(`${BASE}/finance/staff-revenue`, () =>
+    HttpResponse.json([
+      { staffId: "user-1", name: "Адміністратор", revenue: 50000, eventsCount: 10 },
+    ])
+  ),
+
+  // Analytics endpoints
+  http.get(`${BASE}/analytics/city-leaderboard`, () =>
+    HttpResponse.json([
+      { cityId: "city-1", cityName: "Львів", value: 100 },
+      { cityId: "city-2", cityName: "Київ", value: 80 },
+    ])
+  ),
+
+  http.get(`${BASE}/issues`, () =>
+    HttpResponse.json([
+      { id: "issue-1", title: "Test issue", cityId: "city-1", status: "OPEN" },
+    ])
+  ),
+
+  http.get(`${BASE}/analytics/kpi/managers`, () =>
+    HttpResponse.json([
+      { userId: "user-1", name: "Manager 1", events: 10, revenue: 50000 },
+    ])
+  ),
+
+  http.get(`${BASE}/analytics/kpi/hosts`, () =>
+    HttpResponse.json([
+      { userId: "user-1", name: "Host 1", events: 5, children: 200 },
+    ])
+  ),
+
+  http.get(`${BASE}/analytics/kpi/projects`, () =>
+    HttpResponse.json([
+      { projectId: "proj-1", name: "Project 1", revenue: 50000, events: 3 },
+    ])
+  ),
+
+  http.get(`${BASE}/analytics/revenue-by-month`, () =>
+    HttpResponse.json([
+      { month: "2026-01", revenue: 10000 },
+      { month: "2026-02", revenue: 15000 },
+    ])
+  ),
+
+  http.get(`${BASE}/analytics/events-by-city`, () =>
+    HttpResponse.json([
+      { cityId: "city-1", cityName: "Львів", events: 10 },
+      { cityId: "city-2", cityName: "Київ", events: 5 },
+    ])
+  ),
+
+  http.get(`${BASE}/analytics/salary-fund`, () =>
+    HttpResponse.json([
+      { month: "2026-01", fund: 50000 },
+      { month: "2026-02", fund: 60000 },
+    ])
+  ),
+
+  http.get(`${BASE}/analytics/roi`, () =>
+    HttpResponse.json([
+      { month: "2026-01", roi: 1.5 },
+      { month: "2026-02", roi: 1.8 },
+    ])
+  ),
+
+  // Reports
+  http.get(`${BASE}/reports/submitted`, () =>
+    HttpResponse.json([
+      { id: "report-1", eventId: "event-1", schoolName: "School 1", status: "APPROVED" },
+    ])
   ),
 
   http.post(`${BASE}/auth/login`, () =>

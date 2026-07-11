@@ -94,12 +94,12 @@ export default memo(function SchoolProfileHeader({ schoolData, onEdit, onAddEven
                     </span>
                   )}
                   {schoolData.director && (
-                    <span className="text-sm text-content-muted flex items-center gap-1">
+                    <span className="hidden md:flex text-sm text-content-muted items-center gap-1">
                       👤 {schoolData.director}
                     </span>
                   )}
                   {schoolData.phone && (
-                    <span className="text-sm text-content-muted">
+                    <span className="hidden md:inline text-sm text-content-muted">
                       <PhoneLink phone={schoolData.phone} />
                     </span>
                   )}
@@ -129,12 +129,6 @@ export default memo(function SchoolProfileHeader({ schoolData, onEdit, onAddEven
                   className="w-11 h-11 bg-surface border border-border-strong text-content-secondary rounded-control flex items-center justify-center shadow-sm active:bg-surface-muted active:scale-95 transition-all"
                 >
                   ⋮
-                </button>
-                <button
-                  onClick={onEdit}
-                  className="w-11 h-11 bg-surface border border-border-strong text-content-secondary rounded-control flex items-center justify-center shadow-sm active:bg-surface-muted active:scale-95 transition-all"
-                >
-                  ✏️
                 </button>
               </motion.div>
             </div>

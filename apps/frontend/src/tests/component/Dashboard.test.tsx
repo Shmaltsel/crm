@@ -1,9 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import Dashboard from "../../pages/Dashboard";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
 import { http, HttpResponse } from "msw";
 import { server } from "../mocks/server";
+import { vi } from "vitest";
 
 vi.mock("../../context/CityContext", () => ({
   useSelectedCity: () => ({
@@ -16,19 +16,12 @@ vi.mock("../../context/AuthContext", () => ({
   useAuth: () => ({ user: { role: "SUPERADMIN", name: "Адмін" } }),
 }));
 
-const createWrapper = () => {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>{children}</BrowserRouter>
-    </QueryClientProvider>
-  );
-};
+import OverviewTab from "../../pages/OverviewTab";
 
-describe("Dashboard", () => {
-  it("renders overview tab for SUPERADMIN role", async () => {
+describe("OverviewTab (Dashboard)", () => {
+  it("renders KPI cards for SUPERADMIN role", async () => {
     server.use(
-      http.get("http://localhost:3000/api/dashboard/summary", () =>
+      http.get("/api/dashboard/summary", () =>
         HttpResponse.json({
           todayEvents: [],
           upcomingEvents: [],
@@ -40,23 +33,23 @@ describe("Dashboard", () => {
           citiesStats: [],
         })
       ),
-      http.get("http://localhost:3000/api/cities", () =>
-        HttpResponse.json([
-          { id: "city-1", name: "Львів" },
-          { id: "city-2", name: "Київ" },
-        ])
-      ),
     );
 
-    render(<Dashboard />, { wrapper: createWrapper() });
-
-    const overviewTab = screen.getByRole("tab", { name: /огляд/i });
-    expect(overviewTab).toBeInTheDocument();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <OverviewTab />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
 
     await waitFor(() => {
       expect(screen.getByText("50 000 грн")).toBeInTheDocument();
-    }, { timeout: 10000 });
-    expect(screen.getByText("Доброго ранку, Адмін")).toBeInTheDocument();
+    });
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? "Доброго ранку" : hour < 18 ? "Доброго дня" : "Доброго вечора";
+    expect(screen.getByText(`${greeting}, Адмін`)).toBeInTheDocument();
     expect(screen.getByText("20 000 грн")).toBeInTheDocument();
     expect(screen.getByText("500")).toBeInTheDocument();
   });
