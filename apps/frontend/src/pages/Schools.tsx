@@ -7,6 +7,10 @@ import {
   lazy,
   Suspense,
 } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { backdropVariants, modalContentVariants } from "../lib/motion";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { useToast } from "../components/ui/Toast";
 import { useSearchParams, useLocation } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
@@ -58,6 +62,7 @@ interface City {
 
 export default function Schools() {
   const { selectedCity } = useSelectedCity();
+  const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -66,6 +71,8 @@ export default function Schools() {
   const { user } = useAuth();
   const userRole = user?.role ?? null;
   const qc = useQueryClient();
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [pendingImport, setPendingImport] = useState<{ cityId: string; type: "Школа" | "Садочок" } | null>(null);
 
   const institutionType = useMemo<InstitutionType>(() => {
     const fromUrl = searchParams.get("type");
@@ -117,6 +124,13 @@ export default function Schools() {
   const [dotCount, setDotCount] = useState(3);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    if (!isModalOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setIsModalOpen(false); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [isModalOpen]);
+
   const addSchoolMutation = useMutation({
     mutationFn: (newSchool: NewSchoolPayload) =>
       api.post("/schools", newSchool),
@@ -124,7 +138,7 @@ export default function Schools() {
       qc.invalidateQueries({ queryKey: ["schools"] });
       setIsModalOpen(false);
     },
-    onError: () => alert("Не вдалося створити заклад"),
+    onError: () => toast("Не вдалося створити заклад", "error"),
   });
 
   const bulkImportMutation = useMutation({
@@ -135,12 +149,10 @@ export default function Schools() {
         { timeout: 120000 },
       ),
     onSuccess: (res) => {
-      alert(
-        `✅ Імпорт завершено:\nДодано: ${res.data.created}\nПропущено: ${res.data.skipped}`,
-      );
+      toast("Імпорт завершено: додано " + res.data.created + ", пропущено " + res.data.skipped, "success");
       qc.invalidateQueries({ queryKey: ["schools"] });
     },
-    onError: () => alert("Помилка імпорту."),
+    onError: () => toast("Помилка імпорту", "error"),
   });
 
   useEffect(() => {
@@ -316,19 +328,34 @@ export default function Schools() {
   };
 
   const handleDeleteSchool = useCallback(
-    async (e: React.MouseEvent, schoolId: string, schoolName: string) => {
+    (e: React.MouseEvent, schoolId: string, schoolName: string) => {
       e.stopPropagation();
       if (userRole !== "SUPERADMIN") return;
-      if (
-        !window.confirm(
-          `Видалити школу "${schoolName}"? Це видалить також усі її події.`,
-        )
-      )
-        return;
-      await deleteSchool.mutateAsync(schoolId);
+      setDeleteTarget({ id: schoolId, name: schoolName });
     },
-    [deleteSchool, userRole],
+    [userRole],
   );
+
+  const confirmDeleteSchool = useCallback(async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteSchool.mutateAsync(deleteTarget.id);
+    } finally {
+      setDeleteTarget(null);
+    }
+  }, [deleteTarget, deleteSchool]);
+
+  const confirmImport = () => {
+    if (!pendingImport) return;
+    setDotCount(3);
+    const dotInterval = setInterval(() => {
+      setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
+    }, 500);
+    bulkImportMutation.mutate(pendingImport, {
+      onSettled: () => clearInterval(dotInterval),
+    });
+    setPendingImport(null);
+  };
 
   return (
     <div className="bg-gradient-subtle min-h-screen flex flex-col">
@@ -375,27 +402,13 @@ export default function Schools() {
                     {(userRole === "SUPERADMIN" || userRole === "MANAGER") && (
                       <button
                         onClick={() => {
-                          if (!selectedCity.id) return alert("Спочатку оберіть місто");
+                          if (!selectedCity.id) return toast("Спочатку оберіть місто", "error");
                           if (!supportedCities.includes(selectedCity.name))
-                            return alert(
-                              `Місто "${selectedCity.name}" не підтримується для імпорту.`,
+                            return toast(
+                              "Місто не підтримується для імпорту",
+                              "error",
                             );
-                          if (
-                            !window.confirm(
-                              `Імпортувати всі ${info.countLabel} з isuo.org для міста ${selectedCity.name}?`,
-                            )
-                          )
-                            return;
-
-                          setDotCount(3);
-                          const dotInterval = setInterval(() => {
-                            setDotCount((prev) => (prev === 1 ? 3 : prev - 1));
-                          }, 500);
-
-                          bulkImportMutation.mutate(
-                            { cityId: selectedCity.id, type: info.apiType },
-                            { onSettled: () => clearInterval(dotInterval) },
-                          );
+                          setPendingImport({ cityId: selectedCity.id, type: info.apiType });
                         }}
                         disabled={bulkImportMutation.isPending}
                         className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 hover:shadow-lift hover:-translate-y-0.5 active:scale-95 disabled:opacity-70 transition-all duration-200"
@@ -480,158 +493,178 @@ export default function Schools() {
         +
       </button>
 
-      {/* Модальне вікно */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-surface rounded-modal shadow-modal w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="p-5 border-b border-border flex justify-between items-center bg-surface-muted shrink-0">
-              <h3 className="text-xl font-bold text-content-primary">Нова школа</h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-content-muted hover:text-content-secondary p-2 -mr-2 leading-none text-xl active:scale-90 transition-transform duration-fast"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form
-              onSubmit={handleAddSchool}
-              className="p-6 flex flex-col gap-4 overflow-y-auto"
-            >
-              <div className="relative">
-                <label className="block text-sm font-medium text-content-secondary mb-1.5">
-                  Назва школи
-                </label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  onBlur={() =>
-                    setTimeout(() => setShowSuggestions(false), 150)
-                  }
-                  placeholder="Наприклад: Школа №1"
-                  required
-                  className="w-full p-3 border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30"
-                />
-                {showSuggestions && (
-                  <ul className="absolute z-10 w-full bg-surface border border-border-strong rounded-control shadow-dropdown mt-1 max-h-48 overflow-y-auto overflow-hidden">
-                    {isSearching ? (
-                      <li className="px-4 py-3 text-sm text-content-muted italic">
-                        Пошук...
-                      </li>
-                    ) : suggestions.length > 0 ? (
-                      suggestions.map((s, i) => (
-                        <li
-                          key={i}
-                          onMouseDown={() =>
-                            handleSelectSuggestion(s.name, s.url)
-                          }
-                          className="px-4 py-3 text-sm hover:bg-brand-50 cursor-pointer font-medium border-b border-surface-muted last:border-0"
-                        >
-                          {s.name}
-                        </li>
-                      ))
-                    ) : (
-                      <li className="px-4 py-3 text-sm text-content-muted italic">
-                        Нічого не знайдено
-                      </li>
-                    )}
-                  </ul>
-                )}
+      <AnimatePresence>
+        {isModalOpen && (
+          <motion.div variants={backdropVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div variants={modalContentVariants} initial="hidden" animate="visible" exit="exit" className="bg-surface rounded-modal shadow-modal w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+              <div className="p-5 border-b border-border flex justify-between items-center bg-surface-muted shrink-0">
+                <h3 className="text-xl font-bold text-content-primary">Нова школа</h3>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="text-content-muted hover:text-content-secondary p-2 -mr-2 leading-none text-xl active:scale-90 transition-transform duration-fast"
+                >
+                  ✕
+                </button>
               </div>
 
-              {!selectedCity.id && (
-                <div>
+              <form
+                onSubmit={handleAddSchool}
+                className="p-6 flex flex-col gap-4 overflow-y-auto"
+              >
+                <div className="relative">
                   <label className="block text-sm font-medium text-content-secondary mb-1.5">
-                    Місто
+                    Назва школи
                   </label>
-                  <select
-                    value={form.cityId}
-                    onChange={(e) =>
-                      setForm({ ...form, cityId: e.target.value })
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    onBlur={() =>
+                      setTimeout(() => setShowSuggestions(false), 150)
                     }
+                    placeholder="Наприклад: Школа №1"
                     required
-                    className="w-full p-3 border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30 bg-surface"
-                  >
-                    <option value="">— Оберіть місто —</option>
-                    {cities.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                    className="w-full p-3 border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  />
+                  {showSuggestions && (
+                    <ul className="absolute z-10 w-full bg-surface border border-border-strong rounded-control shadow-dropdown mt-1 max-h-48 overflow-y-auto overflow-hidden">
+                      {isSearching ? (
+                        <li className="px-4 py-3 text-sm text-content-muted italic">
+                          Пошук...
+                        </li>
+                      ) : suggestions.length > 0 ? (
+                        suggestions.map((s, i) => (
+                          <li
+                            key={i}
+                            onMouseDown={() =>
+                              handleSelectSuggestion(s.name, s.url)
+                            }
+                            className="px-4 py-3 text-sm hover:bg-brand-50 cursor-pointer font-medium border-b border-surface-muted last:border-0"
+                          >
+                            {s.name}
+                          </li>
+                        ))
+                      ) : (
+                        <li className="px-4 py-3 text-sm text-content-muted italic">
+                          Нічого не знайдено
+                        </li>
+                      )}
+                    </ul>
+                  )}
                 </div>
-              )}
 
-              <div>
-                <label className="block text-sm font-medium text-content-secondary mb-1.5">
-                  Контакт{" "}
-                  <span className="ml-1 text-xs font-normal text-content-muted">
-                    (автозаповнення)
-                  </span>
-                </label>
-                {matchedContacts.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {matchedContacts.map((c, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() =>
-                          setForm((f) => ({
-                            ...f,
-                            director: c.contactName,
-                            phone: c.phone,
-                          }))
-                        }
-                        className={`text-xs font-medium px-3 py-1.5 rounded-control border transition-colors ${form.director === c.contactName ? "bg-brand text-white border-brand shadow-sm" : "bg-surface text-content-secondary border-border-strong hover:bg-surface-muted"}`}
-                      >
-                        {c.role ? `${c.role}: ` : ""}
-                        {c.contactName}
-                      </button>
-                    ))}
+                {!selectedCity.id && (
+                  <div>
+                    <label className="block text-sm font-medium text-content-secondary mb-1.5">
+                      Місто
+                    </label>
+                    <select
+                      value={form.cityId}
+                      onChange={(e) =>
+                        setForm({ ...form, cityId: e.target.value })
+                      }
+                      required
+                      className="w-full p-3 border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30 bg-surface"
+                    >
+                      <option value="">— Оберіть місто —</option>
+                      {cities.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 )}
-                <input
-                  type="text"
-                  value={form.director}
-                  onChange={(e) =>
-                    setForm({ ...form, director: e.target.value })
-                  }
-                  placeholder="Микола Петренко"
-                  className="w-full p-3 border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30 mb-4"
-                />
-                <label className="block text-sm font-medium text-content-secondary mb-1.5">
-                  Телефон
-                </label>
-                <input
-                  type="text"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="0671234567"
-                  className="w-full p-3 border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30"
-                />
-              </div>
 
-              <div className="flex gap-3 mt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-5 py-3.5 bg-surface-muted rounded-control text-sm font-bold text-content-secondary hover:bg-neutral-200 transition-colors"
-                >
-                  Скасувати
-                </button>
-                <button
-                  type="submit"
-                  disabled={addSchoolMutation.isPending}
-                  className="flex-1 px-5 py-3.5 bg-brand text-white rounded-control text-sm font-bold hover:bg-brand-hover disabled:opacity-50 transition-colors"
-                >
-                  {addSchoolMutation.isPending ? "Збереження..." : "Створити"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+                <div>
+                  <label className="block text-sm font-medium text-content-secondary mb-1.5">
+                    Контакт{" "}
+                    <span className="ml-1 text-xs font-normal text-content-muted">
+                      (автозаповнення)
+                    </span>
+                  </label>
+                  {matchedContacts.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {matchedContacts.map((c, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() =>
+                            setForm((f) => ({
+                              ...f,
+                              director: c.contactName,
+                              phone: c.phone,
+                            }))
+                          }
+                          className={`text-xs font-medium px-3 py-1.5 rounded-control border transition-colors ${form.director === c.contactName ? "bg-brand text-white border-brand shadow-sm" : "bg-surface text-content-secondary border-border-strong hover:bg-surface-muted"}`}
+                        >
+                          {c.role ? `${c.role}: ` : ""}
+                          {c.contactName}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <input
+                    type="text"
+                    value={form.director}
+                    onChange={(e) =>
+                      setForm({ ...form, director: e.target.value })
+                    }
+                    placeholder="Микола Петренко"
+                    className="w-full p-3 border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30 mb-4"
+                  />
+                  <label className="block text-sm font-medium text-content-secondary mb-1.5">
+                    Телефон
+                  </label>
+                  <input
+                    type="text"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    placeholder="0671234567"
+                    className="w-full p-3 border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  />
+                </div>
+
+                <div className="flex gap-3 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="flex-1 px-5 py-3.5 bg-surface-muted rounded-control text-sm font-bold text-content-secondary hover:bg-neutral-200 transition-colors"
+                  >
+                    Скасувати
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={addSchoolMutation.isPending}
+                    className="flex-1 px-5 py-3.5 bg-brand text-white rounded-control text-sm font-bold hover:bg-brand-hover disabled:opacity-50 transition-colors"
+                  >
+                    {addSchoolMutation.isPending ? "Збереження..." : "Створити"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        title="Видалити школу?"
+        message={`Школа «${deleteTarget?.name ?? ''}» та усі її події будуть видалені назавжди.`}
+        confirmLabel="Видалити"
+        variant="danger"
+        onConfirm={confirmDeleteSchool}
+        onCancel={() => setDeleteTarget(null)}
+      />
+      <ConfirmDialog
+        isOpen={!!pendingImport}
+        title="Імпорт закладів?"
+        message={`Імпортувати всі заклади з isuo.org для міста ${selectedCity.name}?`}
+        confirmLabel="Імпортувати"
+        variant="default"
+        onConfirm={confirmImport}
+        onCancel={() => setPendingImport(null)}
+      />
     </div>
   );
 }

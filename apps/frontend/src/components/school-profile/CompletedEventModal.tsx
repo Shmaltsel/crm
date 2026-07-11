@@ -195,6 +195,8 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
               </div>
             )}
           </div>
+        </div>
+        </motion.div>
         </motion.div>
       )}
     </AnimatePresence>

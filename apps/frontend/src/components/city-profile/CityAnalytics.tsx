@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   PieChart, Pie, Cell,
@@ -132,10 +133,24 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
               📅 <span className="truncate">{rangeLabel}</span> <span className="text-content-muted">⌄</span>
             </button>
 
-            {isOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-                <div className="absolute right-0 top-full mt-2 z-20 bg-surface rounded-xl shadow-lg border border-border p-4 w-72">
+            <AnimatePresence>
+              {isOpen && (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="fixed inset-0 z-10"
+                    onClick={() => setIsOpen(false)}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, y: -4, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    className="absolute right-0 top-full mt-2 z-20 bg-surface rounded-xl shadow-lg border border-border p-4 w-72"
+                  >
                   <div className="flex flex-wrap gap-2 mb-4">
                     <button onClick={() => applyPreset(3)} className="px-3 py-1.5 rounded-pill text-xs bg-surface-muted hover:bg-neutral-200 font-medium transition-colors">3 міс.</button>
                     <button onClick={() => applyPreset(6)} className="px-3 py-1.5 rounded-pill text-xs bg-surface-muted hover:bg-neutral-200 font-medium transition-colors">6 міс.</button>
@@ -156,9 +171,10 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
                   <button onClick={applyRange} className="w-full bg-brand text-white py-2.5 rounded-control text-sm font-medium hover:bg-brand-hover transition-colors">
                     Застосувати
                   </button>
-                </div>
-              </>
-            )}
+                </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
 
           <button

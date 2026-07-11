@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { lazy, Suspense } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 const CityAnalytics = lazy(
   () => import("../components/city-profile/CityAnalytics"),
 );
@@ -9,6 +10,9 @@ import type { Event, Crew, CityProfile as CityProfileType } from "../types";
 import OptimizedImage from "../components/ui/OptimizedImage";
 import { useCity, useCreateCrew, useDeleteCrew } from "../hooks/useCities";
 import { useUsers } from "../hooks/useEmployees";
+import { backdropVariants, modalContentVariants } from "../lib/motion";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { useToast } from "../components/ui/Toast";
 
 type Tab = "events" | "crews" | "analytics";
 
@@ -18,6 +22,7 @@ export default function CityProfile() {
   const { data: users = [] } = useUsers();
   const createCrew = useCreateCrew(id);
   const deleteCrew = useDeleteCrew(id);
+  const toast = useToast();
 
   const [activeTab, setActiveTab] = useState<Tab>("crews");
   const [selectedReportEvent, setSelectedReportEvent] = useState<any>(null);
@@ -28,19 +33,34 @@ export default function CityProfile() {
     hostId: "",
     driverId: "",
   });
+  const [crewDeleteTarget, setCrewDeleteTarget] = useState<string | null>(null);
 
   const handleCreateCrew = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!crewForm.hostId || !crewForm.driverId)
-      return alert("Оберіть ведучого та водія!");
+    if (!crewForm.hostId || !crewForm.driverId) {
+      toast("Оберіть ведучого та водія!", "error");
+      return;
+    }
     setIsCreateCrewModalOpen(false);
     createCrew.mutate(crewForm);
   };
 
   const handleDeleteCrew = (crewId: string) => {
-    if (!window.confirm("Видалити екіпаж?")) return;
-    deleteCrew.mutate(crewId);
+    setCrewDeleteTarget(crewId);
   };
+
+  const confirmDeleteCrew = () => {
+    if (!crewDeleteTarget) return;
+    deleteCrew.mutate(crewDeleteTarget);
+    setCrewDeleteTarget(null);
+  };
+
+  useEffect(() => {
+    if (!isCreateCrewModalOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setIsCreateCrewModalOpen(false); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [isCreateCrewModalOpen]);
 
   if (isLoading)
     return <div className="p-8 text-content-muted">Завантаження...</div>;
@@ -398,7 +418,6 @@ export default function CityProfile() {
                         >
                           <td className="p-5">
                             <div className="flex items-center gap-3">
-                              {/* Універсальна фотографія буса */}
                               <div className="w-[60px] h-[40px] rounded border border-border-strong overflow-hidden bg-slate-100 shrink-0 shadow-sm">
                                 <OptimizedImage
                                   src="https://images.unsplash.com/photo-1517026575980-3e1e2dedeab4?auto=format&fit=crop&q=80&w=120&h=80"
@@ -479,109 +498,119 @@ export default function CityProfile() {
         </Suspense>
       )}
 
-      {/* Модалка створення екіпажу */}
-      {isCreateCrewModalOpen && (
-        <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-card shadow-xl w-full max-w-md overflow-hidden flex flex-col">
-            <div className="p-5 sm:p-6 border-b border-border flex justify-between bg-surface-muted">
-              <h3 className="text-xl font-bold text-content-primary">Новий екіпаж</h3>
-              <button
-                onClick={() => setIsCreateCrewModalOpen(false)}
-                className="text-content-muted hover:text-content-secondary text-lg leading-none active:scale-90 transition-transform duration-fast"
-              >
-                ✕
-              </button>
-            </div>
-            <form onSubmit={handleCreateCrew} className="p-5 sm:p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-content-secondary mb-1">
-                  Назва екіпажу
-                </label>
-                <input
-                  type="text"
-                  value={crewForm.name}
-                  onChange={(e) =>
-                    setCrewForm({ ...crewForm, name: e.target.value })
-                  }
-                  className="w-full p-2.5 border border-border-strong rounded-control focus:ring-2 focus:ring-blue-500 outline-none"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-content-secondary mb-1">
-                  Ведучий
-                </label>
-                <select
-                  value={crewForm.hostId}
-                  onChange={(e) =>
-                    setCrewForm({ ...crewForm, hostId: e.target.value })
-                  }
-                  required
-                  className="w-full p-2.5 border border-border-strong rounded-control bg-white outline-none"
-                >
-                  <option value="" disabled>
-                    Оберіть ведучого
-                  </option>
-                  {availableHosts.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {h.name}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-success-600 mt-1">
-                  ✓ Доступно: {availableHosts.length} вільних
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-content-secondary mb-1">
-                  Водій
-                </label>
-                <select
-                  value={crewForm.driverId}
-                  onChange={(e) =>
-                    setCrewForm({ ...crewForm, driverId: e.target.value })
-                  }
-                  required
-                  className="w-full p-2.5 border border-border-strong rounded-control bg-white outline-none"
-                >
-                  <option value="" disabled>
-                    Оберіть водія
-                  </option>
-                  {availableDrivers.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name} {d.car ? `(🚗 ${d.car})` : ""}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-success-600 mt-1">
-                  ✓ Доступно: {availableDrivers.length} вільних
-                </p>
-              </div>
-              <div className="flex gap-3 pt-2 mt-4">
+      <AnimatePresence>
+        {isCreateCrewModalOpen && (
+          <motion.div variants={backdropVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div variants={modalContentVariants} initial="hidden" animate="visible" exit="exit" className="bg-white rounded-card shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+              <div className="p-5 sm:p-6 border-b border-border flex justify-between bg-surface-muted">
+                <h3 className="text-xl font-bold text-content-primary">Новий екіпаж</h3>
                 <button
-                  type="button"
                   onClick={() => setIsCreateCrewModalOpen(false)}
-                  className="flex-1 px-4 py-2.5 bg-slate-100 text-content-secondary rounded-control font-medium hover:bg-slate-200 transition-colors"
+                  className="text-content-muted hover:text-content-secondary text-lg leading-none active:scale-90 transition-transform duration-fast"
                 >
-                  Скасувати
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2.5 bg-brand text-white rounded-control font-medium hover:bg-brand-hover transition-colors"
-                >
-                  Створити
+                  ✕
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+              <form onSubmit={handleCreateCrew} className="p-5 sm:p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-content-secondary mb-1">
+                    Назва екіпажу
+                  </label>
+                  <input
+                    type="text"
+                    value={crewForm.name}
+                    onChange={(e) =>
+                      setCrewForm({ ...crewForm, name: e.target.value })
+                    }
+                    className="w-full p-2.5 border border-border-strong rounded-control focus:ring-2 focus:ring-blue-500 outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-content-secondary mb-1">
+                    Ведучий
+                  </label>
+                  <select
+                    value={crewForm.hostId}
+                    onChange={(e) =>
+                      setCrewForm({ ...crewForm, hostId: e.target.value })
+                    }
+                    required
+                    className="w-full p-2.5 border border-border-strong rounded-control bg-white outline-none"
+                  >
+                    <option value="" disabled>
+                      Оберіть ведучого
+                    </option>
+                    {availableHosts.map((h) => (
+                      <option key={h.id} value={h.id}>
+                        {h.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-success-600 mt-1">
+                    ✓ Доступно: {availableHosts.length} вільних
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-content-secondary mb-1">
+                    Водій
+                  </label>
+                  <select
+                    value={crewForm.driverId}
+                    onChange={(e) =>
+                      setCrewForm({ ...crewForm, driverId: e.target.value })
+                    }
+                    required
+                    className="w-full p-2.5 border border-border-strong rounded-control bg-white outline-none"
+                  >
+                    <option value="" disabled>
+                      Оберіть водія
+                    </option>
+                    {availableDrivers.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name} {d.car ? `(🚗 ${d.car})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-success-600 mt-1">
+                    ✓ Доступно: {availableDrivers.length} вільних
+                  </p>
+                </div>
+                <div className="flex gap-3 pt-2 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateCrewModalOpen(false)}
+                    className="flex-1 px-4 py-2.5 bg-slate-100 text-content-secondary rounded-control font-medium hover:bg-slate-200 transition-colors"
+                  >
+                    Скасувати
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2.5 bg-brand text-white rounded-control font-medium hover:bg-brand-hover transition-colors"
+                  >
+                    Створити
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Модальне вікно Звіту */}
       <CompletedEventModal
         isOpen={!!selectedReportEvent}
         onClose={() => setSelectedReportEvent(null)}
         event={selectedReportEvent}
+      />
+
+      <ConfirmDialog
+        isOpen={!!crewDeleteTarget}
+        title="Видалити екіпаж?"
+        message="Екіпаж буде видалено назавжди."
+        confirmLabel="Видалити"
+        variant="danger"
+        onConfirm={confirmDeleteCrew}
+        onCancel={() => setCrewDeleteTarget(null)}
       />
     </div>
   );
@@ -605,170 +634,173 @@ function CompletedEventModal({
   onClose: () => void;
   event: any;
 }) {
-  if (!isOpen || !event) return null;
   const fmt = (n: unknown) =>
     new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
-  const report = event.report;
+  const report = event?.report;
 
   return (
-    <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-      <div className="bg-white rounded-t-3xl sm:rounded-card shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
-        <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
-        <div className="p-5 sm:p-6 border-b border-border flex justify-between bg-surface-muted shrink-0">
-          <div>
-            <h3 className="text-xl font-bold text-content-primary">
-              Звіт: {event.project}
-            </h3>
-            <p className="text-sm text-content-muted mt-1">
-              {event.school?.name} ·{" "}
-              {new Date(event.date).toLocaleDateString("uk-UA")}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-content-muted hover:text-content-secondary p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg"
-          >
-            ✕
-          </button>
-        </div>
-        <div className="p-5 sm:p-6 flex-1 overflow-y-auto bg-surface-muted">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            <div className="bg-white p-5 rounded-card border border-border shadow-sm">
-              <h4 className="font-bold text-content-primary mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-full bg-blue-50 text-brand flex items-center justify-center">
-                  📊
-                </span>
-                Результати
-              </h4>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between border-b border-slate-50 pb-2">
-                  <span className="text-content-muted">Дітей (факт):</span>
-                  <span className="font-bold">
-                    {report?.childrenCount || 0}
-                  </span>
-                </div>
-                <div className="flex justify-between border-b border-slate-50 pb-2">
-                  <span className="text-content-muted">Класів:</span>
-                  <span className="font-medium">
-                    {report?.classesCount || 0}
-                  </span>
-                </div>
-                <div className="flex justify-between border-b border-slate-50 pb-2">
-                  <span className="text-content-muted">Пільговиків:</span>
-                  <span className="font-medium">
-                    {report?.privilegedCount || 0}
-                  </span>
-                </div>
-                <div className="flex justify-between border-b border-slate-50 pb-2">
-                  <span className="text-content-muted">Сеансів:</span>
-                  <span className="font-medium">
-                    {report?.showingsCount || 0}
-                  </span>
-                </div>
-                <div className="flex justify-between pb-1">
-                  <span className="text-content-muted">Оцінка:</span>
-                  <span className="font-bold text-amber-500">
-                    ⭐ {report?.rating || 0}/10
-                  </span>
-                </div>
+    <AnimatePresence>
+      {isOpen && event && (
+        <motion.div variants={backdropVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+          <motion.div variants={modalContentVariants} initial="hidden" animate="visible" exit="exit" className="bg-white rounded-t-3xl sm:rounded-card shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
+            <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+            <div className="p-5 sm:p-6 border-b border-border flex justify-between bg-surface-muted shrink-0">
+              <div>
+                <h3 className="text-xl font-bold text-content-primary">
+                  Звіт: {event.project}
+                </h3>
+                <p className="text-sm text-content-muted mt-1">
+                  {event.school?.name} ·{" "}
+                  {new Date(event.date).toLocaleDateString("uk-UA")}
+                </p>
               </div>
+              <button
+                onClick={onClose}
+                className="text-content-muted hover:text-content-secondary p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg"
+              >
+                ✕
+              </button>
             </div>
-            <div className="bg-white p-5 rounded-card border border-border shadow-sm">
-              <h4 className="font-bold text-content-primary mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-full bg-success-subtle text-success-600 flex items-center justify-center">
-                  💰
-                </span>
-                Фінанси
-              </h4>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between border-b border-slate-50 pb-2">
-                  <span className="text-content-muted">Загальна виручка:</span>
-                  <span className="font-bold">{fmt(report?.totalSum)} грн</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-50 pb-2">
-                  <span className="text-content-muted">На заклад (20%):</span>
-                  <span className="font-medium text-danger-600">
-                    − {fmt(report?.schoolSum)} грн
-                  </span>
-                </div>
-                {Array.isArray(report?.expenseItems) &&
-                  report.expenseItems.length > 0 && (
-                    <div className="py-2 border-b border-slate-50">
-                      <span className="text-content-muted block mb-2">
-                        Додаткові витрати:
+            <div className="p-5 sm:p-6 flex-1 overflow-y-auto bg-surface-muted">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div className="bg-white p-5 rounded-card border border-border shadow-sm">
+                  <h4 className="font-bold text-content-primary mb-4 flex items-center gap-2">
+                    <span className="w-8 h-8 rounded-full bg-blue-50 text-brand flex items-center justify-center">
+                      📊
+                    </span>
+                    Результати
+                  </h4>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between border-b border-slate-50 pb-2">
+                      <span className="text-content-muted">Дітей (факт):</span>
+                      <span className="font-bold">
+                        {report?.childrenCount || 0}
                       </span>
-                      {report.expenseItems.map((exp: any, i: number) => (
-                        <div
-                          key={i}
-                          className="flex justify-between text-xs mb-1 pl-2"
-                        >
-                          <span className="text-content-muted">
-                            — {exp.name || exp.category}
-                          </span>
-                          <span className="text-danger-600 font-medium">
-                            − {fmt(exp.amount)} грн
-                          </span>
-                        </div>
-                      ))}
                     </div>
-                  )}
-                <div className="flex justify-between pt-1">
-                  <span className="font-bold text-content-primary">
-                    Чистий прибуток:
-                  </span>
-                  <span className="font-bold text-success-600 text-base">
-                    {fmt(report?.remainderSum)} грн
-                  </span>
+                    <div className="flex justify-between border-b border-slate-50 pb-2">
+                      <span className="text-content-muted">Класів:</span>
+                      <span className="font-medium">
+                        {report?.classesCount || 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-50 pb-2">
+                      <span className="text-content-muted">Пільговиків:</span>
+                      <span className="font-medium">
+                        {report?.privilegedCount || 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-50 pb-2">
+                      <span className="text-content-muted">Сеансів:</span>
+                      <span className="font-medium">
+                        {report?.showingsCount || 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between pb-1">
+                      <span className="text-content-muted">Оцінка:</span>
+                      <span className="font-bold text-amber-500">
+                        ⭐ {report?.rating || 0}/10
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white p-5 sm:p-6 rounded-card border border-border shadow-sm">
-            <h4 className="font-bold text-content-primary mb-5 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center">
-                ⏳
-              </span>
-              Історія пайплайну
-            </h4>
-            {!event.history || event.history.length === 0 ? (
-              <p className="text-sm text-content-muted text-center py-4">
-                Історія порожня.
-              </p>
-            ) : (
-              <div className="space-y-4 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-slate-100">
-                {[...event.history]
-                  .sort(
-                    (a, b) =>
-                      new Date(a.createdAt).getTime() -
-                      new Date(b.createdAt).getTime(),
-                  )
-                  .map((item: any) => (
-                    <div key={item.id} className="relative pl-8 text-sm">
-                      <div className="absolute left-1.5 w-3 h-3 rounded-full top-1 bg-violet-500 ring-4 ring-white"></div>
-                      <p className="font-semibold text-content-primary">
-                        {item.action}
-                      </p>
-                      <p className="text-[11px] text-content-muted mt-0.5">
-                        {new Date(item.createdAt).toLocaleString("uk-UA", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}{" "}
-                        · 👤 {item.userName}
-                      </p>
-                      {item.comment && (
-                        <div className="mt-2 p-3 bg-surface-muted rounded-xl text-content-secondary italic border border-border">
-                          {item.comment}
+                <div className="bg-white p-5 rounded-card border border-border shadow-sm">
+                  <h4 className="font-bold text-content-primary mb-4 flex items-center gap-2">
+                    <span className="w-8 h-8 rounded-full bg-success-subtle text-success-600 flex items-center justify-center">
+                      💰
+                    </span>
+                    Фінанси
+                  </h4>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between border-b border-slate-50 pb-2">
+                      <span className="text-content-muted">Загальна виручка:</span>
+                      <span className="font-bold">{fmt(report?.totalSum)} грн</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-50 pb-2">
+                      <span className="text-content-muted">На заклад (20%):</span>
+                      <span className="font-medium text-danger-600">
+                        − {fmt(report?.schoolSum)} грн
+                      </span>
+                    </div>
+                    {Array.isArray(report?.expenseItems) &&
+                      report.expenseItems.length > 0 && (
+                        <div className="py-2 border-b border-slate-50">
+                          <span className="text-content-muted block mb-2">
+                            Додаткові витрати:
+                          </span>
+                          {report.expenseItems.map((exp: any, i: number) => (
+                            <div
+                              key={i}
+                              className="flex justify-between text-xs mb-1 pl-2"
+                            >
+                              <span className="text-content-muted">
+                                — {exp.name || exp.category}
+                              </span>
+                              <span className="text-danger-600 font-medium">
+                                − {fmt(exp.amount)} грн
+                              </span>
+                            </div>
+                          ))}
                         </div>
                       )}
+                    <div className="flex justify-between pt-1">
+                      <span className="font-bold text-content-primary">
+                        Чистий прибуток:
+                      </span>
+                      <span className="font-bold text-success-600 text-base">
+                        {fmt(report?.remainderSum)} грн
+                      </span>
                     </div>
-                  ))}
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+              <div className="bg-white p-5 sm:p-6 rounded-card border border-border shadow-sm">
+                <h4 className="font-bold text-content-primary mb-5 flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center">
+                    ⏳
+                  </span>
+                  Історія пайплайну
+                </h4>
+                {!event.history || event.history.length === 0 ? (
+                  <p className="text-sm text-content-muted text-center py-4">
+                    Історія порожня.
+                  </p>
+                ) : (
+                  <div className="space-y-4 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-slate-100">
+                    {[...event.history]
+                      .sort(
+                        (a, b) =>
+                          new Date(a.createdAt).getTime() -
+                          new Date(b.createdAt).getTime(),
+                      )
+                      .map((item: any) => (
+                        <div key={item.id} className="relative pl-8 text-sm">
+                          <div className="absolute left-1.5 w-3 h-3 rounded-full top-1 bg-violet-500 ring-4 ring-white"></div>
+                          <p className="font-semibold text-content-primary">
+                            {item.action}
+                          </p>
+                          <p className="text-[11px] text-content-muted mt-0.5">
+                            {new Date(item.createdAt).toLocaleString("uk-UA", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}{" "}
+                            · 👤 {item.userName}
+                          </p>
+                          {item.comment && (
+                            <div className="mt-2 p-3 bg-surface-muted rounded-xl text-content-secondary italic border border-border">
+                              {item.comment}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

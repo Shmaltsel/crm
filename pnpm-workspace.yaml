@@ -3,7 +3,7 @@ packages:
   - 'packages/*'
 allowBuilds:
   '@mongodb-js/zstd': true
-  '@percy/core': set this to true or false
+  '@percy/core': true
   '@prisma/client': true
   '@prisma/engines': true
   '@scarf/scarf': false
