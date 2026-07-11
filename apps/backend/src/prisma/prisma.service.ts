@@ -1,6 +1,23 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { dbQueryDuration } from '../metrics/metrics.service';
+
+export function convertDecimalsDeep(value: unknown): unknown {
+  if (value == null) return value;
+  if (value instanceof Prisma.Decimal) return value.toNumber();
+  if (value instanceof Date) return value;
+  if (Array.isArray(value))
+    return value.map((item) => convertDecimalsDeep(item));
+  if (typeof value === 'object') {
+    const source = value as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    for (const key of Object.keys(source)) {
+      out[key] = convertDecimalsDeep(source[key]);
+    }
+    return out;
+  }
+  return value;
+}
 
 @Injectable()
 export class PrismaService
@@ -20,7 +37,7 @@ export class PrismaService
               { model: model ?? 'unknown', action: operation },
               durationSec,
             );
-            return result;
+            return convertDecimalsDeep(result);
           },
         },
       },
