@@ -156,7 +156,7 @@ export function FilterPanel({
                   <SlidersHorizontal className="w-4 h-4 text-content-muted" />
                   <span className="text-sm font-semibold text-content-primary">Фільтри</span>
                 </div>
-                <button onClick={onMobileClose} className="p-1 -mr-1 text-content-muted hover:text-content-primary">
+                <button onClick={onMobileClose} className="p-1 -mr-1 text-content-muted hover:text-content-primary active:scale-90 transition-transform duration-fast">
                   <X className="w-5 h-5" />
                 </button>
               </div>

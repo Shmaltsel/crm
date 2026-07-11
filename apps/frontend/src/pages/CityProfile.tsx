@@ -487,7 +487,7 @@ export default function CityProfile() {
               <h3 className="text-xl font-bold text-content-primary">Новий екіпаж</h3>
               <button
                 onClick={() => setIsCreateCrewModalOpen(false)}
-                className="text-content-muted hover:text-content-secondary text-lg leading-none"
+                className="text-content-muted hover:text-content-secondary text-lg leading-none active:scale-90 transition-transform duration-fast"
               >
                 ✕
               </button>

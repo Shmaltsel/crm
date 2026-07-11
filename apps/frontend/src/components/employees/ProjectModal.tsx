@@ -63,7 +63,7 @@ export default function ProjectModal({
               </h3>
               <button
                 onClick={onClose}
-                className="text-slate-400 text-xl leading-none p-2 -mr-2"
+                className="text-slate-400 text-xl leading-none p-2 -mr-2 active:scale-90 transition-transform duration-fast"
               >
                 ✕
               </button>
@@ -124,13 +124,13 @@ export default function ProjectModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 bg-slate-100 py-3 rounded-xl font-medium"
+                  className="flex-1 bg-slate-100 py-3 rounded-xl font-medium active:scale-[0.97] transition-transform duration-fast"
                 >
                   Скасувати
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-medium"
+                  className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-medium active:scale-[0.97] transition-transform duration-fast"
                 >
                   Зберегти
                 </button>

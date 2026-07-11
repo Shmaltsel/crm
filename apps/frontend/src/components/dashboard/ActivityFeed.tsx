@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { staggerContainer, staggerItem, emptyStateVariants } from '../../lib/motion';
 
 const ROLE_INITIALS: Record<string, string> = {
   MANAGER:    'М',
@@ -105,12 +107,12 @@ export default function ActivityFeed({ items }: Props) {
       </div>
 
       {items.length === 0 ? (
-        <div className="py-5 text-center text-content-muted text-sm">
+        <motion.div variants={emptyStateVariants} initial="hidden" animate="visible" className="py-5 text-center text-content-muted text-sm">
           Сьогодні активності ще немає
-        </div>
+        </motion.div>
       ) : (
         <>
-          <div className="flex flex-col gap-0.5">
+          <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col gap-0.5">
             {visible.map((group) => {
               const avatarColor = ROLE_COLORS[group.role] ?? 'bg-neutral-100 text-neutral-600';
               const shownActions = group.actions.slice(-3);
@@ -118,7 +120,7 @@ export default function ActivityFeed({ items }: Props) {
               const lastTime     = formatTime(group.actions[group.actions.length - 1].createdAt);
 
               return (
-                <div key={group.key} className="flex items-start gap-2.5 py-2 px-2 -mx-1 rounded-control hover:bg-surface-muted/60 transition-colors">
+                <motion.div key={group.key} variants={staggerItem} className="flex items-start gap-2.5 py-2 px-2 -mx-1 rounded-control hover:bg-surface-muted/60 transition-colors">
 
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center text-2xs font-semibold shrink-0 mt-0.5 ${avatarColor}`}>
                     {getInitials(group.userName)}
@@ -132,7 +134,7 @@ export default function ActivityFeed({ items }: Props) {
                           {' · '}
                           <button
                             onClick={() => group.schoolId && navigate(`/schools/${group.schoolId}`)}
-                            className="text-brand hover:underline font-medium"
+                            className="text-brand hover:underline font-medium active:scale-[0.97] transition-transform duration-fast"
                           >
                             {group.schoolName}
                           </button>
@@ -157,15 +159,15 @@ export default function ActivityFeed({ items }: Props) {
 
                   <span className="text-2xs text-content-muted shrink-0 pt-0.5">{lastTime}</span>
 
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
 
           {hasMore && (
             <button
               onClick={() => setExpanded(v => !v)}
-              className="mt-2.5 pt-2.5 border-t border-border text-2xs text-brand hover:underline text-center w-full"
+              className="mt-2.5 pt-2.5 border-t border-border text-2xs text-brand hover:underline text-center w-full active:scale-[0.97] transition-transform duration-fast"
             >
               {expanded
                 ? '↑ Згорнути'

@@ -53,7 +53,7 @@ export default function CommentModal({ isOpen, onClose, mode, text, setText, onS
               <h3 id={headingId} className="text-xl font-bold text-slate-800">
                 {mode === 'pipeline' ? 'Завершення етапу' : mode === 'add_comment' ? 'Новий коментар' : 'Редагувати'}
               </h3>
-              <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 p-2 -mr-2">✕</button>
+              <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 p-2 -mr-2 active:scale-90 transition-transform duration-fast">✕</button>
             </div>
             <form onSubmit={onSave} className="p-5 sm:p-6 flex-1 flex flex-col">
               <label className="block text-sm font-medium text-slate-700 mb-2">

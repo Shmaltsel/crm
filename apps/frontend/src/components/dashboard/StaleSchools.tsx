@@ -1,4 +1,6 @@
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { staggerContainer, staggerItem, emptyStateVariants } from "../../lib/motion";
 
 const STAGE_LABELS: Record<string, string> = {
   BASE: "База",
@@ -101,19 +103,19 @@ export default function StaleSchools({ schools }: Props) {
         </div>
         <button
           onClick={() => navigate("/schools")}
-          className="text-xs text-blue-600 hover:underline shrink-0"
+          className="text-xs text-blue-600 hover:underline shrink-0 active:scale-[0.97] transition-transform duration-fast"
         >
           Переглянути всі
         </button>
       </div>
 
       {schools.length === 0 ? (
-        <div className="py-6 text-center">
+        <motion.div variants={emptyStateVariants} initial="hidden" animate="visible" className="py-6 text-center">
           <p className="text-2xl mb-1">✅</p>
           <p className="text-sm text-slate-400">Усі школи активні</p>
-        </div>
+        </motion.div>
       ) : (
-        <div className="flex flex-col gap-1">
+        <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col gap-1">
           {sorted.map((school) => {
             const days = school.daysStale ?? 0;
             const tier = getTier(days);
@@ -123,8 +125,9 @@ export default function StaleSchools({ schools }: Props) {
             const width = barWidth(days);
 
             return (
-              <div
+              <motion.div
                 key={school.id}
+                variants={staggerItem}
                 onClick={() => navigate(`/schools/${school.id}`)}
                 className={`group relative flex items-center gap-3 py-2.5 px-2 -mx-1 rounded-xl cursor-pointer transition-colors ${tier.row}`}
               >
@@ -155,10 +158,10 @@ export default function StaleSchools({ schools }: Props) {
                 >
                   {days} дн
                 </span>
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       )}
 
       {/* Футер — легенда тирів */}

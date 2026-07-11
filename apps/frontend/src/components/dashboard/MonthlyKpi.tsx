@@ -1,4 +1,6 @@
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { cardHoverVariants, staggerContainer, staggerItem } from '../../lib/motion';
 
 function fmt(n: unknown): string {
   return new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
@@ -70,16 +72,19 @@ export default function MonthlyKpi({ kpi }: Props) {
         </p>
         <button
           onClick={() => navigate('/finance')}
-          className="text-xs text-blue-600 hover:underline shrink-0"
+          className="text-xs text-blue-600 hover:underline shrink-0 active:scale-[0.97] transition-transform duration-fast"
         >
           Детальніше
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="grid grid-cols-3 gap-3">
         {tiles.map((tile) => (
-          <div
+          <motion.div
             key={tile.label}
+            variants={staggerItem}
+            whileHover="hover"
+            initial="rest"
             className={`rounded-xl p-3 ${tile.bg}`}
           >
             <div className="flex items-center gap-1.5 mb-2">
@@ -92,9 +97,9 @@ export default function MonthlyKpi({ kpi }: Props) {
               {tile.value}
             </p>
             <p className="text-xs text-slate-400 mt-1">{tile.sub}</p>
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
     </div>
   );
 }

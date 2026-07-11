@@ -58,7 +58,7 @@ export default function FunnelBar({ funnel }: Props) {
               <button
                 key={stage.key}
                 onClick={() => navigate('/schools')}
-                className="flex items-center gap-3 group w-full text-left"
+                className="flex items-center gap-3 group w-full text-left active:scale-[0.97] transition-transform duration-fast"
               >
                 {/* Іконка */}
                 <div className={`w-6 h-6 rounded-md ${stage.bg} flex items-center justify-center text-xs shrink-0`}>

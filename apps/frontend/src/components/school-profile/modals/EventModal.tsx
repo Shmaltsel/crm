@@ -127,7 +127,7 @@ export default function EventModal({
           >
         <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
           <h3 id={headingId} className="text-xl font-bold text-slate-800">Нова подія</h3>
-          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 p-2 -mr-2 text-xl leading-none">
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 p-2 -mr-2 text-xl leading-none active:scale-90 transition-transform duration-fast">
             ✕
           </button>
         </div>

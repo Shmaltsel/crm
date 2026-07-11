@@ -1,4 +1,6 @@
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { staggerContainer, staggerItem, emptyStateVariants } from '../../lib/motion';
 
 const UA_WEEKDAYS = ['нд', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
 const UA_MONTHS_SHORT = ['січ', 'лют', 'бер', 'квіт', 'трав', 'черв', 'лип', 'серп', 'вер', 'жовт', 'лист', 'груд'];
@@ -40,26 +42,27 @@ export default function UpcomingEvents({ events }: Props) {
         <p className="text-sm font-semibold text-slate-800">Найближчі події (5 днів)</p>
         <button
           onClick={() => navigate('/calendar')}
-          className="text-xs text-blue-600 hover:underline shrink-0"
+          className="text-xs text-blue-600 hover:underline shrink-0 active:scale-[0.97] transition-transform duration-fast"
         >
           Перейти до календаря
         </button>
       </div>
 
       {events.length === 0 ? (
-        <div className="py-6 text-center text-slate-400 text-sm">
+        <motion.div variants={emptyStateVariants} initial="hidden" animate="visible" className="py-6 text-center text-slate-400 text-sm">
           Найближчими днями подій немає
-        </div>
+        </motion.div>
       ) : (
-        <div className="flex flex-col divide-y divide-slate-50">
+        <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col divide-y divide-slate-50">
           {events.map((ev) => {
             const crewName = ev.crew?.name ?? (ev.crew?.host?.name ?? null);
 
             return (
-              <div
+              <motion.div
                 key={ev.id}
+                variants={staggerItem}
                 onClick={() => ev.school && navigate(`/schools/${ev.school.id}`)}
-                className="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-slate-50/60 rounded-lg px-1 -mx-1 transition-colors active:scale-[0.98]"
+                className="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-slate-50/60 rounded-lg px-1 -mx-1 transition-colors active:scale-[0.97]"
               >
                 <div className="shrink-0 text-right w-24">
                   <p className="text-xs font-medium text-slate-600">
@@ -80,10 +83,10 @@ export default function UpcomingEvents({ events }: Props) {
                     {crewName}
                   </span>
                 )}
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       )}
     </div>
   );

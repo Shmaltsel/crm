@@ -349,7 +349,7 @@ export default function ReportModal({
               {schoolName}
             </p>
           </div>
-          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 text-lg leading-none p-2 -mr-2 shrink-0">
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 text-lg leading-none p-2 -mr-2 shrink-0 active:scale-90 transition-transform duration-fast">
             ✕
           </button>
         </div>
@@ -571,13 +571,13 @@ export default function ReportModal({
         <div className="flex gap-3 px-4 sm:px-6 py-4 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] sm:pb-4 border-t border-slate-100 bg-white shrink-0">
           <button
             onClick={onClose}
-            className="flex-1 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium py-3"
+            className="flex-1 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium py-3 active:scale-[0.97] transition-transform duration-fast"
           >
             Скасувати
           </button>
           <button
             onClick={handleSave}
-            className="flex-1 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 py-3"
+            className="flex-1 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 py-3 active:scale-[0.97] transition-transform duration-fast"
           >
             Зберегти звіт
           </button>

@@ -297,7 +297,7 @@ export default function Kindergartens() {
           )}
           <button
             onClick={handleOpenModal}
-            className="hidden md:flex items-center gap-1 px-3 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-hover"
+            className="hidden md:flex items-center gap-1 px-3 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-hover active:scale-[0.97] transition-transform duration-fast"
           >
             + Додати
           </button>
@@ -383,7 +383,7 @@ export default function Kindergartens() {
               setActiveFilter(null);
               setSizeFilter(null);
             }}
-            className="ml-3 text-blue-500 hover:text-blue-700 lowercase"
+            className="ml-3 text-blue-500 hover:text-blue-700 lowercase active:scale-[0.97] transition-transform duration-fast"
           >
             скинути фільтри
           </button>
@@ -463,7 +463,7 @@ export default function Kindergartens() {
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-content-muted hover:text-content-secondary p-2 -mr-2 leading-none text-xl"
+                className="text-content-muted hover:text-content-secondary p-2 -mr-2 leading-none text-xl active:scale-90 transition-transform duration-fast"
               >
                 ✕
               </button>

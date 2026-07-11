@@ -84,7 +84,7 @@ export default function CrewModal({
           <h3 id={headingId} className="text-xl font-bold text-slate-800">
             Призначити екіпаж
           </h3>
-          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600">
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 active:scale-90 transition-transform duration-fast">
             ✕
           </button>
         </div>
@@ -103,7 +103,7 @@ export default function CrewModal({
                   onClose();
                   if (currentCity?.id) navigate(`/cities/${currentCity.id}`);
                 }}
-                className="text-sm mt-2 text-blue-600 hover:text-blue-800 underline underline-offset-2"
+                className="text-sm mt-2 text-blue-600 hover:text-blue-800 underline underline-offset-2 active:scale-[0.97] transition-transform duration-fast"
               >
                 Створіть екіпаж у вкладці міста!
               </button>
@@ -168,14 +168,14 @@ export default function CrewModal({
           <div className="flex gap-3 mt-6">
             <button
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200"
+              className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 active:scale-[0.97] transition-transform duration-fast"
             >
               Скасувати
             </button>
             <button
               onClick={() => onSave(selectedCrewId)}
               disabled={!selectedCrewId}
-              className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-opacity"
+              className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-opacity active:scale-[0.97] transition-transform duration-fast"
             >
               Призначити
             </button>

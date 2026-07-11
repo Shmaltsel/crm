@@ -113,7 +113,7 @@ export default function UserModal({
               <h3 className="text-xl font-bold">
                 {isEditing ? "Редагувати" : "Новий користувач"}
               </h3>
-              <button onClick={onClose} className="text-slate-400 text-xl p-2 -mr-2">
+              <button onClick={onClose} className="text-slate-400 text-xl p-2 -mr-2 active:scale-90 transition-transform duration-fast">
                 ✕
               </button>
             </div>
@@ -260,14 +260,14 @@ export default function UserModal({
                   type="button"
                   onClick={onClose}
                   disabled={isSubmitting}
-                  className="flex-1 bg-slate-100 py-3 rounded-xl font-medium disabled:opacity-50"
+                  className="flex-1 bg-slate-100 py-3 rounded-xl font-medium disabled:opacity-50 active:scale-[0.97] transition-transform duration-fast"
                 >
                   Скасувати
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium disabled:opacity-60"
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium disabled:opacity-60 active:scale-[0.97] transition-transform duration-fast"
                 >
                   {isSubmitting ? "Збереження..." : "Зберегти"}
                 </button>

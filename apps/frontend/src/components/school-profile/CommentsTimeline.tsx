@@ -199,7 +199,7 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="text-xs font-medium px-3 py-2.5 rounded-control bg-surface-muted text-content-secondary hover:bg-neutral-200 disabled:opacity-40"
+            className="text-xs font-medium px-3 py-2.5 rounded-control bg-surface-muted text-content-secondary hover:bg-neutral-200 disabled:opacity-40 active:scale-90 transition-transform duration-fast"
           >
             ←
           </button>
@@ -209,7 +209,7 @@ export default function CommentsTimeline({ schoolId }: { schoolId: string }) {
           <button
             disabled={page >= data.pageCount}
             onClick={() => setPage((p) => p + 1)}
-            className="text-xs font-medium px-3 py-2.5 rounded-control bg-surface-muted text-content-secondary hover:bg-neutral-200 disabled:opacity-40"
+            className="text-xs font-medium px-3 py-2.5 rounded-control bg-surface-muted text-content-secondary hover:bg-neutral-200 disabled:opacity-40 active:scale-90 transition-transform duration-fast"
           >
             →
           </button>

@@ -75,7 +75,7 @@ export default function EditSchoolModal({
         {/* Шапка не зжимається (shrink-0) */}
         <div className="p-5 sm:p-6 border-b flex justify-between items-center bg-slate-50 shrink-0">
           <h3 id={headingId} className="text-xl font-bold">Редагування</h3>
-          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 p-2 -mr-2">
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 p-2 -mr-2 active:scale-90 transition-transform duration-fast">
             ✕
           </button>
         </div>

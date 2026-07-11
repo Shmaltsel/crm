@@ -37,7 +37,7 @@ export default function EventReport() {
 
       <button
         onClick={() => window.history.back()}
-        className="mb-4 px-4 py-2.5 bg-surface border border-border-strong rounded-lg text-sm text-content-secondary hover:bg-surface-subtle flex items-center gap-2"
+        className="mb-4 px-4 py-2.5 bg-surface border border-border-strong rounded-lg text-sm text-content-secondary hover:bg-surface-subtle flex items-center gap-2 active:scale-[0.97] transition-transform duration-fast"
       >
         ← Назад
       </button>

@@ -244,13 +244,13 @@ export default function ReportsReviewPage() {
                           <button
                             onClick={() => handleReject(r.id)}
                             disabled={!comment.trim() || rejectMutation.isPending}
-                            className="px-4 py-2 bg-danger text-white rounded-lg font-medium hover:bg-danger-700 disabled:opacity-50 text-sm shrink-0"
+                            className="px-4 py-2 bg-danger text-white rounded-lg font-medium hover:bg-danger-700 disabled:opacity-50 text-sm shrink-0 active:scale-[0.97] transition-transform duration-fast"
                           >
                             Відхилити
                           </button>
                           <button
                             onClick={() => { setActionTarget(null); setComment(""); }}
-                            className="px-3 py-2 text-content-muted hover:text-content-secondary text-sm"
+                            className="px-3 py-2 text-content-muted hover:text-content-secondary text-sm active:scale-90 transition-transform duration-fast"
                           >
                             ✕
                           </button>

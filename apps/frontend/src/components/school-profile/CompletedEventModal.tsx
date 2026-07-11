@@ -50,7 +50,7 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
               {new Date(event.date).toLocaleDateString("uk-UA")}
             </p>
           </div>
-          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-content-muted hover:text-content-secondary p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg">
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-content-muted hover:text-content-secondary p-2 -mr-2 -mt-2 shrink-0 h-fit text-lg active:scale-90 transition-transform duration-fast">
             ✕
           </button>
         </div>

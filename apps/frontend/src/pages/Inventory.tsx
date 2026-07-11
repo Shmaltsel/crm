@@ -105,17 +105,17 @@ export default function InventoryPage() {
       </div>
       <div className="flex items-center gap-2 pt-1">
         {canAddStock && (
-          <button onClick={() => setStockModal({ id: item.id, name: item.name })} className="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium">
+          <button onClick={() => setStockModal({ id: item.id, name: item.name })} className="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium active:scale-[0.97] transition-transform duration-fast">
             Поповнити
           </button>
         )}
         {canEdit && (
           <>
-            <button onClick={() => handleOpenEdit(item)} className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium">
+            <button onClick={() => handleOpenEdit(item)} className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium active:scale-[0.97] transition-transform duration-fast">
               <Edit3 className="w-3.5 h-3.5 inline mr-1" />
               Змінити
             </button>
-            <button onClick={() => setDeleteConfirm(item.id)} className="text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-medium">
+            <button onClick={() => setDeleteConfirm(item.id)} className="text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-medium active:scale-90 transition-transform duration-fast">
               <Trash2 className="w-3.5 h-3.5 inline mr-1" />
             </button>
           </>
@@ -131,7 +131,7 @@ export default function InventoryPage() {
         {canCreate && (
           <button
             onClick={handleOpenCreate}
-            className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
+            className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors active:scale-[0.97] transition-transform duration-fast"
           >
             <Plus className="w-4 h-4" />
             Додати товар
@@ -182,7 +182,7 @@ export default function InventoryPage() {
         <div className="text-slate-400 py-16 text-center">
           <p className="text-lg mb-2">Склад порожній</p>
           {canCreate && (
-            <button onClick={handleOpenCreate} className="text-blue-600 font-medium text-sm hover:underline">
+            <button onClick={handleOpenCreate} className="text-blue-600 font-medium text-sm hover:underline active:scale-[0.97] transition-transform duration-fast">
               + Додати перший товар
             </button>
           )}
@@ -221,7 +221,7 @@ export default function InventoryPage() {
                       {canAddStock && (
                         <button
                           onClick={() => setStockModal({ id: item.id, name: item.name })}
-                          className="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium"
+                          className="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium active:scale-[0.97] transition-transform duration-fast"
                         >
                           Поповнити
                         </button>
@@ -230,14 +230,14 @@ export default function InventoryPage() {
                         <>
                           <button
                             onClick={() => handleOpenEdit(item)}
-                            className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium"
+                            className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium active:scale-[0.97] transition-transform duration-fast"
                           >
                             <Edit3 className="w-3.5 h-3.5 inline mr-1" />
                             Змінити
                           </button>
                           <button
                             onClick={() => setDeleteConfirm(item.id)}
-                            className="text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-medium"
+                            className="text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-medium active:scale-90 transition-transform duration-fast"
                           >
                             <Trash2 className="w-3.5 h-3.5 inline" />
                           </button>
@@ -294,14 +294,14 @@ export default function InventoryPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setStockModal(null)}
-                className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-medium text-sm"
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-medium text-sm active:scale-[0.97] transition-transform duration-fast"
               >
                 Скасувати
               </button>
               <button
                 onClick={handleAddStock}
                 disabled={stockQty <= 0 || addStock.isPending}
-                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-medium text-sm disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-medium text-sm disabled:opacity-50 active:scale-[0.97] transition-transform duration-fast"
               >
                 {addStock.isPending ? "..." : "Додати"}
               </button>
@@ -322,14 +322,14 @@ export default function InventoryPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-medium text-sm"
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-medium text-sm active:scale-[0.97] transition-transform duration-fast"
               >
                 Скасувати
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
                 disabled={deleteItem.isPending}
-                className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-medium text-sm disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-medium text-sm disabled:opacity-50 active:scale-[0.97] transition-transform duration-fast"
               >
                 {deleteItem.isPending ? "..." : "Видалити"}
               </button>

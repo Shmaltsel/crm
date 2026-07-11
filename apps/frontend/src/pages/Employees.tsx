@@ -494,7 +494,7 @@ export default function Employees() {
                         <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 text-lg">👤</div>
                         <p className="text-slate-400 text-sm mb-3">Немає {label.toLowerCase()}ів</p>
                         {isSuperAdmin && (
-                          <button onClick={() => handleOpenModal()} className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                           <button onClick={() => handleOpenModal()} className="text-xs font-semibold text-blue-600 hover:text-blue-700 active:scale-[0.97] transition-transform duration-fast">
                             + Додати {label.toLowerCase()}а
                           </button>
                         )}
@@ -561,8 +561,8 @@ export default function Employees() {
                         </div>
                         {isSuperAdmin && (
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => handleOpenProjectModal(p)} className="text-slate-300 hover:text-blue-500 p-2 -mr-1" title="Редагувати">✏️</button>
-                            <button onClick={() => handleDeleteProject(p.id, p.name)} className="text-slate-300 hover:text-red-500 p-2 -mr-2" title="Видалити">🗑</button>
+                            <button onClick={() => handleOpenProjectModal(p)} className="text-slate-300 hover:text-blue-500 p-2 -mr-1 active:scale-90 transition-transform duration-fast" title="Редагувати">✏️</button>
+                            <button onClick={() => handleDeleteProject(p.id, p.name)} className="text-slate-300 hover:text-red-500 p-2 -mr-2 active:scale-90 transition-transform duration-fast" title="Видалити">🗑</button>
                           </div>
                         )}
                       </motion.div>

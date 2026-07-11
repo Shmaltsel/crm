@@ -48,7 +48,7 @@ export default function CitiesTable({ rows }: Props) {
         </div>
         <button
           onClick={() => navigate('/cities')}
-          className="text-xs text-blue-600 hover:underline"
+          className="text-xs text-blue-600 hover:underline active:scale-[0.97] transition-transform duration-fast"
         >
           Переглянути всі
         </button>

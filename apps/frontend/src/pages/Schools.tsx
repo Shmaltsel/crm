@@ -488,7 +488,7 @@ export default function Schools() {
               <h3 className="text-xl font-bold text-content-primary">Нова школа</h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-content-muted hover:text-content-secondary p-2 -mr-2 leading-none text-xl"
+                className="text-content-muted hover:text-content-secondary p-2 -mr-2 leading-none text-xl active:scale-90 transition-transform duration-fast"
               >
                 ✕
               </button>
@@ -720,7 +720,7 @@ function EstablishmentList({
         {(activeFilter || sizeFilter) && (
           <button
             onClick={onClearFilters}
-            className="ml-3 text-brand hover:text-brand-hover lowercase"
+            className="ml-3 text-brand hover:text-brand-hover lowercase active:scale-[0.97] transition-transform duration-fast"
           >
             скинути фільтри
           </button>

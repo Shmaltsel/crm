@@ -56,7 +56,7 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
               <span className="font-medium text-sm text-content-secondary">{ev.price} грн</span>
               <button
                 onClick={(e) => handleDelete(e, ev.id)}
-                className="text-danger-600 active:text-danger p-2.5 rounded-control"
+                className="text-danger-600 active:text-danger p-2.5 rounded-control active:scale-90 transition-transform duration-fast"
               >
                 🗑
               </button>
@@ -95,7 +95,7 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
                 <td className="p-4 text-center">
                   <button
                     onClick={(e) => handleDelete(e, ev.id)}
-                    className="text-danger-600 hover:text-danger p-2.5"
+                    className="text-danger-600 hover:text-danger p-2.5 active:scale-90 transition-transform duration-fast"
                   >
                     🗑
                   </button>

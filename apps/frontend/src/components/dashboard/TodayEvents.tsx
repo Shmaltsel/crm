@@ -1,4 +1,6 @@
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { staggerContainer, staggerItem, emptyStateVariants } from "../../lib/motion";
 
 interface CrewMember {
   id: string;
@@ -58,25 +60,26 @@ export default function TodayEvents({ events }: Props) {
         </div>
         <button
           onClick={() => navigate("/calendar")}
-          className="text-2xs text-brand hover:underline shrink-0"
+          className="text-2xs text-brand hover:underline shrink-0 active:scale-[0.97] transition-transform duration-fast"
         >
           Календар
         </button>
       </div>
 
       {events.length === 0 ? (
-        <div className="py-5 text-center text-content-muted text-sm">
+        <motion.div variants={emptyStateVariants} initial="hidden" animate="visible" className="py-5 text-center text-content-muted text-sm">
           Сьогодні подій немає
-        </div>
+        </motion.div>
       ) : (
-        <div className="flex flex-col gap-1.5">
+        <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col gap-1.5">
           {events.map((ev) => {
             const hasCrew = !!ev.crew;
             const crewLabel = ev.crew?.name ?? ev.crew?.host?.name ?? null;
 
             return (
-              <div
+              <motion.div
                 key={ev.id}
+                variants={staggerItem}
                 className={`rounded-control border p-3 flex flex-col gap-2 ${
                   hasCrew
                     ? "border-border bg-surface"
@@ -120,10 +123,10 @@ export default function TodayEvents({ events }: Props) {
                     {hasCrew ? "Відкрити →" : "Призначити →"}
                   </button>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       )}
 
       <p className="text-2xs text-content-muted mt-2.5 pt-2.5 border-t border-border">

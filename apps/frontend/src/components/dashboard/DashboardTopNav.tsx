@@ -26,7 +26,7 @@ export default function DashboardTopNav({ tabs, activeTab, onChange }: Props) {
                 onClick={() => onChange(tab.id)}
                 role="tab"
                 aria-selected={isActive}
-                className={`relative flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors shrink-0 ${
+                className={`relative flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors shrink-0 active:scale-90 ${
                   isActive
                     ? "text-brand"
                     : "text-content-muted hover:text-content-secondary"

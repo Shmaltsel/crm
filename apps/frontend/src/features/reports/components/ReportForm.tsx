@@ -413,7 +413,7 @@ export default function ReportForm({
                 )}
                 {report && <ReportStatusBadge status={report.status} />}
                 <button ref={closeRef} onClick={onClose} aria-label="Закрити"
-                  className="text-slate-400 hover:text-slate-600 text-lg leading-none p-2 -mr-2">✕</button>
+                  className="text-slate-400 hover:text-slate-600 text-lg leading-none p-2 -mr-2 active:scale-90 transition-transform duration-fast">✕</button>
               </div>
             </div>
 
@@ -609,17 +609,17 @@ export default function ReportForm({
 
             <div className="flex gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-white shrink-0">
               <button onClick={onClose}
-                className="flex-1 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium py-3">
+                className="flex-1 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium py-3 active:scale-[0.97] transition-transform duration-fast">
                 {isEditable ? "Скасувати" : "Закрити"}
               </button>
               {isEditable && (
                 <>
                   <button onClick={handleSaveDraft} disabled={submitLoading}
-                    className="flex-1 bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 rounded-xl font-medium py-3 disabled:opacity-50">
+                    className="flex-1 bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 rounded-xl font-medium py-3 disabled:opacity-50 active:scale-[0.97] transition-transform duration-fast">
                     {report ? "Зберегти чернетку" : "Створити чернетку"}
                   </button>
                   <button onClick={handleSubmit} disabled={submitLoading}
-                    className="flex-1 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 py-3 disabled:opacity-50">
+                    className="flex-1 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 py-3 disabled:opacity-50 active:scale-[0.97] transition-transform duration-fast">
                     {submitLoading ? "..." : "Подати"}
                   </button>
                 </>
