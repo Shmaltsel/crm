@@ -49,13 +49,13 @@ export default function VirtualDesktopTable({
           <col style={{ width: "20%" }} />
           <col style={{ width: "10%" }} />
         </colgroup>
-        <thead className="sticky top-0 z-10 bg-slate-50">
-          <tr className="border-b border-slate-100">
-            <th className="p-4 font-medium text-slate-600">Назва школи</th>
-            <th className="p-4 font-medium text-slate-600">Місто</th>
-            <th className="p-4 font-medium text-slate-600">Статус</th>
-            <th className="p-4 font-medium text-slate-600">Поточний етап</th>
-            <th className="p-4 font-medium text-slate-600 text-center">Дія</th>
+        <thead className="sticky top-0 z-10 bg-surface-muted">
+          <tr className="border-b border-border">
+            <th className="p-4 font-medium text-content-secondary">Назва школи</th>
+            <th className="p-4 font-medium text-content-secondary">Місто</th>
+            <th className="p-4 font-medium text-content-secondary">Статус</th>
+            <th className="p-4 font-medium text-content-secondary">Поточний етап</th>
+            <th className="p-4 font-medium text-content-secondary text-center">Дія</th>
           </tr>
         </thead>
         <tbody>
@@ -92,7 +92,7 @@ export default function VirtualDesktopTable({
       </table>
 
       {schools.length === 0 && (
-        <div className="text-center py-16 text-slate-400 text-sm font-medium">
+        <div className="text-center py-16 text-content-muted text-sm font-medium">
           {searchQuery
             ? `Нічого не знайдено за «${searchQuery}»`
             : "Шкіл ще немає"}

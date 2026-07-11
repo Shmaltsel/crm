@@ -6,6 +6,8 @@ import { api } from "../config/api";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
 import { hasRole } from "../utils/roles";
+import { EmptyState } from "../components/ui/EmptyState";
+import { BarChart3, Trophy } from "lucide-react";
 
 interface CityLeaderboardEntry {
   cityId: string;
@@ -149,8 +151,8 @@ export default function CityLeaderboard() {
               ))}
             </div>
           ) : !staffResult?.staff?.length ? (
-            <div className="bg-surface rounded-card border border-border shadow-card p-6 text-center text-content-muted text-sm">
-              Немає даних за обраний період
+            <div className="bg-surface rounded-card border border-border shadow-card p-6">
+              <EmptyState icon={BarChart3} title="Немає даних за обраний період" />
             </div>
           ) : (
             <div className="flex flex-col gap-4">
@@ -235,10 +237,7 @@ export default function CityLeaderboard() {
         </div>
       ) : !data || data.length === 0 ? (
         <div className="bg-surface rounded-card border border-border shadow-card p-6">
-          <div className="h-[200px] flex flex-col items-center justify-center text-slate-300">
-            <span className="text-3xl mb-2">🏆</span>
-            <span className="text-sm text-content-muted">Немає даних за {year} рік</span>
-          </div>
+          <EmptyState icon={Trophy} title={`Немає даних за ${year} рік`} />
         </div>
       ) : (
         <div className="bg-surface rounded-card border border-border shadow-card p-6">

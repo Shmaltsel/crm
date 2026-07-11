@@ -16,6 +16,6 @@ describe("LoadingBar", () => {
   it("має правильні CSS-класи для позиціонування", () => {
     const { container } = render(<LoadingBar isLoading={true} />);
     const bar = container.querySelector(".fixed.top-0")!;
-    expect(bar).toHaveClass("left-0", "right-0", "z-[60]", "h-0.5");
+    expect(bar).toHaveClass("left-0", "right-0", "z-modal", "h-0.5");
   });
 });

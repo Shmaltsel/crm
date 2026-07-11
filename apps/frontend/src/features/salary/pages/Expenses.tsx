@@ -13,10 +13,10 @@ const ExpenseChart = lazy(() =>
 
 function Skeleton() {
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen flex flex-col gap-4 animate-pulse">
-      <div className="h-8 bg-slate-200 rounded-xl w-48" />
-      <div className="h-24 bg-white rounded-2xl border border-slate-100" />
-      <div className="h-64 bg-white rounded-2xl border border-slate-100" />
+    <div className="p-4 md:p-8 bg-surface-subtle min-h-screen flex flex-col gap-4 animate-pulse">
+      <div className="h-8 bg-surface-muted rounded-control w-48" />
+      <div className="h-24 bg-surface rounded-card border border-border" />
+      <div className="h-64 bg-surface rounded-card border border-border" />
     </div>
   );
 }
@@ -45,13 +45,13 @@ export default function Expenses() {
   const categories = [...(data.byExpenseCategory ?? [])].sort((a, b) => Number(b.amount) - Number(a.amount));
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen flex flex-col gap-4">
+    <div className="p-4 md:p-8 bg-surface-subtle min-h-screen flex flex-col gap-4">
       <div className="flex items-center gap-3">
-        <h1 className="text-2xl font-bold text-slate-800">Витрати</h1>
+        <h1 className="text-2xl font-bold text-content-primary">Витрати</h1>
         <select
           value={period}
           onChange={(e) => setPeriod(e.target.value)}
-          className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white"
+          className="text-sm border border-border-strong rounded-control px-3 py-1.5 bg-surface"
         >
           <option value="year">Цей рік</option>
           <option value="quarter">Цей квартал</option>
@@ -63,9 +63,9 @@ export default function Expenses() {
       <ExpensesTotal value={totalExpenses} />
 
       {categories.length > 0 && (
-        <Suspense fallback={<div className="h-64 bg-white rounded-2xl animate-pulse" />}>
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-            <h3 className="text-sm font-semibold text-slate-800 mb-4">Витрати по категоріях</h3>
+        <Suspense fallback={<div className="h-64 bg-surface rounded-card animate-pulse" />}>
+          <div className="bg-surface rounded-card shadow-soft border border-border p-5">
+            <h3 className="text-sm font-semibold text-content-primary mb-4">Витрати по категоріях</h3>
             <ExpenseChart byExpenseCategory={categories} />
           </div>
         </Suspense>
@@ -73,21 +73,21 @@ export default function Expenses() {
 
       {categories.length > 0 && (
         <motion.div
-          className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"
+          className="bg-surface rounded-card shadow-soft border border-border p-5"
           variants={staggerContainer}
           initial="hidden"
           animate="visible"
         >
-          <h3 className="text-sm font-semibold text-slate-800 mb-3">Деталізація</h3>
+          <h3 className="text-sm font-semibold text-content-primary mb-3">Деталізація</h3>
           <div className="space-y-2">
             {categories.map((cat) => {
               const pct = totalExpenses > 0 ? Math.round((Number(cat.amount) / Number(totalExpenses)) * 100) : 0;
               return (
-                <motion.div key={cat.name} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0" variants={staggerItem}>
-                  <span className="text-sm text-slate-700">{cat.name}</span>
+                <motion.div key={cat.name} className="flex items-center justify-between py-2 border-b border-border last:border-0" variants={staggerItem}>
+                  <span className="text-sm text-content-secondary">{cat.name}</span>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-slate-400">{pct}%</span>
-                    <span className="text-sm font-semibold text-slate-800">{fmt(cat.amount)} грн</span>
+                    <span className="text-xs text-content-muted">{pct}%</span>
+                    <span className="text-sm font-semibold text-content-primary">{fmt(cat.amount)} грн</span>
                   </div>
                 </motion.div>
               );
@@ -102,9 +102,9 @@ export default function Expenses() {
 function ExpensesTotal({ value }: { value: number }) {
   const display = useCountUp(value, { duration: 0.9 });
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-      <p className="text-sm text-slate-400 mb-1">Загальні витрати</p>
-      <p className="text-3xl font-bold text-slate-800">{fmt(display)} <span className="text-lg text-slate-400">грн</span></p>
+    <div className="bg-surface rounded-card shadow-soft border border-border p-5">
+      <p className="text-sm text-content-muted mb-1">Загальні витрати</p>
+      <p className="text-3xl font-bold text-content-primary">{fmt(display)} <span className="text-lg text-content-muted">грн</span></p>
     </div>
   );
 }

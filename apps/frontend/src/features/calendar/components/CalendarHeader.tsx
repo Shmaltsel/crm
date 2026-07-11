@@ -34,10 +34,10 @@ export default function CalendarHeader({
       animate="visible"
     >
       <motion.div variants={staggerItem}>
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-800">
+        <h1 className="text-2xl md:text-3xl font-bold text-content-primary">
           Календар подій
         </h1>
-        <p className="text-slate-500 mt-1 text-sm">
+        <p className="text-content-muted mt-1 text-sm">
           Графік запланованих та активних заходів
         </p>
 
@@ -47,14 +47,14 @@ export default function CalendarHeader({
             return (
               <span
                 key={p.id}
-                className="flex items-center gap-1.5 text-xs font-medium text-slate-600"
+                className="flex items-center gap-1.5 text-xs font-medium text-content-secondary"
               >
                 <span className={`w-3 h-3 rounded-full ${badgeColor}`}></span>{" "}
                 {p.name}
               </span>
             );
           })}
-          <span className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+          <span className="flex items-center gap-1.5 text-xs font-medium text-content-secondary">
             <span className="w-3 h-3 rounded-full bg-rose-500"></span>{" "}
             Вихідний
           </span>
@@ -62,12 +62,12 @@ export default function CalendarHeader({
       </motion.div>
 
       {userRole === "SUPERADMIN" && (
-        <motion.div variants={staggerItem} className="hidden md:flex bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 items-center gap-3 shrink-0">
-          <span className="text-sm text-slate-500 font-medium">Місто:</span>
+        <motion.div variants={staggerItem} className="hidden md:flex bg-white px-4 py-2 rounded-xl shadow-sm border border-border-strong items-center gap-3 shrink-0">
+          <span className="text-sm text-content-muted font-medium">Місто:</span>
           <select
             value={filterCityId}
             onChange={(e) => setFilterCityId(e.target.value)}
-            className="text-sm font-semibold text-slate-800 outline-none cursor-pointer bg-transparent"
+            className="text-sm font-semibold text-content-primary outline-none cursor-pointer bg-transparent"
           >
             <option value="ALL">🌍 Всі міста</option>
             {cities.map((c: City) => (

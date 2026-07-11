@@ -84,7 +84,7 @@ export default function IssueModal({
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-modal flex items-center justify-center p-4"
+          className="fixed inset-0 bg-backdrop backdrop-blur-sm z-modal flex items-center justify-center p-4"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
           <motion.div
@@ -94,15 +94,15 @@ export default function IssueModal({
             exit="exit"
             className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col"
           >
-        <div className="p-5 border-b border-slate-100 flex justify-between items-start bg-slate-50 shrink-0">
+        <div className="p-5 border-b border-border flex justify-between items-start bg-surface-muted shrink-0">
           <div>
-            <h3 id={headingId} className="text-xl font-bold text-slate-800">🚨 Запит</h3>
+            <h3 id={headingId} className="text-xl font-bold text-content-primary">🚨 Запит</h3>
             <p className="text-sm text-red-500 mt-0.5 font-medium">
               {schoolName}
             </p>
-            <p className="text-xs text-slate-400 mt-0.5">{eventName}</p>
+            <p className="text-xs text-content-muted mt-0.5">{eventName}</p>
           </div>
-          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors">
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-content-muted hover:text-content-secondary text-xl leading-none p-2 -mr-2 transition-colors">
             ✕
           </button>
         </div>
@@ -112,14 +112,14 @@ export default function IssueModal({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Опишіть проблему або запит..."
-            className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none resize-none h-32 text-base"
+            className="w-full p-3 border border-border-strong rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none resize-none h-32 text-base"
             autoFocus
           />
 
           <div>
-            <label className="block text-sm font-medium text-slate-600 mb-1.5">
+            <label className="block text-sm font-medium text-content-secondary mb-1.5">
               ⏰ Дедлайн{" "}
-              <span className="text-slate-400 font-normal">
+              <span className="text-content-muted font-normal">
                 (необов'язково)
               </span>
             </label>
@@ -128,22 +128,22 @@ export default function IssueModal({
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
               min={new Date().toISOString().slice(0, 10)}
-              className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none text-base"
+              className="w-full p-3 border border-border-strong rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none text-base"
             />
           </div>
 
           {employees.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1.5">
+              <label className="block text-sm font-medium text-content-secondary mb-1.5">
                 👤 Відповідальний{" "}
-                <span className="text-slate-400 font-normal">
+                <span className="text-content-muted font-normal">
                   (необов'язково)
                 </span>
               </label>
               <select
                 value={assignedUserId}
                 onChange={(e) => setAssignedUserId(e.target.value)}
-                className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none text-base bg-white"
+                className="w-full p-3 border border-border-strong rounded-xl focus:ring-2 focus:ring-red-400 focus:outline-none text-base bg-white"
               >
                 <option value="">— Оберіть працівника —</option>
                 {employees.map((emp) => (
@@ -159,7 +159,7 @@ export default function IssueModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors"
+              className="flex-1 bg-surface-muted text-content-secondary py-3 rounded-xl font-medium hover:bg-surface-muted transition-colors"
             >
               Скасувати
             </button>

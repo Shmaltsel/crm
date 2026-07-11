@@ -27,6 +27,8 @@ import {
   useCountUp,
   TRANSITION,
 } from "../lib/motion";
+import { EmptyState } from "../components/ui/EmptyState";
+import { BarChart3 } from "lucide-react";
 
 const UA_MONTHS = [
   "Січ", "Лют", "Бер", "Кві", "Трав", "Чер",
@@ -63,10 +65,10 @@ function ChartSkeleton() {
   );
 }
 
-function EmptyState({ text }: { text: string }) {
+function ChartEmptyState({ text }: { text: string }) {
   return (
     <div className="h-[280px] flex flex-col items-center justify-center text-content-muted">
-      <span className="text-2xl mb-2">📊</span>
+      <BarChart3 className="w-10 h-10 text-content-muted/40 mb-2" />
       <span className="text-sm text-content-muted">{text}</span>
     </div>
   );
@@ -167,7 +169,7 @@ export default function Analytics() {
         <div className="mobile-card mb-5">
           <h3 className="font-bold text-content-primary mb-3 text-sm">Дохід по місяцях</h3>
           {chartData.length === 0 ? (
-            <EmptyState text="Немає даних за цей період" />
+            <ChartEmptyState text="Немає даних за цей період" />
           ) : (
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -193,7 +195,7 @@ export default function Analytics() {
           <div className="mobile-card">
             <h3 className="font-bold text-content-primary mb-3 text-sm">Події по містах</h3>
             {!eventsByCity || eventsByCity.length === 0 ? (
-              <EmptyState text="Немає подій за цей рік" />
+              <ChartEmptyState text="Немає подій за цей рік" />
             ) : (
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={eventsByCity} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>

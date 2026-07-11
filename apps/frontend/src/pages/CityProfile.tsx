@@ -13,6 +13,9 @@ import { useUsers } from "../hooks/useEmployees";
 import { backdropVariants, modalContentVariants } from "../lib/motion";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { useToast } from "../components/ui/Toast";
+import { Skeleton } from "../components/ui/Skeleton";
+import { EmptyState } from "../components/ui/EmptyState";
+import { CalendarX, Car } from "lucide-react";
 
 type Tab = "events" | "crews" | "analytics";
 
@@ -63,7 +66,18 @@ export default function CityProfile() {
   }, [isCreateCrewModalOpen]);
 
   if (isLoading)
-    return <div className="p-8 text-content-muted">Завантаження...</div>;
+    return (
+      <div className="p-8 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-32" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mt-6">
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
+        </div>
+      </div>
+    );
   if (!city) return <div className="p-8 text-content-muted">Місто не знайдено</div>;
 
   const completedEvents: Event[] = city.events || [];
@@ -136,7 +150,7 @@ export default function CityProfile() {
               </p>
             </div>
           </div>
-          <div className="hidden md:block w-px h-16 bg-slate-100" />
+          <div className="hidden md:block w-px h-16 bg-surface-muted" />
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-6 gap-y-4 sm:gap-8 flex-1">
             <Stat label="Закладів" value={city.schools?.length ?? 0} />
             <Stat label="Проведено подій" value={completedEvents.length} />
@@ -179,14 +193,7 @@ export default function CityProfile() {
             />
           </div>
           {filteredCompletedEvents.length === 0 ? (
-            <div className="p-12 text-center text-content-muted">
-              <p className="text-4xl mb-3">📭</p>
-              <p className="font-medium">
-                {completedSearchQuery
-                  ? "Нічого не знайдено"
-                  : "Завершених подій ще немає"}
-              </p>
-            </div>
+            <EmptyState icon={CalendarX} title={completedSearchQuery ? "Нічого не знайдено" : "Завершених подій ще немає"} />
           ) : (
             <>
               <div className="md:hidden divide-y divide-border">
@@ -238,7 +245,7 @@ export default function CityProfile() {
                       <tr
                         key={ev.id}
                         onClick={() => setSelectedReportEvent(ev)}
-                        className="border-b border-slate-50 hover:bg-surface-muted transition-colors cursor-pointer"
+                        className="border-b border-border hover:bg-surface-muted transition-colors cursor-pointer"
                       >
                         <td className="p-4">
                           <span className="font-medium text-brand">
@@ -296,10 +303,7 @@ export default function CityProfile() {
           </div>
 
           {crews.length === 0 ? (
-            <div className="p-12 text-center text-content-muted">
-              <p className="text-4xl mb-3">🚐</p>
-              <p className="font-medium">Екіпажів ще немає</p>
-            </div>
+            <EmptyState icon={Car} title="Екіпажів ще немає" description="Створіть екіпаж кнопкою вище" />
           ) : (
             <>
               {/* Мобільний вигляд */}
@@ -319,7 +323,7 @@ export default function CityProfile() {
                     <div key={crew.id} className="p-4">
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-16 h-10 rounded overflow-hidden bg-slate-100 shrink-0 shadow-sm border border-border-strong">
+                          <div className="w-16 h-10 rounded overflow-hidden bg-surface-muted shrink-0 shadow-sm border border-border-strong">
                             <OptimizedImage
                               src="https://images.unsplash.com/photo-1517026575980-3e1e2dedeab4?auto=format&fit=crop&q=80&w=120&h=80"
                               alt="van"
@@ -414,11 +418,11 @@ export default function CityProfile() {
                       return (
                         <tr
                           key={crew.id}
-                          className="border-b border-slate-50 hover:bg-surface-muted transition-colors"
+                          className="border-b border-border hover:bg-surface-muted transition-colors"
                         >
                           <td className="p-5">
                             <div className="flex items-center gap-3">
-                              <div className="w-[60px] h-[40px] rounded border border-border-strong overflow-hidden bg-slate-100 shrink-0 shadow-sm">
+                                <div className="w-[60px] h-[40px] rounded border border-border-strong overflow-hidden bg-surface-muted shrink-0 shadow-sm">
                                 <OptimizedImage
                                   src="https://images.unsplash.com/photo-1517026575980-3e1e2dedeab4?auto=format&fit=crop&q=80&w=120&h=80"
                                   alt="van"
@@ -580,7 +584,7 @@ export default function CityProfile() {
                   <button
                     type="button"
                     onClick={() => setIsCreateCrewModalOpen(false)}
-                    className="flex-1 px-4 py-2.5 bg-slate-100 text-content-secondary rounded-control font-medium hover:bg-slate-200 transition-colors"
+                    className="flex-1 px-4 py-2.5 bg-surface-muted text-content-secondary rounded-control font-medium hover:bg-surface-muted transition-colors"
                   >
                     Скасувати
                   </button>
@@ -643,7 +647,7 @@ function CompletedEventModal({
       {isOpen && event && (
         <motion.div variants={backdropVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
           <motion.div variants={modalContentVariants} initial="hidden" animate="visible" exit="exit" className="bg-white rounded-t-3xl sm:rounded-card shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
-            <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+            <div className="sm:hidden w-10 h-1.5 bg-border-strong rounded-full mx-auto mt-3" />
             <div className="p-5 sm:p-6 border-b border-border flex justify-between bg-surface-muted shrink-0">
               <div>
                 <h3 className="text-xl font-bold text-content-primary">
@@ -671,25 +675,25 @@ function CompletedEventModal({
                     Результати
                   </h4>
                   <div className="space-y-3 text-sm">
-                    <div className="flex justify-between border-b border-slate-50 pb-2">
+                    <div className="flex justify-between border-b border-border pb-2">
                       <span className="text-content-muted">Дітей (факт):</span>
                       <span className="font-bold">
                         {report?.childrenCount || 0}
                       </span>
                     </div>
-                    <div className="flex justify-between border-b border-slate-50 pb-2">
+                    <div className="flex justify-between border-b border-border pb-2">
                       <span className="text-content-muted">Класів:</span>
                       <span className="font-medium">
                         {report?.classesCount || 0}
                       </span>
                     </div>
-                    <div className="flex justify-between border-b border-slate-50 pb-2">
+                    <div className="flex justify-between border-b border-border pb-2">
                       <span className="text-content-muted">Пільговиків:</span>
                       <span className="font-medium">
                         {report?.privilegedCount || 0}
                       </span>
                     </div>
-                    <div className="flex justify-between border-b border-slate-50 pb-2">
+                    <div className="flex justify-between border-b border-border pb-2">
                       <span className="text-content-muted">Сеансів:</span>
                       <span className="font-medium">
                         {report?.showingsCount || 0}
@@ -711,11 +715,11 @@ function CompletedEventModal({
                     Фінанси
                   </h4>
                   <div className="space-y-3 text-sm">
-                    <div className="flex justify-between border-b border-slate-50 pb-2">
+                    <div className="flex justify-between border-b border-border pb-2">
                       <span className="text-content-muted">Загальна виручка:</span>
                       <span className="font-bold">{fmt(report?.totalSum)} грн</span>
                     </div>
-                    <div className="flex justify-between border-b border-slate-50 pb-2">
+                    <div className="flex justify-between border-b border-border pb-2">
                       <span className="text-content-muted">На заклад (20%):</span>
                       <span className="font-medium text-danger-600">
                         − {fmt(report?.schoolSum)} грн
@@ -723,7 +727,7 @@ function CompletedEventModal({
                     </div>
                     {Array.isArray(report?.expenseItems) &&
                       report.expenseItems.length > 0 && (
-                        <div className="py-2 border-b border-slate-50">
+                        <div className="py-2 border-b border-border">
                           <span className="text-content-muted block mb-2">
                             Додаткові витрати:
                           </span>

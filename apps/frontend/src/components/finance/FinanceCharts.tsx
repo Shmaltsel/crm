@@ -63,13 +63,13 @@ const KpiCard = memo(function KpiCard({
   const display = useCountUp(value, { duration: 0.9 });
   return (
     <motion.div
-      className="bg-white rounded-[24px] p-5 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow duration-300"
+      className="bg-white rounded-[24px] p-5 border border-border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow duration-300"
       variants={staggerItem}
       whileTap={{ scale: 0.97 }}
       transition={TRANSITION.tap}
     >
       <div className="flex justify-between items-start mb-4">
-        <p className="text-xs sm:text-sm font-semibold text-slate-500 leading-tight pr-2">
+        <p className="text-xs sm:text-sm font-semibold text-content-muted leading-tight pr-2">
           {title}
         </p>
         <div
@@ -83,12 +83,12 @@ const KpiCard = memo(function KpiCard({
           className={`text-xl sm:text-2xl md:text-3xl font-black tracking-tight ${color}`}
         >
           {fmt(display)}{" "}
-          <span className="text-sm font-bold text-slate-400 opacity-60">
+          <span className="text-sm font-bold text-content-muted opacity-60">
             грн
           </span>
         </p>
         {subtitle && (
-          <p className="text-[11px] sm:text-xs text-slate-400 mt-1.5 font-medium">
+          <p className="text-[11px] sm:text-xs text-content-muted mt-1.5 font-medium">
             {subtitle}
           </p>
         )}
@@ -99,7 +99,7 @@ const KpiCard = memo(function KpiCard({
 
 const EmptyState = memo(function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center h-full min-h-[150px] text-slate-400">
+    <div className="flex flex-col items-center justify-center h-full min-h-[150px] text-content-muted">
       <span className="text-3xl mb-3 opacity-50">📂</span>
       <span className="text-sm font-medium">Немає даних за цей період</span>
     </div>
@@ -117,7 +117,7 @@ const EventTable = memo(function EventTable({
   return (
     <table className="w-full text-sm min-w-[300px]">
       <thead>
-        <tr className="text-slate-400 text-xs uppercase border-b border-slate-50">
+        <tr className="text-content-muted text-xs uppercase border-b border-border">
           <th className="text-left pb-3 font-semibold tracking-wider">Дата</th>
           <th className="text-left pb-3 font-semibold tracking-wider">
             Заклад
@@ -131,15 +131,15 @@ const EventTable = memo(function EventTable({
         {events.map((e: FinanceEventItem, i: number) => (
           <tr
             key={i}
-            className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+            className="border-b border-border hover:bg-surface-muted/50 transition-colors"
           >
-            <td className="py-3 text-slate-500 whitespace-nowrap">
+            <td className="py-3 text-content-muted whitespace-nowrap">
               {new Date(e.date).toLocaleDateString("uk-UA", {
                 day: "2-digit",
                 month: "2-digit",
               })}
             </td>
-            <td className="py-3 font-medium text-slate-700 truncate max-w-[120px] sm:max-w-[200px] pr-2">
+            <td className="py-3 font-medium text-content-secondary truncate max-w-[120px] sm:max-w-[200px] pr-2">
               {e.school}
             </td>
             <td
@@ -173,8 +173,8 @@ const CustomTooltip = memo(function CustomTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white/90 backdrop-blur-md border border-slate-100 p-4 rounded-2xl shadow-xl text-sm min-w-[160px]">
-      <p className="font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">
+    <div className="bg-white/90 backdrop-blur-md border border-border p-4 rounded-2xl shadow-xl text-sm min-w-[160px]">
+      <p className="font-bold text-content-primary mb-3 border-b border-border pb-2">
         {label}
       </p>
       {payload.map((entry: TooltipPayload, index: number) => (
@@ -187,9 +187,9 @@ const CustomTooltip = memo(function CustomTooltip({
               className="w-2.5 h-2.5 rounded-full shadow-sm"
               style={{ backgroundColor: entry.color }}
             />
-            <span className="text-slate-500">{entry.name}:</span>
+            <span className="text-content-muted">{entry.name}:</span>
           </div>
-          <span className="font-bold text-slate-800">
+          <span className="font-bold text-content-primary">
             {fmt(entry.value)} грн
           </span>
         </div>
@@ -318,15 +318,15 @@ const ProjectPieChart = memo(function ProjectPieChart({
                 className="w-3 h-3 rounded-full shrink-0"
                 style={{ backgroundColor: PIE_COLORS[idx % PIE_COLORS.length] }}
               />
-              <span className="text-slate-600 truncate font-medium">
+              <span className="text-content-secondary truncate font-medium">
                 {item.name}
               </span>
             </div>
             <div className="flex items-center gap-3 shrink-0">
-              <span className="text-xs text-slate-400 font-medium w-8 text-right">
+              <span className="text-xs text-content-muted font-medium w-8 text-right">
                 {projectTotals.percents[idx]}%
               </span>
-              <span className="font-bold text-slate-800 w-20 text-right">
+              <span className="font-bold text-content-primary w-20 text-right">
                 {fmt(item.value)}
               </span>
             </div>
@@ -402,8 +402,8 @@ const TopSchools = memo(function TopSchools({
           <div key={idx} className="relative">
             <div className="flex justify-between items-end mb-2 text-sm">
               <div className="flex items-center gap-2 min-w-0 pr-4">
-                <span className="font-bold text-slate-400 w-4">{idx + 1}.</span>
-                <span className="font-bold text-slate-700 truncate">
+                <span className="font-bold text-content-muted w-4">{idx + 1}.</span>
+                <span className="font-bold text-content-secondary truncate">
                   {school.name}
                 </span>
               </div>
@@ -411,7 +411,7 @@ const TopSchools = memo(function TopSchools({
                 {fmt(school.revenue)} грн
               </span>
             </div>
-            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+            <div className="w-full bg-surface-muted h-2 rounded-full overflow-hidden">
               <div
                 className="bg-blue-500 h-full rounded-full transition-all duration-1000 ease-out"
                 style={{ width: `${percent}%` }}
@@ -458,14 +458,14 @@ export default memo(function FinanceCharts({
   const projectTotals = useMemo(() => calcProjectTotals(byProject ?? []), [byProject]);
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen font-sans overflow-x-hidden">
+    <div className="p-4 md:p-8 bg-surface-muted min-h-screen font-sans overflow-x-hidden">
       {/* Шапка та фільтри */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-bold text-content-primary tracking-tight">
             Фінанси
           </h1>
-          <p className="text-slate-500 text-sm mt-1">
+          <p className="text-content-muted text-sm mt-1">
             Аналітика доходів та витрат{" "}
             {selectedCity.id ? (
               <span className="font-medium text-blue-600">
@@ -480,7 +480,7 @@ export default memo(function FinanceCharts({
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
-            className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8"
+            className="bg-white border border-border-strong text-content-secondary text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8"
           >
             <option value="all">За весь час</option>
             <option value="year">Цей рік</option>
@@ -491,7 +491,7 @@ export default memo(function FinanceCharts({
           <select
             value={projectFilter}
             onChange={(e) => setProjectFilter(e.target.value)}
-            className="bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8"
+            className="bg-white border border-border-strong text-content-secondary text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all appearance-none cursor-pointer pr-8"
           >
             <option value="">Всі проєкти</option>
             {filters?.projects?.map((p: string) => (
@@ -548,9 +548,9 @@ export default memo(function FinanceCharts({
         initial="hidden"
         animate="visible"
       >
-        <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 xl:col-span-2">
-          <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+        <div className="bg-white rounded-[24px] shadow-sm border border-border p-5 md:p-7 xl:col-span-2">
+          <h3 className="text-lg font-bold text-content-primary mb-6 flex items-center gap-2">
+            <span className="w-8 h-8 rounded-xl bg-surface-muted flex items-center justify-center text-lg">
               📊
             </span>
             Динаміка виручки та прибутку
@@ -560,9 +560,9 @@ export default memo(function FinanceCharts({
           </div>
         </div>
 
-        <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 flex flex-col">
-          <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+        <div className="bg-white rounded-[24px] shadow-sm border border-border p-5 md:p-7 flex flex-col">
+          <h3 className="text-lg font-bold text-content-primary mb-6 flex items-center gap-2">
+            <span className="w-8 h-8 rounded-xl bg-surface-muted flex items-center justify-center text-lg">
               🎯
             </span>
             Доходи за проєктами
@@ -581,9 +581,9 @@ export default memo(function FinanceCharts({
         initial="hidden"
         animate="visible"
       >
-        <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 overflow-x-auto">
-          <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+        <div className="bg-white rounded-[24px] shadow-sm border border-border p-5 md:p-7 overflow-x-auto">
+          <h3 className="text-lg font-bold text-content-primary mb-6 flex items-center gap-2">
+            <span className="w-8 h-8 rounded-xl bg-surface-muted flex items-center justify-center text-lg">
               💳
             </span>
             Статті витрат
@@ -591,9 +591,9 @@ export default memo(function FinanceCharts({
           <ExpenseChart byExpenseCategory={byExpenseCategory} />
         </div>
 
-        <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7">
-          <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+        <div className="bg-white rounded-[24px] shadow-sm border border-border p-5 md:p-7">
+          <h3 className="text-lg font-bold text-content-primary mb-6 flex items-center gap-2">
+            <span className="w-8 h-8 rounded-xl bg-surface-muted flex items-center justify-center text-lg">
               🏫
             </span>
             Топ-5 найприбутковіших закладів
@@ -609,18 +609,18 @@ export default memo(function FinanceCharts({
         initial="hidden"
         animate="visible"
       >
-        <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 overflow-x-auto">
-          <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+        <div className="bg-white rounded-[24px] shadow-sm border border-border p-5 md:p-7 overflow-x-auto">
+          <h3 className="text-lg font-bold text-content-primary mb-6 flex items-center gap-2">
+            <span className="w-8 h-8 rounded-xl bg-surface-muted flex items-center justify-center text-lg">
               🏆
             </span>
             Найприбутковіші події
           </h3>
           <EventTable events={topEvents} positive={true} />
         </div>
-        <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 md:p-7 overflow-x-auto">
-          <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-lg">
+        <div className="bg-white rounded-[24px] shadow-sm border border-border p-5 md:p-7 overflow-x-auto">
+          <h3 className="text-lg font-bold text-content-primary mb-6 flex items-center gap-2">
+            <span className="w-8 h-8 rounded-xl bg-surface-muted flex items-center justify-center text-lg">
               ⚠️
             </span>
             Найменш прибуткові події

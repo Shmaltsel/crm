@@ -69,7 +69,7 @@ export default function RescheduleModal({
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-modal flex items-center justify-center p-4"
+          className="fixed inset-0 bg-backdrop backdrop-blur-sm z-modal flex items-center justify-center p-4"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
           <motion.div
@@ -79,41 +79,41 @@ export default function RescheduleModal({
             exit="exit"
             className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
           >
-        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-          <h3 id={headingId} className="text-xl font-bold text-slate-800">
+        <div className="p-5 border-b border-border flex justify-between items-center bg-surface-muted">
+          <h3 id={headingId} className="text-xl font-bold text-content-primary">
             📅 Перенести подію
           </h3>
-          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors">
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-content-muted hover:text-content-secondary text-xl leading-none p-2 -mr-2 transition-colors">
             ✕
           </button>
         </div>
         <div className="p-6 flex flex-col gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-600 mb-1.5">
+            <label className="block text-sm font-medium text-content-secondary mb-1.5">
               Нова дата
             </label>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-base"
+              className="w-full p-3 border border-border-strong rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-base"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-600 mb-1.5">
+            <label className="block text-sm font-medium text-content-secondary mb-1.5">
               Новий час
             </label>
             <input
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-base"
+              className="w-full p-3 border border-border-strong rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-base"
             />
           </div>
           <div className="flex gap-3 mt-2">
             <button
               onClick={onClose}
-              className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors"
+              className="flex-1 bg-surface-muted text-content-secondary py-3 rounded-xl font-medium hover:bg-surface-muted transition-colors"
             >
               Скасувати
             </button>

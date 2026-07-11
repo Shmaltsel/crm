@@ -65,7 +65,7 @@ export default function CalendarView() {
   if (eventsLoading) return <CalendarSkeleton />;
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen pb-24">
+    <div className="p-4 md:p-8 bg-surface-subtle min-h-screen pb-24">
       <CalendarHeader
         projects={projects}
         filterCityId={filterCityId}

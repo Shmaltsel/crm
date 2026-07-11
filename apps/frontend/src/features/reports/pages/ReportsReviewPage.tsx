@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle2, XCircle, ChevronDown, Star, Users } from "lucide-react";
+import { CheckCircle2, XCircle, ChevronDown, Star, Users, CheckCircle } from "lucide-react";
 import {
   useSubmittedReports,
   useApproveReport,
@@ -9,6 +9,8 @@ import ReportStatusBadge from "../components/ReportStatusBadge";
 import PhoneLink from "../../../components/PhoneLink";
 import AddressLink from "../../../components/AddressLink";
 import type { ExpenseItem, SalaryRecord } from "../../../types";
+import { EmptyState } from "../../../components/ui/EmptyState";
+import { Skeleton } from "../../../components/ui/Skeleton";
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("uk-UA", {
@@ -58,14 +60,26 @@ export default function ReportsReviewPage() {
       </div>
 
       {isLoading && (
-        <div className="text-center text-content-muted py-16">Завантаження...</div>
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="bg-surface rounded-card border border-border p-5 animate-pulse">
+              <Skeleton className="h-5 w-1/3 mb-2" />
+              <Skeleton className="h-3 w-1/2 mb-4" />
+              <div className="flex gap-2">
+                <Skeleton className="h-8 w-24" />
+                <Skeleton className="h-8 w-24" />
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       {!isLoading && reports.length === 0 && (
-        <div className="bg-surface border border-border rounded-card p-10 text-center text-content-muted">
-          <span className="text-3xl block mb-2">✅</span>
-          Усі звіти перевірено
-        </div>
+        <EmptyState
+          icon={CheckCircle}
+          title="Усі звіти перевірено"
+          description="Нові звіти з'являться тут після подачі"
+        />
       )}
 
       {!isLoading && reports.length > 0 && (

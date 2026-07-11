@@ -29,7 +29,7 @@ import VirtualSchoolList from "../components/VirtualSchoolList";
 import { SchoolCard } from "../components/schools/SchoolMobileList";
 import type { SchoolContact } from "../types";
 import { useAuth } from "../context/AuthContext";
-import { Download } from "lucide-react";
+import { Download, X } from "lucide-react";
 import { PIPELINE_STAGES } from "../constants/pipelineStages";
 import EstablishmentsTopNav from "../components/establishments/EstablishmentsTopNav";
 
@@ -411,7 +411,7 @@ export default function Schools() {
                           setPendingImport({ cityId: selectedCity.id, type: info.apiType });
                         }}
                         disabled={bulkImportMutation.isPending}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 hover:shadow-lift hover:-translate-y-0.5 active:scale-95 disabled:opacity-70 transition-all duration-200"
+                        className="flex items-center gap-1.5 px-3 py-2 bg-success text-white rounded-control text-sm font-medium hover:bg-success-600 hover:shadow-lift hover:-translate-y-0.5 active:scale-95 disabled:opacity-70 transition-all duration-200"
                       >
                         {bulkImportMutation.isPending ? (
                           <span className="font-medium">
@@ -424,7 +424,7 @@ export default function Schools() {
                     )}
                     <button
                       onClick={handleOpenModal}
-                      className="hidden md:flex items-center gap-1 px-4 py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-hover hover:shadow-lift hover:-translate-y-0.5 active:scale-95 transition-all duration-200"
+                      className="hidden md:flex items-center gap-1 px-4 py-2.5 bg-brand text-white rounded-control text-sm font-medium hover:bg-brand-hover hover:shadow-lift hover:-translate-y-0.5 active:scale-95 transition-all duration-200"
                     >
                       + Додати
                     </button>
@@ -487,8 +487,8 @@ export default function Schools() {
       {/* Мобільна плаваюча кнопка FAB */}
       <button
         onClick={handleOpenModal}
-        className="md:hidden fixed right-6 w-14 h-14 bg-brand text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 pb-1 hover:bg-brand-hover active:scale-95 transition-transform"
-        style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
+        className="md:hidden fab"
+        aria-label="Додати школу"
       >
         +
       </button>
@@ -501,9 +501,10 @@ export default function Schools() {
                 <h3 className="text-xl font-bold text-content-primary">Нова школа</h3>
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="text-content-muted hover:text-content-secondary p-2 -mr-2 leading-none text-xl active:scale-90 transition-transform duration-fast"
+                  className="text-content-muted hover:text-content-secondary p-2 -mr-2 leading-none active:scale-90 transition-transform duration-fast"
+                  aria-label="Закрити"
                 >
-                  ✕
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
@@ -722,7 +723,8 @@ function EstablishmentList({
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={searchPlaceholder}
-          className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-white border border-border rounded-2xl sm:rounded-xl text-base font-medium text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand shadow-soft transition-all duration-200"
+          aria-label={searchPlaceholder}
+          className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-surface border border-border rounded-2xl sm:rounded-control text-base font-medium text-content-primary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand shadow-soft transition-all duration-200"
           enterKeyHint="search"
         />
         {searchQuery && (

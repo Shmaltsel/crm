@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useEvents } from "../hooks/useApi";
 import { useNavigate } from "react-router-dom";
-import { School, MapPin, User, Truck } from "lucide-react";
+import { School, MapPin, User, Truck, Calendar } from "lucide-react";
 import AddressLink from "../components/AddressLink";
 import PhoneLink from "../components/PhoneLink";
 import { useSelectedCity } from "../context/CityContext";
+import { EmptyState } from "../components/ui/EmptyState";
+import { Skeleton } from "../components/ui/Skeleton";
 
 interface AuthUser {
   id: string;
@@ -49,7 +51,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  BASE: "bg-slate-100 text-slate-600",
+  BASE: "bg-surface-muted text-content-secondary",
   FIRST_CONTACT: "bg-sky-50 text-sky-700",
   INTERESTED: "bg-indigo-50 text-indigo-700",
   PRE_APPROVAL: "bg-amber-50 text-amber-700",
@@ -73,12 +75,12 @@ const REPORT_STATUS_LABELS: Record<string, string> = {
 };
 
 const REPORT_STATUS_COLORS: Record<string, string> = {
-  DRAFT: "bg-slate-100 text-slate-500",
+  DRAFT: "bg-surface-muted text-content-muted",
   SUBMITTED: "bg-amber-50 text-amber-600",
   NEEDS_REVISION: "bg-rose-50 text-rose-600",
   APPROVED: "bg-emerald-50 text-emerald-600",
   REJECTED: "bg-red-50 text-red-500",
-  CLOSED: "bg-slate-200 text-slate-400",
+  CLOSED: "bg-border-strong text-content-muted",
 };
 
 function formatDate(dateStr: string) {
@@ -141,7 +143,17 @@ export default function Events() {
       </div>
 
       {isLoading && (
-        <div className="text-center text-content-muted py-16">Завантаження...</div>
+        <div className="space-y-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="mobile-card animate-pulse">
+              <Skeleton className="h-4 w-2/3 mb-3" />
+              <div className="flex justify-between">
+                <Skeleton className="h-3 w-1/4" />
+                <Skeleton className="h-3 w-1/5" />
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       {!isLoading && error && (
@@ -151,11 +163,11 @@ export default function Events() {
       )}
 
       {!isLoading && !error && filteredEvents.length === 0 && (
-        <div className="bg-surface border border-border rounded-card p-10 text-center text-content-muted">
-          {isFieldStaff
-            ? "Поки що немає подій, на які вас призначено."
-            : "Подій ще немає."}
-        </div>
+        <EmptyState
+          icon={Calendar}
+          title={isFieldStaff ? "Поки що немає подій" : "Подій ще немає"}
+          description="Події з'являться тут після створення"
+        />
       )}
 
       {!isLoading && !error && filteredEvents.length > 0 && (
@@ -173,7 +185,7 @@ export default function Events() {
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span
                       className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                        STATUS_COLORS[ev.status] ?? "bg-slate-100 text-slate-600"
+                        STATUS_COLORS[ev.status] ?? "bg-surface-muted text-content-secondary"
                       }`}
                     >
                       {STATUS_LABELS[ev.status] ?? ev.status}
@@ -181,7 +193,7 @@ export default function Events() {
                     {ev.report?.status && (
                       <span
                         className={`inline-block px-2 py-0.5 rounded-full text-2xs font-medium ${
-                          REPORT_STATUS_COLORS[ev.report.status] ?? "bg-slate-100 text-slate-500"
+                              REPORT_STATUS_COLORS[ev.report.status] ?? "bg-surface-muted text-content-muted"
                         }`}
                       >
                         {REPORT_STATUS_LABELS[ev.report.status] ?? ev.report.status}
@@ -270,7 +282,7 @@ export default function Events() {
                         <span
                           className={`px-3 py-1 rounded-full text-sm ${
                             STATUS_COLORS[ev.status] ??
-                            "bg-slate-100 text-slate-600"
+                            "bg-surface-muted text-content-secondary"
                           }`}
                         >
                           {STATUS_LABELS[ev.status] ?? ev.status}
@@ -278,7 +290,7 @@ export default function Events() {
                         {ev.report?.status && (
                           <span
                             className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                              REPORT_STATUS_COLORS[ev.report.status] ?? "bg-slate-100 text-slate-500"
+REPORT_STATUS_COLORS[ev.report.status] ?? "bg-surface-muted text-content-muted"
                             }`}
                           >
                             {REPORT_STATUS_LABELS[ev.report.status] ?? ev.report.status}

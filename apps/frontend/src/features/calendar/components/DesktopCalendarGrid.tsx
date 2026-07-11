@@ -42,33 +42,33 @@ export default function DesktopCalendarGrid({
   nextMonth,
 }: DesktopCalendarGridProps) {
   return (
-    <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-        <div className="flex items-center justify-center p-5 md:p-6 border-b border-slate-100 bg-white">
-          <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+    <div className="bg-white rounded-[24px] shadow-sm border border-border overflow-hidden flex flex-col">
+        <div className="flex items-center justify-center p-5 md:p-6 border-b border-border bg-white">
+          <div className="flex items-center gap-1.5 bg-surface-muted p-1.5 rounded-2xl border border-border">
             <button
               onClick={prevMonth}
-              className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium"
+              className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-content-secondary transition-all font-medium"
             >
               ◀
             </button>
-            <span className="px-4 md:px-6 py-2 text-slate-800 font-bold capitalize tracking-tight">
+            <span className="px-4 md:px-6 py-2 text-content-primary font-bold capitalize tracking-tight">
               {MONTH_NAMES[month]}{" "}
-              <span className="text-slate-400 font-medium">{year}</span>
+              <span className="text-content-muted font-medium">{year}</span>
             </span>
             <button
               onClick={nextMonth}
-              className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-slate-600 transition-all font-medium"
+              className="px-3 md:px-4 py-2 rounded-xl hover:bg-white hover:shadow-sm text-content-secondary transition-all font-medium"
             >
               ▶
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-7 bg-slate-50/50">
+        <div className="grid grid-cols-7 bg-surface-muted/50">
           {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((dayName) => (
             <div
               key={dayName}
-              className="py-3 text-center text-[10px] md:text-xs font-bold tracking-widest text-slate-400 uppercase border-b border-slate-100"
+              className="py-3 text-center text-[10px] md:text-xs font-bold tracking-widest text-content-muted uppercase border-b border-border"
             >
               {dayName}
             </div>
@@ -101,8 +101,8 @@ export default function DesktopCalendarGrid({
               <div
                 key={idx}
                 onClick={() => day && setSelectedMobileDate(day)}
-                className={`min-h-[80px] md:min-h-[120px] border-b border-r border-slate-100 p-1 md:p-2 transition-colors relative group select-none no-select-ios
-                  ${day ? "bg-white hover:bg-slate-50 cursor-pointer" : "bg-slate-50/30"}
+                className={`min-h-[80px] md:min-h-[120px] border-b border-r border-border p-1 md:p-2 transition-colors relative group select-none no-select-ios
+                  ${day ? "bg-white hover:bg-surface-muted cursor-pointer" : "bg-surface-muted/30"}
                   ${isSelected ? "ring-2 ring-inset ring-blue-500/20 bg-blue-50/10" : ""}
                   ${hasAnyDayOff ? "dayoff-cell-enter bg-rose-50/70" : ""}
                 `}
@@ -122,15 +122,15 @@ export default function DesktopCalendarGrid({
                             ${
                               hasAnyDayOff
                                 ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600"
-                                : "bg-slate-100 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-rose-100 hover:text-rose-500"
+                                : "bg-surface-muted text-content-muted opacity-0 group-hover:opacity-100 hover:bg-rose-100 hover:text-rose-500"
                             }`}
                         >
                           ✕
                         </button>
 
                         {isManagerOrAdmin && dayOffEntries.length > 0 && (
-                          <div className="hidden md:block absolute top-full left-0 mt-2 w-48 bg-slate-800 text-white p-2.5 rounded-xl shadow-2xl opacity-0 invisible group-hover/dayoff:opacity-100 group-hover/dayoff:visible transition-all duration-200 pointer-events-none">
-                            <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1.5">
+                          <div className="hidden md:block absolute top-full left-0 mt-2 w-48 bg-neutral-800 text-white p-2.5 rounded-xl shadow-2xl opacity-0 invisible group-hover/dayoff:opacity-100 group-hover/dayoff:visible transition-all duration-200 pointer-events-none">
+                            <p className="text-[10px] uppercase tracking-wide text-content-muted mb-1.5">
                               Вихідний ({dayOffEntries.length})
                             </p>
                             <div className="space-y-1">
@@ -158,7 +158,7 @@ export default function DesktopCalendarGrid({
                     <div className="flex justify-center md:justify-end mb-1.5">
                       <span
                         className={`w-7 h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-semibold transition-colors
-                        ${isToday && !dayColor ? "bg-blue-600 text-white shadow-md" : !dayColor ? "text-slate-500 md:group-hover:text-blue-600" : "text-white"}
+                        ${isToday && !dayColor ? "bg-blue-600 text-white shadow-md" : !dayColor ? "text-content-muted md:group-hover:text-blue-600" : "text-white"}
                       `}
                         style={{
                           background: dayColor || undefined,
@@ -192,7 +192,7 @@ export default function DesktopCalendarGrid({
                         </div>
                       ))}
                       {dayEvents.length > 3 && (
-                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 text-center">
+                        <p className="text-[9px] md:text-[10px] font-bold text-content-muted text-center">
                           +{dayEvents.length - 3} ще
                         </p>
                       )}

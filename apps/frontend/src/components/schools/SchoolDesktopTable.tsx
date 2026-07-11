@@ -31,16 +31,16 @@ export const SchoolRow = React.memo(
       <motion.tr
         variants={staggerItem}
         onClick={() => navigate(`/schools/${school.id}`)}
-        className="border-b border-slate-50 transition-colors cursor-pointer"
+        className="border-b border-border transition-colors cursor-pointer"
         whileHover={{ backgroundColor: "rgba(239, 246, 255, 0.5)" }}
         transition={TRANSITION.hover}
       >
-        <td className="p-4 font-bold text-slate-800 overflow-hidden">
+        <td className="p-4 font-bold text-content-primary overflow-hidden">
           <span className="block truncate" title={school.name}>
             {school.name}
           </span>
         </td>
-        <td className="p-4 font-medium text-slate-600">{school.city?.name}</td>
+        <td className="p-4 font-medium text-content-secondary">{school.city?.name}</td>
         <td className="p-4">
           <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold">
             Активна
@@ -52,7 +52,7 @@ export const SchoolRow = React.memo(
               {categories.map((cat) => (
                 <span
                   key={cat}
-                  className={`px-3 py-1 rounded-full text-xs font-bold border ${CATEGORY_BADGES[cat]?.className ?? "bg-slate-50 text-slate-500 border-slate-100"}`}
+                  className={`px-3 py-1 rounded-full text-xs font-bold border ${CATEGORY_BADGES[cat]?.className ?? "bg-surface-muted text-content-muted border-border"}`}
                 >
                   {CATEGORY_BADGES[cat]?.label ?? cat}
                 </span>
@@ -63,7 +63,7 @@ export const SchoolRow = React.memo(
               {stage.name}
             </span>
           ) : (
-            <span className="text-slate-400 text-xs italic">—</span>
+            <span className="text-content-muted text-xs italic">—</span>
           )}
         </td>
         <td className="p-4 text-center">
@@ -93,7 +93,7 @@ export default function SchoolDesktopTable({
   const navigate = useNavigate();
 
   return (
-    <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-0 min-w-0 custom-scrollbar">
+    <div className="hidden md:flex flex-col flex-1 bg-white rounded-2xl shadow-sm border border-border overflow-hidden min-h-0 min-w-0 custom-scrollbar">
       <div className="overflow-y-auto flex-1 min-w-0">
         <table className="w-full text-left border-collapse table-fixed">
           <colgroup>
@@ -103,19 +103,19 @@ export default function SchoolDesktopTable({
             <col style={{ width: "20%" }} />
             <col style={{ width: "10%" }} />
           </colgroup>
-          <thead className="sticky top-0 z-10 bg-slate-50">
-            <tr className="border-b border-slate-100">
-              <th className="p-4 font-medium text-slate-600">Назва школи</th>
-              <th className="p-4 font-medium text-slate-600">Місто</th>
-              <th className="p-4 font-medium text-slate-600">Статус</th>
-              <th className="p-4 font-medium text-slate-600">Поточний етап</th>
-              <th className="p-4 font-medium text-slate-600 text-center">
+          <thead className="sticky top-0 z-10 bg-surface-muted">
+            <tr className="border-b border-border">
+              <th className="p-4 font-medium text-content-secondary">Назва школи</th>
+              <th className="p-4 font-medium text-content-secondary">Місто</th>
+              <th className="p-4 font-medium text-content-secondary">Статус</th>
+              <th className="p-4 font-medium text-content-secondary">Поточний етап</th>
+              <th className="p-4 font-medium text-content-secondary text-center">
                 Дія
               </th>
             </tr>
           </thead>
           <motion.tbody
-            className="divide-y divide-slate-50"
+            className="divide-y divide-border"
             variants={staggerContainer}
             initial="hidden"
             animate="visible"

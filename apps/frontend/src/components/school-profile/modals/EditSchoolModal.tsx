@@ -60,7 +60,7 @@ export default function EditSchoolModal({
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center sm:p-4"
+          className="fixed inset-0 bg-backdrop backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center sm:p-4"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
           <motion.div
@@ -70,12 +70,12 @@ export default function EditSchoolModal({
             exit="exit"
             className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl overflow-hidden max-h-[92vh] flex flex-col pb-safe"
           >
-        <div className="sm:hidden w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-3" />
+        <div className="sm:hidden w-10 h-1.5 bg-border-strong rounded-full mx-auto mt-3" />
 
         {/* Шапка не зжимається (shrink-0) */}
-        <div className="p-5 sm:p-6 border-b flex justify-between items-center bg-slate-50 shrink-0">
+        <div className="p-5 sm:p-6 border-b flex justify-between items-center bg-surface-muted shrink-0">
           <h3 id={headingId} className="text-xl font-bold">Редагування</h3>
-          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 p-2 -mr-2 active:scale-90 transition-transform duration-fast">
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-content-muted p-2 -mr-2 active:scale-90 transition-transform duration-fast">
             ✕
           </button>
         </div>
@@ -149,11 +149,11 @@ export default function EditSchoolModal({
             </div>
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 shrink-0 pt-4 border-t border-slate-100 pb-1 sm:pb-0">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 shrink-0 pt-4 border-t border-border pb-1 sm:pb-0">
             <button
               type="button"
               onClick={onClose}
-              className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-slate-100 hover:bg-slate-200 font-medium rounded-xl transition-colors"
+              className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-surface-muted hover:bg-surface-muted font-medium rounded-xl transition-colors"
             >
               Скасувати
             </button>

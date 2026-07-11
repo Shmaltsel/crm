@@ -535,7 +535,7 @@ export default function SchoolProfile() {
                 )}
                 <Suspense
                   fallback={
-                    <div className="bg-white rounded-2xl h-48 animate-pulse border border-slate-100" />
+                    <div className="bg-white rounded-2xl h-48 animate-pulse border border-border" />
                   }
                 >
                   <AssignedCrew currentEvent={currentEvent} employees={users} />
@@ -681,8 +681,8 @@ export default function SchoolProfile() {
       {/* Мобільна FAB */}
       <button
         onClick={openAddEventModal}
-        className="md:hidden fixed right-6 w-14 h-14 bg-brand text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-40 pb-1 active:scale-95 transition-transform"
-        style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
+        className="md:hidden fab"
+        aria-label="Додати подію"
       >
         +
       </button>

@@ -8,17 +8,17 @@ const FinanceCharts = lazy(() => import("../../../components/finance/FinanceChar
 
 function FinanceSkeleton() {
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen flex flex-col gap-4 animate-pulse">
-      <div className="h-8 bg-slate-200 rounded-xl w-48" />
+    <div className="p-4 md:p-8 bg-surface-subtle min-h-screen flex flex-col gap-4 animate-pulse">
+      <div className="h-8 bg-surface-muted rounded-control w-48" />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-24 bg-white rounded-2xl border border-slate-100" />
+          <div key={i} className="h-24 bg-surface rounded-card border border-border" />
         ))}
       </div>
-      <div className="h-64 bg-white rounded-2xl border border-slate-100" />
+      <div className="h-64 bg-surface rounded-card border border-border" />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="h-48 bg-white rounded-2xl border border-slate-100" />
-        <div className="h-48 bg-white rounded-2xl border border-slate-100" />
+        <div className="h-48 bg-surface rounded-card border border-border" />
+        <div className="h-48 bg-surface rounded-card border border-border" />
       </div>
     </div>
   );

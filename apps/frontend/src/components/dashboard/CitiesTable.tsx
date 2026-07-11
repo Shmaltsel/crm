@@ -38,13 +38,13 @@ export default function CitiesTable({ rows }: Props) {
   );
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+    <div className="bg-white rounded-2xl border border-border shadow-sm p-4">
       <div className="flex justify-between items-center mb-3">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 rounded-md bg-purple-50 flex items-center justify-center">
             <span className="text-xs">🗺️</span>
           </div>
-          <p className="text-sm font-semibold text-slate-800">Стан по містах</p>
+          <p className="text-sm font-semibold text-content-primary">Стан по містах</p>
         </div>
         <button
           onClick={() => navigate('/cities')}
@@ -57,11 +57,11 @@ export default function CitiesTable({ rows }: Props) {
       <div className="overflow-x-auto -mx-4 px-4">
         <table className="w-full text-left border-collapse min-w-[380px]">
           <thead>
-            <tr className="border-b border-slate-100">
-              <th className="pb-2 text-xs font-medium text-slate-400 pr-3">Місто</th>
-              <th className="pb-2 text-xs font-medium text-slate-400 text-right pr-3">Шкіл</th>
-              <th className="pb-2 text-xs font-medium text-slate-400 text-right pr-3">Активних подій</th>
-              <th className="pb-2 text-xs font-medium text-slate-400 text-right">Виручка місяця</th>
+            <tr className="border-b border-border">
+              <th className="pb-2 text-xs font-medium text-content-muted pr-3">Місто</th>
+              <th className="pb-2 text-xs font-medium text-content-muted text-right pr-3">Шкіл</th>
+              <th className="pb-2 text-xs font-medium text-content-muted text-right pr-3">Активних подій</th>
+              <th className="pb-2 text-xs font-medium text-content-muted text-right">Виручка місяця</th>
             </tr>
           </thead>
           <tbody>
@@ -69,15 +69,15 @@ export default function CitiesTable({ rows }: Props) {
               <tr
                 key={row.cityId}
                 onClick={() => navigate(`/cities/${row.cityId}`)}
-                className="border-b border-slate-50 cursor-pointer hover:bg-slate-50/60 transition-colors"
+                className="border-b border-border cursor-pointer hover:bg-surface-muted/60 transition-colors"
               >
                 <td className="py-2.5 pr-3">
-                  <span className="text-sm font-medium text-slate-800">
+                  <span className="text-sm font-medium text-content-primary">
                     {row.cityName}
                   </span>
                 </td>
                 <td className="py-2.5 pr-3 text-right">
-                  <span className="text-sm text-slate-600">{row.schoolsCount}</span>
+                  <span className="text-sm text-content-secondary">{row.schoolsCount}</span>
                 </td>
                 <td className="py-2.5 pr-3 text-right">
                   {row.activeEvents > 0 ? (
@@ -85,16 +85,16 @@ export default function CitiesTable({ rows }: Props) {
                       {row.activeEvents}
                     </span>
                   ) : (
-                    <span className="text-sm text-slate-300">—</span>
+                    <span className="text-sm text-neutral-300">—</span>
                   )}
                 </td>
                 <td className="py-2.5 text-right">
                   {row.monthRevenue > 0 ? (
-                    <span className="text-sm font-semibold text-slate-800">
+                    <span className="text-sm font-semibold text-content-primary">
                       {fmt(row.monthRevenue)} грн
                     </span>
                   ) : (
-                    <span className="text-sm text-slate-300">—</span>
+                    <span className="text-sm text-neutral-300">—</span>
                   )}
                 </td>
               </tr>
@@ -102,14 +102,14 @@ export default function CitiesTable({ rows }: Props) {
           </tbody>
           {/* Підсумок */}
           <tfoot>
-            <tr className="border-t border-slate-200">
-              <td className="pt-2.5 text-xs font-semibold text-slate-500">
+            <tr className="border-t border-border-strong">
+              <td className="pt-2.5 text-xs font-semibold text-content-muted">
                 Усього
               </td>
-              <td className="pt-2.5 text-right text-xs font-semibold text-slate-600">
+              <td className="pt-2.5 text-right text-xs font-semibold text-content-secondary">
                 {totals.schools}
               </td>
-              <td className="pt-2.5 text-right text-xs font-semibold text-slate-600">
+              <td className="pt-2.5 text-right text-xs font-semibold text-content-secondary">
                 {totals.events}
               </td>
               <td className="pt-2.5 text-right text-xs font-semibold text-blue-700">
@@ -120,7 +120,7 @@ export default function CitiesTable({ rows }: Props) {
         </table>
       </div>
 
-      <p className="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-50">
+      <p className="text-xs text-content-muted mt-3 pt-3 border-t border-border">
         {rows.length} {plural(rows.length, 'місто', 'міста', 'міст')} · виручка за поточний місяць
       </p>
     </div>

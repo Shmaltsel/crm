@@ -5,6 +5,7 @@ import { useDashboardSummary } from "../hooks/useDashboardSummary";
 import TodayEvents from "../components/dashboard/TodayEvents";
 import ActivityFeed from "../components/dashboard/ActivityFeed";
 import { staggerContainer, staggerItem, useCountUp, TRANSITION } from "../lib/motion";
+import { TrendingUp, DollarSign, Users, Building2 } from "lucide-react";
 
 function AnimatedAmount({ value, suffix }: { value: number; suffix?: string }) {
   const display = useCountUp(value, { duration: 0.9 });
@@ -28,7 +29,7 @@ function KpiCard({
   numericValue: number;
   suffix?: string;
   subtitle?: string;
-  icon: string;
+  icon: React.ReactNode;
   loading?: boolean;
 }) {
   return (
@@ -42,7 +43,7 @@ function KpiCard({
       ) : (
         <>
           <div className="flex items-center gap-1.5 mb-1">
-            <span className="text-sm">{icon}</span>
+            <span className="text-content-muted">{icon}</span>
             <span className="mobile-stat-label">{title}</span>
           </div>
           <p className="text-xl font-bold text-content-primary leading-none">
@@ -75,24 +76,24 @@ export default function OverviewTab() {
         title: "Виручка",
         numericValue: Number(summary.monthlyKpi.revenue) || 0,
         suffix: "грн",
-        icon: "💰",
+        icon: <DollarSign className="w-4 h-4" />,
       },
       {
         title: "Прибуток",
         numericValue: Number(summary.monthlyKpi.profit) || 0,
         suffix: "грн",
-        icon: "📈",
+        icon: <TrendingUp className="w-4 h-4" />,
       },
       {
         title: "Дітей",
         numericValue: Number(summary.monthlyKpi.children) || 0,
         subtitle: `за ${summary.monthlyKpi.count} подіями`,
-        icon: "👶",
+        icon: <Users className="w-4 h-4" />,
       },
       {
         title: "Активних шкіл",
         numericValue: Number(summary.totalSchools) || 0,
-        icon: "🏫",
+        icon: <Building2 className="w-4 h-4" />,
       },
     ];
   }, [summary]);

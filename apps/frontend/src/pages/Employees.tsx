@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence, MotionConfig } from "framer-motion";
 import { DUR, skeletonPulse, pageVariants, popInVariants, scaleVariants, cardHoverVariants, TRANSITION } from "../lib/motion";
-import { X, Search, UserPlus } from "lucide-react";
+import { X, Search, UserPlus, Users } from "lucide-react";
 import {
   useUsers,
   useProjects,
@@ -46,12 +46,12 @@ const ROLE_LABELS: Record<string, string> = {
   SUPERADMIN: "Суперадмін", GUEST: "Гість",
 };
 const ROLE_COLORS: Record<string, string> = {
-  MANAGER: "bg-blue-50 text-blue-700 border-blue-200",
-  DRIVER: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  HOST: "bg-violet-50 text-violet-700 border-violet-200",
+  MANAGER: "bg-brand-50 text-brand-700 border-brand-200",
+  DRIVER: "bg-success-50 text-success-700 border-success-200",
+  HOST: "bg-purple-50 text-purple-700 border-purple-200",
 };
 const ROLE_HEADER_COLORS: Record<string, string> = {
-  MANAGER: "bg-blue-600", DRIVER: "bg-emerald-600", HOST: "bg-violet-600",
+  MANAGER: "bg-brand", DRIVER: "bg-success", HOST: "bg-purple-600",
 };
 const EMPTY_FORM = {
   fullName: "", phone: "", email: "", cityId: "", role: "MANAGER" as Role,
@@ -77,33 +77,33 @@ function EmployeesSkeleton() {
     <div className="p-4 md:p-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <div className="h-7 w-56 bg-slate-200 rounded-lg mb-2" />
-          <div className="h-4 w-72 bg-slate-100 rounded" />
+          <div className="h-7 w-56 bg-surface-muted rounded-lg mb-2" />
+          <div className="h-4 w-72 bg-surface-muted rounded" />
         </div>
-        <div className="h-10 w-44 bg-slate-200 rounded-lg" />
+        <div className="h-10 w-44 bg-surface-muted rounded-control" />
       </div>
       {[
-        { label: "Менеджери", accent: "bg-blue-200" },
-        { label: "Водії", accent: "bg-emerald-200" },
-        { label: "Ведучі", accent: "bg-violet-200" },
+        { label: "Менеджери", accent: "bg-brand/20" },
+        { label: "Водії", accent: "bg-success/20" },
+        { label: "Ведучі", accent: "bg-purple-500/20" },
       ].map(({ label, accent }) => (
         <div key={label} className="mb-8">
           <div className="flex items-center gap-3 mb-4">
             <div className={`w-1 h-6 rounded-full ${accent}`} />
-            <div className="h-5 w-24 bg-slate-200 rounded" />
-            <div className="h-5 w-8 bg-slate-100 rounded-full" />
+            <div className="h-5 w-24 bg-surface-muted rounded" />
+            <div className="h-5 w-8 bg-surface-muted rounded-full" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="relative overflow-hidden bg-white border border-slate-100 rounded-3xl p-5 flex items-start gap-4">
+              <div key={i} className="relative overflow-hidden bg-surface border border-border rounded-card p-5 flex items-start gap-4">
                 <Shimmer />
-                <div className="w-12 h-12 rounded-2xl bg-slate-200 shrink-0" />
+                <div className="w-12 h-12 rounded-card bg-surface-muted shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="h-4 w-32 bg-slate-200 rounded mb-2" />
-                  <div className="h-3 w-40 bg-slate-100 rounded mb-3" />
+                  <div className="h-4 w-32 bg-surface-muted rounded mb-2" />
+                  <div className="h-3 w-40 bg-surface-muted rounded mb-3" />
                   <div className="flex gap-2">
-                    <div className="h-5 w-16 bg-slate-100 rounded-full" />
-                    <div className="h-5 w-20 bg-slate-100 rounded-full" />
+                    <div className="h-5 w-16 bg-surface-muted rounded-full" />
+                    <div className="h-5 w-20 bg-surface-muted rounded-full" />
                   </div>
                 </div>
               </div>
@@ -483,7 +483,7 @@ export default function Employees() {
                   >
                     <div className="flex items-center gap-3 mb-4">
                       <div className={`w-1 h-6 rounded-full ${ROLE_HEADER_COLORS[role]}`} />
-                      <h2 className="text-lg font-bold text-slate-700">{label}</h2>
+                      <h2 className="text-lg font-bold text-content-primary">{label}</h2>
                       <motion.span
                         key={items.length}
                         variants={popInVariants}
@@ -499,12 +499,12 @@ export default function Employees() {
                         variants={scaleVariants}
                         initial="hidden"
                         animate="visible"
-                        className="bg-white rounded-2xl border border-dashed border-slate-200 p-8 text-center"
+                        className="bg-surface rounded-card border border-dashed border-border p-8 text-center"
                       >
-                        <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 text-lg">👤</div>
-                        <p className="text-slate-400 text-sm mb-3">Немає {label.toLowerCase()}ів</p>
+                        <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-surface-muted flex items-center justify-center text-content-muted"><Users className="w-5 h-5" /></div>
+                        <p className="text-content-muted text-sm mb-3">Немає {label.toLowerCase()}ів</p>
                         {isSuperAdmin && (
-                           <button onClick={() => handleOpenModal()} className="text-xs font-semibold text-blue-600 hover:text-blue-700 active:scale-[0.97] transition-transform duration-fast">
+                           <button onClick={() => handleOpenModal()} className="text-xs font-semibold text-brand hover:text-brand-700 active:scale-[0.97] transition-transform duration-fast">
                             + Додати {label.toLowerCase()}а
                           </button>
                         )}
@@ -531,14 +531,14 @@ export default function Employees() {
                   </motion.div>
                 ))}
 
-                <div className="border-t border-slate-200 pt-10">
+                <div className="border-t border-border pt-10">
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
                     <div>
-                      <h2 className="text-2xl font-bold text-slate-800">Види подій (Проєкти)</h2>
-                      <p className="text-sm text-slate-400 mt-1">Ці проєкти відображатимуться у випадаючому списку при створенні події</p>
+                      <h2 className="text-2xl font-bold text-content-primary">Види подій (Проєкти)</h2>
+                      <p className="text-sm text-content-muted mt-1">Ці проєкти відображатимуться у випадаючому списку при створенні події</p>
                     </div>
                     {isSuperAdmin && (
-                      <button onClick={() => handleOpenProjectModal()} className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 transition-colors w-full sm:w-auto">
+                      <button onClick={() => handleOpenProjectModal()} className="bg-success text-white px-5 py-2.5 rounded-control font-medium hover:bg-success-600 transition-colors w-full sm:w-auto">
                         + Створити вид події
                       </button>
                     )}
@@ -552,33 +552,33 @@ export default function Employees() {
                         transition={{ duration: DUR.moderate, delay: pi * 0.05 }}
                         variants={cardHoverVariants}
                         whileHover="hover"
-                        className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex justify-between items-center group cursor-default hover:border-slate-200 transition-colors"
+                        className="bg-surface border border-border rounded-card p-5 shadow-soft flex justify-between items-center group cursor-default hover:border-border-strong transition-colors"
                       >
                         <div className="flex items-center gap-3">
                           <motion.div
                             whileHover={{ scale: 1.15 }}
                             transition={TRANSITION.tap}
-                            className={`w-10 h-10 rounded-2xl flex items-center justify-center ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm ring-4 ring-offset-1 ring-slate-50`}
+                            className={`w-10 h-10 rounded-2xl flex items-center justify-center ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm ring-4 ring-offset-1 ring-surface-muted`}
                           >
                             <span className="w-2.5 h-2.5 rounded-full bg-white/80" />
                           </motion.div>
                           <div>
-                            <span className="font-bold text-slate-800">{p.name}</span>
+                            <span className="font-bold text-content-primary">{p.name}</span>
                             {!!(p as any).pricePerChild && (
-                              <p className="text-xs text-slate-400">{(p as any).pricePerChild} грн / дитина</p>
+                              <p className="text-xs text-content-muted">{(p as any).pricePerChild} грн / дитина</p>
                             )}
                           </div>
                         </div>
                         {isSuperAdmin && (
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => handleOpenProjectModal(p)} className="text-slate-300 hover:text-blue-500 p-2 -mr-1 active:scale-90 transition-transform duration-fast" title="Редагувати">✏️</button>
-                            <button onClick={() => setConfirmDeleteProject({ id: p.id, name: p.name })} className="text-slate-300 hover:text-red-500 p-2 -mr-2 active:scale-90 transition-transform duration-fast" title="Видалити">🗑</button>
+                            <button onClick={() => handleOpenProjectModal(p)} className="text-content-muted hover:text-brand p-2 -mr-1 active:scale-90 transition-transform duration-fast" title="Редагувати">✏️</button>
+                            <button onClick={() => setConfirmDeleteProject({ id: p.id, name: p.name })} className="text-content-muted hover:text-danger p-2 -mr-2 active:scale-90 transition-transform duration-fast" title="Видалити">🗑</button>
                           </div>
                         )}
                       </motion.div>
                     ))}
                     {projects.length === 0 && (
-                      <div className="col-span-full text-center py-10 text-slate-400">Ви ще не додали жодного виду події</div>
+                      <div className="col-span-full text-center py-10 text-content-muted">Ви ще не додали жодного виду події</div>
                     )}
                   </div>
                 </div>

@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { useEventFull } from "../hooks/useSchoolProfile";
 import AddressLink from "../components/AddressLink";
+import { Skeleton } from "../components/ui/Skeleton";
 import { formatCurrency } from "../utils/formatCurrency";
 
 export default function EventReport() {
@@ -10,7 +11,16 @@ export default function EventReport() {
   const { data: event, isLoading, isError } = useEventFull(eventId);
 
   if (isLoading)
-    return <div className="p-8 text-content-muted">Завантаження...</div>;
+    return (
+      <div className="p-8 space-y-4">
+        <Skeleton className="h-8 w-64" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+          <Skeleton className="h-40" />
+          <Skeleton className="h-40" />
+          <Skeleton className="h-40" />
+        </div>
+      </div>
+    );
   if (isError || !event)
     return <div className="p-8 text-content-muted">Подію не знайдено</div>;
 

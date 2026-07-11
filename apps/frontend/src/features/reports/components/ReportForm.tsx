@@ -113,9 +113,9 @@ function TogglePill({ value, onChange, disabled }: { value: boolean; onChange: (
   return (
     <div className="flex gap-1.5">
       <button type="button" disabled={disabled} onClick={() => onChange(true)}
-        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${value ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400 hover:bg-slate-200"} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>Так</button>
+        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${value ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400 hover:bg-surface-muted"} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>Так</button>
       <button type="button" disabled={disabled} onClick={() => onChange(false)}
-        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${!value ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-400 hover:bg-slate-200"} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>Ні</button>
+        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${!value ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-400 hover:bg-surface-muted"} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>Ні</button>
     </div>
   );
 }
@@ -376,7 +376,7 @@ export default function ReportForm({
       <AnimatePresence>
         {isOpen && (
           <motion.div variants={fadeVariants} initial="hidden" animate="visible" exit="exit"
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center">
+            className="fixed inset-0 bg-backdrop backdrop-blur-sm z-50 flex items-center justify-center">
             <div className="bg-white rounded-2xl p-8 shadow-xl">Завантаження...</div>
           </motion.div>
         )}
@@ -389,7 +389,7 @@ export default function ReportForm({
       {isOpen && (
         <motion.div role="dialog" aria-modal="true" aria-labelledby={headingId}
           variants={fadeVariants} initial="hidden" animate="visible" exit="exit"
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+          className="fixed inset-0 bg-backdrop backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
           <motion.div variants={modalContentVariants} initial="hidden" animate="visible" exit="exit"
             className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden pb-safe"
@@ -413,7 +413,7 @@ export default function ReportForm({
                 )}
                 {report && <ReportStatusBadge status={report.status} />}
                 <button ref={closeRef} onClick={onClose} aria-label="Закрити"
-                  className="text-slate-400 hover:text-slate-600 text-lg leading-none p-2 -mr-2 active:scale-90 transition-transform duration-fast">✕</button>
+                  className="text-slate-400 hover:text-content-secondary text-lg leading-none p-2 -mr-2 active:scale-90 transition-transform duration-fast">✕</button>
               </div>
             </div>
 
@@ -514,7 +514,7 @@ export default function ReportForm({
                           onChange={(e) => setNewExp({ ...newExp, amount: e.target.value })}
                           className="w-20 sm:w-24 p-2 border border-slate-200 rounded-lg text-base focus:ring-2 focus:ring-blue-500 outline-none" />
                         <button onClick={addExpense} type="button"
-                          className="px-3 shrink-0 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium text-sm">+</button>
+                          className="px-3 shrink-0 rounded-lg bg-slate-100 text-slate-600 hover:bg-surface-muted font-medium text-sm">+</button>
                       </div>
                     )}
                   </div>
@@ -609,7 +609,7 @@ export default function ReportForm({
 
             <div className="flex gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-white shrink-0">
               <button onClick={onClose}
-                className="flex-1 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium py-3 active:scale-[0.97] transition-transform duration-fast">
+                className="flex-1 text-slate-600 bg-slate-100 hover:bg-surface-muted rounded-xl font-medium py-3 active:scale-[0.97] transition-transform duration-fast">
                 {isEditable ? "Скасувати" : "Закрити"}
               </button>
               {isEditable && (

@@ -70,7 +70,7 @@ export default function CrewModal({
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-backdrop backdrop-blur-sm z-[60] flex items-center justify-center p-4"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
           <motion.div
@@ -80,21 +80,21 @@ export default function CrewModal({
             exit="exit"
             className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
           >
-        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-          <h3 id={headingId} className="text-xl font-bold text-slate-800">
+        <div className="p-5 border-b border-border flex justify-between items-center bg-surface-muted">
+          <h3 id={headingId} className="text-xl font-bold text-content-primary">
             Призначити екіпаж
           </h3>
-          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 active:scale-90 transition-transform duration-fast">
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-content-muted hover:text-content-secondary active:scale-90 transition-transform duration-fast">
             ✕
           </button>
         </div>
 
         <div className="p-6">
           {isLoading ? (
-            <p className="text-slate-500 text-center py-4">Завантаження...</p>
+            <p className="text-content-muted text-center py-4">Завантаження...</p>
           ) : crews.length === 0 ? (
             <div className="text-center py-4">
-              <p className="text-slate-500">
+              <p className="text-content-muted">
                 У цьому місті ще немає сформованих екіпажів.
               </p>
               <button
@@ -110,7 +110,7 @@ export default function CrewModal({
             </div>
           ) : (
             <div className="space-y-4">
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="block text-sm font-medium text-content-secondary">
                 Оберіть готовий екіпаж
               </label>
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
@@ -125,10 +125,10 @@ export default function CrewModal({
                       key={crew.id}
                       className={`flex items-start p-3 rounded-xl border transition-all ${
                         isUnavailable
-                          ? "border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed"
+                          ? "border-border-strong bg-surface-muted opacity-60 cursor-not-allowed"
                           : selectedCrewId === crew.id
                             ? "border-blue-500 bg-blue-50/50 ring-1 ring-blue-500 cursor-pointer"
-                            : "border-slate-200 hover:border-blue-300 cursor-pointer"
+                            : "border-border-strong hover:border-blue-300 cursor-pointer"
                       }`}
                     >
                       <input
@@ -141,8 +141,8 @@ export default function CrewModal({
                         className="mt-1 mr-3 text-blue-600 focus:ring-blue-500"
                       />
                       <div>
-                        <p className="font-bold text-slate-800">{crew.name}</p>
-                        <p className="text-xs text-slate-500 mt-1">
+                        <p className="font-bold text-content-primary">{crew.name}</p>
+                        <p className="text-xs text-content-muted mt-1">
                           🎙️ {crew.host?.name || "—"} | 🚗{" "}
                           {crew.driver?.name || "—"}
                         </p>
@@ -168,7 +168,7 @@ export default function CrewModal({
           <div className="flex gap-3 mt-6">
             <button
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 active:scale-[0.97] transition-transform duration-fast"
+              className="flex-1 px-4 py-2.5 bg-surface-muted text-content-secondary rounded-lg text-sm font-medium hover:bg-surface-muted active:scale-[0.97] transition-transform duration-fast"
             >
               Скасувати
             </button>

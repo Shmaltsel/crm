@@ -1,3 +1,897 @@
+# FILE: apps/backend/src/issues/issues.service.spec.ts
+
+```
+import { IssuesService } from './issues.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
+
+const mockPrisma = {
+  issueReport: {
+    create: jest.fn(),
+    findMany: jest.fn(),
+    update: jest.fn(),
+  },
+  event: { findUnique: jest.fn() },
+  city: { findUnique: jest.fn() },
+  user: { findUnique: jest.fn() },
+};
+
+const mockTelegram = { sendMessage: jest.fn() };
+const mockNotifications = { create: jest.fn().mockResolvedValue(undefined) };
+
+const makeService = () =>
+  new IssuesService(
+    mockPrisma as unknown as PrismaService,
+    mockTelegram as unknown as TelegramService,
+    mockNotifications as unknown as NotificationsService,
+  );
+
+const baseData = {
+  eventId: 'ev-1',
+  schoolName: 'Школа №1',
+  eventName: 'Голограма',
+  message: 'Проблема з обладнанням',
+  cityId: 'city-1',
+};
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockPrisma.issueReport.create.mockResolvedValue({
+    id: 'issue-1',
+    ...baseData,
+  });
+  mockPrisma.event.findUnique.mockResolvedValue({ id: 'ev-1', crew: null });
+  mockPrisma.city.findUnique.mockResolvedValue({ id: 'city-1', users: [] });
+});
+
+describe('IssuesService — create', () => {
+  it('створює IssueReport у БД з коректними полями', async () => {
+    const service = makeService();
+    await service.create(baseData);
+
+    expect(mockPrisma.issueReport.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        eventId: 'ev-1',
+        schoolName: 'Школа №1',
+        eventName: 'Голограма',
+        message: 'Проблема з обладнанням',
+        cityId: 'city-1',
+        deadline: null,
+        assignedUserId: null,
+        assignedUserName: null,
+      }),
+    });
+  });
+
+  it('конвертує deadline рядок у Date', async () => {
+    const service = makeService();
+    await service.create({ ...baseData, deadline: '2025-12-31' });
+
+    const { deadline } = mockPrisma.issueReport.create.mock.calls[0][0].data;
+    expect(deadline).toBeInstanceOf(Date);
+    expect(deadline.getFullYear()).toBe(2025);
+  });
+
+  it('надсилає Telegram менеджеру міста якщо є chatId', async () => {
+    mockPrisma.city.findUnique.mockResolvedValueOnce({
+      id: 'city-1',
+      users: [{ telegramChatId: 'mgr-chat-123', telegramId: null }],
+    });
+
+    const service = makeService();
+    await service.create(baseData);
+
+    expect(mockTelegram.sendMessage).toHaveBeenCalledWith(
+      'mgr-chat-123',
+      expect.stringContaining('Школа №1'),
+    );
+  });
+
+  it('не надсилає менеджеру якщо у нього немає chatId', async () => {
+    mockPrisma.city.findUnique.mockResolvedValueOnce({
+      id: 'city-1',
+      users: [{ telegramChatId: null, telegramId: '@handle' }],
+    });
+
+    const service = makeService();
+    await service.create(baseData);
+
+    expect(mockTelegram.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('надсилає відповідальному якщо assignedUserId є і chatId відрізняється', async () => {
+    mockPrisma.city.findUnique.mockResolvedValueOnce({
+      id: 'city-1',
+      users: [{ telegramChatId: 'mgr-111', telegramId: null }],
+    });
+    mockPrisma.user.findUnique.mockResolvedValueOnce({
+      telegramChatId: 'assignee-222',
+      telegramId: null,
+    });
+
+    const service = makeService();
+    await service.create({
+      ...baseData,
+      assignedUserId: 'user-2',
+      assignedUserName: 'Василь',
+    });
+
+    expect(mockTelegram.sendMessage).toHaveBeenCalledTimes(2);
+    const chatIds = mockTelegram.sendMessage.mock.calls.map(
+      ([chatId]: [string]) => chatId,
+    );
+    expect(chatIds).toContain('mgr-111');
+    expect(chatIds).toContain('assignee-222');
+  });
+
+  it('не надсилає дублю якщо менеджер і відповідальний — одна людина', async () => {
+    mockPrisma.city.findUnique.mockResolvedValueOnce({
+      id: 'city-1',
+      users: [{ telegramChatId: 'same-chat', telegramId: null }],
+    });
+    mockPrisma.user.findUnique.mockResolvedValueOnce({
+      telegramChatId: 'same-chat',
+      telegramId: null,
+    });
+
+    const service = makeService();
+    await service.create({
+      ...baseData,
+      assignedUserId: 'user-same',
+      assignedUserName: 'Один',
+    });
+
+    expect(mockTelegram.sendMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('повідомлення містить інформацію про дедлайн якщо він є', async () => {
+    mockPrisma.city.findUnique.mockResolvedValueOnce({
+      id: 'city-1',
+      users: [{ telegramChatId: 'mgr-111', telegramId: null }],
+    });
+
+    const service = makeService();
+    await service.create({ ...baseData, deadline: '2025-06-30' });
+
+    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
+    expect(msg).toContain('Дедлайн');
+  });
+
+  it('включає відповідального у повідомлення', async () => {
+    mockPrisma.city.findUnique.mockResolvedValueOnce({
+      id: 'city-1',
+      users: [{ telegramChatId: 'mgr-111', telegramId: null }],
+    });
+
+    const service = makeService();
+    await service.create({ ...baseData, assignedUserName: 'Марія Шевченко' });
+
+    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
+    expect(msg).toContain('Марія Шевченко');
+  });
+
+  it('включає учасників екіпажу у повідомлення', async () => {
+    mockPrisma.event.findUnique.mockResolvedValueOnce({
+      id: 'ev-1',
+      crew: {
+        host: { name: 'Ведучий Іван', telegramId: null },
+        driver: { name: 'Водій Петро', telegramId: '123456' },
+      },
+    });
+    mockPrisma.city.findUnique.mockResolvedValueOnce({
+      id: 'city-1',
+      users: [{ telegramChatId: 'mgr-111', telegramId: null }],
+    });
+
+    const service = makeService();
+    await service.create(baseData);
+
+    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
+    expect(msg).toContain('Ведучий Іван');
+    expect(msg).toContain('Водій Петро');
+  });
+
+  it("formatMember: числовий telegramId → лише ім'я (не @mention)", async () => {
+    mockPrisma.event.findUnique.mockResolvedValueOnce({
+      id: 'ev-1',
+      crew: {
+        host: { name: 'Ведучий', telegramId: '987654321' },
+        driver: null,
+      },
+    });
+    mockPrisma.city.findUnique.mockResolvedValueOnce({
+      id: 'city-1',
+      users: [{ telegramChatId: 'mgr-1', telegramId: null }],
+    });
+
+    const service = makeService();
+    await service.create(baseData);
+
+    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
+    // числовий id — не повинно бути @
+    expect(msg).not.toMatch(/@\d/);
+    expect(msg).toContain('Ведучий');
+  });
+
+  it('formatMember: @username telegramId → @mention', async () => {
+    mockPrisma.event.findUnique.mockResolvedValueOnce({
+      id: 'ev-1',
+      crew: {
+        host: { name: 'Ведучий', telegramId: '@ivanko' },
+        driver: null,
+      },
+    });
+    mockPrisma.city.findUnique.mockResolvedValueOnce({
+      id: 'city-1',
+      users: [{ telegramChatId: 'mgr-1', telegramId: null }],
+    });
+
+    const service = makeService();
+    await service.create(baseData);
+
+    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
+    expect(msg).toContain('@ivanko');
+  });
+
+  it('повертає створений issue', async () => {
+    const service = makeService();
+    const result = await service.create(baseData);
+
+    expect(result).toMatchObject({ id: 'issue-1' });
+  });
+});
+
+describe('IssuesService — findByCityId', () => {
+  it('повертає активні проблеми для міста (виключає Виконано)', async () => {
+    const issues = [{ id: 'i-1' }, { id: 'i-2' }];
+    mockPrisma.issueReport.findMany.mockResolvedValueOnce(issues);
+
+    const service = makeService();
+    const result = await service.findByCityId('city-1');
+
+    expect(mockPrisma.issueReport.findMany).toHaveBeenCalledWith({
+      where: { cityId: 'city-1', status: { not: 'Виконано' } },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(result).toHaveLength(2);
+  });
+
+  it('повертає порожній масив якщо активних проблем немає', async () => {
+    mockPrisma.issueReport.findMany.mockResolvedValueOnce([]);
+
+    const service = makeService();
+    const result = await service.findByCityId('city-empty');
+
+    expect(result).toEqual([]);
+  });
+});
+
+describe('IssuesService — updateStatus', () => {
+  it('оновлює статус проблеми', async () => {
+    mockPrisma.issueReport.update.mockResolvedValueOnce({
+      id: 'i-1',
+      status: 'Виконано',
+    });
+
+    const service = makeService();
+    const result = await service.updateStatus('i-1', 'Виконано');
+
+    expect(mockPrisma.issueReport.update).toHaveBeenCalledWith({
+      where: { id: 'i-1' },
+      data: { status: 'Виконано' },
+    });
+    expect(result).toMatchObject({ status: 'Виконано' });
+  });
+
+  it('може встановити довільний статус рядком', async () => {
+    mockPrisma.issueReport.update.mockResolvedValueOnce({
+      id: 'i-2',
+      status: 'В процесі',
+    });
+
+    const service = makeService();
+    await service.updateStatus('i-2', 'В процесі');
+
+    const callData = mockPrisma.issueReport.update.mock.calls[0][0];
+    expect(callData.data.status).toBe('В процесі');
+  });
+});
+
+```
+
+# FILE: apps/backend/src/issues/issues.service.ts
+
+```
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
+
+@Injectable()
+export class IssuesService {
+  constructor(
+    private prisma: PrismaService,
+    private telegramService: TelegramService,
+    private notificationsService: NotificationsService,
+  ) {}
+
+  async create(data: {
+    eventId: string;
+    schoolName: string;
+    eventName: string;
+    message: string;
+    cityId: string;
+    deadline?: string;
+    assignedUserId?: string;
+    assignedUserName?: string;
+  }) {
+    const issue = await this.prisma.issueReport.create({
+      data: {
+        eventId: data.eventId,
+        schoolName: data.schoolName,
+        eventName: data.eventName,
+        message: data.message,
+        cityId: data.cityId,
+        deadline: data.deadline ? new Date(data.deadline) : null,
+        assignedUserId: data.assignedUserId || null,
+        assignedUserName: data.assignedUserName || null,
+      },
+    });
+
+    const event = await this.prisma.event.findUnique({
+      where: { id: data.eventId },
+      include: {
+        crew: {
+          include: {
+            host: { select: { name: true, telegramId: true } },
+            driver: { select: { name: true, telegramId: true } },
+          },
+        },
+      },
+    });
+
+    const formatMember = (user: {
+      name: string;
+      telegramId: string | null;
+    }) => {
+      if (!user.telegramId) return user.name;
+      const clean = user.telegramId.replace(/^@/, '');
+      return /^\d+$/.test(clean) ? user.name : `@${clean} (${user.name})`;
+    };
+
+    const crewMembers: string[] = [];
+    if (event?.crew?.host)
+      crewMembers.push(`🎙️ Ведучий: ${formatMember(event.crew.host)}`);
+    if (event?.crew?.driver)
+      crewMembers.push(`🚗 Водій: ${formatMember(event.crew.driver)}`);
+
+    const city = await this.prisma.city.findUnique({
+      where: { id: data.cityId },
+      include: { users: { where: { role: 'MANAGER' }, take: 1 } },
+    });
+
+    let assigneeChatId: string | null = null;
+    if (data.assignedUserId) {
+      const assignee = await this.prisma.user.findUnique({
+        where: { id: data.assignedUserId },
+        select: { telegramChatId: true, telegramId: true },
+      });
+      assigneeChatId =
+        assignee?.telegramChatId ||
+        (assignee?.telegramId && /^\d+$/.test(assignee.telegramId)
+          ? assignee.telegramId
+          : null);
+    }
+
+    const deadlineStr = data.deadline
+      ? `\n⏰ <b>Дедлайн:</b> ${new Date(data.deadline).toLocaleDateString('uk-UA')}`
+      : '';
+
+    const assigneeStr = data.assignedUserName
+      ? `\n👤 <b>Відповідальний:</b> ${data.assignedUserName}`
+      : '';
+
+    const manager = city?.users?.[0];
+    const managerChatId =
+      manager?.telegramChatId ||
+      (manager?.telegramId && /^\d+$/.test(manager.telegramId)
+        ? manager.telegramId
+        : null);
+
+    const text =
+      `🚨 <b>Нова проблема!</b>\n\n` +
+      `🏫 <b>Заклад:</b> ${data.schoolName}\n` +
+      `📅 <b>Подія:</b> ${data.eventName}\n\n` +
+      `💬 <b>Повідомлення:</b>\n${data.message}` +
+      deadlineStr +
+      assigneeStr +
+      (crewMembers.length > 0
+        ? `\n\n👥 <b>Екіпаж:</b>\n${crewMembers.join('\n')}`
+        : '') +
+      `\n\n<i>Деталі у CRM: <a href="https://app.svitlo-znan.app">Посилання</a></i>`;
+
+    if (managerChatId)
+      await this.telegramService.sendMessage(managerChatId, text);
+
+    if (assigneeChatId && assigneeChatId !== managerChatId) {
+      await this.telegramService.sendMessage(assigneeChatId, text);
+    }
+
+    const notificationPayload = {
+      issueId: issue.id,
+      schoolName: data.schoolName,
+      eventName: data.eventName,
+      message: data.message,
+    };
+    if (manager?.id) {
+      this.notificationsService
+        .create(manager.id, 'ISSUE_CREATED', notificationPayload)
+        .catch(() => {});
+    }
+    if (data.assignedUserId) {
+      this.notificationsService
+        .create(data.assignedUserId, 'ISSUE_CREATED', notificationPayload)
+        .catch(() => {});
+    }
+
+    return issue;
+  }
+
+  async findByCityId(cityId: string) {
+    return this.prisma.issueReport.findMany({
+      where: {
+        cityId,
+        status: { not: 'Виконано' },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async updateStatus(id: string, status: string) {
+    return this.prisma.issueReport.update({
+      where: { id },
+      data: { status },
+    });
+  }
+}
+
+```
+
+# FILE: apps/backend/src/metrics/metrics.controller.spec.ts
+
+```
+import { Test, TestingModule } from '@nestjs/testing';
+import { INestApplication } from '@nestjs/common';
+import request from 'supertest';
+import { MetricsController } from './metrics.controller';
+import { MetricsService } from './metrics.service';
+import { MetricsGuard } from './metrics.guard';
+
+const mockGuard = { canActivate: jest.fn() };
+const mockMetricsService = {
+  getMetrics: jest.fn(),
+  getContentType: jest.fn(),
+};
+
+describe('MetricsController', () => {
+  let app: INestApplication;
+
+  beforeAll(async () => {
+    jest.clearAllMocks();
+
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [MetricsController],
+      providers: [{ provide: MetricsService, useValue: mockMetricsService }],
+    })
+      .overrideGuard(MetricsGuard)
+      .useValue(mockGuard)
+      .compile();
+
+    app = module.createNestApplication();
+    await app.init();
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGuard.canActivate.mockResolvedValue(true);
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  describe('GET /metrics', () => {
+    it('без токена — 403 якщо METRICS_TOKEN встановлено', async () => {
+      mockGuard.canActivate.mockRejectedValueOnce(
+        new (require('@nestjs/common').ForbiddenException)(
+          'Invalid metrics token',
+        ),
+      );
+      await request(app.getHttpServer()).get('/metrics').expect(403);
+    });
+
+    it('з правильним токеном — 200', async () => {
+      mockGuard.canActivate.mockResolvedValue(true);
+      mockMetricsService.getMetrics.mockResolvedValueOnce('metrics data');
+      const res = await request(app.getHttpServer())
+        .get('/metrics')
+        .expect(200);
+      expect(res.text).toBe('metrics data');
+    });
+  });
+});
+
+```
+
+# FILE: apps/backend/src/metrics/metrics.controller.ts
+
+```
+import { Controller, Get, Header, UseGuards } from '@nestjs/common';
+import { MetricsService } from './metrics.service';
+import { MetricsGuard } from './metrics.guard';
+
+@Controller('metrics')
+@UseGuards(MetricsGuard)
+export class MetricsController {
+  constructor(private metrics: MetricsService) {}
+
+  @Get()
+  @Header('Content-Type', 'text/plain')
+  async getMetrics() {
+    return this.metrics.getMetrics();
+  }
+}
+
+```
+
+# FILE: apps/backend/src/metrics/metrics.guard.spec.ts
+
+```
+import { ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { MetricsGuard } from './metrics.guard';
+
+describe('MetricsGuard', () => {
+  let guard: MetricsGuard;
+
+  const createContext = (
+    headers: Record<string, string> = {},
+  ): ExecutionContext =>
+    ({
+      switchToHttp: () => ({
+        getRequest: () => ({ headers }),
+      }),
+    }) as any;
+
+  beforeEach(() => {
+    guard = new MetricsGuard();
+  });
+
+  afterEach(() => {
+    delete process.env.METRICS_TOKEN;
+  });
+
+  it('без METRICS_TOKEN в env пропускає всі запити', () => {
+    const ok = guard.canActivate(createContext({}));
+    expect(ok).toBe(true);
+  });
+
+  it('з METRICS_TOKEN і правильним X-Metrics-Token пропускає', () => {
+    process.env.METRICS_TOKEN = 'secret123';
+    const ok = guard.canActivate(
+      createContext({ 'x-metrics-token': 'secret123' }),
+    );
+    expect(ok).toBe(true);
+  });
+
+  it('з METRICS_TOKEN і неправильним X-Metrics-Token кидає Forbidden', () => {
+    process.env.METRICS_TOKEN = 'secret123';
+    expect(() =>
+      guard.canActivate(createContext({ 'x-metrics-token': 'wrong' })),
+    ).toThrow(ForbiddenException);
+  });
+
+  it('з METRICS_TOKEN і без заголовка кидає Forbidden', () => {
+    process.env.METRICS_TOKEN = 'secret123';
+    expect(() => guard.canActivate(createContext({}))).toThrow(
+      ForbiddenException,
+    );
+  });
+});
+
+```
+
+# FILE: apps/backend/src/metrics/metrics.guard.ts
+
+```
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
+
+@Injectable()
+export class MetricsGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
+    const token = process.env.METRICS_TOKEN;
+    if (!token) return true;
+
+    const req = context.switchToHttp().getRequest();
+    const headerToken = req.headers['x-metrics-token'];
+
+    if (headerToken !== token) {
+      throw new ForbiddenException('Invalid metrics token');
+    }
+    return true;
+  }
+}
+
+```
+
+# FILE: apps/backend/src/metrics/metrics.interceptor.ts
+
+```
+import {
+  CallHandler,
+  ExecutionContext,
+  Injectable,
+  NestInterceptor,
+} from '@nestjs/common';
+import { tap } from 'rxjs/operators';
+import { httpRequestDuration } from './metrics.service';
+
+@Injectable()
+export class MetricsInterceptor implements NestInterceptor {
+  intercept(context: ExecutionContext, next: CallHandler) {
+    const req = context.switchToHttp().getRequest();
+    const res = context.switchToHttp().getResponse();
+    const start = process.hrtime.bigint();
+
+    return next.handle().pipe(
+      tap(() => {
+        const durationSec = Number(process.hrtime.bigint() - start) / 1e9;
+        const route = req.route?.path ?? req.url;
+        httpRequestDuration.observe(
+          { method: req.method, route, status_code: res.statusCode },
+          durationSec,
+        );
+      }),
+    );
+  }
+}
+
+```
+
+# FILE: apps/backend/src/metrics/metrics.module.ts
+
+```
+import { Global, Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { MetricsController } from './metrics.controller';
+import { MetricsService } from './metrics.service';
+import { MetricsInterceptor } from './metrics.interceptor';
+
+@Global()
+@Module({
+  controllers: [MetricsController],
+  providers: [
+    MetricsService,
+    { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
+  ],
+  exports: [MetricsService],
+})
+export class MetricsModule {}
+
+```
+
+# FILE: apps/backend/src/metrics/metrics.service.ts
+
+```
+import { Injectable } from '@nestjs/common';
+import { Registry, Histogram, collectDefaultMetrics } from 'prom-client';
+
+export const registry = new Registry();
+collectDefaultMetrics({ register: registry });
+
+export const httpRequestDuration = new Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'HTTP request duration',
+  labelNames: ['method', 'route', 'status_code'],
+  buckets: [0.05, 0.1, 0.3, 0.5, 1, 2, 5],
+  registers: [registry],
+});
+
+export const dbQueryDuration = new Histogram({
+  name: 'db_query_duration_seconds',
+  help: 'Prisma query duration',
+  labelNames: ['model', 'action'],
+  buckets: [0.01, 0.05, 0.1, 0.3, 0.5, 1, 2],
+  registers: [registry],
+});
+
+@Injectable()
+export class MetricsService {
+  getMetrics() {
+    return registry.metrics();
+  }
+  getContentType() {
+    return registry.contentType;
+  }
+}
+
+```
+
+# FILE: apps/backend/src/notifications/notifications.controller.ts
+
+```
+import {
+  Controller,
+  Get,
+  Patch,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiTags, ApiCookieAuth } from '@nestjs/swagger';
+import { AuthGuard } from '../auth/auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+import { NotificationsService } from './notifications.service';
+
+@ApiTags('notifications')
+@ApiCookieAuth('access_token')
+@UseGuards(AuthGuard)
+@Controller('notifications')
+export class NotificationsController {
+  constructor(private readonly service: NotificationsService) {}
+
+  @Get()
+  findAll(@CurrentUser() user: JwtUser, @Query('page') page?: number) {
+    return this.service.findAll(user.sub, page ?? 1);
+  }
+
+  @Get('unread-count')
+  unreadCount(@CurrentUser() user: JwtUser) {
+    return this.service.unreadCount(user.sub).then((c) => ({ count: c }));
+  }
+
+  @Patch(':id/read')
+  markRead(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.service.markRead(id, user.sub);
+  }
+
+  @Patch('read-all')
+  markAllRead(@CurrentUser() user: JwtUser) {
+    return this.service.markAllRead(user.sub);
+  }
+}
+
+```
+
+# FILE: apps/backend/src/notifications/notifications.module.ts
+
+```
+import { Module } from '@nestjs/common';
+import { NotificationsController } from './notifications.controller';
+import { NotificationsService } from './notifications.service';
+
+@Module({
+  controllers: [NotificationsController],
+  providers: [NotificationsService],
+  exports: [NotificationsService],
+})
+export class NotificationsModule {}
+
+```
+
+# FILE: apps/backend/src/notifications/notifications.service.ts
+
+```
+import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class NotificationsService {
+  constructor(private prisma: PrismaService) {}
+
+  async create(userId: string, type: string, payload: Record<string, unknown>) {
+    return this.prisma.notification.create({
+      data: { userId, type, payload: payload as Prisma.InputJsonValue },
+    });
+  }
+
+  async findAll(userId: string, page = 1, take = 20) {
+    const where = { userId };
+    const [items, total] = await Promise.all([
+      this.prisma.notification.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * take,
+        take,
+      }),
+      this.prisma.notification.count({ where }),
+    ]);
+    return { items, total, page, pageCount: Math.ceil(total / take) };
+  }
+
+  async unreadCount(userId: string) {
+    return this.prisma.notification.count({
+      where: { userId, readAt: null },
+    });
+  }
+
+  async markRead(id: string, userId: string) {
+    return this.prisma.notification.updateMany({
+      where: { id, userId },
+      data: { readAt: new Date() },
+    });
+  }
+
+  async markAllRead(userId: string) {
+    return this.prisma.notification.updateMany({
+      where: { userId, readAt: null },
+      data: { readAt: new Date() },
+    });
+  }
+}
+
+```
+
+# FILE: apps/backend/src/prisma/prisma.mock.ts
+
+```
+import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
+import { PrismaService } from './prisma.service';
+export type MockPrismaService = DeepMockProxy<PrismaService>;
+
+export const createPrismaMock = (): MockPrismaService => {
+  return mockDeep<PrismaService>();
+};
+
+```
+
+# FILE: apps/backend/src/prisma/prisma.module.ts
+
+```
+import { Global, Module } from '@nestjs/common';
+import { PrismaService } from './prisma.service';
+import { OwnershipGuard } from '../auth/guards/ownership.guard';
+
+@Global()
+@Module({
+  providers: [PrismaService, OwnershipGuard],
+  exports: [PrismaService, OwnershipGuard],
+})
+export class PrismaModule {}
+
+```
+
+# FILE: apps/backend/src/prisma/prisma.service.spec.ts
+
+```
+import { Test, TestingModule } from '@nestjs/testing';
+import { PrismaService } from './prisma.service';
+
+describe('PrismaService', () => {
+  let service: PrismaService;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [PrismaService],
+    }).compile();
+
+    service = module.get<PrismaService>(PrismaService);
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+});
+
+```
+
 # FILE: apps/backend/src/prisma/prisma.service.ts
 
 ```
@@ -894,7 +1788,7 @@ export class ReportsService {
           salaryRecords: true,
           event: {
             include: {
-              school: { select: { name: true, type: true } },
+              school: { select: { name: true, type: true, phone: true, director: true } },
               city: { select: { name: true } },
               crew: {
                 include: {
@@ -1474,8 +2368,8 @@ export class SchoolQueryDto extends PageOptionsDto {
   type?: 'Школа' | 'Садочок';
 
   @IsOptional()
-  @IsIn(['new', 'planned', 'inProgress', 'done'])
-  stage?: 'new' | 'planned' | 'inProgress' | 'done';
+  @IsIn(['new', 'planned', 'inProgress', 'notConfirmed', 'done'])
+  stage?: 'new' | 'planned' | 'inProgress' | 'notConfirmed' | 'done';
 
   @IsOptional()
   @IsIn(['small', 'medium', 'large'])
@@ -3739,6 +4633,22 @@ describe('SchoolsService — remove', () => {
   });
 });
 
+describe('SchoolsService — getStats', () => {
+  it('повертає notConfirmed у statusStats', async () => {
+    mockPrisma.$queryRaw
+      .mockResolvedValueOnce([{ new: 5, planned: 3, inProgress: 2, notConfirmed: 1, done: 4 }])
+      .mockResolvedValueOnce([]);
+
+    const service = await makeModule();
+    const result = await service.getStats({});
+
+    expect(result.statusStats.notConfirmed).toBe(1);
+    expect(result.statusStats.new).toBe(5);
+    expect(result.statusStats.inProgress).toBe(2);
+    expect(result.statusStats.done).toBe(4);
+  });
+});
+
 describe('SchoolsService — searchContacts', () => {
   it('повертає порожній масив якщо query порожній', async () => {
     const service = await makeModule();
@@ -3832,7 +4742,8 @@ import { SchoolQueryDto } from './dto/school-query.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
 
 const PLANNED_STAGES = ['BASE', 'FIRST_CONTACT', 'DATE_CONFIRMED'];
-const IN_PROGRESS_STAGES = ['PREPARATION', 'IN_PROGRESS', 'DONE', 'REPORT'];
+const IN_PROGRESS_STAGES = ['PREPARATION', 'IN_PROGRESS', 'DONE'];
+const NOT_CONFIRMED_STAGES = ['REPORT'];
 
 function concurrencyLimit(n: number) {
   let active = 0;
@@ -4022,6 +4933,11 @@ export class SchoolsService {
           SELECT 1 FROM "Event" e
           WHERE e."schoolId" = s.id AND e.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})
         )`;
+      case 'notConfirmed':
+        return Prisma.sql`EXISTS (
+          SELECT 1 FROM "Event" e
+          WHERE e."schoolId" = s.id AND e.status::text IN (${Prisma.join(NOT_CONFIRMED_STAGES)})
+        )`;
       case 'done':
         return Prisma.sql`EXISTS (
           SELECT 1 FROM "Event" e
@@ -4057,6 +4973,7 @@ export class SchoolsService {
     isPlanned: boolean;
     isInProgress: boolean;
     isDone: boolean;
+    isNotConfirmed: boolean;
     [key: string]: unknown;
   }) {
     const {
@@ -4066,11 +4983,13 @@ export class SchoolsService {
       isPlanned,
       isInProgress,
       isDone,
+      isNotConfirmed,
       ...school
     } = row;
-    const categories: ('planned' | 'inProgress' | 'done')[] = [];
+    const categories: ('planned' | 'inProgress' | 'notConfirmed' | 'done')[] = [];
     if (isPlanned) categories.push('planned');
     if (isInProgress) categories.push('inProgress');
+    if (isNotConfirmed) categories.push('notConfirmed');
     if (isDone) categories.push('done');
     return {
       ...school,
@@ -4097,13 +5016,15 @@ export class SchoolsService {
       SELECT s.*, c.id as city_id, c.name as city_name, latest.status as "latestStatus",
         COALESCE(ef."isPlanned", false) as "isPlanned",
         COALESCE(ef."isInProgress", false) as "isInProgress",
-        COALESCE(ef."isDone", false) as "isDone"
+        COALESCE(ef."isDone", false) as "isDone",
+        COALESCE(ef."isNotConfirmed", false) as "isNotConfirmed"
       ${baseFrom}
       LEFT JOIN LATERAL (
         SELECT
           bool_or(e.status::text IN (${Prisma.join(PLANNED_STAGES)})) as "isPlanned",
           bool_or(e.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})) as "isInProgress",
-          bool_or(e.status::text = 'RE_SALE') as "isDone"
+          bool_or(e.status::text = 'RE_SALE') as "isDone",
+          bool_or(e.status::text IN (${Prisma.join(NOT_CONFIRMED_STAGES)})) as "isNotConfirmed"
         FROM "Event" e
         WHERE e."schoolId" = s.id
       ) ef ON true
@@ -4153,19 +5074,21 @@ export class SchoolsService {
 
     const [statusRows, sizeRows] = await Promise.all([
       this.prisma.$queryRaw<
-        { new: bigint; planned: bigint; inProgress: bigint; done: bigint }[]
+        { new: bigint; planned: bigint; inProgress: bigint; notConfirmed: bigint; done: bigint }[]
       >(Prisma.sql`
         SELECT
-          COUNT(*) FILTER (WHERE NOT COALESCE(ef."isPlanned", false) AND NOT COALESCE(ef."isInProgress", false) AND NOT COALESCE(ef."isDone", false))::bigint as new,
+          COUNT(*) FILTER (WHERE NOT COALESCE(ef."isPlanned", false) AND NOT COALESCE(ef."isInProgress", false) AND NOT COALESCE(ef."isDone", false) AND NOT COALESCE(ef."isNotConfirmed", false))::bigint as new,
           COUNT(*) FILTER (WHERE COALESCE(ef."isPlanned", false))::bigint as planned,
           COUNT(*) FILTER (WHERE COALESCE(ef."isInProgress", false))::bigint as "inProgress",
+          COUNT(*) FILTER (WHERE COALESCE(ef."isNotConfirmed", false))::bigint as "notConfirmed",
           COUNT(*) FILTER (WHERE COALESCE(ef."isDone", false))::bigint as done
         FROM "School" s
         LEFT JOIN LATERAL (
           SELECT
             bool_or(e.status::text IN (${Prisma.join(PLANNED_STAGES)})) as "isPlanned",
             bool_or(e.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})) as "isInProgress",
-            bool_or(e.status::text = 'RE_SALE') as "isDone"
+            bool_or(e.status::text = 'RE_SALE') as "isDone",
+            bool_or(e.status::text IN (${Prisma.join(NOT_CONFIRMED_STAGES)})) as "isNotConfirmed"
           FROM "Event" e
           WHERE e."schoolId" = s.id
         ) ef ON true
@@ -4186,9 +5109,10 @@ export class SchoolsService {
           new: Number(statusRows[0].new),
           planned: Number(statusRows[0].planned),
           inProgress: Number(statusRows[0].inProgress),
+          notConfirmed: Number(statusRows[0].notConfirmed),
           done: Number(statusRows[0].done),
         }
-      : { new: 0, planned: 0, inProgress: 0, done: 0 };
+      : { new: 0, planned: 0, inProgress: 0, notConfirmed: 0, done: 0 };
 
     const sizeStats = { small: 0, medium: 0, large: 0 };
     for (const row of sizeRows) sizeStats[row.size] = Number(row.count);
@@ -6391,80 +7315,8 @@ export default defineConfig([
 
 ```
 
-# FILE: apps/frontend/index.html
-
-```
-
-
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="description" content="CRM система для управління подіями, школами та фінансами">
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <title>CRM</title>
-  </head>
-  <body class="overscroll-none">
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
-
-
-```
-
-# FILE: apps/frontend/lighthouserc.cjs
-
-```
-module.exports = {
-  ci: {
-    collect: {
-      url: [
-        "https://crm-frontend-cfwr3tsoi-shmaltsels-projects.vercel.app/cities",
-        "https://crm-frontend-cfwr3tsoi-shmaltsels-projects.vercel.app/schools",
-        "https://crm-frontend-cfwr3tsoi-shmaltsels-projects.vercel.app/events",
-        "https://crm-frontend-cfwr3tsoi-shmaltsels-projects.vercel.app/finance",
-      ],
-      numberOfRuns: 3,
-      settings: {
-        preset: "desktop",
-        formFactor: "desktop",
-        throttlingMethod: "devtools",     
-        screenEmulation: { disabled: true },
-        chromeFlags: "--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage",
-      },
-      skipAudits: ["redirects-http"],
-    },
-
-    upload: {
-      target: "temporary-public-storage",
-    },
-
-    assert: {
-      preset: "lighthouse:recommended",
-      assertions: {
-        "categories:performance": ["error", { minScore: 0.70 }],
-        "categories:accessibility": ["warn", { minScore: 0.85 }],
-        "categories:seo": ["warn", { minScore: 0.80 }],
-        "largest-contentful-paint": ["warn", { maxNumericValue: 3500 }],
-        "first-contentful-paint": ["warn", { maxNumericValue: 2500 }],
-        "cumulative-layout-shift": ["warn", { maxNumericValue: 0.25 }],
-        "total-blocking-time": ["warn", { maxNumericValue: 600 }],
-        "speed-index": ["warn", { maxNumericValue: 3500 }],
-      }
-    },
-
-    options: {
-      output: ["html", "json"],
-      onlyCategories: ["performance", "accessibility", "seo", "best-practices"],
-    }
-  }
-};
-```
-
 # FILE: apps/frontend/package.json
+# КРИТИЧНО ВАЖЛИВИЙ ФАЙЛ
 
 ```
 {
@@ -6540,503 +7392,3966 @@ module.exports = {
 
 ```
 
-# FILE: apps/frontend/playwright-report/data/0af93771251a1aac7eba3c4b3e7e07e20f9f3521.md
+# FILE: apps/frontend/playwright.config.ts
 
 ```
-# Instructions
+import { defineConfig } from "@playwright/test";
 
-- Following Playwright test failed.
-- Explain why, be concise, respect Playwright best practices.
-- Provide a snippet of code with the fix, if possible.
-
-# Test info
-
-- Name: debug.spec.ts >> debug schools
-- Location: tests\e2e\debug.spec.ts:28:1
-
-# Error details
-
-```
-Test timeout of 30000ms exceeded while setting up "page".
-```
-```
-
-# FILE: apps/frontend/playwright-report/data/75a9fc13ee294237be80ebf5013470510bbd6087.md
-
-```
-# Instructions
-
-- Following Playwright test failed.
-- Explain why, be concise, respect Playwright best practices.
-- Provide a snippet of code with the fix, if possible.
-
-# Test info
-
-- Name: debug.spec.ts >> debug dashboard
-- Location: tests\e2e\debug.spec.ts:24:1
-
-# Error details
-
-```
-Test timeout of 30000ms exceeded while setting up "page".
-```
-```
-
-# FILE: apps/frontend/playwright-report/data/814cbc9fc8c8a6b7fc3d9a6f2d90c9719ce22f6e.md
-
-```
-# Instructions
-
-- Following Playwright test failed.
-- Explain why, be concise, respect Playwright best practices.
-- Provide a snippet of code with the fix, if possible.
-
-# Test info
-
-- Name: debug.spec.ts >> debug dashboard
-- Location: tests\e2e\debug.spec.ts:24:1
-
-# Error details
-
-```
-Error: page.goto: net::ERR_INSUFFICIENT_RESOURCES at http://localhost:5173/dashboard
-Call log:
-  - navigating to "http://localhost:5173/dashboard", waiting until "networkidle"
+export default defineConfig({
+  testDir: "./tests/e2e",
+  fullyParallel: true,
+  retries: 1,
+  reporter: [["html", { outputFolder: "playwright-report", open: "never" }], ["list"]],
+  use: {
+    baseURL: "http://localhost:5173",
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
+  },
+  webServer: {
+    command: "npm run dev",
+    url: "http://localhost:5173",
+    reuseExistingServer: !process.env.CI,
+  },
+});
 
 ```
 
-# Test source
-
-```ts
-  1  | import { test, type Page } from "@playwright/test";
-  2  | import { setupApiMocking } from "./mocks/api";
-  3  | 
-  4  | async function dump(page: Page, path: string): Promise<void> {
-  5  |   const errors: string[] = [];
-  6  |   page.on("console", (m) => { if (m.type() === "error") errors.push("CONSOLE: " + m.text()); });
-  7  |   page.on("pageerror", (e) => errors.push("PAGEERROR: " + (e.stack ?? e.message)));
-  8  | 
-  9  |   await setupApiMocking(page, "MANAGER");
-> 10 |   await page.goto(path, { waitUntil: "networkidle" });
-     |              ^ Error: page.goto: net::ERR_INSUFFICIENT_RESOURCES at http://localhost:5173/dashboard
-  11 |   await page.waitForTimeout(1500);
-  12 | 
-  13 |   const url = page.url();
-  14 |   const navCount = await page.getByRole("tablist", { name: "Основна навігація" }).count();
-  15 |   const bodyText = (await page.locator("body").innerText()).slice(0, 300);
-  16 | 
-  17 |   console.log(`\n=== ${path} ===`);
-  18 |   console.log("URL:", url);
-  19 |   console.log("tablist count:", navCount);
-  20 |   console.log("BODY:", JSON.stringify(bodyText));
-  21 |   console.log("ERRORS:", errors.length ? errors.join("\n") : "none");
-  22 | }
-  23 | 
-  24 | test("debug dashboard", async ({ page }) => {
-  25 |   await dump(page, "/dashboard");
-  26 | });
-  27 | 
-  28 | test("debug schools", async ({ page }) => {
-  29 |   await dump(page, "/schools");
-  30 | });
-  31 | 
-```
-```
-
-# FILE: apps/frontend/playwright-report/data/95add6a817da409963558925ad047a5192a75ca1.md
-
-```
-# Instructions
-
-- Following Playwright test failed.
-- Explain why, be concise, respect Playwright best practices.
-- Provide a snippet of code with the fix, if possible.
-
-# Test info
-
-- Name: visual.spec.ts >> Mobile visual · iPhone 12 >> collect screenshots — SUPERADMIN
-- Location: tests\e2e\visual.spec.ts:86:7
-
-# Error details
-
-```
-Test timeout of 30000ms exceeded while setting up "page".
-```
-```
-
-# FILE: apps/frontend/playwright-report/data/b2de2e736f397f46870eab410161dfa347340a37.md
-
-```
-# Instructions
-
-- Following Playwright test failed.
-- Explain why, be concise, respect Playwright best practices.
-- Provide a snippet of code with the fix, if possible.
-
-# Test info
-
-- Name: visual.spec.ts >> Mobile visual · Pixel 5 >> collect screenshots — MANAGER
-- Location: tests\e2e\visual.spec.ts:86:7
-
-# Error details
-
-```
-Error: expect(locator).toBeVisible() failed
-
-Locator: getByRole('tablist', { name: 'Основна навігація' })
-Expected: visible
-Error: element(s) not found
-
-Call log:
-  - Expect "toBeVisible" with timeout 5000ms
-  - waiting for getByRole('tablist', { name: 'Основна навігація' })
+# FILE: apps/frontend/postcss.config.js
 
 ```
 
-# Test source
 
-```ts
-  1   | import { test, expect, type Page } from "@playwright/test";
-  2   | import { percySnapshot } from "@percy/playwright";
-  3   | import { setupApiMocking, type MockRole } from "./mocks/api";
-  4   | 
-  5   | interface Device {
-  6   |   name: string;
-  7   |   width: number;
-  8   |   height: number;
-  9   | }
-  10  | 
-  11  | const DEVICES: Device[] = [
-  12  |   { name: "iPhone 12", width: 390, height: 844 },
-  13  |   { name: "Pixel 5", width: 393, height: 851 },
-  14  |   { name: "iPhone SE", width: 375, height: 667 },
-  15  | ];
-  16  | 
-  17  | interface RouteSpec {
-  18  |   path: string;
-  19  |   label: string;
-  20  | }
-  21  | 
-  22  | const ROUTES_BY_ROLE: Record<MockRole, RouteSpec[]> = {
-  23  |   MANAGER: [
-  24  |     { path: "/dashboard", label: "Dashboard" },
-  25  |     { path: "/schools", label: "Schools" },
-  26  |     { path: "/kindergartens", label: "Kindergartens" },
-  27  |     { path: "/finance", label: "Finance" },
-  28  |     { path: "/calendar", label: "Calendar" },
-  29  |     { path: "/cities", label: "Cities" },
-  30  |     { path: "/reports/review", label: "Reports Review" },
-  31  |     { path: "/inventory", label: "Inventory" },
-  32  |     { path: "/city-leaderboard", label: "City Leaderboard" },
-  33  |     { path: "/schools/sch-1", label: "School Profile" },
-  34  |     { path: "/cities/city-1", label: "City Profile" },
-  35  |   ],
-  36  |   SUPERADMIN: [
-  37  |     { path: "/dashboard", label: "Dashboard" },
-  38  |     { path: "/schools", label: "Schools" },
-  39  |     { path: "/kindergartens", label: "Kindergartens" },
-  40  |     { path: "/finance", label: "Finance" },
-  41  |     { path: "/calendar", label: "Calendar" },
-  42  |     { path: "/cities", label: "Cities" },
-  43  |     { path: "/reports/review", label: "Reports Review" },
-  44  |     { path: "/inventory", label: "Inventory" },
-  45  |     { path: "/analytics", label: "Analytics" },
-  46  |     { path: "/employees", label: "Employees" },
-  47  |     { path: "/city-leaderboard", label: "City Leaderboard" },
-  48  |     { path: "/schools/sch-1", label: "School Profile" },
-  49  |     { path: "/cities/city-1", label: "City Profile" },
-  50  |   ],
-  51  | };
-  52  | 
-  53  | const ROLES: MockRole[] = ["MANAGER", "SUPERADMIN"];
-  54  | 
-  55  | async function snapshotRoute(page: Page, role: MockRole, device: Device, spec: RouteSpec): Promise<void> {
-  56  |   await page.goto(spec.path, { waitUntil: "networkidle" });
-  57  |   const nav = page.getByRole("tablist", { name: "Основна навігація" });
-> 58  |   await expect(nav).toBeVisible();
-      |                     ^ Error: expect(locator).toBeVisible() failed
-  59  |   await page.waitForTimeout(600);
-  60  |   await percySnapshot(page, `${role} · ${device.name} · ${spec.label}`);
-  61  | }
-  62  | 
-  63  | async function captureMoreSheet(page: Page, role: MockRole, device: Device): Promise<void> {
-  64  |   const more = page.getByLabel("Більше розділів");
-  65  |   await more.click();
-  66  |   await page.waitForTimeout(500);
-  67  |   await percySnapshot(page, `${role} · ${device.name} · More Sheet`);
-  68  |   await page.keyboard.press("Escape");
-  69  |   await page.waitForTimeout(300);
-  70  | }
-  71  | 
-  72  | async function captureNotifications(page: Page, role: MockRole, device: Device): Promise<void> {
-  73  |   const bell = page.getByRole("button", { name: "Сповіщення" });
-  74  |   await bell.click();
-  75  |   await page.waitForTimeout(500);
-  76  |   await percySnapshot(page, `${role} · ${device.name} · Notifications`);
-  77  |   await page.keyboard.press("Escape");
-  78  |   await page.waitForTimeout(300);
-  79  | }
-  80  | 
-  81  | for (const device of DEVICES) {
-  82  |   test.describe(`Mobile visual · ${device.name}`, () => {
-  83  |     test.use({ viewport: { width: device.width, height: device.height } });
-  84  | 
-  85  |     for (const role of ROLES) {
-  86  |       test(`collect screenshots — ${role}`, async ({ page }) => {
-  87  |         await setupApiMocking(page, role);
-  88  | 
-  89  |         for (const spec of ROUTES_BY_ROLE[role]) {
-  90  |           await snapshotRoute(page, role, device, spec);
-  91  |         }
-  92  | 
-  93  |         await page.goto("/dashboard", { waitUntil: "networkidle" });
-  94  |         await expect(page.getByRole("tablist", { name: "Основна навігація" })).toBeVisible();
-  95  |         await page.waitForTimeout(400);
-  96  | 
-  97  |         await captureMoreSheet(page, role, device);
-  98  |         await captureNotifications(page, role, device);
-  99  |       });
-  100 |     }
-  101 | 
-  102 |     test("collect screenshots — logged out (login)", async ({ page }) => {
-  103 |       await setupApiMocking(page, null);
-  104 |       await page.goto("/login", { waitUntil: "networkidle" });
-  105 |       await expect(page.getByRole("heading", { name: "Вхід у CRM" })).toBeVisible();
-  106 |       await page.waitForTimeout(400);
-  107 |       await percySnapshot(page, `Logged out · ${device.name} · Login`);
-  108 |     });
-  109 | 
-  110 |     test("collect screenshots — 404", async ({ page }) => {
-  111 |       await setupApiMocking(page, "MANAGER");
-  112 |       await page.goto("/tsi-y-shche-yakyy-shlyah", { waitUntil: "networkidle" });
-  113 |       await expect(page.getByText("Сторінку не знайдено")).toBeVisible();
-  114 |       await page.waitForTimeout(300);
-  115 |       await percySnapshot(page, `MANAGER · ${device.name} · 404`);
-  116 |     });
-  117 |   });
-  118 | }
-  119 | 
-```
-```
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
 
-# FILE: apps/frontend/playwright-report/data/b32117b91cb80d1e99978a9dbb9e317ff7af56c0.md
 
-```
-# Instructions
-
-- Following Playwright test failed.
-- Explain why, be concise, respect Playwright best practices.
-- Provide a snippet of code with the fix, if possible.
-
-# Test info
-
-- Name: debug.spec.ts >> debug schools
-- Location: tests\e2e\debug.spec.ts:28:1
-
-# Error details
-
-```
-Error: browserType.launch: spawn UNKNOWN
-Call log:
-  - <launching> C:\Users\shmal\AppData\Local\ms-playwright\chromium_headless_shell-1228\chrome-headless-shell-win64\chrome-headless-shell.exe --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --user-data-dir=C:\Users\shmal\AppData\Local\Temp\playwright_chromiumdev_profile-kyMBBY --remote-debugging-pipe --no-startup-window
-
-```
-```
-
-# FILE: apps/frontend/playwright-report/data/d99940007cea90847b829dff2e41aa75ab4a3e08.md
-
-```
-# Instructions
-
-- Following Playwright test failed.
-- Explain why, be concise, respect Playwright best practices.
-- Provide a snippet of code with the fix, if possible.
-
-# Test info
-
-- Name: visual.spec.ts >> Mobile visual · iPhone 12 >> collect screenshots — SUPERADMIN
-- Location: tests\e2e\visual.spec.ts:86:7
-
-# Error details
-
-```
-Error: browserContext.newPage: Target page, context or browser has been closed
-```
-```
-
-# FILE: apps/frontend/playwright-report/data/ec67af4a65cf19b4bea582775bd23559f63e070c.md
-
-```
-# Instructions
-
-- Following Playwright test failed.
-- Explain why, be concise, respect Playwright best practices.
-- Provide a snippet of code with the fix, if possible.
-
-# Test info
-
-- Name: visual.spec.ts >> Mobile visual · iPhone 12 >> collect screenshots — MANAGER
-- Location: tests\e2e\visual.spec.ts:86:7
-
-# Error details
-
-```
-Error: browserContext.newPage: Target page, context or browser has been closed
-```
-```
-
-# FILE: apps/frontend/playwright-report/data/fa8aa3a6c58cc27c2371abea1a93dd3abf06ffdd.md
-
-```
-# Instructions
-
-- Following Playwright test failed.
-- Explain why, be concise, respect Playwright best practices.
-- Provide a snippet of code with the fix, if possible.
-
-# Test info
-
-- Name: visual.spec.ts >> Mobile visual · Pixel 5 >> collect screenshots — SUPERADMIN
-- Location: tests\e2e\visual.spec.ts:86:7
-
-# Error details
-
-```
-Error: expect(locator).toBeVisible() failed
-
-Locator:  getByRole('tablist', { name: 'Основна навігація' })
-Expected: visible
-Received: undefined
-
-Call log:
-  - Expect "toBeVisible" with timeout 5000ms
-  - waiting for getByRole('tablist', { name: 'Основна навігація' })
 
 ```
 
-# Test source
+# FILE: apps/frontend/README.md
+# КРИТИЧНО ВАЖЛИВИЙ ФАЙЛ
 
-```ts
-  1   | import { test, expect, type Page } from "@playwright/test";
-  2   | import { percySnapshot } from "@percy/playwright";
-  3   | import { setupApiMocking, type MockRole } from "./mocks/api";
-  4   | 
-  5   | interface Device {
-  6   |   name: string;
-  7   |   width: number;
-  8   |   height: number;
-  9   | }
-  10  | 
-  11  | const DEVICES: Device[] = [
-  12  |   { name: "iPhone 12", width: 390, height: 844 },
-  13  |   { name: "Pixel 5", width: 393, height: 851 },
-  14  |   { name: "iPhone SE", width: 375, height: 667 },
-  15  | ];
-  16  | 
-  17  | interface RouteSpec {
-  18  |   path: string;
-  19  |   label: string;
-  20  | }
-  21  | 
-  22  | const ROUTES_BY_ROLE: Record<MockRole, RouteSpec[]> = {
-  23  |   MANAGER: [
-  24  |     { path: "/dashboard", label: "Dashboard" },
-  25  |     { path: "/schools", label: "Schools" },
-  26  |     { path: "/kindergartens", label: "Kindergartens" },
-  27  |     { path: "/finance", label: "Finance" },
-  28  |     { path: "/calendar", label: "Calendar" },
-  29  |     { path: "/cities", label: "Cities" },
-  30  |     { path: "/reports/review", label: "Reports Review" },
-  31  |     { path: "/inventory", label: "Inventory" },
-  32  |     { path: "/city-leaderboard", label: "City Leaderboard" },
-  33  |     { path: "/schools/sch-1", label: "School Profile" },
-  34  |     { path: "/cities/city-1", label: "City Profile" },
-  35  |   ],
-  36  |   SUPERADMIN: [
-  37  |     { path: "/dashboard", label: "Dashboard" },
-  38  |     { path: "/schools", label: "Schools" },
-  39  |     { path: "/kindergartens", label: "Kindergartens" },
-  40  |     { path: "/finance", label: "Finance" },
-  41  |     { path: "/calendar", label: "Calendar" },
-  42  |     { path: "/cities", label: "Cities" },
-  43  |     { path: "/reports/review", label: "Reports Review" },
-  44  |     { path: "/inventory", label: "Inventory" },
-  45  |     { path: "/analytics", label: "Analytics" },
-  46  |     { path: "/employees", label: "Employees" },
-  47  |     { path: "/city-leaderboard", label: "City Leaderboard" },
-  48  |     { path: "/schools/sch-1", label: "School Profile" },
-  49  |     { path: "/cities/city-1", label: "City Profile" },
-  50  |   ],
-  51  | };
-  52  | 
-  53  | const ROLES: MockRole[] = ["MANAGER", "SUPERADMIN"];
-  54  | 
-  55  | async function snapshotRoute(page: Page, role: MockRole, device: Device, spec: RouteSpec): Promise<void> {
-  56  |   await page.goto(spec.path, { waitUntil: "networkidle" });
-  57  |   const nav = page.getByRole("tablist", { name: "Основна навігація" });
-> 58  |   await expect(nav).toBeVisible();
-      |                     ^ Error: expect(locator).toBeVisible() failed
-  59  |   await page.waitForTimeout(600);
-  60  |   await percySnapshot(page, `${role} · ${device.name} · ${spec.label}`);
-  61  | }
-  62  | 
-  63  | async function captureMoreSheet(page: Page, role: MockRole, device: Device): Promise<void> {
-  64  |   const more = page.getByLabel("Більше розділів");
-  65  |   await more.click();
-  66  |   await page.waitForTimeout(500);
-  67  |   await percySnapshot(page, `${role} · ${device.name} · More Sheet`);
-  68  |   await page.keyboard.press("Escape");
-  69  |   await page.waitForTimeout(300);
-  70  | }
-  71  | 
-  72  | async function captureNotifications(page: Page, role: MockRole, device: Device): Promise<void> {
-  73  |   const bell = page.getByRole("button", { name: "Сповіщення" });
-  74  |   await bell.click();
-  75  |   await page.waitForTimeout(500);
-  76  |   await percySnapshot(page, `${role} · ${device.name} · Notifications`);
-  77  |   await page.keyboard.press("Escape");
-  78  |   await page.waitForTimeout(300);
-  79  | }
-  80  | 
-  81  | for (const device of DEVICES) {
-  82  |   test.describe(`Mobile visual · ${device.name}`, () => {
-  83  |     test.use({ viewport: { width: device.width, height: device.height } });
-  84  | 
-  85  |     for (const role of ROLES) {
-  86  |       test(`collect screenshots — ${role}`, async ({ page }) => {
-  87  |         await setupApiMocking(page, role);
-  88  | 
-  89  |         for (const spec of ROUTES_BY_ROLE[role]) {
-  90  |           await snapshotRoute(page, role, device, spec);
-  91  |         }
-  92  | 
-  93  |         await page.goto("/dashboard", { waitUntil: "networkidle" });
-  94  |         await expect(page.getByRole("tablist", { name: "Основна навігація" })).toBeVisible();
-  95  |         await page.waitForTimeout(400);
-  96  | 
-  97  |         await captureMoreSheet(page, role, device);
-  98  |         await captureNotifications(page, role, device);
-  99  |       });
-  100 |     }
-  101 | 
-  102 |     test("collect screenshots — logged out (login)", async ({ page }) => {
-  103 |       await setupApiMocking(page, null);
-  104 |       await page.goto("/login", { waitUntil: "networkidle" });
-  105 |       await expect(page.getByRole("heading", { name: "Вхід у CRM" })).toBeVisible();
-  106 |       await page.waitForTimeout(400);
-  107 |       await percySnapshot(page, `Logged out · ${device.name} · Login`);
-  108 |     });
-  109 | 
-  110 |     test("collect screenshots — 404", async ({ page }) => {
-  111 |       await setupApiMocking(page, "MANAGER");
-  112 |       await page.goto("/tsi-y-shche-yakyy-shlyah", { waitUntil: "networkidle" });
-  113 |       await expect(page.getByText("Сторінку не знайдено")).toBeVisible();
-  114 |       await page.waitForTimeout(300);
-  115 |       await percySnapshot(page, `MANAGER · ${device.name} · 404`);
-  116 |     });
-  117 |   });
-  118 | }
-  119 | 
 ```
+# React + TypeScript + Vite
+
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
+
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
+
+```
+
+# FILE: apps/frontend/src/main.tsx
+# КРИТИЧНО ВАЖЛИВИЙ ФАЙЛ
+
+```
+import "./instrument";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MotionConfig } from "framer-motion";
+import "./index.css";
+import App from "./App";
+import { ToastProvider } from "./components/ui/Toast";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      retry: 1,
+    },
+  },
+});
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <MotionConfig reducedMotion="user">
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <App />
+        </ToastProvider>
+      </QueryClientProvider>
+    </MotionConfig>
+  </StrictMode>,
+);
+
+```
+
+# FILE: apps/frontend/src/App.tsx
+# КРИТИЧНО ВАЖЛИВИЙ ФАЙЛ
+
+```
+import { Suspense, useEffect } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+
+import Layout from "./components/Layout";
+import { CityProvider } from "./context/CityContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { lazyWithRetry, TAB_PAGE_COMPONENTS } from "./pages/lazyTabPages";
+
+import ProtectedRoute from "./components/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
+import { SkeletonCard } from "./components/ui/Skeleton";
+
+const Login = lazyWithRetry(() => import("./pages/Login"));
+const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
+const CityProfile = lazyWithRetry(() => import("./pages/CityProfile"));
+const EventReport = lazyWithRetry(() => import("./pages/EventReport"));
+
+const Cities = lazyWithRetry(() => import("./pages/Cities"));
+const SchoolProfile = lazyWithRetry(() => import("./pages/SchoolProfile"));
+const ProjectProfile = lazyWithRetry(() => import("./pages/ProjectProfile"));
+const ReportsReview = lazyWithRetry(() => import("./features/reports/pages/ReportsReviewPage"));
+const Inventory = lazyWithRetry(() => import("./pages/Inventory"));
+const CityLeaderboard = lazyWithRetry(() => import("./pages/CityLeaderboard"));
+
+const Dashboard = TAB_PAGE_COMPONENTS["/dashboard"];
+const Schools = TAB_PAGE_COMPONENTS["/schools"];
+const Finance = TAB_PAGE_COMPONENTS["/finance"];
+const CalendarView = TAB_PAGE_COMPONENTS["/calendar"];
+const Employees = TAB_PAGE_COMPONENTS["/employees"];
+const Analytics = TAB_PAGE_COMPONENTS["/analytics"];
+
+const PageLoader = () => (
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-4 md:p-8">
+    <SkeletonCard />
+    <SkeletonCard />
+    <SkeletonCard />
+  </div>
+);
+
+function AppRoutes() {
+  const { user, loading, setUser } = useAuth();
+  const isAuthenticated = !!user;
+
+  const handleLogin = (loggedInUser: any) => {
+    setUser(loggedInUser);
+  };
+
+  if (loading) return <PageLoader />;
+
+  return (
+    <CityProvider>
+      <Routes>
+        <Route
+          path="/login"
+          element={
+            !isAuthenticated ? (
+              <Login onLogin={handleLogin} />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          }
+        />
+
+        {/* Захищені маршрути (Layout відображає бокове меню) */}
+        <Route
+          path="/"
+          element={
+            isAuthenticated ? <Layout /> : <Navigate to="/login" replace />
+          }
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
+
+          
+          <Route
+            path="cities"
+            element={
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER", "OWNER"]}>
+                <Suspense fallback={<PageLoader />}>
+                  <Cities />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="schools"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <Schools />
+              </Suspense>
+            }
+          />
+
+          <Route
+            path="schools/:id"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <SchoolProfile />
+              </Suspense>
+            }
+          />
+
+          <Route
+            path="employees"
+            element={
+              <ProtectedRoute allowedRoles={["SUPERADMIN"]}>
+                <Suspense fallback={<PageLoader />}>
+                  <Employees />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="finance"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <Finance />
+              </Suspense>
+            }
+          />
+
+          <Route
+            path="calendar"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <CalendarView />
+              </Suspense>
+            }
+          />
+            <Route
+              path="dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER", "OWNER"]}>
+                  <Suspense fallback={<PageLoader />}>
+                    <Dashboard />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="analytics"
+              element={
+                <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER"]}>
+                  <Suspense fallback={<PageLoader />}>
+                    <Analytics />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="city-leaderboard"
+              element={
+                <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
+                  <Suspense fallback={<PageLoader />}>
+                    <CityLeaderboard />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+
+          <Route
+            path="kindergartens"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <Schools />
+              </Suspense>
+            }
+          />
+
+          <Route
+            path="cities/:id"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <CityProfile />
+              </Suspense>
+            }
+          />
+
+          <Route
+            path="projects/:id"
+            element={
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
+                <Suspense fallback={<PageLoader />}>
+                  <ProjectProfile />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="events/:id/report"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <EventReport />
+              </Suspense>
+            }
+          />
+
+          <Route
+            path="reports/review"
+            element={
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
+                <Suspense fallback={<PageLoader />}>
+                  <ReportsReview />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="inventory"
+            element={
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
+                <Suspense fallback={<PageLoader />}>
+                  <Inventory />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+        </Route>
+
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </CityProvider>
+  );
+}
+export default function App() {
+  useEffect(() => {
+    window.Telegram?.WebApp?.expand();
+  }, []);
+
+  return (
+    <ErrorBoundary>
+      <Router>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </Router>
+    </ErrorBoundary>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/animations/employees.ts
+
+```
+import type { Variants } from "framer-motion";
+import {
+  DUR,
+  EASE,
+  SPRING,
+  backdropVariants,
+  modalContentVariants,
+  shakeVariants,
+  checkmarkVariants,
+  staggerContainer,
+  staggerItem,
+} from "../lib/motion";
+
+export {
+  backdropVariants,
+  modalContentVariants,
+  shakeVariants,
+  checkmarkVariants,
+  staggerContainer,
+  staggerItem,
+};
+
+export const sectionVariants: Variants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { staggerChildren: 0.07, delayChildren: 0.1 },
+  },
+};
+
+export const cardVariants: Variants = {
+  hidden: { opacity: 0, y: 20, scale: 0.96 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { ...SPRING.gentle },
+  },
+  hover: {
+    y: -4,
+    scale: 1.02,
+    transition: { duration: DUR.normal },
+  },
+};
+
+export const lineVariants: Variants = {
+  hidden: { scaleX: 0 },
+  visible: {
+    scaleX: 1,
+    transition: { duration: DUR.slow, ease: EASE.decelerate },
+  },
+};
+
+export const formVariants: Variants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.05, delayChildren: 0.05 },
+  },
+};
+
+export const fieldVariants: Variants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { duration: DUR.moderate, ease: EASE.outExpo } },
+};
+
+```
+
+# FILE: apps/frontend/src/components/AddressLink.tsx
+
+```
+interface AddressLinkProps {
+  address?: string | null;
+  className?: string;
+}
+
+export default function AddressLink({ address, className }: AddressLinkProps) {
+  if (!address) return <span className="text-slate-400">—</span>;
+
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    address,
+  )}`;
+
+  return (
+    <a
+      href={mapsUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      title="Відкрити в Google Maps"
+      className={`group inline-flex items-center gap-1.5 text-slate-700 hover:text-blue-600 transition-colors active:scale-95 ${
+        className ?? ""
+      }`}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.8}
+        className="w-3.5 h-3.5 shrink-0 text-slate-400 group-hover:text-blue-500 transition-colors"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
+        />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
+        />
+      </svg>
+      <span className="underline decoration-transparent group-hover:decoration-blue-300 decoration-1 underline-offset-2 transition-all">
+        {address}
+      </span>
+    </a>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/BottomNavigationBar.tsx
+
+```
+import { useMemo, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { MoreHorizontal } from "lucide-react";
+import { SPRING, DUR } from "../lib/motion";
+import { useAuth } from "../context/AuthContext";
+import { NAV_TABS } from "../constants/navTabs";
+import { hasRole } from "../utils/roles";
+import type { NavTab } from "../constants/navTabs";
+import MoreSheet from "./MoreSheet";
+
+export function useFilteredTabs(): NavTab[] {
+  const { user } = useAuth();
+  return useMemo(() => NAV_TABS.filter((t) => hasRole(user?.role, t.roles)), [user]);
+}
+
+export function useBottomTabs(): NavTab[] {
+  const { user } = useAuth();
+  return useMemo(() => {
+    const role = user?.role;
+    const allTabs = NAV_TABS.filter((t) => hasRole(role, t.roles));
+    if (role === "DRIVER" || role === "HOST") {
+      const keys = ["/schools", "/calendar", "/finance"];
+      return allTabs.filter((t) => keys.includes(t.to));
+    }
+    const keys = ["/dashboard", "/schools", "/calendar"];
+    return allTabs.filter((t) => keys.includes(t.to));
+  }, [user]);
+}
+
+function TabItem({ tab, isActive }: { tab: NavTab; isActive: boolean }) {
+  const Icon = tab.icon;
+  return (
+    <Link
+      to={tab.to}
+      role="tab"
+      aria-selected={isActive}
+      aria-label={tab.label}
+      className="relative flex items-center justify-center min-w-[44px] min-h-[44px] flex-1"
+    >
+      {isActive && (
+        <motion.div
+          layoutId="bottomnav-active-pill"
+          className="absolute inset-x-1 inset-y-1 bg-brand/10 rounded-control"
+          transition={SPRING.snappy}
+        />
+      )}
+      <motion.div
+        className="relative z-10 flex flex-col items-center justify-center gap-0.5"
+        whileTap={{ scale: 0.85 }}
+        transition={{ duration: DUR.micro }}
+      >
+        <motion.div
+          animate={isActive ? { y: -1 } : { y: 0 }}
+          transition={SPRING.gentle}
+        >
+          <Icon className={`w-5 h-5 transition-colors duration-fast ${isActive ? "text-brand" : "text-content-muted"}`} />
+        </motion.div>
+        <span className={`text-2xs font-medium transition-colors duration-fast ${isActive ? "text-brand" : "text-content-muted"}`}>
+          {tab.label}
+        </span>
+      </motion.div>
+    </Link>
+  );
+}
+
+export default function BottomNavigationBar() {
+  const location = useLocation();
+  const tabs = useBottomTabs();
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  const activeIndex = useMemo(
+    () => tabs.findIndex((t) => location.pathname.startsWith(t.to)),
+    [tabs, location.pathname],
+  );
+
+  const isMoreActive = activeIndex === -1;
+
+  return (
+    <>
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border flex items-center justify-around px-1 h-14 overflow-visible"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+        role="tablist"
+        aria-label="Основна навігація"
+      >
+        {tabs.map((tab, i) => (
+          <TabItem key={tab.to} tab={tab} isActive={i === activeIndex} />
+        ))}
+
+        <button
+          onClick={() => setSheetOpen(true)}
+          className="relative flex items-center justify-center min-w-[44px] min-h-[44px] flex-1"
+          aria-label="Більше розділів"
+          role="tab"
+          aria-selected={isMoreActive}
+        >
+          {isMoreActive && (
+            <motion.div
+              layoutId="bottomnav-active-pill"
+              className="absolute inset-x-1 inset-y-1 bg-brand/10 rounded-control"
+              transition={SPRING.snappy}
+            />
+          )}
+          <motion.div
+            className="relative z-10 flex flex-col items-center justify-center gap-0.5"
+            whileTap={{ scale: 0.85 }}
+            transition={{ duration: DUR.micro }}
+          >
+            <motion.div
+              animate={isMoreActive ? { rotate: 90, y: -1 } : { rotate: 0, y: 0 }}
+              transition={SPRING.gentle}
+            >
+              <MoreHorizontal className={`w-5 h-5 transition-colors duration-fast ${isMoreActive ? "text-brand" : "text-content-muted"}`} />
+            </motion.div>
+            <span className={`text-2xs font-medium transition-colors duration-fast ${isMoreActive ? "text-brand" : "text-content-muted"}`}>
+              Більше
+            </span>
+          </motion.div>
+        </button>
+      </nav>
+
+      <AnimatePresence>
+        {sheetOpen && <MoreSheet onClose={() => setSheetOpen(false)} />}
+      </AnimatePresence>
+    </>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/calendar/DayOffModal.tsx
+
+```
+import { createPortal } from "react-dom";
+import { useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { backdropVariants, modalContentVariants } from "../../lib/motion";
+import type { DayOff } from "../../hooks/useDaysOff";
+
+interface StaffUser {
+  id: string;
+  name: string;
+  role: string;
+}
+
+interface DayOffModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  date: Date | null;
+  staff: StaffUser[];
+  dayOffs: DayOff[];
+  onToggle: (userId: string, existingId?: string) => void;
+}
+
+const ROLE_ICON: Record<string, string> = {
+  HOST: "🎙️",
+  DRIVER: "🚗",
+};
+
+export default function DayOffModal({
+  isOpen,
+  onClose,
+  date,
+  staff,
+  dayOffs,
+  onToggle,
+}: DayOffModalProps) {
+  const headingId = 'dayoff-modal-heading';
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
+
+  const dateStr = date?.toLocaleDateString("uk-UA", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }) ?? "";
+
+  return createPortal(
+    <AnimatePresence>
+      {isOpen && date && (
+        <motion.div
+          variants={backdropVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        >
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={headingId}
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden select-none no-select-ios"
+          >
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div>
+                <h3 id={headingId} className="text-lg font-bold text-slate-800">
+                  Вихідний на {dateStr}
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Оберіть співробітника
+                </p>
+              </div>
+              <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors active:scale-90 transition-transform duration-fast">
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4 max-h-[60vh] overflow-y-auto">
+              {staff.length === 0 ? (
+                <p className="text-center text-slate-400 py-6 text-sm">
+                  Немає співробітників у цьому місті
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {staff.map((s) => {
+                    const existing = dayOffs.find((d) => d.userId === s.id);
+                    const isOff = !!existing;
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => onToggle(s.id, existing?.id)}
+                        className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left no-select-ios active:scale-[0.98] ${
+                          isOff
+                            ? "border-rose-200 bg-rose-50"
+                            : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/30"
+                        }`}
+                      >
+                        <span className="flex items-center gap-2 font-medium text-slate-800">
+                          <span>{ROLE_ICON[s.role] || "👤"}</span>
+                          {s.name}
+                        </span>
+                        <span
+                          className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                            isOff
+                              ? "bg-rose-100 text-rose-600"
+                              : "bg-slate-100 text-slate-500"
+                          }`}
+                        >
+                          {isOff ? "Вихідний ✕" : "Призначити"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body,
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/cities/CityDesktopGrid.tsx
+
+```
+import { useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import type { City } from "../../types";
+import OptimizedImage from "../ui/OptimizedImage";
+
+const CITY_PHOTOS: Record<string, string> = {
+  Львів:
+    "https://static4.depositphotos.com/1027798/376/i/450/depositphotos_3763579-stock-photo-lviv-lvov-ukraine.jpg",
+
+  Київ: "https://st.depositphotos.com/58719516/51188/i/450/depositphotos_511888226-stock-photo-kyiv-central-square-buildings-landscape.jpg",
+
+  Харків:
+    "https://st.depositphotos.com/67336120/56801/i/950/depositphotos_568018044-stock-photo-kharkiv-ukraine-spring-2021-panoramic.jpg",
+
+  Одеса:
+    "https://st3.depositphotos.com/3644443/16721/i/450/depositphotos_167218870-stock-photo-aerial-view-opera-and-ballet.jpg",
+
+  Дніпро:
+    "https://st4.depositphotos.com/1005991/20622/i/450/depositphotos_206223052-stock-photo-dnepropetrovsk-beautiful-city-landscape-dnepr.jpg",
+
+  Запоріжжя:
+    "https://st4.depositphotos.com/2955305/41468/i/950/depositphotos_414689920-stock-photo-zaporozhye-ukraine-2020-theater-square.jpg",
+
+  "Івано-Франківськ":
+    "https://st3.depositphotos.com/7149852/15888/i/450/depositphotos_158883576-stock-photo-the-center-of-historic-european.jpg",
+
+  Чернівці:
+    "https://st3.depositphotos.com/6179956/16823/i/450/depositphotos_168238240-stock-photo-chernivtsi-ukraine-april-2017-residence.jpg",
+
+  Тернопіль:
+    "https://st.depositphotos.com/3651191/51255/i/450/depositphotos_512553730-stock-photo-colorful-autumn-view-flying-drone.jpg",
+
+  Ужгород:
+    "https://st2.depositphotos.com/2954445/42446/i/950/depositphotos_424466430-stock-photo-view-city-mountain-uzhhorod-castle.jpg",
+
+  Миколаїв:
+    "https://korabelov.info/wp-content/uploads/2023/02/752638-780x470.jpg.webp",
+
+  Вінниця:
+    "https://st5.depositphotos.com/10859846/83141/i/950/depositphotos_831410524-stock-photo-aerial-view-cremona-italy-highlighting.jpg",
+
+  Херсон:
+    "https://st2.depositphotos.com/28888872/48293/i/450/depositphotos_482930928-stock-photo-aerial-view-of-the-kherson.jpg",
+
+  Полтава:
+    "https://st4.depositphotos.com/8109164/38951/i/450/depositphotos_389510792-stock-photo-aerial-view-on-holy-dormition.jpg",
+
+  Чернігів:
+    "https://st2.depositphotos.com/1642129/6819/i/450/depositphotos_68194491-stock-photo-chernihivs-railway-station-is-looking.jpg",
+
+  Черкаси:
+    "https://st4.depositphotos.com/6259690/24892/i/450/depositphotos_248928436-stock-photo-scenic-cityscape-of-cherkasy-ukraine.jpg",
+
+  Суми: "https://st3.depositphotos.com/29384342/33416/i/450/depositphotos_334165806-stock-photo-scenic-view-christmas-decorations.jpg",
+
+  Житомир:
+    "https://st4.depositphotos.com/1315434/22548/i/950/depositphotos_225486326-stock-photo-aerial-view-zhytomyr-city-ukraine.jpg",
+
+  Хмельницький:
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSMF4ElBw0lBXcW--rvqPYk5ZTM7PXi-A6qxxw9UAwhmg&s=10",
+
+  Рівне:
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSVEqOaKt-xPQssGp6LtVdqPkKmNMeK1BkDf9HwkF0_qw&s=10",
+
+  Кропивницький:
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcToTY417WfgkTzzu3LZ2o_3MOpWeP4D2ueot6GV80VQPA&s=10",
+
+  Луцьк:
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTRWzzd6fMVMUDsaUHZITW7-U8MS-FpM70v2DjBnoYRoQ&s=10",
+};
+const DEFAULT_PHOTO =
+  "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80&auto=format";
+
+function CityCard({
+  city,
+  index,
+  isSelected,
+  onSelect,
+}: {
+  city: City;
+  index: number;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  const navigate = useNavigate();
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const img = imgRef.current;
+    if (!img) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width - 0.5) * 8;
+    const y = ((e.clientY - rect.top) / rect.height - 0.5) * 8;
+    img.style.transform = `scale(1.08) translate(${x}px, ${y}px)`;
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    const img = imgRef.current;
+    if (!img) return;
+    img.style.transform = "scale(1) translate(0, 0)";
+  }, []);
+
+  return (
+    <div
+      style={{
+        animationDelay: `${index * 60}ms`,
+        animationFillMode: "both",
+      }}
+      className={`
+        city-card-enter
+        bg-white rounded-2xl shadow-sm border overflow-hidden group
+        transition-[transform,box-shadow] duration-300 ease-out
+        hover:-translate-y-1.5 hover:scale-[1.02] hover:shadow-xl
+        ${
+          isSelected
+            ? "border-blue-500 ring-4 ring-blue-500/20 shadow-md"
+            : "border-slate-100 hover:border-blue-200"
+        }
+      `}
+    >
+      {/* Фото з паралаксом і градієнтом Netflix-стилю */}
+      <div
+        className="h-44 overflow-hidden relative"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      >
+        <img
+          ref={imgRef}
+          src={CITY_PHOTOS[city.name] || DEFAULT_PHOTO}
+          alt={city.name}
+          loading="lazy"
+          decoding="async"
+          className="w-full h-full object-cover transition-transform duration-300 ease-out"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = DEFAULT_PHOTO;
+          }}
+        />
+
+        {/* Темний градієнт знизу — назва міста чітко читається */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+
+        {/* Назва міста поверх градієнта */}
+        <div className="absolute bottom-0 left-0 right-0 p-4">
+          <h2 className="text-white text-xl font-bold drop-shadow-sm leading-tight">
+            {city.name}
+          </h2>
+        </div>
+
+        {/* Чекмарк якщо місто обрано */}
+        {isSelected && (
+          <div className="check-enter absolute top-3 right-3 bg-blue-500 text-white p-1.5 rounded-full shadow-lg">
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={3}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          </div>
+        )}
+      </div>
+
+      {/* Контент картки */}
+      <div className="p-5">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-100">
+            Активне
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 mb-4 text-sm text-slate-600">
+          <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold shrink-0">
+            {city.manager?.name?.charAt(0) ?? "?"}
+          </div>
+          <span>
+            Менеджер:{" "}
+            <span className="font-medium">{city.manager?.name ?? "—"}</span>
+          </span>
+        </div>
+
+        <div className="space-y-2 text-sm border-t border-slate-50 pt-3">
+          <div className="flex justify-between text-slate-500">
+            <span>Заплановано подій:</span>
+            <span className="font-semibold text-slate-800">
+              {city.plannedEvents ?? 0}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex gap-2 mt-4 pt-3 border-t border-slate-50">
+          <button
+            onClick={onSelect}
+            className={`flex-1 text-sm font-medium py-2 rounded-lg transition-all duration-200 ${
+              isSelected
+                ? "bg-blue-50 text-blue-700 border border-blue-200 scale-[0.98]"
+                : "bg-blue-600 hover:bg-blue-700 text-white hover:scale-[1.02]"
+            }`}
+          >
+            <span className="inline-flex items-center gap-1.5 transition-all duration-200">
+              {isSelected ? "✓ Обрано" : "Вибрати"}
+            </span>
+          </button>
+          <button
+            onClick={() => navigate(`/cities/${city.id}`)}
+            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm rounded-lg transition-colors"
+          >
+            →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface CityDesktopGridProps {
+  cities: City[];
+  selectedCity: City | null;
+  onSelectCity: (city: { id: string; name: string }) => void;
+}
+
+export default function CityDesktopGrid({
+  cities,
+  selectedCity,
+  onSelectCity,
+}: CityDesktopGridProps) {
+  return (
+    <>
+      {}
+      <style>{`
+        @keyframes cityCardIn {
+          from { opacity: 0; transform: translateY(20px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .city-card-enter {
+          animation: cityCardIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes checkIn {
+          from { opacity: 0; transform: scale(0.4) rotate(-20deg); }
+          to   { opacity: 1; transform: scale(1) rotate(0deg); }
+        }
+        .check-enter {
+          animation: checkIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+      `}</style>
+
+      <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {cities.map((city: City, index: number) => (
+          <CityCard
+            key={city.id}
+            city={city}
+            index={index}
+            isSelected={selectedCity?.id === city.id}
+            onSelect={() => onSelectCity({ id: city.id, name: city.name })}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/cities/CityMobileHeader.tsx
+
+```
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { api } from "../../config/api";
+import type { City, IssueReport } from "../../types";
+import { CITY_ICONS, DEFAULT_CITY_ICON } from "../../constants/cityIcons";
+
+interface Props {
+  selectedCity: City | null;
+  cities: City[];
+}
+
+const STATUSES = ["Планується", "Виконується", "Виконано"];
+
+const STATUS_STYLES: Record<string, string> = {
+  Планується: "bg-amber-50 text-amber-700 border-amber-200",
+  Виконується: "bg-blue-50 text-blue-700 border-blue-200",
+  Виконано: "bg-emerald-50 text-emerald-700 border-emerald-200",
+};
+
+function getNextStatus(current: string) {
+  const idx = STATUSES.indexOf(current);
+  return STATUSES[(idx + 1) % STATUSES.length];
+}
+
+export default function CityMobileHeader({ selectedCity, cities }: Props) {
+  const navigate = useNavigate();
+  const [issues, setIssues] = useState<IssueReport[]>([]);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isListExiting, setIsListExiting] = useState(false);
+  const [exitingIssueId, setExitingIssueId] = useState<string | null>(null);
+  const [issuesVisible, setIssuesVisible] = useState(false);
+  const [issuesExiting, setIssuesExiting] = useState(false);
+
+  useEffect(() => {
+    if (!selectedCity?.id) {
+      setIssues([]);
+      return;
+    }
+    api
+      .get(`/issues?cityId=${selectedCity.id}`)
+      .then((res) => {
+        const filtered = res.data.filter((i: IssueReport) => i.status !== "Виконано");
+        setIssues(filtered);
+        if (filtered.length > 0) {
+          setIssuesExiting(false);
+          setIssuesVisible(true);
+        } else {
+          setIssuesExiting(true);
+          setTimeout(() => {
+            setIssuesVisible(false);
+            setIssuesExiting(false);
+          }, 300);
+        }
+      })
+      .catch(console.error);
+  }, [selectedCity?.id]);
+
+  const handleStatusToggle = async (issue: IssueReport) => {
+    const nextStatus = getNextStatus(issue.status);
+
+    if (nextStatus === "Виконано") {
+      setExitingIssueId(issue.id);
+      setTimeout(() => {
+        setIssues((prev) => {
+          const next = prev.filter((i) => i.id !== issue.id);
+          if (next.length === 0) {
+            setIsExpanded(false);
+            setIssuesExiting(true);
+            setTimeout(() => {
+              setIssuesVisible(false);
+              setIssuesExiting(false);
+            }, 300);
+          }
+          return next;
+        });
+        setExitingIssueId(null);
+      }, 400);
+    } else {
+      setIssues((prev) =>
+        prev.map((i) => (i.id === issue.id ? { ...i, status: nextStatus } : i)),
+      );
+    }
+
+    api
+      .patch(`/issues/${issue.id}/status`, { status: nextStatus })
+      .catch((e) => {
+        console.error(e);
+        setIssues((prev) =>
+          prev.map((i) =>
+            i.id === issue.id ? { ...i, status: issue.status } : i,
+          ),
+        );
+      });
+  };
+
+  const currentCityData = cities?.find((c: City) => c.id === selectedCity?.id);
+  const totalEvents =
+    (currentCityData?.plannedEvents || 0) +
+    (currentCityData?.completedEvents || 0);
+  const schoolsCount = currentCityData?.schoolsCount || 0;
+
+  return (
+    <div className="md:hidden flex flex-col gap-4 mb-4">
+      <style>{`
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+          from { opacity: 1; transform: translateY(0); max-height: 200px; }
+          to { opacity: 0; transform: translateY(-8px); max-height: 0; }
+        }
+        @keyframes expandDown {
+          from { opacity: 0; transform: translateY(-6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes cityNameChange {
+          0% { opacity: 1; transform: translateY(0); }
+          40% { opacity: 0; transform: translateY(-6px); }
+          60% { opacity: 0; transform: translateY(6px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        .city-name-change {
+          animation: cityNameChange 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .issues-enter {
+          animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          opacity: 0;
+        }
+        .issues-exit {
+          animation: slideUp 0.3s ease-in forwards;
+          overflow: hidden;
+        }
+        .expand-enter {
+          animation: expandDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          opacity: 0;
+        }
+        @keyframes collapseUp {
+          from { opacity: 1; transform: translateY(0); }
+          to { opacity: 0; transform: translateY(-8px); }
+        }
+        .expand-exit {
+          animation: collapseUp 0.22s ease-in forwards;
+        }
+        @keyframes statusFlash {
+          0% { transform: scale(1); }
+          40% { transform: scale(0.95); opacity: 0.7; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .status-flash {
+          animation: statusFlash 0.2s ease-out;
+        }
+      `}</style>
+
+      {/* Сповіщення про проблему з розгортанням */}
+      {issuesVisible && (
+        <div
+          className={`bg-danger-subtle border border-red-100 rounded-2xl p-4 flex flex-col gap-3 shadow-sm ${issuesExiting ? "issues-exit" : "issues-enter"}`}
+        >
+          <div
+            className="flex items-center gap-4 cursor-pointer"
+            onClick={() => {
+              if (isExpanded) {
+                setIsListExiting(true);
+                setTimeout(() => {
+                  setIsExpanded(false);
+                  setIsListExiting(false);
+                }, 250);
+              } else {
+                setIsExpanded(true);
+              }
+            }}
+          >
+            <div className="w-10 h-10 bg-red-100 text-red-500 rounded-full flex items-center justify-center shrink-0 text-xl shadow-sm">
+              🔔
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-slate-800 text-sm">
+                {issues.length} активн
+                {issues.length === 1
+                  ? "а проблема"
+                  : issues.length < 5
+                    ? "і проблеми"
+                    : "их проблем"}
+              </p>
+              {!isExpanded && (
+                <p className="text-xs text-slate-600 truncate mt-0.5">
+                  {issues[0]?.schoolName}
+                </p>
+              )}
+            </div>
+            <button
+              className="text-slate-400 hover:text-slate-600 text-2xl font-light transition-transform duration-300"
+              style={{
+                transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
+              }}
+            >
+              ›
+            </button>
+          </div>
+
+          {/* Розгорнутий список проблем */}
+          {isExpanded && (
+            <div
+              className={`flex flex-col gap-3 mt-2 pt-3 border-t border-red-100/50 ${isListExiting ? "expand-exit" : "expand-enter"}`}
+            >
+              {issues.map((issue) => {
+                const isExiting = exitingIssueId === issue.id;
+                return (
+                  <div
+                    key={issue.id}
+                    className={`bg-white rounded-2xl p-4 border border-red-100 shadow-sm relative transition-all duration-400 ease-in-out transform origin-top ${
+                      isExiting
+                        ? "opacity-0 scale-95 h-0 overflow-hidden !p-0 border-0"
+                        : "opacity-100 scale-100"
+                    }`}
+                  >
+                    <p className="text-[11px] text-slate-400 mb-1">
+                      {new Date(issue.createdAt).toLocaleDateString("uk-UA", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                    <p className="font-bold text-slate-800 text-sm">
+                      {issue.schoolName}
+                    </p>
+                    <p className="text-[11px] text-slate-500 mb-3">
+                      {issue.eventName}
+                    </p>
+
+                    <p className="text-sm text-slate-700 bg-slate-50 rounded-xl p-3 italic leading-relaxed border border-slate-100 mb-3">
+                      "{issue.message}"
+                    </p>
+
+                    <button
+                      onClick={() => handleStatusToggle(issue)}
+                      key={issue.status}
+                      className={`status-flash w-full text-xs font-bold px-3 py-2.5 rounded-lg border transition-colors text-left flex items-center gap-1.5 ${STATUS_STYLES[issue.status] || STATUS_STYLES["Планується"]}`}
+                    >
+                      <span className="text-[10px]">●</span> {issue.status}{" "}
+                      <span className="font-normal opacity-70">
+                        → натисни щоб змінити
+                      </span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Поточне місто */}
+      {selectedCity?.id && (
+        <div className="bg-white border border-blue-50 rounded-2xl p-4 shadow-sm">
+          <div className="flex justify-between items-center mb-4">
+            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">
+              Поточне місто
+            </span>
+            <span className="bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5">
+              ✓ Активне місто
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-blue-50 text-blue-600 flex items-center justify-center rounded-full text-lg city-name-change">
+              {CITY_ICONS[selectedCity.name] || DEFAULT_CITY_ICON}
+            </div>
+            <h2
+              key={selectedCity.id}
+              className="text-2xl font-bold text-slate-800 city-name-change"
+            >
+              {selectedCity.name}
+            </h2>
+          </div>
+
+          <div className="flex items-center justify-between text-xs font-medium gap-2">
+            <div className="flex items-center gap-1.5 text-slate-600 bg-slate-50 px-2.5 py-2 rounded-xl">
+              <span className="text-blue-500 text-sm">📅</span> {totalEvents}{" "}
+              подій
+            </div>
+            <div className="flex items-center gap-1.5 text-slate-600 bg-slate-50 px-2.5 py-2 rounded-xl">
+              <span className="text-blue-500 text-sm">🏫</span> {schoolsCount}{" "}
+              шкіл
+            </div>
+            <div className="flex items-center gap-1.5 text-rose-600 bg-rose-50 px-2.5 py-2 rounded-xl">
+              <span className="text-sm">⚠️</span> {issues.length} проблем
+            </div>
+            {/* <button 
+              onClick={() => navigate(`/cities/${selectedCity.id}`)} 
+              className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-blue-600 shadow-sm shrink-0"
+            >
+              →
+            </button> */}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/cities/CityMobileList.tsx
+
+```
+import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import type { City } from "../../types";
+import { CITY_ICONS, DEFAULT_CITY_ICON } from "../../constants/cityIcons";
+
+const ICON_COLORS = [
+  "bg-purple-50",
+  "bg-amber-50",
+  "bg-teal-50",
+  "bg-rose-50",
+  "bg-sky-50",
+];
+
+interface CityMobileListProps {
+  cities: City[];
+  selectedCity: City | null;
+  onSelectCity: (city: { id: string; name: string }) => void;
+}
+
+const TABS = [
+  { key: "ACTIVE" as const, label: "Активні" },
+  { key: "ALL" as const, label: "Усі" },
+  { key: "ARCHIVED" as const, label: "Архівні" },
+];
+
+export default function CityMobileList({
+  cities,
+  selectedCity,
+  onSelectCity,
+}: CityMobileListProps) {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<"ACTIVE" | "ALL" | "ARCHIVED">("ACTIVE");
+
+  const filteredCities = useMemo(() => {
+    return cities.filter((c: City) => {
+      const hasEvents = (c.plannedEvents || 0) + (c.completedEvents || 0) > 0;
+      if (activeTab === "ACTIVE") return hasEvents;
+      if (activeTab === "ARCHIVED") return !hasEvents;
+      return true;
+    });
+  }, [cities, activeTab]);
+
+  return (
+    <div className="md:hidden flex flex-col gap-3 mb-24 mt-1">
+      <div className="flex bg-surface-muted rounded-control p-0.5">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex-1 py-2 text-sm font-medium rounded-control transition-all duration-fast active:scale-95 ${
+              activeTab === tab.key
+                ? "bg-surface shadow-soft text-content-primary"
+                : "text-content-muted hover:text-content-secondary"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="bg-surface rounded-card shadow-card border border-border overflow-hidden">
+        {filteredCities.map((city: City, index: number) => {
+          const totalEvents = (city.plannedEvents || 0) + (city.completedEvents || 0);
+          const isSelected = selectedCity?.id === city.id;
+
+          return (
+            <div
+              key={city.id}
+              className={`flex items-center p-3 border-b border-border transition-colors duration-fast active:bg-surface-muted active:scale-[0.98] transition-transform ${
+                isSelected ? "bg-brand-50/30" : ""
+              }`}
+              onClick={() => onSelectCity({ id: city.id, name: city.name })}
+            >
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 text-lg shrink-0 ${ICON_COLORS[index % ICON_COLORS.length]}`}
+              >
+                {CITY_ICONS[city.name] || DEFAULT_CITY_ICON}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-content-primary text-sm">
+                  {city.name}
+                </p>
+                <p className="text-2xs text-content-muted mt-0.5">
+                  {totalEvents} подій · {city.schoolsCount || 0} шкіл
+                </p>
+              </div>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/cities/${city.id}`);
+                }}
+                className="p-2.5 text-content-muted hover:text-brand text-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center active:scale-90"
+              >
+                ›
+              </button>
+            </div>
+          );
+        })}
+
+        {filteredCities.length === 0 && (
+          <div className="p-8 text-center text-content-muted font-medium text-sm">
+            Міст не знайдено
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/city-profile/CityAnalytics.tsx
+
+```
+import { useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  PieChart, Pie, Cell,
+} from 'recharts';
+
+interface CityAnalyticsProps {
+  events: any[];
+}
+
+const PALETTE = ['#2563eb', '#10b981', '#06b6d4', '#f59e0b', '#8b5cf6', '#f43f5e', '#84cc16', '#6366f1', '#0ea5e9', '#ec4899', '#14b8a6', '#a855f7'];
+
+const UA_MONTHS = ['Січ', 'Лют', 'Бер', 'Квіт', 'Трав', 'Черв', 'Лип', 'Серп', 'Вер', 'Жовт', 'Лист', 'Груд'];
+const DATE_FMT = new Intl.DateTimeFormat('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+function toMonthKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthLabel(key: string) {
+  const [y, m] = key.split('-').map(Number);
+  return `${UA_MONTHS[m - 1]} ${String(y).slice(-2)}`;
+}
+
+function fmt(n: unknown) {
+  return new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
+}
+
+function toInputDate(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+export default function CityAnalytics({ events }: CityAnalyticsProps) {
+  const today = useMemo(() => new Date(), []);
+
+  const [from, setFrom] = useState(() => toInputDate(new Date(today.getFullYear(), today.getMonth() - 5, 1)));
+  const [to, setTo] = useState(() => toInputDate(today));
+  const [isOpen, setIsOpen] = useState(false);
+  const [draftFrom, setDraftFrom] = useState(from);
+  const [draftTo, setDraftTo] = useState(to);
+
+  const applyPreset = (months: number | null, mode?: 'year' | 'all') => {
+    const t = new Date();
+    let f: Date;
+    if (mode === 'year') f = new Date(t.getFullYear(), 0, 1);
+    else if (mode === 'all') f = new Date(2000, 0, 1);
+    else f = new Date(t.getFullYear(), t.getMonth() - (months! - 1), 1);
+    setDraftFrom(toInputDate(f));
+    setDraftTo(toInputDate(t));
+  };
+
+  const applyRange = () => {
+    setFrom(draftFrom);
+    setTo(draftTo);
+    setIsOpen(false);
+  };
+
+  const filtered = useMemo(() => {
+    const fromD = new Date(from);
+    const toD = new Date(to);
+    toD.setHours(23, 59, 59, 999);
+    return (events || []).filter(ev => {
+      const d = new Date(ev.date);
+      return d >= fromD && d <= toD;
+    });
+  }, [events, from, to]);
+
+  const monthly = useMemo(() => {
+    const map = new Map<string, { revenue: number; profit: number; children: number; count: number }>();
+    const fromD = new Date(from);
+    const toD = new Date(to);
+    const cursor = new Date(fromD.getFullYear(), fromD.getMonth(), 1);
+    const last = new Date(toD.getFullYear(), toD.getMonth(), 1);
+    let guard = 0;
+    while (cursor <= last && guard < 240) {
+      map.set(toMonthKey(cursor), { revenue: 0, profit: 0, children: 0, count: 0 });
+      cursor.setMonth(cursor.getMonth() + 1);
+      guard += 1;
+    }
+    filtered.forEach(ev => {
+      const key = toMonthKey(new Date(ev.date));
+      const bucket = map.get(key) || { revenue: 0, profit: 0, children: 0, count: 0 };
+      bucket.revenue += Number(ev.report?.totalSum || ev.price || 0);
+      bucket.profit += Number(ev.report?.remainderSum || 0);
+      bucket.children += Number(ev.report?.childrenCount || ev.childrenPlanned || 0);
+      bucket.count += 1;
+      map.set(key, bucket);
+    });
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, v]) => ({ key, label: monthLabel(key), ...v }));
+  }, [filtered, from, to]);
+
+  const totalRevenue = filtered.reduce((s, ev) => s + Number(ev.report?.totalSum || ev.price || 0), 0);
+  const totalProfit = filtered.reduce((s, ev) => s + Number(ev.report?.remainderSum || 0), 0);
+  const totalChildren = filtered.reduce((s, ev) => s + Number(ev.report?.childrenCount || ev.childrenPlanned || 0), 0);
+  const totalCount = filtered.length;
+
+  const pieData = monthly.filter(m => m.count > 0);
+  const pieTotal = pieData.reduce((s, m) => s + m.count, 0);
+  const hasRevenue = monthly.some(m => m.revenue > 0);
+
+  const exportCsv = () => {
+    const header = 'Місяць;Виручка;Прибуток;Подій;Дітей\n';
+    const rows = monthly.map(m => `${m.label};${m.revenue};${m.profit};${m.count};${m.children}`).join('\n');
+    const blob = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `analytics_${from}_${to}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const rangeLabel = `${DATE_FMT.format(new Date(from))} – ${DATE_FMT.format(new Date(to))}`;
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Контроли */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h3 className="font-bold text-content-primary text-lg">Аналітика по місяцях</h3>
+          <p className="text-sm text-content-muted mt-0.5">На основі завершених подій закладу</p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 sm:flex-none">
+            <button
+              onClick={() => { setDraftFrom(from); setDraftTo(to); setIsOpen(v => !v); }}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-surface border border-border-strong rounded-control text-xs sm:text-sm font-medium text-content-secondary hover:bg-surface-muted transition-colors"
+            >
+              📅 <span className="truncate">{rangeLabel}</span> <span className="text-content-muted">⌄</span>
+            </button>
+
+            <AnimatePresence>
+              {isOpen && (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="fixed inset-0 z-10"
+                    onClick={() => setIsOpen(false)}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, y: -4, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    className="absolute right-0 top-full mt-2 z-20 bg-surface rounded-xl shadow-lg border border-border p-4 w-72"
+                  >
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <button onClick={() => applyPreset(3)} className="px-3 py-1.5 rounded-pill text-xs bg-surface-muted hover:bg-neutral-200 font-medium transition-colors">3 міс.</button>
+                    <button onClick={() => applyPreset(6)} className="px-3 py-1.5 rounded-pill text-xs bg-surface-muted hover:bg-neutral-200 font-medium transition-colors">6 міс.</button>
+                    <button onClick={() => applyPreset(12)} className="px-3 py-1.5 rounded-pill text-xs bg-surface-muted hover:bg-neutral-200 font-medium transition-colors">12 міс.</button>
+                    <button onClick={() => applyPreset(null, 'year')} className="px-3 py-1.5 rounded-pill text-xs bg-surface-muted hover:bg-neutral-200 font-medium transition-colors">Цей рік</button>
+                    <button onClick={() => applyPreset(null, 'all')} className="px-3 py-1.5 rounded-pill text-xs bg-surface-muted hover:bg-neutral-200 font-medium transition-colors">Весь час</button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                      <label className="block text-xs text-content-muted mb-1">Від</label>
+                      <input type="date" value={draftFrom} onChange={e => setDraftFrom(e.target.value)} className="w-full p-2 border border-border-strong rounded-control text-base focus:outline-none focus:border-brand-300" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-content-muted mb-1">До</label>
+                      <input type="date" value={draftTo} onChange={e => setDraftTo(e.target.value)} className="w-full p-2 border border-border-strong rounded-control text-base focus:outline-none focus:border-brand-300" />
+                    </div>
+                  </div>
+                  <button onClick={applyRange} className="w-full bg-brand text-white py-2.5 rounded-control text-sm font-medium hover:bg-brand-hover transition-colors">
+                    Застосувати
+                  </button>
+                </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <button
+            onClick={exportCsv}
+            className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 bg-brand-50 text-brand rounded-control text-xs sm:text-sm font-medium hover:bg-blue-100 transition-colors"
+          >
+            ⬇ <span className="hidden sm:inline">Експорт</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Загальна інформація */}
+      <div className="bg-surface rounded-card shadow-card border border-border p-5 sm:p-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-5">
+          <Stat label="Загальна виручка" value={`${fmt(totalRevenue)} грн`} />
+          <Stat label="Загальний прибуток" value={`${fmt(totalProfit)} грн`} />
+          <Stat label="Проведено подій" value={totalCount} />
+          <Stat label="Охоплено дітей" value={fmt(totalChildren)} />
+        </div>
+      </div>
+
+      {/* Графіки */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Виручка по місяцях */}
+        <div className="bg-surface rounded-card shadow-card border border-border p-5 sm:p-6">
+          <h4 className="font-bold text-content-primary mb-4">Виручка по місяцях</h4>
+          {!hasRevenue ? (
+            <EmptyChart />
+          ) : (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={monthly} margin={{ top: 24, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={{ stroke: '#e2e8f0' }} tickLine={false} interval={monthly.length > 8 ? 1 : 0} />
+                <YAxis
+                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={46}
+                  tickFormatter={(v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)}
+                />
+                <Tooltip
+                  cursor={{ fill: '#f8fafc' }}
+                  formatter={(v: number) => [`${fmt(v)} грн`, 'Виручка']}
+                  contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }}
+                />
+                <Bar dataKey="revenue" fill="#2563eb" radius={[8, 8, 0, 0]} maxBarSize={48} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Проведено подій по місяцях */}
+        <div className="bg-surface rounded-card shadow-card border border-border p-5 sm:p-6">
+          <h4 className="font-bold text-content-primary mb-4">Проведено подій по місяцях</h4>
+          {pieData.length === 0 ? (
+            <EmptyChart />
+          ) : (
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div className="relative w-44 h-44 shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={pieData} dataKey="count" nameKey="label" innerRadius={52} outerRadius={78} paddingAngle={2} strokeWidth={0}>
+                      {pieData.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+                    </Pie>
+                    <Tooltip formatter={(v: number, n: string) => [`${v} подій`, n]} contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-xs text-content-muted">Всього</span>
+                  <span className="text-xl font-bold text-content-primary">{pieTotal}</span>
+                </div>
+              </div>
+              <ul className="flex-1 flex flex-col gap-2 text-sm w-full min-w-0">
+                {pieData.map((m, i) => (
+                  <li key={m.key} className="flex items-center gap-2 min-w-0">
+                    <span className="w-2.5 h-2.5 rounded-pill shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} />
+                    <span className="text-content-secondary truncate flex-1">{m.label}</span>
+                    <span className="font-medium text-content-primary shrink-0">{m.count} ({Math.round((m.count / pieTotal) * 100)}%)</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs text-content-muted font-medium mb-1.5 truncate">{label}</p>
+      <p className="text-lg sm:text-2xl font-bold text-content-primary truncate">{value}</p>
+    </div>
+  );
+}
+
+function EmptyChart() {
+  return (
+    <div className="h-[280px] flex flex-col items-center justify-center text-slate-300">
+      <span className="text-3xl mb-2">📊</span>
+      <span className="text-sm text-content-muted">Немає даних за цей період</span>
+    </div>
+  );
+}
+```
+
+# FILE: apps/frontend/src/components/dashboard/ActivityFeed.tsx
+
+```
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { staggerContainer, staggerItem, emptyStateVariants } from '../../lib/motion';
+
+const ROLE_INITIALS: Record<string, string> = {
+  MANAGER:    'М',
+  SUPERADMIN: 'А',
+  DRIVER:     'В',
+  HOST:       'В',
+};
+
+const ROLE_COLORS: Record<string, string> = {
+  MANAGER:    'bg-brand-50 text-brand-700',
+  SUPERADMIN: 'bg-purple-50 text-purple-700',
+  DRIVER:     'bg-success-50 text-success-700',
+  HOST:       'bg-violet-50 text-violet-700',
+};
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(' ');
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  if (d.toDateString() === today.toDateString()) return 'сьогодні';
+  if (d.toDateString() === yesterday.toDateString()) return 'вчора';
+  return d.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' });
+}
+
+interface ActivityItem {
+  id:         string;
+  userName:   string;
+  role:       string;
+  action:     string;
+  comment:    string | null;
+  createdAt:  string;
+  schoolId:   string | null;
+  schoolName: string | null;
+  eventId:    string | null;
+}
+
+interface Group {
+  key:       string;
+  userName:  string;
+  role:      string;
+  schoolId:  string | null;
+  schoolName: string | null;
+  actions:   { id: string; action: string; comment: string | null; createdAt: string }[];
+}
+
+function groupItems(items: ActivityItem[]): Group[] {
+  const groups: Group[] = [];
+
+  for (const item of items) {
+    const last = groups[groups.length - 1];
+    const sameUser   = last?.userName  === item.userName;
+    const sameSchool = last?.schoolId  === item.schoolId; 
+
+    if (last && sameUser && sameSchool) {
+      last.actions.push({ id: item.id, action: item.action, comment: item.comment, createdAt: item.createdAt });
+    } else {
+      groups.push({
+        key:        item.id,
+        userName:   item.userName,
+        role:       item.role,
+        schoolId:   item.schoolId,
+        schoolName: item.schoolName,
+        actions:    [{ id: item.id, action: item.action, comment: item.comment, createdAt: item.createdAt }],
+      });
+    }
+  }
+
+  return groups;
+}
+
+const COLLAPSED_COUNT = 2;
+
+interface Props {
+  items: ActivityItem[];
+}
+
+export default function ActivityFeed({ items }: Props) {
+  const navigate  = useNavigate();
+  const [expanded, setExpanded] = useState(false);
+
+  const groups   = groupItems(items);
+  const visible  = expanded ? groups : groups.slice(0, COLLAPSED_COUNT);
+  const hasMore  = groups.length > COLLAPSED_COUNT;
+
+  return (
+    <div className="mobile-card flex flex-col">
+
+      <div className="flex justify-between items-center mb-2.5">
+        <p className="text-sm font-semibold text-content-primary">Активність команди</p>
+        <span className="text-2xs text-content-muted">{formatDate(items[0]?.createdAt ?? new Date().toISOString())}</span>
+      </div>
+
+      {items.length === 0 ? (
+        <motion.div variants={emptyStateVariants} initial="hidden" animate="visible" className="py-5 text-center text-content-muted text-sm">
+          Сьогодні активності ще немає
+        </motion.div>
+      ) : (
+        <>
+          <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col gap-0.5">
+            {visible.map((group) => {
+              const avatarColor = ROLE_COLORS[group.role] ?? 'bg-neutral-100 text-neutral-600';
+              const shownActions = group.actions.slice(-3);
+              const hiddenCount  = group.actions.length - shownActions.length;
+              const lastTime     = formatTime(group.actions[group.actions.length - 1].createdAt);
+
+              return (
+                <motion.div key={group.key} variants={staggerItem} className="flex items-start gap-2.5 py-2 px-2 -mx-1 rounded-control hover:bg-surface-muted/60 transition-colors">
+
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-2xs font-semibold shrink-0 mt-0.5 ${avatarColor}`}>
+                    {getInitials(group.userName)}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-content-primary leading-tight">
+                      {group.userName}
+                      {group.schoolName && (
+                        <>
+                          {' · '}
+                          <button
+                            onClick={() => group.schoolId && navigate(`/schools/${group.schoolId}`)}
+                            className="text-brand hover:underline font-medium active:scale-[0.97] transition-transform duration-fast"
+                          >
+                            {group.schoolName}
+                          </button>
+                        </>
+                      )}
+                    </p>
+
+                    <div className="mt-0.5 flex flex-col gap-0.5">
+                      {hiddenCount > 0 && (
+                        <p className="text-2xs text-content-muted italic">+{hiddenCount} раніше</p>
+                      )}
+                      {shownActions.map((a) => (
+                        <p key={a.id} className="text-2xs text-content-secondary leading-snug">
+                          — {a.action.replace(/\.$/, '')}
+                          {a.comment && (
+                            <span className="text-content-muted italic"> «{a.comment}»</span>
+                          )}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+
+                  <span className="text-2xs text-content-muted shrink-0 pt-0.5">{lastTime}</span>
+
+                </motion.div>
+              );
+            })}
+          </motion.div>
+
+          {hasMore && (
+            <button
+              onClick={() => setExpanded(v => !v)}
+              className="mt-2.5 pt-2.5 border-t border-border text-2xs text-brand hover:underline text-center w-full active:scale-[0.97] transition-transform duration-fast"
+            >
+              {expanded
+                ? '↑ Згорнути'
+                : `↓ Показати ще ${groups.length - COLLAPSED_COUNT}`}
+            </button>
+          )}
+        </>
+      )}
+
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/dashboard/CitiesTable.tsx
+
+```
+import { useNavigate } from 'react-router-dom';
+
+function fmt(n: unknown): string {
+  return new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
+}
+
+function plural(n: number, one: string, few: string, many: string): string {
+  const mod10  = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+  return many;
+}
+
+interface CityRow {
+  cityId:       string;
+  cityName:     string;
+  schoolsCount: number;
+  activeEvents: number;
+  monthRevenue: number;
+}
+
+interface Props {
+  rows: CityRow[];
+}
+
+export default function CitiesTable({ rows }: Props) {
+  const navigate = useNavigate();
+
+  const totals = rows.reduce(
+    (acc, r) => {
+      acc.schools  += r.schoolsCount;
+      acc.events   += r.activeEvents;
+      acc.revenue  += r.monthRevenue;
+      return acc;
+    },
+    { schools: 0, events: 0, revenue: 0 },
+  );
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 rounded-md bg-purple-50 flex items-center justify-center">
+            <span className="text-xs">🗺️</span>
+          </div>
+          <p className="text-sm font-semibold text-slate-800">Стан по містах</p>
+        </div>
+        <button
+          onClick={() => navigate('/cities')}
+          className="text-xs text-blue-600 hover:underline active:scale-[0.97] transition-transform duration-fast"
+        >
+          Переглянути всі
+        </button>
+      </div>
+
+      <div className="overflow-x-auto -mx-4 px-4">
+        <table className="w-full text-left border-collapse min-w-[380px]">
+          <thead>
+            <tr className="border-b border-slate-100">
+              <th className="pb-2 text-xs font-medium text-slate-400 pr-3">Місто</th>
+              <th className="pb-2 text-xs font-medium text-slate-400 text-right pr-3">Шкіл</th>
+              <th className="pb-2 text-xs font-medium text-slate-400 text-right pr-3">Активних подій</th>
+              <th className="pb-2 text-xs font-medium text-slate-400 text-right">Виручка місяця</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr
+                key={row.cityId}
+                onClick={() => navigate(`/cities/${row.cityId}`)}
+                className="border-b border-slate-50 cursor-pointer hover:bg-slate-50/60 transition-colors"
+              >
+                <td className="py-2.5 pr-3">
+                  <span className="text-sm font-medium text-slate-800">
+                    {row.cityName}
+                  </span>
+                </td>
+                <td className="py-2.5 pr-3 text-right">
+                  <span className="text-sm text-slate-600">{row.schoolsCount}</span>
+                </td>
+                <td className="py-2.5 pr-3 text-right">
+                  {row.activeEvents > 0 ? (
+                    <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                      {row.activeEvents}
+                    </span>
+                  ) : (
+                    <span className="text-sm text-slate-300">—</span>
+                  )}
+                </td>
+                <td className="py-2.5 text-right">
+                  {row.monthRevenue > 0 ? (
+                    <span className="text-sm font-semibold text-slate-800">
+                      {fmt(row.monthRevenue)} грн
+                    </span>
+                  ) : (
+                    <span className="text-sm text-slate-300">—</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          {/* Підсумок */}
+          <tfoot>
+            <tr className="border-t border-slate-200">
+              <td className="pt-2.5 text-xs font-semibold text-slate-500">
+                Усього
+              </td>
+              <td className="pt-2.5 text-right text-xs font-semibold text-slate-600">
+                {totals.schools}
+              </td>
+              <td className="pt-2.5 text-right text-xs font-semibold text-slate-600">
+                {totals.events}
+              </td>
+              <td className="pt-2.5 text-right text-xs font-semibold text-blue-700">
+                {fmt(totals.revenue)} грн
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <p className="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-50">
+        {rows.length} {plural(rows.length, 'місто', 'міста', 'міст')} · виручка за поточний місяць
+      </p>
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/dashboard/DashboardTopNav.tsx
+
+```
+import { motion } from "framer-motion";
+import type { DashboardTab } from "../../constants/navTabs";
+import { SPRING } from "../../lib/motion";
+
+interface Props {
+  tabs: DashboardTab[];
+  activeTab: string;
+  onChange: (id: string) => void;
+}
+
+export default function DashboardTopNav({ tabs, activeTab, onChange }: Props) {
+  return (
+    <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-border">
+      <div className="relative">
+        <nav
+          className="flex overflow-x-auto no-scrollbar gap-0.5 px-4 md:px-8"
+          role="tablist"
+          aria-label="Вкладки дашборду"
+        >
+          {tabs.map((tab) => {
+            const isActive = tab.id === activeTab;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => onChange(tab.id)}
+                role="tab"
+                aria-selected={isActive}
+                className={`relative flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors shrink-0 active:scale-90 ${
+                  isActive
+                    ? "text-brand"
+                    : "text-content-muted hover:text-content-secondary"
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+                {isActive && (
+                  <motion.div
+                    layoutId="dashboard-active-tab"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-pill"
+                    transition={SPRING.stiff}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white/80 to-transparent pointer-events-none" />
+      </div>
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/dashboard/FunnelBar.tsx
+
+```
+import { useNavigate } from 'react-router-dom';
+
+const PIPELINE_STAGES = [
+  { key: 'BASE',           name: 'База',             icon: '🏫', color: 'text-slate-600',   bg: 'bg-slate-100',   bar: 'bg-slate-400'   },
+  { key: 'FIRST_CONTACT',  name: 'Перший контакт',   icon: '📞', color: 'text-blue-700',    bg: 'bg-blue-50',     bar: 'bg-blue-500'    },
+  { key: 'INTERESTED',     name: 'Зацікавлені',      icon: '⭐', color: 'text-amber-700',   bg: 'bg-amber-50',    bar: 'bg-amber-400'   },
+  { key: 'DATE_CONFIRMED', name: 'Підтверджено дату',icon: '📅', color: 'text-purple-700',  bg: 'bg-purple-50',   bar: 'bg-purple-500'  },
+  { key: 'PREPARATION',    name: 'Підготовка',       icon: '⚙️', color: 'text-orange-700',  bg: 'bg-orange-50',   bar: 'bg-orange-400'  },
+  { key: 'DONE',           name: 'Проведено',        icon: '✅', color: 'text-emerald-700', bg: 'bg-emerald-50',  bar: 'bg-emerald-500' },
+];
+
+interface Props {
+  funnel: Record<string, number>;
+}
+
+export default function FunnelBar({ funnel }: Props) {
+  const navigate = useNavigate();
+
+  const base  = funnel['BASE'] ?? 0;
+  const done  = funnel['DONE'] ?? 0;
+  const progress = base > 0 ? Math.round((done / base) * 100) : 0;
+
+  const counts = PIPELINE_STAGES.map(s => funnel[s.key] ?? 0);
+  const maxCount = Math.max(...counts, 1);
+
+  return (
+    <div>
+      <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">
+        Воронка роботи зі школами
+      </p>
+
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+
+        {/* Прогрес по місту */}
+        <div className="mb-4">
+          <div className="flex justify-between items-baseline mb-1.5">
+            <span className="text-xs text-slate-500">Прогрес по місту</span>
+            <span className="text-sm font-bold text-slate-800">{progress}%</span>
+          </div>
+          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1">
+            {done} з {base} шкіл дійшли до проведення події
+          </p>
+        </div>
+
+        {/* Стадії */}
+        <div className="flex flex-col gap-2">
+          {PIPELINE_STAGES.map((stage) => {
+            const count    = funnel[stage.key] ?? 0;
+            const barWidth = Math.round((count / maxCount) * 100);
+
+            return (
+              <button
+                key={stage.key}
+                onClick={() => navigate('/schools')}
+                className="flex items-center gap-3 group w-full text-left active:scale-[0.97] transition-transform duration-fast"
+              >
+                {/* Іконка */}
+                <div className={`w-6 h-6 rounded-md ${stage.bg} flex items-center justify-center text-xs shrink-0`}>
+                  {stage.icon}
+                </div>
+
+                {/* Назва */}
+                <span className="text-xs text-slate-600 w-36 shrink-0 truncate group-hover:text-slate-900 transition-colors">
+                  {stage.name}
+                </span>
+
+                {/* Бар */}
+                <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${stage.bar}`}
+                    style={{ width: `${barWidth}%` }}
+                  />
+                </div>
+
+                {/* Кількість */}
+                <span className={`text-xs font-bold w-6 text-right shrink-0 ${stage.color}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+      </div>
+    </div>
+  );
+}
+```
+
+# FILE: apps/frontend/src/components/dashboard/MonthlyKpi.tsx
+
+```
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { cardHoverVariants, staggerContainer, staggerItem } from '../../lib/motion';
+
+function fmt(n: unknown): string {
+  return new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
+}
+
+interface MonthlyKpi {
+  revenue:  number;
+  profit:   number;
+  children: number;
+  count:    number;
+}
+
+interface Props {
+  kpi: MonthlyKpi;
+}
+
+const UA_MONTHS = [
+  'січень','лютий','березень','квітень','травень','червень',
+  'липень','серпень','вересень','жовтень','листопад','грудень',
+];
+
+export default function MonthlyKpi({ kpi }: Props) {
+  const navigate = useNavigate();
+  const now = new Date();
+  const monthLabel = UA_MONTHS[now.getMonth()];
+  const yearLabel  = now.getFullYear();
+
+  const margin = kpi.revenue > 0
+    ? Math.round((kpi.profit / kpi.revenue) * 100)
+    : 0;
+
+  const tiles = [
+    {
+      label: 'Виручка',
+      value: `${fmt(kpi.revenue)} грн`,
+      sub:   kpi.count > 0 ? `${kpi.count} ${kpi.count === 1 ? 'подія' : kpi.count < 5 ? 'події' : 'подій'}` : 'Подій ще немає',
+      icon:  '💰',
+      color: 'text-blue-700',
+      bg:    'bg-blue-50',
+    },
+    {
+      label: 'Прибуток',
+      value: `${fmt(kpi.profit)} грн`,
+      sub:   `Маржа ${margin}%`,
+      icon:  '📈',
+      color: 'text-emerald-700',
+      bg:    'bg-emerald-50',
+    },
+    {
+      label: 'Дітей охоплено',
+      value: fmt(kpi.children),
+      sub:   kpi.count > 0 && kpi.children > 0
+        ? `~${Math.round(kpi.children / kpi.count)} на подію`
+        : '—',
+      icon:  '👦',
+      color: 'text-purple-700',
+      bg:    'bg-purple-50',
+    },
+  ];
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+      <div className="flex justify-between items-center mb-3">
+        <p className="text-sm font-semibold text-slate-800">
+          Фінанси —{' '}
+          <span className="font-normal text-slate-500 capitalize">
+            {monthLabel} {yearLabel}
+          </span>
+        </p>
+        <button
+          onClick={() => navigate('/finance')}
+          className="text-xs text-blue-600 hover:underline shrink-0 active:scale-[0.97] transition-transform duration-fast"
+        >
+          Детальніше
+        </button>
+      </div>
+
+      <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="grid grid-cols-3 gap-3">
+        {tiles.map((tile) => (
+          <motion.div
+            key={tile.label}
+            variants={staggerItem}
+            whileHover="hover"
+            initial="rest"
+            className={`rounded-xl p-3 ${tile.bg}`}
+          >
+            <div className="flex items-center gap-1.5 mb-2">
+              <span className="text-base">{tile.icon}</span>
+              <span className={`text-xs font-medium ${tile.color}`}>
+                {tile.label}
+              </span>
+            </div>
+            <p className={`text-lg font-bold leading-none ${tile.color}`}>
+              {tile.value}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">{tile.sub}</p>
+          </motion.div>
+        ))}
+      </motion.div>
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/dashboard/StaleSchools.tsx
+
+```
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { staggerContainer, staggerItem, emptyStateVariants } from "../../lib/motion";
+
+const STAGE_LABELS: Record<string, string> = {
+  BASE: "База",
+  FIRST_CONTACT: "Перший контакт",
+  INTERESTED: "Зацікавлені",
+  PRE_APPROVAL: "Попереднє погодження",
+  DATE_CONFIRMED: "Підтвердження дати",
+  PREPARATION: "Підготовка",
+  IN_PROGRESS: "Подія в роботі",
+};
+
+interface Tier {
+  label: string;
+  emoji: string;
+  min: number;
+  max: number;
+  dot: string;
+  badge: string;
+  bar: string;
+  row: string;
+}
+
+const TIERS: Tier[] = [
+  {
+    label: "Критично",
+    emoji: "🔴",
+    min: 21,
+    max: Infinity,
+    dot: "bg-red-500",
+    badge: "bg-red-100 text-red-700 border border-red-200",
+    bar: "bg-red-500",
+    row: "hover:bg-red-50/40",
+  },
+  {
+    label: "Небезпечно",
+    emoji: "🟠",
+    min: 14,
+    max: 20,
+    dot: "bg-orange-400",
+    badge: "bg-orange-100 text-orange-700 border border-orange-200",
+    bar: "bg-orange-400",
+    row: "hover:bg-orange-50/40",
+  },
+  {
+    label: "Увага",
+    emoji: "🟡",
+    min: 7,
+    max: 13,
+    dot: "bg-amber-400",
+    badge: "bg-amber-100 text-amber-700 border border-amber-200",
+    bar: "bg-amber-400",
+    row: "hover:bg-amber-50/30",
+  },
+];
+
+function getTier(days: number): Tier {
+  return TIERS.find((t) => days >= t.min && days <= t.max) ?? TIERS[2];
+}
+
+function barWidth(days: number): number {
+  return Math.min(100, Math.round((days / 30) * 100));
+}
+
+interface StaleSchool {
+  id: string;
+  name: string;
+  status: string | null;
+  daysStale: number | null;
+}
+
+interface Props {
+  schools: StaleSchool[];
+}
+
+export default function StaleSchools({ schools }: Props) {
+  const navigate = useNavigate();
+
+  const sorted = [...schools].sort(
+    (a, b) => (b.daysStale ?? 0) - (a.daysStale ?? 0),
+  );
+
+  const criticalCount = schools.filter((s) => (s.daysStale ?? 0) >= 21).length;
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col">
+      {/* Хедер */}
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 rounded-md bg-amber-50 flex items-center justify-center">
+            <span className="text-xs">⚠️</span>
+          </div>
+          <p className="text-sm font-semibold text-slate-800">
+            Потребують уваги
+          </p>
+          {criticalCount > 0 && (
+            <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-red-500 text-white leading-none">
+              {criticalCount}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => navigate("/schools")}
+          className="text-xs text-blue-600 hover:underline shrink-0 active:scale-[0.97] transition-transform duration-fast"
+        >
+          Переглянути всі
+        </button>
+      </div>
+
+      {schools.length === 0 ? (
+        <motion.div variants={emptyStateVariants} initial="hidden" animate="visible" className="py-6 text-center">
+          <p className="text-2xl mb-1">✅</p>
+          <p className="text-sm text-slate-400">Усі школи активні</p>
+        </motion.div>
+      ) : (
+        <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col gap-1">
+          {sorted.map((school) => {
+            const days = school.daysStale ?? 0;
+            const tier = getTier(days);
+            const stageLabel = school.status
+              ? (STAGE_LABELS[school.status] ?? school.status)
+              : "—";
+            const width = barWidth(days);
+
+            return (
+              <motion.div
+                key={school.id}
+                variants={staggerItem}
+                onClick={() => navigate(`/schools/${school.id}`)}
+                className={`group relative flex items-center gap-3 py-2.5 px-2 -mx-1 rounded-xl cursor-pointer transition-colors ${tier.row}`}
+              >
+                {/* Кольорова крапка-індикатор */}
+                <div className={`w-2 h-2 rounded-full shrink-0 ${tier.dot}`} />
+
+                {/* Назва + стадія + прогрес-бар */}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-slate-800 truncate leading-tight">
+                    {school.name}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5 mb-1.5">
+                    {stageLabel}
+                  </p>
+
+                  {/* Heat bar */}
+                  <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${tier.bar}`}
+                      style={{ width: `${width}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Badge з днями */}
+                <span
+                  className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${tier.badge}`}
+                >
+                  {days} дн
+                </span>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      )}
+
+      {/* Футер — легенда тирів */}
+      {schools.length > 0 && (
+        <div className="flex items-center gap-3 mt-4 pt-3 border-t border-slate-50">
+          {TIERS.map((t) => {
+            const count = schools.filter(
+              (s) => (s.daysStale ?? 0) >= t.min && (s.daysStale ?? 0) <= t.max,
+            ).length;
+            if (count === 0) return null;
+            return (
+              <span
+                key={t.label}
+                className="flex items-center gap-1 text-xs text-slate-400"
+              >
+                {t.emoji}{" "}
+                <span className="font-medium text-slate-600">{count}</span>{" "}
+                {t.label.toLowerCase()}
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/dashboard/TabErrorBoundary.tsx
+
+```
+import { Component, type ReactNode } from "react";
+import * as Sentry from "@sentry/react";
+
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
+  label?: string;
+}
+
+interface State {
+  hasError: boolean;
+}
+
+export default class TabErrorBoundary extends Component<Props, State> {
+  state: State = { hasError: false };
+
+  static getDerivedStateFromProps(nextProps: Props, prevState: State): State | null {
+    if (prevState.hasError) {
+      return { hasError: false };
+    }
+    return null;
+  }
+
+  componentDidCatch(error: Error, info: { componentStack?: string }) {
+    Sentry.captureException(error, {
+      extra: { componentStack: info.componentStack, tab: this.props.label },
+    });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        this.props.fallback ?? (
+          <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+            <span className="text-3xl mb-3 opacity-50">⚠️</span>
+            <p className="text-sm font-medium">
+              Не вдалося завантажити вкладку{this.props.label ? ` «${this.props.label}»` : ""}
+            </p>
+            <p className="text-xs mt-1">Спробуйте оновити сторінку</p>
+          </div>
+        )
+      );
+    }
+    return this.props.children;
+  }
+}
+
+```
+
+# FILE: apps/frontend/src/components/dashboard/TodayEvents.tsx
+
+```
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { staggerContainer, staggerItem, emptyStateVariants } from "../../lib/motion";
+
+interface CrewMember {
+  id: string;
+  name: string;
+}
+
+interface Crew {
+  id: string;
+  name?: string;
+  host?: CrewMember | null;
+  driver?: CrewMember | null;
+}
+
+interface School {
+  id: string;
+  name: string;
+}
+
+interface TodayEvent {
+  id: string;
+  time?: string | null;
+  project: string;
+  school?: School | null;
+  crew?: Crew | null;
+}
+
+interface Props {
+  events: TodayEvent[];
+}
+
+function plural(n: number): string {
+  if (n % 10 === 1 && n % 100 !== 11) return "подія";
+  if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20))
+    return "події";
+  return "подій";
+}
+
+export default function TodayEvents({ events }: Props) {
+  const navigate = useNavigate();
+
+  const dateLabel = new Date().toLocaleDateString("uk-UA", {
+    day: "numeric",
+    month: "long",
+    weekday: "long",
+  });
+
+  return (
+    <div className="mobile-card flex flex-col">
+      <div className="flex justify-between items-start mb-2.5">
+        <div>
+          <p className="text-sm font-semibold text-content-primary">
+            Сьогоднішні події
+          </p>
+          <p className="text-2xs text-content-muted mt-0.5 capitalize">
+            {dateLabel}
+          </p>
+        </div>
+        <button
+          onClick={() => navigate("/calendar")}
+          className="text-2xs text-brand hover:underline shrink-0 active:scale-[0.97] transition-transform duration-fast"
+        >
+          Календар
+        </button>
+      </div>
+
+      {events.length === 0 ? (
+        <motion.div variants={emptyStateVariants} initial="hidden" animate="visible" className="py-5 text-center text-content-muted text-sm">
+          Сьогодні подій немає
+        </motion.div>
+      ) : (
+        <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col gap-1.5">
+          {events.map((ev) => {
+            const hasCrew = !!ev.crew;
+            const crewLabel = ev.crew?.name ?? ev.crew?.host?.name ?? null;
+
+            return (
+              <motion.div
+                key={ev.id}
+                variants={staggerItem}
+                className={`rounded-control border p-3 flex flex-col gap-2 ${
+                  hasCrew
+                    ? "border-border bg-surface"
+                    : "border-warning/30 bg-warning-subtle"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-bold text-content-primary tabular-nums shrink-0">
+                    {ev.time ?? "—:——"}
+                  </span>
+                  <span className="text-2xs text-content-muted truncate">
+                    {ev.project}
+                  </span>
+                </div>
+
+                <p className="text-sm font-semibold text-content-primary leading-snug line-clamp-2">
+                  {ev.school?.name ?? "—"}
+                </p>
+
+                <div className="flex items-center justify-between gap-2">
+                  {hasCrew ? (
+                    <span className="badge-success text-2xs px-2 py-0.5 rounded-pill font-medium shrink-0">
+                      {crewLabel ?? "Екіпаж призначено"}
+                    </span>
+                  ) : (
+                    <span className="badge-warning text-2xs px-2 py-0.5 rounded-pill font-medium shrink-0">
+                      Немає екіпажу
+                    </span>
+                  )}
+
+                  <button
+                    onClick={() =>
+                      ev.school && navigate(`/schools/${ev.school.id}`)
+                    }
+                    className={`text-2xs font-semibold px-2.5 py-1 rounded-control transition-colors shrink-0 active:scale-95 ${
+                      hasCrew
+                        ? "bg-surface-muted text-content-secondary hover:bg-border-strong"
+                        : "bg-surface border border-warning text-warning-600 hover:bg-warning-subtle"
+                    }`}
+                  >
+                    {hasCrew ? "Відкрити →" : "Призначити →"}
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      )}
+
+      <p className="text-2xs text-content-muted mt-2.5 pt-2.5 border-t border-border">
+        Усього на сьогодні: {events.length} {plural(events.length)}
+      </p>
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/dashboard/UpcomingEvents.tsx
+
+```
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { staggerContainer, staggerItem, emptyStateVariants } from '../../lib/motion';
+
+const UA_WEEKDAYS = ['нд', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+const UA_MONTHS_SHORT = ['січ', 'лют', 'бер', 'квіт', 'трав', 'черв', 'лип', 'серп', 'вер', 'жовт', 'лист', 'груд'];
+
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr);
+  const day = d.getDate();
+  const month = UA_MONTHS_SHORT[d.getMonth()];
+  const weekday = UA_WEEKDAYS[d.getDay()];
+  return `${day} ${month}, ${weekday}`;
+}
+
+interface Crew {
+  id: string;
+  name?: string;
+  host?: { id: string; name: string } | null;
+}
+
+interface UpcomingEvent {
+  id: string;
+  date: string;
+  time?: string | null;
+  project: string;
+  school?: { id: string; name: string } | null;
+  city?: { id: string; name: string } | null;
+  crew?: Crew | null;
+}
+
+interface Props {
+  events: UpcomingEvent[];
+}
+
+export default function UpcomingEvents({ events }: Props) {
+  const navigate = useNavigate();
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col">
+      <div className="flex justify-between items-center mb-3">
+        <p className="text-sm font-semibold text-slate-800">Найближчі події (5 днів)</p>
+        <button
+          onClick={() => navigate('/calendar')}
+          className="text-xs text-blue-600 hover:underline shrink-0 active:scale-[0.97] transition-transform duration-fast"
+        >
+          Перейти до календаря
+        </button>
+      </div>
+
+      {events.length === 0 ? (
+        <motion.div variants={emptyStateVariants} initial="hidden" animate="visible" className="py-6 text-center text-slate-400 text-sm">
+          Найближчими днями подій немає
+        </motion.div>
+      ) : (
+        <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col divide-y divide-slate-50">
+          {events.map((ev) => {
+            const crewName = ev.crew?.name ?? (ev.crew?.host?.name ?? null);
+
+            return (
+              <motion.div
+                key={ev.id}
+                variants={staggerItem}
+                onClick={() => ev.school && navigate(`/schools/${ev.school.id}`)}
+                className="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-slate-50/60 rounded-lg px-1 -mx-1 transition-colors active:scale-[0.97]"
+              >
+                <div className="shrink-0 text-right w-24">
+                  <p className="text-xs font-medium text-slate-600">
+                    {formatDate(ev.date)}
+                  </p>
+                  <p className="text-xs text-slate-400">{ev.time ?? '—:——'}</p>
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-slate-800 truncate">
+                    {ev.school?.name ?? '—'}
+                  </p>
+                  <p className="text-xs text-slate-400 truncate">{ev.project}</p>
+                </div>
+
+                {crewName && (
+                  <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100 shrink-0">
+                    {crewName}
+                  </span>
+                )}
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/employees/EmployeeCard.tsx
+
+```
+import { motion } from "framer-motion";
+import { Phone, Mail, MapPin, Eye, Edit3, UserX } from "lucide-react";
+import { Badge } from "../ui/Badge";
+import { cardVariants } from "../../animations/employees";
+
+type Role = "MANAGER" | "DRIVER" | "HOST" | "SUPERADMIN" | "GUEST";
+
+interface City {
+  id: string;
+  name: string;
+}
+interface EmployeeCardUser {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string;
+  cityId: string | null;
+  city?: City;
+  role: Role;
+  telegramId?: string | null;
+  car?: string | null;
+}
+
+const ROLE_BADGE: Record<string, string> = {
+  MANAGER: "bg-brand-50 text-brand-700 border-brand-200",
+  DRIVER: "bg-success-50 text-success-700 border-success-200",
+  HOST: "bg-purple-50 text-purple-700 border-purple-200",
+};
+
+const ROLE_GRADIENT: Record<string, string> = {
+  MANAGER: "from-brand to-brand-700",
+  DRIVER: "from-success to-success-700",
+  HOST: "from-purple-500 to-purple-700",
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  MANAGER: "Менеджер",
+  DRIVER: "Водій",
+  HOST: "Ведучий",
+  SUPERADMIN: "Суперадмін",
+};
+
+interface Props {
+  user: EmployeeCardUser;
+  role: Role;
+  isSuperAdmin: boolean;
+  onEdit: (user: EmployeeCardUser) => void;
+  onDelete: (id: string, name: string) => void;
+}
+
+export default function EmployeeCard({
+  user,
+  role,
+  isSuperAdmin,
+  onEdit,
+  onDelete,
+}: Props) {
+  return (
+    <motion.div
+      variants={cardVariants}
+      whileHover="hover"
+      whileTap={{ scale: 0.98 }}
+      layoutId={`user-${user.id}`}
+      role="article"
+      aria-label={`${user.name}, ${ROLE_LABELS[role] ?? role}`}
+      className="group relative bg-surface rounded-card shadow-card border border-border p-5 transition-shadow duration-200 hover:shadow-card-hover"
+    >
+      <div className="flex items-start gap-4">
+        <div className="relative shrink-0">
+          <div
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold text-white bg-gradient-to-br ${ROLE_GRADIENT[role] ?? "from-neutral-500 to-neutral-600"}`}
+          >
+            {user.name.charAt(0)}
+          </div>
+          <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-success border-2 border-surface" />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-semibold text-content-primary truncate text-sm">
+              {user.name}
+            </h3>
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${ROLE_BADGE[role] ?? "bg-neutral-100 text-neutral-600 border-neutral-200"}`}>
+              {ROLE_LABELS[role] ?? role}
+            </span>
+          </div>
+
+          <p className="text-xs text-content-muted truncate">{user.email}</p>
+
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="text-xs text-content-secondary flex items-center gap-1">
+              <Phone className="w-3 h-3" />
+              {user.phone || "—"}
+            </span>
+            <span className="text-xs text-content-secondary flex items-center gap-1">
+              <MapPin className="w-3 h-3" />
+              {user.city?.name || "Всі міста"}
+            </span>
+          </div>
+
+          <div className="mt-2 flex items-center gap-3 text-2xs text-content-muted">
+            {user.car && <span>🚗 {user.car}</span>}
+          </div>
+        </div>
+
+        {isSuperAdmin && (
+          <div className="flex items-center gap-0.5 shrink-0 opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => onEdit(user)}
+              className="p-1.5 rounded-control text-content-muted hover:text-brand hover:bg-brand-50 transition-colors"
+              aria-label={`Редагувати ${user.name}`}
+            >
+              <Edit3 className="w-4 h-4" />
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => onDelete(user.id, user.name)}
+              className="p-1.5 rounded-control text-content-muted hover:text-danger hover:bg-danger-50 transition-colors"
+              aria-label={`Видалити ${user.name}`}
+            >
+              <UserX className="w-4 h-4" />
+            </motion.button>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/employees/EmployeesHeader.tsx
+
+```
+import { Search, List, LayoutGrid, Download, Plus, SlidersHorizontal } from "lucide-react";
+import { Button } from "../ui/Button";
+
+type ViewMode = "cards" | "table";
+
+interface EmployeesHeaderProps {
+  isSuperAdmin: boolean;
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
+  onAddUser: () => void;
+  onToggleFilter: () => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  onExport?: () => void;
+}
+
+export function EmployeesHeader({
+  isSuperAdmin,
+  viewMode,
+  onViewModeChange,
+  onAddUser,
+  onToggleFilter,
+  searchQuery,
+  onSearchChange,
+  onExport,
+}: EmployeesHeaderProps) {
+  return (
+    <div className="flex flex-col gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-content-primary">Працівники</h1>
+          <p className="text-sm text-content-muted mt-0.5">
+            Керування доступами, ролями та проєктами
+          </p>
+        </div>
+        {isSuperAdmin && (
+          <Button onClick={onAddUser} size="md">
+            <Plus className="w-4 h-4 mr-1.5" />
+            Створити користувача
+          </Button>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted pointer-events-none" />
+          <input
+            type="search"
+            inputMode="search"
+            enterKeyHint="search"
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Пошук за ім'ям, email, телефоном..."
+            aria-label="Пошук працівників"
+            className="w-full pl-9 pr-3 py-2.5 md:py-2 rounded-control border border-border-strong bg-surface
+              text-base text-content-primary placeholder:text-content-muted
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/30 focus-visible:border-brand"
+          />
+        </div>
+
+        <button
+          onClick={onToggleFilter}
+          className="lg:hidden p-2 rounded-control text-content-muted hover:text-content-primary hover:bg-neutral-100 transition-colors"
+          aria-label="Фільтри"
+        >
+          <SlidersHorizontal className="w-5 h-5" />
+        </button>
+
+        <div role="tablist" aria-label="Режим перегляду" className="flex items-center border border-border-strong rounded-control overflow-hidden">
+          <button
+            role="tab"
+            aria-selected={viewMode === "cards"}
+            onClick={() => onViewModeChange("cards")}
+            className={`p-2 transition-colors ${viewMode === "cards" ? "bg-brand text-white" : "text-content-muted hover:bg-neutral-100"}`}
+            aria-label="Картки"
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </button>
+          <button
+            role="tab"
+            aria-selected={viewMode === "table"}
+            onClick={() => onViewModeChange("table")}
+            className={`p-2 transition-colors ${viewMode === "table" ? "bg-brand text-white" : "text-content-muted hover:bg-neutral-100"}`}
+            aria-label="Таблиця"
+          >
+            <List className="w-4 h-4" />
+          </button>
+        </div>
+
+        <button
+          onClick={onExport}
+          className="p-2 rounded-control text-content-muted hover:text-content-primary hover:bg-neutral-100 transition-colors"
+          aria-label="Експорт CSV"
+        >
+          <Download className="w-5 h-5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/employees/EmployeesTable.tsx
+
+```
+import { useRef, useMemo, useState, useCallback } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { ChevronUp, ChevronDown, ChevronsUpDown, Eye } from "lucide-react";
+import { Badge } from "../ui/Badge";
+import type { User } from "../../types";
+
+type SortField = "name" | "role" | "city" | "email";
+type SortDir = "asc" | "desc";
+
+interface EmployeesTableProps {
+  users: User[];
+  onSelect?: (user: User) => void;
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  MANAGER: "Менеджер",
+  DRIVER: "Водій",
+  HOST: "Ведучий",
+  SUPERADMIN: "Суперадмін",
+};
+
+const ROLE_STATUS: Record<string, "info" | "success" | "warning" | "default"> = {
+  MANAGER: "info",
+  DRIVER: "success",
+  HOST: "warning",
+  SUPERADMIN: "default",
+};
+
+export default function EmployeesTable({ users, onSelect }: EmployeesTableProps) {
+  const [sortField, setSortField] = useState<SortField>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDir("asc");
+    }
+  };
+
+  const sortedUsers = useMemo(() => {
+    return [...users].sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case "name": cmp = a.name.localeCompare(b.name); break;
+        case "role": cmp = (ROLE_LABELS[a.role] ?? a.role).localeCompare(ROLE_LABELS[b.role] ?? b.role); break;
+        case "city": cmp = (a.city?.name ?? "").localeCompare(b.city?.name ?? ""); break;
+        case "email": cmp = a.email.localeCompare(b.email); break;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [users, sortField, sortDir]);
+
+  const rowVirtualizer = useVirtualizer({
+    count: sortedUsers.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 52,
+    overscan: 10,
+  });
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+
+  const allSelected = sortedUsers.length > 0 && selectedIds.size === sortedUsers.length;
+
+  const toggleAll = useCallback(() => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(sortedUsers.map((u) => u.id)));
+    }
+  }, [allSelected, sortedUsers]);
+
+  const toggleOne = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ChevronsUpDown className="w-3.5 h-3.5 text-neutral-300" />;
+    return sortDir === "asc" ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />;
+  };
+
+  const colWidths = "grid-cols-[40px_minmax(180px,2fr)_100px_minmax(140px,1.5fr)_minmax(120px,1fr)_48px]";
+
+  return (
+    <div>
+      {selectedIds.size > 0 && (
+        <div role="toolbar" aria-label="Масові дії" className="mb-3 flex items-center gap-2 px-4 py-2.5 bg-brand-50 border border-brand-200 rounded-control">
+          <span className="text-sm font-medium text-brand-700">
+            Обрано {selectedIds.size}
+          </span>
+          <div className="ml-auto flex gap-2">
+            <button className="text-xs font-semibold px-3 py-1.5 rounded-control bg-white border border-brand-200 text-brand-700 hover:bg-brand-100 focus-visible:ring-2 focus-visible:ring-brand/50 transition-colors">
+              Архівувати
+            </button>
+            <button className="text-xs font-semibold px-3 py-1.5 rounded-control bg-white border border-brand-200 text-brand-700 hover:bg-brand-100 focus-visible:ring-2 focus-visible:ring-brand/50 transition-colors">
+              Змінити роль
+            </button>
+            <button className="text-xs font-semibold px-3 py-1.5 rounded-control bg-white border border-brand-200 text-brand-700 hover:bg-brand-100 focus-visible:ring-2 focus-visible:ring-brand/50 transition-colors">
+              Призначити проєкт
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div role="region" aria-label="Таблиця працівників" className="bg-white rounded-card border border-border shadow-card overflow-hidden">
+          <div role="row" className={`${colWidths} items-center px-4 py-3 bg-neutral-50 border-b border-border text-xs font-semibold text-content-muted uppercase tracking-wider`}>
+          <div className="flex items-center" role="columnheader">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={toggleAll}
+              aria-label={allSelected ? "Зняти виділення всіх" : "Виділити всіх"}
+              className="w-4 h-4 rounded border-neutral-300 text-brand focus-visible:ring-2 focus-visible:ring-brand/50"
+            />
+          </div>
+          <button role="columnheader" aria-sort={sortField === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} onClick={() => toggleSort("name")} className="flex items-center gap-1 hover:text-content-primary transition-colors focus-visible:ring-2 focus-visible:ring-brand/50 rounded">
+            Ім'я <SortIcon field="name" />
+          </button>
+          <button role="columnheader" aria-sort={sortField === "role" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} onClick={() => toggleSort("role")} className="flex items-center gap-1 hover:text-content-primary transition-colors focus-visible:ring-2 focus-visible:ring-brand/50 rounded">
+            Роль <SortIcon field="role" />
+          </button>
+          <button role="columnheader" aria-sort={sortField === "city" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} onClick={() => toggleSort("city")} className="flex items-center gap-1 hover:text-content-primary transition-colors focus-visible:ring-2 focus-visible:ring-brand/50 rounded">
+            Місто <SortIcon field="city" />
+          </button>
+          <button role="columnheader" aria-sort={sortField === "email" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} onClick={() => toggleSort("email")} className="flex items-center gap-1 hover:text-content-primary transition-colors focus-visible:ring-2 focus-visible:ring-brand/50 rounded">
+            Контакт <SortIcon field="email" />
+          </button>
+          <div />
+        </div>
+
+        <div ref={parentRef} className="overflow-auto" style={{ maxHeight: "calc(100vh - 320px)" }}>
+          <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}>
+            {virtualItems.map((virtualRow) => {
+              const user = sortedUsers[virtualRow.index];
+              const isSelected = selectedIds.has(user.id);
+              return (
+                <div
+                  key={user.id}
+                  role="row"
+                  aria-selected={isSelected}
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect?.(user); } }}
+                  className={`${colWidths} items-center px-4 py-0 border-b border-border text-sm cursor-pointer transition-colors
+                    ${virtualRow.index % 2 === 1 ? "bg-neutral-50/50" : "bg-white"}
+                    ${isSelected ? "bg-brand-50/40" : "hover:bg-neutral-50 focus-visible:bg-neutral-50"}`}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: `${virtualRow.size}px`,
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                  onClick={() => onSelect?.(user)}
+                >
+                  <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleOne(user.id)}
+                      aria-label={`Обрати ${user.name}`}
+                      className="w-4 h-4 rounded border-neutral-300 text-brand focus-visible:ring-2 focus-visible:ring-brand/50"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white bg-gradient-to-br
+                      ${user.role === "MANAGER" ? "from-brand to-brand-700" : ""}
+                      ${user.role === "DRIVER" ? "from-success to-success-700" : ""}
+                      ${user.role === "HOST" ? "from-purple-500 to-purple-700" : ""}
+                      ${!["MANAGER", "DRIVER", "HOST"].includes(user.role) ? "from-neutral-500 to-neutral-600" : ""}`}
+                    >
+                      {user.name.charAt(0)}
+                    </div>
+                    <span className="font-medium text-content-primary truncate">{user.name}</span>
+                  </div>
+                  <div>
+                    <Badge variant={ROLE_STATUS[user.role] ?? "default"} size="sm">
+                      {ROLE_LABELS[user.role] ?? user.role}
+                    </Badge>
+                  </div>
+                  <div className="text-content-secondary truncate text-xs">
+                    {user.city?.name || "—"}
+                  </div>
+                  <div className="text-content-secondary truncate text-xs">
+                    {user.email}
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onSelect?.(user); }}
+                      className="p-1.5 rounded-control text-content-muted hover:text-brand hover:bg-brand-50 transition-colors opacity-0 group-hover:opacity-100"
+                      aria-label={`Переглянути ${user.name}`}
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/employees/FilterPanel.tsx
+
+```
+import { motion, AnimatePresence } from "framer-motion";
+import { fadeVariants, SPRING } from "../../lib/motion";
+import { SlidersHorizontal, X } from "lucide-react";
+import { Button } from "../ui/Button";
+import { Badge } from "../ui/Badge";
+
+const ROLE_OPTIONS = [
+  { value: "MANAGER", label: "Менеджер" },
+  { value: "DRIVER", label: "Водій" },
+  { value: "HOST", label: "Ведучий" },
+  { value: "SUPERADMIN", label: "Суперадмін" },
+];
+
+interface FilterPanelProps {
+  isMobileOpen: boolean;
+  onMobileClose: () => void;
+  selectedRoles: string[];
+  onRolesChange: (roles: string[]) => void;
+  selectedCity: string;
+  onCityChange: (city: string) => void;
+  cityOptions: { value: string; label: string }[];
+  onReset: () => void;
+  hasActiveFilters: boolean;
+}
+
+export function FilterPanel({
+  isMobileOpen,
+  onMobileClose,
+  selectedRoles,
+  onRolesChange,
+  selectedCity,
+  onCityChange,
+  cityOptions,
+  onReset,
+  hasActiveFilters,
+}: FilterPanelProps) {
+  const toggleRole = (role: string) => {
+    onRolesChange(
+      selectedRoles.includes(role)
+        ? selectedRoles.filter((r) => r !== role)
+        : [...selectedRoles, role],
+    );
+  };
+
+  const content = (
+    <div className="flex flex-col gap-6">
+      <div>
+        <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-3">
+          Роль
+        </h3>
+        <div className="flex flex-col gap-1.5">
+          {ROLE_OPTIONS.map((role) => (
+            <button
+              key={role.value}
+              role="checkbox"
+              aria-checked={selectedRoles.includes(role.value)}
+              onClick={() => toggleRole(role.value)}
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-control text-sm font-medium transition-colors text-left
+                ${selectedRoles.includes(role.value) ? "bg-brand-50 text-brand-700" : "text-content-secondary hover:bg-neutral-50"}`}
+            >
+              <span
+                className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors
+                  ${selectedRoles.includes(role.value) ? "bg-brand border-brand" : "border-neutral-300"}`}
+              >
+                {selectedRoles.includes(role.value) && (
+                  <span className="w-2 h-2 rounded-sm bg-white" />
+                )}
+              </span>
+              {role.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-3">
+          Місто
+        </h3>
+        <div className="flex flex-col gap-1.5">
+          {cityOptions.map((city) => (
+            <button
+              key={city.value}
+              role="radio"
+              aria-checked={selectedCity === city.value}
+              onClick={() => onCityChange(city.value)}
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-control text-sm font-medium transition-colors text-left
+                ${selectedCity === city.value ? "bg-brand-50 text-brand-700" : "text-content-secondary hover:bg-neutral-50"}`}
+            >
+              <span
+                className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors
+                  ${selectedCity === city.value ? "border-brand" : "border-neutral-300"}`}
+              >
+                {selectedCity === city.value && (
+                  <span className="w-2 h-2 rounded-full bg-brand" />
+                )}
+              </span>
+              {city.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-3">
+          Статус
+        </h3>
+        <div className="flex gap-2">
+          <Badge variant="success">Активний</Badge>
+          <Badge variant="danger">Неактивний</Badge>
+        </div>
+      </div>
+
+      {hasActiveFilters && (
+        <Button variant="ghost" size="sm" onClick={onReset}>
+          Скинути фільтри
+        </Button>
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      <div role="region" aria-label="Фільтри" className="hidden lg:block w-56 shrink-0">
+        <div className="sticky top-4">
+          <div className="flex items-center gap-2 mb-4">
+            <SlidersHorizontal className="w-4 h-4 text-content-muted" />
+            <span className="text-sm font-semibold text-content-primary">Фільтри</span>
+          </div>
+          {content}
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {isMobileOpen && (
+          <motion.div
+            variants={fadeVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 bg-slate-900/40 z-40 lg:hidden"
+            onClick={onMobileClose}
+          >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Фільтри"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ ...SPRING.gentle }}
+              onClick={(e) => e.stopPropagation()}
+              className="absolute right-0 top-0 bottom-0 w-72 bg-surface shadow-modal p-5 overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-content-muted" />
+                  <span className="text-sm font-semibold text-content-primary">Фільтри</span>
+                </div>
+                <button onClick={onMobileClose} className="p-1 -mr-1 text-content-muted hover:text-content-primary active:scale-90 transition-transform duration-fast">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              {content}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/employees/ProjectModal.tsx
+
+```
+import { useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  backdropVariants,
+  modalContentVariants,
+  formVariants,
+  fieldVariants,
+} from "../../animations/employees";
+
+const PROJECT_COLORS: Record<string, string> = {
+  blue: "bg-blue-500",
+  emerald: "bg-emerald-500",
+  rose: "bg-rose-500",
+  red: "bg-red-500",
+  amber: "bg-amber-500",
+  purple: "bg-purple-500",
+};
+
+interface ProjectForm {
+  name: string;
+  color: string;
+  pricePerChild: string;
+}
+
+interface Props {
+  isOpen: boolean;
+  isEditing: boolean;
+  form: ProjectForm;
+  setForm: (form: ProjectForm) => void;
+  onClose: () => void;
+  onSubmit: (e: React.FormEvent) => void;
+}
+
+export default function ProjectModal({
+  isOpen,
+  isEditing,
+  form,
+  setForm,
+  onClose,
+  onSubmit,
+}: Props) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [isOpen, onClose]);
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          variants={backdropVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={onClose}
+        >
+          <motion.div
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
+          >
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h3 className="text-xl font-bold text-slate-800">
+                {isEditing ? "Редагувати вид події" : "Новий вид події"}
+              </h3>
+              <button
+                onClick={onClose}
+                className="text-slate-400 text-xl leading-none p-2 -mr-2 active:scale-90 transition-transform duration-fast"
+              >
+                ✕
+              </button>
+            </div>
+            <motion.form
+              onSubmit={onSubmit}
+              variants={formVariants}
+              initial="hidden"
+              animate="visible"
+              className="p-6"
+            >
+              <motion.div variants={fieldVariants}>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Назва
+                </label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none mb-6"
+                  required
+                  placeholder="Наприклад: Шоу мильних бульбашок"
+                />
+              </motion.div>
+              <motion.div variants={fieldVariants}>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Ціна за дитину, грн
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="decimal"
+                  value={form.pricePerChild}
+                  onChange={(e) =>
+                    setForm({ ...form, pricePerChild: e.target.value })
+                  }
+                  placeholder="Наприклад: 150"
+                  className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none mb-6"
+                />
+              </motion.div>
+              <motion.div variants={fieldVariants}>
+                <label className="block text-sm font-medium text-slate-700 mb-3">
+                  Колір для календаря
+                </label>
+                <div className="flex gap-4 mb-8">
+                  {Object.keys(PROJECT_COLORS).map((c) => (
+                    <motion.button
+                      whileTap={{ scale: 0.9 }}
+                      type="button"
+                      key={c}
+                      onClick={() => setForm({ ...form, color: c })}
+                      className={`w-8 h-8 rounded-full ${PROJECT_COLORS[c]} transition-all ${form.color === c ? "ring-4 ring-offset-2 ring-blue-200 scale-110" : "hover:scale-110"}`}
+                    />
+                  ))}
+                </div>
+              </motion.div>
+              <motion.div variants={fieldVariants} className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 bg-slate-100 py-3 rounded-xl font-medium active:scale-[0.97] transition-transform duration-fast"
+                >
+                  Скасувати
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-medium active:scale-[0.97] transition-transform duration-fast"
+                >
+                  Зберегти
+                </button>
+              </motion.div>
+            </motion.form>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+```
+
+# FILE: apps/frontend/src/components/employees/UserModal.tsx
+
+```
+import { useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useFormik } from "formik";
+import * as Yup from "yup";
+import {
+  backdropVariants,
+  modalContentVariants,
+  formVariants,
+  shakeVariants,
+  checkmarkVariants,
+} from "../../animations/employees";
+
+type Role = "MANAGER" | "DRIVER" | "HOST" | "SUPERADMIN" | "GUEST";
+interface City { id: string; name: string }
+
+interface Props {
+  isOpen: boolean;
+  isEditing: boolean;
+  initialValues: {
+    fullName: string; phone: string; email: string; cityId: string;
+    role: Role; password: string; telegramId: string; car: string;
+  };
+  cities: City[];
+  formError: string;
+  isSubmitting: boolean;
+  showSuccess: boolean;
+  onClose: () => void;
+  onSave: (values: Record<string, string>) => void;
+}
+
+const PHONE_REGEX = /^(\+?380\d{9}|0\d{9}|\d{10,13})$/;
+
+const validationSchema = Yup.object({
+  fullName: Yup.string().required("ПІБ обов'язкове"),
+  email: Yup.string().email("Невірний формат email").required("Email обов'язковий"),
+  phone: Yup.string().matches(PHONE_REGEX, "Невірний формат телефону (+380...)"),
+  password: Yup.string().min(6, "Мінімум 6 символів"),
+  telegramId: Yup.string(),
+  car: Yup.string(),
+  cityId: Yup.string(),
+  role: Yup.string().required(),
+});
+
+export default function UserModal({
+  isOpen,
+  isEditing,
+  initialValues,
+  cities,
+  formError,
+  isSubmitting,
+  showSuccess,
+  onClose,
+  onSave,
+}: Props) {
+  const formik = useFormik({
+    initialValues: {
+      fullName: initialValues.fullName,
+      phone: initialValues.phone ?? "",
+      email: initialValues.email,
+      cityId: initialValues.cityId ?? "",
+      role: initialValues.role as string,
+      password: initialValues.password ?? "",
+      telegramId: initialValues.telegramId ?? "",
+      car: initialValues.car ?? "",
+    },
+    validationSchema,
+    enableReinitialize: true,
+    onSubmit: (values) => {
+      onSave(values);
+    },
+  });
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [isOpen, onClose]);
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          variants={backdropVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={onClose}
+        >
+          <motion.div
+            variants={modalContentVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            onClick={(e) => e.stopPropagation()}
+            className="relative bg-white rounded-2xl shadow-xl w-full sm:max-w-lg overflow-hidden flex flex-col"
+          >
+            <AnimatePresence>
+              {showSuccess && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 bg-white z-10 flex flex-col items-center justify-center gap-3"
+                >
+                  <motion.div
+                    variants={checkmarkVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="w-16 h-16 rounded-full bg-emerald-500 flex items-center justify-center text-white text-3xl"
+                  >
+                    ✓
+                  </motion.div>
+                  <p className="text-slate-600 font-medium">Збережено</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+              <h3 className="text-xl font-bold">
+                {isEditing ? "Редагувати" : "Новий користувач"}
+              </h3>
+              <button onClick={onClose} className="text-slate-400 text-xl p-2 -mr-2 active:scale-90 transition-transform duration-fast">
+                ✕
+              </button>
+            </div>
+
+            <motion.form
+              onSubmit={formik.handleSubmit}
+              variants={formVariants}
+              initial="hidden"
+              animate="visible"
+              className="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh]"
+            >
+              <AnimatePresence>
+                {formError && (
+                  <motion.div
+                    key={formError}
+                    variants={shakeVariants}
+                    animate="shake"
+                    initial={{ opacity: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="p-3 bg-red-50 text-red-600 text-sm rounded-lg"
+                  >
+                    {formError}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div>
+                <input
+                  type="text"
+                  name="fullName"
+                  value={formik.values.fullName}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  placeholder="ПІБ"
+                  className="w-full p-2.5 border rounded-lg text-base"
+                />
+                {formik.touched.fullName && formik.errors.fullName && (
+                  <p className="text-xs text-red-500 mt-1">{formik.errors.fullName}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formik.values.email}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    placeholder="Пошта"
+                    className="w-full p-2.5 border rounded-lg text-base"
+                  />
+                  {formik.touched.email && formik.errors.email && (
+                    <p className="text-xs text-red-500 mt-1">{formik.errors.email}</p>
+                  )}
+                </div>
+                <div>
+                  <input
+                    type="password"
+                    name="password"
+                    value={formik.values.password}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    placeholder="Пароль"
+                    className="w-full p-2.5 border rounded-lg text-base"
+                  />
+                  {formik.touched.password && formik.errors.password && (
+                    <p className="text-xs text-red-500 mt-1">{formik.errors.password}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formik.values.phone}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    placeholder="Телефон (+380...)"
+                    className="w-full p-2.5 border rounded-lg text-base"
+                  />
+                  {formik.touched.phone && formik.errors.phone && (
+                    <p className="text-xs text-red-500 mt-1">{formik.errors.phone}</p>
+                  )}
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    name="telegramId"
+                    value={formik.values.telegramId}
+                    onChange={formik.handleChange}
+                    placeholder="Telegram ID або @username"
+                    className="w-full p-2.5 border rounded-lg text-base"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <select
+                    name="role"
+                    value={formik.values.role}
+                    onChange={formik.handleChange}
+                    className="w-full p-2.5 border rounded-lg text-base"
+                  >
+                    <option value="MANAGER">Менеджер</option>
+                    <option value="DRIVER">Водій</option>
+                    <option value="HOST">Ведучий</option>
+                    <option value="SUPERADMIN">Суперадмін</option>
+                  </select>
+                </div>
+                <div>
+                  <select
+                    name="cityId"
+                    value={formik.values.cityId}
+                    onChange={formik.handleChange}
+                    className="w-full p-2.5 border rounded-lg text-base"
+                  >
+                    <option value="">Всі міста</option>
+                    {cities.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {formik.values.role === "DRIVER" && (
+                <div>
+                  <input
+                    type="text"
+                    name="car"
+                    value={formik.values.car ?? ""}
+                    onChange={formik.handleChange}
+                    placeholder="Автомобіль (напр. Renault Trafic)"
+                    className="w-full p-2.5 border rounded-lg text-base"
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={isSubmitting}
+                  className="flex-1 bg-slate-100 py-3 rounded-xl font-medium disabled:opacity-50 active:scale-[0.97] transition-transform duration-fast"
+                >
+                  Скасувати
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium disabled:opacity-60 active:scale-[0.97] transition-transform duration-fast"
+                >
+                  {isSubmitting ? "Збереження..." : "Зберегти"}
+                </button>
+              </div>
+            </motion.form>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 ```
 

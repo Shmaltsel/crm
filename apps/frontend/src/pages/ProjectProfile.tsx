@@ -5,6 +5,7 @@ import { api } from "../config/api";
 import { useAuth } from "../context/AuthContext";
 import { useCities } from "../hooks/useCities";
 import type { Project } from "../types";
+import { Skeleton } from "../components/ui/Skeleton";
 
 interface ProjectStats {
   totalEvents: number;
@@ -43,7 +44,14 @@ export default function ProjectProfile() {
   });
 
   if (!project) {
-    return <div className="p-8 text-content-muted">Завантаження...</div>;
+    return (
+      <div className="p-8 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
+          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
+        </div>
+      </div>
+    );
   }
 
   const cards = [

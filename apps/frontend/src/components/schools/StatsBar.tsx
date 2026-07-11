@@ -16,9 +16,9 @@ const STATUS_ITEMS = [
   {
     key: "new",
     label: "Нові",
-    dot: "bg-slate-400",
-    active: "bg-slate-800 text-white",
-    inactive: "text-slate-600",
+    dot: "bg-neutral-400",
+    active: "bg-neutral-800 text-white",
+    inactive: "text-content-secondary",
   },
   {
     key: "planned",

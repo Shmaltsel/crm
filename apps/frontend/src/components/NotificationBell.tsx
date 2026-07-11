@@ -101,8 +101,9 @@ export default function NotificationBell() {
 
               <div className="overflow-y-auto flex-1">
                 {(!notifData?.items || notifData.items.length === 0) ? (
-                  <div className="px-4 py-8 text-center text-slate-500 text-sm">
-                    Немає сповіщень
+                  <div className="px-4 py-8 text-center text-content-muted text-sm">
+                    <Bell className="w-8 h-8 mx-auto mb-2 text-content-muted/50" />
+                    <p className="font-medium">Немає сповіщень</p>
                   </div>
                 ) : (
                   <motion.div variants={staggerContainer} initial="hidden" animate="visible">

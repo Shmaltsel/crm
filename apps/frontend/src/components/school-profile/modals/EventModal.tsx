@@ -115,7 +115,7 @@ export default function EventModal({
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-backdrop backdrop-blur-sm z-[60] flex items-center justify-center p-4"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
           <motion.div
@@ -125,9 +125,9 @@ export default function EventModal({
             exit="exit"
             className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[92vh] flex flex-col"
           >
-        <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between bg-slate-50 shrink-0">
-          <h3 id={headingId} className="text-xl font-bold text-slate-800">Нова подія</h3>
-          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 p-2 -mr-2 text-xl leading-none active:scale-90 transition-transform duration-fast">
+        <div className="p-5 sm:p-6 border-b border-border flex justify-between bg-surface-muted shrink-0">
+          <h3 id={headingId} className="text-xl font-bold text-content-primary">Нова подія</h3>
+          <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-content-muted hover:text-content-secondary p-2 -mr-2 text-xl leading-none active:scale-90 transition-transform duration-fast">
             ✕
           </button>
         </div>
@@ -137,13 +137,13 @@ export default function EventModal({
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
-              <label className="block text-sm mb-1 text-slate-600">
+              <label className="block text-sm mb-1 text-content-secondary">
                 Проєкт (Вид події)
               </label>
               <select
                 {...register("project")}
                 disabled={projects.length === 0}
-                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-slate-50 disabled:text-slate-400"
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-surface-muted disabled:text-content-muted"
               >
                 <option value="" disabled>
                   {projects.length === 0
@@ -163,7 +163,7 @@ export default function EventModal({
               )}
             </div>
             <div>
-              <label className="block text-sm mb-1 text-slate-600">Дата</label>
+              <label className="block text-sm mb-1 text-content-secondary">Дата</label>
               <input
                 type="date"
                 {...register("date")}
@@ -176,7 +176,7 @@ export default function EventModal({
               )}
             </div>
             <div>
-              <label className="block text-sm mb-1 text-slate-600">Час</label>
+              <label className="block text-sm mb-1 text-content-secondary">Час</label>
               <input
                 type="time"
                 {...register("time")}
@@ -189,7 +189,7 @@ export default function EventModal({
               )}
             </div>
             <div>
-              <label className="block text-sm mb-1 text-slate-600">
+              <label className="block text-sm mb-1 text-content-secondary">
                 Дітей (план)
               </label>
               <input
@@ -205,7 +205,7 @@ export default function EventModal({
               )}
             </div>
             <div>
-              <label className="block text-sm mb-1 text-slate-600">
+              <label className="block text-sm mb-1 text-content-secondary">
                 Вартість
               </label>
               <input
@@ -215,7 +215,7 @@ export default function EventModal({
                 onInput={() => setPriceTouched(true)}
                 className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
               />
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-content-muted mt-1">
                 Розраховується автоматично: діти × ціна за дитину. Можна
                 змінити вручну.
               </p>
@@ -226,7 +226,7 @@ export default function EventModal({
               )}
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-sm mb-1 text-slate-600">
+              <label className="block text-sm mb-1 text-content-secondary">
                 Адреса
               </label>
               <input
@@ -236,7 +236,7 @@ export default function EventModal({
               />
             </div>
             <div>
-              <label className="block text-sm mb-1 text-slate-600">
+              <label className="block text-sm mb-1 text-content-secondary">
                 Контактна особа
               </label>
               <input
@@ -246,7 +246,7 @@ export default function EventModal({
               />
             </div>
             <div>
-              <label className="block text-sm mb-1 text-slate-600">
+              <label className="block text-sm mb-1 text-content-secondary">
                 Телефон
               </label>
               <input
@@ -256,11 +256,11 @@ export default function EventModal({
               />
             </div>
           </div>
-          <div className="flex gap-3 mt-4 shrink-0 pt-4 border-t border-slate-100 pb-1">
+          <div className="flex gap-3 mt-4 shrink-0 pt-4 border-t border-border pb-1">
             <button
               type="button"
               onClick={onClose}
-              className="w-full sm:w-auto px-5 py-3 bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium rounded-xl transition-colors"
+              className="w-full sm:w-auto px-5 py-3 bg-surface-muted text-content-secondary hover:bg-surface-muted font-medium rounded-xl transition-colors"
             >
               Скасувати
             </button>

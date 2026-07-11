@@ -73,23 +73,23 @@ export default function DayOffModal({
             exit="exit"
             className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden select-none no-select-ios"
           >
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+            <div className="p-5 border-b border-border flex justify-between items-center bg-surface-muted">
               <div>
-                <h3 id={headingId} className="text-lg font-bold text-slate-800">
+                <h3 id={headingId} className="text-lg font-bold text-content-primary">
                   Вихідний на {dateStr}
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-content-muted mt-0.5">
                   Оберіть співробітника
                 </p>
               </div>
-              <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-slate-400 hover:text-slate-600 text-xl leading-none p-2 -mr-2 transition-colors active:scale-90 transition-transform duration-fast">
+              <button ref={closeRef} onClick={onClose} aria-label="Закрити" className="text-content-muted hover:text-content-secondary text-xl leading-none p-2 -mr-2 transition-colors active:scale-90 transition-transform duration-fast">
                 ✕
               </button>
             </div>
 
             <div className="p-4 max-h-[60vh] overflow-y-auto">
               {staff.length === 0 ? (
-                <p className="text-center text-slate-400 py-6 text-sm">
+                <p className="text-center text-content-muted py-6 text-sm">
                   Немає співробітників у цьому місті
                 </p>
               ) : (
@@ -104,10 +104,10 @@ export default function DayOffModal({
                         className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left no-select-ios active:scale-[0.98] ${
                           isOff
                             ? "border-rose-200 bg-rose-50"
-                            : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/30"
+                            : "border-border-strong hover:border-blue-300 hover:bg-blue-50/30"
                         }`}
                       >
-                        <span className="flex items-center gap-2 font-medium text-slate-800">
+                        <span className="flex items-center gap-2 font-medium text-content-primary">
                           <span>{ROLE_ICON[s.role] || "👤"}</span>
                           {s.name}
                         </span>
@@ -115,7 +115,7 @@ export default function DayOffModal({
                           className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
                             isOff
                               ? "bg-rose-100 text-rose-600"
-                              : "bg-slate-100 text-slate-500"
+                              : "bg-surface-muted text-content-muted"
                           }`}
                         >
                           {isOff ? "Вихідний ✕" : "Призначити"}

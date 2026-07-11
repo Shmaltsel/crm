@@ -124,7 +124,7 @@ export default function Dashboard() {
                         className="flex items-center gap-2 text-sm text-content-muted p-4"
                         {...skeletonPulse}
                       >
-                        <div className="w-4 h-4 rounded-full bg-slate-200" />
+                        <div className="w-4 h-4 rounded-full bg-border-strong" />
                         Завантаження...
                       </motion.div>
                     }

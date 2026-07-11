@@ -85,14 +85,14 @@ export default function StaleSchools({ schools }: Props) {
   const criticalCount = schools.filter((s) => (s.daysStale ?? 0) >= 21).length;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col">
+    <div className="bg-white rounded-2xl border border-border shadow-sm p-4 flex flex-col">
       {/* Хедер */}
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 rounded-md bg-amber-50 flex items-center justify-center">
             <span className="text-xs">⚠️</span>
           </div>
-          <p className="text-sm font-semibold text-slate-800">
+          <p className="text-sm font-semibold text-content-primary">
             Потребують уваги
           </p>
           {criticalCount > 0 && (
@@ -112,7 +112,7 @@ export default function StaleSchools({ schools }: Props) {
       {schools.length === 0 ? (
         <motion.div variants={emptyStateVariants} initial="hidden" animate="visible" className="py-6 text-center">
           <p className="text-2xl mb-1">✅</p>
-          <p className="text-sm text-slate-400">Усі школи активні</p>
+          <p className="text-sm text-content-muted">Усі школи активні</p>
         </motion.div>
       ) : (
         <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col gap-1">
@@ -136,15 +136,15 @@ export default function StaleSchools({ schools }: Props) {
 
                 {/* Назва + стадія + прогрес-бар */}
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-slate-800 truncate leading-tight">
+                  <p className="text-sm font-medium text-content-primary truncate leading-tight">
                     {school.name}
                   </p>
-                  <p className="text-xs text-slate-400 mt-0.5 mb-1.5">
+                  <p className="text-xs text-content-muted mt-0.5 mb-1.5">
                     {stageLabel}
                   </p>
 
                   {/* Heat bar */}
-                  <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-1 w-full bg-surface-muted rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${tier.bar}`}
                       style={{ width: `${width}%` }}
@@ -166,7 +166,7 @@ export default function StaleSchools({ schools }: Props) {
 
       {/* Футер — легенда тирів */}
       {schools.length > 0 && (
-        <div className="flex items-center gap-3 mt-4 pt-3 border-t border-slate-50">
+        <div className="flex items-center gap-3 mt-4 pt-3 border-t border-border">
           {TIERS.map((t) => {
             const count = schools.filter(
               (s) => (s.daysStale ?? 0) >= t.min && (s.daysStale ?? 0) <= t.max,
@@ -175,10 +175,10 @@ export default function StaleSchools({ schools }: Props) {
             return (
               <span
                 key={t.label}
-                className="flex items-center gap-1 text-xs text-slate-400"
+                className="flex items-center gap-1 text-xs text-content-muted"
               >
                 {t.emoji}{" "}
-                <span className="font-medium text-slate-600">{count}</span>{" "}
+                <span className="font-medium text-content-secondary">{count}</span>{" "}
                 {t.label.toLowerCase()}
               </span>
             );

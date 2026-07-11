@@ -43,21 +43,21 @@ function NavLink({
       {active && (
         <motion.div
           layoutId="sidebar-active-indicator"
-          className="absolute inset-0 bg-blue-600 rounded-lg"
+          className="absolute inset-0 bg-brand rounded-lg"
           transition={SPRING.snappy}
           style={{ zIndex: 0 }}
         />
       )}
       {!active && (
-        <div className="absolute inset-0 rounded-lg bg-transparent group-hover:bg-slate-800/60 transition-colors duration-fast" />
+        <div className="absolute inset-0 rounded-lg bg-transparent group-hover:bg-white/5 transition-colors duration-fast" />
       )}
       <motion.div
         className="relative z-10 flex items-center gap-3 w-full"
         whileHover={!active ? { x: 2 } : undefined}
         transition={TRANSITION.tap}
       >
-        <Icon className={`w-4 h-4 shrink-0 transition-transform duration-fast ${active ? "text-white" : "text-slate-400 group-hover:text-slate-200"}`} />
-        <span className={`transition-colors duration-fast ${active ? "text-white" : "text-slate-400 group-hover:text-slate-200"}`}>
+        <Icon className={`w-4 h-4 shrink-0 transition-transform duration-fast ${active ? "text-white" : "text-slate-400 group-hover:text-white/80"}`} />
+        <span className={`transition-colors duration-fast ${active ? "text-white" : "text-slate-400 group-hover:text-white/80"}`}>
           {label}
         </span>
       </motion.div>
@@ -129,7 +129,7 @@ export default function Layout() {
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 transition={TRANSITION.hover}
-                className="w-8 h-8 bg-slate-600 rounded-full mr-3 flex items-center justify-center text-xs font-bold shrink-0"
+                className="w-8 h-8 bg-brand/20 text-brand rounded-full mr-3 flex items-center justify-center text-xs font-bold shrink-0"
               >
                 {user?.name?.charAt(0) ?? "?"}
               </motion.div>

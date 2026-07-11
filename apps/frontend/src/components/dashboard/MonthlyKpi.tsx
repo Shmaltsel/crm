@@ -62,11 +62,11 @@ export default function MonthlyKpi({ kpi }: Props) {
   ];
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+    <div className="bg-white rounded-2xl border border-border shadow-sm p-4">
       <div className="flex justify-between items-center mb-3">
-        <p className="text-sm font-semibold text-slate-800">
+        <p className="text-sm font-semibold text-content-primary">
           Фінанси —{' '}
-          <span className="font-normal text-slate-500 capitalize">
+          <span className="font-normal text-content-muted capitalize">
             {monthLabel} {yearLabel}
           </span>
         </p>
@@ -96,7 +96,7 @@ export default function MonthlyKpi({ kpi }: Props) {
             <p className={`text-lg font-bold leading-none ${tile.color}`}>
               {tile.value}
             </p>
-            <p className="text-xs text-slate-400 mt-1">{tile.sub}</p>
+            <p className="text-xs text-content-muted mt-1">{tile.sub}</p>
           </motion.div>
         ))}
       </motion.div>

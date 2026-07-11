@@ -31,7 +31,7 @@ export default class TabErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         this.props.fallback ?? (
-          <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+          <div className="flex flex-col items-center justify-center py-16 text-content-muted">
             <span className="text-3xl mb-3 opacity-50">⚠️</span>
             <p className="text-sm font-medium">
               Не вдалося завантажити вкладку{this.props.label ? ` «${this.props.label}»` : ""}

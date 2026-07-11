@@ -12,13 +12,13 @@ type Tab = "my-salary" | "team" | "company" | "expenses";
 function PeekSkeleton() {
   return (
     <div className="p-4 space-y-4 animate-pulse">
-      <div className="h-8 bg-slate-200 rounded-xl w-48" />
+      <div className="h-8 bg-surface-muted rounded-control w-48" />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-24 bg-white rounded-2xl border border-slate-100" />
+          <div key={i} className="h-24 bg-surface rounded-card border border-border" />
         ))}
       </div>
-      <div className="h-64 bg-white rounded-2xl border border-slate-100" />
+      <div className="h-64 bg-surface rounded-card border border-border" />
     </div>
   );
 }
@@ -42,8 +42,8 @@ export default function Finance({ isPeek }: { isPeek?: boolean }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="sticky top-0 z-10 bg-white border-b border-slate-200">
+    <div className="min-h-screen bg-surface-subtle">
+      <div className="sticky top-0 z-10 bg-surface border-b border-border">
         <div className="relative">
           <div className="flex overflow-x-auto scrollbar-none">
             {availableTabs.map((t) => (
@@ -52,22 +52,22 @@ export default function Finance({ isPeek }: { isPeek?: boolean }) {
                 onClick={() => setActiveTab(t.key)}
                 className={`shrink-0 px-4 py-3 text-sm font-medium transition-colors relative ${
                   activeTab === t.key
-                    ? "text-blue-600"
-                    : "text-slate-500 hover:text-slate-700"
+                    ? "text-brand"
+                    : "text-content-muted hover:text-content-secondary"
                 }`}
               >
                 {t.label}
                 {activeTab === t.key && (
                   <motion.div
                     layoutId="finance-tab-indicator"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand"
                     transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}
               </button>
             ))}
           </div>
-          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-surface to-transparent pointer-events-none" />
         </div>
       </div>
 
@@ -75,7 +75,7 @@ export default function Finance({ isPeek }: { isPeek?: boolean }) {
       {activeTab === "team" && isManagerOrAdmin && <TeamSalaries />}
       {activeTab === "company" && isManagerOrAdmin && <Company />}
       {activeTab === "expenses" && isManagerOrAdmin && (
-        <Suspense fallback={<div className="p-8 text-center text-sm text-slate-400">Завантаження...</div>}>
+        <Suspense fallback={<div className="p-8 text-center text-sm text-content-muted">Завантаження...</div>}>
           <Expenses />
         </Suspense>
       )}

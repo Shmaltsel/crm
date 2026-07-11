@@ -32,13 +32,23 @@ export const Button = forwardRef<HTMLButtonElement, Props>(
       whileTap={{ scale: 0.97 }}
       transition={TRANSITION.tap}
       disabled={disabled || isLoading}
+      aria-busy={isLoading || undefined}
       className={`rounded-control font-medium transition-all duration-fast
         hover:shadow-lift active:shadow-none
         focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-2
         ${variants[variant]} ${sizes[size]} ${className}`}
       {...props}
     >
-      {isLoading ? "…" : children}
+      {isLoading ? (
+        <span className="inline-flex items-center gap-2">
+          <motion.span
+            animate={{ rotate: 360 }}
+            transition={{ duration: 0.7, repeat: Infinity, ease: "linear" }}
+            className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full"
+          />
+          <span className="opacity-70">Завантаження…</span>
+        </span>
+      ) : children}
     </motion.button>
   )
 );

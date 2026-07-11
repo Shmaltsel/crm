@@ -371,7 +371,7 @@ export default function Kindergartens() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Пошук за назвою садочка..."
-          className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-surface border-none sm:border sm:border-border-strong rounded-card sm:rounded-control text-base font-medium text-content-secondary placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand shadow-sm transition"
+          className="w-full pl-12 pr-10 py-3.5 sm:py-3 bg-surface border-none sm:border sm:border-border-strong rounded-card sm:rounded-control text-base font-medium text-content-secondary placeholder-content-muted focus:outline-none focus:ring-2 focus:ring-brand shadow-sm transition"
           enterKeyHint="search"
         />
         {searchQuery && (
@@ -419,7 +419,7 @@ export default function Kindergartens() {
               className="bg-surface rounded-card border border-border p-3.5 animate-pulse"
               style={{ opacity: 1 - i * 0.1 }}
             >
-              <div className="h-4 bg-slate-200 rounded-lg w-3/4 mb-3" />
+              <div className="h-4 bg-border-strong rounded-lg w-3/4 mb-3" />
               <div className="flex justify-between">
                 <div className="h-3 bg-surface-muted rounded-lg w-1/3" />
                 <div className="h-3 bg-surface-muted rounded-lg w-1/4" />
@@ -537,7 +537,7 @@ export default function Kindergartens() {
                             onMouseDown={() =>
                               handleSelectSuggestion(s.name, s.url)
                             }
-                            className="px-4 py-3 text-sm hover:bg-blue-50 cursor-pointer font-medium border-b border-slate-50 last:border-0"
+                            className="px-4 py-3 text-sm hover:bg-blue-50 cursor-pointer font-medium border-b border-border last:border-0"
                           >
                             {s.name}
                           </li>
@@ -627,7 +627,7 @@ export default function Kindergartens() {
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="flex-1 px-5 py-3.5 bg-surface-muted rounded-control text-sm font-bold text-content-secondary hover:bg-slate-200 transition-colors"
+                    className="flex-1 px-5 py-3.5 bg-surface-muted rounded-control text-sm font-bold text-content-secondary hover:bg-surface-muted transition-colors"
                   >
                     Скасувати
                   </button>

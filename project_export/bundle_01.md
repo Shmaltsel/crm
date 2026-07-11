@@ -1,50 +1,3 @@
-# FILE: apps/backend/eslint.config.mjs
-
-```
-// @ts-check
-import eslint from '@eslint/js';
-import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
-import globals from 'globals';
-import tseslint from 'typescript-eslint';
-
-export default tseslint.config(
-  {
-    ignores: [
-      'eslint.config.mjs',
-      'dist/**',
-      'coverage/**',
-      'collect-code.js',
-      'prisma/seed-admin.js',
-    ],
-  },
-  eslint.configs.recommended,
-  ...tseslint.configs.recommendedTypeChecked,
-  eslintPluginPrettierRecommended,
-  {
-    languageOptions: {
-      globals: {
-        ...globals.node,
-        ...globals.jest,
-      },
-      sourceType: 'commonjs',
-      parserOptions: {
-        projectService: true,
-        tsconfigRootDir: import.meta.dirname,
-      },
-    },
-  },
-  {
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-floating-promises': 'warn',
-      '@typescript-eslint/no-unsafe-argument': 'warn',
-      'prettier/prettier': ['error', { endOfLine: 'auto' }],
-    },
-  },
-);
-
-```
-
 # FILE: apps/backend/nest-cli.json
 
 ```
@@ -60,6 +13,7 @@ export default tseslint.config(
 ```
 
 # FILE: apps/backend/package.json
+# КРИТИЧНО ВАЖЛИВИЙ ФАЙЛ
 
 ```
 {
@@ -184,6 +138,458 @@ export default tseslint.config(
   "prisma": {
     "schema": "prisma/schema.prisma"
   }
+}
+
+```
+
+# FILE: apps/backend/prisma/schema.prisma
+# КРИТИЧНО ВАЖЛИВИЙ ФАЙЛ
+
+```
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id             String         @id @default(uuid())
+  name           String
+  email          String         @unique
+  phone          String?
+  password       String
+  role           UserRole       @default(MANAGER)
+  cityId         String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  telegramId     String?
+  telegramChatId String?
+  car            String?
+  balance        Decimal        @default(0) @db.Decimal(12, 2)
+  managedCities  City[]         @relation("CityManager")
+  refreshTokens  RefreshToken[]
+  crewAsDriver   Crew[]         @relation("DriverCrew")
+  crewAsHost     Crew[]         @relation("HostCrew")
+  city           City?          @relation(fields: [cityId], references: [id])
+  salaryRecords  SalaryRecord[]
+  daysOff        DayOff[]
+  schoolComments SchoolComment[]
+
+  @@index([role])
+  @@index([cityId])
+}
+
+model DayOff {
+  id        String   @id @default(uuid())
+  userId    String
+  date      DateTime @db.Date
+  createdBy String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([date])
+}
+
+model City {
+  id             String          @id @default(uuid())
+  name           String
+  managerId      String?
+  createdAt      DateTime        @default(now())
+  manager        User?           @relation("CityManager", fields: [managerId], references: [id])
+  crews          Crew[]
+  events         Event[]
+  issues         IssueReport[]
+  schools        School[]
+  users          User[]
+  inventoryItems InventoryItem[]
+
+  @@index([managerId])
+}
+
+model School {
+  id             String          @id @default(uuid())
+  name           String
+  type           String
+  cityId         String
+  address        String?
+  director       String?
+  phone          String?
+  email          String?
+  notes          String?
+  childrenCount  Int?
+  isHotClient    Boolean         @default(false)
+  rating         Float?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  events         Event[]
+  comments       SchoolComment[]
+  inventoryItems InventoryItem[]
+  city           City            @relation(fields: [cityId], references: [id])
+
+  @@index([cityId])
+  @@index([cityId, type])
+  @@index([type])
+  @@index([createdAt])
+  @@index([updatedAt, cityId])
+}
+
+model Crew {
+  id        String   @id @default(uuid())
+  name      String
+  cityId    String
+  hostId    String?
+  driverId  String?
+  car       String?
+  carPlate  String?
+  phone     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  city      City     @relation(fields: [cityId], references: [id])
+  driver    User?    @relation("DriverCrew", fields: [driverId], references: [id])
+  host      User?    @relation("HostCrew", fields: [hostId], references: [id])
+  events    Event[]
+
+  @@index([cityId])
+}
+
+model Event {
+  id              String            @id @default(uuid())
+  cityId          String
+  schoolId        String
+  crewId          String?
+  project         String
+  date            DateTime
+  time            String?
+  status          EventStatus       @default(BASE)
+  childrenPlanned Int?
+  childrenActual  Int?
+  price           Decimal? @db.Decimal(12, 2)
+  received        Decimal? @db.Decimal(12, 2)
+  paymentMethod   String?
+  address         String?
+  contactPerson   String?
+  contactPhone    String?
+  equipment       String?
+  nextContact     DateTime?
+  nextProject     String?
+  responsibleId   String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  city            City              @relation(fields: [cityId], references: [id])
+  crew            Crew?             @relation(fields: [crewId], references: [id])
+  school          School            @relation(fields: [schoolId], references: [id])
+  history         EventHistory[]
+  preparation     EventPreparation?
+  report          EventReport?
+  files           File[]
+  issues          IssueReport[]
+  salaryRecords   SalaryRecord[]
+
+  @@index([cityId])
+  @@index([cityId, date])
+  @@index([status])
+  @@index([schoolId])
+  @@index([schoolId, date])
+  @@index([date, status, cityId])
+  @@index([project])
+}
+
+model EventReport {
+  id                String        @id @default(uuid())
+  eventId           String        @unique
+  status            ReportStatus  @default(DRAFT)
+  directorSatisfied Boolean?
+  teachersSatisfied Boolean?
+  hadIssues         Boolean       @default(false)
+  comment           String?
+  revisionComment   String?
+  rating            Float?
+  submittedAt       DateTime?
+  approvedAt        DateTime?
+  approvedBy        String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  announcementDone  Boolean       @default(false)
+  materialShown     Boolean       @default(false)
+  childrenCount     Int           @default(0)
+  classesCount      Int           @default(0)
+  privilegedCount   Int           @default(0)
+  showingsCount     Int           @default(0)
+  totalSum          Decimal       @default(0) @db.Decimal(12, 2)
+  schoolSum         Decimal       @default(0) @db.Decimal(12, 2)
+  remainderSum      Decimal       @default(0) @db.Decimal(12, 2)
+  event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  photos            File[]
+  expenseItems      ExpenseItem[]
+  salaryRecords     SalaryRecord[]
+  inventoryUsages   InventoryUsage[]
+
+  @@index([status])
+  @@index([submittedAt])
+  @@index([approvedBy])
+}
+
+model File {
+  id        String       @id @default(uuid())
+  name      String
+  url       String
+  size      Int
+  eventId   String?
+  reportId  String?
+  createdAt DateTime     @default(now())
+  event     Event?       @relation(fields: [eventId], references: [id])
+  report    EventReport? @relation(fields: [reportId], references: [id])
+}
+
+model EventHistory {
+  id        String   @id @default(uuid())
+  eventId   String
+  action    String
+  comment   String?
+  userId    String
+  userName  String
+  role      String
+  createdAt DateTime @default(now())
+  event     Event    @relation(fields: [eventId], references: [id])
+
+  @@index([eventId, createdAt])
+  @@index([createdAt])
+}
+
+model EventPreparation {
+  id               String            @id @default(uuid())
+  eventId          String            @unique
+  assignCrew       PreparationStatus @default(PLANNED)
+  bookEquipment    PreparationStatus @default(PLANNED)
+  prepareDocs      PreparationStatus @default(PLANNED)
+  prepareMaterials PreparationStatus @default(PLANNED)
+  remindSchool     PreparationStatus @default(PLANNED)
+  event            Event             @relation(fields: [eventId], references: [id])
+}
+
+model IssueReport {
+  id               String    @id @default(uuid())
+  eventId          String
+  schoolName       String
+  eventName        String
+  message          String
+  cityId           String
+  status           String    @default("Планується")
+  createdAt        DateTime  @default(now())
+  deadline         DateTime?
+  assignedUserId   String?
+  assignedUserName String?
+  city             City      @relation(fields: [cityId], references: [id])
+  event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([cityId])
+  @@index([eventId])
+}
+
+model SchoolContact {
+  id           String   @id @default(uuid())
+  city         String   @default("Львів")
+  schoolNumber String
+  contactName  String
+  phone        String
+  role         String?
+  createdAt    DateTime @default(now())
+
+  @@index([city])
+}
+
+model Project {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  color     String   @default("blue")
+  createdAt DateTime @default(now())
+  pricePerChild Int @default(0)
+}
+
+model ExpenseItem {
+  id        String   @id @default(uuid())
+  reportId  String
+  category  String
+  name      String?
+  amount    Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+
+  report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+}
+
+model SalaryRecord {
+  id         String        @id @default(cuid())
+  employeeId String
+  eventId    String?
+  reportId   String?
+  amount     Decimal       @db.Decimal(12, 2)
+  comment    String?
+  status     SalaryStatus  @default(PENDING)
+  paidAt     DateTime?
+  paidBy     String?
+  createdBy  String
+  createdAt  DateTime      @default(now())
+
+  employee User        @relation(fields: [employeeId], references: [id])
+  event    Event?      @relation(fields: [eventId], references: [id])
+  report   EventReport? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  @@index([employeeId])
+  @@index([reportId])
+  @@index([status])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  userAgent String?
+  ip        String?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  userName  String?
+  action    String
+  entity    String?
+  entityId  String?
+  ip        String?
+  userAgent String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action, createdAt])
+  @@index([entity, entityId])
+}
+
+enum UserRole {
+  SUPERADMIN
+  OWNER
+  MANAGER
+  HOST
+  DRIVER
+}
+
+enum PreparationStatus {
+  PLANNED
+  IN_PROGRESS
+  DONE
+}
+
+enum ReportStatus {
+  DRAFT
+  SUBMITTED
+  NEEDS_REVISION
+  APPROVED
+  REJECTED
+  CLOSED
+}
+
+enum SalaryStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum CommentType {
+  NOTE
+  CALL
+  RESCHEDULE
+  CONFIRMATION
+  PROBLEM
+}
+
+model SchoolComment {
+  id        String      @id @default(cuid())
+  schoolId  String
+  authorId  String
+  type      CommentType
+  text      String
+  deletedAt DateTime?
+  createdAt DateTime    @default(now())
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@index([schoolId, createdAt])
+}
+
+model InventoryItem {
+  id           String   @id @default(cuid())
+  name         String
+  sku          String?
+  category     String   @default("Інше")
+  unit         String   @default("шт")
+  project      String?
+  minStock     Int      @default(5)
+  currentStock Int      @default(0)
+  notes        String?
+  cityId       String?
+  schoolId     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  city   City?   @relation(fields: [cityId], references: [id])
+  school School? @relation(fields: [schoolId], references: [id])
+  usages InventoryUsage[]
+
+  @@index([name])
+  @@index([category])
+  @@index([cityId])
+  @@index([project])
+}
+
+model InventoryUsage {
+  id        String   @id @default(cuid())
+  itemId    String
+  reportId  String
+  quantity  Int
+  createdAt DateTime @default(now())
+
+  item   InventoryItem @relation(fields: [itemId], references: [id])
+  report EventReport   @relation(fields: [reportId], references: [id])
+
+  @@index([itemId])
+  @@index([reportId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  payload   Json
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, readAt, createdAt])
+}
+
+enum EventStatus {
+  BASE
+  FIRST_CONTACT
+  INTERESTED
+  PRE_APPROVAL
+  DATE_CONFIRMED
+  PREPARATION
+  IN_PROGRESS
+  DONE
+  REPORT
+  RE_SALE
 }
 
 ```
@@ -998,457 +1404,6 @@ CREATE INDEX "InventoryItem_project_idx" ON "InventoryItem"("project");
 
 ```
 
-# FILE: apps/backend/prisma/schema.prisma
-
-```
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
-}
-
-model User {
-  id             String         @id @default(uuid())
-  name           String
-  email          String         @unique
-  phone          String?
-  password       String
-  role           UserRole       @default(MANAGER)
-  cityId         String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  telegramId     String?
-  telegramChatId String?
-  car            String?
-  balance        Decimal        @default(0) @db.Decimal(12, 2)
-  managedCities  City[]         @relation("CityManager")
-  refreshTokens  RefreshToken[]
-  crewAsDriver   Crew[]         @relation("DriverCrew")
-  crewAsHost     Crew[]         @relation("HostCrew")
-  city           City?          @relation(fields: [cityId], references: [id])
-  salaryRecords  SalaryRecord[]
-  daysOff        DayOff[]
-  schoolComments SchoolComment[]
-
-  @@index([role])
-  @@index([cityId])
-}
-
-model DayOff {
-  id        String   @id @default(uuid())
-  userId    String
-  date      DateTime @db.Date
-  createdBy String
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, date])
-  @@index([date])
-}
-
-model City {
-  id             String          @id @default(uuid())
-  name           String
-  managerId      String?
-  createdAt      DateTime        @default(now())
-  manager        User?           @relation("CityManager", fields: [managerId], references: [id])
-  crews          Crew[]
-  events         Event[]
-  issues         IssueReport[]
-  schools        School[]
-  users          User[]
-  inventoryItems InventoryItem[]
-
-  @@index([managerId])
-}
-
-model School {
-  id             String          @id @default(uuid())
-  name           String
-  type           String
-  cityId         String
-  address        String?
-  director       String?
-  phone          String?
-  email          String?
-  notes          String?
-  childrenCount  Int?
-  isHotClient    Boolean         @default(false)
-  rating         Float?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  events         Event[]
-  comments       SchoolComment[]
-  inventoryItems InventoryItem[]
-  city           City            @relation(fields: [cityId], references: [id])
-
-  @@index([cityId])
-  @@index([cityId, type])
-  @@index([type])
-  @@index([createdAt])
-  @@index([updatedAt, cityId])
-}
-
-model Crew {
-  id        String   @id @default(uuid())
-  name      String
-  cityId    String
-  hostId    String?
-  driverId  String?
-  car       String?
-  carPlate  String?
-  phone     String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  city      City     @relation(fields: [cityId], references: [id])
-  driver    User?    @relation("DriverCrew", fields: [driverId], references: [id])
-  host      User?    @relation("HostCrew", fields: [hostId], references: [id])
-  events    Event[]
-
-  @@index([cityId])
-}
-
-model Event {
-  id              String            @id @default(uuid())
-  cityId          String
-  schoolId        String
-  crewId          String?
-  project         String
-  date            DateTime
-  time            String?
-  status          EventStatus       @default(BASE)
-  childrenPlanned Int?
-  childrenActual  Int?
-  price           Decimal? @db.Decimal(12, 2)
-  received        Decimal? @db.Decimal(12, 2)
-  paymentMethod   String?
-  address         String?
-  contactPerson   String?
-  contactPhone    String?
-  equipment       String?
-  nextContact     DateTime?
-  nextProject     String?
-  responsibleId   String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  city            City              @relation(fields: [cityId], references: [id])
-  crew            Crew?             @relation(fields: [crewId], references: [id])
-  school          School            @relation(fields: [schoolId], references: [id])
-  history         EventHistory[]
-  preparation     EventPreparation?
-  report          EventReport?
-  files           File[]
-  issues          IssueReport[]
-  salaryRecords   SalaryRecord[]
-
-  @@index([cityId])
-  @@index([cityId, date])
-  @@index([status])
-  @@index([schoolId])
-  @@index([schoolId, date])
-  @@index([date, status, cityId])
-  @@index([project])
-}
-
-model EventReport {
-  id                String        @id @default(uuid())
-  eventId           String        @unique
-  status            ReportStatus  @default(DRAFT)
-  directorSatisfied Boolean?
-  teachersSatisfied Boolean?
-  hadIssues         Boolean       @default(false)
-  comment           String?
-  revisionComment   String?
-  rating            Float?
-  submittedAt       DateTime?
-  approvedAt        DateTime?
-  approvedBy        String?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  announcementDone  Boolean       @default(false)
-  materialShown     Boolean       @default(false)
-  childrenCount     Int           @default(0)
-  classesCount      Int           @default(0)
-  privilegedCount   Int           @default(0)
-  showingsCount     Int           @default(0)
-  totalSum          Decimal       @default(0) @db.Decimal(12, 2)
-  schoolSum         Decimal       @default(0) @db.Decimal(12, 2)
-  remainderSum      Decimal       @default(0) @db.Decimal(12, 2)
-  event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  photos            File[]
-  expenseItems      ExpenseItem[]
-  salaryRecords     SalaryRecord[]
-  inventoryUsages   InventoryUsage[]
-
-  @@index([status])
-  @@index([submittedAt])
-  @@index([approvedBy])
-}
-
-model File {
-  id        String       @id @default(uuid())
-  name      String
-  url       String
-  size      Int
-  eventId   String?
-  reportId  String?
-  createdAt DateTime     @default(now())
-  event     Event?       @relation(fields: [eventId], references: [id])
-  report    EventReport? @relation(fields: [reportId], references: [id])
-}
-
-model EventHistory {
-  id        String   @id @default(uuid())
-  eventId   String
-  action    String
-  comment   String?
-  userId    String
-  userName  String
-  role      String
-  createdAt DateTime @default(now())
-  event     Event    @relation(fields: [eventId], references: [id])
-
-  @@index([eventId, createdAt])
-  @@index([createdAt])
-}
-
-model EventPreparation {
-  id               String            @id @default(uuid())
-  eventId          String            @unique
-  assignCrew       PreparationStatus @default(PLANNED)
-  bookEquipment    PreparationStatus @default(PLANNED)
-  prepareDocs      PreparationStatus @default(PLANNED)
-  prepareMaterials PreparationStatus @default(PLANNED)
-  remindSchool     PreparationStatus @default(PLANNED)
-  event            Event             @relation(fields: [eventId], references: [id])
-}
-
-model IssueReport {
-  id               String    @id @default(uuid())
-  eventId          String
-  schoolName       String
-  eventName        String
-  message          String
-  cityId           String
-  status           String    @default("Планується")
-  createdAt        DateTime  @default(now())
-  deadline         DateTime?
-  assignedUserId   String?
-  assignedUserName String?
-  city             City      @relation(fields: [cityId], references: [id])
-  event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  @@index([cityId])
-  @@index([eventId])
-}
-
-model SchoolContact {
-  id           String   @id @default(uuid())
-  city         String   @default("Львів")
-  schoolNumber String
-  contactName  String
-  phone        String
-  role         String?
-  createdAt    DateTime @default(now())
-
-  @@index([city])
-}
-
-model Project {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  color     String   @default("blue")
-  createdAt DateTime @default(now())
-  pricePerChild Int @default(0)
-}
-
-model ExpenseItem {
-  id        String   @id @default(uuid())
-  reportId  String
-  category  String
-  name      String?
-  amount    Decimal  @db.Decimal(12, 2)
-  createdAt DateTime @default(now())
-
-  report EventReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-
-  @@index([reportId])
-}
-
-model SalaryRecord {
-  id         String        @id @default(cuid())
-  employeeId String
-  eventId    String?
-  reportId   String?
-  amount     Decimal       @db.Decimal(12, 2)
-  comment    String?
-  status     SalaryStatus  @default(PENDING)
-  paidAt     DateTime?
-  paidBy     String?
-  createdBy  String
-  createdAt  DateTime      @default(now())
-
-  employee User        @relation(fields: [employeeId], references: [id])
-  event    Event?      @relation(fields: [eventId], references: [id])
-  report   EventReport? @relation(fields: [reportId], references: [id], onDelete: SetNull)
-
-  @@index([employeeId])
-  @@index([reportId])
-  @@index([status])
-}
-
-model RefreshToken {
-  id        String    @id @default(uuid())
-  userId    String
-  tokenHash String    @unique
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime  @default(now())
-  userAgent String?
-  ip        String?
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-}
-
-model AuditLog {
-  id        String   @id @default(uuid())
-  userId    String?
-  userName  String?
-  action    String
-  entity    String?
-  entityId  String?
-  ip        String?
-  userAgent String?
-  metadata  Json?
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-  @@index([action, createdAt])
-  @@index([entity, entityId])
-}
-
-enum UserRole {
-  SUPERADMIN
-  OWNER
-  MANAGER
-  HOST
-  DRIVER
-}
-
-enum PreparationStatus {
-  PLANNED
-  IN_PROGRESS
-  DONE
-}
-
-enum ReportStatus {
-  DRAFT
-  SUBMITTED
-  NEEDS_REVISION
-  APPROVED
-  REJECTED
-  CLOSED
-}
-
-enum SalaryStatus {
-  PENDING
-  PAID
-  CANCELLED
-}
-
-enum CommentType {
-  NOTE
-  CALL
-  RESCHEDULE
-  CONFIRMATION
-  PROBLEM
-}
-
-model SchoolComment {
-  id        String      @id @default(cuid())
-  schoolId  String
-  authorId  String
-  type      CommentType
-  text      String
-  deletedAt DateTime?
-  createdAt DateTime    @default(now())
-
-  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  author User   @relation(fields: [authorId], references: [id])
-
-  @@index([schoolId, createdAt])
-}
-
-model InventoryItem {
-  id           String   @id @default(cuid())
-  name         String
-  sku          String?
-  category     String   @default("Інше")
-  unit         String   @default("шт")
-  project      String?
-  minStock     Int      @default(5)
-  currentStock Int      @default(0)
-  notes        String?
-  cityId       String?
-  schoolId     String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  city   City?   @relation(fields: [cityId], references: [id])
-  school School? @relation(fields: [schoolId], references: [id])
-  usages InventoryUsage[]
-
-  @@index([name])
-  @@index([category])
-  @@index([cityId])
-  @@index([project])
-}
-
-model InventoryUsage {
-  id        String   @id @default(cuid())
-  itemId    String
-  reportId  String
-  quantity  Int
-  createdAt DateTime @default(now())
-
-  item   InventoryItem @relation(fields: [itemId], references: [id])
-  report EventReport   @relation(fields: [reportId], references: [id])
-
-  @@index([itemId])
-  @@index([reportId])
-}
-
-model Notification {
-  id        String   @id @default(cuid())
-  userId    String
-  type      String
-  payload   Json
-  readAt    DateTime?
-  createdAt DateTime @default(now())
-
-  @@index([userId, readAt, createdAt])
-}
-
-enum EventStatus {
-  BASE
-  FIRST_CONTACT
-  INTERESTED
-  PRE_APPROVAL
-  DATE_CONFIRMED
-  PREPARATION
-  IN_PROGRESS
-  DONE
-  REPORT
-  RE_SALE
-}
-
-```
-
 # FILE: apps/backend/prisma/seed-admin.js
 
 ```
@@ -1814,6 +1769,7 @@ main()
 ```
 
 # FILE: apps/backend/README.md
+# КРИТИЧНО ВАЖЛИВИЙ ФАЙЛ
 
 ```
 <p align="center">
@@ -1914,6 +1870,200 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+```
+
+# FILE: apps/backend/src/main.ts
+# КРИТИЧНО ВАЖЛИВИЙ ФАЙЛ
+
+```
+import './instrument';
+import { NestFactory, Reflector } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { ClassSerializerInterceptor, Logger } from '@nestjs/common';
+import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
+import { Logger as PinoLogger } from 'nestjs-pino';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { PrismaService } from './prisma/prisma.service';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(PinoLogger));
+  app.use(helmet());
+  app.use(cookieParser());
+
+  const allowedOrigins = (process.env.FRONTEND_URL ?? '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  app.enableCors({
+    origin: allowedOrigins,
+    credentials: true,
+  });
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+  app.useGlobalFilters(app.get(AllExceptionsFilter));
+
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('CRM «Світло Знань» API')
+      .setDescription(
+        'Система управління освітніми заходами у школах та садочках',
+      )
+      .setVersion('1.0')
+      .addCookieAuth('access_token')
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('docs', app, document);
+
+    app.getHttpAdapter().get('/docs-json', (req, res) => res.json(document));
+    app.getHttpAdapter().get('/docs/redoc', (req, res) => {
+      res.type('html').send(`<!DOCTYPE html>
+<html><head><title>CRM API Docs</title>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<style>body{margin:0;padding:0}</style></head>
+<body><redoc spec-url="/docs-json"></redoc>
+<script src="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"></script>
+</body></html>`);
+    });
+  }
+
+  app.enableShutdownHooks();
+  const logger = new Logger('Bootstrap');
+
+  process.on('SIGTERM', async () => {
+    logger.log('Отримано SIGTERM, завершення роботи...');
+    const prisma = app.get(PrismaService);
+    await prisma.$disconnect();
+    await app.close();
+    process.exit(0);
+  });
+
+  process.on('SIGINT', async () => {
+    logger.log('Отримано SIGINT, завершення роботи...');
+    const prisma = app.get(PrismaService);
+    await prisma.$disconnect();
+    await app.close();
+    process.exit(0);
+  });
+
+  await app.listen(process.env.PORT ?? 3000);
+}
+bootstrap();
+
+```
+
+# FILE: apps/backend/src/app.module.ts
+# КРИТИЧНО ВАЖЛИВИЙ ФАЙЛ
+
+```
+import { Module } from '@nestjs/common';
+import { APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { SanitizeInterceptor } from './common/interceptors/sanitize.interceptor';
+import { CsrfGuard } from './auth/csrf.guard';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
+import Redis from 'ioredis';
+import { UserThrottlerGuard } from './common/guards/user-throttler.guard';
+import { ConfigModule } from '@nestjs/config';
+import { LoggerModule } from './common/logger/logger.module';
+import { RedisCacheModule } from './common/cache/redis-cache.module';
+import { envValidationSchema } from './config/env.validation';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { PrismaModule } from './prisma/prisma.module';
+import { UsersModule } from './users/users.module';
+import { AuthModule } from './auth/auth.module';
+import { EventsModule } from './events/events.module';
+import { CitiesModule } from './cities/cities.module';
+import { SchoolsModule } from './schools/schools.module';
+import { FinanceModule } from './finance/finance.module';
+import { TelegramModule } from './telegram/telegram.module';
+import { IssuesModule } from './issues/issues.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { ProjectsModule } from './projects/projects.module';
+import { HealthModule } from './health/health.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { DaysOffModule } from './days-off/days-off.module';
+import { ReportsModule } from './reports/reports.module';
+import { SalaryModule } from './salary/salary.module';
+import { SchoolCommentsModule } from './school-comments/school-comments.module';
+import { MetricsModule } from './metrics/metrics.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { FeatureFlagsModule } from './common/feature-flags/feature-flags.module';
+import { I18nModule } from './common/i18n/i18n.module';
+import { LocalizedValidationPipe } from './common/pipes/localized-validation.pipe';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+@Module({
+  imports: [
+    HealthModule,
+    MetricsModule,
+    FeatureFlagsModule,
+    I18nModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validationSchema: envValidationSchema,
+    }),
+    LoggerModule,
+    RedisCacheModule,
+    ThrottlerModule.forRootAsync({
+      useFactory: () => ({
+        throttlers: [{ name: 'default', ttl: 60000, limit: 100 }],
+        storage: new ThrottlerStorageRedisService(
+          new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
+            maxRetriesPerRequest: 1,
+            connectTimeout: 3000,
+            retryStrategy: (times) =>
+              times > 3 ? null : Math.min(times * 200, 2000),
+          }),
+        ),
+      }),
+    }),
+    PrismaModule,
+    UsersModule,
+    AuthModule,
+    EventsModule,
+    CitiesModule,
+    SchoolsModule,
+    FinanceModule,
+    TelegramModule,
+    IssuesModule,
+    DashboardModule,
+    ProjectsModule,
+    DaysOffModule,
+    InventoryModule,
+    ReportsModule,
+    SalaryModule,
+    SchoolCommentsModule,
+    NotificationsModule,
+    AnalyticsModule,
+  ],
+  controllers: [AppController],
+  providers: [
+    AppService,
+    AllExceptionsFilter,
+    {
+      provide: APP_PIPE,
+      useClass: LocalizedValidationPipe,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: UserThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: CsrfGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: SanitizeInterceptor,
+    },
+  ],
+})
+export class AppModule {}
 
 ```
 
@@ -2653,117 +2803,6 @@ export class AppController {
     return this.appService.getHello();
   }
 }
-
-```
-
-# FILE: apps/backend/src/app.module.ts
-
-```
-import { Module } from '@nestjs/common';
-import { APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
-import { SanitizeInterceptor } from './common/interceptors/sanitize.interceptor';
-import { CsrfGuard } from './auth/csrf.guard';
-import { ThrottlerModule } from '@nestjs/throttler';
-import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
-import Redis from 'ioredis';
-import { UserThrottlerGuard } from './common/guards/user-throttler.guard';
-import { ConfigModule } from '@nestjs/config';
-import { LoggerModule } from './common/logger/logger.module';
-import { RedisCacheModule } from './common/cache/redis-cache.module';
-import { envValidationSchema } from './config/env.validation';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { PrismaModule } from './prisma/prisma.module';
-import { UsersModule } from './users/users.module';
-import { AuthModule } from './auth/auth.module';
-import { EventsModule } from './events/events.module';
-import { CitiesModule } from './cities/cities.module';
-import { SchoolsModule } from './schools/schools.module';
-import { FinanceModule } from './finance/finance.module';
-import { TelegramModule } from './telegram/telegram.module';
-import { IssuesModule } from './issues/issues.module';
-import { DashboardModule } from './dashboard/dashboard.module';
-import { ProjectsModule } from './projects/projects.module';
-import { HealthModule } from './health/health.module';
-import { InventoryModule } from './inventory/inventory.module';
-import { DaysOffModule } from './days-off/days-off.module';
-import { ReportsModule } from './reports/reports.module';
-import { SalaryModule } from './salary/salary.module';
-import { SchoolCommentsModule } from './school-comments/school-comments.module';
-import { MetricsModule } from './metrics/metrics.module';
-import { NotificationsModule } from './notifications/notifications.module';
-import { AnalyticsModule } from './analytics/analytics.module';
-import { FeatureFlagsModule } from './common/feature-flags/feature-flags.module';
-import { I18nModule } from './common/i18n/i18n.module';
-import { LocalizedValidationPipe } from './common/pipes/localized-validation.pipe';
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-@Module({
-  imports: [
-    HealthModule,
-    MetricsModule,
-    FeatureFlagsModule,
-    I18nModule,
-    ConfigModule.forRoot({
-      isGlobal: true,
-      validationSchema: envValidationSchema,
-    }),
-    LoggerModule,
-    RedisCacheModule,
-    ThrottlerModule.forRootAsync({
-      useFactory: () => ({
-        throttlers: [{ name: 'default', ttl: 60000, limit: 100 }],
-        storage: new ThrottlerStorageRedisService(
-          new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
-            maxRetriesPerRequest: 1,
-            connectTimeout: 3000,
-            retryStrategy: (times) =>
-              times > 3 ? null : Math.min(times * 200, 2000),
-          }),
-        ),
-      }),
-    }),
-    PrismaModule,
-    UsersModule,
-    AuthModule,
-    EventsModule,
-    CitiesModule,
-    SchoolsModule,
-    FinanceModule,
-    TelegramModule,
-    IssuesModule,
-    DashboardModule,
-    ProjectsModule,
-    DaysOffModule,
-    InventoryModule,
-    ReportsModule,
-    SalaryModule,
-    SchoolCommentsModule,
-    NotificationsModule,
-    AnalyticsModule,
-  ],
-  controllers: [AppController],
-  providers: [
-    AppService,
-    AllExceptionsFilter,
-    {
-      provide: APP_PIPE,
-      useClass: LocalizedValidationPipe,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: UserThrottlerGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: CsrfGuard,
-    },
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: SanitizeInterceptor,
-    },
-  ],
-})
-export class AppModule {}
 
 ```
 
@@ -11474,981 +11513,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
   providers: [IssuesService],
 })
 export class IssuesModule {}
-
-```
-
-# FILE: apps/backend/src/issues/issues.service.spec.ts
-
-```
-import { IssuesService } from './issues.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { TelegramService } from '../telegram/telegram.service';
-import { NotificationsService } from '../notifications/notifications.service';
-
-const mockPrisma = {
-  issueReport: {
-    create: jest.fn(),
-    findMany: jest.fn(),
-    update: jest.fn(),
-  },
-  event: { findUnique: jest.fn() },
-  city: { findUnique: jest.fn() },
-  user: { findUnique: jest.fn() },
-};
-
-const mockTelegram = { sendMessage: jest.fn() };
-const mockNotifications = { create: jest.fn().mockResolvedValue(undefined) };
-
-const makeService = () =>
-  new IssuesService(
-    mockPrisma as unknown as PrismaService,
-    mockTelegram as unknown as TelegramService,
-    mockNotifications as unknown as NotificationsService,
-  );
-
-const baseData = {
-  eventId: 'ev-1',
-  schoolName: 'Школа №1',
-  eventName: 'Голограма',
-  message: 'Проблема з обладнанням',
-  cityId: 'city-1',
-};
-
-beforeEach(() => {
-  jest.clearAllMocks();
-  mockPrisma.issueReport.create.mockResolvedValue({
-    id: 'issue-1',
-    ...baseData,
-  });
-  mockPrisma.event.findUnique.mockResolvedValue({ id: 'ev-1', crew: null });
-  mockPrisma.city.findUnique.mockResolvedValue({ id: 'city-1', users: [] });
-});
-
-describe('IssuesService — create', () => {
-  it('створює IssueReport у БД з коректними полями', async () => {
-    const service = makeService();
-    await service.create(baseData);
-
-    expect(mockPrisma.issueReport.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        eventId: 'ev-1',
-        schoolName: 'Школа №1',
-        eventName: 'Голограма',
-        message: 'Проблема з обладнанням',
-        cityId: 'city-1',
-        deadline: null,
-        assignedUserId: null,
-        assignedUserName: null,
-      }),
-    });
-  });
-
-  it('конвертує deadline рядок у Date', async () => {
-    const service = makeService();
-    await service.create({ ...baseData, deadline: '2025-12-31' });
-
-    const { deadline } = mockPrisma.issueReport.create.mock.calls[0][0].data;
-    expect(deadline).toBeInstanceOf(Date);
-    expect(deadline.getFullYear()).toBe(2025);
-  });
-
-  it('надсилає Telegram менеджеру міста якщо є chatId', async () => {
-    mockPrisma.city.findUnique.mockResolvedValueOnce({
-      id: 'city-1',
-      users: [{ telegramChatId: 'mgr-chat-123', telegramId: null }],
-    });
-
-    const service = makeService();
-    await service.create(baseData);
-
-    expect(mockTelegram.sendMessage).toHaveBeenCalledWith(
-      'mgr-chat-123',
-      expect.stringContaining('Школа №1'),
-    );
-  });
-
-  it('не надсилає менеджеру якщо у нього немає chatId', async () => {
-    mockPrisma.city.findUnique.mockResolvedValueOnce({
-      id: 'city-1',
-      users: [{ telegramChatId: null, telegramId: '@handle' }],
-    });
-
-    const service = makeService();
-    await service.create(baseData);
-
-    expect(mockTelegram.sendMessage).not.toHaveBeenCalled();
-  });
-
-  it('надсилає відповідальному якщо assignedUserId є і chatId відрізняється', async () => {
-    mockPrisma.city.findUnique.mockResolvedValueOnce({
-      id: 'city-1',
-      users: [{ telegramChatId: 'mgr-111', telegramId: null }],
-    });
-    mockPrisma.user.findUnique.mockResolvedValueOnce({
-      telegramChatId: 'assignee-222',
-      telegramId: null,
-    });
-
-    const service = makeService();
-    await service.create({
-      ...baseData,
-      assignedUserId: 'user-2',
-      assignedUserName: 'Василь',
-    });
-
-    expect(mockTelegram.sendMessage).toHaveBeenCalledTimes(2);
-    const chatIds = mockTelegram.sendMessage.mock.calls.map(
-      ([chatId]: [string]) => chatId,
-    );
-    expect(chatIds).toContain('mgr-111');
-    expect(chatIds).toContain('assignee-222');
-  });
-
-  it('не надсилає дублю якщо менеджер і відповідальний — одна людина', async () => {
-    mockPrisma.city.findUnique.mockResolvedValueOnce({
-      id: 'city-1',
-      users: [{ telegramChatId: 'same-chat', telegramId: null }],
-    });
-    mockPrisma.user.findUnique.mockResolvedValueOnce({
-      telegramChatId: 'same-chat',
-      telegramId: null,
-    });
-
-    const service = makeService();
-    await service.create({
-      ...baseData,
-      assignedUserId: 'user-same',
-      assignedUserName: 'Один',
-    });
-
-    expect(mockTelegram.sendMessage).toHaveBeenCalledTimes(1);
-  });
-
-  it('повідомлення містить інформацію про дедлайн якщо він є', async () => {
-    mockPrisma.city.findUnique.mockResolvedValueOnce({
-      id: 'city-1',
-      users: [{ telegramChatId: 'mgr-111', telegramId: null }],
-    });
-
-    const service = makeService();
-    await service.create({ ...baseData, deadline: '2025-06-30' });
-
-    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
-    expect(msg).toContain('Дедлайн');
-  });
-
-  it('включає відповідального у повідомлення', async () => {
-    mockPrisma.city.findUnique.mockResolvedValueOnce({
-      id: 'city-1',
-      users: [{ telegramChatId: 'mgr-111', telegramId: null }],
-    });
-
-    const service = makeService();
-    await service.create({ ...baseData, assignedUserName: 'Марія Шевченко' });
-
-    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
-    expect(msg).toContain('Марія Шевченко');
-  });
-
-  it('включає учасників екіпажу у повідомлення', async () => {
-    mockPrisma.event.findUnique.mockResolvedValueOnce({
-      id: 'ev-1',
-      crew: {
-        host: { name: 'Ведучий Іван', telegramId: null },
-        driver: { name: 'Водій Петро', telegramId: '123456' },
-      },
-    });
-    mockPrisma.city.findUnique.mockResolvedValueOnce({
-      id: 'city-1',
-      users: [{ telegramChatId: 'mgr-111', telegramId: null }],
-    });
-
-    const service = makeService();
-    await service.create(baseData);
-
-    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
-    expect(msg).toContain('Ведучий Іван');
-    expect(msg).toContain('Водій Петро');
-  });
-
-  it("formatMember: числовий telegramId → лише ім'я (не @mention)", async () => {
-    mockPrisma.event.findUnique.mockResolvedValueOnce({
-      id: 'ev-1',
-      crew: {
-        host: { name: 'Ведучий', telegramId: '987654321' },
-        driver: null,
-      },
-    });
-    mockPrisma.city.findUnique.mockResolvedValueOnce({
-      id: 'city-1',
-      users: [{ telegramChatId: 'mgr-1', telegramId: null }],
-    });
-
-    const service = makeService();
-    await service.create(baseData);
-
-    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
-    // числовий id — не повинно бути @
-    expect(msg).not.toMatch(/@\d/);
-    expect(msg).toContain('Ведучий');
-  });
-
-  it('formatMember: @username telegramId → @mention', async () => {
-    mockPrisma.event.findUnique.mockResolvedValueOnce({
-      id: 'ev-1',
-      crew: {
-        host: { name: 'Ведучий', telegramId: '@ivanko' },
-        driver: null,
-      },
-    });
-    mockPrisma.city.findUnique.mockResolvedValueOnce({
-      id: 'city-1',
-      users: [{ telegramChatId: 'mgr-1', telegramId: null }],
-    });
-
-    const service = makeService();
-    await service.create(baseData);
-
-    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
-    expect(msg).toContain('@ivanko');
-  });
-
-  it('повертає створений issue', async () => {
-    const service = makeService();
-    const result = await service.create(baseData);
-
-    expect(result).toMatchObject({ id: 'issue-1' });
-  });
-});
-
-describe('IssuesService — findByCityId', () => {
-  it('повертає активні проблеми для міста (виключає Виконано)', async () => {
-    const issues = [{ id: 'i-1' }, { id: 'i-2' }];
-    mockPrisma.issueReport.findMany.mockResolvedValueOnce(issues);
-
-    const service = makeService();
-    const result = await service.findByCityId('city-1');
-
-    expect(mockPrisma.issueReport.findMany).toHaveBeenCalledWith({
-      where: { cityId: 'city-1', status: { not: 'Виконано' } },
-      orderBy: { createdAt: 'desc' },
-    });
-    expect(result).toHaveLength(2);
-  });
-
-  it('повертає порожній масив якщо активних проблем немає', async () => {
-    mockPrisma.issueReport.findMany.mockResolvedValueOnce([]);
-
-    const service = makeService();
-    const result = await service.findByCityId('city-empty');
-
-    expect(result).toEqual([]);
-  });
-});
-
-describe('IssuesService — updateStatus', () => {
-  it('оновлює статус проблеми', async () => {
-    mockPrisma.issueReport.update.mockResolvedValueOnce({
-      id: 'i-1',
-      status: 'Виконано',
-    });
-
-    const service = makeService();
-    const result = await service.updateStatus('i-1', 'Виконано');
-
-    expect(mockPrisma.issueReport.update).toHaveBeenCalledWith({
-      where: { id: 'i-1' },
-      data: { status: 'Виконано' },
-    });
-    expect(result).toMatchObject({ status: 'Виконано' });
-  });
-
-  it('може встановити довільний статус рядком', async () => {
-    mockPrisma.issueReport.update.mockResolvedValueOnce({
-      id: 'i-2',
-      status: 'В процесі',
-    });
-
-    const service = makeService();
-    await service.updateStatus('i-2', 'В процесі');
-
-    const callData = mockPrisma.issueReport.update.mock.calls[0][0];
-    expect(callData.data.status).toBe('В процесі');
-  });
-});
-
-```
-
-# FILE: apps/backend/src/issues/issues.service.ts
-
-```
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { TelegramService } from '../telegram/telegram.service';
-import { NotificationsService } from '../notifications/notifications.service';
-
-@Injectable()
-export class IssuesService {
-  constructor(
-    private prisma: PrismaService,
-    private telegramService: TelegramService,
-    private notificationsService: NotificationsService,
-  ) {}
-
-  async create(data: {
-    eventId: string;
-    schoolName: string;
-    eventName: string;
-    message: string;
-    cityId: string;
-    deadline?: string;
-    assignedUserId?: string;
-    assignedUserName?: string;
-  }) {
-    const issue = await this.prisma.issueReport.create({
-      data: {
-        eventId: data.eventId,
-        schoolName: data.schoolName,
-        eventName: data.eventName,
-        message: data.message,
-        cityId: data.cityId,
-        deadline: data.deadline ? new Date(data.deadline) : null,
-        assignedUserId: data.assignedUserId || null,
-        assignedUserName: data.assignedUserName || null,
-      },
-    });
-
-    const event = await this.prisma.event.findUnique({
-      where: { id: data.eventId },
-      include: {
-        crew: {
-          include: {
-            host: { select: { name: true, telegramId: true } },
-            driver: { select: { name: true, telegramId: true } },
-          },
-        },
-      },
-    });
-
-    const formatMember = (user: {
-      name: string;
-      telegramId: string | null;
-    }) => {
-      if (!user.telegramId) return user.name;
-      const clean = user.telegramId.replace(/^@/, '');
-      return /^\d+$/.test(clean) ? user.name : `@${clean} (${user.name})`;
-    };
-
-    const crewMembers: string[] = [];
-    if (event?.crew?.host)
-      crewMembers.push(`🎙️ Ведучий: ${formatMember(event.crew.host)}`);
-    if (event?.crew?.driver)
-      crewMembers.push(`🚗 Водій: ${formatMember(event.crew.driver)}`);
-
-    const city = await this.prisma.city.findUnique({
-      where: { id: data.cityId },
-      include: { users: { where: { role: 'MANAGER' }, take: 1 } },
-    });
-
-    let assigneeChatId: string | null = null;
-    if (data.assignedUserId) {
-      const assignee = await this.prisma.user.findUnique({
-        where: { id: data.assignedUserId },
-        select: { telegramChatId: true, telegramId: true },
-      });
-      assigneeChatId =
-        assignee?.telegramChatId ||
-        (assignee?.telegramId && /^\d+$/.test(assignee.telegramId)
-          ? assignee.telegramId
-          : null);
-    }
-
-    const deadlineStr = data.deadline
-      ? `\n⏰ <b>Дедлайн:</b> ${new Date(data.deadline).toLocaleDateString('uk-UA')}`
-      : '';
-
-    const assigneeStr = data.assignedUserName
-      ? `\n👤 <b>Відповідальний:</b> ${data.assignedUserName}`
-      : '';
-
-    const manager = city?.users?.[0];
-    const managerChatId =
-      manager?.telegramChatId ||
-      (manager?.telegramId && /^\d+$/.test(manager.telegramId)
-        ? manager.telegramId
-        : null);
-
-    const text =
-      `🚨 <b>Нова проблема!</b>\n\n` +
-      `🏫 <b>Заклад:</b> ${data.schoolName}\n` +
-      `📅 <b>Подія:</b> ${data.eventName}\n\n` +
-      `💬 <b>Повідомлення:</b>\n${data.message}` +
-      deadlineStr +
-      assigneeStr +
-      (crewMembers.length > 0
-        ? `\n\n👥 <b>Екіпаж:</b>\n${crewMembers.join('\n')}`
-        : '') +
-      `\n\n<i>Деталі у CRM: <a href="https://app.svitlo-znan.app">Посилання</a></i>`;
-
-    if (managerChatId)
-      await this.telegramService.sendMessage(managerChatId, text);
-
-    if (assigneeChatId && assigneeChatId !== managerChatId) {
-      await this.telegramService.sendMessage(assigneeChatId, text);
-    }
-
-    const notificationPayload = {
-      issueId: issue.id,
-      schoolName: data.schoolName,
-      eventName: data.eventName,
-      message: data.message,
-    };
-    if (manager?.id) {
-      this.notificationsService
-        .create(manager.id, 'ISSUE_CREATED', notificationPayload)
-        .catch(() => {});
-    }
-    if (data.assignedUserId) {
-      this.notificationsService
-        .create(data.assignedUserId, 'ISSUE_CREATED', notificationPayload)
-        .catch(() => {});
-    }
-
-    return issue;
-  }
-
-  async findByCityId(cityId: string) {
-    return this.prisma.issueReport.findMany({
-      where: {
-        cityId,
-        status: { not: 'Виконано' },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
-  async updateStatus(id: string, status: string) {
-    return this.prisma.issueReport.update({
-      where: { id },
-      data: { status },
-    });
-  }
-}
-
-```
-
-# FILE: apps/backend/src/main.ts
-
-```
-import './instrument';
-import { NestFactory, Reflector } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { ClassSerializerInterceptor, Logger } from '@nestjs/common';
-import cookieParser from 'cookie-parser';
-import helmet from 'helmet';
-import { Logger as PinoLogger } from 'nestjs-pino';
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { PrismaService } from './prisma/prisma.service';
-
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
-  app.useLogger(app.get(PinoLogger));
-  app.use(helmet());
-  app.use(cookieParser());
-
-  const allowedOrigins = (process.env.FRONTEND_URL ?? '')
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean);
-
-  app.enableCors({
-    origin: allowedOrigins,
-    credentials: true,
-  });
-  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
-  app.useGlobalFilters(app.get(AllExceptionsFilter));
-
-  if (process.env.NODE_ENV !== 'production') {
-    const config = new DocumentBuilder()
-      .setTitle('CRM «Світло Знань» API')
-      .setDescription(
-        'Система управління освітніми заходами у школах та садочках',
-      )
-      .setVersion('1.0')
-      .addCookieAuth('access_token')
-      .build();
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('docs', app, document);
-
-    app.getHttpAdapter().get('/docs-json', (req, res) => res.json(document));
-    app.getHttpAdapter().get('/docs/redoc', (req, res) => {
-      res.type('html').send(`<!DOCTYPE html>
-<html><head><title>CRM API Docs</title>
-<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
-<style>body{margin:0;padding:0}</style></head>
-<body><redoc spec-url="/docs-json"></redoc>
-<script src="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"></script>
-</body></html>`);
-    });
-  }
-
-  app.enableShutdownHooks();
-  const logger = new Logger('Bootstrap');
-
-  process.on('SIGTERM', async () => {
-    logger.log('Отримано SIGTERM, завершення роботи...');
-    const prisma = app.get(PrismaService);
-    await prisma.$disconnect();
-    await app.close();
-    process.exit(0);
-  });
-
-  process.on('SIGINT', async () => {
-    logger.log('Отримано SIGINT, завершення роботи...');
-    const prisma = app.get(PrismaService);
-    await prisma.$disconnect();
-    await app.close();
-    process.exit(0);
-  });
-
-  await app.listen(process.env.PORT ?? 3000);
-}
-bootstrap();
-
-```
-
-# FILE: apps/backend/src/metrics/metrics.controller.spec.ts
-
-```
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
-import { MetricsController } from './metrics.controller';
-import { MetricsService } from './metrics.service';
-import { MetricsGuard } from './metrics.guard';
-
-const mockGuard = { canActivate: jest.fn() };
-const mockMetricsService = {
-  getMetrics: jest.fn(),
-  getContentType: jest.fn(),
-};
-
-describe('MetricsController', () => {
-  let app: INestApplication;
-
-  beforeAll(async () => {
-    jest.clearAllMocks();
-
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [MetricsController],
-      providers: [{ provide: MetricsService, useValue: mockMetricsService }],
-    })
-      .overrideGuard(MetricsGuard)
-      .useValue(mockGuard)
-      .compile();
-
-    app = module.createNestApplication();
-    await app.init();
-  });
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockGuard.canActivate.mockResolvedValue(true);
-  });
-
-  afterAll(async () => {
-    await app.close();
-  });
-
-  describe('GET /metrics', () => {
-    it('без токена — 403 якщо METRICS_TOKEN встановлено', async () => {
-      mockGuard.canActivate.mockRejectedValueOnce(
-        new (require('@nestjs/common').ForbiddenException)(
-          'Invalid metrics token',
-        ),
-      );
-      await request(app.getHttpServer()).get('/metrics').expect(403);
-    });
-
-    it('з правильним токеном — 200', async () => {
-      mockGuard.canActivate.mockResolvedValue(true);
-      mockMetricsService.getMetrics.mockResolvedValueOnce('metrics data');
-      const res = await request(app.getHttpServer())
-        .get('/metrics')
-        .expect(200);
-      expect(res.text).toBe('metrics data');
-    });
-  });
-});
-
-```
-
-# FILE: apps/backend/src/metrics/metrics.controller.ts
-
-```
-import { Controller, Get, Header, UseGuards } from '@nestjs/common';
-import { MetricsService } from './metrics.service';
-import { MetricsGuard } from './metrics.guard';
-
-@Controller('metrics')
-@UseGuards(MetricsGuard)
-export class MetricsController {
-  constructor(private metrics: MetricsService) {}
-
-  @Get()
-  @Header('Content-Type', 'text/plain')
-  async getMetrics() {
-    return this.metrics.getMetrics();
-  }
-}
-
-```
-
-# FILE: apps/backend/src/metrics/metrics.guard.spec.ts
-
-```
-import { ExecutionContext, ForbiddenException } from '@nestjs/common';
-import { MetricsGuard } from './metrics.guard';
-
-describe('MetricsGuard', () => {
-  let guard: MetricsGuard;
-
-  const createContext = (
-    headers: Record<string, string> = {},
-  ): ExecutionContext =>
-    ({
-      switchToHttp: () => ({
-        getRequest: () => ({ headers }),
-      }),
-    }) as any;
-
-  beforeEach(() => {
-    guard = new MetricsGuard();
-  });
-
-  afterEach(() => {
-    delete process.env.METRICS_TOKEN;
-  });
-
-  it('без METRICS_TOKEN в env пропускає всі запити', () => {
-    const ok = guard.canActivate(createContext({}));
-    expect(ok).toBe(true);
-  });
-
-  it('з METRICS_TOKEN і правильним X-Metrics-Token пропускає', () => {
-    process.env.METRICS_TOKEN = 'secret123';
-    const ok = guard.canActivate(
-      createContext({ 'x-metrics-token': 'secret123' }),
-    );
-    expect(ok).toBe(true);
-  });
-
-  it('з METRICS_TOKEN і неправильним X-Metrics-Token кидає Forbidden', () => {
-    process.env.METRICS_TOKEN = 'secret123';
-    expect(() =>
-      guard.canActivate(createContext({ 'x-metrics-token': 'wrong' })),
-    ).toThrow(ForbiddenException);
-  });
-
-  it('з METRICS_TOKEN і без заголовка кидає Forbidden', () => {
-    process.env.METRICS_TOKEN = 'secret123';
-    expect(() => guard.canActivate(createContext({}))).toThrow(
-      ForbiddenException,
-    );
-  });
-});
-
-```
-
-# FILE: apps/backend/src/metrics/metrics.guard.ts
-
-```
-import {
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
-
-@Injectable()
-export class MetricsGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const token = process.env.METRICS_TOKEN;
-    if (!token) return true;
-
-    const req = context.switchToHttp().getRequest();
-    const headerToken = req.headers['x-metrics-token'];
-
-    if (headerToken !== token) {
-      throw new ForbiddenException('Invalid metrics token');
-    }
-    return true;
-  }
-}
-
-```
-
-# FILE: apps/backend/src/metrics/metrics.interceptor.ts
-
-```
-import {
-  CallHandler,
-  ExecutionContext,
-  Injectable,
-  NestInterceptor,
-} from '@nestjs/common';
-import { tap } from 'rxjs/operators';
-import { httpRequestDuration } from './metrics.service';
-
-@Injectable()
-export class MetricsInterceptor implements NestInterceptor {
-  intercept(context: ExecutionContext, next: CallHandler) {
-    const req = context.switchToHttp().getRequest();
-    const res = context.switchToHttp().getResponse();
-    const start = process.hrtime.bigint();
-
-    return next.handle().pipe(
-      tap(() => {
-        const durationSec = Number(process.hrtime.bigint() - start) / 1e9;
-        const route = req.route?.path ?? req.url;
-        httpRequestDuration.observe(
-          { method: req.method, route, status_code: res.statusCode },
-          durationSec,
-        );
-      }),
-    );
-  }
-}
-
-```
-
-# FILE: apps/backend/src/metrics/metrics.module.ts
-
-```
-import { Global, Module } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
-import { MetricsController } from './metrics.controller';
-import { MetricsService } from './metrics.service';
-import { MetricsInterceptor } from './metrics.interceptor';
-
-@Global()
-@Module({
-  controllers: [MetricsController],
-  providers: [
-    MetricsService,
-    { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
-  ],
-  exports: [MetricsService],
-})
-export class MetricsModule {}
-
-```
-
-# FILE: apps/backend/src/metrics/metrics.service.ts
-
-```
-import { Injectable } from '@nestjs/common';
-import { Registry, Histogram, collectDefaultMetrics } from 'prom-client';
-
-export const registry = new Registry();
-collectDefaultMetrics({ register: registry });
-
-export const httpRequestDuration = new Histogram({
-  name: 'http_request_duration_seconds',
-  help: 'HTTP request duration',
-  labelNames: ['method', 'route', 'status_code'],
-  buckets: [0.05, 0.1, 0.3, 0.5, 1, 2, 5],
-  registers: [registry],
-});
-
-export const dbQueryDuration = new Histogram({
-  name: 'db_query_duration_seconds',
-  help: 'Prisma query duration',
-  labelNames: ['model', 'action'],
-  buckets: [0.01, 0.05, 0.1, 0.3, 0.5, 1, 2],
-  registers: [registry],
-});
-
-@Injectable()
-export class MetricsService {
-  getMetrics() {
-    return registry.metrics();
-  }
-  getContentType() {
-    return registry.contentType;
-  }
-}
-
-```
-
-# FILE: apps/backend/src/notifications/notifications.controller.ts
-
-```
-import {
-  Controller,
-  Get,
-  Patch,
-  Param,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
-import { ApiTags, ApiCookieAuth } from '@nestjs/swagger';
-import { AuthGuard } from '../auth/auth.guard';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
-import { NotificationsService } from './notifications.service';
-
-@ApiTags('notifications')
-@ApiCookieAuth('access_token')
-@UseGuards(AuthGuard)
-@Controller('notifications')
-export class NotificationsController {
-  constructor(private readonly service: NotificationsService) {}
-
-  @Get()
-  findAll(@CurrentUser() user: JwtUser, @Query('page') page?: number) {
-    return this.service.findAll(user.sub, page ?? 1);
-  }
-
-  @Get('unread-count')
-  unreadCount(@CurrentUser() user: JwtUser) {
-    return this.service.unreadCount(user.sub).then((c) => ({ count: c }));
-  }
-
-  @Patch(':id/read')
-  markRead(@Param('id') id: string, @CurrentUser() user: JwtUser) {
-    return this.service.markRead(id, user.sub);
-  }
-
-  @Patch('read-all')
-  markAllRead(@CurrentUser() user: JwtUser) {
-    return this.service.markAllRead(user.sub);
-  }
-}
-
-```
-
-# FILE: apps/backend/src/notifications/notifications.module.ts
-
-```
-import { Module } from '@nestjs/common';
-import { NotificationsController } from './notifications.controller';
-import { NotificationsService } from './notifications.service';
-
-@Module({
-  controllers: [NotificationsController],
-  providers: [NotificationsService],
-  exports: [NotificationsService],
-})
-export class NotificationsModule {}
-
-```
-
-# FILE: apps/backend/src/notifications/notifications.service.ts
-
-```
-import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-
-@Injectable()
-export class NotificationsService {
-  constructor(private prisma: PrismaService) {}
-
-  async create(userId: string, type: string, payload: Record<string, unknown>) {
-    return this.prisma.notification.create({
-      data: { userId, type, payload: payload as Prisma.InputJsonValue },
-    });
-  }
-
-  async findAll(userId: string, page = 1, take = 20) {
-    const where = { userId };
-    const [items, total] = await Promise.all([
-      this.prisma.notification.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * take,
-        take,
-      }),
-      this.prisma.notification.count({ where }),
-    ]);
-    return { items, total, page, pageCount: Math.ceil(total / take) };
-  }
-
-  async unreadCount(userId: string) {
-    return this.prisma.notification.count({
-      where: { userId, readAt: null },
-    });
-  }
-
-  async markRead(id: string, userId: string) {
-    return this.prisma.notification.updateMany({
-      where: { id, userId },
-      data: { readAt: new Date() },
-    });
-  }
-
-  async markAllRead(userId: string) {
-    return this.prisma.notification.updateMany({
-      where: { userId, readAt: null },
-      data: { readAt: new Date() },
-    });
-  }
-}
-
-```
-
-# FILE: apps/backend/src/prisma/prisma.mock.ts
-
-```
-import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
-import { PrismaService } from './prisma.service';
-export type MockPrismaService = DeepMockProxy<PrismaService>;
-
-export const createPrismaMock = (): MockPrismaService => {
-  return mockDeep<PrismaService>();
-};
-
-```
-
-# FILE: apps/backend/src/prisma/prisma.module.ts
-
-```
-import { Global, Module } from '@nestjs/common';
-import { PrismaService } from './prisma.service';
-import { OwnershipGuard } from '../auth/guards/ownership.guard';
-
-@Global()
-@Module({
-  providers: [PrismaService, OwnershipGuard],
-  exports: [PrismaService, OwnershipGuard],
-})
-export class PrismaModule {}
-
-```
-
-# FILE: apps/backend/src/prisma/prisma.service.spec.ts
-
-```
-import { Test, TestingModule } from '@nestjs/testing';
-import { PrismaService } from './prisma.service';
-
-describe('PrismaService', () => {
-  let service: PrismaService;
-
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [PrismaService],
-    }).compile();
-
-    service = module.get<PrismaService>(PrismaService);
-  });
-
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-});
 
 ```
 

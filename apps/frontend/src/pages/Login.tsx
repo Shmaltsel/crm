@@ -125,7 +125,7 @@ export default function Login({ onLogin }: LoginProps) {
                 autoCapitalize="none"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3.5 py-3 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none text-base transition-colors"
+                className="w-full px-3.5 py-3 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none text-base transition-colors bg-surface text-content-primary"
                 whileFocus={{ scale: 1.01 }}
                 transition={TRANSITION.focus}
                 required
@@ -142,7 +142,7 @@ export default function Login({ onLogin }: LoginProps) {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3.5 py-3 pr-10 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none text-base transition-colors"
+                  className="w-full px-3.5 py-3 pr-10 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none text-base transition-colors bg-surface text-content-primary"
                   whileFocus={{ scale: 1.01 }}
                   transition={TRANSITION.focus}
                   required
@@ -151,7 +151,7 @@ export default function Login({ onLogin }: LoginProps) {
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-0.5"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-secondary transition-colors p-0.5"
                   aria-label={showPassword ? "Приховати пароль" : "Показати пароль"}
                 >
                   <AnimatePresence mode="wait" initial={false}>
