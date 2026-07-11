@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { motion } from "framer-motion";
+import { SPRING } from "../../lib/motion";
 
 type BadgeVariant = "default" | "success" | "danger" | "warning" | "info";
 type BadgeSize = "sm" | "md";
@@ -25,11 +27,15 @@ const sizeStyles: Record<BadgeSize, string> = {
 
 export function Badge({ children, variant = "default", size = "md", className = "" }: BadgeProps) {
   return (
-    <span
+    <motion.span
+      layout
+      initial={{ scale: 0.8, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={SPRING.snappy}
       className={`inline-flex items-center font-semibold rounded-pill border
         ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
     >
       {children}
-    </span>
+    </motion.span>
   );
 }

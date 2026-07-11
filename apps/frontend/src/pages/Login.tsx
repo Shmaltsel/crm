@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { Eye, EyeOff } from "lucide-react";
 
 import { api } from "../config/api";
-import { fadeVariants, TRANSITION } from "../lib/motion";
+import { fadeVariants, staggerContainer, staggerItem, TRANSITION, SPRING } from "../lib/motion";
 
 const CIRCLE_VARIANTS = {
   hidden: { scale: 0, opacity: 1 },
@@ -27,6 +28,7 @@ interface LoginProps {
 export default function Login({ onLogin }: LoginProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -104,68 +106,103 @@ export default function Login({ onLogin }: LoginProps) {
           </motion.div>
         )}
 
-        <form onSubmit={handleLogin} className="flex flex-col gap-4">
-          <div>
-            <label htmlFor="login-email" className="block text-sm font-medium text-content-primary mb-1.5">
-              Email
-            </label>
-            <input
-              id="login-email"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              autoCapitalize="none"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3.5 py-3 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none text-base transition-colors"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="login-password" className="block text-sm font-medium text-content-primary mb-1.5">
-              Пароль
-            </label>
-            <input
-              id="login-password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3.5 py-3 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none text-base transition-colors"
-              required
-            />
-          </div>
-          <motion.button
-            type="submit"
-            disabled={isLoading}
-            whileTap={{ scale: 0.97 }}
-            transition={TRANSITION.tap}
-            className="mt-2 bg-brand text-white font-medium px-5 py-3 rounded-control hover:bg-brand-hover transition disabled:opacity-80 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[48px]"
+        <form onSubmit={handleLogin}>
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate={isTransitioning ? "exit" : "visible"}
+            className="flex flex-col gap-4"
           >
-            <AnimatePresence mode="wait" initial={false}>
-              {isLoading ? (
-                <motion.span
-                  key="loading"
-                  variants={fadeVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                  className="flex items-center gap-2"
+            <motion.div variants={staggerItem}>
+              <label htmlFor="login-email" className="block text-sm font-medium text-content-primary mb-1.5">
+                Email
+              </label>
+              <motion.input
+                id="login-email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3.5 py-3 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none text-base transition-colors"
+                whileFocus={{ scale: 1.01 }}
+                transition={TRANSITION.focus}
+                required
+              />
+            </motion.div>
+            <motion.div variants={staggerItem}>
+              <label htmlFor="login-password" className="block text-sm font-medium text-content-primary mb-1.5">
+                Пароль
+              </label>
+              <div className="relative">
+                <motion.input
+                  id="login-password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3.5 py-3 pr-10 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none text-base transition-colors"
+                  whileFocus={{ scale: 1.01 }}
+                  transition={TRANSITION.focus}
+                  required
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-0.5"
+                  aria-label={showPassword ? "Приховати пароль" : "Показати пароль"}
                 >
-                  <motion.span
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 0.7, repeat: Infinity, ease: "linear" }}
-                    className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full"
-                  />
-                  Вхід...
-                </motion.span>
-              ) : (
-                <motion.span key="idle" variants={fadeVariants} initial="hidden" animate="visible" exit="exit">
-                  Увійти
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </motion.button>
+                  <AnimatePresence mode="wait" initial={false}>
+                    {showPassword ? (
+                      <motion.span key="off" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={TRANSITION.fade}>
+                        <EyeOff className="w-4 h-4" />
+                      </motion.span>
+                    ) : (
+                      <motion.span key="on" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={TRANSITION.fade}>
+                        <Eye className="w-4 h-4" />
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </button>
+              </div>
+            </motion.div>
+            <motion.div variants={staggerItem}>
+              <motion.button
+                type="submit"
+                disabled={isLoading}
+                whileHover={{ scale: 1.015 }}
+                whileTap={{ scale: 0.97 }}
+                transition={TRANSITION.hover}
+                className="mt-2 w-full bg-brand text-white font-medium px-5 py-3 rounded-control hover:bg-brand-hover transition disabled:opacity-80 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[48px]"
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  {isLoading ? (
+                    <motion.span
+                      key="loading"
+                      variants={fadeVariants}
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
+                      className="flex items-center gap-2"
+                    >
+                      <motion.span
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 0.7, repeat: Infinity, ease: "linear" }}
+                        className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full"
+                      />
+                      Вхід...
+                    </motion.span>
+                  ) : (
+                    <motion.span key="idle" variants={fadeVariants} initial="hidden" animate="visible" exit="exit">
+                      Увійти
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </motion.button>
+            </motion.div>
+          </motion.div>
         </form>
       </motion.div>
     </div>

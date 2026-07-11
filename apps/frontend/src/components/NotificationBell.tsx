@@ -3,7 +3,7 @@ import { Bell } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useNotifications, useUnreadCount, useMarkRead, useMarkAllRead } from "../hooks/useNotifications";
-import { tooltipVariants } from "../lib/motion";
+import { tooltipVariants, bellRingVariants, staggerContainer, staggerItem, SPRING, DUR, EASE } from "../lib/motion";
 
 const TYPE_ICONS: Record<string, string> = {
   EVENT_RESCHEDULED: "📅",
@@ -50,12 +50,30 @@ export default function NotificationBell() {
         className="relative p-2 text-slate-400 hover:text-white transition-colors active:scale-90"
         title="Сповіщення"
       >
-        <Bell className="w-5 h-5" />
-        {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
-            {unread > 99 ? "99+" : unread}
-          </span>
-        )}
+        <motion.div
+          animate={unread > 0 ? "ring" : undefined}
+          variants={bellRingVariants}
+        >
+          <Bell className="w-5 h-5" />
+        </motion.div>
+        <AnimatePresence>
+          {unread > 0 && (
+            <motion.span
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              transition={SPRING.bouncy}
+              className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1"
+            >
+              <motion.span
+                animate={{ scale: [1, 1.15, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                {unread > 99 ? "99+" : unread}
+              </motion.span>
+            </motion.span>
+          )}
+        </AnimatePresence>
       </button>
 
       <AnimatePresence>
@@ -87,35 +105,44 @@ export default function NotificationBell() {
                     Немає сповіщень
                   </div>
                 ) : (
-                  notifData.items.map((n) => (
-                    <button
-                      key={n.id}
-                      onClick={() => {
-                        if (!n.readAt) markRead.mutate(n.id);
-                        setOpen(false);
-                        const payload = n.payload as Record<string, unknown>;
-                        const entityType = payload?.entityType as string | undefined;
-                        const entityId = payload?.entityId as string | undefined;
-                        if (entityType && entityId) {
-                          navigate(`/${entityType}/${entityId}`);
-                        }
-                      }}
-                      className={`w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-slate-800/50 transition-colors active:scale-[0.98] border-b border-slate-800/30 last:border-0 ${!n.readAt ? "bg-blue-900/10" : ""}`}
-                    >
-                      <span className="text-lg shrink-0 mt-0.5">{getIcon(n.type)}</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm text-white truncate">
-                          {(n.payload as Record<string, unknown>)?.title as string || n.type}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          {timeAgo(n.createdAt)}
-                        </p>
-                      </div>
-                      {!n.readAt && (
-                        <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-2" />
-                      )}
-                    </button>
-                  ))
+                  <motion.div variants={staggerContainer} initial="hidden" animate="visible">
+                    {notifData.items.map((n) => (
+                      <motion.button
+                        key={n.id}
+                        variants={staggerItem}
+                        whileHover={{ backgroundColor: "rgba(30,41,59,0.5)", y: -1 }}
+                        transition={{ duration: DUR.fast, ease: EASE.standard }}
+                        onClick={() => {
+                          if (!n.readAt) markRead.mutate(n.id);
+                          setOpen(false);
+                          const payload = n.payload as Record<string, unknown>;
+                          const entityType = payload?.entityType as string | undefined;
+                          const entityId = payload?.entityId as string | undefined;
+                          if (entityType && entityId) {
+                            navigate(`/${entityType}/${entityId}`);
+                          }
+                        }}
+                        className={`w-full text-left px-4 py-3 flex items-start gap-3 transition-colors active:scale-[0.98] border-b border-slate-800/30 last:border-0 ${!n.readAt ? "bg-blue-900/10" : ""}`}
+                      >
+                        <span className="text-lg shrink-0 mt-0.5">{getIcon(n.type)}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm text-white truncate">
+                            {(n.payload as Record<string, unknown>)?.title as string || n.type}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {timeAgo(n.createdAt)}
+                          </p>
+                        </div>
+                        {!n.readAt && (
+                          <motion.span
+                            animate={{ scale: [1, 1.3, 1] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                            className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-2"
+                          />
+                        )}
+                      </motion.button>
+                    ))}
+                  </motion.div>
                 )}
               </div>
             </motion.div>
