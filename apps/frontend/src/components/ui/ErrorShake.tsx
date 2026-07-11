@@ -1,4 +1,4 @@
-import { motion, type MotionProps } from "framer-motion";
+import { motion } from "framer-motion";
 import { shakeVariants, useReducedMotion } from "../../lib/motion";
 
 interface ErrorShakeProps {

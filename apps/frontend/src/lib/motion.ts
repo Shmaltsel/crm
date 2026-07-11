@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Variants, Transition } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
+import type { Variants } from "framer-motion";
 
 /* ─── Reduced Motion ─── */
 
@@ -42,7 +42,6 @@ export function useReducedMotion(): boolean {
 
 /** React hook: staggered entrance for list items. */
 export function useStaggeredEntrance(
-  count: number,
   opts?: { delayChildren?: number; stagger?: number },
 ) {
   const reduced = useReducedMotion();
@@ -60,7 +59,7 @@ export function useStaggeredEntrance(
         },
       },
     }),
-    [count, delayChildren, stagger, reduced],
+    [delayChildren, stagger, reduced],
   );
 }
 
