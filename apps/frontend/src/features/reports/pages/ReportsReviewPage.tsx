@@ -13,6 +13,7 @@ import { EmptyState } from "../../../components/ui/EmptyState";
 import { Skeleton } from "../../../components/ui/Skeleton";
 import { Input } from "../../../components/ui/Input";
 import { useToast } from "../../../components/ui/Toast";
+import SalaryEntryForm from "../../salary/components/SalaryEntryForm";
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("uk-UA", {
@@ -271,6 +272,12 @@ export default function ReportsReviewPage() {
                             ))}
                           </div>
                         )}
+                        <div className="mt-3 pt-3 border-t border-border">
+                          <h5 className="text-2xs font-semibold text-content-muted uppercase tracking-wide mb-1.5">
+                            Додати нарахування
+                          </h5>
+                          <SalaryEntryForm reportId={r.id} />
+                        </div>
                       </div>
                     </div>
 

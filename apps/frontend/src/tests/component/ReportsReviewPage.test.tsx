@@ -44,6 +44,14 @@ vi.mock("../../hooks/useReports", () => ({
   useRejectReport: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
+vi.mock("../../hooks/useSalary", () => ({
+  useCreateSalary: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+
+vi.mock("../../hooks/useEmployees", () => ({
+  useUsers: () => ({ data: [] }),
+}));
+
 describe("ReportsReviewPage", () => {
   beforeEach(() => {
     mockApprove.mockClear();
