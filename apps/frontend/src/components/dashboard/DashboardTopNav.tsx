@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import type { DashboardTab } from "../../constants/navTabs";
-import { SPRING } from "../../lib/motion";
 
 interface Props {
   tabs: DashboardTab[];
@@ -10,7 +9,7 @@ interface Props {
 
 export default function DashboardTopNav({ tabs, activeTab, onChange }: Props) {
   return (
-    <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-border">
+    <div className="sticky top-0 z-30 bg-white/80 md:backdrop-blur-md border-b border-border">
       <div className="relative">
         <nav
           className="flex overflow-x-auto no-scrollbar gap-0.5 px-4 md:px-8"
@@ -37,8 +36,9 @@ export default function DashboardTopNav({ tabs, activeTab, onChange }: Props) {
                 {isActive && (
                   <motion.div
                     layoutId="dashboard-active-tab"
+                    layout="position"
                     className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-pill"
-                    transition={SPRING.stiff}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
                   />
                 )}
               </button>

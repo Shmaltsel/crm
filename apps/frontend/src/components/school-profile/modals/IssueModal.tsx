@@ -84,7 +84,7 @@ export default function IssueModal({
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="fixed inset-0 bg-backdrop backdrop-blur-sm z-modal flex items-center justify-center p-4"
+          className="fixed inset-0 bg-backdrop md:backdrop-blur-sm z-modal flex items-center justify-center p-4"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
           <motion.div

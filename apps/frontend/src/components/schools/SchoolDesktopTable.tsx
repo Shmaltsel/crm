@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate, type NavigateFunction } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { fadeVariants, staggerContainer, staggerItem, TRANSITION } from "../../lib/motion";
+import { fadeVariants, staggerContainer, staggerItem, TRANSITION, useHoverCapable } from "../../lib/motion";
 import type { School, PipelineStage } from "../../types";
 import { CATEGORY_BADGES } from "../../constants/categoryBadges";
 
@@ -21,6 +21,7 @@ interface SchoolRowProps {
 
 export const SchoolRow = React.memo(
   ({ school, onDelete, stages, navigate }: SchoolRowProps) => {
+    const hoverCapable = useHoverCapable();
     const latestEvent = school.events?.[0];
     const stage = latestEvent
       ? stages.find((s) => s.key === latestEvent.status)
@@ -32,7 +33,7 @@ export const SchoolRow = React.memo(
         variants={staggerItem}
         onClick={() => navigate(`/schools/${school.id}`)}
         className="border-b border-border transition-colors cursor-pointer"
-        whileHover={{ backgroundColor: "rgba(239, 246, 255, 0.5)" }}
+        whileHover={hoverCapable ? { backgroundColor: "rgba(239, 246, 255, 0.5)" } : undefined}
         transition={TRANSITION.hover}
       >
         <td className="p-4 font-bold text-content-primary overflow-hidden">

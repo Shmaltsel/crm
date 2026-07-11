@@ -329,6 +329,34 @@ model AuditLog {
   @@index([entity, entityId])
 }
 
+model CompanyBalance {
+  id        String   @id
+  amount    Decimal  @default(0) @db.Decimal(14, 2)
+  updatedAt DateTime @updatedAt
+}
+
+enum CompanyBalanceEntryType {
+  EVENT_INCOME
+  SALARY_PAYOUT
+  MANUAL_ADJUSTMENT
+}
+
+model CompanyBalanceEntry {
+  id             String                   @id @default(cuid())
+  type           CompanyBalanceEntryType
+  amount         Decimal                  @db.Decimal(14, 2)
+  balanceAfter   Decimal                  @db.Decimal(14, 2)
+  reportId       String?
+  eventId        String?
+  salaryRecordId String?
+  createdBy      String?
+  comment        String?
+  createdAt      DateTime                 @default(now())
+
+  @@index([type, createdAt])
+  @@index([createdAt])
+}
+
 enum UserRole {
   SUPERADMIN
   OWNER

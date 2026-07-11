@@ -1,1590 +1,2112 @@
 [
   {
     "file": "apps/backend/nest-cli.json",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 66
   },
   {
     "file": "apps/backend/package.json",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 1042
   },
   {
     "file": "apps/backend/prisma/schema.prisma",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 3583
   },
   {
     "file": "apps/backend/prisma/migrations/0_init/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 2010
   },
   {
     "file": "apps/backend/prisma/migrations/20260621171208_add_telegram_id/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 48
   },
   {
     "file": "apps/backend/prisma/migrations/20260621174227_add_telegram_chat_id/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 51
   },
   {
     "file": "apps/backend/prisma/migrations/20260621185332_add_school_contacts/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 129
   },
   {
     "file": "apps/backend/prisma/migrations/20260623140450_add_car_field/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 360
   },
   {
     "file": "apps/backend/prisma/migrations/20260628223725_add_expense_salary_items/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 656
   },
   {
     "file": "apps/backend/prisma/migrations/20260701224321_balance_to_decimal/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 114
   },
   {
     "file": "apps/backend/prisma/migrations/20260701232948_add_missing_indexes/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 92
   },
   {
     "file": "apps/backend/prisma/migrations/20260701234519_user_role_enum/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 147
   },
   {
     "file": "apps/backend/prisma/migrations/20260701234848_add_host_role/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 44
   },
   {
     "file": "apps/backend/prisma/migrations/20260701235202_preparation_status_enum/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 449
   },
   {
     "file": "apps/backend/prisma/migrations/20260702123544_add_performance_indexes/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 118
   },
   {
     "file": "apps/backend/prisma/migrations/20260702175302_add_audit_log/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 409
   },
   {
     "file": "apps/backend/prisma/migrations/20260703211958_event_school_id_date_index/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 57
   },
   {
     "file": "apps/backend/prisma/migrations/20260704140802_add_day_off/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 195
   },
   {
     "file": "apps/backend/prisma/migrations/20260704220311_add_project_price_per_child/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 60
   },
   {
     "file": "apps/backend/prisma/migrations/20260706104815_add_query_indexes/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 168
   },
   {
     "file": "apps/backend/prisma/migrations/20260706120000_event_report_decimal_money/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 215
   },
   {
     "file": "apps/backend/prisma/migrations/20260708205543_add_owner_role/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 44
   },
   {
     "file": "apps/backend/prisma/migrations/20260708210633_add_report_status/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 210
   },
   {
     "file": "apps/backend/prisma/migrations/20260708213844_replace_salaryitem_with_salaryrecord/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 518
   },
   {
     "file": "apps/backend/prisma/migrations/20260708215231_add_school_comment/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 294
   },
   {
     "file": "apps/backend/prisma/migrations/20260708221238_add_inventory_notification_models/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 535
   },
   {
     "file": "apps/backend/prisma/migrations/20260708233051_add_inventory_category_city/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 238
   },
   {
     "file": "apps/backend/prisma/migrations/20260709004525_add_project_to_inventory_item/migration.sql",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 79
   },
   {
     "file": "apps/backend/prisma/seed-admin.js",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 438
   },
   {
     "file": "apps/backend/prisma/seed-demo.js",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 2221
   },
   {
     "file": "apps/backend/README.md",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 1479
   },
   {
     "file": "apps/backend/src/main.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 772
   },
   {
     "file": "apps/backend/src/app.module.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 1138
   },
   {
     "file": "apps/backend/src/analytics/analytics.controller.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 1482
   },
   {
     "file": "apps/backend/src/analytics/analytics.module.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 149
   },
   {
     "file": "apps/backend/src/analytics/analytics.service.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 4094
   },
   {
     "file": "apps/backend/src/app.controller.spec.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 200
   },
   {
     "file": "apps/backend/src/app.controller.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 98
   },
   {
     "file": "apps/backend/src/app.service.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 59
   },
   {
     "file": "apps/backend/src/auth/auth.controller.spec.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 193
   },
   {
     "file": "apps/backend/src/auth/auth.controller.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 1222
   },
   {
     "file": "apps/backend/src/auth/auth.guard.spec.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 710
   },
   {
     "file": "apps/backend/src/auth/auth.guard.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 283
   },
   {
     "file": "apps/backend/src/auth/auth.module.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 196
   },
   {
     "file": "apps/backend/src/auth/auth.service.spec.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 2333
   },
   {
     "file": "apps/backend/src/auth/auth.service.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 1105
   },
   {
     "file": "apps/backend/src/auth/csrf.guard.spec.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 808
   },
   {
     "file": "apps/backend/src/auth/csrf.guard.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 311
   },
   {
     "file": "apps/backend/src/auth/decorators/check-ownership.decorator.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 106
   },
   {
     "file": "apps/backend/src/auth/decorators/current-user.decorator.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 117
   },
   {
     "file": "apps/backend/src/auth/decorators/roles.decorator.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 80
   },
   {
     "file": "apps/backend/src/auth/decorators/skip-csrf.decorator.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 67
   },
   {
     "file": "apps/backend/src/auth/dto/login.dto.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 122
   },
   {
     "file": "apps/backend/src/auth/guards/ownership.guard.spec.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 2612
   },
   {
     "file": "apps/backend/src/auth/guards/ownership.guard.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 1072
   },
   {
     "file": "apps/backend/src/auth/guards/roles.guard.spec.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 611
   },
   {
     "file": "apps/backend/src/auth/guards/roles.guard.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 265
   },
   {
     "file": "apps/backend/src/auth/interfaces/jwt-user.interface.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 65
   },
   {
     "file": "apps/backend/src/cities/cities.controller.spec.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 316
   },
   {
     "file": "apps/backend/src/cities/cities.controller.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 616
   },
   {
     "file": "apps/backend/src/cities/cities.module.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 92
   },
   {
     "file": "apps/backend/src/cities/cities.service.spec.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 164
   },
   {
     "file": "apps/backend/src/cities/cities.service.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 977
   },
   {
     "file": "apps/backend/src/cities/dto/create-city.dto.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 83
   },
   {
     "file": "apps/backend/src/cities/dto/create-crew.dto.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 152
   },
   {
     "file": "apps/backend/src/common/cache/cache-version.service.spec.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 586
   },
   {
     "file": "apps/backend/src/common/cache/cache-version.service.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 222
   },
   {
     "file": "apps/backend/src/common/cache/redis-cache.module.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 347
   },
   {
     "file": "apps/backend/src/common/dto/page-meta.dto.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 126
   },
   {
     "file": "apps/backend/src/common/dto/page-options.dto.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 129
   },
   {
     "file": "apps/backend/src/common/exceptions/app.exception.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 110
   },
   {
     "file": "apps/backend/src/common/feature-flags/feature-flags.module.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 94
   },
   {
     "file": "apps/backend/src/common/feature-flags/feature-flags.service.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 271
   },
   {
     "file": "apps/backend/src/common/filters/all-exceptions.filter.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 641
   },
   {
     "file": "apps/backend/src/common/guards/user-throttler.guard.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 339
   },
   {
     "file": "apps/backend/src/common/i18n/i18n.module.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 77
   },
   {
     "file": "apps/backend/src/common/i18n/i18n.service.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 144
   },
   {
     "file": "apps/backend/src/common/i18n/messages.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 372
   },
   {
     "file": "apps/backend/src/common/interceptors/audit-log.interceptor.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 514
   },
   {
     "file": "apps/backend/src/common/interceptors/sanitize.interceptor.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 282
   },
   {
     "file": "apps/backend/src/common/logger/logger.module.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 291
   },
   {
     "file": "apps/backend/src/common/pipes/localized-validation.pipe.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 714
   },
   {
     "file": "apps/backend/src/config/env.validation.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 316
   },
   {
     "file": "apps/backend/src/dashboard/dashboard.controller.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 524
   },
   {
     "file": "apps/backend/src/dashboard/dashboard.module.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 166
   },
   {
     "file": "apps/backend/src/dashboard/dashboard.service.spec.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 2714
   },
   {
     "file": "apps/backend/src/dashboard/dashboard.service.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 3533
   },
   {
     "file": "apps/backend/src/days-off/days-off.controller.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 431
   },
   {
     "file": "apps/backend/src/days-off/days-off.module.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 150
   },
   {
     "file": "apps/backend/src/days-off/days-off.service.spec.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 5234
   },
   {
     "file": "apps/backend/src/days-off/days-off.service.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 1581
   },
   {
     "file": "apps/backend/src/days-off/dto/create-day-off.dto.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 144
   },
   {
     "file": "apps/backend/src/events/dto/add-comment.dto.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 60
   },
   {
     "file": "apps/backend/src/events/dto/assign-crew.dto.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 60
   },
   {
     "file": "apps/backend/src/events/dto/create-event.dto.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 606
   },
   {
     "file": "apps/backend/src/events/dto/event-query.dto.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 56
   },
   {
     "file": "apps/backend/src/events/dto/reschedule-event.dto.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 75
   },
   {
     "file": "apps/backend/src/events/dto/submit-report.dto.spec.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 934
   },
   {
     "file": "apps/backend/src/events/dto/submit-report.dto.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 526
   },
   {
     "file": "apps/backend/src/events/dto/update-preparation.dto.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 139
   },
   {
     "file": "apps/backend/src/events/dto/update-status.dto.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 157
   },
   {
     "file": "apps/backend/src/events/events-report.service.spec.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 3661
   },
   {
     "file": "apps/backend/src/events/events-report.service.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 2381
   },
   {
     "file": "apps/backend/src/events/events-scheduler.service.spec.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 1928
   },
   {
     "file": "apps/backend/src/events/events-scheduler.service.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 813
   },
   {
     "file": "apps/backend/src/events/events-scheduling.service.spec.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 1352
   },
   {
     "file": "apps/backend/src/events/events-scheduling.service.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 1347
   },
   {
     "file": "apps/backend/src/events/events.controller.spec.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 1884
   },
   {
     "file": "apps/backend/src/events/events.controller.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 1496
   },
   {
     "file": "apps/backend/src/events/events.module.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 312
+  },
+  {
+    "file": "apps/backend/src/events/events.service.smoke.spec.ts",
+    "bundle": "bundle_01.xml",
+    "tokens": 979
   },
   {
     "file": "apps/backend/src/events/events.service.spec.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_01.xml",
+    "tokens": 4147
   },
   {
     "file": "apps/backend/src/events/events.service.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 4236
   },
   {
     "file": "apps/backend/src/finance/create-expense-item.dto.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 98
   },
   {
     "file": "apps/backend/src/finance/dto/finance-dashboard-query.dto.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 110
   },
   {
     "file": "apps/backend/src/finance/dto/staff-revenue-query.dto.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 79
   },
   {
     "file": "apps/backend/src/finance/finance.controller.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 700
   },
   {
     "file": "apps/backend/src/finance/finance.module.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 124
+  },
+  {
+    "file": "apps/backend/src/finance/finance.service.smoke.spec.ts",
+    "bundle": "bundle_02.xml",
+    "tokens": 819
   },
   {
     "file": "apps/backend/src/finance/finance.service.spec.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 3027
   },
   {
     "file": "apps/backend/src/finance/finance.service.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 3494
+  },
+  {
+    "file": "apps/backend/src/health/health.controller.smoke.spec.ts",
+    "bundle": "bundle_02.xml",
+    "tokens": 505
   },
   {
     "file": "apps/backend/src/health/health.controller.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 232
   },
   {
     "file": "apps/backend/src/health/health.module.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 141
   },
   {
     "file": "apps/backend/src/health/indicators/redis.health.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 248
   },
   {
     "file": "apps/backend/src/instrument.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 126
   },
   {
     "file": "apps/backend/src/inventory/inventory.controller.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 892
   },
   {
     "file": "apps/backend/src/inventory/inventory.module.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 132
   },
   {
     "file": "apps/backend/src/inventory/inventory.service.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 1086
   },
   {
     "file": "apps/backend/src/issues/dto/create-issue.dto.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 310
   },
   {
     "file": "apps/backend/src/issues/dto/update-issue-status.dto.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 119
   },
   {
     "file": "apps/backend/src/issues/issues.controller.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 419
   },
   {
     "file": "apps/backend/src/issues/issues.module.ts",
-    "bundle": "bundle_01.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 146
   },
   {
     "file": "apps/backend/src/issues/issues.service.spec.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 2608
   },
   {
     "file": "apps/backend/src/issues/issues.service.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 1318
   },
   {
     "file": "apps/backend/src/metrics/metrics.controller.spec.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 522
   },
   {
     "file": "apps/backend/src/metrics/metrics.controller.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 140
   },
   {
     "file": "apps/backend/src/metrics/metrics.guard.spec.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 412
   },
   {
     "file": "apps/backend/src/metrics/metrics.guard.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 171
   },
   {
     "file": "apps/backend/src/metrics/metrics.interceptor.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 256
   },
   {
     "file": "apps/backend/src/metrics/metrics.module.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 160
   },
   {
     "file": "apps/backend/src/metrics/metrics.service.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 260
   },
   {
     "file": "apps/backend/src/notifications/notifications.controller.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 359
   },
   {
     "file": "apps/backend/src/notifications/notifications.module.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 120
   },
   {
     "file": "apps/backend/src/notifications/notifications.service.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 412
   },
   {
     "file": "apps/backend/src/prisma/prisma.mock.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 96
   },
   {
     "file": "apps/backend/src/prisma/prisma.module.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 109
   },
   {
     "file": "apps/backend/src/prisma/prisma.service.spec.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 681
   },
   {
     "file": "apps/backend/src/prisma/prisma.service.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 475
   },
   {
     "file": "apps/backend/src/projects/dto/create-project.dto.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 124
   },
   {
     "file": "apps/backend/src/projects/dto/update-project.dto.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 72
   },
   {
     "file": "apps/backend/src/projects/projects.controller.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 772
   },
   {
     "file": "apps/backend/src/projects/projects.module.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 97
   },
   {
     "file": "apps/backend/src/projects/projects.service.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 655
+  },
+  {
+    "file": "apps/backend/src/reports/dto/approve-report.dto.ts",
+    "bundle": "bundle_02.xml",
+    "tokens": 247
   },
   {
     "file": "apps/backend/src/reports/dto/create-report.dto.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 574
   },
   {
     "file": "apps/backend/src/reports/dto/revision.dto.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 100
   },
   {
     "file": "apps/backend/src/reports/dto/update-report.dto.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 71
   },
   {
     "file": "apps/backend/src/reports/reports.controller.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 941
   },
   {
     "file": "apps/backend/src/reports/reports.module.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 168
+  },
+  {
+    "file": "apps/backend/src/reports/reports.service.spec.ts",
+    "bundle": "bundle_02.xml",
+    "tokens": 1517
   },
   {
     "file": "apps/backend/src/reports/reports.service.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 3590
   },
   {
     "file": "apps/backend/src/salary/dto/create-salary.dto.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 270
   },
   {
     "file": "apps/backend/src/salary/dto/mark-paid.dto.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 93
+  },
+  {
+    "file": "apps/backend/src/salary/salary-payout.service.ts",
+    "bundle": "bundle_02.xml",
+    "tokens": 277
   },
   {
     "file": "apps/backend/src/salary/salary.controller.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 523
   },
   {
     "file": "apps/backend/src/salary/salary.module.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 154
+  },
+  {
+    "file": "apps/backend/src/salary/salary.service.spec.ts",
+    "bundle": "bundle_02.xml",
+    "tokens": 696
   },
   {
     "file": "apps/backend/src/salary/salary.service.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 1379
   },
   {
     "file": "apps/backend/src/school-comments/school-comments.controller.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 516
   },
   {
     "file": "apps/backend/src/school-comments/school-comments.module.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 148
   },
   {
     "file": "apps/backend/src/school-comments/school-comments.service.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 569
   },
   {
     "file": "apps/backend/src/schools/dto/bulk-import.dto.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 140
   },
   {
     "file": "apps/backend/src/schools/dto/create-school.dto.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 252
   },
   {
     "file": "apps/backend/src/schools/dto/find-contacts-query.dto.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 84
   },
   {
     "file": "apps/backend/src/schools/dto/find-schools-query.dto.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 94
   },
   {
     "file": "apps/backend/src/schools/dto/school-query.dto.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 195
   },
   {
     "file": "apps/backend/src/schools/dto/update-school.dto.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 247
   },
   {
     "file": "apps/backend/src/schools/parser.service.spec.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 2708
   },
   {
     "file": "apps/backend/src/schools/parser.service.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 3046
   },
   {
     "file": "apps/backend/src/schools/school-contacts.seed.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 5891
   },
   {
     "file": "apps/backend/src/schools/schools.controller.spec.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 680
   },
   {
     "file": "apps/backend/src/schools/schools.controller.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 1064
   },
   {
     "file": "apps/backend/src/schools/schools.module.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 158
   },
   {
     "file": "apps/backend/src/schools/schools.service.spec.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 3285
   },
   {
     "file": "apps/backend/src/schools/schools.service.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 5198
   },
   {
     "file": "apps/backend/src/telegram/telegram.module.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 129
   },
   {
     "file": "apps/backend/src/telegram/telegram.service.spec.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 2108
   },
   {
     "file": "apps/backend/src/telegram/telegram.service.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 1828
   },
   {
     "file": "apps/backend/src/users/dto/create-user.dto.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 381
   },
   {
     "file": "apps/backend/src/users/dto/update-user.dto.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 242
   },
   {
     "file": "apps/backend/src/users/users.controller.spec.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 232
   },
   {
     "file": "apps/backend/src/users/users.controller.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 434
   },
   {
     "file": "apps/backend/src/users/users.module.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 148
   },
   {
     "file": "apps/backend/src/users/users.service.spec.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 203
   },
   {
     "file": "apps/backend/src/users/users.service.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 989
   },
   {
     "file": "apps/backend/test/app.e2e-spec.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 231
   },
   {
     "file": "apps/backend/test/auth.e2e-spec.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 610
   },
   {
     "file": "apps/backend/test/dashboard.e2e-spec.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 1019
   },
   {
     "file": "apps/backend/test/events.e2e-spec.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 1833
   },
   {
     "file": "apps/backend/test/jest-e2e.json",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 128
   },
   {
     "file": "apps/backend/test/schools.e2e-spec.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 2182
   },
   {
     "file": "apps/backend/tsconfig.build.json",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 46
   },
   {
     "file": "apps/backend/tsconfig.json",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 225
   },
   {
     "file": "apps/docker-compose.yml",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 335
+  },
+  {
+    "file": "apps/Dockerfile",
+    "bundle": "bundle_02.xml",
+    "tokens": 286
   },
   {
     "file": "apps/frontend/e2e/dashboard-swipe.spec.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 652
   },
   {
     "file": "apps/frontend/e2e/login.spec.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 835
   },
   {
     "file": "apps/frontend/e2e/schools.spec.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 1115
   },
   {
     "file": "apps/frontend/eslint.config.js",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 207
+  },
+  {
+    "file": "apps/frontend/index.html",
+    "bundle": "bundle_02.xml",
+    "tokens": 177
   },
   {
     "file": "apps/frontend/package.json",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 619
   },
   {
     "file": "apps/frontend/playwright.config.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 153
   },
   {
     "file": "apps/frontend/postcss.config.js",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 40
   },
   {
     "file": "apps/frontend/README.md",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 713
   },
   {
     "file": "apps/frontend/src/main.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 247
   },
   {
     "file": "apps/frontend/src/App.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 2028
   },
   {
     "file": "apps/frontend/src/animations/employees.ts",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 387
   },
   {
     "file": "apps/frontend/src/components/AddressLink.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 426
   },
   {
     "file": "apps/frontend/src/components/BottomNavigationBar.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_02.xml",
+    "tokens": 1343
   },
   {
     "file": "apps/frontend/src/components/calendar/DayOffModal.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1384
   },
   {
     "file": "apps/frontend/src/components/cities/CityDesktopGrid.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 2761
   },
   {
     "file": "apps/frontend/src/components/cities/CityMobileHeader.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 3280
   },
   {
     "file": "apps/frontend/src/components/cities/CityMobileList.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1107
   },
   {
     "file": "apps/frontend/src/components/city-profile/CityAnalytics.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 3932
   },
   {
     "file": "apps/frontend/src/components/dashboard/ActivityFeed.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1913
   },
   {
     "file": "apps/frontend/src/components/dashboard/CitiesTable.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1386
   },
   {
     "file": "apps/frontend/src/components/dashboard/DashboardTopNav.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 560
   },
   {
     "file": "apps/frontend/src/components/dashboard/FunnelBar.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1124
   },
   {
     "file": "apps/frontend/src/components/dashboard/MonthlyKpi.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 949
   },
   {
     "file": "apps/frontend/src/components/dashboard/StaleSchools.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1726
   },
   {
     "file": "apps/frontend/src/components/dashboard/TabErrorBoundary.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 388
   },
   {
     "file": "apps/frontend/src/components/dashboard/TodayEvents.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1303
   },
   {
     "file": "apps/frontend/src/components/dashboard/UpcomingEvents.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 992
   },
   {
     "file": "apps/frontend/src/components/employees/EmployeeCard.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1345
   },
   {
     "file": "apps/frontend/src/components/employees/EmployeesHeader.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1060
   },
   {
     "file": "apps/frontend/src/components/employees/EmployeesTable.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 2949
   },
   {
     "file": "apps/frontend/src/components/employees/FilterPanel.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1724
   },
   {
     "file": "apps/frontend/src/components/employees/ProjectModal.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1554
   },
   {
     "file": "apps/frontend/src/components/employees/UserModal.tsx",
-    "bundle": "bundle_02.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 3005
   },
   {
     "file": "apps/frontend/src/components/ErrorBoundary.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 711
   },
   {
     "file": "apps/frontend/src/components/establishments/EstablishmentsTopNav.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 507
   },
   {
     "file": "apps/frontend/src/components/finance/FinanceCharts.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 5732
   },
   {
     "file": "apps/frontend/src/components/inventory/InventoryItemModal.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1396
   },
   {
     "file": "apps/frontend/src/components/IssueCarousel.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1612
   },
   {
     "file": "apps/frontend/src/components/Layout.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 2111
   },
   {
     "file": "apps/frontend/src/components/MobileTopNav.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 747
   },
   {
     "file": "apps/frontend/src/components/MoreSheet.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 2265
   },
   {
     "file": "apps/frontend/src/components/NotificationBell.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1896
   },
   {
     "file": "apps/frontend/src/components/PhoneLink.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 402
   },
   {
     "file": "apps/frontend/src/components/ProtectedRoute.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 154
   },
   {
     "file": "apps/frontend/src/components/school-profile/AssignedCrew.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 936
   },
   {
     "file": "apps/frontend/src/components/school-profile/CommentsTimeline.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 2593
   },
   {
     "file": "apps/frontend/src/components/school-profile/CompletedEventModal.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 2570
   },
   {
     "file": "apps/frontend/src/components/school-profile/EventDetails.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1997
   },
   {
     "file": "apps/frontend/src/components/school-profile/EventPreparation.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1356
   },
   {
     "file": "apps/frontend/src/components/school-profile/EventsTable.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1454
   },
   {
     "file": "apps/frontend/src/components/school-profile/HistoryTimeline.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 962
   },
   {
     "file": "apps/frontend/src/components/school-profile/modals/CommentModal.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1137
   },
   {
     "file": "apps/frontend/src/components/school-profile/modals/CrewModal.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 2184
   },
   {
     "file": "apps/frontend/src/components/school-profile/modals/EditSchoolModal.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1801
   },
   {
     "file": "apps/frontend/src/components/school-profile/modals/EventModal.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 2807
   },
   {
     "file": "apps/frontend/src/components/school-profile/modals/EventSchema.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 215
   },
   {
     "file": "apps/frontend/src/components/school-profile/modals/IssueModal.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1791
   },
   {
     "file": "apps/frontend/src/components/school-profile/modals/ReportModal.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 5617
   },
   {
     "file": "apps/frontend/src/components/school-profile/modals/RescheduleModal.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1323
   },
   {
     "file": "apps/frontend/src/components/school-profile/modals/SchoolEditSchema.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 185
   },
   {
     "file": "apps/frontend/src/components/school-profile/Pipeline.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 847
   },
   {
     "file": "apps/frontend/src/components/school-profile/SchoolInfoCard.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 576
   },
   {
     "file": "apps/frontend/src/components/school-profile/SchoolProfileHeader.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_03.xml",
+    "tokens": 1275
   },
   {
     "file": "apps/frontend/src/components/schools/SchoolDesktopTable.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 1588
   },
   {
     "file": "apps/frontend/src/components/schools/SchoolMobileList.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 1118
   },
   {
     "file": "apps/frontend/src/components/schools/schoolUtils.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 385
   },
   {
     "file": "apps/frontend/src/components/schools/StatsBar.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 1562
   },
   {
     "file": "apps/frontend/src/components/schools/VirtualDesktopTable.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 976
   },
   {
     "file": "apps/frontend/src/components/ui/Badge.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 384
   },
   {
     "file": "apps/frontend/src/components/ui/Button.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 655
   },
   {
     "file": "apps/frontend/src/components/ui/Card.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 287
   },
   {
     "file": "apps/frontend/src/components/ui/ConfirmDialog.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 1254
   },
   {
     "file": "apps/frontend/src/components/ui/EmptyState.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 431
   },
   {
     "file": "apps/frontend/src/components/ui/ErrorShake.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 172
   },
   {
     "file": "apps/frontend/src/components/ui/Input.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 360
   },
   {
     "file": "apps/frontend/src/components/ui/LoadingBar.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 258
   },
   {
     "file": "apps/frontend/src/components/ui/Modal.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 747
   },
   {
     "file": "apps/frontend/src/components/ui/OptimizedImage.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 173
   },
   {
     "file": "apps/frontend/src/components/ui/Skeleton.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 532
   },
   {
     "file": "apps/frontend/src/components/ui/SuccessCheck.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 249
   },
   {
     "file": "apps/frontend/src/components/ui/Toast.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 1035
   },
   {
     "file": "apps/frontend/src/components/VirtualSchoolList.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 609
   },
   {
     "file": "apps/frontend/src/config/api.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 468
   },
   {
     "file": "apps/frontend/src/constants/categoryBadges.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 169
   },
   {
     "file": "apps/frontend/src/constants/cityIcons.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 156
   },
   {
     "file": "apps/frontend/src/constants/navTabs.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 618
   },
   {
     "file": "apps/frontend/src/constants/pipelineStages.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 122
   },
   {
     "file": "apps/frontend/src/context/AuthContext.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 468
   },
   {
     "file": "apps/frontend/src/context/CityContext.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 464
   },
   {
     "file": "apps/frontend/src/features/calendar/components/CalendarHeader.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 803
   },
   {
     "file": "apps/frontend/src/features/calendar/components/CalendarSkeleton.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 831
   },
   {
     "file": "apps/frontend/src/features/calendar/components/DesktopCalendarGrid.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 2627
   },
   {
     "file": "apps/frontend/src/features/calendar/components/EventTooltip.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 381
   },
   {
     "file": "apps/frontend/src/features/calendar/components/MobileCalendarGrid.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 2252
   },
   {
     "file": "apps/frontend/src/features/calendar/components/MobileDayDetailsPanel.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 1168
   },
   {
     "file": "apps/frontend/src/features/calendar/constants.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 263
   },
   {
     "file": "apps/frontend/src/features/calendar/hooks/useCalendarData.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 775
   },
   {
     "file": "apps/frontend/src/features/calendar/hooks/useCalendarMonth.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 348
   },
   {
     "file": "apps/frontend/src/features/calendar/hooks/useDayOffActions.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 968
   },
   {
     "file": "apps/frontend/src/features/calendar/hooks/useLongPress.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 555
   },
   {
     "file": "apps/frontend/src/features/calendar/utils/color.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 389
   },
   {
     "file": "apps/frontend/src/features/calendar/utils/date.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 267
   },
   {
     "file": "apps/frontend/src/features/reports/components/ReportForm.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 8538
   },
   {
     "file": "apps/frontend/src/features/reports/components/ReportStatusBadge.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 299
   },
   {
     "file": "apps/frontend/src/features/reports/pages/ReportsReviewPage.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 4660
   },
   {
     "file": "apps/frontend/src/features/salary/components/SalaryStatusBadge.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 216
   },
   {
     "file": "apps/frontend/src/features/salary/pages/Company.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 643
   },
   {
     "file": "apps/frontend/src/features/salary/pages/Expenses.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 1322
   },
   {
     "file": "apps/frontend/src/features/salary/pages/MySalary.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 694
   },
   {
     "file": "apps/frontend/src/features/salary/pages/TeamSalaries.tsx",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 710
   },
   {
     "file": "apps/frontend/src/hooks/useAnalytics.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 628
   },
   {
     "file": "apps/frontend/src/hooks/useApi.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 896
   },
   {
     "file": "apps/frontend/src/hooks/useCalendar.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 186
   },
   {
     "file": "apps/frontend/src/hooks/useCities.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 817
   },
   {
     "file": "apps/frontend/src/hooks/useDashboardData.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 213
   },
   {
     "file": "apps/frontend/src/hooks/useDashboardSummary.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 593
   },
   {
     "file": "apps/frontend/src/hooks/useDaysOff.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 383
   },
   {
     "file": "apps/frontend/src/hooks/useDebounce.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 118
   },
   {
     "file": "apps/frontend/src/hooks/useEmployees.ts",
-    "bundle": "bundle_03.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 1385
   },
   {
     "file": "apps/frontend/src/hooks/useInventory.ts",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 768
   },
   {
     "file": "apps/frontend/src/hooks/useNotifications.ts",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 409
   },
   {
     "file": "apps/frontend/src/hooks/useReports.ts",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 1297
   },
   {
     "file": "apps/frontend/src/hooks/useSalary.ts",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 398
   },
   {
     "file": "apps/frontend/src/hooks/useSchoolComments.ts",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 517
   },
   {
     "file": "apps/frontend/src/hooks/useSchoolProfile.ts",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 2225
+  },
+  {
+    "file": "apps/frontend/src/index.css",
+    "bundle": "bundle_04.xml",
+    "tokens": 912
   },
   {
     "file": "apps/frontend/src/instrument.ts",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 123
   },
   {
     "file": "apps/frontend/src/lib/motion.ts",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 3152
   },
   {
     "file": "apps/frontend/src/pages/Analytics.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 3659
   },
   {
     "file": "apps/frontend/src/pages/CalendarView.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 1449
   },
   {
     "file": "apps/frontend/src/pages/Cities.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 1570
   },
   {
     "file": "apps/frontend/src/pages/CityLeaderboard.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 3233
   },
   {
     "file": "apps/frontend/src/pages/CityProfile.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 10512
   },
   {
     "file": "apps/frontend/src/pages/Dashboard.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_04.xml",
+    "tokens": 1403
   },
   {
     "file": "apps/frontend/src/pages/Employees.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 7471
   },
   {
     "file": "apps/frontend/src/pages/EventReport.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 1452
   },
   {
     "file": "apps/frontend/src/pages/Events.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 3472
   },
   {
     "file": "apps/frontend/src/pages/Finance.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 980
   },
   {
     "file": "apps/frontend/src/pages/Inventory.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 4260
   },
   {
     "file": "apps/frontend/src/pages/IssuesTab.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 70
   },
   {
     "file": "apps/frontend/src/pages/Kindergartens.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 7125
   },
   {
     "file": "apps/frontend/src/pages/lazyTabPages.ts",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 484
   },
   {
     "file": "apps/frontend/src/pages/Login.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 2345
   },
   {
     "file": "apps/frontend/src/pages/NotFound.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 458
   },
   {
     "file": "apps/frontend/src/pages/OverviewTab.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 1502
   },
   {
     "file": "apps/frontend/src/pages/ProjectProfile.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 1096
   },
   {
     "file": "apps/frontend/src/pages/SchoolProfile.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 7502
   },
   {
     "file": "apps/frontend/src/pages/Schools.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 8910
   },
   {
     "file": "apps/frontend/src/tests/component/calendar/CalendarComponents.test.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 876
+  },
+  {
+    "file": "apps/frontend/src/tests/component/Calendar.smoke.test.tsx",
+    "bundle": "bundle_05.xml",
+    "tokens": 453
+  },
+  {
+    "file": "apps/frontend/src/tests/component/CompletedEventModal.test.tsx",
+    "bundle": "bundle_05.xml",
+    "tokens": 561
   },
   {
     "file": "apps/frontend/src/tests/component/ConfirmDialog.test.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 1130
+  },
+  {
+    "file": "apps/frontend/src/tests/component/Dashboard.smoke.test.tsx",
+    "bundle": "bundle_05.xml",
+    "tokens": 869
   },
   {
     "file": "apps/frontend/src/tests/component/Dashboard.test.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 634
+  },
+  {
+    "file": "apps/frontend/src/tests/component/DayOff.smoke.test.tsx",
+    "bundle": "bundle_05.xml",
+    "tokens": 484
   },
   {
     "file": "apps/frontend/src/tests/component/DayOffModal.test.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 1652
   },
   {
     "file": "apps/frontend/src/tests/component/EventReport.test.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 1300
   },
   {
     "file": "apps/frontend/src/tests/component/EventsTable.test.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 1169
   },
   {
     "file": "apps/frontend/src/tests/component/IssueCarousel.test.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 738
   },
   {
     "file": "apps/frontend/src/tests/component/LoadingBar.test.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 269
+  },
+  {
+    "file": "apps/frontend/src/tests/component/Login.smoke.test.tsx",
+    "bundle": "bundle_05.xml",
+    "tokens": 408
   },
   {
     "file": "apps/frontend/src/tests/component/Login.test.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 568
   },
   {
     "file": "apps/frontend/src/tests/component/MobileTopNav.test.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 439
   },
   {
     "file": "apps/frontend/src/tests/component/Pipeline.test.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 452
   },
   {
     "file": "apps/frontend/src/tests/component/ProtectedRoute.test.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 571
   },
   {
     "file": "apps/frontend/src/tests/component/ReportModal.test.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 1426
+  },
+  {
+    "file": "apps/frontend/src/tests/component/ReportsReviewPage.test.tsx",
+    "bundle": "bundle_05.xml",
+    "tokens": 830
   },
   {
     "file": "apps/frontend/src/tests/component/SchoolCard.test.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 896
+  },
+  {
+    "file": "apps/frontend/src/tests/component/SchoolCreate.smoke.test.tsx",
+    "bundle": "bundle_05.xml",
+    "tokens": 684
   },
   {
     "file": "apps/frontend/src/tests/component/Schools.test.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 713
   },
   {
     "file": "apps/frontend/src/tests/component/VirtualSchoolList.test.tsx",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 345
   },
   {
     "file": "apps/frontend/src/tests/mocks/handlers.ts",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 680
   },
   {
     "file": "apps/frontend/src/tests/mocks/server.ts",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 55
   },
   {
     "file": "apps/frontend/src/tests/setup.ts",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 207
   },
   {
     "file": "apps/frontend/src/tests/unit/api.test.ts",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 374
   },
   {
     "file": "apps/frontend/src/tests/unit/apiRefresh.test.ts",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 2528
   },
   {
     "file": "apps/frontend/src/tests/unit/calendar/color.test.ts",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 689
   },
   {
     "file": "apps/frontend/src/tests/unit/calendar/date.test.ts",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 571
   },
   {
     "file": "apps/frontend/src/tests/unit/exportCsv.test.ts",
-    "bundle": "bundle_04.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 1107
   },
   {
     "file": "apps/frontend/src/tests/unit/formatCurrency.test.ts",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 318
   },
   {
     "file": "apps/frontend/src/tests/unit/hooks/useCities.test.tsx",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 559
   },
   {
     "file": "apps/frontend/src/tests/unit/hooks/useSchoolProfile.test.tsx",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 971
   },
   {
     "file": "apps/frontend/src/tests/unit/navTabs.test.ts",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 569
   },
   {
     "file": "apps/frontend/src/tests/unit/reactImports.test.ts",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 653
   },
   {
     "file": "apps/frontend/src/tests/unit/roles.test.ts",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 267
   },
   {
     "file": "apps/frontend/src/tests/unit/schoolUtils.test.ts",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 583
   },
   {
     "file": "apps/frontend/src/tests/unit/useDaysOff.test.tsx",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 2063
   },
   {
     "file": "apps/frontend/src/tests/unit/useDebounce.test.ts",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 604
   },
   {
     "file": "apps/frontend/src/types/index.ts",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 1853
   },
   {
     "file": "apps/frontend/src/types/telegram.d.ts",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 96
   },
   {
     "file": "apps/frontend/src/utils/exportCsv.ts",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 259
   },
   {
     "file": "apps/frontend/src/utils/financeCalculations.ts",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 198
   },
   {
     "file": "apps/frontend/src/utils/formatCurrency.ts",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 98
   },
   {
     "file": "apps/frontend/src/utils/preparationStatus.ts",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 186
   },
   {
     "file": "apps/frontend/src/utils/roles.ts",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 64
   },
   {
     "file": "apps/frontend/tailwind.config.js",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 1293
   },
   {
     "file": "apps/frontend/tests/e2e/debug.spec.ts",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_05.xml",
+    "tokens": 332
   },
   {
     "file": "apps/frontend/tests/e2e/mocks/api.ts",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_06.xml",
+    "tokens": 4495
   },
   {
     "file": "apps/frontend/tests/e2e/visual.spec.ts",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_06.xml",
+    "tokens": 1326
   },
   {
     "file": "apps/frontend/tsconfig.app.json",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_06.xml",
+    "tokens": 194
   },
   {
     "file": "apps/frontend/tsconfig.json",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_06.xml",
+    "tokens": 50
   },
   {
     "file": "apps/frontend/tsconfig.node.json",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_06.xml",
+    "tokens": 186
   },
   {
     "file": "apps/frontend/vercel.json",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_06.xml",
+    "tokens": 72
   },
   {
     "file": "apps/frontend/vite.config.ts",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_06.xml",
+    "tokens": 293
   },
   {
     "file": ".github/copilot-instructions.md",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_06.xml",
+    "tokens": 1527
   },
   {
     "file": ".github/workflows/ci.yml",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_06.xml",
+    "tokens": 2286
   },
   {
     "file": ".github/workflows/secrets-scan.yml",
-    "bundle": "bundle_05.md"
+    "bundle": "bundle_06.xml",
+    "tokens": 146
+  },
+  {
+    "file": ".aider.chat.history.md",
+    "bundle": "bundle_06.xml",
+    "tokens": 34864
+  },
+  {
+    "file": "AGENTS.md",
+    "bundle": "bundle_06.xml",
+    "tokens": 1460
+  },
+  {
+    "file": "explorbot.config.js",
+    "bundle": "bundle_06.xml",
+    "tokens": 323
+  },
+  {
+    "file": "final_diagnostic_bundle.md",
+    "bundle": "bundle_06.xml",
+    "tokens": 30066
+  },
+  {
+    "file": "package.json",
+    "bundle": "bundle_06.xml",
+    "tokens": 419
+  },
+  {
+    "file": "pnpm-workspace.yaml",
+    "bundle": "bundle_06.xml",
+    "tokens": 140
+  },
+  {
+    "file": "README.md",
+    "bundle": "bundle_06.xml",
+    "tokens": 2510
+  },
+  {
+    "file": "turbo.json",
+    "bundle": "bundle_06.xml",
+    "tokens": 198
   }
 ]

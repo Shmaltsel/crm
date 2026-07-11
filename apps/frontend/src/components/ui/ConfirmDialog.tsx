@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, Trash2 } from "lucide-react";
-import { backdropVariants, modalContentVariants, SPRING, TRANSITION } from "../../lib/motion";
+import { backdropVariants, modalContentVariants, SPRING, TRANSITION, useHoverCapable } from "../../lib/motion";
 
 type Variant = "danger" | "warning";
 
@@ -36,6 +36,7 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const hoverCapable = useHoverCapable();
 
   useEffect(() => {
     if (isOpen) {
@@ -62,7 +63,7 @@ export function ConfirmDialog({
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="fixed inset-0 bg-backdrop backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-backdrop md:backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={onCancel}
           whileTap={{ backgroundColor: "rgba(15, 23, 42, 0.55)" }}
           transition={{ duration: 0.15 }}
@@ -96,7 +97,7 @@ export function ConfirmDialog({
               <motion.button
                 onClick={onCancel}
                 className="flex-1 py-2.5 rounded-control text-sm font-semibold bg-surface-muted text-content-secondary hover:bg-border-strong transition-colors"
-                whileHover={{ scale: 1.03 }}
+                whileHover={hoverCapable ? { scale: 1.03 } : undefined}
                 whileTap={{ scale: 0.97 }}
                 transition={TRANSITION.hover}
               >
@@ -106,7 +107,7 @@ export function ConfirmDialog({
                 ref={confirmRef}
                 onClick={onConfirm}
                 className={`flex-1 py-2.5 rounded-control text-sm font-semibold transition-colors ${variantStyles[variant].button}`}
-                whileHover={{ scale: 1.03 }}
+                whileHover={hoverCapable ? { scale: 1.03 } : undefined}
                 whileTap={{ scale: 0.97 }}
                 transition={TRANSITION.hover}
               >

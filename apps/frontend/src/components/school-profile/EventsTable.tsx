@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { staggerItem, fadeVariants } from '../../lib/motion';
+import { staggerItem, fadeVariants, emptyStateVariants } from '../../lib/motion';
 import type { Event } from '../../types';
 import { useDeleteEvent } from '../../hooks/useSchoolProfile';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
@@ -12,15 +12,16 @@ interface EventsTableProps {
   onEventSelect: (id: string) => void;
   onDeleteSuccess: () => void;
   schoolId: string;
+  onAddEvent?: () => void;
 }
 
-export default function EventsTable({ events, selectedEventId, onEventSelect, onDeleteSuccess, schoolId }: EventsTableProps) {
+export default function EventsTable({ events, selectedEventId, onEventSelect, onDeleteSuccess, schoolId, onAddEvent }: EventsTableProps) {
   const deleteMutation = useDeleteEvent(schoolId);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
-  const handleDeleteClick = (e: React.MouseEvent, id: string, project: string) => {
+  const handleDeleteClick = (e: React.MouseEvent, id: string, name: string) => {
     e.stopPropagation();
-    setDeleteTarget({ id, name: project });
+    setDeleteTarget({ id, name });
   };
 
   const handleConfirmDelete = async () => {
@@ -35,7 +36,27 @@ export default function EventsTable({ events, selectedEventId, onEventSelect, on
     }
   };
 
-  if (events.length === 0) return null;
+  if (events.length === 0) {
+    return (
+      <motion.div
+        variants={emptyStateVariants}
+        initial="hidden"
+        animate="visible"
+        className="bg-surface rounded-card border border-border p-8 text-center"
+      >
+        <p className="text-4xl mb-3">📅</p>
+        <p className="text-content-secondary mb-4">Ще немає подій</p>
+        {onAddEvent && (
+          <button
+            onClick={onAddEvent}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white text-sm font-medium rounded-control hover:bg-brand-hover transition-colors"
+          >
+            <span>➕</span> Додати подію
+          </button>
+        )}
+      </motion.div>
+    );
+  }
 
   return (
     <div className="bg-surface rounded-card shadow-card border border-border overflow-hidden mt-2 w-full">

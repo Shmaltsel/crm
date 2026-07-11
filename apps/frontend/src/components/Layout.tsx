@@ -1,7 +1,7 @@
 import { Link, useOutlet, useLocation } from "react-router-dom";
 import { useState, useCallback, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { pageVariants, TRANSITION, SPRING, DUR, EASE } from "../lib/motion";
+import { pageVariants, TRANSITION, DUR, EASE, useHoverCapable } from "../lib/motion";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -34,6 +34,7 @@ function NavLink({
   currentPath: string;
 }) {
   const active = currentPath.startsWith(to);
+  const hoverCapable = useHoverCapable();
   return (
     <Link
       to={to}
@@ -41,19 +42,20 @@ function NavLink({
       className="relative flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-colors group"
     >
       {active && (
-        <motion.div
-          layoutId="sidebar-active-indicator"
-          className="absolute inset-0 bg-brand rounded-lg"
-          transition={SPRING.snappy}
-          style={{ zIndex: 0 }}
-        />
+          <motion.div
+            layoutId="sidebar-active-indicator"
+            layout="position"
+            className="absolute inset-0 bg-brand rounded-lg"
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            style={{ zIndex: 0 }}
+          />
       )}
       {!active && (
         <div className="absolute inset-0 rounded-lg bg-transparent group-hover:bg-white/5 transition-colors duration-fast" />
       )}
       <motion.div
         className="relative z-10 flex items-center gap-3 w-full"
-        whileHover={!active ? { x: 2 } : undefined}
+        whileHover={hoverCapable && !active ? { x: 2 } : undefined}
         transition={TRANSITION.tap}
       >
         <Icon className={`w-4 h-4 shrink-0 transition-transform duration-fast ${active ? "text-white" : "text-slate-400 group-hover:text-white/80"}`} />
@@ -66,6 +68,7 @@ function NavLink({
 }
 
 export default function Layout() {
+  const hoverCapable = useHoverCapable();
   const outlet = useOutlet();
   const location = useLocation();
   const [isMobile, setIsMobile] = useState(() =>
@@ -127,7 +130,7 @@ export default function Layout() {
           <div className="flex items-center px-4 py-2 text-slate-300 justify-between">
             <div className="flex items-center min-w-0">
               <motion.div
-                whileHover={{ scale: 1.05 }}
+                whileHover={hoverCapable ? { scale: 1.05 } : undefined}
                 transition={TRANSITION.hover}
                 className="w-8 h-8 bg-brand/20 text-brand rounded-full mr-3 flex items-center justify-center text-xs font-bold shrink-0"
               >
@@ -141,7 +144,7 @@ export default function Layout() {
             <div className="flex items-center gap-1">
               <NotificationBell />
               <motion.button
-                whileHover={{ scale: 1.05, backgroundColor: "rgba(239,68,68,0.1)" }}
+                whileHover={hoverCapable ? { scale: 1.05, backgroundColor: "rgba(239,68,68,0.1)" } : undefined}
                 whileTap={{ scale: 0.95 }}
                 transition={TRANSITION.tap}
                 onClick={handleLogout}

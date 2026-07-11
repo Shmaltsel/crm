@@ -102,7 +102,7 @@ function CardHeader({ icon, color, title }: { icon: React.ReactNode; color: stri
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+    <div className="flex items-center justify-between py-2 border-b border-border last:border-0">
       <span className="text-sm text-slate-500">{label}</span>
       <div className="text-sm font-medium text-slate-800">{children}</div>
     </div>
@@ -376,7 +376,7 @@ export default function ReportForm({
       <AnimatePresence>
         {isOpen && (
           <motion.div variants={fadeVariants} initial="hidden" animate="visible" exit="exit"
-            className="fixed inset-0 bg-backdrop backdrop-blur-sm z-50 flex items-center justify-center">
+            className="fixed inset-0 bg-backdrop md:backdrop-blur-sm z-50 flex items-center justify-center">
             <div className="bg-white rounded-2xl p-8 shadow-xl">Завантаження...</div>
           </motion.div>
         )}
@@ -389,14 +389,14 @@ export default function ReportForm({
       {isOpen && (
         <motion.div role="dialog" aria-modal="true" aria-labelledby={headingId}
           variants={fadeVariants} initial="hidden" animate="visible" exit="exit"
-          className="fixed inset-0 bg-backdrop backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+          className="fixed inset-0 bg-backdrop md:backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
           <motion.div variants={modalContentVariants} initial="hidden" animate="visible" exit="exit"
             className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-3xl max-h-[94vh] sm:max-h-[92vh] flex flex-col overflow-hidden pb-safe"
             style={{ willChange: "transform" }}>
             <div className="sm:hidden w-10 h-1.5 bg-border-strong rounded-full mx-auto mt-3" />
 
-            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 bg-surface-muted flex items-start justify-between shrink-0">
+            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-border bg-surface-muted flex items-start justify-between shrink-0">
               <div className="min-w-0">
                 <h3 id={headingId} className="text-lg sm:text-xl font-bold text-slate-800 leading-tight">
                   Звіт по події
@@ -426,7 +426,7 @@ export default function ReportForm({
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+                <div className="bg-white border border-border-strong rounded-2xl p-4 sm:p-5 md:col-span-2">
                   <CardHeader icon={
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
                       <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
@@ -463,14 +463,14 @@ export default function ReportForm({
                   </div>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+                <div className="bg-white border border-border-strong rounded-2xl p-4 sm:p-5 md:col-span-2">
                   <CardHeader icon={
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
                       <path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1" />
                       <path d="M16 12h6v4h-6a2 2 0 1 1 0-4z" />
                     </svg>
                   } color="bg-amber-50 text-amber-600" title="Фінансовий результат" />
-                  <div className="flex items-center justify-between py-2 border-b border-slate-50">
+                  <div className="flex items-center justify-between py-2 border-b border-border">
                     <span className="text-sm text-slate-500 font-medium">Загальна виручка</span>
                     <span className="inline-flex items-center gap-1">
                       <input type="number" min={0} inputMode="decimal" value={form.totalSum || ""} disabled={!isEditable}
@@ -480,14 +480,14 @@ export default function ReportForm({
                       <span className="text-slate-400 text-sm">грн</span>
                     </span>
                   </div>
-                  <div className="flex items-center justify-between py-2 border-b border-slate-50">
+                  <div className="flex items-center justify-between py-2 border-b border-border">
                     <span className="text-sm text-slate-500">Відсоток закладу</span>
                     <NumberField value={form.schoolPercentage} onChange={(v) => setForm({ ...form, schoolPercentage: v })} suffix="%" disabled={!isEditable} />
                   </div>
                   <Row label={`Сума закладу (${form.schoolPercentage}%)`}>
                     <span>{formatMoney(schoolSum)} грн</span>
                   </Row>
-                  <div className="py-3 border-b border-slate-50">
+                  <div className="py-3 border-b border-border">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-slate-500">Додаткові витрати</span>
                       <span className="text-sm font-medium text-rose-500">−{formatMoney(totalExpenses)} грн</span>
@@ -509,10 +509,10 @@ export default function ReportForm({
                       <div className="flex gap-2 mt-2">
                         <input placeholder="Назва витрати" value={newExp.name}
                           onChange={(e) => setNewExp({ ...newExp, name: e.target.value })}
-                          className="flex-1 min-w-0 p-2 border border-slate-200 rounded-lg text-base focus:ring-2 focus:ring-blue-500 outline-none" />
+                          className="flex-1 min-w-0 p-2 border border-border-strong rounded-lg text-base focus:ring-2 focus:ring-blue-500 outline-none" />
                         <input type="number" min={0} inputMode="decimal" placeholder="грн" value={newExp.amount}
                           onChange={(e) => setNewExp({ ...newExp, amount: e.target.value })}
-                          className="w-20 sm:w-24 p-2 border border-slate-200 rounded-lg text-base focus:ring-2 focus:ring-blue-500 outline-none" />
+                          className="w-20 sm:w-24 p-2 border border-border-strong rounded-lg text-base focus:ring-2 focus:ring-blue-500 outline-none" />
                         <button onClick={addExpense} type="button"
                           className="px-3 shrink-0 rounded-lg bg-surface-muted text-slate-600 hover:bg-surface-muted font-medium text-sm">+</button>
                       </div>
@@ -525,7 +525,7 @@ export default function ReportForm({
                 </div>
 
                 {crewMembers.length > 0 && (
-                  <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+                  <div className="bg-white border border-border-strong rounded-2xl p-4 sm:p-5 md:col-span-2">
                     <CardHeader icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
                         <circle cx="12" cy="8" r="6" /><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
@@ -545,7 +545,7 @@ export default function ReportForm({
                       ))}
                     </div>
                     {crewMembers.some((m) => salaries[m.id] > 0) && (
-                      <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
+                      <div className="flex justify-between items-center mt-3 pt-3 border-t border-border">
                         <span className="text-sm font-semibold text-slate-500">Разом ЗП</span>
                         <span className="font-bold text-blue-600">{formatMoney(crewMembers.reduce((s, m) => s + (salaries[m.id] || 0), 0))} грн</span>
                       </div>
@@ -554,7 +554,7 @@ export default function ReportForm({
                 )}
 
                 {inventoryItems && inventoryItems.length > 0 && (
-                  <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+                  <div className="bg-white border border-border-strong rounded-2xl p-4 sm:p-5 md:col-span-2">
                     <CardHeader icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
                         <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -562,7 +562,7 @@ export default function ReportForm({
                     } color="bg-teal-50 text-teal-600" title="Витрата матеріалів" />
                     <div className="space-y-2">
                       {inventoryItems.map((item) => (
-                        <div key={item.id} className="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-0">
+                        <div key={item.id} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
                           <div className="flex items-center gap-2">
                             <span className="text-sm text-slate-700">{item.name}</span>
                             <span className="text-xs text-slate-400">({item.unit})</span>
@@ -600,14 +600,14 @@ export default function ReportForm({
                     <textarea value={form.comment}
                       onChange={(e) => setForm({ ...form, comment: e.target.value })}
                       rows={3} disabled={!isEditable}
-                      className="w-full p-3 border border-slate-200 rounded-xl text-base focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                      className="w-full p-3 border border-border-strong rounded-xl text-base focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                       placeholder="Додаткові коментарі..." />
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="flex gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-white shrink-0">
+            <div className="flex gap-3 px-4 sm:px-6 py-4 border-t border-border bg-white shrink-0">
               <button onClick={onClose}
                 className="flex-1 text-slate-600 bg-surface-muted hover:bg-surface-muted rounded-xl font-medium py-3 active:scale-[0.97] transition-transform duration-fast">
                 {isEditable ? "Скасувати" : "Закрити"}

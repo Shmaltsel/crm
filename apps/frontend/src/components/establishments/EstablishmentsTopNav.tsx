@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import { School, Baby } from "lucide-react";
-import { SPRING } from "../../lib/motion";
 
 interface Props {
   activeTab: string;
@@ -14,7 +13,7 @@ const ESTABLISHMENT_TABS = [
 
 export default function EstablishmentsTopNav({ activeTab, onChange }: Props) {
   return (
-    <div className="sticky top-0 z-30 bg-surface/80 backdrop-blur-md border-b border-border">
+    <div className="sticky top-0 z-30 bg-surface/80 md:backdrop-blur-md border-b border-border">
       <nav
         className="flex px-4 md:px-8"
         role="tablist"
@@ -38,11 +37,12 @@ export default function EstablishmentsTopNav({ activeTab, onChange }: Props) {
               <Icon className="w-4 h-4" />
               {tab.label}
               {isActive && (
-                <motion.div
-                  layoutId="establishment-active-tab"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-full"
-                  transition={SPRING.stiff}
-                />
+                  <motion.div
+                    layoutId="establishment-active-tab"
+                    layout="position"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-full"
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                  />
               )}
             </button>
           );

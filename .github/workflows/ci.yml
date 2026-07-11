@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -15,37 +16,13 @@ env:
   NODE_VERSION: '22'
 
 jobs:
-  checks:
+  lint-type-check:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: crm
-          POSTGRES_PASSWORD: crm
-          POSTGRES_DB: crm_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 5
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 5
-
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
         with:
@@ -80,13 +57,198 @@ jobs:
       - name: Білд — frontend
         run: pnpm --filter frontend build
 
-      - name: Unit-тести + покриття — backend
+  # Швидкий сигнал у PR: smoke + affected запускаються паралельно, fail-fast
+  pr-checks:
+    needs: lint-type-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: true
+      matrix:
+        suite: [smoke, affected]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Встановлення залежностей
+        run: pnpm install --frozen-lockfile
+
+      - name: Генерація Prisma клієнта
+        run: pnpm --filter backend exec prisma generate
+
+      - name: Кеш Turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ github.ref_name }}-
+            turbo-
+
+      - name: Smoke-тести
+        if: matrix.suite == 'smoke'
+        run: pnpm test:smoke
+
+      - name: Affected-тести (Turbo)
+        if: matrix.suite == 'affected'
+        run: pnpm turbo run test:affected --filter=...[origin/main]
+
+  # Повний прогін з гейтом покриття — тільки на main / manual dispatch
+  full-tests:
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    needs: lint-type-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: crm
+          POSTGRES_PASSWORD: crm
+          POSTGRES_DB: crm_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Встановлення залежностей
+        run: pnpm install --frozen-lockfile
+
+      - name: Генерація Prisma клієнта
+        run: pnpm --filter backend exec prisma generate
+
+      - name: Міграція БД
+        run: pnpm --filter backend exec prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://crm:crm@localhost:5432/crm_test
+
+      - name: Білд — backend
+        run: pnpm --filter backend build
+
+      - name: Білд — frontend
+        run: pnpm --filter frontend build
+
+      - name: Покриття — backend
         run: pnpm --filter backend test:cov
+        env:
+          DATABASE_URL: postgresql://crm:crm@localhost:5432/crm_test
+          DIRECT_URL: postgresql://crm:crm@localhost:5432/crm_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-only-secret-do-not-use-elsewhere-12345
+          FRONTEND_URL: http://localhost:5173
+          TELEGRAM_BOT_TOKEN: test-telegram-token
+          NODE_ENV: test
 
-      - name: Unit-тести + покриття — frontend
+      - name: Покриття — frontend
         run: pnpm --filter frontend test:run -- --coverage
+        env:
+          DATABASE_URL: postgresql://crm:crm@localhost:5432/crm_test
+          DIRECT_URL: postgresql://crm:crm@localhost:5432/crm_test
+          REDIS_URL: redis://localhost:6379
 
-      - name: Міграція БД для e2e
+      - name: Збір звіту покриття
+        if: always()
+        run: |
+          mkdir -p coverage-report
+          cp -r apps/backend/coverage coverage-report/backend 2>/dev/null || true
+          cp -r apps/frontend/coverage coverage-report/frontend 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report-${{ github.sha }}
+          path: coverage-report
+
+  # E2E backend (jest) — поведінка без змін, fallback "повного" прогону
+  e2e:
+    needs: lint-type-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: crm
+          POSTGRES_PASSWORD: crm
+          POSTGRES_DB: crm_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Встановлення залежностей
+        run: pnpm install --frozen-lockfile
+
+      - name: Генерація Prisma клієнта
+        run: pnpm --filter backend exec prisma generate
+
+      - name: Міграція БД
         run: pnpm --filter backend exec prisma migrate deploy
         env:
           DATABASE_URL: postgresql://crm:crm@localhost:5432/crm_test
@@ -102,15 +264,33 @@ jobs:
           TELEGRAM_BOT_TOKEN: test-telegram-token
           NODE_ENV: test
 
-      - name: Збір звіту покриття
-        if: always()
-        run: |
-          mkdir -p coverage-report
-          cp -r apps/backend/coverage coverage-report/backend 2>/dev/null || true
-          cp -r apps/frontend/coverage coverage-report/frontend 2>/dev/null || true
-
-      - uses: actions/upload-artifact@v4
-        if: always()
+  # E2E frontend (Playwright) — шардинг у кожному PR, сигнал одразу
+  e2e-sharded:
+    needs: lint-type-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: true
+      matrix:
+        shard: [1/4, 2/4, 3/4, 4/4]
+    steps:
+      - uses: actions/checkout@v4
         with:
-          name: coverage-report-${{ github.sha }}
-          path: coverage-report
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Встановлення залежностей
+        run: pnpm install --frozen-lockfile
+
+      - name: E2E frontend (шард ${{ matrix.shard }})
+        run: pnpm --filter frontend test:e2e -- --shard=${{ matrix.shard }} --ignore=visual.spec.ts
+        env:
+          CI: 'true'

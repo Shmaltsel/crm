@@ -66,8 +66,9 @@ describe("EventsTable", () => {
     expect(screen.getByText("Всі події (2)")).toBeInTheDocument();
   });
 
-  it("не рендериться якщо events порожній", () => {
-    const { container } = render(
+  it("показує empty state якщо events порожній", () => {
+    const onAddEvent = vi.fn();
+    render(
       <MemoryRouter>
         <EventsTable
           events={[]}
@@ -75,10 +76,12 @@ describe("EventsTable", () => {
           onEventSelect={onEventSelect}
           onDeleteSuccess={onDeleteSuccess}
           schoolId="school-1"
+          onAddEvent={onAddEvent}
         />
       </MemoryRouter>,
     );
-    expect(container.firstChild).toBeNull();
+    expect(screen.getByText("Ще немає подій")).toBeInTheDocument();
+    expect(screen.getByText("Додати подію")).toBeInTheDocument();
   });
 
   it("викликає onEventSelect при кліку на подію", () => {
@@ -111,11 +114,10 @@ describe("EventsTable", () => {
     );
     const deleteButtons = screen.getAllByText("🗑");
     fireEvent.click(deleteButtons[0]);
-    expect(window.confirm).toHaveBeenCalledWith("Видалити цю подію?");
+    expect(screen.getByText("Видалити подію?")).toBeInTheDocument();
   });
 
   it("не видаляє якщо confirm повернув false", async () => {
-    window.confirm = vi.fn(() => false);
     render(
       <MemoryRouter>
         <EventsTable
@@ -129,6 +131,7 @@ describe("EventsTable", () => {
     );
     const deleteButtons = screen.getAllByText("🗑");
     fireEvent.click(deleteButtons[0]);
+    fireEvent.click(screen.getByText("Скасувати"));
     expect(onDeleteSuccess).not.toHaveBeenCalled();
   });
 
@@ -144,7 +147,7 @@ describe("EventsTable", () => {
         />
       </MemoryRouter>,
     );
-    const selected = container.querySelector(".bg-blue-50\\/50");
+    const selected = container.querySelector(".bg-brand-50\\/50");
     expect(selected).toBeInTheDocument();
   });
 });

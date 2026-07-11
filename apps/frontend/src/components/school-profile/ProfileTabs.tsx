@@ -8,18 +8,15 @@ interface ProfileTabsProps {
   onChange: (key: string) => void;
 }
 
-export default function ProfileTabs({
-  tabs,
-  active,
-  onChange,
-}: ProfileTabsProps) {
+export default function ProfileTabs({ tabs, active, onChange }: ProfileTabsProps) {
   const lightMotion = useLightMotion();
 
   const tabVariants = useMemo(
     () => ({
-      inactive: { x: 0 },
+      hidden: { x: 0, opacity: 0 },
       active: {
         x: 0,
+        opacity: 1,
         transition: lightMotion
           ? { duration: DUR.fast, ease: EASE.standard }
           : { ...SPRING.snappy },
@@ -29,18 +26,15 @@ export default function ProfileTabs({
   );
 
   return (
-    <div
-      className="flex items-center gap-2 p-1 bg-surface-muted rounded-pill xl:hidden"
-      role="tablist"
-    >
+    <div className="flex items-center gap-2 p-1 bg-surface-muted rounded-pill xl:hidden" role="tablist">
       <AnimatePresence mode="popLayout">
         {tabs.map((tab, index) => (
           <motion.button
             key={tab.key}
             layoutId={active === tab.key ? "profile-tab-pill" : undefined}
             variants={tabVariants}
-            initial="inactive"
-            animate={active === tab.key ? "active" : "inactive"}
+            initial="hidden"
+            animate={active === tab.key ? "active" : "hidden"}
             onClick={() => onChange(tab.key)}
             role="tab"
             aria-selected={active === tab.key}

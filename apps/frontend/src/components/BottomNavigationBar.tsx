@@ -40,9 +40,10 @@ function TabItem({ tab, isActive }: { tab: NavTab; isActive: boolean }) {
     >
       {isActive && (
         <motion.div
-          layoutId="bottomnav-active-pill"
-          className="absolute inset-x-1 inset-y-1 bg-brand/10 rounded-control"
-          transition={SPRING.snappy}
+            layoutId="bottomnav-active-pill"
+            layout="position"
+            className="absolute inset-x-1 inset-y-1 bg-brand/10 rounded-control"
+            transition={{ duration: 0.15, ease: "easeOut" }}
         />
       )}
       <motion.div

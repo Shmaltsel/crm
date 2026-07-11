@@ -91,7 +91,7 @@ export default function OverviewTab() {
         suffix: "грн",
         icon: <TrendingUp className="w-4 h-4" />,
       },
-{
+      {
         title: "Дітей",
         numericValue: Number(summary.monthlyKpi.children) || 0,
         subtitle: `за ${summary.monthlyKpi.count} подіями`,

@@ -13,6 +13,7 @@ import {
   DUR,
   EASE,
   TRANSITION,
+  useHoverCapable,
 } from "../lib/motion";
 
 interface Props {
@@ -26,6 +27,7 @@ const SECTIONS = [
 ];
 
 export default function MoreSheet({ onClose }: Props) {
+  const hoverCapable = useHoverCapable();
   const { user, logout } = useAuth();
   const location = useLocation();
   const dragControls = useDragControls();
@@ -128,7 +130,7 @@ export default function MoreSheet({ onClose }: Props) {
                                 ? "bg-brand/10 text-brand"
                                 : "text-content-secondary hover:bg-surface-muted"
                             }`}
-                            whileHover={{ scale: 1.015, y: -1 }}
+                            whileHover={hoverCapable ? { scale: 1.015, y: -1 } : undefined}
                             whileTap={{ scale: 0.97 }}
                             transition={TRANSITION.hover}
                           >

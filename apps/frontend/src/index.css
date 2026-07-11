@@ -42,7 +42,18 @@
     @apply bg-surface rounded-card shadow-card border border-border p-3 flex flex-col justify-between;
   }
   .modal-backdrop {
-    @apply fixed inset-0 bg-nav/40 backdrop-blur-sm z-modal;
+    @apply fixed inset-0 bg-nav/40 z-modal;
+  }
+  @media (min-width: 768px) {
+    .modal-backdrop {
+      @apply backdrop-blur-sm;
+    }
+  }
+  .card-shadow {
+    @apply shadow-card;
+  }
+  .card-shadow-hover {
+    @apply shadow-card-hover;
   }
   .fab {
     @apply md:hidden fixed z-40 w-14 h-14 rounded-full bg-brand text-white

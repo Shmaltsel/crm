@@ -7,7 +7,7 @@ import {
   type PreparationStatus,
 } from "../../utils/preparationStatus";
 import { useInventoryByProject } from "../../hooks/useInventory";
-import { cardHoverVariants, TRANSITION, scaleVariants, DUR } from "../../lib/motion";
+import { cardHoverVariants, TRANSITION, scaleVariants, DUR, useHoverCapable } from "../../lib/motion";
 
 interface PreparationProps {
   data: Partial<EventPreparationData>;
@@ -22,6 +22,7 @@ export default memo(function EventPreparation({
   onOpenCrewModal,
   project,
 }: PreparationProps) {
+  const hoverCapable = useHoverCapable();
   const [optimistic, setOptimistic] = useState<Record<string, string>>({});
   const { data: projectItems } = useInventoryByProject(project);
 
@@ -63,8 +64,8 @@ export default memo(function EventPreparation({
     <motion.div
       variants={cardHoverVariants}
       initial="rest"
-      whileHover="hover"
-      className="bg-surface p-6 rounded-card shadow-card border border-border"
+      whileHover={hoverCapable ? "hover" : undefined}
+      className="bg-surface p-6 rounded-card card-shadow hover:card-shadow-hover border border-border"
     >
       <h3 className="font-bold text-content-primary mb-4 border-b pb-3 border-border">
         Підготовка до події

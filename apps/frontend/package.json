@@ -11,6 +11,7 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
+    "test:affected": "vitest run --changed=origin/main --no-file-parallelism",
     "test:coverage": "vitest run --coverage",
     "pretest:e2e": "playwright install --with-deps chromium",
     "test:e2e": "playwright test",
