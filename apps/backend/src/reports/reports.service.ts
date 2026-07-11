@@ -14,7 +14,6 @@ import { RevisionDto } from './dto/revision.dto';
 import { ApproveReportDto } from './dto/approve-report.dto';
 import { ReportStatus } from '@prisma/client';
 import { Prisma } from '@prisma/client';
-import { SalaryPayoutService } from '../salary/salary-payout.service';
 
 const ALLOWED_TRANSITIONS: Record<ReportStatus, ReportStatus[]> = {
   DRAFT: ['SUBMITTED'],
@@ -31,7 +30,6 @@ export class ReportsService {
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
     private readonly telegramService: TelegramService,
-    private readonly salaryPayout: SalaryPayoutService,
   ) {}
 
   private async assertCrewMember(
@@ -230,7 +228,10 @@ export class ReportsService {
 
     const approved = await this.prisma.$transaction(async (tx) => {
       for (const item of dto.salaries ?? []) {
-        await this.salaryPayout.payout(tx, item.id, item.amount, user.sub);
+        await tx.salaryRecord.update({
+          where: { id: item.id },
+          data: { amount: new Prisma.Decimal(item.amount) },
+        });
       }
 
       const updated = await tx.eventReport.update({

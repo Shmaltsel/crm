@@ -1,5 +1,4 @@
 import { ReportsService } from './reports.service';
-import { SalaryPayoutService } from '../salary/salary-payout.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { BadRequestException } from '@nestjs/common';
@@ -43,18 +42,15 @@ describe('ReportsService', () => {
   let service: ReportsService;
   let prisma: any;
   let mockTx: any;
-  let payout: SalaryPayoutService;
 
   beforeEach(() => {
     const built = buildPrisma();
     prisma = built.prisma;
     mockTx = built.mockTx;
-    payout = new SalaryPayoutService();
     service = new ReportsService(
       prisma,
       { create: jest.fn() } as unknown as NotificationsService,
       { sendMessage: jest.fn() } as unknown as TelegramService,
-      payout,
     );
   });
 
@@ -68,7 +64,7 @@ describe('ReportsService', () => {
       });
     };
 
-    it('інкрементує balance працівника рівно один раз на фінальну (відредаговану) суму', async () => {
+    it('оновлює суми PENDING-записів і переводить звіт у APPROVED без payout', async () => {
       mockTx.salaryRecord.findMany.mockResolvedValueOnce([
         { id: 's1' },
         { id: 's2' },
@@ -86,19 +82,20 @@ describe('ReportsService', () => {
         mockUser,
       );
 
-      expect(mockTx.user.update).toHaveBeenCalledTimes(2);
-      expect(mockTx.user.update).toHaveBeenCalledWith({
-        where: { id: 'emp-1' },
-        data: { balance: { increment: new Prisma.Decimal(1200) } },
+      expect(mockTx.salaryRecord.update).toHaveBeenCalledTimes(2);
+      expect(mockTx.salaryRecord.update).toHaveBeenCalledWith({
+        where: { id: 's1' },
+        data: { amount: new Prisma.Decimal(1200) },
       });
-      expect(mockTx.user.update).toHaveBeenCalledWith({
-        where: { id: 'emp-1' },
-        data: { balance: { increment: new Prisma.Decimal(900) } },
+      expect(mockTx.salaryRecord.update).toHaveBeenCalledWith({
+        where: { id: 's2' },
+        data: { amount: new Prisma.Decimal(900) },
       });
-      expect(mockTx.salaryRecord.update).toHaveBeenCalledWith(
+      expect(mockTx.user.update).not.toHaveBeenCalled();
+      expect(mockTx.eventReport.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: 's1' },
-          data: expect.objectContaining({ status: 'PAID' }),
+          where: { id: 'r-1' },
+          data: expect.objectContaining({ status: 'APPROVED' }),
         }),
       );
       expect(mockTx.event.update).toHaveBeenCalledWith(
@@ -133,6 +130,7 @@ describe('ReportsService', () => {
 
       await service.approve('r-1', { salaries: [] }, mockUser);
 
+      expect(mockTx.salaryRecord.update).not.toHaveBeenCalled();
       expect(mockTx.user.update).not.toHaveBeenCalled();
     });
   });
