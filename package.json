@@ -1,10 +1,14 @@
 {
   "name": "CRM",
   "private": true,
+  "packageManager": "pnpm@11.8.0",
   "scripts": {
     "dev": "concurrently \"pnpm --filter backend start:dev\" \"pnpm --filter frontend dev\"",
+    "turbo": "turbo",
     "test": "concurrently --kill-others-on-fail \"pnpm --filter backend test\" \"pnpm --filter frontend test:run\"",
     "test:unit": "concurrently \"pnpm --filter backend test\" \"pnpm --filter frontend test:run\"",
+    "test:affected": "turbo run test:affected --filter=...[origin/main]",
+    "test:smoke": "pnpm --filter frontend exec vitest run smoke --no-file-parallelism && pnpm --filter backend exec jest --testPathPattern='\\.smoke\\.spec\\.ts$'",
     "test:e2e:backend": "pnpm --filter backend test:e2e",
     "test:e2e:frontend": "pnpm --filter frontend test:e2e",
     "test:e2e": "concurrently --kill-others-on-fail \"pnpm test:e2e:backend\" \"pnpm test:e2e:frontend\"",
@@ -16,7 +20,8 @@
     "@openrouter/ai-sdk-provider": "^3.0.0",
     "concurrently": "^8.2.2",
     "explorbot": "^0.1.31",
-    "playwright": "^1.61.1"
+    "playwright": "^1.61.1",
+    "turbo": "^2.10.4"
   },
   "prisma": {
     "schema": "apps/backend/prisma/schema.prisma"
