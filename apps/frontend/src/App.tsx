@@ -13,6 +13,7 @@ import { lazyWithRetry, TAB_PAGE_COMPONENTS } from "./pages/lazyTabPages";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
+import TabErrorBoundary from "./components/dashboard/TabErrorBoundary";
 import { SkeletonCard } from "./components/ui/Skeleton";
 
 const Login = lazyWithRetry(() => import("./pages/Login"));
@@ -90,9 +91,11 @@ function AppRoutes() {
           <Route
             path="schools"
             element={
-              <Suspense fallback={<PageLoader />}>
-                <Schools />
-              </Suspense>
+              <TabErrorBoundary label="Школи">
+                <Suspense fallback={<PageLoader />}>
+                  <Schools />
+                </Suspense>
+              </TabErrorBoundary>
             }
           />
 
@@ -119,18 +122,22 @@ function AppRoutes() {
           <Route
             path="finance"
             element={
-              <Suspense fallback={<PageLoader />}>
-                <Finance />
-              </Suspense>
+              <TabErrorBoundary label="Фінанси">
+                <Suspense fallback={<PageLoader />}>
+                  <Finance />
+                </Suspense>
+              </TabErrorBoundary>
             }
           />
 
           <Route
             path="calendar"
             element={
-              <Suspense fallback={<PageLoader />}>
-                <CalendarView />
-              </Suspense>
+              <TabErrorBoundary label="Календар">
+                <Suspense fallback={<PageLoader />}>
+                  <CalendarView />
+                </Suspense>
+              </TabErrorBoundary>
             }
           />
             <Route
