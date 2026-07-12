@@ -4,7 +4,7 @@ import { TelegramService } from '../telegram/telegram.service';
 import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
-const mockUser = { sub: 'mgr-1', name: 'Менеджер', role: 'MANAGER' } as const;
+const mockUser = { sub: 'mgr-1', name: 'Менеджер', email: 'manager@example.com', role: 'MANAGER' } as const;
 
 function buildPrisma() {
   const mockTx: any = {
@@ -71,6 +71,9 @@ describe('ReportsService', () => {
         { id: 's2' },
       ]);
       setupReport();
+      mockTx.eventReport.findUnique.mockResolvedValueOnce({
+        status: 'SUBMITTED',
+      });
 
       await service.approve(
         'r-1',
@@ -128,6 +131,9 @@ describe('ReportsService', () => {
     it('допускає порожній salaries, якщо PENDING-записів немає', async () => {
       mockTx.salaryRecord.findMany.mockResolvedValueOnce([]);
       setupReport();
+      mockTx.eventReport.findUnique.mockResolvedValueOnce({
+        status: 'SUBMITTED',
+      });
 
       await service.approve('r-1', { salaries: [] }, mockUser);
 

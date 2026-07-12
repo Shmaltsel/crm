@@ -6,6 +6,7 @@ import { Prisma } from '@prisma/client';
 const mockUser = {
   sub: 'mgr-1',
   name: 'Менеджер',
+  email: 'manager@example.com',
   role: 'SUPERADMIN',
 } as const;
 
@@ -55,6 +56,8 @@ describe('SalaryService', () => {
       });
       mockTx.salaryRecord.findUnique.mockResolvedValueOnce({
         employeeId: 'emp-1',
+        amount: new Prisma.Decimal(1500),
+        status: 'PENDING',
       });
 
       await service.markPaid('s1', mockUser);

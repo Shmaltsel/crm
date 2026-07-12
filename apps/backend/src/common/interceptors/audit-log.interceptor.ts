@@ -9,7 +9,7 @@ import { Observable, tap } from 'rxjs';
 import { PrismaService } from '../../prisma/prisma.service';
 
 const MUTATING_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
-const EXCLUDED_PATHS = ['/auth/login', '/auth/refresh', '/auth/logout'];
+const EXCLUDED_PATHS = ['/auth/refresh', '/auth/logout'];
 
 @Injectable()
 export class AuditLogInterceptor implements NestInterceptor {

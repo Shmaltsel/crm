@@ -450,6 +450,10 @@ export class EventsService {
     if (!exists)
       throw new AppException('EVENT_NOT_FOUND', HttpStatus.NOT_FOUND);
 
+    await this.prisma.salaryRecord.deleteMany({
+      where: { eventId: id },
+    });
+
     await this.prisma.eventHistory.deleteMany({
       where: { eventId: id },
     });

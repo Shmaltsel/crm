@@ -42,7 +42,7 @@ const mockPrisma = {
 const mockTelegram = { sendMessage: jest.fn() };
 const mockNotifications = { create: jest.fn().mockResolvedValue(undefined) };
 
-const mockUser = { sub: 'user-1', name: 'Менеджер', role: 'MANAGER' } as const;
+const mockUser = { sub: 'user-1', name: 'Менеджер', email: 'manager@example.com', role: 'MANAGER' } as const;
 
 describe('EventsService', () => {
   let service: EventsService;
@@ -143,6 +143,7 @@ describe('EventsService', () => {
       await service.updateStatus('ev-1', 'BASE', 'Дія', undefined, {
         sub: 'driver-99',
         name: 'Водій',
+        email: 'driver@example.com',
         role: 'DRIVER',
       });
 
@@ -200,6 +201,7 @@ describe('EventsService', () => {
       await service.findAllForUser({
         sub: 'mgr-1',
         name: 'Менеджер',
+        email: 'manager@example.com',
         role: 'MANAGER',
       });
       const call = mockPrisma.event.findMany.mock.calls[0][0];
@@ -211,6 +213,7 @@ describe('EventsService', () => {
       await service.findAllForUser({
         sub: 'host-1',
         name: 'Ведучий',
+        email: 'host@example.com',
         role: 'HOST',
       });
       const call = mockPrisma.event.findMany.mock.calls[0][0];
@@ -224,6 +227,7 @@ describe('EventsService', () => {
       await service.findAllForUser({
         sub: 'driver-1',
         name: 'Водій',
+        email: 'driver@example.com',
         role: 'DRIVER',
       });
       const call = mockPrisma.event.findMany.mock.calls[0][0];
@@ -238,7 +242,7 @@ describe('EventsService', () => {
       mockPrisma.event.count = jest.fn().mockResolvedValueOnce(10);
 
       const result = await service.findAllForUser(
-        { sub: 'mgr-1', name: 'М', role: 'MANAGER' },
+        { sub: 'mgr-1', name: 'М', email: 'manager@example.com', role: 'MANAGER' },
         { page: 2, take: 2 } as any,
       );
 
@@ -253,6 +257,7 @@ describe('EventsService', () => {
       const result = await service.findAllForUser({
         sub: 'mgr-1',
         name: 'М',
+        email: 'manager@example.com',
         role: 'MANAGER',
       });
       expect(Array.isArray(result)).toBe(true);

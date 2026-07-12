@@ -86,19 +86,23 @@ export class AuthService {
     meta: { ip?: string; userAgent?: string } = {},
   ) {
     const tokenHash = this.hashToken(oldToken);
-    const stored = await this.prisma.refreshToken.findUnique({
-      where: { tokenHash },
-      include: { user: { include: { city: true } } },
-    });
 
-    if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
+    const revoked = await this.prisma.$executeRaw<
+      { id: string }[]
+    >`UPDATE "RefreshToken" SET "revokedAt" = NOW()
+      WHERE "tokenHash" = ${tokenHash} AND "revokedAt" IS NULL AND "expiresAt" > NOW()`;
+
+    if (!revoked) {
       throw new AppException('INVALID_REFRESH_TOKEN', HttpStatus.UNAUTHORIZED);
     }
 
-    await this.prisma.refreshToken.update({
-      where: { id: stored.id },
-      data: { revokedAt: new Date() },
+    const stored = await this.prisma.refreshToken.findFirst({
+      where: { tokenHash },
+      include: { user: { include: { city: true } } },
     });
+    if (!stored) {
+      throw new AppException('INVALID_REFRESH_TOKEN', HttpStatus.UNAUTHORIZED);
+    }
 
     const payload = {
       sub: stored.user.id,

@@ -31,6 +31,7 @@ const mockNotifications = {
 const hostUser: JwtUser = {
   sub: 'host-1',
   name: 'Host One',
+  email: 'host@example.com',
   role: 'HOST',
   cityId: 'city-1',
 };
@@ -38,6 +39,7 @@ const hostUser: JwtUser = {
 const driverUser: JwtUser = {
   sub: 'driver-1',
   name: 'Driver One',
+  email: 'driver@example.com',
   role: 'DRIVER',
   cityId: 'city-1',
 };
@@ -45,6 +47,7 @@ const driverUser: JwtUser = {
 const managerUser: JwtUser = {
   sub: 'manager-1',
   name: 'Manager One',
+  email: 'manager@example.com',
   role: 'MANAGER',
   cityId: 'city-1',
 };
@@ -52,6 +55,7 @@ const managerUser: JwtUser = {
 const superAdminUser: JwtUser = {
   sub: 'admin-1',
   name: 'Admin One',
+  email: 'admin@example.com',
   role: 'SUPERADMIN',
   cityId: null,
 };

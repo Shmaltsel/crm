@@ -243,6 +243,12 @@ export class ReportsService {
     }
 
     const approved = await this.prisma.$transaction(async (tx) => {
+      const current = await tx.eventReport.findUnique({
+        where: { id },
+        select: { status: true },
+      });
+      this.assertTransition(current!.status, 'APPROVED');
+
       for (const item of dto.salaries ?? []) {
         await tx.salaryRecord.update({
           where: { id: item.id },

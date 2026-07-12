@@ -50,12 +50,13 @@ describe('OwnershipGuard', () => {
     expect(prisma.event.findUnique).not.toHaveBeenCalled();
   });
 
-  it('без paramId -> true', async () => {
+  it('без paramId -> Forbidden', async () => {
     reflector.getAllAndOverride.mockReturnValueOnce('school');
-    const ok = await guard.canActivate(
-      createContext({ role: 'MANAGER', sub: 'm1' }),
-    );
-    expect(ok).toBe(true);
+    await expect(
+      guard.canActivate(
+        createContext({ role: 'MANAGER', sub: 'm1' }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('HOST/DRIVER + resourceType != event -> Forbidden', async () => {

@@ -19,7 +19,7 @@ export class CreateSalaryItemDto {
   @ApiProperty({ description: 'Сума нарахування' })
   @IsNumber()
   @Min(1)
-  @Max(99999)
+  @Max(9999999)
   @Type(() => Number)
   amount: number;
 

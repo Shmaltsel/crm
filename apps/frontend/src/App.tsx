@@ -43,12 +43,21 @@ const PageLoader = () => (
   </div>
 );
 
+interface LoginUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  cityId?: string | null;
+  cityName?: string | null;
+}
+
 function AppRoutes() {
-  const { user, loading, setUser } = useAuth();
+  const { user, loading, login } = useAuth();
   const isAuthenticated = !!user;
 
-  const handleLogin = (loggedInUser: any) => {
-    setUser(loggedInUser);
+  const handleLogin = (loggedInUser: LoginUser) => {
+    login(loggedInUser);
   };
 
   if (loading) return <PageLoader />;
@@ -102,9 +111,11 @@ function AppRoutes() {
           <Route
             path="schools/:id"
             element={
-              <Suspense fallback={<PageLoader />}>
-                <SchoolProfile />
-              </Suspense>
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER", "LEADER"]}>
+                <Suspense fallback={<PageLoader />}>
+                  <SchoolProfile />
+                </Suspense>
+              </ProtectedRoute>
             }
           />
 
@@ -176,18 +187,22 @@ function AppRoutes() {
           <Route
             path="kindergartens"
             element={
-              <Suspense fallback={<PageLoader />}>
-                <Schools />
-              </Suspense>
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
+                <Suspense fallback={<PageLoader />}>
+                  <Schools />
+                </Suspense>
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="cities/:id"
             element={
-              <Suspense fallback={<PageLoader />}>
-                <CityProfile />
-              </Suspense>
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
+                <Suspense fallback={<PageLoader />}>
+                  <CityProfile />
+                </Suspense>
+              </ProtectedRoute>
             }
           />
 
@@ -205,9 +220,11 @@ function AppRoutes() {
           <Route
             path="events/:id/report"
             element={
-              <Suspense fallback={<PageLoader />}>
-                <EventReport />
-              </Suspense>
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER", "LEADER"]}>
+                <Suspense fallback={<PageLoader />}>
+                  <EventReport />
+                </Suspense>
+              </ProtectedRoute>
             }
           />
 

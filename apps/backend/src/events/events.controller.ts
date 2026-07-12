@@ -54,6 +54,13 @@ export class EventsController {
     return this.eventsService.create(body, user);
   }
 
+  @Get('school/:schoolId/completed')
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership('school')
+  findCompletedBySchool(@Param('schoolId') schoolId: string) {
+    return this.eventsService.findCompletedBySchool(schoolId);
+  }
+
   @Get('school/:schoolId')
   @UseGuards(OwnershipGuard)
   @CheckOwnership('school')
@@ -141,13 +148,6 @@ export class EventsController {
     @CurrentUser() user: JwtUser,
   ) {
     return this.eventsReportService.submitReport(id, body, user);
-  }
-
-  @Get('school/:schoolId/completed')
-  @UseGuards(OwnershipGuard)
-  @CheckOwnership('school')
-  findCompletedBySchool(@Param('schoolId') schoolId: string) {
-    return this.eventsService.findCompletedBySchool(schoolId);
   }
 
   @Get(':id')

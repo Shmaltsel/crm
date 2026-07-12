@@ -197,15 +197,14 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     chatId: string,
     name: string,
     email: string,
-    password: string,
+    _password: string,
   ): Promise<void> {
     const text =
       `👋 <b>Вітаємо у Світло Знань CRM!</b>\n\n` +
       `Ваш акаунт створено.\n\n` +
-      `📧 <b>Логін:</b> <code>${email}</code>\n` +
-      `🔑 <b>Пароль:</b> <code>${password}</code>\n\n` +
+      `📧 <b>Логін:</b> <code>${email}</code>\n\n` +
       `Увійдіть за посиланням: <a href="https://crm-frontend-psi-sable.vercel.app">crm-frontend-psi-sable.vercel.app</a>\n\n` +
-      `<i>Змініть пароль після першого входу.</i>`;
+      `<i>Пароль було надіслано окремо. Змініть його після першого входу.</i>`;
 
     await this.sendMessage(chatId, text);
   }

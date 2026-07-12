@@ -1,11 +1,13 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
-export class EventsSchedulerService implements OnModuleInit {
+export class EventsSchedulerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EventsSchedulerService.name);
+  private dailyCheckTimer?: NodeJS.Timeout;
+  private dailySummaryTimer?: NodeJS.Timeout;
 
   constructor(
     private prisma: PrismaService,
@@ -18,6 +20,11 @@ export class EventsSchedulerService implements OnModuleInit {
     this.scheduleDailySummary();
   }
 
+  onModuleDestroy() {
+    clearInterval(this.dailyCheckTimer);
+    clearInterval(this.dailySummaryTimer);
+  }
+
   private scheduleDailyCheck() {
     const check = async () => {
       this.logger.log('Автоматична перевірка подій на завтра...');
@@ -28,7 +35,7 @@ export class EventsSchedulerService implements OnModuleInit {
       this.logger.error('Помилка першої перевірки подій:', err),
     );
 
-    setInterval(
+    this.dailyCheckTimer = setInterval(
       () => {
         check().catch((err) =>
           this.logger.error('Помилка перевірки подій:', err),
@@ -46,7 +53,7 @@ export class EventsSchedulerService implements OnModuleInit {
       await this.sendDailySummary();
     };
 
-    setInterval(run, 60 * 60 * 1000);
+    this.dailySummaryTimer = setInterval(run, 60 * 60 * 1000);
   }
 
   async checkEventsForTomorrow() {

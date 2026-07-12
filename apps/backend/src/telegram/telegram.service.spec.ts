@@ -110,7 +110,7 @@ describe('TelegramService — sendWelcome', () => {
     const [chatId, text] = sendSpy.mock.calls[0];
     expect(chatId).toBe('chat-1');
     expect(text).toContain('ivan@crm.com');
-    expect(text).toContain('secret123');
+    expect(text).toContain('Пароль було надіслано окремо');
   });
 
   it('повідомлення містить HTML теги (не plain text)', async () => {

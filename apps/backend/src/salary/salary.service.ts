@@ -46,7 +46,7 @@ export class SalaryService {
       await this.cityAccess.assertCityManager(user, report.event.cityId);
     }
 
-    const hasLargeAmounts = dto.items.some((item) => item.amount >= 100000);
+    const hasLargeAmounts = dto.items.some((item) => item.amount >= LARGE_SALARY_THRESHOLD);
     if (hasLargeAmounts && user.role !== 'SUPERADMIN') {
       throw new BadRequestException('salary.amountTooLarge');
     }
@@ -128,6 +128,10 @@ export class SalaryService {
     if (!record) throw new NotFoundException('salary.notFound');
     if (record.status !== 'PENDING')
       throw new BadRequestException('salary.notPending');
+
+    if (record.employeeId === user.sub) {
+      throw new ForbiddenException('salary.cannotApproveOwn');
+    }
 
     if (user.role === 'MANAGER') {
       await this.cityAccess.assertCityManager(user, record.event?.cityId ?? '');

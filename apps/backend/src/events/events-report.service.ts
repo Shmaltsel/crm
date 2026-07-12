@@ -73,7 +73,7 @@ export class EventsReportService {
         const report = await tx.eventReport.upsert({
           where: { eventId },
           update: {
-            status: 'SUBMITTED' as never,
+            status: 'SUBMITTED',
             submittedAt: new Date(),
             announcementDone: reportData.announcementDone,
             materialShown: reportData.materialShown,
@@ -88,7 +88,7 @@ export class EventsReportService {
           },
           create: {
             eventId,
-            status: 'SUBMITTED' as never,
+            status: 'SUBMITTED',
             submittedAt: new Date(),
             announcementDone: reportData.announcementDone,
             materialShown: reportData.materialShown,
@@ -139,21 +139,17 @@ export class EventsReportService {
 
         if (reportData.inventoryUsages?.length) {
           for (const usage of reportData.inventoryUsages) {
-            const item = await tx.inventoryItem.findUnique({
-              where: { id: usage.itemId },
-            });
-            if (!item) {
-              throw new BadRequestException(
-                `Товар з id ${usage.itemId} не знайдено`,
-              );
-            }
-            if (item.currentStock < usage.quantity) {
+            const [updated] = await tx.$queryRaw<
+              { currentStock: number; minStock: number; name: string; id: string }[]
+            >`
+              UPDATE "InventoryItem"
+              SET "currentStock" = "currentStock" - ${usage.quantity}
+              WHERE "id" = ${usage.itemId} AND "currentStock" >= ${usage.quantity}
+              RETURNING "id", "currentStock", "minStock", "name"
+            `;
+            if (!updated) {
               throw new BadRequestException('inventory.insufficientStock');
             }
-            await tx.inventoryItem.update({
-              where: { id: usage.itemId },
-              data: { currentStock: { decrement: usage.quantity } },
-            });
             await tx.inventoryUsage.create({
               data: {
                 itemId: usage.itemId,
@@ -161,12 +157,9 @@ export class EventsReportService {
                 quantity: usage.quantity,
               },
             });
-            const updated = await tx.inventoryItem.findUnique({
-              where: { id: usage.itemId },
-            });
-            if (updated && updated.currentStock < updated.minStock) {
+            if (updated.currentStock < updated.minStock) {
               this.logger.warn(
-                `Inventory item "${item.name}" (${item.id}) below min stock: ${updated.currentStock}/${updated.minStock}`,
+                `Inventory item "${updated.name}" (${updated.id}) below min stock: ${updated.currentStock}/${updated.minStock}`,
               );
             }
           }
@@ -175,7 +168,7 @@ export class EventsReportService {
         return tx.event.update({
           where: { id: eventId },
           data: {
-            status: 'REPORT' as never,
+            status: 'REPORT',
             history: {
               create: {
                 action: 'Сформовано звіт. Захід завершено.',

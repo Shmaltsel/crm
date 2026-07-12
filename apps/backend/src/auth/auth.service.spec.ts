@@ -14,8 +14,10 @@ const mockPrisma = {
   refreshToken: {
     create: jest.fn(),
     findUnique: jest.fn(),
+    findFirst: jest.fn(),
     update: jest.fn(),
   },
+  $executeRaw: jest.fn(),
 };
 
 const makeService = () =>
@@ -156,7 +158,8 @@ describe('AuthService — refresh', () => {
   };
 
   it('повертає нові токени при валідному refresh token', async () => {
-    mockPrisma.refreshToken.findUnique.mockResolvedValueOnce(storedToken);
+    mockPrisma.$executeRaw.mockResolvedValueOnce(1);
+    mockPrisma.refreshToken.findFirst.mockResolvedValueOnce(storedToken);
 
     const service = makeService();
     const result = await service.refresh('valid-old-token');
@@ -166,20 +169,18 @@ describe('AuthService — refresh', () => {
     expect(result.user.id).toBe('user-1');
   });
 
-  it('відкликає старий токен при refresh', async () => {
-    mockPrisma.refreshToken.findUnique.mockResolvedValueOnce(storedToken);
+  it('відкликає старий токен через $executeRaw', async () => {
+    mockPrisma.$executeRaw.mockResolvedValueOnce(1);
+    mockPrisma.refreshToken.findFirst.mockResolvedValueOnce(storedToken);
 
     const service = makeService();
     await service.refresh('valid-old-token');
 
-    expect(mockPrisma.refreshToken.update).toHaveBeenCalledWith({
-      where: { id: 'rt-stored' },
-      data: { revokedAt: expect.any(Date) },
-    });
+    expect(mockPrisma.$executeRaw).toHaveBeenCalled();
   });
 
   it('кидає AppException якщо токен не знайдено', async () => {
-    mockPrisma.refreshToken.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.$executeRaw.mockResolvedValueOnce(0);
 
     const service = makeService();
     await expect(service.refresh('unknown-token')).rejects.toThrow(
@@ -191,10 +192,7 @@ describe('AuthService — refresh', () => {
   });
 
   it('кидає AppException якщо токен відкликаний (revokedAt є)', async () => {
-    mockPrisma.refreshToken.findUnique.mockResolvedValue({
-      ...storedToken,
-      revokedAt: new Date(),
-    });
+    mockPrisma.$executeRaw.mockResolvedValueOnce(0);
 
     const service = makeService();
     await expect(service.refresh('revoked-token')).rejects.toThrow(
@@ -203,10 +201,7 @@ describe('AuthService — refresh', () => {
   });
 
   it('кидає AppException якщо токен прострочений', async () => {
-    mockPrisma.refreshToken.findUnique.mockResolvedValue({
-      ...storedToken,
-      expiresAt: new Date(Date.now() - 1000),
-    });
+    mockPrisma.$executeRaw.mockResolvedValueOnce(0);
 
     const service = makeService();
     await expect(service.refresh('expired-token')).rejects.toThrow(
@@ -215,14 +210,13 @@ describe('AuthService — refresh', () => {
   });
 
   it('хешує токен перед пошуком у БД', async () => {
-    mockPrisma.refreshToken.findUnique.mockResolvedValueOnce(storedToken);
+    mockPrisma.$executeRaw.mockResolvedValueOnce(1);
+    mockPrisma.refreshToken.findFirst.mockResolvedValueOnce(storedToken);
 
     const service = makeService();
     await service.refresh('my-plain-token');
 
-    const { tokenHash } =
-      mockPrisma.refreshToken.findUnique.mock.calls[0][0].where;
-    // sha256 — hex рядок довжиною 64 символи
+    const [, tokenHash] = mockPrisma.$executeRaw.mock.calls[0];
     expect(tokenHash).toMatch(/^[a-f0-9]{64}$/);
     expect(tokenHash).not.toBe('my-plain-token');
   });

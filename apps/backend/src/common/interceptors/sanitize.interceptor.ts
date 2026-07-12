@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 function sanitizeValue(value: unknown): unknown {
   if (typeof value === 'string') {
     return value
@@ -15,8 +17,10 @@ function sanitizeValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sanitizeValue);
   if (value && typeof value === 'object') {
     const result: Record<string, unknown> = {};
-    for (const [key, val] of Object.entries(value))
+    for (const [key, val] of Object.entries(value)) {
+      if (DANGEROUS_KEYS.has(key)) continue;
       result[key] = sanitizeValue(val);
+    }
     return result;
   }
   return value;

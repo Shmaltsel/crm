@@ -37,7 +37,19 @@ export class UsersService {
 
   async getAllUsers() {
     return this.prisma.user.findMany({
-      include: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        cityId: true,
+        car: true,
+        telegramId: true,
+        telegramChatId: true,
+        balance: true,
+        createdAt: true,
+        updatedAt: true,
         city: true,
       },
     });
@@ -85,7 +97,9 @@ export class UsersService {
           payload: { name: data.fullName },
         },
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.error('Failed to create welcome notification:', err.message);
+      });
 
     return user;
   }
@@ -115,7 +129,22 @@ export class UsersService {
   }
 
   async findAll() {
-    return this.prisma.user.findMany();
+    return this.prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        cityId: true,
+        car: true,
+        telegramId: true,
+        telegramChatId: true,
+        balance: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
   }
 
   async updateTelegramChatId(username: string, chatId: string) {

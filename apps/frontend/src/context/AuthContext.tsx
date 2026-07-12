@@ -3,9 +3,11 @@ import {
   useContext,
   useEffect,
   useState,
+  useCallback,
   ReactNode,
 } from "react";
 import { api } from "../config/api";
+import { queryClient } from "../config/queryClient";
 
 interface User {
   id: string;
@@ -19,7 +21,7 @@ interface User {
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
-  setUser: (user: User | null) => void;
+  login: (user: User) => void;
   logout: () => Promise<void>;
 }
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -39,23 +41,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handleExpired = () => {
       setUser(null);
+      queryClient.clear();
       window.location.href = "/login";
     };
     window.addEventListener("auth:expired", handleExpired);
     return () => window.removeEventListener("auth:expired", handleExpired);
   }, []);
 
-  const logout = async () => {
+  const login = useCallback((loggedInUser: User) => {
+    setUser(loggedInUser);
+  }, []);
+
+  const logout = useCallback(async () => {
     try {
       await api.post("/auth/logout");
     } catch (e) {
       console.error("Logout error", e);
     }
     setUser(null);
-  };
+    queryClient.clear();
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, setUser, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

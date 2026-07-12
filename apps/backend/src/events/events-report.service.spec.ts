@@ -12,7 +12,7 @@ const mockPrisma = {
   event: { findUnique: jest.fn().mockResolvedValue(null) },
 };
 
-const mockUser = { sub: 'user-1', name: 'Менеджер', role: 'MANAGER' } as const;
+const mockUser = { sub: 'user-1', name: 'Менеджер', email: 'manager@example.com', role: 'MANAGER' } as const;
 
 describe('EventsReportService', () => {
   let service: EventsReportService;

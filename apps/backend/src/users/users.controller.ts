@@ -25,6 +25,7 @@ export class UsersController {
 
   @ApiOperation({ summary: 'Список усіх користувачів' })
   @Get()
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   getAll() {
     return this.usersService.getAllUsers();
   }
