@@ -59,7 +59,7 @@ export default function MobileTopNav() {
       <div className="flex items-center gap-2">
         <NotificationBell />
         {(user?.role === "SUPERADMIN" || user?.role === "MANAGER" || user?.role === "OWNER") && (
-          <Link to="/cities" className="text-xs text-blue-300/80 whitespace-nowrap hover:text-blue-200 transition-colors active:scale-95">
+          <Link to="/cities" className="text-xs text-blue-300/80 whitespace-nowrap hover:text-blue-200 transition-colors transition-transform active:scale-95">
             {selectedCity.name}
           </Link>
         )}

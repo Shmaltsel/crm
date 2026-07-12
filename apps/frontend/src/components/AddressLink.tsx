@@ -17,7 +17,7 @@ export default function AddressLink({ address, className }: AddressLinkProps) {
       rel="noopener noreferrer"
       onClick={(e) => e.stopPropagation()}
       title="Відкрити в Google Maps"
-      className={`group inline-flex items-center gap-1.5 text-slate-700 hover:text-blue-600 transition-colors active:scale-95 ${
+      className={`group inline-flex items-center gap-1.5 text-slate-700 hover:text-blue-600 transition-colors transition-transform active:scale-95 ${
         className ?? ""
       }`}
     >

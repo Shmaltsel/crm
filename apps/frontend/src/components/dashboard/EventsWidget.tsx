@@ -116,7 +116,7 @@ function EventRow({
             e.stopPropagation();
             onClick();
           }}
-          className={`text-2xs font-semibold px-2.5 py-1 rounded-control transition-colors shrink-0 active:scale-95 ${
+          className={`text-2xs font-semibold px-2.5 py-1 rounded-control transition-colors transition-transform shrink-0 active:scale-95 ${
             buttonVariant === "crew"
               ? "bg-surface-muted text-content-secondary hover:bg-border-strong"
               : "bg-surface border border-warning text-warning-600 hover:bg-warning-subtle"

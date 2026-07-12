@@ -38,8 +38,8 @@ export function useHoverCapable(): boolean {
   return capable;
 }
 
-/** React hook: returns true if user prefers reduced motion. */
-export function useReducedMotion(): boolean {
+/** React hook: returns true if user prefers reduced motion (OS setting + localStorage). */
+export function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = useState<boolean>(() => {
     const stored = getStoredReducedMotion();
     return stored !== null ? stored : prefersReducedMotion();
@@ -58,23 +58,27 @@ export function useReducedMotion(): boolean {
   return reduced;
 }
 
-/** React hook: true when reduced-motion is preferred OR the viewport is mobile (<768px). */
-export function useLightMotion(): boolean {
-  const reduced = useReducedMotion();
-  const [mobile, setMobile] = useState<boolean>(() =>
+export const useReducedMotion = usePrefersReducedMotion;
+
+/** React hook: true when viewport is mobile (<768px). Layout-only, NOT for animation suppression. */
+export function useCompactViewport(): boolean {
+  const [compact, setCompact] = useState<boolean>(() =>
     typeof window !== "undefined" && window.matchMedia?.("(max-width: 767px)").matches,
   );
 
   useEffect(() => {
     const mq = window.matchMedia?.("(max-width: 767px)");
     if (!mq) return;
-    const handler = () => setMobile(mq.matches);
+    const handler = () => setCompact(mq.matches);
     mq.addEventListener?.("change", handler);
     return () => mq.removeEventListener?.("change", handler);
   }, []);
 
-  return reduced || mobile;
+  return compact;
 }
+
+/** @deprecated Use usePrefersReducedMotion() for animation suppression. */
+export const useLightMotion = usePrefersReducedMotion;
 
 /** React hook: staggered entrance for list items. */
 export function useStaggeredEntrance(
@@ -189,14 +193,14 @@ export const TRANSITION = {
 export const backdropVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: DUR.fast, ease: EASE.decelerate } },
-  exit: { opacity: 0, transition: { duration: DUR.fast, ease: EASE.standard } },
+  exit: { opacity: 0, transition: { duration: DUR.normal, ease: EASE.standard } },
 };
 
 /** Modal / sheet / bottom-sheet content. */
 export const modalContentVariants: Variants = {
   hidden: { opacity: 0, y: 32, scale: 0.96 },
   visible: { opacity: 1, y: 0, scale: 1, transition: { ...SPRING.gentle } },
-  exit: { opacity: 0, y: 12, scale: 0.97, transition: { duration: DUR.normal, ease: EASE.standard } },
+  exit: { opacity: 0, y: 12, scale: 0.97, transition: { type: "spring" as const, stiffness: 380, damping: 32 } },
 };
 
 /** Pop-in (badges, status pills, FAB). */

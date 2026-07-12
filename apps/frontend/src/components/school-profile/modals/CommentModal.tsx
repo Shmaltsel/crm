@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { backdropVariants, modalContentVariants } from '../../../lib/motion';
+import { useMobileModalOffsets } from '../../../hooks/useMobileModalOffsets';
 
 interface CommentModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface CommentModalProps {
 export default function CommentModal({ isOpen, onClose, mode, text, setText, onSave }: CommentModalProps) {
   const headingId = 'comment-modal-heading';
   const closeRef = useRef<HTMLButtonElement>(null);
+  const mobileOffsets = useMobileModalOffsets();
 
   useEffect(() => {
     if (isOpen) closeRef.current?.focus();
@@ -40,6 +42,10 @@ export default function CommentModal({ isOpen, onClose, mode, text, setText, onS
           className="fixed inset-0 bg-backdrop md:backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center sm:p-4"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
           onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
+          style={{
+            paddingTop: mobileOffsets.paddingTop,
+            paddingBottom: mobileOffsets.paddingBottom,
+          }}
         >
           <motion.div
             variants={modalContentVariants}

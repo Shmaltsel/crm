@@ -127,10 +127,19 @@
   padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px) + 8px);
 }
 
+.press-feedback {
+  transition-property: transform;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .dashboard-swiper {
   width: 100%;
   height: 100%;
   touch-action: pan-y;
+}
+.dashboard-swiper .swiper-wrapper {
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 .dashboard-swiper .swiper-slide {
   height: auto;

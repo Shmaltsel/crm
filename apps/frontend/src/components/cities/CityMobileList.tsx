@@ -91,7 +91,7 @@ export default function CityMobileList({
                   e.stopPropagation();
                   navigate(`/cities/${city.id}`);
                 }}
-                className="p-2.5 text-content-muted hover:text-brand text-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center active:scale-90"
+                className="p-2.5 text-content-muted hover:text-brand text-lg transition-colors transition-transform min-w-[44px] min-h-[44px] flex items-center justify-center active:scale-90"
               >
                 ›
               </button>

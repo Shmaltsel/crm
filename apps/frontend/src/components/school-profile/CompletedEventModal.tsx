@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { backdropVariants, modalContentVariants } from "../../lib/motion";
+import { useMobileModalOffsets } from "../../hooks/useMobileModalOffsets";
 import type { Event, ExpenseItem, SalaryRecord } from "../../types";
 
 interface CompletedEventModalProps {
@@ -16,6 +17,7 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
 }) => {
   const headingId = 'completed-event-modal-heading';
   const closeRef = useRef<HTMLButtonElement>(null);
+  const mobileOffsets = useMobileModalOffsets();
 
   useEffect(() => {
     if (isOpen) closeRef.current?.focus();
@@ -42,6 +44,10 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
           exit="exit"
           className="fixed inset-0 bg-neutral-900/40 md:backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+          style={{
+            paddingTop: mobileOffsets.paddingTop,
+            paddingBottom: mobileOffsets.paddingBottom,
+          }}
         >
           <motion.div
             role="dialog"

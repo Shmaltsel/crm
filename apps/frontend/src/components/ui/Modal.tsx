@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useId, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { backdropVariants, modalContentVariants } from "../../lib/motion";
+import { useMobileModalOffsets } from "../../hooks/useMobileModalOffsets";
 
 interface ModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-md" 
   const generatedId = useId();
   const headingId = `modal-${generatedId}`;
   const closeRef = useRef<HTMLButtonElement>(null);
+  const mobileOffsets = useMobileModalOffsets();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -37,6 +39,10 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-md" 
           exit="exit"
           className="fixed inset-0 bg-backdrop md:backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
           onClick={(e) => e.target === e.currentTarget && onClose()}
+          style={{
+            paddingTop: mobileOffsets.paddingTop,
+            paddingBottom: mobileOffsets.paddingBottom,
+          }}
         >
           <motion.div
             variants={modalContentVariants}

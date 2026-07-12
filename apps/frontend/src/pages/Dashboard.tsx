@@ -108,9 +108,14 @@ export default function Dashboard() {
           onSwiper={(swiper) => { swiperRef.current = swiper; }}
           initialSlide={allowedIds.indexOf(activeTab)}
           onSlideChange={handleSlideChange}
-          speed={280}
+          speed={340}
           allowTouchMove={true}
           touchReleaseOnEdges={true}
+          resistanceRatio={0.85}
+          threshold={6}
+          touchStartPreventDefault={false}
+          noSwipingClass="swiper-no-swiping"
+          data-testid="dashboard-swiper"
           className="dashboard-swiper"
         >
           {allowedTabs.map((tab) => {

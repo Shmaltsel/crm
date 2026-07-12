@@ -7,6 +7,7 @@ import {
   type SchoolEditFormValues,
 } from "./SchoolEditSchema";
 import { backdropVariants, modalContentVariants } from "../../../lib/motion";
+import { useMobileModalOffsets } from "../../../hooks/useMobileModalOffsets";
 
 interface EditSchoolModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export default function EditSchoolModal({
 }: EditSchoolModalProps) {
   const headingId = 'edit-school-modal-heading';
   const closeRef = useRef<HTMLButtonElement>(null);
+  const mobileOffsets = useMobileModalOffsets();
 
   useEffect(() => {
     if (isOpen) closeRef.current?.focus();
@@ -62,6 +64,10 @@ export default function EditSchoolModal({
           exit="exit"
           className="fixed inset-0 bg-backdrop md:backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center sm:p-4"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+          style={{
+            paddingTop: mobileOffsets.paddingTop,
+            paddingBottom: mobileOffsets.paddingBottom,
+          }}
         >
           <motion.div
             variants={modalContentVariants}

@@ -82,7 +82,7 @@ export default function CommentsTimeline({ schoolId, variant = "card" }: Comment
         variants={emptyStateVariants}
         initial="hidden"
         animate="visible"
-        className="flex flex-col h-full min-h-[calc(100vh-200px)] bg-surface rounded-card border border-border overflow-hidden"
+        className="flex flex-col h-[420px] bg-surface rounded-card border border-border overflow-hidden"
       >
         <div className="p-4 border-b border-border bg-surface-muted flex-shrink-0">
           <h3 className="font-bold text-content-primary flex items-center gap-2">
@@ -143,7 +143,7 @@ export default function CommentsTimeline({ schoolId, variant = "card" }: Comment
         {canWrite && (
           <form
             onSubmit={handleSubmit}
-            className="p-4 border-t border-border bg-surface sticky bottom-16 md:bottom-0 flex-shrink-0"
+            className="p-4 border-t border-border bg-surface shrink-0 flex-shrink-0"
             style={{ paddingBottom: "calc(16px + env(safe-area-inset-bottom))" }}
           >
             <div className="flex gap-2">

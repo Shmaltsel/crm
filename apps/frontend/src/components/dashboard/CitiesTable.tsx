@@ -54,7 +54,7 @@ export default function CitiesTable({ rows }: Props) {
         </button>
       </div>
 
-      <div className="overflow-x-auto -mx-4 px-4">
+      <div className="overflow-x-auto -mx-4 px-4 swiper-no-swiping" style={{ touchAction: "pan-y" }}>
         <table className="w-full text-left border-collapse min-w-[380px]">
           <thead>
             <tr className="border-b border-border">

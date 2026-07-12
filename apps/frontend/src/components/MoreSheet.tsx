@@ -86,7 +86,7 @@ export default function MoreSheet({ onClose }: Props) {
             </h2>
             <button
               onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center text-content-muted hover:text-content-primary rounded-control transition-colors active:scale-90"
+              className="w-8 h-8 flex items-center justify-center text-content-muted hover:text-content-primary rounded-control transition-colors transition-transform active:scale-90"
               aria-label="Закрити"
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -125,7 +125,7 @@ export default function MoreSheet({ onClose }: Props) {
                           <Link
                             to={tab.to}
                             onClick={onClose}
-                            className={`flex items-center gap-3 px-4 py-3 rounded-control text-sm font-medium transition-colors active:scale-[0.97] ${
+                            className={`flex items-center gap-3 px-4 py-3 rounded-control text-sm font-medium transition-colors transition-transform active:scale-[0.97] ${
                               isActive
                                 ? "bg-brand/10 text-brand"
                                 : "text-content-secondary hover:bg-surface-muted"
@@ -181,7 +181,7 @@ export default function MoreSheet({ onClose }: Props) {
               </div>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-3 w-full px-4 py-3 rounded-control text-sm font-medium text-content-secondary hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors active:scale-[0.97]"
+                className="flex items-center gap-3 w-full px-4 py-3 rounded-control text-sm font-medium text-content-secondary hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors transition-transform active:scale-[0.97]"
                 whileHover={{ scale: 1.015 }}
                 whileTap={{ scale: 0.97 }}
                 transition={TRANSITION.hover}

@@ -43,20 +43,30 @@ export default function FloatingMobileNav() {
 
   return (
     <>
-      <nav className="md:hidden fixed z-50 left-1/2 -translate-x-1/2 bottom-[calc(56px+env(safe-area-inset-bottom,0px))] bg-surface/95 backdrop-blur-md border border-border rounded-full flex items-center gap-1 px-2 py-1.5 shadow-lg">
-        {SECTIONS.map((s) => (
-          <button
-            key={s.id}
-            onClick={() => scrollTo(s.id)}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-colors ${
-              activeSection === s.id
-                ? "bg-brand text-white"
-                : "text-content-muted active:bg-surface-muted"
-            }`}
-          >
-            {s.label}
-          </button>
-        ))}
+      <nav className="md:hidden fixed z-50 left-1/2 -translate-x-1/2 bottom-[calc(56px+env(safe-area-inset-bottom,0px))] bg-surface-muted/90 backdrop-blur-md rounded-full flex items-center gap-1 p-1 shadow-lg">
+        <AnimatePresence mode="popLayout">
+          {SECTIONS.map((s) => (
+            <motion.button
+              key={s.id}
+              layoutId={activeSection === s.id ? "floating-nav-pill" : undefined}
+              onClick={() => scrollTo(s.id)}
+              className={`relative z-10 min-h-[36px] px-3.5 py-1.5 text-xs font-semibold rounded-full transition-colors ${
+                activeSection === s.id
+                  ? "text-white z-20"
+                  : "text-content-muted active:bg-surface-muted"
+              }`}
+            >
+              {activeSection === s.id && (
+                <motion.div
+                  layoutId="floating-nav-pill"
+                  className="absolute inset-0 bg-brand rounded-full shadow-sm"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10">{s.label}</span>
+            </motion.button>
+          ))}
+        </AnimatePresence>
       </nav>
 
       <AnimatePresence>

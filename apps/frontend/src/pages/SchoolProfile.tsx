@@ -38,9 +38,6 @@ const HistoryTimeline = lazy(
 const CommentsTimeline = lazy(
   () => import("../components/school-profile/CommentsTimeline"),
 );
-const HistoryAccordion = lazy(
-  () => import("../components/school-profile/HistoryAccordion"),
-);
 const EventDetails = lazy(
   () => import("../components/school-profile/EventDetails"),
 );
@@ -593,17 +590,12 @@ export default function SchoolProfile() {
         </section>
 
         <section id="section-notes" className="scroll-mt-20 space-y-4">
-          <Suspense
-            fallback={
-              <div className="bg-surface rounded-card shadow-card h-24 animate-pulse border border-border" />
-            }
-          >
-            <HistoryAccordion
-              currentEvent={eventFullLoading ? currentEventBase : currentEvent}
-              onHistoryClick={handleHistoryClick}
-              onAddCommentClick={handleAddCommentClick}
-            />
-          </Suspense>
+          {schoolData.notes && (
+            <div className="bg-surface rounded-card shadow-card border border-border p-6">
+              <h4 className="font-bold text-content-primary mb-3">Нотатки школи</h4>
+              <p className="text-content-secondary whitespace-pre-wrap">{schoolData.notes}</p>
+            </div>
+          )}
           <Suspense
             fallback={
               <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
@@ -621,12 +613,6 @@ export default function SchoolProfile() {
           >
             <SchoolInfoCard schoolData={schoolData} />
           </Suspense>
-          {schoolData.notes && (
-            <div className="bg-surface rounded-card shadow-card border border-border p-6">
-              <h4 className="font-bold text-content-primary mb-3">Додаткові нотатки</h4>
-              <p className="text-content-secondary whitespace-pre-wrap">{schoolData.notes}</p>
-            </div>
-          )}
           <Suspense
             fallback={
               <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />

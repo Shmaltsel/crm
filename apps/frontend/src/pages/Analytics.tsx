@@ -171,7 +171,8 @@ export default function Analytics() {
           {chartData.length === 0 ? (
             <ChartEmptyState text="Немає даних за цей період" />
           ) : (
-            <ResponsiveContainer width="100%" height={280}>
+            <div className="swiper-no-swiping" style={{ touchAction: "pan-y" }}>
+              <ResponsiveContainer width="100%" height={280}>
               <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
@@ -183,7 +184,8 @@ export default function Analytics() {
                 <Line type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={2} dot={{ r: 3, fill: "#2563eb" }} name="Дохід" isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
                 <Line type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: "#10b981" }} name="Прибуток" isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
               </LineChart>
-            </ResponsiveContainer>
+              </ResponsiveContainer>
+            </div>
           )}
         </div>
       )}
@@ -197,7 +199,8 @@ export default function Analytics() {
             {!eventsByCity || eventsByCity.length === 0 ? (
               <ChartEmptyState text="Немає подій за цей рік" />
             ) : (
-              <ResponsiveContainer width="100%" height={280}>
+              <div className="swiper-no-swiping" style={{ touchAction: "pan-y" }}>
+                <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={eventsByCity} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="cityName" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
@@ -209,6 +212,7 @@ export default function Analytics() {
                   <Bar dataKey="events" fill="#2563eb" radius={[8, 8, 0, 0]} maxBarSize={48} isAnimationActive={true} animationDuration={800} animationEasing="ease-out" />
                 </BarChart>
               </ResponsiveContainer>
+            </div>
             )}
           </div>
         )
