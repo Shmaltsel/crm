@@ -107,14 +107,15 @@ export default function Cities() {
         </Suspense>
       )}
 
-      {userRole === "SUPERADMIN" && (
+      {userRole === "SUPERADMIN" && createPortal(
         <button
           onClick={() => setIsModalOpen(true)}
           className="fab"
           aria-label="Додати місто"
         >
           +
-        </button>
+        </button>,
+        document.body,
       )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Нове місто">
