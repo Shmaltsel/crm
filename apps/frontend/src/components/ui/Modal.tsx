@@ -41,6 +41,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-md" 
           animate="visible"
           exit="exit"
           className="fixed inset-0 bg-backdrop md:backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+          style={{ willChange: "transform, opacity" }}
           onClick={(e) => e.target === e.currentTarget && onClose()}
           style={{
             paddingTop: mobileOffsets.paddingTop,

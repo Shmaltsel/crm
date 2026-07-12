@@ -196,11 +196,11 @@ export const backdropVariants: Variants = {
   exit: { opacity: 0, transition: { duration: DUR.normal, ease: EASE.standard } },
 };
 
-/** Modal / sheet / bottom-sheet content. */
+/** Modal / sheet / bottom-sheet content. Tween on enter for consistent perf on low-end mobile; fast spring on exit. */
 export const modalContentVariants: Variants = {
   hidden: { opacity: 0, y: 32, scale: 0.96 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { ...SPRING.gentle } },
-  exit: { opacity: 0, y: 12, scale: 0.97, transition: { type: "spring" as const, stiffness: 380, damping: 32 } },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: DUR.moderate, ease: EASE.outExpo } },
+  exit: { opacity: 0, y: 12, scale: 0.97, transition: { duration: DUR.fast, ease: EASE.accelerate } },
 };
 
 /** Pop-in (badges, status pills, FAB). */

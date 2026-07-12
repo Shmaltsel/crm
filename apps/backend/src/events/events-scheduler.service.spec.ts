@@ -21,17 +21,6 @@ beforeEach(() => {
 });
 
 describe('EventsSchedulerService', () => {
-  describe('onModuleInit', () => {
-    it('викликає scheduleDailyCheck при ініціалізації модуля', () => {
-      const service = makeService();
-      const spy = jest
-        .spyOn(service as any, 'scheduleDailyCheck')
-        .mockImplementation(() => {});
-      service.onModuleInit();
-      expect(spy).toHaveBeenCalled();
-    });
-  });
-
   describe('checkEventsForTomorrow', () => {
     it('надсилає нагадування ведучому та водію якщо є crew', async () => {
       const tomorrow = new Date();

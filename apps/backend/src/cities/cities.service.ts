@@ -15,7 +15,7 @@ export class CitiesService {
     if (!city) throw new BadRequestException('Місто не знайдено');
     if (city._count.users > 0) {
       throw new BadRequestException(
-        'У місті є прив\'язані співробітники — спочатку перепризначте або видаліть їх',
+        "У місті є прив'язані співробітники — спочатку перепризначте або видаліть їх",
       );
     }
 
@@ -34,10 +34,18 @@ export class CitiesService {
     ).map((r) => r.id);
 
     await this.prisma.$transaction([
-      this.prisma.salaryRecord.deleteMany({ where: { eventId: { in: eventIds } } }),
-      this.prisma.eventHistory.deleteMany({ where: { eventId: { in: eventIds } } }),
-      this.prisma.eventPreparation.deleteMany({ where: { eventId: { in: eventIds } } }),
-      this.prisma.inventoryUsage.deleteMany({ where: { reportId: { in: reportIds } } }),
+      this.prisma.salaryRecord.deleteMany({
+        where: { eventId: { in: eventIds } },
+      }),
+      this.prisma.eventHistory.deleteMany({
+        where: { eventId: { in: eventIds } },
+      }),
+      this.prisma.eventPreparation.deleteMany({
+        where: { eventId: { in: eventIds } },
+      }),
+      this.prisma.inventoryUsage.deleteMany({
+        where: { reportId: { in: reportIds } },
+      }),
       this.prisma.file.deleteMany({ where: { eventId: { in: eventIds } } }),
       this.prisma.event.deleteMany({ where: { cityId: id } }),
       this.prisma.inventoryItem.deleteMany({ where: { cityId: id } }),

@@ -7,7 +7,7 @@
   {
     "file": "apps/backend/package.json",
     "bundle": "bundle_01.xml",
-    "tokens": 1042
+    "tokens": 1051
   },
   {
     "file": "apps/backend/prisma/schema.prisma",
@@ -162,7 +162,7 @@
   {
     "file": "apps/backend/src/app.module.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 1218
+    "tokens": 1242
   },
   {
     "file": "apps/backend/src/analytics/analytics.controller.ts",
@@ -302,7 +302,7 @@
   {
     "file": "apps/backend/src/cities/cities.controller.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 616
+    "tokens": 694
   },
   {
     "file": "apps/backend/src/cities/cities.module.ts",
@@ -317,7 +317,7 @@
   {
     "file": "apps/backend/src/cities/cities.service.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 977
+    "tokens": 1484
   },
   {
     "file": "apps/backend/src/cities/dto/create-city.dto.ts",
@@ -532,12 +532,12 @@
   {
     "file": "apps/backend/src/events/events-scheduler.service.spec.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 1928
+    "tokens": 1831
   },
   {
     "file": "apps/backend/src/events/events-scheduler.service.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 1357
+    "tokens": 1136
   },
   {
     "file": "apps/backend/src/events/events-scheduling.service.spec.ts",
@@ -577,7 +577,7 @@
   {
     "file": "apps/backend/src/events/events.service.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 5180
+    "tokens": 5622
   },
   {
     "file": "apps/backend/src/finance/create-expense-item.dto.ts",
@@ -992,7 +992,7 @@
   {
     "file": "apps/backend/src/users/users.service.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 1186
+    "tokens": 1386
   },
   {
     "file": "apps/backend/test/app.e2e-spec.ts",
@@ -1097,7 +1097,7 @@
   {
     "file": "apps/frontend/src/App.tsx",
     "bundle": "bundle_03.xml",
-    "tokens": 2307
+    "tokens": 2364
   },
   {
     "file": "apps/frontend/src/animations/employees.ts",
@@ -1122,7 +1122,7 @@
   {
     "file": "apps/frontend/src/components/cities/CityDesktopGrid.tsx",
     "bundle": "bundle_03.xml",
-    "tokens": 2761
+    "tokens": 2961
   },
   {
     "file": "apps/frontend/src/components/cities/CityMobileHeader.tsx",
@@ -1132,7 +1132,7 @@
   {
     "file": "apps/frontend/src/components/cities/CityMobileList.tsx",
     "bundle": "bundle_03.xml",
-    "tokens": 1113
+    "tokens": 1320
   },
   {
     "file": "apps/frontend/src/components/city-profile/CityAnalytics.tsx",
@@ -1202,12 +1202,12 @@
   {
     "file": "apps/frontend/src/components/employees/EmployeeCard.tsx",
     "bundle": "bundle_03.xml",
-    "tokens": 1312
+    "tokens": 1310
   },
   {
     "file": "apps/frontend/src/components/employees/EmployeesHeader.tsx",
     "bundle": "bundle_03.xml",
-    "tokens": 1060
+    "tokens": 651
   },
   {
     "file": "apps/frontend/src/components/employees/EmployeesTable.tsx",
@@ -1227,7 +1227,7 @@
   {
     "file": "apps/frontend/src/components/employees/UserModal.tsx",
     "bundle": "bundle_03.xml",
-    "tokens": 3005
+    "tokens": 3285
   },
   {
     "file": "apps/frontend/src/components/ErrorBoundary.tsx",
@@ -1262,7 +1262,7 @@
   {
     "file": "apps/frontend/src/components/MobileTopNav.tsx",
     "bundle": "bundle_03.xml",
-    "tokens": 753
+    "tokens": 765
   },
   {
     "file": "apps/frontend/src/components/MoreSheet.tsx",
@@ -1277,7 +1277,7 @@
   {
     "file": "apps/frontend/src/components/OnboardingTour.tsx",
     "bundle": "bundle_03.xml",
-    "tokens": 2074
+    "tokens": 2132
   },
   {
     "file": "apps/frontend/src/components/PhoneLink.tsx",
@@ -1377,7 +1377,7 @@
   {
     "file": "apps/frontend/src/components/school-profile/modals/SchoolActionSheet.tsx",
     "bundle": "bundle_04.xml",
-    "tokens": 1448
+    "tokens": 1453
   },
   {
     "file": "apps/frontend/src/components/school-profile/modals/SchoolEditSchema.ts",
@@ -1450,6 +1450,11 @@
     "tokens": 976
   },
   {
+    "file": "apps/frontend/src/components/ScrollToTop.tsx",
+    "bundle": "bundle_04.xml",
+    "tokens": 90
+  },
+  {
     "file": "apps/frontend/src/components/ui/Badge.tsx",
     "bundle": "bundle_04.xml",
     "tokens": 384
@@ -1492,7 +1497,7 @@
   {
     "file": "apps/frontend/src/components/ui/Modal.tsx",
     "bundle": "bundle_04.xml",
-    "tokens": 821
+    "tokens": 867
   },
   {
     "file": "apps/frontend/src/components/ui/OptimizedImage.tsx",
@@ -1542,7 +1547,7 @@
   {
     "file": "apps/frontend/src/constants/navTabs.ts",
     "bundle": "bundle_04.xml",
-    "tokens": 618
+    "tokens": 615
   },
   {
     "file": "apps/frontend/src/constants/pipelineStages.ts",
@@ -1672,7 +1677,7 @@
   {
     "file": "apps/frontend/src/hooks/useApi.ts",
     "bundle": "bundle_04.xml",
-    "tokens": 896
+    "tokens": 978
   },
   {
     "file": "apps/frontend/src/hooks/useCalendar.ts",
@@ -1682,7 +1687,7 @@
   {
     "file": "apps/frontend/src/hooks/useCities.ts",
     "bundle": "bundle_04.xml",
-    "tokens": 817
+    "tokens": 896
   },
   {
     "file": "apps/frontend/src/hooks/useDashboardData.ts",
@@ -1707,7 +1712,7 @@
   {
     "file": "apps/frontend/src/hooks/useEmployees.ts",
     "bundle": "bundle_04.xml",
-    "tokens": 1385
+    "tokens": 1400
   },
   {
     "file": "apps/frontend/src/hooks/useInventory.ts",
@@ -1762,7 +1767,7 @@
   {
     "file": "apps/frontend/src/lib/motion.ts",
     "bundle": "bundle_04.xml",
-    "tokens": 3262
+    "tokens": 3288
   },
   {
     "file": "apps/frontend/src/pages/Analytics.tsx",
@@ -1777,7 +1782,7 @@
   {
     "file": "apps/frontend/src/pages/Cities.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 1570
+    "tokens": 2125
   },
   {
     "file": "apps/frontend/src/pages/CityLeaderboard.tsx",
@@ -1797,7 +1802,7 @@
   {
     "file": "apps/frontend/src/pages/Employees.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 7471
+    "tokens": 7258
   },
   {
     "file": "apps/frontend/src/pages/EventReport.tsx",
@@ -1817,7 +1822,7 @@
   {
     "file": "apps/frontend/src/pages/Inventory.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 4260
+    "tokens": 4264
   },
   {
     "file": "apps/frontend/src/pages/IssuesTab.tsx",
@@ -1827,7 +1832,7 @@
   {
     "file": "apps/frontend/src/pages/Kindergartens.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 7125
+    "tokens": 7157
   },
   {
     "file": "apps/frontend/src/pages/lazyTabPages.ts",
@@ -1857,12 +1862,12 @@
   {
     "file": "apps/frontend/src/pages/SchoolProfile.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 8344
+    "tokens": 8354
   },
   {
     "file": "apps/frontend/src/pages/Schools.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 8910
+    "tokens": 8956
   },
   {
     "file": "apps/frontend/src/tests/component/calendar/CalendarComponents.test.tsx",
@@ -2037,7 +2042,7 @@
   {
     "file": "apps/frontend/src/tests/unit/navTabs.test.ts",
     "bundle": "bundle_06.xml",
-    "tokens": 569
+    "tokens": 564
   },
   {
     "file": "apps/frontend/src/tests/unit/reactImports.test.ts",
@@ -2172,7 +2177,7 @@
   {
     "file": "AGENTS.md",
     "bundle": "bundle_06.xml",
-    "tokens": 1962
+    "tokens": 1997
   },
   {
     "file": "explorbot.config.js",

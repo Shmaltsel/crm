@@ -379,7 +379,6 @@ export default function SchoolProfile() {
 
   const eventDefaultValues = useMemo<Partial<EventFormValues>>(
     () => ({
-      project: "Голограма для школи",
       time: "11:00",
       address: schoolData.address,
       contactPerson: schoolData.director,

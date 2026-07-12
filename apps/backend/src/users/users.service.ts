@@ -1,4 +1,10 @@
-import { Injectable, Inject, forwardRef, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  forwardRef,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { TelegramService } from '../telegram/telegram.service';
@@ -65,7 +71,9 @@ export class UsersService {
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
     if (data.cityId) {
-      const city = await this.prisma.city.findUnique({ where: { id: data.cityId } });
+      const city = await this.prisma.city.findUnique({
+        where: { id: data.cityId },
+      });
       if (!city) {
         throw new BadRequestException('Вказане місто не знайдено');
       }

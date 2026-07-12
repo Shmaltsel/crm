@@ -1,18 +1,12 @@
-import {
-  Injectable,
-  Logger,
-  OnModuleInit,
-  OnModuleDestroy,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
-export class EventsSchedulerService implements OnModuleInit, OnModuleDestroy {
+export class EventsSchedulerService {
   private readonly logger = new Logger(EventsSchedulerService.name);
-  private dailyCheckTimer?: NodeJS.Timeout;
-  private dailySummaryTimer?: NodeJS.Timeout;
 
   constructor(
     private prisma: PrismaService,
@@ -20,45 +14,16 @@ export class EventsSchedulerService implements OnModuleInit, OnModuleDestroy {
     private notificationsService: NotificationsService,
   ) {}
 
-  onModuleInit() {
-    this.scheduleDailyCheck();
-    this.scheduleDailySummary();
+  @Cron('0 20 * * *', { timeZone: 'Europe/Kyiv' })
+  async handleEventsForTomorrow() {
+    this.logger.log('Автоматична перевірка подій на завтра...');
+    await this.checkEventsForTomorrow();
   }
 
-  onModuleDestroy() {
-    clearInterval(this.dailyCheckTimer);
-    clearInterval(this.dailySummaryTimer);
-  }
-
-  private scheduleDailyCheck() {
-    const check = async () => {
-      this.logger.log('Автоматична перевірка подій на завтра...');
-      await this.checkEventsForTomorrow();
-    };
-
-    check().catch((err) =>
-      this.logger.error('Помилка першої перевірки подій:', err),
-    );
-
-    this.dailyCheckTimer = setInterval(
-      () => {
-        check().catch((err) =>
-          this.logger.error('Помилка перевірки подій:', err),
-        );
-      },
-      24 * 60 * 60 * 1000,
-    );
-  }
-
-  private scheduleDailySummary() {
-    const run = async () => {
-      const now = new Date();
-      if (now.getHours() !== 8 || now.getMinutes() > 5) return;
-      this.logger.log('Відправка щоденного підсумку...');
-      await this.sendDailySummary();
-    };
-
-    this.dailySummaryTimer = setInterval(run, 60 * 60 * 1000);
+  @Cron('0 8 * * *', { timeZone: 'Europe/Kyiv' })
+  async handleDailySummary() {
+    this.logger.log('Відправка щоденного підсумку...');
+    await this.sendDailySummary();
   }
 
   async checkEventsForTomorrow() {

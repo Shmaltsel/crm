@@ -35,11 +35,13 @@ import { MetricsModule } from './metrics/metrics.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { FeatureFlagsModule } from './common/feature-flags/feature-flags.module';
+import { ScheduleModule } from '@nestjs/schedule';
 import { I18nModule } from './common/i18n/i18n.module';
 import { LocalizedValidationPipe } from './common/pipes/localized-validation.pipe';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     HealthModule,
     MetricsModule,
     FeatureFlagsModule,

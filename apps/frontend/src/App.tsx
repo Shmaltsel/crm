@@ -15,6 +15,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import TabErrorBoundary from "./components/dashboard/TabErrorBoundary";
 import { SkeletonCard } from "./components/ui/Skeleton";
+import ScrollToTop from "./components/ScrollToTop";
 
 const Login = lazyWithRetry(() => import("./pages/Login"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
@@ -261,9 +262,16 @@ export default function App() {
     window.Telegram?.WebApp?.expand();
   }, []);
 
+  useEffect(() => {
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+  }, []);
+
   return (
     <ErrorBoundary>
       <Router>
+        <ScrollToTop />
         <AuthProvider>
           <AppRoutes />
         </AuthProvider>

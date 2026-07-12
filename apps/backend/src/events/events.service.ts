@@ -1,4 +1,10 @@
-import { Injectable, Logger, HttpStatus, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  HttpStatus,
+  HttpException,
+  Inject,
+} from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { AppException } from '../common/exceptions/app.exception';
@@ -207,6 +213,53 @@ export class EventsService {
   }
 
   async assignCrewToEvent(eventId: string, crewId: string) {
+    const targetEvent = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { id: true, date: true, crewId: true },
+    });
+    if (!targetEvent)
+      throw new AppException('EVENT_NOT_FOUND', HttpStatus.NOT_FOUND);
+
+    if (targetEvent.crewId === crewId) {
+      const existing = await this.prisma.event.update({
+        where: { id: eventId },
+        data: { crewId },
+        include: {
+          crew: { include: { host: true, driver: true } },
+          school: true,
+          city: true,
+          preparation: true,
+          history: { orderBy: { createdAt: 'desc' } },
+        },
+      });
+      return this.serializeEvent(existing);
+    }
+
+    const eventDate = new Date(targetEvent.date);
+    const sameDayStart = new Date(eventDate);
+    sameDayStart.setHours(0, 0, 0, 0);
+    const sameDayEnd = new Date(eventDate);
+    sameDayEnd.setHours(23, 59, 59, 999);
+
+    const conflictingEvent = await this.prisma.event.findFirst({
+      where: {
+        id: { not: eventId },
+        crewId,
+        date: { gte: sameDayStart, lte: sameDayEnd },
+      },
+      select: { id: true, project: true, time: true },
+    });
+
+    if (conflictingEvent) {
+      const label = conflictingEvent.time
+        ? `${conflictingEvent.project} (${conflictingEvent.time})`
+        : conflictingEvent.project;
+      throw new HttpException(
+        `Екіпаж вже призначено на іншу подію цього дня: ${label}`,
+        HttpStatus.CONFLICT,
+      );
+    }
+
     const event = await this.prisma.event.update({
       where: { id: eventId },
       data: { crewId: crewId },
