@@ -154,7 +154,7 @@ function AppRoutes() {
             <Route
               path="dashboard"
               element={
-              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER"]}>
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER", "OWNER"]}>
                   <Suspense fallback={<PageLoader />}>
                     <Dashboard />
                   </Suspense>
