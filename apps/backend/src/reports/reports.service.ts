@@ -252,6 +252,7 @@ export class ReportsService {
     });
 
     this.cacheVersion.bumpVersion('finance').catch(() => {});
+    this.cacheVersion.bumpVersion('dashboard').catch(() => {});
 
     const notifyUserId =
       report.event.responsibleId || report.event.city.managerId;

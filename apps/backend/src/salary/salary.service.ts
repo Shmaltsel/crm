@@ -50,7 +50,7 @@ export class SalaryService {
       include: { event: { select: { id: true, cityId: true } } },
     });
     if (!report) throw new NotFoundException('report.notFound');
-    if (report.status !== 'APPROVED')
+    if (report.status !== 'SUBMITTED' && report.status !== 'APPROVED')
       throw new BadRequestException('salary.reportNotApproved');
 
     if (user.role === 'MANAGER') {
