@@ -662,7 +662,7 @@ export default function Schools() {
         title="Імпорт закладів?"
         message={`Імпортувати всі заклади з isuo.org для міста ${selectedCity.name}?`}
         confirmLabel="Імпортувати"
-        variant="default"
+        variant="warning"
         onConfirm={confirmImport}
         onCancel={() => setPendingImport(null)}
       />

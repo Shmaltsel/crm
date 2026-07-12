@@ -146,4 +146,20 @@ describe("ConfirmDialog", () => {
     );
     expect(screen.getByText("Так, видалити")).toBeInTheDocument();
   });
+
+  it("не крашиться при невалідному variant — fallback на danger", () => {
+    const { container } = render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Тест"
+        message="Повідомлення"
+        // @ts-expect-error тестуємо runtime fallback
+        variant="default"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(container.querySelector('[role="dialog"]')).toBeInTheDocument();
+    expect(screen.getByText("Тест")).toBeInTheDocument();
+  });
 });

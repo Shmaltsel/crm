@@ -55,6 +55,8 @@ export function ConfirmDialog({
     return () => document.removeEventListener("keydown", handler);
   }, [isOpen, onCancel, onConfirm]);
 
+  const styles = variantStyles[variant] ?? variantStyles.danger;
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -81,7 +83,7 @@ export function ConfirmDialog({
           >
             <div className="flex items-start gap-4">
               <motion.div
-                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${variantStyles[variant].icon}`}
+                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${styles.icon}`}
                 initial={{ scale: 0, rotate: -20 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ ...SPRING.bouncy, delay: 0.15 }}
@@ -106,7 +108,7 @@ export function ConfirmDialog({
               <motion.button
                 ref={confirmRef}
                 onClick={onConfirm}
-                className={`flex-1 py-2.5 rounded-control text-sm font-semibold transition-colors ${variantStyles[variant].button}`}
+                className={`flex-1 py-2.5 rounded-control text-sm font-semibold transition-colors ${styles.button}`}
                 whileHover={hoverCapable ? { scale: 1.03 } : undefined}
                 whileTap={{ scale: 0.97 }}
                 transition={TRANSITION.hover}
