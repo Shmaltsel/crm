@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SalaryPayoutService } from './salary-payout.service';
+import { CityAccessService } from '../auth/services/city-access.service';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 import { CreateSalaryDto } from './dto/create-salary.dto';
 import { Prisma } from '@prisma/client';
@@ -15,26 +16,8 @@ export class SalaryService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly salaryPayout: SalaryPayoutService,
+    private readonly cityAccess: CityAccessService,
   ) {}
-
-  private async getManagerCityIds(userId: string): Promise<string[]> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { managedCities: { select: { id: true } } },
-    });
-    return user?.managedCities.map((c) => c.id) ?? [];
-  }
-
-  private async assertCityManager(
-    user: JwtUser,
-    cityId: string,
-  ): Promise<void> {
-    if (user.role !== 'MANAGER') return;
-    const managedIds = await this.getManagerCityIds(user.sub);
-    if (!managedIds.includes(cityId)) {
-      throw new ForbiddenException('salary.notCityManager');
-    }
-  }
 
   async create(dto: CreateSalaryDto, user: JwtUser) {
     if (
@@ -54,7 +37,7 @@ export class SalaryService {
       throw new BadRequestException('salary.reportNotApproved');
 
     if (user.role === 'MANAGER') {
-      await this.assertCityManager(user, report.event.cityId);
+      await this.cityAccess.assertCityManager(user, report.event.cityId);
     }
 
     const hasLargeAmounts = dto.items.some((item) => item.amount >= 100000);
@@ -106,7 +89,7 @@ export class SalaryService {
     if (cityId) {
       where.event = { cityId };
     } else if (user.role === 'MANAGER') {
-      const managedIds = await this.getManagerCityIds(user.sub);
+      const managedIds = await this.cityAccess.getManagedCityIds(user.sub);
       where.event = { cityId: { in: managedIds } };
     }
 
@@ -141,7 +124,7 @@ export class SalaryService {
       throw new BadRequestException('salary.notPending');
 
     if (user.role === 'MANAGER') {
-      await this.assertCityManager(user, record.event?.cityId ?? '');
+      await this.cityAccess.assertCityManager(user, record.event?.cityId ?? '');
     }
 
     return this.prisma.$transaction(async (tx) => {

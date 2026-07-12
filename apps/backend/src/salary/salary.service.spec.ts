@@ -9,12 +9,18 @@ const mockUser = {
   role: 'SUPERADMIN',
 } as const;
 
+const mockCityAccess = {
+  getManagedCityIds: jest.fn().mockResolvedValue([]),
+  assertCityManager: jest.fn().mockResolvedValue(undefined),
+};
+
 describe('SalaryService', () => {
   let service: SalaryService;
   let prisma: any;
   let mockTx: any;
 
   beforeEach(() => {
+    jest.clearAllMocks();
     mockTx = {
       salaryRecord: {
         findUnique: jest.fn(),
@@ -28,7 +34,7 @@ describe('SalaryService', () => {
       $transaction: jest.fn((fn: (tx: any) => unknown) => fn(mockTx)),
     };
 
-    service = new SalaryService(prisma, new SalaryPayoutService());
+    service = new SalaryService(prisma, new SalaryPayoutService(), mockCityAccess as any);
   });
 
   describe('markPaid', () => {
