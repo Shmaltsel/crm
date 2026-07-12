@@ -37,6 +37,12 @@ export class SalaryController {
     return this.salaryService.findMine(user, cityId);
   }
 
+  @Get('summary')
+  @ApiOperation({ summary: 'Фінансовий підсумок користувача' })
+  getSummary(@CurrentUser() user: JwtUser) {
+    return this.salaryService.getSummary(user.sub);
+  }
+
   @Get()
   @Roles('MANAGER', 'SUPERADMIN', 'OWNER')
   @ApiOperation({ summary: 'Всі нарахування (менеджер/адмін)' })

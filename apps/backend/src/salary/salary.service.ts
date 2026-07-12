@@ -82,6 +82,36 @@ export class SalaryService {
     });
   }
 
+  async getSummary(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { balance: true },
+    });
+    const balance = Number(user?.balance ?? 0);
+
+    const [totalRow, paidRow, pendingRow] = await Promise.all([
+      this.prisma.salaryRecord.aggregate({
+        where: { employeeId: userId },
+        _sum: { amount: true },
+      }),
+      this.prisma.salaryRecord.aggregate({
+        where: { employeeId: userId, status: 'PAID' },
+        _sum: { amount: true },
+      }),
+      this.prisma.salaryRecord.aggregate({
+        where: { employeeId: userId, status: 'PENDING' },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    return {
+      balance,
+      totalAllocated: Number(totalRow._sum.amount ?? 0),
+      totalPaid: Number(paidRow._sum.amount ?? 0),
+      pending: Number(pendingRow._sum.amount ?? 0),
+    };
+  }
+
   async findAll(user: JwtUser, cityId?: string) {
     if (
       user.role !== 'MANAGER' &&
