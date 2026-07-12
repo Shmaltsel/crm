@@ -18,6 +18,7 @@ import {
 import BottomNavigationBar from "./BottomNavigationBar";
 import MobileTopNav from "./MobileTopNav";
 import NotificationBell from "./NotificationBell";
+import OnboardingTour from "./OnboardingTour";
 import { hasRole } from "../utils/roles";
 
 function NavLink({
@@ -183,6 +184,7 @@ export default function Layout() {
       </main>
 
       <BottomNavigationBar />
+      <OnboardingTour />
     </div>
   );
 }
