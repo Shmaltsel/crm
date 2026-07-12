@@ -43,7 +43,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-md" 
             initial="hidden"
             animate="visible"
             exit="exit"
-            className={`bg-surface rounded-t-3xl sm:rounded-modal shadow-modal w-full sm:${maxWidth} overflow-hidden max-h-[90vh] flex flex-col pb-safe`}
+            className={`bg-surface rounded-t-3xl sm:rounded-modal shadow-modal w-full sm:${maxWidth} overflow-hidden max-h-[90vh] flex flex-col pb-nav`}
             style={{ willChange: "transform" }}
           >
             <div className="sm:hidden w-10 h-1.5 bg-border-strong rounded-pill mx-auto mt-3" />

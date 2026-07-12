@@ -43,7 +43,7 @@ export default function FloatingMobileNav() {
 
   return (
     <>
-      <nav className="md:hidden fixed z-50 left-0 right-0 bottom-[calc(56px+env(safe-area-inset-bottom,0px))] bg-surface/95 backdrop-blur-md border-t border-border flex items-center justify-around px-2 h-11 shadow-lg">
+      <nav className="md:hidden fixed z-50 left-1/2 -translate-x-1/2 bottom-[calc(56px+env(safe-area-inset-bottom,0px))] bg-surface/95 backdrop-blur-md border border-border rounded-full flex items-center gap-1 px-2 py-1.5 shadow-lg">
         {SECTIONS.map((s) => (
           <button
             key={s.id}

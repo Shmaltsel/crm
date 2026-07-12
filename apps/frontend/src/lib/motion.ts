@@ -138,12 +138,12 @@ export function useCountUp(
 export const DUR = {
   instant: 0,
   micro: 0.075,
-  fast: 0.15,
-  normal: 0.2,
-  moderate: 0.25,
-  slow: 0.35,
+  fast: 0.2,
+  normal: 0.25,
+  moderate: 0.3,
+  slow: 0.4,
   verySlow: 0.5,
-  page: 0.35,
+  page: 0.4,
 } as const;
 
 /* ─── Easings ─── */
@@ -161,10 +161,10 @@ export const EASE = {
 /* ─── Springs ─── */
 
 export const SPRING = {
-  snappy: { type: "spring" as const, stiffness: 400, damping: 30 },
-  gentle: { type: "spring" as const, stiffness: 300, damping: 25 },
-  bouncy: { type: "spring" as const, stiffness: 350, damping: 20 },
-  stiff: { type: "spring" as const, stiffness: 500, damping: 35 },
+  snappy: { type: "spring" as const, stiffness: 320, damping: 28 },
+  gentle: { type: "spring" as const, stiffness: 260, damping: 24 },
+  bouncy: { type: "spring" as const, stiffness: 300, damping: 20 },
+  stiff: { type: "spring" as const, stiffness: 400, damping: 32 },
 } as const;
 
 /* ─── Transition Presets ─── */
@@ -189,21 +189,21 @@ export const TRANSITION = {
 export const backdropVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: DUR.fast, ease: EASE.decelerate } },
-  exit: { opacity: 0, transition: { duration: DUR.fast, ease: EASE.accelerate } },
+  exit: { opacity: 0, transition: { duration: DUR.fast, ease: EASE.standard } },
 };
 
 /** Modal / sheet / bottom-sheet content. */
 export const modalContentVariants: Variants = {
   hidden: { opacity: 0, y: 32, scale: 0.96 },
   visible: { opacity: 1, y: 0, scale: 1, transition: { ...SPRING.gentle } },
-  exit: { opacity: 0, y: 12, scale: 0.97, transition: { duration: DUR.fast, ease: EASE.accelerate } },
+  exit: { opacity: 0, y: 12, scale: 0.97, transition: { duration: DUR.normal, ease: EASE.standard } },
 };
 
 /** Pop-in (badges, status pills, FAB). */
 export const popInVariants: Variants = {
   hidden: { opacity: 0, scale: 0.6 },
   visible: { opacity: 1, scale: 1, transition: { ...SPRING.bouncy } },
-  exit: { opacity: 0, scale: 0.6, transition: { duration: DUR.fast, ease: EASE.accelerate } },
+  exit: { opacity: 0, scale: 0.6, transition: { duration: DUR.normal, ease: EASE.standard } },
 };
 
 /** Card elevation hover (translate-y only — shadow handled via CSS class). */
@@ -220,28 +220,28 @@ export const cardHoverVariants: Variants = {
 export const pageVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: DUR.page, ease: EASE.outExpo, delay: 0.03 } },
-  exit: { opacity: 0, transition: { duration: DUR.fast, ease: EASE.accelerate } },
+  exit: { opacity: 0, transition: { duration: DUR.normal, ease: EASE.standard } },
 };
 
 /** Simple fade transition. */
 export const fadeVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: DUR.normal, ease: EASE.decelerate } },
-  exit: { opacity: 0, transition: { duration: DUR.fast, ease: EASE.accelerate } },
+  exit: { opacity: 0, transition: { duration: DUR.normal, ease: EASE.standard } },
 };
 
 /** Slide up entrance (content blocks, cards). */
 export const slideUpVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: DUR.moderate, ease: EASE.outExpo } },
-  exit: { opacity: 0, y: -10, transition: { duration: DUR.fast, ease: EASE.accelerate } },
+  exit: { opacity: 0, y: -6, transition: { duration: DUR.normal, ease: EASE.standard } },
 };
 
 /** Scale entrance (modals, popovers). */
 export const scaleVariants: Variants = {
   hidden: { opacity: 0, scale: 0.9 },
   visible: { opacity: 1, scale: 1, transition: { ...SPRING.gentle } },
-  exit: { opacity: 0, scale: 0.95, transition: { duration: DUR.fast, ease: EASE.accelerate } },
+  exit: { opacity: 0, scale: 0.95, transition: { duration: DUR.normal, ease: EASE.standard } },
 };
 
 /** Stagger container — use with staggerItem children. */
@@ -263,7 +263,7 @@ export const staggerItem: Variants = {
 export const slideXVariants: Variants = {
   enter: (dir: number) => ({ x: dir > 0 ? 80 : -80, opacity: 0 }),
   center: { x: 0, opacity: 1, transition: { ...SPRING.snappy } },
-  exit: (dir: number) => ({ x: dir > 0 ? -80 : 80, opacity: 0, transition: { duration: DUR.fast, ease: EASE.accelerate } }),
+  exit: (dir: number) => ({ x: dir > 0 ? -80 : 80, opacity: 0, transition: { duration: DUR.normal, ease: EASE.standard } }),
 };
 
 /** Skeleton shimmer placeholder. */
@@ -307,7 +307,7 @@ export const bellRingVariants: Variants = {
 export const fabVariants: Variants = {
   hidden: { opacity: 0, scale: 0.5, y: 20 },
   visible: { opacity: 1, scale: 1, y: 0, transition: { ...SPRING.bouncy } },
-  exit: { opacity: 0, scale: 0.5, y: 10, transition: { duration: DUR.fast, ease: EASE.accelerate } },
+  exit: { opacity: 0, scale: 0.5, y: 10, transition: { duration: DUR.normal, ease: EASE.standard } },
 };
 
 /* ─── CSS-compatible class helpers ─── */

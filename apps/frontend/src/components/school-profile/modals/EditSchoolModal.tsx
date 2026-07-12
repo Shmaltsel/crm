@@ -68,7 +68,7 @@ export default function EditSchoolModal({
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl overflow-hidden max-h-[92vh] flex flex-col pb-safe"
+            className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl overflow-hidden max-h-[92vh] flex flex-col pb-nav"
           >
         <div className="sm:hidden w-10 h-1.5 bg-border-strong rounded-full mx-auto mt-3" />
 

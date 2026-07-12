@@ -123,13 +123,19 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+.pb-nav {
+  padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px) + 8px);
+}
+
 .dashboard-swiper {
   width: 100%;
   height: 100%;
+  touch-action: pan-y;
 }
 .dashboard-swiper .swiper-slide {
   height: auto;
   overflow-y: auto;
+  touch-action: pan-y;
 }
 
 .establishments-swiper {

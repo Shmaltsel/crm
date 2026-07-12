@@ -58,7 +58,7 @@ export default function SchoolActionSheet({
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="fixed bottom-0 left-0 right-0 z-50 bg-surface rounded-t-3xl pb-safe shadow-2xl"
+            className="fixed bottom-0 left-0 right-0 z-50 bg-surface rounded-t-3xl pb-nav shadow-2xl"
             drag="y"
             dragConstraints={{ top: 0 }}
             dragElastic={0.3}

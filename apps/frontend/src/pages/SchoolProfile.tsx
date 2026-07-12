@@ -396,6 +396,95 @@ export default function SchoolProfile() {
     transition: { duration: 0.3, delay: 0.1 + i * 0.07, ease: "easeOut" },
   });
 
+  const completedEventsBlock = (anchorId?: string) => (
+    completedEvents.length > 0 && (
+      <motion.div id={anchorId}>
+        <div className="bg-surface rounded-card shadow-card border border-border overflow-hidden">
+          <div className="p-6 border-b border-border bg-surface-muted">
+            <h3 className="font-bold text-content-primary">
+              Завершені події ({completedEvents.length})
+            </h3>
+          </div>
+          <div className="md:hidden divide-y divide-border">
+            {completedEvents.map((ev: Event) => (
+              <div
+                key={ev.id}
+                onClick={() => setSelectedReportEvent(ev)}
+                className="flex items-center justify-between gap-3 p-4 active:bg-surface-muted cursor-pointer"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium text-brand truncate">{ev.project}</p>
+                  <p className="text-xs text-content-muted mt-0.5">
+                    {new Date(ev.date).toLocaleDateString("uk-UA")}
+                  </p>
+                  <p className="text-xs text-content-secondary mt-1">
+                    👶 {ev.report?.childrenCount || ev.childrenPlanned || "—"} дітей
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="font-semibold text-content-primary text-sm">
+                    {new Intl.NumberFormat("uk-UA").format(
+                      Math.round(Number(ev.report?.totalSum || ev.price || 0)),
+                    )}{" "}
+                    грн
+                  </p>
+                  <p className="text-xs font-medium text-success-600 mt-0.5">
+                    +{new Intl.NumberFormat("uk-UA").format(
+                      Math.round(Number(ev.report?.remainderSum || 0)),
+                    )}{" "}
+                    грн
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="bg-surface border-b border-border text-content-muted text-xs font-semibold uppercase tracking-wider">
+                  <th className="p-4">Проєкт</th>
+                  <th className="p-4">Дата</th>
+                  <th className="p-4">Дітей</th>
+                  <th className="p-4">Виручка</th>
+                  <th className="p-4">Прибуток</th>
+                </tr>
+              </thead>
+              <tbody>
+                {completedEvents.map((ev: Event) => (
+                  <tr
+                    key={ev.id}
+                    onClick={() => setSelectedReportEvent(ev)}
+                    className="border-b border-surface-muted hover:bg-surface-muted transition-colors cursor-pointer"
+                  >
+                    <td className="p-4 text-content-secondary font-medium">{ev.project}</td>
+                    <td className="p-4 text-content-muted">
+                      {new Date(ev.date).toLocaleDateString("uk-UA")}
+                    </td>
+                    <td className="p-4 font-medium">
+                      {ev.report?.childrenCount || ev.childrenPlanned || "—"}
+                    </td>
+                    <td className="p-4 font-medium text-content-primary">
+                      {new Intl.NumberFormat("uk-UA").format(
+                        Math.round(Number(ev.report?.totalSum || ev.price || 0)),
+                      )}{" "}
+                      грн
+                    </td>
+                    <td className="p-4 font-medium text-success-600">
+                      {new Intl.NumberFormat("uk-UA").format(
+                        Math.round(Number(ev.report?.remainderSum || 0)),
+                      )}{" "}
+                      грн
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </motion.div>
+    )
+  );
+
   return (
     <motion.div
       animate={{ opacity: isLeavingPage ? 0 : 1 }}
@@ -500,103 +589,7 @@ export default function SchoolProfile() {
               onAddEvent={openAddEventModal}
             />
           </Suspense>
-          {completedEvents.length > 0 && (
-            <motion.div>
-              <div className="bg-surface rounded-card shadow-card border border-border overflow-hidden">
-                <div className="p-6 border-b border-border bg-surface-muted">
-                  <h3 className="font-bold text-content-primary">
-                    Завершені події ({completedEvents.length})
-                  </h3>
-                </div>
-                <div className="md:hidden divide-y divide-border">
-                  {completedEvents.map((ev: Event) => (
-                    <div
-                      key={ev.id}
-                      onClick={() => setSelectedReportEvent(ev)}
-                      className="flex items-center justify-between gap-3 p-4 active:bg-surface-muted cursor-pointer"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-medium text-brand truncate">
-                          {ev.project}
-                        </p>
-                        <p className="text-xs text-content-muted mt-0.5">
-                          {new Date(ev.date).toLocaleDateString("uk-UA")}
-                        </p>
-                        <p className="text-xs text-content-secondary mt-1">
-                          👶{" "}
-                          {ev.report?.childrenCount ||
-                            ev.childrenPlanned ||
-                            "—"}{" "}
-                          дітей
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="font-semibold text-content-primary text-sm">
-                          {new Intl.NumberFormat("uk-UA").format(
-                            Math.round(Number(ev.report?.totalSum || ev.price || 0)),
-                          )}{" "}
-                          грн
-                        </p>
-                        <p className="text-xs font-medium text-success-600 mt-0.5">
-                          +
-                          {new Intl.NumberFormat("uk-UA").format(
-                            Math.round(Number(ev.report?.remainderSum || 0)),
-                          )}{" "}
-                          грн
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="bg-surface border-b border-border text-content-muted text-xs font-semibold uppercase tracking-wider">
-                        <th className="p-4">Проєкт</th>
-                        <th className="p-4">Дата</th>
-                        <th className="p-4">Дітей</th>
-                        <th className="p-4">Виручка</th>
-                        <th className="p-4">Прибуток</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {completedEvents.map((ev: any) => (
-                        <tr
-                          key={ev.id}
-                          onClick={() => setSelectedReportEvent(ev)}
-                          className="border-b border-surface-muted hover:bg-surface-muted transition-colors cursor-pointer"
-                        >
-                          <td className="p-4 text-content-secondary font-medium">
-                            {ev.project}
-                          </td>
-                          <td className="p-4 text-content-muted">
-                            {new Date(ev.date).toLocaleDateString("uk-UA")}
-                          </td>
-                          <td className="p-4 font-medium">
-                            {ev.report?.childrenCount ||
-                              ev.childrenPlanned ||
-                              "—"}
-                          </td>
-                          <td className="p-4 font-medium text-content-primary">
-                            {new Intl.NumberFormat("uk-UA").format(
-                              Math.round(Number(ev.report?.totalSum || ev.price || 0)),
-                            )}{" "}
-                            грн
-                          </td>
-                          <td className="p-4 font-medium text-success-600">
-                            {new Intl.NumberFormat("uk-UA").format(
-                              Math.round(Number(ev.report?.remainderSum || 0)),
-                            )}{" "}
-                            грн
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </motion.div>
-          )}
+          {completedEventsBlock()}
         </section>
 
         <section id="section-notes" className="scroll-mt-20 space-y-4">
@@ -661,6 +654,12 @@ export default function SchoolProfile() {
           >
             <SchoolInfoCard schoolData={schoolData} />
           </Suspense>
+          {schoolData.notes && (
+            <div className="bg-surface rounded-card shadow-card border border-border p-6">
+              <h4 className="font-bold text-content-primary mb-3">Додаткові нотатки</h4>
+              <p className="text-content-secondary whitespace-pre-wrap">{schoolData.notes}</p>
+            </div>
+          )}
 
           <Suspense
             fallback={
@@ -760,103 +759,7 @@ export default function SchoolProfile() {
             </Suspense>
           </div>
 
-          {completedEvents.length > 0 && (
-            <motion.div id="completed-events-anchor">
-              <div className="bg-surface rounded-card shadow-card border border-border overflow-hidden">
-                <div className="p-6 border-b border-border bg-surface-muted">
-                  <h3 className="font-bold text-content-primary">
-                    Завершені події ({completedEvents.length})
-                  </h3>
-                </div>
-                <div className="md:hidden divide-y divide-border">
-                  {completedEvents.map((ev: Event) => (
-                    <div
-                      key={ev.id}
-                      onClick={() => setSelectedReportEvent(ev)}
-                      className="flex items-center justify-between gap-3 p-4 active:bg-surface-muted cursor-pointer"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-medium text-brand truncate">
-                          {ev.project}
-                        </p>
-                        <p className="text-xs text-content-muted mt-0.5">
-                          {new Date(ev.date).toLocaleDateString("uk-UA")}
-                        </p>
-                        <p className="text-xs text-content-secondary mt-1">
-                          👶{" "}
-                          {ev.report?.childrenCount ||
-                            ev.childrenPlanned ||
-                            "—"}{" "}
-                          дітей
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="font-semibold text-content-primary text-sm">
-                          {new Intl.NumberFormat("uk-UA").format(
-                            Math.round(Number(ev.report?.totalSum || ev.price || 0)),
-                          )}{" "}
-                          грн
-                        </p>
-                        <p className="text-xs font-medium text-success-600 mt-0.5">
-                          +
-                          {new Intl.NumberFormat("uk-UA").format(
-                            Math.round(Number(ev.report?.remainderSum || 0)),
-                          )}{" "}
-                          грн
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="bg-surface border-b border-border text-content-muted text-xs font-semibold uppercase tracking-wider">
-                        <th className="p-4">Проєкт</th>
-                        <th className="p-4">Дата</th>
-                        <th className="p-4">Дітей</th>
-                        <th className="p-4">Виручка</th>
-                        <th className="p-4">Прибуток</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {completedEvents.map((ev: Event) => (
-                        <tr
-                          key={ev.id}
-                          onClick={() => setSelectedReportEvent(ev)}
-                          className="border-b border-surface-muted hover:bg-surface-muted transition-colors cursor-pointer"
-                        >
-                          <td className="p-4 text-content-secondary font-medium">
-                            {ev.project}
-                          </td>
-                          <td className="p-4 text-content-muted">
-                            {new Date(ev.date).toLocaleDateString("uk-UA")}
-                          </td>
-                          <td className="p-4 font-medium">
-                            {ev.report?.childrenCount ||
-                              ev.childrenPlanned ||
-                              "—"}
-                          </td>
-                          <td className="p-4 font-medium text-content-primary">
-                            {new Intl.NumberFormat("uk-UA").format(
-                              Math.round(Number(ev.report?.totalSum || ev.price || 0)),
-                            )}{" "}
-                            грн
-                          </td>
-                          <td className="p-4 font-medium text-success-600">
-                            {new Intl.NumberFormat("uk-UA").format(
-                              Math.round(Number(ev.report?.remainderSum || 0)),
-                            )}{" "}
-                            грн
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </motion.div>
-          )}
+          {completedEventsBlock("completed-events-anchor")}
         </div>
       </div>
 

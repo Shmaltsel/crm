@@ -46,7 +46,7 @@ export default function CommentModal({ isOpen, onClose, mode, text, setText, onS
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden max-h-[90vh] flex flex-col pb-safe"
+            className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden max-h-[90vh] flex flex-col pb-nav"
           >
             <div className="sm:hidden w-10 h-1.5 bg-border-strong rounded-full mx-auto mt-3" />
             <div className="p-5 sm:p-6 border-b border-border flex justify-between bg-surface-muted shrink-0">

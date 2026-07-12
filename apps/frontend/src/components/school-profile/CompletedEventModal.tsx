@@ -51,7 +51,7 @@ const CompletedEventModal: React.FC<CompletedEventModalProps> = ({
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="bg-surface rounded-t-modal sm:rounded-modal shadow-modal w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col pb-safe"
+            className="bg-surface rounded-t-modal sm:rounded-modal shadow-modal w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col pb-nav"
           >
         <div className="p-5 sm:p-6 border-b border-border flex justify-between bg-surface-muted shrink-0">
           <div>

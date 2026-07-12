@@ -646,7 +646,7 @@ function CompletedEventModal({
     <AnimatePresence>
       {isOpen && event && (
         <motion.div variants={backdropVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 bg-neutral-900/40 md:backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-          <motion.div variants={modalContentVariants} initial="hidden" animate="visible" exit="exit" className="bg-white rounded-t-3xl sm:rounded-card shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col">
+          <motion.div variants={modalContentVariants} initial="hidden" animate="visible" exit="exit" className="bg-white rounded-t-3xl sm:rounded-card shadow-xl w-full sm:max-w-3xl overflow-hidden max-h-[92vh] flex flex-col pb-nav">
             <div className="sm:hidden w-10 h-1.5 bg-border-strong rounded-full mx-auto mt-3" />
             <div className="p-5 sm:p-6 border-b border-border flex justify-between bg-surface-muted shrink-0">
               <div>

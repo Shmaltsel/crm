@@ -175,7 +175,6 @@ export default function Layout() {
             initial="hidden"
             animate="visible"
             exit="exit"
-            transition={{ duration: DUR.normal, ease: EASE.decelerate }}
             style={{ willChange: "opacity" }}
           >
             {outlet}

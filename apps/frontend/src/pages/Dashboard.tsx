@@ -110,6 +110,7 @@ export default function Dashboard() {
           onSlideChange={handleSlideChange}
           speed={280}
           allowTouchMove={true}
+          touchReleaseOnEdges={true}
           className="dashboard-swiper"
         >
           {allowedTabs.map((tab) => {
