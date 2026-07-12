@@ -15,6 +15,11 @@
     "tokens": 3583
   },
   {
+    "file": "apps/backend/prisma/clear-db.js",
+    "bundle": "bundle_01.xml",
+    "tokens": 294
+  },
+  {
     "file": "apps/backend/prisma/migrations/0_init/migration.sql",
     "bundle": "bundle_01.xml",
     "tokens": 2010
@@ -267,12 +272,12 @@
   {
     "file": "apps/backend/src/auth/guards/ownership.guard.spec.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 2622
+    "tokens": 2617
   },
   {
     "file": "apps/backend/src/auth/guards/ownership.guard.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 1096
+    "tokens": 1101
   },
   {
     "file": "apps/backend/src/auth/guards/roles.guard.spec.ts",
@@ -292,7 +297,7 @@
   {
     "file": "apps/backend/src/auth/services/city-access.service.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 272
+    "tokens": 268
   },
   {
     "file": "apps/backend/src/cities/cities.controller.spec.ts",
@@ -377,7 +382,7 @@
   {
     "file": "apps/backend/src/common/guards/user-throttler.guard.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 364
+    "tokens": 366
   },
   {
     "file": "apps/backend/src/common/i18n/i18n.module.ts",
@@ -522,12 +527,12 @@
   {
     "file": "apps/backend/src/events/events-report.service.spec.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 3669
+    "tokens": 3672
   },
   {
     "file": "apps/backend/src/events/events-report.service.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 2321
+    "tokens": 2343
   },
   {
     "file": "apps/backend/src/events/events-scheduler.service.spec.ts",
@@ -537,12 +542,12 @@
   {
     "file": "apps/backend/src/events/events-scheduler.service.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 1348
+    "tokens": 1357
   },
   {
     "file": "apps/backend/src/events/events-scheduling.service.spec.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 1360
+    "tokens": 1363
   },
   {
     "file": "apps/backend/src/events/events-scheduling.service.ts",
@@ -567,17 +572,17 @@
   {
     "file": "apps/backend/src/events/events.service.smoke.spec.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 1172
+    "tokens": 1174
   },
   {
     "file": "apps/backend/src/events/events.service.spec.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 4218
+    "tokens": 4238
   },
   {
     "file": "apps/backend/src/events/events.service.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 5181
+    "tokens": 5180
   },
   {
     "file": "apps/backend/src/finance/create-expense-item.dto.ts",
@@ -597,7 +602,7 @@
   {
     "file": "apps/backend/src/finance/finance.controller.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 766
+    "tokens": 892
   },
   {
     "file": "apps/backend/src/finance/finance.module.ts",
@@ -617,7 +622,7 @@
   {
     "file": "apps/backend/src/finance/finance.service.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 3684
+    "tokens": 4282
   },
   {
     "file": "apps/backend/src/health/health.controller.smoke.spec.ts",
@@ -817,12 +822,12 @@
   {
     "file": "apps/backend/src/reports/reports.service.spec.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 1586
+    "tokens": 1588
   },
   {
     "file": "apps/backend/src/reports/reports.service.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 3981
+    "tokens": 3984
   },
   {
     "file": "apps/backend/src/salary/dto/create-salary.dto.ts",
@@ -837,12 +842,12 @@
   {
     "file": "apps/backend/src/salary/salary-payout.service.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 302
+    "tokens": 304
   },
   {
     "file": "apps/backend/src/salary/salary.controller.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 523
+    "tokens": 576
   },
   {
     "file": "apps/backend/src/salary/salary.module.ts",
@@ -852,12 +857,12 @@
   {
     "file": "apps/backend/src/salary/salary.service.spec.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 863
+    "tokens": 887
   },
   {
     "file": "apps/backend/src/salary/salary.service.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 1882
+    "tokens": 1886
   },
   {
     "file": "apps/backend/src/school-comments/school-comments.controller.ts",
@@ -1322,7 +1327,7 @@
   {
     "file": "apps/frontend/src/components/school-profile/FloatingMobileNav.tsx",
     "bundle": "bundle_03.xml",
-    "tokens": 1002
+    "tokens": 1043
   },
   {
     "file": "apps/frontend/src/components/school-profile/HistoryAccordion.tsx",
@@ -1413,6 +1418,11 @@
     "file": "apps/frontend/src/components/school-profile/SchoolProfileHeader.tsx",
     "bundle": "bundle_04.xml",
     "tokens": 1768
+  },
+  {
+    "file": "apps/frontend/src/components/school-profile/SchoolProfileSkeleton.tsx",
+    "bundle": "bundle_04.xml",
+    "tokens": 464
   },
   {
     "file": "apps/frontend/src/components/school-profile/TabContentSwitcher.tsx",
@@ -1592,7 +1602,7 @@
   {
     "file": "apps/frontend/src/features/calendar/hooks/useCalendarData.ts",
     "bundle": "bundle_04.xml",
-    "tokens": 791
+    "tokens": 799
   },
   {
     "file": "apps/frontend/src/features/calendar/hooks/useCalendarMonth.ts",
@@ -1647,7 +1657,7 @@
   {
     "file": "apps/frontend/src/features/salary/pages/Company.tsx",
     "bundle": "bundle_04.xml",
-    "tokens": 848
+    "tokens": 1542
   },
   {
     "file": "apps/frontend/src/features/salary/pages/Expenses.tsx",
@@ -1657,7 +1667,7 @@
   {
     "file": "apps/frontend/src/features/salary/pages/MySalary.tsx",
     "bundle": "bundle_04.xml",
-    "tokens": 694
+    "tokens": 1083
   },
   {
     "file": "apps/frontend/src/features/salary/pages/TeamSalaries.tsx",
@@ -1677,7 +1687,7 @@
   {
     "file": "apps/frontend/src/hooks/useCalendar.ts",
     "bundle": "bundle_04.xml",
-    "tokens": 271
+    "tokens": 287
   },
   {
     "file": "apps/frontend/src/hooks/useCities.ts",
@@ -1732,7 +1742,7 @@
   {
     "file": "apps/frontend/src/hooks/useSalary.ts",
     "bundle": "bundle_04.xml",
-    "tokens": 398
+    "tokens": 498
   },
   {
     "file": "apps/frontend/src/hooks/useSchoolComments.ts",
@@ -1747,7 +1757,7 @@
   {
     "file": "apps/frontend/src/index.css",
     "bundle": "bundle_04.xml",
-    "tokens": 1030
+    "tokens": 1071
   },
   {
     "file": "apps/frontend/src/instrument.ts",
@@ -1766,13 +1776,13 @@
   },
   {
     "file": "apps/frontend/src/pages/Analytics.tsx",
-    "bundle": "bundle_04.xml",
+    "bundle": "bundle_05.xml",
     "tokens": 3754
   },
   {
     "file": "apps/frontend/src/pages/CalendarView.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 1455
+    "tokens": 1488
   },
   {
     "file": "apps/frontend/src/pages/Cities.tsx",
@@ -1857,7 +1867,7 @@
   {
     "file": "apps/frontend/src/pages/SchoolProfile.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 8184
+    "tokens": 8344
   },
   {
     "file": "apps/frontend/src/pages/Schools.tsx",
@@ -1956,27 +1966,27 @@
   },
   {
     "file": "apps/frontend/src/tests/component/ReportsReviewPage.test.tsx",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 913
   },
   {
     "file": "apps/frontend/src/tests/component/SchoolCard.test.tsx",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 896
   },
   {
     "file": "apps/frontend/src/tests/component/SchoolCreate.smoke.test.tsx",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 684
   },
   {
     "file": "apps/frontend/src/tests/component/Schools.test.tsx",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 713
   },
   {
     "file": "apps/frontend/src/tests/component/VirtualSchoolList.test.tsx",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_06.xml",
     "tokens": 345
   },
   {
@@ -2067,7 +2077,7 @@
   {
     "file": "apps/frontend/src/types/index.ts",
     "bundle": "bundle_06.xml",
-    "tokens": 1853
+    "tokens": 1902
   },
   {
     "file": "apps/frontend/src/types/telegram.d.ts",

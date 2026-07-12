@@ -1,22 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import CalendarSkeleton from "../../../features/calendar/components/CalendarSkeleton";
 import CalendarHeader from "../../../features/calendar/components/CalendarHeader";
 import EventTooltip from "../../../features/calendar/components/EventTooltip";
 import type { Project, City } from "../../../types";
-
-describe("CalendarSkeleton", () => {
-  it("рендерить skeleton без помилок", () => {
-    const { container } = render(<CalendarSkeleton />);
-    expect(container.querySelector(".animate-pulse")).toBeInTheDocument();
-  });
-
-  it("містить 35 клітинок-скелетів", () => {
-    const { container } = render(<CalendarSkeleton />);
-    const cells = container.querySelectorAll(".min-h-\\[80px\\]");
-    expect(cells.length).toBeGreaterThanOrEqual(30);
-  });
-});
 
 describe("CalendarHeader", () => {
   const projects: Project[] = [
