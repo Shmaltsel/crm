@@ -16,7 +16,6 @@ import {
 import { useCities } from "../hooks/useCities";
 import { useDebounce } from "../hooks/useDebounce";
 import EmployeeCard from "../components/employees/EmployeeCard";
-import EmployeesTable from "../components/employees/EmployeesTable";
 import UserModal from "../components/employees/UserModal";
 import ProjectModal from "../components/employees/ProjectModal";
 import { EmployeesHeader } from "../components/employees/EmployeesHeader";
@@ -25,13 +24,11 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { LoadingBar } from "../components/ui/LoadingBar";
 import { useToast } from "../components/ui/Toast";
-import { exportCsv } from "../utils/exportCsv";
 import { sectionVariants } from "../animations/employees";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
 
 type Role = "MANAGER" | "DRIVER" | "HOST" | "SUPERADMIN" | "GUEST";
-type ViewMode = "cards" | "table";
 
 interface City { id: string; name: string }
 interface User {
@@ -44,6 +41,11 @@ interface Project { id: string; name: string; color: string }
 const ROLE_LABELS: Record<string, string> = {
   MANAGER: "Менеджер", DRIVER: "Водій", HOST: "Ведучий",
   SUPERADMIN: "Суперадмін", GUEST: "Гість",
+};
+const ROLE_FORMS: Record<Role, { title: string; genitivePlural: string; addAccusative: string }> = {
+  MANAGER: { title: "Менеджери", genitivePlural: "менеджерів", addAccusative: "менеджера" },
+  DRIVER:  { title: "Водії",     genitivePlural: "водіїв",     addAccusative: "водія" },
+  HOST:    { title: "Ведучі",    genitivePlural: "ведучих",    addAccusative: "ведучого" },
 };
 const ROLE_COLORS: Record<string, string> = {
   MANAGER: "bg-brand-50 text-brand-700 border-brand-200",
@@ -155,15 +157,7 @@ export default function Employees() {
   );
   const selectedCity = rawCity;
 
-  const [viewMode, setViewMode] = useState<ViewMode>(
-    (searchParams.get("view") as ViewMode) ?? "cards",
-  );
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
-
-  const handleViewModeChange = useCallback((mode: ViewMode) => {
-    setViewMode(mode);
-    updateParams({ view: mode });
-  }, [updateParams]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -237,7 +231,7 @@ export default function Employees() {
   const grouped = useMemo(
     () => (["MANAGER", "DRIVER", "HOST"] as Role[]).map((role) => ({
       role,
-      label: ROLE_LABELS[role],
+      label: ROLE_FORMS[role]?.title ?? ROLE_LABELS[role],
       items: filteredUsers.filter((u) => u.role === role),
     })),
     [filteredUsers],
@@ -325,22 +319,6 @@ export default function Employees() {
     }
   }, [editingUser, createUser, updateUser, toast]);
 
-  const handleExport = useCallback(() => {
-    if (filteredUsers.length === 0) {
-      toast("Немає даних для експорту", "info");
-      return;
-    }
-    const rows = filteredUsers.map((u) => ({
-      "Ім'я": u.name,
-      "Email": u.email,
-      "Телефон": u.phone ?? "",
-      "Роль": ROLE_LABELS[u.role] ?? u.role,
-      "Місто": u.city?.name ?? "",
-    }));
-    exportCsv(rows, `employees-${new Date().toISOString().slice(0, 10)}.csv`);
-    toast(`Експортовано ${rows.length} записів`, "success");
-  }, [filteredUsers, toast]);
-
   const handleDelete = useCallback(async () => {
     if (!confirmDelete) return;
     setIsMutating(true);
@@ -402,13 +380,10 @@ export default function Employees() {
         >
         <EmployeesHeader
           isSuperAdmin={isSuperAdmin}
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
           onAddUser={() => handleOpenModal()}
           onToggleFilter={() => setFilterPanelOpen((p) => !p)}
           searchQuery={rawSearch}
           onSearchChange={(q) => updateParams({ search: q || null })}
-          onExport={handleExport}
         />
 
         {activeFilterChips.length > 0 && (
@@ -473,7 +448,7 @@ export default function Employees() {
                   ) : undefined
                 }
               />
-            ) : viewMode === "cards" ? (
+            ) : (
               <div className="space-y-8">
                 {grouped.map(({ role, label, items }) => (
                   <motion.div
@@ -503,10 +478,10 @@ export default function Employees() {
                         className="bg-surface rounded-card border border-dashed border-border p-8 text-center"
                       >
                         <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-surface-muted flex items-center justify-center text-content-muted"><Users className="w-5 h-5" /></div>
-                        <p className="text-content-muted text-sm mb-3">Немає {label.toLowerCase()}ів</p>
+                        <p className="text-content-muted text-sm mb-3">Немає {ROLE_FORMS[role]?.genitivePlural ?? "елементів"}</p>
                         {isSuperAdmin && (
                            <button onClick={() => handleOpenModal()} className="text-xs font-semibold text-brand hover:text-brand-700 active:scale-[0.97] transition-transform duration-fast">
-                            + Додати {label.toLowerCase()}а
+                            + Додати {ROLE_FORMS[role]?.addAccusative ?? "працівника"}
                           </button>
                         )}
                       </motion.div>
@@ -584,8 +559,6 @@ export default function Employees() {
                   </div>
                 </div>
               </div>
-            ) : (
-              <EmployeesTable users={filteredUsers} onSelect={(user) => console.log("select", user)} />
             )}
           </div>
         </div>

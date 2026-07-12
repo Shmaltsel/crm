@@ -19,9 +19,9 @@ describe("NAV_TABS", () => {
     expect(emp?.roles).toEqual(["SUPERADMIN"]);
   });
 
-  it("/cities доступний для SUPERADMIN, MANAGER, OWNER", () => {
+  it("/cities доступний для SUPERADMIN та OWNER", () => {
     const cities = NAV_TABS.find((t) => t.to === "/cities");
-    expect(cities?.roles).toEqual(["SUPERADMIN", "MANAGER", "OWNER"]);
+    expect(cities?.roles).toEqual(["SUPERADMIN", "OWNER"]);
   });
 
   it("/dashboard та /reports/review доступні для керівників", () => {

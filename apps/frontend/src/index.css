@@ -60,8 +60,8 @@
            shadow-lg active:scale-95 transition-transform duration-fast
            motion-reduce:transition-none
            flex items-center justify-center;
-    z-index: 60;
-    bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 16px);
+    z-index: 70;
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 24px);
     right: 1.25rem;
   }
 }

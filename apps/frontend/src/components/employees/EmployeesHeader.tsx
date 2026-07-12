@@ -1,28 +1,20 @@
-import { Search, List, LayoutGrid, Download, Plus, SlidersHorizontal } from "lucide-react";
+import { Search, Plus, SlidersHorizontal } from "lucide-react";
 import { Button } from "../ui/Button";
-
-type ViewMode = "cards" | "table";
 
 interface EmployeesHeaderProps {
   isSuperAdmin: boolean;
-  viewMode: ViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
   onAddUser: () => void;
   onToggleFilter: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  onExport?: () => void;
 }
 
 export function EmployeesHeader({
   isSuperAdmin,
-  viewMode,
-  onViewModeChange,
   onAddUser,
   onToggleFilter,
   searchQuery,
   onSearchChange,
-  onExport,
 }: EmployeesHeaderProps) {
   return (
     <div className="flex flex-col gap-4 mb-6">
@@ -64,35 +56,6 @@ export function EmployeesHeader({
           aria-label="Фільтри"
         >
           <SlidersHorizontal className="w-5 h-5" />
-        </button>
-
-        <div role="tablist" aria-label="Режим перегляду" className="flex items-center border border-border-strong rounded-control overflow-hidden">
-          <button
-            role="tab"
-            aria-selected={viewMode === "cards"}
-            onClick={() => onViewModeChange("cards")}
-            className={`p-2 transition-colors ${viewMode === "cards" ? "bg-brand text-white" : "text-content-muted hover:bg-neutral-100"}`}
-            aria-label="Картки"
-          >
-            <LayoutGrid className="w-4 h-4" />
-          </button>
-          <button
-            role="tab"
-            aria-selected={viewMode === "table"}
-            onClick={() => onViewModeChange("table")}
-            className={`p-2 transition-colors ${viewMode === "table" ? "bg-brand text-white" : "text-content-muted hover:bg-neutral-100"}`}
-            aria-label="Таблиця"
-          >
-            <List className="w-4 h-4" />
-          </button>
-        </div>
-
-        <button
-          onClick={onExport}
-          className="p-2 rounded-control text-content-muted hover:text-content-primary hover:bg-neutral-100 transition-colors"
-          aria-label="Експорт CSV"
-        >
-          <Download className="w-5 h-5" />
         </button>
       </div>
     </div>

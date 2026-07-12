@@ -37,7 +37,7 @@ export const NAV_TABS: NavTab[] = [
   { to: "/kindergartens", icon: Baby, label: "Садочки" },
   { to: "/finance", icon: Wallet, label: "Фінанси" },
   { to: "/calendar", icon: Calendar, label: "Календар" },
-  { to: "/cities", icon: MapPin, label: "Міста", roles: ["SUPERADMIN", "MANAGER", "OWNER"] },
+  { to: "/cities", icon: MapPin, label: "Міста", roles: ["SUPERADMIN", "OWNER"] },
   { to: "/employees", icon: Users, label: "Працівники", roles: ["SUPERADMIN"] },
   { to: "/analytics", icon: BarChart3, label: "Аналітика", roles: ["SUPERADMIN", "OWNER"] },
   { to: "/city-leaderboard", icon: Trophy, label: "Рейтинг", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },

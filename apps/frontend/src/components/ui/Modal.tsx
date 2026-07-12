@@ -16,15 +16,18 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-md" 
   const generatedId = useId();
   const headingId = `modal-${generatedId}`;
   const closeRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
   const mobileOffsets = useMobileModalOffsets();
+
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
   useEffect(() => {
     if (!isOpen) return;
-    const handler = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const handler = (e: KeyboardEvent) => e.key === "Escape" && onCloseRef.current();
     document.addEventListener("keydown", handler);
     closeRef.current?.focus();
     return () => document.removeEventListener("keydown", handler);
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   return (
     <AnimatePresence>

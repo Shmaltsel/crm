@@ -15,11 +15,6 @@
     "tokens": 3583
   },
   {
-    "file": "apps/backend/prisma/clear-db.js",
-    "bundle": "bundle_01.xml",
-    "tokens": 294
-  },
-  {
     "file": "apps/backend/prisma/migrations/0_init/migration.sql",
     "bundle": "bundle_01.xml",
     "tokens": 2010
@@ -1472,7 +1467,7 @@
   {
     "file": "apps/frontend/src/components/ui/ConfirmDialog.tsx",
     "bundle": "bundle_04.xml",
-    "tokens": 1254
+    "tokens": 1264
   },
   {
     "file": "apps/frontend/src/components/ui/EmptyState.tsx",
@@ -1568,11 +1563,6 @@
     "file": "apps/frontend/src/features/calendar/components/CalendarHeader.tsx",
     "bundle": "bundle_04.xml",
     "tokens": 803
-  },
-  {
-    "file": "apps/frontend/src/features/calendar/components/CalendarSkeleton.tsx",
-    "bundle": "bundle_04.xml",
-    "tokens": 831
   },
   {
     "file": "apps/frontend/src/features/calendar/components/DesktopCalendarGrid.tsx",
@@ -1877,7 +1867,7 @@
   {
     "file": "apps/frontend/src/tests/component/calendar/CalendarComponents.test.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 876
+    "tokens": 722
   },
   {
     "file": "apps/frontend/src/tests/component/Calendar.smoke.test.tsx",
@@ -1892,7 +1882,7 @@
   {
     "file": "apps/frontend/src/tests/component/ConfirmDialog.test.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 1130
+    "tokens": 1272
   },
   {
     "file": "apps/frontend/src/tests/component/Dashboard.smoke.test.tsx",
@@ -2157,7 +2147,7 @@
   {
     "file": "apps/memory.md",
     "bundle": "bundle_06.xml",
-    "tokens": 1895
+    "tokens": 1928
   },
   {
     "file": ".github/copilot-instructions.md",

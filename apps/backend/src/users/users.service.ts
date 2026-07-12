@@ -1,4 +1,4 @@
-import { Injectable, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Inject, forwardRef, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { TelegramService } from '../telegram/telegram.service';
@@ -63,18 +63,39 @@ export class UsersService {
 
   async createUser(data: CreateUserDto) {
     const hashedPassword = await bcrypt.hash(data.password, 10);
-    const user = await this.prisma.user.create({
-      data: {
-        name: data.fullName,
-        email: data.email,
-        phone: data.phone,
-        password: hashedPassword,
-        role: data.role,
-        cityId: data.cityId || null,
-        telegramId: data.telegramId || null,
-        car: data.car || null,
-      },
-    });
+
+    if (data.cityId) {
+      const city = await this.prisma.city.findUnique({ where: { id: data.cityId } });
+      if (!city) {
+        throw new BadRequestException('Вказане місто не знайдено');
+      }
+    }
+
+    let user;
+    try {
+      user = await this.prisma.user.create({
+        data: {
+          name: data.fullName,
+          email: data.email,
+          phone: data.phone,
+          password: hashedPassword,
+          role: data.role,
+          cityId: data.cityId || null,
+          telegramId: data.telegramId || null,
+          car: data.car || null,
+        },
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        if (err.code === 'P2002') {
+          throw new ConflictException('Користувач з таким email вже існує');
+        }
+        if (err.code === 'P2003') {
+          throw new BadRequestException('Вказане місто не знайдено');
+        }
+      }
+      throw err;
+    }
 
     if (data.password) {
       const chatId = user.telegramChatId || null;
