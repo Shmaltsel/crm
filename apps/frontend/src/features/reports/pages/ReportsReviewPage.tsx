@@ -43,16 +43,41 @@ export default function ReportsReviewPage() {
       id: s.id,
       amount: salaryDrafts[s.id] ?? (Number(s.amount) || 0),
     }));
-    if (salaries.some((s) => s.amount <= 0 || s.amount > 99999)) {
-      toast("Сума виплати має бути від 1 до 99999 грн", "error");
+    if (salaries.some((s) => s.amount <= 0 || s.amount > 9999999)) {
+      toast("Сума виплати має бути від 1 до 9 999 999 грн", "error");
       return;
     }
-    approveMutation.mutate({ id, salaries });
+    approveMutation.mutate(
+      { id, salaries },
+      {
+        onError: (error: unknown) => {
+          const msg =
+            (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+            "Помилка затвердження";
+          const map: Record<string, string> = {
+            "report.salariesMismatch": "Невідповідність зарплат між клієнтом і сервером",
+            "report.invalidTransition": "Звіт вже затверджено або не в стані SUBMITTED",
+            "salary.notPending": "Деякі нарахування вже оброблені",
+          };
+          toast(map[msg] ?? msg, "error");
+        },
+      },
+    );
   };
 
   const handleReject = (id: string) => {
     if (!comment.trim()) return;
-    rejectMutation.mutate({ id, comment: comment.trim() });
+    rejectMutation.mutate(
+      { id, comment: comment.trim() },
+      {
+        onError: (error: unknown) => {
+          const msg =
+            (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+            "Помилка відхилення";
+          toast(msg, "error");
+        },
+      },
+    );
     setComment("");
     setActionTarget(null);
   };
@@ -294,7 +319,7 @@ export default function ReportsReviewPage() {
                           approveMutation.isPending ||
                           (r.salaryRecords ?? []).some((s: SalaryRecord) => {
                             const amt = salaryDrafts[s.id] ?? (Number(s.amount) || 0);
-                            return amt <= 0 || amt > 99999;
+                            return amt <= 0 || amt > 9999999;
                           })
                         }
                         className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-success text-white rounded-xl font-medium hover:bg-success-700 disabled:opacity-50 transition"

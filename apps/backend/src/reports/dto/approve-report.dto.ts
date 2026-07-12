@@ -18,7 +18,7 @@ export class SalaryApprovalItemDto {
   @ApiProperty({ description: 'Фінальна сума виплати' })
   @IsNumber()
   @Min(1)
-  @Max(99999)
+  @Max(9999999)
   @Type(() => Number)
   amount: number;
 }

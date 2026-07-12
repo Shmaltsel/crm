@@ -75,13 +75,16 @@ describe("ReportsReviewPage", () => {
     fireEvent.click(screen.getByText("Затвердити"));
 
     expect(mockApprove).toHaveBeenCalledTimes(1);
-    expect(mockApprove).toHaveBeenCalledWith({
-      id: "r-1",
-      salaries: expect.arrayContaining([
-        { id: "s1", amount: 999 },
-        { id: "s2", amount: 1000 },
-      ]),
-    });
+    expect(mockApprove).toHaveBeenCalledWith(
+      {
+        id: "r-1",
+        salaries: expect.arrayContaining([
+          { id: "s1", amount: 999 },
+          { id: "s2", amount: 1000 },
+        ]),
+      },
+      expect.objectContaining({ onError: expect.any(Function) }),
+    );
   });
 
   it("блокує затвердження при сумі поза діапазоном (0)", () => {
