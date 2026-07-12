@@ -79,7 +79,7 @@ const SUPERADMIN_STEPS: TourStep[] = [
   },
 ];
 
-const STORAGE_KEY = "crm_onboarding_completed";
+const STORAGE_KEY_PREFIX = "crm_onboarding_completed_";
 
 export default function OnboardingTour() {
   const { user } = useAuth();
@@ -94,7 +94,7 @@ export default function OnboardingTour() {
 
   useEffect(() => {
     if (!user) return;
-    const completed = localStorage.getItem(STORAGE_KEY);
+    const completed = localStorage.getItem(`${STORAGE_KEY_PREFIX}${user.id}`);
     if (!completed) {
       const timer = setTimeout(() => setShow(true), 800);
       return () => clearTimeout(timer);
@@ -103,8 +103,8 @@ export default function OnboardingTour() {
 
   const close = useCallback(() => {
     setShow(false);
-    localStorage.setItem(STORAGE_KEY, "1");
-  }, []);
+    if (user) localStorage.setItem(`${STORAGE_KEY_PREFIX}${user.id}`, "1");
+  }, [user]);
 
   const goNext = useCallback(() => {
     if (step < steps.length - 1) {
@@ -151,10 +151,10 @@ export default function OnboardingTour() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.25 }}
-            className="fixed z-[101] bottom-24 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md"
+            className="fixed z-[101] bottom-20 md:bottom-24 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md max-h-[calc(100dvh-7rem)] md:max-h-[calc(100dvh-9rem)]"
           >
-            <div className="bg-surface rounded-2xl shadow-2xl border border-content/10 overflow-hidden">
-              <div className="flex items-center justify-between px-5 pt-5 pb-3">
+            <div className="bg-surface rounded-2xl shadow-2xl border border-content/10 overflow-hidden flex flex-col max-h-full">
+              <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center">
                     <Icon className="w-5 h-5 text-brand" />
@@ -176,13 +176,13 @@ export default function OnboardingTour() {
                 </button>
               </div>
 
-              <div className="px-5 pb-4">
+              <div className="px-5 pb-4 overflow-y-auto min-h-0">
                 <p className="text-sm text-content/70 leading-relaxed">
                   {current.description}
                 </p>
               </div>
 
-              <div className="flex items-center justify-between px-5 py-4 border-t border-content/10 bg-surface/50">
+              <div className="flex items-center justify-between px-5 py-4 border-t border-content/10 bg-surface/50 shrink-0">
                 <button
                   onClick={skip}
                   className="text-xs text-content/40 hover:text-content/60 transition-colors"
