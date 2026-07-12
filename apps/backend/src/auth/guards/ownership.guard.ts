@@ -47,7 +47,9 @@ export class OwnershipGuard implements CanActivate {
     }
 
     if (!paramId) {
-      throw new ForbiddenException('Не вдалося визначити ресурс для перевірки власності');
+      throw new ForbiddenException(
+        'Не вдалося визначити ресурс для перевірки власності',
+      );
     }
 
     if (user?.role === 'HOST' || user?.role === 'DRIVER') {

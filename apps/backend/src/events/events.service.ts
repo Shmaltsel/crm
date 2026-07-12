@@ -141,7 +141,7 @@ export class EventsService {
     });
     await this.invalidateSchoolEventsCache(event.schoolId);
 
-    this.notifyManagerEventCreated(event.id, data as CreateEventDto);
+    this.notifyManagerEventCreated(event.id, data);
 
     return this.serializeEvent(event);
   }
@@ -544,7 +544,9 @@ export class EventsService {
           )
           .catch(() => {});
       }
-    } catch { /* non-critical */ }
+    } catch {
+      /* non-critical */
+    }
   }
 
   private async notifyEventCancelled(event: {

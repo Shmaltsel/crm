@@ -140,7 +140,12 @@ export class EventsReportService {
         if (reportData.inventoryUsages?.length) {
           for (const usage of reportData.inventoryUsages) {
             const [updated] = await tx.$queryRaw<
-              { currentStock: number; minStock: number; name: string; id: string }[]
+              {
+                currentStock: number;
+                minStock: number;
+                name: string;
+                id: string;
+              }[]
             >`
               UPDATE "InventoryItem"
               SET "currentStock" = "currentStock" - ${usage.quantity}

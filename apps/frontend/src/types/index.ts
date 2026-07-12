@@ -280,6 +280,14 @@ export interface FinanceDashboardData {
   worstEvents?: FinanceEventItem[];
 }
 
+export interface CompanyBalance {
+  totalRevenue: number;
+  totalExpenses: number;
+  totalPaidSalaries: number;
+  totalPendingSalaries: number;
+  companyBalance: number;
+}
+
 export type CommentType = "NOTE" | "CALL" | "RESCHEDULE" | "CONFIRMATION" | "PROBLEM";
 
 export type UserRole = "SUPERADMIN" | "OWNER" | "MANAGER" | "HOST" | "DRIVER";

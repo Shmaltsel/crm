@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -113,7 +118,9 @@ export class EventsSchedulerService implements OnModuleInit, OnModuleDestroy {
 
     for (const m of managers) {
       if (m.telegramChatId) {
-        this.telegramService.sendMessage(m.telegramChatId, text).catch(() => {});
+        this.telegramService
+          .sendMessage(m.telegramChatId, text)
+          .catch(() => {});
       }
     }
   }

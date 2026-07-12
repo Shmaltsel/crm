@@ -45,7 +45,9 @@ export class ReportsService {
         user.telegramChatId,
         `✅ <b>Звіт затверджено</b>\n\nШкола: ${schoolName}\nОчікуйте виплату.`,
       );
-    } catch { /* non-critical */ }
+    } catch {
+      /* non-critical */
+    }
   }
 
   private async assertCrewMember(

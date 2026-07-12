@@ -19,7 +19,12 @@ const mockPrisma = {
 const mockTelegram = { sendMessage: jest.fn() };
 const mockNotifications = { create: jest.fn().mockResolvedValue(undefined) };
 
-const mockUser = { sub: 'user-1', name: 'Менеджер', email: 'manager@example.com', role: 'MANAGER' } as const;
+const mockUser = {
+  sub: 'user-1',
+  name: 'Менеджер',
+  email: 'manager@example.com',
+  role: 'MANAGER',
+} as const;
 
 describe('EventsSchedulingService', () => {
   let service: EventsSchedulingService;

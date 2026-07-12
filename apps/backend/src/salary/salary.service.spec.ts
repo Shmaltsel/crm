@@ -39,11 +39,22 @@ describe('SalaryService', () => {
     };
     prisma = {
       salaryRecord: mockTx.salaryRecord,
-      user: { ...mockTx.user, findUnique: jest.fn().mockResolvedValue({ telegramChatId: null, name: 'Test' }) },
+      user: {
+        ...mockTx.user,
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ telegramChatId: null, name: 'Test' }),
+      },
       $transaction: jest.fn((fn: (tx: any) => unknown) => fn(mockTx)),
     };
 
-    service = new SalaryService(prisma, new SalaryPayoutService(), mockCityAccess as any, mockNotifications as any, mockTelegram as any);
+    service = new SalaryService(
+      prisma,
+      new SalaryPayoutService(),
+      mockCityAccess as any,
+      mockNotifications as any,
+      mockTelegram as any,
+    );
   });
 
   describe('markPaid', () => {

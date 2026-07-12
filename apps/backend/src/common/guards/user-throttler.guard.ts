@@ -25,7 +25,8 @@ export class UserThrottlerGuard extends ThrottlerGuard {
     try {
       return await super.canActivate(context);
     } catch (e) {
-      if (e instanceof Error && e.constructor.name === 'ThrottlerException') throw e;
+      if (e instanceof Error && e.constructor.name === 'ThrottlerException')
+        throw e;
       const now = Date.now();
       if (now - this.lastWarnAt > 10_000) {
         this.logger.warn(

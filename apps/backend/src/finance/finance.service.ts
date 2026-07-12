@@ -353,6 +353,74 @@ export class FinanceService {
     return result;
   }
 
+  async getCompanyBalance({
+    period,
+    cityId,
+    project,
+  }: {
+    period?: string;
+    cityId?: string;
+    project?: string;
+  }) {
+    const version = await this.cacheVersion.getVersion('finance');
+    const cacheKey = `company-balance:v${version}:${cityId ?? ''}:${period ?? ''}:${project ?? ''}`;
+    const cached = await this.cacheManager.get<{
+      totalRevenue: number;
+      totalExpenses: number;
+      totalPaidSalaries: number;
+      totalPendingSalaries: number;
+      companyBalance: number;
+    }>(cacheKey);
+    if (cached) return cached;
+
+    const dateFrom = this.resolveDateFrom(period);
+    const baseEventWhere: Prisma.EventWhereInput = {
+      status: 'RE_SALE',
+      ...(dateFrom ? { date: { gte: dateFrom } } : {}),
+      ...(cityId ? { cityId } : {}),
+      ...(project ? { project } : {}),
+    };
+
+    const [revenueAgg, expensesRaw, paidAgg, pendingAgg] = await Promise.all([
+      this.prisma.eventReport.aggregate({
+        where: { event: baseEventWhere },
+        _sum: { totalSum: true },
+      }),
+      this.prisma.expenseItem.findMany({
+        where: { report: { event: baseEventWhere } },
+        select: { amount: true },
+      }),
+      this.prisma.salaryRecord.aggregate({
+        where: { status: 'PAID', event: baseEventWhere },
+        _sum: { amount: true },
+      }),
+      this.prisma.salaryRecord.aggregate({
+        where: { status: 'PENDING', event: baseEventWhere },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const totalRevenue = Number(revenueAgg._sum.totalSum ?? 0);
+    const totalExpenses = expensesRaw.reduce(
+      (s, e) => s + (Number(e.amount) || 0),
+      0,
+    );
+    const totalPaidSalaries = Number(paidAgg._sum.amount ?? 0);
+    const totalPendingSalaries = Number(pendingAgg._sum.amount ?? 0);
+    const companyBalance = totalRevenue - totalExpenses - totalPaidSalaries;
+
+    const result = {
+      totalRevenue,
+      totalExpenses,
+      totalPaidSalaries,
+      totalPendingSalaries,
+      companyBalance,
+    };
+
+    await this.cacheManager.set(cacheKey, result, 300_000);
+    return result;
+  }
+
   async getStaffRevenue({
     period,
     cityId,

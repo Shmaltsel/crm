@@ -49,6 +49,21 @@ export class FinanceController {
     });
   }
 
+  @ApiOperation({ summary: 'Загальний баланс компанії' })
+  @Get('company-balance')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async getCompanyBalance(
+    @Query() query: FinanceDashboardQueryDto,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const cityId = await this.resolveCityId(user, query.cityId);
+    return this.financeService.getCompanyBalance({
+      period: query.period,
+      cityId,
+      project: query.project,
+    });
+  }
+
   @ApiOperation({ summary: 'Баланс поточного користувача' })
   @Get('my-balance')
   getMyBalance(@CurrentUser() user: JwtUser) {

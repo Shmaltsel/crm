@@ -53,9 +53,7 @@ describe('OwnershipGuard', () => {
   it('без paramId -> Forbidden', async () => {
     reflector.getAllAndOverride.mockReturnValueOnce('school');
     await expect(
-      guard.canActivate(
-        createContext({ role: 'MANAGER', sub: 'm1' }),
-      ),
+      guard.canActivate(createContext({ role: 'MANAGER', sub: 'm1' })),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 

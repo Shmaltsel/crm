@@ -42,7 +42,12 @@ const mockPrisma = {
 const mockTelegram = { sendMessage: jest.fn() };
 const mockNotifications = { create: jest.fn().mockResolvedValue(undefined) };
 
-const mockUser = { sub: 'user-1', name: 'Менеджер', email: 'manager@example.com', role: 'MANAGER' } as const;
+const mockUser = {
+  sub: 'user-1',
+  name: 'Менеджер',
+  email: 'manager@example.com',
+  role: 'MANAGER',
+} as const;
 
 describe('EventsService', () => {
   let service: EventsService;
@@ -242,7 +247,12 @@ describe('EventsService', () => {
       mockPrisma.event.count = jest.fn().mockResolvedValueOnce(10);
 
       const result = await service.findAllForUser(
-        { sub: 'mgr-1', name: 'М', email: 'manager@example.com', role: 'MANAGER' },
+        {
+          sub: 'mgr-1',
+          name: 'М',
+          email: 'manager@example.com',
+          role: 'MANAGER',
+        },
         { page: 2, take: 2 } as any,
       );
 
