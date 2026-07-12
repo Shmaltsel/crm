@@ -55,6 +55,12 @@ export class FinanceController {
     return this.financeService.getMyBalance(user.sub);
   }
 
+  @ApiOperation({ summary: 'Звірка балансу: user.balance vs SUM(PAID salary)' })
+  @Get('balance-reconciliation')
+  reconcileBalance(@CurrentUser() user: JwtUser) {
+    return this.financeService.reconcileBalance(user.sub);
+  }
+
   @ApiOperation({ summary: 'Виручка по співробітниках' })
   @Get('staff-revenue')
   @Roles('SUPERADMIN', 'OWNER', 'MANAGER')

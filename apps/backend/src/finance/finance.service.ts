@@ -84,6 +84,30 @@ export class FinanceService {
       name: user?.name ?? '',
     };
   }
+
+  async reconcileBalance(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { balance: true, name: true },
+    });
+    const storedBalance = user?.balance ? Number(user.balance) : 0;
+
+    const result = await this.prisma.salaryRecord.aggregate({
+      where: { employeeId: userId, status: 'PAID' },
+      _sum: { amount: true },
+    });
+    const calculatedBalance = result._sum.amount
+      ? Number(result._sum.amount)
+      : 0;
+
+    return {
+      userId,
+      name: user?.name ?? '',
+      storedBalance,
+      calculatedBalance,
+      discrepancy: storedBalance - calculatedBalance,
+    };
+  }
   async getDashboard({
     period,
     cityId,

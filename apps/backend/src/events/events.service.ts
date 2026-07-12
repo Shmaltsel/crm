@@ -84,6 +84,15 @@ export class EventsService {
       report: { select: { status: true } },
     };
 
+    if (query?.dateFrom || query?.dateTo) {
+      const events = await this.prisma.event.findMany({
+        where,
+        include,
+        orderBy: { date: 'asc' },
+      });
+      return events.map((e) => this.serializeEvent(e));
+    }
+
     if (!query?.page) {
       const events = await this.prisma.event.findMany({
         where,
