@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { SanitizeInterceptor } from './common/interceptors/sanitize.interceptor';
+import { ErrorAlertInterceptor } from './common/interceptors/error-alert.interceptor';
+import { ErrorAlertService } from './common/interceptors/error-alert.service';
 import { CsrfGuard } from './auth/csrf.guard';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
@@ -84,6 +86,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
   providers: [
     AppService,
     AllExceptionsFilter,
+    ErrorAlertService,
     {
       provide: APP_PIPE,
       useClass: LocalizedValidationPipe,
@@ -99,6 +102,10 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     {
       provide: APP_INTERCEPTOR,
       useClass: SanitizeInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ErrorAlertInterceptor,
     },
   ],
 })

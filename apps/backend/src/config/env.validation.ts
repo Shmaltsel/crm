@@ -29,4 +29,5 @@ export const envValidationSchema = Joi.object({
     .allow('')
     .optional()
     .custom((value) => stripQuotes(value)),
+  ALERT_CHAT_ID: Joi.string().optional(),
 });
