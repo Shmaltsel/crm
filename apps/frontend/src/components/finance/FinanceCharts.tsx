@@ -244,6 +244,7 @@ const RevenueChart = memo(function RevenueChart({
         <Tooltip
           content={<CustomTooltip />}
           cursor={{ stroke: "#cbd5e1", strokeWidth: 1, strokeDasharray: "4 4" }}
+          allowEscapeViewBox={{ x: true, y: true }}
         />
         <Area
           type="monotone"
@@ -306,7 +307,7 @@ const ProjectPieChart = memo(function ProjectPieChart({
                 />
               ))}
             </Pie>
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip />} allowEscapeViewBox={{ x: true, y: true }} />
           </PieChart>
         </ResponsiveContainer>
       </div>
@@ -366,7 +367,7 @@ const ExpenseChart = memo(function ExpenseChart({
             tick={{ fontSize: 12, fill: "#475569", fontWeight: 500 }}
             width={120}
           />
-          <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f8fafc" }} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f8fafc" }} allowEscapeViewBox={{ x: true, y: true }} />
           <Bar
             dataKey="value"
             name="Сума"

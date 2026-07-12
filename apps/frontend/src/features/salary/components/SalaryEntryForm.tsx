@@ -3,6 +3,13 @@ import { useCreateSalary } from "../../../hooks/useSalary";
 import { useUsers } from "../../../hooks/useEmployees";
 import { useToast } from "../../../components/ui/Toast";
 
+const SALARY_ERROR_MAP: Record<string, string> = {
+  "salary.notManager": "Недостатньо прав",
+  "salary.reportNotApproved": "Звіт не подано або не затверджено",
+  "salary.amountTooLarge": "Сума занадто велика (макс. 99 999 грн)",
+  "report.notFound": "Звіт не знайдено",
+};
+
 export default function SalaryEntryForm({ reportId, cityId }: { reportId: string; cityId?: string }) {
   const { data: users = [] } = useUsers();
   const createSalary = useCreateSalary();
@@ -35,7 +42,10 @@ export default function SalaryEntryForm({ reportId, cityId }: { reportId: string
           setAmount("");
           setComment("");
         },
-        onError: () => toast("Не вдалося додати нарахування", "error"),
+        onError: (error: unknown) => {
+          const key = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+          toast(SALARY_ERROR_MAP[key ?? ""] ?? "Не вдалося додати нарахування", "error");
+        },
       },
     );
   };

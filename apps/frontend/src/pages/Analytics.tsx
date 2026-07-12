@@ -180,6 +180,7 @@ export default function Analytics() {
                 <Tooltip
                   formatter={(v: number) => [fmtMoney(v), ""]}
                   contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
+                  allowEscapeViewBox={{ x: true, y: true }}
                 />
                 <Line type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={2} dot={{ r: 3, fill: "#2563eb" }} name="Дохід" isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
                 <Line type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: "#10b981" }} name="Прибуток" isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
@@ -208,6 +209,7 @@ export default function Analytics() {
                   <Tooltip
                     formatter={(v: number) => [v, "Подій"]}
                     contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
+                    allowEscapeViewBox={{ x: true, y: true }}
                   />
                   <Bar dataKey="events" fill="#2563eb" radius={[8, 8, 0, 0]} maxBarSize={48} isAnimationActive={true} animationDuration={800} animationEasing="ease-out" />
                 </BarChart>

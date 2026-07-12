@@ -219,6 +219,7 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
                   cursor={{ fill: '#f8fafc' }}
                   formatter={(v: number) => [`${fmt(v)} грн`, 'Виручка']}
                   contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }}
+                  allowEscapeViewBox={{ x: true, y: true }}
                 />
                 <Bar dataKey="revenue" fill="#2563eb" radius={[8, 8, 0, 0]} maxBarSize={48} />
               </BarChart>
@@ -239,7 +240,7 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
                     <Pie data={pieData} dataKey="count" nameKey="label" innerRadius={52} outerRadius={78} paddingAngle={2} strokeWidth={0}>
                       {pieData.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
                     </Pie>
-                    <Tooltip formatter={(v: number, n: string) => [`${v} подій`, n]} contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }} />
+                    <Tooltip formatter={(v: number, n: string) => [`${v} подій`, n]} contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }} allowEscapeViewBox={{ x: true, y: true }} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
