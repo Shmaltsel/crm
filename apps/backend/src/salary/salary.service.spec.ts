@@ -14,6 +14,14 @@ const mockCityAccess = {
   assertCityManager: jest.fn().mockResolvedValue(undefined),
 };
 
+const mockNotifications = {
+  create: jest.fn().mockResolvedValue({}),
+};
+
+const mockTelegram = {
+  sendMessage: jest.fn().mockResolvedValue(undefined),
+};
+
 describe('SalaryService', () => {
   let service: SalaryService;
   let prisma: any;
@@ -30,11 +38,11 @@ describe('SalaryService', () => {
     };
     prisma = {
       salaryRecord: mockTx.salaryRecord,
-      user: mockTx.user,
+      user: { ...mockTx.user, findUnique: jest.fn().mockResolvedValue({ telegramChatId: null, name: 'Test' }) },
       $transaction: jest.fn((fn: (tx: any) => unknown) => fn(mockTx)),
     };
 
-    service = new SalaryService(prisma, new SalaryPayoutService(), mockCityAccess as any);
+    service = new SalaryService(prisma, new SalaryPayoutService(), mockCityAccess as any, mockNotifications as any, mockTelegram as any);
   });
 
   describe('markPaid', () => {

@@ -137,9 +137,12 @@ export class EventsService {
           },
         },
       },
-      include: { history: true },
+      include: { history: true, city: { select: { managerId: true } } },
     });
     await this.invalidateSchoolEventsCache(event.schoolId);
+
+    this.notifyManagerEventCreated(event.id, data as CreateEventDto);
+
     return this.serializeEvent(event);
   }
 
@@ -437,7 +440,13 @@ export class EventsService {
   }
 
   async remove(id: string) {
-    const exists = await this.prisma.event.findUnique({ where: { id } });
+    const exists = await this.prisma.event.findUnique({
+      where: { id },
+      include: {
+        crew: { select: { hostId: true, driverId: true } },
+        city: { select: { managerId: true } },
+      },
+    });
     if (!exists)
       throw new AppException('EVENT_NOT_FOUND', HttpStatus.NOT_FOUND);
 
@@ -453,6 +462,9 @@ export class EventsService {
       where: { id },
     });
     await this.invalidateSchoolEventsCache(exists.schoolId);
+
+    this.notifyEventCancelled(exists);
+
     return this.serializeEvent(deleted as any);
   }
 
@@ -489,5 +501,84 @@ export class EventsService {
       orderBy: { date: 'desc' },
     });
     return events.map((e) => this.serializeEvent(e as any));
+  }
+
+  private async notifyManagerEventCreated(
+    eventId: string,
+    data: CreateEventDto,
+  ) {
+    try {
+      const event = await this.prisma.event.findUnique({
+        where: { id: eventId },
+        select: {
+          date: true,
+          project: true,
+          city: { select: { managerId: true } },
+          school: { select: { name: true } },
+        },
+      });
+      const managerId = event?.city?.managerId;
+      if (!managerId || !event) return;
+
+      const dateStr = new Date(event.date).toLocaleDateString('uk-UA');
+      this.notificationsService
+        .create(managerId, 'EVENT_CREATED', {
+          eventId,
+          title: `Нова подія: ${event.school?.name ?? ''} (${dateStr})`,
+        })
+        .catch(() => {});
+
+      const manager = await this.prisma.user.findUnique({
+        where: { id: managerId },
+        select: { telegramChatId: true },
+      });
+      if (manager?.telegramChatId) {
+        this.telegramService
+          .sendMessage(
+            manager.telegramChatId,
+            `📅 <b>Нова подія</b>\n\nШкола: ${event.school?.name ?? '—'}\nДата: ${dateStr}\nПроєкт: ${event.project ?? '—'}`,
+          )
+          .catch(() => {});
+      }
+    } catch { /* non-critical */ }
+  }
+
+  private async notifyEventCancelled(event: {
+    id: string;
+    crew: { hostId: string | null; driverId: string | null } | null;
+    city: { managerId: string | null } | null;
+  }) {
+    const title = 'Подію скасовано';
+
+    if (event.city?.managerId) {
+      this.notificationsService
+        .create(event.city.managerId, 'EVENT_CANCELLED', {
+          eventId: event.id,
+          title,
+        })
+        .catch(() => {});
+    }
+
+    const crewIds = [event.crew?.hostId, event.crew?.driverId].filter(
+      Boolean,
+    ) as string[];
+    for (const crewId of crewIds) {
+      this.notificationsService
+        .create(crewId, 'EVENT_CANCELLED', {
+          eventId: event.id,
+          title,
+        })
+        .catch(() => {});
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: crewId },
+        select: { telegramChatId: true },
+      });
+      if (user?.telegramChatId) {
+        this.telegramService
+          .sendMessage(user.telegramChatId, `❌ <b>Подію скасовано</b>`)
+          .catch(() => {});
+      }
+    }
   }
 }

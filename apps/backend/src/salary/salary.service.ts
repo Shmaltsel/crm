@@ -7,9 +7,13 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { SalaryPayoutService } from './salary-payout.service';
 import { CityAccessService } from '../auth/services/city-access.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { TelegramService } from '../telegram/telegram.service';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 import { CreateSalaryDto } from './dto/create-salary.dto';
 import { Prisma } from '@prisma/client';
+
+const LARGE_SALARY_THRESHOLD = 50_000;
 
 @Injectable()
 export class SalaryService {
@@ -17,6 +21,8 @@ export class SalaryService {
     private readonly prisma: PrismaService,
     private readonly salaryPayout: SalaryPayoutService,
     private readonly cityAccess: CityAccessService,
+    private readonly notificationsService: NotificationsService,
+    private readonly telegramService: TelegramService,
   ) {}
 
   async create(dto: CreateSalaryDto, user: JwtUser) {
@@ -127,8 +133,43 @@ export class SalaryService {
       await this.cityAccess.assertCityManager(user, record.event?.cityId ?? '');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
       return this.salaryPayout.payout(tx, id, Number(record.amount), user.sub);
     });
+
+    const amount = Number(record.amount);
+
+    this.notificationsService
+      .create(record.employeeId, 'SALARY_PAID', {
+        salaryRecordId: id,
+        amount,
+        title: `Зарплату нараховано: ${amount} ₴`,
+      })
+      .catch(() => {});
+
+    const employee = await this.prisma.user.findUnique({
+      where: { id: record.employeeId },
+      select: { telegramChatId: true, name: true },
+    });
+    if (employee?.telegramChatId) {
+      this.telegramService
+        .sendMessage(
+          employee.telegramChatId,
+          `💰 <b>Нараховано зарплату</b>\n\nСума: ${amount} ₴`,
+        )
+        .catch(() => {});
+    }
+
+    if (amount >= LARGE_SALARY_THRESHOLD) {
+      const alertChatId = process.env.ALERT_CHAT_ID;
+      if (alertChatId) {
+        this.telegramService
+          .sendMessage(
+            alertChatId,
+            `⚠️ <b>Велика виплата: ${amount} ₴</b>\n\nПрацівник: ${employee?.name ?? 'Невідомий'}\nМенеджер: ${user.name}`,
+          )
+          .catch(() => {});
+      }
+    }
   }
 }

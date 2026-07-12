@@ -8,7 +8,7 @@
     "prepare": "husky",
     "test": "concurrently --kill-others-on-fail \"pnpm --filter backend test\" \"pnpm --filter frontend test:run\"",
     "test:unit": "concurrently \"pnpm --filter backend test\" \"pnpm --filter frontend test:run\"",
-    "test:affected": "turbo run test:affected --filter=...[origin/main]",
+    "test:affected": "pnpm --filter backend exec jest --changedSince=origin/main --runInBand --forceExit && pnpm --filter frontend exec vitest run --changed=origin/main --no-file-parallelism",
     "test:smoke": "pnpm --filter frontend exec vitest run smoke --no-file-parallelism && pnpm --filter backend exec jest --testPathPattern='\\.smoke\\.spec\\.ts$'",
     "test:e2e:backend": "pnpm --filter backend test:e2e",
     "test:e2e:frontend": "pnpm --filter frontend test:e2e",

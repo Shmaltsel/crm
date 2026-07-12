@@ -15,6 +15,7 @@ export class EventsSchedulerService implements OnModuleInit {
 
   onModuleInit() {
     this.scheduleDailyCheck();
+    this.scheduleDailySummary();
   }
 
   private scheduleDailyCheck() {
@@ -35,6 +36,17 @@ export class EventsSchedulerService implements OnModuleInit {
       },
       24 * 60 * 60 * 1000,
     );
+  }
+
+  private scheduleDailySummary() {
+    const run = async () => {
+      const now = new Date();
+      if (now.getHours() !== 8 || now.getMinutes() > 5) return;
+      this.logger.log('Відправка щоденного підсумку...');
+      await this.sendDailySummary();
+    };
+
+    setInterval(run, 60 * 60 * 1000);
   }
 
   async checkEventsForTomorrow() {
@@ -60,6 +72,41 @@ export class EventsSchedulerService implements OnModuleInit {
       if (event.crew) {
         await this.sendReminder(event, event.crew.host, 'ведучий');
         await this.sendReminder(event, event.crew.driver, 'водій');
+      }
+    }
+  }
+
+  private async sendDailySummary() {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const startOfTomorrow = new Date(tomorrow.setHours(0, 0, 0, 0));
+    const endOfTomorrow = new Date(tomorrow.setHours(23, 59, 59, 999));
+
+    const [tomorrowEvents, pendingReports, pendingDaysOff] = await Promise.all([
+      this.prisma.event.count({
+        where: {
+          date: { gte: startOfTomorrow, lte: endOfTomorrow },
+          status: { not: 'RE_SALE' },
+        },
+      }),
+      this.prisma.eventReport.count({ where: { status: 'SUBMITTED' } }),
+      this.prisma.dayOff.count({}),
+    ]);
+
+    const lines = [`📊 <b>Щоденний підсумок</b>`, ``];
+    lines.push(`📅 Подій на завтра: <b>${tomorrowEvents}</b>`);
+    lines.push(`📋 Незатверджених звітів: <b>${pendingReports}</b>`);
+    lines.push(`🌴 Очікують вихідних: <b>${pendingDaysOff}</b>`);
+    const text = lines.join('\n');
+
+    const managers = await this.prisma.user.findMany({
+      where: { role: { in: ['SUPERADMIN', 'OWNER', 'MANAGER'] } },
+      select: { telegramChatId: true },
+    });
+
+    for (const m of managers) {
+      if (m.telegramChatId) {
+        this.telegramService.sendMessage(m.telegramChatId, text).catch(() => {});
       }
     }
   }

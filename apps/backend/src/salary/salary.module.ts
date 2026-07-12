@@ -4,9 +4,11 @@ import { SalaryService } from './salary.service';
 import { SalaryPayoutService } from './salary-payout.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { TelegramModule } from '../telegram/telegram.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [PrismaModule, AuthModule, NotificationsModule, TelegramModule],
   controllers: [SalaryController],
   providers: [SalaryService, SalaryPayoutService],
   exports: [SalaryService, SalaryPayoutService],

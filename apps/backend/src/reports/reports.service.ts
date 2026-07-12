@@ -34,6 +34,20 @@ export class ReportsService {
     private readonly cacheVersion: CacheVersionService,
   ) {}
 
+  private async sendCrewTelegram(userId: string, schoolName: string) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { telegramChatId: true, name: true },
+      });
+      if (!user?.telegramChatId) return;
+      await this.telegramService.sendMessage(
+        user.telegramChatId,
+        `✅ <b>Звіт затверджено</b>\n\nШкола: ${schoolName}\nОчікуйте виплату.`,
+      );
+    } catch { /* non-critical */ }
+  }
+
   private async assertCrewMember(
     eventId: string,
     userId: string,
@@ -264,6 +278,21 @@ export class ReportsService {
           title: 'Звіт підтверджено',
         })
         .catch(() => {});
+    }
+
+    const crewIds = [
+      report.event.crew?.hostId,
+      report.event.crew?.driverId,
+    ].filter(Boolean) as string[];
+    for (const crewId of crewIds) {
+      this.notificationsService
+        .create(crewId, 'REPORT_APPROVED', {
+          eventId: report.eventId,
+          schoolName: report.event.school?.name,
+          title: 'Звіт затверджено — очікуйте виплату',
+        })
+        .catch(() => {});
+      this.sendCrewTelegram(crewId, report.event.school?.name ?? 'Подія');
     }
 
     return approved;
