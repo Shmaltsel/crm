@@ -97,6 +97,8 @@ export default function Kindergartens() {
         "success",
       );
       qc.invalidateQueries({ queryKey: ["schools"] });
+      qc.invalidateQueries({ queryKey: ["schoolStats"] });
+      qc.invalidateQueries({ queryKey: ["cities"] });
     },
     onError: () => toast("Помилка імпорту", "error"),
   });

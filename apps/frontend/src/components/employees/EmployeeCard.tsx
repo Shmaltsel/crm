@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
-import { Phone, Mail, MapPin, Eye, Edit3, UserX } from "lucide-react";
-import { Badge } from "../ui/Badge";
+import { Phone, MapPin, Edit3, UserX } from "lucide-react";
 import { cardVariants } from "../../animations/employees";
 import { useHoverCapable } from "../../lib/motion";
 
@@ -105,7 +104,7 @@ export default function EmployeeCard({
         </div>
 
         {isSuperAdmin && (
-          <div className="flex items-center gap-0.5 shrink-0 opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
+          <div className={`flex items-center gap-0.5 shrink-0 transition-opacity duration-200 ${hoverCapable ? "opacity-0 md:group-hover:opacity-100" : "opacity-100"}`}>
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => onEdit(user)}

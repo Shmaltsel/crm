@@ -1,9 +1,54 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class CitiesService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async remove(id: string) {
+    const city = await this.prisma.city.findUnique({
+      where: { id },
+      include: {
+        _count: { select: { users: true } },
+      },
+    });
+    if (!city) throw new BadRequestException('Місто не знайдено');
+    if (city._count.users > 0) {
+      throw new BadRequestException(
+        'У місті є прив\'язані співробітники — спочатку перепризначте або видаліть їх',
+      );
+    }
+
+    const eventIds = (
+      await this.prisma.event.findMany({
+        where: { cityId: id },
+        select: { id: true },
+      })
+    ).map((e) => e.id);
+
+    const reportIds = (
+      await this.prisma.eventReport.findMany({
+        where: { eventId: { in: eventIds } },
+        select: { id: true },
+      })
+    ).map((r) => r.id);
+
+    await this.prisma.$transaction([
+      this.prisma.salaryRecord.deleteMany({ where: { eventId: { in: eventIds } } }),
+      this.prisma.eventHistory.deleteMany({ where: { eventId: { in: eventIds } } }),
+      this.prisma.eventPreparation.deleteMany({ where: { eventId: { in: eventIds } } }),
+      this.prisma.inventoryUsage.deleteMany({ where: { reportId: { in: reportIds } } }),
+      this.prisma.file.deleteMany({ where: { eventId: { in: eventIds } } }),
+      this.prisma.event.deleteMany({ where: { cityId: id } }),
+      this.prisma.inventoryItem.deleteMany({ where: { cityId: id } }),
+      this.prisma.school.deleteMany({ where: { cityId: id } }),
+      this.prisma.crew.deleteMany({ where: { cityId: id } }),
+      this.prisma.issueReport.deleteMany({ where: { cityId: id } }),
+      this.prisma.city.delete({ where: { id } }),
+    ]);
+
+    return { success: true };
+  }
 
   async create(name: string) {
     return this.prisma.city.create({

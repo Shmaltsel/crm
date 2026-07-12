@@ -1,7 +1,7 @@
 import { useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { Trash2 } from "lucide-react";
 import type { City } from "../../types";
-import OptimizedImage from "../ui/OptimizedImage";
 
 const CITY_PHOTOS: Record<string, string> = {
   Львів:
@@ -76,11 +76,15 @@ function CityCard({
   index,
   isSelected,
   onSelect,
+  onDelete,
+  isSuperAdmin,
 }: {
   city: City;
   index: number;
   isSelected: boolean;
   onSelect: () => void;
+  onDelete?: () => void;
+  isSuperAdmin?: boolean;
 }) {
   const navigate = useNavigate();
   const imgRef = useRef<HTMLImageElement>(null);
@@ -212,6 +216,15 @@ function CityCard({
           >
             →
           </button>
+          {isSuperAdmin && onDelete && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-500 text-sm rounded-lg transition-colors"
+              aria-label={`Видалити ${city.name}`}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -222,12 +235,16 @@ interface CityDesktopGridProps {
   cities: City[];
   selectedCity: City | null;
   onSelectCity: (city: { id: string; name: string }) => void;
+  onDeleteCity?: (cityId: string, cityName: string) => void;
+  isSuperAdmin?: boolean;
 }
 
 export default function CityDesktopGrid({
   cities,
   selectedCity,
   onSelectCity,
+  onDeleteCity,
+  isSuperAdmin,
 }: CityDesktopGridProps) {
   return (
     <>
@@ -257,6 +274,8 @@ export default function CityDesktopGrid({
             index={index}
             isSelected={selectedCity?.id === city.id}
             onSelect={() => onSelectCity({ id: city.id, name: city.name })}
+            onDelete={onDeleteCity ? () => onDeleteCity(city.id, city.name) : undefined}
+            isSuperAdmin={isSuperAdmin}
           />
         ))}
       </div>

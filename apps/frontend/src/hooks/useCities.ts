@@ -64,6 +64,17 @@ export function useCreateCrew(cityId: string | undefined) {
   });
 }
 
+export function useDeleteCity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (cityId: string) =>
+      api.delete(`/cities/${cityId}`).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cities"] });
+    },
+  });
+}
+
 export function useDeleteCrew(cityId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({

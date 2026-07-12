@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { Trash2 } from "lucide-react";
 import type { City } from "../../types";
 import { CITY_ICONS, DEFAULT_CITY_ICON } from "../../constants/cityIcons";
 
@@ -15,6 +16,8 @@ interface CityMobileListProps {
   cities: City[];
   selectedCity: City | null;
   onSelectCity: (city: { id: string; name: string }) => void;
+  onDeleteCity?: (cityId: string, cityName: string) => void;
+  isSuperAdmin?: boolean;
 }
 
 const TABS = [
@@ -27,6 +30,8 @@ export default function CityMobileList({
   cities,
   selectedCity,
   onSelectCity,
+  onDeleteCity,
+  isSuperAdmin,
 }: CityMobileListProps) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"ACTIVE" | "ALL" | "ARCHIVED">("ACTIVE");
@@ -95,6 +100,18 @@ export default function CityMobileList({
               >
                 ›
               </button>
+              {isSuperAdmin && onDeleteCity && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteCity(city.id, city.name);
+                  }}
+                  className="p-2.5 text-content-muted hover:text-danger text-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center active:scale-90"
+                  aria-label={`Видалити ${city.name}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
           );
         })}

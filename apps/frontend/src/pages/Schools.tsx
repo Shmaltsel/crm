@@ -151,6 +151,8 @@ export default function Schools() {
     onSuccess: (res) => {
       toast("Імпорт завершено: додано " + res.data.created + ", пропущено " + res.data.skipped, "success");
       qc.invalidateQueries({ queryKey: ["schools"] });
+      qc.invalidateQueries({ queryKey: ["schoolStats"] });
+      qc.invalidateQueries({ queryKey: ["cities"] });
     },
     onError: () => toast("Помилка імпорту", "error"),
   });
@@ -485,13 +487,15 @@ export default function Schools() {
       </Swiper>
 
       {/* Мобільна плаваюча кнопка FAB */}
-      <button
-        onClick={handleOpenModal}
-        className="md:hidden fab"
-        aria-label="Додати школу"
-      >
-        +
-      </button>
+      {!isModalOpen && (
+        <button
+          onClick={handleOpenModal}
+          className="md:hidden fab"
+          aria-label="Додати школу"
+        >
+          +
+        </button>
+      )}
 
       <AnimatePresence>
         {isModalOpen && (

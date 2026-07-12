@@ -272,7 +272,7 @@ export default function InventoryPage() {
       )}
 
       {/* FAB for mobile */}
-      {canCreate && (
+      {canCreate && !modalOpen && (
         <motion.button
           onClick={handleOpenCreate}
           className="sm:hidden fab"

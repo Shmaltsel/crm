@@ -55,6 +55,7 @@ export function useCreateUser() {
           ? old.map((u) => (u.id?.startsWith("temp-") ? data : u))
           : [data],
       );
+      qc.invalidateQueries({ queryKey: ["users"] });
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(["users"], ctx.prev);

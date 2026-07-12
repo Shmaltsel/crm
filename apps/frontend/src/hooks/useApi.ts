@@ -3,6 +3,7 @@ import {
   useMutation,
   useQueryClient,
   useInfiniteQuery,
+  keepPreviousData,
 } from "@tanstack/react-query";
 import { api } from "../config/api";
 import type { City, School } from "../types";
@@ -56,13 +57,16 @@ export function useSchools(filters: SchoolFilters = {}) {
 export function useSchoolStats(
   filters: Pick<SchoolFilters, "cityId" | "type" | "stage"> = {},
 ) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { stage, ...badgeFilters } = filters;
   return useQuery({
-    queryKey: ["schoolStats", filters],
+    queryKey: ["schoolStats", badgeFilters],
     queryFn: () =>
       api
-        .get("/schools/stats", { params: filters })
+        .get("/schools/stats", { params: badgeFilters })
         .then((r) => r.data),
     staleTime: 2 * 60 * 1000,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -87,6 +91,7 @@ export function useAddSchool() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["schools"] });
       qc.invalidateQueries({ queryKey: ["schoolStats"] });
+      qc.invalidateQueries({ queryKey: ["cities"] });
     },
   });
 }
@@ -99,6 +104,7 @@ export function useDeleteSchool() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["schools"] });
       qc.invalidateQueries({ queryKey: ["schoolStats"] });
+      qc.invalidateQueries({ queryKey: ["cities"] });
     },
   });
 }

@@ -45,6 +45,13 @@ export class CitiesController {
     return this.citiesService.findOne(id);
   }
 
+  @ApiOperation({ summary: 'Видалити місто з усіма залежними сутностями' })
+  @Delete(':id')
+  @Roles('SUPERADMIN')
+  remove(@Param('id') id: string) {
+    return this.citiesService.remove(id);
+  }
+
   @ApiOperation({ summary: 'Список екіпажів міста' })
   @Get(':id/crews')
   findCrews(@Param('id') id: string) {

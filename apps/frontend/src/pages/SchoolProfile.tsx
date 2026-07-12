@@ -766,13 +766,15 @@ export default function SchoolProfile() {
       </div>
 
       {/* Мобільна FAB */}
-      <button
-        onClick={openAddEventModal}
-        className="md:hidden fab"
-        aria-label="Додати подію"
-      >
-        +
-      </button>
+      {!isEventModalOpen && !actionSheetOpen && (
+        <button
+          onClick={openAddEventModal}
+          className="md:hidden fab"
+          aria-label="Додати подію"
+        >
+          +
+        </button>
+      )}
 
       {/* Action Sheet */}
       <SchoolActionSheet

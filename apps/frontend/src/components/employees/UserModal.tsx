@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFormik } from "formik";
 import * as Yup from "yup";
+import { Eye, EyeOff } from "lucide-react";
 import {
   backdropVariants,
   modalContentVariants,
@@ -70,12 +71,19 @@ export default function UserModal({
     },
   });
 
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleClose = useCallback(() => {
+    setShowPassword(false);
+    onClose();
+  }, [onClose]);
+
   useEffect(() => {
     if (!isOpen) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") handleClose(); };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [isOpen, onClose]);
+  }, [isOpen, handleClose]);
 
   return (
     <AnimatePresence>
@@ -86,7 +94,7 @@ export default function UserModal({
           animate="visible"
           exit="exit"
           className="fixed inset-0 bg-backdrop md:backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={onClose}
+          onClick={handleClose}
         >
           <motion.div
             variants={modalContentVariants}
@@ -121,7 +129,7 @@ export default function UserModal({
               <h3 className="text-xl font-bold">
                 {isEditing ? "Редагувати" : "Новий користувач"}
               </h3>
-              <button onClick={onClose} className="text-content-muted text-xl p-2 -mr-2 active:scale-90 transition-transform duration-fast">
+              <button onClick={handleClose} className="text-content-muted text-xl p-2 -mr-2 active:scale-90 transition-transform duration-fast">
                 ✕
               </button>
             </div>
@@ -179,15 +187,26 @@ export default function UserModal({
                   )}
                 </div>
                 <div>
-                  <input
-                    type="password"
-                    name="password"
-                    value={formik.values.password}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    placeholder="Пароль"
-                    className="w-full p-2.5 border rounded-lg text-base"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      value={formik.values.password}
+                      onChange={formik.handleChange}
+                      onBlur={formik.handleBlur}
+                      placeholder="Пароль"
+                      className="w-full p-2.5 pr-10 border rounded-lg text-base"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-content-muted hover:text-content-primary transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                      aria-label={showPassword ? "Приховати пароль" : "Показати пароль"}
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
                   {formik.touched.password && formik.errors.password && (
                     <p className="text-xs text-red-500 mt-1">{formik.errors.password}</p>
                   )}
@@ -266,7 +285,7 @@ export default function UserModal({
               <div className="flex gap-3 mt-2">
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={handleClose}
                   disabled={isSubmitting}
                   className="flex-1 bg-surface-muted py-3 rounded-xl font-medium disabled:opacity-50 active:scale-[0.97] transition-transform duration-fast"
                 >
