@@ -24,12 +24,18 @@ export default function FloatingMobileNav() {
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting);
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => {
+            const ai = SECTIONS.findIndex((s) => s.id === a.target.id);
+            const bi = SECTIONS.findIndex((s) => s.id === b.target.id);
+            return ai - bi;
+          });
         if (visible.length > 0) {
           setActiveSection(visible[0].target.id);
         }
       },
-      { rootMargin: "-80px 0px -60% 0px", threshold: 0 },
+      { rootMargin: "-80px 0px -40% 0px", threshold: 0 },
     );
 
     elements.forEach((el) => observerRef.current?.observe(el));
@@ -48,7 +54,6 @@ export default function FloatingMobileNav() {
           {SECTIONS.map((s) => (
             <motion.button
               key={s.id}
-              layoutId={activeSection === s.id ? "floating-nav-pill" : undefined}
               onClick={() => scrollTo(s.id)}
               className={`relative z-10 min-h-[36px] px-3.5 py-1.5 text-xs font-semibold rounded-full transition-colors ${
                 activeSection === s.id
