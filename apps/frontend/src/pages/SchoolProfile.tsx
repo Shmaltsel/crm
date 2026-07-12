@@ -26,6 +26,7 @@ import type { ReportData } from "../components/school-profile/modals/ReportModal
 
 import SchoolProfileHeader from "../components/school-profile/SchoolProfileHeader";
 import CompletedEventModal from "../components/school-profile/CompletedEventModal";
+import SchoolProfileSkeleton from "../components/school-profile/SchoolProfileSkeleton";
 
 import QuickActionsBar from "../components/school-profile/QuickActionsBar";
 import SchoolActionSheet from "../components/school-profile/modals/SchoolActionSheet";
@@ -79,7 +80,7 @@ export default function SchoolProfile() {
   const [isLeavingPage, setIsLeavingPage] = useState(false);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
 
-  const { data: schoolRaw } = useSchool(id);
+  const { data: schoolRaw, isLoading: schoolLoading } = useSchool(id);
   const { data: eventsRaw = [] } = useSchoolEvents(id, false);
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -481,6 +482,21 @@ export default function SchoolProfile() {
       </motion.div>
     )
   );
+
+  if (schoolLoading && !schoolRaw) {
+    return (
+      <div className="p-4 md:p-8 bg-gradient-subtle min-h-screen text-content-primary font-sans w-full overflow-x-hidden pb-24 md:pb-8">
+        <SchoolProfileHeader
+          schoolData={schoolData}
+          onEdit={() => {}}
+          onAddEvent={() => {}}
+          onActionMenu={() => {}}
+        />
+        <SchoolProfileSkeleton />
+        <FloatingMobileNav />
+      </div>
+    );
+  }
 
   return (
     <motion.div
