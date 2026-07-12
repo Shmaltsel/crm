@@ -8,7 +8,6 @@ import { useCalendarMonth } from "../features/calendar/hooks/useCalendarMonth";
 import { useCalendarData } from "../features/calendar/hooks/useCalendarData";
 import { useDayOffActions } from "../features/calendar/hooks/useDayOffActions";
 import { useLongPress } from "../features/calendar/hooks/useLongPress";
-import CalendarSkeleton from "../features/calendar/components/CalendarSkeleton";
 import CalendarHeader from "../features/calendar/components/CalendarHeader";
 import DesktopCalendarGrid from "../features/calendar/components/DesktopCalendarGrid";
 import MobileCalendarGrid from "../features/calendar/components/MobileCalendarGrid";
@@ -33,7 +32,7 @@ export default function CalendarView() {
   );
 
   const {
-    eventsLoading, projects, cities, allUsers,
+    eventsLoading, isFetching, projects, cities, allUsers,
     eventsByDate, projectColorMap, projectHexMap,
   } = useCalendarData(filterCityId, monthFrom, monthTo);
 
@@ -62,10 +61,14 @@ export default function CalendarView() {
 
   const selectedDayEvents = eventsByDate.get(toISODate(selectedMobileDate)) ?? [];
 
-  if (eventsLoading) return <CalendarSkeleton />;
-
   return (
     <div className="p-4 md:p-8 bg-surface-subtle min-h-screen pb-24">
+      {isFetching && !eventsLoading && (
+        <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-brand/20">
+          <div className="h-full bg-brand animate-[loadingBar_1.5s_ease-in-out_infinite]" />
+        </div>
+      )}
+
       <CalendarHeader
         projects={projects}
         filterCityId={filterCityId}

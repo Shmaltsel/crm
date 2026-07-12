@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
 import type { Event, Project } from "../types";
 
@@ -15,6 +15,7 @@ export function useCalendarEvents(monthFrom?: string, monthTo?: string) {
         .then((r) => r.data.data);
     },
     staleTime: 60 * 1000,
+    placeholderData: keepPreviousData,
   });
 }
 

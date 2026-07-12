@@ -6,7 +6,7 @@ import { PROJECT_HEX } from "../constants";
 import type { Event as CalendarEvent } from "../../../types";
 
 export function useCalendarData(filterCityId: string, monthFrom?: string, monthTo?: string) {
-  const { data: events = [], isLoading: eventsLoading } = useCalendarEvents(monthFrom, monthTo);
+  const { data: events = [], isLoading: eventsLoading, isFetching } = useCalendarEvents(monthFrom, monthTo);
   const { data: projects = [] } = useCalendarProjects();
   const { data: cities = [] } = useCities();
   const { data: allUsers = [] } = useUsers();
@@ -61,6 +61,7 @@ export function useCalendarData(filterCityId: string, monthFrom?: string, monthT
   return {
     events,
     eventsLoading,
+    isFetching,
     projects,
     cities,
     allUsers,
