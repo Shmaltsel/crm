@@ -7,7 +7,12 @@ import { SalaryModule } from '../salary/salary.module';
 import { RedisCacheModule } from '../common/cache/redis-cache.module';
 
 @Module({
-  imports: [NotificationsModule, TelegramModule, SalaryModule, RedisCacheModule],
+  imports: [
+    NotificationsModule,
+    TelegramModule,
+    SalaryModule,
+    RedisCacheModule,
+  ],
   controllers: [ReportsController],
   providers: [ReportsService],
 })

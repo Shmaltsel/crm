@@ -293,7 +293,9 @@ describe('SchoolsService — remove', () => {
 describe('SchoolsService — getStats', () => {
   it('повертає notConfirmed у statusStats', async () => {
     mockPrisma.$queryRaw
-      .mockResolvedValueOnce([{ new: 5, planned: 3, inProgress: 2, notConfirmed: 1, done: 4 }])
+      .mockResolvedValueOnce([
+        { new: 5, planned: 3, inProgress: 2, notConfirmed: 1, done: 4 },
+      ])
       .mockResolvedValueOnce([]);
 
     const service = await makeModule();

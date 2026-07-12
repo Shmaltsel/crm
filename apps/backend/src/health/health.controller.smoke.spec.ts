@@ -36,7 +36,10 @@ describe('Smoke: HealthController', () => {
 
   it('повертає healthy статус при доступних БД і Redis', async () => {
     const result = await controller.check();
-    expect(mockPrismaIndicator.pingCheck).toHaveBeenCalledWith('database', mockPrisma);
+    expect(mockPrismaIndicator.pingCheck).toHaveBeenCalledWith(
+      'database',
+      mockPrisma,
+    );
     expect(mockRedisIndicator.isHealthy).toHaveBeenCalledWith('redis');
     expect(result.status).toBe('ok');
   });

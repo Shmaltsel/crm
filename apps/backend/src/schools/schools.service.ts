@@ -261,7 +261,8 @@ export class SchoolsService {
       isNotConfirmed,
       ...school
     } = row;
-    const categories: ('planned' | 'inProgress' | 'notConfirmed' | 'done')[] = [];
+    const categories: ('planned' | 'inProgress' | 'notConfirmed' | 'done')[] =
+      [];
     if (isPlanned) categories.push('planned');
     if (isInProgress) categories.push('inProgress');
     if (isNotConfirmed) categories.push('notConfirmed');
@@ -349,7 +350,13 @@ export class SchoolsService {
 
     const [statusRows, sizeRows] = await Promise.all([
       this.prisma.$queryRaw<
-        { new: bigint; planned: bigint; inProgress: bigint; notConfirmed: bigint; done: bigint }[]
+        {
+          new: bigint;
+          planned: bigint;
+          inProgress: bigint;
+          notConfirmed: bigint;
+          done: bigint;
+        }[]
       >(Prisma.sql`
         SELECT
           COUNT(*) FILTER (WHERE NOT COALESCE(ef."isPlanned", false) AND NOT COALESCE(ef."isInProgress", false) AND NOT COALESCE(ef."isDone", false) AND NOT COALESCE(ef."isNotConfirmed", false))::bigint as new,

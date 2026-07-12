@@ -39,11 +39,17 @@ const defaultMocks = () => {
   mockPrisma.event.aggregate.mockResolvedValueOnce({ _sum: { price: 30000 } });
   mockPrisma.event.findMany.mockResolvedValueOnce([]);
   mockPrisma.city.findMany.mockResolvedValueOnce([]);
-  mockPrisma.eventReport.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+  mockPrisma.eventReport.findMany
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([]);
   mockPrisma.expenseItem.findMany.mockResolvedValueOnce([]);
   mockPrisma.salaryRecord.findMany.mockResolvedValueOnce([]);
-  mockPrisma.expenseItem.aggregate.mockResolvedValueOnce({ _sum: { amount: 0 } });
-  mockPrisma.salaryRecord.aggregate.mockResolvedValueOnce({ _sum: { amount: 0 } });
+  mockPrisma.expenseItem.aggregate.mockResolvedValueOnce({
+    _sum: { amount: 0 },
+  });
+  mockPrisma.salaryRecord.aggregate.mockResolvedValueOnce({
+    _sum: { amount: 0 },
+  });
 };
 
 describe('Smoke: FinanceService', () => {

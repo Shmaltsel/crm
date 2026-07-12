@@ -25,7 +25,10 @@ export class SalaryService {
     return user?.managedCities.map((c) => c.id) ?? [];
   }
 
-  private async assertCityManager(user: JwtUser, cityId: string): Promise<void> {
+  private async assertCityManager(
+    user: JwtUser,
+    cityId: string,
+  ): Promise<void> {
     if (user.role !== 'MANAGER') return;
     const managedIds = await this.getManagerCityIds(user.sub);
     if (!managedIds.includes(cityId)) {
