@@ -4,6 +4,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 
 import Layout from "./components/Layout";
@@ -53,15 +54,21 @@ interface LoginUser {
   cityName?: string | null;
 }
 
+function getDefaultRoute(role: string): string {
+  if (["SUPERADMIN", "OWNER", "MANAGER"].includes(role)) return "/dashboard";
+  return "/calendar";
+}
+
 function AppRoutes() {
   const { user, loading, login } = useAuth();
+  const location = useLocation();
   const isAuthenticated = !!user;
 
   const handleLogin = (loggedInUser: LoginUser) => {
     login(loggedInUser);
   };
 
-  if (loading) return <PageLoader />;
+  if (loading && location.pathname !== "/login") return <PageLoader />;
 
   return (
     <CityProvider>
@@ -72,7 +79,7 @@ function AppRoutes() {
             !isAuthenticated ? (
               <Login onLogin={handleLogin} />
             ) : (
-              <Navigate to="/dashboard" replace />
+              <Navigate to={getDefaultRoute(user!.role)} replace />
             )
           }
         />

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 
 import { api } from "../config/api";
 import { fadeVariants, staggerContainer, staggerItem, TRANSITION, useHoverCapable } from "../lib/motion";
+import { useAuth } from "../context/AuthContext";
 
 const CIRCLE_VARIANTS = {
   hidden: { scale: 0, opacity: 1 },
@@ -25,6 +26,11 @@ interface LoginProps {
   onLogin?: (user: User) => void;
 }
 
+function getDefaultRoute(role: string): string {
+  if (["SUPERADMIN", "OWNER", "MANAGER"].includes(role)) return "/dashboard";
+  return "/calendar";
+}
+
 export default function Login({ onLogin }: LoginProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,14 +41,21 @@ export default function Login({ onLogin }: LoginProps) {
   const [shake, setShake] = useState(false);
   const navigate = useNavigate();
   const hoverCapable = useHoverCapable();
+  const { user } = useAuth();
 
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      navigate(getDefaultRoute(user.role), { replace: true });
+    }
+  }, [user, navigate]);
 
   const proceedAfterLogin = () => {
     if (onLogin && loggedInUser) {
       onLogin(loggedInUser);
     } else {
-      navigate("/cities");
+      navigate(getDefaultRoute(loggedInUser?.role ?? ""), { replace: true });
     }
   };
 

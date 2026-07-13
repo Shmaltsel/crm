@@ -4,7 +4,11 @@ import Login from "../../pages/Login";
 import { BrowserRouter } from "react-router-dom";
 import { http, HttpResponse } from "msw";
 import { server } from "../mocks/server";
-import { vi } from "vitest";
+import { vi, describe, it, expect } from "vitest";
+
+vi.mock("../../context/AuthContext", () => ({
+  useAuth: () => ({ user: null, loading: false, login: vi.fn(), logout: vi.fn() }),
+}));
 
 const renderLogin = (onLogin = vi.fn()) => {
   return render(
