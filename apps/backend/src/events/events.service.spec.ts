@@ -40,7 +40,12 @@ const mockPrisma = {
 };
 
 const mockTelegram = { sendMessage: jest.fn() };
-const mockNotifications = { create: jest.fn().mockResolvedValue(undefined) };
+const mockNotifications = {
+  create: jest.fn().mockResolvedValue(undefined),
+  sendTelegramNotification: jest.fn().mockResolvedValue(undefined),
+  getAdminIds: jest.fn().mockResolvedValue([]),
+  sendTelegramToUsers: jest.fn().mockResolvedValue(undefined),
+};
 
 const mockUser = {
   sub: 'user-1',
@@ -378,11 +383,17 @@ describe('EventsService', () => {
       mockPrisma.event.findUnique.mockResolvedValueOnce({
         id: 'ev-1',
         schoolId: 'school-1',
+        crew: null,
+        city: { managerId: 'mgr-1' },
+        school: { name: 'Школа №1' },
+        project: 'Голограма',
+        date: new Date('2025-09-01'),
       });
       mockPrisma.eventHistory.deleteMany.mockResolvedValueOnce({ count: 2 });
       mockPrisma.eventPreparation.deleteMany.mockResolvedValueOnce({
         count: 1,
       });
+      mockPrisma.salaryRecord.deleteMany.mockResolvedValueOnce({ count: 0 });
       mockPrisma.event.delete.mockResolvedValueOnce({
         id: 'ev-1',
         schoolId: 'school-1',

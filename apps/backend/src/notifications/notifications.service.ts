@@ -3,10 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { FeatureFlagsService } from '../common/feature-flags/feature-flags.service';
-import {
-  getTelegramTemplate,
-  type TelegramTemplateType,
-} from './templates';
+import { getTelegramTemplate, type TelegramTemplateType } from './templates';
 
 @Injectable()
 export class NotificationsService {

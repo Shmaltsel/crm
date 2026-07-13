@@ -3,7 +3,9 @@ export type TelegramTemplateType =
   | 'REPORT_APPROVED'
   | 'REPORT_REVISION'
   | 'DAY_OFF_REQUEST_CREATED'
-  | 'ISSUE_CREATED';
+  | 'ISSUE_CREATED'
+  | 'EVENT_CANCELLED'
+  | 'LOW_STOCK';
 
 type TemplateFn = (p: Record<string, unknown>) => string;
 
@@ -36,9 +38,7 @@ const templates: Record<TelegramTemplateType, TemplateFn> = {
     `📅 <b>Дата:</b> ${fmtDate(p.eventDate)}`,
 
   REPORT_REVISION: (p) => {
-    const reason = p.reason
-      ? `\n💬 <b>Причина:</b> ${p.reason}`
-      : '';
+    const reason = p.reason ? `\n💬 <b>Причина:</b> ${p.reason}` : '';
     return (
       `📝 <b>Звіт потребує доопрацювання</b>\n\n` +
       `🏫 <b>Школа:</b> ${p.schoolName ?? '—'}` +
@@ -69,6 +69,20 @@ const templates: Record<TelegramTemplateType, TemplateFn> = {
       `\n\n<i>Деталі: <a href="${CRM_LINK}">CRM</a></i>`
     );
   },
+
+  EVENT_CANCELLED: (p) =>
+    `❌ <b>Подію скасовано</b>\n\n` +
+    `🏫 <b>Школа:</b> ${p.schoolName ?? '—'}\n` +
+    `📅 <b>Дата:</b> ${fmtDate(p.eventDate)}\n` +
+    `📌 <b>Проєкт:</b> ${p.project ?? '—'}`,
+
+  LOW_STOCK: (p) =>
+    `⚠️ <b>Низький залишок на складі</b>\n\n` +
+    `📦 <b>Товар:</b> ${p.itemName ?? '—'}\n` +
+    `📊 <b>Залишок:</b> ${p.currentStock ?? 0} ${p.unit ?? 'шт'}\n` +
+    `📉 <b>Мінімум:</b> ${p.minStock ?? 0} ${p.unit ?? 'шт'}\n` +
+    (p.cityName ? `🏙️ <b>Місто:</b> ${p.cityName}\n` : '') +
+    `\n<i>Склад: <a href="${CRM_LINK}">CRM</a></i>`,
 };
 
 export function getTelegramTemplate(

@@ -117,9 +117,9 @@ describe('SalaryService', () => {
         report: { status: 'SUBMITTED' },
       });
 
-      await expect(
-        service.markPaid('s1', mockUser as any),
-      ).rejects.toThrow('salary.reportNotApproved');
+      await expect(service.markPaid('s1', mockUser as any)).rejects.toThrow(
+        'salary.reportNotApproved',
+      );
     });
   });
 });

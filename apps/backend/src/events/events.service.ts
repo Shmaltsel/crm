@@ -498,6 +498,7 @@ export class EventsService {
       include: {
         crew: { select: { hostId: true, driverId: true } },
         city: { select: { managerId: true } },
+        school: { select: { name: true } },
       },
     });
     if (!exists)
@@ -606,8 +607,18 @@ export class EventsService {
     id: string;
     crew: { hostId: string | null; driverId: string | null } | null;
     city: { managerId: string | null } | null;
+    school?: { name: string } | null;
+    project?: string | null;
+    date?: Date | string | null;
   }) {
     const title = 'Подію скасовано';
+    const payload = {
+      eventId: event.id,
+      title,
+      schoolName: event.school?.name,
+      eventDate: event.date,
+      project: event.project,
+    };
 
     if (event.city?.managerId) {
       this.notificationsService
@@ -615,6 +626,13 @@ export class EventsService {
           eventId: event.id,
           title,
         })
+        .catch(() => {});
+      this.notificationsService
+        .sendTelegramNotification(
+          event.city.managerId,
+          'EVENT_CANCELLED',
+          payload,
+        )
         .catch(() => {});
     }
 
@@ -628,16 +646,9 @@ export class EventsService {
           title,
         })
         .catch(() => {});
-
-      const user = await this.prisma.user.findUnique({
-        where: { id: crewId },
-        select: { telegramChatId: true },
-      });
-      if (user?.telegramChatId) {
-        this.telegramService
-          .sendMessage(user.telegramChatId, `❌ <b>Подію скасовано</b>`)
-          .catch(() => {});
-      }
+      this.notificationsService
+        .sendTelegramNotification(crewId, 'EVENT_CANCELLED', payload)
+        .catch(() => {});
     }
   }
 }

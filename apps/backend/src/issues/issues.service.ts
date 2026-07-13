@@ -131,19 +131,22 @@ export class IssuesService {
     }
 
     // Telegram OWNER + SUPERADMIN
-    this.notificationsService.getAdminIds().then((adminIds) => {
-      this.notificationsService.sendTelegramToUsers(
-        adminIds,
-        'ISSUE_CREATED',
-        {
-          schoolName: data.schoolName,
-          eventName: data.eventName,
-          message: data.message,
-          deadline: data.deadline,
-          assigneeName: data.assignedUserName,
-        },
-      );
-    }).catch(() => {});
+    this.notificationsService
+      .getAdminIds()
+      .then((adminIds) => {
+        this.notificationsService.sendTelegramToUsers(
+          adminIds,
+          'ISSUE_CREATED',
+          {
+            schoolName: data.schoolName,
+            eventName: data.eventName,
+            message: data.message,
+            deadline: data.deadline,
+            assigneeName: data.assignedUserName,
+          },
+        );
+      })
+      .catch(() => {});
 
     return issue;
   }

@@ -206,13 +206,20 @@ export class ReportsService {
     }
 
     // Telegram OWNER + SUPERADMIN
-    this.notificationsService.getAdminIds().then((adminIds) => {
-      this.notificationsService.sendTelegramToUsers(adminIds, 'REPORT_SUBMITTED', {
-        schoolName,
-        eventDate: report.event.date,
-        project: report.event.project,
-      });
-    }).catch(() => {});
+    this.notificationsService
+      .getAdminIds()
+      .then((adminIds) => {
+        this.notificationsService.sendTelegramToUsers(
+          adminIds,
+          'REPORT_SUBMITTED',
+          {
+            schoolName,
+            eventDate: report.event.date,
+            project: report.event.project,
+          },
+        );
+      })
+      .catch(() => {});
 
     const notifyUserId =
       report.event.responsibleId || report.event.city.managerId;
@@ -349,14 +356,12 @@ export class ReportsService {
     // Telegram міському менеджеру
     const cityManagerId = report.event.city.managerId;
     if (cityManagerId) {
-      this.notificationsService.sendTelegramNotification(
-        cityManagerId,
-        'REPORT_APPROVED',
-        {
+      this.notificationsService
+        .sendTelegramNotification(cityManagerId, 'REPORT_APPROVED', {
           schoolName: report.event.school?.name,
           eventDate: report.event.date,
-        },
-      ).catch(() => {});
+        })
+        .catch(() => {});
     }
 
     return approved;
@@ -468,7 +473,11 @@ export class ReportsService {
 
     const managerId = report.event.city.managerId;
     if (managerId) {
-      this.notificationsService.sendTelegramNotification(managerId, type, payload);
+      this.notificationsService.sendTelegramNotification(
+        managerId,
+        type,
+        payload,
+      );
     }
   }
 

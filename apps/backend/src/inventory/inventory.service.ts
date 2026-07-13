@@ -5,12 +5,18 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class InventoryService {
   private readonly logger = new Logger(InventoryService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly telegramService: TelegramService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async create(dto: {
     name: string;
@@ -24,7 +30,7 @@ export class InventoryService {
     cityId?: string;
     schoolId?: string;
   }) {
-    return this.prisma.inventoryItem.create({
+    const item = await this.prisma.inventoryItem.create({
       data: {
         name: dto.name,
         sku: dto.sku,
@@ -39,6 +45,9 @@ export class InventoryService {
       },
       include: { city: true, school: true },
     });
+
+    this.checkLowStockAndNotify(item).catch(() => {});
+    return item;
   }
 
   async findAll(filters?: {
@@ -103,11 +112,14 @@ export class InventoryService {
     const item = await this.prisma.inventoryItem.findUnique({ where: { id } });
     if (!item) throw new NotFoundException('Товар не знайдено');
 
-    return this.prisma.inventoryItem.update({
+    const updated = await this.prisma.inventoryItem.update({
       where: { id },
       data: dto,
       include: { city: true, school: true },
     });
+
+    this.checkLowStockAndNotify(updated).catch(() => {});
+    return updated;
   }
 
   async delete(id: string) {
@@ -132,9 +144,51 @@ export class InventoryService {
     if (quantity <= 0)
       throw new BadRequestException('Кількість має бути більше 0');
 
-    return this.prisma.inventoryItem.update({
+    const updated = await this.prisma.inventoryItem.update({
       where: { id },
       data: { currentStock: { increment: quantity } },
+      include: { city: true, school: true },
     });
+
+    this.checkLowStockAndNotify(updated).catch(() => {});
+    return updated;
+  }
+
+  private async checkLowStockAndNotify(item: {
+    id: string;
+    name: string;
+    currentStock: number;
+    minStock: number;
+    unit: string | null;
+    cityId: string | null;
+    city: { name: string } | null;
+  }) {
+    if (item.currentStock > item.minStock) return;
+
+    const managerIds = await this.findManagerIdsForCity(item.cityId);
+    if (managerIds.length === 0) return;
+
+    for (const managerId of managerIds) {
+      this.notificationsService
+        .sendTelegramNotification(managerId, 'LOW_STOCK', {
+          itemName: item.name,
+          currentStock: item.currentStock,
+          minStock: item.minStock,
+          unit: item.unit ?? 'шт',
+          cityName: item.city?.name,
+        })
+        .catch(() => {});
+    }
+  }
+
+  private async findManagerIdsForCity(
+    cityId: string | null,
+  ): Promise<string[]> {
+    if (!cityId) return [];
+    const city = await this.prisma.city.findUnique({
+      where: { id: cityId },
+      select: { managerId: true },
+    });
+    return city?.managerId ? [city.managerId] : [];
   }
 }
