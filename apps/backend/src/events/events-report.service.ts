@@ -202,16 +202,17 @@ export class EventsReportService {
       where: { id: eventId },
       include: {
         school: { select: { name: true } },
-        city: {
-          include: {
-            manager: { select: { telegramChatId: true, telegramId: true } },
-          },
-        },
+        city: true,
       },
     });
 
     if (eventWithCity) {
-      const manager = eventWithCity.city?.manager;
+      const manager = eventWithCity.cityId
+        ? await this.prisma.user.findFirst({
+            where: { cityId: eventWithCity.cityId, role: 'MANAGER' },
+            select: { id: true, telegramChatId: true, telegramId: true },
+          })
+        : null;
       const chatId =
         manager?.telegramChatId ||
         (manager?.telegramId && /^\d+$/.test(manager.telegramId)
@@ -235,7 +236,7 @@ export class EventsReportService {
         );
       }
 
-      const notifyUserId = event.responsibleId || eventWithCity.city?.managerId;
+      const notifyUserId = event.responsibleId || manager?.id;
       if (notifyUserId) {
         this.notificationsService
           .create(notifyUserId, 'REPORT_SUBMITTED', {

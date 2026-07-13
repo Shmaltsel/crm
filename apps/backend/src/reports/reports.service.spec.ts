@@ -24,7 +24,10 @@ function buildPrisma() {
       update: jest.fn().mockResolvedValue({}),
     },
     event: { update: jest.fn().mockResolvedValue({}) },
-    user: { update: jest.fn().mockResolvedValue({}) },
+    user: {
+      update: jest.fn().mockResolvedValue({}),
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
   };
 
   const prisma: any = {

@@ -171,11 +171,7 @@ export class ReportsService {
           include: {
             crew: true,
             school: { select: { name: true } },
-            city: {
-              include: {
-                manager: { select: { telegramChatId: true, telegramId: true } },
-              },
-            },
+            city: true,
           },
         },
       },
@@ -189,7 +185,12 @@ export class ReportsService {
       data: { status: 'SUBMITTED', submittedAt: new Date() },
     });
 
-    const manager = report.event.city.manager;
+    const manager = report.event.cityId
+      ? await this.prisma.user.findFirst({
+          where: { cityId: report.event.cityId, role: 'MANAGER' },
+          select: { id: true, telegramChatId: true, telegramId: true },
+        })
+      : null;
     const schoolName = report.event.school?.name || 'Невідома школа';
     const chatId =
       manager?.telegramChatId ||
@@ -207,6 +208,10 @@ export class ReportsService {
             `Telegram submit → manager failed: ${e?.message ?? e}`,
           ),
         );
+    } else {
+      this.logger.warn(
+        `submit: city manager has no Telegram chatId (cityId=${report.event.cityId ?? 'null'})`,
+      );
     }
 
     // Telegram OWNER + SUPERADMIN
@@ -225,8 +230,7 @@ export class ReportsService {
       })
       .catch(() => {});
 
-    const notifyUserId =
-      report.event.responsibleId || report.event.city.managerId;
+    const notifyUserId = report.event.responsibleId || manager?.id;
     if (notifyUserId) {
       this.notificationsService
         .create(notifyUserId, 'REPORT_SUBMITTED', {
@@ -330,8 +334,14 @@ export class ReportsService {
     this.cacheVersion.bumpVersion('finance').catch(() => {});
     this.cacheVersion.bumpVersion('dashboard').catch(() => {});
 
-    const notifyUserId =
-      report.event.responsibleId || report.event.city.managerId;
+    const cityManager = report.event.cityId
+      ? await this.prisma.user.findFirst({
+          where: { cityId: report.event.cityId, role: 'MANAGER' },
+          select: { id: true },
+        })
+      : null;
+
+    const notifyUserId = report.event.responsibleId || cityManager?.id;
     if (notifyUserId) {
       this.notificationsService
         .create(notifyUserId, 'REPORT_APPROVED', {
@@ -358,10 +368,9 @@ export class ReportsService {
     }
 
     // Telegram міському менеджеру
-    const cityManagerId = report.event.city.managerId;
-    if (cityManagerId) {
+    if (cityManager?.id) {
       this.notificationsService
-        .sendTelegramNotification(cityManagerId, 'REPORT_APPROVED', {
+        .sendTelegramNotification(cityManager.id, 'REPORT_APPROVED', {
           schoolName: report.event.school?.name,
           eventDate: report.event.date,
         })
@@ -387,7 +396,6 @@ export class ReportsService {
           include: {
             crew: true,
             school: { select: { name: true } },
-            city: { select: { managerId: true } },
           },
         },
       },
@@ -407,7 +415,9 @@ export class ReportsService {
     ]);
 
     // Telegram crew + менеджеру
-    this.notifyRevisionOrReject(report, dto.comment, 'REPORT_REVISION');
+    this.notifyRevisionOrReject(report, dto.comment, 'REPORT_REVISION').catch(
+      (e) => this.logger.warn(`notifyRevisionOrReject failed: ${e?.message ?? e}`),
+    );
 
     return result;
   }
@@ -428,7 +438,6 @@ export class ReportsService {
           include: {
             crew: true,
             school: { select: { name: true } },
-            city: { select: { managerId: true } },
           },
         },
       },
@@ -448,17 +457,19 @@ export class ReportsService {
     ]);
 
     // Telegram crew + менеджеру
-    this.notifyRevisionOrReject(report, dto.comment, 'REPORT_REVISION');
+    this.notifyRevisionOrReject(report, dto.comment, 'REPORT_REVISION').catch(
+      (e) => this.logger.warn(`notifyRevisionOrReject failed: ${e?.message ?? e}`),
+    );
 
     return result;
   }
 
-  private notifyRevisionOrReject(
+  private async notifyRevisionOrReject(
     report: {
       event: {
+        cityId: string;
         crew: { hostId: string | null; driverId: string | null } | null;
         school: { name: string } | null;
-        city: { managerId: string | null };
       };
     },
     reason: string | null,
@@ -475,10 +486,13 @@ export class ReportsService {
       this.notificationsService.sendTelegramToUsers(crewIds, type, payload);
     }
 
-    const managerId = report.event.city.managerId;
-    if (managerId) {
+    const manager = await this.prisma.user.findFirst({
+      where: { cityId: report.event.cityId, role: 'MANAGER' },
+      select: { id: true },
+    });
+    if (manager?.id) {
       this.notificationsService.sendTelegramNotification(
-        managerId,
+        manager.id,
         type,
         payload,
       );

@@ -172,6 +172,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         }),
       ]);
       clearTimeout(timeoutId);
+      this.logger.log(`Повідомлення надіслано ${chatId}`);
     } catch (e: any) {
       clearTimeout(timeoutId);
       if (this.isNetworkError(e) && attempt < SEND_MAX_RETRIES) {
@@ -189,7 +190,12 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   }
 
   async sendMessage(chatId: string, text: string): Promise<void> {
-    if (!this.bot) return;
+    if (!this.bot) {
+      this.logger.warn(
+        `sendMessage(${chatId}) пропущено — бот не ініціалізований на цьому інстансі (не лідер або TELEGRAM_BOT_TOKEN не задано)`,
+      );
+      return;
+    }
     await this.sendWithRetry(chatId, text);
   }
 
