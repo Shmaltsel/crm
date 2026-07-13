@@ -224,7 +224,11 @@ export class EventsReportService {
             chatId,
             `🚨 Новий звіт потребує затвердження: ${schoolName}`,
           )
-          .catch(() => {});
+          .catch((e) =>
+            this.logger.warn(
+              `Telegram submitReport → manager failed: ${e?.message ?? e}`,
+            ),
+          );
       }
 
       const notifyUserId = event.responsibleId || eventWithCity.city?.managerId;
@@ -241,6 +245,10 @@ export class EventsReportService {
       this.notificationsService
         .getAdminIds()
         .then((adminIds) => {
+          if (adminIds.length === 0) {
+            this.logger.warn('submitReport: no OWNER/SUPERADMIN found for Telegram');
+            return;
+          }
           this.notificationsService.sendTelegramToUsers(
             adminIds,
             'REPORT_SUBMITTED',
@@ -251,7 +259,11 @@ export class EventsReportService {
             },
           );
         })
-        .catch(() => {});
+        .catch((e) =>
+          this.logger.warn(
+            `submitReport → admin Telegram failed: ${e?.message ?? e}`,
+          ),
+        );
     }
 
     return this.serializeEvent(event);

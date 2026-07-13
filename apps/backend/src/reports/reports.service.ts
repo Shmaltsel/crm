@@ -202,7 +202,11 @@ export class ReportsService {
           chatId,
           `🚨 Новий звіт потребує затвердження: ${schoolName}`,
         )
-        .catch(() => {});
+        .catch((e) =>
+          this.logger.warn(
+            `Telegram submit → manager failed: ${e?.message ?? e}`,
+          ),
+        );
     }
 
     // Telegram OWNER + SUPERADMIN
