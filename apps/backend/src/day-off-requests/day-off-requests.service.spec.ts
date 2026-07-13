@@ -34,6 +34,9 @@ const mockTelegram = {
 
 const mockNotifications = {
   create: jest.fn().mockResolvedValue(undefined),
+  getAdminIds: jest.fn().mockResolvedValue([]),
+  sendTelegramToUsers: jest.fn().mockResolvedValue(undefined),
+  sendTelegramNotification: jest.fn().mockResolvedValue(undefined),
 };
 
 const hostUser: JwtUser = {

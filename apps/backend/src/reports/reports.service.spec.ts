@@ -54,7 +54,12 @@ describe('ReportsService', () => {
     mockTx = built.mockTx;
     service = new ReportsService(
       prisma,
-      { create: jest.fn() } as unknown as NotificationsService,
+      {
+        create: jest.fn(),
+        sendTelegramNotification: jest.fn().mockResolvedValue(undefined),
+        sendTelegramToUsers: jest.fn().mockResolvedValue(undefined),
+        getAdminIds: jest.fn().mockResolvedValue([]),
+      } as unknown as NotificationsService,
       { sendMessage: jest.fn() } as unknown as TelegramService,
       { bumpVersion: jest.fn().mockResolvedValue(undefined) } as any,
       { assertCityManager: jest.fn().mockResolvedValue(undefined) } as any,
@@ -187,11 +192,17 @@ describe('ReportsService', () => {
   });
 
   describe('reject / requestRevision', () => {
+    const eventWithSchoolAndCity = {
+      crew: true,
+      school: { name: 'Тестова школа' },
+      city: { managerId: 'mgr-1' },
+    };
+
     it('reject переводить PENDING SalaryRecord у CANCELLED', async () => {
       mockTx.eventReport.findUnique.mockResolvedValueOnce({
         status: 'SUBMITTED',
         eventId: 'ev-1',
-        event: { crew: true },
+        event: eventWithSchoolAndCity,
       });
 
       await service.reject('r-1', { comment: 'причина' }, mockUser);
@@ -206,7 +217,7 @@ describe('ReportsService', () => {
       mockTx.eventReport.findUnique.mockResolvedValueOnce({
         status: 'SUBMITTED',
         eventId: 'ev-1',
-        event: { crew: true },
+        event: eventWithSchoolAndCity,
       });
 
       await service.requestRevision(

@@ -190,13 +190,13 @@ export class ReportsService {
     });
 
     const manager = report.event.city.manager;
+    const schoolName = report.event.school?.name || 'Невідома школа';
     const chatId =
       manager?.telegramChatId ||
       (manager?.telegramId && /^\d+$/.test(manager.telegramId)
         ? manager.telegramId
         : null);
     if (chatId) {
-      const schoolName = report.event.school?.name || 'Невідома школа';
       this.telegramService
         .sendMessage(
           chatId,
@@ -204,6 +204,15 @@ export class ReportsService {
         )
         .catch(() => {});
     }
+
+    // Telegram OWNER + SUPERADMIN
+    this.notificationsService.getAdminIds().then((adminIds) => {
+      this.notificationsService.sendTelegramToUsers(adminIds, 'REPORT_SUBMITTED', {
+        schoolName,
+        eventDate: report.event.date,
+        project: report.event.project,
+      });
+    }).catch(() => {});
 
     const notifyUserId =
       report.event.responsibleId || report.event.city.managerId;
@@ -337,6 +346,19 @@ export class ReportsService {
       this.sendCrewTelegram(crewId, report.event.school?.name ?? 'Подія');
     }
 
+    // Telegram міському менеджеру
+    const cityManagerId = report.event.city.managerId;
+    if (cityManagerId) {
+      this.notificationsService.sendTelegramNotification(
+        cityManagerId,
+        'REPORT_APPROVED',
+        {
+          schoolName: report.event.school?.name,
+          eventDate: report.event.date,
+        },
+      ).catch(() => {});
+    }
+
     return approved;
   }
 
@@ -351,12 +373,20 @@ export class ReportsService {
 
     const report = await this.prisma.eventReport.findUnique({
       where: { id },
-      include: { event: { include: { crew: true } } },
+      include: {
+        event: {
+          include: {
+            crew: true,
+            school: { select: { name: true } },
+            city: { select: { managerId: true } },
+          },
+        },
+      },
     });
     if (!report) throw new NotFoundException('report.notFound');
     this.assertTransition(report.status, 'NEEDS_REVISION');
 
-    return this.prisma.$transaction([
+    const result = await this.prisma.$transaction([
       this.prisma.eventReport.update({
         where: { id },
         data: { status: 'NEEDS_REVISION', revisionComment: dto.comment },
@@ -366,6 +396,11 @@ export class ReportsService {
         data: { status: 'CANCELLED' },
       }),
     ]);
+
+    // Telegram crew + менеджеру
+    this.notifyRevisionOrReject(report, dto.comment, 'REPORT_REVISION');
+
+    return result;
   }
 
   async reject(id: string, dto: RevisionDto, user: JwtUser) {
@@ -379,12 +414,20 @@ export class ReportsService {
 
     const report = await this.prisma.eventReport.findUnique({
       where: { id },
-      include: { event: { include: { crew: true } } },
+      include: {
+        event: {
+          include: {
+            crew: true,
+            school: { select: { name: true } },
+            city: { select: { managerId: true } },
+          },
+        },
+      },
     });
     if (!report) throw new NotFoundException('report.notFound');
     this.assertTransition(report.status, 'REJECTED');
 
-    return this.prisma.$transaction([
+    const result = await this.prisma.$transaction([
       this.prisma.eventReport.update({
         where: { id },
         data: { status: 'REJECTED', revisionComment: dto.comment },
@@ -394,6 +437,39 @@ export class ReportsService {
         data: { status: 'CANCELLED' },
       }),
     ]);
+
+    // Telegram crew + менеджеру
+    this.notifyRevisionOrReject(report, dto.comment, 'REPORT_REVISION');
+
+    return result;
+  }
+
+  private notifyRevisionOrReject(
+    report: {
+      event: {
+        crew: { hostId: string | null; driverId: string | null } | null;
+        school: { name: string } | null;
+        city: { managerId: string | null };
+      };
+    },
+    reason: string | null,
+    type: 'REPORT_REVISION',
+  ) {
+    const schoolName = report.event.school?.name || 'Невідома школа';
+    const payload = { schoolName, reason };
+
+    const crewIds = [
+      report.event.crew?.hostId,
+      report.event.crew?.driverId,
+    ].filter(Boolean) as string[];
+    if (crewIds.length > 0) {
+      this.notificationsService.sendTelegramToUsers(crewIds, type, payload);
+    }
+
+    const managerId = report.event.city.managerId;
+    if (managerId) {
+      this.notificationsService.sendTelegramNotification(managerId, type, payload);
+    }
   }
 
   async findByEvent(eventId: string) {

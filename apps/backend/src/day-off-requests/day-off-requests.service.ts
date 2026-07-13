@@ -242,6 +242,15 @@ export class DayOffRequestsService {
         requestId: request.id,
       })
       .catch(() => {});
+
+    // Telegram OWNER + SUPERADMIN
+    this.notificationsService.getAdminIds().then((adminIds) => {
+      this.notificationsService.sendTelegramToUsers(
+        adminIds,
+        'DAY_OFF_REQUEST_CREATED',
+        { staffName: request.user.name, date: dateStr },
+      );
+    }).catch(() => {});
   }
 
   private async notifyStaff(

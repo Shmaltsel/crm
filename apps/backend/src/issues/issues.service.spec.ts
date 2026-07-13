@@ -15,7 +15,11 @@ const mockPrisma = {
 };
 
 const mockTelegram = { sendMessage: jest.fn() };
-const mockNotifications = { create: jest.fn().mockResolvedValue(undefined) };
+const mockNotifications = {
+  create: jest.fn().mockResolvedValue(undefined),
+  getAdminIds: jest.fn().mockResolvedValue([]),
+  sendTelegramToUsers: jest.fn().mockResolvedValue(undefined),
+};
 
 const makeService = () =>
   new IssuesService(
