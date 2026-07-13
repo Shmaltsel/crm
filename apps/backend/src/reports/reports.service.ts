@@ -231,7 +231,10 @@ export class ReportsService {
 
     const report = await this.prisma.eventReport.findUnique({
       where: { id },
-      include: { event: { include: { crew: true, school: true, city: true } } },
+      include: {
+        expenseItems: true,
+        event: { include: { crew: true, school: true, city: true } },
+      },
     });
     if (!report) throw new NotFoundException('report.notFound');
     this.assertTransition(report.status, 'APPROVED');
@@ -256,6 +259,24 @@ export class ReportsService {
       throw new BadRequestException('report.salariesMismatch');
     }
 
+    // Validate total salaries do not exceed available remainder
+    const totalExpenses = report.expenseItems.reduce(
+      (sum, e) => sum + Number(e.amount || 0),
+      0,
+    );
+    const totalSalaries = (dto.salaries ?? []).reduce(
+      (sum, s) => sum + Number(s.amount || 0),
+      0,
+    );
+    const availableRemainder =
+      Number(report.totalSum) - Number(report.schoolSum) - totalExpenses;
+    if (totalSalaries > availableRemainder) {
+      throw new BadRequestException('report.salariesExceedRemainder');
+    }
+
+    // Final remainderSum after salary deductions
+    const newRemainderSum = availableRemainder - totalSalaries;
+
     const approved = await this.prisma.$transaction(async (tx) => {
       const current = await tx.eventReport.findUnique({
         where: { id },
@@ -276,6 +297,7 @@ export class ReportsService {
           status: 'APPROVED',
           approvedAt: new Date(),
           approvedBy: user.sub,
+          remainderSum: new Prisma.Decimal(newRemainderSum),
         },
       });
       await tx.event.update({

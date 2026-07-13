@@ -66,6 +66,10 @@ describe('ReportsService', () => {
       mockTx.eventReport.findUnique.mockResolvedValueOnce({
         status: 'SUBMITTED',
         eventId: 'ev-1',
+        totalSum: 5000,
+        schoolSum: 1000,
+        remainderSum: 4000,
+        expenseItems: [],
         event: { cityId: 'city-1', crew: true, school: {}, city: {} },
         approvedBy: undefined,
         ...overrides,
@@ -106,7 +110,10 @@ describe('ReportsService', () => {
       expect(mockTx.eventReport.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'r-1' },
-          data: expect.objectContaining({ status: 'APPROVED' }),
+          data: expect.objectContaining({
+            status: 'APPROVED',
+            remainderSum: new Prisma.Decimal(1900),
+          }),
         }),
       );
       expect(mockTx.event.update).toHaveBeenCalledWith(
@@ -133,6 +140,36 @@ describe('ReportsService', () => {
       ).rejects.toBeInstanceOf(BadRequestException);
 
       expect(mockTx.user.update).not.toHaveBeenCalled();
+    });
+
+    it('кидає BadRequest, якщо суми зарплат перевищують залишок', async () => {
+      mockTx.salaryRecord.findMany.mockResolvedValueOnce([{ id: 's1' }]);
+      // totalSum=5000, schoolSum=1000, expenses=0 → available=4000; salary=5000 > 4000
+      setupReport({ expenseItems: [] });
+
+      await expect(
+        service.approve(
+          'r-1',
+          { salaries: [{ id: 's1', amount: 5000 }] },
+          mockUser as any,
+        ),
+      ).rejects.toThrow('report.salariesExceedRemainder');
+    });
+
+    it('кидає BadRequest, якщо суми зарплат перевищують залишок з урахуванням витрат', async () => {
+      mockTx.salaryRecord.findMany.mockResolvedValueOnce([{ id: 's1' }]);
+      // totalSum=5000, schoolSum=1000, expenses=2000 → available=2000; salary=2500 > 2000
+      setupReport({
+        expenseItems: [{ amount: 2000 }],
+      });
+
+      await expect(
+        service.approve(
+          'r-1',
+          { salaries: [{ id: 's1', amount: 2500 }] },
+          mockUser as any,
+        ),
+      ).rejects.toThrow('report.salariesExceedRemainder');
     });
 
     it('допускає порожній salaries, якщо PENDING-записів немає', async () => {

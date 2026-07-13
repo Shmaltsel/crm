@@ -152,6 +152,13 @@ export default function ReportsReviewPage() {
               (s: number, e: ExpenseItem) => s + Number(e.amount) || 0,
               0,
             );
+            const totalSalaryDrafts = (r.salaryRecords ?? []).reduce(
+              (sum: number, s: SalaryRecord) =>
+                sum + (salaryDrafts[s.id] ?? (Number(s.amount) || 0)),
+              0,
+            );
+            const liveRemainder =
+              Number(r.totalSum) - Number(r.schoolSum) - totalExpenses - totalSalaryDrafts;
 
             const contactPerson =
               (ev?.contactPerson as string) || (school.director as string) || null;
@@ -268,10 +275,17 @@ export default function ReportsReviewPage() {
                             <span className="font-semibold text-content-primary">
                               Чистий прибуток:
                             </span>
-                            <span className="font-bold text-success-600">
-                              {fmt(r.remainderSum)} грн
+                            <span
+                              className={`font-bold ${liveRemainder >= 0 ? "text-success-600" : "text-danger-600"}`}
+                            >
+                              {fmt(liveRemainder)} грн
                             </span>
                           </div>
+                          {liveRemainder < 0 && (
+                            <p className="text-xs text-danger-600 mt-1">
+                              Зарплати перевищують доступний залишок
+                            </p>
+                          )}
                         </div>
                         {(r.salaryRecords ?? []).length > 0 && (
                           <div className="mt-3 pt-3 border-t border-border">
@@ -323,6 +337,7 @@ export default function ReportsReviewPage() {
                         onClick={() => handleApprove(r.id, r.salaryRecords)}
                         disabled={
                           approveMutation.isPending ||
+                          liveRemainder < 0 ||
                           (r.salaryRecords ?? []).some((s: SalaryRecord) => {
                             const amt = salaryDrafts[s.id] ?? (Number(s.amount) || 0);
                             return amt <= 0 || amt > 9999999;

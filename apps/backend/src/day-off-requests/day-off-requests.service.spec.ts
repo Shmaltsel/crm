@@ -105,7 +105,12 @@ describe('DayOffRequestsService', () => {
         date: new Date('2026-07-15'),
         reason: null,
         status: 'PENDING',
-        user: { id: 'host-1', name: 'Host One', role: 'HOST', cityId: 'city-1' },
+        user: {
+          id: 'host-1',
+          name: 'Host One',
+          role: 'HOST',
+          cityId: 'city-1',
+        },
       });
 
       const result = await service.create({ date: '2026-07-15' }, hostUser);
@@ -134,7 +139,12 @@ describe('DayOffRequestsService', () => {
         date: new Date('2026-07-15'),
         reason: 'Відпочинок',
         status: 'PENDING',
-        user: { id: 'host-2', name: 'Host Two', role: 'HOST', cityId: 'city-1' },
+        user: {
+          id: 'host-2',
+          name: 'Host Two',
+          role: 'HOST',
+          cityId: 'city-1',
+        },
       });
 
       const result = await service.create(
@@ -170,7 +180,10 @@ describe('DayOffRequestsService', () => {
       });
 
       await expect(
-        service.create({ date: '2026-07-15', userId: 'host-other' }, managerUser),
+        service.create(
+          { date: '2026-07-15', userId: 'host-other' },
+          managerUser,
+        ),
       ).rejects.toBeInstanceOf(AppException);
     });
 
@@ -182,7 +195,10 @@ describe('DayOffRequestsService', () => {
       });
 
       await expect(
-        service.create({ date: '2026-07-15', userId: 'manager-2' }, superAdminUser),
+        service.create(
+          { date: '2026-07-15', userId: 'manager-2' },
+          superAdminUser,
+        ),
       ).rejects.toMatchObject({
         messageKey: 'INVALID_STAFF_USER',
       });
@@ -265,7 +281,12 @@ describe('DayOffRequestsService', () => {
     it('SUPERADMIN може фільтрувати за будь-яким cityId', async () => {
       mockPrisma.dayOffRequest.findMany.mockResolvedValue([]);
 
-      await service.findAll('2026-07-01', '2026-07-31', 'city-2', superAdminUser);
+      await service.findAll(
+        '2026-07-01',
+        '2026-07-31',
+        'city-2',
+        superAdminUser,
+      );
 
       expect(mockPrisma.dayOffRequest.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -284,7 +305,12 @@ describe('DayOffRequestsService', () => {
         userId: 'host-1',
         date: new Date('2026-07-15'),
         status: DayOffRequestStatus.PENDING,
-        user: { id: 'host-1', name: 'Host One', role: 'HOST', cityId: 'city-1' },
+        user: {
+          id: 'host-1',
+          name: 'Host One',
+          role: 'HOST',
+          cityId: 'city-1',
+        },
       });
       mockPrisma.dayOff.upsert.mockResolvedValue({ id: 'dayoff-1' });
       mockPrisma.dayOffRequest.update.mockResolvedValue({
@@ -292,7 +318,12 @@ describe('DayOffRequestsService', () => {
         status: DayOffRequestStatus.APPROVED,
         date: new Date('2026-07-15'),
         managerNote: null,
-        user: { id: 'host-1', name: 'Host One', role: 'HOST', cityId: 'city-1' },
+        user: {
+          id: 'host-1',
+          name: 'Host One',
+          role: 'HOST',
+          cityId: 'city-1',
+        },
       });
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 'host-1',
@@ -337,12 +368,12 @@ describe('DayOffRequestsService', () => {
         status: DayOffRequestStatus.APPROVED,
       });
 
-      await expect(
-        service.approve('req-1', 'manager-1'),
-      ).rejects.toMatchObject({
-        messageKey: 'DAY_OFF_REQUEST_ALREADY_REVIEWED',
-        status: HttpStatus.CONFLICT,
-      });
+      await expect(service.approve('req-1', 'manager-1')).rejects.toMatchObject(
+        {
+          messageKey: 'DAY_OFF_REQUEST_ALREADY_REVIEWED',
+          status: HttpStatus.CONFLICT,
+        },
+      );
     });
   });
 
@@ -353,14 +384,24 @@ describe('DayOffRequestsService', () => {
         userId: 'host-1',
         date: new Date('2026-07-15'),
         status: DayOffRequestStatus.PENDING,
-        user: { id: 'host-1', name: 'Host One', role: 'HOST', cityId: 'city-1' },
+        user: {
+          id: 'host-1',
+          name: 'Host One',
+          role: 'HOST',
+          cityId: 'city-1',
+        },
       });
       mockPrisma.dayOffRequest.update.mockResolvedValue({
         id: 'req-1',
         status: DayOffRequestStatus.REJECTED,
         date: new Date('2026-07-15'),
         managerNote: 'Занадто багато вихідних',
-        user: { id: 'host-1', name: 'Host One', role: 'HOST', cityId: 'city-1' },
+        user: {
+          id: 'host-1',
+          name: 'Host One',
+          role: 'HOST',
+          cityId: 'city-1',
+        },
       });
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 'host-1',
@@ -369,7 +410,11 @@ describe('DayOffRequestsService', () => {
         name: 'Host One',
       });
 
-      const result = await service.reject('req-1', 'manager-1', 'Занадто багато вихідних');
+      const result = await service.reject(
+        'req-1',
+        'manager-1',
+        'Занадто багато вихідних',
+      );
 
       expect(mockPrisma.dayOffRequest.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -403,9 +448,7 @@ describe('DayOffRequestsService', () => {
         status: DayOffRequestStatus.APPROVED,
       });
 
-      await expect(
-        service.reject('req-1', 'manager-1'),
-      ).rejects.toMatchObject({
+      await expect(service.reject('req-1', 'manager-1')).rejects.toMatchObject({
         messageKey: 'DAY_OFF_REQUEST_ALREADY_REVIEWED',
         status: HttpStatus.CONFLICT,
       });

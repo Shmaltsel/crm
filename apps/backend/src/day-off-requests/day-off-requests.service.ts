@@ -89,8 +89,7 @@ export class DayOffRequestsService {
   }
 
   async findAll(from?: string, to?: string, cityId?: string, user?: JwtUser) {
-    const effectiveCityId =
-      user?.role === 'MANAGER' ? user.cityId : cityId;
+    const effectiveCityId = user?.role === 'MANAGER' ? user.cityId : cityId;
 
     return this.prisma.dayOffRequest.findMany({
       where: {
@@ -198,14 +197,12 @@ export class DayOffRequestsService {
     return updated;
   }
 
-  private async notifyManager(
-    request: {
-      id: string;
-      user: { id: string; name: string; role: string; cityId: string | null };
-      date: Date;
-      reason: string | null;
-    },
-  ) {
+  private async notifyManager(request: {
+    id: string;
+    user: { id: string; name: string; role: string; cityId: string | null };
+    date: Date;
+    reason: string | null;
+  }) {
     if (!request.user.cityId) return;
 
     const manager = await this.prisma.user.findFirst({
@@ -235,9 +232,7 @@ export class DayOffRequestsService {
         `📅 <b>Дата:</b> ${dateStr}` +
         reasonLine;
 
-      this.telegramService
-        .sendMessage(managerChatId, text)
-        .catch(() => {});
+      this.telegramService.sendMessage(managerChatId, text).catch(() => {});
     }
 
     this.notificationsService
