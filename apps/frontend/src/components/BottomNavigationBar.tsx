@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { AnimatePresence } from "framer-motion";
 import { MoreHorizontal } from "lucide-react";
 import { DUR } from "../lib/motion";
 import { useAuth } from "../context/AuthContext";
@@ -106,9 +105,7 @@ export default function BottomNavigationBar() {
         </button>
       </nav>
 
-      <AnimatePresence>
-        {sheetOpen && <MoreSheet onClose={() => setSheetOpen(false)} />}
-      </AnimatePresence>
+      <MoreSheet visible={sheetOpen} onClose={() => setSheetOpen(false)} />
     </>
   );
 }

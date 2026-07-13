@@ -247,3 +247,65 @@
     transform: translateY(-1px);
   }
 }
+
+/* ─── MoreSheet (CSS-only animation) ─── */
+
+.sheet-backdrop {
+  transition: opacity 0.3s ease-out, display 0.3s allow-discrete;
+}
+.sheet-backdrop[hidden] {
+  opacity: 0;
+  pointer-events: none;
+}
+@starting-style {
+  .sheet-backdrop:not([hidden]) {
+    opacity: 0;
+  }
+}
+
+.sheet-panel {
+  transform: translateY(0);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              display 0.3s cubic-bezier(0.16, 1, 0.3, 1) allow-discrete;
+}
+.sheet-panel[hidden] {
+  transform: translateY(100%);
+  pointer-events: none;
+}
+@starting-style {
+  .sheet-panel:not([hidden]) {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes sheetHandleIn {
+  0%   { transform: scaleX(0.6); opacity: 0.4; }
+  50%  { transform: scaleX(1); opacity: 1; }
+  75%  { transform: scaleX(0.85); opacity: 0.7; }
+  100% { transform: scaleX(1); opacity: 1; }
+}
+.sheet-handle {
+  animation: sheetHandleIn 0.6s cubic-bezier(0.19, 1, 0.22, 1) both;
+}
+
+@keyframes sheetItemIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.sheet-item {
+  animation: sheetItemIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes sheetLineIn {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.sheet-line {
+  animation: sheetLineIn 0.5s cubic-bezier(0.19, 1, 0.22, 1) 0.4s both;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sheet-nav-link:hover {
+    transform: scale(1.015) translateY(-1px);
+  }
+}
