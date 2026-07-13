@@ -1,18 +1,19 @@
 import { EventsSchedulerService } from './events-scheduler.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
 const mockPrisma = {
   event: { findMany: jest.fn() },
 };
-const mockTelegram = { sendMessage: jest.fn() };
-const mockNotifications = { create: jest.fn().mockResolvedValue(undefined) };
+const mockNotifications = {
+  create: jest.fn().mockResolvedValue(undefined),
+  sendTelegramNotification: jest.fn().mockResolvedValue(undefined),
+  sendTelegramToUsers: jest.fn().mockResolvedValue(undefined),
+};
 
 const makeService = () =>
   new EventsSchedulerService(
     mockPrisma as unknown as PrismaService,
-    mockTelegram as unknown as TelegramService,
     mockNotifications as unknown as NotificationsService,
   );
 
@@ -33,8 +34,12 @@ describe('EventsSchedulerService', () => {
         school: { name: 'Школа №1' },
         city: { name: 'Львів' },
         crew: {
-          host: { telegramChatId: '111', telegramId: null },
-          driver: { telegramChatId: null, telegramId: '222' },
+          host: { id: 'user-host', telegramChatId: '111', telegramId: null },
+          driver: {
+            id: 'user-driver',
+            telegramChatId: null,
+            telegramId: '222',
+          },
         },
       };
       mockPrisma.event.findMany.mockResolvedValueOnce([mockEvent]);
@@ -42,14 +47,18 @@ describe('EventsSchedulerService', () => {
       const service = makeService();
       await service.checkEventsForTomorrow();
 
-      expect(mockTelegram.sendMessage).toHaveBeenCalledTimes(2);
-      expect(mockTelegram.sendMessage).toHaveBeenCalledWith(
-        '111',
-        expect.stringContaining('ведучий'),
+      expect(mockNotifications.sendTelegramNotification).toHaveBeenCalledTimes(
+        2,
       );
-      expect(mockTelegram.sendMessage).toHaveBeenCalledWith(
-        '222',
-        expect.stringContaining('водій'),
+      expect(mockNotifications.sendTelegramNotification).toHaveBeenCalledWith(
+        'user-host',
+        'EVENT_REMINDER',
+        expect.objectContaining({ role: 'ведучий' }),
+      );
+      expect(mockNotifications.sendTelegramNotification).toHaveBeenCalledWith(
+        'user-driver',
+        'EVENT_REMINDER',
+        expect.objectContaining({ role: 'водій' }),
       );
     });
 
@@ -61,7 +70,7 @@ describe('EventsSchedulerService', () => {
       const service = makeService();
       await service.checkEventsForTomorrow();
 
-      expect(mockTelegram.sendMessage).not.toHaveBeenCalled();
+      expect(mockNotifications.sendTelegramNotification).not.toHaveBeenCalled();
     });
 
     it('не надсилає якщо подій на завтра немає', async () => {
@@ -70,7 +79,7 @@ describe('EventsSchedulerService', () => {
       const service = makeService();
       await service.checkEventsForTomorrow();
 
-      expect(mockTelegram.sendMessage).not.toHaveBeenCalled();
+      expect(mockNotifications.sendTelegramNotification).not.toHaveBeenCalled();
     });
 
     it('запитує події з датою у межах завтра (gte/lte)', async () => {
@@ -84,13 +93,10 @@ describe('EventsSchedulerService', () => {
       const call = mockPrisma.event.findMany.mock.calls[0][0];
       const { gte, lte } = call.where.date;
 
-      // gte — початок завтра (00:00)
       expect(gte.getHours()).toBe(0);
       expect(gte.getMinutes()).toBe(0);
-      // lte — кінець завтра (23:59)
       expect(lte.getHours()).toBe(23);
       expect(lte.getMinutes()).toBe(59);
-      // обидва — завтра
       const tomorrowDate = new Date(before);
       tomorrowDate.setDate(tomorrowDate.getDate() + 1);
       expect(gte.getDate()).toBe(tomorrowDate.getDate());
@@ -105,7 +111,7 @@ describe('EventsSchedulerService', () => {
       expect(call.where.status).toEqual({ not: 'RE_SALE' });
     });
 
-    it('не кидає помилку якщо sendMessage падає', async () => {
+    it('не кидає помилку якщо sendTelegramNotification падає', async () => {
       const event = {
         id: 'ev-1',
         project: 'Тест',
@@ -113,12 +119,12 @@ describe('EventsSchedulerService', () => {
         school: { name: 'Школа' },
         city: { name: 'Місто' },
         crew: {
-          host: { telegramChatId: '111', telegramId: null },
+          host: { id: 'user-1', telegramChatId: '111', telegramId: null },
           driver: null,
         },
       };
       mockPrisma.event.findMany.mockResolvedValueOnce([event]);
-      mockTelegram.sendMessage.mockRejectedValueOnce(
+      mockNotifications.sendTelegramNotification.mockRejectedValueOnce(
         new Error('Telegram API error'),
       );
 
@@ -128,7 +134,7 @@ describe('EventsSchedulerService', () => {
   });
 
   describe('sendReminder (via checkEventsForTomorrow)', () => {
-    it('не надсилає якщо у user немає telegramChatId і telegramId', async () => {
+    it('надсилає нагадування навіть якщо у user немає telegramChatId', async () => {
       const event = {
         id: 'ev-1',
         project: 'Test',
@@ -136,7 +142,7 @@ describe('EventsSchedulerService', () => {
         city: { name: 'Місто' },
         contactPhone: null,
         crew: {
-          host: { telegramChatId: null, telegramId: null },
+          host: { id: 'user-host', telegramChatId: null, telegramId: null },
           driver: null,
         },
       };
@@ -145,10 +151,14 @@ describe('EventsSchedulerService', () => {
       const service = makeService();
       await service.checkEventsForTomorrow();
 
-      expect(mockTelegram.sendMessage).not.toHaveBeenCalled();
+      expect(mockNotifications.sendTelegramNotification).toHaveBeenCalledWith(
+        'user-host',
+        'EVENT_REMINDER',
+        expect.objectContaining({ role: 'ведучий' }),
+      );
     });
 
-    it('надсилає telegramChatId замість telegramId якщо обидва є', async () => {
+    it('надсилає обом членам екіпажу якщо обидва мають id', async () => {
       const event = {
         id: 'ev-1',
         project: 'Test',
@@ -156,8 +166,16 @@ describe('EventsSchedulerService', () => {
         city: { name: 'Місто' },
         contactPhone: null,
         crew: {
-          host: { telegramChatId: 'chatId-999', telegramId: 'userId-555' },
-          driver: null,
+          host: {
+            id: 'host-1',
+            telegramChatId: 'chatId-999',
+            telegramId: 'userId-555',
+          },
+          driver: {
+            id: 'driver-1',
+            telegramChatId: 'driver-chat',
+            telegramId: null,
+          },
         },
       };
       mockPrisma.event.findMany.mockResolvedValueOnce([event]);
@@ -165,10 +183,13 @@ describe('EventsSchedulerService', () => {
       const service = makeService();
       await service.checkEventsForTomorrow();
 
-      // chatId має пріоритет
-      expect(mockTelegram.sendMessage).toHaveBeenCalledWith(
-        'chatId-999',
-        expect.any(String),
+      expect(mockNotifications.sendTelegramNotification).toHaveBeenCalledTimes(
+        2,
+      );
+      expect(mockNotifications.sendTelegramNotification).toHaveBeenCalledWith(
+        'host-1',
+        'EVENT_REMINDER',
+        expect.objectContaining({ role: 'ведучий' }),
       );
     });
 
@@ -180,7 +201,7 @@ describe('EventsSchedulerService', () => {
         city: { name: 'Тернопіль' },
         contactPhone: '0671234567',
         crew: {
-          host: { telegramChatId: '333', telegramId: null },
+          host: { id: 'user-1', telegramChatId: '333', telegramId: null },
           driver: null,
         },
       };
@@ -189,10 +210,15 @@ describe('EventsSchedulerService', () => {
       const service = makeService();
       await service.checkEventsForTomorrow();
 
-      const message = mockTelegram.sendMessage.mock.calls[0][1] as string;
-      expect(message).toContain('Гімназія №5');
-      expect(message).toContain('Малювайко');
-      expect(message).toContain('0671234567');
+      expect(mockNotifications.sendTelegramNotification).toHaveBeenCalledWith(
+        'user-1',
+        'EVENT_REMINDER',
+        expect.objectContaining({
+          schoolName: 'Гімназія №5',
+          project: 'Малювайко',
+          contactPhone: '0671234567',
+        }),
+      );
     });
   });
 });

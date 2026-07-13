@@ -39,16 +39,16 @@ export class ReportsService {
     private readonly cityAccess: CityAccessService,
   ) {}
 
-  private async sendCrewTelegram(userId: string, schoolName: string) {
+  private async sendCrewTelegram(
+    userId: string,
+    schoolName: string,
+    eventId?: string,
+  ) {
     try {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { telegramChatId: true, name: true },
-      });
-      if (!user?.telegramChatId) return;
-      await this.telegramService.sendMessage(
-        user.telegramChatId,
-        `✅ <b>Звіт затверджено</b>\n\nШкола: ${schoolName}\nОчікуйте виплату.`,
+      await this.notificationsService.sendTelegramNotification(
+        userId,
+        'REPORT_APPROVED_CREW',
+        { schoolName, eventId },
       );
     } catch {
       /* non-critical */
@@ -188,30 +188,24 @@ export class ReportsService {
     const manager = report.event.cityId
       ? await this.prisma.user.findFirst({
           where: { cityId: report.event.cityId, role: 'MANAGER' },
-          select: { id: true, telegramChatId: true, telegramId: true },
+          select: { id: true },
         })
       : null;
     const schoolName = report.event.school?.name || 'Невідома школа';
-    const chatId =
-      manager?.telegramChatId ||
-      (manager?.telegramId && /^\d+$/.test(manager.telegramId)
-        ? manager.telegramId
-        : null);
-    if (chatId) {
-      this.telegramService
-        .sendMessage(
-          chatId,
-          `🚨 Новий звіт потребує затвердження: ${schoolName}`,
-        )
+
+    if (manager?.id) {
+      this.notificationsService
+        .sendTelegramNotification(manager.id, 'REPORT_SUBMITTED', {
+          schoolName,
+          eventDate: report.event.date,
+          project: report.event.project,
+          eventId: report.eventId,
+        })
         .catch((e) =>
           this.logger.warn(
             `Telegram submit → manager failed: ${e?.message ?? e}`,
           ),
         );
-    } else {
-      this.logger.warn(
-        `submit: city manager has no Telegram chatId (cityId=${report.event.cityId ?? 'null'})`,
-      );
     }
 
     // Telegram OWNER + SUPERADMIN
@@ -364,7 +358,11 @@ export class ReportsService {
           title: 'Звіт затверджено — очікуйте виплату',
         })
         .catch(() => {});
-      this.sendCrewTelegram(crewId, report.event.school?.name ?? 'Подія');
+      this.sendCrewTelegram(
+        crewId,
+        report.event.school?.name ?? 'Подія',
+        report.eventId,
+      );
     }
 
     // Telegram міському менеджеру
@@ -416,7 +414,8 @@ export class ReportsService {
 
     // Telegram crew + менеджеру
     this.notifyRevisionOrReject(report, dto.comment, 'REPORT_REVISION').catch(
-      (e) => this.logger.warn(`notifyRevisionOrReject failed: ${e?.message ?? e}`),
+      (e) =>
+        this.logger.warn(`notifyRevisionOrReject failed: ${e?.message ?? e}`),
     );
 
     return result;
@@ -458,7 +457,8 @@ export class ReportsService {
 
     // Telegram crew + менеджеру
     this.notifyRevisionOrReject(report, dto.comment, 'REPORT_REVISION').catch(
-      (e) => this.logger.warn(`notifyRevisionOrReject failed: ${e?.message ?? e}`),
+      (e) =>
+        this.logger.warn(`notifyRevisionOrReject failed: ${e?.message ?? e}`),
     );
 
     return result;

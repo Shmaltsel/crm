@@ -1,6 +1,5 @@
 import { Injectable, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { DayOffRequestsService } from '../day-off-requests/day-off-requests.service';
 import { AppException } from '../common/exceptions/app.exception';
@@ -13,7 +12,6 @@ const MANAGER_ROLES = ['SUPERADMIN', 'MANAGER'];
 export class DaysOffService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly telegramService: TelegramService,
     private readonly notificationsService: NotificationsService,
     private readonly dayOffRequestsService: DayOffRequestsService,
   ) {}
@@ -147,7 +145,6 @@ export class DaysOffService {
   ) {
     if (!cityId) return;
 
-    // Шукаємо менеджера безпосередньо серед користувачів міста
     const manager = await this.prisma.user.findFirst({
       where: {
         cityId: cityId,
@@ -157,26 +154,20 @@ export class DaysOffService {
 
     if (!manager) return;
 
-    const chatId =
-      manager?.telegramChatId ||
-      (manager?.telegramId && /^\d+$/.test(manager.telegramId)
-        ? manager.telegramId
-        : null);
-
-    if (!chatId) return;
-
     const dateStr = new Date(date).toLocaleDateString('uk-UA', {
       day: '2-digit',
       month: 'long',
       year: 'numeric',
     });
 
-    const msg =
-      action === 'created'
-        ? `🌴 <b>Призначено вихідний</b>\n\n👤 <b>Співробітник:</b> ${staffName}\n📅 <b>Дата:</b> ${dateStr}`
-        : `❌ <b>Скасовано вихідний</b>\n\n👤 <b>Співробітник:</b> ${staffName}\n📅 <b>Дата:</b> ${dateStr}`;
-
-    await this.telegramService.sendMessage(chatId, msg);
+    const templateType =
+      action === 'created' ? 'DAY_OFF_ASSIGNED' : 'DAY_OFF_CANCELLED';
+    this.notificationsService
+      .sendTelegramNotification(manager.id, templateType, {
+        staffName,
+        date: dateStr,
+      })
+      .catch(() => {});
 
     this.notificationsService
       .create(

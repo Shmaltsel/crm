@@ -282,73 +282,41 @@ export class EventsService {
     });
     const timeStr = event.time ? `, ${event.time}` : '';
 
-    const buildMessage = (role: 'ведучий' | 'водій') =>
-      `🎯 <b>Вас призначено на подію!</b>\n\n` +
-      `👤 <b>Роль:</b> ${role === 'ведучий' ? '🎙️ Ведучий' : '🚗 Водій'}\n` +
-      `📅 <b>Дата:</b> ${dateStr}${timeStr}\n` +
-      `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
-      `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
-      `🎪 <b>Проєкт:</b> ${event.project}\n` +
-      (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
-      (event.contactPerson
-        ? `👤 <b>Контакт:</b> ${event.contactPerson}\n`
-        : '') +
-      (event.contactPhone ? `📞 <b>Телефон:</b> ${event.contactPhone}\n` : '') +
-      `\n<i>Деталі у CRM: <a href="https://app.svitlo-znan.app">Посилання</a></i>`;
-
-    if (hostId) {
-      const hostChatId = await this.getChatIdForUser(hostId);
-      this.logger.log(`[assignCrew] hostChatId resolved=${hostChatId}`);
-
-      if (hostChatId) {
-        this.telegramService
-          .sendMessage(hostChatId, buildMessage('ведучий'))
-          .catch((e) =>
-            this.logger.warn(`[assignCrew] Telegram send failed: ${e}`),
-          );
-      } else {
-        this.logger.warn(
-          `[assignCrew] Не вдалося надіслати повідомлення ведучому ${hostId}: chatId не знайдено (користувач не натиснув /start?)`,
-        );
-      }
-    }
-
-    if (driverId) {
-      const driverChatId = await this.getChatIdForUser(driverId);
-      this.logger.log(`[assignCrew] driverChatId resolved=${driverChatId}`);
-
-      if (driverChatId) {
-        this.telegramService
-          .sendMessage(driverChatId, buildMessage('водій'))
-          .catch((e) =>
-            this.logger.warn(`[assignCrew] Telegram send failed: ${e}`),
-          );
-      } else {
-        this.logger.warn(
-          `[assignCrew] Не вдалося надіслати повідомлення водію ${driverId}: chatId не знайдено`,
-        );
-      }
-    }
-
-    const notificationPayload = {
+    const crewPayload = {
       eventId: event.id,
-      project: event.project,
+      eventDate: `${dateStr}${timeStr}`,
       schoolName: event.school?.name,
-      date: dateStr,
-      time: event.time,
+      cityName: event.city?.name,
+      project: event.project,
+      address: event.address,
+      contactPerson: event.contactPerson,
+      contactPhone: event.contactPhone,
     };
+
     if (hostId) {
       this.notificationsService
+        .sendTelegramNotification(hostId, 'CREW_ASSIGNED', {
+          ...crewPayload,
+          role: 'ведучий',
+        })
+        .catch(() => {});
+      this.notificationsService
         .create(hostId, 'CREW_ASSIGNED', {
-          ...notificationPayload,
+          ...crewPayload,
           role: 'ведучий',
         })
         .catch(() => {});
     }
     if (driverId) {
       this.notificationsService
+        .sendTelegramNotification(driverId, 'CREW_ASSIGNED', {
+          ...crewPayload,
+          role: 'водій',
+        })
+        .catch(() => {});
+      this.notificationsService
         .create(driverId, 'CREW_ASSIGNED', {
-          ...notificationPayload,
+          ...crewPayload,
           role: 'водій',
         })
         .catch(() => {});
@@ -577,6 +545,7 @@ export class EventsService {
         select: {
           date: true,
           project: true,
+          schoolId: true,
           city: { select: { managerId: true } },
           school: { select: { name: true } },
         },
@@ -592,18 +561,15 @@ export class EventsService {
         })
         .catch(() => {});
 
-      const manager = await this.prisma.user.findUnique({
-        where: { id: managerId },
-        select: { telegramChatId: true },
-      });
-      if (manager?.telegramChatId) {
-        this.telegramService
-          .sendMessage(
-            manager.telegramChatId,
-            `📅 <b>Нова подія</b>\n\nШкола: ${event.school?.name ?? '—'}\nДата: ${dateStr}\nПроєкт: ${event.project ?? '—'}`,
-          )
-          .catch(() => {});
-      }
+      this.notificationsService
+        .sendTelegramNotification(managerId, 'EVENT_CREATED', {
+          eventId,
+          schoolName: event.school?.name,
+          eventDate: event.date,
+          project: event.project,
+          schoolId: event.schoolId,
+        })
+        .catch(() => {});
     } catch {
       /* non-critical */
     }

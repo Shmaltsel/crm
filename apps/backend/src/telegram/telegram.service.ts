@@ -102,7 +102,13 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     if (!username) {
       await this.bot.sendMessage(
         chatId,
-        "⚠️ У вашому профілі Telegram не вказано username. Будь ласка, додайте його в налаштуваннях Telegram, щоб ми могли підв'язати акаунт.",
+        '⚠️ <b>Username не знайдено</b>\n' +
+          '━━━━━━━━━━━━━━━━━━━━\n\n' +
+          'У вашому профілі Telegram не вказано username.\n\n' +
+          'Будь ласка, додайте його в <b>Налаштування → Профіль → Username</b>, ' +
+          'щоб ми могли підключити ваш акаунт до CRM.\n\n' +
+          '<i>Після додавання username натисніть /start ще раз.</i>',
+        { parse_mode: 'HTML' },
       );
       return;
     }
@@ -120,7 +126,16 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       );
       await this.bot.sendMessage(
         chatId,
-        `✅ Вітаємо! Ваш акаунт успішно підключено до <b>Світло Знань CRM</b>.`,
+        `✅ <b>Акаунт успішно підключено!</b>\n` +
+          `━━━━━━━━━━━━━━━━━━━━\n\n` +
+          `Вітаємо у <b>Світло Знань CRM</b>!\n\n` +
+          `🔔 Тепер ви отримуватимете сповіщення про:\n` +
+          `• Призначення на події\n` +
+          `• Затвердження звітів\n` +
+          `• Нарахування зарплати\n` +
+          `• Інші важливі оновлення\n\n` +
+          `━━━━━━━━━━━━━━━━━━━━\n` +
+          `<a href="${CRM_LINK}">🚀 Відкрити CRM</a>`,
         { parse_mode: 'HTML' },
       );
     } else {
@@ -129,7 +144,15 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       );
       await this.bot.sendMessage(
         chatId,
-        `❌ Акаунт не знайдено. Переконайтеся, що в CRM у вашому профілі вказано нікнейм <b>${normalizedUsername}</b> без помилок.`,
+        `❌ <b>Акаунт не знайдено</b>\n` +
+          `━━━━━━━━━━━━━━━━━━━━\n\n` +
+          `Користувача з username <code>@${normalizedUsername}</code> не знайдено в системі.\n\n` +
+          `<b>Що потрібно зробити:</b>\n` +
+          `1. Переконайтеся, що у вашому профілі в CRM вказано username <code>@${normalizedUsername}</code>\n` +
+          `2. Перевірте правильність написання (без помилок)\n` +
+          `3. Зверніться до адміністратора, якщо проблема залишається\n\n` +
+          `━━━━━━━━━━━━━━━━━━━━\n` +
+          `<a href="${CRM_LINK}">🔗 Відкрити CRM</a>`,
         { parse_mode: 'HTML' },
       );
     }
@@ -270,11 +293,13 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     _password: string,
   ): Promise<void> {
     const text =
-      `👋 <b>Вітаємо у Світло Знань CRM!</b>\n\n` +
-      `Ваш акаунт створено.\n\n` +
-      `📧 <b>Логін:</b> <code>${email}</code>\n\n` +
-      `Увійдіть за посиланням: <a href="${CRM_LINK}">${CRM_LINK}</a>\n\n` +
-      `<i>Пароль було надіслано окремо. Змініть його після першого входу.</i>`;
+      `👋 <b>Вітаємо у Світло Знань CRM!</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `Привіт, <b>${name}</b>! Ваш обліковий запис успішно створено.\n\n` +
+      `📧 <b>Ваш логін:</b>\n<code>${email}</code>\n\n` +
+      `🔐 <i>Пароль надіслано окремо. Обов'язково змініть його після першого входу для безпеки.</i>\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${CRM_LINK}">🚀 Увійти до системи</a>`;
 
     await this.sendMessage(chatId, text);
   }

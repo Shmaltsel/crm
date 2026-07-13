@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TelegramService } from '../../telegram/telegram.service';
+import { getTelegramTemplate } from '../../notifications/templates';
 
 const WINDOW_MS = 5 * 60 * 1000;
 const THRESHOLD = 10;
@@ -32,9 +33,8 @@ export class ErrorAlertService {
     const chatId = process.env.ALERT_CHAT_ID;
     if (!chatId) return;
 
-    const text =
-      `🚨 <b>CRM «Світло Знань» — ${count} помилок 5xx за останні 5 хв</b>\n\n` +
-      `Перевірте логи та стан сервісів.`;
+    const template = getTelegramTemplate('ERROR_ALERT_5XX');
+    const text = template ? template({ count }) : '';
 
     try {
       await this.telegram.sendMessage(chatId, text);

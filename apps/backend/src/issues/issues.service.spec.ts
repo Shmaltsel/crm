@@ -1,6 +1,5 @@
 import { IssuesService } from './issues.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
 const mockPrisma = {
@@ -14,17 +13,16 @@ const mockPrisma = {
   user: { findUnique: jest.fn() },
 };
 
-const mockTelegram = { sendMessage: jest.fn() };
 const mockNotifications = {
   create: jest.fn().mockResolvedValue(undefined),
   getAdminIds: jest.fn().mockResolvedValue([]),
   sendTelegramToUsers: jest.fn().mockResolvedValue(undefined),
+  sendTelegramNotification: jest.fn().mockResolvedValue(undefined),
 };
 
 const makeService = () =>
   new IssuesService(
     mockPrisma as unknown as PrismaService,
-    mockTelegram as unknown as TelegramService,
     mockNotifications as unknown as NotificationsService,
   );
 
@@ -74,41 +72,42 @@ describe('IssuesService — create', () => {
     expect(deadline.getFullYear()).toBe(2025);
   });
 
-  it('надсилає Telegram менеджеру міста якщо є chatId', async () => {
+  it('надсилає Telegram менеджеру міста', async () => {
     mockPrisma.city.findUnique.mockResolvedValueOnce({
       id: 'city-1',
-      users: [{ telegramChatId: 'mgr-chat-123', telegramId: null }],
+      users: [{ id: 'mgr-1', name: 'Manager' }],
     });
 
     const service = makeService();
     await service.create(baseData);
 
-    expect(mockTelegram.sendMessage).toHaveBeenCalledWith(
-      'mgr-chat-123',
-      expect.stringContaining('Школа №1'),
+    expect(mockNotifications.sendTelegramNotification).toHaveBeenCalledWith(
+      'mgr-1',
+      'ISSUE_CREATED',
+      expect.objectContaining({ schoolName: 'Школа №1' }),
     );
   });
 
-  it('не надсилає менеджеру якщо у нього немає chatId', async () => {
+  it('не надсилає менеджеру якщо у міста немає менеджерів', async () => {
     mockPrisma.city.findUnique.mockResolvedValueOnce({
       id: 'city-1',
-      users: [{ telegramChatId: null, telegramId: '@handle' }],
+      users: [],
     });
 
     const service = makeService();
     await service.create(baseData);
 
-    expect(mockTelegram.sendMessage).not.toHaveBeenCalled();
+    expect(mockNotifications.sendTelegramNotification).not.toHaveBeenCalledWith(
+      expect.anything(),
+      'ISSUE_CREATED',
+      expect.anything(),
+    );
   });
 
-  it('надсилає відповідальному якщо assignedUserId є і chatId відрізняється', async () => {
+  it('надсилає відповідальному якщо assignedUserId є', async () => {
     mockPrisma.city.findUnique.mockResolvedValueOnce({
       id: 'city-1',
-      users: [{ telegramChatId: 'mgr-111', telegramId: null }],
-    });
-    mockPrisma.user.findUnique.mockResolvedValueOnce({
-      telegramChatId: 'assignee-222',
-      telegramId: null,
+      users: [{ id: 'mgr-1', name: 'Manager' }],
     });
 
     const service = makeService();
@@ -118,22 +117,18 @@ describe('IssuesService — create', () => {
       assignedUserName: 'Василь',
     });
 
-    expect(mockTelegram.sendMessage).toHaveBeenCalledTimes(2);
-    const chatIds = mockTelegram.sendMessage.mock.calls.map(
-      ([chatId]: [string]) => chatId,
+    const calls = mockNotifications.sendTelegramNotification.mock.calls;
+    const assigneeCall = calls.find(
+      ([userId, type]: [string, string]) => userId === 'user-2',
     );
-    expect(chatIds).toContain('mgr-111');
-    expect(chatIds).toContain('assignee-222');
+    expect(assigneeCall).toBeDefined();
+    expect(assigneeCall[1]).toBe('ISSUE_CREATED');
   });
 
   it('не надсилає дублю якщо менеджер і відповідальний — одна людина', async () => {
     mockPrisma.city.findUnique.mockResolvedValueOnce({
       id: 'city-1',
-      users: [{ telegramChatId: 'same-chat', telegramId: null }],
-    });
-    mockPrisma.user.findUnique.mockResolvedValueOnce({
-      telegramChatId: 'same-chat',
-      telegramId: null,
+      users: [{ id: 'user-same', name: 'Один' }],
     });
 
     const service = makeService();
@@ -143,36 +138,40 @@ describe('IssuesService — create', () => {
       assignedUserName: 'Один',
     });
 
-    expect(mockTelegram.sendMessage).toHaveBeenCalledTimes(1);
+    const issueCalls =
+      mockNotifications.sendTelegramNotification.mock.calls.filter(
+        ([, type]: [string, string]) => type === 'ISSUE_CREATED',
+      );
+    expect(issueCalls).toHaveLength(1);
   });
 
-  it('повідомлення містить інформацію про дедлайн якщо він є', async () => {
+  it('включає дедлайн у payload', async () => {
     mockPrisma.city.findUnique.mockResolvedValueOnce({
       id: 'city-1',
-      users: [{ telegramChatId: 'mgr-111', telegramId: null }],
+      users: [{ id: 'mgr-1', name: 'Manager' }],
     });
 
     const service = makeService();
     await service.create({ ...baseData, deadline: '2025-06-30' });
 
-    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
-    expect(msg).toContain('Дедлайн');
+    const call = mockNotifications.sendTelegramNotification.mock.calls[0];
+    expect(call[2]).toMatchObject({ deadline: '2025-06-30' });
   });
 
-  it('включає відповідального у повідомлення', async () => {
+  it('включає відповідального у payload', async () => {
     mockPrisma.city.findUnique.mockResolvedValueOnce({
       id: 'city-1',
-      users: [{ telegramChatId: 'mgr-111', telegramId: null }],
+      users: [{ id: 'mgr-1', name: 'Manager' }],
     });
 
     const service = makeService();
     await service.create({ ...baseData, assignedUserName: 'Марія Шевченко' });
 
-    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
-    expect(msg).toContain('Марія Шевченко');
+    const call = mockNotifications.sendTelegramNotification.mock.calls[0];
+    expect(call[2]).toMatchObject({ assigneeName: 'Марія Шевченко' });
   });
 
-  it('включає учасників екіпажу у повідомлення', async () => {
+  it('включає учасників екіпажу у payload', async () => {
     mockPrisma.event.findUnique.mockResolvedValueOnce({
       id: 'ev-1',
       crew: {
@@ -182,15 +181,15 @@ describe('IssuesService — create', () => {
     });
     mockPrisma.city.findUnique.mockResolvedValueOnce({
       id: 'city-1',
-      users: [{ telegramChatId: 'mgr-111', telegramId: null }],
+      users: [{ id: 'mgr-1', name: 'Manager' }],
     });
 
     const service = makeService();
     await service.create(baseData);
 
-    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
-    expect(msg).toContain('Ведучий Іван');
-    expect(msg).toContain('Водій Петро');
+    const call = mockNotifications.sendTelegramNotification.mock.calls[0];
+    expect(call[2].crew).toContain('Ведучий Іван');
+    expect(call[2].crew).toContain('Водій Петро');
   });
 
   it("formatMember: числовий telegramId → лише ім'я (не @mention)", async () => {
@@ -203,16 +202,15 @@ describe('IssuesService — create', () => {
     });
     mockPrisma.city.findUnique.mockResolvedValueOnce({
       id: 'city-1',
-      users: [{ telegramChatId: 'mgr-1', telegramId: null }],
+      users: [{ id: 'mgr-1', name: 'Manager' }],
     });
 
     const service = makeService();
     await service.create(baseData);
 
-    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
-    // числовий id — не повинно бути @
-    expect(msg).not.toMatch(/@\d/);
-    expect(msg).toContain('Ведучий');
+    const call = mockNotifications.sendTelegramNotification.mock.calls[0];
+    expect(call[2].crew).not.toMatch(/@\d/);
+    expect(call[2].crew).toContain('Ведучий');
   });
 
   it('formatMember: @username telegramId → @mention', async () => {
@@ -225,14 +223,14 @@ describe('IssuesService — create', () => {
     });
     mockPrisma.city.findUnique.mockResolvedValueOnce({
       id: 'city-1',
-      users: [{ telegramChatId: 'mgr-1', telegramId: null }],
+      users: [{ id: 'mgr-1', name: 'Manager' }],
     });
 
     const service = makeService();
     await service.create(baseData);
 
-    const msg = mockTelegram.sendMessage.mock.calls[0][1] as string;
-    expect(msg).toContain('@ivanko');
+    const call = mockNotifications.sendTelegramNotification.mock.calls[0];
+    expect(call[2].crew).toContain('@ivanko');
   });
 
   it('повертає створений issue', async () => {

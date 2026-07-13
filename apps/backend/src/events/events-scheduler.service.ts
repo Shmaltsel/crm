@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
-import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
@@ -10,7 +9,6 @@ export class EventsSchedulerService {
 
   constructor(
     private prisma: PrismaService,
-    private telegramService: TelegramService,
     private notificationsService: NotificationsService,
   ) {}
 
@@ -70,43 +68,32 @@ export class EventsSchedulerService {
       this.prisma.dayOff.count({}),
     ]);
 
-    const lines = [`📊 <b>Щоденний підсумок</b>`, ``];
-    lines.push(`📅 Подій на завтра: <b>${tomorrowEvents}</b>`);
-    lines.push(`📋 Незатверджених звітів: <b>${pendingReports}</b>`);
-    lines.push(`🌴 Очікують вихідних: <b>${pendingDaysOff}</b>`);
-    const text = lines.join('\n');
-
     const managers = await this.prisma.user.findMany({
       where: { role: { in: ['SUPERADMIN', 'OWNER', 'MANAGER'] } },
-      select: { telegramChatId: true },
+      select: { id: true },
     });
 
-    for (const m of managers) {
-      if (m.telegramChatId) {
-        this.telegramService
-          .sendMessage(m.telegramChatId, text)
-          .catch(() => {});
-      }
-    }
+    this.notificationsService
+      .sendTelegramToUsers(
+        managers.map((m) => m.id),
+        'DAILY_DIGEST',
+        { tomorrowEvents, pendingReports, pendingDaysOff },
+      )
+      .catch(() => {});
   }
 
   private async sendReminder(event: any, user: any, roleLabel: string) {
-    if (!user || (!user.telegramChatId && !user.telegramId)) return;
+    if (!user) return;
 
-    const chatId = user.telegramChatId || user.telegramId;
-    const message =
-      `🔔 <b>Нагадування про подію!</b>\n\n` +
-      `👤 <b>Роль:</b> ${roleLabel}\n` +
-      `📅 <b>Дата:</b> завтра\n` +
-      `🏫 <b>Заклад:</b> ${event.school?.name || '—'}\n` +
-      `🎪 <b>Проєкт:</b> ${event.project}\n` +
-      `📞 <b>Контакт:</b> ${event.contactPhone || '—'}`;
-
-    try {
-      await this.telegramService.sendMessage(chatId, message);
-    } catch (e) {
-      this.logger.error(`Помилка відправки: ${e}`);
-    }
+    this.notificationsService
+      .sendTelegramNotification(user.id, 'EVENT_REMINDER', {
+        eventId: event.id,
+        role: roleLabel,
+        schoolName: event.school?.name,
+        project: event.project,
+        contactPhone: event.contactPhone,
+      })
+      .catch(() => {});
 
     this.notificationsService
       .create(user.id, 'EVENT_REMINDER', {

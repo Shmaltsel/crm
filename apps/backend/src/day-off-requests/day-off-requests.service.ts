@@ -1,6 +1,5 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AppException } from '../common/exceptions/app.exception';
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
@@ -15,7 +14,6 @@ export class DayOffRequestsService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly telegramService: TelegramService,
     private readonly notificationsService: NotificationsService,
   ) {}
 
@@ -216,24 +214,13 @@ export class DayOffRequestsService {
       year: 'numeric',
     });
 
-    const managerChatId =
-      manager.telegramChatId ||
-      (manager.telegramId && /^\d+$/.test(manager.telegramId)
-        ? manager.telegramId
-        : null);
-
-    if (managerChatId) {
-      const reasonLine = request.reason
-        ? `\n📝 <b>Причина:</b> ${request.reason}`
-        : '';
-      const text =
-        `🏖️ <b>Запит на вихідний</b>\n\n` +
-        `👤 <b>Співробітник:</b> ${request.user.name}\n` +
-        `📅 <b>Дата:</b> ${dateStr}` +
-        reasonLine;
-
-      this.telegramService.sendMessage(managerChatId, text).catch(() => {});
-    }
+    this.notificationsService
+      .sendTelegramNotification(manager.id, 'DAY_OFF_REQUEST_CREATED', {
+        staffName: request.user.name,
+        date: dateStr,
+        reason: request.reason,
+      })
+      .catch(() => {});
 
     this.notificationsService
       .create(manager.id, 'DAY_OFF_REQUEST_CREATED', {
@@ -266,38 +253,20 @@ export class DayOffRequestsService {
     },
     status: 'APPROVED' | 'REJECTED',
   ) {
-    const staffUser = await this.prisma.user.findUnique({
-      where: { id: request.userId },
-      select: { telegramChatId: true, telegramId: true, name: true },
-    });
-
     const dateStr = request.date.toLocaleDateString('uk-UA', {
       day: '2-digit',
       month: 'long',
       year: 'numeric',
     });
 
-    if (staffUser) {
-      const chatId =
-        staffUser.telegramChatId ||
-        (staffUser.telegramId && /^\d+$/.test(staffUser.telegramId)
-          ? staffUser.telegramId
-          : null);
-
-      if (chatId) {
-        const emoji = status === 'APPROVED' ? '✅' : '❌';
-        const statusText =
-          status === 'APPROVED' ? 'Запит затверджено' : 'Запит відхилено';
-        const noteLine = request.managerNote
-          ? `\n💬 <b>Коментар:</b> ${request.managerNote}`
-          : '';
-        const text =
-          `${emoji} <b>${statusText}</b>\n\n` +
-          `📅 <b>Дата:</b> ${dateStr}` +
-          noteLine;
-
-        await this.telegramService.sendMessage(chatId, text);
-      }
-    }
+    const templateType =
+      status === 'APPROVED' ? 'DAY_OFF_APPROVED' : 'DAY_OFF_REJECTED';
+    this.notificationsService
+      .sendTelegramNotification(request.userId, templateType, {
+        staffName: request.user.name,
+        date: dateStr,
+        reason: request.managerNote,
+      })
+      .catch(() => {});
   }
 }

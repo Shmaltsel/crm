@@ -17,6 +17,7 @@ const mockCityAccess = {
 
 const mockNotifications = {
   create: jest.fn().mockResolvedValue({}),
+  sendTelegramNotification: jest.fn().mockResolvedValue(undefined),
 };
 
 const mockTelegram = {

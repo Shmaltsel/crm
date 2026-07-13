@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { HttpStatus } from '@nestjs/common';
 import { DaysOffService } from './days-off.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { DayOffRequestsService } from '../day-off-requests/day-off-requests.service';
 import { AppException } from '../common/exceptions/app.exception';
@@ -21,12 +20,9 @@ const mockPrisma = {
   },
 };
 
-const mockTelegram = {
-  sendMessage: jest.fn(),
-};
-
 const mockNotifications = {
   create: jest.fn().mockResolvedValue(undefined),
+  sendTelegramNotification: jest.fn().mockResolvedValue(undefined),
 };
 
 const mockDayOffRequests = {
@@ -75,7 +71,6 @@ describe('DaysOffService', () => {
       providers: [
         DaysOffService,
         { provide: PrismaService, useValue: mockPrisma },
-        { provide: TelegramService, useValue: mockTelegram },
         { provide: NotificationsService, useValue: mockNotifications },
         { provide: DayOffRequestsService, useValue: mockDayOffRequests },
       ],
@@ -437,7 +432,7 @@ describe('DaysOffService', () => {
       );
 
       expect(mockPrisma.user.findFirst).not.toHaveBeenCalled();
-      expect(mockTelegram.sendMessage).not.toHaveBeenCalled();
+      expect(mockNotifications.sendTelegramNotification).not.toHaveBeenCalled();
     });
 
     it('менеджера не знайдено -> без telegram', async () => {
@@ -450,18 +445,16 @@ describe('DaysOffService', () => {
         'created',
       );
 
-      expect(mockTelegram.sendMessage).not.toHaveBeenCalled();
+      expect(mockNotifications.sendTelegramNotification).not.toHaveBeenCalled();
     });
 
-    it('пріоритет telegramChatId над telegramId', async () => {
+    it('created -> DAY_OFF_ASSIGNED шаблон', async () => {
       mockPrisma.user.findFirst.mockResolvedValueOnce({
         id: 'm1',
         role: 'MANAGER',
         cityId: 'city-1',
-        telegramChatId: 'chat-123',
-        telegramId: '999999',
       });
-      mockTelegram.sendMessage.mockResolvedValueOnce(undefined);
+      mockNotifications.sendTelegramNotification.mockResolvedValueOnce(undefined);
 
       await (service as any).notifyManager(
         'city-1',
@@ -470,21 +463,19 @@ describe('DaysOffService', () => {
         'created',
       );
 
-      expect(mockTelegram.sendMessage).toHaveBeenCalledWith(
-        'chat-123',
-        expect.stringContaining('Призначено вихідний'),
+      expect(mockNotifications.sendTelegramNotification).toHaveBeenCalledWith(
+        'm1',
+        'DAY_OFF_ASSIGNED',
+        expect.objectContaining({ staffName: 'Host One' }),
       );
     });
 
-    it('fallback на numeric telegramId, якщо telegramChatId відсутній', async () => {
+    it('removed -> DAY_OFF_CANCELLED шаблон', async () => {
       mockPrisma.user.findFirst.mockResolvedValueOnce({
         id: 'm2',
         role: 'MANAGER',
         cityId: 'city-1',
-        telegramChatId: null,
-        telegramId: '123456789',
       });
-      mockTelegram.sendMessage.mockResolvedValueOnce(undefined);
 
       await (service as any).notifyManager(
         'city-1',
@@ -493,51 +484,11 @@ describe('DaysOffService', () => {
         'removed',
       );
 
-      expect(mockTelegram.sendMessage).toHaveBeenCalledWith(
-        '123456789',
-        expect.stringContaining('Скасовано вихідний'),
+      expect(mockNotifications.sendTelegramNotification).toHaveBeenCalledWith(
+        'm2',
+        'DAY_OFF_CANCELLED',
+        expect.objectContaining({ staffName: 'Host One' }),
       );
-    });
-
-    it('не numeric telegramId -> не відправляє', async () => {
-      mockPrisma.user.findFirst.mockResolvedValueOnce({
-        id: 'm3',
-        role: 'MANAGER',
-        cityId: 'city-1',
-        telegramChatId: null,
-        telegramId: 'abc123',
-      });
-
-      await (service as any).notifyManager(
-        'city-1',
-        'Host One',
-        '2026-07-10',
-        'created',
-      );
-
-      expect(mockTelegram.sendMessage).not.toHaveBeenCalled();
-    });
-
-    it('помилка telegramService.sendMessage пробрасывається', async () => {
-      mockPrisma.user.findFirst.mockResolvedValueOnce({
-        id: 'm4',
-        role: 'MANAGER',
-        cityId: 'city-1',
-        telegramChatId: 'chat-err',
-        telegramId: null,
-      });
-      mockTelegram.sendMessage.mockRejectedValueOnce(
-        new Error('telegram failed'),
-      );
-
-      await expect(
-        (service as any).notifyManager(
-          'city-1',
-          'Host One',
-          '2026-07-10',
-          'created',
-        ),
-      ).rejects.toThrow('telegram failed');
     });
   });
 });

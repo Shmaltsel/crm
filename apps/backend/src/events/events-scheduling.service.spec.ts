@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EventsSchedulingService } from './events-scheduling.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
@@ -17,7 +16,11 @@ const mockPrisma = {
 };
 
 const mockTelegram = { sendMessage: jest.fn() };
-const mockNotifications = { create: jest.fn().mockResolvedValue(undefined) };
+const mockNotifications = {
+  create: jest.fn().mockResolvedValue(undefined),
+  sendTelegramNotification: jest.fn().mockResolvedValue(undefined),
+  sendTelegramToUsers: jest.fn().mockResolvedValue(undefined),
+};
 
 const mockUser = {
   sub: 'user-1',
@@ -36,7 +39,6 @@ describe('EventsSchedulingService', () => {
       providers: [
         EventsSchedulingService,
         { provide: PrismaService, useValue: mockPrisma },
-        { provide: TelegramService, useValue: mockTelegram },
         { provide: NotificationsService, useValue: mockNotifications },
         {
           provide: CACHE_MANAGER,
@@ -108,7 +110,11 @@ describe('EventsSchedulingService', () => {
 
       await service.rescheduleEvent('ev-1', '2025-10-15', '14:00', mockUser);
 
-      expect(mockTelegram.sendMessage).toHaveBeenCalledTimes(2);
+      expect(mockNotifications.sendTelegramToUsers).toHaveBeenCalledWith(
+        ['host-1', 'driver-1'],
+        'EVENT_RESCHEDULED',
+        expect.objectContaining({ schoolName: 'Школа' }),
+      );
     });
 
     it('не надсилає сповіщення якщо екіпаж не призначений', async () => {
@@ -125,7 +131,7 @@ describe('EventsSchedulingService', () => {
 
       await service.rescheduleEvent('ev-1', '2025-10-15', '14:00', mockUser);
 
-      expect(mockTelegram.sendMessage).not.toHaveBeenCalled();
+      expect(mockNotifications.sendTelegramToUsers).not.toHaveBeenCalled();
     });
 
     it('інвалідує кеш школи після перенесення', async () => {

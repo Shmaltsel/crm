@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { HttpStatus } from '@nestjs/common';
 import { DayOffRequestsService } from './day-off-requests.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AppException } from '../common/exceptions/app.exception';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
@@ -23,13 +22,6 @@ const mockPrisma = {
     findUnique: jest.fn(),
     findFirst: jest.fn(),
   },
-};
-
-const mockTelegram = {
-  sendMessage: jest.fn().mockResolvedValue(undefined),
-  sendWithInlineKeyboard: jest.fn(),
-  editMessageText: jest.fn(),
-  answerCallbackQuery: jest.fn(),
 };
 
 const mockNotifications = {
@@ -76,14 +68,13 @@ describe('DayOffRequestsService', () => {
 
   beforeEach(async () => {
     jest.restoreAllMocks();
-    mockTelegram.sendMessage.mockResolvedValue(undefined);
     mockNotifications.create.mockResolvedValue(undefined);
+    mockNotifications.sendTelegramNotification.mockResolvedValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DayOffRequestsService,
         { provide: PrismaService, useValue: mockPrisma },
-        { provide: TelegramService, useValue: mockTelegram },
         { provide: NotificationsService, useValue: mockNotifications },
       ],
     }).compile();
@@ -119,11 +110,11 @@ describe('DayOffRequestsService', () => {
       const result = await service.create({ date: '2026-07-15' }, hostUser);
 
       expect(mockPrisma.dayOffRequest.create).toHaveBeenCalled();
-      expect(mockTelegram.sendMessage).toHaveBeenCalledWith(
-        'chat-mgr',
-        expect.stringContaining('Запит на вихідний'),
+      expect(mockNotifications.sendTelegramNotification).toHaveBeenCalledWith(
+        'manager-1',
+        'DAY_OFF_REQUEST_CREATED',
+        expect.objectContaining({ staffName: 'Host One' }),
       );
-      expect(mockTelegram.sendWithInlineKeyboard).not.toHaveBeenCalled();
       expect(result.id).toBe('req-1');
     });
 
@@ -318,6 +309,7 @@ describe('DayOffRequestsService', () => {
       mockPrisma.dayOff.upsert.mockResolvedValue({ id: 'dayoff-1' });
       mockPrisma.dayOffRequest.update.mockResolvedValue({
         id: 'req-1',
+        userId: 'host-1',
         status: DayOffRequestStatus.APPROVED,
         date: new Date('2026-07-15'),
         managerNote: null,
@@ -327,12 +319,6 @@ describe('DayOffRequestsService', () => {
           role: 'HOST',
           cityId: 'city-1',
         },
-      });
-      mockPrisma.user.findUnique.mockResolvedValue({
-        id: 'host-1',
-        telegramChatId: 'chat-host',
-        telegramId: null,
-        name: 'Host One',
       });
 
       const result = await service.approve('req-1', 'manager-1');
@@ -347,9 +333,10 @@ describe('DayOffRequestsService', () => {
           }),
         }),
       );
-      expect(mockTelegram.sendMessage).toHaveBeenCalledWith(
-        'chat-host',
-        expect.stringContaining('Запит затверджено'),
+      expect(mockNotifications.sendTelegramNotification).toHaveBeenCalledWith(
+        'host-1',
+        'DAY_OFF_APPROVED',
+        expect.objectContaining({ staffName: 'Host One' }),
       );
       expect(result.status).toBe('APPROVED');
     });
@@ -396,6 +383,7 @@ describe('DayOffRequestsService', () => {
       });
       mockPrisma.dayOffRequest.update.mockResolvedValue({
         id: 'req-1',
+        userId: 'host-1',
         status: DayOffRequestStatus.REJECTED,
         date: new Date('2026-07-15'),
         managerNote: 'Занадто багато вихідних',
@@ -405,12 +393,6 @@ describe('DayOffRequestsService', () => {
           role: 'HOST',
           cityId: 'city-1',
         },
-      });
-      mockPrisma.user.findUnique.mockResolvedValue({
-        id: 'host-1',
-        telegramChatId: 'chat-host',
-        telegramId: null,
-        name: 'Host One',
       });
 
       const result = await service.reject(
@@ -427,9 +409,13 @@ describe('DayOffRequestsService', () => {
           }),
         }),
       );
-      expect(mockTelegram.sendMessage).toHaveBeenCalledWith(
-        'chat-host',
-        expect.stringContaining('Запит відхилено'),
+      expect(mockNotifications.sendTelegramNotification).toHaveBeenCalledWith(
+        'host-1',
+        'DAY_OFF_REJECTED',
+        expect.objectContaining({
+          staffName: 'Host One',
+          reason: 'Занадто багато вихідних',
+        }),
       );
       expect(result.status).toBe('REJECTED');
     });

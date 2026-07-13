@@ -103,15 +103,19 @@ export class EventsSchedulingService {
       Boolean,
     ) as string[];
     if (crewIds.length > 0) {
-      this.notificationsService.sendTelegramToUsers(crewIds, 'EVENT_RESCHEDULED', {
-        eventId: event.id,
-        project: event.project,
-        schoolName: event.school?.name,
-        newDate: dateStr,
-        newTime,
-        cityName: event.city?.name,
-        address: event.address,
-      });
+      this.notificationsService.sendTelegramToUsers(
+        crewIds,
+        'EVENT_RESCHEDULED',
+        {
+          eventId: event.id,
+          project: event.project,
+          schoolName: event.school?.name,
+          newDate: dateStr,
+          newTime,
+          cityName: event.city?.name,
+          address: event.address,
+        },
+      );
     }
 
     const payload = {

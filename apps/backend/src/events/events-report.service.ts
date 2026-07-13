@@ -8,7 +8,6 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheVersionService } from '../common/cache/cache-version.service';
-import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Prisma } from '@prisma/client';
 import { SubmitReportDto, ExpenseItemDto } from './dto/submit-report.dto';
@@ -22,7 +21,6 @@ export class EventsReportService {
     private readonly prisma: PrismaService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     private readonly cacheVersion: CacheVersionService,
-    private readonly telegramService: TelegramService,
     private readonly notificationsService: NotificationsService,
   ) {}
 
@@ -210,30 +208,23 @@ export class EventsReportService {
       const manager = eventWithCity.cityId
         ? await this.prisma.user.findFirst({
             where: { cityId: eventWithCity.cityId, role: 'MANAGER' },
-            select: { id: true, telegramChatId: true, telegramId: true },
+            select: { id: true },
           })
         : null;
-      const chatId =
-        manager?.telegramChatId ||
-        (manager?.telegramId && /^\d+$/.test(manager.telegramId)
-          ? manager.telegramId
-          : null);
-      if (chatId) {
-        const schoolName = eventWithCity.school?.name || 'Невідома школа';
-        this.telegramService
-          .sendMessage(
-            chatId,
-            `🚨 Новий звіт потребує затвердження: ${schoolName}`,
-          )
+
+      if (manager?.id) {
+        this.notificationsService
+          .sendTelegramNotification(manager.id, 'REPORT_SUBMITTED', {
+            schoolName: eventWithCity.school?.name,
+            eventDate: event.date,
+            project: event.project,
+            eventId,
+          })
           .catch((e) =>
             this.logger.warn(
               `Telegram submitReport → manager failed: ${e?.message ?? e}`,
             ),
           );
-      } else {
-        this.logger.warn(
-          `submitReport: city manager has no Telegram chatId (cityId=${eventWithCity.cityId ?? 'null'})`,
-        );
       }
 
       const notifyUserId = event.responsibleId || manager?.id;

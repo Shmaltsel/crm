@@ -1,13 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class IssuesService {
   constructor(
     private prisma: PrismaService,
-    private telegramService: TelegramService,
     private notificationsService: NotificationsService,
   ) {}
 
@@ -66,51 +64,31 @@ export class IssuesService {
       include: { users: { where: { role: 'MANAGER' }, take: 1 } },
     });
 
-    let assigneeChatId: string | null = null;
-    if (data.assignedUserId) {
-      const assignee = await this.prisma.user.findUnique({
-        where: { id: data.assignedUserId },
-        select: { telegramChatId: true, telegramId: true },
-      });
-      assigneeChatId =
-        assignee?.telegramChatId ||
-        (assignee?.telegramId && /^\d+$/.test(assignee.telegramId)
-          ? assignee.telegramId
-          : null);
-    }
-
-    const deadlineStr = data.deadline
-      ? `\n⏰ <b>Дедлайн:</b> ${new Date(data.deadline).toLocaleDateString('uk-UA')}`
-      : '';
-
-    const assigneeStr = data.assignedUserName
-      ? `\n👤 <b>Відповідальний:</b> ${data.assignedUserName}`
-      : '';
-
     const manager = city?.users?.[0];
-    const managerChatId =
-      manager?.telegramChatId ||
-      (manager?.telegramId && /^\d+$/.test(manager.telegramId)
-        ? manager.telegramId
-        : null);
 
-    const text =
-      `🚨 <b>Нова проблема!</b>\n\n` +
-      `🏫 <b>Заклад:</b> ${data.schoolName}\n` +
-      `📅 <b>Подія:</b> ${data.eventName}\n\n` +
-      `💬 <b>Повідомлення:</b>\n${data.message}` +
-      deadlineStr +
-      assigneeStr +
-      (crewMembers.length > 0
-        ? `\n\n👥 <b>Екіпаж:</b>\n${crewMembers.join('\n')}`
-        : '') +
-      `\n\n<i>Деталі у CRM: <a href="https://app.svitlo-znan.app">Посилання</a></i>`;
+    const issuePayload = {
+      eventId: data.eventId,
+      schoolName: data.schoolName,
+      eventName: data.eventName,
+      message: data.message,
+      deadline: data.deadline,
+      assigneeName: data.assignedUserName,
+      crew: crewMembers.length > 0 ? crewMembers.join('\n') : undefined,
+    };
 
-    if (managerChatId)
-      await this.telegramService.sendMessage(managerChatId, text);
-
-    if (assigneeChatId && assigneeChatId !== managerChatId) {
-      await this.telegramService.sendMessage(assigneeChatId, text);
+    if (manager?.id) {
+      this.notificationsService
+        .sendTelegramNotification(manager.id, 'ISSUE_CREATED', issuePayload)
+        .catch(() => {});
+    }
+    if (data.assignedUserId && data.assignedUserId !== manager?.id) {
+      this.notificationsService
+        .sendTelegramNotification(
+          data.assignedUserId,
+          'ISSUE_CREATED',
+          issuePayload,
+        )
+        .catch(() => {});
     }
 
     const notificationPayload = {

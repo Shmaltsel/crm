@@ -10,6 +10,7 @@ import { SalaryPayoutService } from './salary-payout.service';
 import { CityAccessService } from '../auth/services/city-access.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { getTelegramTemplate } from '../notifications/templates';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 import { CreateSalaryDto } from './dto/create-salary.dto';
 import { Prisma } from '@prisma/client';
@@ -207,28 +208,31 @@ export class SalaryService {
       })
       .catch(() => {});
 
-    const employee = await this.prisma.user.findUnique({
-      where: { id: record.employeeId },
-      select: { telegramChatId: true, name: true },
-    });
-    if (employee?.telegramChatId) {
-      this.telegramService
-        .sendMessage(
-          employee.telegramChatId,
-          `💰 <b>Нараховано зарплату</b>\n\nСума: ${amount} ₴`,
-        )
-        .catch(() => {});
-    }
+    this.notificationsService
+      .sendTelegramNotification(record.employeeId, 'SALARY_PAID', { amount })
+      .catch(() => {});
 
     if (amount >= LARGE_SALARY_THRESHOLD) {
+      const employee = await this.prisma.user.findUnique({
+        where: { id: record.employeeId },
+        select: { name: true },
+      });
+
       const alertChatId = process.env.ALERT_CHAT_ID;
       if (alertChatId) {
-        this.telegramService
-          .sendMessage(
-            alertChatId,
-            `⚠️ <b>Велика виплата: ${amount} ₴</b>\n\nПрацівник: ${employee?.name ?? 'Невідомий'}\nМенеджер: ${user.name}`,
-          )
-          .catch(() => {});
+        const template = getTelegramTemplate('SALARY_LARGE_PAYOUT');
+        if (template) {
+          this.telegramService
+            .sendMessage(
+              alertChatId,
+              template({
+                amount,
+                employeeName: employee?.name,
+                managerName: user.name,
+              }),
+            )
+            .catch(() => {});
+        }
       }
     }
   }

@@ -48,29 +48,46 @@ const templates: Record<TelegramTemplateType, TemplateFn> = {
       p.eventId ? `/events/${p.eventId}/report` : '/reports/review',
     );
     return (
-      `🚨 <b>Новий звіт потребує затвердження</b>\n\n` +
+      `🚨 <b>Новий звіт потребує затвердження</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
       `🏫 <b>Школа:</b> ${p.schoolName ?? '—'}\n` +
-      `📅 <b>Дата:</b> ${fmtDate(p.eventDate)}\n` +
-      `📌 <b>Проєкт:</b> ${p.project ?? '—'}\n\n` +
-      `<i>Звіт: <a href="${link}">CRM</a></i>`
+      `📅 <b>Дата події:</b> ${fmtDate(p.eventDate)}\n` +
+      `📌 <b>Проєкт:</b> <i>${p.project ?? '—'}</i>\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">📋 Переглянути та затвердити звіт</a>`
     );
   },
 
-  REPORT_APPROVED: (p) =>
-    `✅ <b>Звіт затверджено</b>\n\n` +
-    `🏫 <b>Школа:</b> ${p.schoolName ?? '—'}\n` +
-    `📅 <b>Дата:</b> ${fmtDate(p.eventDate)}`,
+  REPORT_APPROVED: (p) => {
+    const link = buildLink(
+      p.eventId ? `/events/${p.eventId}/report` : undefined,
+    );
+    return (
+      `✅ <b>Звіт затверджено</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `Вітаємо! Ваш звіт успішно перевірено та прийнято.\n\n` +
+      `🏫 <b>Школа:</b> ${p.schoolName ?? '—'}\n` +
+      `📅 <b>Дата події:</b> ${fmtDate(p.eventDate)}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">📋 Переглянути деталі звіту</a>`
+    );
+  },
 
   REPORT_REVISION: (p) => {
-    const reason = p.reason ? `\n💬 <b>Причина:</b> ${p.reason}` : '';
+    const reason = p.reason
+      ? `\n\n💬 <b>Коментар:</b>\n<i>${p.reason}</i>`
+      : '';
     const link = buildLink(
       p.eventId ? `/events/${p.eventId}/report` : '/reports/review',
     );
     return (
-      `📝 <b>Звіт потребує доопрацювання</b>\n\n` +
+      `📝 <b>Звіт потребує доопрацювання</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `Будь ласка, внесіть необхідні корективи та подайте звіт знову.\n\n` +
       `🏫 <b>Школа:</b> ${p.schoolName ?? '—'}` +
       reason +
-      `\n\n<i>Звіт: <a href="${link}">CRM</a></i>`
+      `\n\n━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">✏️ Редагувати та перездати звіт</a>`
     );
   },
 
@@ -79,49 +96,85 @@ const templates: Record<TelegramTemplateType, TemplateFn> = {
       p.eventId ? `/events/${p.eventId}/report` : undefined,
     );
     return (
-      `✅ <b>Звіт затверджено</b>\n\n` +
+      `✅ <b>Звіт затверджено</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `Дякуємо за вашу працю! Звіт прийнято.\n\n` +
       `🏫 <b>Школа:</b> ${p.schoolName ?? '—'}\n\n` +
-      `Очікуйте виплату.\n\n` +
-      `<i>Звіт: <a href="${link}">CRM</a></i>`
+      `💰 <b>Виплата:</b> Очікуйте зарахування найближчим часом.\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">📋 Переглянути деталі звіту</a>`
     );
   },
 
   DAY_OFF_REQUEST_CREATED: (p) => {
-    const reason = p.reason ? `\n📝 <b>Причина:</b> ${p.reason}` : '';
+    const reason = p.reason ? `\n\n💬 <b>Причина:</b>\n<i>${p.reason}</i>` : '';
+    const link = buildLink('/employees?tab=days-off');
     return (
-      `🏖️ <b>Запит на вихідний</b>\n\n` +
+      `🏖️ <b>Новий запит на вихідний</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
       `👤 <b>Співробітник:</b> ${p.staffName ?? '—'}\n` +
       `📅 <b>Дата:</b> ${fmtDate(p.date)}` +
-      reason
+      reason +
+      `\n\n━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">📋 Переглянути та розглянути запит</a>`
     );
   },
 
-  DAY_OFF_APPROVED: (p) =>
-    `✅ <b>Запит на вихідний затверджено</b>\n\n` +
-    `👤 <b>Співробітник:</b> ${p.staffName ?? '—'}\n` +
-    `📅 <b>Дата:</b> ${fmtDate(p.date)}`,
+  DAY_OFF_APPROVED: (p) => {
+    const link = buildLink('/calendar');
+    return (
+      `✅ <b>Запит на вихідний затверджено</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `Ваш запит схвалено! Гарного відпочинку.\n\n` +
+      `👤 <b>Співробітник:</b> ${p.staffName ?? '—'}\n` +
+      `📅 <b>Дата вихідного:</b> ${fmtDate(p.date)}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">📅 Переглянути в календарі</a>`
+    );
+  },
 
   DAY_OFF_REJECTED: (p) => {
-    const reason = p.reason ? `\n💬 <b>Коментар:</b> ${p.reason}` : '';
+    const reason = p.reason
+      ? `\n\n💬 <b>Коментар:</b>\n<i>${p.reason}</i>`
+      : '';
+    const link = buildLink('/employees?tab=days-off');
     return (
-      `❌ <b>Запит на вихідний відхилено</b>\n\n` +
+      `❌ <b>Запит на вихідний відхилено</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `На жаль, ваш запит не може бути задоволений.\n\n` +
       `👤 <b>Співробітник:</b> ${p.staffName ?? '—'}\n` +
-      `📅 <b>Дата:</b> ${fmtDate(p.date)}` +
-      reason
+      `📅 <b>Запитувана дата:</b> ${fmtDate(p.date)}` +
+      reason +
+      `\n\n━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">📋 Переглянути деталі в CRM</a>`
     );
   },
 
-  DAY_OFF_ASSIGNED: (p) =>
-    `🌴 <b>Призначено вихідний</b>\n\n` +
-    `👤 <b>Співробітник:</b> ${p.staffName ?? '—'}\n` +
-    `📅 <b>Дата:</b> ${fmtDate(p.date)}\n\n` +
-    `<i>Календар: <a href="${buildLink('/calendar')}">CRM</a></i>`,
+  DAY_OFF_ASSIGNED: (p) => {
+    const link = buildLink('/calendar');
+    return (
+      `🌴 <b>Призначено вихідний</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `Вам призначено день відпочинку.\n\n` +
+      `👤 <b>Співробітник:</b> ${p.staffName ?? '—'}\n` +
+      `📅 <b>Дата вихідного:</b> ${fmtDate(p.date)}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">📅 Переглянути в календарі</a>`
+    );
+  },
 
-  DAY_OFF_CANCELLED: (p) =>
-    `❌ <b>Скасовано вихідний</b>\n\n` +
-    `👤 <b>Співробітник:</b> ${p.staffName ?? '—'}\n` +
-    `📅 <b>Дата:</b> ${fmtDate(p.date)}\n\n` +
-    `<i>Календар: <a href="${buildLink('/calendar')}">CRM</a></i>`,
+  DAY_OFF_CANCELLED: (p) => {
+    const link = buildLink('/calendar');
+    return (
+      `❌ <b>Вихідний скасовано</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `Вихідний день було скасовано.\n\n` +
+      `👤 <b>Співробітник:</b> ${p.staffName ?? '—'}\n` +
+      `📅 <b>Дата:</b> ${fmtDate(p.date)}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">📅 Переглянути актуальний календар</a>`
+    );
+  },
 
   ISSUE_CREATED: (p) => {
     const deadline = p.deadline
@@ -132,129 +185,188 @@ const templates: Record<TelegramTemplateType, TemplateFn> = {
       : '';
     const crew = p.crew ? `\n\n👥 <b>Екіпаж:</b>\n${p.crew}` : '';
     const link = buildLink(
-      p.eventId ? `/events/${p.eventId}/report` : undefined,
+      p.eventId ? `/events/${p.eventId}/report` : '/issues',
     );
     return (
-      `🚨 <b>Нова проблема</b>\n\n` +
+      `🚨 <b>Створено нову проблему</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
       `🏫 <b>Заклад:</b> ${p.schoolName ?? '—'}\n` +
       `📅 <b>Подія:</b> ${p.eventName ?? '—'}\n\n` +
-      `💬 <b>Повідомлення:</b>\n${p.message ?? ''}` +
+      `💬 <b>Опис проблеми:</b>\n<i>${p.message ?? 'Немає опису'}</i>` +
       deadline +
       assignee +
       crew +
-      `\n\n<i>Деталі: <a href="${link}">CRM</a></i>`
+      `\n\n━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">🔧 Переглянути та вирішити проблему</a>`
     );
   },
 
   EVENT_CANCELLED: (p) => {
-    const link = buildLink(
-      p.eventId ? `/events/${p.eventId}/report` : undefined,
-    );
+    const link = buildLink(p.eventId ? `/schools/${p.schoolId}` : '/events');
     return (
-      `❌ <b>Подію скасовано</b>\n\n` +
+      `❌ <b>Подію скасовано</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `Інформуємо про скасування запланованої події.\n\n` +
       `🏫 <b>Школа:</b> ${p.schoolName ?? '—'}\n` +
       `📅 <b>Дата:</b> ${fmtDate(p.eventDate)}\n` +
-      `📌 <b>Проєкт:</b> ${p.project ?? '—'}\n\n` +
-      `<i>Деталі: <a href="${link}">CRM</a></i>`
+      `📌 <b>Проєкт:</b> <i>${p.project ?? '—'}</i>\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">📋 Переглянути деталі в CRM</a>`
     );
   },
 
   EVENT_CREATED: (p) => {
-    const link = buildLink(
-      p.eventId ? `/events/${p.eventId}/report` : undefined,
-    );
+    const link = buildLink(p.schoolId ? `/schools/${p.schoolId}` : '/events');
     return (
-      `📅 <b>Нова подія</b>\n\n` +
+      `📅 <b>Створено нову подію</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `У системі зареєстровано нову подію.\n\n` +
       `🏫 <b>Школа:</b> ${p.schoolName ?? '—'}\n` +
-      `📅 <b>Дата:</b> ${fmtDate(p.eventDate)}\n` +
-      `📌 <b>Проєкт:</b> ${p.project ?? '—'}\n\n` +
-      `<i>Деталі: <a href="${link}">CRM</a></i>`
+      `📅 <b>Дата проведення:</b> ${fmtDate(p.eventDate)}\n` +
+      `📌 <b>Проєкт:</b> <i>${p.project ?? '—'}</i>\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">📋 Переглянути деталі події</a>`
     );
   },
 
   EVENT_RESCHEDULED: (p) => {
-    const link = buildLink(
-      p.eventId ? `/events/${p.eventId}/report` : undefined,
-    );
+    const link = buildLink(p.schoolId ? `/schools/${p.schoolId}` : '/calendar');
     return (
-      `📅 <b>Подію перенесено</b>\n\n` +
+      `📅 <b>Подію перенесено</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `Увага! Змінено дату та/або час проведення події.\n\n` +
       `🏫 <b>Заклад:</b> ${p.schoolName ?? '—'}\n` +
-      `📌 <b>Проєкт:</b> ${p.project ?? '—'}\n` +
-      `📅 <b>Нова дата:</b> ${p.newDate ?? '—'} о ${p.newTime ?? '—'}\n` +
+      `📌 <b>Проєкт:</b> <i>${p.project ?? '—'}</i>\n\n` +
+      `📅 <b>Нова дата:</b> ${p.newDate ?? '—'}\n` +
+      `🕐 <b>Час:</b> ${p.newTime ?? '—'}\n` +
       (p.cityName ? `📍 <b>Місто:</b> ${p.cityName}\n` : '') +
-      (p.address ? `🗺 <b>Адреса:</b> ${p.address}\n` : '') +
-      `\n<i>Деталі: <a href="${link}">CRM</a></i>`
+      (p.address ? `🗺 <b>Адреса:</b> <code>${p.address}</code>\n` : '') +
+      `\n━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">📋 Переглянути оновлений розклад</a>`
     );
   },
 
   EVENT_REMINDER: (p) => {
     const link = buildLink(
-      p.eventId ? `/events/${p.eventId}/report` : undefined,
+      p.eventId ? `/events/${p.eventId}/report` : '/calendar',
     );
     return (
-      `🔔 <b>Нагадування про подію</b>\n\n` +
-      `👤 <b>Роль:</b> ${p.role ?? '—'}\n` +
-      `📅 <b>Дата:</b> завтра\n` +
+      `🔔 <b>Нагадування: подія завтра!</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `Не забудьте підготуватися до завтрашньої події.\n\n` +
+      `👤 <b>Ваша роль:</b> <i>${p.role ?? '—'}</i>\n` +
       `🏫 <b>Заклад:</b> ${p.schoolName ?? '—'}\n` +
-      `📌 <b>Проєкт:</b> ${p.project ?? '—'}\n` +
-      (p.contactPhone ? `📞 <b>Контакт:</b> ${p.contactPhone}\n` : '') +
-      `\n<i>Деталі: <a href="${link}">CRM</a></i>`
+      `📌 <b>Проєкт:</b> <i>${p.project ?? '—'}</i>\n` +
+      (p.contactPhone
+        ? `\n📞 <b>Контакт закладу:</b> <code>${p.contactPhone}</code>\n`
+        : '\n') +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">📋 Переглянути всі деталі події</a>`
     );
   },
 
   CREW_ASSIGNED: (p) => {
     const link = buildLink(
-      p.eventId ? `/events/${p.eventId}/report` : undefined,
+      p.eventId ? `/events/${p.eventId}/report` : '/calendar',
     );
     return (
-      `🎯 <b>Вас призначено на подію</b>\n\n` +
-      `👤 <b>Роль:</b> ${p.role ?? '—'}\n` +
-      `📅 <b>Дата:</b> ${p.eventDate ?? '—'}\n` +
+      `🎯 <b>Вас призначено на подію</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `👤 <b>Ваша роль:</b> <i>${p.role ?? '—'}</i>\n` +
+      `📅 <b>Дата проведення:</b> ${p.eventDate ?? '—'}\n\n` +
       `🏫 <b>Заклад:</b> ${p.schoolName ?? '—'}\n` +
       `📍 <b>Місто:</b> ${p.cityName ?? '—'}\n` +
-      `📌 <b>Проєкт:</b> ${p.project ?? '—'}\n` +
-      (p.address ? `🗺 <b>Адреса:</b> ${p.address}\n` : '') +
+      `📌 <b>Проєкт:</b> <i>${p.project ?? '—'}</i>\n` +
+      (p.address ? `\n🗺 <b>Адреса:</b>\n<code>${p.address}</code>\n` : '') +
       (p.contactPerson
-        ? `👤 <b>Контакт:</b> ${p.contactPerson}\n`
+        ? `\n👤 <b>Контактна особа:</b> ${p.contactPerson}`
         : '') +
-      (p.contactPhone ? `📞 <b>Телефон:</b> ${p.contactPhone}\n` : '') +
-      `\n<i>Деталі: <a href="${link}">CRM</a></i>`
+      (p.contactPhone
+        ? `\n📞 <b>Телефон:</b> <code>${p.contactPhone}</code>`
+        : '') +
+      `\n\n━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">📋 Детальна інформація про подію</a>`
     );
   },
 
-  DAILY_DIGEST: (p) =>
-    `📊 <b>Щоденний підсумок</b>\n\n` +
-    `📅 Подій на завтра: <b>${p.tomorrowEvents ?? 0}</b>\n` +
-    `📋 Незатверджених звітів: <b>${p.pendingReports ?? 0}</b>\n` +
-    `🌴 Очікують вихідних: <b>${p.pendingDaysOff ?? 0}</b>`,
+  DAILY_DIGEST: (p) => {
+    const link = buildLink('/dashboard');
+    return (
+      `📊 <b>Щоденний підсумок</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `Ось короткий огляд актуальних справ:\n\n` +
+      `📅 <b>Подій завтра:</b> ${p.tomorrowEvents ?? 0}\n` +
+      `📋 <b>Незатверджених звітів:</b> ${p.pendingReports ?? 0}\n` +
+      `🌴 <b>Запитів на вихідні:</b> ${p.pendingDaysOff ?? 0}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">📊 Відкрити повний дашборд</a>`
+    );
+  },
 
-  SALARY_PAID: (p) =>
-    `💰 <b>Нараховано зарплату</b>\n\n` +
-    `💵 <b>Сума:</b> ${p.amount ?? 0} ₴`,
+  SALARY_PAID: (p) => {
+    const link = buildLink('/employees?tab=salary');
+    return (
+      `💰 <b>Зарплату нараховано</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `Ваша винагорода успішно зараховано!\n\n` +
+      `💵 <b>Сума виплати:</b> <code>${p.amount ?? 0} ₴</code>\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">💼 Переглянути історію виплат</a>`
+    );
+  },
 
-  SALARY_LARGE_PAYOUT: (p) =>
-    `⚠️ <b>Велика виплата: ${p.amount ?? 0} ₴</b>\n\n` +
-    `👤 <b>Працівник:</b> ${p.employeeName ?? '—'}\n` +
-    `👤 <b>Менеджер:</b> ${p.managerName ?? '—'}`,
+  SALARY_LARGE_PAYOUT: (p) => {
+    const link = buildLink('/finance');
+    return (
+      `⚠️ <b>Велика виплата зарплати</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `Увага! Виявлено виплату, що перевищує стандартні межі.\n\n` +
+      `💵 <b>Сума:</b> <code>${p.amount ?? 0} ₴</code>\n` +
+      `👤 <b>Працівник:</b> ${p.employeeName ?? '—'}\n` +
+      `👤 <b>Затверджено:</b> ${p.managerName ?? '—'}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">💼 Переглянути фінансові деталі</a>`
+    );
+  },
 
-  LOW_STOCK: (p) =>
-    `⚠️ <b>Низький залишок на складі</b>\n\n` +
-    `📦 <b>Товар:</b> ${p.itemName ?? '—'}\n` +
-    `📊 <b>Залишок:</b> ${p.currentStock ?? 0} ${p.unit ?? 'шт'}\n` +
-    `📉 <b>Мінімум:</b> ${p.minStock ?? 0} ${p.unit ?? 'шт'}\n` +
-    (p.cityName ? `🏙️ <b>Місто:</b> ${p.cityName}\n` : '') +
-    `\n<i>Склад: <a href="${CRM_LINK}">CRM</a></i>`,
+  LOW_STOCK: (p) => {
+    const link = buildLink('/inventory');
+    return (
+      `⚠️ <b>Низький залишок на складі</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `Увага! Товар на складі майже закінчився.\n\n` +
+      `📦 <b>Товар:</b> ${p.itemName ?? '—'}\n` +
+      `📊 <b>Поточний залишок:</b> <code>${p.currentStock ?? 0} ${p.unit ?? 'шт'}</code>\n` +
+      `📉 <b>Мінімальний рівень:</b> <code>${p.minStock ?? 0} ${p.unit ?? 'шт'}</code>\n` +
+      (p.cityName ? `🏙️ <b>Місто:</b> ${p.cityName}\n` : '') +
+      `\n━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">📦 Керувати складськими залишками</a>`
+    );
+  },
 
   WELCOME_ONBOARDING: (p) =>
-    `👋 <b>Вітаємо у Світло Знань CRM!</b>\n\n` +
-    `Ваш акаунт створено.\n\n` +
-    `📧 <b>Логін:</b> <code>${p.email ?? '—'}</code>\n\n` +
-    `Увійдіть за посиланням: <a href="${CRM_LINK}">${CRM_LINK}</a>\n\n` +
-    `<i>Пароль було надіслано окремо. Змініть його після першого входу.</i>`,
+    `👋 <b>Вітаємо у Світло Знань CRM!</b>\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `Ваш обліковий запис успішно створено.\n\n` +
+    `📧 <b>Ваш логін:</b>\n<code>${p.email ?? '—'}</code>\n\n` +
+    `🔐 <i>Пароль надіслано окремо. Обов'язково змініть його після першого входу для безпеки.</i>\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `<a href="${CRM_LINK}">🚀 Увійти до системи</a>`,
 
-  ERROR_ALERT_5XX: (p) =>
-    `🚨 <b>CRM «Світло Знань» — ${p.count ?? 0} помилок 5xx за останні 5 хв</b>\n\n` +
-    `Перевірте логи та стан сервісів.`,
+  ERROR_ALERT_5XX: (p) => {
+    const link = buildLink('/dashboard');
+    return (
+      `🚨 <b>Критична помилка CRM</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `⚠️ Виявлено <b>${p.count ?? 0} помилок 5xx</b> за останні 5 хвилин!\n\n` +
+      `Необхідно терміново перевірити:\n` +
+      `• Логи сервера\n` +
+      `• Стан сервісів\n` +
+      `• Доступність бази даних\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">🔧 Перейти до панелі управління</a>`
+    );
+  },
 };
 
 export function getTelegramTemplate(
