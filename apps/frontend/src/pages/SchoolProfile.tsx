@@ -114,7 +114,6 @@ export default function SchoolProfile() {
         phone: "",
         email: "",
         childrenCount: 0,
-        notes: "",
       };
     }
 
@@ -129,7 +128,6 @@ export default function SchoolProfile() {
       phone: schoolRaw.phone || "",
       email: schoolRaw.email || "",
       childrenCount: schoolRaw.childrenCount || 0,
-      notes: schoolRaw.notes || "",
     };
   }, [schoolRaw]);
 

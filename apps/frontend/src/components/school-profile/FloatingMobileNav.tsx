@@ -48,8 +48,12 @@ export default function FloatingMobileNav() {
     timeoutRef.current = setTimeout(() => {
       isClickScrolling.current = false;
     }, 1200);
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (id === "section-execution") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
   return (
