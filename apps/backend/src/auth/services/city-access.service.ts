@@ -9,15 +9,14 @@ export class CityAccessService {
   async getManagedCityIds(userId: string): Promise<string[]> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { managedCities: { select: { id: true } } },
+      select: { cityId: true },
     });
-    return user?.managedCities.map((c) => c.id) ?? [];
+    return user?.cityId ? [user.cityId] : [];
   }
 
   async assertCityManager(user: JwtUser, cityId: string): Promise<void> {
     if (user.role !== 'MANAGER') return;
-    const managedIds = await this.getManagedCityIds(user.sub);
-    if (!managedIds.includes(cityId)) {
+    if (user.cityId !== cityId) {
       throw new ForbiddenException('salary.notCityManager');
     }
   }
