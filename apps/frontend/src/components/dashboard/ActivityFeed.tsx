@@ -1,14 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { staggerContainer, staggerItem, emptyStateVariants } from '../../lib/motion';
-
-const ROLE_INITIALS: Record<string, string> = {
-  MANAGER:    'М',
-  SUPERADMIN: 'А',
-  DRIVER:     'В',
-  HOST:       'В',
-};
 
 const ROLE_COLORS: Record<string, string> = {
   MANAGER:    'bg-brand-50 text-brand-700',
@@ -65,7 +56,7 @@ function groupItems(items: ActivityItem[]): Group[] {
   for (const item of items) {
     const last = groups[groups.length - 1];
     const sameUser   = last?.userName  === item.userName;
-    const sameSchool = last?.schoolId  === item.schoolId; 
+    const sameSchool = last?.schoolId  === item.schoolId;
 
     if (last && sameUser && sameSchool) {
       last.actions.push({ id: item.id, action: item.action, comment: item.comment, createdAt: item.createdAt });
@@ -107,12 +98,12 @@ export default function ActivityFeed({ items }: Props) {
       </div>
 
       {items.length === 0 ? (
-        <motion.div variants={emptyStateVariants} initial="hidden" animate="visible" className="py-5 text-center text-content-muted text-sm">
+        <div className="py-5 text-center text-content-muted text-sm empty-state-enter">
           Сьогодні активності ще немає
-        </motion.div>
+        </div>
       ) : (
         <>
-          <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-0.5 stagger-container">
             {visible.map((group) => {
               const avatarColor = ROLE_COLORS[group.role] ?? 'bg-neutral-100 text-neutral-600';
               const shownActions = group.actions.slice(-3);
@@ -120,7 +111,7 @@ export default function ActivityFeed({ items }: Props) {
               const lastTime     = formatTime(group.actions[group.actions.length - 1].createdAt);
 
               return (
-                <motion.div key={group.key} variants={staggerItem} className="flex items-start gap-2.5 py-2 px-2 -mx-1 rounded-control hover:bg-surface-muted/60 transition-colors">
+                <div key={group.key} className="flex items-start gap-2.5 py-2 px-2 -mx-1 rounded-control hover:bg-surface-muted/60 transition-colors">
 
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center text-2xs font-semibold shrink-0 mt-0.5 ${avatarColor}`}>
                     {getInitials(group.userName)}
@@ -159,10 +150,10 @@ export default function ActivityFeed({ items }: Props) {
 
                   <span className="text-2xs text-content-muted shrink-0 pt-0.5">{lastTime}</span>
 
-                </motion.div>
+                </div>
               );
             })}
-          </motion.div>
+          </div>
 
           {hasMore && (
             <button

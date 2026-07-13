@@ -15,3 +15,11 @@ export function withViewTransition(fn: () => void): void {
     fn();
   }
 }
+
+export function withViewTransitionSync(fn: () => void): void {
+  if (supportsViewTransition()) {
+    document.startViewTransition(() => { fn(); });
+  } else {
+    fn();
+  }
+}

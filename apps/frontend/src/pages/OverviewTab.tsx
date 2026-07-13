@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { useSelectedCity } from "../context/CityContext";
 import { useDashboardSummary } from "../hooks/useDashboardSummary";
@@ -9,7 +8,7 @@ import StaleSchools from "../components/dashboard/StaleSchools";
 import FunnelBar from "../components/dashboard/FunnelBar";
 import CitiesTable from "../components/dashboard/CitiesTable";
 import CollapsibleSection from "../components/dashboard/CollapsibleSection";
-import { staggerContainer, staggerItem, useCountUp, TRANSITION } from "../lib/motion";
+import { useCountUp } from "../lib/motion";
 import { TrendingUp, DollarSign, Users, Building2 } from "lucide-react";
 
 function AnimatedAmount({ value, suffix }: { value: number; suffix?: string }) {
@@ -38,7 +37,7 @@ function KpiCard({
   loading?: boolean;
 }) {
   return (
-    <motion.div className="mobile-kpi-card min-h-[80px]" variants={staggerItem} whileTap={{ scale: 0.97 }} transition={TRANSITION.tap}>
+    <div className="mobile-kpi-card min-h-[80px] tap-scale">
       {loading ? (
         <div className="animate-pulse space-y-2">
           <div className="h-3 bg-neutral-100 rounded w-1/2" />
@@ -59,7 +58,7 @@ function KpiCard({
           )}
         </>
       )}
-    </motion.div>
+    </div>
   );
 }
 
@@ -108,7 +107,6 @@ export default function OverviewTab() {
 
   return (
     <div className="min-h-0">
-      {/* Привітання - без хрому */}
       <div className="p-4 md:p-8 pb-0">
         <div>
           <h1 className="text-base font-bold text-content-primary">
@@ -132,13 +130,7 @@ export default function OverviewTab() {
           </div>
         ) : (
           <>
-            {/* KPI Grid */}
-            <motion.div
-              className="grid grid-cols-2 lg:grid-cols-4 gap-3"
-              variants={staggerContainer}
-              initial="hidden"
-              animate="visible"
-            >
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 stagger-container">
               {kpiCards
                 ? kpiCards.map((kpi) => (
                     <KpiCard key={kpi.title} {...kpi} loading={false} />
@@ -152,19 +144,17 @@ export default function OverviewTab() {
                       loading={true}
                     />
                   ))}
-            </motion.div>
+            </div>
 
             <div className="lg:grid lg:grid-cols-2 lg:gap-6">
-              {/* Ліва колонка */}
               <div className="space-y-6 mb-6 lg:mb-0">
                 <StaleSchools schools={summary?.staleSchools ?? []} loading={!summary} />
-                <EventsWidget 
-                  todayEvents={summary?.todayEvents ?? []} 
-                  upcomingEvents={summary?.upcomingEvents ?? []} 
+                <EventsWidget
+                  todayEvents={summary?.todayEvents ?? []}
+                  upcomingEvents={summary?.upcomingEvents ?? []}
                 />
               </div>
 
-              {/* Права колонка */}
               <div className="space-y-6">
                 <CollapsibleSection
                   title="Воронка"

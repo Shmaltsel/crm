@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { DUR, EASE } from "../../lib/motion";
 
 interface Props {
   title: string;
@@ -9,11 +7,11 @@ interface Props {
   defaultExpanded?: boolean;
 }
 
-export default function CollapsibleSection({ 
-  title, 
-  subtitle, 
-  children, 
-  defaultExpanded = false 
+export default function CollapsibleSection({
+  title,
+  subtitle,
+  children,
+  defaultExpanded = false,
 }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -37,28 +35,22 @@ export default function CollapsibleSection({
             )}
           </div>
         </div>
-        <motion.span
-          animate={{ rotate: expanded ? 180 : 0 }}
-          transition={{ duration: DUR.fast, ease: EASE.standard }}
-          className="text-brand shrink-0"
+        <span
+          className="chevron-icon text-brand shrink-0"
+          data-rotate={expanded ? "true" : "false"}
         >
           ▼
-        </motion.span>
+        </span>
       </button>
 
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: DUR.normal, ease: EASE.standard }}
-            className="mt-3 overflow-hidden"
-          >
-            {children}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div
+        className="collapse-content mt-3"
+        data-expanded={expanded ? "true" : "false"}
+      >
+        <div>
+          {children}
+        </div>
+      </div>
     </div>
   );
 }

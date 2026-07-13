@@ -1,7 +1,5 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { staggerContainer, staggerItem, emptyStateVariants } from "../../lib/motion";
 
 const STAGE_LABELS: Record<string, string> = {
   BASE: "База",
@@ -83,7 +81,7 @@ export default function StaleSchools({ schools, loading }: Props) {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
 
-  const sorted = useMemo(() => 
+  const sorted = useMemo(() =>
     [...schools].sort((a, b) => (b.daysStale ?? 0) - (a.daysStale ?? 0)),
     [schools]
   );
@@ -94,7 +92,6 @@ export default function StaleSchools({ schools, loading }: Props) {
 
   return (
     <div className="mobile-card flex flex-col">
-      {/* Хедер */}
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 rounded-md bg-amber-50 flex items-center justify-center">
@@ -132,13 +129,13 @@ export default function StaleSchools({ schools, loading }: Props) {
           ))}
         </div>
       ) : schools.length === 0 ? (
-        <motion.div variants={emptyStateVariants} initial="hidden" animate="visible" className="py-6 text-center">
+        <div className="py-6 text-center empty-state-enter">
           <p className="text-2xl mb-1">✅</p>
           <p className="text-sm text-content-muted">Усі школи в тонусі 🎉</p>
-        </motion.div>
+        </div>
       ) : (
         <>
-          <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 stagger-container">
             {visible.map((school) => {
               const days = school.daysStale ?? 0;
               const tier = getTier(days);
@@ -148,16 +145,13 @@ export default function StaleSchools({ schools, loading }: Props) {
               const width = barWidth(days);
 
               return (
-                <motion.div
+                <div
                   key={school.id}
-                  variants={staggerItem}
                   onClick={() => navigate(`/schools/${school.id}`)}
                   className={`group relative flex items-center gap-3 py-2.5 px-2 -mx-1 rounded-xl cursor-pointer transition-colors ${tier.row}`}
                 >
-                  {/* Кольорова крапка-індикатор */}
                   <div className={`w-2 h-2 rounded-full shrink-0 ${tier.dot}`} />
 
-                  {/* Назва + стадія + прогрес-бар */}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-content-primary truncate leading-tight">
                       {school.name}
@@ -166,7 +160,6 @@ export default function StaleSchools({ schools, loading }: Props) {
                       {stageLabel}
                     </p>
 
-                    {/* Heat bar */}
                     <div className="h-1 w-full bg-surface-muted rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${tier.bar}`}
@@ -175,16 +168,15 @@ export default function StaleSchools({ schools, loading }: Props) {
                     </div>
                   </div>
 
-                  {/* Badge з днями */}
                   <span
                     className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${tier.badge}`}
                   >
                     {days} дн
                   </span>
-                </motion.div>
+                </div>
               );
             })}
-          </motion.div>
+          </div>
 
           {hasMore && (
             <button
@@ -199,7 +191,6 @@ export default function StaleSchools({ schools, loading }: Props) {
         </>
       )}
 
-      {/* Футер — легенда тирів */}
       {schools.length > 0 && (
         <div className="flex items-center gap-3 mt-4 pt-3 border-t border-border">
           {TIERS.map((t) => {

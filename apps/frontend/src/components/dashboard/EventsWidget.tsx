@@ -1,6 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { staggerContainer, staggerItem, emptyStateVariants } from "../../lib/motion";
 
 const UA_WEEKDAYS = ['нд', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
 const UA_MONTHS_SHORT = ['січ', 'лют', 'бер', 'квіт', 'трав', 'черв', 'лип', 'серп', 'вер', 'жовт', 'лист', 'груд'];
@@ -59,14 +57,14 @@ interface Props {
   upcomingEvents: UpcomingEvent[];
 }
 
-function EventRow({ 
-  ev, 
-  hasCrew, 
-  crewLabel, 
-  onClick, 
-  buttonText, 
+function EventRow({
+  ev,
+  hasCrew,
+  crewLabel,
+  onClick,
+  buttonText,
   buttonVariant,
-  timeLabel 
+  timeLabel
 }: {
   ev: TodayEvent | UpcomingEvent;
   hasCrew: boolean;
@@ -77,11 +75,10 @@ function EventRow({
   timeLabel: string;
 }) {
   return (
-    <motion.div
+    <div
       key={ev.id}
-      variants={staggerItem}
       onClick={onClick}
-      className={`rounded-control border p-3 flex flex-col gap-2 ${
+      className={`rounded-control border p-3 flex flex-col gap-2 cursor-pointer ${
         hasCrew
           ? "border-border bg-surface"
           : "border-warning/30 bg-warning-subtle"
@@ -125,7 +122,7 @@ function EventRow({
           {buttonText}
         </button>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -140,7 +137,6 @@ export default function EventsWidget({ todayEvents, upcomingEvents }: Props) {
 
   return (
     <div className="mobile-card flex flex-col">
-      {/* Сьогодні */}
       <div className="mb-4">
         <div className="flex justify-between items-start mb-2.5">
           <div>
@@ -160,17 +156,18 @@ export default function EventsWidget({ todayEvents, upcomingEvents }: Props) {
         </div>
 
         {todayEvents.length === 0 ? (
-          <motion.div variants={emptyStateVariants} initial="hidden" animate="visible" className="py-5 text-center text-content-muted text-sm">
+          <div className="py-5 text-center text-content-muted text-sm empty-state-enter">
             Сьогодні подій немає
-          </motion.div>
+          </div>
         ) : (
-          <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 stagger-container">
             {todayEvents.map((ev) => {
               const hasCrew = !!ev.crew;
               const crewLabel = ev.crew?.name ?? ev.crew?.host?.name ?? null;
 
               return (
                 <EventRow
+                  key={ev.id}
                   ev={ev}
                   hasCrew={hasCrew}
                   crewLabel={crewLabel}
@@ -181,7 +178,7 @@ export default function EventsWidget({ todayEvents, upcomingEvents }: Props) {
                 />
               );
             })}
-          </motion.div>
+          </div>
         )}
 
         <p className="text-2xs text-content-muted mt-2.5 pt-2.5 border-t border-border">
@@ -189,19 +186,19 @@ export default function EventsWidget({ todayEvents, upcomingEvents }: Props) {
         </p>
       </div>
 
-      {/* Найближчі події */}
       {upcomingEvents.length > 0 && (
         <div className="pt-3 border-t border-border">
           <p className="text-sm font-semibold text-content-primary mb-2.5">
             Найближчим часом
           </p>
-          <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 stagger-container">
             {upcomingEvents.map((ev) => {
               const hasCrew = !!ev.crew;
               const crewLabel = ev.crew?.name ?? ev.crew?.host?.name ?? null;
 
               return (
                 <EventRow
+                  key={ev.id}
                   ev={ev}
                   hasCrew={hasCrew}
                   crewLabel={crewLabel}
@@ -212,7 +209,7 @@ export default function EventsWidget({ todayEvents, upcomingEvents }: Props) {
                 />
               );
             })}
-          </motion.div>
+          </div>
         </div>
       )}
     </div>

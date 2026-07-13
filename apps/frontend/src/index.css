@@ -8,6 +8,7 @@
     overscroll-behavior: none;
     height: 100%;
     overflow: hidden;
+    interpolate-size: allow-keywords;
   }
   #root {
     height: 100%;
@@ -368,4 +369,103 @@
 
 ::view-transition-new(school-card) {
   animation: vt-fade-in 350ms ease-out both;
+}
+
+/* ─── Dashboard CSS Animations ─── */
+
+/* Page entrance (replaces framer-motion pageVariants) */
+.page-enter {
+  animation: pageEnter 0.4s cubic-bezier(0.19, 1, 0.22, 1) both;
+}
+@keyframes pageEnter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Stagger container (replaces framer-motion staggerContainer) */
+.stagger-container {
+  --stagger-delay: 0.05s;
+  --stagger-initial-delay: 0.04s;
+}
+.stagger-container > * {
+  opacity: 0;
+  animation: staggerItemIn 0.25s cubic-bezier(0.19, 1, 0.22, 1) both;
+  animation-delay: calc(var(--stagger-initial-delay) + var(--stagger-delay) * var(--stagger-index, 0));
+}
+.stagger-container > *:nth-child(1) { --stagger-index: 0; }
+.stagger-container > *:nth-child(2) { --stagger-index: 1; }
+.stagger-container > *:nth-child(3) { --stagger-index: 2; }
+.stagger-container > *:nth-child(4) { --stagger-index: 3; }
+.stagger-container > *:nth-child(5) { --stagger-index: 4; }
+.stagger-container > *:nth-child(6) { --stagger-index: 5; }
+.stagger-container > *:nth-child(7) { --stagger-index: 6; }
+.stagger-container > *:nth-child(8) { --stagger-index: 7; }
+.stagger-container > *:nth-child(n+9) { --stagger-index: 8; }
+
+@keyframes staggerItemIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Empty state entrance (replaces framer-motion emptyStateVariants) */
+.empty-state-enter {
+  animation: emptyStateIn 0.4s cubic-bezier(0.19, 1, 0.22, 1) both;
+}
+@keyframes emptyStateIn {
+  from { opacity: 0; scale: 0.85; transform: translateY(16px); }
+  to   { opacity: 1; scale: 1; transform: translateY(0); }
+}
+
+/* Skeleton pulse (replaces framer-motion skeletonPulse) */
+.skeleton-pulse {
+  animation: skeletonPulse 1.4s linear infinite;
+}
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 0.7; }
+}
+
+/* Collapsible section (CSS grid technique, replaces framer-motion AnimatePresence) */
+.collapse-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.collapse-content[data-expanded="true"] {
+  grid-template-rows: 1fr;
+}
+.collapse-content > div {
+  overflow: hidden;
+}
+
+/* Chevron rotation for collapsible sections */
+.chevron-icon {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.chevron-icon[data-rotate="true"] {
+  transform: rotate(180deg);
+}
+
+/* Card tap feedback (replaces framer-motion whileTap) */
+.tap-scale {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.tap-scale:active {
+  transform: scale(0.97);
+}
+
+/* Reduced motion overrides */
+@media (prefers-reduced-motion: reduce) {
+  .stagger-container > * {
+    animation: none;
+    opacity: 1;
+  }
+  .page-enter,
+  .empty-state-enter,
+  .skeleton-pulse {
+    animation: none;
+  }
+  .collapse-content {
+    transition: none;
+  }
 }

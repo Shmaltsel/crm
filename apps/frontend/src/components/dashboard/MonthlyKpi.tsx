@@ -1,6 +1,4 @@
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { staggerContainer, staggerItem, useHoverCapable } from '../../lib/motion';
 
 function fmt(n: unknown): string {
   return new Intl.NumberFormat("uk-UA").format(Math.round(Number(n) || 0));
@@ -23,7 +21,6 @@ const UA_MONTHS = [
 ];
 
 export default function MonthlyKpi({ kpi }: Props) {
-  const hoverCapable = useHoverCapable();
   const navigate = useNavigate();
   const now = new Date();
   const monthLabel = UA_MONTHS[now.getMonth()];
@@ -79,14 +76,11 @@ export default function MonthlyKpi({ kpi }: Props) {
         </button>
       </div>
 
-      <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3 stagger-container">
         {tiles.map((tile) => (
-          <motion.div
+          <div
             key={tile.label}
-            variants={staggerItem}
-            whileHover={hoverCapable ? "hover" : undefined}
-            initial="rest"
-            className={`rounded-xl p-3 ${tile.bg}`}
+            className={`rounded-xl p-3 ${tile.bg} tap-scale`}
           >
             <div className="flex items-center gap-1.5 mb-2">
               <span className="text-base">{tile.icon}</span>
@@ -98,9 +92,9 @@ export default function MonthlyKpi({ kpi }: Props) {
               {tile.value}
             </p>
             <p className="text-xs text-content-muted mt-1">{tile.sub}</p>
-          </motion.div>
+          </div>
         ))}
-      </motion.div>
+      </div>
     </div>
   );
 }
