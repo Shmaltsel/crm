@@ -10,6 +10,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import Redis from 'ioredis';
 import { randomUUID } from 'crypto';
 import { UsersService } from '../users/users.service';
+import { CRM_LINK } from '../notifications/templates';
 
 const LOCK_KEY = 'telegram:bot:leader';
 const LOCK_TTL_MS = 15_000;
@@ -272,7 +273,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       `👋 <b>Вітаємо у Світло Знань CRM!</b>\n\n` +
       `Ваш акаунт створено.\n\n` +
       `📧 <b>Логін:</b> <code>${email}</code>\n\n` +
-      `Увійдіть за посиланням: <a href="https://crm-frontend-psi-sable.vercel.app">crm-frontend-psi-sable.vercel.app</a>\n\n` +
+      `Увійдіть за посиланням: <a href="${CRM_LINK}">${CRM_LINK}</a>\n\n` +
       `<i>Пароль було надіслано окремо. Змініть його після першого входу.</i>`;
 
     await this.sendMessage(chatId, text);
