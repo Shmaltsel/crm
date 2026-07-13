@@ -119,6 +119,15 @@
   animation: dayOffPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+@keyframes pendingPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+  50% { box-shadow: 0 0 0 4px rgba(59, 130, 246, 0); }
+}
+
+.pending-pulse {
+  animation: pendingPulse 2s ease-in-out infinite;
+}
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;

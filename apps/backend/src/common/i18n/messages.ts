@@ -38,6 +38,22 @@ export const MESSAGES = {
     uk: 'Можна призначати вихідні лише співробітникам свого міста',
     en: 'Can only manage day offs for own city staff',
   },
+  DAY_OFF_REQUEST_NOT_FOUND: {
+    uk: 'Запит на вихідний не знайдено',
+    en: 'Day off request not found',
+  },
+  DAY_OFF_REQUEST_ALREADY_REVIEWED: {
+    uk: 'Запит на вихідний вже оброблено',
+    en: 'Day off request already reviewed',
+  },
+  DAY_OFF_ALREADY_APPROVED: {
+    uk: 'Цей день вже позначено як вихідний',
+    en: 'This day is already marked as a day off',
+  },
+  NO_TELEGRAM_CHAT: {
+    uk: 'Співробітник не підключив Telegram-бота',
+    en: 'Staff member has not connected to the Telegram bot',
+  },
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;

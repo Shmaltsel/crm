@@ -2,7 +2,7 @@ import { toISODate, isPastDay } from "../utils/date";
 import { MONTH_NAMES, ROLE_ICON_MAP } from "../constants";
 import { getDayColor } from "../utils/color";
 import EventTooltip from "./EventTooltip";
-import type { Event as CalendarEvent, DayOff, User } from "../../../types";
+import type { Event as CalendarEvent, DayOff, DayOffRequest, User } from "../../../types";
 
 interface DesktopCalendarGridProps {
   days: (Date | null)[];
@@ -12,6 +12,7 @@ interface DesktopCalendarGridProps {
   setSelectedMobileDate: (date: Date) => void;
   eventsByDate: Map<string, CalendarEvent[]>;
   dayOffsByDate: Map<string, DayOff[]>;
+  pendingRequestsByDate: Map<string, DayOffRequest[]>;
   projectColorMap: Map<string, string>;
   projectHexMap: Map<string, string>;
   isStaff: boolean;
@@ -31,6 +32,7 @@ export default function DesktopCalendarGrid({
   setSelectedMobileDate,
   eventsByDate,
   dayOffsByDate,
+  pendingRequestsByDate,
   projectColorMap,
   projectHexMap,
   isStaff,
@@ -82,6 +84,9 @@ export default function DesktopCalendarGrid({
             const dayKey = day ? toISODate(day) : "";
             const dayEvents = day ? (eventsByDate.get(dayKey) ?? []) : [];
             const dayOffEntries = day ? (dayOffsByDate.get(dayKey) ?? []) : [];
+            const dayPendingRequests = day
+              ? (pendingRequestsByDate.get(dayKey) ?? [])
+              : [];
 
             const dayColor = day
               ? getDayColor(dayEvents, projectHexMap)
@@ -90,9 +95,13 @@ export default function DesktopCalendarGrid({
             const myDayOff = isStaff
               ? dayOffEntries.find((d) => d.userId === user?.id)
               : undefined;
+            const myPendingRequest = isStaff
+              ? dayPendingRequests.find((r) => r.userId === user?.id)
+              : undefined;
             const hasAnyDayOff = isStaff
               ? !!myDayOff
               : dayOffEntries.length > 0;
+            const hasAnyPending = dayPendingRequests.length > 0;
 
             const showCross =
               day && !isPastDay(day) && (isStaff || isManagerOrAdmin);
@@ -105,6 +114,7 @@ export default function DesktopCalendarGrid({
                   ${day ? "bg-white hover:bg-surface-muted cursor-pointer" : "bg-surface-muted/30"}
                   ${isSelected ? "ring-2 ring-inset ring-blue-500/20 bg-blue-50/10" : ""}
                   ${hasAnyDayOff ? "dayoff-cell-enter bg-rose-50/70" : ""}
+                  ${!hasAnyDayOff && hasAnyPending ? "bg-blue-50/30" : ""}
                 `}
               >
                 {day && (
@@ -116,16 +126,20 @@ export default function DesktopCalendarGrid({
                           title={
                             hasAnyDayOff
                               ? "Скасувати вихідний"
-                              : "Призначити вихідний"
+                              : hasAnyPending
+                                ? "Очікує підтвердження"
+                                : "Призначити вихідний"
                           }
                           className={`w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold transition-all
                             ${
                               hasAnyDayOff
                                 ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600"
-                                : "bg-surface-muted text-content-muted opacity-0 group-hover:opacity-100 hover:bg-rose-100 hover:text-rose-500"
+                                : myPendingRequest
+                                  ? "bg-blue-500 text-white shadow-sm pending-pulse"
+                                  : "bg-surface-muted text-content-muted opacity-0 group-hover:opacity-100 hover:bg-rose-100 hover:text-rose-500"
                             }`}
                         >
-                          ✕
+                          {hasAnyDayOff ? "✕" : myPendingRequest ? "?" : "✕"}
                         </button>
 
                         {isManagerOrAdmin && dayOffEntries.length > 0 && (
@@ -141,6 +155,31 @@ export default function DesktopCalendarGrid({
                                 return (
                                   <p
                                     key={d.id}
+                                    className="text-xs font-medium truncate"
+                                  >
+                                    {u
+                                      ? `${ROLE_ICON_MAP[u.role] || "👤"} ${u.name}`
+                                      : "Невідомий"}
+                                  </p>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {isManagerOrAdmin && dayPendingRequests.length > 0 && (
+                          <div className="hidden md:block absolute top-full left-0 mt-2 w-48 bg-blue-800 text-white p-2.5 rounded-xl shadow-2xl opacity-0 invisible group-hover/dayoff:opacity-100 group-hover/dayoff:visible transition-all duration-200 pointer-events-none z-20">
+                            <p className="text-[10px] uppercase tracking-wide text-blue-200 mb-1.5">
+                              Очікують підтвердження ({dayPendingRequests.length})
+                            </p>
+                            <div className="space-y-1">
+                              {dayPendingRequests.map((r: DayOffRequest) => {
+                                const u = allUsers.find(
+                                  (au: User) => au.id === r.userId,
+                                );
+                                return (
+                                  <p
+                                    key={r.id}
                                     className="text-xs font-medium truncate"
                                   >
                                     {u
@@ -173,6 +212,13 @@ export default function DesktopCalendarGrid({
                       <p className="text-[9px] md:text-[10px] text-rose-600 font-semibold text-center mb-1 truncate px-1">
                         🌴 {dayOffEntries.length}{" "}
                         {dayOffEntries.length === 1 ? "вихідний" : "вихідних"}
+                      </p>
+                    )}
+
+                    {!hasAnyDayOff && hasAnyPending && (
+                      <p className="text-[9px] md:text-[10px] text-blue-500 font-semibold text-center mb-1 truncate px-1">
+                        ? {dayPendingRequests.length}{" "}
+                        {dayPendingRequests.length === 1 ? "запит" : "запитів"}
                       </p>
                     )}
 

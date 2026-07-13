@@ -41,7 +41,7 @@ export default function CalendarView() {
     : undefined;
 
   const {
-    dayOffsByDate, staffForModal, dayOffModalDate,
+    dayOffsByDate, pendingRequestsByDate, staffForModal, dayOffModalDate,
     setDayOffModalDate, handleDayOffClick,
     handleToggleStaffDayOff, handleLongPressDayOff,
   } = useDayOffActions(
@@ -86,6 +86,7 @@ export default function CalendarView() {
           setSelectedMobileDate={setSelectedMobileDate}
           eventsByDate={eventsByDate}
           dayOffsByDate={dayOffsByDate}
+          pendingRequestsByDate={pendingRequestsByDate}
           projectColorMap={projectColorMap}
           projectHexMap={projectHexMap}
           isStaff={isStaff}
@@ -106,12 +107,14 @@ export default function CalendarView() {
           selectedMobileDate={selectedMobileDate}
           eventsByDate={eventsByDate}
           dayOffsByDate={dayOffsByDate}
+          pendingRequestsByDate={pendingRequestsByDate}
           projectHexMap={projectHexMap}
           projects={projects}
           filterCityId={filterCityId}
           setFilterCityId={setFilterCityId}
           cities={cities}
           userRole={userRole}
+          user={user}
           handleMobileDayTap={handleMobileDayTap}
           startLongPress={startLongPress}
           cancelLongPress={cancelLongPress}

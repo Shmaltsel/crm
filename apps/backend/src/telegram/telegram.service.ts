@@ -193,6 +193,69 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     await this.sendWithRetry(chatId, text);
   }
 
+  async sendWithInlineKeyboard(
+    chatId: string,
+    text: string,
+    buttons: { text: string; callbackData: string }[][],
+  ): Promise<number | null> {
+    if (!this.bot) return null;
+    try {
+      const msg = await this.bot.sendMessage(chatId, text, {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: buttons.map((row) =>
+            row.map((b) => ({ text: b.text, callback_data: b.callbackData })),
+          ),
+        },
+      });
+      return msg.message_id;
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      this.logger.error(
+        `Не вдалося надіслати повідомлення з клавіатурою ${chatId}: ${err.message}`,
+      );
+      return null;
+    }
+  }
+
+  async editMessageText(
+    chatId: string,
+    messageId: number,
+    text: string,
+  ): Promise<void> {
+    if (!this.bot) return;
+    try {
+      await this.bot.editMessageText(text, {
+        chat_id: chatId,
+        message_id: messageId,
+        parse_mode: 'HTML',
+      });
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      this.logger.warn(
+        `Не вдалося редагувати повідомлення ${chatId}:${messageId}: ${err.message}`,
+      );
+    }
+  }
+
+  async answerCallbackQuery(
+    callbackQueryId: string,
+    text?: string,
+  ): Promise<void> {
+    if (!this.bot) return;
+    try {
+      await this.bot.answerCallbackQuery(callbackQueryId, { text });
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      this.logger.warn(`Не вдалося відповісти на callback: ${err.message}`);
+    }
+  }
+
+  onCallbackQuery(handler: (query: TelegramBot.CallbackQuery) => void): void {
+    if (!this.bot) return;
+    this.bot.on('callback_query', handler);
+  }
+
   async sendWelcome(
     chatId: string,
     name: string,

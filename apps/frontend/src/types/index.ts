@@ -215,6 +215,24 @@ export interface DayOff {
   user: { id: string; name: string; role: string; cityId: string | null };
 }
 
+export type DayOffRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export interface DayOffRequest {
+  id: string;
+  userId: string;
+  date: string;
+  reason: string | null;
+  status: DayOffRequestStatus;
+  managerNote: string | null;
+  dayOffId: string | null;
+  createdBy: string;
+  reviewedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  reviewedAt: string | null;
+  user: { id: string; name: string; role: string; cityId: string | null };
+}
+
 export interface IssueReport {
   id: string;
   eventId: string;

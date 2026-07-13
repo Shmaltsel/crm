@@ -4,6 +4,7 @@ import { DaysOffService } from './days-off.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { DayOffRequestsService } from '../day-off-requests/day-off-requests.service';
 import { AppException } from '../common/exceptions/app.exception';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
@@ -26,6 +27,10 @@ const mockTelegram = {
 
 const mockNotifications = {
   create: jest.fn().mockResolvedValue(undefined),
+};
+
+const mockDayOffRequests = {
+  create: jest.fn(),
 };
 
 const hostUser: JwtUser = {
@@ -72,6 +77,7 @@ describe('DaysOffService', () => {
         { provide: PrismaService, useValue: mockPrisma },
         { provide: TelegramService, useValue: mockTelegram },
         { provide: NotificationsService, useValue: mockNotifications },
+        { provide: DayOffRequestsService, useValue: mockDayOffRequests },
       ],
     }).compile();
 
@@ -133,10 +139,10 @@ describe('DaysOffService', () => {
   });
 
   describe('create', () => {
-    it('HOST ігнорує dto.userId та використовує currentUser.sub', async () => {
-      mockPrisma.dayOff.findUnique.mockResolvedValueOnce(null);
-      mockPrisma.dayOff.upsert.mockResolvedValueOnce({
-        id: 'd1',
+    it('HOST делегує DayOffRequestsService.create замість прямого створення', async () => {
+      mockDayOffRequests.create.mockResolvedValueOnce({
+        id: 'req-1',
+        status: 'PENDING',
         userId: hostUser.sub,
         user: {
           id: hostUser.sub,
@@ -145,38 +151,33 @@ describe('DaysOffService', () => {
           cityId: 'city-1',
         },
       });
-      mockPrisma.user.findFirst.mockResolvedValueOnce(null);
 
-      await service.create(
+      const result = await service.create(
         { date: '2026-07-10', userId: 'another-user' },
         hostUser,
       );
 
-      const upsertArg = mockPrisma.dayOff.upsert.mock.calls[0][0];
-      expect(upsertArg.where.userId_date.userId).toBe(hostUser.sub);
-      expect(upsertArg.create.userId).toBe(hostUser.sub);
-      expect(upsertArg.create.createdBy).toBe(hostUser.sub);
+      expect(mockDayOffRequests.create).toHaveBeenCalledWith(
+        { date: '2026-07-10' },
+        hostUser,
+      );
+      expect(result.id).toBe('req-1');
     });
 
-    it('DRIVER також використовує currentUser.sub', async () => {
-      mockPrisma.dayOff.findUnique.mockResolvedValueOnce(null);
-      mockPrisma.dayOff.upsert.mockResolvedValueOnce({
-        id: 'd1',
+    it('DRIVER делегує DayOffRequestsService.create', async () => {
+      mockDayOffRequests.create.mockResolvedValueOnce({
+        id: 'req-2',
+        status: 'PENDING',
         userId: driverUser.sub,
-        user: {
-          id: driverUser.sub,
-          name: 'Driver One',
-          role: 'DRIVER',
-          cityId: 'city-1',
-        },
       });
-      mockPrisma.user.findFirst.mockResolvedValueOnce(null);
 
-      await service.create({ date: '2026-07-11' }, driverUser);
+      const result = await service.create({ date: '2026-07-11' }, driverUser);
 
-      const upsertArg = mockPrisma.dayOff.upsert.mock.calls[0][0];
-      expect(upsertArg.where.userId_date.userId).toBe(driverUser.sub);
-      expect(upsertArg.update).toEqual({});
+      expect(mockDayOffRequests.create).toHaveBeenCalledWith(
+        { date: '2026-07-11' },
+        driverUser,
+      );
+      expect(result.id).toBe('req-2');
     });
 
     it('MANAGER без userId отримує USER_ID_REQUIRED', async () => {
@@ -303,109 +304,48 @@ describe('DaysOffService', () => {
       ).rejects.toBeInstanceOf(AppException);
     });
 
-    it('якщо existing відсутній -> викликає notifyManager(action=created)', async () => {
-      const notifySpy = jest.spyOn<any, any>(service as any, 'notifyManager');
+    it('для MANAGER/SUPERADMIN не викликає DayOffRequestsService', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({
+        id: 'host-2',
+        role: 'HOST',
+        cityId: 'city-1',
+      });
       mockPrisma.dayOff.findUnique.mockResolvedValueOnce(null);
       mockPrisma.dayOff.upsert.mockResolvedValueOnce({
-        id: 'd4',
-        userId: hostUser.sub,
+        id: 'd2',
+        userId: 'host-2',
         user: {
-          id: hostUser.sub,
-          name: 'Host One',
+          id: 'host-2',
+          name: 'Host Two',
           role: 'HOST',
           cityId: 'city-1',
         },
       });
       mockPrisma.user.findFirst.mockResolvedValueOnce(null);
 
-      await service.create({ date: '2026-07-10' }, hostUser);
-
-      expect(notifySpy).toHaveBeenCalledWith(
-        'city-1',
-        'Host One',
-        '2026-07-10',
-        'created',
+      await service.create(
+        { date: '2026-07-10', userId: 'host-2' },
+        managerUser,
       );
+
+      expect(mockDayOffRequests.create).not.toHaveBeenCalled();
+      expect(mockPrisma.dayOff.upsert).toHaveBeenCalled();
     });
 
-    it('якщо existing є -> notifyManager не викликається (anti-spam)', async () => {
-      const notifySpy = jest.spyOn<any, any>(service as any, 'notifyManager');
-      mockPrisma.dayOff.findUnique.mockResolvedValueOnce({
-        id: 'existing-1',
+    it('HOST делегує DayOffRequestsService.create', async () => {
+      mockDayOffRequests.create.mockResolvedValueOnce({
+        id: 'req-3',
+        status: 'PENDING',
         userId: hostUser.sub,
       });
-      mockPrisma.dayOff.upsert.mockResolvedValueOnce({
-        id: 'existing-1',
-        userId: hostUser.sub,
-        user: {
-          id: hostUser.sub,
-          name: 'Host One',
-          role: 'HOST',
-          cityId: 'city-1',
-        },
-      });
 
-      await service.create({ date: '2026-07-10' }, hostUser);
+      const result = await service.create({ date: '2026-07-10' }, hostUser);
 
-      expect(notifySpy).not.toHaveBeenCalled();
-    });
-
-    it('поточна поведінка: минула дата дозволена (без серверної валідації past-date)', async () => {
-      mockPrisma.dayOff.findUnique.mockResolvedValueOnce(null);
-      mockPrisma.dayOff.upsert.mockResolvedValueOnce({
-        id: 'past-1',
-        userId: hostUser.sub,
-        user: {
-          id: hostUser.sub,
-          name: 'Host One',
-          role: 'HOST',
-          cityId: 'city-1',
-        },
-      });
-      mockPrisma.user.findFirst.mockResolvedValueOnce(null);
-
-      const result = await service.create({ date: '2000-01-01' }, hostUser);
-
-      expect(result.id).toBe('past-1');
-      const upsertArg = mockPrisma.dayOff.upsert.mock.calls[0][0];
-      expect(upsertArg.where.userId_date.date).toEqual(new Date('2000-01-01'));
-    });
-
-    it('STAFF двічі поспіль на ту саму дату: upsert повертає той самий запис, дубліката не очікується', async () => {
-      const notifySpy = jest.spyOn<any, any>(service as any, 'notifyManager');
-      mockPrisma.dayOff.findUnique
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ id: 'same-1', userId: hostUser.sub });
-      mockPrisma.dayOff.upsert
-        .mockResolvedValueOnce({
-          id: 'same-1',
-          userId: hostUser.sub,
-          user: {
-            id: hostUser.sub,
-            name: 'Host One',
-            role: 'HOST',
-            cityId: 'city-1',
-          },
-        })
-        .mockResolvedValueOnce({
-          id: 'same-1',
-          userId: hostUser.sub,
-          user: {
-            id: hostUser.sub,
-            name: 'Host One',
-            role: 'HOST',
-            cityId: 'city-1',
-          },
-        });
-      mockPrisma.user.findFirst.mockResolvedValueOnce(null);
-
-      const first = await service.create({ date: '2026-07-10' }, hostUser);
-      const second = await service.create({ date: '2026-07-10' }, hostUser);
-
-      expect(first.id).toBe('same-1');
-      expect(second.id).toBe('same-1');
-      expect(mockPrisma.dayOff.upsert).toHaveBeenCalledTimes(2);
-      expect(notifySpy).toHaveBeenCalledTimes(1);
+      expect(mockDayOffRequests.create).toHaveBeenCalledWith(
+        { date: '2026-07-10' },
+        hostUser,
+      );
+      expect(result.id).toBe('req-3');
     });
   });
 

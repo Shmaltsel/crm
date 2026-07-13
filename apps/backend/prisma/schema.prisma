@@ -29,6 +29,7 @@ model User {
   city           City?          @relation(fields: [cityId], references: [id])
   salaryRecords  SalaryRecord[]
   daysOff        DayOff[]
+  dayOffRequests DayOffRequest[]
   schoolComments SchoolComment[]
 
   @@index([role])
@@ -36,12 +37,13 @@ model User {
 }
 
 model DayOff {
-  id        String   @id @default(uuid())
-  userId    String
-  date      DateTime @db.Date
-  createdBy String
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String           @id @default(uuid())
+  userId         String
+  date           DateTime         @db.Date
+  createdBy      String
+  createdAt      DateTime         @default(now())
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayOffRequests DayOffRequest[]
 
   @@unique([userId, date])
   @@index([date])
@@ -470,4 +472,31 @@ enum EventStatus {
   DONE
   REPORT
   RE_SALE
+}
+
+enum DayOffRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model DayOffRequest {
+  id          String              @id @default(uuid())
+  userId      String
+  date        DateTime            @db.Date
+  reason      String?
+  status      DayOffRequestStatus @default(PENDING)
+  managerNote String?
+  dayOffId    String?
+  createdBy   String
+  reviewedBy  String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  reviewedAt  DateTime?
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayOff      DayOff?             @relation(fields: [dayOffId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, date])
+  @@index([status])
+  @@index([date])
 }

@@ -4,9 +4,10 @@ import {
   useCreateDayOff,
   useDeleteDayOff,
 } from "../../../hooks/useDaysOff";
+import { useDayOffRequests } from "../../../hooks/useDayOffRequests";
 import { STAFF_ROLES } from "../constants";
 import { toISODate, isPastDay } from "../utils/date";
-import type { User } from "../../../types";
+import type { User, DayOffRequest } from "../../../types";
 
 export function useDayOffActions(
   monthFrom: string,
@@ -23,6 +24,11 @@ export function useDayOffActions(
   const [dayOffModalDate, setDayOffModalDate] = useState<Date | null>(null);
 
   const { data: dayOffs = [] } = useDaysOff(monthFrom, monthTo, dayOffCityId);
+  const { data: pendingRequests = [] } = useDayOffRequests(
+    monthFrom,
+    monthTo,
+    dayOffCityId,
+  );
   const createDayOff = useCreateDayOff();
   const deleteDayOff = useDeleteDayOff();
 
@@ -35,6 +41,17 @@ export function useDayOffActions(
     }
     return map;
   }, [dayOffs]);
+
+  const pendingRequestsByDate = useMemo(() => {
+    const map = new Map<string, DayOffRequest[]>();
+    for (const r of pendingRequests) {
+      if (r.status !== "PENDING") continue;
+      const key = r.date.slice(0, 10);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    }
+    return map;
+  }, [pendingRequests]);
 
   const staffForModal = useMemo(() => {
     const cityScope =
@@ -107,6 +124,7 @@ export function useDayOffActions(
 
   return {
     dayOffsByDate,
+    pendingRequestsByDate,
     staffForModal,
     dayOffModalDate,
     setDayOffModalDate,

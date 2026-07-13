@@ -28,6 +28,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { HealthModule } from './health/health.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { DaysOffModule } from './days-off/days-off.module';
+import { DayOffRequestsModule } from './day-off-requests/day-off-requests.module';
 import { ReportsModule } from './reports/reports.module';
 import { SalaryModule } from './salary/salary.module';
 import { SchoolCommentsModule } from './school-comments/school-comments.module';
@@ -77,6 +78,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     DashboardModule,
     ProjectsModule,
     DaysOffModule,
+    DayOffRequestsModule,
     InventoryModule,
     ReportsModule,
     SalaryModule,

@@ -2,6 +2,7 @@ import { Injectable, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { DayOffRequestsService } from '../day-off-requests/day-off-requests.service';
 import { AppException } from '../common/exceptions/app.exception';
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
@@ -14,6 +15,7 @@ export class DaysOffService {
     private readonly prisma: PrismaService,
     private readonly telegramService: TelegramService,
     private readonly notificationsService: NotificationsService,
+    private readonly dayOffRequestsService: DayOffRequestsService,
   ) {}
 
   async findAll(from?: string, to?: string, cityId?: string) {
@@ -40,11 +42,13 @@ export class DaysOffService {
     const isStaff = STAFF_ROLES.includes(currentUser.role);
     const isManagerOrAdmin = MANAGER_ROLES.includes(currentUser.role);
 
+    if (isStaff) {
+      return this.dayOffRequestsService.create({ date: dto.date }, currentUser);
+    }
+
     let targetUserId: string;
 
-    if (isStaff) {
-      targetUserId = currentUser.sub;
-    } else if (isManagerOrAdmin) {
+    if (isManagerOrAdmin) {
       if (!dto.userId)
         throw new AppException('USER_ID_REQUIRED', HttpStatus.BAD_REQUEST);
 

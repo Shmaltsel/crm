@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getDayColor } from "../utils/color";
 import { toISODate } from "../utils/date";
 import { MONTH_NAMES, PROJECT_HEX } from "../constants";
-import type { Event as CalendarEvent, Project, City, DayOff } from "../../../types";
+import type { Event as CalendarEvent, Project, City, DayOff, DayOffRequest } from "../../../types";
 
 interface MobileCalendarGridProps {
   days: (Date | null)[];
@@ -11,15 +11,17 @@ interface MobileCalendarGridProps {
   selectedMobileDate: Date;
   eventsByDate: Map<string, CalendarEvent[]>;
   dayOffsByDate: Map<string, DayOff[]>;
+  pendingRequestsByDate: Map<string, DayOffRequest[]>;
   projectHexMap: Map<string, string>;
   projects: Project[];
   filterCityId: string;
   setFilterCityId: (value: string) => void;
   cities: City[];
   userRole: string;
+  user: { id: string } | null;
   handleMobileDayTap: (day: Date) => void;
-  startLongPress: (day: Date) => void;
-  cancelLongPress: () => void;
+  startLongPress: (day: Date, clientX?: number, clientY?: number) => void;
+  cancelLongPress: (clientX?: number, clientY?: number) => void;
   pressingDay: Date | null;
   triggeredDay: Date | null;
   prevMonth: () => void;
@@ -33,12 +35,14 @@ export default function MobileCalendarGrid({
   selectedMobileDate,
   eventsByDate,
   dayOffsByDate,
+  pendingRequestsByDate,
   projectHexMap,
   projects,
   filterCityId,
   setFilterCityId,
   cities,
   userRole,
+  user,
   handleMobileDayTap,
   startLongPress,
   cancelLongPress,
@@ -96,7 +100,15 @@ export default function MobileCalendarGrid({
             const dayKey = day ? toISODate(day) : "";
             const dayEvents = day ? (eventsByDate.get(dayKey) ?? []) : [];
             const dayOffEntries = day ? (dayOffsByDate.get(dayKey) ?? []) : [];
+            const dayPendingRequests = day
+              ? (pendingRequestsByDate.get(dayKey) ?? [])
+              : [];
             const dayColor = day ? getDayColor(dayEvents, projectHexMap) : undefined;
+
+            const myDayOff = dayOffEntries.find((d) => d.userId === user?.id);
+            const myPending = dayPendingRequests.find(
+              (r) => r.userId === user?.id && r.status === "PENDING",
+            );
 
             return (
               <div key={idx} className="flex items-center justify-center py-0.5">
@@ -145,6 +157,11 @@ export default function MobileCalendarGrid({
                         <span className="text-white text-[6px] font-bold leading-none">✕</span>
                       </span>
                     )}
+                    {!myDayOff && myPending && (
+                      <span className="pointer-events-none absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-blue-500 border-2 border-white flex items-center justify-center pending-pulse">
+                        <span className="text-white text-[6px] font-bold leading-none">?</span>
+                      </span>
+                    )}
                   </button>
                 )}
               </div>
@@ -169,6 +186,10 @@ export default function MobileCalendarGrid({
         <span className="inline-flex items-center gap-1 text-2xs font-medium text-danger-600 bg-danger-50 border border-danger-100 px-2 py-0.5 rounded-pill">
           <span className="w-2 h-2 rounded-full bg-danger shrink-0" />
           Вихідний
+        </span>
+        <span className="inline-flex items-center gap-1 text-2xs font-medium text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-pill">
+          <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 pending-pulse" />
+          Запит
         </span>
 
         {userRole === "SUPERADMIN" && (
