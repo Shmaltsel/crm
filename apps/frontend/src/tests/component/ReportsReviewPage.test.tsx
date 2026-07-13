@@ -52,6 +52,12 @@ vi.mock("../../hooks/useEmployees", () => ({
   useUsers: () => ({ data: [] }),
 }));
 
+vi.mock("../../hooks/useDayOffRequests", () => ({
+  useDayOffRequests: () => ({ data: [], isLoading: false }),
+  useApproveDayOffRequest: () => ({ mutate: vi.fn(), isPending: false }),
+  useRejectDayOffRequest: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+
 describe("ReportsReviewPage", () => {
   beforeEach(() => {
     mockApprove.mockClear();

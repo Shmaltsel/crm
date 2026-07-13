@@ -14,6 +14,7 @@ import { Skeleton } from "../../../components/ui/Skeleton";
 import { Input } from "../../../components/ui/Input";
 import { useToast } from "../../../components/ui/Toast";
 import SalaryEntryForm from "../../salary/components/SalaryEntryForm";
+import DayOffRequestsPanel from "../components/DayOffRequestsPanel";
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("uk-UA", {
@@ -107,6 +108,8 @@ export default function ReportsReviewPage() {
             : "Немає звітів, що очікують перевірки"}
         </p>
       </div>
+
+      <DayOffRequestsPanel />
 
       {isLoading && (
         <div className="space-y-4">
