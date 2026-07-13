@@ -2,7 +2,6 @@ import { Injectable, Logger, Inject } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
-import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { JwtUser } from '../auth/interfaces/jwt-user.interface';
 
@@ -12,7 +11,6 @@ export class EventsSchedulingService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private telegramService: TelegramService,
     private notificationsService: NotificationsService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
@@ -100,26 +98,21 @@ export class EventsSchedulingService {
       month: 'long',
       year: 'numeric',
     });
-    const msg =
-      `📅 <b>Подію перенесено!</b>\n\n` +
-      `🏫 <b>Заклад:</b> ${event.school?.name ?? '—'}\n` +
-      `🎪 <b>Проєкт:</b> ${event.project}\n` +
-      `📅 <b>Нова дата:</b> ${dateStr} о ${newTime}\n` +
-      `📍 <b>Місто:</b> ${event.city?.name ?? '—'}\n` +
-      (event.address ? `🗺 <b>Адреса:</b> ${event.address}\n` : '') +
-      `\n<i>Деталі у CRM: <a href="-https://app.svitlo-znan.app">Посилання</a></i>`;
 
-    const sendTo = async (userId: string | null | undefined) => {
-      if (!userId) return;
-      const u = await this.prisma.user.findUnique({ where: { id: userId } });
-      const chatId =
-        u?.telegramChatId ||
-        (u?.telegramId && /^\d+$/.test(u.telegramId) ? u.telegramId : null);
-      if (chatId) await this.telegramService.sendMessage(chatId, msg);
-    };
-
-    await sendTo(event.crew?.hostId);
-    await sendTo(event.crew?.driverId);
+    const crewIds = [event.crew?.hostId, event.crew?.driverId].filter(
+      Boolean,
+    ) as string[];
+    if (crewIds.length > 0) {
+      this.notificationsService.sendTelegramToUsers(crewIds, 'EVENT_RESCHEDULED', {
+        eventId: event.id,
+        project: event.project,
+        schoolName: event.school?.name,
+        newDate: dateStr,
+        newTime,
+        cityName: event.city?.name,
+        address: event.address,
+      });
+    }
 
     const payload = {
       eventId: event.id,
