@@ -57,16 +57,18 @@ describe('ReportsService', () => {
       { create: jest.fn() } as unknown as NotificationsService,
       { sendMessage: jest.fn() } as unknown as TelegramService,
       { bumpVersion: jest.fn().mockResolvedValue(undefined) } as any,
+      { assertCityManager: jest.fn().mockResolvedValue(undefined) } as any,
     );
   });
 
   describe('approve', () => {
-    const setupReport = () => {
+    const setupReport = (overrides = {}) => {
       mockTx.eventReport.findUnique.mockResolvedValueOnce({
         status: 'SUBMITTED',
         eventId: 'ev-1',
-        event: { crew: true, school: {}, city: {} },
+        event: { cityId: 'city-1', crew: true, school: {}, city: {} },
         approvedBy: undefined,
+        ...overrides,
       });
     };
 

@@ -1,5 +1,3 @@
-import { flushSync } from "react-dom";
-
 export function supportsViewTransition(): boolean {
   return (
     typeof document !== "undefined" &&
@@ -10,9 +8,7 @@ export function supportsViewTransition(): boolean {
 export function withViewTransition(fn: () => void): void {
   if (supportsViewTransition()) {
     document.startViewTransition(() => {
-      flushSync(() => {
-        fn();
-      });
+      fn();
     });
   } else {
     fn();

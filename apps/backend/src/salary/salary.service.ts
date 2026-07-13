@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SalaryPayoutService } from './salary-payout.service';
@@ -17,6 +18,7 @@ const LARGE_SALARY_THRESHOLD = 50_000;
 
 @Injectable()
 export class SalaryService {
+  private readonly logger = new Logger(SalaryService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly salaryPayout: SalaryPayoutService,
@@ -44,6 +46,9 @@ export class SalaryService {
 
     if (user.role === 'MANAGER') {
       await this.cityAccess.assertCityManager(user, report.event.cityId);
+      this.logger.warn(
+        `create cityCheck user=${user.sub} role=${user.role} cityId=${report.event.cityId} reportId=${dto.reportId}`,
+      );
     }
 
     const hasLargeAmounts = dto.items.some(
@@ -155,7 +160,13 @@ export class SalaryService {
 
     const record = await this.prisma.salaryRecord.findUnique({
       where: { id },
-      include: { event: { select: { cityId: true } } },
+      select: {
+        id: true,
+        employeeId: true,
+        eventId: true,
+        amount: true,
+        status: true,
+      },
     });
     if (!record) throw new NotFoundException('salary.notFound');
     if (record.status !== 'PENDING')
@@ -166,7 +177,15 @@ export class SalaryService {
     }
 
     if (user.role === 'MANAGER') {
-      await this.cityAccess.assertCityManager(user, record.event?.cityId ?? '');
+      const ev = await this.prisma.event.findUnique({
+        where: { id: record.eventId! },
+        select: { cityId: true },
+      });
+      const cityId = ev?.cityId ?? '';
+      this.logger.warn(
+        `markPaid cityCheck user=${user.sub} role=${user.role} cityId=${cityId} recordId=${id} eventId=${record.eventId} eventLoaded=${!!ev}`,
+      );
+      await this.cityAccess.assertCityManager(user, cityId);
     }
 
     await this.prisma.$transaction(async (tx) => {

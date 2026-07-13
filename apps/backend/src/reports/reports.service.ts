@@ -3,9 +3,11 @@ import {
   ForbiddenException,
   BadRequestException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+import { CityAccessService } from '../auth/services/city-access.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { CreateReportDto } from './dto/create-report.dto';
@@ -27,11 +29,14 @@ const ALLOWED_TRANSITIONS: Record<ReportStatus, ReportStatus[]> = {
 
 @Injectable()
 export class ReportsService {
+  private readonly logger = new Logger(ReportsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
     private readonly telegramService: TelegramService,
     private readonly cacheVersion: CacheVersionService,
+    private readonly cityAccess: CityAccessService,
   ) {}
 
   private async sendCrewTelegram(userId: string, schoolName: string) {
@@ -230,6 +235,13 @@ export class ReportsService {
     });
     if (!report) throw new NotFoundException('report.notFound');
     this.assertTransition(report.status, 'APPROVED');
+
+    if (user.role === 'MANAGER') {
+      this.logger.warn(
+        `approve cityCheck user=${user.sub} role=${user.role} cityId=${report.event.cityId} reportId=${id} schoolId=${report.event.schoolId}`,
+      );
+      await this.cityAccess.assertCityManager(user, report.event.cityId);
+    }
 
     const pendingRecords = await this.prisma.salaryRecord.findMany({
       where: { reportId: id, status: 'PENDING' },
