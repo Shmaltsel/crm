@@ -147,11 +147,11 @@ export default function OnboardingTour() {
           />
 
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            initial={{ opacity: 0, y: 20, scale: 0.95, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, scale: 1, x: "-50%" }}
+            exit={{ opacity: 0, y: 20, scale: 0.95, x: "-50%" }}
             transition={{ duration: 0.25 }}
-            className="fixed z-[101] bottom-20 md:bottom-24 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md max-h-[calc(100dvh-7rem)] md:max-h-[calc(100dvh-9rem)]"
+            className="fixed z-[101] bottom-20 md:bottom-24 left-1/2 w-[calc(100%-2rem)] max-w-md max-h-[calc(100dvh-7rem)] md:max-h-[calc(100dvh-9rem)]"
           >
             <div className="bg-surface rounded-2xl shadow-2xl border border-content/10 overflow-hidden flex flex-col max-h-full">
               <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">

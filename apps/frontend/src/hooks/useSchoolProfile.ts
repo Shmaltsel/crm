@@ -99,6 +99,7 @@ export function useUpdateEventStatus() {
                 .filter((ev) => ev.status !== "RE_SALE")
             : old,
       );
+      qc.invalidateQueries({ queryKey: ["calendarEvents"] });
     },
   });
 }
@@ -162,6 +163,7 @@ export function useAssignCrew() {
               )
             : old,
       );
+      qc.invalidateQueries({ queryKey: ["calendarEvents"] });
     },
   });
 }
@@ -193,6 +195,7 @@ export function useSubmitReport() {
       qc.invalidateQueries({ queryKey: ["reports", "submitted"] });
       qc.invalidateQueries({ queryKey: ["schools"] });
       qc.invalidateQueries({ queryKey: ["schoolStats"] });
+      qc.invalidateQueries({ queryKey: ["calendarEvents"] });
     },
   });
 }
@@ -242,6 +245,7 @@ export function useDeleteEvent(schoolId: string | undefined) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["school", schoolId] });
       qc.invalidateQueries({ queryKey: ["schoolCompletedEvents", schoolId] });
+      qc.invalidateQueries({ queryKey: ["calendarEvents"] });
     },
   });
 }
@@ -258,6 +262,7 @@ export const useCreateEvent = () => {
       queryClient.invalidateQueries({
         queryKey: ["schoolEvents", variables.schoolId],
       });
+      queryClient.invalidateQueries({ queryKey: ["calendarEvents"] });
     },
   });
 };

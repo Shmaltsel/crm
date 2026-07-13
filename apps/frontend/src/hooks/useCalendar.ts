@@ -11,8 +11,8 @@ export function useCalendarEvents(monthFrom?: string, monthTo?: string) {
       if (monthTo) params.set("dateTo", monthTo);
       const qs = params.toString();
       return api
-        .get<{ data: Event[] }>(`/events${qs ? `?${qs}` : ""}`)
-        .then((r) => r.data.data);
+        .get<Event[]>(`/events${qs ? `?${qs}` : ""}`)
+        .then((r) => r.data);
     },
     staleTime: 60 * 1000,
     placeholderData: keepPreviousData,

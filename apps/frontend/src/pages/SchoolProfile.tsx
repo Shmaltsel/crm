@@ -579,9 +579,10 @@ export default function SchoolProfile() {
               currentEvent={currentEvent}
               schoolName={schoolData.name}
               cityId={schoolData.cityId}
-              onEventUpdated={() =>
-                qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
-              }
+              onEventUpdated={() => {
+                qc.invalidateQueries({ queryKey: ["schoolEvents", id] });
+                qc.invalidateQueries({ queryKey: ["calendarEvents"] });
+              }}
             />
           </Suspense>
 
@@ -695,9 +696,10 @@ export default function SchoolProfile() {
               currentEvent={currentEvent}
               schoolName={schoolData.name}
               cityId={schoolData.cityId}
-              onEventUpdated={() =>
-                qc.invalidateQueries({ queryKey: ["schoolEvents", id] })
-              }
+              onEventUpdated={() => {
+                qc.invalidateQueries({ queryKey: ["schoolEvents", id] });
+                qc.invalidateQueries({ queryKey: ["calendarEvents"] });
+              }}
             />
           </Suspense>
 
