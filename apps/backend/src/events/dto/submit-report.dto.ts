@@ -105,10 +105,11 @@ export class SubmitReportDto {
   @Type(() => ExpenseItemDto)
   expenses: ExpenseItemDto[];
 
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => SalaryRecordDto)
-  salaries: SalaryRecordDto[];
+  salaries?: SalaryRecordDto[];
 
   @IsOptional()
   @IsArray()
