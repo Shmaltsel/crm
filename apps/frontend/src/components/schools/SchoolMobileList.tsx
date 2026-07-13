@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import type { School, PipelineStage } from "../../types";
 import { CATEGORY_BADGES } from "../../constants/categoryBadges";
+import { withViewTransition } from "../../lib/viewTransition";
 
 interface Props {
   schools: School[];
@@ -29,7 +30,8 @@ export const SchoolCard = React.memo(
     return (
       <div
         className="bg-surface rounded-card border border-border p-4 shadow-card transition-all hover:shadow-card-hover hover:border-brand-200 cursor-pointer active:scale-[0.99]"
-        onClick={() => navigate(`/schools/${school.id}`)}
+        onClick={() => withViewTransition(() => navigate(`/schools/${school.id}`))}
+        style={{ viewTransitionName: `school-card-${school.id}` } as React.CSSProperties}
       >
         <div className="flex items-start justify-between gap-2">
           <p className="font-semibold text-content-primary leading-snug text-sm line-clamp-2 flex-1">

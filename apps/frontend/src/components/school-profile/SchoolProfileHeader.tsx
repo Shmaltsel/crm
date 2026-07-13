@@ -1,9 +1,10 @@
-import { memo } from "react";
-import { Link } from "react-router-dom";
+import { memo, useCallback } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
 import PhoneLink from "../PhoneLink";
 import { scaleVariants, DUR, EASE } from "../../lib/motion";
 import type { SchoolProfileData } from "../../types";
+import { withViewTransition } from "../../lib/viewTransition";
 
 interface Props {
   schoolData: SchoolProfileData;
@@ -19,6 +20,7 @@ const fadeUp = (delay: number) => ({
 });
 
 export default memo(function SchoolProfileHeader({ schoolData, onEdit, onAddEvent, onActionMenu }: Props) {
+  const navigate = useNavigate();
   const { scrollY } = useScroll();
   const headerHeight = 180;
   const collapseStart = 0;
@@ -37,9 +39,12 @@ export default memo(function SchoolProfileHeader({ schoolData, onEdit, onAddEven
     >
       <div className="mb-6">
         <motion.div {...fadeUp(0)} className="text-xs md:text-sm text-content-muted mb-5 truncate">
-          <Link to="/schools" className="hover:text-brand transition-colors">
+          <button
+            onClick={() => withViewTransition(() => navigate("/schools"))}
+            className="hover:text-brand transition-colors bg-transparent border-none p-0 cursor-pointer text-inherit text-xs md:text-sm"
+          >
             Школи / Садочки
-          </Link>
+          </button>
           <span className="mx-2">›</span>
           <span className="text-content-primary font-medium">
             {schoolData.type} "{schoolData.name}"
@@ -49,6 +54,7 @@ export default memo(function SchoolProfileHeader({ schoolData, onEdit, onAddEven
         <motion.div
           {...fadeUp(0.05)}
           className="relative bg-surface rounded-card shadow-card border border-border overflow-hidden mb-2"
+          style={{ viewTransitionName: `school-card-${schoolData.id}` } as React.CSSProperties}
         >
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand-400 via-brand to-brand-700" />
 
