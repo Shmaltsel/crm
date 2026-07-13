@@ -104,7 +104,7 @@ export default function EmployeeCard({
         </div>
 
         {isSuperAdmin && (
-          <div className={`flex items-center gap-0.5 shrink-0 transition-opacity duration-200 ${hoverCapable ? "opacity-0 md:group-hover:opacity-100" : "opacity-100"}`}>
+          <div className={`flex items-center gap-0.5 shrink-0 transition-opacity duration-200 ${hoverCapable ? "opacity-100 md:opacity-0 md:group-hover:opacity-100" : "opacity-100"}`}>
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => onEdit(user)}
