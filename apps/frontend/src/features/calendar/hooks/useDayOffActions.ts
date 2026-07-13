@@ -4,7 +4,11 @@ import {
   useCreateDayOff,
   useDeleteDayOff,
 } from "../../../hooks/useDaysOff";
-import { useDayOffRequests } from "../../../hooks/useDayOffRequests";
+import {
+  useDayOffRequests,
+  useCreateDayOffRequest,
+} from "../../../hooks/useDayOffRequests";
+import { useToast } from "../../../components/ui/Toast";
 import { STAFF_ROLES } from "../constants";
 import { toISODate, isPastDay } from "../utils/date";
 import type { User, DayOffRequest } from "../../../types";
@@ -30,7 +34,9 @@ export function useDayOffActions(
     dayOffCityId,
   );
   const createDayOff = useCreateDayOff();
+  const createDayOffRequest = useCreateDayOffRequest();
   const deleteDayOff = useDeleteDayOff();
+  const toast = useToast();
 
   const dayOffsByDate = useMemo(() => {
     const map = new Map<string, typeof dayOffs>();
@@ -79,7 +85,17 @@ export function useDayOffActions(
         if (existing) {
           deleteDayOff.mutate(existing.id);
         } else {
-          createDayOff.mutate({ date: key });
+          const pending = pendingRequestsByDate
+            .get(key)
+            ?.find((r) => r.userId === user.id);
+          if (pending) return;
+          createDayOffRequest.mutate(
+            { date: key },
+            {
+              onSuccess: () => toast("Заявка надіслана", "success"),
+              onError: () => toast("Не вдалося надіслати заявку", "error"),
+            },
+          );
         }
         return;
       }
@@ -88,7 +104,16 @@ export function useDayOffActions(
         setDayOffModalDate(date);
       }
     },
-    [isStaff, isManagerOrAdmin, user, dayOffsByDate, createDayOff, deleteDayOff],
+    [
+      isStaff,
+      isManagerOrAdmin,
+      user,
+      dayOffsByDate,
+      pendingRequestsByDate,
+      createDayOffRequest,
+      deleteDayOff,
+      toast,
+    ],
   );
 
   const handleToggleStaffDayOff = useCallback(
@@ -114,12 +139,33 @@ export function useDayOffActions(
           .get(key)
           ?.find((d: { userId: string }) => d.userId === user.id);
         if (existing) deleteDayOff.mutate(existing.id);
-        else createDayOff.mutate({ date: key });
+        else {
+          const pending = pendingRequestsByDate
+            .get(key)
+            ?.find((r) => r.userId === user.id);
+          if (pending) return;
+          createDayOffRequest.mutate(
+            { date: key },
+            {
+              onSuccess: () => toast("Заявка надіслана", "success"),
+              onError: () => toast("Не вдалося надіслати заявку", "error"),
+            },
+          );
+        }
       } else if (isManagerOrAdmin) {
         setDayOffModalDate(day);
       }
     },
-    [isStaff, isManagerOrAdmin, user, dayOffsByDate, createDayOff, deleteDayOff],
+    [
+      isStaff,
+      isManagerOrAdmin,
+      user,
+      dayOffsByDate,
+      pendingRequestsByDate,
+      createDayOffRequest,
+      deleteDayOff,
+      toast,
+    ],
   );
 
   return {
