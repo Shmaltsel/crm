@@ -48,11 +48,16 @@ export default function FloatingMobileNav() {
     timeoutRef.current = setTimeout(() => {
       isClickScrolling.current = false;
     }, 1200);
+    const container = document.querySelector("main");
+    if (!container) return;
     if (id === "section-execution") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      container.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       const el = document.getElementById(id);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (el) {
+        const top = el.offsetTop - 80;
+        container.scrollTo({ top, behavior: "smooth" });
+      }
     }
   };
 
@@ -89,7 +94,7 @@ export default function FloatingMobileNav() {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            onClick={() => document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" })}
             className="md:hidden fixed z-50 bottom-[calc(56px+env(safe-area-inset-bottom,0px)+48px)] right-5 w-11 h-11 bg-surface border border-border-strong text-content-secondary rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
           >
             ↑

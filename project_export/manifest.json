@@ -812,7 +812,7 @@
   {
     "file": "apps/backend/src/reports/reports.module.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 200
+    "tokens": 219
   },
   {
     "file": "apps/backend/src/reports/reports.service.spec.ts",
@@ -1142,7 +1142,7 @@
   {
     "file": "apps/frontend/src/components/BottomNavigationBar.tsx",
     "bundle": "bundle_03.xml",
-    "tokens": 1283
+    "tokens": 1289
   },
   {
     "file": "apps/frontend/src/components/calendar/DayOffModal.tsx",
@@ -1297,7 +1297,7 @@
   {
     "file": "apps/frontend/src/components/MoreSheet.tsx",
     "bundle": "bundle_03.xml",
-    "tokens": 1712
+    "tokens": 1710
   },
   {
     "file": "apps/frontend/src/components/NotificationBell.tsx",
@@ -1327,7 +1327,7 @@
   {
     "file": "apps/frontend/src/components/school-profile/CommentsTimeline.tsx",
     "bundle": "bundle_03.xml",
-    "tokens": 4035
+    "tokens": 3750
   },
   {
     "file": "apps/frontend/src/components/school-profile/CompletedEventModal.tsx",
@@ -1337,7 +1337,7 @@
   {
     "file": "apps/frontend/src/components/school-profile/EventDetails.tsx",
     "bundle": "bundle_04.xml",
-    "tokens": 1997
+    "tokens": 1896
   },
   {
     "file": "apps/frontend/src/components/school-profile/EventPreparation.tsx",
@@ -1352,7 +1352,7 @@
   {
     "file": "apps/frontend/src/components/school-profile/FloatingMobileNav.tsx",
     "bundle": "bundle_04.xml",
-    "tokens": 1043
+    "tokens": 1117
   },
   {
     "file": "apps/frontend/src/components/school-profile/HistoryAccordion.tsx",
@@ -1362,7 +1362,7 @@
   {
     "file": "apps/frontend/src/components/school-profile/HistoryTimeline.tsx",
     "bundle": "bundle_04.xml",
-    "tokens": 962
+    "tokens": 817
   },
   {
     "file": "apps/frontend/src/components/school-profile/modals/CommentModal.tsx",
@@ -1422,7 +1422,7 @@
   {
     "file": "apps/frontend/src/components/school-profile/Pipeline.tsx",
     "bundle": "bundle_04.xml",
-    "tokens": 1553
+    "tokens": 1354
   },
   {
     "file": "apps/frontend/src/components/school-profile/ProfileTabs.tsx",
@@ -1442,7 +1442,7 @@
   {
     "file": "apps/frontend/src/components/school-profile/SchoolProfileHeader.tsx",
     "bundle": "bundle_04.xml",
-    "tokens": 1768
+    "tokens": 1878
   },
   {
     "file": "apps/frontend/src/components/school-profile/SchoolProfileSkeleton.tsx",
@@ -1457,12 +1457,12 @@
   {
     "file": "apps/frontend/src/components/schools/SchoolDesktopTable.tsx",
     "bundle": "bundle_04.xml",
-    "tokens": 1588
+    "tokens": 1639
   },
   {
     "file": "apps/frontend/src/components/schools/SchoolMobileList.tsx",
     "bundle": "bundle_04.xml",
-    "tokens": 1118
+    "tokens": 1170
   },
   {
     "file": "apps/frontend/src/components/schools/schoolUtils.ts",
@@ -1617,7 +1617,7 @@
   {
     "file": "apps/frontend/src/features/calendar/components/MobileDayDetailsPanel.tsx",
     "bundle": "bundle_04.xml",
-    "tokens": 1168
+    "tokens": 943
   },
   {
     "file": "apps/frontend/src/features/calendar/constants.ts",
@@ -1741,7 +1741,7 @@
   },
   {
     "file": "apps/frontend/src/hooks/useEmployees.ts",
-    "bundle": "bundle_05.xml",
+    "bundle": "bundle_04.xml",
     "tokens": 1400
   },
   {
@@ -1782,7 +1782,7 @@
   {
     "file": "apps/frontend/src/index.css",
     "bundle": "bundle_05.xml",
-    "tokens": 2033
+    "tokens": 2400
   },
   {
     "file": "apps/frontend/src/instrument.ts",
@@ -1798,6 +1798,11 @@
     "file": "apps/frontend/src/lib/motion.ts",
     "bundle": "bundle_05.xml",
     "tokens": 3288
+  },
+  {
+    "file": "apps/frontend/src/lib/viewTransition.ts",
+    "bundle": "bundle_05.xml",
+    "tokens": 130
   },
   {
     "file": "apps/frontend/src/pages/Analytics.tsx",
@@ -1892,7 +1897,7 @@
   {
     "file": "apps/frontend/src/pages/SchoolProfile.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 8397
+    "tokens": 8006
   },
   {
     "file": "apps/frontend/src/pages/Schools.tsx",
@@ -1911,7 +1916,7 @@
   },
   {
     "file": "apps/frontend/src/tests/component/CompletedEventModal.test.tsx",
-    "bundle": "bundle_06.xml",
+    "bundle": "bundle_05.xml",
     "tokens": 561
   },
   {

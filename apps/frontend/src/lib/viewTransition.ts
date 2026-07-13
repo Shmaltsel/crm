@@ -10,7 +10,7 @@ export function withViewTransition(fn: () => void): void {
     const t = document.startViewTransition(() => {
       fn();
     });
-    t.finished.then(() => window.scrollTo(0, 0));
+    t.finished.then(() => document.querySelector("main")?.scrollTo(0, 0));
   } else {
     fn();
   }

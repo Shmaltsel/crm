@@ -35,9 +35,6 @@ const Pipeline = lazy(() => import("../components/school-profile/Pipeline"));
 const HistoryTimeline = lazy(
   () => import("../components/school-profile/HistoryTimeline"),
 );
-const CommentsTimeline = lazy(
-  () => import("../components/school-profile/CommentsTimeline"),
-);
 const EventDetails = lazy(
   () => import("../components/school-profile/EventDetails"),
 );
@@ -596,13 +593,6 @@ export default function SchoolProfile() {
           >
             <SchoolInfoCard schoolData={schoolData} />
           </Suspense>
-          <Suspense
-            fallback={
-              <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
-            }
-          >
-            <CommentsTimeline schoolId={schoolData.id} variant="chat" />
-          </Suspense>
         </section>
 
         <section id="section-history" className="scroll-mt-20 space-y-4">
@@ -646,14 +636,6 @@ export default function SchoolProfile() {
               onHistoryClick={handleHistoryClick}
               onAddCommentClick={handleAddCommentClick}
             />
-          </Suspense>
-
-          <Suspense
-            fallback={
-              <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
-            }
-          >
-            <CommentsTimeline schoolId={schoolData.id} />
           </Suspense>
         </div>
 
