@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import AddressLink from "../AddressLink";
 import PhoneLink from "../PhoneLink";
 import IssueModal from "./modals/IssueModal";
 import RescheduleModal from "./modals/RescheduleModal";
-import { fadeVariants, cardHoverVariants, useHoverCapable } from "../../lib/motion";
 import type { Event, User } from '../../types';
 
 interface EventDetailsProps {
@@ -16,20 +14,14 @@ interface EventDetailsProps {
 }
 
 export default function EventDetails({ currentEvent, schoolName, cityId, onEventUpdated, employees }: EventDetailsProps) {
-  const hoverCapable = useHoverCapable();
   const [issueOpen, setIssueOpen] = useState(false);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
 
   if (!currentEvent) {
     return (
-      <motion.div
-        variants={fadeVariants}
-        initial="hidden"
-        animate="visible"
-        className="bg-surface p-6 rounded-card shadow-card border border-border flex items-center justify-center h-32 text-content-muted"
-      >
+      <div className="bg-surface p-6 rounded-card shadow-card border border-border flex items-center justify-center h-32 text-content-muted fade-in-up">
         У цього закладу ще немає запланованих подій.
-      </motion.div>
+      </div>
     );
   }
 
@@ -37,11 +29,7 @@ export default function EventDetails({ currentEvent, schoolName, cityId, onEvent
 
   return (
     <>
-      <motion.div
-        variants={cardHoverVariants}
-        initial="rest"
-        whileHover={hoverCapable ? "hover" : undefined}
-        className="bg-surface rounded-card card-shadow hover:card-shadow-hover border border-border md:border-l-4 md:border-l-brand relative"
+      <div className="bg-surface rounded-card card-shadow hover:card-shadow-hover border border-border md:border-l-4 md:border-l-brand relative hover:-translate-y-0.5 transition-all duration-200"
       >
         <div className="p-5 sm:p-6 pl-6 sm:pl-6">
           <div className="flex justify-between items-center mb-2 md:mb-5 md:border-b border-border md:pb-4">
@@ -118,7 +106,7 @@ export default function EventDetails({ currentEvent, schoolName, cityId, onEvent
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       <IssueModal
         isOpen={issueOpen}

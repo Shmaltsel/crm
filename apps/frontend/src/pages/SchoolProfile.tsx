@@ -1,8 +1,7 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
-import { DUR, pageVariants, slideUpVariants } from "../lib/motion";
+
 import { tick } from "../lib/haptics";
 
 import {
@@ -387,15 +386,9 @@ export default function SchoolProfile() {
     }),
     [schoolData],
   );
-  const stagger = (i: number) => ({
-    initial: { opacity: 0, y: 10 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.3, delay: 0.1 + i * 0.07, ease: "easeOut" },
-  });
-
   const completedEventsBlock = (anchorId?: string) => (
     completedEvents.length > 0 && (
-      <motion.div id={anchorId}>
+      <div id={anchorId}>
         <div className="bg-surface rounded-card shadow-card border border-border overflow-hidden">
           <div className="p-6 border-b border-border bg-surface-muted">
             <h3 className="font-bold text-content-primary">
@@ -478,7 +471,7 @@ export default function SchoolProfile() {
             </table>
           </div>
         </div>
-      </motion.div>
+      </div>
     )
   );
 
@@ -498,10 +491,8 @@ export default function SchoolProfile() {
   }
 
   return (
-    <motion.div
-      animate={{ opacity: isLeavingPage ? 0 : 1 }}
-      transition={{ duration: DUR.slow }}
-      className="p-4 md:p-8 bg-gradient-subtle min-h-screen text-content-primary font-sans w-full overflow-x-hidden pb-24 md:pb-8"
+    <div
+      className={`p-4 md:p-8 bg-gradient-subtle min-h-screen text-content-primary font-sans w-full overflow-x-hidden pb-24 md:pb-8 transition-opacity duration-300 ${isLeavingPage ? 'opacity-0' : 'opacity-100'}`}
     >
       <SchoolProfileHeader
         schoolData={schoolData}
@@ -531,18 +522,13 @@ export default function SchoolProfile() {
             </Suspense>
           )}
 
-          <AnimatePresence>
-            {currentEvent &&
-              currentStageIndex >= 4 &&
-              exitingEventId !== currentEvent.id && (
-              <motion.div
-                key="preparation"
-                variants={pageVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                className="grid grid-cols-1 xl:grid-cols-2 gap-6"
-              >
+          {currentEvent &&
+            currentStageIndex >= 4 &&
+            exitingEventId !== currentEvent.id && (
+            <div
+              key="preparation"
+              className="grid grid-cols-1 xl:grid-cols-2 gap-6 fade-in-up"
+            >
                 {eventFullLoading ? (
                   <div className="bg-surface p-6 rounded-card shadow-card border border-border animate-pulse h-48" />
                 ) : (
@@ -566,9 +552,8 @@ export default function SchoolProfile() {
                 >
                   <AssignedCrew currentEvent={currentEvent} employees={users} />
                 </Suspense>
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
 
           <Suspense
             fallback={
@@ -706,13 +691,9 @@ export default function SchoolProfile() {
           {currentEvent &&
             currentStageIndex >= 4 &&
             exitingEventId !== currentEvent.id && (
-              <motion.div
+              <div
                 key="preparation-desktop"
-                variants={pageVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                className="grid grid-cols-1 gap-6"
+                className="grid grid-cols-1 gap-6 fade-in-up"
               >
                 {eventFullLoading ? (
                   <div className="bg-surface p-6 rounded-card shadow-card border border-border animate-pulse h-48" />
@@ -740,7 +721,7 @@ export default function SchoolProfile() {
                     employees={users}
                   />
                 </Suspense>
-              </motion.div>
+              </div>
             )}
 
           <div id="events-table-anchor">
@@ -855,6 +836,6 @@ export default function SchoolProfile() {
         event={selectedReportEvent}
       />
       <FloatingMobileNav />
-    </motion.div>
+    </div>
   );
 }

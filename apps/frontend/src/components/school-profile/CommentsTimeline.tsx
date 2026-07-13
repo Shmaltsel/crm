@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import {
   useSchoolComments,
   useCreateSchoolComment,
   useDeleteSchoolComment,
 } from "../../hooks/useSchoolComments";
-import { cardHoverVariants, DUR, EASE, useHoverCapable, emptyStateVariants } from "../../lib/motion";
 import type { CommentType, UserRole } from "../../types";
 
 const COMMENT_TYPES: { key: CommentType; label: string; icon: string }[] = [
@@ -78,11 +76,7 @@ export default function CommentsTimeline({ schoolId, variant = "card" }: Comment
 
   if (isChat) {
     return (
-      <motion.div
-        variants={emptyStateVariants}
-        initial="hidden"
-        animate="visible"
-        className="flex flex-col h-[420px] bg-surface rounded-card border border-border overflow-hidden"
+      <div className="flex flex-col h-[420px] bg-surface rounded-card border border-border overflow-hidden fade-in-up"
       >
         <div className="p-4 border-b border-border bg-surface-muted flex-shrink-0">
           <h3 className="font-bold text-content-primary flex items-center gap-2">
@@ -101,25 +95,17 @@ export default function CommentsTimeline({ schoolId, variant = "card" }: Comment
               ))}
             </div>
           ) : !data || data.items.length === 0 ? (
-            <motion.div
-              variants={emptyStateVariants}
-              initial="hidden"
-              animate="visible"
-              className="flex flex-col items-center justify-center text-center py-12 px-4 text-content-muted"
-            >
+            <div className="flex flex-col items-center justify-center text-center py-12 px-4 text-content-muted fade-in-up">
               <p className="text-sm mb-2">Ще немає записів.</p>
               <p className="text-xs">Додайте перший запис нижче</p>
-            </motion.div>
+            </div>
           ) : (
-            <AnimatePresence initial={false}>
+            <>
               {data.items.map((item, i) => (
-                  <motion.div
+                  <div
                     key={item.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: DUR.normal, ease: EASE.outExpo, delay: i * 0.04 }}
-                    className="flex gap-3 max-w-[85%] self-start"
+                    className="flex gap-3 max-w-[85%] self-start fade-in-up"
+                    style={{ animationDelay: `${i * 40}ms` }}
                   >
                     <div className="w-7 h-7 rounded-full bg-brand-subtle text-brand flex items-center justify-center text-xs shrink-0 mt-0.5">
                       {item.author.name.charAt(0).toUpperCase()}
@@ -134,9 +120,9 @@ export default function CommentsTimeline({ schoolId, variant = "card" }: Comment
                       </p>
                       <p className="text-content-secondary">{item.text}</p>
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
-            </AnimatePresence>
+            </>
           )}
         </div>
 
@@ -176,16 +162,12 @@ export default function CommentsTimeline({ schoolId, variant = "card" }: Comment
             </div>
           </form>
         )}
-      </motion.div>
+      </div>
     );
   }
 
   return (
-    <motion.div
-      variants={cardHoverVariants}
-      initial="rest"
-      whileHover={hoverCapable ? "hover" : undefined}
-      className="bg-surface p-6 rounded-card card-shadow hover:card-shadow-hover border border-border flex flex-col"
+    <div className="bg-surface p-6 rounded-card card-shadow hover:card-shadow-hover border border-border flex flex-col hover:-translate-y-0.5 transition-all duration-200"
     >
       <h3 className="font-bold text-content-primary mb-5 flex items-center gap-2">
         <span className="w-8 h-8 rounded-full bg-warning-subtle text-warning-600 flex items-center justify-center">
@@ -269,15 +251,11 @@ export default function CommentsTimeline({ schoolId, variant = "card" }: Comment
         </p>
       ) : (
         <div className="space-y-3 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-border">
-          <AnimatePresence initial={false}>
             {data.items.map((item, i) => (
-              <motion.div
+              <div
                 key={item.id}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: DUR.normal, ease: EASE.outExpo, delay: i * 0.04 }}
-                className="relative pl-8 pr-3 py-2 text-sm hover:bg-surface-muted rounded-card transition-colors group border border-transparent hover:border-border"
+                className="relative pl-8 pr-3 py-2 text-sm hover:bg-surface-muted rounded-card transition-colors group border border-transparent hover:border-border fade-in-left"
+                style={{ animationDelay: `${i * 40}ms` }}
               >
                 <div className="absolute left-1.5 w-3 h-3 rounded-full top-3.5 bg-warning ring-4 ring-warning-subtle flex items-center justify-center text-[7px]">
                 </div>
@@ -312,9 +290,8 @@ export default function CommentsTimeline({ schoolId, variant = "card" }: Comment
                 <p className="text-content-secondary mt-1.5 bg-surface p-3 rounded-card border border-border shadow-sm">
                   {item.text}
                 </p>
-              </motion.div>
+              </div>
             ))}
-          </AnimatePresence>
         </div>
       )}
 
@@ -339,6 +316,6 @@ export default function CommentsTimeline({ schoolId, variant = "card" }: Comment
           </button>
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }

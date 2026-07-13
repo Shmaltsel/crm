@@ -1,6 +1,4 @@
 import { memo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { cardHoverVariants, DUR, EASE, useHoverCapable } from "../../lib/motion";
 import type { Event, EventHistory } from "../../types";
 interface HistoryTimelineProps {
   currentEvent: Event | null;
@@ -9,14 +7,8 @@ interface HistoryTimelineProps {
 }
 
 export default memo(function HistoryTimeline({ currentEvent, onHistoryClick, onAddCommentClick }: HistoryTimelineProps) {
-  const hoverCapable = useHoverCapable();
   return (
-    <motion.div
-      variants={cardHoverVariants}
-      initial="rest"
-      whileHover={hoverCapable ? "hover" : undefined}
-      className="bg-surface p-6 rounded-card card-shadow hover:card-shadow-hover border border-border flex flex-col"
-    >
+    <div className="bg-surface p-6 rounded-card card-shadow hover:card-shadow-hover border border-border flex flex-col hover:-translate-y-0.5 transition-all duration-200">
       <div className="flex justify-between items-center mb-5">
         <h3 className="font-bold text-content-primary">Історія взаємодії</h3>
         <button 
@@ -31,16 +23,12 @@ export default memo(function HistoryTimeline({ currentEvent, onHistoryClick, onA
         <p className="text-sm text-content-muted">Історія порожня.</p>
       ) : (
         <div className="space-y-3 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-border">
-          <AnimatePresence initial={false}>
           {currentEvent.history.map((item: EventHistory, i: number) => (
-            <motion.div
+            <div
               key={item.id}
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -8 }}
-              transition={{ duration: DUR.normal, ease: EASE.outExpo, delay: i * 0.04 }}
               onClick={() => onHistoryClick(item)}
-              className="relative pl-8 pr-3 py-2 text-sm hover:bg-surface-muted rounded-card cursor-pointer transition-colors group border border-transparent hover:border-border"
+              className="relative pl-8 pr-3 py-2 text-sm hover:bg-surface-muted rounded-card cursor-pointer transition-colors group border border-transparent hover:border-border fade-in-left"
+              style={{ animationDelay: `${i * 40}ms` }}
             >
               <div className={`absolute left-1.5 w-3 h-3 rounded-full top-3.5 ${i === 0 ? 'bg-brand ring-4 ring-brand-50' : 'bg-neutral-300'}`}></div>
               <p className="font-semibold text-content-primary">{item.action}</p>
@@ -56,11 +44,10 @@ export default memo(function HistoryTimeline({ currentEvent, onHistoryClick, onA
                 </span>
                 <span className="opacity-0 group-hover:opacity-100 transition-opacity text-brand">✏️ Редагувати</span>
               </p>
-            </motion.div>
+            </div>
           ))}
-          </AnimatePresence>
         </div>
       )}
-    </motion.div>
+    </div>
   );
 });
