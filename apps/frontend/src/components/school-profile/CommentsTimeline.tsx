@@ -29,7 +29,6 @@ interface CommentsTimelineProps {
 }
 
 export default function CommentsTimeline({ schoolId, variant = "card" }: CommentsTimelineProps) {
-  const hoverCapable = useHoverCapable();
   const { user } = useAuth();
   const [filter, setFilter] = useState<CommentType | undefined>(undefined);
   const [newType, setNewType] = useState<CommentType>("NOTE");
