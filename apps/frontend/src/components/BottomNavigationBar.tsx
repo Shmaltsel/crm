@@ -82,7 +82,7 @@ export default function BottomNavigationBar() {
 
         <button
           onClick={() => setSheetOpen(true)}
-          className="relative flex items-center justify-center min-w-[44px] min-h-[44px] flex-1"
+          className="relative flex items-center justify-center min-w-[44px] min-h-[44px] flex-1 touch-manipulation"
           aria-label="Більше розділів"
           role="tab"
           aria-selected={isMoreActive}

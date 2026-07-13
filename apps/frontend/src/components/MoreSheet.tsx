@@ -33,11 +33,13 @@ export default function MoreSheet({ onClose, visible }: Props & { visible: boole
 
   let itemIdx = 0;
 
-  return (
-    <div className="fixed inset-0 z-modal flex flex-col justify-end">
-      <div hidden={!visible} className="absolute inset-0 bg-black/40 sheet-backdrop" onClick={onClose} />
+  if (!visible) return null;
 
-      <div hidden={!visible} className="relative bg-white rounded-t-2xl shadow-xl pb-safe pb-4 sheet-panel">
+  return (
+    <div className="fixed inset-0 z-sheet flex flex-col justify-end">
+      <div className="absolute inset-0 bg-black/40 sheet-backdrop" onClick={onClose} />
+
+      <div className="relative bg-white rounded-t-2xl shadow-xl pb-safe pb-4 sheet-panel">
         <div className="w-full flex justify-center pt-3 pb-1">
           <div className="sheet-handle w-9 h-1 rounded-full bg-slate-300" />
         </div>
