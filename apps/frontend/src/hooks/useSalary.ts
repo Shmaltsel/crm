@@ -48,6 +48,7 @@ export function useCreateSalary() {
     }) => api.post("/salary", dto).then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["salary"] });
+      qc.invalidateQueries({ queryKey: ["reports", "submitted"] });
     },
   });
 }

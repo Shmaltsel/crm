@@ -64,6 +64,7 @@ describe('SalaryService', () => {
         status: 'PENDING',
         amount: new Prisma.Decimal(1500),
         event: { cityId: 'city-1' },
+        report: { status: 'APPROVED' },
       });
       mockTx.salaryRecord.findUnique.mockResolvedValueOnce({
         employeeId: 'emp-1',
@@ -99,11 +100,26 @@ describe('SalaryService', () => {
         status: 'PAID',
         amount: new Prisma.Decimal(1500),
         event: { cityId: 'city-1' },
+        report: { status: 'APPROVED' },
       });
 
       await expect(
         service.markPaid('s1', mockUser as any),
       ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('кидає BadRequest, якщо звіт не затверджено', async () => {
+      mockTx.salaryRecord.findUnique.mockResolvedValueOnce({
+        id: 's1',
+        status: 'PENDING',
+        amount: new Prisma.Decimal(1500),
+        event: { cityId: 'city-1' },
+        report: { status: 'SUBMITTED' },
+      });
+
+      await expect(
+        service.markPaid('s1', mockUser as any),
+      ).rejects.toThrow('salary.reportNotApproved');
     });
   });
 });

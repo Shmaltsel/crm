@@ -135,6 +135,8 @@ export class SalaryService {
       const managedIds = await this.cityAccess.getManagedCityIds(user.sub);
       where.event = { cityId: { in: managedIds } };
     }
+    // Показувати лише нарахування за затвердженими звітами
+    where.report = { status: 'APPROVED' };
 
     return this.prisma.salaryRecord.findMany({
       where,
@@ -166,11 +168,14 @@ export class SalaryService {
         eventId: true,
         amount: true,
         status: true,
+        report: { select: { status: true } },
       },
     });
     if (!record) throw new NotFoundException('salary.notFound');
     if (record.status !== 'PENDING')
       throw new BadRequestException('salary.notPending');
+    if (record.report?.status !== 'APPROVED')
+      throw new BadRequestException('salary.reportNotApproved');
 
     if (record.employeeId === user.sub) {
       throw new ForbiddenException('salary.cannotApproveOwn');
