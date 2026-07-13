@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { CalendarOff, CheckCircle2, XCircle, MessageSquare } from "lucide-react";
+import { CalendarOff, CheckCircle2, XCircle } from "lucide-react";
 import {
   useDayOffRequests,
   useApproveDayOffRequest,
   useRejectDayOffRequest,
 } from "../../../hooks/useDayOffRequests";
+import { useAuth } from "../../../context/AuthContext";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { Skeleton } from "../../../components/ui/Skeleton";
 import { useToast } from "../../../components/ui/Toast";
@@ -18,7 +19,12 @@ function formatDate(dateStr: string) {
 }
 
 export default function DayOffRequestsPanel() {
-  const { data: requests = [], isLoading } = useDayOffRequests();
+  const { user } = useAuth();
+  const { data: requests = [], isLoading } = useDayOffRequests(
+    undefined,
+    undefined,
+    user?.cityId ?? undefined,
+  );
   const approveMutation = useApproveDayOffRequest();
   const rejectMutation = useRejectDayOffRequest();
   const toast = useToast();
@@ -42,8 +48,9 @@ export default function DayOffRequestsPanel() {
   };
 
   const handleReject = (id: string) => {
+    if (!note.trim()) return;
     rejectMutation.mutate(
-      { id, managerNote: note.trim() || undefined },
+      { id, managerNote: note.trim() },
       {
         onError: (error: unknown) => {
           const msg =
@@ -70,20 +77,22 @@ export default function DayOffRequestsPanel() {
 
   return (
     <div className="bg-surface rounded-card border border-border p-4">
-      <h3 className="text-sm font-semibold text-content-primary mb-3 flex items-center gap-2">
+      <div className="flex items-center gap-2 mb-3">
         <CalendarOff className="w-4 h-4 text-brand-600" />
-        Запити на вихідні
+        <h3 className="text-sm font-semibold text-content-primary">
+          Запити на вихідні
+        </h3>
         {pending.length > 0 && (
           <span className="ml-auto text-2xs px-2 py-0.5 rounded-pill bg-warning-50 text-warning-600 border border-warning-100 font-bold">
             {pending.length}
           </span>
         )}
-      </h3>
+      </div>
 
       {pending.length === 0 && (
         <EmptyState
           icon={CalendarOff}
-          title="Немає запитів"
+          title="Немає запитів на вихідний"
           description="Запити на вихідні з'являться тут після подачі співробітниками"
         />
       )}
@@ -120,23 +129,24 @@ export default function DayOffRequestsPanel() {
                 </button>
 
                 {rejectingId === r.id ? (
-                  <div className="flex gap-1.5 items-center">
-                    <input
+                  <div className="w-full sm:w-auto flex gap-1.5 items-center">
+                    <textarea
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
-                      placeholder="Причина (необов'язково)"
-                      className="px-2 py-1 border border-border rounded-lg text-xs focus:ring-2 focus:ring-danger outline-none w-36"
+                      rows={2}
+                      placeholder="Обов'язково вкажіть причину відхилення"
+                      className="flex-1 sm:w-48 px-2 py-1 border border-border rounded-lg text-xs focus:ring-2 focus:ring-danger outline-none resize-none"
                     />
                     <button
                       onClick={() => handleReject(r.id)}
-                      disabled={rejectMutation.isPending}
-                      className="px-2.5 py-1.5 bg-danger text-white text-xs font-medium rounded-lg hover:bg-danger-700 disabled:opacity-50 transition active:scale-95"
+                      disabled={!note.trim() || rejectMutation.isPending}
+                      className="px-2.5 py-1.5 bg-danger text-white text-xs font-medium rounded-lg hover:bg-danger-700 disabled:opacity-50 transition active:scale-95 shrink-0"
                     >
-                      ✓
+                      Відхилити
                     </button>
                     <button
                       onClick={() => { setRejectingId(null); setNote(""); }}
-                      className="px-2 py-1.5 text-content-muted hover:text-content-secondary text-xs transition"
+                      className="px-2 py-1.5 text-content-muted hover:text-content-secondary text-xs transition shrink-0"
                     >
                       ✕
                     </button>

@@ -15,6 +15,8 @@ import { Input } from "../../../components/ui/Input";
 import { useToast } from "../../../components/ui/Toast";
 import SalaryEntryForm from "../../salary/components/SalaryEntryForm";
 import DayOffRequestsPanel from "../components/DayOffRequestsPanel";
+import { useAuth } from "../../../context/AuthContext";
+import { hasRole } from "../../../utils/roles";
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("uk-UA", {
@@ -29,6 +31,7 @@ function fmt(n: unknown) {
 }
 
 export default function ReportsReviewPage() {
+  const { user } = useAuth();
   const { data: reports = [], isLoading } = useSubmittedReports();
   const approveMutation = useApproveReport();
   const rejectMutation = useRejectReport();
@@ -109,7 +112,7 @@ export default function ReportsReviewPage() {
         </p>
       </div>
 
-      <DayOffRequestsPanel />
+      {hasRole(user?.role, ["MANAGER", "SUPERADMIN"]) && <DayOffRequestsPanel />}
 
       {isLoading && (
         <div className="space-y-4">

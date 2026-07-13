@@ -58,6 +58,16 @@ vi.mock("../../hooks/useDayOffRequests", () => ({
   useRejectDayOffRequest: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
+vi.mock("../../context/AuthContext", () => ({
+  useAuth: () => ({
+    user: { id: "u-1", name: "Manager", role: "MANAGER", cityId: "city-1" },
+  }),
+}));
+
+vi.mock("../../utils/roles", () => ({
+  hasRole: (role: string, allowed: string[]) => allowed.includes(role),
+}));
+
 describe("ReportsReviewPage", () => {
   beforeEach(() => {
     mockApprove.mockClear();
