@@ -506,7 +506,7 @@ export default function SchoolProfile() {
       {/* --- Мобільна версія: всі секції одразу --- */}
       <div className="xl:hidden space-y-6">
 
-        <section id="section-events" className="scroll-mt-20 space-y-6">
+        <section id="section-execution" className="scroll-mt-20 space-y-6">
           {currentEvent && (
             <Suspense
               fallback={
@@ -590,13 +590,14 @@ export default function SchoolProfile() {
           {completedEventsBlock()}
         </section>
 
-        <section id="section-notes" className="scroll-mt-20 space-y-4">
-          {schoolData.notes && (
-            <div className="bg-surface rounded-card shadow-card border border-border p-6">
-              <h4 className="font-bold text-content-primary mb-3">Нотатки школи</h4>
-              <p className="text-content-secondary whitespace-pre-wrap">{schoolData.notes}</p>
-            </div>
-          )}
+        <section id="section-details" className="scroll-mt-20 space-y-4">
+          <Suspense
+            fallback={
+              <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
+            }
+          >
+            <SchoolInfoCard schoolData={schoolData} />
+          </Suspense>
           <Suspense
             fallback={
               <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
@@ -606,14 +607,7 @@ export default function SchoolProfile() {
           </Suspense>
         </section>
 
-        <section id="section-details" className="scroll-mt-20 space-y-4">
-          <Suspense
-            fallback={
-              <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
-            }
-          >
-            <SchoolInfoCard schoolData={schoolData} />
-          </Suspense>
+        <section id="section-history" className="scroll-mt-20 space-y-4">
           <Suspense
             fallback={
               <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
@@ -641,12 +635,6 @@ export default function SchoolProfile() {
           >
             <SchoolInfoCard schoolData={schoolData} />
           </Suspense>
-          {schoolData.notes && (
-            <div className="bg-surface rounded-card shadow-card border border-border p-6">
-              <h4 className="font-bold text-content-primary mb-3">Додаткові нотатки</h4>
-              <p className="text-content-secondary whitespace-pre-wrap">{schoolData.notes}</p>
-            </div>
-          )}
 
           <Suspense
             fallback={

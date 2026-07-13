@@ -7,9 +7,10 @@ export function supportsViewTransition(): boolean {
 
 export function withViewTransition(fn: () => void): void {
   if (supportsViewTransition()) {
-    document.startViewTransition(() => {
+    const t = document.startViewTransition(() => {
       fn();
     });
+    t.finished.then(() => window.scrollTo(0, 0));
   } else {
     fn();
   }

@@ -2,14 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const SECTIONS = [
-  { id: "section-events", label: "Події" },
-  { id: "section-notes", label: "Нотатки" },
+  { id: "section-execution", label: "Виконання" },
   { id: "section-details", label: "Деталі" },
+  { id: "section-history", label: "Історія" },
 ];
 
 export default function FloatingMobileNav() {
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [activeSection, setActiveSection] = useState("section-events");
+  const [activeSection, setActiveSection] = useState("section-execution");
+  const isClickScrolling = useRef(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
@@ -24,18 +26,15 @@ export default function FloatingMobileNav() {
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
+        if (isClickScrolling.current) return;
         const visible = entries
           .filter((e) => e.isIntersecting)
-          .sort((a, b) => {
-            const ai = SECTIONS.findIndex((s) => s.id === a.target.id);
-            const bi = SECTIONS.findIndex((s) => s.id === b.target.id);
-            return ai - bi;
-          });
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
         if (visible.length > 0) {
           setActiveSection(visible[0].target.id);
         }
       },
-      { rootMargin: "-80px 0px -40% 0px", threshold: 0 },
+      { rootMargin: "-80px 0px -50% 0px", threshold: [0, 0.25, 0.5] },
     );
 
     elements.forEach((el) => observerRef.current?.observe(el));
@@ -43,6 +42,12 @@ export default function FloatingMobileNav() {
   }, []);
 
   const scrollTo = (id: string) => {
+    isClickScrolling.current = true;
+    setActiveSection(id);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      isClickScrolling.current = false;
+    }, 1200);
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
