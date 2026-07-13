@@ -25,23 +25,6 @@ class ExpenseItemDto {
   amount: number;
 }
 
-class SalaryRecordDto {
-  @IsString()
-  userId: string;
-
-  @IsString()
-  name: string;
-
-  @IsNumber()
-  @Min(0)
-  @Type(() => Number)
-  amount: number;
-
-  @IsOptional()
-  @IsString()
-  role?: string;
-}
-
 export class CreateReportDto {
   @IsString()
   eventId: string;
@@ -123,10 +106,4 @@ export class CreateReportDto {
   @ValidateNested({ each: true })
   @Type(() => ExpenseItemDto)
   expenses?: ExpenseItemDto[];
-
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => SalaryRecordDto)
-  salaries?: SalaryRecordDto[];
 }

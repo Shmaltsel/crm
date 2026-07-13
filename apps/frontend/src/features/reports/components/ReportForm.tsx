@@ -10,18 +10,12 @@ interface Expense {
   amount: number;
 }
 
-interface CrewInfo {
-  host?: { id: string; name: string } | null;
-  driver?: { id: string; name: string } | null;
-}
-
 interface ReportFormProps {
   isOpen: boolean;
   onClose: () => void;
   eventId: string;
   schoolName: string;
   eventDate?: string;
-  crew?: CrewInfo;
   report?: EventReport | null;
   reportLoading?: boolean;
   onCreateDraft: (data: {
@@ -41,7 +35,6 @@ interface ReportFormProps {
     hadIssues?: boolean;
     comment?: string;
     expenses?: Expense[];
-    salaries?: { userId: string; name: string; amount: number; role: string }[];
     inventoryUsages?: { itemId: string; quantity: number }[];
   }) => void;
   onSaveDraft: (data: {
@@ -133,7 +126,7 @@ function NumberField({ value, onChange, suffix, disabled }: { value: number; onC
 }
 
 export default function ReportForm({
-  isOpen, onClose, eventId, schoolName, eventDate, crew,
+  isOpen, onClose, eventId, schoolName, eventDate,
   report, reportLoading, onCreateDraft, onSaveDraft, onSubmit, submitLoading,
 }: ReportFormProps) {
   const headingId = "report-form-heading";
@@ -171,7 +164,6 @@ export default function ReportForm({
   });
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [newExp, setNewExp] = useState({ name: "", amount: "" });
-  const [salaries, setSalaries] = useState<Record<string, number>>({});
   const { data: inventoryItems } = useInventory();
   const [inventoryUsages, setInventoryUsages] = useState<Record<string, number>>({});
   const [autoSaveState, setAutoSaveState] = useState<"idle" | "saving" | "saved">("idle");
@@ -199,26 +191,12 @@ export default function ReportForm({
         comment: report.comment ?? "",
       });
       setExpenses(report.expenseItems?.map((e) => ({ name: e.name ?? e.category ?? "", amount: e.amount })) ?? []);
-      const salaryMap: Record<string, number> = {};
-      for (const s of report.salaryRecords ?? []) {
-        salaryMap[s.employeeId] = s.amount;
-      }
-      setSalaries(salaryMap);
     }
   }, [report]);
 
   const schoolSum = (form.totalSum * form.schoolPercentage) / 100;
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
   const remainder = form.totalSum - schoolSum - totalExpenses;
-
-  const crewMembers = [
-    ...(crew?.host ? [{ id: crew.host.id, name: crew.host.name, role: "Ведучий" }] : []),
-    ...(crew?.driver ? [{ id: crew.driver.id, name: crew.driver.name, role: "Водій" }] : []),
-  ];
-
-  const salariesArr = crewMembers
-    .map((m) => ({ userId: m.id, name: m.name, amount: salaries[m.id] || 0, role: m.role }))
-    .filter((s) => s.amount > 0);
 
   const handleAutoSave = useCallback(async () => {
     if (!report?.id) return;
@@ -305,7 +283,6 @@ export default function ReportForm({
         hadIssues: form.hadIssues,
         comment: form.comment,
         expenses,
-        salaries: salariesArr,
         inventoryUsages: Object.entries(inventoryUsages)
           .filter(([, qty]) => qty > 0)
           .map(([itemId, quantity]) => ({ itemId, quantity })),
@@ -351,7 +328,6 @@ export default function ReportForm({
         hadIssues: form.hadIssues,
         comment: form.comment,
         expenses,
-        salaries: salariesArr,
         inventoryUsages: Object.entries(inventoryUsages)
           .filter(([, qty]) => qty > 0)
           .map(([itemId, quantity]) => ({ itemId, quantity })),
@@ -523,35 +499,6 @@ export default function ReportForm({
                     <span className="text-lg font-bold text-emerald-700">{formatMoney(remainder)} грн</span>
                   </div>
                 </div>
-
-                {crewMembers.length > 0 && (
-                  <div className="bg-white border border-border-strong rounded-2xl p-4 sm:p-5 md:col-span-2">
-                    <CardHeader icon={
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
-                        <circle cx="12" cy="8" r="6" /><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
-                      </svg>
-                    } color="bg-blue-50 text-blue-600" title="Заробітня плата" />
-                    <div className="space-y-1">
-                      {crewMembers.map((m) => (
-                        <Row key={m.id} label={`${m.name} (${m.role})`}>
-                          <span className="inline-flex items-center gap-1">
-                            <input type="number" min={0} inputMode="decimal" value={salaries[m.id] || ""} disabled={!isEditable}
-                              onChange={(e) => setSalaries((prev) => ({ ...prev, [m.id]: +e.target.value }))}
-                              className={`w-24 text-right bg-transparent outline-none font-medium text-base text-slate-800 focus:bg-blue-50 rounded px-1 ${!isEditable ? "opacity-60" : ""}`}
-                              placeholder="0" />
-                            <span className="text-slate-400 text-xs">грн</span>
-                          </span>
-                        </Row>
-                      ))}
-                    </div>
-                    {crewMembers.some((m) => salaries[m.id] > 0) && (
-                      <div className="flex justify-between items-center mt-3 pt-3 border-t border-border">
-                        <span className="text-sm font-semibold text-slate-500">Разом ЗП</span>
-                        <span className="font-bold text-blue-600">{formatMoney(crewMembers.reduce((s, m) => s + (salaries[m.id] || 0), 0))} грн</span>
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 {inventoryItems && inventoryItems.length > 0 && (
                   <div className="bg-white border border-border-strong rounded-2xl p-4 sm:p-5 md:col-span-2">

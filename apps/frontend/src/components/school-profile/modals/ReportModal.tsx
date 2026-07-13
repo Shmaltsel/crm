@@ -6,11 +6,6 @@ interface Expense {
   name: string;
   amount: number;
 }
-interface CrewMember {
-  id: string;
-  name: string;
-  role: "host" | "driver";
-}
 export interface ReportData {
   announcementDone: boolean;
   materialShown: boolean;
@@ -23,7 +18,6 @@ export interface ReportData {
   remainderSum: number;
   rating: number;
   expenses: { name: string; amount: number }[];
-  salaries: { userId: string; name: string; amount: number; role: string }[];
 }
 
 interface ReportModalProps {
@@ -34,10 +28,6 @@ interface ReportModalProps {
   eventType?: string;
   eventDate?: string;
   eventIndex?: number;
-  crew?: {
-    host?: { id: string; name: string } | null;
-    driver?: { id: string; name: string } | null;
-  };
 }
 
 const WEEKDAY_FMT = new Intl.DateTimeFormat("uk-UA", { weekday: "long" });
@@ -101,19 +91,6 @@ const Icon = {
     >
       <path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1" />
       <path d="M16 12h6v4h-6a2 2 0 1 1 0-4z" />
-    </svg>
-  ),
-  Star: () => (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="w-4 h-4"
-    >
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
     </svg>
   ),
 };
@@ -226,7 +203,6 @@ export default function ReportModal({
   eventType,
   eventDate,
   eventIndex,
-  crew,
 }: ReportModalProps) {
   const headingId = 'report-modal-heading';
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -255,7 +231,6 @@ export default function ReportModal({
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [newExp, setNewExp] = useState({ name: "", amount: "" });
-  const [salaries, setSalaries] = useState<Record<string, number>>({});
 
   const schoolSum = (form.totalSum * form.schoolPercentage) / 100;
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
@@ -272,37 +247,7 @@ export default function ReportModal({
     setExpenses((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const crewMembers = [
-    ...(crew?.host
-      ? [
-          {
-            id: crew.host.id,
-            name: crew.host.name,
-            role: "Ведучий",
-          },
-        ]
-      : []),
-    ...(crew?.driver
-      ? [
-          {
-            id: crew.driver.id,
-            name: crew.driver.name,
-            role: "Водій",
-          },
-        ]
-      : []),
-  ];
-
   const handleSave = () => {
-    const salariesArr = crewMembers
-      .map((m) => ({
-        userId: m.id,
-        name: m.name,
-        amount: salaries[m.id] || 0,
-        role: m.role,
-      }))
-      .filter((s) => s.amount > 0);
-
     const { schoolPercentage, ...formRest } = form;
     void schoolPercentage;
 
@@ -311,7 +256,6 @@ export default function ReportModal({
       expenses,
       schoolSum,
       remainderSum: remainder,
-      salaries: salariesArr,
     });
   };
 
@@ -503,68 +447,7 @@ export default function ReportModal({
                 </span>
               </div>
             </div>
-            {crewMembers.length > 0 && (
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
-                <CardHeader
-                  icon={
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="w-4 h-4"
-                    >
-                      <circle cx="12" cy="8" r="6" />
-                      <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
-                    </svg>
-                  }
-                  color="bg-blue-50 text-blue-600"
-                  title="Заробітня плата"
-                />
-                <div className="space-y-1">
-                  {crewMembers.map((m) => (
-                    <Row key={m.id} label={`${m.name} (${m.role})`}>
-                      <span className="inline-flex items-center gap-1">
-                        <input
-                          type="number"
-                          min={0}
-                          inputMode="decimal"
-                          value={salaries[m.id] || ""}
-                          onChange={(e) =>
-                            setSalaries((prev) => ({
-                              ...prev,
-                              [m.id]: +e.target.value,
-                            }))
-                          }
-                          className="w-24 text-right bg-transparent outline-none font-medium text-base text-slate-800 focus:bg-blue-50 rounded px-1"
-                          placeholder="0"
-                        />
-                        <span className="text-slate-400 text-xs">грн</span>
-                      </span>
-                    </Row>
-                  ))}
-                </div>
-                {crewMembers.some((m) => salaries[m.id] > 0) && (
-                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
-                    <span className="text-sm font-semibold text-slate-500">
-                      Разом ЗП
-                    </span>
-                    <span className="font-bold text-blue-600">
-                      {formatMoney(
-                        crewMembers.reduce(
-                          (s, m) => s + (salaries[m.id] || 0),
-                          0,
-                        ),
-                      )}{" "}
-                      грн
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+            </div>
         </div>
 
         {/* Footer */}

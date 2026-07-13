@@ -10,10 +10,6 @@ describe("ReportModal", () => {
     onClose: mockOnClose,
     onSave: mockOnSave,
     schoolName: "Школа №1",
-    crew: {
-      host: { id: "host-1", name: "Ведучий Олег" },
-      driver: { id: "driver-1", name: "Водій Петро" },
-    },
   };
 
   beforeEach(() => {
@@ -100,9 +96,6 @@ describe("ReportModal", () => {
     });
     fireEvent.click(screen.getByText("+"));
 
-    const hostSalaryInput = findInputByLabel("Ведучий Олег (Ведучий)");
-    fireEvent.change(hostSalaryInput, { target: { value: "2000" } });
-
     fireEvent.click(screen.getByText("Зберегти звіт"));
 
     expect(mockOnSave).toHaveBeenCalledTimes(1);
@@ -112,9 +105,6 @@ describe("ReportModal", () => {
     expect(data.remainderSum).toBe(15500);
     expect(data.childrenCount).toBe(0);
     expect(data.expenses).toEqual([{ name: "Пальне", amount: 500 }]);
-    expect(data.salaries).toEqual([
-      { userId: "host-1", name: "Ведучий Олег", amount: 2000, role: "Ведучий" },
-    ]);
   });
 
   it("кнопка 'Скасувати' викликає onClose", () => {
