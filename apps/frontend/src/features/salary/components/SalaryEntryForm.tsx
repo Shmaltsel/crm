@@ -8,6 +8,7 @@ const SALARY_ERROR_MAP: Record<string, string> = {
   "salary.reportNotApproved": "Звіт не подано або не затверджено",
   "salary.amountTooLarge": "Сума занадто велика (макс. 99 999 грн)",
   "report.notFound": "Звіт не знайдено",
+  "salary.notCityManager": "Ви не менеджер цього міста",
 };
 
 export default function SalaryEntryForm({ reportId, cityId }: { reportId: string; cityId?: string }) {
@@ -43,8 +44,9 @@ export default function SalaryEntryForm({ reportId, cityId }: { reportId: string
           setComment("");
         },
         onError: (error: unknown) => {
-          const key = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-          toast(SALARY_ERROR_MAP[key ?? ""] ?? "Не вдалося додати нарахування", "error");
+          const raw = (error as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
+          const key = Array.isArray(raw) ? raw[0] : raw;
+          toast(SALARY_ERROR_MAP[key ?? ""] ?? key ?? "Не вдалося додати нарахування", "error");
         },
       },
     );
