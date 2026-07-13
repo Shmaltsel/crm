@@ -125,6 +125,13 @@ export type ReportStatus =
   | "REJECTED"
   | "CLOSED";
 
+export interface InventoryUsage {
+  id: string;
+  itemId: string;
+  reportId: string;
+  quantity: number;
+}
+
 export interface EventReport {
   id: string;
   eventId: string;
@@ -151,6 +158,7 @@ export interface EventReport {
   updatedAt: string;
   expenseItems: ExpenseItem[];
   salaryRecords: SalaryRecord[];
+  inventoryUsages?: InventoryUsage[];
 }
 
 export interface Event {

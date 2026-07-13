@@ -467,12 +467,12 @@
   {
     "file": "apps/backend/src/day-off-requests/day-off-requests.service.spec.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 3832
+    "tokens": 3883
   },
   {
     "file": "apps/backend/src/day-off-requests/day-off-requests.service.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 2416
+    "tokens": 2510
   },
   {
     "file": "apps/backend/src/day-off-requests/dto/create-day-off-request.dto.ts",
@@ -602,17 +602,17 @@
   {
     "file": "apps/backend/src/events/events.service.smoke.spec.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 1174
+    "tokens": 1195
   },
   {
     "file": "apps/backend/src/events/events.service.spec.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 4238
+    "tokens": 4362
   },
   {
     "file": "apps/backend/src/events/events.service.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 5622
+    "tokens": 5713
   },
   {
     "file": "apps/backend/src/finance/create-expense-item.dto.ts",
@@ -687,12 +687,12 @@
   {
     "file": "apps/backend/src/inventory/inventory.module.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 132
+    "tokens": 182
   },
   {
     "file": "apps/backend/src/inventory/inventory.service.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 1086
+    "tokens": 1554
   },
   {
     "file": "apps/backend/src/issues/dto/create-issue.dto.ts",
@@ -717,12 +717,12 @@
   {
     "file": "apps/backend/src/issues/issues.service.spec.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 2608
+    "tokens": 2640
   },
   {
     "file": "apps/backend/src/issues/issues.service.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 1318
+    "tokens": 1457
   },
   {
     "file": "apps/backend/src/metrics/metrics.controller.spec.ts",
@@ -767,12 +767,17 @@
   {
     "file": "apps/backend/src/notifications/notifications.module.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 120
+    "tokens": 175
   },
   {
     "file": "apps/backend/src/notifications/notifications.service.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 412
+    "tokens": 1239
+  },
+  {
+    "file": "apps/backend/src/notifications/templates.ts",
+    "bundle": "bundle_02.xml",
+    "tokens": 820
   },
   {
     "file": "apps/backend/src/prisma/prisma.mock.ts",
@@ -852,12 +857,12 @@
   {
     "file": "apps/backend/src/reports/reports.service.spec.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 1981
+    "tokens": 2086
   },
   {
     "file": "apps/backend/src/reports/reports.service.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 4338
+    "tokens": 4964
   },
   {
     "file": "apps/backend/src/salary/dto/create-salary.dto.ts",
@@ -1011,27 +1016,27 @@
   },
   {
     "file": "apps/backend/src/users/users.controller.ts",
-    "bundle": "bundle_02.xml",
+    "bundle": "bundle_03.xml",
     "tokens": 447
   },
   {
     "file": "apps/backend/src/users/users.module.ts",
-    "bundle": "bundle_02.xml",
+    "bundle": "bundle_03.xml",
     "tokens": 148
   },
   {
     "file": "apps/backend/src/users/users.service.spec.ts",
-    "bundle": "bundle_02.xml",
+    "bundle": "bundle_03.xml",
     "tokens": 203
   },
   {
     "file": "apps/backend/src/users/users.service.ts",
-    "bundle": "bundle_02.xml",
+    "bundle": "bundle_03.xml",
     "tokens": 1386
   },
   {
     "file": "apps/backend/test/app.e2e-spec.ts",
-    "bundle": "bundle_02.xml",
+    "bundle": "bundle_03.xml",
     "tokens": 231
   },
   {
@@ -1326,12 +1331,12 @@
   },
   {
     "file": "apps/frontend/src/components/MobileTopNav.tsx",
-    "bundle": "bundle_03.xml",
+    "bundle": "bundle_04.xml",
     "tokens": 765
   },
   {
     "file": "apps/frontend/src/components/MoreSheet.tsx",
-    "bundle": "bundle_03.xml",
+    "bundle": "bundle_04.xml",
     "tokens": 1710
   },
   {
@@ -1632,7 +1637,7 @@
   {
     "file": "apps/frontend/src/features/calendar/components/CalendarHeader.tsx",
     "bundle": "bundle_04.xml",
-    "tokens": 803
+    "tokens": 758
   },
   {
     "file": "apps/frontend/src/features/calendar/components/DesktopCalendarGrid.tsx",
@@ -1647,7 +1652,7 @@
   {
     "file": "apps/frontend/src/features/calendar/components/MobileCalendarGrid.tsx",
     "bundle": "bundle_04.xml",
-    "tokens": 2607
+    "tokens": 2515
   },
   {
     "file": "apps/frontend/src/features/calendar/components/MobileDayDetailsPanel.tsx",

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { backdropVariants, modalContentVariants } from "../../../lib/motion";
+import { useInventoryByProject } from "../../../hooks/useInventory";
 
 interface Expense {
   name: string;
@@ -18,6 +19,7 @@ export interface ReportData {
   remainderSum: number;
   rating: number;
   expenses: { name: string; amount: number }[];
+  inventoryUsages?: { itemId: string; quantity: number }[];
 }
 
 interface ReportModalProps {
@@ -28,6 +30,7 @@ interface ReportModalProps {
   eventType?: string;
   eventDate?: string;
   eventIndex?: number;
+  eventProject?: string;
 }
 
 const WEEKDAY_FMT = new Intl.DateTimeFormat("uk-UA", { weekday: "long" });
@@ -91,6 +94,19 @@ const Icon = {
     >
       <path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1" />
       <path d="M16 12h6v4h-6a2 2 0 1 1 0-4z" />
+    </svg>
+  ),
+  Box: () => (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="w-4 h-4"
+    >
+      <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
     </svg>
   ),
 };
@@ -203,9 +219,11 @@ export default function ReportModal({
   eventType,
   eventDate,
   eventIndex,
+  eventProject,
 }: ReportModalProps) {
   const headingId = 'report-modal-heading';
   const closeRef = useRef<HTMLButtonElement>(null);
+  const { data: inventoryItems } = useInventoryByProject(eventProject);
 
   useEffect(() => {
     if (isOpen) closeRef.current?.focus();
@@ -231,6 +249,7 @@ export default function ReportModal({
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [newExp, setNewExp] = useState({ name: "", amount: "" });
+  const [inventoryUsages, setInventoryUsages] = useState<Record<string, number>>({});
 
   const schoolSum = (form.totalSum * form.schoolPercentage) / 100;
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
@@ -251,11 +270,16 @@ export default function ReportModal({
     const { schoolPercentage, ...formRest } = form;
     void schoolPercentage;
 
+    const usages = Object.entries(inventoryUsages)
+      .filter(([, qty]) => qty > 0)
+      .map(([itemId, quantity]) => ({ itemId, quantity }));
+
     onSave({
       ...formRest,
       expenses,
       schoolSum,
       remainderSum: remainder,
+      inventoryUsages: usages.length > 0 ? usages : undefined,
     });
   };
 
@@ -448,7 +472,48 @@ export default function ReportModal({
               </div>
             </div>
             </div>
-        </div>
+
+            {inventoryItems && inventoryItems.length > 0 && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 md:col-span-2">
+                <CardHeader
+                  icon={<Icon.Box />}
+                  color="bg-teal-50 text-teal-600"
+                  title="Витрата матеріалів"
+                />
+                <div className="space-y-2">
+                  {inventoryItems.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-slate-700">{item.name}</span>
+                        <span className="text-xs text-slate-400">({item.unit})</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-slate-400">
+                          {item.currentStock} {item.unit}
+                        </span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={item.currentStock}
+                          inputMode="numeric"
+                          value={inventoryUsages[item.id] || ""}
+                          onChange={(e) =>
+                            setInventoryUsages((prev) => ({
+                              ...prev,
+                              [item.id]: +e.target.value,
+                            }))
+                          }
+                          className="w-16 text-right bg-transparent outline-none font-medium text-base text-slate-800 focus:bg-blue-50 rounded px-1"
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            </div>
 
         {/* Footer */}
         <div className="flex gap-3 px-4 sm:px-6 py-4 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] sm:pb-4 border-t border-slate-100 bg-white shrink-0">

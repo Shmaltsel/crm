@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ReportModal from "../../components/school-profile/modals/ReportModal";
 
 describe("ReportModal", () => {
   const mockOnClose = vi.fn();
   const mockOnSave = vi.fn();
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const defaultProps = {
     isOpen: true,
     onClose: mockOnClose,
@@ -17,7 +19,11 @@ describe("ReportModal", () => {
   });
 
   const renderModal = (props = {}) =>
-    render(<ReportModal {...defaultProps} {...props} />);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ReportModal {...defaultProps} {...props} />
+      </QueryClientProvider>,
+    );
 
   const findInputByLabel = (label: string): HTMLInputElement => {
     const labelEl = screen.getByText(label);

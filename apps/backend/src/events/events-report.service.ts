@@ -237,6 +237,21 @@ export class EventsReportService {
           })
           .catch(() => {});
       }
+
+      this.notificationsService
+        .getAdminIds()
+        .then((adminIds) => {
+          this.notificationsService.sendTelegramToUsers(
+            adminIds,
+            'REPORT_SUBMITTED',
+            {
+              schoolName: eventWithCity.school?.name,
+              eventDate: event.date,
+              project: event.project,
+            },
+          );
+        })
+        .catch(() => {});
     }
 
     return this.serializeEvent(event);

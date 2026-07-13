@@ -776,6 +776,7 @@ export default function SchoolProfile() {
         schoolName={schoolData.name}
         eventType={currentEvent?.project}
         eventDate={currentEvent?.date}
+        eventProject={currentEvent?.project}
         eventIndex={
           events
             .filter((e) => e.schoolId === schoolData.id)

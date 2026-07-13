@@ -489,6 +489,7 @@ export class ReportsService {
         salaryRecords: {
           include: { employee: { select: { id: true, name: true } } },
         },
+        inventoryUsages: true,
         photos: true,
       },
     });
@@ -496,7 +497,7 @@ export class ReportsService {
 
   async findSubmitted(page = 1, take = 20) {
     const skip = (page - 1) * take;
-    const [items, total] = await Promise.all([
+      const [items, total] = await Promise.all([
       this.prisma.eventReport.findMany({
         where: { status: 'SUBMITTED' },
         include: {
@@ -504,6 +505,7 @@ export class ReportsService {
           salaryRecords: {
             include: { employee: { select: { id: true, name: true } } },
           },
+          inventoryUsages: true,
           event: {
             include: {
               school: {
