@@ -88,7 +88,10 @@ export class DayOffRequestsService {
     return request;
   }
 
-  async findAll(from?: string, to?: string, cityId?: string) {
+  async findAll(from?: string, to?: string, cityId?: string, user?: JwtUser) {
+    const effectiveCityId =
+      user?.role === 'MANAGER' ? user.cityId : cityId;
+
     return this.prisma.dayOffRequest.findMany({
       where: {
         ...(from || to
@@ -99,7 +102,7 @@ export class DayOffRequestsService {
               },
             }
           : {}),
-        ...(cityId ? { user: { cityId } } : {}),
+        ...(effectiveCityId ? { user: { cityId: effectiveCityId } } : {}),
       },
       include: {
         user: { select: { id: true, name: true, role: true, cityId: true } },

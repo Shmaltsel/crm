@@ -34,12 +34,14 @@ export class DayOffRequestsController {
 
   @ApiOperation({ summary: 'Список запитів на вихідні' })
   @Get()
+  @Roles('MANAGER', 'SUPERADMIN')
   findAll(
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('cityId') cityId?: string,
+    @CurrentUser() user?: JwtUser,
   ) {
-    return this.service.findAll(from, to, cityId);
+    return this.service.findAll(from, to, cityId, user);
   }
 
   @ApiOperation({ summary: 'Затвердити запит' })

@@ -247,6 +247,34 @@ describe('DayOffRequestsService', () => {
         }),
       );
     });
+
+    it('MANAGER бачить лише запити свого міста (ігнорує cityId з query)', async () => {
+      mockPrisma.dayOffRequest.findMany.mockResolvedValue([]);
+
+      await service.findAll('2026-07-01', '2026-07-31', 'city-2', managerUser);
+
+      expect(mockPrisma.dayOffRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            user: { cityId: 'city-1' },
+          }),
+        }),
+      );
+    });
+
+    it('SUPERADMIN може фільтрувати за будь-яким cityId', async () => {
+      mockPrisma.dayOffRequest.findMany.mockResolvedValue([]);
+
+      await service.findAll('2026-07-01', '2026-07-31', 'city-2', superAdminUser);
+
+      expect(mockPrisma.dayOffRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            user: { cityId: 'city-2' },
+          }),
+        }),
+      );
+    });
   });
 
   describe('approve', () => {
