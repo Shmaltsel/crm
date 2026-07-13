@@ -26,11 +26,10 @@ const mockPrisma = {
 };
 
 const mockTelegram = {
-  sendMessage: jest.fn(),
-  sendWithInlineKeyboard: jest.fn().mockResolvedValue(42),
+  sendMessage: jest.fn().mockResolvedValue(undefined),
+  sendWithInlineKeyboard: jest.fn(),
   editMessageText: jest.fn(),
   answerCallbackQuery: jest.fn(),
-  onCallbackQuery: jest.fn(),
 };
 
 const mockNotifications = {
@@ -73,7 +72,9 @@ describe('DayOffRequestsService', () => {
   let service: DayOffRequestsService;
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    jest.restoreAllMocks();
+    mockTelegram.sendMessage.mockResolvedValue(undefined);
+    mockNotifications.create.mockResolvedValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -89,24 +90,16 @@ describe('DayOffRequestsService', () => {
 
   describe('create', () => {
     it('HOST створює запит для себе', async () => {
-      mockPrisma.dayOffRequest.findUnique.mockResolvedValueOnce(null);
-      mockPrisma.dayOff.findUnique.mockResolvedValueOnce(null);
-      mockPrisma.user.findUnique.mockResolvedValueOnce({
-        id: 'host-1',
-        name: 'Host One',
-        role: 'HOST',
-        cityId: 'city-1',
-        telegramChatId: 'chat-123',
-        telegramId: null,
-      });
-      mockPrisma.user.findFirst.mockResolvedValueOnce({
+      mockPrisma.dayOffRequest.findUnique.mockResolvedValue(null);
+      mockPrisma.dayOff.findUnique.mockResolvedValue(null);
+      mockPrisma.user.findFirst.mockResolvedValue({
         id: 'manager-1',
         role: 'MANAGER',
         cityId: 'city-1',
         telegramChatId: 'chat-mgr',
         telegramId: null,
       });
-      mockPrisma.dayOffRequest.create.mockResolvedValueOnce({
+      mockPrisma.dayOffRequest.create.mockResolvedValue({
         id: 'req-1',
         userId: 'host-1',
         date: new Date('2026-07-15'),
@@ -118,30 +111,24 @@ describe('DayOffRequestsService', () => {
       const result = await service.create({ date: '2026-07-15' }, hostUser);
 
       expect(mockPrisma.dayOffRequest.create).toHaveBeenCalled();
-      expect(mockTelegram.sendWithInlineKeyboard).toHaveBeenCalledWith(
+      expect(mockTelegram.sendMessage).toHaveBeenCalledWith(
         'chat-mgr',
         expect.stringContaining('Запит на вихідний'),
-        [[
-          { text: '✅ Прийняти', callbackData: 'dayoff_approve:req-1' },
-          { text: '❌ Відхилити', callbackData: 'dayoff_reject:req-1' },
-        ]],
       );
+      expect(mockTelegram.sendWithInlineKeyboard).not.toHaveBeenCalled();
       expect(result.id).toBe('req-1');
     });
 
     it('MANAGER створює запит для staff свого міста', async () => {
-      mockPrisma.dayOffRequest.findUnique.mockResolvedValueOnce(null);
-      mockPrisma.dayOff.findUnique.mockResolvedValueOnce(null);
-      mockPrisma.user.findUnique.mockResolvedValueOnce({
+      mockPrisma.user.findUnique.mockResolvedValue({
         id: 'host-2',
-        name: 'Host Two',
         role: 'HOST',
         cityId: 'city-1',
-        telegramChatId: null,
-        telegramId: null,
       });
-      mockPrisma.user.findFirst.mockResolvedValueOnce(null);
-      mockPrisma.dayOffRequest.create.mockResolvedValueOnce({
+      mockPrisma.dayOffRequest.findUnique.mockResolvedValue(null);
+      mockPrisma.dayOff.findUnique.mockResolvedValue(null);
+      mockPrisma.user.findFirst.mockResolvedValue(null);
+      mockPrisma.dayOffRequest.create.mockResolvedValue({
         id: 'req-2',
         userId: 'host-2',
         date: new Date('2026-07-15'),
@@ -176,7 +163,7 @@ describe('DayOffRequestsService', () => {
     });
 
     it('MANAGER не може створити запит для staff з іншого міста', async () => {
-      mockPrisma.user.findUnique.mockResolvedValueOnce({
+      mockPrisma.user.findUnique.mockResolvedValue({
         id: 'host-other',
         role: 'HOST',
         cityId: 'city-2',
@@ -188,7 +175,7 @@ describe('DayOffRequestsService', () => {
     });
 
     it('цільовий користувач не STAFF -> INVALID_STAFF_USER', async () => {
-      mockPrisma.user.findUnique.mockResolvedValueOnce({
+      mockPrisma.user.findUnique.mockResolvedValue({
         id: 'manager-2',
         role: 'MANAGER',
         cityId: 'city-1',
@@ -202,7 +189,7 @@ describe('DayOffRequestsService', () => {
     });
 
     it('дублікат запиту на ту саму дату -> DAY_OFF_REQUEST_ALREADY_REVIEWED', async () => {
-      mockPrisma.dayOffRequest.findUnique.mockResolvedValueOnce({
+      mockPrisma.dayOffRequest.findUnique.mockResolvedValue({
         id: 'existing-req',
         status: 'PENDING',
       });
@@ -216,8 +203,8 @@ describe('DayOffRequestsService', () => {
     });
 
     it('день вже затверджений -> DAY_OFF_ALREADY_APPROVED', async () => {
-      mockPrisma.dayOffRequest.findUnique.mockResolvedValueOnce(null);
-      mockPrisma.dayOff.findUnique.mockResolvedValueOnce({ id: 'dayoff-1' });
+      mockPrisma.dayOffRequest.findUnique.mockResolvedValue(null);
+      mockPrisma.dayOff.findUnique.mockResolvedValue({ id: 'dayoff-1' });
 
       await expect(
         service.create({ date: '2026-07-15' }, hostUser),
@@ -230,7 +217,7 @@ describe('DayOffRequestsService', () => {
 
   describe('findAll', () => {
     it('без фільтрів повертає всі запити', async () => {
-      mockPrisma.dayOffRequest.findMany.mockResolvedValueOnce([]);
+      mockPrisma.dayOffRequest.findMany.mockResolvedValue([]);
 
       await service.findAll();
 
@@ -244,7 +231,7 @@ describe('DayOffRequestsService', () => {
     });
 
     it('from+to+cityId комбінує фільтри', async () => {
-      mockPrisma.dayOffRequest.findMany.mockResolvedValueOnce([]);
+      mockPrisma.dayOffRequest.findMany.mockResolvedValue([]);
 
       await service.findAll('2026-07-01', '2026-07-31', 'city-1');
 
@@ -264,22 +251,22 @@ describe('DayOffRequestsService', () => {
 
   describe('approve', () => {
     it('MANAGER затверджує запит і створює DayOff', async () => {
-      mockPrisma.dayOffRequest.findUnique.mockResolvedValueOnce({
+      mockPrisma.dayOffRequest.findUnique.mockResolvedValue({
         id: 'req-1',
         userId: 'host-1',
         date: new Date('2026-07-15'),
         status: DayOffRequestStatus.PENDING,
         user: { id: 'host-1', name: 'Host One', role: 'HOST', cityId: 'city-1' },
       });
-      mockPrisma.dayOff.upsert.mockResolvedValueOnce({ id: 'dayoff-1' });
-      mockPrisma.dayOffRequest.update.mockResolvedValueOnce({
+      mockPrisma.dayOff.upsert.mockResolvedValue({ id: 'dayoff-1' });
+      mockPrisma.dayOffRequest.update.mockResolvedValue({
         id: 'req-1',
         status: DayOffRequestStatus.APPROVED,
         date: new Date('2026-07-15'),
         managerNote: null,
         user: { id: 'host-1', name: 'Host One', role: 'HOST', cityId: 'city-1' },
       });
-      mockPrisma.user.findUnique.mockResolvedValueOnce({
+      mockPrisma.user.findUnique.mockResolvedValue({
         id: 'host-1',
         telegramChatId: 'chat-host',
         telegramId: null,
@@ -306,7 +293,7 @@ describe('DayOffRequestsService', () => {
     });
 
     it('запит не знайдено -> DAY_OFF_REQUEST_NOT_FOUND', async () => {
-      mockPrisma.dayOffRequest.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.dayOffRequest.findUnique.mockResolvedValue(null);
 
       await expect(
         service.approve('missing', 'manager-1'),
@@ -317,7 +304,7 @@ describe('DayOffRequestsService', () => {
     });
 
     it('вже оброблений запит -> DAY_OFF_REQUEST_ALREADY_REVIEWED', async () => {
-      mockPrisma.dayOffRequest.findUnique.mockResolvedValueOnce({
+      mockPrisma.dayOffRequest.findUnique.mockResolvedValue({
         id: 'req-1',
         status: DayOffRequestStatus.APPROVED,
       });
@@ -333,21 +320,21 @@ describe('DayOffRequestsService', () => {
 
   describe('reject', () => {
     it('MANAGER відхиляє запит', async () => {
-      mockPrisma.dayOffRequest.findUnique.mockResolvedValueOnce({
+      mockPrisma.dayOffRequest.findUnique.mockResolvedValue({
         id: 'req-1',
         userId: 'host-1',
         date: new Date('2026-07-15'),
         status: DayOffRequestStatus.PENDING,
         user: { id: 'host-1', name: 'Host One', role: 'HOST', cityId: 'city-1' },
       });
-      mockPrisma.dayOffRequest.update.mockResolvedValueOnce({
+      mockPrisma.dayOffRequest.update.mockResolvedValue({
         id: 'req-1',
         status: DayOffRequestStatus.REJECTED,
         date: new Date('2026-07-15'),
         managerNote: 'Занадто багато вихідних',
         user: { id: 'host-1', name: 'Host One', role: 'HOST', cityId: 'city-1' },
       });
-      mockPrisma.user.findUnique.mockResolvedValueOnce({
+      mockPrisma.user.findUnique.mockResolvedValue({
         id: 'host-1',
         telegramChatId: 'chat-host',
         telegramId: null,
@@ -370,128 +357,30 @@ describe('DayOffRequestsService', () => {
       );
       expect(result.status).toBe('REJECTED');
     });
-  });
 
-  describe('handleCallbackQuery', () => {
-    it('dayoff_approve затверджує запит', async () => {
-      const request = {
-        id: 'req-1',
-        userId: 'host-1',
-        date: new Date('2026-07-15'),
-        status: DayOffRequestStatus.PENDING,
-        user: { id: 'host-1', name: 'Host One', role: 'HOST', cityId: 'city-1' },
-      };
-      mockPrisma.dayOffRequest.findUnique
-        .mockResolvedValueOnce(request)
-        .mockResolvedValueOnce(request);
-      mockPrisma.user.findFirst.mockResolvedValueOnce({
-        id: 'manager-1',
-        role: 'MANAGER',
-        cityId: 'city-1',
-        telegramChatId: 'chat-mgr',
-        telegramId: null,
-      });
-      mockPrisma.dayOff.upsert.mockResolvedValueOnce({ id: 'dayoff-1' });
-      mockPrisma.dayOffRequest.update.mockResolvedValueOnce({
-        id: 'req-1',
-        status: DayOffRequestStatus.APPROVED,
-        date: new Date('2026-07-15'),
-        managerNote: null,
-        user: { id: 'host-1', name: 'Host One', role: 'HOST', cityId: 'city-1' },
-      });
-      mockPrisma.user.findUnique.mockResolvedValueOnce({
-        id: 'host-1',
-        telegramChatId: 'chat-host',
-        telegramId: null,
-        name: 'Host One',
-      });
+    it('запит не знайдено -> DAY_OFF_REQUEST_NOT_FOUND', async () => {
+      mockPrisma.dayOffRequest.findUnique.mockResolvedValue(null);
 
-      await (service as any).handleCallbackQuery('dayoff_approve:req-1', 'cb-1');
-
-      expect(mockPrisma.dayOff.upsert).toHaveBeenCalled();
-      expect(mockTelegram.answerCallbackQuery).toHaveBeenCalledWith(
-        'cb-1',
-        '✅ Вихідний затверджено',
-      );
+      await expect(
+        service.reject('missing', 'manager-1'),
+      ).rejects.toMatchObject({
+        messageKey: 'DAY_OFF_REQUEST_NOT_FOUND',
+        status: HttpStatus.NOT_FOUND,
+      });
     });
 
-    it('dayoff_reject відхиляє запит', async () => {
-      const request = {
-        id: 'req-1',
-        userId: 'host-1',
-        date: new Date('2026-07-15'),
-        status: DayOffRequestStatus.PENDING,
-        user: { id: 'host-1', name: 'Host One', role: 'HOST', cityId: 'city-1' },
-      };
-      mockPrisma.dayOffRequest.findUnique
-        .mockResolvedValueOnce(request)
-        .mockResolvedValueOnce(request);
-      mockPrisma.user.findFirst.mockResolvedValueOnce({
-        id: 'manager-1',
-        role: 'MANAGER',
-        cityId: 'city-1',
-        telegramChatId: 'chat-mgr',
-        telegramId: null,
-      });
-      mockPrisma.dayOffRequest.update.mockResolvedValueOnce({
-        id: 'req-1',
-        status: DayOffRequestStatus.REJECTED,
-        date: new Date('2026-07-15'),
-        managerNote: null,
-        user: { id: 'host-1', name: 'Host One', role: 'HOST', cityId: 'city-1' },
-      });
-      mockPrisma.user.findUnique.mockResolvedValueOnce({
-        id: 'host-1',
-        telegramChatId: 'chat-host',
-        telegramId: null,
-        name: 'Host One',
-      });
-
-      await (service as any).handleCallbackQuery('dayoff_reject:req-1', 'cb-1');
-
-      expect(mockPrisma.dayOffRequest.update).toHaveBeenCalled();
-      expect(mockTelegram.answerCallbackQuery).toHaveBeenCalledWith(
-        'cb-1',
-        '❌ Запит відхилено',
-      );
-    });
-
-    it('невідомий prefix ігнорується', async () => {
-      await (service as any).handleCallbackQuery('other_action:123', 'cb-1');
-
-      expect(mockTelegram.answerCallbackQuery).not.toHaveBeenCalled();
-    });
-
-    it('запит не знайдено -> answerCallbackQuery з помилкою', async () => {
-      mockPrisma.dayOffRequest.findUnique.mockResolvedValueOnce(null);
-
-      await (service as any).handleCallbackQuery('dayoff_approve:missing', 'cb-1');
-
-      expect(mockTelegram.answerCallbackQuery).toHaveBeenCalledWith(
-        'cb-1',
-        'Запит не знайдено',
-      );
-    });
-
-    it('вже оброблений -> answerCallbackQuery з повідомленням', async () => {
-      mockPrisma.dayOffRequest.findUnique.mockResolvedValueOnce({
+    it('вже оброблений запит -> DAY_OFF_REQUEST_ALREADY_REVIEWED', async () => {
+      mockPrisma.dayOffRequest.findUnique.mockResolvedValue({
         id: 'req-1',
         status: DayOffRequestStatus.APPROVED,
       });
 
-      await (service as any).handleCallbackQuery('dayoff_approve:req-1', 'cb-1');
-
-      expect(mockTelegram.answerCallbackQuery).toHaveBeenCalledWith(
-        'cb-1',
-        'Запит вже оброблено',
-      );
-    });
-  });
-
-  describe('onModuleInit', () => {
-    it('реєструє callback handler', () => {
-      service.onModuleInit();
-      expect(mockTelegram.onCallbackQuery).toHaveBeenCalled();
+      await expect(
+        service.reject('req-1', 'manager-1'),
+      ).rejects.toMatchObject({
+        messageKey: 'DAY_OFF_REQUEST_ALREADY_REVIEWED',
+        status: HttpStatus.CONFLICT,
+      });
     });
   });
 });

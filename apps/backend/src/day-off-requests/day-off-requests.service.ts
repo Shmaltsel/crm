@@ -1,4 +1,4 @@
-import { Injectable, HttpStatus, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -8,10 +8,9 @@ import { DayOffRequestStatus } from '@prisma/client';
 
 const STAFF_ROLES = ['HOST', 'DRIVER'];
 const MANAGER_ROLES = ['SUPERADMIN', 'MANAGER'];
-const CALLBACK_PREFIX = 'dayoff_';
 
 @Injectable()
-export class DayOffRequestsService implements OnModuleInit {
+export class DayOffRequestsService {
   private readonly logger = new Logger(DayOffRequestsService.name);
 
   constructor(
@@ -19,13 +18,6 @@ export class DayOffRequestsService implements OnModuleInit {
     private readonly telegramService: TelegramService,
     private readonly notificationsService: NotificationsService,
   ) {}
-
-  onModuleInit() {
-    this.telegramService.onCallbackQuery((query) => {
-      if (!query.data?.startsWith(CALLBACK_PREFIX)) return;
-      void this.handleCallbackQuery(query.data, query.id);
-    });
-  }
 
   async create(
     dto: { date: string; userId?: string; reason?: string },
@@ -79,18 +71,6 @@ export class DayOffRequestsService implements OnModuleInit {
       throw new AppException('DAY_OFF_ALREADY_APPROVED', HttpStatus.CONFLICT);
     }
 
-    const targetUser = await this.prisma.user.findUnique({
-      where: { id: targetUserId },
-      select: {
-        id: true,
-        name: true,
-        role: true,
-        cityId: true,
-        telegramChatId: true,
-        telegramId: true,
-      },
-    });
-
     const request = await this.prisma.dayOffRequest.create({
       data: {
         userId: targetUserId,
@@ -103,11 +83,7 @@ export class DayOffRequestsService implements OnModuleInit {
       },
     });
 
-    await this.notifyManagerAndSendTelegram(
-      request,
-      targetUser,
-      currentUser.sub,
-    );
+    await this.notifyManager(request);
 
     return request;
   }
@@ -219,83 +195,13 @@ export class DayOffRequestsService implements OnModuleInit {
     return updated;
   }
 
-  private async handleCallbackQuery(data: string, callbackQueryId: string) {
-    const parts = data.split(':');
-    if (parts.length < 2) return;
-
-    const action = parts[0]; // dayoff_approve or dayoff_reject
-    const requestId = parts[1];
-
-    const isApprove = action === 'dayoff_approve';
-    const isReject = action === 'dayoff_reject';
-    if (!isApprove && !isReject) return;
-
-    const request = await this.prisma.dayOffRequest.findUnique({
-      where: { id: requestId },
-      include: {
-        user: {
-          select: { id: true, name: true, role: true, cityId: true },
-        },
-      },
-    });
-
-    if (!request) {
-      await this.telegramService.answerCallbackQuery(
-        callbackQueryId,
-        'Запит не знайдено',
-      );
-      return;
-    }
-
-    if (request.status !== DayOffRequestStatus.PENDING) {
-      await this.telegramService.answerCallbackQuery(
-        callbackQueryId,
-        'Запит вже оброблено',
-      );
-      return;
-    }
-
-    const manager = await this.prisma.user.findFirst({
-      where: { role: 'MANAGER', cityId: request.user.cityId },
-    });
-    if (!manager?.telegramChatId && !manager?.telegramId) return;
-
-    const managerChatId =
-      manager.telegramChatId ||
-      (manager.telegramId && /^\d+$/.test(manager.telegramId)
-        ? manager.telegramId
-        : null);
-    if (!managerChatId) return;
-
-    const managerUserId = manager.id;
-
-    if (isApprove) {
-      await this.approve(requestId, managerUserId);
-    } else {
-      await this.reject(requestId, managerUserId);
-    }
-
-    await this.telegramService.answerCallbackQuery(
-      callbackQueryId,
-      isApprove ? '✅ Вихідний затверджено' : '❌ Запит відхилено',
-    );
-  }
-
-  private async notifyManagerAndSendTelegram(
+  private async notifyManager(
     request: {
       id: string;
       user: { id: string; name: string; role: string; cityId: string | null };
       date: Date;
       reason: string | null;
     },
-    targetUser: {
-      id: string;
-      name: string;
-      cityId: string | null;
-      telegramChatId: string | null;
-      telegramId: string | null;
-    } | null,
-    createdBy: string,
   ) {
     if (!request.user.cityId) return;
 
@@ -326,18 +232,12 @@ export class DayOffRequestsService implements OnModuleInit {
         `📅 <b>Дата:</b> ${dateStr}` +
         reasonLine;
 
-      await this.telegramService.sendWithInlineKeyboard(managerChatId, text, [
-        [
-          { text: '✅ Прийняти', callbackData: `dayoff_approve:${request.id}` },
-          {
-            text: '❌ Відхилити',
-            callbackData: `dayoff_reject:${request.id}`,
-          },
-        ],
-      ]);
+      this.telegramService
+        .sendMessage(managerChatId, text)
+        .catch(() => {});
     }
 
-    await this.notificationsService
+    this.notificationsService
       .create(manager.id, 'DAY_OFF_REQUEST_CREATED', {
         staffName: request.user.name,
         date: dateStr,
