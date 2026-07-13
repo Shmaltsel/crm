@@ -409,7 +409,13 @@ export class EventsService {
         crew: { include: { host: true, driver: true } },
         preparation: true,
         history: { orderBy: { createdAt: 'desc' } },
-        report: { include: { expenseItems: true, salaryRecords: true, inventoryUsages: true } },
+        report: {
+          include: {
+            expenseItems: true,
+            salaryRecords: true,
+            inventoryUsages: true,
+          },
+        },
       },
     });
     if (!event) throw new AppException('EVENT_NOT_FOUND', HttpStatus.NOT_FOUND);
