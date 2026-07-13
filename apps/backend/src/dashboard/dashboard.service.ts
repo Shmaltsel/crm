@@ -19,6 +19,8 @@ const PIPELINE_STAGES = [
 
 const STALE_DAYS = 7;
 
+const TERMINAL_STATUSES = ['DONE', 'REPORT', 'RE_SALE'] as const;
+
 type EventWithRelations = Prisma.EventGetPayload<{
   include: {
     school: { select: { id: true; name: true } };
@@ -214,7 +216,9 @@ export class DashboardService {
       this.prisma.event.findMany({
         where: {
           ...cityFilter,
-          date: { gte: windows.todayEnd, lt: windows.upcomingEnd },
+          date: { gte: windows.todayStart, lt: windows.upcomingEnd },
+          status: { notIn: [...TERMINAL_STATUSES] },
+          report: { is: null },
         },
         include: this.eventInclude(),
         orderBy: [{ date: 'asc' }, { time: 'asc' }],

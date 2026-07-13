@@ -155,6 +155,48 @@ describe('DashboardService', () => {
       expect(result.upcomingEvents).toHaveLength(1);
       expect(result.upcomingEvents[0].id).toBe('ev-2');
     });
+
+    it('виключає події з DONE, REPORT, RE_SALE статусами та наявним звітом', async () => {
+      const activeEvent = {
+        id: 'ev-active',
+        project: 'Активна',
+        date: todayStr,
+        status: 'IN_PROGRESS',
+        school: null,
+        city: null,
+        crew: null,
+      };
+      mockPrisma.event.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([activeEvent])
+        .mockResolvedValueOnce([]);
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
+
+      const result = await service.getSummary('city-1');
+      const upcomingQuery = mockPrisma.event.findMany.mock.calls[1][0];
+      expect(upcomingQuery.where.status).toEqual({
+        notIn: ['DONE', 'REPORT', 'RE_SALE'],
+      });
+      expect(upcomingQuery.where.report).toEqual({ is: null });
+      expect(result.upcomingEvents).toHaveLength(1);
+    });
+
+    it('не повертає події DONE/REPORT/RE_SALE та з наявним звітом у upcoming', async () => {
+      mockPrisma.event.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      mockPrisma.eventHistory.findMany.mockResolvedValueOnce([]);
+
+      await service.getSummary('city-1');
+      const upcomingQuery = mockPrisma.event.findMany.mock.calls[1][0];
+      expect(upcomingQuery.where.status).toEqual({
+        notIn: ['DONE', 'REPORT', 'RE_SALE'],
+      });
+      expect(upcomingQuery.where.report).toEqual({ is: null });
+    });
   });
 
   describe('getSummary — staleSchools', () => {
