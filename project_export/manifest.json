@@ -467,12 +467,12 @@
   {
     "file": "apps/backend/src/day-off-requests/day-off-requests.service.spec.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 3712
+    "tokens": 3832
   },
   {
     "file": "apps/backend/src/day-off-requests/day-off-requests.service.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 2428
+    "tokens": 2416
   },
   {
     "file": "apps/backend/src/day-off-requests/dto/create-day-off-request.dto.ts",
@@ -852,12 +852,12 @@
   {
     "file": "apps/backend/src/reports/reports.service.spec.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 1625
+    "tokens": 1981
   },
   {
     "file": "apps/backend/src/reports/reports.service.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 4124
+    "tokens": 4338
   },
   {
     "file": "apps/backend/src/salary/dto/create-salary.dto.ts",
@@ -887,12 +887,12 @@
   {
     "file": "apps/backend/src/salary/salary.service.spec.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 887
+    "tokens": 1034
   },
   {
     "file": "apps/backend/src/salary/salary.service.ts",
     "bundle": "bundle_02.xml",
-    "tokens": 2067
+    "tokens": 2142
   },
   {
     "file": "apps/backend/src/school-comments/school-comments.controller.ts",
@@ -1707,7 +1707,7 @@
   {
     "file": "apps/frontend/src/features/reports/pages/ReportsReviewPage.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 5119
+    "tokens": 5334
   },
   {
     "file": "apps/frontend/src/features/salary/components/SalaryEntryForm.tsx",
@@ -1812,7 +1812,7 @@
   {
     "file": "apps/frontend/src/hooks/useSalary.ts",
     "bundle": "bundle_05.xml",
-    "tokens": 498
+    "tokens": 517
   },
   {
     "file": "apps/frontend/src/hooks/useSchoolComments.ts",

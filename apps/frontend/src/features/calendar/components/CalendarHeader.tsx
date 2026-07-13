@@ -1,6 +1,4 @@
-import { motion } from "framer-motion";
 import type { Project, City } from "../../../types";
-import { staggerContainer, staggerItem } from "../../../lib/motion";
 
 interface CalendarHeaderProps {
   projects: Project[];
@@ -27,13 +25,8 @@ export default function CalendarHeader({
   userRole,
 }: CalendarHeaderProps) {
   return (
-    <motion.div
-      className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6"
-      variants={staggerContainer}
-      initial="hidden"
-      animate="visible"
-    >
-      <motion.div variants={staggerItem}>
+    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+      <div className="fade-in-up" style={{ animationDelay: "0ms" }}>
         <h1 className="text-2xl md:text-3xl font-bold text-content-primary">
           Календар подій
         </h1>
@@ -59,10 +52,13 @@ export default function CalendarHeader({
             Вихідний
           </span>
         </div>
-      </motion.div>
+      </div>
 
       {userRole === "SUPERADMIN" && (
-        <motion.div variants={staggerItem} className="hidden md:flex bg-white px-4 py-2 rounded-xl shadow-sm border border-border-strong items-center gap-3 shrink-0">
+        <div
+          className="hidden md:flex bg-white px-4 py-2 rounded-xl shadow-sm border border-border-strong items-center gap-3 shrink-0 fade-in-up"
+          style={{ animationDelay: "50ms" }}
+        >
           <span className="text-sm text-content-muted font-medium">Місто:</span>
           <select
             value={filterCityId}
@@ -76,8 +72,8 @@ export default function CalendarHeader({
               </option>
             ))}
           </select>
-        </motion.div>
+        </div>
       )}
-    </motion.div>
+    </div>
   );
 }
