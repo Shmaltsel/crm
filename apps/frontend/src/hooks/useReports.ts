@@ -114,6 +114,10 @@ export function useApproveReport() {
       qc.invalidateQueries({ queryKey: ["eventFull", data.eventId] });
       qc.invalidateQueries({ queryKey: ["reports", "submitted"] });
       qc.invalidateQueries({ queryKey: ["salary"] });
+      qc.invalidateQueries({ queryKey: ["events"] });
+      qc.invalidateQueries({ queryKey: ["calendarEvents"] });
+      qc.invalidateQueries({ queryKey: ["schools"] });
+      qc.invalidateQueries({ queryKey: ["schoolStats"] });
     },
   });
 }
