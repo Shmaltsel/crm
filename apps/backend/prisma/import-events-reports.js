@@ -226,7 +226,7 @@ async function main() {
           showingsCount: report.showingsCount || 0,
           totalSum: report.totalSum || 0,
           schoolSum: report.schoolSum || 0,
-          remainderSum: report.remainderSum || 0,
+          remainderSum: report.remainderSum || Math.max(0, (report.totalSum || 0) - (report.schoolSum || 0)),
           rating: report.rating ?? null,
           directorSatisfied: report.directorSatisfied ?? null,
           teachersSatisfied: report.teachersSatisfied ?? null,

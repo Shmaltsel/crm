@@ -46,6 +46,16 @@ export function useRevenueByMonth(params?: { cityId?: string; projectId?: string
   });
 }
 
+export type RevenueByCityMonthRow = Record<string, string | number>;
+
+export function useRevenueByCityMonth(params?: { projectId?: string; year?: number }) {
+  return useQuery({
+    queryKey: ["analytics", "revenue-by-city-month", params],
+    queryFn: () => api.get<RevenueByCityMonthRow[]>("/analytics/revenue-by-city-month", { params }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useEventsByCity(params?: { year?: number }) {
   return useQuery({
     queryKey: ["analytics", "events-by-city", params],

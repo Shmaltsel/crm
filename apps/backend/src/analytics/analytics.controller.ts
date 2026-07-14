@@ -125,6 +125,13 @@ export class AnalyticsController {
     );
   }
 
+  @ApiOperation({ summary: 'Дохід по місяцях з розбивкою по містах' })
+  @Get('revenue-by-city-month')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async revenueByCityMonth(@Query() query: RevenueByMonthDto) {
+    return this.analyticsService.revenueByCityMonth(query.projectId, query.year);
+  }
+
   @ApiOperation({ summary: 'Події по містах' })
   @Get('events-by-city')
   @Roles('SUPERADMIN', 'OWNER')

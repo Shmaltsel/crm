@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { useCities } from "../hooks/useCities";
 import {
-  useRevenueByMonth,
+  useRevenueByCityMonth,
   useEventsByCity,
   useSalaryFund,
   useRoi,
@@ -33,6 +33,11 @@ import { BarChart3 } from "lucide-react";
 const UA_MONTHS = [
   "Січ", "Лют", "Бер", "Кві", "Трав", "Чер",
   "Лип", "Сер", "Вер", "Жов", "Лис", "Гру",
+];
+
+const CITY_COLORS = [
+  "#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
+  "#06b6d4", "#ec4899", "#84cc16",
 ];
 
 function fmtMoney(n: unknown): string {
@@ -79,26 +84,69 @@ export default function Analytics() {
   const isSuper = user?.role === "SUPERADMIN" || user?.role === "OWNER";
 
   const [year, setYear] = useState(currentYear);
-  const [cityId, setCityId] = useState<string>("");
-  const [projectId, setProjectId] = useState<string>("");
+  const [projectId, setProjectId] = useState("");
 
   const { data: cities } = useCities();
-  const { data: revenueData, isLoading: revenueLoading } = useRevenueByMonth({
-    cityId: cityId || undefined,
+  const { data: cityMonthData, isLoading: revenueLoading } = useRevenueByCityMonth({
     projectId: projectId || undefined,
     year,
   });
   const { data: eventsByCity, isLoading: eventsLoading } = useEventsByCity({ year });
-  const { data: salaryFund } = useSalaryFund({ year, cityId: cityId || undefined });
-  const { data: roi } = useRoi({ cityId: cityId || undefined, year });
+  const { data: salaryFund } = useSalaryFund({ year });
+  const { data: roi } = useRoi({ year });
 
-  const totalRevenue = revenueData?.reduce((s, m) => s + m.revenue, 0) ?? 0;
-  const totalProfit = revenueData?.reduce((s, m) => s + m.profit, 0) ?? 0;
+  const cityNames = useMemo(() => {
+    if (!cities) return [];
+    return cities.map((c) => c.name).filter(Boolean);
+  }, [cities]);
 
-  const chartData = (revenueData ?? []).map((m) => ({
-    ...m,
-    label: UA_MONTHS[Number(m.month) - 1] || m.month,
-  }));
+  const [activeCities, setActiveCities] = useState<Set<string>>(new Set());
+
+  const toggleCity = (name: string) => {
+    setActiveCities((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
+
+  const chartData = useMemo(() => {
+    if (!cityMonthData) return [];
+    return cityMonthData.map((row) => {
+      const entry: Record<string, string | number> = {
+        month: row.month as string,
+        label: UA_MONTHS[Number(row.month) - 1] || row.month,
+      };
+      for (const city of activeCities) {
+        entry[`revenue_${city}`] = Number(row[`revenue_${city}`] ?? 0);
+        entry[`profit_${city}`] = Number(row[`profit_${city}`] ?? 0);
+      }
+      return entry;
+    });
+  }, [cityMonthData, activeCities]);
+
+  const totalRevenue = useMemo(() => {
+    if (!cityMonthData) return 0;
+    let sum = 0;
+    for (const row of cityMonthData) {
+      for (const city of activeCities) {
+        sum += Number(row[`revenue_${city}`] ?? 0);
+      }
+    }
+    return sum;
+  }, [cityMonthData, activeCities]);
+
+  const totalProfit = useMemo(() => {
+    if (!cityMonthData) return 0;
+    let sum = 0;
+    for (const row of cityMonthData) {
+      for (const city of activeCities) {
+        sum += Number(row[`profit_${city}`] ?? 0);
+      }
+    }
+    return sum;
+  }, [cityMonthData, activeCities]);
 
   return (
     <div className="p-4 md:p-8 bg-surface-subtle min-h-screen">
@@ -122,19 +170,6 @@ export default function Analytics() {
             <option key={y} value={y}>{y}</option>
           ))}
         </select>
-
-        {isSuper && (
-          <select
-            value={cityId}
-            onChange={(e) => setCityId(e.target.value)}
-            className="px-3 py-2.5 bg-surface border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand min-h-[44px]"
-          >
-            <option value="">Всі міста</option>
-            {cities?.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        )}
 
         <input
           type="text"
@@ -163,7 +198,7 @@ export default function Analytics() {
         </motion.div>
       )}
 
-      {revenueLoading && !revenueData ? (
+      {revenueLoading && !cityMonthData ? (
         <ChartSkeleton />
       ) : (
         <div className={`mobile-card mb-5 transition-opacity ${revenueLoading ? 'opacity-60' : ''}`}>
@@ -171,21 +206,58 @@ export default function Analytics() {
           {chartData.length === 0 ? (
             <ChartEmptyState text="Немає даних за цей період" />
           ) : (
-            <div className="swiper-no-swiping" style={{ touchAction: "pan-y" }}>
-              <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} width={50} tickFormatter={(v: number) => v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`} />
-                <Tooltip
-                  formatter={(v: number) => [fmtMoney(v), ""]}
-                  contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
-                  allowEscapeViewBox={{ x: true, y: true }}
-                />
-                <Line type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={2} dot={{ r: 3, fill: "#2563eb" }} name="Дохід" isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
-                <Line type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: "#10b981" }} name="Прибуток" isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
-              </LineChart>
-              </ResponsiveContainer>
+            <div className="flex gap-3">
+              <div className="flex flex-col gap-1.5 shrink-0 pt-1">
+                {cityNames.map((name, i) => {
+                  const active = activeCities.has(name);
+                  const color = CITY_COLORS[i % CITY_COLORS.length];
+                  return (
+                    <button
+                      key={name}
+                      onClick={() => toggleCity(name)}
+                      className={`flex items-center gap-2 px-2 py-1 rounded-lg text-xs text-left transition border ${
+                        active
+                          ? 'border-border-strong bg-surface'
+                          : 'border-transparent bg-transparent text-content-muted'
+                      }`}
+                    >
+                      <span
+                        className="w-3 h-3 rounded-sm shrink-0 border"
+                        style={{
+                          backgroundColor: active ? color : 'transparent',
+                          borderColor: color,
+                        }}
+                      />
+                      <span className="truncate max-w-[100px]">{name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex-1 min-w-0 swiper-no-swiping" style={{ touchAction: "pan-y" }}>
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} width={50} tickFormatter={(v: number) => v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`} />
+                    <Tooltip
+                      formatter={(v: number, key: string) => {
+                        const isProfit = key.startsWith("profit_");
+                        const label = key.replace(/^(revenue|profit)_/, "");
+                        return [fmtMoney(v), `${isProfit ? "Прибуток" : "Дохід"} ${label}`];
+                      }}
+                      contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
+                      allowEscapeViewBox={{ x: true, y: true }}
+                    />
+                    {cityNames.filter((n) => activeCities.has(n)).map((city, i) => {
+                      const color = CITY_COLORS[cityNames.indexOf(city) % CITY_COLORS.length];
+                      return [
+                        <Line key={`r_${city}`} type="monotone" dataKey={`revenue_${city}`} stroke={color} strokeWidth={2} dot={{ r: 3, fill: color }} name={`Дохід ${city}`} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />,
+                        <Line key={`p_${city}`} type="monotone" dataKey={`profit_${city}`} stroke={color} strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3, fill: color, strokeDasharray: "" }} name={`Прибуток ${city}`} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />,
+                      ];
+                    })}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           )}
         </div>
