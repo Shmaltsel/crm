@@ -309,6 +309,7 @@ export default function Analytics() {
   const [showYoY, setShowYoY] = useState(false);
   const [showAnomalies, setShowAnomalies] = useState(false);
   const [showTarget, setShowTarget] = useState(false);
+  const [showRevenue, setShowRevenue] = useState(false);
 
   const { data: cities } = useCities();
   const { data: rawCityMonthData, isLoading: revenueLoading } = useRevenueByCityMonth({
@@ -374,9 +375,13 @@ export default function Analytics() {
         if (aggregateByCity) {
           const lk = `profit_${row.cityName}`;
           entry[lk] = ((entry[lk] as number) ?? 0) + row.profit;
+          const rv = `revenue_${row.cityName}`;
+          entry[rv] = ((entry[rv] as number) ?? 0) + row.revenue;
         } else {
           const lk = `profit_${row.project}_${row.cityName}`;
           entry[lk] = ((entry[lk] as number) ?? 0) + row.profit;
+          const rv = `revenue_${row.project}_${row.cityName}`;
+          entry[rv] = ((entry[rv] as number) ?? 0) + row.revenue;
         }
       }
     }
@@ -873,6 +878,19 @@ export default function Analytics() {
                   Ціль
                 </button>
               )}
+              {activeLines.length > 0 && (
+                <button
+                  onClick={() => setShowRevenue((v) => !v)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
+                    showRevenue
+                      ? 'border-border-strong bg-surface shadow-sm text-content-primary'
+                      : 'border-border-strong bg-surface text-content-secondary'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${showRevenue ? 'bg-[#8b5cf6]' : 'bg-content-muted'}`} />
+                  Дохід
+                </button>
+              )}
               <button
                 onClick={() => setAggregateByCity((v) => !v)}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border border-border-strong bg-surface text-content-secondary transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm"
@@ -1043,6 +1061,17 @@ export default function Analytics() {
                           />
                           );
                         })}
+                        {showRevenue && activeLines.map((line) => (
+                          <Bar
+                            key={`rv_${line.key}`}
+                            dataKey={`revenue_${line.key}`}
+                            fill={line.color}
+                            opacity={0.15}
+                            radius={[2, 2, 0, 0]}
+                            isAnimationActive={!zoomAnimating}
+                            name={`${line.label} (дохід)`}
+                          />
+                        ))}
                         {showStats && activeLines.map((line) => {
                           const stats = lineStats.get(line.key);
                           if (!stats) return null;
