@@ -8,6 +8,7 @@ import {
   useEventsByCity,
   useSalaryFund,
   useRoi,
+  useAnalyticsTargets,
 } from "../hooks/useAnalytics";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
@@ -307,6 +308,7 @@ export default function Analytics() {
   const { data: eventsByCity, isLoading: eventsLoading } = useEventsByCity({ year: yearParam });
   const { data: salaryFund } = useSalaryFund({ year: yearParam });
   const { data: roi } = useRoi({ year: yearParam });
+  const { data: targets } = useAnalyticsTargets({ year: yearParam });
 
   const cityNames = useMemo(() => {
     if (!cities) return [];
@@ -326,6 +328,7 @@ export default function Analytics() {
   const [showStats, setShowStats] = useState(false);
   const [showYoY, setShowYoY] = useState(false);
   const [showAnomalies, setShowAnomalies] = useState(false);
+  const [showTarget, setShowTarget] = useState(false);
 
   const toggleProject = (name: string) => {
     setActiveProjects((prev) => {
@@ -845,6 +848,19 @@ export default function Analytics() {
                   Аномалії
                 </button>
               )}
+              {targets && targets.length > 0 && (
+                <button
+                  onClick={() => setShowTarget((v) => !v)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
+                    showTarget
+                      ? 'border-border-strong bg-surface shadow-sm text-content-primary'
+                      : 'border-border-strong bg-surface text-content-secondary'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${showTarget ? 'bg-[#f59e0b]' : 'bg-content-muted'}`} />
+                  Ціль
+                </button>
+              )}
               <button
                 onClick={() => setAggregateByCity((v) => !v)}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border border-border-strong bg-surface text-content-secondary transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm"
@@ -1067,6 +1083,29 @@ export default function Analytics() {
                             name={`${line.label} (прогноз)`}
                           />
                         ))}
+                        {showTarget && (() => {
+                          if (!targets || targets.length === 0) return null;
+                          const enriched = zoomedChartData.map((e) => {
+                            const t = targets.find((tt) => tt.month === e.month);
+                            return { ...e, target: t?.target ?? null };
+                          });
+                          return (
+                            <Line
+                              key="target_line"
+                              type="monotone"
+                              dataKey="target"
+                              data={enriched}
+                              stroke="#f59e0b"
+                              strokeWidth={2}
+                              strokeDasharray="6 3"
+                              dot={false}
+                              connectNulls
+                              opacity={0.7}
+                              isAnimationActive={false}
+                              name="Ціль"
+                            />
+                          );
+                        })()}
                         {showYoY && prevYearLines.map((line) => (
                           <Line
                             key={`py_${line.key}`}

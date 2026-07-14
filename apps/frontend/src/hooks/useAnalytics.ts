@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../config/api";
 
 export interface MonthlyRevenue {
@@ -93,5 +93,31 @@ export function useRoi(params?: { cityId?: string; year?: number }) {
     queryKey: ["analytics", "roi", params],
     queryFn: () => api.get<Roi>("/analytics/roi", { params }).then(r => r.data),
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+export interface AnalyticsTarget {
+  id: string;
+  year: number;
+  month: number;
+  target: number;
+}
+
+export function useAnalyticsTargets(params?: { year?: number }) {
+  return useQuery({
+    queryKey: ["analytics", "targets", params],
+    queryFn: () => api.get<AnalyticsTarget[]>("/analytics/targets", { params }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSetAnalyticsTarget() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { year: number; month: number; target: number }) =>
+      api.put("/analytics/targets", data).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["analytics", "targets"] });
+    },
   });
 }

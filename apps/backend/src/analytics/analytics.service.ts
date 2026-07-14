@@ -496,4 +496,20 @@ export class AnalyticsService {
     await this.cacheManager.set(cacheKey, result, CACHE_TTL);
     return result;
   }
+
+  async getTargets(year?: number) {
+    const y = year ?? new Date().getFullYear();
+    return this.prisma.analyticsTarget.findMany({
+      where: { year: y },
+      orderBy: { month: 'asc' },
+    });
+  }
+
+  async setTarget(year: number, month: number, target: number) {
+    return this.prisma.analyticsTarget.upsert({
+      where: { year_month: { year, month } },
+      create: { year, month, target },
+      update: { target },
+    });
+  }
 }

@@ -1,9 +1,10 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Query, Body, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiCookieAuth,
   ApiPropertyOptional,
+  ApiProperty,
 } from '@nestjs/swagger';
 import { AnalyticsService } from './analytics.service';
 import { AuthGuard } from '../auth/auth.guard';
@@ -12,7 +13,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
-import { IsOptional, IsString, IsInt, Min } from 'class-validator';
+import { IsOptional, IsString, IsInt, Min, IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class RevenueByMonthDto {
@@ -98,6 +99,24 @@ class RoiDto {
   @Type(() => Number)
   @IsInt()
   year?: number;
+}
+
+class SetTargetDto {
+  @ApiProperty()
+  @Type(() => Number)
+  @IsInt()
+  year!: number;
+
+  @ApiProperty()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  month!: number;
+
+  @ApiProperty()
+  @Type(() => Number)
+  @IsNumber()
+  target!: number;
 }
 
 @ApiTags('Analytics')
@@ -195,6 +214,20 @@ export class AnalyticsController {
   @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   async kpiProjects() {
     return this.analyticsService.kpiProjects();
+  }
+
+  @ApiOperation({ summary: 'Цілі аналітики' })
+  @Get('targets')
+  @Roles('SUPERADMIN', 'OWNER')
+  async getTargets(@Query() query: YearQueryDto) {
+    return this.analyticsService.getTargets(query.year);
+  }
+
+  @ApiOperation({ summary: 'Встановити ціль аналітики' })
+  @Put('targets')
+  @Roles('SUPERADMIN', 'OWNER')
+  async setTarget(@Body() dto: SetTargetDto) {
+    return this.analyticsService.setTarget(dto.year, dto.month, dto.target);
   }
 
   private async resolveCityId(

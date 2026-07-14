@@ -500,3 +500,14 @@ model DayOffRequest {
   @@index([status])
   @@index([date])
 }
+
+model AnalyticsTarget {
+  id        String   @id @default(uuid())
+  year      Int
+  month     Int
+  target    Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([year, month])
+}
