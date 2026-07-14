@@ -136,11 +136,10 @@ export default function Analytics() {
       const m = Number(row.month);
       if (!byMonth.has(m)) byMonth.set(m, {});
       const entry = byMonth.get(m)!;
-      for (const city of activeCities) {
-        if (row.cityName === city) {
-          entry[`revenue_${city}`] = (entry[`revenue_${city}`] ?? 0) + row.revenue;
-          entry[`profit_${city}`] = (entry[`profit_${city}`] ?? 0) + row.profit;
-        }
+      if (activeCities.has(row.cityName)) {
+        const key = `${row.project}_${row.cityName}`;
+        entry[`revenue_${key}`] = (entry[`revenue_${key}`] ?? 0) + row.revenue;
+        entry[`profit_${key}`] = (entry[`profit_${key}`] ?? 0) + row.profit;
       }
     }
     return Array.from({ length: 12 }, (_, i) => {
@@ -149,6 +148,22 @@ export default function Analytics() {
       return { month: m.toString().padStart(2, '0'), label: UA_MONTHS[i], ...entry };
     });
   }, [filteredData, activeCities]);
+
+  const activeLines = useMemo(() => {
+    const lines: { key: string; label: string; color: string }[] = [];
+    let idx = 0;
+    for (const project of activeProjects) {
+      for (const city of activeCities) {
+        lines.push({
+          key: `${project}_${city}`,
+          label: `${project} · ${city}`,
+          color: CITY_COLORS[idx % CITY_COLORS.length],
+        });
+        idx++;
+      }
+    }
+    return lines;
+  }, [activeProjects, activeCities]);
 
   const totalRevenue = useMemo(() => {
     let sum = 0;
@@ -217,11 +232,12 @@ export default function Analytics() {
             <ChartEmptyState text="Немає даних за цей період" />
           ) : (
             <div className="flex gap-3">
-              <div className="flex flex-col gap-3 shrink-0 pt-1">
+                <div className="flex flex-col gap-3 shrink-0 pt-1">
                 <div className="flex flex-col gap-1">
                   <span className="text-[10px] uppercase tracking-wide text-content-muted font-medium px-2">Проєкти</span>
-                  {projectNames.map((name) => {
+                  {projectNames.map((name, pi) => {
                     const active = activeProjects.has(name);
+                    const color = CITY_COLORS[pi % CITY_COLORS.length];
                     return (
                       <button
                         key={name}
@@ -233,8 +249,8 @@ export default function Analytics() {
                         }`}
                       >
                         <span
-                          className="w-3 h-3 rounded-sm shrink-0 border border-content-muted"
-                          style={{ backgroundColor: active ? '#64748b' : 'transparent' }}
+                          className="w-3 h-3 rounded-sm shrink-0 border"
+                          style={{ backgroundColor: active ? color : 'transparent', borderColor: color }}
                         />
                         <span className="truncate max-w-[100px]">{name}</span>
                       </button>
@@ -244,9 +260,8 @@ export default function Analytics() {
                 <div className="border-t border-border" />
                 <div className="flex flex-col gap-1">
                   <span className="text-[10px] uppercase tracking-wide text-content-muted font-medium px-2">Міста</span>
-                  {cityNames.map((name, i) => {
+                  {cityNames.map((name) => {
                     const active = activeCities.has(name);
-                    const color = CITY_COLORS[i % CITY_COLORS.length];
                     return (
                       <button
                         key={name}
@@ -258,11 +273,8 @@ export default function Analytics() {
                         }`}
                       >
                         <span
-                          className="w-3 h-3 rounded-sm shrink-0 border"
-                          style={{
-                            backgroundColor: active ? color : 'transparent',
-                            borderColor: color,
-                          }}
+                          className="w-3 h-3 rounded-sm shrink-0 border border-content-muted"
+                          style={{ backgroundColor: active ? '#64748b' : 'transparent' }}
                         />
                         <span className="truncate max-w-[100px]">{name}</span>
                       </button>
@@ -279,19 +291,16 @@ export default function Analytics() {
                     <Tooltip
                       formatter={(v: number, key: string) => {
                         const isProfit = key.startsWith("profit_");
-                        const label = key.replace(/^(revenue|profit)_/, "");
+                        const label = key.replace(/^(revenue|profit)_/, "").replace("_", " · ");
                         return [fmtMoney(v), `${isProfit ? "Прибуток" : "Дохід"} ${label}`];
                       }}
                       contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
                       allowEscapeViewBox={{ x: true, y: true }}
                     />
-                    {cityNames.filter((n) => activeCities.has(n)).map((city) => {
-                      const color = CITY_COLORS[cityNames.indexOf(city) % CITY_COLORS.length];
-                      return [
-                        <Line key={`r_${city}`} type="monotone" dataKey={`revenue_${city}`} stroke={color} strokeWidth={2} dot={{ r: 3, fill: color }} name={`Дохід ${city}`} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />,
-                        <Line key={`p_${city}`} type="monotone" dataKey={`profit_${city}`} stroke={color} strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3, fill: color, strokeDasharray: "" }} name={`Прибуток ${city}`} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />,
-                      ];
-                    })}
+                    {activeLines.map((line) => [
+                      <Line key={`r_${line.key}`} type="monotone" dataKey={`revenue_${line.key}`} stroke={line.color} strokeWidth={2} dot={{ r: 3, fill: line.color }} name={`Дохід ${line.label}`} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />,
+                      <Line key={`p_${line.key}`} type="monotone" dataKey={`profit_${line.key}`} stroke={line.color} strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3, fill: line.color, strokeDasharray: "" }} name={`Прибуток ${line.label}`} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />,
+                    ])}
                   </LineChart>
                 </ResponsiveContainer>
               </div>
