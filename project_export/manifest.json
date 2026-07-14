@@ -307,7 +307,7 @@
   {
     "file": "apps/backend/src/cities/cities.controller.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 694
+    "tokens": 700
   },
   {
     "file": "apps/backend/src/cities/cities.module.ts",
@@ -497,12 +497,12 @@
   {
     "file": "apps/backend/src/days-off/days-off.service.spec.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 4213
+    "tokens": 4264
   },
   {
     "file": "apps/backend/src/days-off/days-off.service.ts",
     "bundle": "bundle_01.xml",
-    "tokens": 1514
+    "tokens": 1522
   },
   {
     "file": "apps/backend/src/days-off/dto/create-day-off.dto.ts",
@@ -1167,7 +1167,7 @@
   {
     "file": "apps/frontend/src/App.tsx",
     "bundle": "bundle_03.xml",
-    "tokens": 2436
+    "tokens": 2423
   },
   {
     "file": "apps/frontend/src/animations/employees.ts",
@@ -1197,7 +1197,7 @@
   {
     "file": "apps/frontend/src/components/cities/CityMobileHeader.tsx",
     "bundle": "bundle_03.xml",
-    "tokens": 3280
+    "tokens": 3312
   },
   {
     "file": "apps/frontend/src/components/cities/CityMobileList.tsx",
@@ -1317,7 +1317,7 @@
   {
     "file": "apps/frontend/src/components/inventory/InventoryItemModal.tsx",
     "bundle": "bundle_03.xml",
-    "tokens": 1396
+    "tokens": 1402
   },
   {
     "file": "apps/frontend/src/components/IssueCarousel.tsx",
@@ -1327,7 +1327,7 @@
   {
     "file": "apps/frontend/src/components/Layout.tsx",
     "bundle": "bundle_04.xml",
-    "tokens": 2120
+    "tokens": 2164
   },
   {
     "file": "apps/frontend/src/components/MobileTopNav.tsx",
@@ -1337,7 +1337,7 @@
   {
     "file": "apps/frontend/src/components/MoreSheet.tsx",
     "bundle": "bundle_04.xml",
-    "tokens": 1710
+    "tokens": 1633
   },
   {
     "file": "apps/frontend/src/components/NotificationBell.tsx",
@@ -1412,7 +1412,7 @@
   {
     "file": "apps/frontend/src/components/school-profile/modals/CrewModal.tsx",
     "bundle": "bundle_04.xml",
-    "tokens": 2296
+    "tokens": 2310
   },
   {
     "file": "apps/frontend/src/components/school-profile/modals/EditSchoolModal.tsx",
@@ -1617,7 +1617,7 @@
   {
     "file": "apps/frontend/src/constants/navTabs.ts",
     "bundle": "bundle_04.xml",
-    "tokens": 615
+    "tokens": 712
   },
   {
     "file": "apps/frontend/src/constants/pipelineStages.ts",
@@ -1667,7 +1667,7 @@
   {
     "file": "apps/frontend/src/features/calendar/hooks/useCalendarData.ts",
     "bundle": "bundle_04.xml",
-    "tokens": 799
+    "tokens": 806
   },
   {
     "file": "apps/frontend/src/features/calendar/hooks/useCalendarMonth.ts",
@@ -1752,7 +1752,7 @@
   {
     "file": "apps/frontend/src/hooks/useApi.ts",
     "bundle": "bundle_05.xml",
-    "tokens": 978
+    "tokens": 997
   },
   {
     "file": "apps/frontend/src/hooks/useCalendar.ts",
@@ -1782,7 +1782,7 @@
   {
     "file": "apps/frontend/src/hooks/useDaysOff.ts",
     "bundle": "bundle_05.xml",
-    "tokens": 383
+    "tokens": 391
   },
   {
     "file": "apps/frontend/src/hooks/useDebounce.ts",
@@ -1812,7 +1812,7 @@
   {
     "file": "apps/frontend/src/hooks/useReports.ts",
     "bundle": "bundle_05.xml",
-    "tokens": 1297
+    "tokens": 1362
   },
   {
     "file": "apps/frontend/src/hooks/useSalary.ts",
@@ -1827,7 +1827,7 @@
   {
     "file": "apps/frontend/src/hooks/useSchoolProfile.ts",
     "bundle": "bundle_05.xml",
-    "tokens": 2316
+    "tokens": 2331
   },
   {
     "file": "apps/frontend/src/index.css",
@@ -1857,7 +1857,7 @@
   {
     "file": "apps/frontend/src/pages/Analytics.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 3754
+    "tokens": 3818
   },
   {
     "file": "apps/frontend/src/pages/CalendarView.tsx",
@@ -1867,7 +1867,7 @@
   {
     "file": "apps/frontend/src/pages/Cities.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 2125
+    "tokens": 2112
   },
   {
     "file": "apps/frontend/src/pages/CityLeaderboard.tsx",
@@ -1907,7 +1907,7 @@
   {
     "file": "apps/frontend/src/pages/Inventory.tsx",
     "bundle": "bundle_05.xml",
-    "tokens": 4264
+    "tokens": 4286
   },
   {
     "file": "apps/frontend/src/pages/IssuesTab.tsx",
@@ -2157,7 +2157,7 @@
   {
     "file": "apps/frontend/src/tests/unit/useDaysOff.test.tsx",
     "bundle": "bundle_06.xml",
-    "tokens": 2063
+    "tokens": 2052
   },
   {
     "file": "apps/frontend/src/tests/unit/useDebounce.test.ts",
@@ -2297,7 +2297,7 @@
   {
     "file": "README.md",
     "bundle": "bundle_07.xml",
-    "tokens": 2510
+    "tokens": 7864
   },
   {
     "file": "turbo.json",
