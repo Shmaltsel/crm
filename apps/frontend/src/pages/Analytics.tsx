@@ -388,6 +388,29 @@ export default function Analytics() {
     return { chartData: entries };
   }, [filteredData, activeCities, aggregateByCity]);
 
+  const activeLines = useMemo(() => {
+    const lines: { key: string; label: string; color: string }[] = [];
+    let idx = 0;
+    if (aggregateByCity) {
+      for (const city of activeCities) {
+        lines.push({ key: city, label: city, color: CITY_COLORS[idx % CITY_COLORS.length] });
+        idx++;
+      }
+    } else {
+      for (const project of activeProjects) {
+        for (const city of activeCities) {
+          lines.push({
+            key: `${project}_${city}`,
+            label: `${project} · ${city}`,
+            color: CITY_COLORS[idx % CITY_COLORS.length],
+          });
+          idx++;
+        }
+      }
+    }
+    return lines;
+  }, [activeProjects, activeCities, aggregateByCity]);
+
   const yoyChartData = useMemo(() => {
     if (!showYoY || !prevYearData || activeLines.length === 0) return chartData;
     const prevByMonth = new Map<number, typeof prevYearData>();
@@ -411,29 +434,6 @@ export default function Analytics() {
       return e;
     });
   }, [chartData, prevYearData, showYoY, activeLines, activeCities, aggregateByCity]);
-
-  const activeLines = useMemo(() => {
-    const lines: { key: string; label: string; color: string }[] = [];
-    let idx = 0;
-    if (aggregateByCity) {
-      for (const city of activeCities) {
-        lines.push({ key: city, label: city, color: CITY_COLORS[idx % CITY_COLORS.length] });
-        idx++;
-      }
-    } else {
-      for (const project of activeProjects) {
-        for (const city of activeCities) {
-          lines.push({
-            key: `${project}_${city}`,
-            label: `${project} · ${city}`,
-            color: CITY_COLORS[idx % CITY_COLORS.length],
-          });
-          idx++;
-        }
-      }
-    }
-    return lines;
-  }, [activeProjects, activeCities, aggregateByCity]);
 
   const prevYearLines = useMemo(() => {
     if (!showYoY || period === "all") return [];
