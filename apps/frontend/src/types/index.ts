@@ -286,6 +286,7 @@ export interface FinanceEventItem {
   id: string;
   date: string;
   school: string;
+  schoolId: string;
   profit: number;
   revenue: number;
 }

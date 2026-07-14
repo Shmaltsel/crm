@@ -29,6 +29,7 @@ export interface FinanceDashboardResult {
     id: string;
     date: Date;
     school: string;
+    schoolId: string;
     profit: number;
     revenue: number;
   }[];
@@ -36,6 +37,7 @@ export interface FinanceDashboardResult {
     id: string;
     date: Date;
     school: string;
+    schoolId: string;
     profit: number;
     revenue: number;
   }[];
@@ -306,6 +308,7 @@ export class FinanceService {
         select: {
           id: true,
           date: true,
+          schoolId: true,
           school: { select: { name: true } },
         },
       },
@@ -330,6 +333,7 @@ export class FinanceService {
       id: r.event.id,
       date: r.event.date,
       school: r.event.school?.name ?? '—',
+      schoolId: r.event.schoolId,
       profit: Number(r.remainderSum ?? 0),
       revenue: Number(r.totalSum ?? 0),
     });

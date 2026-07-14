@@ -1,4 +1,5 @@
 import React, { useMemo, memo } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ResponsiveContainer,
@@ -113,6 +114,7 @@ const EventTable = memo(function EventTable({
   events: FinanceEventItem[];
   positive: boolean;
 }) {
+  const navigate = useNavigate();
   if (!events || !events.length) return <EmptyState />;
   return (
     <table className="w-full text-sm min-w-[300px]">
@@ -131,7 +133,8 @@ const EventTable = memo(function EventTable({
         {events.map((e: FinanceEventItem, i: number) => (
           <tr
             key={i}
-            className="border-b border-border hover:bg-surface-muted/50 transition-colors"
+            onClick={() => navigate(`/schools/${e.schoolId}`)}
+            className="border-b border-border hover:bg-surface-muted/50 transition-colors cursor-pointer"
           >
             <td className="py-3 text-content-muted whitespace-nowrap">
               {new Date(e.date).toLocaleDateString("uk-UA", {
@@ -139,7 +142,7 @@ const EventTable = memo(function EventTable({
                 month: "2-digit",
               })}
             </td>
-            <td className="py-3 font-medium text-content-secondary truncate max-w-[120px] sm:max-w-[200px] pr-2">
+            <td className="py-3 font-medium text-brand truncate max-w-[120px] sm:max-w-[200px] pr-2">
               {e.school}
             </td>
             <td
