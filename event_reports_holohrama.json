@@ -1,0 +1,27 @@
+[
+  {
+    "id": "d0e5e527-00cc-43e9-a99d-773ff2dfbf18",
+    "eventId": "5ca1bc94-bd71-446a-b38d-8789073fbe27",
+    "status": "APPROVED",
+    "announcementDone": true,
+    "materialShown": true,
+    "childrenCount": 110,
+    "classesCount": 4,
+    "privilegedCount": null,
+    "showingsCount": 4,
+    "totalSum": 11050.0,
+    "schoolSum": 2200.0,
+    "remainderSum": 8850.0,
+    "directorSatisfied": null,
+    "teachersSatisfied": null,
+    "hadIssues": false,
+    "comment": "1. Дата: 24/04/25 🟩\n\n 2. Заклад: Ліцей №3 Івано-Франківської міської ради \n\n 3. Провів оголошення (повідомлення про проєкт та його мету)\n\n 4. Провів показ матеріалу\n • Кількість дітей: 110\n • Кількість дітей пільгових: ?\n\n\n 5. Сума\n • Загальна сума: 11050\n\n • На заклад (20%): 2200\n\n • Залишок (80%): 8850\n\n• Оцінка по закладу: 10",
+    "revisionComment": null,
+    "rating": 10.0,
+    "submittedAt": "2025-08-29T19:28:12",
+    "approvedAt": null,
+    "approvedBy": null,
+    "createdAt": "2025-08-29T19:28:12",
+    "updatedAt": "2025-08-29T19:28:12"
+  }
+]
