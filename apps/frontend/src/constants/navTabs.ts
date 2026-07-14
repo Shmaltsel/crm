@@ -43,6 +43,12 @@ export const NAV_TABS: NavTab[] = [
   { to: "/city-leaderboard", icon: Trophy, label: "Рейтинг", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
 ];
 
+export const NAV_SECTIONS: { label: string; routes: string[] }[] = [
+  { label: "Основне", routes: ["/dashboard", "/calendar", "/reports/review"] },
+  { label: "Управління", routes: ["/schools", "/kindergartens", "/cities", "/employees", "/inventory"] },
+  { label: "Бізнес", routes: ["/finance", "/analytics", "/city-leaderboard"] },
+];
+
 export const ADMIN_TABS: NavTab[] = [
   { to: "/cities", icon: MapPin, label: "Міста", roles: ["SUPERADMIN"] },
 ];

@@ -2,18 +2,12 @@ import { useMemo, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { NAV_TABS } from "../constants/navTabs";
+import { NAV_TABS, NAV_SECTIONS } from "../constants/navTabs";
 import { hasRole } from "../utils/roles";
 
 interface Props {
   onClose: () => void;
 }
-
-const SECTIONS = [
-  { label: "Основне", routes: ["/dashboard", "/calendar", "/reports/review"] },
-  { label: "Управління", routes: ["/schools", "/kindergartens", "/cities", "/employees", "/inventory"] },
-  { label: "Бізнес", routes: ["/finance", "/analytics", "/city-leaderboard"] },
-];
 
 export default function MoreSheet({ onClose, visible }: Props & { visible: boolean }) {
   const { user, logout } = useAuth();
@@ -61,7 +55,7 @@ export default function MoreSheet({ onClose, visible }: Props & { visible: boole
           </div>
 
           <div className="px-3 pb-3">
-            {SECTIONS.map((section, sIdx) => {
+            {NAV_SECTIONS.map((section, sIdx) => {
               const items = section.routes
                 .filter((r) => allowedRoutes.has(r))
                 .map((r) => allowedTabs.find((t) => t.to === r)!)

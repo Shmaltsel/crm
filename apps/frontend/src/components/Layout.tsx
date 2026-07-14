@@ -1,17 +1,11 @@
 import { Link, useOutlet, useLocation } from "react-router-dom";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { pageVariants, DUR, EASE, TRANSITION, useHoverCapable } from "../lib/motion";
 import { useSelectedCity } from "../context/CityContext";
 import { useAuth } from "../context/AuthContext";
 import {
-  Home,
   MapPin,
-  School,
-  Baby,
-  Wallet,
-  Calendar,
-  Users,
   GraduationCap,
   LogOut,
 } from "lucide-react";
@@ -20,6 +14,7 @@ import MobileTopNav from "./MobileTopNav";
 import NotificationBell from "./NotificationBell";
 import OnboardingTour from "./OnboardingTour";
 import { hasRole } from "../utils/roles";
+import { NAV_TABS, NAV_SECTIONS } from "../constants/navTabs";
 
 function NavLink({
   to,
@@ -90,6 +85,13 @@ export default function Layout() {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
+  const allowedTabs = useMemo(
+    () => NAV_TABS.filter((t) => hasRole(user?.role, t.roles)),
+    [user],
+  );
+  const allowedRoutes = useMemo(() => new Set(allowedTabs.map((t) => t.to)), [allowedTabs]);
+  const tabMap = useMemo(() => new Map(NAV_TABS.map((t) => [t.to, t])), []);
+
   return (
     <div className="flex h-dvh bg-surface-subtle font-sans overflow-hidden">
       <MobileTopNav />
@@ -111,20 +113,26 @@ export default function Layout() {
           </p>
         </motion.div>
 
-        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-          {hasRole(user?.role, ["SUPERADMIN", "MANAGER"]) && (
-            <NavLink to="/dashboard" icon={Home} label="Дашборд" currentPath={location.pathname} />
-          )}
-          {hasRole(user?.role, ["SUPERADMIN", "MANAGER", "OWNER"]) && (
-            <NavLink to="/cities" icon={MapPin} label="Міста" currentPath={location.pathname} />
-          )}
-          <NavLink to="/schools" icon={School} label="Школи" currentPath={location.pathname} />
-          <NavLink to="/kindergartens" icon={Baby} label="Садочки" currentPath={location.pathname} />
-          <NavLink to="/finance" icon={Wallet} label="Фінанси" currentPath={location.pathname} />
-          <NavLink to="/calendar" icon={Calendar} label="Календар" currentPath={location.pathname} />
-          {hasRole(user?.role, ["SUPERADMIN"]) && (
-            <NavLink to="/employees" icon={Users} label="Працівники" currentPath={location.pathname} />
-          )}
+        <nav className="flex-1 px-4 py-6 space-y-4 overflow-y-auto">
+          {NAV_SECTIONS.map((section) => {
+            const items = section.routes
+              .filter((r) => allowedRoutes.has(r))
+              .map((r) => tabMap.get(r))
+              .filter(Boolean);
+            if (items.length === 0) return null;
+            return (
+              <div key={section.label}>
+                <p className="px-4 mb-1.5 text-2xs font-bold text-slate-500 uppercase tracking-wider">
+                  {section.label}
+                </p>
+                <div className="space-y-0.5">
+                  {items.map((tab) => (
+                    <NavLink key={tab!.to} to={tab!.to} icon={tab!.icon} label={tab!.label} currentPath={location.pathname} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </nav>
 
         <div className="p-4 border-t border-slate-700/50 pb-8 md:pb-4">
