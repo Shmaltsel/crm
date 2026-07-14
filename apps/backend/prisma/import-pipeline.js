@@ -116,14 +116,14 @@ function groupMessages(rows) {
 
 async function findOrCreateSchool(name, cityId) {
   const existing = await prisma.school.findFirst({
-    where: { name, cityId, type: 'kindergarten' },
+    where: { name, cityId, type: 'Садочок' },
   });
   if (existing) return existing;
 
   return prisma.school.create({
     data: {
       name,
-      type: 'kindergarten',
+      type: 'Садочок',
       cityId,
     },
   });
