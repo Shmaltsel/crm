@@ -58,7 +58,7 @@ export function InventoryItemModal({ isOpen, onClose, onSave, item }: InventoryI
   }, [isOpen, item, reset]);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={item ? "Редагувати товар" : "Новий товар"}>
+    <Modal isOpen={isOpen} onClose={onClose} title={item ? "Редагувати товар" : "Новий товар"} maxWidth="max-w-2xl">
       <form onSubmit={handleSubmit(onSave)} className="flex flex-col gap-4">
         <div>
           <label className="block text-sm mb-1 text-slate-600">Назва *</label>
