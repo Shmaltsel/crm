@@ -16,6 +16,7 @@ import {
   AreaChart,
   Area,
   Line,
+  ReferenceLine,
   BarChart,
   Bar,
   XAxis,
@@ -71,6 +72,46 @@ function calculateSMA(values: number[], window: number): (number | null)[] {
       for (let j = i - window + 1; j <= i; j++) sum += values[j];
       result.push(sum / window);
     }
+  }
+  return result;
+}
+
+interface ForecastPoint {
+  year: number;
+  month: number;
+  value: number;
+}
+
+function linearRegressionForecast(
+  points: ForecastPoint[],
+  horizonMonths: number,
+): ForecastPoint[] {
+  const n = points.length;
+  if (n < 2) return [];
+  let sumX = 0;
+  let sumY = 0;
+  let sumXY = 0;
+  let sumX2 = 0;
+  for (let i = 0; i < n; i++) {
+    const x = i;
+    const y = points[i].value;
+    sumX += x;
+    sumY += y;
+    sumXY += x * y;
+    sumX2 += x * x;
+  }
+  const denom = n * sumX2 - sumX * sumX;
+  if (denom === 0) return [];
+  const slope = (n * sumXY - sumX * sumY) / denom;
+  const intercept = (sumY - slope * sumX) / n;
+  const result: ForecastPoint[] = [];
+  const lastPoint = points[n - 1];
+  for (let h = 1; h <= horizonMonths; h++) {
+    const x = n - 1 + h;
+    let m = lastPoint.month + h;
+    let y = lastPoint.year;
+    while (m > 12) { m -= 12; y++; }
+    result.push({ year: y, month: m, value: Math.max(0, Math.round(slope * x + intercept)) });
   }
   return result;
 }
@@ -213,6 +254,7 @@ export default function Analytics() {
   const [activeCities, setActiveCities] = useState<Set<string>>(new Set());
   const [aggregateByCity, setAggregateByCity] = useState(false);
   const [showTrend, setShowTrend] = useState(false);
+  const [showForecast, setShowForecast] = useState(false);
 
   const toggleProject = (name: string) => {
     setActiveProjects((prev) => {
@@ -310,6 +352,35 @@ export default function Analytics() {
       return enriched;
     });
   }, [chartData, activeLines, showTrend]);
+
+  const canForecast = period !== "all" && chartData.length >= 4;
+
+  const forecastData = useMemo(() => {
+    if (!showForecast || !canForecast || activeLines.length === 0) return { entries: smaData, forecastStartIndex: -1 };
+    const lastRealIndex = smaData.length - 1;
+    const allEntries = smaData.map((e) => ({ ...e }));
+    for (const line of activeLines) {
+      const points: ForecastPoint[] = [];
+      for (const e of chartData) {
+        const v = (e[`profit_${line.key}`] as number) ?? 0;
+        if (v !== 0) points.push({ year: e.year, month: e.month, value: v });
+      }
+      if (points.length < 4) continue;
+      const forecast = linearRegressionForecast(points, 3);
+      for (const f of forecast) {
+        const k = `${f.year}-${String(f.month).padStart(2, "0")}`;
+        let entry = allEntries.find((e) => e.key === k);
+        if (!entry) {
+          entry = buildChartEntry(f.year, f.month);
+          entry.label = formatAxisLabel(entry, allEntries.length + forecast.length);
+          allEntries.push(entry);
+        }
+        entry[`forecast_${line.key}`] = f.value;
+      }
+    }
+    allEntries.sort((a, b) => a.year * 12 + a.month - (b.year * 12 + b.month));
+    return { entries: allEntries, forecastStartIndex: lastRealIndex };
+  }, [smaData, chartData, activeLines, showForecast, canForecast]);
 
   const maxIdx = chartData.length - 1;
   const [zoomRange, setZoomRange] = useState<[number, number]>(() => [
@@ -417,8 +488,8 @@ export default function Analytics() {
   }, []);
 
   const zoomedChartData = useMemo(() => {
-    return smaData.slice(zoomRange[0], zoomRange[1] + 1);
-  }, [smaData, zoomRange]);
+    return forecastData.entries.slice(zoomRange[0], zoomRange[1] + 1);
+  }, [forecastData.entries, zoomRange]);
 
   const zoomSpan = zoomedChartData.length;
   const isZoomed = zoomRange[0] !== 0 || zoomRange[1] !== maxIdx;
@@ -546,6 +617,19 @@ export default function Analytics() {
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-content-primary text-sm">Прибуток по місяцях</h3>
             <div className="flex items-center gap-1.5">
+              {canForecast && (
+                <button
+                  onClick={() => setShowForecast((v) => !v)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
+                    showForecast
+                      ? 'border-border-strong bg-surface shadow-sm text-content-primary'
+                      : 'border-border-strong bg-surface text-content-secondary'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${showForecast ? 'bg-warning' : 'bg-content-muted'}`} />
+                  Прогноз
+                </button>
+              )}
               {activeLines.length > 0 && (
                 <button
                   onClick={() => setShowTrend((v) => !v)}
@@ -713,12 +797,38 @@ export default function Analytics() {
                             name={`${line.label} (SMA)`}
                           />
                         ))}
+                        {showForecast && canForecast && forecastData.forecastStartIndex >= 0 && (
+                          <ReferenceLine
+                            x={zoomedChartData[Math.min(forecastData.forecastStartIndex, zoomedChartData.length - 1)]?.label}
+                            stroke="#94a3b8"
+                            strokeDasharray="3 3"
+                            label={{ value: "Прогноз →", position: "insideTopRight", fontSize: 10, fill: "#94a3b8" }}
+                          />
+                        )}
+                        {showForecast && activeLines.map((line) => (
+                          <Line
+                            key={`forecast_${line.key}`}
+                            type="monotone"
+                            dataKey={`forecast_${line.key}`}
+                            stroke={line.color}
+                            strokeWidth={1.5}
+                            strokeDasharray="2 6"
+                            dot={false}
+                            connectNulls
+                            opacity={0.4}
+                            isAnimationActive={false}
+                            name={`${line.label} (прогноз)`}
+                          />
+                        ))}
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
                   {isZoomed && (
                     <button
-                      onClick={() => setZoomRange([Math.max(0, chartData.length - 12), chartData.length - 1])}
+                      onClick={() => {
+                        const totalLen = forecastData.entries.length;
+                        setZoomRange([Math.max(0, totalLen - 12), totalLen - 1]);
+                      }}
                       className="mt-1.5 text-[10px] text-content-muted hover:text-content-secondary transition px-1"
                     >
                       ← Повний діапазон
