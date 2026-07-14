@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { useCities } from "../hooks/useCities";
@@ -182,7 +182,7 @@ export default function Analytics() {
     return [s, e];
   }, []);
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
+  const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
     setZoomRange(([s, e2]) => {
       const span = e2 - s;
@@ -194,6 +194,13 @@ export default function Analytics() {
       return clampRange(s - step, e2 + step);
     });
   }, [clampRange]);
+
+  useEffect(() => {
+    const el = chartRef.current;
+    if (!el) return;
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
+  }, [handleWheel]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2) {
@@ -346,7 +353,6 @@ export default function Analytics() {
               <div className="flex-1 min-w-0 swiper-no-swiping" style={{ touchAction: "pan-y" }}>
                 <div
                   ref={chartRef}
-                  onWheel={handleWheel}
                   onTouchStart={handleTouchStart}
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
