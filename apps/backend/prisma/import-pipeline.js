@@ -407,7 +407,13 @@ async function main() {
       where: { cityId: city.id, role: 'MANAGER' },
     });
     if (!defaultUser) {
-      console.error(`❌ У місті "${cityName}" немає менеджера.`);
+      defaultUser = await prisma.user.findFirst({ where: { cityId: city.id } });
+    }
+    if (!defaultUser) {
+      defaultUser = await prisma.user.findFirst();
+    }
+    if (!defaultUser) {
+      console.error(`❌ Немає жодного користувача в БД.`);
       process.exit(1);
     }
   }
