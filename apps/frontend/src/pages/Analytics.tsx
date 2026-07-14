@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { useCities } from "../hooks/useCities";
@@ -165,6 +165,67 @@ export default function Analytics() {
     return lines;
   }, [activeProjects, activeCities]);
 
+  const [zoomRange, setZoomRange] = useState<[number, number]>([0, 11]);
+  const chartRef = useRef<HTMLDivElement>(null);
+  const pinchRef = useRef<{ dist: number; range: [number, number] } | null>(null);
+
+  const clampRange = useCallback((start: number, end: number): [number, number] => {
+    const MIN_SPAN = 1;
+    const maxSpan = 11;
+    let s = Math.max(0, Math.min(11, Math.round(start)));
+    let e = Math.max(0, Math.min(11, Math.round(end)));
+    if (e - s < MIN_SPAN) {
+      if (s === 0) e = Math.min(11, s + MIN_SPAN);
+      else s = Math.max(0, e - MIN_SPAN);
+    }
+    if (e - s > maxSpan) { s = 0; e = 11; }
+    return [s, e];
+  }, []);
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    setZoomRange(([s, e2]) => {
+      const span = e2 - s;
+      const shrink = e.deltaY < 0;
+      const step = Math.max(1, Math.floor(span / 4));
+      if (shrink) {
+        return clampRange(s + step, e2 - step);
+      }
+      return clampRange(s - step, e2 + step);
+    });
+  }, [clampRange]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      pinchRef.current = { dist: Math.hypot(dx, dy), range: zoomRange };
+    }
+  }, [zoomRange]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && pinchRef.current) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      const ratio = dist / pinchRef.current.dist;
+      const [origS, origE] = pinchRef.current.range;
+      const center = (origS + origE) / 2;
+      const origSpan = origE - origS;
+      const newSpan = Math.round(origSpan / ratio);
+      setZoomRange(clampRange(center - newSpan / 2, center + newSpan / 2));
+    }
+  }, [clampRange]);
+
+  const handleTouchEnd = useCallback(() => {
+    pinchRef.current = null;
+  }, []);
+
+  const zoomedChartData = useMemo(() => {
+    return chartData.slice(zoomRange[0], zoomRange[1] + 1);
+  }, [chartData, zoomRange]);
+
   const totalRevenue = useMemo(() => {
     let sum = 0;
     for (const row of filteredData) {
@@ -228,7 +289,7 @@ export default function Analytics() {
       ) : (
         <div className={`mobile-card mb-5 transition-opacity ${revenueLoading ? 'opacity-60' : ''}`}>
           <h3 className="font-bold text-content-primary mb-3 text-sm">Дохід по місяцях</h3>
-          {chartData.length === 0 ? (
+          {zoomedChartData.length === 0 ? (
             <ChartEmptyState text="Немає даних за цей період" />
           ) : (
             <div className="flex gap-3">
@@ -283,8 +344,16 @@ export default function Analytics() {
                 </div>
               </div>
               <div className="flex-1 min-w-0 swiper-no-swiping" style={{ touchAction: "pan-y" }}>
+                <div
+                  ref={chartRef}
+                  onWheel={handleWheel}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  className="touch-none"
+                >
                 <ResponsiveContainer width="100%" height={280}>
-                  <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <LineChart data={zoomedChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                     <CartesianGrid vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
                     <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} width={50} tickFormatter={(v: number) => v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`} />
@@ -301,6 +370,15 @@ export default function Analytics() {
                     ))}
                   </LineChart>
                 </ResponsiveContainer>
+                </div>
+                {(zoomRange[0] !== 0 || zoomRange[1] !== 11) && (
+                  <button
+                    onClick={() => setZoomRange([0, 11])}
+                    className="mt-1.5 text-[10px] text-content-muted hover:text-content-secondary transition px-1"
+                  >
+                    ← Повний діапазон
+                  </button>
+                )}
               </div>
             </div>
           )}
