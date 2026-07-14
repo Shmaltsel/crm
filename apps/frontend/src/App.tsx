@@ -126,7 +126,7 @@ function AppRoutes() {
           <Route
             path="schools/:id"
             element={
-              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER", "LEADER"]}>
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
                 <Suspense fallback={null}>
                   <SchoolProfile />
                 </Suspense>
@@ -235,7 +235,7 @@ function AppRoutes() {
           <Route
             path="events/:id/report"
             element={
-              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER", "LEADER"]}>
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
                 <Suspense fallback={null}>
                   <EventReport />
                 </Suspense>
