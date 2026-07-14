@@ -40,7 +40,7 @@ export class CitiesController {
 
   @ApiOperation({ summary: 'Отримати місто за ID' })
   @Get(':id')
-  @Roles('SUPERADMIN', 'OWNER')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   findOne(@Param('id') id: string) {
     return this.citiesService.findOne(id);
   }
