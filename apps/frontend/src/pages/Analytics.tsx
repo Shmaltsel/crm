@@ -76,6 +76,21 @@ function calculateSMA(values: number[], window: number): (number | null)[] {
   return result;
 }
 
+function detectAnomalies(values: number[]): Set<number> {
+  const sorted = [...values].filter((v) => v !== 0).sort((a, b) => a - b);
+  if (sorted.length < 4) return new Set();
+  const q1 = sorted[Math.floor(sorted.length * 0.25)];
+  const q3 = sorted[Math.floor(sorted.length * 0.75)];
+  const iqr = q3 - q1;
+  const lo = q1 - 1.5 * iqr;
+  const hi = q3 + 1.5 * iqr;
+  const anomalies = new Set<number>();
+  for (let i = 0; i < values.length; i++) {
+    if (values[i] < lo || values[i] > hi) anomalies.add(i);
+  }
+  return anomalies;
+}
+
 interface ForecastPoint {
   year: number;
   month: number;
@@ -184,13 +199,25 @@ interface StatDotProps {
   lineKey?: string;
   isMax?: boolean;
   isMin?: boolean;
+  isAnomaly?: boolean;
 }
 
-function StatDot({ cx, cy, color, payload, lineKey, isMax, isMin }: StatDotProps) {
+function StatDot({ cx, cy, color, payload, lineKey, isMax, isMin, isAnomaly }: StatDotProps) {
   if (cx == null || cy == null || !color || !payload || !lineKey) return null;
   const v = (payload[`profit_${lineKey}`] as number) ?? 0;
   if (v === 0) return null;
   const label = isMax ? "MAX" : isMin ? "MIN" : null;
+  if (isAnomaly && !label) {
+    return (
+      <g>
+        <circle cx={cx} cy={cy} r={4} fill="#ef4444" />
+        <circle cx={cx} cy={cy} r={7} fill="none" stroke="#ef4444" strokeWidth={1.5} opacity={0.35} />
+        <text x={cx} y={cy - 12} textAnchor="middle" fontSize={8} fontWeight={600} fill="#ef4444">
+          ⚠
+        </text>
+      </g>
+    );
+  }
   if (!label) return <circle cx={cx} cy={cy} r={2.5} fill={color} strokeWidth={0} />;
   return (
     <g>
@@ -241,6 +268,9 @@ interface TooltipDataRef {
   rawData: RevenueByCityMonthRow[] | undefined;
   activeCities: Set<string>;
   aggregateByCity: boolean;
+  showAnomalies: boolean;
+  anomalyMap: Map<string, Set<number>>;
+  zoomedChartEntryKeys: string[];
 }
 
 interface RechartsTooltipProps {
@@ -295,6 +325,7 @@ export default function Analytics() {
   const [showForecast, setShowForecast] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showYoY, setShowYoY] = useState(false);
+  const [showAnomalies, setShowAnomalies] = useState(false);
 
   const toggleProject = (name: string) => {
     setActiveProjects((prev) => {
@@ -596,6 +627,16 @@ export default function Analytics() {
     return map;
   }, [zoomedChartData, activeLines, showStats]);
 
+  const anomalyMap = useMemo(() => {
+    if (!showAnomalies || activeLines.length === 0) return new Map<string, Set<number>>();
+    const map = new Map<string, Set<number>>();
+    for (const line of activeLines) {
+      const values = zoomedChartData.map((e) => (e[`profit_${line.key}`] as number) ?? 0);
+      map.set(line.key, detectAnomalies(values));
+    }
+    return map;
+  }, [zoomedChartData, activeLines, showAnomalies]);
+
   const totalProfit = useMemo(() => {
     let sum = 0;
     for (const row of filteredData) {
@@ -608,9 +649,12 @@ export default function Analytics() {
     rawData: undefined,
     activeCities: new Set(),
     aggregateByCity: false,
+    showAnomalies: false,
+    anomalyMap: new Map(),
+    zoomedChartEntryKeys: [],
   });
   useEffect(() => {
-    tooltipDataRef.current = { rawData: rawCityMonthData, activeCities, aggregateByCity };
+    tooltipDataRef.current = { rawData: rawCityMonthData, activeCities, aggregateByCity, showAnomalies, anomalyMap, zoomedChartEntryKeys: zoomedChartData.map((e) => e.key) };
   });
 
   const renderTooltip = useCallback((props: RechartsTooltipProps) => {
@@ -659,7 +703,7 @@ export default function Analytics() {
       <div className="backdrop-blur-xl bg-white/75 border border-white/40 rounded-xl shadow-[0_8px_-4px_rgba(0,0,0,0.12)] px-3 py-2.5 text-xs">
         <p className="font-medium text-content-primary mb-1.5 text-sm">{label}</p>
         {payload
-          .filter((p) => (p.value ?? 0) !== 0 && !String(p.dataKey).startsWith("sma_") && !String(p.dataKey).startsWith("prevYear_"))
+          .filter((p) => (p.value ?? 0) !== 0 && !String(p.dataKey).startsWith("sma_") && !String(p.dataKey).startsWith("prevYear_") && !String(p.dataKey).startsWith("forecast_"))
           .sort((a, b) => (b.value as number) - (a.value as number))
           .map((p, i) => {
             const dk = String(p.dataKey);
@@ -667,10 +711,15 @@ export default function Analytics() {
             const pyVal = (payload.find((pp) => pp.dataKey === pyKey)?.value as number) ?? 0;
             const current = (p.value as number) ?? 0;
             const delta = showYoY && pyVal !== 0 ? current - pyVal : null;
+            const entryKey = entry?.key;
+            const entryIdx = data.zoomedChartEntryKeys.indexOf(entryKey);
+            const lineKey = dk.replace(/^profit_/, "");
+            const isAnomaly = data.showAnomalies && entryIdx >= 0 && data.anomalyMap.get(lineKey)?.has(entryIdx) === true;
             return (
             <div key={i} className="flex items-center gap-2 py-0.5">
               <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
               <span className="text-content-secondary truncate">{p.name}</span>
+              {isAnomaly && <span className="text-[9px] text-danger font-medium">⚠</span>}
               <span className="ml-auto font-medium text-content-primary">{fmtMoney(current)}</span>
               {delta !== null && (
                 <span className={`ml-1 text-[10px] font-medium ${delta >= 0 ? 'text-status-success' : 'text-status-error'}`}>
@@ -781,6 +830,19 @@ export default function Analytics() {
                 >
                   <span className={`w-1.5 h-1.5 rounded-full ${showYoY ? 'bg-brand' : 'bg-content-muted'}`} />
                   Рік/рік
+                </button>
+              )}
+              {activeLines.length > 0 && (
+                <button
+                  onClick={() => setShowAnomalies((v) => !v)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
+                    showAnomalies
+                      ? 'border-border-strong bg-surface shadow-sm text-content-primary'
+                      : 'border-border-strong bg-surface text-content-secondary'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${showAnomalies ? 'bg-danger' : 'bg-content-muted'}`} />
+                  Аномалії
                 </button>
               )}
               <button
@@ -915,7 +977,9 @@ export default function Analytics() {
                             strokeWidth={2.5}
                             strokeLinecap="round"
                             connectNulls={true}
-                            dot={showStats && stats ? (props: Record<string, unknown>) => (
+                            dot={showStats && stats ? (props: Record<string, unknown>) => {
+                              const anomalies = anomalyMap.get(line.key);
+                              return (
                               <StatDot
                                 key={`dot_${props.index}`}
                                 cx={props.cx as number}
@@ -925,8 +989,23 @@ export default function Analytics() {
                                 lineKey={line.key}
                                 isMax={props.index === stats.maxIdx}
                                 isMin={props.index === stats.minIdx}
+                                isAnomaly={showAnomalies && anomalies?.has(props.index as number) === true}
                               />
-                            ) : zoomSpan <= 12 ? { r: 2.5, fill: line.color, strokeWidth: 0 } : false}
+                              );
+                            } : showAnomalies ? (props: Record<string, unknown>) => {
+                              const anomalies = anomalyMap.get(line.key);
+                              return anomalies?.has(props.index as number) ? (
+                                <StatDot
+                                  key={`dot_${props.index}`}
+                                  cx={props.cx as number}
+                                  cy={props.cy as number}
+                                  color={line.color}
+                                  payload={props.payload as ChartEntry}
+                                  lineKey={line.key}
+                                  isAnomaly
+                                />
+                              ) : (zoomSpan <= 12 ? <circle cx={props.cx as number} cy={props.cy as number} r={2.5} fill={line.color} strokeWidth={0} /> : null);
+                            } : zoomSpan <= 12 ? { r: 2.5, fill: line.color, strokeWidth: 0 } : false}
                             activeDot={<CustomActiveDot color={line.color} />}
                             name={line.label}
                             isAnimationActive={!zoomAnimating}
