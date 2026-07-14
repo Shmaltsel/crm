@@ -86,6 +86,22 @@
   `noUnusedLocals: true`, `noUnusedParameters: true`; backend — `noImplicitAny: false`.
   Різниця критична при написанні коду для кожного з workspace.
 
+## Analytics chart
+- [2026-07-15] **Варіант B реалізовано**: перемикач `aggregateByCity` на графіку «Прибуток по місяцях».
+  `true` = лінія на місто (сумарний профіт всіх проєктів), тултіп показує розбивку по проєктах.
+  `false` = per-project×city лінії (як раніше). `Analytics.tsx`.
+- [2026-07-15] **React Compiler лінт**: `react-hooks/set-state-in-effect` і `react-hooks/refs` — не використовувати
+  refs для значень, що читаються під час рендеру (`isAnimationActive`, tooltip data).
+  Заміна: `useState` для `zoomAnimating`, `useEffect` для `tooltipDataRef.current`, render-time state
+  adjustment для скидання zoom при зміні `chartData.length`. `Analytics.tsx`.
+- [2026-07-15] **AreaChart + glow**: SVG glow filter (`feGaussianBlur stdDeviation=2.5`) вимикається
+  коли `zoomSpan > 24` для перформансу на мобільних. `Analytics.tsx`.
+- [2026-07-15] **HSL кольори CITY_COLORS**: `hsl(217, 72%, 53%)` тощо — рівномірний розподіл
+  по колу, saturation 62-72%, lightness 42-55%. Замість хардкоду hex. `Analytics.tsx`.
+- [2026-07-15] **todayKey entry прибрано**: раніше додавався порожній entry для поточного місяця
+  навіть без даних — створював обрубаний хвіст лінії. Тепер вісь X закінчується на останньому
+  місяці з реальними даними. `Analytics.tsx`.
+
 ## Активні відкриті питання / рішення в процесі
 - [2026-07-12] ~~Розділити "затвердити звіт" і "виплатити ЗП"~~ — **ВИРІШЕНО**: approve() створює PENDING, payout() на TeamSalaries змінює на PAID. Розділення вже реалізовано.
 - [2026-07-12] ~~Доля `features/calendar/*`~~ — **ВИРІШЕНО**: це НЕ мертвий код. 12 з 13 файлів активно використовуються (вся сторінка `/calendar`). Єдиний мертвий файл — `CalendarSkeleton.tsx` (не імпортується ніде після видалення з CalendarView.tsx).
