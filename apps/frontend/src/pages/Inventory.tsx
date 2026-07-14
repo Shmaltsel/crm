@@ -183,7 +183,7 @@ export default function InventoryPage() {
         </label>
       </div>
 
-      {isLoading ? (
+      {isLoading && !items ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="mobile-card animate-pulse">
@@ -202,7 +202,7 @@ export default function InventoryPage() {
           )}
         </div>
       ) : (
-        <>
+        <div className={isLoading ? 'opacity-60 pointer-events-none' : ''}>
           {/* Mobile cards */}
           <motion.div
             className="flex flex-col gap-3 sm:hidden"
@@ -268,7 +268,7 @@ export default function InventoryPage() {
               </tbody>
             </table>
           </div>
-        </>
+        </div>
       )}
 
       {/* FAB for mobile */}

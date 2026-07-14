@@ -124,10 +124,10 @@ export default function CrewModal({
               </label>
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                 {crews.map((crew) => {
-                  const hostOnDayOff =
-                    crew.hostId && dayOffUserIds.has(crew.hostId);
-                  const driverOnDayOff =
-                    crew.driverId && dayOffUserIds.has(crew.driverId);
+                   const hostOnDayOff =
+                     !!crew.hostId && dayOffUserIds.has(crew.hostId);
+                   const driverOnDayOff =
+                     !!crew.driverId && dayOffUserIds.has(crew.driverId);
                   const isUnavailable = hostOnDayOff || driverOnDayOff;
                   return (
                     <label

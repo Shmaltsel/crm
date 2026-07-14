@@ -145,13 +145,13 @@ export default function Analytics() {
         />
       </div>
 
-      {revenueLoading ? (
+      {revenueLoading && !revenueData ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
           {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : (
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5"
+          className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5 transition-opacity ${revenueLoading ? 'opacity-60' : ''}`}
           variants={staggerContainer}
           initial="hidden"
           animate="visible"
@@ -163,10 +163,10 @@ export default function Analytics() {
         </motion.div>
       )}
 
-      {revenueLoading ? (
+      {revenueLoading && !revenueData ? (
         <ChartSkeleton />
       ) : (
-        <div className="mobile-card mb-5">
+        <div className={`mobile-card mb-5 transition-opacity ${revenueLoading ? 'opacity-60' : ''}`}>
           <h3 className="font-bold text-content-primary mb-3 text-sm">Дохід по місяцях</h3>
           {chartData.length === 0 ? (
             <ChartEmptyState text="Немає даних за цей період" />
@@ -192,10 +192,10 @@ export default function Analytics() {
       )}
 
       {isSuper && (
-        eventsLoading ? (
+        eventsLoading && !eventsByCity ? (
           <ChartSkeleton />
         ) : (
-          <div className="mobile-card">
+          <div className={`mobile-card transition-opacity ${eventsLoading ? 'opacity-60' : ''}`}>
             <h3 className="font-bold text-content-primary mb-3 text-sm">Події по містах</h3>
             {!eventsByCity || eventsByCity.length === 0 ? (
               <ChartEmptyState text="Немає подій за цей рік" />

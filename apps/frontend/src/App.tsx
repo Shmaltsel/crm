@@ -68,7 +68,14 @@ function AppRoutes() {
     login(loggedInUser);
   };
 
-  if (loading && location.pathname !== "/login") return <PageLoader />;
+  if (loading) {
+    if (!user && location.pathname !== "/login") {
+      return null;
+    }
+    if (location.pathname !== "/login") {
+      return <PageLoader />;
+    }
+  }
 
   return (
     <CityProvider>
@@ -98,7 +105,7 @@ function AppRoutes() {
             path="cities"
             element={
               <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER"]}>
-                <Suspense fallback={<PageLoader />}>
+                <Suspense fallback={null}>
                   <Cities />
                 </Suspense>
               </ProtectedRoute>
@@ -109,7 +116,7 @@ function AppRoutes() {
             path="schools"
             element={
               <TabErrorBoundary label="Школи">
-                <Suspense fallback={<PageLoader />}>
+                <Suspense fallback={null}>
                   <Schools />
                 </Suspense>
               </TabErrorBoundary>
@@ -120,7 +127,7 @@ function AppRoutes() {
             path="schools/:id"
             element={
               <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER", "LEADER"]}>
-                <Suspense fallback={<PageLoader />}>
+                <Suspense fallback={null}>
                   <SchoolProfile />
                 </Suspense>
               </ProtectedRoute>
@@ -131,7 +138,7 @@ function AppRoutes() {
             path="employees"
             element={
               <ProtectedRoute allowedRoles={["SUPERADMIN"]}>
-                <Suspense fallback={<PageLoader />}>
+                <Suspense fallback={null}>
                   <Employees />
                 </Suspense>
               </ProtectedRoute>
@@ -142,7 +149,7 @@ function AppRoutes() {
             path="finance"
             element={
               <TabErrorBoundary label="Фінанси">
-                <Suspense fallback={<PageLoader />}>
+                <Suspense fallback={null}>
                   <Finance />
                 </Suspense>
               </TabErrorBoundary>
@@ -153,7 +160,7 @@ function AppRoutes() {
             path="calendar"
             element={
               <TabErrorBoundary label="Календар">
-                <Suspense fallback={<PageLoader />}>
+                <Suspense fallback={null}>
                   <CalendarView />
                 </Suspense>
               </TabErrorBoundary>
@@ -163,7 +170,7 @@ function AppRoutes() {
               path="dashboard"
               element={
               <ProtectedRoute allowedRoles={["SUPERADMIN", "MANAGER", "OWNER"]}>
-                  <Suspense fallback={<PageLoader />}>
+                  <Suspense fallback={null}>
                     <Dashboard />
                   </Suspense>
                 </ProtectedRoute>
@@ -174,7 +181,7 @@ function AppRoutes() {
               path="analytics"
               element={
                 <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER"]}>
-                  <Suspense fallback={<PageLoader />}>
+                  <Suspense fallback={null}>
                     <Analytics />
                   </Suspense>
                 </ProtectedRoute>
@@ -185,7 +192,7 @@ function AppRoutes() {
               path="city-leaderboard"
               element={
                 <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
-                  <Suspense fallback={<PageLoader />}>
+                  <Suspense fallback={null}>
                     <CityLeaderboard />
                   </Suspense>
                 </ProtectedRoute>
@@ -196,7 +203,7 @@ function AppRoutes() {
             path="kindergartens"
             element={
               <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
-                <Suspense fallback={<PageLoader />}>
+                <Suspense fallback={null}>
                   <Schools />
                 </Suspense>
               </ProtectedRoute>
@@ -207,7 +214,7 @@ function AppRoutes() {
             path="cities/:id"
             element={
               <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
-                <Suspense fallback={<PageLoader />}>
+                <Suspense fallback={null}>
                   <CityProfile />
                 </Suspense>
               </ProtectedRoute>
@@ -218,7 +225,7 @@ function AppRoutes() {
             path="projects/:id"
             element={
               <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
-                <Suspense fallback={<PageLoader />}>
+                <Suspense fallback={null}>
                   <ProjectProfile />
                 </Suspense>
               </ProtectedRoute>
@@ -229,7 +236,7 @@ function AppRoutes() {
             path="events/:id/report"
             element={
               <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER", "LEADER"]}>
-                <Suspense fallback={<PageLoader />}>
+                <Suspense fallback={null}>
                   <EventReport />
                 </Suspense>
               </ProtectedRoute>
@@ -240,7 +247,7 @@ function AppRoutes() {
             path="reports/review"
             element={
               <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
-                <Suspense fallback={<PageLoader />}>
+                <Suspense fallback={null}>
                   <ReportsReview />
                 </Suspense>
               </ProtectedRoute>
@@ -251,7 +258,7 @@ function AppRoutes() {
             path="inventory"
             element={
               <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
-                <Suspense fallback={<PageLoader />}>
+                <Suspense fallback={null}>
                   <Inventory />
                 </Suspense>
               </ProtectedRoute>

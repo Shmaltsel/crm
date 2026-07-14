@@ -1,4 +1,4 @@
-import React, { useState, useCallback, lazy, Suspense } from "react";
+import React, { useState, useCallback, lazy } from "react";
 import { createPortal } from "react-dom";
 import { useSelectedCity } from "../context/CityContext";
 import { useAddCity, useSupportedCities } from "../hooks/useApi";
@@ -46,7 +46,7 @@ export default function Cities() {
   const [cityError, setCityError] = useState("");
 
   const { selectedCity, setSelectedCity } = useSelectedCity();
-  const { data: cities = [], isLoading: isFetching } = useCities();
+  const { data: cities = [], isLoading } = useCities();
   const { data: supportedCities = [] } = useSupportedCities();
   const addCity = useAddCity();
   const deleteCity = useDeleteCity();
@@ -103,10 +103,10 @@ export default function Cities() {
         )}
       </div>
 
-      {isFetching ? (
+      {isLoading && cities.length === 0 ? (
         <CitiesSkeleton />
       ) : (
-        <Suspense fallback={<CitiesSkeleton />}>
+        <>
           <div className="md:hidden">
             <CityMobileHeader selectedCity={selectedCity} cities={cities} />
             <CityMobileList
@@ -128,7 +128,7 @@ export default function Cities() {
               isSuperAdmin={userRole === "SUPERADMIN"}
             />
           </div>
-        </Suspense>
+        </>
       )}
 
       {userRole === "SUPERADMIN" && !isModalOpen && createPortal(

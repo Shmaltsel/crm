@@ -102,15 +102,17 @@ describe('DaysOffService', () => {
       const call = mockPrisma.dayOff.findMany.mock.calls[0][0];
       expect(call.where.date.gte).toEqual(new Date('2026-07-01'));
       expect(call.where.date.lte).toBeUndefined();
+      expect(call.where.date.lt).toBeUndefined();
     });
 
-    it('лише to додає where.date.lte', async () => {
+    it('лише to додає where.date.lt (наступний день)', async () => {
       mockPrisma.dayOff.findMany.mockResolvedValueOnce([]);
 
       await service.findAll(undefined, '2026-07-31');
 
       const call = mockPrisma.dayOff.findMany.mock.calls[0][0];
-      expect(call.where.date.lte).toEqual(new Date('2026-07-31'));
+      expect(call.where.date.lt).toEqual(new Date(new Date('2026-07-31').getTime() + 86400000));
+      expect(call.where.date.lte).toBeUndefined();
       expect(call.where.date.gte).toBeUndefined();
     });
 
@@ -124,7 +126,7 @@ describe('DaysOffService', () => {
           where: {
             date: {
               gte: new Date('2026-07-01'),
-              lte: new Date('2026-07-31'),
+              lt: new Date(new Date('2026-07-31').getTime() + 86400000),
             },
             user: { cityId: 'city-1' },
           },

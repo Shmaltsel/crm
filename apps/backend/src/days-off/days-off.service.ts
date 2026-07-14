@@ -23,7 +23,7 @@ export class DaysOffService {
           ? {
               date: {
                 ...(from ? { gte: new Date(from) } : {}),
-                ...(to ? { lte: new Date(to) } : {}),
+                ...(to ? { lt: new Date(new Date(to).getTime() + 86400000) } : {}),
               },
             }
           : {}),
