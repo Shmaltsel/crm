@@ -25,7 +25,7 @@ export class AnalyticsService {
     const conditions = Prisma.sql`
       AND e.date >= ${new Date(`${yearFilter}-01-01`)}::date
       AND e.date < ${new Date(`${yearFilter + 1}-01-01`)}::date
-      AND e.status IN ('REPORT', 'DONE')
+      AND e.status IN ('RE_SALE')
     `;
     const cityCond = cityId
       ? Prisma.sql`AND e."cityId" = ${cityId}`
@@ -115,7 +115,7 @@ export class AnalyticsService {
     const conditions = Prisma.sql`
       AND e.date >= ${new Date(`${yearFilter}-01-01`)}::date
       AND e.date < ${new Date(`${yearFilter + 1}-01-01`)}::date
-      AND e.status IN ('REPORT', 'DONE')
+      AND e.status IN ('RE_SALE')
     `;
     const cityCond = cityId
       ? Prisma.sql`AND e."cityId" = ${cityId}`
@@ -241,7 +241,7 @@ export class AnalyticsService {
       LEFT JOIN "EventReport" r ON r."eventId" = e.id
       WHERE e.date >= ${new Date(`${yearFilter}-01-01`)}::date
         AND e.date < ${new Date(`${yearFilter + 1}-01-01`)}::date
-        AND e.status IN ('REPORT', 'DONE')
+        AND e.status IN ('RE_SALE')
       GROUP BY e."cityId"
     `;
 
@@ -320,7 +320,7 @@ export class AnalyticsService {
         COUNT(*)::bigint AS "reportsCount"
       FROM "Event" e
       JOIN "EventReport" r ON r."eventId" = e.id
-      WHERE e.status IN ('REPORT', 'DONE')
+      WHERE e.status IN ('RE_SALE')
         AND r.rating IS NOT NULL
       GROUP BY e."crewId"
       ORDER BY "avgRating" DESC
@@ -384,7 +384,7 @@ export class AnalyticsService {
       LEFT JOIN "EventReport" r ON r."eventId" = e.id
       WHERE e.date >= ${new Date(`${year}-01-01`)}::date
         AND e.date < ${new Date(`${year + 1}-01-01`)}::date
-        AND e.status IN ('REPORT', 'DONE')
+        AND e.status IN ('RE_SALE')
       GROUP BY e.project
       ORDER BY "eventsCount" DESC
       LIMIT 10
@@ -427,7 +427,7 @@ export class AnalyticsService {
         COALESCE(SUM(r."remainderSum"), 0)::float AS "remainderSum"
       FROM "Event" e
       JOIN "EventReport" r ON r."eventId" = e.id
-      WHERE e.date >= ${start}::date AND e.date < ${end}::date AND e.status IN ('REPORT', 'DONE')
+      WHERE e.date >= ${start}::date AND e.date < ${end}::date AND e.status IN ('RE_SALE')
       ${cityCond}
     `;
 
