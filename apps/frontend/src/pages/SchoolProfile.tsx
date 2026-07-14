@@ -18,6 +18,7 @@ import {
   useSchoolCompletedEvents,
   useUpdateSchool,
   useCreateEvent,
+  useDeleteEvent,
 } from "../hooks/useSchoolProfile";
 
 import type { Event, User } from "../types";
@@ -58,6 +59,7 @@ import type { EventFormValues } from "../components/school-profile/modals/EventS
 import type { SchoolEditFormValues } from "../components/school-profile/modals/SchoolEditSchema";
 import CrewModal from "../components/school-profile/modals/CrewModal";
 import ReportModal from "../components/school-profile/modals/ReportModal";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 
 const PIPELINE_STAGES = [
   { id: 1, key: "BASE", name: "Новий заклад" },
@@ -97,6 +99,8 @@ export default function SchoolProfile() {
   const submitReportMutation = useSubmitReport();
   const addCommentMutation = useAddComment();
   const updateHistoryMutation = useUpdateHistoryComment();
+  const deleteEventMutation = useDeleteEvent(id);
+  const [completedDeleteTarget, setCompletedDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const schoolData = useMemo(() => {
     if (!schoolRaw) {
@@ -406,19 +410,30 @@ export default function SchoolProfile() {
                     👶 {ev.report?.childrenCount || ev.childrenPlanned || "—"} дітей
                   </p>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="font-semibold text-content-primary text-sm">
-                    {new Intl.NumberFormat("uk-UA").format(
-                      Math.round(Number(ev.report?.totalSum || ev.price || 0)),
-                    )}{" "}
-                    грн
-                  </p>
-                  <p className="text-xs font-medium text-success-600 mt-0.5">
-                    +{new Intl.NumberFormat("uk-UA").format(
-                      Math.round(Number(ev.report?.remainderSum || 0)),
-                    )}{" "}
-                    грн
-                  </p>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="text-right">
+                    <p className="font-semibold text-content-primary text-sm">
+                      {new Intl.NumberFormat("uk-UA").format(
+                        Math.round(Number(ev.report?.totalSum || ev.price || 0)),
+                      )}{" "}
+                      грн
+                    </p>
+                    <p className="text-xs font-medium text-success-600 mt-0.5">
+                      +{new Intl.NumberFormat("uk-UA").format(
+                        Math.round(Number(ev.report?.remainderSum || 0)),
+                      )}{" "}
+                      грн
+                    </p>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCompletedDeleteTarget({ id: ev.id, name: ev.project });
+                    }}
+                    className="text-danger-600 active:text-danger p-2.5 rounded-control active:scale-90 transition-transform duration-fast"
+                  >
+                    🗑
+                  </button>
                 </div>
               </div>
             ))}
@@ -432,6 +447,7 @@ export default function SchoolProfile() {
                   <th className="p-4">Дітей</th>
                   <th className="p-4">Виручка</th>
                   <th className="p-4">Прибуток</th>
+                  <th className="p-4 text-center">Дія</th>
                 </tr>
               </thead>
               <tbody>
@@ -459,6 +475,17 @@ export default function SchoolProfile() {
                         Math.round(Number(ev.report?.remainderSum || 0)),
                       )}{" "}
                       грн
+                    </td>
+                    <td className="p-4 text-center">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCompletedDeleteTarget({ id: ev.id, name: ev.project });
+                        }}
+                        className="text-danger-600 hover:text-danger p-2.5 active:scale-90 transition-transform duration-fast"
+                      >
+                        🗑
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -803,6 +830,24 @@ export default function SchoolProfile() {
         isOpen={!!selectedReportEvent}
         onClose={() => setSelectedReportEvent(null)}
         event={selectedReportEvent}
+      />
+      <ConfirmDialog
+        isOpen={!!completedDeleteTarget}
+        title="Видалити завершену подію?"
+        message={`Подію «${completedDeleteTarget?.name ?? ''}» буде видалено назавжди разом зі звітом.`}
+        confirmLabel="Видалити"
+        variant="danger"
+        onConfirm={async () => {
+          if (!completedDeleteTarget) return;
+          try {
+            await deleteEventMutation.mutateAsync(completedDeleteTarget.id);
+          } catch (error) {
+            console.error("Помилка видалення:", error);
+          } finally {
+            setCompletedDeleteTarget(null);
+          }
+        }}
+        onCancel={() => setCompletedDeleteTarget(null)}
       />
       <FloatingMobileNav />
     </div>
