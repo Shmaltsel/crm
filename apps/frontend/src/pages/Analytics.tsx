@@ -176,6 +176,40 @@ function CustomCursor({ x, y, height }: CursorProps) {
   );
 }
 
+interface StatDotProps {
+  cx?: number;
+  cy?: number;
+  color?: string;
+  payload?: ChartEntry;
+  lineKey?: string;
+  isMax?: boolean;
+  isMin?: boolean;
+}
+
+function StatDot({ cx, cy, color, payload, lineKey, isMax, isMin }: StatDotProps) {
+  if (cx == null || cy == null || !color || !payload || !lineKey) return null;
+  const v = (payload[`profit_${lineKey}`] as number) ?? 0;
+  if (v === 0) return null;
+  const label = isMax ? "MAX" : isMin ? "MIN" : null;
+  if (!label) return <circle cx={cx} cy={cy} r={2.5} fill={color} strokeWidth={0} />;
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={4} fill={color} />
+      <circle cx={cx} cy={cy} r={7} fill="none" stroke={color} strokeWidth={1.5} opacity={0.4} />
+      <text
+        x={cx}
+        y={isMax ? cy - 12 : cy + 16}
+        textAnchor="middle"
+        fontSize={9}
+        fontWeight={600}
+        fill={color}
+      >
+        {label}
+      </text>
+    </g>
+  );
+}
+
 function SkeletonCard() {
   return (
     <div className="mobile-card skeleton-shimmer">
@@ -255,6 +289,7 @@ export default function Analytics() {
   const [aggregateByCity, setAggregateByCity] = useState(false);
   const [showTrend, setShowTrend] = useState(false);
   const [showForecast, setShowForecast] = useState(false);
+  const [showStats, setShowStats] = useState(false);
 
   const toggleProject = (name: string) => {
     setActiveProjects((prev) => {
@@ -494,6 +529,34 @@ export default function Analytics() {
   const zoomSpan = zoomedChartData.length;
   const isZoomed = zoomRange[0] !== 0 || zoomRange[1] !== maxIdx;
 
+  const lineStats = useMemo(() => {
+    if (!showStats || activeLines.length === 0) return new Map<string, { avg: number; max: number; min: number; maxIdx: number; minIdx: number }>();
+    const map = new Map<string, { avg: number; max: number; min: number; maxIdx: number; minIdx: number }>();
+    for (const line of activeLines) {
+      let sum = 0;
+      let count = 0;
+      let max = -Infinity;
+      let min = Infinity;
+      let maxI = 0;
+      let minI = 0;
+      for (let i = 0; i < zoomedChartData.length; i++) {
+        const v = (zoomedChartData[i][`profit_${line.key}`] as number) ?? 0;
+        sum += v;
+        count++;
+        if (v > max) { max = v; maxI = i; }
+        if (v < min) { min = v; minI = i; }
+      }
+      map.set(line.key, {
+        avg: count > 0 ? sum / count : 0,
+        max: max === -Infinity ? 0 : max,
+        min: min === Infinity ? 0 : min,
+        maxIdx: maxI,
+        minIdx: minI,
+      });
+    }
+    return map;
+  }, [zoomedChartData, activeLines, showStats]);
+
   const totalProfit = useMemo(() => {
     let sum = 0;
     for (const row of filteredData) {
@@ -643,6 +706,19 @@ export default function Analytics() {
                   Тренд
                 </button>
               )}
+              {activeLines.length > 0 && (
+                <button
+                  onClick={() => setShowStats((v) => !v)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
+                    showStats
+                      ? 'border-border-strong bg-surface shadow-sm text-content-primary'
+                      : 'border-border-strong bg-surface text-content-secondary'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${showStats ? 'bg-danger' : 'bg-content-muted'}`} />
+                  Статистика
+                </button>
+              )}
               <button
                 onClick={() => setAggregateByCity((v) => !v)}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border border-border-strong bg-surface text-content-secondary transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm"
@@ -763,7 +839,9 @@ export default function Analytics() {
                           cursor={<CustomCursor />}
                           allowEscapeViewBox={{ x: true, y: true }}
                         />
-                        {activeLines.map((line) => (
+                        {activeLines.map((line) => {
+                          const stats = lineStats.get(line.key);
+                          return (
                           <Area
                             key={`p_${line.key}`}
                             type="monotone"
@@ -773,7 +851,18 @@ export default function Analytics() {
                             strokeWidth={2.5}
                             strokeLinecap="round"
                             connectNulls={true}
-                            dot={zoomSpan <= 12 ? { r: 2.5, fill: line.color, strokeWidth: 0 } : false}
+                            dot={showStats && stats ? (props: Record<string, unknown>) => (
+                              <StatDot
+                                key={`dot_${props.index}`}
+                                cx={props.cx as number}
+                                cy={props.cy as number}
+                                color={line.color}
+                                payload={props.payload as ChartEntry}
+                                lineKey={line.key}
+                                isMax={props.index === stats.maxIdx}
+                                isMin={props.index === stats.minIdx}
+                              />
+                            ) : zoomSpan <= 12 ? { r: 2.5, fill: line.color, strokeWidth: 0 } : false}
                             activeDot={<CustomActiveDot color={line.color} />}
                             name={line.label}
                             isAnimationActive={!zoomAnimating}
@@ -781,7 +870,22 @@ export default function Analytics() {
                             animationEasing="ease-out"
                             style={zoomSpan <= 24 ? { filter: "url(#glow)" } : undefined}
                           />
-                        ))}
+                          );
+                        })}
+                        {showStats && activeLines.map((line) => {
+                          const stats = lineStats.get(line.key);
+                          if (!stats) return null;
+                          return (
+                            <ReferenceLine
+                              key={`avg_${line.key}`}
+                              y={stats.avg}
+                              stroke={line.color}
+                              strokeDasharray="3 3"
+                              opacity={0.5}
+                              label={{ value: "avg", position: "right", fontSize: 9, fill: line.color }}
+                            />
+                          );
+                        })}
                         {showTrend && activeLines.map((line) => (
                           <Line
                             key={`sma_${line.key}`}
