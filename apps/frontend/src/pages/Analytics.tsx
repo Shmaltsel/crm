@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { useCities } from "../hooks/useCities";
 import {
+  type RevenueByCityMonthRow,
   useRevenueByCityMonth,
   useEventsByCity,
   useSalaryFund,
@@ -12,8 +12,8 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   BarChart,
   Bar,
   XAxis,
@@ -27,7 +27,6 @@ import {
   useCountUp,
   TRANSITION,
 } from "../lib/motion";
-import { EmptyState } from "../components/ui/EmptyState";
 import { BarChart3 } from "lucide-react";
 
 const UA_MONTHS = [
@@ -41,8 +40,14 @@ const UA_MONTHS_FULL = [
 ];
 
 const CITY_COLORS = [
-  "#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
-  "#06b6d4", "#ec4899", "#84cc16",
+  "hsl(217, 72%, 53%)",
+  "hsl(155, 68%, 42%)",
+  "hsl(32, 72%, 50%)",
+  "hsl(348, 68%, 52%)",
+  "hsl(262, 72%, 55%)",
+  "hsl(183, 68%, 42%)",
+  "hsl(330, 62%, 55%)",
+  "hsl(82, 62%, 45%)",
 ];
 
 function fmtMoney(n: unknown): string {
@@ -56,33 +61,6 @@ function fmtMoney(n: unknown): string {
 
 const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => currentYear - i);
-
-function SkeletonCard() {
-  return (
-    <div className="mobile-card animate-pulse">
-      <div className="h-3 bg-neutral-100 rounded-full w-1/3 mb-2.5" />
-      <div className="h-7 bg-neutral-100 rounded w-2/3 mb-1.5" />
-    </div>
-  );
-}
-
-function ChartSkeleton() {
-  return (
-    <div className="mobile-card animate-pulse">
-      <div className="h-4 bg-neutral-100 rounded w-1/4 mb-5" />
-      <div className="h-[280px] bg-surface-muted rounded-xl" />
-    </div>
-  );
-}
-
-function ChartEmptyState({ text }: { text: string }) {
-  return (
-    <div className="h-[280px] flex flex-col items-center justify-center text-content-muted">
-      <BarChart3 className="w-10 h-10 text-content-muted/40 mb-2" />
-      <span className="text-sm text-content-muted">{text}</span>
-    </div>
-  );
-}
 
 interface ChartEntry {
   key: string;
@@ -105,6 +83,85 @@ function formatAxisLabel(entry: ChartEntry, span: number): string {
   if (span > 18) return String(entry.year);
   if (span > 6) return `${UA_MONTHS[entry.month - 1]} ${String(entry.year).slice(2)}`;
   return UA_MONTHS_FULL[entry.month - 1];
+}
+
+interface ActiveDotProps {
+  cx?: number;
+  cy?: number;
+  color?: string;
+  [k: string]: unknown;
+}
+
+function CustomActiveDot({ cx, cy, color }: ActiveDotProps) {
+  if (cx == null || cy == null || !color) return null;
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={4} fill={color} />
+      <circle cx={cx} cy={cy} r={4} fill={color} opacity={0.4}>
+        <animate attributeName="r" from="4" to="12" dur="1.2s" repeatCount="indefinite" />
+        <animate attributeName="opacity" from="0.4" to="0" dur="1.2s" repeatCount="indefinite" />
+      </circle>
+    </g>
+  );
+}
+
+interface CursorProps {
+  x?: number;
+  y?: number;
+  height?: number;
+  [k: string]: unknown;
+}
+
+function CustomCursor({ x, y, height }: CursorProps) {
+  if (x == null || y == null || height == null) return null;
+  return (
+    <line x1={x} y1={y} x2={x} y2={y + height} stroke="url(#cursorGradient)" strokeWidth={1} />
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="mobile-card skeleton-shimmer">
+      <div className="h-3 rounded-full w-1/3 mb-2.5" />
+      <div className="h-7 rounded w-2/3 mb-1.5" />
+    </div>
+  );
+}
+
+function ChartSkeleton() {
+  return (
+    <div className="mobile-card skeleton-shimmer">
+      <div className="h-4 rounded w-1/4 mb-5" />
+      <div className="h-[280px] bg-surface-muted rounded-xl" />
+    </div>
+  );
+}
+
+function ChartEmptyState({ text }: { text: string }) {
+  return (
+    <div className="h-[280px] flex flex-col items-center justify-center text-content-muted">
+      <BarChart3 className="w-10 h-10 text-content-muted/40 mb-2" />
+      <span className="text-sm text-content-muted">{text}</span>
+    </div>
+  );
+}
+
+interface TooltipDataRef {
+  rawData: RevenueByCityMonthRow[] | undefined;
+  activeCities: Set<string>;
+  aggregateByCity: boolean;
+}
+
+interface RechartsTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    value?: number;
+    name?: string;
+    color?: string;
+    dataKey?: string;
+    payload?: ChartEntry;
+  }>;
+  label?: string;
 }
 
 export default function Analytics() {
@@ -138,6 +195,7 @@ export default function Analytics() {
 
   const [activeProjects, setActiveProjects] = useState<Set<string>>(new Set());
   const [activeCities, setActiveCities] = useState<Set<string>>(new Set());
+  const [aggregateByCity, setAggregateByCity] = useState(false);
 
   const toggleProject = (name: string) => {
     setActiveProjects((prev) => {
@@ -163,7 +221,7 @@ export default function Analytics() {
     return rawCityMonthData.filter((r) => activeProjects.has(r.project));
   }, [rawCityMonthData, activeProjects]);
 
-  const { chartData, totalSpan } = useMemo(() => {
+  const { chartData } = useMemo(() => {
     const byKey = new Map<string, ChartEntry>();
     const sorted = [...filteredData].sort(
       (a, b) => a.year * 12 + a.month - (b.year * 12 + b.month),
@@ -176,18 +234,14 @@ export default function Analytics() {
       if (!byKey.has(k)) byKey.set(k, buildChartEntry(y, m));
       const entry = byKey.get(k)!;
       if (activeCities.has(row.cityName)) {
-        const lineKey = `${row.project}_${row.cityName}`;
-        entry[`profit_${lineKey}`] =
-          ((entry[`profit_${lineKey}`] as number) ?? 0) + row.profit;
+        if (aggregateByCity) {
+          const lk = `profit_${row.cityName}`;
+          entry[lk] = ((entry[lk] as number) ?? 0) + row.profit;
+        } else {
+          const lk = `profit_${row.project}_${row.cityName}`;
+          entry[lk] = ((entry[lk] as number) ?? 0) + row.profit;
+        }
       }
-    }
-
-    const today = new Date();
-    const todayYear = today.getFullYear();
-    const todayMonth = today.getMonth() + 1;
-    const todayKey = `${todayYear}-${String(todayMonth).padStart(2, "0")}`;
-    if (!byKey.has(todayKey)) {
-      byKey.set(todayKey, buildChartEntry(todayYear, todayMonth));
     }
 
     const entries = Array.from(byKey.values()).sort(
@@ -198,33 +252,53 @@ export default function Analytics() {
       e.label = formatAxisLabel(e, entries.length);
     }
 
-    return { chartData: entries, totalSpan: entries.length };
-  }, [filteredData, activeCities]);
+    return { chartData: entries };
+  }, [filteredData, activeCities, aggregateByCity]);
 
   const activeLines = useMemo(() => {
     const lines: { key: string; label: string; color: string }[] = [];
     let idx = 0;
-    for (const project of activeProjects) {
+    if (aggregateByCity) {
       for (const city of activeCities) {
-        lines.push({
-          key: `${project}_${city}`,
-          label: `${project} · ${city}`,
-          color: CITY_COLORS[idx % CITY_COLORS.length],
-        });
+        lines.push({ key: city, label: city, color: CITY_COLORS[idx % CITY_COLORS.length] });
         idx++;
+      }
+    } else {
+      for (const project of activeProjects) {
+        for (const city of activeCities) {
+          lines.push({
+            key: `${project}_${city}`,
+            label: `${project} · ${city}`,
+            color: CITY_COLORS[idx % CITY_COLORS.length],
+          });
+          idx++;
+        }
       }
     }
     return lines;
-  }, [activeProjects, activeCities]);
+  }, [activeProjects, activeCities, aggregateByCity]);
 
   const maxIdx = chartData.length - 1;
-  const [zoomRange, setZoomRange] = useState<[number, number]>([0, 11]);
+  const [zoomRange, setZoomRange] = useState<[number, number]>(() => [
+    Math.max(0, chartData.length - 12),
+    chartData.length - 1,
+  ]);
+  const [prevDataLength, setPrevDataLength] = useState(chartData.length);
+  const [zoomAnimating, setZoomAnimating] = useState(false);
   const chartRef = useRef<HTMLDivElement>(null);
   const pinchRef = useRef<{ dist: number; range: [number, number] } | null>(null);
+  const zoomTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  if (chartData.length !== prevDataLength) {
+    setPrevDataLength(chartData.length);
+    setZoomRange([Math.max(0, chartData.length - 12), chartData.length - 1]);
+  }
 
   useEffect(() => {
-    setZoomRange([Math.max(0, chartData.length - 12), chartData.length - 1]);
-  }, [chartData.length]);
+    return () => {
+      if (zoomTimerRef.current != null) clearTimeout(zoomTimerRef.current);
+    };
+  }, []);
 
   const clampRange = useCallback(
     (start: number, end: number): [number, number] => {
@@ -244,6 +318,8 @@ export default function Analytics() {
   const handleWheel = useCallback(
     (ev: WheelEvent) => {
       ev.preventDefault();
+      setZoomAnimating(true);
+      if (zoomTimerRef.current != null) clearTimeout(zoomTimerRef.current);
       setZoomRange(([s, e2]) => {
         const span = e2 - s;
         const shrink = ev.deltaY < 0;
@@ -251,6 +327,9 @@ export default function Analytics() {
         if (shrink) return clampRange(s + step, e2 - step);
         return clampRange(s - step, e2 + step);
       });
+      zoomTimerRef.current = setTimeout(() => {
+        setZoomAnimating(false);
+      }, 200);
     },
     [clampRange],
   );
@@ -277,6 +356,8 @@ export default function Analytics() {
     (e: React.TouchEvent) => {
       if (e.touches.length === 2 && pinchRef.current) {
         e.preventDefault();
+        setZoomAnimating(true);
+        if (zoomTimerRef.current != null) clearTimeout(zoomTimerRef.current);
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
         const dist = Math.hypot(dx, dy);
@@ -286,6 +367,9 @@ export default function Analytics() {
         const origSpan = origE - origS;
         const newSpan = Math.round(origSpan / ratio);
         setZoomRange(clampRange(center - newSpan / 2, center + newSpan / 2));
+        zoomTimerRef.current = setTimeout(() => {
+          setZoomAnimating(false);
+        }, 200);
       }
     },
     [clampRange],
@@ -293,6 +377,10 @@ export default function Analytics() {
 
   const handleTouchEnd = useCallback(() => {
     pinchRef.current = null;
+    if (zoomTimerRef.current != null) clearTimeout(zoomTimerRef.current);
+    zoomTimerRef.current = setTimeout(() => {
+      setZoomAnimating(false);
+    }, 50);
   }, []);
 
   const zoomedChartData = useMemo(() => {
@@ -310,15 +398,80 @@ export default function Analytics() {
     return sum;
   }, [filteredData, activeCities]);
 
+  const tooltipDataRef = useRef<TooltipDataRef>({
+    rawData: undefined,
+    activeCities: new Set(),
+    aggregateByCity: false,
+  });
+  useEffect(() => {
+    tooltipDataRef.current = { rawData: rawCityMonthData, activeCities, aggregateByCity };
+  });
+
+  const renderTooltip = useCallback((props: RechartsTooltipProps) => {
+    const { active, payload, label } = props;
+    const data = tooltipDataRef.current;
+    if (!active || !payload?.length) return null;
+
+    const entry = payload[0]?.payload;
+    if (!entry) return null;
+
+    if (data.aggregateByCity) {
+      const cityData = payload
+        .filter((p) => (p.value ?? 0) !== 0)
+        .map((p) => {
+          const cityName = (p.dataKey ?? "").replace(/^profit_/, "");
+          const breakdown = (data.rawData ?? [])
+            .filter((r) => r.year === entry.year && r.month === entry.month && r.cityName === cityName)
+            .sort((a, b) => b.profit - a.profit);
+          return { cityName, total: p.value as number, color: p.color ?? "", breakdown };
+        })
+        .sort((a, b) => b.total - a.total);
+
+      return (
+        <div className="backdrop-blur-xl bg-white/75 border border-white/40 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.12)] px-3 py-2.5 text-xs max-w-[240px]">
+          <p className="font-medium text-content-primary mb-1.5 text-sm">{label}</p>
+          {cityData.map((cd, i) => (
+            <div key={i} className={i > 0 ? "mt-1.5 pt-1.5 border-t border-black/5" : ""}>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cd.color }} />
+                <span className="font-medium text-content-primary truncate">{cd.cityName}</span>
+                <span className="ml-auto font-medium text-content-primary">{fmtMoney(cd.total)}</span>
+              </div>
+              {cd.breakdown.length > 1 && cd.breakdown.map((b, j) => (
+                <div key={j} className="flex items-center gap-2 pl-4 py-0.5 text-content-secondary">
+                  <span className="truncate">{b.project}</span>
+                  <span className="ml-auto">{fmtMoney(b.profit)}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div className="backdrop-blur-xl bg-white/75 border border-white/40 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.12)] px-3 py-2.5 text-xs">
+        <p className="font-medium text-content-primary mb-1.5 text-sm">{label}</p>
+        {payload
+          .filter((p) => (p.value ?? 0) !== 0)
+          .sort((a, b) => (b.value as number) - (a.value as number))
+          .map((p, i) => (
+            <div key={i} className="flex items-center gap-2 py-0.5">
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+              <span className="text-content-secondary truncate">{p.name}</span>
+              <span className="ml-auto font-medium text-content-primary">{fmtMoney(p.value)}</span>
+            </div>
+          ))}
+      </div>
+    );
+  }, []);
+
   return (
     <div className="p-4 md:p-8 bg-surface-subtle min-h-screen">
       <div className="mb-5">
         <h1 className="text-2xl font-bold text-content-primary">Аналітика</h1>
         <p className="text-2xs text-content-muted mt-1">
-          {new Date().toLocaleDateString("uk-UA", {
-            month: "long",
-            year: "numeric",
-          })}
+          {new Date().toLocaleDateString("uk-UA", { month: "long", year: "numeric" })}
         </p>
       </div>
 
@@ -357,52 +510,72 @@ export default function Analytics() {
         <ChartSkeleton />
       ) : (
         <div className={`mobile-card mb-5 transition-opacity ${revenueLoading ? 'opacity-60' : ''}`}>
-          <h3 className="font-bold text-content-primary mb-3 text-sm">Прибуток по місяцях</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-content-primary text-sm">Прибуток по місяцях</h3>
+            <button
+              onClick={() => setAggregateByCity((v) => !v)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border border-border-strong bg-surface text-content-secondary transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm"
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: aggregateByCity ? "hsl(155, 68%, 42%)" : "hsl(217, 72%, 53%)" }}
+              />
+              {aggregateByCity ? "По містах" : "По проєктах"}
+            </button>
+          </div>
           {zoomedChartData.length === 0 ? (
             <ChartEmptyState text="Немає даних за цей період" />
           ) : (
             <>
               <div className="flex md:flex-row flex-col gap-3">
                 <div className="flex md:flex-col flex-row flex-wrap gap-1 shrink-0 pt-1 md:max-w-none max-w-[260px]">
-                  <span className="text-[10px] uppercase tracking-wide text-content-muted font-medium px-2 hidden md:block">Проєкти</span>
-                  {projectNames.map((name, pi) => {
-                    const active = activeProjects.has(name);
-                    const color = CITY_COLORS[pi % CITY_COLORS.length];
-                    return (
-                      <button
-                        key={name}
-                        onClick={() => toggleProject(name)}
-                        className={`flex items-center gap-2 px-2 py-1 rounded-lg text-xs text-left transition border ${
-                          active
-                            ? 'border-border-strong bg-surface'
-                            : 'border-transparent bg-transparent text-content-muted'
-                        }`}
-                      >
-                        <span
-                          className="w-3 h-3 rounded-sm shrink-0 border"
-                          style={{ backgroundColor: active ? color : 'transparent', borderColor: color }}
-                        />
-                        <span className="truncate max-w-[100px]">{name}</span>
-                      </button>
-                    );
-                  })}
-                  <div className="hidden md:block border-t border-border w-full my-0.5" />
+                  {!aggregateByCity && (
+                    <>
+                      <span className="text-[10px] uppercase tracking-wide text-content-muted font-medium px-2 hidden md:block">Проєкти</span>
+                      {projectNames.map((name, pi) => {
+                        const active = activeProjects.has(name);
+                        const color = CITY_COLORS[pi % CITY_COLORS.length];
+                        return (
+                          <button
+                            key={name}
+                            onClick={() => toggleProject(name)}
+                            className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs text-left border transition-[background-color,box-shadow,border-color,transform] duration-200 ease-out ${
+                              active
+                                ? 'border-border-strong bg-surface shadow-sm'
+                                : 'border-transparent bg-transparent text-content-muted hover:bg-surface-subtle'
+                            }`}
+                          >
+                            <span
+                              className="w-3 h-3 rounded-full shrink-0 border"
+                              style={{ backgroundColor: active ? color : 'transparent', borderColor: color }}
+                            />
+                            <span className="truncate max-w-[100px]">{name}</span>
+                          </button>
+                        );
+                      })}
+                      <div className="hidden md:block border-t border-border w-full my-0.5" />
+                    </>
+                  )}
                   <span className="text-[10px] uppercase tracking-wide text-content-muted font-medium px-2 hidden md:block">Міста</span>
-                  {cityNames.map((name) => {
+                  {cityNames.map((name, ci) => {
                     const active = activeCities.has(name);
+                    const cityColor = aggregateByCity ? CITY_COLORS[ci % CITY_COLORS.length] : '#64748b';
                     return (
                       <button
                         key={name}
                         onClick={() => toggleCity(name)}
-                        className={`flex items-center gap-2 px-2 py-1 rounded-lg text-xs text-left transition border ${
+                        className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs text-left border transition-[background-color,box-shadow,border-color,transform] duration-200 ease-out ${
                           active
-                            ? 'border-border-strong bg-surface'
-                            : 'border-transparent bg-transparent text-content-muted'
+                            ? 'border-border-strong bg-surface shadow-sm'
+                            : 'border-transparent bg-transparent text-content-muted hover:bg-surface-subtle'
                         }`}
                       >
                         <span
-                          className="w-3 h-3 rounded-sm shrink-0 border border-content-muted"
-                          style={{ backgroundColor: active ? '#64748b' : 'transparent' }}
+                          className="w-3 h-3 rounded-full shrink-0 border"
+                          style={{
+                            backgroundColor: active ? cityColor : 'transparent',
+                            borderColor: cityColor,
+                          }}
                         />
                         <span className="truncate max-w-[100px]">{name}</span>
                       </button>
@@ -418,7 +591,26 @@ export default function Analytics() {
                     className="touch-none"
                   >
                     <ResponsiveContainer width="100%" height={280}>
-                      <LineChart data={zoomedChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                      <AreaChart data={zoomedChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                        <defs>
+                          {activeLines.map((line) => (
+                            <linearGradient key={line.key} id={`grad-${line.key}`} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={line.color} stopOpacity={0.25} />
+                              <stop offset="100%" stopColor={line.color} stopOpacity={0} />
+                            </linearGradient>
+                          ))}
+                          <linearGradient id="cursorGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#64748b" stopOpacity={0.6} />
+                            <stop offset="100%" stopColor="#64748b" stopOpacity={0.05} />
+                          </linearGradient>
+                          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="2.5" result="blur" />
+                            <feMerge>
+                              <feMergeNode in="blur" />
+                              <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                          </filter>
+                        </defs>
                         <CartesianGrid vertical={false} stroke="#f1f5f9" />
                         <XAxis
                           dataKey="label"
@@ -427,20 +619,38 @@ export default function Analytics() {
                           tickLine={false}
                           interval={zoomSpan > 24 ? Math.floor(zoomSpan / 8) : zoomSpan > 12 ? 1 : 0}
                         />
-                        <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} width={50} tickFormatter={(v: number) => v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`} />
+                        <YAxis
+                          tick={{ fontSize: 11, fill: "#64748b" }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={50}
+                          tickFormatter={(v: number) => v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`}
+                        />
                         <Tooltip
-                          formatter={(v: number, key: string) => {
-                            const label = key.replace(/^profit_/, "").replace("_", " · ");
-                            return [fmtMoney(v), label];
-                          }}
-                          labelFormatter={(label: string) => label}
-                          contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
+                          content={renderTooltip}
+                          cursor={<CustomCursor />}
                           allowEscapeViewBox={{ x: true, y: true }}
                         />
                         {activeLines.map((line) => (
-                          <Line key={`p_${line.key}`} type="monotone" dataKey={`profit_${line.key}`} stroke={line.color} strokeWidth={2} dot={zoomSpan <= 12 ? { r: 3, fill: line.color } : false} name={line.label} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
+                          <Area
+                            key={`p_${line.key}`}
+                            type="monotone"
+                            dataKey={`profit_${line.key}`}
+                            stroke={line.color}
+                            fill={`url(#grad-${line.key})`}
+                            strokeWidth={2.5}
+                            strokeLinecap="round"
+                            connectNulls={true}
+                            dot={zoomSpan <= 12 ? { r: 2.5, fill: line.color, strokeWidth: 0 } : false}
+                            activeDot={<CustomActiveDot color={line.color} />}
+                            name={line.label}
+                            isAnimationActive={!zoomAnimating}
+                            animationDuration={1000}
+                            animationEasing="ease-out"
+                            style={zoomSpan <= 24 ? { filter: "url(#glow)" } : undefined}
+                          />
                         ))}
-                      </LineChart>
+                      </AreaChart>
                     </ResponsiveContainer>
                   </div>
                   {isZoomed && (
@@ -469,19 +679,19 @@ export default function Analytics() {
             ) : (
               <div className="swiper-no-swiping" style={{ touchAction: "pan-y" }}>
                 <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={eventsByCity} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="cityName" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} width={30} allowDecimals={false} />
-                  <Tooltip
-                    formatter={(v: number) => [v, "Подій"]}
-                    contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
-                    allowEscapeViewBox={{ x: true, y: true }}
-                  />
-                  <Bar dataKey="events" fill="#2563eb" radius={[8, 8, 0, 0]} maxBarSize={48} isAnimationActive={true} animationDuration={800} animationEasing="ease-out" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+                  <BarChart data={eventsByCity} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="cityName" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} width={30} allowDecimals={false} />
+                    <Tooltip
+                      formatter={(v: number) => [v, "Подій"]}
+                      contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
+                      allowEscapeViewBox={{ x: true, y: true }}
+                    />
+                    <Bar dataKey="events" fill="hsl(217, 72%, 53%)" radius={[8, 8, 0, 0]} maxBarSize={48} isAnimationActive={true} animationDuration={800} animationEasing="ease-out" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             )}
           </div>
         )
@@ -543,51 +753,23 @@ function KpiTables() {
       <KpiTable
         title="Менеджери"
         headers={["#", "Ім'я", "Затверджено"]}
-        rows={
-          managers?.map((m, i) => [
-            String(i + 1),
-            m.name,
-            String(m.approvedReports),
-          ]) ?? []
-        }
+        rows={managers?.map((m, i) => [String(i + 1), m.name, String(m.approvedReports)]) ?? []}
       />
       <KpiTable
         title="Ведучі"
         headers={["#", "Ім'я", "Рейтинг", "Звітів"]}
-        rows={
-          hosts?.map((h, i) => [
-            String(i + 1),
-            h.name,
-            String(h.avgRating),
-            String(h.reportsCount),
-          ]) ?? []
-        }
+        rows={hosts?.map((h, i) => [String(i + 1), h.name, String(h.avgRating), String(h.reportsCount)]) ?? []}
       />
       <KpiTable
         title="Проєкти"
         headers={["#", "Назва", "Подій", "Прибуток"]}
-        rows={
-          projects?.map((p, i) => [
-            String(i + 1),
-            p.project,
-            String(p.eventsCount),
-            fmtMoney(p.profit),
-          ]) ?? []
-        }
+        rows={projects?.map((p, i) => [String(i + 1), p.project, String(p.eventsCount), fmtMoney(p.profit)]) ?? []}
       />
     </motion.div>
   );
 }
 
-function KpiTable({
-  title,
-  headers,
-  rows,
-}: {
-  title: string;
-  headers: string[];
-  rows: string[][];
-}) {
+function KpiTable({ title, headers, rows }: { title: string; headers: string[]; rows: string[][] }) {
   return (
     <motion.div className="mobile-card" variants={staggerItem}>
       <h4 className="font-semibold text-content-secondary mb-2 text-sm">{title}</h4>
@@ -602,17 +784,13 @@ function KpiTable({
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={headers.length} className="text-center py-5 text-content-muted">
-                Немає даних
-              </td>
+              <td colSpan={headers.length} className="text-center py-5 text-content-muted">Немає даних</td>
             </tr>
           ) : (
             rows.map((row, i) => (
               <tr key={i} className="border-b border-border last:border-0">
                 {row.map((cell, j) => (
-                  <td key={j} className={`py-1.5 ${j === 0 ? "text-content-muted w-6" : "text-content-primary"}`}>
-                    {cell}
-                  </td>
+                  <td key={j} className={`py-1.5 ${j === 0 ? "text-content-muted w-6" : "text-content-primary"}`}>{cell}</td>
                 ))}
               </tr>
             ))
@@ -625,9 +803,7 @@ function KpiTable({
 
 function KPICard({ label, value, color, numericValue }: { label: string; value: string; color: string; numericValue?: number }) {
   const display = useCountUp(numericValue ?? 0, { duration: 0.9, enabled: numericValue !== undefined });
-  const formatted = numericValue !== undefined
-    ? fmtMoney(display)
-    : value;
+  const formatted = numericValue !== undefined ? fmtMoney(display) : value;
   return (
     <motion.div className="mobile-card" variants={staggerItem} whileTap={{ scale: 0.97 }} transition={TRANSITION.tap}>
       <p className={`text-2xs font-medium ${color} mb-1.5`}>{label}</p>
