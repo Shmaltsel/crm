@@ -640,6 +640,14 @@ export default function Analytics() {
     return map;
   }, [zoomedChartData, activeLines, showAnomalies]);
 
+  const targetChartData = useMemo(() => {
+    if (!showTarget || !targets || targets.length === 0) return null;
+    return zoomedChartData.map((e) => {
+      const t = targets.find((tt) => tt.month === e.month);
+      return { ...e, target: t?.target ?? undefined };
+    });
+  }, [zoomedChartData, targets, showTarget]);
+
   const totalProfit = useMemo(() => {
     let sum = 0;
     for (const row of filteredData) {
@@ -1083,29 +1091,22 @@ export default function Analytics() {
                             name={`${line.label} (прогноз)`}
                           />
                         ))}
-                        {showTarget && (() => {
-                          if (!targets || targets.length === 0) return null;
-                          const enriched = zoomedChartData.map((e) => {
-                            const t = targets.find((tt) => tt.month === e.month);
-                            return { ...e, target: t?.target ?? null };
-                          });
-                          return (
-                            <Line
-                              key="target_line"
-                              type="monotone"
-                              dataKey="target"
-                              data={enriched}
-                              stroke="#f59e0b"
-                              strokeWidth={2}
-                              strokeDasharray="6 3"
-                              dot={false}
-                              connectNulls
-                              opacity={0.7}
-                              isAnimationActive={false}
-                              name="Ціль"
-                            />
-                          );
-                        })()}
+                        {showTarget && targetChartData && (
+                          <Line
+                            key="target_line"
+                            type="monotone"
+                            dataKey="target"
+                            data={targetChartData}
+                            stroke="#f59e0b"
+                            strokeWidth={2}
+                            strokeDasharray="6 3"
+                            dot={false}
+                            connectNulls
+                            opacity={0.7}
+                            isAnimationActive={false}
+                            name="Ціль"
+                          />
+                        )}
                         {showYoY && prevYearLines.map((line) => (
                           <Line
                             key={`py_${line.key}`}
