@@ -271,7 +271,8 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
             </div>
             <h2
               key={selectedCity.id}
-              className="text-2xl font-bold text-slate-800 city-name-change"
+              onClick={() => navigate(`/cities/${selectedCity.id}`)}
+              className="text-2xl font-bold text-slate-800 city-name-change cursor-pointer hover:text-blue-600 transition-colors"
             >
               {selectedCity.name}
             </h2>
@@ -289,12 +290,12 @@ export default function CityMobileHeader({ selectedCity, cities }: Props) {
             <div className="flex items-center gap-1.5 text-rose-600 bg-rose-50 px-2.5 py-2 rounded-xl">
               <span className="text-sm">⚠️</span> {issues.length} проблем
             </div>
-            {/* <button 
-              onClick={() => navigate(`/cities/${selectedCity.id}`)} 
+            <button
+              onClick={() => navigate(`/cities/${selectedCity.id}`)}
               className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-blue-600 shadow-sm shrink-0"
             >
               →
-            </button> */}
+            </button>
           </div>
         </div>
       )}
