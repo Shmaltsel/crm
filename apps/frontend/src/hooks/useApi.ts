@@ -50,7 +50,8 @@ export function useSchools(filters: SchoolFilters = {}) {
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.meta.hasNextPage ? lastPage.meta.page + 1 : undefined,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000,
+    refetchInterval: 30 * 1000,
   });
 }
 
@@ -66,6 +67,7 @@ export function useSchoolStats(
         .get("/schools/stats", { params: badgeFilters })
         .then((r) => r.data),
     staleTime: 2 * 60 * 1000,
+    refetchInterval: 30 * 1000,
     placeholderData: keepPreviousData,
   });
 }
