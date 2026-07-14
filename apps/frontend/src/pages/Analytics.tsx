@@ -297,6 +297,16 @@ export default function Analytics() {
     return Number(period) || currentYear;
   }, [period]);
 
+  const [activeProjects, setActiveProjects] = useState<Set<string>>(new Set());
+  const [activeCities, setActiveCities] = useState<Set<string>>(new Set());
+  const [aggregateByCity, setAggregateByCity] = useState(false);
+  const [showTrend, setShowTrend] = useState(false);
+  const [showForecast, setShowForecast] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  const [showYoY, setShowYoY] = useState(false);
+  const [showAnomalies, setShowAnomalies] = useState(false);
+  const [showTarget, setShowTarget] = useState(false);
+
   const { data: cities } = useCities();
   const { data: rawCityMonthData, isLoading: revenueLoading } = useRevenueByCityMonth({
     year: yearParam,
@@ -319,16 +329,6 @@ export default function Analytics() {
     if (!rawCityMonthData) return [];
     return [...new Set(rawCityMonthData.map((r) => r.project))].filter(Boolean);
   }, [rawCityMonthData]);
-
-  const [activeProjects, setActiveProjects] = useState<Set<string>>(new Set());
-  const [activeCities, setActiveCities] = useState<Set<string>>(new Set());
-  const [aggregateByCity, setAggregateByCity] = useState(false);
-  const [showTrend, setShowTrend] = useState(false);
-  const [showForecast, setShowForecast] = useState(false);
-  const [showStats, setShowStats] = useState(false);
-  const [showYoY, setShowYoY] = useState(false);
-  const [showAnomalies, setShowAnomalies] = useState(false);
-  const [showTarget, setShowTarget] = useState(false);
 
   const toggleProject = (name: string) => {
     setActiveProjects((prev) => {
