@@ -15,6 +15,7 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  Line,
   BarChart,
   Bar,
   XAxis,
@@ -58,6 +59,20 @@ function fmtMoney(n: unknown): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(Number(n) || 0);
+}
+
+function calculateSMA(values: number[], window: number): (number | null)[] {
+  const result: (number | null)[] = [];
+  for (let i = 0; i < values.length; i++) {
+    if (i < window - 1) {
+      result.push(null);
+    } else {
+      let sum = 0;
+      for (let j = i - window + 1; j <= i; j++) sum += values[j];
+      result.push(sum / window);
+    }
+  }
+  return result;
 }
 
 const currentYear = new Date().getFullYear();
@@ -197,6 +212,7 @@ export default function Analytics() {
   const [activeProjects, setActiveProjects] = useState<Set<string>>(new Set());
   const [activeCities, setActiveCities] = useState<Set<string>>(new Set());
   const [aggregateByCity, setAggregateByCity] = useState(false);
+  const [showTrend, setShowTrend] = useState(false);
 
   const toggleProject = (name: string) => {
     setActiveProjects((prev) => {
@@ -278,6 +294,22 @@ export default function Analytics() {
     }
     return lines;
   }, [activeProjects, activeCities, aggregateByCity]);
+
+  const smaData = useMemo(() => {
+    if (!showTrend || activeLines.length === 0) return chartData;
+    const smaMaps = new Map<string, (number | null)[]>();
+    for (const line of activeLines) {
+      const values = chartData.map((e) => (e[`profit_${line.key}`] as number) ?? 0);
+      smaMaps.set(line.key, calculateSMA(values, 3));
+    }
+    return chartData.map((entry, i) => {
+      const enriched: ChartEntry = { ...entry };
+      for (const line of activeLines) {
+        enriched[`sma_${line.key}`] = smaMaps.get(line.key)![i];
+      }
+      return enriched;
+    });
+  }, [chartData, activeLines, showTrend]);
 
   const maxIdx = chartData.length - 1;
   const [zoomRange, setZoomRange] = useState<[number, number]>(() => [
@@ -385,8 +417,8 @@ export default function Analytics() {
   }, []);
 
   const zoomedChartData = useMemo(() => {
-    return chartData.slice(zoomRange[0], zoomRange[1] + 1);
-  }, [chartData, zoomRange]);
+    return smaData.slice(zoomRange[0], zoomRange[1] + 1);
+  }, [smaData, zoomRange]);
 
   const zoomSpan = zoomedChartData.length;
   const isZoomed = zoomRange[0] !== 0 || zoomRange[1] !== maxIdx;
@@ -513,16 +545,31 @@ export default function Analytics() {
         <div className={`mobile-card mb-5 transition-opacity ${revenueLoading ? 'opacity-60' : ''}`}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-content-primary text-sm">Прибуток по місяцях</h3>
-            <button
-              onClick={() => setAggregateByCity((v) => !v)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border border-border-strong bg-surface text-content-secondary transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm"
-            >
-              <span
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ backgroundColor: aggregateByCity ? "hsl(155, 68%, 42%)" : "hsl(217, 72%, 53%)" }}
-              />
-              {aggregateByCity ? "По містах" : "По проєктах"}
-            </button>
+            <div className="flex items-center gap-1.5">
+              {activeLines.length > 0 && (
+                <button
+                  onClick={() => setShowTrend((v) => !v)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
+                    showTrend
+                      ? 'border-border-strong bg-surface shadow-sm text-content-primary'
+                      : 'border-border-strong bg-surface text-content-secondary'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${showTrend ? 'bg-brand' : 'bg-content-muted'}`} />
+                  Тренд
+                </button>
+              )}
+              <button
+                onClick={() => setAggregateByCity((v) => !v)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border border-border-strong bg-surface text-content-secondary transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm"
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ backgroundColor: aggregateByCity ? "hsl(155, 68%, 42%)" : "hsl(217, 72%, 53%)" }}
+                />
+                {aggregateByCity ? "По містах" : "По проєктах"}
+              </button>
+            </div>
           </div>
           {zoomedChartData.length === 0 ? (
             <ChartEmptyState text="Немає даних за цей період" />
@@ -649,6 +696,21 @@ export default function Analytics() {
                             animationDuration={1000}
                             animationEasing="ease-out"
                             style={zoomSpan <= 24 ? { filter: "url(#glow)" } : undefined}
+                          />
+                        ))}
+                        {showTrend && activeLines.map((line) => (
+                          <Line
+                            key={`sma_${line.key}`}
+                            type="monotone"
+                            dataKey={`sma_${line.key}`}
+                            stroke={line.color}
+                            strokeWidth={1.5}
+                            strokeDasharray="4 4"
+                            dot={false}
+                            connectNulls
+                            opacity={0.6}
+                            isAnimationActive={false}
+                            name={`${line.label} (SMA)`}
                           />
                         ))}
                       </AreaChart>
