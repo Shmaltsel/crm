@@ -42,7 +42,7 @@ export function useSchoolEvents(schoolId: string | undefined, full = false) {
         ? `/events/school/${schoolId}`
         : `/events/school/${schoolId}?minimal=true`;
       const res = await api.get<Event[]>(url, undefined);
-      return res.data.filter((ev) => ev.status !== "RE_SALE");
+      return res.data.filter((ev) => ev.status !== "RE_SALE" && ev.status !== "REPORT");
     },
     enabled: !!schoolId,
     staleTime: 60 * 1000,
@@ -96,7 +96,7 @@ export function useUpdateEventStatus() {
                     ? { ...ev, status: vars.status, ...data }
                     : ev,
                 )
-                .filter((ev) => ev.status !== "RE_SALE")
+                .filter((ev) => ev.status !== "RE_SALE" && ev.status !== "REPORT")
             : old,
       );
       qc.invalidateQueries({ queryKey: ["calendarEvents"] });

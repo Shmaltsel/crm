@@ -13,7 +13,7 @@ export function useCalendarData(filterCityId: string, monthFrom?: string, monthT
 
   const filteredEvents = useMemo(() => {
     return events.filter((ev: CalendarEvent) => {
-      if (ev.status === "RE_SALE") return false;
+      if (ev.status === "RE_SALE" || ev.status === "REPORT") return false;
       if (filterCityId !== "ALL" && ev.city?.id !== filterCityId) return false;
       return true;
     });
