@@ -6,44 +6,12 @@ const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
-const STAGE_ORDER = [
-  'BASE', 'FIRST_CONTACT', 'INTERESTED', 'PRE_APPROVAL',
-  'DATE_CONFIRMED', 'PREPARATION', 'IN_PROGRESS', 'DONE', 'REPORT', 'RE_SALE',
-];
-
-const STAGE_MAP = {
-  'Новий заклад': 'BASE',
-  'Знайомство': 'FIRST_CONTACT',
-  'Зацікавлення': 'INTERESTED',
-  'Попередня згода': 'PRE_APPROVAL',
-  'Підтвердження дати': 'DATE_CONFIRMED',
-  'Оголошення': 'PREPARATION',
-  'Підготовка': 'IN_PROGRESS',
-  'Проведення заходу': 'DONE',
-  'Звіт': 'REPORT',
-  'Звіт Малювайка': 'REPORT',
-  'Завершено': 'RE_SALE',
-  'Захід завершено': 'RE_SALE',
-};
-
-const STAGE_LABELS = {
-  BASE: 'База',
-  FIRST_CONTACT: 'Знайомство',
-  INTERESTED: 'Зацікавлення',
-  PRE_APPROVAL: 'Попередня згода',
-  DATE_CONFIRMED: 'Підтвердження дати',
-  PREPARATION: 'Оголошення',
-  IN_PROGRESS: 'Підготовка',
-  DONE: 'Проведення заходу',
-  REPORT: 'Звіт',
-};
-
 let dryRun = false;
 
 function parseArgs() {
   const args = process.argv.slice(2);
   let city = 'Львів';
-  let jsonPath = path.resolve(__dirname, '..', '..', '..', 'crm_grouped_by_sadochok.json');
+  let jsonPath = path.resolve(__dirname, '..', '..', '..', 'schools_categorized_with_reports.json');
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--city' && args[i + 1]) city = args[++i];
@@ -54,41 +22,9 @@ function parseArgs() {
   return { jsonPath, city };
 }
 
-function stageRank(status) {
-  return STAGE_ORDER.indexOf(status);
-}
-
-function maxStage(statuses) {
-  let best = 'BASE';
-  for (const s of statuses) {
-    if (stageRank(s) > stageRank(best)) best = s;
-  }
-  return best;
-}
-
 function extractNumber(name) {
-  const m = name.match(/№\s*(\d+)/i);
+  const m = name.match(/(\d+)/);
   return m ? parseInt(m[1], 10) : null;
-}
-
-function extractNamed(name) {
-  const m = name.match(/"([^"]+)"/);
-  return m ? m[1].toLowerCase() : null;
-}
-
-function parseReportDate(text) {
-  const m = text.match(/1\.\s*Дата:\s*([^\n]+)/);
-  if (!m) return null;
-  const raw = m[1].replace(/[🟩🔲⬜]/g, '').trim();
-  const parts = raw.split(/[./]/);
-  if (parts.length < 3) return null;
-  const day = parseInt(parts[0], 10);
-  const month = parseInt(parts[1], 10);
-  let year = parseInt(parts[2], 10);
-  if (year < 100) year += 2000;
-  if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  return { day, month, year };
 }
 
 function fillReportFields(raw) {
@@ -159,115 +95,131 @@ function fillReportFields(raw) {
   };
 }
 
-// Хронологічна сегментація: коментарі + звіт після них = одна подія.
-// Звіт "закриває" подію. Коментарі після звіту починають нову подію.
-function segmentByReports(messages) {
-  const sorted = [...messages].sort((a, b) => new Date(a['Дата']) - new Date(b['Дата']));
-  const segments = [];
-  let current = [];
-
-  for (const msg of sorted) {
-    current.push(msg);
-    if (msg.єЗвіт === true) {
-      segments.push({ messages: current, report: msg });
-      current = [];
-    }
-  }
-
-  if (current.length > 0) {
-    const stages = current.map(m => STAGE_MAP[m['Етап воронки']]).filter(Boolean);
-    segments.push({ messages: current, report: null, finalStatus: maxStage(stages) });
-  }
-
-  return segments;
+function parseReportDate(text) {
+  const m = text.match(/1\.\s*Дата:\s*([^\n]+)/);
+  if (!m) return null;
+  const raw = m[1].replace(/[🟩🔲⬜🟪]/g, '').replace(/понеділок|вівторок|середа|четвер|п.ятниця|субота|неділя/gi, '').trim();
+  const parts = raw.split(/[./]/);
+  if (parts.length < 3) return null;
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  let year = parseInt(parts[2], 10);
+  if (year < 100) year += 2000;
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return { day, month, year };
 }
 
-async function findOrCreateSchool(name, cityId, director, phone) {
-  const num = extractNumber(name);
-  const named = extractNamed(name);
+function groupByPipeline(rows) {
+  const rootIds = new Set();
+  for (const row of rows) {
+    const parentId = row.reply_to_message_id;
+    if (parentId == null) {
+      rootIds.add(String(row.id));
+    }
+  }
 
-  let existing = null;
+  function resolveRootId(row) {
+    let current = row;
+    const visited = new Set();
+    while (current.reply_to_message_id != null) {
+      const parentId = String(current.reply_to_message_id);
+      if (visited.has(parentId)) break;
+      visited.add(parentId);
+      if (rootIds.has(parentId)) return parentId;
+      const parent = rows.find(r => String(r.id) === parentId);
+      if (!parent) return parentId;
+      current = parent;
+    }
+    return String(current.id);
+  }
+
+  const groups = new Map();
+  for (const row of rows) {
+    const rootId = resolveRootId(row);
+    if (!groups.has(rootId)) groups.set(rootId, []);
+    groups.get(rootId).push(row);
+  }
+
+  return [...groups.values()].map((msgs) => {
+    msgs.sort((a, b) => new Date(a.date) - new Date(b.date));
+    return {
+      finalStatus: 'BASE',
+      messages: msgs,
+    };
+  });
+}
+
+async function findOrCreateSchool(name, cityId) {
+  const num = extractNumber(name);
 
   if (num !== null) {
-    existing = await prisma.school.findFirst({
-      where: { cityId, type: 'Садочок', name: { contains: `№${num}` } },
+    const existing = await prisma.school.findFirst({
+      where: { cityId, type: 'Школа', name: { contains: String(num) } },
     });
+    if (existing) return { school: existing, created: false };
   }
 
-  if (!existing && named) {
-    const all = await prisma.school.findMany({
-      where: { cityId, type: 'Садочок' },
-      select: { id: true, name: true, director: true, phone: true },
-    });
-    existing = all.find(s => {
-      const sNamed = extractNamed(s.name);
-      return sNamed && sNamed === named;
-    }) || null;
-  }
+  const all = await prisma.school.findMany({
+    where: { cityId, type: 'Школа' },
+    select: { id: true, name: true },
+  });
 
-  if (existing) {
-    // Доповнюємо дані про директора/телефон, якщо в БД вони порожні
-    const update = {};
-    if (director && !existing.director) update.director = director;
-    if (phone && !existing.phone) update.phone = phone;
-    if (Object.keys(update).length > 0) {
-      existing = await prisma.school.update({
-        where: { id: existing.id },
-        data: update,
-      });
-    }
-    return { school: existing, created: false };
-  }
+  const lowerName = name.toLowerCase().replace(/[🟩🔲⬜🟪]/g, '').trim();
+  const match = all.find(s => s.name.toLowerCase().includes(lowerName) || lowerName.includes(s.name.toLowerCase()));
+  if (match) return { school: match, created: false };
 
   const school = await prisma.school.create({
-    data: {
-      name,
-      type: 'Садочок',
-      cityId,
-      director: director || null,
-      phone: phone || null,
-    },
+    data: { name, type: 'Школа', cityId },
   });
   return { school, created: true };
 }
 
 function buildHistoryEntries(eventId, messages, userId) {
-  const entries = [];
-
-  for (const msg of messages) {
-    const stage = STAGE_MAP[msg['Етап воронки']] || 'BASE';
-    const label = STAGE_LABELS[stage] || stage;
-    const isReport = msg.єЗвіт === true;
-    entries.push({
-      eventId,
-      action: `[${isReport ? 'Звіт' : label}] ${msg['Текст повідомлення'] || ''}`.trim(),
-      userId,
-      userName: msg['Відправник'] || '',
-      role: 'MANAGER',
-      createdAt: new Date(msg['Дата']),
-    });
-  }
-
-  return entries;
+  return messages.map(msg => ({
+    eventId,
+    action: `[Повідомлення] ${msg.text || ''}`.trim(),
+    userId,
+    userName: msg.from || '',
+    role: 'MANAGER',
+    createdAt: new Date(msg.date),
+  }));
 }
 
 function computeReportEventDate(msg) {
-  const parsed = parseReportDate(msg['Текст повідомлення']);
+  const parsed = parseReportDate(msg.text);
   if (parsed) {
     return {
       date: new Date(parsed.year, parsed.month - 1, parsed.day),
-      time: msg['Дата'].split(' ')[1] || null,
+      time: msg.date.split('T')[1]?.slice(0, 5) || null,
     };
   }
   return {
-    date: new Date(msg['Дата']),
-    time: msg['Дата'].split(' ')[1] || null,
+    date: new Date(msg.date),
+    time: msg.date.split('T')[1]?.slice(0, 5) || null,
+  };
+}
+
+function computePipelineDate(messages) {
+  const lastMsg = messages[messages.length - 1];
+  return {
+    date: new Date(lastMsg.date),
+    time: lastMsg.date.split('T')[1]?.slice(0, 5) || null,
   };
 }
 
 async function createEvent(data) {
+  const dayStart = new Date(data.date);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(data.date);
+  dayEnd.setHours(23, 59, 59, 999);
+
   const existing = await prisma.event.findFirst({
-    where: { schoolId: data.schoolId, date: data.date, project: 'Малювайка' },
+    where: {
+      schoolId: data.schoolId,
+      date: { gte: dayStart, lte: dayEnd },
+      project: 'Голограма',
+    },
   });
   if (existing) {
     console.log(`  ⏭ ${data.schoolName.slice(0, 50)} → пропущено (дублікат)`);
@@ -278,7 +230,7 @@ async function createEvent(data) {
     data: {
       cityId: data.cityId,
       schoolId: data.schoolId,
-      project: 'Малювайка',
+      project: 'Голограма',
       date: data.date,
       time: data.time,
       status: data.status,
@@ -299,7 +251,7 @@ async function main() {
     process.exit(1);
   }
   const raw = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
-  console.log(`   Знайдено ${raw.length} садочків`);
+  console.log(`   Знайдено ${raw.length} закладів`);
   if (dryRun) console.log('   🔍 РЕЖИМ DRY-RUN — дані не записуються\n');
 
   let city;
@@ -332,68 +284,64 @@ async function main() {
   let createdSchools = 0;
   let totalSkipped = 0;
   let totalWithComputed = 0;
+  let totalEntries = 0;
 
   for (const kg of raw) {
-    const kgName = kg['Садочок'];
-    const director = kg['директорПІБ'] || null;
-    const directorPhone = kg['директорТелефон'] || null;
+    const kgName = (kg['Заклад'] || '').replace(/\s+/g, ' ').trim();
+    if (!kgName || kgName.includes('Загалом') || kgName.includes('Проведено') || kgName.length < 2) {
+      continue;
+    }
+    totalEntries++;
+    const convMsgs = kg.повідомлення.filter(m => m.єЗвіт !== true);
+    const reportMsgs = kg.повідомлення.filter(m => m.єЗвіт === true);
 
     let school;
     if (!dryRun) {
-      const result = await findOrCreateSchool(kgName, city.id, director, directorPhone);
+      const result = await findOrCreateSchool(kgName, city.id);
       school = result.school;
       if (result.created) createdSchools++;
     } else {
       school = { id: 'dry-run', name: kgName };
-      if (director || directorPhone) {
-        console.log(`  👤 ${kgName.slice(0, 50)} → директор: ${director || '-'} | тел: ${directorPhone || '-'}`);
+    }
+
+    const pipelines = groupByPipeline(convMsgs);
+
+    for (const pipeline of pipelines) {
+      const { date: eventDate, time: eventTime } = computePipelineDate(pipeline.messages);
+
+      if (!dryRun) {
+        const result = await createEvent({
+          cityId: city.id,
+          schoolId: school.id,
+          schoolName: school.name,
+          date: eventDate,
+          time: eventTime,
+          status: 'BASE',
+        });
+        if (result.skipped) {
+          totalSkipped++;
+        } else {
+          const hist = buildHistoryEntries(result.event.id, pipeline.messages, defaultUser.id);
+          if (hist.length > 0) {
+            await prisma.eventHistory.createMany({ data: hist });
+          }
+          totalPipelines++;
+          totalHistory += hist.length;
+          console.log(`  ✅ ${school.name.slice(0, 50)} → BASE (${hist.length} записів)`);
+        }
+      } else {
+        totalPipelines++;
+        totalHistory += pipeline.messages.length;
+        console.log(`  📋 ${school.name.slice(0, 50)} → BASE (${pipeline.messages.length} повідомлень)`);
       }
     }
 
-    // Хронологічна сегментація: звіт закриває подію,
-    // коментарі після звіту — це вже нова подія
-    const segments = segmentByReports(kg.повідомлення);
-
-    for (const segment of segments) {
-      if (!segment.report) {
-        // Сегмент без звіту — звичайна подія-гілка
-        const { date: eventDate, time: eventTime } = computePipelineDate(segment.messages);
-
-        if (!dryRun) {
-          const result = await createEvent({
-            cityId: city.id,
-            schoolId: school.id,
-            schoolName: school.name,
-            date: eventDate,
-            time: eventTime,
-            status: segment.finalStatus,
-          });
-          if (result.skipped) {
-            totalSkipped++;
-          } else {
-            const hist = buildHistoryEntries(result.event.id, segment.messages, defaultUser.id);
-            if (hist.length > 0) {
-              await prisma.eventHistory.createMany({ data: hist });
-            }
-            totalPipelines++;
-            totalHistory += hist.length;
-            console.log(`  ✅ ${school.name.slice(0, 50)} → ${segment.finalStatus} (${hist.length} записів)`);
-          }
-        } else {
-          totalPipelines++;
-          totalHistory += segment.messages.length;
-          console.log(`  📋 ${school.name.slice(0, 50)} → ${segment.finalStatus} (${segment.messages.length} повідомлень)`);
-        }
-        continue;
-      }
-
-      // Сегмент зі звітом: коментарі + звіт = одна подія
-      const rm = segment.report;
+    for (const rm of reportMsgs) {
       const rawReport = rm.eventReport || {};
       const filled = fillReportFields(rawReport);
 
       const { date: eventDate, time: eventTime } = computeReportEventDate(rm);
-      const msgDate = new Date(rm['Дата']);
+      const msgDate = new Date(rm.date);
       let submittedAt = rawReport.submittedAt ? new Date(rawReport.submittedAt) : msgDate;
       let approvedAt = rawReport.approvedAt ? new Date(rawReport.approvedAt) : msgDate;
 
@@ -411,7 +359,7 @@ async function main() {
         if (result.skipped) {
           totalSkipped++;
         } else {
-          const hist = buildHistoryEntries(result.event.id, segment.messages, defaultUser.id);
+          const hist = buildHistoryEntries(result.event.id, [rm], defaultUser.id);
           if (hist.length > 0) {
             await prisma.eventHistory.createMany({ data: hist });
           }
@@ -447,36 +395,28 @@ async function main() {
           if (Object.keys(filled.computed).length > 0) {
             totalWithComputed++;
           }
-          console.log(`  ✅ ${school.name.slice(0, 50)} → RE_SALE | дітей:${filled.childrenCount} сума:${filled.totalSum} рейтинг:${filled.rating ?? '-'} (${hist.length} записів) ${Object.keys(filled.computed).length > 0 ? '(обраховано: ' + Object.keys(filled.computed).join(', ') + ')' : ''}`);
+          console.log(`  ✅ ${school.name.slice(0, 50)} → RE_SALE | дітей:${filled.childrenCount} сума:${filled.totalSum} рейтинг:${filled.rating ?? '-'} ${Object.keys(filled.computed).length > 0 ? '(обраховано: ' + Object.keys(filled.computed).join(', ') + ')' : ''}`);
         }
       } else {
         totalReportEvents++;
         totalReports++;
-        totalHistory += segment.messages.length;
+        totalHistory += 1;
         if (Object.keys(filled.computed).length > 0) {
           totalWithComputed++;
         }
         const computedNote = Object.keys(filled.computed).length > 0 ? ` | обраховано: ${Object.keys(filled.computed).join(', ')}` : '';
-        console.log(`  📋 ${school.name.slice(0, 50)} → RE_SALE | дітей:${filled.childrenCount} сума:${filled.totalSum} рейтинг:${filled.rating ?? '-'} (${segment.messages.length} повідомлень)${computedNote}`);
+        console.log(`  📋 ${school.name.slice(0, 50)} → RE_SALE | дітей:${filled.childrenCount} сума:${filled.totalSum} рейтинг:${filled.rating ?? '-'}${computedNote}`);
       }
     }
   }
 
   console.log(`\n🎉 Імпорт завершено!`);
-  console.log(`   Садочків: ${raw.length} (нових: ${createdSchools})`);
+  console.log(`   Закладів: ${totalEntries} (з ${raw.length} у файлі, нових: ${createdSchools})`);
   console.log(`   Подій-гілок: ${totalPipelines}`);
   console.log(`   Подій-звітів: ${totalReportEvents}`);
   console.log(`   Записів історії: ${totalHistory}`);
   console.log(`   Звітів: ${totalReports} (з обрахованими полями: ${totalWithComputed})`);
   if (totalSkipped > 0) console.log(`   Пропущено (дублікати): ${totalSkipped}`);
-}
-
-function computePipelineDate(messages) {
-  const lastMsg = messages[messages.length - 1];
-  return {
-    date: new Date(lastMsg['Дата']),
-    time: lastMsg['Дата'].split(' ')[1] || null,
-  };
 }
 
 main()
