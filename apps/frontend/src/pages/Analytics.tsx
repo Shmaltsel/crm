@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { useCities } from "../hooks/useCities";
 import {
