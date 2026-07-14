@@ -275,6 +275,7 @@ interface TooltipDataRef {
   showAnomalies: boolean;
   anomalyMap: Map<string, Set<number>>;
   zoomedChartEntryKeys: string[];
+  chartMode: 'profit' | 'composite';
 }
 
 interface RechartsTooltipProps {
@@ -310,6 +311,7 @@ export default function Analytics() {
   const [showAnomalies, setShowAnomalies] = useState(false);
   const [showTarget, setShowTarget] = useState(false);
   const [showRevenue, setShowRevenue] = useState(false);
+  const [chartMode, setChartMode] = useState<'profit' | 'composite'>('profit');
 
   const { data: cities } = useCities();
   const { data: rawCityMonthData, isLoading: revenueLoading } = useRevenueByCityMonth({
@@ -608,7 +610,22 @@ export default function Analytics() {
     return forecastData.entries.slice(zoomRange[0], zoomRange[1] + 1);
   }, [forecastData.entries, zoomRange]);
 
-  const zoomSpan = zoomedChartData.length;
+  const compositeChartData = useMemo(() => {
+    if (chartMode !== 'composite') return zoomedChartData;
+    return zoomedChartData.map(entry => {
+      const enriched = { ...entry };
+      for (const line of activeLines) {
+        const rv = (entry[`revenue_${line.key}`] as number) ?? 0;
+        const pf = (entry[`profit_${line.key}`] as number) ?? 0;
+        enriched[`expenses_${line.key}`] = Math.max(0, rv - pf);
+      }
+      return enriched;
+    });
+  }, [zoomedChartData, chartMode, activeLines]);
+
+  const chartDataForRender = chartMode === 'composite' ? compositeChartData : zoomedChartData;
+
+  const zoomSpan = chartDataForRender.length;
   const isZoomed = zoomRange[0] !== 0 || zoomRange[1] !== maxIdx;
 
   const lineStats = useMemo(() => {
@@ -672,9 +689,10 @@ export default function Analytics() {
     showAnomalies: false,
     anomalyMap: new Map(),
     zoomedChartEntryKeys: [],
+    chartMode: 'profit',
   });
   useEffect(() => {
-    tooltipDataRef.current = { rawData: rawCityMonthData, activeCities, aggregateByCity, showAnomalies, anomalyMap, zoomedChartEntryKeys: zoomedChartData.map((e) => e.key) };
+    tooltipDataRef.current = { rawData: rawCityMonthData, activeCities, aggregateByCity, showAnomalies, anomalyMap, zoomedChartEntryKeys: zoomedChartData.map((e) => e.key), chartMode };
   });
 
   const renderTooltip = useCallback((props: RechartsTooltipProps) => {
@@ -684,6 +702,61 @@ export default function Analytics() {
 
     const entry = payload[0]?.payload;
     if (!entry) return null;
+
+    if (data.chartMode === 'composite') {
+      const items = payload
+        .filter((p) => (p.value ?? 0) !== 0)
+        .reduce<Array<{ key: string; label: string; revenue: number; expenses: number; color: string }>>((acc, p) => {
+          const dk = String(p.dataKey ?? '');
+          const isRevenue = dk.startsWith('revenue_');
+          const isExpenses = dk.startsWith('expenses_');
+          if (!isRevenue && !isExpenses) return acc;
+          const lineKey = dk.replace(/^revenue_/, '').replace(/^expenses_/, '');
+          const existing = acc.find((a) => a.key === lineKey);
+          if (existing) {
+            if (isRevenue) existing.revenue = p.value as number;
+            else existing.expenses = p.value as number;
+          } else {
+            acc.push({
+              key: lineKey,
+              label: (p.name as string) ?? lineKey,
+              revenue: isRevenue ? (p.value as number) : 0,
+              expenses: isExpenses ? (p.value as number) : 0,
+              color: p.color ?? '',
+            });
+          }
+          return acc;
+        }, [])
+        .sort((a, b) => b.revenue - a.revenue);
+
+      return (
+        <div className="backdrop-blur-xl bg-white/75 border border-white/40 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.12)] px-3 py-2.5 text-xs max-w-[240px]">
+          <p className="font-medium text-content-primary mb-1.5 text-sm">{label}</p>
+          {items.map((item, i) => (
+            <div key={i} className={i > 0 ? "mt-1.5 pt-1.5 border-t border-black/5" : ""}>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                <span className="font-medium text-content-primary truncate">{item.label}</span>
+              </div>
+              <div className="flex items-center gap-2 pl-4 py-0.5 text-content-secondary">
+                <span>Дохід</span>
+                <span className="ml-auto font-medium text-content-primary">{fmtMoney(item.revenue)}</span>
+              </div>
+              <div className="flex items-center gap-2 pl-4 py-0.5 text-content-secondary">
+                <span>Витрати</span>
+                <span className="ml-auto font-medium text-danger">{fmtMoney(item.expenses)}</span>
+              </div>
+              <div className="flex items-center gap-2 pl-4 py-0.5 text-content-secondary">
+                <span>Прибуток</span>
+                <span className={`ml-auto font-medium ${item.revenue - item.expenses >= 0 ? 'text-success' : 'text-danger'}`}>
+                  {fmtMoney(item.revenue - item.expenses)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
 
     if (data.aggregateByCity) {
       const cityData = payload
@@ -798,9 +871,9 @@ export default function Analytics() {
       ) : (
         <div className={`mobile-card mb-5 transition-opacity ${revenueLoading ? 'opacity-60' : ''}`}>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-content-primary text-sm">Прибуток по місяцях</h3>
+            <h3 className="font-bold text-content-primary text-sm">{chartMode === 'composite' ? 'Дохід vs Витрати' : 'Прибуток по місяцях'}</h3>
             <div className="flex items-center gap-1.5">
-              {canForecast && (
+              {chartMode === 'profit' && canForecast && (
                 <button
                   onClick={() => setShowForecast((v) => !v)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
@@ -813,7 +886,7 @@ export default function Analytics() {
                   Прогноз
                 </button>
               )}
-              {activeLines.length > 0 && (
+              {chartMode === 'profit' && activeLines.length > 0 && (
                 <button
                   onClick={() => setShowTrend((v) => !v)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
@@ -826,7 +899,7 @@ export default function Analytics() {
                   Тренд
                 </button>
               )}
-              {activeLines.length > 0 && (
+              {chartMode === 'profit' && activeLines.length > 0 && (
                 <button
                   onClick={() => setShowStats((v) => !v)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
@@ -839,7 +912,7 @@ export default function Analytics() {
                   Статистика
                 </button>
               )}
-              {activeLines.length > 0 && period !== "all" && (
+              {chartMode === 'profit' && activeLines.length > 0 && period !== "all" && (
                 <button
                   onClick={() => setShowYoY((v) => !v)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
@@ -852,7 +925,7 @@ export default function Analytics() {
                   Рік/рік
                 </button>
               )}
-              {activeLines.length > 0 && (
+              {chartMode === 'profit' && activeLines.length > 0 && (
                 <button
                   onClick={() => setShowAnomalies((v) => !v)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
@@ -865,7 +938,7 @@ export default function Analytics() {
                   Аномалії
                 </button>
               )}
-              {targets && targets.length > 0 && (
+              {chartMode === 'profit' && targets && targets.length > 0 && (
                 <button
                   onClick={() => setShowTarget((v) => !v)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
@@ -878,7 +951,7 @@ export default function Analytics() {
                   Ціль
                 </button>
               )}
-              {activeLines.length > 0 && (
+              {chartMode === 'profit' && activeLines.length > 0 && (
                 <button
                   onClick={() => setShowRevenue((v) => !v)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
@@ -901,6 +974,26 @@ export default function Analytics() {
                 />
                 {aggregateByCity ? "По містах" : "По проєктах"}
               </button>
+              <div className="border-l border-border-strong/20 pl-1.5 ml-0.5">
+                <div className="flex rounded-full border border-border-strong overflow-hidden text-[10px]">
+                  <button
+                    onClick={() => setChartMode('profit')}
+                    className={`px-2.5 py-1 transition-[background-color,color] duration-200 ${
+                      chartMode === 'profit' ? 'bg-surface shadow-sm text-content-primary' : 'text-content-secondary'
+                    }`}
+                  >
+                    Прибуток
+                  </button>
+                  <button
+                    onClick={() => setChartMode('composite')}
+                    className={`px-2.5 py-1 transition-[background-color,color] duration-200 ${
+                      chartMode === 'composite' ? 'bg-surface shadow-sm text-content-primary' : 'text-content-secondary'
+                    }`}
+                  >
+                    Дохід vs Витрати
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
           {zoomedChartData.length === 0 ? (
@@ -971,7 +1064,7 @@ export default function Analytics() {
                     className="touch-none"
                   >
                     <ResponsiveContainer width="100%" height={280}>
-                      <AreaChart data={zoomedChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                      <AreaChart data={chartDataForRender} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                         <defs>
                           {activeLines.map((line) => (
                             <linearGradient key={line.key} id={`grad-${line.key}`} x1="0" y1="0" x2="0" y2="1">
@@ -990,6 +1083,18 @@ export default function Analytics() {
                               <feMergeNode in="SourceGraphic" />
                             </feMerge>
                           </filter>
+                          {chartMode === 'composite' && activeLines.map((line) => (
+                            <linearGradient key={`grad-rev-${line.key}`} id={`grad-rev-${line.key}`} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={line.color} stopOpacity={0.3} />
+                              <stop offset="100%" stopColor={line.color} stopOpacity={0.05} />
+                            </linearGradient>
+                          ))}
+                          {chartMode === 'composite' && activeLines.map((line) => (
+                            <linearGradient key={`grad-exp-${line.key}`} id={`grad-exp-${line.key}`} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#ef4444" stopOpacity={0.25} />
+                              <stop offset="100%" stopColor="#ef4444" stopOpacity={0.05} />
+                            </linearGradient>
+                          ))}
                         </defs>
                         <CartesianGrid vertical={false} stroke="#f1f5f9" />
                         <XAxis
@@ -1011,7 +1116,7 @@ export default function Analytics() {
                           cursor={<CustomCursor />}
                           allowEscapeViewBox={{ x: true, y: true }}
                         />
-                        {activeLines.map((line) => {
+                        {chartMode === 'profit' ? activeLines.map((line) => {
                           const stats = lineStats.get(line.key);
                           return (
                           <Area
@@ -1060,7 +1165,47 @@ export default function Analytics() {
                             style={zoomSpan <= 24 ? { filter: "url(#glow)" } : undefined}
                           />
                           );
-                        })}
+                        }) : (
+                          <>
+                            {activeLines.map((line) => (
+                              <Area
+                                key={`rv_${line.key}`}
+                                type="monotone"
+                                dataKey={`revenue_${line.key}`}
+                                stroke={line.color}
+                                fill={`url(#grad-rev-${line.key})`}
+                                strokeWidth={1.5}
+                                strokeLinecap="round"
+                                connectNulls={true}
+                                dot={zoomSpan <= 12 ? { r: 2.5, fill: line.color, strokeWidth: 0 } : false}
+                                activeDot={<CustomActiveDot color={line.color} />}
+                                name={`${line.label} (дохід)`}
+                                isAnimationActive={!zoomAnimating}
+                                animationDuration={1000}
+                                animationEasing="ease-out"
+                              />
+                            ))}
+                            {activeLines.map((line) => (
+                              <Area
+                                key={`exp_${line.key}`}
+                                type="monotone"
+                                dataKey={`expenses_${line.key}`}
+                                stroke="#ef4444"
+                                fill={`url(#grad-exp-${line.key})`}
+                                strokeWidth={1.5}
+                                strokeDasharray="4 2"
+                                strokeLinecap="round"
+                                connectNulls={true}
+                                dot={zoomSpan <= 12 ? { r: 2.5, fill: "#ef4444", strokeWidth: 0 } : false}
+                                activeDot={<CustomActiveDot color="#ef4444" />}
+                                name={`${line.label} (витрати)`}
+                                isAnimationActive={!zoomAnimating}
+                                animationDuration={1000}
+                                animationEasing="ease-out"
+                              />
+                            ))}
+                          </>
+                        )}
                         {showRevenue && activeLines.map((line) => (
                           <Bar
                             key={`rv_${line.key}`}
@@ -1103,7 +1248,7 @@ export default function Analytics() {
                         ))}
                         {showForecast && canForecast && forecastData.forecastStartIndex >= 0 && (
                           <ReferenceLine
-                            x={zoomedChartData[Math.min(forecastData.forecastStartIndex, zoomedChartData.length - 1)]?.label}
+                            x={chartDataForRender[Math.min(forecastData.forecastStartIndex, chartDataForRender.length - 1)]?.label}
                             stroke="#94a3b8"
                             strokeDasharray="3 3"
                             label={{ value: "Прогноз →", position: "insideTopRight", fontSize: 10, fill: "#94a3b8" }}
@@ -1141,7 +1286,7 @@ export default function Analytics() {
                           />
                         )}
                         {annotations?.map((a) => {
-                          const entry = zoomedChartData.find((e) => e.month === a.month);
+                          const entry = chartDataForRender.find((e) => e.month === a.month);
                           if (!entry) return null;
                           return (
                             <ReferenceDot
