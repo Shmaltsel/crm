@@ -55,11 +55,12 @@ export interface RevenueByCityMonthRow {
   profit: number;
 }
 
-export function useRevenueByCityMonth(params?: { projectId?: string; year?: number }) {
+export function useRevenueByCityMonth(params?: { projectId?: string; year?: number; enabled?: boolean }) {
   return useQuery({
-    queryKey: ["analytics", "revenue-by-city-month", params],
-    queryFn: () => api.get<RevenueByCityMonthRow[]>("/analytics/revenue-by-city-month", { params }).then(r => r.data),
+    queryKey: ["analytics", "revenue-by-city-month", { projectId: params?.projectId, year: params?.year }],
+    queryFn: () => api.get<RevenueByCityMonthRow[]>("/analytics/revenue-by-city-month", { params: { projectId: params?.projectId, year: params?.year } }).then(r => r.data),
     staleTime: 5 * 60 * 1000,
+    enabled: params?.enabled !== false,
   });
 }
 

@@ -270,6 +270,10 @@ export default function Analytics() {
   const { data: rawCityMonthData, isLoading: revenueLoading } = useRevenueByCityMonth({
     year: yearParam,
   });
+  const { data: prevYearData } = useRevenueByCityMonth({
+    year: yearParam - 1,
+    enabled: period !== "all" && showYoY,
+  });
   const { data: eventsByCity, isLoading: eventsLoading } = useEventsByCity({ year: yearParam });
   const { data: salaryFund } = useSalaryFund({ year: yearParam });
   const { data: roi } = useRoi({ year: yearParam });
@@ -290,6 +294,7 @@ export default function Analytics() {
   const [showTrend, setShowTrend] = useState(false);
   const [showForecast, setShowForecast] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showYoY, setShowYoY] = useState(false);
 
   const toggleProject = (name: string) => {
     setActiveProjects((prev) => {
@@ -349,6 +354,30 @@ export default function Analytics() {
     return { chartData: entries };
   }, [filteredData, activeCities, aggregateByCity]);
 
+  const yoyChartData = useMemo(() => {
+    if (!showYoY || !prevYearData || activeLines.length === 0) return chartData;
+    const prevByMonth = new Map<number, typeof prevYearData>();
+    for (const row of prevYearData) {
+      const m = Number(row.month);
+      if (!prevByMonth.has(m)) prevByMonth.set(m, []);
+      prevByMonth.get(m)!.push(row);
+    }
+    return chartData.map((entry) => {
+      const e = { ...entry };
+      const rows = prevByMonth.get(Number(entry.month));
+      if (!rows) return e;
+      for (const row of rows) {
+        const lk = aggregateByCity
+          ? `prevYear_${row.cityName}`
+          : `prevYear_${row.project}_${row.cityName}`;
+        if (activeCities.has(row.cityName)) {
+          e[lk] = ((e[lk] as number) ?? 0) + row.profit;
+        }
+      }
+      return e;
+    });
+  }, [chartData, prevYearData, showYoY, activeLines, activeCities, aggregateByCity]);
+
   const activeLines = useMemo(() => {
     const lines: { key: string; label: string; color: string }[] = [];
     let idx = 0;
@@ -372,21 +401,31 @@ export default function Analytics() {
     return lines;
   }, [activeProjects, activeCities, aggregateByCity]);
 
+  const prevYearLines = useMemo(() => {
+    if (!showYoY || period === "all") return [];
+    return activeLines.map((l) => ({
+      ...l,
+      key: `prevYear_${l.key}`,
+      label: `${l.label} (${yearParam - 1})`,
+      color: l.color,
+    }));
+  }, [activeLines, showYoY, period, yearParam]);
+
   const smaData = useMemo(() => {
-    if (!showTrend || activeLines.length === 0) return chartData;
+    if (!showTrend || activeLines.length === 0) return yoyChartData;
     const smaMaps = new Map<string, (number | null)[]>();
     for (const line of activeLines) {
-      const values = chartData.map((e) => (e[`profit_${line.key}`] as number) ?? 0);
+      const values = yoyChartData.map((e) => (e[`profit_${line.key}`] as number) ?? 0);
       smaMaps.set(line.key, calculateSMA(values, 3));
     }
-    return chartData.map((entry, i) => {
+    return yoyChartData.map((entry, i) => {
       const enriched: ChartEntry = { ...entry };
       for (const line of activeLines) {
         enriched[`sma_${line.key}`] = smaMaps.get(line.key)![i];
       }
       return enriched;
     });
-  }, [chartData, activeLines, showTrend]);
+  }, [yoyChartData, activeLines, showTrend]);
 
   const canForecast = period !== "all" && chartData.length >= 4;
 
@@ -617,21 +656,33 @@ export default function Analytics() {
     }
 
     return (
-      <div className="backdrop-blur-xl bg-white/75 border border-white/40 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.12)] px-3 py-2.5 text-xs">
+      <div className="backdrop-blur-xl bg-white/75 border border-white/40 rounded-xl shadow-[0_8px_-4px_rgba(0,0,0,0.12)] px-3 py-2.5 text-xs">
         <p className="font-medium text-content-primary mb-1.5 text-sm">{label}</p>
         {payload
-          .filter((p) => (p.value ?? 0) !== 0)
+          .filter((p) => (p.value ?? 0) !== 0 && !String(p.dataKey).startsWith("sma_") && !String(p.dataKey).startsWith("prevYear_"))
           .sort((a, b) => (b.value as number) - (a.value as number))
-          .map((p, i) => (
+          .map((p, i) => {
+            const dk = String(p.dataKey);
+            const pyKey = `prevYear_${dk.replace(/^profit_/, "")}`;
+            const pyVal = (payload.find((pp) => pp.dataKey === pyKey)?.value as number) ?? 0;
+            const current = (p.value as number) ?? 0;
+            const delta = showYoY && pyVal !== 0 ? current - pyVal : null;
+            return (
             <div key={i} className="flex items-center gap-2 py-0.5">
               <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
               <span className="text-content-secondary truncate">{p.name}</span>
-              <span className="ml-auto font-medium text-content-primary">{fmtMoney(p.value)}</span>
+              <span className="ml-auto font-medium text-content-primary">{fmtMoney(current)}</span>
+              {delta !== null && (
+                <span className={`ml-1 text-[10px] font-medium ${delta >= 0 ? 'text-status-success' : 'text-status-error'}`}>
+                  {delta >= 0 ? "+" : ""}{fmtMoney(delta)}
+                </span>
+              )}
             </div>
-          ))}
+          );
+          })}
       </div>
     );
-  }, []);
+  }, [showYoY]);
 
   return (
     <div className="p-4 md:p-8 bg-surface-subtle min-h-screen">
@@ -717,6 +768,19 @@ export default function Analytics() {
                 >
                   <span className={`w-1.5 h-1.5 rounded-full ${showStats ? 'bg-danger' : 'bg-content-muted'}`} />
                   Статистика
+                </button>
+              )}
+              {activeLines.length > 0 && period !== "all" && (
+                <button
+                  onClick={() => setShowYoY((v) => !v)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
+                    showYoY
+                      ? 'border-border-strong bg-surface shadow-sm text-content-primary'
+                      : 'border-border-strong bg-surface text-content-secondary'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${showYoY ? 'bg-brand' : 'bg-content-muted'}`} />
+                  Рік/рік
                 </button>
               )}
               <button
@@ -922,6 +986,21 @@ export default function Analytics() {
                             opacity={0.4}
                             isAnimationActive={false}
                             name={`${line.label} (прогноз)`}
+                          />
+                        ))}
+                        {showYoY && prevYearLines.map((line) => (
+                          <Line
+                            key={`py_${line.key}`}
+                            type="monotone"
+                            dataKey={line.key}
+                            stroke={line.color}
+                            strokeWidth={1.5}
+                            strokeDasharray="6 3"
+                            dot={false}
+                            connectNulls
+                            opacity={0.35}
+                            isAnimationActive={false}
+                            name={line.label}
                           />
                         ))}
                       </AreaChart>
