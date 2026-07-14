@@ -45,8 +45,8 @@ const STAGE_MAP = {
   'Підготовка': 'IN_PROGRESS',
   'Проведення заходу': 'DONE',
   'Звіт': 'REPORT',
-  'Завершено': 'REPORT',
-  'Захід завершено': 'REPORT',
+  'Завершено': 'RE_SALE',
+  'Захід завершено': 'RE_SALE',
 };
 
 const STAGE_LABELS = {
@@ -159,6 +159,27 @@ async function importGroup(group, cityId, userId, userName) {
   });
 
   await prisma.eventHistory.createMany({ data: historyEntries });
+
+  if (group.finalStatus === 'RE_SALE') {
+    await prisma.eventReport.create({
+      data: {
+        eventId: event.id,
+        status: 'APPROVED',
+        announcementDone: true,
+        materialShown: true,
+        childrenCount: 0,
+        classesCount: 0,
+        privilegedCount: 0,
+        showingsCount: 1,
+        totalSum: 0,
+        schoolSum: 0,
+        remainderSum: 0,
+        rating: 5,
+        submittedAt: eventDate,
+        approvedAt: eventDate,
+      },
+    });
+  }
 
   return { event, school, historyCount: historyEntries.length };
 }
