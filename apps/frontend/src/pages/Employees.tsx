@@ -194,7 +194,7 @@ export default function Employees() {
     setEditingProject(project);
     setProjectForm(
       project
-        ? { name: project.name, color: project.color, pricePerChild: String((project as any).pricePerChild ?? "") }
+        ? { name: project.name, color: project.color, pricePerChild: String(project.pricePerChild ?? "") }
         : { name: "", color: "blue", pricePerChild: "" },
     );
     setIsProjectModalOpen(true);
@@ -507,60 +507,60 @@ export default function Employees() {
                     )}
                   </motion.div>
                 ))}
-
-                <div className="border-t border-border pt-10">
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-                    <div>
-                      <h2 className="text-2xl font-bold text-content-primary">Види подій (Проєкти)</h2>
-                      <p className="text-sm text-content-muted mt-1">Ці проєкти відображатимуться у випадаючому списку при створенні події</p>
-                    </div>
-                    {canManageProjects && (
-                      <button onClick={() => handleOpenProjectModal()} className="bg-success text-white px-5 py-2.5 rounded-control font-medium hover:bg-success-600 transition-colors w-full sm:w-auto">
-                        + Створити вид події
-                      </button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {projects.map((p, pi) => (
-                      <motion.div
-                        key={p.id}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: DUR.moderate, delay: pi * 0.05 }}
-                        variants={cardHoverVariants}
-                        whileHover={hoverCapable ? "hover" : undefined}
-                        className="bg-surface border border-border rounded-card p-5 card-shadow hover:card-shadow-hover flex justify-between items-center group cursor-default hover:border-border-strong transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <motion.div
-                            whileHover={hoverCapable ? { scale: 1.15 } : undefined}
-                            transition={TRANSITION.tap}
-                            className={`w-10 h-10 rounded-2xl flex items-center justify-center ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm ring-4 ring-offset-1 ring-surface-muted`}
-                          >
-                            <span className="w-2.5 h-2.5 rounded-full bg-white/80" />
-                          </motion.div>
-                          <div>
-                            <span className="font-bold text-content-primary">{p.name}</span>
-                            {!!(p as any).pricePerChild && (
-                              <p className="text-xs text-content-muted">{(p as any).pricePerChild} грн / дитина</p>
-                            )}
-                          </div>
-                        </div>
-                        {canManageProjects && (
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => handleOpenProjectModal(p)} className="text-content-muted hover:text-brand p-2 -mr-1 active:scale-90 transition-transform duration-fast" title="Редагувати">✏️</button>
-                            <button onClick={() => setConfirmDeleteProject({ id: p.id, name: p.name })} className="text-content-muted hover:text-danger p-2 -mr-2 active:scale-90 transition-transform duration-fast" title="Видалити">🗑</button>
-                          </div>
-                        )}
-                      </motion.div>
-                    ))}
-                    {projects.length === 0 && (
-                      <div className="col-span-full text-center py-10 text-content-muted">Ви ще не додали жодного виду події</div>
-                    )}
-                  </div>
-                </div>
               </div>
             )}
+
+            <div className="border-t border-border pt-10">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-content-primary">Види подій (Проєкти)</h2>
+                  <p className="text-sm text-content-muted mt-1">Ці проєкти відображатимуться у випадаючому списку при створенні події</p>
+                </div>
+                {canManageProjects && (
+                  <button onClick={() => handleOpenProjectModal()} className="bg-success text-white px-5 py-2.5 rounded-control font-medium hover:bg-success-600 transition-colors w-full sm:w-auto">
+                    + Створити вид події
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {projects.map((p, pi) => (
+                  <motion.div
+                    key={p.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: DUR.moderate, delay: pi * 0.05 }}
+                    variants={cardHoverVariants}
+                    whileHover={hoverCapable ? "hover" : undefined}
+                    className="bg-surface border border-border rounded-card p-5 card-shadow hover:card-shadow-hover flex justify-between items-center group cursor-default hover:border-border-strong transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <motion.div
+                        whileHover={hoverCapable ? { scale: 1.15 } : undefined}
+                        transition={TRANSITION.tap}
+                        className={`w-10 h-10 rounded-2xl flex items-center justify-center ${PROJECT_COLORS[p.color] || "bg-blue-500"} shadow-sm ring-4 ring-offset-1 ring-surface-muted`}
+                      >
+                        <span className="w-2.5 h-2.5 rounded-full bg-white/80" />
+                      </motion.div>
+                      <div>
+                        <span className="font-bold text-content-primary">{p.name}</span>
+                        {!!p.pricePerChild && (
+                          <p className="text-xs text-content-muted">{p.pricePerChild} грн / дитина</p>
+                        )}
+                      </div>
+                    </div>
+                    {canManageProjects && (
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => handleOpenProjectModal(p)} className="text-content-muted hover:text-brand p-2 -mr-1 active:scale-90 transition-transform duration-fast" title="Редагувати">✏️</button>
+                        <button onClick={() => setConfirmDeleteProject({ id: p.id, name: p.name })} className="text-content-muted hover:text-danger p-2 -mr-2 active:scale-90 transition-transform duration-fast" title="Видалити">🗑</button>
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+                {projects.length === 0 && (
+                  <div className="col-span-full text-center py-10 text-content-muted">Ви ще не додали жодного виду події</div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 

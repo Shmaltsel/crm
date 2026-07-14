@@ -47,6 +47,7 @@ export interface Project {
   id: string;
   name: string;
   color: string;
+  pricePerChild?: number;
 }
 
 export interface EventFormData {
