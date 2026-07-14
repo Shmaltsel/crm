@@ -46,7 +46,13 @@ export function useRevenueByMonth(params?: { cityId?: string; projectId?: string
   });
 }
 
-export type RevenueByCityMonthRow = Record<string, string | number>;
+export interface RevenueByCityMonthRow {
+  month: number;
+  cityName: string;
+  project: string;
+  revenue: number;
+  profit: number;
+}
 
 export function useRevenueByCityMonth(params?: { projectId?: string; year?: number }) {
   return useQuery({

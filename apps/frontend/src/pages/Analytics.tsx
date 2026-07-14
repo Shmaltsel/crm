@@ -84,11 +84,9 @@ export default function Analytics() {
   const isSuper = user?.role === "SUPERADMIN" || user?.role === "OWNER";
 
   const [year, setYear] = useState(currentYear);
-  const [projectId, setProjectId] = useState("");
 
   const { data: cities } = useCities();
-  const { data: cityMonthData, isLoading: revenueLoading } = useRevenueByCityMonth({
-    projectId: projectId || undefined,
+  const { data: rawCityMonthData, isLoading: revenueLoading } = useRevenueByCityMonth({
     year,
   });
   const { data: eventsByCity, isLoading: eventsLoading } = useEventsByCity({ year });
@@ -100,7 +98,22 @@ export default function Analytics() {
     return cities.map((c) => c.name).filter(Boolean);
   }, [cities]);
 
+  const projectNames = useMemo(() => {
+    if (!rawCityMonthData) return [];
+    return [...new Set(rawCityMonthData.map((r) => r.project))].filter(Boolean);
+  }, [rawCityMonthData]);
+
+  const [activeProjects, setActiveProjects] = useState<Set<string>>(new Set());
   const [activeCities, setActiveCities] = useState<Set<string>>(new Set());
+
+  const toggleProject = (name: string) => {
+    setActiveProjects((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
 
   const toggleCity = (name: string) => {
     setActiveCities((prev) => {
@@ -111,42 +124,47 @@ export default function Analytics() {
     });
   };
 
+  const filteredData = useMemo(() => {
+    if (!rawCityMonthData) return [];
+    if (activeProjects.size === 0) return rawCityMonthData;
+    return rawCityMonthData.filter((r) => activeProjects.has(r.project));
+  }, [rawCityMonthData, activeProjects]);
+
   const chartData = useMemo(() => {
-    if (!cityMonthData) return [];
-    return cityMonthData.map((row) => {
-      const entry: Record<string, string | number> = {
-        month: row.month as string,
-        label: UA_MONTHS[Number(row.month) - 1] || row.month,
-      };
+    const byMonth = new Map<number, Record<string, number>>();
+    for (const row of filteredData) {
+      const m = Number(row.month);
+      if (!byMonth.has(m)) byMonth.set(m, {});
+      const entry = byMonth.get(m)!;
       for (const city of activeCities) {
-        entry[`revenue_${city}`] = Number(row[`revenue_${city}`] ?? 0);
-        entry[`profit_${city}`] = Number(row[`profit_${city}`] ?? 0);
+        if (row.cityName === city) {
+          entry[`revenue_${city}`] = (entry[`revenue_${city}`] ?? 0) + row.revenue;
+          entry[`profit_${city}`] = (entry[`profit_${city}`] ?? 0) + row.profit;
+        }
       }
-      return entry;
+    }
+    return Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1;
+      const entry = byMonth.get(m) ?? {};
+      return { month: m.toString().padStart(2, '0'), label: UA_MONTHS[i], ...entry };
     });
-  }, [cityMonthData, activeCities]);
+  }, [filteredData, activeCities]);
 
   const totalRevenue = useMemo(() => {
-    if (!cityMonthData) return 0;
     let sum = 0;
-    for (const row of cityMonthData) {
-      for (const city of activeCities) {
-        sum += Number(row[`revenue_${city}`] ?? 0);
-      }
+    for (const row of filteredData) {
+      if (activeCities.has(row.cityName)) sum += row.revenue;
     }
     return sum;
-  }, [cityMonthData, activeCities]);
+  }, [filteredData, activeCities]);
 
   const totalProfit = useMemo(() => {
-    if (!cityMonthData) return 0;
     let sum = 0;
-    for (const row of cityMonthData) {
-      for (const city of activeCities) {
-        sum += Number(row[`profit_${city}`] ?? 0);
-      }
+    for (const row of filteredData) {
+      if (activeCities.has(row.cityName)) sum += row.profit;
     }
     return sum;
-  }, [cityMonthData, activeCities]);
+  }, [filteredData, activeCities]);
 
   return (
     <div className="p-4 md:p-8 bg-surface-subtle min-h-screen">
@@ -170,17 +188,9 @@ export default function Analytics() {
             <option key={y} value={y}>{y}</option>
           ))}
         </select>
-
-        <input
-          type="text"
-          placeholder="Проєкт (фільтр)"
-          value={projectId}
-          onChange={(e) => setProjectId(e.target.value)}
-          className="px-3 py-2.5 bg-surface border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand w-48 min-h-[44px]"
-        />
       </div>
 
-      {revenueLoading && !cityMonthData ? (
+      {revenueLoading && !rawCityMonthData ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
           {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
@@ -198,7 +208,7 @@ export default function Analytics() {
         </motion.div>
       )}
 
-      {revenueLoading && !cityMonthData ? (
+      {revenueLoading && !rawCityMonthData ? (
         <ChartSkeleton />
       ) : (
         <div className={`mobile-card mb-5 transition-opacity ${revenueLoading ? 'opacity-60' : ''}`}>
@@ -207,31 +217,58 @@ export default function Analytics() {
             <ChartEmptyState text="Немає даних за цей період" />
           ) : (
             <div className="flex gap-3">
-              <div className="flex flex-col gap-1.5 shrink-0 pt-1">
-                {cityNames.map((name, i) => {
-                  const active = activeCities.has(name);
-                  const color = CITY_COLORS[i % CITY_COLORS.length];
-                  return (
-                    <button
-                      key={name}
-                      onClick={() => toggleCity(name)}
-                      className={`flex items-center gap-2 px-2 py-1 rounded-lg text-xs text-left transition border ${
-                        active
-                          ? 'border-border-strong bg-surface'
-                          : 'border-transparent bg-transparent text-content-muted'
-                      }`}
-                    >
-                      <span
-                        className="w-3 h-3 rounded-sm shrink-0 border"
-                        style={{
-                          backgroundColor: active ? color : 'transparent',
-                          borderColor: color,
-                        }}
-                      />
-                      <span className="truncate max-w-[100px]">{name}</span>
-                    </button>
-                  );
-                })}
+              <div className="flex flex-col gap-3 shrink-0 pt-1">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] uppercase tracking-wide text-content-muted font-medium px-2">Проєкти</span>
+                  {projectNames.map((name) => {
+                    const active = activeProjects.has(name);
+                    return (
+                      <button
+                        key={name}
+                        onClick={() => toggleProject(name)}
+                        className={`flex items-center gap-2 px-2 py-1 rounded-lg text-xs text-left transition border ${
+                          active
+                            ? 'border-border-strong bg-surface'
+                            : 'border-transparent bg-transparent text-content-muted'
+                        }`}
+                      >
+                        <span
+                          className="w-3 h-3 rounded-sm shrink-0 border border-content-muted"
+                          style={{ backgroundColor: active ? '#64748b' : 'transparent' }}
+                        />
+                        <span className="truncate max-w-[100px]">{name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="border-t border-border" />
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] uppercase tracking-wide text-content-muted font-medium px-2">Міста</span>
+                  {cityNames.map((name, i) => {
+                    const active = activeCities.has(name);
+                    const color = CITY_COLORS[i % CITY_COLORS.length];
+                    return (
+                      <button
+                        key={name}
+                        onClick={() => toggleCity(name)}
+                        className={`flex items-center gap-2 px-2 py-1 rounded-lg text-xs text-left transition border ${
+                          active
+                            ? 'border-border-strong bg-surface'
+                            : 'border-transparent bg-transparent text-content-muted'
+                        }`}
+                      >
+                        <span
+                          className="w-3 h-3 rounded-sm shrink-0 border"
+                          style={{
+                            backgroundColor: active ? color : 'transparent',
+                            borderColor: color,
+                          }}
+                        />
+                        <span className="truncate max-w-[100px]">{name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div className="flex-1 min-w-0 swiper-no-swiping" style={{ touchAction: "pan-y" }}>
                 <ResponsiveContainer width="100%" height={280}>
@@ -248,7 +285,7 @@ export default function Analytics() {
                       contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
                       allowEscapeViewBox={{ x: true, y: true }}
                     />
-                    {cityNames.filter((n) => activeCities.has(n)).map((city, i) => {
+                    {cityNames.filter((n) => activeCities.has(n)).map((city) => {
                       const color = CITY_COLORS[cityNames.indexOf(city) % CITY_COLORS.length];
                       return [
                         <Line key={`r_${city}`} type="monotone" dataKey={`revenue_${city}`} stroke={color} strokeWidth={2} dot={{ r: 3, fill: color }} name={`Дохід ${city}`} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />,

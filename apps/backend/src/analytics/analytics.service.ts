@@ -85,43 +85,28 @@ export class AnalyticsService {
 
     type Row = {
       month: number;
-      cityId: string;
       cityName: string;
+      project: string;
       revenue: number;
       profit: number;
     };
     const rows = await this.prisma.$queryRaw<Row[]>`
       SELECT
-        EXTRACT(MONTH FROM e.date)::int AS month,
-        e."cityId",
-        COALESCE(c.name, '—')           AS "cityName",
+        EXTRACT(MONTH FROM e.date)::int          AS month,
+        COALESCE(c.name, '—')                    AS "cityName",
+        COALESCE(e.project, 'Інше')              AS project,
         COALESCE(SUM(r."totalSum"), 0)::float     AS revenue,
         COALESCE(SUM(r."remainderSum"), 0)::float AS profit
       FROM "Event" e
       LEFT JOIN "EventReport" r ON r."eventId" = e.id
       LEFT JOIN "City" c ON c.id = e."cityId"
       WHERE 1=1 ${conditions} ${projectCond}
-      GROUP BY month, e."cityId", c.name
+      GROUP BY month, e."cityId", c.name, e.project
       ORDER BY month
     `;
 
-    const cities = [...new Set(rows.map(r => r.cityName))];
-    const result = Array.from({ length: 12 }, (_, i) => {
-      const m = i + 1;
-      const monthRows = rows.filter(r => r.month === m);
-      const entry: Record<string, string | number> = {
-        month: m.toString().padStart(2, '0'),
-      };
-      for (const city of cities) {
-        const cr = monthRows.find(r => r.cityName === city);
-        entry[`revenue_${city}`] = cr?.revenue ?? 0;
-        entry[`profit_${city}`] = cr?.profit ?? 0;
-      }
-      return entry;
-    });
-
-    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
-    return result;
+    await this.cacheManager.set(cacheKey, rows, CACHE_TTL);
+    return rows;
   }
 
   async eventsByCity(year?: number) {
