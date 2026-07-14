@@ -33,7 +33,7 @@ export class CitiesController {
 
   @ApiOperation({ summary: 'Список міст зі статистикою' })
   @Get()
-  @Roles('SUPERADMIN', 'OWNER')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   findAll() {
     return this.citiesService.findAll();
   }
