@@ -9,6 +9,7 @@ import {
   useSalaryFund,
   useRoi,
   useAnalyticsTargets,
+  useAnalyticsAnnotations,
 } from "../hooks/useAnalytics";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
@@ -18,6 +19,8 @@ import {
   Area,
   Line,
   ReferenceLine,
+  ReferenceDot,
+  Label,
   BarChart,
   Bar,
   XAxis,
@@ -319,6 +322,7 @@ export default function Analytics() {
   const { data: salaryFund } = useSalaryFund({ year: yearParam });
   const { data: roi } = useRoi({ year: yearParam });
   const { data: targets } = useAnalyticsTargets({ year: yearParam });
+  const { data: annotations } = useAnalyticsAnnotations({ year: yearParam });
 
   const cityNames = useMemo(() => {
     if (!cities) return [];
@@ -1107,6 +1111,30 @@ export default function Analytics() {
                             name="Ціль"
                           />
                         )}
+                        {annotations?.map((a) => {
+                          const entry = zoomedChartData.find((e) => e.month === a.month);
+                          if (!entry) return null;
+                          return (
+                            <ReferenceDot
+                              key={`ann_${a.month}`}
+                              x={entry.label}
+                              y={0}
+                              r={5}
+                              fill={a.color}
+                              stroke="white"
+                              strokeWidth={2}
+                            >
+                              <Label
+                                value={a.text}
+                                position="bottom"
+                                offset={10}
+                                fontSize={9}
+                                fill={a.color}
+                                fontWeight={600}
+                              />
+                            </ReferenceDot>
+                          );
+                        })}
                         {showYoY && prevYearLines.map((line) => (
                           <Line
                             key={`py_${line.key}`}

@@ -512,4 +512,25 @@ export class AnalyticsService {
       update: { target },
     });
   }
+
+  async getAnnotations(year?: number) {
+    const y = year ?? new Date().getFullYear();
+    return this.prisma.analyticsAnnotation.findMany({
+      where: { year: y },
+      orderBy: { month: 'asc' },
+    });
+  }
+
+  async setAnnotation(year: number, month: number, text: string, color: string) {
+    if (!text) {
+      return this.prisma.analyticsAnnotation.deleteMany({
+        where: { year, month },
+      });
+    }
+    return this.prisma.analyticsAnnotation.upsert({
+      where: { year_month: { year, month } },
+      create: { year, month, text, color },
+      update: { text, color },
+    });
+  }
 }

@@ -511,3 +511,15 @@ model AnalyticsTarget {
 
   @@unique([year, month])
 }
+
+model AnalyticsAnnotation {
+  id        String   @id @default(uuid())
+  year      Int
+  month     Int
+  text      String
+  color     String   @default("#3b82f6")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([year, month])
+}

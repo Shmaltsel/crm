@@ -119,6 +119,28 @@ class SetTargetDto {
   target!: number;
 }
 
+class SetAnnotationDto {
+  @ApiProperty()
+  @Type(() => Number)
+  @IsInt()
+  year!: number;
+
+  @ApiProperty()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  month!: number;
+
+  @ApiProperty()
+  @IsString()
+  text!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  color?: string;
+}
+
 @ApiTags('Analytics')
 @ApiCookieAuth('access_token')
 @Controller('analytics')
@@ -228,6 +250,20 @@ export class AnalyticsController {
   @Roles('SUPERADMIN', 'OWNER')
   async setTarget(@Body() dto: SetTargetDto) {
     return this.analyticsService.setTarget(dto.year, dto.month, dto.target);
+  }
+
+  @ApiOperation({ summary: 'Анотації аналітики' })
+  @Get('annotations')
+  @Roles('SUPERADMIN', 'OWNER')
+  async getAnnotations(@Query() query: YearQueryDto) {
+    return this.analyticsService.getAnnotations(query.year);
+  }
+
+  @ApiOperation({ summary: 'Встановити анотацію аналітики' })
+  @Put('annotations')
+  @Roles('SUPERADMIN', 'OWNER')
+  async setAnnotation(@Body() dto: SetAnnotationDto) {
+    return this.analyticsService.setAnnotation(dto.year, dto.month, dto.text, dto.color ?? '#3b82f6');
   }
 
   private async resolveCityId(

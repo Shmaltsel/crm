@@ -121,3 +121,30 @@ export function useSetAnalyticsTarget() {
     },
   });
 }
+
+export interface AnalyticsAnnotation {
+  id: string;
+  year: number;
+  month: number;
+  text: string;
+  color: string;
+}
+
+export function useAnalyticsAnnotations(params?: { year?: number }) {
+  return useQuery({
+    queryKey: ["analytics", "annotations", params],
+    queryFn: () => api.get<AnalyticsAnnotation[]>("/analytics/annotations", { params }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSetAnalyticsAnnotation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { year: number; month: number; text: string; color?: string }) =>
+      api.put("/analytics/annotations", data).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["analytics", "annotations"] });
+    },
+  });
+}
