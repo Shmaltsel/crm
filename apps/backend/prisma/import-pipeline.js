@@ -43,7 +43,7 @@ let dryRun = false;
 function parseArgs() {
   const args = process.argv.slice(2);
   let city = 'Львів';
-  let jsonPath = path.resolve(__dirname, '..', '..', '..', 'crm_with_reports_updated.json');
+  let jsonPath = path.resolve(__dirname, '..', '..', '..', 'crm_grouped_by_sadochok.json');
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--city' && args[i + 1]) city = args[++i];
@@ -76,15 +76,6 @@ function extractNamed(name) {
   return m ? m[1].toLowerCase() : null;
 }
 
-function cleanNumber(raw) {
-  if (!raw) return 0;
-  let s = raw.replace(/грн/gi, '').replace(/-/g, '').trim();
-  s = s.replace(/[\s.,]/g, '');
-  if (!s || s === '???') return 0;
-  const n = parseInt(s, 10);
-  return isNaN(n) ? 0 : n;
-}
-
 function parseReportDate(text) {
   const m = text.match(/1\.\s*Дата:\s*([^\n]+)/);
   if (!m) return null;
@@ -100,69 +91,72 @@ function parseReportDate(text) {
   return { day, month, year };
 }
 
-function parseReport(text) {
-  const childrenMatch = text.match(/Кількість дітей:\s*(\d+)/);
-  const childrenCount = childrenMatch ? parseInt(childrenMatch[1], 10) : 0;
+function fillReportFields(raw) {
+  let showingsCount = raw.showingsCount;
+  if (showingsCount == null) {
+    showingsCount = (raw.classesCount != null && raw.classesCount > 0) ? raw.classesCount : 1;
+  }
 
-  let privilegedCount = 0;
-  const privInline = text.match(/\(\+(\d+)\s*пільг/);
-  if (privInline) {
-    privilegedCount = parseInt(privInline[1], 10);
-  } else {
-    const privLine = text.match(/Пільгов\w*(?:\s*\(безкоштовно\))?\s*-\s*(\d+)/i);
-    if (privLine) {
-      privilegedCount = parseInt(privLine[1], 10);
+  let classesCount = raw.classesCount;
+  if (classesCount == null) {
+    classesCount = showingsCount;
+  }
+
+  let totalSum = raw.totalSum;
+  if (totalSum == null) {
+    if (raw.schoolSum != null && raw.remainderSum != null) {
+      totalSum = raw.schoolSum + raw.remainderSum;
     } else {
-      const privField = text.match(/Кількість дітей пільгових:\s*(\d+)/);
-      if (privField) privilegedCount = parseInt(privField[1], 10);
+      totalSum = 0;
     }
   }
 
-  const showingsMatch = text.match(/Кількість показів:\s*(\d+)/);
-  const showingsCount = showingsMatch ? parseInt(showingsMatch[1], 10) : 1;
-
-  const totalSumLine = text.match(/Загальна сума:\s*([^\n]*)/);
-  const totalSum = cleanNumber(totalSumLine?.[1]);
-
-  const schoolSumLine = text.match(/На заклад[^:]*:\s*([^\n]*)/);
-  const schoolSum = cleanNumber(schoolSumLine?.[1]);
-
-  let remainderSum = 0;
-  const remLine = text.match(/(?:Залишок|залишається)[:\s]*([^\n]*)/i);
-  if (remLine) {
-    remainderSum = cleanNumber(remLine[1]);
-  }
-  if (!remainderSum && totalSum && schoolSum) {
-    remainderSum = totalSum - schoolSum;
+  let schoolSum = raw.schoolSum;
+  if (schoolSum == null) {
+    if (totalSum != null && totalSum > 0) {
+      schoolSum = Math.round(totalSum * 0.2);
+    } else {
+      schoolSum = 0;
+    }
   }
 
-  const ratingMatch = text.match(/Оцінка[^:]*:\s*(\d+)/);
-  const rating = ratingMatch ? parseInt(ratingMatch[1], 10) : 5;
+  let remainderSum = raw.remainderSum;
+  if (remainderSum == null) {
+    remainderSum = Math.max(0, (totalSum || 0) - (schoolSum || 0));
+  }
+
+  const rating = raw.rating != null ? raw.rating : null;
+  const hadIssues = raw.hadIssues != null ? raw.hadIssues : false;
+  const directorSatisfied = raw.directorSatisfied != null ? raw.directorSatisfied : null;
+  const teachersSatisfied = raw.teachersSatisfied != null ? raw.teachersSatisfied : null;
+  const comment = raw.comment || null;
+  const revisionComment = raw.revisionComment || null;
+
+  const computed = {};
+  if (raw.showingsCount == null) computed.showingsCount = showingsCount;
+  if (raw.classesCount == null) computed.classesCount = classesCount;
+  if (raw.totalSum == null) computed.totalSum = totalSum;
+  if (raw.schoolSum == null) computed.schoolSum = schoolSum;
+  if (raw.remainderSum == null) computed.remainderSum = remainderSum;
 
   return {
-    childrenCount,
-    privilegedCount,
+    announcementDone: raw.announcementDone != null ? raw.announcementDone : true,
+    materialShown: raw.materialShown != null ? raw.materialShown : true,
+    childrenCount: raw.childrenCount || 0,
+    classesCount,
+    privilegedCount: raw.privilegedCount || 0,
     showingsCount,
-    classesCount: showingsCount,
     totalSum,
     schoolSum,
     remainderSum,
     rating,
+    directorSatisfied,
+    teachersSatisfied,
+    hadIssues,
+    comment,
+    revisionComment,
+    computed,
   };
-}
-
-function isReportMsg(msg) {
-  return msg['Етап воронки'] === 'Звіт Малювайка';
-}
-
-function groupByKindergarten(rows) {
-  const map = new Map();
-  for (const row of rows) {
-    const kg = row['Садочок'];
-    if (!map.has(kg)) map.set(kg, []);
-    map.get(kg).push(row);
-  }
-  return map;
 }
 
 function groupByPipeline(rows) {
@@ -206,40 +200,6 @@ function groupByPipeline(rows) {
   });
 }
 
-function assignReportsToPipelines(pipelines, reportMsgs) {
-  if (pipelines.length === 0) {
-    return reportMsgs.map(rm => ({
-      finalStatus: 'RE_SALE',
-      messages: [rm],
-      reportMsg: rm,
-      reportData: parseReport(rm['Текст повідомлення']),
-    }));
-  }
-
-  const pipelineDates = pipelines.map(p => {
-    const last = p.messages[p.messages.length - 1];
-    return { pipeline: p, lastDate: new Date(last['Дата']) };
-  });
-
-  return reportMsgs.map(rm => {
-    const reportDate = new Date(rm['Дата']);
-    let best = pipelineDates[0];
-    let bestDiff = Math.abs(reportDate - best.lastDate);
-    for (const pd of pipelineDates) {
-      const diff = Math.abs(reportDate - pd.lastDate);
-      if (diff < bestDiff) {
-        best = pd;
-        bestDiff = diff;
-      }
-    }
-    return {
-      pipeline: best.pipeline,
-      reportMsg: rm,
-      reportData: parseReport(rm['Текст повідомлення']),
-    };
-  });
-}
-
 async function findOrCreateSchool(name, cityId) {
   const num = extractNumber(name);
   const named = extractNamed(name);
@@ -269,15 +229,16 @@ async function findOrCreateSchool(name, cityId) {
   return { school, created: true };
 }
 
-function buildHistoryEntries(eventId, messages, reportMsg, reportData, userId) {
+function buildHistoryEntries(eventId, messages, userId) {
   const entries = [];
 
   for (const msg of messages) {
     const stage = STAGE_MAP[msg['Етап воронки']] || 'BASE';
     const label = STAGE_LABELS[stage] || stage;
+    const isReport = msg.єЗвіт === true;
     entries.push({
       eventId,
-      action: `[${label}] ${msg['Текст повідомлення'] || ''}`.trim(),
+      action: `[${isReport ? 'Звіт' : label}] ${msg['Текст повідомлення'] || ''}`.trim(),
       userId,
       userName: msg['Відправник'] || '',
       role: 'MANAGER',
@@ -285,102 +246,46 @@ function buildHistoryEntries(eventId, messages, reportMsg, reportData, userId) {
     });
   }
 
-  if (reportMsg && reportData) {
-    entries.push({
-      eventId,
-      action: `[Звіт] ${reportMsg['Текст повідомлення'] || ''}`.trim(),
-      userId,
-      userName: reportMsg['Відправник'] || '',
-      role: 'MANAGER',
-      createdAt: new Date(reportMsg['Дата']),
-    });
-  }
-
   return entries;
 }
 
-function computeEventDate(pipelineMessages, reportMsg, reportData) {
-  if (reportMsg && reportData) {
-    const parsed = parseReportDate(reportMsg['Текст повідомлення']);
-    if (parsed) {
-      return {
-        date: new Date(parsed.year, parsed.month - 1, parsed.day),
-        time: reportMsg['Дата'].split(' ')[1] || null,
-      };
-    }
+function computeReportEventDate(msg) {
+  const parsed = parseReportDate(msg['Текст повідомлення']);
+  if (parsed) {
     return {
-      date: new Date(reportMsg['Дата']),
-      time: reportMsg['Дата'].split(' ')[1] || null,
+      date: new Date(parsed.year, parsed.month - 1, parsed.day),
+      time: msg['Дата'].split(' ')[1] || null,
     };
   }
-
-  const lastMsg = pipelineMessages[pipelineMessages.length - 1];
   return {
-    date: new Date(lastMsg['Дата']),
-    time: lastMsg['Дата'].split(' ')[1] || null,
+    date: new Date(msg['Дата']),
+    time: msg['Дата'].split(' ')[1] || null,
   };
 }
 
-async function importPipeline(group, school, cityId, userId) {
-  const hasReport = !!group.reportMsg;
-  const status = hasReport ? 'RE_SALE' : group.finalStatus;
-  const { date: eventDate, time: eventTime } = computeEventDate(
-    group.messages, group.reportMsg, group.reportData,
-  );
-
+async function createEvent(data) {
   const existing = await prisma.event.findFirst({
-    where: { schoolId: school.id, date: eventDate, project: 'Малювайка' },
+    where: { schoolId: data.schoolId, date: data.date, project: 'Малювайка' },
   });
   if (existing) {
-    console.log(`  ⏭ ${school.name.slice(0, 50)} → пропущено (дублікат)`);
-    return { skipped: true, historyCount: 0 };
+    console.log(`  ⏭ ${data.schoolName.slice(0, 50)} → пропущено (дублікат)`);
+    return { skipped: true };
   }
 
   const event = await prisma.event.create({
     data: {
-      cityId,
-      schoolId: school.id,
+      cityId: data.cityId,
+      schoolId: data.schoolId,
       project: 'Малювайка',
-      date: eventDate,
-      time: eventTime,
-      status,
-      childrenActual: hasReport ? group.reportData.childrenCount : null,
-      received: hasReport ? group.reportData.totalSum : null,
+      date: data.date,
+      time: data.time,
+      status: data.status,
+      childrenActual: data.childrenActual || null,
+      received: data.received || null,
     },
   });
 
-  const historyEntries = buildHistoryEntries(
-    event.id, group.messages, group.reportMsg, group.reportData, userId,
-  );
-  if (historyEntries.length > 0) {
-    await prisma.eventHistory.createMany({ data: historyEntries });
-  }
-
-  if (hasReport) {
-    const rd = group.reportData;
-    const reportDate = new Date(group.reportMsg['Дата']);
-    await prisma.eventReport.create({
-      data: {
-        eventId: event.id,
-        status: 'APPROVED',
-        announcementDone: true,
-        materialShown: true,
-        childrenCount: rd.childrenCount,
-        classesCount: rd.classesCount,
-        privilegedCount: rd.privilegedCount,
-        showingsCount: rd.showingsCount,
-        totalSum: rd.totalSum,
-        schoolSum: rd.schoolSum,
-        remainderSum: rd.remainderSum,
-        rating: rd.rating,
-        submittedAt: reportDate,
-        approvedAt: reportDate,
-        createdAt: reportDate,
-      },
-    });
-  }
-
-  return { event, historyCount: historyEntries.length, skipped: false };
+  return { event, skipped: false };
 }
 
 async function main() {
@@ -392,7 +297,7 @@ async function main() {
     process.exit(1);
   }
   const raw = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
-  console.log(`   Знайдено ${raw.length} повідомлень`);
+  console.log(`   Знайдено ${raw.length} садочків`);
   if (dryRun) console.log('   🔍 РЕЖИМ DRY-RUN — дані не записуються\n');
 
   let city;
@@ -418,97 +323,149 @@ async function main() {
     }
   }
 
-  const kgMap = groupByKindergarten(raw);
-  console.log(`📋 Знайдено ${kgMap.size} садочків, ${raw.length} повідомлень\n`);
-
-  let totalEvents = 0;
+  let totalPipelines = 0;
+  let totalReportEvents = 0;
   let totalHistory = 0;
+  let totalReports = 0;
   let createdSchools = 0;
-  let totalWithReport = 0;
   let totalSkipped = 0;
+  let totalWithComputed = 0;
 
-  for (const [kgName, messages] of kgMap) {
-    const conversationMsgs = messages.filter(m => !isReportMsg(m));
-    const reportMsgs = messages.filter(m => isReportMsg(m));
+  for (const kg of raw) {
+    const kgName = kg['Садочок'];
+    const convMsgs = kg.повідомлення.filter(m => m.єЗвіт === false);
+    const reportMsgs = kg.повідомлення.filter(m => m.єЗвіт === true);
 
     let school;
-    let created;
     if (!dryRun) {
       const result = await findOrCreateSchool(kgName, city.id);
       school = result.school;
-      created = result.created;
+      if (result.created) createdSchools++;
     } else {
       school = { id: 'dry-run', name: kgName };
-      created = true;
     }
-    if (created) createdSchools++;
 
-    const pipelines = groupByPipeline(conversationMsgs);
-    const attachments = assignReportsToPipelines(pipelines, reportMsgs);
-    const attachedReportIds = new Set();
+    const pipelines = groupByPipeline(convMsgs);
 
     for (const pipeline of pipelines) {
-      const pipelineAttachments = attachments.filter(a => a.pipeline === pipeline);
+      const { date: eventDate, time: eventTime } = computePipelineDate(pipeline.messages);
 
-      if (pipelineAttachments.length > 0) {
-        for (const att of pipelineAttachments) {
-          attachedReportIds.add(att.reportMsg['ID повідомлення']);
-          const group = {
-            finalStatus: pipeline.finalStatus,
-            messages: pipeline.messages,
-            reportMsg: att.reportMsg,
-            reportData: att.reportData,
-          };
-          if (!dryRun) {
-            const result = await importPipeline(group, school, city.id, defaultUser.id);
-            if (result.skipped) { totalSkipped++; } else {
-              totalEvents++; totalHistory += result.historyCount; totalWithReport++;
-              console.log(`  ✅ ${school.name.slice(0, 50)} → RE_SALE (${result.historyCount} записів)`);
-            }
-          } else {
-            totalEvents++; totalHistory += group.messages.length + 1; totalWithReport++;
-            console.log(`  📋 ${school.name.slice(0, 50)} → RE_SALE | дітей:${att.reportData.childrenCount} сума:${att.reportData.totalSum} рейтинг:${att.reportData.rating}`);
+      if (!dryRun) {
+        const result = await createEvent({
+          cityId: city.id,
+          schoolId: school.id,
+          schoolName: school.name,
+          date: eventDate,
+          time: eventTime,
+          status: pipeline.finalStatus,
+        });
+        if (result.skipped) {
+          totalSkipped++;
+        } else {
+          const hist = buildHistoryEntries(result.event.id, pipeline.messages, defaultUser.id);
+          if (hist.length > 0) {
+            await prisma.eventHistory.createMany({ data: hist });
           }
+          totalPipelines++;
+          totalHistory += hist.length;
+          console.log(`  ✅ ${school.name.slice(0, 50)} → ${pipeline.finalStatus} (${hist.length} записів)`);
         }
       } else {
-        const group = { finalStatus: pipeline.finalStatus, messages: pipeline.messages, reportMsg: null, reportData: null };
-        if (!dryRun) {
-          const result = await importPipeline(group, school, city.id, defaultUser.id);
-          if (result.skipped) { totalSkipped++; } else {
-            totalEvents++; totalHistory += result.historyCount;
-            console.log(`  ✅ ${school.name.slice(0, 50)} → ${pipeline.finalStatus} (${result.historyCount} записів)`);
-          }
-        } else {
-          totalEvents++; totalHistory += group.messages.length;
-          console.log(`  📋 ${school.name.slice(0, 50)} → ${pipeline.finalStatus}`);
-        }
+        totalPipelines++;
+        totalHistory += pipeline.messages.length;
+        console.log(`  📋 ${school.name.slice(0, 50)} → ${pipeline.finalStatus} (${pipeline.messages.length} повідомлень)`);
       }
     }
 
     for (const rm of reportMsgs) {
-      if (attachedReportIds.has(rm['ID повідомлення'])) continue;
+      const rawReport = rm.eventReport || {};
+      const filled = fillReportFields(rawReport);
 
-      const reportData = parseReport(rm['Текст повідомлення']);
-      const group = { finalStatus: 'RE_SALE', messages: [], reportMsg: rm, reportData };
+      const { date: eventDate, time: eventTime } = computeReportEventDate(rm);
+      const msgDate = new Date(rm['Дата']);
+      let submittedAt = rawReport.submittedAt ? new Date(rawReport.submittedAt) : msgDate;
+      let approvedAt = rawReport.approvedAt ? new Date(rawReport.approvedAt) : msgDate;
 
       if (!dryRun) {
-        const result = await importPipeline(group, school, city.id, defaultUser.id);
-        if (result.skipped) { totalSkipped++; } else {
-          totalEvents++; totalHistory += result.historyCount; totalWithReport++;
-          console.log(`  ✅ ${school.name.slice(0, 50)} → RE_SALE (звіт без гілки, ${result.historyCount} записів)`);
+        const result = await createEvent({
+          cityId: city.id,
+          schoolId: school.id,
+          schoolName: school.name,
+          date: eventDate,
+          time: eventTime,
+          status: 'RE_SALE',
+          childrenActual: filled.childrenCount,
+          received: filled.totalSum,
+        });
+        if (result.skipped) {
+          totalSkipped++;
+        } else {
+          const hist = buildHistoryEntries(result.event.id, [rm], defaultUser.id);
+          if (hist.length > 0) {
+            await prisma.eventHistory.createMany({ data: hist });
+          }
+
+          await prisma.eventReport.create({
+            data: {
+              eventId: result.event.id,
+              status: 'APPROVED',
+              announcementDone: filled.announcementDone,
+              materialShown: filled.materialShown,
+              childrenCount: filled.childrenCount,
+              classesCount: filled.classesCount,
+              privilegedCount: filled.privilegedCount,
+              showingsCount: filled.showingsCount,
+              totalSum: filled.totalSum,
+              schoolSum: filled.schoolSum,
+              remainderSum: filled.remainderSum,
+              rating: filled.rating,
+              directorSatisfied: filled.directorSatisfied,
+              teachersSatisfied: filled.teachersSatisfied,
+              hadIssues: filled.hadIssues,
+              comment: filled.comment,
+              revisionComment: filled.revisionComment,
+              submittedAt,
+              approvedAt,
+              createdAt: msgDate,
+            },
+          });
+
+          totalReportEvents++;
+          totalReports++;
+          totalHistory += hist.length;
+          if (Object.keys(filled.computed).length > 0) {
+            totalWithComputed++;
+          }
+          console.log(`  ✅ ${school.name.slice(0, 50)} → RE_SALE | дітей:${filled.childrenCount} сума:${filled.totalSum} рейтинг:${filled.rating ?? '-'} ${Object.keys(filled.computed).length > 0 ? '(обраховано: ' + Object.keys(filled.computed).join(', ') + ')' : ''}`);
         }
       } else {
-        totalEvents++; totalHistory += 1; totalWithReport++;
-        console.log(`  📋 ${school.name.slice(0, 50)} → RE_SALE (звіт без гілки) | дітей:${reportData.childrenCount} сума:${reportData.totalSum} рейтинг:${reportData.rating}`);
+        totalReportEvents++;
+        totalReports++;
+        totalHistory += 1;
+        if (Object.keys(filled.computed).length > 0) {
+          totalWithComputed++;
+        }
+        const computedNote = Object.keys(filled.computed).length > 0 ? ` | обраховано: ${Object.keys(filled.computed).join(', ')}` : '';
+        console.log(`  📋 ${school.name.slice(0, 50)} → RE_SALE | дітей:${filled.childrenCount} сума:${filled.totalSum} рейтинг:${filled.rating ?? '-'}${computedNote}`);
       }
     }
   }
 
   console.log(`\n🎉 Імпорт завершено!`);
-  console.log(`   Садочків: ${kgMap.size} (нових: ${createdSchools})`);
-  console.log(`   Подій: ${totalEvents} (зі звітами: ${totalWithReport})`);
+  console.log(`   Садочків: ${raw.length} (нових: ${createdSchools})`);
+  console.log(`   Подій-гілок: ${totalPipelines}`);
+  console.log(`   Подій-звітів: ${totalReportEvents}`);
   console.log(`   Записів історії: ${totalHistory}`);
+  console.log(`   Звітів: ${totalReports} (з обрахованими полями: ${totalWithComputed})`);
   if (totalSkipped > 0) console.log(`   Пропущено (дублікати): ${totalSkipped}`);
+}
+
+function computePipelineDate(messages) {
+  const lastMsg = messages[messages.length - 1];
+  return {
+    date: new Date(lastMsg['Дата']),
+    time: lastMsg['Дата'].split(' ')[1] || null,
+  };
 }
 
 main()
