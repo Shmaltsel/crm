@@ -18,6 +18,7 @@ export function useDaysOff(from?: string, to?: string, cityId?: string) {
       if (cityId) params.set("cityId", cityId);
       return api.get<DayOff[]>(`/days-off?${params}`).then((r) => r.data);
     },
+    enabled: !!from || !!to,
     staleTime: 30 * 1000,
   });
 }

@@ -56,8 +56,8 @@ export default function CrewModal({
   const dayOnly = eventDate ? eventDate.slice(0, 10) : undefined;
   const { data: dayOffs = [] } = useDaysOff(dayOnly, dayOnly);
   const dayOffUserIds = useMemo(
-    () => new Set(dayOffs.map((d) => d.userId)),
-    [dayOffs],
+    () => (dayOnly ? new Set(dayOffs.map((d) => d.userId)) : new Set<string>()),
+    [dayOffs, dayOnly],
   );
   const [selectedCrewId, setSelectedCrewId] = useState("");
   const mobileOffsets = useMobileModalOffsets();

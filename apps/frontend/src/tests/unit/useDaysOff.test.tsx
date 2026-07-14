@@ -61,16 +61,16 @@ describe("useDaysOff", () => {
     expect(query?.options.staleTime).toBe(30 * 1000);
   });
 
-  it("без фільтрів викликає /days-off?", async () => {
-    apiMock.get.mockResolvedValueOnce({ data: [] });
+  it("без from/to — query disabled, не робить запит", async () => {
     const client = createTestClient();
 
     const { result } = renderHook(() => useDaysOff(), {
       wrapper: createWrapper(client),
     });
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(apiMock.get).toHaveBeenCalledWith("/days-off?");
+    expect(result.current.isFetching).toBe(false);
+    expect(result.current.data).toBeUndefined();
+    expect(apiMock.get).not.toHaveBeenCalled();
   });
 
   it("лише from додає from-параметр", async () => {
@@ -98,23 +98,23 @@ describe("useDaysOff", () => {
     expect(apiMock.get).toHaveBeenCalledWith("/days-off?to=2026-07-31");
   });
 
-  it("лише cityId додає cityId-параметр", async () => {
-    apiMock.get.mockResolvedValueOnce({ data: [] });
+  it("лише cityId без from/to — query disabled", async () => {
     const client = createTestClient();
 
     const { result } = renderHook(() => useDaysOff(undefined, undefined, "city-1"), {
       wrapper: createWrapper(client),
     });
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(apiMock.get).toHaveBeenCalledWith("/days-off?cityId=city-1");
+    expect(result.current.isFetching).toBe(false);
+    expect(result.current.data).toBeUndefined();
+    expect(apiMock.get).not.toHaveBeenCalled();
   });
 
   it("пробрасыває помилку API у query state", async () => {
     apiMock.get.mockRejectedValueOnce(new Error("days-off failed"));
     const client = createTestClient();
 
-    const { result } = renderHook(() => useDaysOff(), {
+    const { result } = renderHook(() => useDaysOff("2026-07-01", "2026-07-01"), {
       wrapper: createWrapper(client),
     });
 
