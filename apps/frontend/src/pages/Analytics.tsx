@@ -290,17 +290,15 @@ export default function Analytics() {
                     <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} width={50} tickFormatter={(v: number) => v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`} />
                     <Tooltip
                       formatter={(v: number, key: string) => {
-                        const isProfit = key.startsWith("profit_");
-                        const label = key.replace(/^(revenue|profit)_/, "").replace("_", " · ");
-                        return [fmtMoney(v), `${isProfit ? "Прибуток" : "Дохід"} ${label}`];
+                        const label = key.replace(/^profit_/, "").replace("_", " · ");
+                        return [fmtMoney(v), label];
                       }}
                       contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
                       allowEscapeViewBox={{ x: true, y: true }}
                     />
-                    {activeLines.map((line) => [
-                      <Line key={`r_${line.key}`} type="monotone" dataKey={`revenue_${line.key}`} stroke={line.color} strokeWidth={2} dot={{ r: 3, fill: line.color }} name={`Дохід ${line.label}`} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />,
-                      <Line key={`p_${line.key}`} type="monotone" dataKey={`profit_${line.key}`} stroke={line.color} strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3, fill: line.color, strokeDasharray: "" }} name={`Прибуток ${line.label}`} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />,
-                    ])}
+                    {activeLines.map((line) => (
+                      <Line key={`p_${line.key}`} type="monotone" dataKey={`profit_${line.key}`} stroke={line.color} strokeWidth={2} dot={{ r: 3, fill: line.color }} name={`${line.label}`} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
+                    ))}
                   </LineChart>
                 </ResponsiveContainer>
               </div>
