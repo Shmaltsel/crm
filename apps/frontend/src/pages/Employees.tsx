@@ -132,6 +132,7 @@ export default function Employees() {
   const { selectedCity: contextCity } = useSelectedCity();
   const { user: authUser } = useAuth();
   const isSuperAdmin = authUser?.role === "SUPERADMIN";
+  const canManageProjects = authUser?.role === "SUPERADMIN" || authUser?.role === "OWNER";
 
   const [searchParams, setSearchParams] = useSearchParams();
   const rawSearch = searchParams.get("search") ?? "";
@@ -513,7 +514,7 @@ export default function Employees() {
                       <h2 className="text-2xl font-bold text-content-primary">Види подій (Проєкти)</h2>
                       <p className="text-sm text-content-muted mt-1">Ці проєкти відображатимуться у випадаючому списку при створенні події</p>
                     </div>
-                    {isSuperAdmin && (
+                    {canManageProjects && (
                       <button onClick={() => handleOpenProjectModal()} className="bg-success text-white px-5 py-2.5 rounded-control font-medium hover:bg-success-600 transition-colors w-full sm:w-auto">
                         + Створити вид події
                       </button>
@@ -545,7 +546,7 @@ export default function Employees() {
                             )}
                           </div>
                         </div>
-                        {isSuperAdmin && (
+                        {canManageProjects && (
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => handleOpenProjectModal(p)} className="text-content-muted hover:text-brand p-2 -mr-1 active:scale-90 transition-transform duration-fast" title="Редагувати">✏️</button>
                             <button onClick={() => setConfirmDeleteProject({ id: p.id, name: p.name })} className="text-content-muted hover:text-danger p-2 -mr-2 active:scale-90 transition-transform duration-fast" title="Видалити">🗑</button>

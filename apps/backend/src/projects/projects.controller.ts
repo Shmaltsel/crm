@@ -76,21 +76,21 @@ export class ProjectsController {
 
   @ApiOperation({ summary: 'Створити проєкт' })
   @Post()
-  @Roles('SUPERADMIN')
+  @Roles('SUPERADMIN', 'OWNER')
   create(@Body() body: CreateProjectDto) {
     return this.projectsService.create(body);
   }
 
   @ApiOperation({ summary: 'Оновити проєкт' })
   @Patch(':id')
-  @Roles('SUPERADMIN')
+  @Roles('SUPERADMIN', 'OWNER')
   update(@Param('id') id: string, @Body() body: UpdateProjectDto) {
     return this.projectsService.update(id, body);
   }
 
   @ApiOperation({ summary: 'Видалити проєкт' })
   @Delete(':id')
-  @Roles('SUPERADMIN')
+  @Roles('SUPERADMIN', 'OWNER')
   remove(@Param('id') id: string) {
     return this.projectsService.remove(id);
   }
