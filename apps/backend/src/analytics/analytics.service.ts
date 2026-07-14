@@ -69,21 +69,21 @@ export class AnalyticsService {
   }
 
   async revenueByCityMonth(projectId?: string, year?: number) {
-    const yearFilter = year ?? new Date().getFullYear();
-    const cacheKey = `analytics:revenueByCityMonth:${projectId ?? ''}:${yearFilter}`;
+    const cacheKey = `analytics:revenueByCityMonth:${projectId ?? ''}:${year ?? 'all'}`;
     const cached = await this.cacheManager.get<ReturnType<typeof this.revenueByCityMonth>>(cacheKey);
     if (cached) return cached;
 
-    const conditions = Prisma.sql`
-      AND e.date >= ${new Date(`${yearFilter}-01-01`)}::date
-      AND e.date < ${new Date(`${yearFilter + 1}-01-01`)}::date
-      AND e.status IN ('RE_SALE')
-    `;
+    const conditions: Prisma.Sql[] = [Prisma.sql`AND e.status IN ('RE_SALE')`];
+    if (year) {
+      conditions.push(Prisma.sql`AND e.date >= ${new Date(`${year}-01-01`)}::date`);
+      conditions.push(Prisma.sql`AND e.date < ${new Date(`${year + 1}-01-01`)}::date`);
+    }
     const projectCond = projectId
       ? Prisma.sql`AND e.project = ${projectId}`
       : Prisma.empty;
 
     type Row = {
+      year: number;
       month: number;
       cityName: string;
       project: string;
@@ -92,6 +92,7 @@ export class AnalyticsService {
     };
     const rows = await this.prisma.$queryRaw<Row[]>`
       SELECT
+        EXTRACT(YEAR  FROM e.date)::int          AS year,
         EXTRACT(MONTH FROM e.date)::int          AS month,
         COALESCE(c.name, '—')                    AS "cityName",
         COALESCE(e.project, 'Інше')              AS project,
@@ -100,9 +101,9 @@ export class AnalyticsService {
       FROM "Event" e
       LEFT JOIN "EventReport" r ON r."eventId" = e.id
       LEFT JOIN "City" c ON c.id = e."cityId"
-      WHERE 1=1 ${conditions} ${projectCond}
-      GROUP BY month, e."cityId", c.name, e.project
-      ORDER BY month
+      WHERE 1=1 ${Prisma.join(conditions, ' ')} ${projectCond}
+      GROUP BY EXTRACT(YEAR FROM e.date), EXTRACT(MONTH FROM e.date), e."cityId", c.name, e.project
+      ORDER BY year, month
     `;
 
     await this.cacheManager.set(cacheKey, rows, CACHE_TTL);

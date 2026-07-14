@@ -35,6 +35,11 @@ const UA_MONTHS = [
   "Лип", "Сер", "Вер", "Жов", "Лис", "Гру",
 ];
 
+const UA_MONTHS_FULL = [
+  "Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень",
+  "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень",
+];
+
 const CITY_COLORS = [
   "#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
   "#06b6d4", "#ec4899", "#84cc16",
@@ -79,19 +84,47 @@ function ChartEmptyState({ text }: { text: string }) {
   );
 }
 
+interface ChartEntry {
+  key: string;
+  year: number;
+  month: number;
+  label: string;
+  [k: string]: string | number;
+}
+
+function buildChartEntry(year: number, month: number): ChartEntry {
+  return {
+    key: `${year}-${String(month).padStart(2, "0")}`,
+    year,
+    month,
+    label: "",
+  };
+}
+
+function formatAxisLabel(entry: ChartEntry, span: number): string {
+  if (span > 18) return String(entry.year);
+  if (span > 6) return `${UA_MONTHS[entry.month - 1]} ${String(entry.year).slice(2)}`;
+  return UA_MONTHS_FULL[entry.month - 1];
+}
+
 export default function Analytics() {
   const { user } = useAuth();
   const isSuper = user?.role === "SUPERADMIN" || user?.role === "OWNER";
 
-  const [year, setYear] = useState(currentYear);
+  const [period, setPeriod] = useState<string>("year");
+
+  const yearParam = useMemo(() => {
+    if (period === "all") return undefined;
+    return Number(period) || currentYear;
+  }, [period]);
 
   const { data: cities } = useCities();
   const { data: rawCityMonthData, isLoading: revenueLoading } = useRevenueByCityMonth({
-    year,
+    year: yearParam,
   });
-  const { data: eventsByCity, isLoading: eventsLoading } = useEventsByCity({ year });
-  const { data: salaryFund } = useSalaryFund({ year });
-  const { data: roi } = useRoi({ year });
+  const { data: eventsByCity, isLoading: eventsLoading } = useEventsByCity({ year: yearParam });
+  const { data: salaryFund } = useSalaryFund({ year: yearParam });
+  const { data: roi } = useRoi({ year: yearParam });
 
   const cityNames = useMemo(() => {
     if (!cities) return [];
@@ -130,23 +163,42 @@ export default function Analytics() {
     return rawCityMonthData.filter((r) => activeProjects.has(r.project));
   }, [rawCityMonthData, activeProjects]);
 
-  const chartData = useMemo(() => {
-    const byMonth = new Map<number, Record<string, number>>();
-    for (const row of filteredData) {
+  const { chartData, totalSpan } = useMemo(() => {
+    const byKey = new Map<string, ChartEntry>();
+    const sorted = [...filteredData].sort(
+      (a, b) => a.year * 12 + a.month - (b.year * 12 + b.month),
+    );
+
+    for (const row of sorted) {
+      const y = Number(row.year);
       const m = Number(row.month);
-      if (!byMonth.has(m)) byMonth.set(m, {});
-      const entry = byMonth.get(m)!;
+      const k = `${y}-${String(m).padStart(2, "0")}`;
+      if (!byKey.has(k)) byKey.set(k, buildChartEntry(y, m));
+      const entry = byKey.get(k)!;
       if (activeCities.has(row.cityName)) {
-        const key = `${row.project}_${row.cityName}`;
-        entry[`revenue_${key}`] = (entry[`revenue_${key}`] ?? 0) + row.revenue;
-        entry[`profit_${key}`] = (entry[`profit_${key}`] ?? 0) + row.profit;
+        const lineKey = `${row.project}_${row.cityName}`;
+        entry[`profit_${lineKey}`] =
+          ((entry[`profit_${lineKey}`] as number) ?? 0) + row.profit;
       }
     }
-    return Array.from({ length: 12 }, (_, i) => {
-      const m = i + 1;
-      const entry = byMonth.get(m) ?? {};
-      return { month: m.toString().padStart(2, '0'), label: UA_MONTHS[i], ...entry };
-    });
+
+    const today = new Date();
+    const todayYear = today.getFullYear();
+    const todayMonth = today.getMonth() + 1;
+    const todayKey = `${todayYear}-${String(todayMonth).padStart(2, "0")}`;
+    if (!byKey.has(todayKey)) {
+      byKey.set(todayKey, buildChartEntry(todayYear, todayMonth));
+    }
+
+    const entries = Array.from(byKey.values()).sort(
+      (a, b) => a.year * 12 + a.month - (b.year * 12 + b.month),
+    );
+
+    for (const e of entries) {
+      e.label = formatAxisLabel(e, entries.length);
+    }
+
+    return { chartData: entries, totalSpan: entries.length };
   }, [filteredData, activeCities]);
 
   const activeLines = useMemo(() => {
@@ -165,35 +217,43 @@ export default function Analytics() {
     return lines;
   }, [activeProjects, activeCities]);
 
+  const maxIdx = chartData.length - 1;
   const [zoomRange, setZoomRange] = useState<[number, number]>([0, 11]);
   const chartRef = useRef<HTMLDivElement>(null);
   const pinchRef = useRef<{ dist: number; range: [number, number] } | null>(null);
 
-  const clampRange = useCallback((start: number, end: number): [number, number] => {
-    const MIN_SPAN = 1;
-    const maxSpan = 11;
-    let s = Math.max(0, Math.min(11, Math.round(start)));
-    let e = Math.max(0, Math.min(11, Math.round(end)));
-    if (e - s < MIN_SPAN) {
-      if (s === 0) e = Math.min(11, s + MIN_SPAN);
-      else s = Math.max(0, e - MIN_SPAN);
-    }
-    if (e - s > maxSpan) { s = 0; e = 11; }
-    return [s, e];
-  }, []);
+  useEffect(() => {
+    setZoomRange([Math.max(0, chartData.length - 12), chartData.length - 1]);
+  }, [chartData.length]);
 
-  const handleWheel = useCallback((e: WheelEvent) => {
-    e.preventDefault();
-    setZoomRange(([s, e2]) => {
-      const span = e2 - s;
-      const shrink = e.deltaY < 0;
-      const step = Math.max(1, Math.floor(span / 4));
-      if (shrink) {
-        return clampRange(s + step, e2 - step);
+  const clampRange = useCallback(
+    (start: number, end: number): [number, number] => {
+      const max = chartData.length - 1;
+      const MIN_SPAN = 1;
+      let s = Math.max(0, Math.min(max, Math.round(start)));
+      let e = Math.max(0, Math.min(max, Math.round(end)));
+      if (e - s < MIN_SPAN) {
+        if (s === 0) e = Math.min(max, s + MIN_SPAN);
+        else s = Math.max(0, e - MIN_SPAN);
       }
-      return clampRange(s - step, e2 + step);
-    });
-  }, [clampRange]);
+      return [s, e];
+    },
+    [chartData.length],
+  );
+
+  const handleWheel = useCallback(
+    (ev: WheelEvent) => {
+      ev.preventDefault();
+      setZoomRange(([s, e2]) => {
+        const span = e2 - s;
+        const shrink = ev.deltaY < 0;
+        const step = Math.max(1, Math.floor(span / 4));
+        if (shrink) return clampRange(s + step, e2 - step);
+        return clampRange(s - step, e2 + step);
+      });
+    },
+    [clampRange],
+  );
 
   useEffect(() => {
     const el = chartRef.current;
@@ -202,28 +262,34 @@ export default function Analytics() {
     return () => el.removeEventListener("wheel", handleWheel);
   }, [handleWheel]);
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      const dx = e.touches[0].clientX - e.touches[1].clientX;
-      const dy = e.touches[0].clientY - e.touches[1].clientY;
-      pinchRef.current = { dist: Math.hypot(dx, dy), range: zoomRange };
-    }
-  }, [zoomRange]);
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        pinchRef.current = { dist: Math.hypot(dx, dy), range: zoomRange };
+      }
+    },
+    [zoomRange],
+  );
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2 && pinchRef.current) {
-      e.preventDefault();
-      const dx = e.touches[0].clientX - e.touches[1].clientX;
-      const dy = e.touches[0].clientY - e.touches[1].clientY;
-      const dist = Math.hypot(dx, dy);
-      const ratio = dist / pinchRef.current.dist;
-      const [origS, origE] = pinchRef.current.range;
-      const center = (origS + origE) / 2;
-      const origSpan = origE - origS;
-      const newSpan = Math.round(origSpan / ratio);
-      setZoomRange(clampRange(center - newSpan / 2, center + newSpan / 2));
-    }
-  }, [clampRange]);
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      if (e.touches.length === 2 && pinchRef.current) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.hypot(dx, dy);
+        const ratio = dist / pinchRef.current.dist;
+        const [origS, origE] = pinchRef.current.range;
+        const center = (origS + origE) / 2;
+        const origSpan = origE - origS;
+        const newSpan = Math.round(origSpan / ratio);
+        setZoomRange(clampRange(center - newSpan / 2, center + newSpan / 2));
+      }
+    },
+    [clampRange],
+  );
 
   const handleTouchEnd = useCallback(() => {
     pinchRef.current = null;
@@ -233,13 +299,8 @@ export default function Analytics() {
     return chartData.slice(zoomRange[0], zoomRange[1] + 1);
   }, [chartData, zoomRange]);
 
-  const totalRevenue = useMemo(() => {
-    let sum = 0;
-    for (const row of filteredData) {
-      if (activeCities.has(row.cityName)) sum += row.revenue;
-    }
-    return sum;
-  }, [filteredData, activeCities]);
+  const zoomSpan = zoomedChartData.length;
+  const isZoomed = zoomRange[0] !== 0 || zoomRange[1] !== maxIdx;
 
   const totalProfit = useMemo(() => {
     let sum = 0;
@@ -263,13 +324,14 @@ export default function Analytics() {
 
       <div className="flex flex-wrap items-center gap-2 mb-5">
         <select
-          value={year}
-          onChange={(e) => setYear(Number(e.target.value))}
+          value={period}
+          onChange={(e) => setPeriod(e.target.value)}
           className="px-3 py-2.5 bg-surface border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand min-h-[44px]"
         >
           {YEAR_OPTIONS.map((y) => (
             <option key={y} value={y}>{y}</option>
           ))}
+          <option value="all">Весь час</option>
         </select>
       </div>
 
@@ -284,7 +346,7 @@ export default function Analytics() {
           initial="hidden"
           animate="visible"
         >
-          <KPICard label="Загальний дохід" value={fmtMoney(totalRevenue)} color="text-brand" numericValue={totalRevenue} />
+          <KPICard label="Загальний дохід" value={fmtMoney(0)} color="text-brand" numericValue={0} />
           <KPICard label="Прибуток" value={fmtMoney(totalProfit)} color="text-success" numericValue={totalProfit} />
           <KPICard label="ROI" value={roi ? `${roi.roi}%` : "—"} color="text-purple-600" numericValue={roi?.roi ? Number(roi.roi) : undefined} />
           <KPICard label="Витрати на ЗП" value={fmtMoney(salaryFund?.total ?? 0)} color="text-danger" numericValue={salaryFund?.total ?? 0} />
@@ -295,14 +357,14 @@ export default function Analytics() {
         <ChartSkeleton />
       ) : (
         <div className={`mobile-card mb-5 transition-opacity ${revenueLoading ? 'opacity-60' : ''}`}>
-          <h3 className="font-bold text-content-primary mb-3 text-sm">Дохід по місяцях</h3>
+          <h3 className="font-bold text-content-primary mb-3 text-sm">Прибуток по місяцях</h3>
           {zoomedChartData.length === 0 ? (
             <ChartEmptyState text="Немає даних за цей період" />
           ) : (
-            <div className="flex gap-3">
-                <div className="flex flex-col gap-3 shrink-0 pt-1">
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-wide text-content-muted font-medium px-2">Проєкти</span>
+            <>
+              <div className="flex md:flex-row flex-col gap-3">
+                <div className="flex md:flex-col flex-row flex-wrap gap-1 shrink-0 pt-1 md:max-w-none max-w-[260px]">
+                  <span className="text-[10px] uppercase tracking-wide text-content-muted font-medium px-2 hidden md:block">Проєкти</span>
                   {projectNames.map((name, pi) => {
                     const active = activeProjects.has(name);
                     const color = CITY_COLORS[pi % CITY_COLORS.length];
@@ -324,10 +386,8 @@ export default function Analytics() {
                       </button>
                     );
                   })}
-                </div>
-                <div className="border-t border-border" />
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-wide text-content-muted font-medium px-2">Міста</span>
+                  <div className="hidden md:block border-t border-border w-full my-0.5" />
+                  <span className="text-[10px] uppercase tracking-wide text-content-muted font-medium px-2 hidden md:block">Міста</span>
                   {cityNames.map((name) => {
                     const active = activeCities.has(name);
                     return (
@@ -349,44 +409,51 @@ export default function Analytics() {
                     );
                   })}
                 </div>
-              </div>
-              <div className="flex-1 min-w-0 swiper-no-swiping" style={{ touchAction: "pan-y" }}>
-                <div
-                  ref={chartRef}
-                  onTouchStart={handleTouchStart}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
-                  className="touch-none"
-                >
-                <ResponsiveContainer width="100%" height={280}>
-                  <LineChart data={zoomedChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                    <CartesianGrid vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} width={50} tickFormatter={(v: number) => v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`} />
-                    <Tooltip
-                      formatter={(v: number, key: string) => {
-                        const label = key.replace(/^profit_/, "").replace("_", " · ");
-                        return [fmtMoney(v), label];
-                      }}
-                      contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
-                      allowEscapeViewBox={{ x: true, y: true }}
-                    />
-                    {activeLines.map((line) => (
-                      <Line key={`p_${line.key}`} type="monotone" dataKey={`profit_${line.key}`} stroke={line.color} strokeWidth={2} dot={{ r: 3, fill: line.color }} name={`${line.label}`} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
-                </div>
-                {(zoomRange[0] !== 0 || zoomRange[1] !== 11) && (
-                  <button
-                    onClick={() => setZoomRange([0, 11])}
-                    className="mt-1.5 text-[10px] text-content-muted hover:text-content-secondary transition px-1"
+                <div className="flex-1 min-w-0 swiper-no-swiping" style={{ touchAction: "pan-y" }}>
+                  <div
+                    ref={chartRef}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    className="touch-none"
                   >
-                    ← Повний діапазон
-                  </button>
-                )}
+                    <ResponsiveContainer width="100%" height={280}>
+                      <LineChart data={zoomedChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                        <CartesianGrid vertical={false} stroke="#f1f5f9" />
+                        <XAxis
+                          dataKey="label"
+                          tick={{ fontSize: 11, fill: "#64748b" }}
+                          axisLine={{ stroke: "#e2e8f0" }}
+                          tickLine={false}
+                          interval={zoomSpan > 24 ? Math.floor(zoomSpan / 8) : zoomSpan > 12 ? 1 : 0}
+                        />
+                        <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} width={50} tickFormatter={(v: number) => v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`} />
+                        <Tooltip
+                          formatter={(v: number, key: string) => {
+                            const label = key.replace(/^profit_/, "").replace("_", " · ");
+                            return [fmtMoney(v), label];
+                          }}
+                          labelFormatter={(label: string) => label}
+                          contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
+                          allowEscapeViewBox={{ x: true, y: true }}
+                        />
+                        {activeLines.map((line) => (
+                          <Line key={`p_${line.key}`} type="monotone" dataKey={`profit_${line.key}`} stroke={line.color} strokeWidth={2} dot={zoomSpan <= 12 ? { r: 3, fill: line.color } : false} name={line.label} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
+                        ))}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  {isZoomed && (
+                    <button
+                      onClick={() => setZoomRange([Math.max(0, chartData.length - 12), chartData.length - 1])}
+                      className="mt-1.5 text-[10px] text-content-muted hover:text-content-secondary transition px-1"
+                    >
+                      ← Повний діапазон
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       )}

@@ -47,6 +47,7 @@ export function useRevenueByMonth(params?: { cityId?: string; projectId?: string
 }
 
 export interface RevenueByCityMonthRow {
+  year: number;
   month: number;
   cityName: string;
   project: string;
