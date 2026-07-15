@@ -39,8 +39,8 @@ describe("NAV_TABS", () => {
     }
   });
 
-  it("/schools, /kindergartens, /finance, /calendar не мають обмежень", () => {
-    for (const path of ["/schools", "/kindergartens", "/finance", "/calendar"]) {
+  it("/schools, /finance, /calendar не мають обмежень", () => {
+    for (const path of ["/schools", "/finance", "/calendar"]) {
       const tab = NAV_TABS.find((t) => t.to === path);
       expect(tab?.roles).toBeUndefined();
     }

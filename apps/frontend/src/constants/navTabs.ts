@@ -2,7 +2,6 @@ import type { ComponentType } from "react";
 import {
   Home,
   School,
-  Baby,
   Wallet,
   Calendar,
   Users,
@@ -33,8 +32,7 @@ export const NAV_TABS: NavTab[] = [
   { to: "/dashboard", icon: Home, label: "Дашборд", roles: ["SUPERADMIN", "MANAGER", "OWNER"] },
   { to: "/reports/review", icon: ClipboardCheck, label: "Звіти", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
   { to: "/inventory", icon: Package, label: "Склад", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
-  { to: "/schools", icon: School, label: "Школи" },
-  { to: "/kindergartens", icon: Baby, label: "Садочки" },
+  { to: "/schools", icon: School, label: "Заклади" },
   { to: "/finance", icon: Wallet, label: "Фінанси" },
   { to: "/calendar", icon: Calendar, label: "Календар" },
   { to: "/cities", icon: MapPin, label: "Міста", roles: ["SUPERADMIN", "OWNER"] },
@@ -45,7 +43,7 @@ export const NAV_TABS: NavTab[] = [
 
 export const NAV_SECTIONS: { label: string; routes: string[] }[] = [
   { label: "Основне", routes: ["/dashboard", "/calendar", "/reports/review"] },
-  { label: "Управління", routes: ["/schools", "/kindergartens", "/cities", "/employees", "/inventory"] },
+  { label: "Управління", routes: ["/schools", "/cities", "/employees", "/inventory"] },
   { label: "Бізнес", routes: ["/finance", "/analytics", "/city-leaderboard"] },
 ];
 

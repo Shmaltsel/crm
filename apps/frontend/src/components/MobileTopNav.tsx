@@ -8,8 +8,7 @@ import NotificationBell from "./NotificationBell";
 
 const PAGE_TITLES: Record<string, string> = {
   "/dashboard": "Дашборд",
-  "/schools": "Школи",
-  "/kindergartens": "Садочки",
+  "/schools": "Заклади",
   "/finance": "Фінанси",
   "/calendar": "Календар",
   "/cities": "Міста",

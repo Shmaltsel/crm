@@ -200,17 +200,6 @@ function AppRoutes() {
             />
 
           <Route
-            path="kindergartens"
-            element={
-              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
-                <Suspense fallback={null}>
-                  <Schools />
-                </Suspense>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
             path="cities/:id"
             element={
               <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>

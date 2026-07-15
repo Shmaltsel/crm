@@ -20,7 +20,6 @@ export function lazyWithRetry(factory: () => Promise<any>) {
 export const rawImportFactories: Record<string, () => Promise<any>> = {
   "/dashboard": () => import("./Dashboard"),
   "/schools": () => import("./Schools"),
-  "/kindergartens": () => import("./Kindergartens"),
   "/finance": () => import("./Finance"),
   "/calendar": () => import("./CalendarView"),
   "/employees": () => import("./Employees"),
@@ -29,7 +28,6 @@ export const rawImportFactories: Record<string, () => Promise<any>> = {
 
 const Dashboard = lazyWithRetry(rawImportFactories["/dashboard"]);
 const Schools = lazyWithRetry(rawImportFactories["/schools"]);
-const Kindergartens = lazyWithRetry(rawImportFactories["/kindergartens"]);
 const Finance = lazyWithRetry(rawImportFactories["/finance"]);
 const CalendarView = lazyWithRetry(rawImportFactories["/calendar"]);
 const Employees = lazyWithRetry(rawImportFactories["/employees"]);
@@ -38,7 +36,6 @@ const Analytics = lazyWithRetry(rawImportFactories["/analytics"]);
 export const TAB_PAGE_COMPONENTS: Record<string, React.LazyExoticComponent<any>> = {
   "/dashboard": Dashboard,
   "/schools": Schools,
-  "/kindergartens": Kindergartens,
   "/finance": Finance,
   "/calendar": CalendarView,
   "/employees": Employees,
