@@ -163,6 +163,31 @@ async function createEvent(data) {
   return { event, skipped: false };
 }
 
+function findLatestReportDate(entry) {
+  let latest = null;
+  for (const m of entry['повідомлення']) {
+    if (m.єЗвіт && m.eventReport) {
+      const d = new Date(m.date);
+      if (!latest || d > latest) latest = d;
+    }
+  }
+  return latest;
+}
+
+function splitConvMsgsByReportDate(convMsgs, reportDate) {
+  if (!reportDate) return { before: convMsgs, after: [] };
+  const before = [];
+  const after = [];
+  for (const msg of convMsgs) {
+    if (new Date(msg.date) > reportDate) {
+      after.push(msg);
+    } else {
+      before.push(msg);
+    }
+  }
+  return { before, after };
+}
+
 async function main() {
   const { jsonPath, city: cityName } = parseArgs();
 
@@ -213,6 +238,7 @@ async function main() {
   let totalSkipped = 0;
   let totalNotFound = 0;
   let totalWithComputed = 0;
+  let totalSchoolComments = 0;
 
   for (const entry of raw) {
     const kgName = (entry['Заклад'] || '').replace(/\s+/g, ' ').trim();
@@ -231,7 +257,29 @@ async function main() {
     const reportMsgs = entry.повідомлення.filter(m => m.єЗвіт === true);
     const eventReports = entry.eventReports || [];
 
-    const pipelines = groupByPipeline(convMsgs);
+    const latestReportDate = findLatestReportDate(entry);
+    const { before: pipelineMsgs, after: postReportMsgs } = splitConvMsgsByReportDate(convMsgs, latestReportDate);
+
+    if (postReportMsgs.length > 0 && !dryRun) {
+      for (const msg of postReportMsgs) {
+        await prisma.schoolComment.create({
+          data: {
+            schoolId,
+            authorId: defaultUser.id,
+            type: 'NOTE',
+            text: `[Імпорт] ${(msg.from || '').trim()}: ${(msg.text || '').trim()}`.slice(0, 2000),
+            createdAt: new Date(msg.date),
+          },
+        });
+      }
+      totalSchoolComments += postReportMsgs.length;
+      console.log(`  💬 ${kgName.slice(0, 50)} → ${postReportMsgs.length} коментарів після звіту`);
+    } else if (postReportMsgs.length > 0) {
+      totalSchoolComments += postReportMsgs.length;
+      console.log(`  📋 ${kgName.slice(0, 50)} → ${postReportMsgs.length} коментарів після звіту (dry-run)`);
+    }
+
+    const pipelines = groupByPipeline(pipelineMsgs);
 
     for (const pipeline of pipelines) {
       const lastMsg = pipeline[pipeline.length - 1];
@@ -377,6 +425,7 @@ async function main() {
   console.log(`   Записів історії: ${totalHistory}`);
   console.log(`   Звітів: ${totalReports} (з обрахованими полями: ${totalWithComputed})`);
   if (totalSkipped > 0) console.log(`   Пропущено (дублікати): ${totalSkipped}`);
+  if (totalSchoolComments > 0) console.log(`   Коментарів після звіту (SchoolComment): ${totalSchoolComments}`);
 }
 
 main()
