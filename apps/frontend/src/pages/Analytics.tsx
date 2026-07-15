@@ -682,6 +682,14 @@ export default function Analytics() {
     return sum;
   }, [filteredData, activeCities]);
 
+  const totalRevenue = useMemo(() => {
+    let sum = 0;
+    for (const row of filteredData) {
+      if (activeCities.has(row.cityName)) sum += row.revenue;
+    }
+    return sum;
+  }, [filteredData, activeCities]);
+
   const tooltipDataRef = useRef<TooltipDataRef>({
     rawData: undefined,
     activeCities: new Set(),
@@ -859,7 +867,7 @@ export default function Analytics() {
           initial="hidden"
           animate="visible"
         >
-          <KPICard label="Загальний дохід" value={fmtMoney(0)} color="text-brand" numericValue={0} />
+          <KPICard label="Загальний дохід" value={fmtMoney(totalRevenue)} color="text-brand" numericValue={totalRevenue} />
           <KPICard label="Прибуток" value={fmtMoney(totalProfit)} color="text-success" numericValue={totalProfit} />
           <KPICard label="ROI" value={roi ? `${roi.roi}%` : "—"} color="text-purple-600" numericValue={roi?.roi ? Number(roi.roi) : undefined} />
           <KPICard label="Витрати на ЗП" value={fmtMoney(salaryFund?.total ?? 0)} color="text-danger" numericValue={salaryFund?.total ?? 0} />
