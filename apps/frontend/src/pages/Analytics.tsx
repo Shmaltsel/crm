@@ -80,6 +80,21 @@ function calculateSMA(values: number[], window: number): (number | null)[] {
   return result;
 }
 
+function heatColor(value: number, maxAbs: number): string {
+  if (maxAbs === 0) return "hsl(0,0%,95%)";
+  const ratio = Math.max(-1, Math.min(1, value / maxAbs));
+  if (ratio >= 0) {
+    const h = 140;
+    const s = 40 + ratio * 30;
+    const l = 92 - ratio * 45;
+    return `hsl(${h},${s}%,${l}%)`;
+  }
+  const h = 0;
+  const s = 50 + Math.abs(ratio) * 30;
+  const l = 92 - Math.abs(ratio) * 45;
+  return `hsl(${h},${s}%,${l}%)`;
+}
+
 function detectAnomalies(values: number[]): Set<number> {
   const sorted = [...values].filter((v) => v !== 0).sort((a, b) => a - b);
   if (sorted.length < 4) return new Set();
@@ -704,6 +719,35 @@ export default function Analytics() {
     }
     return map;
   }, [zoomedChartData, activeLines, showAnomalies]);
+
+  const heatmapData = useMemo(() => {
+    if (!rawCityMonthData || rawCityMonthData.length === 0) return null;
+    const map = new Map<string, number>();
+    const years = new Set<number>();
+    for (const row of rawCityMonthData) {
+      const y = Number(row.year);
+      const m = Number(row.month);
+      if (!activeCities.has(row.cityName)) continue;
+      years.add(y);
+      const k = `${y}-${m}`;
+      map.set(k, (map.get(k) ?? 0) + row.profit);
+    }
+    if (years.size < 1) return null;
+    const sortedYears = [...years].sort((a, b) => a - b);
+    let maxAbs = 0;
+    for (const v of map.values()) {
+      const a = Math.abs(v);
+      if (a > maxAbs) maxAbs = a;
+    }
+    const cells: { year: number; month: number; value: number; color: string }[] = [];
+    for (const y of sortedYears) {
+      for (let m = 1; m <= 12; m++) {
+        const v = map.get(`${y}-${m}`) ?? 0;
+        cells.push({ year: y, month: m, value: v, color: heatColor(v, maxAbs) });
+      }
+    }
+    return { years: sortedYears, cells, maxAbs };
+  }, [rawCityMonthData, activeCities]);
 
   const targetChartData = useMemo(() => {
     if (!showTarget || !targets || targets.length === 0) return null;
@@ -1391,6 +1435,54 @@ export default function Analytics() {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {heatmapData && heatmapData.years.length >= 2 && (
+        <div className="mobile-card mb-5">
+          <h3 className="font-bold text-content-primary mb-3 text-sm">Сезонність</h3>
+          <div className="overflow-x-auto -mx-1 px-1">
+            <div
+              className="grid gap-[3px] min-w-[480px]"
+              style={{ gridTemplateColumns: `48px repeat(12, 1fr)` }}
+            >
+              <div />
+              {UA_MONTHS.map((m) => (
+                <div key={m} className="text-[9px] text-content-muted font-medium text-center leading-none pb-1">
+                  {m}
+                </div>
+              ))}
+              {heatmapData.years.slice().reverse().map((year) =>
+                UA_MONTHS.map((_, mi) => {
+                  const cell = heatmapData.cells.find((c) => c.year === year && c.month === mi + 1);
+                  if (!cell) return <div key={`${year}-${mi}`} className="h-8 rounded" />;
+                  return (
+                    <div
+                      key={`${year}-${mi}`}
+                      className="h-8 rounded flex items-center justify-center text-[9px] font-medium leading-none cursor-default transition-transform duration-150 hover:scale-110 hover:z-10"
+                      style={{ backgroundColor: cell.color }}
+                      title={`${UA_MONTHS_FULL[mi]} ${year}: ${fmtMoney(cell.value)}`}
+                    >
+                      {cell.value !== 0 && (
+                        <span className={Math.abs(cell.value) > heatmapData.maxAbs * 0.5 ? "text-white/90" : "text-content-secondary"}>
+                          {cell.value >= 0 ? "+" : ""}{cell.value >= 10000 || cell.value <= -10000 ? `${Math.round(cell.value / 1000)}k` : Math.round(cell.value)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+          <div className="flex items-center justify-center gap-2 mt-2.5">
+            <span className="text-[9px] text-content-muted">Мін</span>
+            <div className="flex h-2 rounded-full overflow-hidden w-24">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="flex-1" style={{ backgroundColor: heatColor(((i - 5) / 5) * heatmapData.maxAbs, heatmapData.maxAbs) }} />
+              ))}
+            </div>
+            <span className="text-[9px] text-content-muted">Макс</span>
+          </div>
         </div>
       )}
 
