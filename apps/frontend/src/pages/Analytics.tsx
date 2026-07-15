@@ -804,7 +804,7 @@ export default function Analytics() {
       <div className="backdrop-blur-xl bg-white/75 border border-white/40 rounded-xl shadow-[0_8px_-4px_rgba(0,0,0,0.12)] px-3 py-2.5 text-xs">
         <p className="font-medium text-content-primary mb-1.5 text-sm">{label}</p>
         {payload
-          .filter((p) => (p.value ?? 0) !== 0 && !String(p.dataKey).startsWith("sma_") && !String(p.dataKey).startsWith("prevYear_") && !String(p.dataKey).startsWith("forecast_"))
+          .filter((p) => (p.value ?? 0) !== 0 && !String(p.dataKey).startsWith("sma_") && !String(p.dataKey).startsWith("prevYear_") && !String(p.dataKey).startsWith("forecast_") && !String(p.dataKey).startsWith("revenue_"))
           .sort((a, b) => (b.value as number) - (a.value as number))
           .map((p, i) => {
             const dk = String(p.dataKey);
