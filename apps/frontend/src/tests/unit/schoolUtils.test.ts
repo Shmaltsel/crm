@@ -5,37 +5,61 @@ import {
 } from "../../components/schools/schoolUtils";
 
 describe("classifySchool", () => {
-  it("повертає 'new' якщо немає подій", () => {
+  it("повертає 'new' якщо categories містить new", () => {
     expect(classifySchool({ events: [] })).toBe("new");
     expect(classifySchool({})).toBe("new");
   });
 
-  it("повертає 'planned' якщо остання подія FIRST_CONTACT або DATE_CONFIRMED", () => {
-    expect(classifySchool({ events: [{ status: "FIRST_CONTACT" }] })).toBe(
-      "planned",
-    );
-    expect(classifySchool({ events: [{ status: "DATE_CONFIRMED" }] })).toBe(
-      "planned",
-    );
+  it("повертає 'planned' якщо categories містить planned", () => {
+    expect(
+      classifySchool({
+        events: [],
+        categories: ["planned"],
+      } as Parameters<typeof classifySchool>[0]),
+    ).toBe("planned");
   });
 
-  it("повертає 'inProgress' якщо подія в процесі", () => {
-    expect(classifySchool({ events: [{ status: "IN_PROGRESS" }] })).toBe(
-      "inProgress",
-    );
-    expect(classifySchool({ events: [{ status: "PREPARATION" }] })).toBe(
-      "inProgress",
-    );
+  it("повертає 'inProgress' якщо categories містить inProgress", () => {
+    expect(
+      classifySchool({
+        events: [{ status: "IN_PROGRESS" }],
+        categories: ["inProgress"],
+      } as Parameters<typeof classifySchool>[0]),
+    ).toBe("inProgress");
   });
 
-  it("повертає 'notConfirmed' якщо звіт подано на затвердження", () => {
-    expect(classifySchool({ events: [{ status: "REPORT" }] })).toBe(
-      "notConfirmed",
-    );
+  it("повертає 'done' якщо categories містить done", () => {
+    expect(
+      classifySchool({
+        events: [{ status: "RE_SALE", report: {} }],
+        categories: ["done", "inProgress"],
+      } as Parameters<typeof classifySchool>[0]),
+    ).toBe("done");
   });
 
-  it("повертає 'done' якщо подія завершена", () => {
-    expect(classifySchool({ events: [{ status: "RE_SALE" }] })).toBe("done");
+  it("fallback: done якщо є RE_SALE з звітом", () => {
+    expect(
+      classifySchool({
+        events: [{ status: "RE_SALE", report: {} }],
+      }),
+    ).toBe("done");
+  });
+
+  it("fallback: inProgress якщо є активна подія", () => {
+    expect(
+      classifySchool({
+        events: [{ status: "FIRST_CONTACT" }],
+      }),
+    ).toBe("inProgress");
+  });
+
+  it("done має пріоритет над inProgress", () => {
+    expect(
+      classifySchool({
+        events: [],
+        categories: ["inProgress", "done"],
+      } as Parameters<typeof classifySchool>[0]),
+    ).toBe("done");
   });
 });
 

@@ -15,8 +15,8 @@ export class SchoolQueryDto extends PageOptionsDto {
   type?: 'Школа' | 'Садочок';
 
   @IsOptional()
-  @IsIn(['new', 'planned', 'inProgress', 'notConfirmed', 'done'])
-  stage?: 'new' | 'planned' | 'inProgress' | 'notConfirmed' | 'done';
+  @IsIn(['new', 'planned', 'inProgress', 'done'])
+  stage?: 'new' | 'planned' | 'inProgress' | 'done';
 
   @IsOptional()
   @IsIn(['small', 'medium', 'large'])

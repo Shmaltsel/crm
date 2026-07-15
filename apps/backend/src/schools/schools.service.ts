@@ -16,10 +16,6 @@ import { PageMetaDto } from '../common/dto/page-meta.dto';
 import { SchoolQueryDto } from './dto/school-query.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
 
-const PLANNED_STAGES = ['BASE', 'FIRST_CONTACT', 'DATE_CONFIRMED'];
-const IN_PROGRESS_STAGES = ['PREPARATION', 'IN_PROGRESS', 'DONE'];
-const NOT_CONFIRMED_STAGES = ['REPORT'];
-
 function concurrencyLimit(n: number) {
   let active = 0;
   const queue: (() => void)[] = [];
@@ -198,31 +194,31 @@ export class SchoolsService {
 
   private stageCondition(stage: string): Prisma.Sql {
     switch (stage) {
+      case 'new':
+        return Prisma.sql`NOT EXISTS (
+          SELECT 1 FROM "Event" e WHERE e."schoolId" = s.id
+        ) AND NOT EXISTS (
+          SELECT 1 FROM "SchoolComment" sc WHERE sc."schoolId" = s.id AND sc."deletedAt" IS NULL
+        )`;
       case 'planned':
         return Prisma.sql`EXISTS (
-          SELECT 1 FROM "Event" e
-          WHERE e."schoolId" = s.id AND e.status::text IN (${Prisma.join(PLANNED_STAGES)})
+          SELECT 1 FROM "SchoolComment" sc WHERE sc."schoolId" = s.id AND sc."deletedAt" IS NULL
+        ) AND NOT EXISTS (
+          SELECT 1 FROM "Event" e WHERE e."schoolId" = s.id
         )`;
       case 'inProgress':
         return Prisma.sql`EXISTS (
           SELECT 1 FROM "Event" e
-          WHERE e."schoolId" = s.id AND e.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})
-        )`;
-      case 'notConfirmed':
-        return Prisma.sql`EXISTS (
-          SELECT 1 FROM "Event" e
-          WHERE e."schoolId" = s.id AND e.status::text IN (${Prisma.join(NOT_CONFIRMED_STAGES)})
+          WHERE e."schoolId" = s.id AND e.status::text != 'RE_SALE'
         )`;
       case 'done':
         return Prisma.sql`EXISTS (
-          SELECT 1 FROM "Event" e
-          WHERE e."schoolId" = s.id AND e.status::text = 'RE_SALE'
+          SELECT 1 FROM "EventReport" er
+          JOIN "Event" e ON e.id = er."eventId"
+          WHERE e."schoolId" = s.id AND er.status = 'APPROVED'
         )`;
       default:
-        return Prisma.sql`NOT EXISTS (
-          SELECT 1 FROM "Event" e
-          WHERE e."schoolId" = s.id AND e.status::text NOT IN ('INTERESTED','PRE_APPROVAL')
-        )`;
+        return Prisma.empty;
     }
   }
 
@@ -245,27 +241,26 @@ export class SchoolsService {
     city_id: string | null;
     city_name: string | null;
     latestStatus: string | null;
+    isNew: boolean;
     isPlanned: boolean;
     isInProgress: boolean;
     isDone: boolean;
-    isNotConfirmed: boolean;
     [key: string]: unknown;
   }) {
     const {
       city_id,
       city_name,
       latestStatus,
+      isNew,
       isPlanned,
       isInProgress,
       isDone,
-      isNotConfirmed,
       ...school
     } = row;
-    const categories: ('planned' | 'inProgress' | 'notConfirmed' | 'done')[] =
-      [];
+    const categories: ('new' | 'planned' | 'inProgress' | 'done')[] = [];
+    if (isNew) categories.push('new');
     if (isPlanned) categories.push('planned');
     if (isInProgress) categories.push('inProgress');
-    if (isNotConfirmed) categories.push('notConfirmed');
     if (isDone) categories.push('done');
     return {
       ...school,
@@ -290,19 +285,19 @@ export class SchoolsService {
 
     const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
       SELECT s.*, c.id as city_id, c.name as city_name, latest.status as "latestStatus",
+        COALESCE(ef."isNew", false) as "isNew",
         COALESCE(ef."isPlanned", false) as "isPlanned",
         COALESCE(ef."isInProgress", false) as "isInProgress",
-        COALESCE(ef."isDone", false) as "isDone",
-        COALESCE(ef."isNotConfirmed", false) as "isNotConfirmed"
+        COALESCE(ef."isDone", false) as "isDone"
       ${baseFrom}
       LEFT JOIN LATERAL (
         SELECT
-          bool_or(e.status::text IN (${Prisma.join(PLANNED_STAGES)})) as "isPlanned",
-          bool_or(e.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})) as "isInProgress",
-          bool_or(e.status::text = 'RE_SALE') as "isDone",
-          bool_or(e.status::text IN (${Prisma.join(NOT_CONFIRMED_STAGES)})) as "isNotConfirmed"
-        FROM "Event" e
-        WHERE e."schoolId" = s.id
+          NOT EXISTS (SELECT 1 FROM "Event" e2 WHERE e2."schoolId" = s.id)
+            AND NOT EXISTS (SELECT 1 FROM "SchoolComment" sc WHERE sc."schoolId" = s.id AND sc."deletedAt" IS NULL) as "isNew",
+          EXISTS (SELECT 1 FROM "SchoolComment" sc WHERE sc."schoolId" = s.id AND sc."deletedAt" IS NULL)
+            AND NOT EXISTS (SELECT 1 FROM "Event" e2 WHERE e2."schoolId" = s.id) as "isPlanned",
+          EXISTS (SELECT 1 FROM "Event" e2 WHERE e2."schoolId" = s.id AND e2.status::text != 'RE_SALE') as "isInProgress",
+          EXISTS (SELECT 1 FROM "EventReport" er JOIN "Event" e2 ON e2.id = er."eventId" WHERE e2."schoolId" = s.id AND er.status = 'APPROVED') as "isDone"
       ) ef ON true
       ${whereClause}
       ORDER BY s."createdAt" DESC
@@ -354,26 +349,25 @@ export class SchoolsService {
           new: bigint;
           planned: bigint;
           inProgress: bigint;
-          notConfirmed: bigint;
           done: bigint;
         }[]
       >(Prisma.sql`
         SELECT
-          COUNT(*) FILTER (WHERE NOT COALESCE(ef."isPlanned", false) AND NOT COALESCE(ef."isInProgress", false) AND NOT COALESCE(ef."isDone", false) AND NOT COALESCE(ef."isNotConfirmed", false))::bigint as new,
-          COUNT(*) FILTER (WHERE COALESCE(ef."isPlanned", false))::bigint as planned,
-          COUNT(*) FILTER (WHERE COALESCE(ef."isInProgress", false))::bigint as "inProgress",
-          COUNT(*) FILTER (WHERE COALESCE(ef."isNotConfirmed", false))::bigint as "notConfirmed",
-          COUNT(*) FILTER (WHERE COALESCE(ef."isDone", false))::bigint as done
+          COUNT(*) FILTER (
+            WHERE NOT EXISTS (SELECT 1 FROM "Event" e2 WHERE e2."schoolId" = s.id)
+              AND NOT EXISTS (SELECT 1 FROM "SchoolComment" sc WHERE sc."schoolId" = s.id AND sc."deletedAt" IS NULL)
+          )::bigint as new,
+          COUNT(*) FILTER (
+            WHERE EXISTS (SELECT 1 FROM "SchoolComment" sc WHERE sc."schoolId" = s.id AND sc."deletedAt" IS NULL)
+              AND NOT EXISTS (SELECT 1 FROM "Event" e2 WHERE e2."schoolId" = s.id)
+          )::bigint as planned,
+          COUNT(*) FILTER (
+            WHERE EXISTS (SELECT 1 FROM "Event" e2 WHERE e2."schoolId" = s.id AND e2.status::text != 'RE_SALE')
+          )::bigint as "inProgress",
+          COUNT(*) FILTER (
+            WHERE EXISTS (SELECT 1 FROM "EventReport" er JOIN "Event" e2 ON e2.id = er."eventId" WHERE e2."schoolId" = s.id AND er.status = 'APPROVED')
+          )::bigint as done
         FROM "School" s
-        LEFT JOIN LATERAL (
-          SELECT
-            bool_or(e.status::text IN (${Prisma.join(PLANNED_STAGES)})) as "isPlanned",
-            bool_or(e.status::text IN (${Prisma.join(IN_PROGRESS_STAGES)})) as "isInProgress",
-            bool_or(e.status::text = 'RE_SALE') as "isDone",
-            bool_or(e.status::text IN (${Prisma.join(NOT_CONFIRMED_STAGES)})) as "isNotConfirmed"
-          FROM "Event" e
-          WHERE e."schoolId" = s.id
-        ) ef ON true
         ${baseWhere}
       `),
       this.prisma.$queryRaw<{ size: string; count: bigint }[]>(Prisma.sql`
@@ -391,10 +385,9 @@ export class SchoolsService {
           new: Number(statusRows[0].new),
           planned: Number(statusRows[0].planned),
           inProgress: Number(statusRows[0].inProgress),
-          notConfirmed: Number(statusRows[0].notConfirmed),
           done: Number(statusRows[0].done),
         }
-      : { new: 0, planned: 0, inProgress: 0, notConfirmed: 0, done: 0 };
+      : { new: 0, planned: 0, inProgress: 0, done: 0 };
 
     const sizeStats = { small: 0, medium: 0, large: 0 };
     for (const row of sizeRows) sizeStats[row.size] = Number(row.count);

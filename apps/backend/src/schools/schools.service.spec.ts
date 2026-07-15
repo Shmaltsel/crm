@@ -291,18 +291,18 @@ describe('SchoolsService — remove', () => {
 });
 
 describe('SchoolsService — getStats', () => {
-  it('повертає notConfirmed у statusStats', async () => {
+  it('повертає statusStats з усіма категоріями', async () => {
     mockPrisma.$queryRaw
       .mockResolvedValueOnce([
-        { new: 5, planned: 3, inProgress: 2, notConfirmed: 1, done: 4 },
+        { new: 5, planned: 3, inProgress: 2, done: 4 },
       ])
       .mockResolvedValueOnce([]);
 
     const service = await makeModule();
     const result = await service.getStats({});
 
-    expect(result.statusStats.notConfirmed).toBe(1);
     expect(result.statusStats.new).toBe(5);
+    expect(result.statusStats.planned).toBe(3);
     expect(result.statusStats.inProgress).toBe(2);
     expect(result.statusStats.done).toBe(4);
   });
