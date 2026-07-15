@@ -495,17 +495,33 @@ export default function Analytics() {
   const canForecast = period !== "all" && chartData.length >= 4;
 
   const forecastData = useMemo(() => {
-    if (!showForecast || !canForecast || activeLines.length === 0) return { entries: smaData, forecastStartIndex: -1 };
+    if (!showForecast || !canForecast || activeLines.length === 0) return { entries: smaData, forecastStartIndex: -1, insufficientLines: new Set<string>() };
     const lastRealIndex = smaData.length - 1;
     const allEntries = smaData.map((e) => ({ ...e }));
+    const insufficientLines = new Set<string>();
     for (const line of activeLines) {
       const points: ForecastPoint[] = [];
       for (const e of chartData) {
         const v = (e[`profit_${line.key}`] as number) ?? 0;
         if (v !== 0) points.push({ year: e.year, month: e.month, value: v });
       }
-      if (points.length < 4) continue;
+      if (points.length < 4) {
+        console.warn(`[Forecast] "${line.label}" пропущено: ${points.length} ненульових точок (<4)`);
+        insufficientLines.add(line.key);
+        continue;
+      }
       const forecast = linearRegressionForecast(points, 3);
+      if (forecast.length > 0 && lastRealIndex >= 0) {
+        const lastReal = smaData[lastRealIndex];
+        const lastK = `${lastReal.year}-${String(lastReal.month).padStart(2, "0")}`;
+        const lastEntry = allEntries.find((e) => e.key === lastK);
+        if (lastEntry) {
+          const lastVal = (lastEntry[`profit_${line.key}`] as number) ?? 0;
+          if (lastVal !== 0) {
+            lastEntry[`forecast_${line.key}`] = lastVal;
+          }
+        }
+      }
       for (const f of forecast) {
         const k = `${f.year}-${String(f.month).padStart(2, "0")}`;
         let entry = allEntries.find((e) => e.key === k);
@@ -518,7 +534,7 @@ export default function Analytics() {
       }
     }
     allEntries.sort((a, b) => a.year * 12 + a.month - (b.year * 12 + b.month));
-    return { entries: allEntries, forecastStartIndex: lastRealIndex };
+    return { entries: allEntries, forecastStartIndex: lastRealIndex, insufficientLines };
   }, [smaData, chartData, activeLines, showForecast, canForecast]);
 
   const effectiveMaxIdx = showForecast && canForecast ? forecastData.entries.length - 1 : chartData.length - 1;
@@ -1378,21 +1394,24 @@ export default function Analytics() {
                             label={{ value: "Прогноз →", position: "insideTopRight", fontSize: 10, fill: "#94a3b8" }}
                           />
                         )}
-                        {showForecast && activeLines.map((line) => (
+                        {showForecast && activeLines.map((line) => {
+                          const insufficient = forecastData.insufficientLines.has(line.key);
+                          return (
                           <Line
                             key={`forecast_${line.key}`}
                             type="monotone"
                             dataKey={`forecast_${line.key}`}
                             stroke={line.color}
-                            strokeWidth={1.5}
+                            strokeWidth={2}
                             strokeDasharray="2 6"
                             dot={false}
                             connectNulls
-                            opacity={0.4}
+                            opacity={insufficient ? 0.2 : 0.65}
                             isAnimationActive={false}
-                            name={`${line.label} (прогноз)`}
+                            name={insufficient ? `${line.label} (недостатньо даних)` : `${line.label} (прогноз)`}
                           />
-                        ))}
+                          );
+                        })}
                         {showTarget && targetChartData && (
                           <Line
                             key="target_line"
