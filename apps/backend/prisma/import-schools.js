@@ -119,15 +119,18 @@ async function findExactSchool(name, cityId) {
   return exact || null;
 }
 
-function buildHistoryEntries(eventId, messages, userId) {
-  return messages.map(msg => ({
-    eventId,
-    action: `[Повідомлення] ${msg.text || ''}`.trim(),
-    userId,
-    userName: msg.from || '',
-    role: 'MANAGER',
-    createdAt: new Date(msg.date),
-  }));
+function buildHistoryEntries(eventId, messages, resolveUserFn) {
+  return messages.map(msg => {
+    const user = resolveUserFn(msg.from);
+    return {
+      eventId,
+      action: `[Повідомлення] ${msg.text || ''}`.trim(),
+      userId: user.id,
+      userName: msg.from || '',
+      role: 'MANAGER',
+      createdAt: new Date(msg.date),
+    };
+  });
 }
 
 async function createEvent(data) {
@@ -231,6 +234,17 @@ async function main() {
       });
   const nameToId = new Map(dbSchools.map(s => [s.name, s.id]));
 
+  const allUsers = dryRun
+    ? []
+    : await prisma.user.findMany({ select: { id: true, name: true } });
+  const nameToUser = new Map(allUsers.map(u => [u.name.toLowerCase().trim(), u]));
+
+  function resolveUser(senderName) {
+    if (!senderName) return defaultUser;
+    const key = senderName.toLowerCase().trim();
+    return nameToUser.get(key) || defaultUser;
+  }
+
   let totalPipelines = 0;
   let totalReportEvents = 0;
   let totalHistory = 0;
@@ -257,63 +271,37 @@ async function main() {
     const reportMsgs = entry.повідомлення.filter(m => m.єЗвіт === true);
     const eventReports = entry.eventReports || [];
 
-    const latestReportDate = findLatestReportDate(entry);
-    const { before: pipelineMsgs, after: postReportMsgs } = splitConvMsgsByReportDate(convMsgs, latestReportDate);
-
-    if (postReportMsgs.length > 0 && !dryRun) {
-      for (const msg of postReportMsgs) {
-        await prisma.schoolComment.create({
-          data: {
-            schoolId,
-            authorId: defaultUser.id,
-            type: 'NOTE',
-            text: `[Імпорт] ${(msg.from || '').trim()}: ${(msg.text || '').trim()}`.slice(0, 2000),
-            createdAt: new Date(msg.date),
-          },
-        });
-      }
-      totalSchoolComments += postReportMsgs.length;
-      console.log(`  💬 ${kgName.slice(0, 50)} → ${postReportMsgs.length} коментарів після звіту`);
-    } else if (postReportMsgs.length > 0) {
-      totalSchoolComments += postReportMsgs.length;
-      console.log(`  📋 ${kgName.slice(0, 50)} → ${postReportMsgs.length} коментарів після звіту (dry-run)`);
-    }
-
-    const pipelines = groupByPipeline(pipelineMsgs);
-
-    for (const pipeline of pipelines) {
-      const lastMsg = pipeline[pipeline.length - 1];
-      const eventDate = new Date(lastMsg.date);
-      const eventTime = lastMsg.date.split('T')[1]?.slice(0, 5) || null;
-
+    const saveAsSchoolComments = async (msgs, label) => {
+      if (msgs.length === 0) return;
       if (!dryRun) {
-        const result = await createEvent({
-          cityId: city.id,
-          schoolId,
-          schoolName: kgName,
-          date: eventDate,
-          time: eventTime,
-          status: 'BASE',
-        });
-        if (result.skipped) {
-          totalSkipped++;
-        } else {
-          const hist = buildHistoryEntries(result.event.id, pipeline, defaultUser.id);
-          if (hist.length > 0) {
-            await prisma.eventHistory.createMany({ data: hist });
-          }
-          totalPipelines++;
-          totalHistory += hist.length;
-          console.log(`  ✅ ${kgName.slice(0, 50)} → BASE (${hist.length} записів)`);
+        for (const msg of msgs) {
+          const user = resolveUser(msg.from);
+          await prisma.schoolComment.create({
+            data: {
+              schoolId,
+              authorId: user.id,
+              type: 'NOTE',
+              text: `[Імпорт] ${msg.text || ''}`.trim().slice(0, 2000),
+              createdAt: new Date(msg.date),
+            },
+          });
         }
+        totalSchoolComments += msgs.length;
+        console.log(`  💬 ${kgName.slice(0, 50)} → ${msgs.length} ${label}`);
       } else {
-        totalPipelines++;
-        totalHistory += pipeline.length;
-        console.log(`  📋 ${kgName.slice(0, 50)} → BASE (${pipeline.length} повідомлень)`);
+        totalSchoolComments += msgs.length;
+        console.log(`  📋 ${kgName.slice(0, 50)} → ${msgs.length} ${label} (dry-run)`);
       }
-    }
+    };
 
-    if (eventReports.length > 0) {
+    if (eventReports.length === 0) {
+      await saveAsSchoolComments(convMsgs, 'коментарів (без події)');
+    } else {
+      const latestReportDate = findLatestReportDate(entry);
+      const { before: preReportMsgs, after: postReportMsgs } = splitConvMsgsByReportDate(convMsgs, latestReportDate);
+
+      await saveAsSchoolComments(postReportMsgs, 'коментарів (очікують події)');
+
       for (const rawReport of eventReports) {
         const filled = fillReportFields(rawReport);
 
@@ -360,9 +348,11 @@ async function main() {
           if (result.skipped) {
             totalSkipped++;
           } else {
-            const hist = reportMsg
-              ? buildHistoryEntries(result.event.id, [reportMsg], defaultUser.id)
-              : [];
+            const histMsgs = [...preReportMsgs];
+            if (reportMsg && !histMsgs.some(m => m.id === reportMsg.id)) {
+              histMsgs.push(reportMsg);
+            }
+            const hist = buildHistoryEntries(result.event.id, histMsgs, resolveUser);
             if (hist.length > 0) {
               await prisma.eventHistory.createMany({ data: hist });
             }
