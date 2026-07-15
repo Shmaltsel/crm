@@ -31,3 +31,55 @@ project_export/
 
 # Turbo cache
 .turbo/
+
+# --- Explorbot / автоматизовані дослідницькі артефакти ---
+output/
+explorbot.config.js
+explorbot.log
+patches/explorbot.patch
+
+# --- Тестові звіти та coverage (генеруються заново кожним прогоном) ---
+apps/frontend/coverage/
+apps/frontend/playwright-report/
+apps/frontend/test-results/
+apps/frontend/.lighthouseci/
+coverage_report.txt
+coverage_report_final.txt
+frontend_coverage.txt
+
+# --- Бекапи бази даних ---
+backups/*.dump
+
+# --- Експорти реальних бізнес-даних (школи, звіти, дитсадки) ---
+38_sadok_test.json
+apps/schools-export-*.json
+crm_grouped_by_sadochok.json
+crm_with_reports_updated.json
+event_reports_holohrama.json
+event_reports_malyuvayka.json
+kindergartens_if.json
+kindergartens_list.json
+school_names.json
+schools_categorized_with_reports.json
+schools_if.json
+schools_list.json
+
+# --- Службові файли підготовки бандлів коду ---
+bundle.js
+collect-code.js
+final_diagnostic_bundle.md
+project_structure_dirs.txt
+project_structure_files.txt
+analytics-chart-bundle.md
+query-cache-bundle.md
+apps/memory.md
+
+# --- AI-агентські конфіги та внутрішні робочі інструкції ---
+.github/copilot-instructions.md
+.kilo/
+.vscode/mcp.json
+AGENTS.md
+skills/
+experience/
+knowledge/
+doc/

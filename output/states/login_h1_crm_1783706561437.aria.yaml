@@ -1,7 +1,0 @@
-- heading "Вхід у CRM" [level=1]
-- text: Email
-- textbox "Email"
-- text: Пароль
-- textbox "Пароль"
-- button "Увійти"
-- alert
