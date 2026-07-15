@@ -3,6 +3,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheVersionService } from '../common/cache/cache-version.service';
 
 const CACHE_TTL = 300_000;
 
@@ -11,11 +12,22 @@ export class AnalyticsService {
   constructor(
     private prisma: PrismaService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly cacheVersion: CacheVersionService,
   ) {}
+
+  private async vkey(ns: string): Promise<string> {
+    const v = await this.cacheVersion.getVersion(ns);
+    return `${ns}:v${v}`;
+  }
+
+  async invalidateAnalyticsCache() {
+    await this.cacheVersion.bumpVersion('analytics');
+  }
 
   async revenueByMonth(cityId?: string, projectId?: string, year?: number) {
     const yearFilter = year ?? new Date().getFullYear();
-    const cacheKey = `analytics:revenueByMonth:${cityId ?? ''}:${projectId ?? ''}:${yearFilter}`;
+    const prefix = await this.vkey('analytics');
+    const cacheKey = `${prefix}:revenueByMonth:${cityId ?? ''}:${projectId ?? ''}:${yearFilter}`;
     const cached =
       await this.cacheManager.get<ReturnType<typeof this.revenueByMonth>>(
         cacheKey,
@@ -69,7 +81,8 @@ export class AnalyticsService {
   }
 
   async revenueByCityMonth(projectId?: string, year?: number) {
-    const cacheKey = `analytics:revenueByCityMonth:${projectId ?? ''}:${year ?? 'all'}`;
+    const prefix = await this.vkey('analytics');
+    const cacheKey = `${prefix}:revenueByCityMonth:${projectId ?? ''}:${year ?? 'all'}`;
     const cached = await this.cacheManager.get<ReturnType<typeof this.revenueByCityMonth>>(cacheKey);
     if (cached) return cached;
 
@@ -112,7 +125,8 @@ export class AnalyticsService {
 
   async eventsByCity(year?: number) {
     const yearFilter = year ?? new Date().getFullYear();
-    const cacheKey = `analytics:eventsByCity:${yearFilter}`;
+    const prefix = await this.vkey('analytics');
+    const cacheKey = `${prefix}:eventsByCity:${yearFilter}`;
     const cached =
       await this.cacheManager.get<ReturnType<typeof this.eventsByCity>>(
         cacheKey,
@@ -147,7 +161,8 @@ export class AnalyticsService {
 
   async profitByCity(cityId?: string, year?: number) {
     const yearFilter = year ?? new Date().getFullYear();
-    const cacheKey = `analytics:profitByCity:${cityId ?? ''}:${yearFilter}`;
+    const prefix = await this.vkey('analytics');
+    const cacheKey = `${prefix}:profitByCity:${cityId ?? ''}:${yearFilter}`;
     const cached =
       await this.cacheManager.get<ReturnType<typeof this.profitByCity>>(
         cacheKey,
@@ -208,7 +223,7 @@ export class AnalyticsService {
     const start = new Date(y, m - 1, 1);
     const end = new Date(y, m, 1);
 
-    const cacheKey = `analytics:salaryFund:${m}:${y}:${cityId ?? ''}`;
+    const cacheKey = `${await this.vkey('analytics')}:salaryFund:${m}:${y}:${cityId ?? ''}`;
     const cached =
       await this.cacheManager.get<ReturnType<typeof this.salaryFund>>(cacheKey);
     if (cached) return cached;
@@ -254,7 +269,8 @@ export class AnalyticsService {
 
   async cityLeaderboard(metric?: string, year?: number) {
     const yearFilter = year ?? new Date().getFullYear();
-    const cacheKey = `analytics:cityLeaderboard:${metric ?? ''}:${yearFilter}`;
+    const prefix = await this.vkey('analytics');
+    const cacheKey = `${prefix}:cityLeaderboard:${metric ?? ''}:${yearFilter}`;
     const cached =
       await this.cacheManager.get<ReturnType<typeof this.cityLeaderboard>>(
         cacheKey,
@@ -312,7 +328,8 @@ export class AnalyticsService {
   }
 
   async kpiManagers() {
-    const cacheKey = 'analytics:kpiManagers';
+    const prefix = await this.vkey('analytics');
+    const cacheKey = `${prefix}:kpiManagers`;
     const cached =
       await this.cacheManager.get<ReturnType<typeof this.kpiManagers>>(
         cacheKey,
@@ -349,7 +366,8 @@ export class AnalyticsService {
   }
 
   async kpiHosts() {
-    const cacheKey = 'analytics:kpiHosts';
+    const prefix = await this.vkey('analytics');
+    const cacheKey = `${prefix}:kpiHosts`;
     const cached =
       await this.cacheManager.get<ReturnType<typeof this.kpiHosts>>(cacheKey);
     if (cached) return cached;
@@ -401,7 +419,8 @@ export class AnalyticsService {
   }
 
   async kpiProjects() {
-    const cacheKey = 'analytics:kpiProjects';
+    const prefix = await this.vkey('analytics');
+    const cacheKey = `${prefix}:kpiProjects`;
     const cached =
       await this.cacheManager.get<ReturnType<typeof this.kpiProjects>>(
         cacheKey,
@@ -445,7 +464,8 @@ export class AnalyticsService {
 
   async roi(cityId?: string, year?: number) {
     const y = year ?? new Date().getFullYear();
-    const cacheKey = `analytics:roi:${cityId ?? ''}:${y}`;
+    const prefix = await this.vkey('analytics');
+    const cacheKey = `${prefix}:roi:${cityId ?? ''}:${y}`;
     const cached =
       await this.cacheManager.get<ReturnType<typeof this.roi>>(cacheKey);
     if (cached) return cached;

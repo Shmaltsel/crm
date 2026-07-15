@@ -118,6 +118,7 @@ export function useApproveReport() {
       qc.invalidateQueries({ queryKey: ["calendarEvents"] });
       qc.invalidateQueries({ queryKey: ["schools"] });
       qc.invalidateQueries({ queryKey: ["schoolStats"] });
+      qc.invalidateQueries({ queryKey: ["analytics"] });
     },
   });
 }

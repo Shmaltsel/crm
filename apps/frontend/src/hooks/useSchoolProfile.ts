@@ -100,6 +100,7 @@ export function useUpdateEventStatus() {
             : old,
       );
       qc.invalidateQueries({ queryKey: ["calendarEvents"] });
+      qc.invalidateQueries({ queryKey: ["analytics"] });
     },
   });
 }
@@ -196,6 +197,7 @@ export function useSubmitReport() {
       qc.invalidateQueries({ queryKey: ["schools"] });
       qc.invalidateQueries({ queryKey: ["schoolStats"] });
       qc.invalidateQueries({ queryKey: ["calendarEvents"] });
+      qc.invalidateQueries({ queryKey: ["analytics"] });
     },
   });
 }
@@ -246,6 +248,7 @@ export function useDeleteEvent(schoolId: string | undefined) {
       qc.invalidateQueries({ queryKey: ["school", schoolId] });
       qc.invalidateQueries({ queryKey: ["schoolCompletedEvents", schoolId] });
       qc.invalidateQueries({ queryKey: ["calendarEvents"] });
+      qc.invalidateQueries({ queryKey: ["analytics"] });
     },
   });
 }
@@ -263,6 +266,7 @@ export const useCreateEvent = () => {
         queryKey: ["schoolEvents", variables.schoolId],
       });
       queryClient.invalidateQueries({ queryKey: ["calendarEvents"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
     },
   });
 };

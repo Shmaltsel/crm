@@ -186,6 +186,7 @@ export class EventsService {
     await Promise.all([
       this.cacheVersion.bumpVersion('finance'),
       this.cacheVersion.bumpVersion('dashboard'),
+      this.cacheVersion.bumpVersion('analytics'),
     ]);
     return this.serializeEvent(event);
   }
@@ -494,6 +495,7 @@ export class EventsService {
       where: { id },
     });
     await this.invalidateSchoolEventsCache(exists.schoolId);
+    this.cacheVersion.bumpVersion('analytics').catch(() => {});
 
     this.notifyEventCancelled(exists);
 

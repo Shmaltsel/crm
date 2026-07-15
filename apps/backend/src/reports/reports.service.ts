@@ -327,6 +327,7 @@ export class ReportsService {
 
     this.cacheVersion.bumpVersion('finance').catch(() => {});
     this.cacheVersion.bumpVersion('dashboard').catch(() => {});
+    this.cacheVersion.bumpVersion('analytics').catch(() => {});
 
     const cityManager = report.event.cityId
       ? await this.prisma.user.findFirst({
