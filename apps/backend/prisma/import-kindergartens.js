@@ -112,7 +112,7 @@ async function createEvent(data) {
     data: {
       cityId: data.cityId,
       schoolId: data.schoolId,
-      project: 'Голограма',
+      project: 'Малювайка',
       date: data.date,
       time: data.time,
       status: data.status,
