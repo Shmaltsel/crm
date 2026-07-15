@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { toISODate, isPastDay } from "../utils/date";
 import { MONTH_NAMES, ROLE_ICON_MAP } from "../constants";
 import { getDayColor } from "../utils/color";
@@ -228,11 +229,12 @@ export default function DesktopCalendarGrid({
                           key={ev.id}
                           className="relative group/event z-0 hover:z-50"
                         >
-                          <button
-                            className={`w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${projectColorMap.get(ev.project) ?? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300"}`}
+                          <Link
+                            to={`/schools/${ev.schoolId}`}
+                            className={`block w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${projectColorMap.get(ev.project) ?? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300"}`}
                           >
                             {ev.time || "—"}
-                          </button>
+                          </Link>
 
                           <EventTooltip event={ev} />
                         </div>
