@@ -869,7 +869,7 @@ export default function Analytics() {
         >
           <KPICard label="Загальний дохід" value={fmtMoney(totalRevenue)} color="text-brand" numericValue={totalRevenue} />
           <KPICard label="Прибуток" value={fmtMoney(totalProfit)} color="text-success" numericValue={totalProfit} />
-          <KPICard label="ROI" value={roi ? `${roi.roi}%` : "—"} color="text-purple-600" numericValue={roi?.roi ? Number(roi.roi) : undefined} />
+          <KPICard label="ROI" value={roi ? `${roi.roi}%` : "—"} color="text-purple-600" numericValue={roi?.roi ? Number(roi.roi) : undefined} format="percent" />
           <KPICard label="Витрати на ЗП" value={fmtMoney(salaryFund?.total ?? 0)} color="text-danger" numericValue={salaryFund?.total ?? 0} />
         </motion.div>
       )}
@@ -1486,9 +1486,9 @@ function KpiTable({ title, headers, rows }: { title: string; headers: string[]; 
   );
 }
 
-function KPICard({ label, value, color, numericValue }: { label: string; value: string; color: string; numericValue?: number }) {
+function KPICard({ label, value, color, numericValue, format = 'money' }: { label: string; value: string; color: string; numericValue?: number; format?: 'money' | 'percent' }) {
   const display = useCountUp(numericValue ?? 0, { duration: 0.9, enabled: numericValue !== undefined });
-  const formatted = numericValue !== undefined ? fmtMoney(display) : value;
+  const formatted = numericValue !== undefined ? (format === 'percent' ? `${Math.round(display)}%` : fmtMoney(display)) : value;
   return (
     <motion.div className="mobile-card" variants={staggerItem} whileTap={{ scale: 0.97 }} transition={TRANSITION.tap}>
       <p className={`text-2xs font-medium ${color} mb-1.5`}>{label}</p>
