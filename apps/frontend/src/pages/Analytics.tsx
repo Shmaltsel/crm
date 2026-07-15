@@ -204,19 +204,22 @@ interface StatDotProps {
   isMax?: boolean;
   isMin?: boolean;
   isAnomaly?: boolean;
+  lineIndex?: number;
+  collisionGroup?: number;
 }
 
-function StatDot({ cx, cy, color, payload, lineKey, isMax, isMin, isAnomaly }: StatDotProps) {
+function StatDot({ cx, cy, color, payload, lineKey, isMax, isMin, isAnomaly, lineIndex = 0, collisionGroup = 1 }: StatDotProps) {
   if (cx == null || cy == null || !color || !payload || !lineKey) return null;
   const v = (payload[`profit_${lineKey}`] as number) ?? 0;
   if (v === 0) return null;
   const label = isMax ? "MAX" : isMin ? "MIN" : null;
+  const offset = collisionGroup > 1 ? (lineIndex - (collisionGroup - 1) / 2) * 14 : 0;
   if (isAnomaly && !label) {
     return (
       <g>
         <circle cx={cx} cy={cy} r={4} fill="#ef4444" />
         <circle cx={cx} cy={cy} r={7} fill="none" stroke="#ef4444" strokeWidth={1.5} opacity={0.35} />
-        <text x={cx} y={cy - 12} textAnchor="middle" fontSize={8} fontWeight={600} fill="#ef4444">
+        <text x={cx} y={cy - 12 + offset} textAnchor="middle" fontSize={8} fontWeight={600} fill="#ef4444">
           ⚠
         </text>
       </g>
@@ -229,7 +232,7 @@ function StatDot({ cx, cy, color, payload, lineKey, isMax, isMin, isAnomaly }: S
       <circle cx={cx} cy={cy} r={7} fill="none" stroke={color} strokeWidth={1.5} opacity={0.4} />
       <text
         x={cx}
-        y={isMax ? cy - 12 : cy + 16}
+        y={isMax ? cy - 12 + offset : cy + 16 + offset}
         textAnchor="middle"
         fontSize={9}
         fontWeight={600}
@@ -639,8 +642,10 @@ export default function Analytics() {
   const isZoomed = zoomRange[0] !== 0 || zoomRange[1] !== maxIdx;
 
   const lineStats = useMemo(() => {
-    if (!showStats || activeLines.length === 0) return new Map<string, { avg: number; max: number; min: number; maxIdx: number; minIdx: number }>();
-    const map = new Map<string, { avg: number; max: number; min: number; maxIdx: number; minIdx: number }>();
+    if (!showStats || activeLines.length === 0) return { stats: new Map<string, { avg: number; max: number; min: number; maxIdx: number; minIdx: number; maxLineIndex: number; maxCollisionGroup: number; minLineIndex: number; minCollisionGroup: number }>(), maxCollisions: new Map<number, number[]>(), minCollisions: new Map<number, number[]>() };
+    const statsMap = new Map<string, { avg: number; max: number; min: number; maxIdx: number; minIdx: number; maxLineIndex: number; maxCollisionGroup: number; minLineIndex: number; minCollisionGroup: number }>();
+    const maxGroups = new Map<number, number[]>();
+    const minGroups = new Map<number, number[]>();
     for (const line of activeLines) {
       let sum = 0;
       let count = 0;
@@ -655,15 +660,39 @@ export default function Analytics() {
         if (v > max) { max = v; maxI = i; }
         if (v < min) { min = v; minI = i; }
       }
-      map.set(line.key, {
+      if (!maxGroups.has(maxI)) maxGroups.set(maxI, []);
+      maxGroups.get(maxI)!.push(line.key);
+      if (!minGroups.has(minI)) minGroups.set(minI, []);
+      minGroups.get(minI)!.push(line.key);
+      statsMap.set(line.key, {
         avg: count > 0 ? sum / count : 0,
         max: max === -Infinity ? 0 : max,
         min: min === Infinity ? 0 : min,
         maxIdx: maxI,
         minIdx: minI,
+        maxLineIndex: 0,
+        maxCollisionGroup: 1,
+        minLineIndex: 0,
+        minCollisionGroup: 1,
       });
     }
-    return map;
+    for (const [idx, keys] of maxGroups) {
+      if (keys.length > 1) {
+        for (let i = 0; i < keys.length; i++) {
+          const s = statsMap.get(keys[i]);
+          if (s) { s.maxLineIndex = i; s.maxCollisionGroup = keys.length; }
+        }
+      }
+    }
+    for (const [idx, keys] of minGroups) {
+      if (keys.length > 1) {
+        for (let i = 0; i < keys.length; i++) {
+          const s = statsMap.get(keys[i]);
+          if (s) { s.minLineIndex = i; s.minCollisionGroup = keys.length; }
+        }
+      }
+    }
+    return { stats: statsMap, maxCollisions: maxGroups, minCollisions: minGroups };
   }, [zoomedChartData, activeLines, showStats]);
 
   const anomalyMap = useMemo(() => {
@@ -1135,7 +1164,7 @@ export default function Analytics() {
                           allowEscapeViewBox={{ x: true, y: true }}
                         />
                         {chartMode === 'profit' ? activeLines.map((line) => {
-                          const stats = lineStats.get(line.key);
+                          const stats = lineStats.stats.get(line.key);
                           return (
                           <Area
                             key={`p_${line.key}`}
@@ -1159,6 +1188,8 @@ export default function Analytics() {
                                 isMax={props.index === stats.maxIdx}
                                 isMin={props.index === stats.minIdx}
                                 isAnomaly={showAnomalies && anomalies?.has(props.index as number) === true}
+                                lineIndex={props.index === stats.maxIdx ? stats.maxLineIndex : stats.minLineIndex}
+                                collisionGroup={props.index === stats.maxIdx ? stats.maxCollisionGroup : stats.minCollisionGroup}
                               />
                               );
                             } : showAnomalies ? (props: Record<string, unknown>) => {
@@ -1236,7 +1267,7 @@ export default function Analytics() {
                           />
                         ))}
                         {showStats && activeLines.map((line) => {
-                          const stats = lineStats.get(line.key);
+                          const stats = lineStats.stats.get(line.key);
                           if (!stats) return null;
                           return (
                             <ReferenceLine
