@@ -294,6 +294,7 @@ interface TooltipDataRef {
   anomalyMap: Map<string, Set<number>>;
   zoomedChartEntryKeys: string[];
   chartMode: 'profit' | 'composite';
+  chartWidth: number;
 }
 
 interface RechartsTooltipProps {
@@ -306,6 +307,7 @@ interface RechartsTooltipProps {
     payload?: ChartEntry;
   }>;
   label?: string;
+  coordinate?: { x: number; y: number };
 }
 
 export default function Analytics() {
@@ -781,18 +783,30 @@ export default function Analytics() {
     anomalyMap: new Map(),
     zoomedChartEntryKeys: [],
     chartMode: 'profit',
+    chartWidth: 0,
   });
   useEffect(() => {
-    tooltipDataRef.current = { rawData: rawCityMonthData, activeCities, aggregateByCity, showAnomalies, anomalyMap, zoomedChartEntryKeys: zoomedChartData.map((e) => e.key), chartMode };
+    const cw = chartRef.current?.getBoundingClientRect().width ?? 0;
+    tooltipDataRef.current = { rawData: rawCityMonthData, activeCities, aggregateByCity, showAnomalies, anomalyMap, zoomedChartEntryKeys: zoomedChartData.map((e) => e.key), chartMode, chartWidth: cw };
   });
 
+  const TOOLTIP_WIDTH_ESTIMATE = 260;
+  const TOOLTIP_MARGIN = 20;
+
   const renderTooltip = useCallback((props: RechartsTooltipProps) => {
-    const { active, payload, label } = props;
+    const { active, payload, label, coordinate } = props;
     const data = tooltipDataRef.current;
     if (!active || !payload?.length) return null;
 
     const entry = payload[0]?.payload;
     if (!entry) return null;
+
+    const cx = coordinate?.x ?? 0;
+    const cw = data.chartWidth;
+    const flipLeft = cw > 0 && cx > cw - TOOLTIP_WIDTH_ESTIMATE - TOOLTIP_MARGIN;
+    const flipStyle: React.CSSProperties = flipLeft
+      ? { transform: "translateX(calc(-100% - 16px))" }
+      : {};
 
     if (data.chartMode === 'composite') {
       const items = payload
@@ -821,7 +835,7 @@ export default function Analytics() {
         .sort((a, b) => b.revenue - a.revenue);
 
       return (
-        <div className="backdrop-blur-xl bg-white/75 border border-white/40 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.12)] px-3 py-2.5 text-xs max-w-[240px]">
+        <div className="backdrop-blur-xl bg-white/75 border border-white/40 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.12)] px-3 py-2.5 text-xs max-w-[240px]" style={flipStyle}>
           <p className="font-medium text-content-primary mb-1.5 text-sm">{label}</p>
           {items.map((item, i) => (
             <div key={i} className={i > 0 ? "mt-1.5 pt-1.5 border-t border-black/5" : ""}>
@@ -862,7 +876,7 @@ export default function Analytics() {
         .sort((a, b) => b.total - a.total);
 
       return (
-        <div className="backdrop-blur-xl bg-white/75 border border-white/40 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.12)] px-3 py-2.5 text-xs max-w-[240px]">
+        <div className="backdrop-blur-xl bg-white/75 border border-white/40 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.12)] px-3 py-2.5 text-xs max-w-[240px]" style={flipStyle}>
           <p className="font-medium text-content-primary mb-1.5 text-sm">{label}</p>
           {cityData.map((cd, i) => (
             <div key={i} className={i > 0 ? "mt-1.5 pt-1.5 border-t border-black/5" : ""}>
@@ -884,7 +898,7 @@ export default function Analytics() {
     }
 
     return (
-      <div className="backdrop-blur-xl bg-white/75 border border-white/40 rounded-xl shadow-[0_8px_-4px_rgba(0,0,0,0.12)] px-3 py-2.5 text-xs">
+      <div className="backdrop-blur-xl bg-white/75 border border-white/40 rounded-xl shadow-[0_8px_-4px_rgba(0,0,0,0.12)] px-3 py-2.5 text-xs" style={flipStyle}>
         <p className="font-medium text-content-primary mb-1.5 text-sm">{label}</p>
         {payload
           .filter((p) => (p.value ?? 0) !== 0 && !String(p.dataKey).startsWith("sma_") && !String(p.dataKey).startsWith("prevYear_") && !String(p.dataKey).startsWith("forecast_") && !String(p.dataKey).startsWith("revenue_"))
@@ -1206,6 +1220,7 @@ export default function Analytics() {
                           content={renderTooltip}
                           cursor={<CustomCursor />}
                           allowEscapeViewBox={{ x: true, y: true }}
+                          wrapperStyle={{ zIndex: 50 }}
                         />
                         {chartMode === 'profit' ? activeLines.map((line) => {
                           const stats = lineStats.stats.get(line.key);
