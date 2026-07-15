@@ -521,12 +521,13 @@ export default function Analytics() {
     return { entries: allEntries, forecastStartIndex: lastRealIndex };
   }, [smaData, chartData, activeLines, showForecast, canForecast]);
 
-  const maxIdx = chartData.length - 1;
+  const effectiveMaxIdx = showForecast && canForecast ? forecastData.entries.length - 1 : chartData.length - 1;
   const [zoomRange, setZoomRange] = useState<[number, number]>(() => [
     Math.max(0, chartData.length - 12),
     chartData.length - 1,
   ]);
   const [prevDataLength, setPrevDataLength] = useState(chartData.length);
+  const [prevEffectiveMax, setPrevEffectiveMax] = useState(effectiveMaxIdx);
   const [zoomAnimating, setZoomAnimating] = useState(false);
   const chartRef = useRef<HTMLDivElement>(null);
   const pinchRef = useRef<{ dist: number; range: [number, number] } | null>(null);
@@ -542,9 +543,10 @@ export default function Analytics() {
     revenue: { active: 'border-[#8b5cf6]/40 bg-[#8b5cf6]/10 text-[hsl(262,72%,35%)]', dot: 'bg-[#8b5cf6]' },
   };
 
-  if (chartData.length !== prevDataLength) {
+  if (chartData.length !== prevDataLength || effectiveMaxIdx !== prevEffectiveMax) {
     setPrevDataLength(chartData.length);
-    setZoomRange([Math.max(0, chartData.length - 12), chartData.length - 1]);
+    setPrevEffectiveMax(effectiveMaxIdx);
+    setZoomRange([Math.max(0, chartData.length - 12), effectiveMaxIdx]);
   }
 
   useEffect(() => {
@@ -553,9 +555,23 @@ export default function Analytics() {
     };
   }, []);
 
+  useEffect(() => {
+    setZoomRange(([s, e]) => {
+      const wasAtRealEnd = e === chartData.length - 1;
+      const wasAtForecastEnd = e === forecastData.entries.length - 1;
+      if (showForecast && canForecast && wasAtRealEnd) {
+        return [s, forecastData.entries.length - 1];
+      }
+      if (!showForecast && wasAtForecastEnd) {
+        return [s, chartData.length - 1];
+      }
+      return [s, e];
+    });
+  }, [showForecast, canForecast, forecastData.entries.length, chartData.length]);
+
   const clampRange = useCallback(
     (start: number, end: number): [number, number] => {
-      const max = chartData.length - 1;
+      const max = effectiveMaxIdx;
       const MIN_SPAN = 1;
       let s = Math.max(0, Math.min(max, Math.round(start)));
       let e = Math.max(0, Math.min(max, Math.round(end)));
@@ -565,7 +581,7 @@ export default function Analytics() {
       }
       return [s, e];
     },
-    [chartData.length],
+    [effectiveMaxIdx],
   );
 
   const handleWheel = useCallback(
@@ -656,7 +672,7 @@ export default function Analytics() {
   const chartDataForRender = chartMode === 'composite' ? compositeChartData : zoomedChartData;
 
   const zoomSpan = chartDataForRender.length;
-  const isZoomed = zoomRange[0] !== 0 || zoomRange[1] !== maxIdx;
+  const isZoomed = zoomRange[0] !== 0 || zoomRange[1] !== effectiveMaxIdx;
 
   const lineStats = useMemo(() => {
     if (!showStats || activeLines.length === 0) return { stats: new Map<string, { avg: number; max: number; min: number; maxIdx: number; minIdx: number; maxLineIndex: number; maxCollisionGroup: number; minLineIndex: number; minCollisionGroup: number }>(), maxCollisions: new Map<number, number[]>(), minCollisions: new Map<number, number[]>() };
