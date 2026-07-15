@@ -165,6 +165,10 @@ export class CitiesService {
             driver: { select: { id: true, name: true } },
           },
         },
+        schools: {
+          select: { id: true, name: true, type: true },
+          orderBy: { name: 'asc' },
+        },
       },
     });
 
