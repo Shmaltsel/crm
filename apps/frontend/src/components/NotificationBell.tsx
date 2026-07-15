@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useNotifications, useUnreadCount, useMarkRead, useMarkAllRead } from "../hooks/useNotifications";
@@ -36,7 +37,7 @@ function timeAgo(dateStr: string) {
 
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLButtonElement>(null);
   const [bellKey, setBellKey] = useState(0);
   const prevUnreadRef = useRef(0);
   const navigate = useNavigate();
@@ -54,10 +55,27 @@ export default function NotificationBell() {
     prevUnreadRef.current = unread;
   }, [unread]);
 
+  const toggle = useCallback(() => {
+    setOpen((v) => !v);
+  }, []);
+
+  const close = useCallback(() => setOpen(false), []);
+
+  const getDropdownStyle = (): React.CSSProperties => {
+    if (!bellRef.current) return {};
+    const r = bellRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - r.bottom;
+    if (spaceBelow >= 380) {
+      return { position: "fixed", top: r.bottom + 8, right: window.innerWidth - r.right };
+    }
+    return { position: "fixed", bottom: window.innerHeight - r.top + 8, right: window.innerWidth - r.right };
+  };
+
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <button
-        onClick={() => setOpen(!open)}
+        ref={bellRef}
+        onClick={toggle}
         className="relative p-2 text-slate-400 hover:text-white transition-colors transition-transform active:scale-90"
         title="Сповіщення"
       >
@@ -71,8 +89,13 @@ export default function NotificationBell() {
         </span>
       </button>
 
-      <div hidden={!open} className="fixed inset-0 z-sheet notif-backdrop" onClick={() => setOpen(false)} />
-      <div hidden={!open} className="notif-dropdown absolute right-0 top-full mt-2 w-80 bg-nav border border-slate-700/50 rounded-xl shadow-2xl z-sheet max-h-[70vh] flex flex-col">
+      {open && createPortal(
+        <>
+          <div className="fixed inset-0 z-[60]" onClick={close} />
+          <div
+            className="notif-dropdown w-80 bg-nav border border-slate-700/50 rounded-xl shadow-2xl z-[61] max-h-[70vh] flex flex-col"
+            style={getDropdownStyle()}
+          >
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 shrink-0">
           <h3 className="text-sm font-semibold text-white">Сповіщення</h3>
           {unread > 0 && (
@@ -124,7 +147,10 @@ export default function NotificationBell() {
             ))
           )}
         </div>
-      </div>
+        </div>
+        </>,
+        document.body
+      )}
     </div>
   );
 }
