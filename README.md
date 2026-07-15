@@ -20,7 +20,6 @@
 - [Розробка](#розробка)
 - [Тестування](#тестування)
 - [Деплой](#деплой)
-- [API документація](#api-документація)
 - [Безпека](#безпека)
 - [Ліцензія](#ліцензія)
 
@@ -605,16 +604,6 @@ pnpm test:affected
 | `TELEGRAM_BOT_TOKEN` | ⚠️ | Telegram-сповіщення | `123456:ABC-DEF...` |
 | `SEED_ADMIN_EMAIL` | ⚠️ | Email admin-користувача | `admin@your-domain.com` |
 | `SEED_ADMIN_PASSWORD` | ⚠️ | Пароль admin-користувача | **Замініть на власний!** |
-
----
-
-## API документація
-
-Інтерактивна документація API доступна за адресами:
-
-- **Swagger UI**: http://localhost:3000/docs
-- **ReDoc**: http://localhost:3000/docs/redoc
-- **OpenAPI JSON**: http://localhost:3000/docs-json
 
 ---
 
