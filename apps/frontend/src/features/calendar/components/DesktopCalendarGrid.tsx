@@ -225,19 +225,14 @@ export default function DesktopCalendarGrid({
 
                     <div className="space-y-1.5">
                       {dayEvents.slice(0, 3).map((ev: CalendarEvent) => (
-                        <div
-                          key={ev.id}
-                          className="relative group/event z-0 hover:z-50"
-                        >
+                        <EventTooltip key={ev.id} event={ev}>
                           <Link
                             to={`/schools/${ev.schoolId}`}
                             className={`block w-full px-1.5 py-1 text-center md:text-left rounded-md border text-[10px] md:text-xs font-bold transition-all shadow-sm ${projectColorMap.get(ev.project) ?? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 hover:border-blue-300"}`}
                           >
                             {ev.time || "—"}
                           </Link>
-
-                          <EventTooltip event={ev} />
-                        </div>
+                        </EventTooltip>
                       ))}
                       {dayEvents.length > 3 && (
                         <p className="text-[9px] md:text-[10px] font-bold text-content-muted text-center">
