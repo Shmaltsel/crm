@@ -11,15 +11,17 @@ let dryRun = false;
 function parseArgs() {
   const args = process.argv.slice(2);
   let city = 'Львів';
-  let jsonPath = path.resolve(__dirname, '..', '..', '..', 'schools_categorized_FINAL.json');
+  let jsonPath = path.resolve(__dirname, '..', '..', '..', 'crm_grouped_by_sadochok.json');
+  let listPath = path.resolve(__dirname, '..', '..', '..', 'kindergartens_list.json');
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--city' && args[i + 1]) city = args[++i];
     if (args[i] === '--file' && args[i + 1]) jsonPath = path.resolve(args[++i]);
+    if (args[i] === '--list' && args[i + 1]) listPath = path.resolve(args[++i]);
     if (args[i] === '--dry-run') dryRun = true;
   }
 
-  return { jsonPath, city };
+  return { jsonPath, listPath, city };
 }
 
 function fillReportFields(raw) {
@@ -75,50 +77,6 @@ function fillReportFields(raw) {
   };
 }
 
-function groupByPipeline(messages) {
-  const rootIds = new Set();
-  for (const msg of messages) {
-    if (msg.reply_to_message_id == null) {
-      rootIds.add(String(msg.id));
-    }
-  }
-
-  function resolveRootId(msg) {
-    let current = msg;
-    const visited = new Set();
-    while (current.reply_to_message_id != null) {
-      const parentId = String(current.reply_to_message_id);
-      if (visited.has(parentId)) break;
-      visited.add(parentId);
-      if (rootIds.has(parentId)) return parentId;
-      const parent = messages.find(m => String(m.id) === parentId);
-      if (!parent) return parentId;
-      current = parent;
-    }
-    return String(current.id);
-  }
-
-  const groups = new Map();
-  for (const msg of messages) {
-    const rootId = resolveRootId(msg);
-    if (!groups.has(rootId)) groups.set(rootId, []);
-    groups.get(rootId).push(msg);
-  }
-
-  return [...groups.values()].map((msgs) => {
-    msgs.sort((a, b) => new Date(a.date) - new Date(b.date));
-    return msgs;
-  });
-}
-
-async function findExactSchool(name, cityId) {
-  const exact = await prisma.school.findFirst({
-    where: { cityId, name },
-    select: { id: true, name: true },
-  });
-  return exact || null;
-}
-
 function buildHistoryEntries(eventId, messages, resolveUserFn) {
   return messages.map(msg => {
     const user = resolveUserFn(msg.from);
@@ -170,7 +128,7 @@ function findLatestReportDate(entry) {
   let latest = null;
   for (const m of entry['повідомлення']) {
     if (m.єЗвіт && m.eventReport) {
-      const d = new Date(m.date);
+      const d = new Date(m['Дата']);
       if (!latest || d > latest) latest = d;
     }
   }
@@ -182,7 +140,7 @@ function splitConvMsgsByReportDate(convMsgs, reportDate) {
   const before = [];
   const after = [];
   for (const msg of convMsgs) {
-    if (new Date(msg.date) > reportDate) {
+    if (new Date(msg['Дата']) > reportDate) {
       after.push(msg);
     } else {
       before.push(msg);
@@ -191,8 +149,22 @@ function splitConvMsgsByReportDate(convMsgs, reportDate) {
   return { before, after };
 }
 
+function parseMessage(msg) {
+  return {
+    id: msg['ID повідомлення'],
+    replyTo: msg['Відповідь на ID'] || null,
+    name: msg['Садочок'] || '',
+    stage: msg['Етап воронки'] || '',
+    date: msg['Дата'],
+    from: msg['Відправник'] || '',
+    text: msg['Текст повідомлення'] || '',
+    isReport: msg['єЗвіт'] === true,
+    eventReport: msg['eventReport'] || null,
+  };
+}
+
 async function main() {
-  const { jsonPath, city: cityName } = parseArgs();
+  const { jsonPath, listPath, city: cityName } = parseArgs();
 
   console.log(`\n📂 Читаю ${jsonPath}...`);
   if (!fs.existsSync(jsonPath)) {
@@ -200,7 +172,7 @@ async function main() {
     process.exit(1);
   }
   const raw = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
-  console.log(`   Знайдено ${raw.length} закладів у файлі`);
+  console.log(`   Знайдено ${raw.length} садочків у файлі`);
   if (dryRun) console.log('   🔍 РЕЖИМ DRY-RUN — дані не записуються\n');
 
   let city;
@@ -229,10 +201,11 @@ async function main() {
   const dbSchools = dryRun
     ? []
     : await prisma.school.findMany({
-        where: { cityId: city.id, type: 'Школа' },
+        where: { cityId: city.id, type: 'Садочок' },
         select: { id: true, name: true },
       });
   const nameToId = new Map(dbSchools.map(s => [s.name, s.id]));
+  console.log(`   У БД: ${dbSchools.length} садочків типу "Садочок"`);
 
   let allUsers = dryRun
     ? []
@@ -243,7 +216,8 @@ async function main() {
     const senderNames = new Set();
     for (const entry of raw) {
       for (const msg of entry['повідомлення'] || []) {
-        const from = (msg.from || '').trim();
+        const parsed = parseMessage(msg);
+        const from = parsed.from.trim();
         if (from && !nameToUser.has(from.toLowerCase())) senderNames.add(from);
       }
     }
@@ -272,7 +246,6 @@ async function main() {
     return nameToUser.get(key) || defaultUser;
   }
 
-  let totalPipelines = 0;
   let totalReportEvents = 0;
   let totalHistory = 0;
   let totalReports = 0;
@@ -282,7 +255,7 @@ async function main() {
   let totalSchoolComments = 0;
 
   for (const entry of raw) {
-    const kgName = (entry['Заклад'] || '').replace(/\s+/g, ' ').trim();
+    const kgName = (entry['Садочок'] || '').replace(/\s+/g, ' ').trim();
     if (!kgName || kgName.includes('Загалом') || kgName.includes('Проведено') || kgName.length < 2) {
       continue;
     }
@@ -294,8 +267,9 @@ async function main() {
       continue;
     }
 
-    const convMsgs = entry.повідомлення.filter(m => m.єЗвіт !== true);
-    const reportMsgs = entry.повідомлення.filter(m => m.єЗвіт === true);
+    const parsedMsgs = (entry['повідомлення'] || []).map(parseMessage);
+    const convMsgs = parsedMsgs.filter(m => !m.isReport);
+    const reportMsgs = parsedMsgs.filter(m => m.isReport);
     const eventReports = entry.eventReports || [];
 
     const saveAsSchoolComments = async (msgs, label) => {
@@ -333,8 +307,9 @@ async function main() {
         const filled = fillReportFields(rawReport);
 
         const reportMsg = reportMsgs.find(m => {
-          const parsed = m.text?.match(/1\.\s*Дата:\s*([^\n]+)/);
-          return parsed != null;
+          const parsed = m;
+          const dateMatch = parsed.text?.match(/1\.\s*Дата:\s*([^\n]+)/);
+          return dateMatch != null;
         }) || reportMsgs[0];
 
         let eventDate = new Date();
@@ -354,7 +329,7 @@ async function main() {
               }
             }
           }
-          eventTime = reportMsg.date.split('T')[1]?.slice(0, 5) || null;
+          eventTime = reportMsg.date.split(' ')[1]?.slice(0, 5) || null;
         }
 
         const msgDate = reportMsg ? new Date(reportMsg.date) : new Date();
@@ -435,14 +410,13 @@ async function main() {
     }
   }
 
-  console.log(`\n🎉 Імпорт завершено!`);
+  console.log(`\n🎉 Імпорт садочків завершено!`);
   console.log(`   У файлі: ${raw.length} | Оброблено: ${raw.length - totalNotFound} | Не знайдено в БД: ${totalNotFound}`);
-  console.log(`   Подій-гілок: ${totalPipelines}`);
   console.log(`   Подій-звітів: ${totalReportEvents}`);
   console.log(`   Записів історії: ${totalHistory}`);
   console.log(`   Звітів: ${totalReports} (з обрахованими полями: ${totalWithComputed})`);
   if (totalSkipped > 0) console.log(`   Пропущено (дублікати): ${totalSkipped}`);
-  if (totalSchoolComments > 0) console.log(`   Коментарів після звіту (SchoolComment): ${totalSchoolComments}`);
+  if (totalSchoolComments > 0) console.log(`   SchoolComment: ${totalSchoolComments}`);
 }
 
 main()
