@@ -11,7 +11,7 @@ let dryRun = false;
 function parseArgs() {
   const args = process.argv.slice(2);
   let city = 'Львів';
-  let jsonPath = path.resolve(__dirname, '..', '..', '..', 'schools_categorized_with_reports.json');
+  let jsonPath = path.resolve(__dirname, '..', '..', '..', 'schools_categorized_FINAL.json');
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--city' && args[i + 1]) city = args[++i];
@@ -20,11 +20,6 @@ function parseArgs() {
   }
 
   return { jsonPath, city };
-}
-
-function extractNumber(name) {
-  const m = name.match(/(\d+)/);
-  return m ? parseInt(m[1], 10) : null;
 }
 
 function fillReportFields(raw) {
@@ -61,20 +56,6 @@ function fillReportFields(raw) {
     remainderSum = Math.max(0, (totalSum || 0) - (schoolSum || 0));
   }
 
-  const rating = raw.rating != null ? raw.rating : null;
-  const hadIssues = raw.hadIssues != null ? raw.hadIssues : false;
-  const directorSatisfied = raw.directorSatisfied != null ? raw.directorSatisfied : null;
-  const teachersSatisfied = raw.teachersSatisfied != null ? raw.teachersSatisfied : null;
-  const comment = raw.comment || null;
-  const revisionComment = raw.revisionComment || null;
-
-  const computed = {};
-  if (raw.showingsCount == null) computed.showingsCount = showingsCount;
-  if (raw.classesCount == null) computed.classesCount = classesCount;
-  if (raw.totalSum == null) computed.totalSum = totalSum;
-  if (raw.schoolSum == null) computed.schoolSum = schoolSum;
-  if (raw.remainderSum == null) computed.remainderSum = remainderSum;
-
   return {
     announcementDone: raw.announcementDone != null ? raw.announcementDone : true,
     materialShown: raw.materialShown != null ? raw.materialShown : true,
@@ -85,49 +66,32 @@ function fillReportFields(raw) {
     totalSum,
     schoolSum,
     remainderSum,
-    rating,
-    directorSatisfied,
-    teachersSatisfied,
-    hadIssues,
-    comment,
-    revisionComment,
-    computed,
+    rating: raw.rating != null ? raw.rating : null,
+    directorSatisfied: raw.directorSatisfied != null ? raw.directorSatisfied : null,
+    teachersSatisfied: raw.teachersSatisfied != null ? raw.teachersSatisfied : null,
+    hadIssues: raw.hadIssues != null ? raw.hadIssues : false,
+    comment: raw.comment || null,
+    revisionComment: raw.revisionComment || null,
   };
 }
 
-function parseReportDate(text) {
-  const m = text.match(/1\.\s*Дата:\s*([^\n]+)/);
-  if (!m) return null;
-  const raw = m[1].replace(/[🟩🔲⬜🟪]/g, '').replace(/понеділок|вівторок|середа|четвер|п.ятниця|субота|неділя/gi, '').trim();
-  const parts = raw.split(/[./]/);
-  if (parts.length < 3) return null;
-  const day = parseInt(parts[0], 10);
-  const month = parseInt(parts[1], 10);
-  let year = parseInt(parts[2], 10);
-  if (year < 100) year += 2000;
-  if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  return { day, month, year };
-}
-
-function groupByPipeline(rows) {
+function groupByPipeline(messages) {
   const rootIds = new Set();
-  for (const row of rows) {
-    const parentId = row.reply_to_message_id;
-    if (parentId == null) {
-      rootIds.add(String(row.id));
+  for (const msg of messages) {
+    if (msg.reply_to_message_id == null) {
+      rootIds.add(String(msg.id));
     }
   }
 
-  function resolveRootId(row) {
-    let current = row;
+  function resolveRootId(msg) {
+    let current = msg;
     const visited = new Set();
     while (current.reply_to_message_id != null) {
       const parentId = String(current.reply_to_message_id);
       if (visited.has(parentId)) break;
       visited.add(parentId);
       if (rootIds.has(parentId)) return parentId;
-      const parent = rows.find(r => String(r.id) === parentId);
+      const parent = messages.find(m => String(m.id) === parentId);
       if (!parent) return parentId;
       current = parent;
     }
@@ -135,44 +99,24 @@ function groupByPipeline(rows) {
   }
 
   const groups = new Map();
-  for (const row of rows) {
-    const rootId = resolveRootId(row);
+  for (const msg of messages) {
+    const rootId = resolveRootId(msg);
     if (!groups.has(rootId)) groups.set(rootId, []);
-    groups.get(rootId).push(row);
+    groups.get(rootId).push(msg);
   }
 
   return [...groups.values()].map((msgs) => {
     msgs.sort((a, b) => new Date(a.date) - new Date(b.date));
-    return {
-      finalStatus: 'BASE',
-      messages: msgs,
-    };
+    return msgs;
   });
 }
 
-async function findOrCreateSchool(name, cityId) {
-  const num = extractNumber(name);
-
-  if (num !== null) {
-    const existing = await prisma.school.findFirst({
-      where: { cityId, type: 'Школа', name: { contains: String(num) } },
-    });
-    if (existing) return { school: existing, created: false };
-  }
-
-  const all = await prisma.school.findMany({
-    where: { cityId, type: 'Школа' },
+async function findExactSchool(name, cityId) {
+  const exact = await prisma.school.findFirst({
+    where: { cityId, name },
     select: { id: true, name: true },
   });
-
-  const lowerName = name.toLowerCase().replace(/[🟩🔲⬜🟪]/g, '').trim();
-  const match = all.find(s => s.name.toLowerCase().includes(lowerName) || lowerName.includes(s.name.toLowerCase()));
-  if (match) return { school: match, created: false };
-
-  const school = await prisma.school.create({
-    data: { name, type: 'Школа', cityId },
-  });
-  return { school, created: true };
+  return exact || null;
 }
 
 function buildHistoryEntries(eventId, messages, userId) {
@@ -186,28 +130,6 @@ function buildHistoryEntries(eventId, messages, userId) {
   }));
 }
 
-function computeReportEventDate(msg) {
-  const parsed = parseReportDate(msg.text);
-  if (parsed) {
-    return {
-      date: new Date(parsed.year, parsed.month - 1, parsed.day),
-      time: msg.date.split('T')[1]?.slice(0, 5) || null,
-    };
-  }
-  return {
-    date: new Date(msg.date),
-    time: msg.date.split('T')[1]?.slice(0, 5) || null,
-  };
-}
-
-function computePipelineDate(messages) {
-  const lastMsg = messages[messages.length - 1];
-  return {
-    date: new Date(lastMsg.date),
-    time: lastMsg.date.split('T')[1]?.slice(0, 5) || null,
-  };
-}
-
 async function createEvent(data) {
   const dayStart = new Date(data.date);
   dayStart.setHours(0, 0, 0, 0);
@@ -218,7 +140,6 @@ async function createEvent(data) {
     where: {
       schoolId: data.schoolId,
       date: { gte: dayStart, lte: dayEnd },
-      project: 'Голограма',
     },
   });
   if (existing) {
@@ -251,7 +172,7 @@ async function main() {
     process.exit(1);
   }
   const raw = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
-  console.log(`   Знайдено ${raw.length} закладів`);
+  console.log(`   Знайдено ${raw.length} закладів у файлі`);
   if (dryRun) console.log('   🔍 РЕЖИМ DRY-RUN — дані не записуються\n');
 
   let city;
@@ -277,43 +198,51 @@ async function main() {
     }
   }
 
+  const dbSchools = dryRun
+    ? []
+    : await prisma.school.findMany({
+        where: { cityId: city.id, type: 'Школа' },
+        select: { id: true, name: true },
+      });
+  const nameToId = new Map(dbSchools.map(s => [s.name, s.id]));
+
   let totalPipelines = 0;
   let totalReportEvents = 0;
   let totalHistory = 0;
   let totalReports = 0;
-  let createdSchools = 0;
   let totalSkipped = 0;
+  let totalNotFound = 0;
   let totalWithComputed = 0;
-  let totalEntries = 0;
 
-  for (const kg of raw) {
-    const kgName = (kg['Заклад'] || '').replace(/\s+/g, ' ').trim();
+  for (const entry of raw) {
+    const kgName = (entry['Заклад'] || '').replace(/\s+/g, ' ').trim();
     if (!kgName || kgName.includes('Загалом') || kgName.includes('Проведено') || kgName.length < 2) {
       continue;
     }
-    totalEntries++;
-    const convMsgs = kg.повідомлення.filter(m => m.єЗвіт !== true);
-    const reportMsgs = kg.повідомлення.filter(m => m.єЗвіт === true);
 
-    let school;
-    if (!dryRun) {
-      const result = await findOrCreateSchool(kgName, city.id);
-      school = result.school;
-      if (result.created) createdSchools++;
-    } else {
-      school = { id: 'dry-run', name: kgName };
+    const schoolId = dryRun ? 'dry-run' : nameToId.get(kgName) || null;
+    if (!schoolId) {
+      totalNotFound++;
+      console.log(`  ❓ ${kgName.slice(0, 60)} → не знайдено в БД (пропущено)`);
+      continue;
     }
+
+    const convMsgs = entry.повідомлення.filter(m => m.єЗвіт !== true);
+    const reportMsgs = entry.повідомлення.filter(m => m.єЗвіт === true);
+    const eventReports = entry.eventReports || [];
 
     const pipelines = groupByPipeline(convMsgs);
 
     for (const pipeline of pipelines) {
-      const { date: eventDate, time: eventTime } = computePipelineDate(pipeline.messages);
+      const lastMsg = pipeline[pipeline.length - 1];
+      const eventDate = new Date(lastMsg.date);
+      const eventTime = lastMsg.date.split('T')[1]?.slice(0, 5) || null;
 
       if (!dryRun) {
         const result = await createEvent({
           cityId: city.id,
-          schoolId: school.id,
-          schoolName: school.name,
+          schoolId,
+          schoolName: kgName,
           date: eventDate,
           time: eventTime,
           status: 'BASE',
@@ -321,97 +250,128 @@ async function main() {
         if (result.skipped) {
           totalSkipped++;
         } else {
-          const hist = buildHistoryEntries(result.event.id, pipeline.messages, defaultUser.id);
+          const hist = buildHistoryEntries(result.event.id, pipeline, defaultUser.id);
           if (hist.length > 0) {
             await prisma.eventHistory.createMany({ data: hist });
           }
           totalPipelines++;
           totalHistory += hist.length;
-          console.log(`  ✅ ${school.name.slice(0, 50)} → BASE (${hist.length} записів)`);
+          console.log(`  ✅ ${kgName.slice(0, 50)} → BASE (${hist.length} записів)`);
         }
       } else {
         totalPipelines++;
-        totalHistory += pipeline.messages.length;
-        console.log(`  📋 ${school.name.slice(0, 50)} → BASE (${pipeline.messages.length} повідомлень)`);
+        totalHistory += pipeline.length;
+        console.log(`  📋 ${kgName.slice(0, 50)} → BASE (${pipeline.length} повідомлень)`);
       }
     }
 
-    for (const rm of reportMsgs) {
-      const rawReport = rm.eventReport || {};
-      const filled = fillReportFields(rawReport);
+    if (eventReports.length > 0) {
+      for (const rawReport of eventReports) {
+        const filled = fillReportFields(rawReport);
 
-      const { date: eventDate, time: eventTime } = computeReportEventDate(rm);
-      const msgDate = new Date(rm.date);
-      let submittedAt = rawReport.submittedAt ? new Date(rawReport.submittedAt) : msgDate;
-      let approvedAt = rawReport.approvedAt ? new Date(rawReport.approvedAt) : msgDate;
+        const reportMsg = reportMsgs.find(m => {
+          const parsed = m.text?.match(/1\.\s*Дата:\s*([^\n]+)/);
+          return parsed != null;
+        }) || reportMsgs[0];
 
-      if (!dryRun) {
-        const result = await createEvent({
-          cityId: city.id,
-          schoolId: school.id,
-          schoolName: school.name,
-          date: eventDate,
-          time: eventTime,
-          status: 'RE_SALE',
-          childrenActual: filled.childrenCount,
-          received: filled.totalSum,
-        });
-        if (result.skipped) {
-          totalSkipped++;
-        } else {
-          const hist = buildHistoryEntries(result.event.id, [rm], defaultUser.id);
-          if (hist.length > 0) {
-            await prisma.eventHistory.createMany({ data: hist });
+        let eventDate = new Date();
+        let eventTime = null;
+        if (reportMsg) {
+          const dateMatch = reportMsg.text?.match(/1\.\s*Дата:\s*([^\n]+)/);
+          if (dateMatch) {
+            const raw = dateMatch[1].replace(/[🟩🔲⬜🟪]/g, '').replace(/понеділок|вівторок|середа|четвер|п.ятниця|субота|неділя/gi, '').trim();
+            const parts = raw.split(/[./]/);
+            if (parts.length >= 3) {
+              let day = parseInt(parts[0], 10);
+              let month = parseInt(parts[1], 10);
+              let year = parseInt(parts[2], 10);
+              if (year < 100) year += 2000;
+              if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+                eventDate = new Date(year, month - 1, day);
+              }
+            }
           }
+          eventTime = reportMsg.date.split('T')[1]?.slice(0, 5) || null;
+        }
 
-          await prisma.eventReport.create({
-            data: {
-              eventId: result.event.id,
-              status: 'APPROVED',
-              announcementDone: filled.announcementDone,
-              materialShown: filled.materialShown,
-              childrenCount: filled.childrenCount,
-              classesCount: filled.classesCount,
-              privilegedCount: filled.privilegedCount,
-              showingsCount: filled.showingsCount,
-              totalSum: filled.totalSum,
-              schoolSum: filled.schoolSum,
-              remainderSum: filled.remainderSum,
-              rating: filled.rating,
-              directorSatisfied: filled.directorSatisfied,
-              teachersSatisfied: filled.teachersSatisfied,
-              hadIssues: filled.hadIssues,
-              comment: filled.comment,
-              revisionComment: filled.revisionComment,
-              submittedAt,
-              approvedAt,
-              createdAt: msgDate,
-            },
+        const msgDate = reportMsg ? new Date(reportMsg.date) : new Date();
+        const submittedAt = rawReport.submittedAt ? new Date(rawReport.submittedAt) : msgDate;
+        const approvedAt = rawReport.approvedAt ? new Date(rawReport.approvedAt) : msgDate;
+
+        if (!dryRun) {
+          const result = await createEvent({
+            cityId: city.id,
+            schoolId,
+            schoolName: kgName,
+            date: eventDate,
+            time: eventTime,
+            status: 'RE_SALE',
+            childrenActual: filled.childrenCount,
+            received: filled.totalSum,
           });
+          if (result.skipped) {
+            totalSkipped++;
+          } else {
+            const hist = reportMsg
+              ? buildHistoryEntries(result.event.id, [reportMsg], defaultUser.id)
+              : [];
+            if (hist.length > 0) {
+              await prisma.eventHistory.createMany({ data: hist });
+            }
 
+            await prisma.eventReport.create({
+              data: {
+                eventId: result.event.id,
+                status: 'APPROVED',
+                announcementDone: filled.announcementDone,
+                materialShown: filled.materialShown,
+                childrenCount: filled.childrenCount,
+                classesCount: filled.classesCount,
+                privilegedCount: filled.privilegedCount,
+                showingsCount: filled.showingsCount,
+                totalSum: filled.totalSum,
+                schoolSum: filled.schoolSum,
+                remainderSum: filled.remainderSum,
+                rating: filled.rating,
+                directorSatisfied: filled.directorSatisfied,
+                teachersSatisfied: filled.teachersSatisfied,
+                hadIssues: filled.hadIssues,
+                comment: filled.comment,
+                revisionComment: filled.revisionComment,
+                submittedAt,
+                approvedAt,
+                createdAt: msgDate,
+              },
+            });
+
+            totalReportEvents++;
+            totalReports++;
+            totalHistory += hist.length;
+            const computedFields = [];
+            if (rawReport.totalSum == null) computedFields.push('totalSum');
+            if (rawReport.schoolSum == null) computedFields.push('schoolSum');
+            if (rawReport.remainderSum == null) computedFields.push('remainderSum');
+            if (rawReport.showingsCount == null) computedFields.push('showingsCount');
+            if (rawReport.classesCount == null) computedFields.push('classesCount');
+            if (computedFields.length > 0) totalWithComputed++;
+            console.log(`  ✅ ${kgName.slice(0, 50)} → RE_SALE | дітей:${filled.childrenCount} сума:${filled.totalSum} рейтинг:${filled.rating ?? '-'}${computedFields.length > 0 ? ` (обраховано: ${computedFields.join(', ')})` : ''}`);
+          }
+        } else {
           totalReportEvents++;
           totalReports++;
-          totalHistory += hist.length;
-          if (Object.keys(filled.computed).length > 0) {
-            totalWithComputed++;
-          }
-          console.log(`  ✅ ${school.name.slice(0, 50)} → RE_SALE | дітей:${filled.childrenCount} сума:${filled.totalSum} рейтинг:${filled.rating ?? '-'} ${Object.keys(filled.computed).length > 0 ? '(обраховано: ' + Object.keys(filled.computed).join(', ') + ')' : ''}`);
+          const computedFields = [];
+          if (rawReport.totalSum == null) computedFields.push('totalSum');
+          if (rawReport.schoolSum == null) computedFields.push('schoolSum');
+          if (rawReport.remainderSum == null) computedFields.push('remainderSum');
+          if (computedFields.length > 0) totalWithComputed++;
+          console.log(`  📋 ${kgName.slice(0, 50)} → RE_SALE | дітей:${filled.childrenCount} сума:${filled.totalSum} рейтинг:${filled.rating ?? '-'}`);
         }
-      } else {
-        totalReportEvents++;
-        totalReports++;
-        totalHistory += 1;
-        if (Object.keys(filled.computed).length > 0) {
-          totalWithComputed++;
-        }
-        const computedNote = Object.keys(filled.computed).length > 0 ? ` | обраховано: ${Object.keys(filled.computed).join(', ')}` : '';
-        console.log(`  📋 ${school.name.slice(0, 50)} → RE_SALE | дітей:${filled.childrenCount} сума:${filled.totalSum} рейтинг:${filled.rating ?? '-'}${computedNote}`);
       }
     }
   }
 
   console.log(`\n🎉 Імпорт завершено!`);
-  console.log(`   Закладів: ${totalEntries} (з ${raw.length} у файлі, нових: ${createdSchools})`);
+  console.log(`   У файлі: ${raw.length} | Оброблено: ${raw.length - totalNotFound} | Не знайдено в БД: ${totalNotFound}`);
   console.log(`   Подій-гілок: ${totalPipelines}`);
   console.log(`   Подій-звітів: ${totalReportEvents}`);
   console.log(`   Записів історії: ${totalHistory}`);

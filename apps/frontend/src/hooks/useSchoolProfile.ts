@@ -304,3 +304,35 @@ export function useUpdateHistoryComment() {
     },
   });
 }
+
+export function useSchoolComments(schoolId: string) {
+  return useQuery({
+    queryKey: ["schoolComments", schoolId],
+    queryFn: () =>
+      api
+        .get(`/schools/${schoolId}/comments`)
+        .then((r) => r.data.items as import("../types").SchoolComment[]),
+    enabled: !!schoolId,
+  });
+}
+
+export function useAddSchoolComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      schoolId,
+      type,
+      text,
+    }: {
+      schoolId: string;
+      type: string;
+      text: string;
+    }) =>
+      api
+        .post(`/schools/${schoolId}/comments`, { type, text })
+        .then((r) => r.data),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["schoolComments", vars.schoolId] });
+    },
+  });
+}

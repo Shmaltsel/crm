@@ -111,7 +111,9 @@ describe('DaysOffService', () => {
       await service.findAll(undefined, '2026-07-31');
 
       const call = mockPrisma.dayOff.findMany.mock.calls[0][0];
-      expect(call.where.date.lt).toEqual(new Date(new Date('2026-07-31').getTime() + 86400000));
+      expect(call.where.date.lt).toEqual(
+        new Date(new Date('2026-07-31').getTime() + 86400000),
+      );
       expect(call.where.date.lte).toBeUndefined();
       expect(call.where.date.gte).toBeUndefined();
     });
@@ -456,7 +458,9 @@ describe('DaysOffService', () => {
         role: 'MANAGER',
         cityId: 'city-1',
       });
-      mockNotifications.sendTelegramNotification.mockResolvedValueOnce(undefined);
+      mockNotifications.sendTelegramNotification.mockResolvedValueOnce(
+        undefined,
+      );
 
       await (service as any).notifyManager(
         'city-1',

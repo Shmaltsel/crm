@@ -19,6 +19,8 @@ import {
   useUpdateSchool,
   useCreateEvent,
   useDeleteEvent,
+  useSchoolComments,
+  useAddSchoolComment,
 } from "../hooks/useSchoolProfile";
 
 import type { Event, User } from "../types";
@@ -100,6 +102,8 @@ export default function SchoolProfile() {
   const addCommentMutation = useAddComment();
   const updateHistoryMutation = useUpdateHistoryComment();
   const deleteEventMutation = useDeleteEvent(id);
+  const { data: schoolComments = [] } = useSchoolComments(id);
+  const addSchoolCommentMutation = useAddSchoolComment();
   const [completedDeleteTarget, setCompletedDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const schoolData = useMemo(() => {
@@ -234,10 +238,18 @@ export default function SchoolProfile() {
           }, 500);
         }
       } else if (commentModal.mode === "add_comment") {
-        await addCommentMutation.mutateAsync({
-          eventId: currentEvent.id,
-          comment: commentModal.text,
-        });
+        if (currentEvent) {
+          await addCommentMutation.mutateAsync({
+            eventId: currentEvent.id,
+            comment: commentModal.text,
+          });
+        } else {
+          await addSchoolCommentMutation.mutateAsync({
+            schoolId: schoolData.id,
+            type: "NOTE",
+            text: commentModal.text,
+          });
+        }
         tick();
       } else if (commentModal.mode === "history" && commentModal.historyId) {
         await updateHistoryMutation.mutateAsync({
@@ -261,6 +273,8 @@ export default function SchoolProfile() {
       updateStatus,
       addCommentMutation,
       updateHistoryMutation,
+      addSchoolCommentMutation,
+      schoolData.id,
     ],
   );
 
@@ -632,6 +646,7 @@ export default function SchoolProfile() {
               currentEvent={
                 eventFullLoading ? currentEventBase : currentEvent
               }
+              schoolComments={schoolComments}
               onHistoryClick={handleHistoryClick}
               onAddCommentClick={handleAddCommentClick}
             />
@@ -660,6 +675,7 @@ export default function SchoolProfile() {
               currentEvent={
                 eventFullLoading ? currentEventBase : currentEvent
               }
+              schoolComments={schoolComments}
               onHistoryClick={handleHistoryClick}
               onAddCommentClick={handleAddCommentClick}
             />

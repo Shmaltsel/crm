@@ -145,6 +145,37 @@ export class EventsService {
       },
       include: { history: true, city: { select: { managerId: true } } },
     });
+
+    const pendingComments = await this.prisma.schoolComment.findMany({
+      where: { schoolId: data.schoolId, deletedAt: null },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (pendingComments.length > 0) {
+      const authorIds = [...new Set(pendingComments.map((c) => c.authorId))];
+      const authors = await this.prisma.user.findMany({
+        where: { id: { in: authorIds } },
+        select: { id: true, name: true },
+      });
+      const authorMap = new Map(authors.map((a) => [a.id, a.name]));
+
+      await this.prisma.eventHistory.createMany({
+        data: pendingComments.map((c) => ({
+          eventId: event.id,
+          action: `Коментар до події`,
+          comment: c.text,
+          userId: c.authorId,
+          userName: authorMap.get(c.authorId) ?? user.name,
+          role: user.role,
+        })),
+      });
+
+      await this.prisma.schoolComment.updateMany({
+        where: { schoolId: data.schoolId, deletedAt: null },
+        data: { deletedAt: new Date() },
+      });
+    }
+
     await this.invalidateSchoolEventsCache(event.schoolId);
 
     this.notifyManagerEventCreated(event.id, data);

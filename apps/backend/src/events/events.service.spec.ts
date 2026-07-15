@@ -18,6 +18,7 @@ const mockPrisma = {
   },
   eventHistory: {
     create: jest.fn(),
+    createMany: jest.fn(),
     findMany: jest.fn(),
     update: jest.fn(),
     deleteMany: jest.fn(),
@@ -32,8 +33,13 @@ const mockPrisma = {
   eventReport: { upsert: jest.fn() },
   expenseItem: { deleteMany: jest.fn(), createMany: jest.fn() },
   salaryRecord: { deleteMany: jest.fn(), createMany: jest.fn() },
+  schoolComment: {
+    findMany: jest.fn().mockResolvedValue([]),
+    updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+  },
   user: {
     findUnique: jest.fn(),
+    findMany: jest.fn().mockResolvedValue([]),
     update: jest.fn(),
   },
   $transaction: jest.fn(),

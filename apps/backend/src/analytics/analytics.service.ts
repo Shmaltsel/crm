@@ -83,13 +83,20 @@ export class AnalyticsService {
   async revenueByCityMonth(projectId?: string, year?: number) {
     const prefix = await this.vkey('analytics');
     const cacheKey = `${prefix}:revenueByCityMonth:${projectId ?? ''}:${year ?? 'all'}`;
-    const cached = await this.cacheManager.get<ReturnType<typeof this.revenueByCityMonth>>(cacheKey);
+    const cached =
+      await this.cacheManager.get<ReturnType<typeof this.revenueByCityMonth>>(
+        cacheKey,
+      );
     if (cached) return cached;
 
     const conditions: Prisma.Sql[] = [Prisma.sql`AND e.status IN ('RE_SALE')`];
     if (year) {
-      conditions.push(Prisma.sql`AND e.date >= ${new Date(`${year}-01-01`)}::date`);
-      conditions.push(Prisma.sql`AND e.date < ${new Date(`${year + 1}-01-01`)}::date`);
+      conditions.push(
+        Prisma.sql`AND e.date >= ${new Date(`${year}-01-01`)}::date`,
+      );
+      conditions.push(
+        Prisma.sql`AND e.date < ${new Date(`${year + 1}-01-01`)}::date`,
+      );
     }
     const projectCond = projectId
       ? Prisma.sql`AND e.project = ${projectId}`
@@ -541,7 +548,12 @@ export class AnalyticsService {
     });
   }
 
-  async setAnnotation(year: number, month: number, text: string, color: string) {
+  async setAnnotation(
+    year: number,
+    month: number,
+    text: string,
+    color: string,
+  ) {
     if (!text) {
       return this.prisma.analyticsAnnotation.deleteMany({
         where: { year, month },

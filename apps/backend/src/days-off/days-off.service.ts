@@ -23,7 +23,9 @@ export class DaysOffService {
           ? {
               date: {
                 ...(from ? { gte: new Date(from) } : {}),
-                ...(to ? { lt: new Date(new Date(to).getTime() + 86400000) } : {}),
+                ...(to
+                  ? { lt: new Date(new Date(to).getTime() + 86400000) }
+                  : {}),
               },
             }
           : {}),

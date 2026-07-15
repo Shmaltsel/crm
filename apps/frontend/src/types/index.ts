@@ -93,6 +93,15 @@ export interface EventHistory {
   createdAt: string;
 }
 
+export interface SchoolComment {
+  id: string;
+  schoolId: string;
+  type: "NOTE" | "CALL" | "RESCHEDULE" | "CONFIRMATION" | "PROBLEM";
+  text: string;
+  createdAt: string;
+  author: { id: string; name: string; role: string };
+}
+
 export interface ExpenseItem {
   category?: string;
   name?: string;

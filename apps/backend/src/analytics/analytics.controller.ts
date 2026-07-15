@@ -170,7 +170,10 @@ export class AnalyticsController {
   @Get('revenue-by-city-month')
   @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   async revenueByCityMonth(@Query() query: RevenueByMonthDto) {
-    return this.analyticsService.revenueByCityMonth(query.projectId, query.year);
+    return this.analyticsService.revenueByCityMonth(
+      query.projectId,
+      query.year,
+    );
   }
 
   @ApiOperation({ summary: 'Події по містах' })
@@ -263,7 +266,12 @@ export class AnalyticsController {
   @Put('annotations')
   @Roles('SUPERADMIN', 'OWNER')
   async setAnnotation(@Body() dto: SetAnnotationDto) {
-    return this.analyticsService.setAnnotation(dto.year, dto.month, dto.text, dto.color ?? '#3b82f6');
+    return this.analyticsService.setAnnotation(
+      dto.year,
+      dto.month,
+      dto.text,
+      dto.color ?? '#3b82f6',
+    );
   }
 
   private async resolveCityId(
