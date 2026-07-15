@@ -1079,7 +1079,7 @@ export default function Analytics() {
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
-                    className="touch-none"
+                    className="touch-none overflow-visible"
                   >
                     <ResponsiveContainer width="100%" height={280}>
                       <AreaChart data={chartDataForRender} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
