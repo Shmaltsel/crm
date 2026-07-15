@@ -13,6 +13,7 @@ import {
   ClipboardCheck,
   Users,
   Trophy,
+  BarChart3,
 } from "lucide-react";
 
 interface TourStep {
@@ -22,6 +23,117 @@ interface TourStep {
   icon: React.ComponentType<{ className?: string }>;
   route: string;
 }
+
+const SUPERADMIN_STEPS: TourStep[] = [
+  {
+    target: "dashboard",
+    title: "Дашборд",
+    description: "Головна сторінка з оглядом подій, фінансів та активності. Тут ви бачите все найважливіше на одному екрані.",
+    icon: LayoutDashboard,
+    route: "/dashboard",
+  },
+  {
+    target: "calendar",
+    title: "Календар",
+    description: "Переглядайте заплановані події, створюйте нові та керуйте розкладом. На мобільному — свайпайте між днями.",
+    icon: Calendar,
+    route: "/calendar",
+  },
+  {
+    target: "schools",
+    title: "Заклади",
+    description: "База закладів з контактами директорів, статусом подій та історією відвідувань.",
+    icon: School,
+    route: "/schools",
+  },
+  {
+    target: "reports",
+    title: "Звіти",
+    description: "Переглядайте та затверджуйте звіти екіпажів. Тут нараховуються зарплати після затвердження.",
+    icon: ClipboardCheck,
+    route: "/reports/review",
+  },
+  {
+    target: "finance",
+    title: "Фінанси",
+    description: "KPI, виручка по містах, графіки та топ-події. Фінансовий пульс вашого бізнесу.",
+    icon: Wallet,
+    route: "/finance",
+  },
+  {
+    target: "employees",
+    title: "Працівники",
+    description: "Управління командою: створення, редагування ролей та призначення до міст.",
+    icon: Users,
+    route: "/employees",
+  },
+  {
+    target: "analytics",
+    title: "Аналітика",
+    description: "Детальні графіки виручки, прибутку, сезонності та прогнози. Аналізуйте тренди та плануйте стратегію.",
+    icon: BarChart3,
+    route: "/analytics",
+  },
+  {
+    target: "leaderboard",
+    title: "Рейтинг",
+    description: "Порівняння продуктивності міст та працівників за різними метриками.",
+    icon: Trophy,
+    route: "/city-leaderboard",
+  },
+];
+
+const OWNER_STEPS: TourStep[] = [
+  {
+    target: "dashboard",
+    title: "Дашборд",
+    description: "Головна сторінка з оглядом подій, фінансів та активності. Тут ви бачите все найважливіше на одному екрані.",
+    icon: LayoutDashboard,
+    route: "/dashboard",
+  },
+  {
+    target: "calendar",
+    title: "Календар",
+    description: "Переглядайте заплановані події, створюйте нові та керуйте розкладом. На мобільному — свайпайте між днями.",
+    icon: Calendar,
+    route: "/calendar",
+  },
+  {
+    target: "schools",
+    title: "Заклади",
+    description: "База закладів з контактами директорів, статусом подій та історією відвідувань.",
+    icon: School,
+    route: "/schools",
+  },
+  {
+    target: "reports",
+    title: "Звіти",
+    description: "Переглядайте та затверджуйте звіти екіпажів. Тут нараховуються зарплати після затвердження.",
+    icon: ClipboardCheck,
+    route: "/reports/review",
+  },
+  {
+    target: "finance",
+    title: "Фінанси",
+    description: "KPI, виручка по містах, графіки та топ-події. Фінансовий пульс вашого бізнесу.",
+    icon: Wallet,
+    route: "/finance",
+  },
+  {
+    target: "analytics",
+    title: "Аналітика",
+    description: "Детальні графіки виручки, прибутку, сезонності та прогнози. Аналізуйте тренди та плануйте стратегію.",
+    icon: BarChart3,
+    route: "/analytics",
+  },
+  {
+    target: "leaderboard",
+    title: "Рейтинг",
+    description: "Порівняння продуктивності міст та працівників за різними метриками.",
+    icon: Trophy,
+    route: "/city-leaderboard",
+  },
+];
 
 const MANAGER_STEPS: TourStep[] = [
   {
@@ -40,7 +152,7 @@ const MANAGER_STEPS: TourStep[] = [
   },
   {
     target: "schools",
-    title: "Школи та Садочки",
+    title: "Заклади",
     description: "База закладів з контактами директорів, статусом подій та історією відвідувань.",
     icon: School,
     route: "/schools",
@@ -59,17 +171,6 @@ const MANAGER_STEPS: TourStep[] = [
     icon: Wallet,
     route: "/finance",
   },
-];
-
-const SUPERADMIN_STEPS: TourStep[] = [
-  ...MANAGER_STEPS,
-  {
-    target: "employees",
-    title: "Працівники",
-    description: "Управління командою: створення, редагування ролей та призначення до міст.",
-    icon: Users,
-    route: "/employees",
-  },
   {
     target: "leaderboard",
     title: "Рейтинг",
@@ -79,6 +180,55 @@ const SUPERADMIN_STEPS: TourStep[] = [
   },
 ];
 
+const HOST_STEPS: TourStep[] = [
+  {
+    target: "calendar",
+    title: "Календар",
+    description: "Переглядайте розклад призначених вам подій. Зручний перегляд по днях та тижнях.",
+    icon: Calendar,
+    route: "/calendar",
+  },
+  {
+    target: "schools",
+    title: "Заклади",
+    description: "Інформація про заклади, де проходять заходи — адреси та дані.",
+    icon: School,
+    route: "/schools",
+  },
+  {
+    target: "finance",
+    title: "Мої нарахування",
+    description: "Переглядайте ваші заробітки за проведені заходи.",
+    icon: Wallet,
+    route: "/finance",
+  },
+];
+
+const DRIVER_STEPS: TourStep[] = [
+  {
+    target: "calendar",
+    title: "Календар",
+    description: "Бачите розклад подій та маршрути поїздок на кожен день.",
+    icon: Calendar,
+    route: "/calendar",
+  },
+  {
+    target: "schools",
+    title: "Заклади",
+    description: "Адреси закладів для планування маршрутів та навігації.",
+    icon: School,
+    route: "/schools",
+  },
+];
+
+const STEPS_BY_ROLE: Record<string, TourStep[]> = {
+  SUPERADMIN: SUPERADMIN_STEPS,
+  OWNER: OWNER_STEPS,
+  MANAGER: MANAGER_STEPS,
+  HOST: HOST_STEPS,
+  DRIVER: DRIVER_STEPS,
+};
+
 const STORAGE_KEY_PREFIX = "crm_onboarding_completed_";
 
 export default function OnboardingTour() {
@@ -87,10 +237,7 @@ export default function OnboardingTour() {
   const [show, setShow] = useState(false);
   const [step, setStep] = useState(0);
 
-  const steps =
-    user?.role === "SUPERADMIN" || user?.role === "OWNER"
-      ? SUPERADMIN_STEPS
-      : MANAGER_STEPS;
+  const steps = STEPS_BY_ROLE[user?.role ?? ""] ?? MANAGER_STEPS;
 
   useEffect(() => {
     if (!user) return;
