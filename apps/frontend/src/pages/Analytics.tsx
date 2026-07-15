@@ -1111,7 +1111,7 @@ export default function Analytics() {
                     className="touch-none overflow-visible"
                   >
                     <ResponsiveContainer width="100%" height={280}>
-                      <AreaChart data={chartDataForRender} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                      <AreaChart data={chartDataForRender} margin={{ top: 8, right: 28, left: 0, bottom: 0 }}>
                         <defs>
                           {activeLines.map((line) => (
                             <linearGradient key={line.key} id={`grad-${line.key}`} x1="0" y1="0" x2="0" y2="1">
