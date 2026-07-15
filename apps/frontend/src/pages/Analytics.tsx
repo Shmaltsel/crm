@@ -512,6 +512,16 @@ export default function Analytics() {
   const pinchRef = useRef<{ dist: number; range: [number, number] } | null>(null);
   const zoomTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
+  const CHIP_COLORS: Record<string, { active: string; dot: string }> = {
+    forecast: { active: 'border-[hsl(38,92%,50%)]/40 bg-[hsl(38,92%,50%)]/10 text-[hsl(38,92%,30%)]', dot: 'bg-warning' },
+    trend: { active: 'border-brand/40 bg-brand/10 text-[hsl(217,72%,30%)]', dot: 'bg-brand' },
+    stats: { active: 'border-danger/40 bg-danger/10 text-[hsl(348,68%,30%)]', dot: 'bg-danger' },
+    yoy: { active: 'border-brand/40 bg-brand/10 text-[hsl(217,72%,30%)]', dot: 'bg-brand' },
+    anomalies: { active: 'border-danger/40 bg-danger/10 text-[hsl(348,68%,30%)]', dot: 'bg-danger' },
+    target: { active: 'border-[#f59e0b]/40 bg-[#f59e0b]/10 text-[hsl(38,92%,30%)]', dot: 'bg-[#f59e0b]' },
+    revenue: { active: 'border-[#8b5cf6]/40 bg-[#8b5cf6]/10 text-[hsl(262,72%,35%)]', dot: 'bg-[#8b5cf6]' },
+  };
+
   if (chartData.length !== prevDataLength) {
     setPrevDataLength(chartData.length);
     setZoomRange([Math.max(0, chartData.length - 12), chartData.length - 1]);
@@ -886,11 +896,11 @@ export default function Analytics() {
                   onClick={() => setShowForecast((v) => !v)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
                     showForecast
-                      ? 'border-border-strong bg-surface shadow-sm text-content-primary'
+                      ? CHIP_COLORS.forecast.active
                       : 'border-border-strong bg-surface text-content-secondary'
                   }`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${showForecast ? 'bg-warning' : 'bg-content-muted'}`} />
+                  <span className={`w-1.5 h-1.5 rounded-full ${showForecast ? CHIP_COLORS.forecast.dot : 'bg-content-muted'}`} />
                   Прогноз
                 </button>
               )}
@@ -899,11 +909,11 @@ export default function Analytics() {
                   onClick={() => setShowTrend((v) => !v)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
                     showTrend
-                      ? 'border-border-strong bg-surface shadow-sm text-content-primary'
+                      ? CHIP_COLORS.trend.active
                       : 'border-border-strong bg-surface text-content-secondary'
                   }`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${showTrend ? 'bg-brand' : 'bg-content-muted'}`} />
+                  <span className={`w-1.5 h-1.5 rounded-full ${showTrend ? CHIP_COLORS.trend.dot : 'bg-content-muted'}`} />
                   Тренд
                 </button>
               )}
@@ -912,11 +922,11 @@ export default function Analytics() {
                   onClick={() => setShowStats((v) => !v)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
                     showStats
-                      ? 'border-border-strong bg-surface shadow-sm text-content-primary'
+                      ? CHIP_COLORS.stats.active
                       : 'border-border-strong bg-surface text-content-secondary'
                   }`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${showStats ? 'bg-danger' : 'bg-content-muted'}`} />
+                  <span className={`w-1.5 h-1.5 rounded-full ${showStats ? CHIP_COLORS.stats.dot : 'bg-content-muted'}`} />
                   Статистика
                 </button>
               )}
@@ -925,11 +935,11 @@ export default function Analytics() {
                   onClick={() => setShowYoY((v) => !v)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
                     showYoY
-                      ? 'border-border-strong bg-surface shadow-sm text-content-primary'
+                      ? CHIP_COLORS.yoy.active
                       : 'border-border-strong bg-surface text-content-secondary'
                   }`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${showYoY ? 'bg-brand' : 'bg-content-muted'}`} />
+                  <span className={`w-1.5 h-1.5 rounded-full ${showYoY ? CHIP_COLORS.yoy.dot : 'bg-content-muted'}`} />
                   Рік/рік
                 </button>
               )}
@@ -938,11 +948,11 @@ export default function Analytics() {
                   onClick={() => setShowAnomalies((v) => !v)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
                     showAnomalies
-                      ? 'border-border-strong bg-surface shadow-sm text-content-primary'
+                      ? CHIP_COLORS.anomalies.active
                       : 'border-border-strong bg-surface text-content-secondary'
                   }`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${showAnomalies ? 'bg-danger' : 'bg-content-muted'}`} />
+                  <span className={`w-1.5 h-1.5 rounded-full ${showAnomalies ? CHIP_COLORS.anomalies.dot : 'bg-content-muted'}`} />
                   Аномалії
                 </button>
               )}
@@ -951,11 +961,11 @@ export default function Analytics() {
                   onClick={() => setShowTarget((v) => !v)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
                     showTarget
-                      ? 'border-border-strong bg-surface shadow-sm text-content-primary'
+                      ? CHIP_COLORS.target.active
                       : 'border-border-strong bg-surface text-content-secondary'
                   }`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${showTarget ? 'bg-[#f59e0b]' : 'bg-content-muted'}`} />
+                  <span className={`w-1.5 h-1.5 rounded-full ${showTarget ? CHIP_COLORS.target.dot : 'bg-content-muted'}`} />
                   Ціль
                 </button>
               )}
@@ -964,11 +974,11 @@ export default function Analytics() {
                   onClick={() => setShowRevenue((v) => !v)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
                     showRevenue
-                      ? 'border-border-strong bg-surface shadow-sm text-content-primary'
+                      ? CHIP_COLORS.revenue.active
                       : 'border-border-strong bg-surface text-content-secondary'
                   }`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${showRevenue ? 'bg-[#8b5cf6]' : 'bg-content-muted'}`} />
+                  <span className={`w-1.5 h-1.5 rounded-full ${showRevenue ? CHIP_COLORS.revenue.dot : 'bg-content-muted'}`} />
                   Дохід
                 </button>
               )}
