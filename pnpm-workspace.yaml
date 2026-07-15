@@ -16,5 +16,3 @@ allowBuilds:
   prisma: true
   protobufjs: true
   unrs-resolver: true
-patchedDependencies:
-  explorbot: patches/explorbot.patch
