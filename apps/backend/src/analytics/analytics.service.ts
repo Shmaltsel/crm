@@ -325,10 +325,10 @@ export class AnalyticsService {
     return result;
   }
 
-  async cityLeaderboard(metric?: string, year?: number) {
+async cityLeaderboard(metric?: string, year?: number, schoolType?: string) {
     const yearFilter = year ?? new Date().getFullYear();
     const prefix = await this.vkey('analytics');
-    const cacheKey = `${prefix}:cityLeaderboard:${metric ?? ''}:${yearFilter}`;
+    const cacheKey = `${prefix}:cityLeaderboard:${metric ?? ''}:${yearFilter}:${schoolType ?? 'all'}`;
     const cached =
       await this.cacheManager.get<ReturnType<typeof this.cityLeaderboard>>(
         cacheKey,
@@ -336,6 +336,7 @@ export class AnalyticsService {
     if (cached) return cached;
 
     const metricKey = metric ?? 'events';
+    const typeCond = schoolType ? Prisma.sql`AND s.type = ${schoolType}` : Prisma.empty;
 
     type Row = {
       cityId: string;
@@ -355,9 +356,11 @@ export class AnalyticsService {
         COUNT(DISTINCT e."schoolId")::bigint AS schools
       FROM "Event" e
       LEFT JOIN "EventReport" r ON r."eventId" = e.id
+      LEFT JOIN "School" s ON s.id = e."schoolId"
       WHERE e.date >= ${new Date(`${yearFilter}-01-01`)}::date
         AND e.date < ${new Date(`${yearFilter + 1}-01-01`)}::date
         AND e.status IN ('RE_SALE')
+        ${typeCond}
       GROUP BY e."cityId"
     `;
 
@@ -369,7 +372,7 @@ export class AnalyticsService {
     const result = rows
       .map((r) => ({
         cityId: r.cityId,
-        cityName: cityMap.get(r.cityId) ?? 'â€”',
+        cityName: cityMap.get(r.cityId) ?? '—',
         events: Number(r.events),
         revenue: r.revenue,
         profit: r.profit,

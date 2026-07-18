@@ -80,16 +80,17 @@ export default function CityLeaderboard() {
   const [metric, setMetric] = useState("events");
   const [year, setYear] = useState(currentYear);
   const [staffPeriod, setStaffPeriod] = useState("year");
+  const [schoolType, setSchoolType] = useState<'all' | 'school' | 'kindergarten'>('all');
   const { selectedCity } = useSelectedCity();
   const { user } = useAuth();
   const showStaff = hasRole(user?.role, ["SUPERADMIN", "OWNER", "MANAGER"]);
 
   const { data: staffResult, isLoading: staffLoading } = useQuery({
-    queryKey: ["staff-revenue", staffPeriod, selectedCity.id],
+    queryKey: ["staff-revenue", staffPeriod],
     queryFn: () => {
       const params = new URLSearchParams();
       if (staffPeriod) params.set("period", staffPeriod);
-      if (selectedCity?.id) params.set("cityId", selectedCity.id);
+      
       return api.get(`/finance/staff-revenue?${params}`).then((r) => r.data);
     },
     enabled: showStaff,
@@ -107,11 +108,11 @@ export default function CityLeaderboard() {
   const staffMaxRevenue = staffResult?.staff?.[0]?.revenue ?? 1;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["analytics", "city-leaderboard", metric, year],
+    queryKey: ["analytics", "city-leaderboard", metric, year, schoolType],
     queryFn: () =>
       api
         .get<CityLeaderboardEntry[]>("/analytics/city-leaderboard", {
-          params: { metric, year },
+          params: { metric, year, schoolType: schoolType === 'all' ? undefined : schoolType === 'school' ? '?????' : '???????' },
         })
         .then((r) => r.data),
     staleTime: 5 * 60 * 1000,
@@ -139,6 +140,25 @@ export default function CityLeaderboard() {
               <option value="month">Цей місяць</option>
               <option value="all">За весь час</option>
             </select>
+        <div className="flex items-center gap-1 bg-surface-muted rounded-lg p-1 ml-2">
+          {[
+            { key: 'all' as const, label: '???' },
+            { key: 'school' as const, label: '?????' },
+            { key: 'kindergarten' as const, label: '???????' },
+          ].map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setSchoolType(t.key)}
+              className={"px-3 py-1.5 rounded-md text-sm font-medium transition-colors " + (
+                schoolType === t.key
+                  ? "bg-surface text-content-primary shadow-sm"
+                  : "text-content-secondary hover:text-content-primary"
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
           </div>
           {staffLoading ? (
             <div className="bg-surface rounded-card border border-border shadow-card p-6">

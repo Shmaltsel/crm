@@ -111,6 +111,10 @@ class RevenueByDayDto {
   @Type(() => Number)
   @IsInt()
   year?: number;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  schoolType?: string;
 }
 
 class SetTargetDto {
@@ -234,7 +238,7 @@ export class AnalyticsController {
   @Get('city-leaderboard')
   @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   async cityLeaderboard(@Query() query: CityLeaderboardDto) {
-    return this.analyticsService.cityLeaderboard(query.metric, query.year);
+    return this.analyticsService.cityLeaderboard(query.metric, query.year, query.schoolType);
   }
 
 
