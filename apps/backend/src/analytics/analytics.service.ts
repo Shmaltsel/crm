@@ -130,6 +130,57 @@ export class AnalyticsService {
     return rows;
   }
 
+  async revenueByDay(params: { year?: number; month?: number; cityId?: string; project?: string }) {
+    const prefix = await this.vkey('analytics');
+    const cacheKey = `${prefix}:revenueByDay:${params.year ?? ''}:${params.month ?? ''}:${params.cityId ?? ''}:${params.project ?? ''}`;
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) return cached;
+
+    const conditions: Prisma.Sql[] = [Prisma.sql`AND e.status IN ('RE_SALE')`];
+    if (params.year) {
+      conditions.push(Prisma.sql`AND e.date >= ${new Date(`${params.year}-01-01`)}::date`);
+      conditions.push(Prisma.sql`AND e.date < ${new Date(`${params.year + 1}-01-01`)}::date`);
+    }
+    if (params.month && params.year) {
+      const start = new Date(params.year, params.month - 1, 1);
+      const end = new Date(params.year, params.month, 1);
+      conditions.push(Prisma.sql`AND e.date >= ${start}::date`);
+      conditions.push(Prisma.sql`AND e.date < ${end}::date`);
+    }
+    if (params.cityId) {
+      conditions.push(Prisma.sql`AND e."cityId" = ${params.cityId}`);
+    }
+    if (params.project) {
+      conditions.push(Prisma.sql`AND e.project = ${params.project}`);
+    }
+
+    type DayRow = {
+      date: string;
+      cityName: string;
+      project: string;
+      revenue: number;
+      profit: number;
+    };
+    const rows = await this.prisma.$queryRaw<DayRow[]>`
+      SELECT
+        TO_CHAR(e.date, 'YYYY-MM-DD')            AS date,
+        COALESCE(c.name, '—')                    AS "cityName",
+        COALESCE(e.project, '????')              AS project,
+        COALESCE(SUM(r."totalSum"), 0)::float     AS revenue,
+        COALESCE(SUM(r."remainderSum"), 0)::float AS profit
+      FROM "Event" e
+      LEFT JOIN "EventReport" r ON r."eventId" = e.id
+      LEFT JOIN "City" c ON c.id = e."cityId"
+      WHERE 1=1 ${Prisma.join(conditions, ' ')}
+      GROUP BY e.date, e."cityId", c.name, e.project
+      ORDER BY e.date
+    `;
+
+    await this.cacheManager.set(cacheKey, rows, CACHE_TTL);
+    return rows;
+  }
+
+
   async eventsByCity(year?: number) {
     const yearFilter = year ?? new Date().getFullYear();
     const prefix = await this.vkey('analytics');

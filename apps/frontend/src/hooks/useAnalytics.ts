@@ -131,4 +131,22 @@ export function useSetAnalyticsAnnotation() {
       qc.invalidateQueries({ queryKey: ["analytics", "annotations"] });
     },
   });
+
+
+}
+export interface RevenueByDayRow {
+  date: string;
+  cityName: string;
+  project: string;
+  revenue: number;
+  profit: number;
+}
+
+export function useRevenueByDay(params?: { year?: number; month?: number; cityId?: string; project?: string; enabled?: boolean }) {
+  return useQuery({
+    queryKey: ["analytics", "revenue-by-day", params],
+    queryFn: () => api.get<RevenueByDayRow[]>("/analytics/revenue-by-day", { params: { year: params?.year, month: params?.month, cityId: params?.cityId, project: params?.project } }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+    enabled: params?.enabled !== false,
+  });
 }

@@ -75,7 +75,32 @@ class SalaryFundDto {
   cityId?: string;
 }
 
-class CityLeaderboardDto {
+class RevenueByDayDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @IsInt()
+  month?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  project?: string;
+}
+ class CityLeaderboardDto {
   @ApiPropertyOptional({ default: 'events' })
   @IsOptional()
   @IsString()
@@ -163,6 +188,19 @@ export class AnalyticsController {
     );
   }
 
+
+  @ApiOperation({ summary: '????? ?? ????' })
+  @Get('revenue-by-day')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async revenueByDay(@CurrentUser() user: JwtUser, @Query() query: RevenueByDayDto) {
+    const effectiveCityId = await this.resolveCityId(user, query.cityId);
+    return this.analyticsService.revenueByDay({
+      year: query.year,
+      month: query.month,
+      cityId: effectiveCityId,
+      project: query.project,
+    });
+  }
   @ApiOperation({ summary: 'Події по містах' })
   @Get('events-by-city')
   @Roles('SUPERADMIN', 'OWNER')

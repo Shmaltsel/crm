@@ -9,6 +9,7 @@ import {
   useSalaryFund,
   useAnalyticsTargets,
   useAnalyticsAnnotations,
+  useRevenueByDay,
 } from "../hooks/useAnalytics";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
@@ -220,14 +221,15 @@ interface StatDotProps {
   isAnomaly?: boolean;
   lineIndex?: number;
   collisionGroup?: number;
+  isMobile?: boolean;
 }
 
-function StatDot({ cx, cy, color, payload, lineKey, isMax, isMin, isAnomaly, lineIndex = 0, collisionGroup = 1 }: StatDotProps) {
+function StatDot({ cx, cy, color, payload, lineKey, isMax, isMin, isAnomaly, lineIndex = 0, collisionGroup = 1, isMobile = false }: StatDotProps) {
   if (cx == null || cy == null || !color || !payload || !lineKey) return null;
   const v = (payload[`profit_${lineKey}`] as number) ?? 0;
   if (v === 0) return null;
   const label = isMax ? "MAX" : isMin ? "MIN" : null;
-  const offset = collisionGroup > 1 ? (lineIndex - (collisionGroup - 1) / 2) * 14 : 0;
+  const offset = collisionGroup > 1 ? (lineIndex - (collisionGroup - 1) / 2) * (isMobile ? 10 : 14) : 0;
   if (isAnomaly && !label) {
     return (
       <g>
@@ -344,6 +346,10 @@ export default function Analytics() {
   const { data: salaryFund } = useSalaryFund({ year: yearParam });
   const { data: targets } = useAnalyticsTargets({ year: yearParam });
   const { data: annotations } = useAnalyticsAnnotations({ year: yearParam });
+  const { data: rawDayData } = useRevenueByDay({
+    year: yearParam,
+    enabled: granularity === 'day',
+  });
 
   const cityNames = useMemo(() => {
     if (!cities) return [];
@@ -417,6 +423,53 @@ export default function Analytics() {
     return { chartData: entries };
   }, [filteredData, activeCities, aggregateByCity]);
 
+
+  const dayChartData = useMemo(() => {
+    if (!rawDayData || granularity !== 'day') return chartData;
+    const byKey = new Map<string, ChartEntry>();
+    for (const row of rawDayData) {
+      const d = new Date(row.date);
+      const y = d.getFullYear();
+      const m = d.getMonth() + 1;
+      const day = d.getDate();
+      const k = row.date;
+      if (!byKey.has(k)) {
+        const entry: ChartEntry = {
+          key: k,
+          year: y,
+          month: m,
+          day: day,
+          label: '',
+        };
+        byKey.set(k, entry);
+      }
+      const entry = byKey.get(k)!;
+      if (activeCities.has(row.cityName)) {
+        if (aggregateByCity) {
+          const lk = `profit_${row.cityName}`;
+          entry[lk] = ((entry[lk] as number) ?? 0) + row.profit;
+          const rv = `revenue_${row.cityName}`;
+          entry[rv] = ((entry[rv] as number) ?? 0) + row.revenue;
+        } else {
+          const lk = `profit_${row.project}_${row.cityName}`;
+          entry[lk] = ((entry[lk] as number) ?? 0) + row.profit;
+          const rv = `revenue_${row.project}_${row.cityName}`;
+          entry[rv] = ((entry[rv] as number) ?? 0) + row.revenue;
+        }
+      }
+    }
+    const entries = Array.from(byKey.values()).sort(
+      (a, b) => a.key.localeCompare(b.key)
+    );
+    const span = entries.length;
+    for (const e of entries) {
+      const d = new Date(e.key);
+      if (span > 60) e.label = `${d.getDate()}.${d.getMonth()+1}`;
+      else if (span > 30) e.label = `${d.getDate()} ${UA_MONTHS[d.getMonth()]}`;
+      else e.label = `${d.getDate()} ${UA_MONTHS_FULL[d.getMonth()]}`;
+    }
+    return entries;
+  }, [rawDayData, granularity, chartData, activeCities, aggregateByCity]);
   const activeLines = useMemo(() => {
     const lines: { key: string; label: string; color: string }[] = [];
     let idx = 0;
@@ -490,7 +543,7 @@ export default function Analytics() {
     });
   }, [yoyChartData, activeLines, showTrend]);
 
-  const canForecast = period !== "all" && chartData.length >= 4;
+  const canForecast = period !== 'all' && chartData.length >= 4 && granularity !== 'day';
 
   const forecastData = useMemo(() => {
     if (!showForecast || !canForecast || activeLines.length === 0) return { entries: smaData, forecastStartIndex: -1, insufficientLines: new Set<string>() };
@@ -546,6 +599,8 @@ export default function Analytics() {
   const chartRef = useRef<HTMLDivElement>(null);
   const pinchRef = useRef<{ dist: number; range: [number, number] } | null>(null);
   const zoomTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const [granularity, setGranularity] = useState<'month' | 'day'>('month');
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   const CHIP_COLORS: Record<string, { active: string; dot: string }> = {
     forecast: { active: 'border-[hsl(38,92%,50%)]/40 bg-[hsl(38,92%,50%)]/10 text-[hsl(38,92%,30%)]', dot: 'bg-warning' },
@@ -610,6 +665,8 @@ export default function Analytics() {
         if (shrink) return clampRange(s + step, e2 - step);
         return clampRange(s - step, e2 + step);
       });
+        const newSpan = shrink ? span - 2 * step : span + 2 * step;
+        setGranularity(newSpan <= 6 ? 'day' : 'month');
       zoomTimerRef.current = setTimeout(() => {
         setZoomAnimating(false);
       }, 200);
@@ -667,8 +724,9 @@ export default function Analytics() {
   }, []);
 
   const zoomedChartData = useMemo(() => {
-    return forecastData.entries.slice(zoomRange[0], zoomRange[1] + 1);
-  }, [forecastData.entries, zoomRange]);
+    const source = granularity === 'day' ? dayChartData : forecastData.entries;
+    return source.slice(zoomRange[0], zoomRange[1] + 1);
+  }, [dayChartData, forecastData.entries, zoomRange, granularity]);
 
   const compositeChartData = useMemo(() => {
     if (chartMode !== 'composite') return zoomedChartData;
@@ -1236,7 +1294,7 @@ export default function Analytics() {
                           tick={{ fontSize: 11, fill: "#64748b" }}
                           axisLine={{ stroke: "#e2e8f0" }}
                           tickLine={false}
-                          interval={zoomSpan > 24 ? Math.floor(zoomSpan / 8) : zoomSpan > 12 ? 1 : 0}
+                          interval={granularity === 'day' ? (zoomSpan > 60 ? 14 : zoomSpan > 30 ? 7 : zoomSpan > 14 ? 3 : 0) : (zoomSpan > 24 ? Math.floor(zoomSpan / 8) : zoomSpan > 12 ? 1 : 0)}
                         />
                         <YAxis
                           tick={{ fontSize: 11, fill: "#64748b" }}
@@ -1278,7 +1336,7 @@ export default function Analytics() {
                                 isAnomaly={showAnomalies && anomalies?.has(props.index as number) === true}
                                 lineIndex={props.index === stats.maxIdx ? stats.maxLineIndex : stats.minLineIndex}
                                 collisionGroup={props.index === stats.maxIdx ? stats.maxCollisionGroup : stats.minCollisionGroup}
-                              />
+                              isMobile={isMobile} />
                               );
                             } : showAnomalies ? (props: Record<string, unknown>) => {
                               const anomalies = anomalyMap.get(line.key);
@@ -1291,7 +1349,7 @@ export default function Analytics() {
                                   payload={props.payload as ChartEntry}
                                   lineKey={line.key}
                                   isAnomaly
-                                />
+                                isMobile={isMobile} />
                               ) : (zoomSpan <= 12 ? <circle cx={props.cx as number} cy={props.cy as number} r={2.5} fill={line.color} strokeWidth={0} /> : null);
                             } : zoomSpan <= 12 ? { r: 2.5, fill: line.color, strokeWidth: 0 } : false}
                             activeDot={<CustomActiveDot color={line.color} />}
