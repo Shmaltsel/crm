@@ -88,19 +88,6 @@ class CityLeaderboardDto {
   year?: number;
 }
 
-class RoiDto {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  cityId?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  year?: number;
-}
-
 class SetTargetDto {
   @ApiProperty()
   @Type(() => Number)
@@ -212,13 +199,7 @@ export class AnalyticsController {
     return this.analyticsService.cityLeaderboard(query.metric, query.year);
   }
 
-  @ApiOperation({ summary: 'ROI' })
-  @Get('roi')
-  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
-  async roi(@CurrentUser() user: JwtUser, @Query() query: RoiDto) {
-    const effectiveCityId = await this.resolveCityId(user, query.cityId);
-    return this.analyticsService.roi(effectiveCityId, query.year);
-  }
+
 
   @ApiOperation({ summary: 'Топ менеджерів за кількістю затверджених звітів' })
   @Get('kpi/managers')

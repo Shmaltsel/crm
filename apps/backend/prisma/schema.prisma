@@ -484,6 +484,21 @@ model ManualExpense {
   @@index([createdById])
 }
 
+
+model Category {
+  id        String       @id @default(cuid())
+  name      String
+  type      CategoryType
+  createdAt DateTime     @default(now())
+
+  @@unique([name, type])
+  @@index([type])
+}
+
+enum CategoryType {
+  INVENTORY
+  EXPENSE
+}
 enum EventStatus {
   BASE
   FIRST_CONTACT

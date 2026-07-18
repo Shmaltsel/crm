@@ -30,14 +30,6 @@ export interface SalaryFund {
   byCity?: Record<string, number>;
 }
 
-export interface Roi {
-  totalRevenue: number;
-  totalExpenses: number;
-  salaryExpenses: number;
-  profit: number;
-  roi: number;
-}
-
 export function useRevenueByMonth(params?: { cityId?: string; projectId?: string; year?: number }) {
   return useQuery({
     queryKey: ["analytics", "revenue-by-month", params],
@@ -84,14 +76,6 @@ export function useSalaryFund(params?: { month?: number; year?: number; cityId?:
   return useQuery({
     queryKey: ["analytics", "salary-fund", params],
     queryFn: () => api.get<SalaryFund>("/analytics/salary-fund", { params }).then(r => r.data),
-    staleTime: 5 * 60 * 1000,
-  });
-}
-
-export function useRoi(params?: { cityId?: string; year?: number }) {
-  return useQuery({
-    queryKey: ["analytics", "roi", params],
-    queryFn: () => api.get<Roi>("/analytics/roi", { params }).then(r => r.data),
     staleTime: 5 * 60 * 1000,
   });
 }

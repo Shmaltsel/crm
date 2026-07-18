@@ -54,7 +54,6 @@ describe("Smoke: Dashboard loading", () => {
       http.get("http://localhost:3000/api/analytics/kpi/managers", () => HttpResponse.json([])),
       http.get("http://localhost:3000/api/analytics/kpi/projects", () => HttpResponse.json([])),
       http.get("http://localhost:3000/api/analytics/revenue-by-month", () => HttpResponse.json([])),
-      http.get("http://localhost:3000/api/analytics/roi", () => HttpResponse.json({ roi: 0 })),
       http.get("http://localhost:3000/api/analytics/salary-fund", () => HttpResponse.json({ total: 0 })),
       http.get("http://localhost:3000/api/issues", () => HttpResponse.json([]))
     );

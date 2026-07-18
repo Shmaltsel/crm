@@ -35,6 +35,7 @@ import { SchoolCommentsModule } from './school-comments/school-comments.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { CategoriesModule } from './categories/categories.module';
 import { FeatureFlagsModule } from './common/feature-flags/feature-flags.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { I18nModule } from './common/i18n/i18n.module';
@@ -46,6 +47,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     HealthModule,
     MetricsModule,
     FeatureFlagsModule,
+    CategoriesModule,
     I18nModule,
     ConfigModule.forRoot({
       isGlobal: true,

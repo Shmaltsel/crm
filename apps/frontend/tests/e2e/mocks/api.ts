@@ -380,7 +380,6 @@ const eventsByCity = [
 ];
 
 const salaryFund = { total: 120000, month: 7, year: 2026, byCity: { [CITY_ID]: 80000 } };
-const roi = { totalRevenue: 480000, totalExpenses: 210000, salaryExpenses: 120000, profit: 270000, roi: 56 };
 
 const kpiManagers = [{ userId: "user-manager", name: "Марія Демчук", approvedReports: 12 }];
 const kpiHosts = [{ userId: "h1", name: "Олег Ведучий", avgRating: 4.8, reportsCount: 9 }];
@@ -457,7 +456,6 @@ function resolve(apiPath: string, method: string, role: MockRole | null): MockRe
   if (apiPath === "/analytics/revenue-by-month") return { status: 200, body: monthlyRevenue };
   if (apiPath === "/analytics/events-by-city") return { status: 200, body: eventsByCity };
   if (apiPath === "/analytics/salary-fund") return { status: 200, body: salaryFund };
-  if (apiPath === "/analytics/roi") return { status: 200, body: roi };
   if (apiPath === "/analytics/kpi/managers") return { status: 200, body: kpiManagers };
   if (apiPath === "/analytics/kpi/hosts") return { status: 200, body: kpiHosts };
   if (apiPath === "/analytics/kpi/projects") return { status: 200, body: kpiProjects };

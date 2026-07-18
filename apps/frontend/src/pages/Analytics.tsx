@@ -7,7 +7,6 @@ import {
   useRevenueByCityMonth,
   useEventsByCity,
   useSalaryFund,
-  useRoi,
   useAnalyticsTargets,
   useAnalyticsAnnotations,
 } from "../hooks/useAnalytics";
@@ -343,7 +342,6 @@ export default function Analytics() {
   });
   const { data: eventsByCity, isLoading: eventsLoading } = useEventsByCity({ year: yearParam });
   const { data: salaryFund } = useSalaryFund({ year: yearParam });
-  const { data: roi } = useRoi({ year: yearParam });
   const { data: targets } = useAnalyticsTargets({ year: yearParam });
   const { data: annotations } = useAnalyticsAnnotations({ year: yearParam });
 
@@ -998,7 +996,6 @@ export default function Analytics() {
         >
           <KPICard label="Загальний дохід" value={fmtMoney(totalRevenue)} color="text-brand" numericValue={totalRevenue} />
           <KPICard label="Прибуток" value={fmtMoney(totalProfit)} color="text-success" numericValue={totalProfit} />
-          <KPICard label="ROI" value={roi ? `${roi.roi}%` : "—"} color="text-purple-600" numericValue={roi?.roi ? Number(roi.roi) : undefined} format="percent" />
           <KPICard label="Витрати на ЗП" value={fmtMoney(salaryFund?.total ?? 0)} color="text-danger" numericValue={salaryFund?.total ?? 0} />
         </motion.div>
       )}

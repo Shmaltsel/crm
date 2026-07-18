@@ -469,61 +469,6 @@ export class AnalyticsService {
     return result;
   }
 
-  async roi(cityId?: string, year?: number) {
-    const y = year ?? new Date().getFullYear();
-    const prefix = await this.vkey('analytics');
-    const cacheKey = `${prefix}:roi:${cityId ?? ''}:${y}`;
-    const cached =
-      await this.cacheManager.get<ReturnType<typeof this.roi>>(cacheKey);
-    if (cached) return cached;
-
-    const start = new Date(y, 0, 1);
-    const end = new Date(y + 1, 0, 1);
-
-    const cityCond = cityId
-      ? Prisma.sql`AND e."cityId" = ${cityId}`
-      : Prisma.empty;
-
-    type EventAgg = {
-      totalRevenue: number;
-      schoolSum: number;
-      remainderSum: number;
-    };
-    const [eventAgg] = await this.prisma.$queryRaw<EventAgg[]>`
-      SELECT
-        COALESCE(SUM(r."totalSum"), 0)::float AS "totalRevenue",
-        COALESCE(SUM(r."schoolSum"), 0)::float AS "schoolSum",
-        COALESCE(SUM(r."remainderSum"), 0)::float AS "remainderSum"
-      FROM "Event" e
-      JOIN "EventReport" r ON r."eventId" = e.id
-      WHERE e.date >= ${start}::date AND e.date < ${end}::date AND e.status IN ('RE_SALE')
-      ${cityCond}
-    `;
-
-    const salaryAgg = await this.prisma.salaryRecord.aggregate({
-      where: { createdAt: { gte: start, lt: end }, status: 'PAID' },
-      _sum: { amount: true },
-    });
-
-    const totalRevenue = eventAgg.totalRevenue;
-    const schoolSum = eventAgg.schoolSum;
-    const salaryExpenses = Number(salaryAgg._sum.amount ?? 0);
-    const totalExpenses = schoolSum + salaryExpenses;
-    const profit = totalRevenue - totalExpenses;
-    const roiValue = totalExpenses > 0 ? (profit / totalExpenses) * 100 : 0;
-
-    const result = {
-      totalRevenue,
-      totalExpenses,
-      salaryExpenses,
-      profit,
-      roi: Math.round(roiValue * 100) / 100,
-    };
-
-    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
-    return result;
-  }
-
   async getTargets(year?: number) {
     const y = year ?? new Date().getFullYear();
     return this.prisma.analyticsTarget.findMany({

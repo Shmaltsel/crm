@@ -9,6 +9,7 @@ import {
   useDeleteInventoryItem,
   useAddStock,
 } from "../hooks/useInventory";
+import { useCategories } from "../hooks/useCategories";
 import { InventoryItemModal } from "../components/inventory/InventoryItemModal";
 import type { InventoryItem } from "../types";
 import { Skeleton } from "../components/ui/Skeleton";
@@ -29,7 +30,6 @@ function StockBadge({ current, min }: { current: number; min: number }) {
   return <Badge variant={variant}>{current}</Badge>;
 }
 
-const CATEGORIES = ["Техніка", "Матеріали", "Реквізит", "Канцелярія", "Інше"];
 
 export default function InventoryPage() {
   const { user } = useAuth();
@@ -47,6 +47,7 @@ export default function InventoryPage() {
   const updateItem = useUpdateInventoryItem();
   const deleteItem = useDeleteInventoryItem();
   const addStock = useAddStock();
+  const { data: dbCategories } = useCategories("INVENTORY");
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
@@ -59,10 +60,11 @@ export default function InventoryPage() {
   const canAddStock = canCreate;
 
   const uniqueCategories = useMemo(() => {
-    if (!items) return CATEGORIES;
+    const dbCats = dbCategories?.map((c) => c.name) ?? [];
+    if (!items) return dbCats;
     const cats = new Set(items.map((i) => i.category));
-    return [...new Set([...CATEGORIES, ...cats])];
-  }, [items]);
+    return [...new Set([...dbCats, ...cats])];
+  }, [items, dbCategories]);
 
   const handleOpenCreate = () => {
     setEditItem(null);

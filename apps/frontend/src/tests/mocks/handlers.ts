@@ -127,12 +127,6 @@ export const handlers = [
     ])
   ),
 
-  http.get(`${BASE}/analytics/roi`, () =>
-    HttpResponse.json([
-      { month: "2026-01", roi: 1.5 },
-      { month: "2026-02", roi: 1.8 },
-    ])
-  ),
 
   // Reports
   http.get(`${BASE}/reports/submitted`, () =>
